@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // A separate stack for QA. How to use it: .claude/skills/soirely-qa-tester, section 4.
 import { spawn, spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
+import { createServer } from 'node:http';
 import {
   copyFileSync,
   cpSync,
@@ -120,6 +121,7 @@ export function qaConfig(tester = 1) {
     chromePort: 9221 + tester,
     // Maestro's iOS driver answers every run on its port; 22087, its default, is left to a run by hand.
     driverPort: 22087 + tester,
+    helperPort: 22190 + tester,
   };
 }
 
@@ -133,6 +135,7 @@ export const {
 
 const EXPO_GO = 'host.exp.Exponent';
 const EXPO_GO_ANDROID = 'host.exp.exponent';
+const ACCOUNT_ORGANISATION = 'QA Organisation';
 
 export function renderQaEnv(
   example,
@@ -1098,12 +1101,427 @@ function maestro(args) {
   if (!ok) process.exitCode = 1;
 }
 
-function account(args) {
-  const root = qaWorktree();
-  run('node', ['scripts/qa-account.mjs', ...args], {
-    cwd: root,
-    env: { SOIRELY_API_URL: CONFIG.urls.api, MAILPIT_URL: CONFIG.urls.mailpit },
+const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+export const STEP_MS = 30_000;
+
+// RFC 6238 as the API reads it: SHA-1, six digits, 30-second steps.
+export function totp(secret, step) {
+  const bits = [...secret.toUpperCase().replace(/[\s=]/g, '')]
+    .map((char) => {
+      const at = BASE32.indexOf(char);
+      if (at === -1) throw new Error('a two-factor secret is base32');
+      return at.toString(2).padStart(5, '0');
+    })
+    .join('');
+  const key = Buffer.from((bits.match(/.{8}/g) ?? []).map((byte) => Number.parseInt(byte, 2)));
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(step));
+  const mac = createHmac('sha1', key).update(counter).digest();
+  const offset = mac[mac.length - 1] & 0xf;
+  return String((mac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, '0');
+}
+
+// The API refuses a code at or before the last step it accepted, so each code is a step past it.
+export function codeStep(now, last) {
+  const current = Math.floor(now / STEP_MS);
+  const step = last == null ? current : Math.max(current, last + 1);
+  return { step, waitMs: Math.max(0, step * STEP_MS - now) };
+}
+
+const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// `{{t:key}}` is the batch language's string and `{{t:any:key}}` any language's, as a Maestro
+// regex inside single quotes. `|email` fills the account's address in; any other value is `.*`.
+export function localise(flow, catalogues, language, values = {}) {
+  return flow.replace(/\{\{t:(any:)?([\w.]+)((?:\|\w+)*)\}\}/g, (_, any, key, given) => {
+    const filled = given.split('|').filter(Boolean);
+    const languages = any || language === 'any' ? Object.keys(catalogues) : [language];
+    const patterns = languages.map((code) => {
+      const text = key.split('.').reduce((node, part) => node?.[part], catalogues[code]);
+      if (typeof text !== 'string') throw new Error(`no ${key} in the ${code} catalogue`);
+      return text
+        .split(/(\{\{\w+\}\})/)
+        .map((part) => {
+          const name = /^\{\{(\w+)\}\}$/.exec(part)?.[1];
+          if (name === undefined) return escapeRegex(part);
+          return filled.includes(name) ? escapeRegex(values[name] ?? '') : '.*';
+        })
+        .join('');
+    });
+    const unique = [...new Set(patterns)];
+    const pattern = unique.length === 1 ? unique[0] : `(?:${unique.join('|')})`;
+    return pattern.replaceAll("'", "''");
   });
+}
+
+export const checkId = (check, language) => (language === 'any' ? check : `${check}.${language}`);
+
+const helperStep = (ask, file) =>
+  ['- runScript:', `    file: ${file}`, '    env:', `      ASK: '${ask}'`, ''].join('\n');
+
+export function batchCheck(flow, check, language, { reset }) {
+  const at = flow.indexOf('\n---\n');
+  if (at === -1) throw new Error(`${check}: no --- between its config and its commands`);
+  const id = checkId(check, language);
+  const commands = flow
+    .slice(at + 5)
+    .replace(/^(\s*-\s*takeScreenshot:\s*)(['"]?)([^'"\s]+)\2\s*$/gm, `$1${id}-$3`)
+    .trimEnd();
+  return [
+    flow.slice(0, at + 5),
+    reset ? '- runFlow: ../batch/reset.yaml\n' : '',
+    `${commands}\n`,
+    helperStep(`/passed?check=${encodeURIComponent(id)}`, '../batch/helper.js'),
+  ].join('');
+}
+
+export function batchFlow({ checks, languages, cold }) {
+  const lines = [`appId: ${EXPO_GO}`, '---', '- launchApp:', `    appId: ${EXPO_GO}`];
+  lines.push(`    stopApp: ${cold ? 'true' : 'false'}`);
+  if (cold) lines.push('- runFlow: batch/sign-out.yaml');
+  else lines.push(helperStep('/reload', 'batch/helper.js').trimEnd());
+  lines.push('- runFlow: batch/session.yaml');
+  languages.forEach((language, index) => {
+    if (index > 0) lines.push(helperStep(`/language?to=${language}`, 'batch/helper.js').trimEnd());
+    for (const check of checks) {
+      lines.push(
+        '- runFlow:',
+        `    file: _checks/${checkId(check, language)}.yaml`,
+        '    optional: true',
+      );
+    }
+  });
+  return `${lines.join('\n')}\n`;
+}
+
+export function composeBatch(
+  source,
+  target,
+  { checks, languages, cold, catalogues, email, onAndroid },
+) {
+  const finish = (flow) => (onAndroid ? forAndroid(flow) : flow);
+  if (onAndroid) androidFlows(source, target);
+  else {
+    rmSync(target, { recursive: true, force: true });
+    cpSync(source, target, { recursive: true });
+  }
+  for (const entry of readdirSync(target, { recursive: true })) {
+    if (!/\.ya?ml$/.test(entry) || entry.startsWith('checks')) continue;
+    const path = join(target, entry);
+    writeFileSync(path, localise(readFileSync(path, 'utf8'), catalogues, 'any', { email }));
+  }
+  mkdirSync(join(target, '_checks'));
+  for (const language of languages) {
+    for (const check of checks) {
+      const flow = localise(
+        readFileSync(join(source, 'checks', `${check}.yaml`), 'utf8'),
+        catalogues,
+        language,
+        { email },
+      );
+      const id = checkId(check, language);
+      writeFileSync(
+        join(target, '_checks', `${id}.yaml`),
+        finish(batchCheck(flow, check, language, { reset: !cold })),
+      );
+      if (cold) {
+        writeFileSync(
+          join(target, `_cold.${id}.yaml`),
+          finish(batchFlow({ checks: [check], languages: [language], cold })),
+        );
+      }
+    }
+  }
+  if (!cold) writeFileSync(join(target, '_batch.yaml'), finish(batchFlow({ checks, languages })));
+}
+
+export function parseBatch(args) {
+  const positional = [];
+  const vars = {};
+  let languages = ['any'];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '--lang') languages = (args[++i] ?? '').split(',').filter(Boolean);
+    else if (arg.startsWith('--')) continue;
+    else if (/^[A-Z][A-Z0-9_]*=/.test(arg))
+      vars[arg.slice(0, arg.indexOf('='))] = arg.slice(arg.indexOf('=') + 1);
+    else positional.push(arg);
+  }
+  const [name, ...checks] = positional;
+  if (!name || checks.length === 0 || languages.length === 0) {
+    throw new Error(
+      'which batch? `batch <name> <check>… EMAIL=… PASSWORD=… [--lang en,es] [--cold]`',
+    );
+  }
+  return { name, checks, languages, vars, cold: args.includes('--cold') };
+}
+
+async function api(path, { method = 'POST', body, token } = {}) {
+  const response = await fetch(`${CONFIG.urls.api}${path}`, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      'User-Agent': 'Soirely-QA/1.0 (scripts/qa-env.mjs)',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const answer = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(
+      `${path} answered ${response.status}: ${answer?.detail ?? answer?.title ?? response.statusText}`,
+    );
+  }
+  return answer;
+}
+
+// Kept across runs: five batches in a row are five processes, and each must use a later step.
+function usedSteps() {
+  const file = join(qaWorktree(), '.qa/two-factor-steps.json');
+  return { file, used: existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {} };
+}
+
+async function nextCode(email, secret) {
+  const { waitMs } = codeStep(Date.now(), usedSteps().used[email]);
+  await pause(waitMs);
+  const { file, used } = usedSteps();
+  const { step } = codeStep(Date.now(), used[email]);
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, JSON.stringify({ ...used, [email]: step }, null, 2));
+  return totp(secret, step);
+}
+
+async function apiSession(email, password, secret) {
+  const answer = await api('/api/auth/login', { body: { email, password } });
+  if (typeof answer.twoFactorChallenge !== 'string') return answer.accessToken;
+  if (!secret) throw new Error(`${email} has two-factor on: pass TOTP_SECRET=…`);
+  const code = await nextCode(email, secret);
+  return (
+    await api('/api/auth/two-factor/verify', {
+      body: { challenge: answer.twoFactorChallenge, code },
+    })
+  ).accessToken;
+}
+
+async function reloadApp() {
+  const Socket = globalThis.WebSocket ?? (await import('ws')).WebSocket;
+  return new Promise((done, failed) => {
+    const socket = new Socket(`ws://127.0.0.1:${CONFIG.ports.METRO_PORT}/message`);
+    socket.onopen = () => {
+      socket.send(JSON.stringify({ version: 2, method: 'reload' }));
+      socket.close();
+      done();
+    };
+    socket.onerror = () => failed(new Error(`no bundler on ${CONFIG.ports.METRO_PORT} to reload`));
+  });
+}
+
+// Under ten seconds an answer: batch/helper.js asks again while this says wait.
+function startHelper({ email, secret, token, passed }) {
+  const server = createServer(async (request, response) => {
+    const url = new URL(request.url ?? '/', 'http://helper');
+    const reply = (status, body) => {
+      response.writeHead(status, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify(body));
+    };
+    try {
+      if (url.pathname === '/code') {
+        if (!secret) throw new Error('this batch was given no TOTP_SECRET');
+        if (codeStep(Date.now(), usedSteps().used[email]).waitMs > 8000) {
+          await pause(8000);
+          return reply(200, { wait: true });
+        }
+        return reply(200, { code: await nextCode(email, secret) });
+      }
+      if (url.pathname === '/reload') {
+        await reloadApp();
+        return reply(200, { reloaded: true });
+      }
+      if (url.pathname === '/language') {
+        const locale = url.searchParams.get('to');
+        await api('/api/auth/locale', { method: 'PUT', token, body: { locale } });
+        return reply(200, { language: locale });
+      }
+      if (url.pathname === '/passed') {
+        passed.add(url.searchParams.get('check'));
+        return reply(200, {});
+      }
+      return reply(404, { error: `nothing at ${url.pathname}` });
+    } catch (error) {
+      return reply(500, { error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+  return new Promise((ready, failed) => {
+    server.once('error', failed);
+    server.listen(CONFIG.helperPort, '127.0.0.1', () => ready(server));
+  });
+}
+
+function runAsync(command, args, { cwd, env }) {
+  return new Promise((done) => {
+    const child = spawn(command, args, { cwd, stdio: 'inherit', env: { ...process.env, ...env } });
+    child.on('exit', (code) => done(code === 0));
+    child.on('error', () => done(false));
+  });
+}
+
+function catalogues(root) {
+  const dir = join(root, 'apps/mobile/src/i18n/locales');
+  return Object.fromEntries(
+    readdirSync(dir)
+      .filter((name) => name.endsWith('.json'))
+      .map((name) => [basename(name, '.json'), JSON.parse(readFileSync(join(dir, name), 'utf8'))]),
+  );
+}
+
+async function batch(args) {
+  const root = qaWorktree();
+  const onAndroid = args.includes('--android');
+  const { name, checks, languages, vars, cold } = parseBatch(args);
+  const { EMAIL: email, PASSWORD: password, TOTP_SECRET: secret, ...rest } = vars;
+  if (!email || !password) throw new Error('whose batch? EMAIL=… PASSWORD=…, from `account`');
+  const source = join(root, 'apps/mobile/.maestro');
+  const missing = checks.filter((check) => !existsSync(join(source, 'checks', `${check}.yaml`)));
+  if (missing.length) throw new Error(`no ${missing.join(', ')} in apps/mobile/.maestro/checks`);
+  const device = maestroDevice(args);
+
+  const out = join(root, '.qa', name);
+  rmSync(out, { recursive: true, force: true });
+  mkdirSync(out, { recursive: true });
+  const flows = join(root, '.qa/.batch', name);
+  composeBatch(source, flows, {
+    checks,
+    languages,
+    cold,
+    catalogues: catalogues(root),
+    email,
+    onAndroid,
+  });
+
+  const named = languages[0] !== 'any';
+  const token = named ? await apiSession(email, password, secret) : null;
+  const passed = new Set();
+  const helper = await startHelper({ email, secret, token, passed });
+  // The secret stays with the helper: no flow is handed it.
+  const env = {
+    METRO_URL: CONFIG.urls.metro,
+    MAILPIT_URL: CONFIG.urls.mailpit,
+    HELPER_URL: `http://127.0.0.1:${CONFIG.helperPort}`,
+    EMAIL: email,
+    PASSWORD: password,
+    ORG_NAME: ACCOUNT_ORGANISATION,
+    ...rest,
+  };
+  const test = (flow) =>
+    runAsync(
+      maestroBin() ?? 'maestro',
+      [
+        ...maestroTarget(device, onAndroid, CONFIG.driverPort),
+        'test',
+        '--debug-output',
+        out,
+        ...Object.entries(env).flatMap(([key, value]) => ['-e', `${key}=${value}`]),
+        flow,
+      ],
+      { cwd: root, env: onAndroid ? androidTools().env : {} },
+    );
+
+  const started = Date.now();
+  try {
+    if (cold) {
+      for (const language of languages) {
+        for (const check of checks) {
+          if (named)
+            await api('/api/auth/locale', { method: 'PUT', token, body: { locale: language } });
+          await test(join(flows, `_cold.${checkId(check, language)}.yaml`));
+        }
+      }
+    } else {
+      if (named)
+        await api('/api/auth/locale', { method: 'PUT', token, body: { locale: languages[0] } });
+      await test(join(flows, '_batch.yaml'));
+    }
+  } finally {
+    helper.close();
+  }
+  const seconds = Math.round((Date.now() - started) / 1000);
+
+  spawnSync('sh', ['-c', `find "${out}" -mindepth 2 -name '*.png' -exec cp {} "${out}/" \\;`]);
+  const runs = languages.flatMap((language) => checks.map((check) => ({ check, language })));
+  const ids = runs.map(({ check, language }) => checkId(check, language));
+  const failed = ids.filter((id) => !passed.has(id));
+  console.log(
+    `\nBatch ${name}${cold ? ', each check alone and cold' : ''}: ` +
+      `${ids.length - failed.length} passed, ${failed.length} failed, in ${Math.floor(seconds / 60)}m${seconds % 60}s`,
+  );
+  for (const id of ids) console.log(`  ${passed.has(id) ? '✓' : '✗'} ${id}`);
+  console.log(`Evidence in ${out}`);
+  if (failed.length) {
+    const failures = runs.filter(({ check, language }) => !passed.has(checkId(check, language)));
+    console.log('Re-run each alone, cold:');
+    for (const hint of rerunHints(name, failures, { args, email, secret }))
+      console.log(`  ${hint}`);
+    process.exitCode = 1;
+  }
+}
+
+export function rerunHints(name, failures, { args, email, secret }) {
+  const device = ['--ipad', '--android'].filter((flag) => args.includes(flag));
+  return failures.map(({ check, language }) =>
+    [
+      'node .qa/bin/qa-env.mjs batch',
+      `${name}-${checkId(check, language).replace('.', '-')}`,
+      check,
+      ...(language === 'any' ? [] : ['--lang', language]),
+      '--cold',
+      ...device,
+      `EMAIL=${email}`,
+      'PASSWORD=…',
+      ...(secret ? ['TOTP_SECRET=…'] : []),
+    ].join(' '),
+  );
+}
+
+// --ready finishes Complete your profile and founds one organisation; --two-factor also turns it on.
+async function account(args) {
+  const root = qaWorktree();
+  const env = { SOIRELY_API_URL: CONFIG.urls.api, MAILPIT_URL: CONFIG.urls.mailpit };
+  const twoFactor = args.includes('--two-factor');
+  if (!twoFactor && !args.includes('--ready')) {
+    run('node', ['scripts/qa-account.mjs', ...args], { cwd: root, env });
+    return;
+  }
+  const passed = args.filter((a) => a !== '--two-factor' && a !== '--ready');
+  const made = capture('node', ['scripts/qa-account.mjs', '--json', ...passed], {
+    cwd: root,
+    env: { ...process.env, ...env },
+  });
+  if (made === null) throw new Error('scripts/qa-account.mjs registered no account');
+  const { email, password, name, accessToken: token } = JSON.parse(made);
+  await api('/api/auth/complete-profile', {
+    method: 'PATCH',
+    token,
+    body: {
+      name,
+      organisationName: ACCOUNT_ORGANISATION,
+      countryCode: 'GB',
+      timezone: 'Europe/London',
+    },
+  });
+  const lines = [`  email        ${email}`, `  password     ${password}`];
+  let secret = null;
+  if (twoFactor) {
+    ({ secret } = await api('/api/auth/two-factor/enrol', { token }));
+    const code = await nextCode(email, secret);
+    await api('/api/auth/two-factor/activate', { token, body: { code } });
+    lines.push(`  TOTP_SECRET  ${secret}`);
+  }
+  console.log(
+    `\n▸ registered, profile complete, owning QA Organisation${twoFactor ? ', two-factor on' : ''}` +
+      `\n\n${lines.join('\n')}\n\nbatch <name> <check>… EMAIL=${email} PASSWORD=${password}` +
+      `${secret ? ` TOTP_SECRET=${secret}` : ''}\n`,
+  );
 }
 
 function chrome() {
@@ -1128,6 +1546,7 @@ const COMMANDS = {
   release,
   link,
   maestro,
+  batch,
   hierarchy,
   account,
   chrome,

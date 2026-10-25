@@ -1,0 +1,37 @@
+# The sign-in form, without the relaunch sign-in.yaml makes: a batch launches Expo Go once.
+# With two-factor on, the code comes from sign-in-two-factor.yaml.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 60000
+- tapOn:
+    id: 'signIn.email'
+# 120 rather than the default 50: an address is longer than that, and a partial
+# erase leaves a fragment that the new text is typed on top of.
+- eraseText: 120
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- eraseText: 120
+- inputText: ${PASSWORD}
+- tapOn:
+    id: 'signIn.submit'
+# iOS offers to save the password, over the top of whatever follows, in the device's language.
+- runFlow:
+    when:
+      visible: 'Not Now|Ahora no|Pas maintenant|Agora não'
+    commands:
+      - tapOn: 'Not Now|Ahora no|Pas maintenant|Agora não'
+- runFlow:
+    when:
+      visible:
+        id: 'twoFactor.code'
+    file: ../sign-in-two-factor.yaml
+- scrollUntilVisible:
+    element:
+      text: '{{t:any:settings.signedInAs|email}}'
+    direction: DOWN
+    timeout: 30000

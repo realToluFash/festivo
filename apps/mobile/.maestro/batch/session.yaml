@@ -1,0 +1,19 @@
+# Leaves ${EMAIL} signed in, signing in only when Expo Go is not already. sc-12596.
+#
+# Another account is signed out first. Home says whose session it is, in any of the four
+# languages, since the last batch may have left the account in any of them.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: '{{t:any:settings.signedInAs}}|{{t:any:status.title}}|{{t:any:signIn.title}}'
+    timeout: 60000
+- runFlow:
+    when:
+      visible: '{{t:any:settings.signedInAs}}'
+      notVisible: '{{t:any:settings.signedInAs|email}}'
+    file: sign-out.yaml
+- runFlow:
+    when:
+      notVisible: '{{t:any:settings.signedInAs|email}}'
+    file: sign-in-form.yaml

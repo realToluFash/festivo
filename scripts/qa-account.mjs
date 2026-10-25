@@ -2,10 +2,11 @@
  * A throwaway account for QA, registered through the API as a person would be:
  * register, read the code from Mailpit, then the code makes the account and signs in.
  * Addresses are `@soirely.test`, which can never be delivered to.
+ * An account with two-factor on is signed in by `qa-env.mjs batch`, which answers the challenge.
  *
  *   node scripts/qa-account.mjs                      register a new account
  *   node scripts/qa-account.mjs --json               the same, as JSON
- *   node scripts/qa-account.mjs --sign-in <address>  sign an existing one in
+ *   node scripts/qa-account.mjs --sign-in <address>  sign an existing one in, without two-factor
  *   node scripts/qa-account.mjs --mail <address>     what was emailed to it
  */
 const API = process.env.SOIRELY_API_URL ?? 'http://localhost:8080';

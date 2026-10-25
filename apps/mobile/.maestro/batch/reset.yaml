@@ -1,0 +1,29 @@
+# A check finds its screen as a person opening it would. `openLink` reaches a route
+# without remounting it, so the bundle is reloaded instead: every screen remounts, the
+# session is kept, and Expo Go is not relaunched.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: helper.js
+    env:
+      ASK: /reload
+# Home, whatever link Expo Go reopens the experience at; Settings shows Signed in as too.
+- openLink: ${METRO_URL}/--/
+# Gone first, or the screen from before the reload passes the wait below.
+- extendedWaitUntil:
+    notVisible: '{{t:any:settings.signedInAs}}'
+    timeout: 10000
+    optional: true
+- extendedWaitUntil:
+    visible: '{{t:any:settings.signedInAs}}'
+    timeout: 60000
+    optional: true
+# The first reload after signing in can close Expo Go rather than reload it: open it again.
+- runFlow:
+    when:
+      notVisible: '{{t:any:settings.signedInAs}}'
+    commands:
+      - openLink: ${METRO_URL}/--/
+      - extendedWaitUntil:
+          visible: '{{t:any:settings.signedInAs}}'
+          timeout: 60000

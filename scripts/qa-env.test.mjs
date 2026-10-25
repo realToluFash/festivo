@@ -14,6 +14,16 @@ import { describe, expect, it } from 'vitest';
 
 import {
   allowCleartext,
+  batchCheck,
+  batchFlow,
+  checkId,
+  codeStep,
+  composeBatch,
+  localise,
+  parseBatch,
+  rerunHints,
+  STEP_MS,
+  totp,
   androidFlows,
   androidPackage,
   androidSdk,
@@ -561,5 +571,240 @@ describe('the API cache a checkout leaves behind', () => {
 
   it('is no error when there is none', () => {
     expect(() => clearApiCache(mkdtempSync(join(tmpdir(), 'qa-cache-')))).not.toThrow();
+  });
+});
+
+describe('a two-factor code', () => {
+  // RFC 6238, appendix B: the SHA-1 secret is "12345678901234567890", and six digits are the last six.
+  const secret = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
+
+  it.each([
+    [59, '287082'],
+    [1111111109, '081804'],
+    [1234567890, '005924'],
+    [20000000000, '353130'],
+  ])('at %i seconds is %s', (seconds, code) => {
+    expect(totp(secret, Math.floor(seconds / 30))).toBe(code);
+  });
+
+  it('refuses a secret that is not base32', () => {
+    expect(() => totp('not-base32!', 1)).toThrow('base32');
+  });
+});
+
+describe('the step a code is made in', () => {
+  it('is now, for an account given none yet', () => {
+    expect(codeStep(10 * STEP_MS + 5000, undefined)).toEqual({ step: 10, waitMs: 0 });
+  });
+
+  it('is the next one, when this one was given, and waits for it', () => {
+    expect(codeStep(10 * STEP_MS + 5000, 10)).toEqual({ step: 11, waitMs: STEP_MS - 5000 });
+  });
+
+  it('is now, when the last was long ago', () => {
+    expect(codeStep(10 * STEP_MS, 3)).toEqual({ step: 10, waitMs: 0 });
+  });
+});
+
+describe('a flow in a language', () => {
+  const catalogues = {
+    en: { settings: { title: 'Settings', signedInAs: 'Signed in as {{email}}' } },
+    es: { settings: { title: 'Configuración', signedInAs: 'Sesión iniciada como {{email}}' } },
+    fr: { settings: { title: "L'accueil", signedInAs: 'Connecté en tant que {{email}}' } },
+  };
+
+  it('takes the batch language', () => {
+    expect(localise("visible: '{{t:settings.title}}'", catalogues, 'es')).toBe(
+      "visible: 'Configuración'",
+    );
+  });
+
+  it('takes any language, for a session left in any of them', () => {
+    expect(localise("'{{t:any:settings.title}}'", catalogues, 'en')).toBe(
+      "'(?:Settings|Configuración|L''accueil)'",
+    );
+  });
+
+  it('puts the address in, escaped, only where asked', () => {
+    const values = { email: 'qa-1@soirely.test' };
+    expect(localise('{{t:settings.signedInAs|email}}', catalogues, 'en', values)).toBe(
+      'Signed in as qa-1@soirely\\.test',
+    );
+    expect(localise('{{t:settings.signedInAs}}', catalogues, 'en', values)).toBe('Signed in as .*');
+  });
+
+  it('names a key no catalogue holds', () => {
+    expect(() => localise('{{t:settings.nope}}', catalogues, 'en')).toThrow(
+      'no settings.nope in the en',
+    );
+  });
+});
+
+describe('a check in a batch', () => {
+  const flow = [
+    'appId: host.exp.Exponent',
+    '---',
+    '- openLink: ${METRO_URL}/--/settings',
+    '- takeScreenshot: settings',
+    "- takeScreenshot: 'settings-open'",
+    '',
+  ].join('\n');
+
+  it('starts from a reload, names its screenshots for itself, and reports it passed', () => {
+    expect(batchCheck(flow, 'settings', 'es', { reset: true })).toBe(
+      [
+        'appId: host.exp.Exponent',
+        '---',
+        '- runFlow: ../batch/reset.yaml',
+        '- openLink: ${METRO_URL}/--/settings',
+        '- takeScreenshot: settings.es-settings',
+        '- takeScreenshot: settings.es-settings-open',
+        '- runScript:',
+        '    file: ../batch/helper.js',
+        '    env:',
+        "      ASK: '/passed?check=settings.es'",
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('starts without a reload when it runs alone, cold', () => {
+    expect(batchCheck(flow, 'settings', 'any', { reset: false })).not.toContain('reset.yaml');
+  });
+
+  it('carries no language in its name when the batch names none', () => {
+    expect(checkId('settings', 'any')).toBe('settings');
+    expect(checkId('settings', 'es')).toBe('settings.es');
+  });
+});
+
+describe('a batch flow', () => {
+  it('keeps the loaded bundle, signs in once, and runs every check in every language', () => {
+    const flow = batchFlow({ checks: ['home', 'settings'], languages: ['en', 'es'], cold: false });
+    expect(flow.match(/launchApp/g)).toHaveLength(1);
+    expect(flow).toContain('stopApp: false');
+    expect(flow.match(/session\.yaml/g)).toHaveLength(1);
+    expect(flow.match(/optional: true/g)).toHaveLength(4);
+    expect(flow.indexOf('_checks/settings.en.yaml')).toBeLessThan(flow.indexOf('/language?to=es'));
+    expect(flow.indexOf('/language?to=es')).toBeLessThan(flow.indexOf('_checks/home.es.yaml'));
+  });
+
+  it('reloads first, so nothing the last run left open hides Home', () => {
+    const flow = batchFlow({ checks: ['home'], languages: ['en'], cold: false });
+    expect(flow.indexOf("ASK: '/reload'")).toBeGreaterThan(flow.indexOf('launchApp'));
+    expect(flow.indexOf("ASK: '/reload'")).toBeLessThan(flow.indexOf('session.yaml'));
+  });
+
+  it('relaunches and signs out first when it is one check, cold', () => {
+    const flow = batchFlow({ checks: ['home'], languages: ['any'], cold: true });
+    expect(flow).toContain('stopApp: true');
+    expect(flow.indexOf('sign-out.yaml')).toBeLessThan(flow.indexOf('session.yaml'));
+  });
+});
+
+describe('the batch command', () => {
+  it('reads its name, checks, account and languages', () => {
+    expect(
+      parseBatch([
+        'tour',
+        'home',
+        'settings',
+        'EMAIL=a@b.test',
+        'PASSWORD=x=y',
+        '--lang',
+        'en,es',
+        '--ipad',
+      ]),
+    ).toEqual({
+      name: 'tour',
+      checks: ['home', 'settings'],
+      languages: ['en', 'es'],
+      vars: { EMAIL: 'a@b.test', PASSWORD: 'x=y' },
+      cold: false,
+    });
+  });
+
+  it("runs in the account's own language when none is named", () => {
+    expect(parseBatch(['tour', 'home', '--cold']).languages).toEqual(['any']);
+  });
+
+  it('asks for a check', () => {
+    expect(() => parseBatch(['tour', 'EMAIL=a@b.test'])).toThrow('which batch?');
+  });
+
+  it('re-runs every failed check on the same device in its own language', () => {
+    const failures = [
+      { check: 'settings', language: 'es' },
+      { check: 'home', language: 'en' },
+    ];
+    expect(
+      rerunHints('tour', failures, {
+        args: ['--ipad', '--lang', 'en,es'],
+        email: 'a@b.test',
+        secret: 'S',
+      }),
+    ).toEqual([
+      'node .qa/bin/qa-env.mjs batch tour-settings-es settings --lang es --cold --ipad EMAIL=a@b.test PASSWORD=… TOTP_SECRET=…',
+      'node .qa/bin/qa-env.mjs batch tour-home-en home --lang en --cold --ipad EMAIL=a@b.test PASSWORD=… TOTP_SECRET=…',
+    ]);
+  });
+
+  it("re-runs in the account's own language when the batch named none", () => {
+    expect(
+      rerunHints('tour', [{ check: 'home', language: 'any' }], {
+        args: ['--android'],
+        email: 'a@b.test',
+        secret: null,
+      }),
+    ).toEqual([
+      'node .qa/bin/qa-env.mjs batch tour-home home --cold --android EMAIL=a@b.test PASSWORD=…',
+    ]);
+  });
+});
+
+describe('the flows a batch runs', () => {
+  it("composes the repository's checks in all four languages", () => {
+    const root = join(import.meta.dirname, '..');
+    const dir = join(root, 'apps/mobile/src/i18n/locales');
+    const catalogues = Object.fromEntries(
+      ['en', 'es', 'fr', 'pt'].map((code) => [
+        code,
+        JSON.parse(readFileSync(join(dir, `${code}.json`), 'utf8')),
+      ]),
+    );
+    const source = join(root, 'apps/mobile/.maestro');
+    const checks = [
+      'home',
+      'settings',
+      'account',
+      'security',
+      'organisation',
+      'members',
+      'roles',
+      'sign-in-rules',
+      'switcher',
+      'create-organisation',
+    ];
+    const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    try {
+      composeBatch(source, target, {
+        checks,
+        languages: ['en', 'es', 'fr', 'pt'],
+        cold: false,
+        catalogues,
+        email: 'qa@soirely.test',
+        onAndroid: false,
+      });
+      expect(readFileSync(join(target, '_checks/settings.es.yaml'), 'utf8')).toContain(
+        "'Configuración'",
+      );
+      expect(readFileSync(join(target, '_checks/security.es.yaml'), 'utf8')).toContain(
+        "'Seguridad'",
+      );
+      expect(readFileSync(join(target, 'batch/session.yaml'), 'utf8')).not.toContain('{{t:');
+      expect(readFileSync(join(target, 'sign-in.yaml'), 'utf8')).toContain('stopApp: true');
+    } finally {
+      rmSync(target, { recursive: true, force: true });
+    }
   });
 });
