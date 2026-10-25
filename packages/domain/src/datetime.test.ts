@@ -186,4 +186,11 @@ describe('a wall-clock day and time, as the event page writes them', () => {
     expect(formatWallClock('02:30', 'en-US')).toBe('02:30');
     expect(formatWallClock('2027-03-28T03:30', 'en')).toBe('03:30');
   });
+
+  it('writes nothing for a day or a time it cannot read', () => {
+    expect(formatWallDay('', 'en')).toBe('');
+    expect(formatWallDay('2027-03-', 'en')).toBe('');
+    expect(formatWallClock('', 'en')).toBe('');
+    expect(formatWallClock('2027-03-28T03:30:00+02:00', 'en')).toBe('');
+  });
 });
