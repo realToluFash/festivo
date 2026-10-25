@@ -6,10 +6,13 @@ import { Text, type TextProps } from './Text.tsx';
 export function Initials({
   name,
   ...rest
-}: Omit<TextProps, 'children' | 'accessible'> & { name: string }) {
-  // iOS asks a Text for its items by `accessible` alone, so hiding the tile still lets it report itself on some opens.
+}: Omit<
+  TextProps,
+  'children' | 'accessible' | 'accessibilityElementsHidden' | 'importantForAccessibility'
+> & { name: string }) {
+  // iOS asks a Text for its items by `accessible` alone, and a tile mounted while the sheet is open escapes the tile's own hiding, so the Text hides itself too.
   return (
-    <Text {...rest} accessible={false}>
+    <Text {...rest} accessible={false} accessibilityElementsHidden importantForAccessibility="no">
       {initials(name)}
     </Text>
   );
