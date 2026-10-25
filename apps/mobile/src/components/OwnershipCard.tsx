@@ -362,6 +362,7 @@ function Transfer({
       <QuietButton
         label={t('ownership.keep')}
         onPress={onCancel}
+        off={busy}
         testID="ownership.transfer.keep"
       />
     </View>
@@ -452,7 +453,12 @@ function Leave({
             onPress={() => void leave()}
             testID="ownership.leave.send"
           />
-          <QuietButton label={t('ownership.stay')} onPress={onStay} testID="ownership.leave.stay" />
+          <QuietButton
+            label={t('ownership.stay')}
+            onPress={onStay}
+            off={busy}
+            testID="ownership.leave.stay"
+          />
         </>
       )}
     </View>
@@ -575,6 +581,7 @@ function Delete({
         <QuietButton
           label={t('ownership.deleteKeep', { organisation: name })}
           onPress={onKeep}
+          off={busy}
           testID="ownership.delete.keep"
         />
       </View>
