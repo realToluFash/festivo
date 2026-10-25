@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
-import { offsetToFocus, titleScrollsWhileTyping } from '../kit/keyboard.ts';
+import { fieldKeptInSight, offsetToFocus, titleScrollsWhileTyping } from '../kit/keyboard.ts';
 import {
   NEW_ORGANISATION_FIELDS,
   createOrganisation,
@@ -51,6 +51,7 @@ export function CreateOrganisation({
   const drawn = Platform.OS === 'android' && phone;
   const keysUp = useKeysUp();
   const typing = phone && keysUp;
+  const turned = { os: Platform.OS, phone, width, height, keysUp };
 
   return (
     <Sheet open={open} onClose={onCancel} scrimLabel={t('createOrganisation.cancel')}>
@@ -60,13 +61,8 @@ export function CreateOrganisation({
           drawn={drawn}
           keysUp={keysUp}
           typing={typing}
-          titleScrolls={titleScrollsWhileTyping({
-            os: Platform.OS,
-            phone,
-            width,
-            height,
-            keysUp,
-          })}
+          inSight={fieldKeptInSight(turned)}
+          titleScrolls={titleScrollsWhileTyping(turned)}
           onCreated={onCreated}
           onCancel={onCancel}
         />
@@ -75,8 +71,8 @@ export function CreateOrganisation({
   );
 }
 
-/** Keeps the name field, and its notices while they fit, in the body's sight as the body shrinks or they grow. */
-function useFocusInSight(keysUp: boolean) {
+/** Keeps the name field, and its notices while they fit, in the body's sight as the body shrinks or they grow, again each time the keys move. */
+function useFocusInSight(keysUp: boolean, inSight: boolean) {
   const body = useRef<ScrollView>(null);
   const bodyHeight = useRef<number | null>(null);
   const group = useRef<LayoutRectangle | null>(null);
@@ -85,7 +81,7 @@ function useFocusInSight(keysUp: boolean) {
 
   useEffect(() => {
     const settled = settledLift(() => {
-      if (!keysUp || bodyHeight.current == null) return;
+      if (!inSight || bodyHeight.current == null) return;
       if (group.current == null || field.current == null) return;
       body.current?.scrollTo({
         y: offsetToFocus(
@@ -108,7 +104,7 @@ function useFocusInSight(keysUp: boolean) {
       settled.cancel();
       lift.current = null;
     };
-  }, [keysUp]);
+  }, [keysUp, inSight]);
 
   return {
     body,
@@ -132,6 +128,7 @@ function Form({
   drawn,
   keysUp,
   typing,
+  inSight,
   titleScrolls,
   onCreated,
   onCancel,
@@ -141,6 +138,7 @@ function Form({
   drawn: boolean;
   keysUp: boolean;
   typing: boolean;
+  inSight: boolean;
   /** An iPhone on its side has no room above the keys for a fixed title as well as the field. */
   titleScrolls: boolean;
   onCreated: (created: Membership) => void;
@@ -170,7 +168,7 @@ function Form({
     (field) => (field === 'name' ? focusChecked(nameInput) : focusPicker(countryPicker)),
   );
   const errors = { ...refused, ...checks.errors };
-  const { body, onBodyLayout, onGroupLayout, onFieldLayout } = useFocusInSight(keysUp);
+  const { body, onBodyLayout, onGroupLayout, onFieldLayout } = useFocusInSight(keysUp, inSight);
 
   function change(field: NewOrganisationField, value: string): void {
     setValues((previous) => ({ ...previous, [field]: value }));
