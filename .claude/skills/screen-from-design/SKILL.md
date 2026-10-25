@@ -192,12 +192,15 @@ is held to what both can do:
   it.
 - **Type is selected by weight, not by naming a family.** `apps/mobile/src/theme/fonts.ts`
   maps a weight to a file, and a `fontFamily` in a style bypasses it.
-- **App text fields are uncontrolled.** Seed a `TextInput` with `defaultValue` and read
-  `onChangeText` into a ref; a `value` prop drops characters as the user types. Change
-  `defaultValue` only to what the field already shows: native rewrites a mounted field
-  when it changes and sends no change event, so the field and its ref part
-  (`apps/mobile/src/kit/fields.ts`). The React Native reference says either pattern works
-  on the New Architecture; on this app it does not (sc-9471, sc-11175).
+- **An app text field is uncontrolled.** Seed a `TextInput` with `defaultValue` and read
+  `onChangeText` into a ref; a controlled field re-renders between keystrokes and drops
+  characters (seen by QA: nine of twenty-eight, `soirely-qa-tester`, "What Maestro will do
+  to you"). `react-native-best-practices`, `references/js-uncontrolled-components.md`,
+  says either works on the New Architecture; on this app it does not. A mounted field's
+  `defaultValue` may change only to the text the field already shows: native rewrites a
+  mounted field when it changes and sends no change event, so the field shows one text
+  and its ref holds another (`apps/mobile/src/kit/fields.ts`). A field that still passes
+  `value` stays as it is until a story of its own converts it.
 - **Overlays render at the root**, never inside the card that opened them: a card that
   rounds its corners also clips them. Drive them from the screen's state at the top level.
 - **Animate transform and opacity.** Both platforms do those cheaply and little else.
@@ -221,11 +224,9 @@ is held to what both can do:
 - `autoCorrect={false}` and `spellCheck={false}` on names, codes, emails and search.
 - A `returnKeyType` and an `onSubmitEditing` — the return key always has a job.
 - Check `autoFocus`: a reference sets it on an input that was conditionally mounted.
-- A field whose text lives in a ref (uncontrolled, since a `value` prop drops characters)
-  is drawn again with that text as its `defaultValue`, from state set while the field is
-  off screen, or its ref is emptied in the handler that removes it. A button sends what
-  its field shows (sc-11175, sc-11253). A `defaultValue` that follows the ref while the
-  field is up gets rewritten into the native field (`kit/fields.ts`).
+- A field whose text lives in a ref (section 7) is drawn again with that text as its
+  `defaultValue`, from state set while the field is off screen, or its ref is emptied in
+  the handler that removes it. A button sends what its field shows (sc-11175, sc-11253).
 
 Accessible as drawn: real `button`, `a`, `input` + `label`; `aria-label` on icon-only
 controls; focus always visible; **and anything designed around dragging needs a
