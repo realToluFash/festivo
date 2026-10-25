@@ -123,6 +123,7 @@ export function RoleList({
             muted
             accessibilityElementsHidden
             importantForAccessibility="no"
+            accessible={false}
           >
             ›
           </Text>

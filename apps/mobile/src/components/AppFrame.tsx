@@ -1,5 +1,5 @@
 import { type Membership, primaryEmailAddress } from '@soirely/api-client';
-import { initials, roleName, waitingInvitations } from '@soirely/domain';
+import { roleName, waitingInvitations } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type ReactNode, createContext, useContext, useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -18,6 +18,7 @@ import { useTwoFactorStanding } from '../twoFactorStanding.ts';
 import { CreateOrganisation } from './CreateOrganisation.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
+import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut, useReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
@@ -393,9 +394,7 @@ function Rail({
               accessibilityElementsHidden
               importantForAccessibility="no-hide-descendants"
             >
-              <Text size={tokens.typeMeta.size} weight="semibold">
-                {initials(account.name)}
-              </Text>
+              <Initials name={account.name} size={tokens.typeMeta.size} weight="semibold" />
             </View>
             <View style={styles.shrink}>
               <Text size={tokens.typeBody.size} weight="semibold" numberOfLines={1}>
@@ -486,9 +485,7 @@ function Tile({ name }: { name: string }) {
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      <Text size={tokens.typeMeta.size} weight="bold" style={styles.accent}>
-        {initials(name)}
-      </Text>
+      <Initials name={name} size={tokens.typeMeta.size} weight="bold" style={styles.accent} />
     </View>
   );
 }

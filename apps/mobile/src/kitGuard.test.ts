@@ -111,7 +111,7 @@ describe('a message is read out on both platforms', () => {
 describe('a screen reader skips the initials beside a name', () => {
   it('on both platforms, in every tile in the app', () => {
     const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
-      [...text.matchAll(/\{initials\(/gu)]
+      [...text.matchAll(/<Initials\b/gu)]
         .filter(
           (match) => !hiddenTile(text.slice(text.lastIndexOf('<View', match.index), match.index)),
         )
@@ -119,6 +119,24 @@ describe('a screen reader skips the initials beside a name', () => {
     );
 
     expect(offenders).toEqual([]);
+  });
+
+  it('draws them only through Initials.tsx', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ path }) => !path.endsWith('/Initials.tsx'))
+      .filter(({ text }) => /\{initials\(/u.test(text))
+      .map(({ path }) => path);
+
+    expect(offenders, 'Use <Initials name={…} /> from src/components/Initials.tsx.').toEqual([]);
+  });
+
+  it('whose text iOS cannot report', () => {
+    const tags = sources(['src'])
+      .filter(({ path }) => path.endsWith('/Initials.tsx'))
+      .flatMap(({ text }) => textTags(text).map(({ markup }) => markup));
+
+    expect(tags).toHaveLength(1);
+    expect(tags.filter((markup) => !unreportable(markup))).toEqual([]);
   });
 
   it('notices a tile Android still reads', () => {
@@ -131,6 +149,28 @@ describe('a screen reader skips the initials beside a name', () => {
         '<View accessibilityElementsHidden importantForAccessibility="no-hide-descendants"><Text>',
       ),
     ).toBe(true);
+  });
+});
+
+describe('a Text hidden from screen readers stays hidden on iOS', () => {
+  // iOS asks a Text for its items by `accessible` alone, so hiding it some other way fails on some opens (sc-10712).
+  it('in every Text marked hidden in the app', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      textTags(text)
+        .filter((tag) => /\baccessibilityElementsHidden\b/u.test(tag.markup))
+        .filter((tag) => !unreportable(tag.markup))
+        .map((tag) => `${path}:${tag.line}`),
+    );
+
+    expect(offenders, 'Give it accessible={false}, after any spread.').toEqual([]);
+  });
+
+  it('notices a Text that iOS can still report', () => {
+    expect(unreportable('<Text {...rest} accessible={false}>')).toBe(true);
+    expect(unreportable('<Text accessible={false} {...rest}>')).toBe(false);
+    expect(unreportable('<Text accessibilityElementsHidden importantForAccessibility="no">')).toBe(
+      false,
+    );
   });
 });
 
@@ -344,8 +384,13 @@ function nestedPressables(text: string): number[] {
   return nested;
 }
 
-/** Whether the tag opening at `start` ends in `/>`, skipping any `>` inside a prop's braces. */
+/** Whether the tag opening at `start` ends in `/>`. */
 function selfCloses(text: string, start: number): boolean {
+  return openingTag(text, start).endsWith('/>');
+}
+
+/** The tag opening at `start`, up to its `>`, skipping any `>` inside a prop's braces. */
+function openingTag(text: string, start: number): string {
   let braces = 0;
 
   for (let at = start + 1; at < text.length; at += 1) {
@@ -353,8 +398,22 @@ function selfCloses(text: string, start: number): boolean {
 
     if (char === '{') braces += 1;
     else if (char === '}') braces -= 1;
-    else if (char === '>' && braces === 0) return text[at - 1] === '/';
+    else if (char === '>' && braces === 0) return text.slice(start, at + 1);
   }
 
-  return false;
+  return text.slice(start);
+}
+
+function textTags(text: string): { line: number; markup: string }[] {
+  return [...text.matchAll(/(?<![\w.])<Text\b/gu)].map((match) => ({
+    line: text.slice(0, match.index).split('\n').length,
+    markup: openingTag(text, match.index),
+  }));
+}
+
+/** A spread after `accessible={false}` can carry `accessible: true` and turn it back off. */
+function unreportable(markup: string): boolean {
+  const at = markup.lastIndexOf('accessible={false}');
+
+  return at !== -1 && !markup.slice(at).includes('{...');
 }
