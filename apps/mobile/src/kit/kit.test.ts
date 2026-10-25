@@ -6,8 +6,8 @@ import {
   FIELD_DEFAULTS,
   type FieldText,
   fieldText,
+  nextPin,
   passwordProps,
-  pinnedText,
 } from './fields.ts';
 import {
   barFits,
@@ -397,7 +397,7 @@ describe('a field held through a submit', () => {
   const step = (field: FieldText, held: boolean): FieldText => {
     const next = { ...field, held };
 
-    return { ...next, pinned: pinnedText(next) };
+    return { ...next, pinned: nextPin(next, 1, 1).pinned };
   };
   const typed: FieldText = {
     held: false,
@@ -434,5 +434,52 @@ describe('a field held through a submit', () => {
     expect(fieldText({ ...typed, defaultValue: 'ada@example.com' })).toEqual({
       defaultValue: 'ada@example.com',
     });
+  });
+});
+
+describe('a field through a text-size change', () => {
+  const rescale = (field: FieldText): FieldText => ({
+    ...field,
+    pinned: nextPin(field, 1.3, 1).pinned,
+  });
+  const given: FieldText = {
+    held: false,
+    value: undefined,
+    defaultValue: 'ada@example.com',
+    typed: 'ada@example.com',
+    pinned: undefined,
+  };
+
+  it('is given what was typed after the text it was given', () => {
+    expect(fieldText(rescale({ ...given, typed: 'grace@example.com' }))).toEqual({
+      defaultValue: 'grace@example.com',
+    });
+  });
+
+  it('is given what was typed after the text it was submitted with', () => {
+    const released = { ...given, pinned: 'hunter22', typed: 'hunter223' };
+
+    expect(fieldText(rescale(released))).toEqual({ defaultValue: 'hunter223' });
+  });
+
+  it('stays empty once emptied by hand', () => {
+    expect(fieldText(rescale({ ...given, typed: '' }))).toEqual({ defaultValue: '' });
+  });
+
+  it('keeps the text it was given when nothing was typed', () => {
+    expect(fieldText(rescale(given))).toEqual({ defaultValue: 'ada@example.com' });
+  });
+
+  it('shows its value, when controlled', () => {
+    const controlled = { ...given, value: 'Acme', typed: 'Acme' };
+
+    expect(fieldText(rescale(controlled))).toEqual({ value: 'Acme' });
+  });
+
+  it('takes the new scale, so the next render is not a change', () => {
+    const typedAfter = { ...given, typed: 'grace@example.com' };
+
+    expect(nextPin(typedAfter, 1.3, 1)).toEqual({ pinned: 'grace@example.com', scale: 1.3 });
+    expect(nextPin(typedAfter, 1.3, 1.3)).toEqual({ pinned: undefined, scale: 1.3 });
   });
 });
