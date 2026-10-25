@@ -1,5 +1,6 @@
 import {
   type ReactNode,
+  type RefCallback,
   type RefObject,
   createContext,
   useCallback,
@@ -358,6 +359,46 @@ export function useFocusOnAnswer<Read extends ScreenReaderTarget = View>(
   }, [answer, read, scroll]);
 
   return { shown, read };
+}
+
+/** A step closed without a change, back to the opener `to` names; a new one for each close (sc-11173). */
+export interface StepClosed {
+  to: string;
+}
+
+export function stepClosed(to: string): StepClosed {
+  return { to };
+}
+
+/** With a screen reader on, once `closed` is set, moves focus to the opener it names, or to `fallback` when that opener is not there (sc-11173); `opener(key)` is the ref each opener takes. */
+export function useFocusBack(
+  closed: StepClosed | undefined,
+  fallback?: RefObject<ScreenReaderTarget | null>,
+): (key: string) => RefCallback<View> {
+  const [openers] = useState(() => new Map<string, View>());
+  const [refs] = useState(() => new Map<string, RefCallback<View>>());
+  const target = useMemo<RefObject<ScreenReaderTarget | null>>(
+    () => ({
+      get current() {
+        return (closed == null ? null : openers.get(closed.to)) ?? fallback?.current ?? null;
+      },
+    }),
+    [closed, fallback, openers],
+  );
+  useFocusOnAnswer(closed, target);
+
+  return (key) => {
+    let ref = refs.get(key);
+    if (ref == null) {
+      ref = (view) => {
+        if (view == null) openers.delete(key);
+        else openers.set(key, view);
+      };
+      refs.set(key, ref);
+    }
+
+    return ref;
+  };
 }
 
 /** The scroll context a ScrollView provides, and the props that keep it in step with that view. */
