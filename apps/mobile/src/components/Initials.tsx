@@ -10,7 +10,7 @@ export function Initials({
   TextProps,
   'children' | 'accessible' | 'accessibilityElementsHidden' | 'importantForAccessibility'
 > & { name: string }) {
-  // iOS asks a Text for its items by `accessible` alone, and a tile mounted while the sheet is open escapes the tile's own hiding, so the Text hides itself too.
+  // iOS asks a Text for its items by `accessible` alone, and a tile mounted while its screen is open can escape the View's hiding, so the Text hides itself too.
   return (
     <Text {...rest} accessible={false} accessibilityElementsHidden importantForAccessibility="no">
       {initials(name)}
