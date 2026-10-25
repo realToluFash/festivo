@@ -42,10 +42,13 @@ final class RefusalsAreKeyedTest extends TestCase
     /** @var array<string, string>|null */
     private static ?array $source = null;
 
+    /** @var array<string, RefusalScan> */
+    private static array $scans = [];
+
     #[Test]
     public function noRefusalIsGivenASentence(): void
     {
-        $scan = new RefusalScan(self::source());
+        $scan = self::scan();
 
         self::assertNotEmpty($scan->literals(), 'No refusal found at all: the scan is broken.');
         self::assertSame([], $scan->sentences(), 'Give these refusals a key in translations/messages.*.json instead.');
@@ -54,7 +57,7 @@ final class RefusalsAreKeyedTest extends TestCase
     #[Test]
     public function everyKeyARefusalIsGivenIsInTheCatalogue(): void
     {
-        self::assertSame([], self::missing(new RefusalScan(self::source())), 'These keys are not in translations/messages.en.json.');
+        self::assertSame([], self::missing(self::scan()), 'These keys are not in translations/messages.en.json.');
     }
 
     /** @return iterable<string, array{string, string}> a key each refusal builder in src is handed, in the file that hands it */
@@ -75,18 +78,18 @@ final class RefusalsAreKeyedTest extends TestCase
 
     #[Test]
     #[DataProvider('builders')]
-    public function aSentenceHandedToARealBuilderFailsTheCheck(string $file, string $key): void
+    public function aSentenceHandedToARealBuilderFailsTheCheck(string $file): void
     {
-        $scan = new RefusalScan(self::changed($file, $key, 'Not yours.'));
+        $scan = self::scan('Not yours.');
 
         self::assertNotEmpty(Vec\filter($scan->sentences(), static fn (string $leaf): bool => Str\starts_with($leaf, $file . ':') && 'Not yours.' === RefusalScan::text($leaf)));
     }
 
     #[Test]
     #[DataProvider('builders')]
-    public function aKeyHandedToARealBuilderMustBeInTheCatalogue(string $file, string $key): void
+    public function aKeyHandedToARealBuilderMustBeInTheCatalogue(string $file): void
     {
-        $scan = new RefusalScan(self::changed($file, $key, 'organisation.no_such_key'));
+        $scan = self::scan('organisation.no_such_key');
 
         self::assertNotEmpty(Vec\filter(self::missing($scan), static fn (string $leaf): bool => Str\starts_with($leaf, $file . ':') && 'organisation.no_such_key' === RefusalScan::text($leaf)));
     }
@@ -178,6 +181,10 @@ final class RefusalsAreKeyedTest extends TestCase
             "private static string \$why = 'Not yours.';\npublic function a(): never { throw ApiException::forbidden(self::\$why); }",
             'Refused.php:11 Not yours.',
         ];
+        yield 'assigned to a static property' => [
+            "private static string \$why = '';\npublic function a(): never { self::\$why = 'Not yours.'; throw ApiException::forbidden(self::\$why); }",
+            'Refused.php:12 Not yours.',
+        ];
         yield 'held in a property' => [
             "private string \$why = 'Not yours.';\npublic function a(): never { throw ApiException::forbidden(\$this->why); }",
             'Refused.php:11 Not yours.',
@@ -217,14 +224,21 @@ final class RefusalsAreKeyedTest extends TestCase
         );
     }
 
-    /** @return array<string, string> src, with each place a file hands over a key changed to something else */
-    private static function changed(string $file, string $key, string $instead): array
+    /** A literal is a leaf of the scan, never an edge, so one scan with every builder's key swapped tests them all. */
+    private static function scan(?string $instead = null): RefusalScan
     {
-        $source = self::source();
-        $code = $source[$file];
-        self::assertStringContainsString("'{$key}'", $code);
+        $kind = $instead ?? '';
+        if (Iter\contains_key(self::$scans, $kind)) {
+            return self::$scans[$kind];
+        }
 
-        return [...$source, $file => Str\replace_every($code, ["'{$key}'" => "'{$instead}'"])];
+        $source = self::source();
+        foreach (null === $instead ? [] : self::builders() as [$file, $key]) {
+            self::assertStringContainsString("'{$key}'", $source[$file]);
+            $source[$file] = Str\replace_every($source[$file], ["'{$key}'" => "'{$instead}'"]);
+        }
+
+        return self::$scans[$kind] = new RefusalScan($source);
     }
 
     /** @return array<string, string> */
