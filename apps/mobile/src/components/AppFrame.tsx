@@ -1,7 +1,16 @@
 import { type Membership, primaryEmailAddress } from '@soirely/api-client';
 import { initials, roleName, waitingInvitations } from '@soirely/domain';
 import { router } from 'expo-router';
-import { type ReactNode, createContext, useContext, useEffect, useState } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -32,10 +41,12 @@ export function useOpenSwitcher(): (() => void) | undefined {
   return useContext(OpenSwitcher);
 }
 
-const StartOrganisation = createContext<(() => void) | undefined>(undefined);
+type OrganisationStart = (opener: RefObject<View | null>) => void;
+
+const StartOrganisation = createContext<OrganisationStart | undefined>(undefined);
 
 /** Opens the frame's Create an organisation sheet, as the switcher's last row does (sc-5932). */
-export function useStartOrganisation(): (() => void) | undefined {
+export function useStartOrganisation(): OrganisationStart | undefined {
   return useContext(StartOrganisation);
 }
 
@@ -80,6 +91,8 @@ export function AppFrame({
   const { kind } = useLayout();
   const [choosing, setChoosing] = useState(false);
   const [creating, setCreating] = useState(false);
+  const pill = useRef<View>(null);
+  const creatingFrom = useRef<View>(null);
   const [created, setCreated] = useState<string | null>(null);
   const [backHidden, setBackHidden] = useState(false);
   const signedIn = useSignedIn();
@@ -94,8 +107,9 @@ export function AppFrame({
           setChoosing(true);
         }
       : undefined;
-  const startOrganisation = () => {
+  const startOrganisation = (opener: RefObject<View | null>) => {
     setCreated(null);
+    creatingFrom.current = opener.current;
     setCreating(true);
   };
   const email = signedIn.account == null ? '' : (primaryEmailAddress(signedIn.account) ?? '');
@@ -109,6 +123,7 @@ export function AppFrame({
           organisation={signedIn.organisation}
           waiting={count}
           onSwitch={openSwitcher}
+          pill={pill}
         />
       )}
       <View style={styles.column}>
@@ -122,6 +137,7 @@ export function AppFrame({
           organisation={signedIn.organisation}
           waiting={count}
           onSwitch={openSwitcher}
+          pill={pill}
         />
         <View style={styles.body}>
           {created != null && (
@@ -164,12 +180,13 @@ export function AppFrame({
         onClose={() => setChoosing(false)}
         onCreate={() => {
           setChoosing(false);
-          startOrganisation();
+          startOrganisation(pill);
         }}
       />
       <CreateOrganisation
         open={creating}
         email={email}
+        opener={creatingFrom}
         onCancel={() => setCreating(false)}
         onCreated={(organisation) => {
           setCreating(false);
@@ -192,6 +209,7 @@ function FrameHeader({
   organisation,
   waiting,
   onSwitch,
+  pill,
 }: {
   kind: LayoutKind;
   current: Destination;
@@ -202,6 +220,7 @@ function FrameHeader({
   organisation: Membership | null;
   waiting: number;
   onSwitch: (() => void) | undefined;
+  pill: Ref<View>;
 }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -225,7 +244,7 @@ function FrameHeader({
     return (
       <View style={[styles.header, styles.portraitHeader, top]}>
         {organisation != null && (
-          <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} />
+          <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
         )}
         <View style={styles.pills} accessibilityRole="tablist">
           {DESTINATIONS.map((destination) => {
@@ -262,7 +281,7 @@ function FrameHeader({
   return (
     <View style={[styles.header, styles.phoneHeader, top]}>
       {current === 'home' && organisation != null && (
-        <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} />
+        <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
       )}
       {back != null && !backHidden && (
         <Pressable
@@ -332,11 +351,13 @@ function Rail({
   organisation,
   waiting,
   onSwitch,
+  pill,
 }: {
   current: Destination;
   organisation: Membership | null;
   waiting: number;
   onSwitch: (() => void) | undefined;
+  pill: Ref<View>;
 }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -382,7 +403,13 @@ function Rail({
         </Text>
       </View>
       {organisation != null && (
-        <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} railed />
+        <OrgPill
+          organisation={organisation}
+          waiting={waiting}
+          onSwitch={onSwitch}
+          railed
+          ref={pill}
+        />
       )}
       <View style={styles.railGroup}>{DESTINATIONS.filter((d) => d !== 'settings').map(item)}</View>
       <View style={styles.fill} />
@@ -421,11 +448,13 @@ function OrgPill({
   waiting,
   onSwitch,
   railed = false,
+  ref,
 }: {
   organisation: Membership;
   waiting: number;
   onSwitch: (() => void) | undefined;
   railed?: boolean;
+  ref: Ref<View>;
 }) {
   const { t } = useTranslation();
   const role = roleName(t, organisation.role);
@@ -438,6 +467,7 @@ function OrgPill({
 
   return (
     <Pressable
+      ref={ref}
       style={[
         styles.org,
         railed ? styles.orgRailed : styles.orgPill,

@@ -12,6 +12,7 @@ export function PrimaryButton({
   busy = false,
   off = false,
   accessibilityLabel,
+  ref,
   testID,
 }: {
   label: string;
@@ -19,12 +20,14 @@ export function PrimaryButton({
   busy?: boolean;
   off?: boolean;
   accessibilityLabel?: string;
+  ref?: Ref<View>;
   testID: string;
 }) {
   const inactive = busy || off;
 
   return (
     <Pressable
+      ref={ref}
       style={[styles.primary, busy && styles.primaryBusy, off && styles.primaryOff]}
       onPress={onPress}
       disabled={inactive}
