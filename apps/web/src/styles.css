@@ -1800,6 +1800,15 @@ span {
   margin: 0;
 }
 
+/* Margins on the notices rather than a gap on the column, so the spacing inside a screen and its heading's place with no notice stay as they are. */
+.shell-content > .notice {
+  margin: 0 0 var(--spaceLg);
+}
+
+.shell-content > .notice:has(+ :not(.notice)) {
+  margin-bottom: var(--spaceXl);
+}
+
 /* ── Settings > General ───────────────────────────────────────────────────── */
 
 .settings {
