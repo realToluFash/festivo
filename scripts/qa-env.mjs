@@ -13,6 +13,7 @@ import {
   readFileSync,
   renameSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs';
 import { homedir } from 'node:os';
@@ -204,16 +205,25 @@ export function androidSdk(env = process.env, platform = process.platform, home 
   );
 }
 
-// Only a Play image carries TalkBack, and a host may have any version of one.
+// statSync follows a symlinked image directory, which a Dirent would report as a file.
+const directoriesIn = (path) =>
+  existsSync(path)
+    ? readdirSync(path).filter((name) => statSync(join(path, name)).isDirectory())
+    : [];
+
+// Only a Play image carries TalkBack, and a host may have any released version of one.
 export function playImage(sdk, arch = process.arch) {
   const abi = arch === 'arm64' ? 'arm64-v8a' : 'x86_64';
   const root = join(sdk, 'system-images');
-  const installed = (existsSync(root) ? readdirSync(root) : []).flatMap((version) =>
-    (existsSync(join(root, version)) ? readdirSync(join(root, version)) : [])
-      .filter((tag) => tag.startsWith('google_apis_playstore'))
-      .filter((tag) => existsSync(join(root, version, tag, abi)))
-      .map((tag) => ({ version, tag, api: Number.parseFloat(version.replace('android-', '')) })),
-  );
+  const installed = directoriesIn(root)
+    .map((version) => ({ version, api: Number.parseFloat(version.replace('android-', '')) }))
+    .filter(({ api }) => Number.isFinite(api))
+    .flatMap(({ version, api }) =>
+      directoriesIn(join(root, version))
+        .filter((tag) => tag.startsWith('google_apis_playstore'))
+        .filter((tag) => existsSync(join(root, version, tag, abi)))
+        .map((tag) => ({ version, tag, api })),
+    );
   installed.sort((a, b) => b.api - a.api || a.tag.length - b.tag.length);
   const { version, tag } = installed[0] ?? { version: 'android-35', tag: 'google_apis_playstore' };
   return `system-images;${version};${tag};${abi}`;
@@ -427,7 +437,7 @@ function createEmulators() {
     );
     console.log(
       created.status === 0
-        ? `  ${avd.name}: created in ${tools.vars.ANDROID_AVD_HOME}`
+        ? `  ${avd.name}: created on ${image} in ${tools.vars.ANDROID_AVD_HOME}`
         : `  ${avd.name}: could not create one. Is the image installed? sdkmanager "${image}"`,
     );
   }
