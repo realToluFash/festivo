@@ -9,8 +9,9 @@ import {
   sharesHeading,
   unasked,
 } from '../pageArrival.ts';
+import { retitle } from '../pageTitle.ts';
 
-/** Focus goes where an opened page begins (WCAG 2.2 SC 2.4.3), but not on the page a tab opens on. */
+/** Focus goes where an opened page begins (WCAG 2.2 SC 2.4.3), and the tab names the page (SC 2.4.2). */
 export function PageArrival() {
   const location = useLocation();
   const navigationType = useNavigationType();
@@ -23,13 +24,17 @@ export function PageArrival() {
     const ask = () => {
       asked.current = true;
     };
+    const observer = new MutationObserver(retitle);
 
     document.addEventListener('click', ask, true);
     document.addEventListener('submit', ask, true);
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    retitle();
 
     return () => {
       document.removeEventListener('click', ask, true);
       document.removeEventListener('submit', ask, true);
+      observer.disconnect();
       stopArriving.current?.();
     };
   }, []);

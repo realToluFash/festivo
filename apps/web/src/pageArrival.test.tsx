@@ -1,12 +1,15 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import i18next from 'i18next';
 import { useEffect, useState } from 'react';
 import { Link, RouterProvider, createMemoryRouter, useNavigate } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { setLanguage } from './i18n/index.ts';
 import { ArrivalNotice, PageArrival } from './components/PageArrival.tsx';
 import { UNASKED } from './pageArrival.ts';
 import { __setSessionState, forgetSession, type Session } from './session.ts';
 import { membership } from './test-memberships.ts';
+import { pageTitle, usePageTitle } from './pageTitle.ts';
 import { routes } from './routes/index.tsx';
 
 function Page({ heading, to }: { heading: string; to?: string }) {
@@ -40,6 +43,12 @@ function SentOn() {
   return null;
 }
 
+function Named() {
+  usePageTitle(pageTitle(i18next.t, ['Members', 'Settings']));
+
+  return <h1>Ada Okonkwo</h1>;
+}
+
 function Failed() {
   const [failed, setFailed] = useState(false);
 
@@ -66,7 +75,9 @@ function site(initial = '/one') {
           { path: '/two', element: <Page heading="Two" to="/one" /> },
           { path: '/later', element: <Later /> },
           { path: '/sent-on', element: <SentOn /> },
+          { path: '/named', element: <Named /> },
           { path: '/failed', element: <Failed /> },
+          { path: '/plain', element: <p>Nothing to name it</p> },
         ],
       },
     ],
@@ -84,20 +95,26 @@ async function clickThen(router: ReturnType<typeof site>, path: string): Promise
   await act(() => router.navigate(path));
 }
 
+afterEach(async () => {
+  await setLanguage('en');
+});
+
 describe('opening another page (sc-11370)', () => {
-  it('leaves focus alone on the page a tab opens on', () => {
+  it('leaves focus alone on the page a tab opens on, and titles it with its heading', () => {
     site();
 
     expect(document.activeElement).toBe(document.body);
+    expect(document.title).toBe('One – Soirely');
   });
 
-  it('takes focus to the new heading after a click', async () => {
+  it('takes focus to the new heading after a click, and titles the tab with it', async () => {
     site();
 
     fireEvent.click(screen.getByRole('link', { name: 'Onwards' }));
 
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('heading')));
     expect(screen.getByRole('heading').textContent).toBe('Two');
+    expect(document.title).toBe('Two – Soirely');
   });
 
   it('takes focus to the heading of the page Back shows', async () => {
@@ -161,6 +178,26 @@ describe('opening another page (sc-11370)', () => {
 
     expect((await screen.findByRole('alert')).textContent).toBe('The event did not load.');
   });
+
+  it('titles the tab with what the page names, over its heading', () => {
+    site('/named');
+
+    expect(document.title).toBe('Members – Settings – Soirely');
+  });
+
+  it('titles a page with no heading Soirely', () => {
+    site('/plain');
+
+    expect(document.title).toBe('Soirely');
+  });
+
+  it('titles the tab in the language the page is shown in', async () => {
+    await setLanguage('fr');
+
+    expect(
+      pageTitle(i18next.t, [i18next.t('settings.sectionRoles'), i18next.t('nav.settings')]),
+    ).toBe('Rôles – Paramètres – Soirely');
+  });
 });
 
 describe('the pages Soirely has', () => {
@@ -172,13 +209,21 @@ describe('the pages Soirely has', () => {
     return router;
   }
 
-  it('takes focus from Sign in to Reset your password', async () => {
+  it('takes focus from Sign in to Reset your password, and titles both', async () => {
     at('/sign-in');
 
+    expect(document.title).toBe('Sign in – Soirely');
     fireEvent.click(screen.getByRole('link', { name: 'Forgot your password?' }));
 
     const heading = await screen.findByRole('heading', { level: 1, name: 'Reset your password' });
     await waitFor(() => expect(document.activeElement).toBe(heading));
+    expect(document.title).toBe('Reset your password – Soirely');
+  });
+
+  it('titles the home page Soirely, though its heading is the tagline', () => {
+    at('/');
+
+    expect(document.title).toBe('Soirely');
   });
 });
 
@@ -199,6 +244,18 @@ describe('the pages Soirely has, signed in', () => {
     timezone: null,
     waitingFor: null,
   };
+  const EVENT = {
+    id: 'ev_1',
+    organisationId: 'org_1',
+    name: 'Adaeze and Tunde',
+    status: 'draft',
+    startsAt: '2026-11-14T16:00:00+01:00',
+    endsAt: '2026-11-15T02:00:00+01:00',
+    timeZone: 'Africa/Lagos',
+    dayCount: 2,
+    currency: 'NGN',
+    createdAt: '2026-10-21T09:00:00+00:00',
+  };
 
   function at(path: string) {
     const router = createMemoryRouter(routes, { initialEntries: [path] });
@@ -210,12 +267,82 @@ describe('the pages Soirely has, signed in', () => {
 
   beforeEach(() => {
     __setSessionState({ status: 'signedIn', session: FOLAKE });
-    // Every request stays in flight, so each page shows as it loads.
-    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>(() => {}));
+    // The event answers; every other request stays in flight, so each page shows as it loads.
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) =>
+      new URL(String(input)).pathname === '/api/events/ev_1'
+        ? Promise.resolve(
+            new Response(JSON.stringify({ event: EVENT }), { headers: { ETag: '"1"' } }),
+          )
+        : new Promise<Response>(() => {}),
+    );
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it.each([
+    ['/app/settings', 'General – Settings – Soirely'],
+    ['/app/settings/members', 'Members – Settings – Soirely'],
+    ['/app/settings/roles', 'Roles – Settings – Soirely'],
+    ['/app/settings/sign-in-rules', 'Sign-in rules – Settings – Soirely'],
+    ['/app/account', 'Account – Your account – Soirely'],
+    ['/app/account/security', 'Security – Your account – Soirely'],
+  ])('titles %s "%s"', async (path, title) => {
+    at(path);
+
+    await waitFor(() => expect(document.title).toBe(title));
+  });
+
+  it.each([
+    ['/app/events/ev_1/edit', 'Edit details – Adaeze and Tunde – Soirely'],
+    ['/app/events/ev_1/guests', 'Guests – Adaeze and Tunde – Soirely'],
+  ])('titles %s "%s" once the event loads', async (path, title) => {
+    at(path);
+
+    await waitFor(() => expect(document.title).toBe(title));
+  });
+
+  it("titles a paused organisation's page with Paused and its name", async () => {
+    const { id, name, countryCode, currency, timezone, contactAddress, locale } = membership({
+      id: 'org_3',
+      name: 'Lagos Weddings',
+    });
+    __setSessionState({
+      status: 'signedIn',
+      session: {
+        ...FOLAKE,
+        pausedIn: {
+          id,
+          name,
+          countryCode,
+          currency,
+          timezone,
+          contactAddress,
+          locale,
+          suspension: {
+            reason: 'address_gone',
+            domain: 'lagosweddings.ng',
+            since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday, Oct 16 at 09:40 WAT' },
+            removesAt: null,
+            onlyOwner: false,
+          },
+          ownerClaim: null,
+        },
+      },
+    });
+
+    at('/app/events');
+
+    await waitFor(() => expect(document.title).toBe('Paused – Lagos Weddings – Soirely'));
+  });
+
+  it('titles the page Cannot reach Soirely when the API does not answer', async () => {
+    __setSessionState({ status: 'unreachable', retrying: false });
+
+    at('/app');
+
+    await waitFor(() => expect(document.title).toBe('Cannot reach Soirely'));
   });
 
   it('takes focus within Your account to the section opened, and back again', async () => {

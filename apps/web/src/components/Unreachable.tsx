@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { LinkRetry } from '../linkRetry.ts';
+import { usePageTitle } from '../pageTitle.ts';
 import { retrySession, useSessionState } from '../session.ts';
 import { LanguageChoice } from './LanguageChoice.tsx';
 
@@ -13,6 +14,8 @@ export function Unreachable({ signedIn, retry }: { signedIn: boolean; retry?: Li
   const notice = useRef<HTMLDivElement>(null);
   const wasRetrying = useRef(false);
   const linked = retry != null;
+
+  usePageTitle(t('session.unreachableTitle'));
 
   useEffect(() => {
     if (linked && wasRetrying.current && !retrying) notice.current?.focus();

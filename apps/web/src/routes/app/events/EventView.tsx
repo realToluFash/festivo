@@ -8,6 +8,7 @@ import { api } from '../../../api.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import { Arriving } from '../../../pageArrival.ts';
+import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { can, useSession } from '../../../session.ts';
 import { type EditOutcome } from './EditEvent.tsx';
 
@@ -130,7 +131,7 @@ function EventOf({
       )}
 
       {load.kind === 'loaded' &&
-        (page === 'event' ? <EventPage event={load.event} /> : <GuestsComing />)}
+        (page === 'event' ? <EventPage event={load.event} /> : <GuestsComing event={load.event} />)}
     </div>
   );
 }
@@ -214,8 +215,10 @@ function editOutcome(state: unknown): EditOutcome | null {
   return edit === 'saved' || edit === 'unchanged' ? edit : null;
 }
 
-function GuestsComing() {
+function GuestsComing({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
+
+  usePageTitle(pageTitle(t, [t('eventPage.guests'), event.name]));
 
   return (
     <section className="card">

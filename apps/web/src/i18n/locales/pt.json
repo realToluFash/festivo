@@ -3,6 +3,9 @@
     "name": "Soirely",
     "skipToContent": "Ir para o conteúdo"
   },
+  "pageTitle": {
+    "part": "{{page}} – {{rest}}"
+  },
   "nav": {
     "dashboard": "Painel",
     "events": "Eventos",

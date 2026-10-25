@@ -20,6 +20,7 @@ import { can, useSession } from '../../../session.ts';
 import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
 import { Forbidden } from '../Forbidden.tsx';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
+import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { Choice, FieldError, Moment } from './EventFields.tsx';
 import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
 import { skippedLine } from './skippedLine.ts';
@@ -164,6 +165,8 @@ function DetailsForm({
   const saving = useRef(false);
   const { draft, timeZone, currency } = typed;
   const changes = useMemo(() => eventChanges(saved, typed), [saved, typed]);
+
+  usePageTitle(pageTitle(t, [t('eventEdit.title'), saved.name]));
   const dirty = Object.keys(changes).length > 0;
   const busy = status === 'saving';
   const currencies = useMemo(
