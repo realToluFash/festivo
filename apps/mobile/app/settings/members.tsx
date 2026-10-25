@@ -17,7 +17,7 @@ import {
 } from '../../src/components/Members.tsx';
 import { type ListAndPageSpacing, ListAndPage } from '../../src/components/ListAndPage.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
-import { useFocusOnAnswer } from '../../src/components/Screen.tsx';
+import { type StepClosed, stepClosed, useFocusOnAnswer } from '../../src/components/Screen.tsx';
 import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
 import { SheetsAtRoot } from '../../src/components/Sheet.tsx';
 import { type TextHandle, Text } from '../../src/components/Text.tsx';
@@ -30,11 +30,11 @@ import { tokens } from '../../src/theme/tokens.ts';
 
 type Load =
   | { kind: 'loading' }
-  | { kind: 'failed' }
+  | { kind: 'failed'; tapped: boolean }
   | { kind: 'loaded'; list: Members; roles: OrganisationRole[] };
 
 type Showing =
-  | { kind: 'list'; flash: string | null; answered?: Answered }
+  | { kind: 'list'; flash: string | null; answered?: Answered; closed?: StepClosed }
   | { kind: 'member'; id: string; behind?: boolean; tapped?: object };
 
 const LIST: Showing = { kind: 'list', flash: null };
@@ -52,6 +52,8 @@ export default function MembersScreen() {
     load: LOADING,
   });
   const [attempt, setAttempt] = useState(0);
+  const [retried, setRetried] = useState<object | undefined>(undefined);
+  const membersTitle = useRef<TextHandle>(null);
   const load = held.in === organisationId ? held.load : LOADING;
   const setLoad = (next: Load) => setHeld({ in: organisationId, load: next });
   const [shown, setShown] = useState<{ in: string | undefined; showing: Showing }>({
@@ -93,7 +95,7 @@ export default function MembersScreen() {
         setHeld((before) =>
           before.in === organisationId && before.load.kind === 'loaded'
             ? before
-            : { in: organisationId, load: { kind: 'failed' } },
+            : { in: organisationId, load: { kind: 'failed', tapped: attempt > 0 } },
         ),
     );
 
@@ -112,11 +114,18 @@ export default function MembersScreen() {
     listBehindNow.current = listBehind;
   }, [listBehind]);
 
+  useFocusOnAnswer<TextHandle>(load.kind === 'loaded' ? retried : undefined, membersTitle);
+
   if (organisation != null && !roleHolds(organisation, 'members.read')) {
     return <Redirect href={DESTINATION_HREF.settings} />;
   }
 
-  const toList = () => setShowing(LIST);
+  const toList = () =>
+    setShowing(
+      showing.kind === 'member'
+        ? { kind: 'list', flash: null, closed: stepClosed(`row.${showing.id}`) }
+        : LIST,
+    );
   const listForward = () => {
     if (landscapeNow.current) return;
     setShown((before) =>
@@ -140,7 +149,12 @@ export default function MembersScreen() {
   const heading = (
     <View style={styles.heading}>
       {!phone && (
-        <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
+        <Text
+          ref={membersTitle}
+          size={tokens.typeTitlePhone.size}
+          weight="bold"
+          accessibilityRole="header"
+        >
           {t('membersScreen.title')}
         </Text>
       )}
@@ -163,11 +177,14 @@ export default function MembersScreen() {
           tone="broken"
           mark={tokens.marks.broken.glyph}
           body={t('membersScreen.failedLoad')}
-          announce
+          announce={!load.tapped}
+          answer={load.tapped ? load : undefined}
+          takesFocus={load.tapped}
         />
         <SecondaryButton
           label={t('membersScreen.retry')}
           onPress={() => {
+            setRetried({});
             setLoad({ kind: 'loading' });
             setAttempt((n) => n + 1);
           }}
@@ -187,8 +204,13 @@ export default function MembersScreen() {
         open={member?.id ?? null}
         flash={showing.kind === 'list' ? showing.flash : null}
         answered={showing.kind === 'list' ? (showing.answered ?? null) : null}
+        closed={showing.kind === 'list' ? showing.closed : undefined}
+        title={membersTitle}
         onAnswered={answered}
-        onOpen={(id) => setShowing({ kind: 'member', id, tapped: {} })}
+        onOpen={(id) => {
+          setRetried(undefined);
+          setShowing({ kind: 'member', id, tapped: {} });
+        }}
       />
     ) : null;
 
@@ -224,7 +246,7 @@ export default function MembersScreen() {
     <AppFrame
       current="settings"
       title={phone ? (inFront?.user.name ?? t('membersScreen.title')) : t('settings.title')}
-      titleRef={phone && inFront != null ? memberName : undefined}
+      titleRef={phone ? (inFront != null ? memberName : membersTitle) : undefined}
       back={
         phone
           ? inFront != null

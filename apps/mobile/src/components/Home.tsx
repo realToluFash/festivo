@@ -1,11 +1,12 @@
 import { type Membership, primaryEmailAddress } from '@soirely/api-client';
 import { roleName } from '@soirely/domain';
 import { router } from 'expo-router';
-import { useRef } from 'react';
+import { type Ref, type RefObject, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { DESTINATION_HREF } from '../kit/appNav.ts';
+import { stepOpeners } from '../kit/stepOpeners.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { useTappedSwitch } from '../tappedSwitch.ts';
@@ -16,10 +17,11 @@ import { bodyEdges } from './bodyEdges.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { LinkedNotice } from './LinkedNotice.tsx';
 import { NoOrganisation } from './NoOrganisation.tsx';
-import { Screen } from './Screen.tsx';
-import { SignInRulesNotices } from './SignInRulesNotices.tsx';
+import { Screen, useFocusOnAnswer } from './Screen.tsx';
+import type { ScreenReaderTarget } from './screenReaderFocus.ts';
+import { NOTICE_PLACES, type NoticePlace, SignInRulesNotices } from './SignInRulesNotices.tsx';
 import { cardFrame } from './cardFrame.ts';
-import { Text } from './Text.tsx';
+import { Text, type TextHandle } from './Text.tsx';
 
 /** The signed-in home, `AppSettings-*` state `home`: where the app opens once somebody is in. */
 export function Home() {
@@ -38,17 +40,23 @@ function HomeBody() {
   const { account, organisation } = useSignedIn();
   const openSwitcher = useOpenSwitcher();
   const switchButton = useRef<View>(null);
+  const { place, heading, onClosed } = useNextAfterClosed();
 
   return (
     <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
-      <LinkedNotice />
+      <LinkedNotice wordsRef={place('linked')} onDismissed={() => onClosed('linked')} />
       {organisation != null && (
-        <SignInRulesNotices key={organisation.id} organisation={organisation} />
+        <SignInRulesNotices
+          key={organisation.id}
+          organisation={organisation}
+          place={place}
+          onClosed={onClosed}
+        />
       )}
-      {account != null && organisation == null && <NoOrganisation />}
+      {account != null && organisation == null && <NoOrganisation titleRef={heading} />}
       {account != null && organisation != null && (
         <View style={[cardFrame(kind), styles.card]}>
-          <SignedInHeading organisation={organisation} />
+          <SignedInHeading organisation={organisation} headingRef={heading} />
           <View style={styles.lines}>
             <Text size={tokens.typeBodyPhone.size}>
               {t('switcher.yourRole', { role: roleName(t, organisation.role) })}
@@ -78,11 +86,47 @@ function HomeBody() {
   );
 }
 
-function SignedInHeading({ organisation }: { organisation: Membership }) {
+/** A notice closed with its own button hands focus to the next notice under it, or to the heading when none is left (sc-11173). */
+function useNextAfterClosed() {
+  const [places] = useState(() => stepOpeners<View>());
+  const heading = useRef<TextHandle>(null);
+  const [last, setLast] = useState<{ at: NoticePlace } | null>(null);
+  const next = useMemo<RefObject<ScreenReaderTarget | null>>(
+    () => ({
+      get current() {
+        const after = last == null ? [] : NOTICE_PLACES.slice(NOTICE_PLACES.indexOf(last.at) + 1);
+        const notice = after.map((at) => places.target(at, null)).find((view) => view != null);
+
+        return notice ?? heading.current;
+      },
+    }),
+    [last, places],
+  );
+  useFocusOnAnswer(last ?? undefined, next);
+
+  return {
+    heading,
+    place: (at: NoticePlace): Ref<View> => places.ref(at),
+    onClosed: (at: NoticePlace) => setLast({ at }),
+  };
+}
+
+function SignedInHeading({
+  organisation,
+  headingRef,
+}: {
+  organisation: Membership;
+  headingRef: RefObject<TextHandle | null>;
+}) {
   const { t } = useTranslation();
 
   return (
-    <AnswerHeading size={tokens.typeTitleDialog.size} weight="bold" answer={useTappedSwitch()}>
+    <AnswerHeading
+      ref={headingRef}
+      size={tokens.typeTitleDialog.size}
+      weight="bold"
+      answer={useTappedSwitch()}
+    >
       {t('home.signedInTo', { name: organisation.name })}
     </AnswerHeading>
   );

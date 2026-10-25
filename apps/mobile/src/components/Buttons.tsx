@@ -20,7 +20,7 @@ export function PrimaryButton({
   busy?: boolean;
   off?: boolean;
   accessibilityLabel?: string;
-  ref?: Ref<View>;
+  ref?: Ref<View> | undefined;
   testID: string;
 }) {
   const inactive = busy || off;
@@ -64,7 +64,7 @@ export function SecondaryButton({
   stacked?: boolean;
   /** When the visible label leans on its row, as "Unlink" does beside "Google". */
   accessibilityLabel?: string;
-  ref?: Ref<View>;
+  ref?: Ref<View> | undefined;
   testID: string;
 }) {
   return (
@@ -94,15 +94,18 @@ export function QuietButton({
   label,
   onPress,
   off = false,
+  ref,
   testID,
 }: {
   label: string;
   onPress: () => void;
   off?: boolean;
+  ref?: Ref<View> | undefined;
   testID: string;
 }) {
   return (
     <Pressable
+      ref={ref}
       style={styles.quiet}
       onPress={onPress}
       disabled={off}

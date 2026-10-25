@@ -12,7 +12,7 @@ import {
 } from '@soirely/domain';
 import { getCalendars, getLocales } from 'expo-localization';
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -32,6 +32,13 @@ import { LinkedNotice } from '../src/components/LinkedNotice.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { OnboardingSteps } from '../src/components/OnboardingSteps.tsx';
 import { PhoneEntry } from '../src/components/PhoneEntry.tsx';
+import {
+  type StepClosed,
+  stepClosed,
+  useFocusBackToOpener,
+  useFocusOnAnswer,
+} from '../src/components/Screen.tsx';
+import type { ScreenReaderTarget } from '../src/components/screenReaderFocus.ts';
 import { Text } from '../src/components/Text.tsx';
 import { dateLocale } from '../src/i18n/index.ts';
 import { type WaitingInvitations, useInvitationsOnOpen } from '../src/invitations.ts';
@@ -59,6 +66,19 @@ export default function CompleteProfile() {
   const [founding, setFounding] = useState(false);
   // The tap that brought the step showing, for its heading to take screen reader focus.
   const [tapped, setTapped] = useState<object | undefined>(undefined);
+  const providerWords = useRef<View>(null);
+  const nameInput = useRef<TextInput>(null);
+  // Dismiss on the linked notice hands focus to the item after it (sc-11173).
+  const [linkedClosed, setLinkedClosed] = useState<StepClosed | undefined>(undefined);
+  const afterLinked = useMemo<RefObject<ScreenReaderTarget | null>>(
+    () => ({
+      get current() {
+        return providerWords.current ?? nameInput.current;
+      },
+    }),
+    [],
+  );
+  useFocusBackToOpener(linkedClosed, afterLinked);
 
   useEffect(() => {
     let live = true;
@@ -143,16 +163,18 @@ export default function CompleteProfile() {
         </>
       }
     >
-      <LinkedNotice />
+      <LinkedNotice onDismissed={() => setLinkedClosed(stepClosed('afterLinked'))} />
       {provider != null && (
         <Notice
           tone="quiet"
           mark={tokens.marks.info.glyph}
           body={t('completeProfile.providerConfirmed', { provider, email: primaryEmail })}
+          wordsRef={providerWords}
         />
       )}
       <Details
         account={account}
+        nameInput={nameInput}
         onAsked={(asked) => {
           setAccount(asked);
           setTapped({});
@@ -339,7 +361,15 @@ function FoundOrganisation() {
   );
 }
 
-function Details({ account, onAsked }: { account: Account; onAsked: (account: Account) => void }) {
+function Details({
+  account,
+  nameInput,
+  onAsked,
+}: {
+  account: Account;
+  nameInput: RefObject<TextInput | null>;
+  onAsked: (account: Account) => void;
+}) {
   const { t } = useTranslation();
   const { kind } = useLayout();
   const [name, setName] = useState(account.name);
@@ -363,7 +393,6 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState<object | null>(null);
-  const nameInput = useRef<TextInput>(null);
   const organisationInput = useRef<TextInput>(null);
   const phoneInput = useRef<TextInput>(null);
   const countryPicker = useRef<View>(null);
@@ -389,7 +418,10 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
   const [offered, setOffered] = useState<JoinOffers | null>(null);
   const [own, setOwn] = useState(false);
   const [askedInstead, setAskedInstead] = useState<object | undefined>(undefined);
-  const [unavailable, setUnavailable] = useState(false);
+  const [unavailable, setUnavailable] = useState<object | null>(null);
+  // Start my own organisation brings the organisation fields in its place, so focus goes to the first (sc-11173).
+  const [startedOwn, setStartedOwn] = useState<object | undefined>(undefined);
+  useFocusOnAnswer<TextInput>(startedOwn, organisationInput);
 
   useEffect(() => {
     if (!account.needsOrganisation) return;
@@ -460,7 +492,7 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
 
     setSaving(true);
     setFailed(null);
-    setUnavailable(false);
+    setUnavailable(null);
 
     try {
       const saved = await api.completeProfile({
@@ -487,7 +519,7 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
 
       if (error instanceof ApiError && error.is('join_offer_unavailable')) {
         setOffered(await api.joinOffers().catch(() => null));
-        setUnavailable(true);
+        setUnavailable({});
         return;
       }
 
@@ -581,12 +613,13 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
         </View>
       )}
 
-      {unavailable && (
+      {unavailable != null && (
         <Notice
           tone="broken"
           mark={tokens.marks.broken.glyph}
           body={t('domainJoining.unavailable')}
-          announce
+          answer={unavailable}
+          takesFocus
         />
       )}
 
@@ -635,6 +668,7 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
             onPress={() => {
               setOwn(true);
               setAskedInstead(undefined);
+              setStartedOwn({});
             }}
             testID="completeProfile.startOwn"
           />
@@ -646,6 +680,7 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
           label={t('domainJoining.askInstead', { domain: offered?.domain ?? '' })}
           onPress={() => {
             setOwn(false);
+            setStartedOwn(undefined);
             setAskedInstead({});
           }}
           testID="completeProfile.askInstead"

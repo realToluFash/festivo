@@ -31,7 +31,13 @@ import { ConfirmItsYou } from './ConfirmItsYou.tsx';
 import { Field, FieldError, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PhoneEntry } from './PhoneEntry.tsx';
-import { useAboveKeyboard, useFocusOnAnswer } from './Screen.tsx';
+import {
+  type StepClosed,
+  stepClosed,
+  useAboveKeyboard,
+  useFocusBackToOpener,
+  useFocusOnAnswer,
+} from './Screen.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 
 type Kind = 'email' | 'phone';
@@ -124,7 +130,15 @@ function ContactsCard({
   const rows = listedContacts(all);
   const left = contactsLeft(all);
   const [asking, setAsking] = useState<Asking>(null);
-  const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
+  const [rowError, setRowError] = useState<{
+    id: string;
+    message: string;
+    /** The list changed and the step closed, so the reason takes focus. */
+    closed: boolean;
+  } | null>(null);
+  const [closed, setClosed] = useState<StepClosed | undefined>(undefined);
+  const title = useRef<TextHandle>(null);
+  const opener = useFocusBackToOpener(closed, title);
   const [adding, setAdding] = useState(false);
   const [sending, setSending] = useState(false);
   const [said, setSaid] = useState<{ line: string } | null>(null);
@@ -142,7 +156,18 @@ function ContactsCard({
           ? t('contacts.verifiedPrimaryPhone', { number: arrival.shown })
           : t('contacts.verifiedDonePhone', { number: arrival.shown }));
 
+  function ask(next: Asking): void {
+    setClosed(undefined);
+    setAsking(next);
+  }
+
+  function closeTo(to: string): void {
+    setAsking(null);
+    setClosed(stepClosed(to));
+  }
+
   function setDone(line: string | null): void {
+    setClosed(undefined);
     setArrived(null);
     setSaid(line == null ? null : { line });
   }
@@ -164,7 +189,7 @@ function ContactsCard({
 
     // An address signs the account in, so it is proved first; a number never does.
     if (email && what === 'promote' && standing == null) {
-      setAsking({ id: row.id, what: 'prove' });
+      ask({ id: row.id, what: 'prove' });
       return;
     }
 
@@ -188,10 +213,11 @@ function ContactsCard({
       setAsking(null);
       await onChanged();
     } catch (refusal) {
-      if (await rereadFor(refusal)) setAsking(null);
+      const changed = await rereadFor(refusal);
+      if (changed) setAsking(null);
       // The check has passed and is held, so a retry from the confirmation needs no second one.
       else if (proof != null) setAsking({ id: row.id, what: 'promote' });
-      setRowError({ id: row.id, message: rowRefusal(refusal, kind, t) });
+      setRowError({ id: row.id, message: rowRefusal(refusal, kind, t), closed: changed });
     } finally {
       setSending(false);
     }
@@ -200,7 +226,12 @@ function ContactsCard({
   return (
     <View style={cardFrame(layout)}>
       <View style={styles.head}>
-        <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+        <Text
+          ref={title}
+          size={tokens.typeTitleSection.size}
+          weight="bold"
+          accessibilityRole="header"
+        >
           {email ? t('contacts.emailsTitle') : t('contacts.phonesTitle')}
         </Text>
         <Text size={tokens.typeSmall.size} style={styles.secondary}>
@@ -212,7 +243,13 @@ function ContactsCard({
       </Text>
 
       {done != null && (
-        <Notice tone="done" mark={tokens.marks.done.glyph} body={done} answer={said ?? undefined} />
+        <Notice
+          tone="done"
+          mark={tokens.marks.done.glyph}
+          body={done}
+          answer={said ?? undefined}
+          takesFocus={said != null}
+        />
       )}
 
       <View>
@@ -275,20 +312,22 @@ function ContactsCard({
               )}
               {here == null && offers.makePrimary && (
                 <SecondaryButton
+                  ref={opener(`primary.${row.id}`)}
                   label={t(email ? 'contacts.makePrimary' : 'contacts.makePrimaryPhone')}
                   onPress={() =>
-                    email ? setAsking({ id: row.id, what: 'promote' }) : void act(row, 'promote')
+                    email ? ask({ id: row.id, what: 'promote' }) : void act(row, 'promote')
                   }
                   testID={`contacts.${row.id}.primary`}
                 />
               )}
               {here == null && offers.remove && (
                 <SecondaryButton
+                  ref={opener(`remove.${row.id}`)}
                   label={t('contacts.remove')}
                   accessibilityLabel={t('contacts.removeLabel', { address: row.shown })}
                   onPress={() =>
                     offers.askBeforeRemoving
-                      ? setAsking({ id: row.id, what: 'remove' })
+                      ? ask({ id: row.id, what: 'remove' })
                       : void act(row, 'remove')
                   }
                   testID={`contacts.${row.id}.remove`}
@@ -304,7 +343,7 @@ function ContactsCard({
                     via={confirming.via}
                     twoFactorOn={confirming.twoFactorOn}
                     onProved={(proved) => void act(row, 'promote', proved)}
-                    onCancel={() => setAsking(null)}
+                    onCancel={() => closeTo(`primary.${row.id}`)}
                   />
                 </View>
               )}
@@ -339,7 +378,9 @@ function ContactsCard({
                         ? t('contacts.promoteKeep', { old: primary?.shown ?? '' })
                         : t(email ? 'contacts.removeKeep' : 'contacts.removeKeepPhone')
                     }
-                    onPress={() => setAsking(null)}
+                    onPress={() =>
+                      closeTo(here === 'promote' ? `primary.${row.id}` : `remove.${row.id}`)
+                    }
                     off={sending}
                     testID={`contacts.${row.id}.keep`}
                   />
@@ -348,7 +389,10 @@ function ContactsCard({
 
               {rowError?.id === row.id && (
                 <View style={styles.full}>
-                  <FieldError message={rowError.message} />
+                  <FieldError
+                    message={rowError.message}
+                    answer={rowError.closed ? rowError : undefined}
+                  />
                 </View>
               )}
             </View>
@@ -366,11 +410,15 @@ function ContactsCard({
             await onChanged();
           }}
           onRefused={rereadFor}
-          onCancel={() => setAdding(false)}
+          onCancel={() => {
+            setAdding(false);
+            setClosed(stepClosed('add'));
+          }}
         />
       ) : (
         left > 0 && (
           <SecondaryButton
+            ref={opener('add')}
             label={email ? t('contacts.addEmail') : t('contacts.addPhone')}
             onPress={() => {
               setDone(null);

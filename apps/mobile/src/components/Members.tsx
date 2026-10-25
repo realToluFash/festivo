@@ -18,7 +18,7 @@ import {
   memberStatusWord,
   roleName,
 } from '@soirely/domain';
-import { type Ref, useState } from 'react';
+import { type Ref, type RefObject, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -41,10 +41,15 @@ import { useComeForward } from './comeForward.ts';
 import { FieldError } from './Field.tsx';
 import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
-import { ReadOut, useReadOut } from './ReadOut.tsx';
 import { OwnerClaimBanner } from './OwnerClaimBanner.tsx';
 import { AnswerHeading } from './AnswerHeading.tsx';
-import { useBroughtIntoView, useScrolledToTop } from './Screen.tsx';
+import {
+  type StepClosed,
+  stepClosed,
+  useBroughtIntoView,
+  useFocusBackToOpener,
+  useScrolledToTop,
+} from './Screen.tsx';
 import { type TextHandle, Text } from './Text.tsx';
 
 const AVATAR = 40;
@@ -126,7 +131,6 @@ function Avatar({ name, large = false }: { name: string; large?: boolean }) {
 /** Scrolled into view when it appears, since the answer was given further down the list. */
 function AnsweredLine({ answered, onNext }: { answered: Answered; onNext: () => void }) {
   const top = useScrolledToTop();
-  useReadOut(answered.text);
 
   return (
     <View ref={top}>
@@ -135,6 +139,8 @@ function AnsweredLine({ answered, onNext }: { answered: Answered; onNext: () => 
         mark={tokens.marks.done.glyph}
         body={answered.text}
         action={{ label: answered.next.label, onPress: onNext, testID: 'members.answered.next' }}
+        answer={answered}
+        takesFocus
       />
     </View>
   );
@@ -177,6 +183,8 @@ export function MemberList({
   open,
   flash,
   answered,
+  closed,
+  title,
   onAnswered,
   onOpen,
 }: {
@@ -188,11 +196,22 @@ export function MemberList({
   open: string | null;
   flash: string | null;
   answered: Answered | null;
+  /** A member's page was left, back to their row (sc-11173). */
+  closed: StepClosed | undefined;
+  /** The Members heading, where focus goes when the row it was going back to has gone. */
+  title: RefObject<TextHandle | null>;
   onAnswered: (list: MembersList, answered: Answered) => void;
   onOpen: (id: string) => void;
 }) {
   const { t } = useTranslation();
   const [filter, setFilter] = useState<MemberFilter>('all');
+  const [closedFor, setClosedFor] = useState(closed);
+  const [back, setBack] = useState(closed);
+  const opener = useFocusBackToOpener(back, title);
+  if (closedFor !== closed) {
+    setClosedFor(closed);
+    setBack(closed);
+  }
   const shown = list.members.filter((member) => memberIsShown(member.status, filter));
   const waiting = list.members.filter((member) => member.status === 'pending_approval');
   const removedNext = t('membersScreen.removedNext');
@@ -206,19 +225,20 @@ export function MemberList({
           kind={kind}
           organisationId={organisation.id}
           organisation={organisation.name}
+          title={title}
         />
       )}
 
       {flash != null && (
-        <ReadOut words={`${flash}\n${removedNext}`}>
-          <Notice
-            tone="done"
-            mark={tokens.marks.done.glyph}
-            title={flash}
-            accentTitle
-            body={removedNext}
-          />
-        </ReadOut>
+        <Notice
+          tone="done"
+          mark={tokens.marks.done.glyph}
+          title={flash}
+          accentTitle
+          body={removedNext}
+          answer={flash}
+          takesFocus
+        />
       )}
 
       {answered != null && (
@@ -304,7 +324,11 @@ export function MemberList({
           )}
           <SecondaryButton
             label={t('membersScreen.showEveryone')}
-            onPress={() => setFilter('all')}
+            onPress={() => {
+              const first = list.members.find((member) => memberIsShown(member.status, 'all'));
+              setFilter('all');
+              setBack(first == null ? undefined : stepClosed(`row.${first.id}`));
+            }}
             testID="members.showEveryone"
           />
         </View>
@@ -317,6 +341,7 @@ export function MemberList({
               member={member}
               first={index === 0}
               open={open === member.id}
+              opener={opener(`row.${member.id}`)}
               onOpen={() => onOpen(member.id)}
             />
           ))}
@@ -337,12 +362,14 @@ function MemberRow({
   member,
   first,
   open,
+  opener,
   onOpen,
 }: {
   organisation: Membership;
   member: OrganisationMember;
   first: boolean;
   open: boolean;
+  opener: Ref<View>;
   onOpen: () => void;
 }) {
   const { t } = useTranslation();
@@ -369,6 +396,7 @@ function MemberRow({
 
   return (
     <Pressable
+      ref={opener}
       style={[styles.row, !first && styles.rowDivider, open && styles.rowOpen]}
       onPress={onOpen}
       accessibilityRole="button"
@@ -651,6 +679,8 @@ function JoinRequestAnswer({
   const [picked, setPicked] = useState(offered[0]?.id ?? '');
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const [closed, setClosed] = useState<StepClosed | undefined>(undefined);
+  const opener = useFocusBackToOpener(answering === 'resting' ? closed : undefined);
   const comeForward = useComeForward();
   const role = offered.find((one) => one.id === picked);
   const name = member.user.name;
@@ -688,7 +718,13 @@ function JoinRequestAnswer({
 
   function back(): void {
     setFailed(null);
+    setClosed(stepClosed(answering === 'approving' ? 'approve' : 'turnDown'));
     setAnswering('resting');
+  }
+
+  function open(next: Answering): void {
+    setClosed(undefined);
+    setAnswering(next);
   }
 
   const refusal = failed != null && (
@@ -701,13 +737,15 @@ function JoinRequestAnswer({
     return (
       <View style={styles.actions}>
         <PrimaryButton
+          ref={opener('approve')}
           label={t('membersScreen.awaiting.approve')}
-          onPress={() => setAnswering('approving')}
+          onPress={() => open('approving')}
           testID={`members.approve.${member.id}`}
         />
         <SecondaryButton
+          ref={opener('turnDown')}
           label={t('membersScreen.awaiting.turnDown')}
-          onPress={() => setAnswering('turningDown')}
+          onPress={() => open('turningDown')}
           testID={`members.turnDown.${member.id}`}
         />
       </View>
@@ -1092,6 +1130,8 @@ function Remove({
   const { t } = useTranslation();
   const [removal, setRemoval] = useState<Removal>('resting');
   const [failed, setFailed] = useState<string | null>(null);
+  const [kept, setKept] = useState<StepClosed | undefined>(undefined);
+  const opener = useFocusBackToOpener(removal === 'resting' ? kept : undefined);
   const name = member.user.name;
   const organisationName = organisation.name;
 
@@ -1137,9 +1177,14 @@ function Remove({
           </View>
         )}
         <SecondaryButton
+          ref={opener('remove')}
           label={t('membersScreen.removeButton', { organisation: organisationName })}
           off={removal === 'removing'}
-          onPress={() => (onlyOwner ? void remove() : setRemoval('confirming'))}
+          onPress={() => {
+            setKept(undefined);
+            if (onlyOwner) void remove();
+            else setRemoval('confirming');
+          }}
           testID="members.remove"
         />
       </View>
@@ -1170,6 +1215,7 @@ function Remove({
           label={t('membersScreen.removeKeep', { name })}
           onPress={() => {
             setFailed(null);
+            setKept(stepClosed('remove'));
             setRemoval('resting');
           }}
           testID="members.remove.keep"

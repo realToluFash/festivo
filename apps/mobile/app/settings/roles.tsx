@@ -1,7 +1,14 @@
 import type { OrganisationRole, RolesCatalogue } from '@soirely/api-client';
 import { roleHolds, roleName } from '@soirely/domain';
 import { Redirect } from 'expo-router';
-import { useEffect, useState } from 'react';
+import {
+  type ReactNode,
+  type RefCallback,
+  type RefObject,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -11,7 +18,12 @@ import { PrimaryButton, SecondaryButton } from '../../src/components/Buttons.tsx
 import { type ListAndPageSpacing, ListAndPage } from '../../src/components/ListAndPage.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
 import { RoleList, RolePage, RemoveRole } from '../../src/components/Roles.tsx';
-import { useFocusOnAnswer } from '../../src/components/Screen.tsx';
+import {
+  type StepClosed,
+  stepClosed,
+  useFocusBackToOpener,
+  useFocusOnAnswer,
+} from '../../src/components/Screen.tsx';
 import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
 import { Text, type TextHandle } from '../../src/components/Text.tsx';
 import { cardFrame } from '../../src/components/cardFrame.ts';
@@ -21,7 +33,9 @@ import { useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
 type Load =
-  { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; catalogue: RolesCatalogue };
+  | { kind: 'loading' }
+  | { kind: 'failed'; tapped: boolean }
+  | { kind: 'loaded'; catalogue: RolesCatalogue };
 
 /** What the detail shows: a role, a role being made, or a role being removed. */
 type Pane = { kind: 'role'; id: string } | { kind: 'new' } | { kind: 'removing'; id: string };
@@ -49,6 +63,11 @@ export default function RolesScreen() {
   const [saved, setSaved] = useState(false);
   // The pane a tap opened, and where on it screen reader focus goes (sc-11032).
   const [arrival, setArrival] = useState<{ pane: Pane; at: 'name' | 'saved' } | null>(null);
+  // Where focus goes once the page or a step gives way to the list (sc-11173).
+  const [closed, setClosed] = useState<StepClosed | undefined>(undefined);
+  const [titleAgain, setTitleAgain] = useState<object | undefined>(undefined);
+  const rolesTitle = useRef<TextHandle>(null);
+  const retried = useRef(false);
   const phone = kind === 'phone';
   const landscape = kind === 'tabletLandscape';
 
@@ -58,7 +77,8 @@ export default function RolesScreen() {
 
     api.roles(organisationId).then(
       (catalogue) => live && setHeld({ in: organisationId, load: { kind: 'loaded', catalogue } }),
-      () => live && setHeld({ in: organisationId, load: { kind: 'failed' } }),
+      () =>
+        live && setHeld({ in: organisationId, load: { kind: 'failed', tapped: retried.current } }),
     );
 
     return () => {
@@ -71,6 +91,11 @@ export default function RolesScreen() {
   const atName = arrived?.at === 'name' ? arrived : undefined;
   const { read: pageTitleRef } = useFocusOnAnswer<TextHandle>(
     phone && atName?.pane.kind !== 'removing' ? atName : undefined,
+  );
+  useFocusOnAnswer<TextHandle>(phone ? titleAgain : undefined, pageTitleRef);
+  useFocusOnAnswer<TextHandle>(
+    load.kind === 'loaded' && closed?.to === 'title' ? closed : undefined,
+    rolesTitle,
   );
 
   if (organisation != null && !roleHolds(organisation, 'members.manage')) {
@@ -85,13 +110,20 @@ export default function RolesScreen() {
     pane == null || pane.kind === 'new' || catalogue == null
       ? null
       : (catalogue.roles.find((role) => role.id === pane.id) ?? null);
-  const open = (next: Pane | null, arrives = false) => {
+  const open = (next: Pane | null, arrives = false, back?: StepClosed) => {
     setShown({ in: organisationId, pane: next });
     setSaved(false);
     setArrival(arrives && next != null ? { pane: next, at: 'name' } : null);
+    setClosed(back);
+    setTitleAgain(undefined);
   };
   const paneResolves = pane != null && (pane.kind === 'new' || selected != null);
-  const toList = () => open(null);
+  const toList = () =>
+    open(
+      null,
+      false,
+      pane == null ? undefined : stepClosed(pane.kind === 'new' ? 'new' : `role.${pane.id}`),
+    );
   // The role landscape opens by itself gives way to the list on a turn until it is used.
   const used = (id: string) =>
     setShown((before) =>
@@ -103,7 +135,12 @@ export default function RolesScreen() {
   const heading = (
     <View style={styles.heading}>
       {!phone && (
-        <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
+        <Text
+          ref={rolesTitle}
+          size={tokens.typeTitlePhone.size}
+          weight="bold"
+          accessibilityRole="header"
+        >
           {t('rolesScreen.title')}
         </Text>
       )}
@@ -126,11 +163,15 @@ export default function RolesScreen() {
           tone="broken"
           mark={tokens.marks.broken.glyph}
           body={t('rolesScreen.failedLoad')}
-          announce
+          announce={!load.tapped}
+          answer={load.tapped ? load : undefined}
+          takesFocus={load.tapped}
         />
         <SecondaryButton
           label={t('rolesScreen.retry')}
           onPress={() => {
+            retried.current = true;
+            setClosed(stepClosed('title'));
             setLoad({ kind: 'loading' });
             setAttempt((n) => n + 1);
           }}
@@ -139,16 +180,18 @@ export default function RolesScreen() {
       </View>
     ) : null;
 
-  const newRole = (
+  const newRole = (opener?: RefCallback<View>) => (
     <View style={!phone && styles.start}>
       {phone ? (
         <SecondaryButton
+          ref={opener}
           label={t('rolesScreen.newRole')}
           onPress={() => open({ kind: 'new' }, true)}
           testID="roles.new"
         />
       ) : (
         <PrimaryButton
+          ref={opener}
           label={t('rolesScreen.newRole')}
           onPress={() => open({ kind: 'new' }, true)}
           testID="roles.new"
@@ -157,13 +200,14 @@ export default function RolesScreen() {
     </View>
   );
 
-  const list =
+  const list = (opener: (key: string) => RefCallback<View>) =>
     organisation != null && catalogue != null ? (
       <RoleList
         kind={kind}
         organisation={organisation}
         roles={catalogue.roles}
         open={pane?.kind === 'new' ? null : (pane?.id ?? null)}
+        opener={opener}
         onOpen={(id) => open({ kind: 'role', id }, true)}
       />
     ) : null;
@@ -182,11 +226,11 @@ export default function RolesScreen() {
         organisation={organisation}
         role={selected}
         roles={catalogue.roles}
-        onKeep={() => open({ kind: 'role', id: selected.id })}
+        onKeep={() => open({ kind: 'role', id: selected.id }, false, stepClosed('remove'))}
         onRemoved={(roles) => {
           const next = { ...catalogue, roles };
           setLoad({ kind: 'loaded', catalogue: next });
-          open(null);
+          open(null, false, stepClosed('title'));
           setAttempt((n) => n + 1);
         }}
       />
@@ -200,19 +244,27 @@ export default function RolesScreen() {
         saved={saved}
         answer={kind === 'tabletPortrait' ? atName : undefined}
         savedAnswer={arrived?.at === 'saved' ? arrived : undefined}
+        removeAnswer={
+          closed?.to === 'remove' && pane.kind === 'role' && pane.id === selected?.id
+            ? closed
+            : undefined
+        }
+        onDiscarded={() => setTitleAgain({})}
         onRemove={() => selected != null && open({ kind: 'removing', id: selected.id }, true)}
         onSaved={(role) => {
           const next: Pane = { kind: 'role', id: role.id };
           setLoad({ kind: 'loaded', catalogue: replace(catalogue, role) });
           setShown({ in: organisationId, pane: next });
           setSaved(true);
-          setArrival(pane.kind === 'new' ? { pane: next, at: 'saved' } : null);
+          setArrival({ pane: next, at: 'saved' });
         }}
         onEdited={() => setSaved(false)}
         onUsed={() => selected != null && used(selected.id)}
       />
     );
   const inDetail = page != null;
+  const listClosed =
+    closed != null && (closed.to === 'new' || closed.to.startsWith('role.')) ? closed : undefined;
 
   const pageTitle =
     pane?.kind === 'new' ? t('rolesScreen.newRole') : selected != null ? roleName(t, selected) : '';
@@ -221,7 +273,7 @@ export default function RolesScreen() {
     <AppFrame
       current="settings"
       title={phone ? (inDetail ? pageTitle : t('rolesScreen.title')) : t('settings.title')}
-      titleRef={phone && inDetail ? pageTitleRef : undefined}
+      titleRef={phone ? (inDetail ? pageTitleRef : rolesTitle) : undefined}
       back={
         phone
           ? inDetail
@@ -233,12 +285,16 @@ export default function RolesScreen() {
       <SettingsSplit open="roles">
         <ListAndPage
           heading={heading}
-          besideHeading={catalogue != null && newRole}
+          besideHeading={catalogue != null && newRole()}
           list={
-            <>
-              {waiting ?? list}
-              {!landscape && waiting == null && newRole}
-            </>
+            <FocusBack closed={listClosed} fallback={rolesTitle}>
+              {(opener) => (
+                <>
+                  {waiting ?? list(opener)}
+                  {!landscape && waiting == null && newRole(opener('new'))}
+                </>
+              )}
+            </FocusBack>
           }
           page={page}
           pageInFront={inDetail}
@@ -248,6 +304,19 @@ export default function RolesScreen() {
       </SettingsSplit>
     </AppFrame>
   );
+}
+
+/** Focus back to the row or New role that opened the page, inside the list's scroll so it comes into view. */
+function FocusBack({
+  closed,
+  fallback,
+  children,
+}: {
+  closed: StepClosed | undefined;
+  fallback: RefObject<TextHandle | null>;
+  children: (opener: (key: string) => RefCallback<View>) => ReactNode;
+}) {
+  return children(useFocusBackToOpener(closed, fallback));
 }
 
 /** The first role a manager can change opens beside the list, as on the web. */

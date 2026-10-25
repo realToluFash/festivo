@@ -13,9 +13,10 @@ import { codeProps, FIELD_DEFAULTS, fieldText, nextPin } from '../kit/fields.ts'
 import { faced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { fieldFocused, fieldLeft } from './focusedField.ts';
-import { ReadOut } from './ReadOut.tsx';
+import { useReadOut } from './ReadOut.tsx';
+import { useFocusOnAnswer } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
-import { Text } from './Text.tsx';
+import { Text, type TextHandle } from './Text.tsx';
 
 /** 16 is the smallest size iOS Safari will not zoom into on focus. */
 export const CONTROL_TEXT_SIZE = 16;
@@ -27,7 +28,9 @@ export function Field({
   labelAction,
   error,
   errorActions,
+  errorAnswer,
   help,
+  helpAnswer,
   children,
 }: {
   label: string;
@@ -35,10 +38,15 @@ export function Field({
   labelAction?: FieldAction | undefined;
   error?: string | null | undefined;
   errorActions?: readonly FieldAction[] | undefined;
+  /** What a tap set for the error to answer it, where the tap's button went: the error takes focus in place of being read out (sc-11173). */
+  errorAnswer?: unknown;
   help?: string | readonly string[] | undefined;
+  /** What a tap set for the help to answer it, where the tap's button went: its first line takes focus (sc-11173). */
+  helpAnswer?: unknown;
   children: ReactNode;
 }) {
   const field = useRef<View>(null);
+  const { read: helpRead } = useFocusOnAnswer<TextHandle>(helpAnswer);
   useEffect(() => {
     const mounted = field.current;
 
@@ -78,9 +86,14 @@ export function Field({
         )}
       </View>
       {children}
-      {error != null && <FieldError message={error} actions={errorActions} />}
-      {(typeof help === 'string' ? [help] : (help ?? [])).map((line) => (
-        <Text key={line} size={tokens.typeSmall.size} style={styles.secondary}>
+      {error != null && <FieldError message={error} actions={errorActions} answer={errorAnswer} />}
+      {(typeof help === 'string' ? [help] : (help ?? [])).map((line, index) => (
+        <Text
+          key={line}
+          ref={index === 0 ? helpRead : undefined}
+          size={tokens.typeSmall.size}
+          style={styles.secondary}
+        >
           {line}
         </Text>
       ))}
@@ -98,12 +111,18 @@ export interface FieldAction {
 export function FieldError({
   message,
   actions = [],
+  answer,
 }: {
   message: string;
   actions?: readonly FieldAction[] | undefined;
+  /** The error answers a tap whose button went, so it takes focus in place of being read out. */
+  answer?: unknown;
 }) {
+  useReadOut(answer === undefined ? message : null);
+  const { shown, read } = useFocusOnAnswer<TextHandle>(answer);
+
   return (
-    <ReadOut style={styles.fieldError} words={message}>
+    <View ref={shown} style={styles.fieldError}>
       <View
         style={styles.mark}
         accessibilityElementsHidden
@@ -114,7 +133,7 @@ export function FieldError({
         </Text>
       </View>
       <View style={styles.grow}>
-        <Text size={tokens.typeBodyPhone.size} style={styles.broken}>
+        <Text ref={read} size={tokens.typeBodyPhone.size} style={styles.broken}>
           {message}
         </Text>
         {actions.length > 0 && (
@@ -135,7 +154,7 @@ export function FieldError({
           </View>
         )}
       </View>
-    </ReadOut>
+    </View>
   );
 }
 

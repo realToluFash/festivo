@@ -6,7 +6,7 @@ import {
 } from '@soirely/api-client';
 import { roleName } from '@soirely/domain';
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { type Ref, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -23,12 +23,12 @@ import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import { AnswerHeading } from './AnswerHeading.tsx';
-import { useAboveKeyboard } from './Screen.tsx';
+import { type StepClosed, stepClosed, useAboveKeyboard, useFocusBackToOpener } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 type Step =
-  | { kind: 'resting'; flash: string | null }
-  | { kind: 'transfer' }
+  | { kind: 'resting'; flash: string | null; closed?: StepClosed }
+  | { kind: 'transfer'; fromLeave: boolean }
   | { kind: 'leave' }
   | { kind: 'delete' };
 
@@ -49,6 +49,8 @@ export function OwnershipCard({
   const owner = organisation.role.seededAs === 'owner';
   const [step, setStep] = useState<Step>({ kind: 'resting', flash: null });
   const [members, setMembers] = useState<OrganisationMember[] | null>(null);
+  const opener = useFocusBackToOpener(step.kind === 'resting' ? step.closed : undefined);
+  const backTo = (to: string) => setStep({ kind: 'resting', flash: null, closed: stepClosed(to) });
 
   useEffect(() => {
     if (!owner) return;
@@ -80,16 +82,21 @@ export function OwnershipCard({
       {step.kind === 'resting' && (
         <>
           {step.flash != null && (
-            <ReadOut words={step.flash}>
-              <Notice tone="done" mark={tokens.marks.done.glyph} body={step.flash} />
-            </ReadOut>
+            <Notice
+              tone="done"
+              mark={tokens.marks.done.glyph}
+              body={step.flash}
+              answer={step}
+              takesFocus
+            />
           )}
           {owner && (
             <Row
               title={t('ownership.transfer')}
               note={t('ownership.transferNote', { organisation: name })}
               action={t('ownership.transfer')}
-              onPress={() => setStep({ kind: 'transfer' })}
+              opener={opener('transfer')}
+              onPress={() => setStep({ kind: 'transfer', fromLeave: false })}
               testID="ownership.transfer"
             />
           )}
@@ -97,6 +104,7 @@ export function OwnershipCard({
             title={t('ownership.leave', { organisation: name })}
             note={t('ownership.leaveNote', { organisation: name })}
             action={t('ownership.leave', { organisation: name })}
+            opener={opener('leave')}
             onPress={() => setStep({ kind: 'leave' })}
             testID="ownership.leave"
           />
@@ -105,6 +113,7 @@ export function OwnershipCard({
               title={t('ownership.delete')}
               note={t('ownership.deleteNote')}
               action={t('ownership.delete')}
+              opener={opener('delete')}
               onPress={() => setStep({ kind: 'delete' })}
               testID="ownership.delete"
             />
@@ -117,7 +126,7 @@ export function OwnershipCard({
           answer={step}
           organisation={organisation}
           candidates={others}
-          onCancel={() => setStep({ kind: 'resting', flash: null })}
+          onCancel={() => backTo(step.fromLeave ? 'leave' : 'transfer')}
           onDone={(to) =>
             setStep({
               kind: 'resting',
@@ -132,17 +141,13 @@ export function OwnershipCard({
           answer={step}
           organisation={organisation}
           onlyOwner={onlyOwner}
-          onTransfer={() => setStep({ kind: 'transfer' })}
-          onStay={() => setStep({ kind: 'resting', flash: null })}
+          onTransfer={() => setStep({ kind: 'transfer', fromLeave: true })}
+          onStay={() => backTo('leave')}
         />
       )}
 
       {step.kind === 'delete' && (
-        <Delete
-          answer={step}
-          organisation={organisation}
-          onKeep={() => setStep({ kind: 'resting', flash: null })}
-        />
+        <Delete answer={step} organisation={organisation} onKeep={() => backTo('delete')} />
       )}
     </View>
   );
@@ -152,12 +157,14 @@ function Row({
   title,
   note,
   action,
+  opener,
   onPress,
   testID,
 }: {
   title: string;
   note: string;
   action: string;
+  opener: Ref<View>;
   onPress: () => void;
   testID: string;
 }) {
@@ -169,7 +176,7 @@ function Row({
       <Text size={tokens.typeSmall.size} style={styles.secondary}>
         {note}
       </Text>
-      <SecondaryButton label={action} onPress={onPress} testID={testID} />
+      <SecondaryButton ref={opener} label={action} onPress={onPress} testID={testID} />
     </View>
   );
 }
@@ -423,6 +430,15 @@ function Leave({
               title={onlyOwnerTitle}
               body={onlyOwnerBody}
               answer={answer}
+              takesFocus
+            />
+          ) : refusedLast ? (
+            <Notice
+              tone="attention"
+              mark="!"
+              title={onlyOwnerTitle}
+              body={onlyOwnerBody}
+              answer={refusedLast}
               takesFocus
             />
           ) : (
