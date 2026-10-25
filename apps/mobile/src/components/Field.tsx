@@ -5,10 +5,11 @@ import {
   StyleSheet,
   TextInput,
   type TextInputProps,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
-import { codeProps, FIELD_DEFAULTS, fieldText, pinnedText } from '../kit/fields.ts';
+import { codeProps, FIELD_DEFAULTS, fieldText, nextPin } from '../kit/fields.ts';
 import { faced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { ReadOut } from './ReadOut.tsx';
@@ -139,10 +140,13 @@ export function useHeld(
 ): Pick<TextInputProps, 'value' | 'defaultValue' | 'onChangeText'> {
   const [typed, setTyped] = useState(value ?? defaultValue ?? '');
   const [pinned, setPinned] = useState<string>();
+  const { fontScale } = useWindowDimensions();
+  const [scale, setScale] = useState(fontScale);
   const field = { held, value, defaultValue, typed, pinned };
-  const pinNow = pinnedText(field);
+  const next = nextPin(field, fontScale, scale);
 
-  if (pinNow !== pinned) setPinned(pinNow);
+  if (next.scale !== scale) setScale(next.scale);
+  if (next.pinned !== pinned) setPinned(next.pinned);
 
   if (held) return { ...fieldText(field), onChangeText: undefined };
 
