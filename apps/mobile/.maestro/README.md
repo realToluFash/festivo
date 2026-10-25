@@ -18,6 +18,23 @@ just qa-mobile sign-in                    # a flow, by file name
 Maestro needs a Java runtime. `java -version` failing means
 `brew install --cask temurin@21` first.
 
+## Shared flows
+
+The steps every QA pass repeats. Each finds its controls by `testID`, so it runs in any
+language, and opens its screen with `openLink`, so it runs alone on a signed-in phone
+(`qa-env.mjs maestro <name>`) or as a step inside another flow (`- runFlow: <name>.yaml`)
+without relaunching Expo Go or signing in. Each ends with one screenshot.
+
+| Flow                       | Leaves the app on                | Screenshot                   |
+| -------------------------- | -------------------------------- | ---------------------------- |
+| `sign-out`                 | the sign-in screen               | `mobile-signed-out`          |
+| `open-settings`            | Settings                         | `mobile-settings`            |
+| `open-switcher`            | Your organisations               | `mobile-switcher`            |
+| `open-create-organisation` | the Create an organisation sheet | `mobile-create-organisation` |
+
+A flow a tester writes is posted to `[ops]` on the story they were testing, and ops commits
+it here.
+
 ## Checks, run as a batch
 
 `checks/` holds checks: each opens one screen, asserts what it shows and takes its
