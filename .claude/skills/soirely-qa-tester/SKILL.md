@@ -290,10 +290,14 @@ developer's bundler and whichever simulator happens to be booted.
 node .qa/bin/qa-env.mjs android [--tablet]               # the bundler, in Expo Go, on the phone (or tablet); stops the other
 node .qa/bin/qa-env.mjs maestro sign-in --android EMAIL=… PASSWORD=…  # one flow, on whichever is running
 node .qa/bin/qa-env.mjs link 'soirely://oauth/…'          # hand a provider redirect back to Expo Go
+node .qa/bin/qa-env.mjs release [--offline] [--tablet]   # a release build of the commit, on its first launch; for offline-from-first-launch or splash bullets
 node .qa/bin/qa-env.mjs android --stop                   # the emulator, when the pass is done
 ```
 
 `android` behaves like `ios`: start it in the background, and restart it after a `checkout`.
+`release` needs no bundler and takes an hour the first time on a machine. The next `android`
+removes it. If it says `unknown command release`, run `just qa-env setup --tester N` once from
+the main checkout.
 To switch to the tablet, stop it, then run `android --tablet`. Stop the emulator when you
 finish, because it holds several GB of memory on a host every other role shares. The app uses
 the same `127.0.0.1` URLs as on a simulator, and a flow runs unchanged. A screenshot outside a

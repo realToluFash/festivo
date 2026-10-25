@@ -130,7 +130,6 @@ export const {
 
 const EXPO_GO = 'host.exp.Exponent';
 const EXPO_GO_ANDROID = 'host.exp.exponent';
-const RELEASE_PACKAGE = 'com.soirely.app';
 
 export function renderQaEnv(
   example,
@@ -205,14 +204,28 @@ export function androidSdk(env = process.env, platform = process.platform, home 
   );
 }
 
-// The emulator's own architecture only: a build for all four takes four times as long.
-export function releaseAbi(arch = process.arch) {
+// The system image and the release APK both read this: an APK for another ABI is refused on install.
+export function emulatorAbi(arch = process.arch) {
   return arch === 'arm64' ? 'arm64-v8a' : 'x86_64';
+}
+
+export function androidPackage(appConfig) {
+  const id = /android:\s*\{\s*package:\s*'([^']+)'/.exec(appConfig)?.[1];
+  if (!id) throw new Error('no android.package in apps/mobile/app.config.ts');
+  return id;
+}
+
+export function releaseApk(root, sha) {
+  return join(root, '.qa/release', `soirely-${sha.slice(0, 12)}.apk`);
 }
 
 // A release build refuses http, and a QA stack serves nothing else.
 export function allowCleartext(manifest) {
-  if (manifest.includes('android:usesCleartextTraffic=')) return manifest;
+  const decided = /android:usesCleartextTraffic="([^"]*)"/.exec(manifest)?.[1];
+  if (decided === 'true') return manifest;
+  if (decided !== undefined) {
+    throw new Error(`the manifest sets usesCleartextTraffic="${decided}": the QA stack is http`);
+  }
   if (!manifest.includes('<application ')) throw new Error('no <application> in the manifest');
   return manifest.replace('<application ', '<application android:usesCleartextTraffic="true" ');
 }
@@ -411,7 +424,7 @@ function createEmulators() {
     console.log(`  no Android SDK command-line tools in ${tools.sdk}`);
     return;
   }
-  const image = `system-images;android-35;google_apis_playstore;${process.arch === 'arm64' ? 'arm64-v8a' : 'x86_64'}`;
+  const image = `system-images;android-35;google_apis_playstore;${emulatorAbi()}`;
   const existing = (capture(tools.emulator, ['-list-avds'], { env: tools.env }) ?? '').split('\n');
   for (const avd of Object.values(CONFIG.emulators)) {
     if (existing.includes(avd.name)) {
@@ -805,6 +818,8 @@ async function android(args) {
 
   step(`The ${open}`);
   await bootEmulator(tools, CONFIG.emulators[open].name);
+  removeRelease(tools, root);
+  airplaneMode(tools, false);
   const fresh = await ensureAndroidExpoGo(tools, root);
   for (const port of reversedPorts(CONFIG.ports)) {
     adbOut(tools, ['reverse', `tcp:${port}`, `tcp:${port}`]);
@@ -841,9 +856,8 @@ function link(args) {
 
 // A release build of the worktree's commit, with the bundle and fonts inside, so the app runs
 // without Metro and with the network off from first launch. Expo Go cannot do either.
-function buildRelease(tools, root, sha) {
+function buildRelease(tools, root, apk) {
   const mobile = join(root, 'apps/mobile');
-  const apk = join(root, '.qa/release', `soirely-${sha.slice(0, 12)}.apk`);
   const env = { ...tools.env, ...CONFIG.app, EXPO_PUBLIC_ENVIRONMENT: 'qa', CI: '1' };
 
   // prebuild rewrites the start scripts in package.json to expo run:*, a change nobody asked for.
@@ -864,14 +878,25 @@ function buildRelease(tools, root, sha) {
     'assembleRelease',
     '--no-daemon',
     '--max-workers=4',
-    `-PreactNativeArchitectures=${releaseAbi()}`,
+    `-PreactNativeArchitectures=${emulatorAbi()}`,
     '-Dorg.gradle.jvmargs=-Xmx4g',
   ]);
   run(command, args, { cwd: join(mobile, 'android'), env: { ...env, NODE_ENV: 'production' } });
 
   mkdirSync(dirname(apk), { recursive: true });
   copyFileSync(join(mobile, 'android/app/build/outputs/apk/release/app-release.apk'), apk);
-  return apk;
+}
+
+function airplaneMode(tools, on) {
+  adbOut(tools, ['shell', 'cmd', 'connectivity', 'airplane-mode', on ? 'enable' : 'disable']);
+}
+
+// The release app owns soirely://, so while it is installed a provider's redirect never
+// reaches Expo Go.
+function removeRelease(tools, root) {
+  const id = androidPackage(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
+  adbOut(tools, ['uninstall', id]);
+  return id;
 }
 
 async function release(args) {
@@ -891,27 +916,35 @@ async function release(args) {
       cwd: root,
     }).status === 0;
   const { open } = emulatorFor(args);
+  const offline = args.includes('--offline');
 
   step(`A release build of ${sha.slice(0, 12)} (${subject})`);
   if (!onMain) console.log('  not on origin/main: this is a branch build');
-  let apk = join(root, '.qa/release', `soirely-${sha.slice(0, 12)}.apk`);
+  const apk = releaseApk(root, sha);
   if (existsSync(apk) && !args.includes('--rebuild')) {
     console.log(`  already built: ${apk}`);
   } else {
-    apk = buildRelease(tools, root, sha);
+    buildRelease(tools, root, apk);
   }
 
   step(`The ${open}`);
   await bootEmulator(tools, CONFIG.emulators[open].name);
-  for (const port of reversedPorts(CONFIG.ports)) {
-    adbOut(tools, ['reverse', `tcp:${port}`, `tcp:${port}`]);
+  // A fresh install every time, so the launch below is the app's first, with no cache.
+  const id = removeRelease(tools, root);
+  run(tools.adb, ['-s', emulatorSerial(), 'install', apk], { env: tools.env });
+  airplaneMode(tools, offline);
+  if (offline) {
+    adbOut(tools, ['reverse', '--remove-all']);
+  } else {
+    for (const port of reversedPorts(CONFIG.ports)) {
+      adbOut(tools, ['reverse', `tcp:${port}`, `tcp:${port}`]);
+    }
   }
-  run(tools.adb, ['-s', emulatorSerial(), 'install', '-r', apk], { env: tools.env });
-  adbOut(tools, ['shell', 'am', 'start', '-n', `${RELEASE_PACKAGE}/.MainActivity`]);
+  adbOut(tools, ['shell', 'am', 'start', '-n', `${id}/.MainActivity`]);
   console.log(
-    `\nSoirely ${sha.slice(0, 12)}, a release build, open on the ${open} (${emulatorSerial()}).` +
-      `\nOffline: adb -s ${emulatorSerial()} shell cmd connectivity airplane-mode enable,` +
-      ` and reverse --remove-all to cut the stack too.`,
+    `\nSoirely ${sha.slice(0, 12)}, a release build, on its first launch on the ${open}` +
+      ` (${emulatorSerial()}), ${offline ? 'offline: airplane mode on, no stack' : 'online'}.` +
+      `\nThe next \`android\` removes it and turns airplane mode off.`,
   );
 }
 

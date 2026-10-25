@@ -7,10 +7,12 @@ import { describe, expect, it } from 'vitest';
 import {
   allowCleartext,
   androidFlows,
+  androidPackage,
   androidSdk,
   branchForStory,
   clearApiCache,
   COMPOSE_PROJECT,
+  emulatorAbi,
   emulatorFor,
   expoGoApk,
   expoSdkMajor,
@@ -20,7 +22,7 @@ import {
   QA_OVERRIDES,
   QA_PORTS,
   qaConfig,
-  releaseAbi,
+  releaseApk,
   renderQaEnv,
   reversedPorts,
   simulatorFor,
@@ -214,8 +216,20 @@ describe('the Android SDK', () => {
 
 describe('a release build', () => {
   it("is for the emulator's architecture", () => {
-    expect(releaseAbi('x64')).toBe('x86_64');
-    expect(releaseAbi('arm64')).toBe('arm64-v8a');
+    expect(emulatorAbi('x64')).toBe('x86_64');
+    expect(emulatorAbi('arm64')).toBe('arm64-v8a');
+  });
+
+  it('is kept under the commit it was built from', () => {
+    expect(releaseApk('/qa', 'c8646738ce1413ea1e718dce85ff4973f0f9b22c')).toBe(
+      '/qa/.qa/release/soirely-c8646738ce14.apk',
+    );
+  });
+
+  it("is the app config's Android package", () => {
+    const config = readFileSync(join(import.meta.dirname, '../apps/mobile/app.config.ts'), 'utf8');
+    expect(androidPackage(config)).toBe('com.soirely.app');
+    expect(() => androidPackage('ios: {}')).toThrow(/no android.package/);
   });
 
   it('may reach a stack over http', () => {
@@ -225,9 +239,14 @@ describe('a release build', () => {
     );
   });
 
-  it('leaves a manifest that already decides alone', () => {
-    const manifest = '<application android:usesCleartextTraffic="false" android:name=".X">';
+  it('leaves a manifest that already allows http alone', () => {
+    const manifest = '<application android:usesCleartextTraffic="true" android:name=".X">';
     expect(allowCleartext(manifest)).toBe(manifest);
+  });
+
+  it('is an error when the manifest refuses http', () => {
+    const manifest = '<application android:usesCleartextTraffic="false" android:name=".X">';
+    expect(() => allowCleartext(manifest)).toThrow(/usesCleartextTraffic="false"/);
   });
 
   it('is an error when prebuild wrote no application', () => {
