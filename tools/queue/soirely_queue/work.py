@@ -199,6 +199,22 @@ def queue_items(stories, moves=None, now=None, epics=None):
     return list(merged.values())
 
 
+def held_items(stories):
+    """A story left In QA under a tester's claim is that tester's before anything new in Ready
+    For QA, to test or to give back with `unclaim`, so no tester strands one and moves on."""
+    items = []
+    for story in stories:
+        if story["done"] or story["state"] != "In QA":
+            continue
+        tester = R.last_tester(story)
+        if tester:
+            items.append(_item(f"{tester}:held:sc-{story['id']}:{story['moved_at']}", tester,
+                               [tester], "held",
+                               f"sc-{story['id']} is In QA under your claim with no report",
+                               QUEUE - 1, story))
+    return items
+
+
 # A push after the pass leaves the story in Passed Code Review, but the pass no longer
 # covers its head, so the lead looks again.
 REVIEWED = ("In Review", "Passed Code Review")
@@ -461,7 +477,8 @@ def derive(stories, prs, main_run=None, last_runs=None, busy_roles=(), now=0,
     return finishing_first(
         inbox_items(stories, handled) + developer_items(stories, prs)
         + unblocked_items(stories, prs, translated, raised)
-        + review_items(stories, prs) + queue_items(stories, moves, now, epics)
+        + review_items(stories, prs) + held_items(stories)
+        + queue_items(stories, moves, now, epics)
         + main_items(main_run)
         + heartbeat_items(stories, last_runs or {}, set(busy_roles), now, epics)
         + machine_items(checks), stories)

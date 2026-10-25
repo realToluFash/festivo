@@ -221,6 +221,14 @@ def render(p, db, row, cache):
         return main_red(p, db, row)
     if kind in ("pick", "sweep"):
         return digests.render(p, db, row)
+    if kind == "held":
+        story_for(p, db, story, p.role)
+        p.add("", "You claimed this and no report followed. Test it now if your stack answers; "
+                  "if it cannot be tested, give it back rather than leave it In QA.")
+        return next_lines(p, f"{SQ} {p.role} report sc-{story['id']} passed|failed --text \"…\"",
+                          f"{SQ} {p.role} unclaim sc-{story['id']} "
+                          "--text \"<why it was not tested>\"",
+                          f"{SQ} {p.role} done {row['id']} --note \"<one line>\"")
     if kind == "story":
         story_for(p, db, story, p.role)
         if p.role in R.DEVS + R.TESTERS and story["state"] in CLAIMABLE:
