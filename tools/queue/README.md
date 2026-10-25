@@ -29,17 +29,17 @@ Every read goes through a ledger of what the role has already been shown.
   the latest QA report on a Failed QA story, the review on a Failed Code Review one, and every comment still open for the role.
 - `--again` on any read prints it in full regardless.
 
-| Read                                                        | Prints                                                                                                                                          |
-| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `next`                                                      | the payload for the work item's kind (below)                                                                                                    |
-| `queue`                                                     | the role's pick or sweep list, one line per story                                                                                               |
-| `story sc-N [--section S \| --headings]`                    | the story as the role works on it, or one section, or the section names                                                                         |
-| `comments sc-N [--open \| --all] [--from R] [--since ID]`   | the threads involving the role; the rest as one line each                                                                                       |
-| `pr N [--section S]`                                        | status, lead verdict, open threads; or one section of the body                                                                                  |
-| `diff N [paths… \| --all]`                                  | the file list with +/-; or those files' diffs, cached by head sha                                                                               |
-| `checks N [--names]`                                        | failing checks with the last 40 lines of each failed log                                                                                        |
-| `runs`, `find "<query>"`, `epics`, `epic N`, `history sc-N` | one line per run, story, epic or state change                                                                                                   |
-| `states sc-N sc-M … [--body DIR]`                           | one line per id, read fresh: state, epic, name; a missing id says so and the rest still print; `--body` saves each description as `DIR/sc-N.md` |
+| Read                                                        | Prints                                                                                                                                                                        |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `next`                                                      | the payload for the work item's kind (below)                                                                                                                                  |
+| `queue`                                                     | the role's pick or sweep list, one line per story                                                                                                                             |
+| `story sc-N [--section S \| --headings]`                    | the story as the role works on it, or one section, or the section names                                                                                                       |
+| `comments sc-N [--open \| --all] [--from R] [--since ID]`   | the threads involving the role; the rest as one line each                                                                                                                     |
+| `pr N [--section S]`                                        | status, lead verdict, open threads; or one section of the body                                                                                                                |
+| `diff N [paths… \| --all]`                                  | the file list with +/-; or those files' diffs, cached by head sha                                                                                                             |
+| `checks N [--names] [--wait [--head SHA] [--timeout M]]`    | failing checks with the last 40 lines of each failed log; `--wait` returns once none is pending, exits 1 unless every check passed, when none appear, or after M minutes (20) |
+| `runs`, `find "<query>"`, `epics`, `epic N`, `history sc-N` | one line per run, story, epic or state change                                                                                                                                 |
+| `states sc-N sc-M … [--body DIR]`                           | one line per id, read fresh: state, epic, name; a missing id says so and the rest still print; `--body` saves each description as `DIR/sc-N.md`                               |
 
 ### Payloads by kind
 

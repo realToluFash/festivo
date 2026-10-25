@@ -20,6 +20,8 @@ from .ledger import Printer
 from .shortcut import Shortcut
 
 HERE = pathlib.Path(__file__).resolve().parent
+CHECKS_POLL = 30
+NO_CHECKS_POLLS = 4
 OWNER_ONLY = ("run", "start", "stop", "pause", "resume", "agents", "web")
 ADMIN = ("status", "sync", "install", "run", "worker", "worker-ended", "worker-supervise",
          "start", "stop", "pause",
@@ -266,17 +268,61 @@ def cmd_diff(s, a):
 
 
 def cmd_checks(s, a):
-    found = github.pr_checks(a.pr)
+    head, found = read_checks(a.pr, a.head)
+    empty = 0
+    if a.wait:
+        deadline = time.monotonic() + a.timeout * 60
+        while head is None or not found or any(c.get("bucket") == "pending" for c in found):
+            # Straight after a push the head has no checks yet; a conflicting head never will.
+            empty = empty + 1 if head is not None and not found else 0
+            if empty > NO_CHECKS_POLLS:
+                break
+            if time.monotonic() >= deadline:
+                waiting = (f"for the head to reach {a.head[:7]}" if head is None else
+                           "with no checks on the head" if not found else
+                           "with checks still pending")
+                print(f"PR #{a.pr}: timed out after {a.timeout} minutes {waiting}")
+                break
+            time.sleep(CHECKS_POLL)
+            head, found = read_checks(a.pr, a.head)
+    if head is None:
+        sys.exit(f"PR #{a.pr}: the head is not {a.head[:7]} yet")
+    if not found:
+        sha = head["headRefOid"][:7]
+        if head["mergeable"] == "CONFLICTING":
+            print(f"PR #{a.pr}: no checks on head {sha}, which conflicts with main; "
+                  "a conflicting head runs none, so merge origin/main and push")
+        elif a.wait:
+            print(f"PR #{a.pr}: no checks appeared on head {sha} after "
+                  f"{NO_CHECKS_POLLS * CHECKS_POLL // 60} minutes")
+        else:
+            print(f"PR #{a.pr}: no checks on head {sha} yet")
+        sys.exit(1 if a.wait else 0)
     failed = [c for c in found if c.get("bucket") == "fail"]
+    cancelled = [c for c in found if c.get("bucket") == "cancel"]
     pending = [c for c in found if c.get("bucket") == "pending"]
-    print(f"PR #{a.pr}: {len(found)} checks, {len(failed)} failed, {len(pending)} pending")
+    summary = f"PR #{a.pr} at {head['headRefOid'][:7]}: {len(found)} checks, {len(failed)} failed"
+    print(summary + "".join(f", {len(group)} {word}" for group, word in
+                            ((cancelled, "cancelled"), (pending, "pending")) if group))
     for check in failed:
         print(f"\n{check['workflow']} / {check['name']} {check['link']}")
         if not a.names:
             log = github.failed_log(check["link"], tail=a.tail)
             print("\n".join("  " + line for line in log.splitlines()))
+    for check in cancelled:
+        print(f"  cancelled: {check['workflow']} / {check['name']} {check['link']}")
     for check in pending:
         print(f"  pending: {check['workflow']} / {check['name']}")
+    if a.wait and any(c.get("bucket") not in ("pass", "skipping") for c in found):
+        sys.exit(1)
+
+
+def read_checks(number, want=None):
+    """The live head and its checks, or no head while the pull request has not reached `want`."""
+    head = github.live(number)
+    if want and not head["headRefOid"].startswith(want):
+        return None, []
+    return head, github.pr_checks(number)
 
 
 def cmd_runs(s, a):
@@ -398,9 +444,14 @@ READS = [
     ("diff", cmd_diff, "a pull request's files, or the diff of the paths you name",
      lambda p: (p.add_argument("pr", type=int), p.add_argument("paths", nargs="*"),
                 p.add_argument("--all", action="store_true"))),
-    ("checks", cmd_checks, "a pull request's checks, with the failed logs' last lines",
+    ("checks", cmd_checks, "a pull request's checks and failed logs; --wait for them",
      lambda p: (p.add_argument("pr", type=int), p.add_argument("--names", action="store_true"),
-                p.add_argument("--tail", type=int, default=40))),
+                p.add_argument("--tail", type=int, default=40),
+                p.add_argument("--wait", action="store_true",
+                               help="return once no check is pending; exit 1 unless all passed"),
+                p.add_argument("--head", help="with --wait, first wait for the head to be this sha"),
+                p.add_argument("--timeout", type=int, default=20,
+                               help="minutes --wait gives up after, exiting 1"))),
     ("runs", cmd_runs, "the last runs on main", None),
     ("find", cmd_find, "Shortcut search, one line per story",
      lambda p: (p.add_argument("query"), p.add_argument("--limit", type=int, default=20))),
