@@ -16,6 +16,7 @@ import {
   whatTheySee,
   withLevel,
   withExtra,
+  withheldRoles,
   withoutRole,
 } from './roles.ts';
 
@@ -296,5 +297,13 @@ describe('the roles a caller may grant', () => {
       [administrator],
     );
     expect(grantableRoles(roles, { role: owner, permissions: owner.permissions })).toEqual(roles);
+  });
+
+  it('withholds what they may not grant, and nothing from an owner', () => {
+    expect(withheldRoles(roles, { role: administrator, permissions: ['members.manage'] })).toEqual([
+      owner,
+      billing,
+    ]);
+    expect(withheldRoles(roles, { role: owner, permissions: owner.permissions })).toEqual([]);
   });
 });
