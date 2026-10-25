@@ -1006,7 +1006,7 @@
     "onlyOwner": "{{name}} é a única pessoa com a função Proprietário. Uma organização tem sempre uma, por isso essa função não pode mudar e esta pessoa não pode ser removida até que outra tenha também a função Proprietário.",
     "askOwner": "Só quem tem a função Proprietário a pode atribuir a outra pessoa. Peça a {{name}}.",
     "ownerOnly": "Só quem tem a função Proprietário pode alterar a função de outra pessoa com essa função ou removê-la da organização.",
-    "beyondGrant": "A função desta pessoa tem uma permissão que a sua não tem, por isso não pode alterar a função desta pessoa nem removê-la da organização.",
+    "beyondGrant": "A função desta pessoa inclui uma permissão que a sua não tem, por isso não pode alterar-lhe a função nem o acesso.",
     "suspendTitle": "Suspender {{name}}",
     "suspendBody": "Esta pessoa perde o acesso a {{organisation}} assim que voltar a usar a Soirely, até alguém o repor. A função, os eventos e o histórico desta pessoa são mantidos.",
     "suspendButton": "Suspender",

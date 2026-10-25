@@ -392,3 +392,4 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   or many, because the button and the refusal get no {{count}}: «Reasignar y eliminar {{role}}»,
   and «Elija el rol de sustitución», the same noun as the legend «Rol de sustitución». Not
   «Pasarlas…» or «estas personas» after «1 persona tiene este rol» (sc-13017).
+- **26 Oct 2026. The beyond-grant line names access** (`membersScreen.beyondGrant`, sc-13089). «… así que no puede cambiarle el rol ni el acceso»: the «le» points at the member, so neither noun takes «su», which would read as the reader's.
