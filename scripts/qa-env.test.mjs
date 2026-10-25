@@ -13,11 +13,15 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  allowCleartext,
   androidFlows,
+  androidPackage,
   androidSdk,
   branchForStory,
   clearApiCache,
+  defaultNetwork,
   COMPOSE_PROJECT,
+  emulatorAbi,
   emulatorFor,
   expoGoApk,
   expoSdkMajor,
@@ -28,6 +32,8 @@ import {
   QA_OVERRIDES,
   QA_PORTS,
   qaConfig,
+  releaseApk,
+  staleApks,
   renderQaEnv,
   reversedPorts,
   simulatorFor,
@@ -216,6 +222,67 @@ describe('the Android SDK', () => {
   it('is where Android Studio puts it, without either', () => {
     expect(androidSdk({}, 'linux', '/h')).toBe('/h/Android/Sdk');
     expect(androidSdk({}, 'darwin', '/h')).toBe('/h/Library/Android/sdk');
+  });
+});
+
+describe('a release build', () => {
+  it("is for the emulator's architecture", () => {
+    expect(emulatorAbi('x64')).toBe('x86_64');
+    expect(emulatorAbi('arm64')).toBe('arm64-v8a');
+  });
+
+  it('is kept under the commit it was built from', () => {
+    expect(releaseApk('/qa', 'c8646738ce1413ea1e718dce85ff4973f0f9b22c')).toBe(
+      '/qa/.qa/release/soirely-c8646738ce14.apk',
+    );
+  });
+
+  it('leaves only the APK of the commit just built', () => {
+    const apk = releaseApk('/qa', 'c8646738ce1413ea1e718dce85ff4973f0f9b22c');
+    expect(
+      staleApks(
+        [
+          'soirely-c8646738ce14.apk',
+          'soirely-0123456789ab.apk',
+          'installed',
+          'launch-0123456789ab.mp4',
+        ],
+        apk,
+      ),
+    ).toEqual(['soirely-0123456789ab.apk']);
+  });
+
+  it('launches offline only once the emulator has no default network', () => {
+    expect(defaultNetwork('Active default network: none\n')).toBeNull();
+    expect(defaultNetwork('NetworkProviders:\nActive default network: 100\n')).toBe('100');
+    expect(() => defaultNetwork("Can't find service: connectivity")).toThrow(/no default network/);
+  });
+
+  it("is the app config's Android package", () => {
+    const config = readFileSync(join(import.meta.dirname, '../apps/mobile/app.config.ts'), 'utf8');
+    expect(androidPackage(config)).toBe('com.soirely.app');
+    expect(() => androidPackage('ios: {}')).toThrow(/no android.package/);
+  });
+
+  it('may reach a stack over http', () => {
+    const manifest = '<manifest>\n  <application android:name=".MainApplication">\n</manifest>';
+    expect(allowCleartext(manifest)).toContain(
+      '<application android:usesCleartextTraffic="true" android:name=".MainApplication">',
+    );
+  });
+
+  it('leaves a manifest that already allows http alone', () => {
+    const manifest = '<application android:usesCleartextTraffic="true" android:name=".X">';
+    expect(allowCleartext(manifest)).toBe(manifest);
+  });
+
+  it('is an error when the manifest refuses http', () => {
+    const manifest = '<application android:usesCleartextTraffic="false" android:name=".X">';
+    expect(() => allowCleartext(manifest)).toThrow(/usesCleartextTraffic="false"/);
+  });
+
+  it('is an error when prebuild wrote no application', () => {
+    expect(() => allowCleartext('<manifest/>')).toThrow(/no <application>/);
   });
 });
 
