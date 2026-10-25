@@ -524,15 +524,16 @@ function Switcher({
       supportedOrientations={TURNS_WITH_THE_APP}
       onRequestClose={onClose}
     >
-      <View style={styles.scrim}>
-        {/* A sibling, not a parent: iOS reads a labelled button as one item and nothing inside it (sc-10712). */}
+      <View style={styles.scrim} accessibilityViewIsModal onAccessibilityEscape={onClose}>
+        {/* A sibling, not a parent: iOS reads a labelled button as one item and nothing inside it (sc-10712).
+            VoiceOver closes the sheet from this Close or the two-finger escape on the scrim. */}
         <Pressable
           style={StyleSheet.absoluteFill}
           onPress={onClose}
           accessibilityRole="button"
           accessibilityLabel={t('switcher.close')}
         />
-        <View style={styles.sheetFrame} accessibilityViewIsModal>
+        <View style={styles.sheetFrame}>
           <ScrollView contentContainerStyle={styles.sheet}>
             <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
               {t('switcher.heading')}
