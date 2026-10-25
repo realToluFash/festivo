@@ -169,9 +169,13 @@ export interface Turned {
   height: number;
 }
 
-/** Whether a list's search sits beside its title: an iPhone on its side leaves little more than a row above the keys (sc-10118). */
-export function searchBesideTitle({ os, phone, width, height }: Turned): boolean {
+export function iPhoneOnItsSide({ os, phone, width, height }: Turned): boolean {
   return os === 'ios' && phone && width > height;
+}
+
+/** Whether a list's search sits beside its title: an iPhone on its side leaves little more than a row above the keys (sc-10118). */
+export function searchBesideTitle(turned: Turned): boolean {
+  return iPhoneOnItsSide(turned);
 }
 
 /** On an Android phone this tall or shorter, in dp, the keys leave no room for the help line and back row (sc-3132). */
@@ -201,12 +205,11 @@ export interface SidewaysTyping {
 }
 
 /** Whether an iPhone on its side with the keys up scrolls a sheet's title with its body, leaving the field room (sc-9442). */
-export function titleScrollsWhileTyping({
-  os,
-  phone,
-  width,
-  height,
-  keysUp,
-}: SidewaysTyping): boolean {
-  return os === 'ios' && phone && keysUp && width > height;
+export function titleScrollsWhileTyping({ keysUp, ...turned }: SidewaysTyping): boolean {
+  return keysUp && iPhoneOnItsSide(turned);
+}
+
+/** Whether a sheet keeps its field in the body's sight: while typing, and on an iPhone on its side once the keys go down too, resting the body at its top (sc-9442). */
+export function fieldKeptInSight({ keysUp, ...turned }: SidewaysTyping): boolean {
+  return keysUp || iPhoneOnItsSide(turned);
 }

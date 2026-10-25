@@ -12,6 +12,7 @@ import {
 import {
   barFits,
   coveredBy,
+  fieldKeptInSight,
   groupInWindow,
   keyboardInWindow,
   keyboardLift,
@@ -292,6 +293,55 @@ describe('an iPhone on its side scrolls the sheet title with its body while typi
 
   it('never on an Android phone', () => {
     expect(titleScrollsWhileTyping({ ...sideways, os: 'android' })).toBe(false);
+  });
+});
+
+describe('a sheet keeps its field in sight while typing, and on an iPhone on its side with the keys down (sc-9442)', () => {
+  const sideways = { os: 'ios', phone: true, width: 667, height: 375, keysUp: true };
+
+  it('with the keys up', () => {
+    expect(fieldKeptInSight({ ...sideways, width: 375, height: 667 })).toBe(true);
+    expect(fieldKeptInSight({ ...sideways, os: 'android', width: 360, height: 640 })).toBe(true);
+  });
+
+  it('on an iPhone on its side with the keys down', () => {
+    expect(fieldKeptInSight({ ...sideways, keysUp: false })).toBe(true);
+  });
+
+  it('not with the keys down upright', () => {
+    expect(fieldKeptInSight({ ...sideways, width: 375, height: 667, keysUp: false })).toBe(false);
+  });
+
+  it('not with the keys down on an iPad', () => {
+    expect(
+      fieldKeptInSight({ ...sideways, phone: false, width: 1180, height: 820, keysUp: false }),
+    ).toBe(false);
+  });
+
+  it('not with the keys down on an Android phone on its side', () => {
+    expect(fieldKeptInSight({ ...sideways, os: 'android', keysUp: false })).toBe(false);
+  });
+});
+
+describe('an iPhone on its side rests the sheet body at its top once the keys go down (sc-9442)', () => {
+  // An SE on its side, keys down: a 170 body under the fixed title; the 40 intro, the 16 gap, then the 76 name field, or a 40 notice and a 16 gap before it.
+  const body = { scrollTop: 0, keyboardTop: 170, margin: 16 };
+  const field = { contentY: 56, height: 76 };
+
+  it('with the intro whole above the field while the field fits', () => {
+    expect(offsetToFocus({ ...body, ...field }, field)).toBe(0);
+  });
+
+  it('with the notice and the field whole when a notice above it leaves no room for the intro', () => {
+    const group = { ...body, contentY: 56, height: 132 };
+    const noticed = { contentY: 112, height: 76 };
+    const offset = offsetToFocus(group, noticed);
+
+    expect(offset).toBe(34);
+    expect(group.contentY - offset).toBeGreaterThanOrEqual(0);
+    expect(noticed.contentY + noticed.height - offset + body.margin).toBeLessThanOrEqual(
+      body.keyboardTop,
+    );
   });
 });
 
