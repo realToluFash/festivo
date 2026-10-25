@@ -11,6 +11,7 @@ use App\Http\Listener\CorrelationIdListener;
 use App\Http\Listener\JsonExceptionListener;
 use App\Http\ProblemRenderer;
 use DateTimeImmutable;
+use DateTimeZone;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -120,12 +121,12 @@ final class JsonExceptionListenerTest extends TestCase
         $translator->method('trans')->willReturnCallback(
             static fn (string $id, array $parameters = []): string => $id . \json_encode($parameters, \JSON_THROW_ON_ERROR),
         );
-        $event = $this->event(ApiException::tooManyAttempts('limits.tries', new DateTimeImmutable('2026-10-25 14:34:10')));
+        $event = $this->event(ApiException::tooManyAttempts('limits.tries', new DateTimeImmutable('2026-10-25 14:34:10 UTC')));
         new JsonExceptionListener(new NullLogger(), new ProblemRenderer($translator))($event);
 
         $body = \json_decode((string) $event->getResponse()?->getContent(), true, 512, \JSON_THROW_ON_ERROR);
 
-        self::assertSame('limits.tries{"{time}":"14:35","{hour}":14}', $body['detail']);
+        self::assertSame('limits.tries{"{time}":"14:35 UTC","{hour}":14}', $body['detail']);
     }
 
     /** es and pt agree the article with the hour: "a la 01:05", "a las 13:05" (sc-11332). */
@@ -138,8 +139,17 @@ final class JsonExceptionListenerTest extends TestCase
 
         $worded = fn (string $windowEnd): mixed => $this->handleWith(ApiException::tooManyAttempts('limits.tries', new DateTimeImmutable($windowEnd)), $translator)['detail'];
 
-        self::assertSame('a la 01:05', $worded('2026-10-25 01:04:10'));
-        self::assertSame('a las 13:05', $worded('2026-10-25 13:04:10'));
+        self::assertSame('a la 01:05 UTC', $worded('2026-10-25 01:04:10 UTC'));
+        self::assertSame('a las 13:05 UTC', $worded('2026-10-25 13:04:10 UTC'));
+    }
+
+    /** sc-11329: a limit hit signed out has no account to take a zone from, so every reader is given UTC. */
+    #[Test]
+    public function aTryAgainMinuteIsUtcWhateverZoneTheWindowEndsIn(): void
+    {
+        $refusal = ApiException::tooManyAttempts('limits.sign_in', new DateTimeImmutable('2026-10-25 08:38:10', new DateTimeZone('Africa/Lagos')));
+
+        self::assertSame(['{time}' => '07:39 UTC', '{hour}' => 7], $refusal->parameters);
     }
 
     #[Test]

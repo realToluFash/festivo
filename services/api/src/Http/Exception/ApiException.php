@@ -6,6 +6,7 @@ namespace App\Http\Exception;
 
 use App\Enum\ErrorCode;
 use DateTimeImmutable;
+use DateTimeZone;
 use Psl\Math;
 use RuntimeException;
 use Throwable;
@@ -51,10 +52,10 @@ class ApiException extends RuntimeException
         return new self(ErrorCode::ValidationFailed, $message, $violations);
     }
 
-    /** A 429 that names the minute the window ends, as every limit a person can hit does: its key has {time}, and {hour} for the article es and pt agree with it. */
+    /** A 429 that names the minute the window ends, in UTC and saying so: its key has {time}, and {hour} for the article es and pt agree with it. */
     public static function tooManyAttempts(string $refusal, DateTimeImmutable $windowEnd): self
     {
-        $minute = self::statedMinute($windowEnd);
+        $minute = self::statedMinute($windowEnd)->setTimezone(new DateTimeZone('UTC'));
 
         return new self(
             ErrorCode::TooManyAttempts,
@@ -63,7 +64,7 @@ class ApiException extends RuntimeException
             null,
             ['Retry-After' => (string) self::secondsUntil($windowEnd)],
             [],
-            ['{time}' => $minute->format('H:i'), '{hour}' => (int) $minute->format('G')],
+            ['{time}' => $minute->format('H:i') . ' UTC', '{hour}' => (int) $minute->format('G')],
         );
     }
 

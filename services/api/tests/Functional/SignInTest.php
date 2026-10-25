@@ -18,12 +18,14 @@ use App\Http\Exception\ApiException;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\RefusingRateLimiterFactory;
 use DateTimeImmutable;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Async;
 use Psl\DateTime\Duration;
 use Psl\Json;
 use Psl\Math;
 use Psl\Regex;
+use Psl\Str;
 use Psl\Type;
 use SensitiveParameter;
 use Symfony\Component\HttpFoundation\Request;
@@ -172,7 +174,7 @@ final class SignInTest extends ApiTestCase
             } catch (ApiException $e) {
                 self::assertSame(ErrorCode::TooManyAttempts, $e->errorCode);
                 self::assertArrayHasKey('Retry-After', $e->headers);
-                self::assertMatchesRegularExpression('/Try again at \d\d:\d\d\./', self::worded($e));
+                self::assertMatchesRegularExpression('/Try again at \d\d:\d\d UTC\./', self::worded($e));
             }
         }
     }
@@ -191,7 +193,7 @@ final class SignInTest extends ApiTestCase
         ] as $windowEnd => $stated) {
             $controller = new SignInController(
                 self::service(SignInResponse::class),
-                new SignInAttempts($authenticator, self::em(), $open, new RefusingRateLimiterFactory(new DateTimeImmutable('2026-10-15 ' . $windowEnd)), new GuardedAttempt(self::em())),
+                new SignInAttempts($authenticator, self::em(), $open, new RefusingRateLimiterFactory(new DateTimeImmutable('2026-10-15 ' . $windowEnd . ' UTC')), new GuardedAttempt(self::em())),
             );
 
             try {
@@ -199,12 +201,48 @@ final class SignInTest extends ApiTestCase
                 self::fail('the endpoint accepted a request with no budget left');
             } catch (ApiException $e) {
                 self::assertStringEndsWith(
-                    'Try again at ' . $stated . '.',
+                    'Try again at ' . $stated . ' UTC.',
                     self::worded($e),
                     'a window ending at ' . $windowEnd . ' must not name a minute the budget is still spent in',
                 );
             }
         }
+    }
+
+    /** sc-11329: the minute `Date` plus `Retry-After` reaches, in UTC and saying so, whatever zone the account or the device is in. */
+    #[Test]
+    #[DataProvider('theFourLanguages')]
+    public function theLockedSignInNamesItsMinuteInUtc(string $locale, string $sentence): void
+    {
+        $this->account('locked@example.com')->setTimezone('Africa/Lagos');
+        self::em()->flush();
+
+        $this->client->disableReboot();
+        self::getContainer()->set('limiter.sign_in_account', new RefusingRateLimiterFactory());
+        $this->client->request('POST', '/api/auth/login', server: [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_ACCEPT_LANGUAGE' => $locale,
+            'HTTP_X_TIMEZONE' => 'Asia/Tokyo',
+        ], content: Json\encode(['email' => 'locked@example.com', 'password' => self::PASSWORD]));
+
+        $response = $this->client->getResponse();
+        self::assertSame(429, $response->getStatusCode());
+        $date = $response->headers->getDate('Date');
+        self::assertNotNull($date);
+        $reached = $date->getTimestamp() + (int) $response->headers->get('Retry-After');
+        $minute = new DateTimeImmutable('@' . (string) (Math\div($reached + 59, 60) * 60))->format('H:i');
+        $body = Json\typed((string) $response->getContent(), Type\dict(Type\string(), Type\mixed()));
+        self::assertSame(Str\format($sentence, $minute), $body['detail'] ?? null);
+        self::assertArrayNotHasKey('retryAt', $body);
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function theFourLanguages(): iterable
+    {
+        yield 'en' => ['en', 'Too many sign-in attempts. Try again at %s UTC.'];
+        yield 'es' => ['es', 'Demasiados intentos de inicio de sesión. Inténtelo de nuevo a las %s UTC.'];
+        yield 'fr' => ['fr', 'Trop de tentatives de connexion. Réessayez à %s UTC.'];
+        yield 'pt' => ['pt', 'Demasiadas tentativas de início de sessão. Tente novamente às %s UTC.'];
     }
 
     #[Test]
