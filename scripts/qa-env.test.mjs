@@ -678,10 +678,10 @@ describe('a check in a batch', () => {
 });
 
 describe('a batch flow', () => {
-  it('launches Expo Go once, signs in once, and runs every check in every language', () => {
+  it('keeps the loaded bundle, signs in once, and runs every check in every language', () => {
     const flow = batchFlow({ checks: ['home', 'settings'], languages: ['en', 'es'], cold: false });
     expect(flow.match(/launchApp/g)).toHaveLength(1);
-    expect(flow).not.toContain('stopApp');
+    expect(flow).toContain('stopApp: false');
     expect(flow.match(/session\.yaml/g)).toHaveLength(1);
     expect(flow.match(/optional: true/g)).toHaveLength(4);
     expect(flow.indexOf('_checks/settings.en.yaml')).toBeLessThan(flow.indexOf('/language?to=es'));

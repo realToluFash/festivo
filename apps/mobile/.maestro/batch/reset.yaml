@@ -7,6 +7,8 @@ appId: host.exp.Exponent
     file: helper.js
     env:
       ASK: /reload
+# Home, whatever link Expo Go reopens the experience at; Settings shows Signed in as too.
+- openLink: ${METRO_URL}/--/
 # Gone first, or the screen from before the reload passes the wait below.
 - extendedWaitUntil:
     notVisible: '{{t:any:settings.signedInAs}}'

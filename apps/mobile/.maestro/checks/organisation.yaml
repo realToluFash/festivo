@@ -6,4 +6,6 @@ appId: host.exp.Exponent
     visible: '{{t:settings.organisation}}'
     timeout: 30000
 - takeScreenshot: organisation
-- assertNotVisible: 'Unsaved'
+- assertVisible:
+    id: organisation.name
+    text: ${ORG_NAME}

@@ -135,6 +135,7 @@ export const {
 
 const EXPO_GO = 'host.exp.Exponent';
 const EXPO_GO_ANDROID = 'host.exp.exponent';
+const ACCOUNT_ORGANISATION = 'QA Organisation';
 
 export function renderQaEnv(
   example,
@@ -1177,7 +1178,9 @@ export function batchCheck(flow, check, language, { reset }) {
 
 export function batchFlow({ checks, languages, cold }) {
   const lines = [`appId: ${EXPO_GO}`, '---', '- launchApp:', `    appId: ${EXPO_GO}`];
-  if (cold) lines.push('    stopApp: true', '- runFlow: batch/sign-out.yaml');
+  // A batch straight after another keeps the loaded bundle; a cold check relaunches.
+  lines.push(`    stopApp: ${cold ? 'true' : 'false'}`);
+  if (cold) lines.push('- runFlow: batch/sign-out.yaml');
   lines.push('- runFlow: batch/session.yaml');
   languages.forEach((language, index) => {
     if (index > 0) lines.push(helperStep(`/language?to=${language}`, 'batch/helper.js').trimEnd());
@@ -1198,12 +1201,15 @@ export function composeBatch(
   { checks, languages, cold, catalogues, email, onAndroid },
 ) {
   const finish = (flow) => (onAndroid ? forAndroid(flow) : flow);
-  rmSync(target, { recursive: true, force: true });
-  cpSync(source, target, { recursive: true });
+  if (onAndroid) androidFlows(source, target);
+  else {
+    rmSync(target, { recursive: true, force: true });
+    cpSync(source, target, { recursive: true });
+  }
   for (const entry of readdirSync(target, { recursive: true })) {
     if (!/\.ya?ml$/.test(entry) || entry.startsWith('checks')) continue;
     const path = join(target, entry);
-    writeFileSync(path, finish(localise(readFileSync(path, 'utf8'), catalogues, 'any', { email })));
+    writeFileSync(path, localise(readFileSync(path, 'utf8'), catalogues, 'any', { email }));
   }
   mkdirSync(join(target, '_checks'));
   for (const language of languages) {
@@ -1403,6 +1409,7 @@ async function batch(args) {
     HELPER_URL: `http://127.0.0.1:${CONFIG.helperPort}`,
     EMAIL: email,
     PASSWORD: password,
+    ORG_NAME: ACCOUNT_ORGANISATION,
     ...rest,
   };
   const test = (flow) =>
@@ -1479,7 +1486,7 @@ async function account(args) {
     token,
     body: {
       name,
-      organisationName: 'QA Organisation',
+      organisationName: ACCOUNT_ORGANISATION,
       countryCode: 'GB',
       timezone: 'Europe/London',
     },
