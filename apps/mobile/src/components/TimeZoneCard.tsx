@@ -171,7 +171,7 @@ function Choosing({
   const noneMatch = typed.trim() !== '' && !showingPicked && matches.length === 0;
   const nothing = t('timeZone.noneMatch', { typed: typed.trim() });
   // Its words change with every key, and saying them each time would talk over the typing (sc-10955).
-  const nothingLive = useReadOut(noneMatch && error == null ? nothing : null, { once: true });
+  useReadOut(noneMatch && error == null ? nothing : null, { once: true });
   const listMost =
     room == null
       ? LIST_HEIGHT
@@ -281,7 +281,6 @@ function Choosing({
               size={tokens.typeBodyPhone.size}
               style={styles.secondary}
               accessibilityRole="alert"
-              {...nothingLive}
             >
               {nothing}
             </Text>

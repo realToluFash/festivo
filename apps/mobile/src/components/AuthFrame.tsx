@@ -30,7 +30,7 @@ export function AuthHeading({
   const { kind } = useLayout();
   const size = kind === 'phone' ? tokens.typeTitlePhone.size : tokens.typeTitlePage.size;
   const showIntro = intro != null && (!introBeside || kind === 'tabletLandscape');
-  const introSaid = useReadOut(introLive && showIntro ? intro : null, { quietAtMount: true });
+  useReadOut(introLive && showIntro ? intro : null, { quietAtMount: true });
 
   return (
     <>
@@ -46,7 +46,7 @@ export function AuthHeading({
           {title}
         </Text>
         {showIntro && (
-          <Text size={tokens.typeBodyPhone.size} style={styles.secondary} {...introSaid}>
+          <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
             {intro}
           </Text>
         )}

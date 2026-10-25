@@ -23,6 +23,7 @@ const KIT_STYLES = [
   'portraitContent',
   'landscapeContent',
 ];
+const KIT_FIELDS = ['TextField', 'PasswordField', 'CodeField'];
 
 describe('every field carries the caret colour', () => {
   it('in every TextInput in the app', () => {
@@ -87,7 +88,7 @@ describe('screen reader focus moves on both platforms', () => {
 });
 
 describe('a message is read out on both platforms', () => {
-  // A live region means nothing to VoiceOver, so a message marked with one alone is silent on iOS (sc-10955).
+  // VoiceOver has no live region, and Fabric flattens away a layout-only View along with its live region, so a message marked with one can be silent (sc-10955).
   it('is marked only in ReadOut.tsx', () => {
     const offenders = sources(['src', 'app'])
       .filter(({ path }) => !path.endsWith('/ReadOut.tsx'))
@@ -158,6 +159,57 @@ describe('a screen reader reaches what is inside a button', () => {
   });
 });
 
+describe('a field is read by the name it shows', () => {
+  // sc-11238: a label chosen once for the eye and once for the reader drifted apart (WCAG 2.5.3, Label in Name).
+  // sc-11297: three fields in Ownership and leaving had no name, and TalkBack read each as "Edit box".
+  it('in every TextField, PasswordField and CodeField in the app, which has a name', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      KIT_FIELDS.flatMap((name) =>
+        selfClosing(name, text)
+          .filter((tag) => !named(tag.markup))
+          .map((tag) => `${path}:${tag.line}`),
+      ),
+    );
+
+    expect(offenders, 'Give the field accessibilityLabel, its shown label.').toEqual([]);
+  });
+
+  it('notices a field with no name', () => {
+    expect(named('<TextField\n  value={name}\n  testID="delete.name"\n')).toBe(false);
+    expect(named('<CodeField {...sharedInput} ')).toBe(false);
+    expect(named("<PasswordField\n  accessibilityLabel={t('leave.password')}\n")).toBe(true);
+  });
+
+  it('in every Field in the app', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      fieldsReadByAnotherName(text).map((line) => `${path}:${line}`),
+    );
+
+    expect(offenders, 'Give the control the accessibilityLabel its Field shows.').toEqual([]);
+  });
+
+  it('notices a field read by another name', () => {
+    expect(
+      fieldsReadByAnotherName(
+        "<Field label={t('a')}>\n  <CodeField accessibilityLabel={t('b')} />\n</Field>",
+      ),
+    ).toEqual([1]);
+    expect(
+      fieldsReadByAnotherName(
+        "<Field label={t(x ? 'a' : 'b')} error={e}>\n  <CodeField accessibilityLabel={t(x ? 'a' : 'b')} />\n</Field>",
+      ),
+    ).toEqual([]);
+    expect(
+      fieldsReadByAnotherName(
+        "<Field\n  label={t(\n    x ? 'a' : 'b',\n  )}\n>\n  <CodeField\n    accessibilityLabel={t(\n      x ? 'a' : 'b',\n    )}\n  />\n</Field>",
+      ),
+    ).toEqual([]);
+    expect(
+      fieldsReadByAnotherName("<Field label={t('a')}>\n  <TextField value={v} />\n</Field>"),
+    ).toEqual([]);
+  });
+});
+
 describe('changing the layout keeps the form', () => {
   // A frame that returns a different tree per layout remounts the form, and a rotation throws away what was typed.
   it('is one tree at every size in AuthFrame', () => {
@@ -211,14 +263,13 @@ describe('a field that takes a recovery code gets the full keyboard', () => {
   });
 });
 
-describe('a refused submit leaves the keyboard as it was', () => {
+describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter says the name cannot fix it', () => {
   // sc-9471: a field disabled while saving lost its focus, so a server refusal closed the keyboard and a client one did not.
   const HELD_FORMS = ['CreateOrganisation.tsx', 'PasswordCard.tsx', 'TimeZoneCard.tsx'];
-  const FIELDS = ['TextField', 'PasswordField', 'CodeField'];
 
   it.each(HELD_FORMS)('%s holds its fields rather than disabling them', (file) => {
     const form = sources(['src/components']).find(({ path }) => path.endsWith(`/${file}`));
-    const fields = FIELDS.flatMap((name) => selfClosing(name, form?.text ?? ''));
+    const fields = KIT_FIELDS.flatMap((name) => selfClosing(name, form?.text ?? ''));
 
     expect(fields.length, `fields in ${file}`).toBeGreaterThan(0);
     expect(
@@ -240,6 +291,15 @@ describe('a refused submit leaves the keyboard as it was', () => {
         .filter(({ line }) => !line.includes('onSubmitEditing='))
         .map(({ at }) => at),
       'A refusal focuses through focusChecked or focusRefused: focus() skips a field Android left focused with the keys hidden.',
+    ).toEqual([]);
+    expect(
+      (form?.text ?? '')
+        .split('\n')
+        .map((line, index) => ({ line, at: `${file}:${index + 1}` }))
+        .filter(({ line }) => /Keyboard\.dismiss\(|\.current\?\.blur\(\)/u.test(line))
+        .filter(({ line }) => !line.includes('dropsKeysAfter('))
+        .map(({ at }) => at),
+      'Drop the keys only through dropsKeysAfter: sc-9442 is the one exception to sc-9471.',
     ).toEqual([]);
   });
 });
@@ -309,6 +369,10 @@ function takesRecoveryCode(markup: string): boolean {
   return /\btakesRecoveryCode(?!=\{false\})\b/u.test(markup);
 }
 
+function named(markup: string): boolean {
+  return /\baccessibilityLabel=/u.test(markup);
+}
+
 function movesFocus(text: string): boolean {
   return /\b(setAccessibilityFocus|sendAccessibilityEvent)\(/u.test(text);
 }
@@ -344,17 +408,50 @@ function nestedPressables(text: string): number[] {
   return nested;
 }
 
-/** Whether the tag opening at `start` ends in `/>`, skipping any `>` inside a prop's braces. */
-function selfCloses(text: string, start: number): boolean {
+/** The line of every Field whose control carries an accessibilityLabel other than the Field's label. */
+function fieldsReadByAnotherName(text: string): number[] {
+  return [...text.matchAll(/(?<![\w.])<Field\b/gu)].flatMap((match) => {
+    const body = text.slice(match.index, text.indexOf('</Field>', match.index));
+    const label = propValue(body.slice(0, tagEnd(body, 0)), 'label');
+    const read = propValue(body.slice(tagEnd(body, 0)), 'accessibilityLabel');
+
+    return read == null || read.replace(/\s+/gu, '') === label?.replace(/\s+/gu, '')
+      ? []
+      : [text.slice(0, match.index).split('\n').length];
+  });
+}
+
+/** A prop's value as written, its braces balanced, or null when the markup does not set it. */
+function propValue(markup: string, name: string): string | null {
+  const start = markup.search(new RegExp(`\\b${name}=`, 'u'));
+  if (start === -1) return null;
+
+  const from = start + name.length + 1;
+  if (markup[from] !== '{') return markup.slice(from).split(/[\s>]/u)[0] ?? '';
+
+  let braces = 0;
+  for (let at = from; at < markup.length; at += 1) {
+    if (markup[at] === '{') braces += 1;
+    else if (markup[at] === '}' && --braces === 0) return markup.slice(from, at + 1);
+  }
+
+  return markup.slice(from);
+}
+
+/** Where the tag opening at `start` ends, skipping any `>` inside a prop's braces. */
+function tagEnd(text: string, start: number): number {
   let braces = 0;
 
   for (let at = start + 1; at < text.length; at += 1) {
-    const char = text[at];
-
-    if (char === '{') braces += 1;
-    else if (char === '}') braces -= 1;
-    else if (char === '>' && braces === 0) return text[at - 1] === '/';
+    if (text[at] === '{') braces += 1;
+    else if (text[at] === '}') braces -= 1;
+    else if (text[at] === '>' && braces === 0) return at + 1;
   }
 
-  return false;
+  return text.length;
+}
+
+/** Whether the tag opening at `start` ends in `/>`, skipping any `>` inside a prop's braces. */
+function selfCloses(text: string, start: number): boolean {
+  return text.slice(start, tagEnd(text, start)).endsWith('/>');
 }
