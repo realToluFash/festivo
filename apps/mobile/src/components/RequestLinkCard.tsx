@@ -9,6 +9,7 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
@@ -141,9 +142,9 @@ export function RequestLinkCard({
           </Text>
           {confirming ? (
             <View style={styles.confirm}>
-              <Text size={tokens.typeRowTitle.size} weight="bold" accessibilityRole="header">
+              <AnswerHeading answer={confirming} size={tokens.typeRowTitle.size} weight="bold">
                 {t('requestLink.replaceTitle')}
-              </Text>
+              </AnswerHeading>
               <Text size={tokens.typeBodyPhone.size}>{t('requestLink.replaceBody')}</Text>
               <View style={styles.buttons}>
                 <PrimaryButton

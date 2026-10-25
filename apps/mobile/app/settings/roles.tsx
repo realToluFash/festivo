@@ -11,8 +11,9 @@ import { PrimaryButton, SecondaryButton } from '../../src/components/Buttons.tsx
 import { type ListAndPageSpacing, ListAndPage } from '../../src/components/ListAndPage.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
 import { RoleList, RolePage, RemoveRole } from '../../src/components/Roles.tsx';
+import { useFocusOnAnswer } from '../../src/components/Screen.tsx';
 import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
-import { Text } from '../../src/components/Text.tsx';
+import { Text, type TextHandle } from '../../src/components/Text.tsx';
 import { cardFrame } from '../../src/components/cardFrame.ts';
 import { DESTINATION_HREF } from '../../src/kit/appNav.ts';
 import { useLayout } from '../../src/layout/useLayout.ts';
@@ -46,6 +47,8 @@ export default function RolesScreen() {
     pane: null,
   });
   const [saved, setSaved] = useState(false);
+  // The pane a tap opened, and where on it screen reader focus goes (sc-11032).
+  const [arrival, setArrival] = useState<{ pane: Pane; at: 'name' | 'saved' } | null>(null);
   const phone = kind === 'phone';
   const landscape = kind === 'tabletLandscape';
 
@@ -63,12 +66,18 @@ export default function RolesScreen() {
     };
   }, [organisationId, attempt]);
 
+  const opened = shown.in === organisationId ? shown.pane : null;
+  const arrived = arrival != null && arrival.pane === opened ? arrival : null;
+  const atName = arrived?.at === 'name' ? arrived : undefined;
+  const { read: pageTitleRef } = useFocusOnAnswer<TextHandle>(
+    phone && atName?.pane.kind !== 'removing' ? atName : undefined,
+  );
+
   if (organisation != null && !roleHolds(organisation, 'members.manage')) {
     return <Redirect href={DESTINATION_HREF.settings} />;
   }
 
   const catalogue = load.kind === 'loaded' ? load.catalogue : null;
-  const opened = shown.in === organisationId ? shown.pane : null;
   const pane: Pane | null =
     opened ??
     (landscape && catalogue != null ? { kind: 'role', id: firstEditable(catalogue) } : null);
@@ -76,9 +85,10 @@ export default function RolesScreen() {
     pane == null || pane.kind === 'new' || catalogue == null
       ? null
       : (catalogue.roles.find((role) => role.id === pane.id) ?? null);
-  const open = (next: Pane | null) => {
+  const open = (next: Pane | null, arrives = false) => {
     setShown({ in: organisationId, pane: next });
     setSaved(false);
+    setArrival(arrives && next != null ? { pane: next, at: 'name' } : null);
   };
   const paneResolves = pane != null && (pane.kind === 'new' || selected != null);
   const toList = () => open(null);
@@ -134,13 +144,13 @@ export default function RolesScreen() {
       {phone ? (
         <SecondaryButton
           label={t('rolesScreen.newRole')}
-          onPress={() => open({ kind: 'new' })}
+          onPress={() => open({ kind: 'new' }, true)}
           testID="roles.new"
         />
       ) : (
         <PrimaryButton
           label={t('rolesScreen.newRole')}
-          onPress={() => open({ kind: 'new' })}
+          onPress={() => open({ kind: 'new' }, true)}
           testID="roles.new"
         />
       )}
@@ -154,7 +164,7 @@ export default function RolesScreen() {
         organisation={organisation}
         roles={catalogue.roles}
         open={pane?.kind === 'new' ? null : (pane?.id ?? null)}
-        onOpen={(id) => open({ kind: 'role', id })}
+        onOpen={(id) => open({ kind: 'role', id }, true)}
       />
     ) : null;
 
@@ -168,6 +178,7 @@ export default function RolesScreen() {
       selected != null ? (
       <RemoveRole
         key={`removing-${selected.id}`}
+        answer={atName}
         organisation={organisation}
         role={selected}
         roles={catalogue.roles}
@@ -187,11 +198,15 @@ export default function RolesScreen() {
         catalogue={catalogue}
         role={selected}
         saved={saved}
-        onRemove={() => selected != null && open({ kind: 'removing', id: selected.id })}
+        answer={kind === 'tabletPortrait' ? atName : undefined}
+        savedAnswer={arrived?.at === 'saved' ? arrived : undefined}
+        onRemove={() => selected != null && open({ kind: 'removing', id: selected.id }, true)}
         onSaved={(role) => {
+          const next: Pane = { kind: 'role', id: role.id };
           setLoad({ kind: 'loaded', catalogue: replace(catalogue, role) });
-          setShown({ in: organisationId, pane: { kind: 'role', id: role.id } });
+          setShown({ in: organisationId, pane: next });
           setSaved(true);
+          setArrival(pane.kind === 'new' ? { pane: next, at: 'saved' } : null);
         }}
         onEdited={() => setSaved(false)}
         onUsed={() => selected != null && used(selected.id)}
@@ -206,6 +221,7 @@ export default function RolesScreen() {
     <AppFrame
       current="settings"
       title={phone ? (inDetail ? pageTitle : t('rolesScreen.title')) : t('settings.title')}
+      titleRef={phone && inDetail ? pageTitleRef : undefined}
       back={
         phone
           ? inDetail

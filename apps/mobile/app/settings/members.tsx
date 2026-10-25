@@ -17,6 +17,7 @@ import {
 } from '../../src/components/Members.tsx';
 import { type ListAndPageSpacing, ListAndPage } from '../../src/components/ListAndPage.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
+import { useFocusOnAnswer } from '../../src/components/Screen.tsx';
 import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
 import { SheetsAtRoot } from '../../src/components/Sheet.tsx';
 import { type TextHandle, Text } from '../../src/components/Text.tsx';
@@ -34,7 +35,7 @@ type Load =
 
 type Showing =
   | { kind: 'list'; flash: string | null; answered?: Answered }
-  | { kind: 'member'; id: string; behind?: boolean };
+  | { kind: 'member'; id: string; behind?: boolean; tapped?: object };
 
 const LIST: Showing = { kind: 'list', flash: null };
 
@@ -68,7 +69,11 @@ export default function MembersScreen() {
   useEffect(() => {
     landscapeNow.current = landscape;
   }, [landscape]);
-  const memberName = useRef<TextHandle>(null);
+  const { read: memberName } = useFocusOnAnswer<TextHandle>(
+    !landscape && shown.showing.kind === 'member' && shown.showing.behind !== true
+      ? shown.showing.tapped
+      : undefined,
+  );
   const listBehindNow = useRef(false);
   const [nameWhenBehind] = useState(
     () => () => (listBehindNow.current ? memberName.current : null),
@@ -183,7 +188,7 @@ export default function MembersScreen() {
         flash={showing.kind === 'list' ? showing.flash : null}
         answered={showing.kind === 'list' ? (showing.answered ?? null) : null}
         onAnswered={answered}
-        onOpen={(id) => setShowing({ kind: 'member', id })}
+        onOpen={(id) => setShowing({ kind: 'member', id, tapped: {} })}
       />
     ) : null;
 

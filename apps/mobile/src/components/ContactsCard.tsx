@@ -31,8 +31,8 @@ import { ConfirmItsYou } from './ConfirmItsYou.tsx';
 import { Field, FieldError, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PhoneEntry } from './PhoneEntry.tsx';
-import { useAboveKeyboard } from './Screen.tsx';
-import { Text } from './Text.tsx';
+import { useAboveKeyboard, useFocusOnAnswer } from './Screen.tsx';
+import { Text, type TextHandle } from './Text.tsx';
 
 type Kind = 'email' | 'phone';
 
@@ -290,6 +290,7 @@ function ContactsCard({
                 <View style={styles.asking}>
                   <ConfirmItsYou
                     idPrefix={`contacts.${row.id}.prove`}
+                    answer={asking}
                     intro={t('contacts.proveIntro')}
                     via={confirming.via}
                     twoFactorOn={confirming.twoFactorOn}
@@ -301,13 +302,13 @@ function ContactsCard({
 
               {(here === 'promote' || here === 'remove') && (
                 <View style={styles.asking}>
-                  <Text size={tokens.typeBodyPhone.size} weight="semibold">
+                  <AskingTitle answer={asking}>
                     {here === 'promote'
                       ? t('contacts.promoteTitle')
                       : email
                         ? t('contacts.removeTitle')
                         : t('contacts.removeTitlePhone')}
-                  </Text>
+                  </AskingTitle>
                   <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
                     {here === 'promote'
                       ? t('contacts.promoteBody', { old: primary?.shown ?? '' })
@@ -378,6 +379,16 @@ function ContactsCard({
           : t(email ? 'contacts.capFullEmails' : 'contacts.capFullPhones', { most: CONTACTS_MOST })}
       </Text>
     </View>
+  );
+}
+
+function AskingTitle({ answer, children }: { answer: Asking; children: string }) {
+  const { read } = useFocusOnAnswer<TextHandle>(answer);
+
+  return (
+    <Text ref={read} size={tokens.typeBodyPhone.size} weight="semibold">
+      {children}
+    </Text>
   );
 }
 

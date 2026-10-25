@@ -7,7 +7,8 @@ import { useTranslation } from 'react-i18next';
 import { useWaitingInvitations } from '../invitations.ts';
 import { SECTION_HREF } from '../kit/appNav.ts';
 import { useLayout } from '../layout/useLayout.ts';
-import { signOutHere, switchOrganisation, useSignedIn } from '../signedIn.ts';
+import { signOutHere, useSignedIn } from '../signedIn.ts';
+import { switchByTap } from '../tappedSwitch.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useStartOrganisation } from './AppFrame.tsx';
 import { Footnote, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
@@ -38,7 +39,7 @@ export function NoOrganisation() {
           <Text size={tokens.typeMeta.size} weight="semibold" muted accessibilityRole="header">
             {t('invitations.heading')}
           </Text>
-          <InvitationRows waiting={waiting} after={{ open: switchOrganisation }} />
+          <InvitationRows waiting={waiting} after={{ open: switchByTap }} />
         </View>
       ) : (
         <Text size={tokens.typeBodyPhone.size}>{t('noOrganisation.wayOn', { email })}</Text>

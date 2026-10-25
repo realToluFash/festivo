@@ -43,6 +43,7 @@ import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut, useReadOut } from './ReadOut.tsx';
 import { OwnerClaimBanner } from './OwnerClaimBanner.tsx';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { useBroughtIntoView, useScrolledToTop } from './Screen.tsx';
 import { type TextHandle, Text } from './Text.tsx';
 
@@ -716,9 +717,9 @@ function JoinRequestAnswer({
   if (answering === 'turningDown') {
     return (
       <View style={styles.actions}>
-        <Text size={tokens.typeRowTitle.size} weight="bold" accessibilityRole="header">
+        <AnswerHeading size={tokens.typeRowTitle.size} weight="bold" answer={answering}>
           {t('membersScreen.awaiting.turnDownTitle', { name })}
-        </Text>
+        </AnswerHeading>
         <Text size={tokens.typeBodyPhone.size}>
           {t('membersScreen.awaiting.turnDownBody', { name, organisation: organisation.name })}
         </Text>
@@ -1147,9 +1148,9 @@ function Remove({
 
   return (
     <View style={cardFrame(kind)}>
-      <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
+      <AnswerHeading size={tokens.typeTitleDialog.size} weight="bold" answer="confirming">
         {t('membersScreen.removeConfirmTitle', { name })}
-      </Text>
+      </AnswerHeading>
       <Text size={tokens.typeBodyPhone.size}>
         {t('membersScreen.removeConfirmBody', { name, organisation: organisationName })}
       </Text>

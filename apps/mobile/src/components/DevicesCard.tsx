@@ -23,6 +23,7 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { currentSessionId } from '../tokens.ts';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field } from './Field.tsx';
@@ -330,9 +331,9 @@ function Check({
 
   return (
     <>
-      <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+      <AnswerHeading size={tokens.typeTitleSection.size} weight="bold" answer={device}>
         {t('devices.checkTitle', { name })}
-      </Text>
+      </AnswerHeading>
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
         {t('devices.checkBody', {
           started: deviceMoment(device.startedAt, locale, t),
@@ -481,9 +482,9 @@ function EverywhereElse({
 
   return (
     <>
-      <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+      <AnswerHeading size={tokens.typeTitleSection.size} weight="bold" answer="everywhere">
         {t('devices.everywhereTitle')}
-      </Text>
+      </AnswerHeading>
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
         {keepsThisDevice
           ? t('devices.everywhereBody', { count })

@@ -10,6 +10,7 @@ import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Field, TextField } from './Field.tsx';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
 import { ReadOut } from './ReadOut.tsx';
@@ -171,9 +172,9 @@ export function CompanyDomainsCard({
           )}
           {confirming === domain && (
             <View style={styles.confirm}>
-              <Text size={tokens.typeRowTitle.size} weight="bold" accessibilityRole="header">
+              <AnswerHeading answer={confirming} size={tokens.typeRowTitle.size} weight="bold">
                 {t('companyDomains.removeTitle', { domain })}
-              </Text>
+              </AnswerHeading>
               <Text size={tokens.typeBodyPhone.size}>
                 {t('companyDomains.removeBody', { domain })}
               </Text>
