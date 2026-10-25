@@ -106,7 +106,7 @@ function Avatar({ name, large = false }: { name: string; large?: boolean }) {
     <View
       style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}
       accessibilityElementsHidden
-      importantForAccessibility="no"
+      importantForAccessibility="no-hide-descendants"
     >
       <Text size={large ? tokens.typeBodyPhone.size : tokens.typeSmall.size} weight="bold" muted>
         {initials(name)}
