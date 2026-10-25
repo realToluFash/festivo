@@ -50,10 +50,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   same sentence (`lostTwoFactor.*`, `signIn.timedOutBody_*`, `createOrganisation.limitedTitle`,
   the lock-outs' "Tente novamente às {time}"), the refusal says it too.
 - **25 Oct 2026. A time the clocks skip** (`eventForm.clocksSkip`, `clocksSkipNextDay`,
-  sc-10675). "Em {{zone}}, a hora {{time}} não existe no dia {{day}}: nessa noite, os relógios
-  são adiantados. Será guardada como {{savedAs}}." The next-day line ends "guardada no dia
-  {{savedDay}}, às {{savedAs}}.", so the abbreviated month never closes the sentence. "No dia"
-  agrees with "dia", not with the weekday, which is how a weekday date takes a preposition
+  sc-10675, reworded in sc-11163). "Em {{zone}}, a hora {{time}} do dia {{day}} não existe:
+  nessa noite, os relógios são adiantados. Será guardada como {{savedAs}}." The next-day line
+  ends "guardada no dia {{savedDay}}, às {{savedAs}}.", so the date never stands before the
+  colon ("mar.:") or closes the sentence. "Do dia" and "no dia"
+  agree with "dia", not with the weekday, which is how a weekday date takes a preposition
   inside a sentence (the 19 Oct rule forbids "a" and "na/no" alone). "Guardada" agrees with
   "a hora". Rejected "hora de verão", which names the rule rather than the missing hour.
 - **25 Oct 2026. Editing an event's details (sc-9704, `eventEdit.*`).** "Edit details" is
