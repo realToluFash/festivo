@@ -27,14 +27,27 @@ import {
   withoutRole,
 } from '@soirely/domain';
 import i18next, { type TFunction } from 'i18next';
-import { type FormEvent, Fragment, useEffect, useRef, useState } from 'react';
+import {
+  type FormEvent,
+  Fragment,
+  type RefCallback,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { can, useSession } from '../../../session.ts';
+import { focusStep, useStepFocus } from '../../../stepFocus.ts';
 import { Forbidden } from '../Forbidden.tsx';
+
+type Saved = 'updated' | 'created';
 
 type Load =
   { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; catalogue: RolesCatalogue };
@@ -57,6 +70,9 @@ const EXTRAS: Record<string, { name: string; means: string; off: string; on: str
     on: 'rolesScreen.createEventsOn',
   },
 };
+
+/** The width at which styles.css shows a role on its own page, in place of the list. */
+const ONE_PANE = '(width <= 60rem)';
 
 /** What the detail pane shows: a role, a role being made, or a role being removed. */
 type Pane = { kind: 'role'; id: string } | { kind: 'new' } | { kind: 'removing'; id: string };
@@ -149,17 +165,30 @@ function RolesLoaded({
     kind: 'role',
     id: (catalogue.roles.find((role) => !role.fixed) ?? catalogue.roles[0])?.id ?? '',
   }));
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState<Saved | null>(null);
   // At phone and tablet portrait width a role opens on its own page, with ‹ Roles back to the list.
   const [opened, setOpened] = useState(false);
+  const [roleStartRef, arriveAtRole] = useStepFocus<HTMLElement>();
+  const startsRole = useCallback(
+    (element: HTMLElement | null) => {
+      roleStartRef.current = element;
+    },
+    [roleStartRef],
+  );
+  const [savedNotice, arriveAtSaved] = useStepFocus<HTMLDivElement>();
   const name = (role: OrganisationRole) => roleName(t, role);
   const selected =
     pane.kind === 'new' ? null : (catalogue.roles.find((role) => role.id === pane.id) ?? null);
 
   function open(next: Pane): void {
     setPane(next);
-    setSaved(false);
+    setSaved(null);
     setOpened(true);
+  }
+
+  function pick(next: Pane): void {
+    open(next);
+    if (window.matchMedia(ONE_PANE).matches) arriveAtRole();
   }
 
   return (
@@ -172,7 +201,7 @@ function RolesLoaded({
             <button
               type="button"
               className="button button-primary"
-              onClick={() => open({ kind: 'new' })}
+              onClick={() => pick({ kind: 'new' })}
             >
               {t('rolesScreen.newRole')}
             </button>
@@ -185,7 +214,7 @@ function RolesLoaded({
             className="roles-pick"
             title={name(role)}
             aria-pressed={pane.kind !== 'new' && pane.id === role.id}
-            onClick={() => open({ kind: 'role', id: role.id })}
+            onClick={() => pick({ kind: 'role', id: role.id })}
           >
             <span className="roles-pick-text">
               <span className="roles-pick-name">
@@ -228,6 +257,8 @@ function RolesLoaded({
             manages={manages}
             held={held}
             saved={saved}
+            startRef={startsRole}
+            savedRef={savedNotice}
             onRemove={() => selected != null && open({ kind: 'removing', id: selected.id })}
             onSaved={(role) => {
               const exists = catalogue.roles.some((one) => one.id === role.id);
@@ -238,9 +269,11 @@ function RolesLoaded({
                   : [...catalogue.roles, role],
               });
               setPane({ kind: 'role', id: role.id });
-              setSaved(true);
+              setSaved(exists ? 'updated' : 'created');
+              // Create role went with the new role's form, so its answer takes focus.
+              if (!exists) arriveAtSaved();
             }}
-            onEdited={() => setSaved(false)}
+            onEdited={() => setSaved(null)}
           />
         )}
       </section>
@@ -255,6 +288,8 @@ function Editing({
   manages,
   held,
   saved,
+  startRef,
+  savedRef,
   onRemove,
   onSaved,
   onEdited,
@@ -264,7 +299,10 @@ function Editing({
   catalogue: RolesCatalogue;
   manages: boolean;
   held: string[];
-  saved: boolean;
+  saved: Saved | null;
+  /** The role's name, or the field it is typed in: where its own page begins. */
+  startRef: RefCallback<HTMLElement>;
+  savedRef: RefObject<HTMLDivElement | null>;
   onRemove: () => void;
   onSaved: (role: OrganisationRole) => void;
   onEdited: () => void;
@@ -372,6 +410,7 @@ function Editing({
             <div className="field">
               <label htmlFor="role-name">{t('rolesScreen.nameLabel')}</label>
               <input
+                ref={startRef}
                 id="role-name"
                 className={nameError == null ? 'input' : 'input input-wrong'}
                 type="text"
@@ -398,7 +437,9 @@ function Editing({
               )}
             </div>
           ) : (
-            <h2 id="role-title">{title}</h2>
+            <h2 id="role-title" ref={startRef} tabIndex={-1}>
+              {title}
+            </h2>
           )}
           <p className="muted">
             {t(describe(role, manages), {
@@ -422,8 +463,13 @@ function Editing({
           <p>{t('rolesScreen.ownerNote', { name: organisation.name })}</p>
         </div>
       )}
-      {saved && (
-        <div className="notice notice-done" role="status">
+      {saved != null && (
+        <div
+          className="notice notice-done"
+          role={saved === 'created' ? undefined : 'status'}
+          ref={savedRef}
+          tabIndex={saved === 'created' ? -1 : undefined}
+        >
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>
@@ -708,6 +754,9 @@ function Removing({
   const title = roleName(t, role);
   const choices = replacementsFor(roles, role, held);
   const chosen = choices.find((one) => one.id === replacement);
+  const heading = useRef<HTMLHeadingElement>(null);
+
+  useLayoutEffect(() => focusStep(heading.current), []);
 
   async function remove(): Promise<void> {
     if (role.holders > 0 && replacement == null) {
@@ -737,7 +786,9 @@ function Removing({
 
   return (
     <div className="roles-removing">
-      <h2 id="role-title">{t('rolesScreen.removeTitle', { role: title })}</h2>
+      <h2 id="role-title" ref={heading} tabIndex={-1}>
+        {t('rolesScreen.removeTitle', { role: title })}
+      </h2>
       {role.holders === 0 ? (
         <p>{t('rolesScreen.removeNobody')}</p>
       ) : (

@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
@@ -704,6 +707,86 @@ describe('Settings > Roles', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Roles$/ }));
     expect(layout?.getAttribute('data-open')).toBe('false');
+  });
+
+  describe('where a role opens on its own page', () => {
+    // The query that hides the list once a role is open, as styles.css has it, not as Roles.tsx copies it.
+    const onePane = /@media (\([^)]*\)) \{[^@]*\.roles\[data-open='true'\] \.roles-list/u.exec(
+      readFileSync(join(import.meta.dirname, '../../../styles.css'), 'utf8'),
+    )?.[1];
+
+    beforeEach(() => {
+      vi.spyOn(window, 'matchMedia').mockImplementation(
+        (query) => ({ matches: query === onePane, media: query }) as MediaQueryList,
+      );
+    });
+
+    it('takes focus to the role’s name heading', async () => {
+      answering();
+      await roles();
+
+      pick(/^Coordinator/);
+
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 2, name: 'Coordinator' }),
+      );
+    });
+
+    it('takes focus to the Role name field where the name can be changed', async () => {
+      answering();
+      await roles();
+
+      pick(/^Door team/);
+      expect(document.activeElement).toBe(screen.getByLabelText('Role name'));
+
+      fireEvent.click(screen.getByRole('button', { name: /Roles$/ }));
+      fireEvent.click(screen.getByRole('button', { name: 'New role' }));
+      expect(document.activeElement).toBe(screen.getByLabelText('Role name'));
+    });
+  });
+
+  it('leaves focus on the row where the role shows beside the list', async () => {
+    answering();
+    await roles();
+    const row = screen.getByRole('button', { name: /^Coordinator/ });
+    row.focus();
+
+    fireEvent.click(row);
+
+    expect(document.activeElement).toBe(row);
+  });
+
+  it('takes focus to Remove ‹role›? once Remove role is pressed', async () => {
+    answering();
+    await roles();
+    pick(/^Door team/);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove role' }));
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 2, name: 'Remove Door team?' }),
+    );
+  });
+
+  it('takes focus to Saved once a new role is created, read once', async () => {
+    answering((method, body) =>
+      method === 'POST'
+        ? new Response(
+            JSON.stringify(
+              role('role_9', null, 'Venue lead', (body as { permissions: string[] }).permissions),
+            ),
+            { status: 201 },
+          )
+        : null,
+    );
+    await roles();
+    fireEvent.click(screen.getByRole('button', { name: 'New role' }));
+    fireEvent.change(screen.getByLabelText('Role name'), { target: { value: 'Venue lead' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create role' }));
+
+    const saved = await screen.findByText("Saved. Applies on each person's next request.");
+    await waitFor(() => expect(document.activeElement).toBe(saved.closest('.notice')));
+    expect(screen.queryByRole('status')).toBeNull();
   });
 
   it('shows a role that can read members the grid, with nothing to change', async () => {

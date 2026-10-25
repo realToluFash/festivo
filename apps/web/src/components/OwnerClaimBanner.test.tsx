@@ -76,6 +76,14 @@ afterEach(() => {
 });
 
 describe('the Members banner while no owner is active (sc-6640)', () => {
+  let picker: HTMLButtonElement | null = null;
+
+  afterEach(async () => {
+    picker?.remove();
+    picker = null;
+    await act(() => setLanguage(null));
+  });
+
   it('shows nothing to somebody it is not for', async () => {
     answering({ [`GET ${PATH}`]: () => json({ ownerClaim: null }) });
     const { container } = open();
@@ -93,15 +101,75 @@ describe('the Members banner while no owner is active (sc-6640)', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Become the owner' }));
 
-    expect(
-      await screen.findByRole('heading', { name: 'Prove you control ire.events' }),
-    ).toBeTruthy();
+    const proving = await screen.findByRole('heading', { name: 'Prove you control ire.events' });
+    await waitFor(() => expect(document.activeElement).toBe(proving));
     expect(screen.getByText('_soirely-verify.ire.events')).toBeTruthy();
     expect(screen.getByText('soirely-claim=abc123')).toBeTruthy();
     expect(
       screen.getByText('We check every hour until Saturday 31 Oct at 10:00 WAT.'),
     ).toBeTruthy();
     expect(sent.find((one) => one.line === `POST ${PATH}`)?.body).toEqual({});
+  });
+
+  it('takes focus to the banner that loads when another Administrator’s claim started first', async () => {
+    let started = false;
+    answering({
+      [`GET ${PATH}`]: () =>
+        json({
+          ownerClaim: started ? banner({ state: 'open', claim: claim(false) }) : banner(),
+        }),
+      [`POST ${PATH}`]: () => {
+        started = true;
+        return problem('owner_claim_open');
+      },
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Become the owner' }));
+
+    const theirs = await screen.findByRole('heading', { name: /^Bisi is becoming the owner/ });
+    await waitFor(() => expect(document.activeElement).toBe(theirs));
+  });
+
+  it('leaves focus where it is when a later load follows a reload that failed', async () => {
+    let gets = 0;
+    answering({
+      [`GET ${PATH}`]: () => {
+        gets += 1;
+        if (gets === 2) throw new TypeError('Failed to fetch');
+
+        return json({
+          ownerClaim: gets === 1 ? banner() : banner({ state: 'open', claim: claim(false) }),
+        });
+      },
+      [`POST ${PATH}`]: () => problem('owner_claim_open'),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Become the owner' }));
+    await waitFor(() => expect(gets).toBe(2));
+    await act(async () => {});
+
+    picker = document.body.appendChild(document.createElement('button'));
+    picker.focus();
+    await act(() => setLanguage('es'));
+
+    expect(await screen.findByRole('heading', { name: /^Bisi ha solicitado/ })).toBeTruthy();
+    expect(document.activeElement).toBe(picker);
+  });
+
+  it('takes focus to Record found once Check record finds it', async () => {
+    answering({
+      [`GET ${PATH}`]: () => json({ ownerClaim: banner({ state: 'open', claim: claim(true) }) }),
+      [`POST ${PATH}/check`]: () =>
+        json({ ownerClaim: banner({ state: 'found', claim: claim(true, true) }), found: true }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Check record' }));
+
+    const found = await screen.findByRole('heading', { name: /^Record found/ });
+    await waitFor(() => expect(document.activeElement).toBe(found));
   });
 
   it('says why when the claimant’s address is not at the domain', async () => {
@@ -168,14 +236,14 @@ describe('the Members banner while no owner is active (sc-6640)', () => {
       }),
     ).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Stop this claim' }));
+    expect(document.activeElement).toBe(screen.getByText("Stop Bisi's claim?"));
     expect(sent.some((one) => one.line === `POST ${PATH}/stop`)).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: 'Stop the claim' }));
 
-    expect(
-      await screen.findByRole('heading', {
-        name: 'Ownership has to be restored by Soirely support.',
-      }),
-    ).toBeTruthy();
+    const stopped = await screen.findByRole('heading', {
+      name: 'Ownership has to be restored by Soirely support.',
+    });
+    await waitFor(() => expect(document.activeElement).toBe(stopped));
     expect(
       screen.getByText("You stopped Bisi's claim. Everybody who was told is emailed."),
     ).toBeTruthy();

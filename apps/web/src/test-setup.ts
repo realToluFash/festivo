@@ -31,8 +31,10 @@ await initI18n();
 // A loaded CI runner can take more than testing-library's default second to settle a screen.
 configure({ asyncUtilTimeout: 3000 });
 
-// jsdom lays nothing out, so it has no scrollIntoView; a step that takes focus calls it.
+// jsdom lays nothing out, so it has neither of these; a step that takes focus asks both.
 Element.prototype.scrollIntoView = function scrollIntoView() {};
+window.matchMedia = (query) =>
+  ({ matches: false, media: query, addEventListener() {}, removeEventListener() {} }) as never;
 
 // Registered here because auto-cleanup only happens with `globals: true`, and
 // without it one test's DOM leaks into the next — where the symptom is a
