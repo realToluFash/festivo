@@ -273,6 +273,18 @@ describe('a few details', () => {
     );
   });
 
+  it('says the account is still signed in when it cannot reach Soirely', () => {
+    __setSessionState({ status: 'unreachable', retrying: false });
+
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/complete-profile'] })}
+      />,
+    );
+
+    expect(screen.getByRole('status').textContent).toMatch(/You are still signed in\./);
+  });
+
   it('keeps an incomplete account out of the product', async () => {
     at('/app/settings');
 

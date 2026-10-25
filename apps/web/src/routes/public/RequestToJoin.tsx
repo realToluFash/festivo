@@ -7,7 +7,7 @@ import {
   initials,
   lockLiftsAt,
 } from '@soirely/domain';
-import { type FormEvent, type RefObject, useEffect, useState } from 'react';
+import { type FormEvent, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 
@@ -19,12 +19,13 @@ import { Unreachable } from '../../components/Unreachable.tsx';
 import { useFormChecks } from '../../formChecks.ts';
 import { dropHeldInvitation, holdInvitation } from '../../heldInvitation.ts';
 import { dateLocale } from '../../i18n/index.ts';
+import { useLinkRetry } from '../../linkRetry.ts';
 import { landingFor, refreshAccount, restoreSession, useSessionState } from '../../session.ts';
 import { useStepFocus } from '../../stepFocus.ts';
 
 type View =
   | { kind: 'loading' }
-  | { kind: 'dead'; brought?: boolean }
+  | { kind: 'dead' }
   | { kind: 'unreachable' }
   | { kind: 'open'; preview: RequestLinkPreview }
   | { kind: 'sent'; preview: RequestLinkPreview }
@@ -34,8 +35,15 @@ type View =
 export function RequestToJoin({ token }: { token: string }) {
   const session = useSessionState();
   const [view, setView] = useState<View>({ kind: 'loading' });
-  const [deadHeading, arriveAtDead] = useStepFocus();
   const settled = session.status === 'signedIn' || session.status === 'signedOut';
+  const [heading, arrive] = useStepFocus();
+  const [brought, setBrought] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const retryArrives = useRef(false);
+  const retry = useLinkRetry(view, () => {
+    retryArrives.current = true;
+    setAttempt((n) => n + 1);
+  });
 
   useEffect(() => {
     dropHeldInvitation();
@@ -47,36 +55,56 @@ export function RequestToJoin({ token }: { token: string }) {
     let current = true;
 
     api.requestLinkPreview(token).then(
-      (preview) => current && setView({ kind: 'open', preview }),
+      (preview) => {
+        if (!current) return;
+        setView({ kind: 'open', preview });
+        if (retryArrives.current) {
+          setBrought(true);
+          arrive();
+        }
+        retryArrives.current = false;
+      },
       (error: unknown) => {
         if (!current) return;
         const dead = error instanceof ApiError && error.is('request_link_dead');
         setView({ kind: dead ? 'dead' : 'unreachable' });
+        if (dead && retryArrives.current) {
+          setBrought(true);
+          arrive();
+        }
+        retryArrives.current = false;
       },
     );
 
     return () => {
       current = false;
     };
-  }, [settled, token]);
+  }, [settled, token, attempt, arrive]);
 
   function change(next: View): void {
+    const dead = next.kind === 'dead';
     setView(next);
-    if (next.kind === 'dead') arriveAtDead();
+    setBrought(dead);
+    if (dead) arrive();
   }
 
-  if (session.status === 'unreachable' || view.kind === 'unreachable') return <Unreachable />;
+  if (session.status === 'unreachable') return <Unreachable signedIn={false} />;
+  if (view.kind === 'unreachable') {
+    return <Unreachable signedIn={session.status === 'signedIn'} retry={retry} />;
+  }
   if (view.kind === 'loading') return <Pending />;
 
   return (
     <AuthPage>
       {view.kind === 'dead' ? (
-        <Dead heading={deadHeading} brought={view.brought === true} />
+        <Dead brought={brought} headingRef={heading} />
       ) : (
         <Asking
           token={token}
           view={view}
           signedIn={session.status === 'signedIn'}
+          brought={brought}
+          headingRef={heading}
           onChange={change}
         />
       )}
@@ -86,18 +114,18 @@ export function RequestToJoin({ token }: { token: string }) {
 
 /** Unknown, switched off and replaced alike, with no organisation named. */
 function Dead({
-  heading,
   brought,
+  headingRef,
 }: {
-  heading: RefObject<HTMLHeadingElement | null>;
   brought: boolean;
+  headingRef: RefObject<HTMLHeadingElement | null>;
 }) {
   const { t } = useTranslation();
 
   return (
     <>
       <div className="auth-heading">
-        <h1 ref={heading} tabIndex={-1}>
+        <h1 ref={headingRef} tabIndex={-1}>
           {t('requestToJoin.deadTitle')}
         </h1>
       </div>
@@ -118,11 +146,15 @@ function Asking({
   token,
   view,
   signedIn,
+  brought,
+  headingRef,
   onChange,
 }: {
   token: string;
   view: Exclude<View, { kind: 'loading' | 'dead' | 'unreachable' }>;
   signedIn: boolean;
+  brought: boolean;
+  headingRef: RefObject<HTMLHeadingElement | null>;
   onChange: (next: View) => void;
 }) {
   const { t } = useTranslation();
@@ -132,7 +164,9 @@ function Asking({
   return (
     <>
       <div className="auth-heading">
-        <h1>{t('requestToJoin.title', { organisation })}</h1>
+        <h1 ref={headingRef} tabIndex={-1}>
+          {t('requestToJoin.title', { organisation })}
+        </h1>
       </div>
 
       <div className="join-org">
@@ -149,7 +183,7 @@ function Asking({
       {view.kind === 'limited' && <Limited until={view.until} />}
       {view.kind === 'open' && !signedIn && <SignedOut token={token} organisation={organisation} />}
       {view.kind === 'open' && signedIn && preview.standing != null && (
-        <Standing preview={preview} />
+        <Standing preview={preview} brought={brought} />
       )}
       {view.kind === 'open' && signedIn && preview.standing == null && (
         <Ask token={token} preview={preview} onChange={onChange} />
@@ -259,7 +293,7 @@ function Ask({
     }
 
     if (problem.is('request_link_dead')) {
-      onChange({ kind: 'dead', brought: true });
+      onChange({ kind: 'dead' });
       return;
     }
 
@@ -380,7 +414,7 @@ function Limited({ until }: { until: Date | null }) {
   );
 }
 
-function Standing({ preview }: { preview: RequestLinkPreview }) {
+function Standing({ preview, brought }: { preview: RequestLinkPreview; brought: boolean }) {
   const { t } = useTranslation();
   const landing = useLanding();
   const organisation = preview.organisation.name;
@@ -399,7 +433,7 @@ function Standing({ preview }: { preview: RequestLinkPreview }) {
 
   return (
     <>
-      <div className="notice notice-quiet" role="status">
+      <div className="notice notice-quiet" role={brought ? undefined : 'status'}>
         <span className="mark mark-info" aria-hidden="true">
           i
         </span>

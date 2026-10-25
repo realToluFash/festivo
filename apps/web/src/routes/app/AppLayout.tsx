@@ -63,7 +63,7 @@ export function AppLayout() {
     );
   }
 
-  if (state.status === 'unreachable') return <Unreachable />;
+  if (state.status === 'unreachable') return <Unreachable signedIn />;
 
   if (state.status !== 'signedIn') return <Pending />;
 
