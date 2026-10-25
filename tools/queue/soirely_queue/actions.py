@@ -693,11 +693,22 @@ def resolve(c, a):
     return f"resolved {found['path']}:{found['line'] or '-'} on PR #{a.pr}{resync(c)}"
 
 
+PR_SECTIONS = ("Description", "Risks", "References", "Evidence of work", "Next Steps")
+
+
 def pr_create(c, a):
     guard(c, "pr-create")
     if a.draft:
         raise Refused("pull requests open ready for review, not as drafts, so the lead is "
                       "woken for them")
+    headings = {h.lower() for h, _, _ in T.sections(a.text)}
+    if missing := [h for h in PR_SECTIONS if h.lower() not in headings]:
+        deeper = {h.lower(): level for h, level, _ in T.sections(a.text, T.DEEPER) if level}
+        levels = "".join(f"; {h} is at level {deeper[h.lower()]}" for h in missing
+                         if h.lower() in deeper)
+        raise Refused(f"the body has no {', '.join(missing)} heading at levels 1-3{levels}; "
+                      f"open it in create-pr's shape, since pr-edit can only replace a section "
+                      f"it can find")
     url = github.create_pr(a.head, a.title, a.text, draft=a.draft)
     return f"opened {url}{resync(c)}"
 

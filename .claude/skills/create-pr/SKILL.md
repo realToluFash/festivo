@@ -179,8 +179,8 @@ sq dev pr-create --head <branch> --title "<title>" < <body file>
 ```
 
 The base is `main`. Write the body to a file and pass it on stdin rather than inline — the
-markdown does not survive shell quoting intact. `pr-create` refuses `--draft` for every
-role but ops.
+markdown does not survive shell quoting intact. `pr-create` refuses `--draft` from every
+role, and refuses a body missing any of the five headings (at levels 1–3), naming them.
 
 Title: a conventional-commit prefix matching the branch's commits, naming the outcome.
 
