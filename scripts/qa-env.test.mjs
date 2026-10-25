@@ -1,24 +1,39 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
 import {
+  allowCleartext,
   androidFlows,
+  androidPackage,
   androidSdk,
   branchForStory,
   clearApiCache,
+  defaultNetwork,
   COMPOSE_PROJECT,
+  emulatorAbi,
   emulatorFor,
   expoGoApk,
   expoSdkMajor,
   forAndroid,
   linkIntent,
   parseTarget,
+  playImage,
   QA_OVERRIDES,
   QA_PORTS,
   qaConfig,
+  releaseApk,
+  staleApks,
   renderQaEnv,
   reversedPorts,
   simulatorFor,
@@ -207,6 +222,137 @@ describe('the Android SDK', () => {
   it('is where Android Studio puts it, without either', () => {
     expect(androidSdk({}, 'linux', '/h')).toBe('/h/Android/Sdk');
     expect(androidSdk({}, 'darwin', '/h')).toBe('/h/Library/Android/sdk');
+  });
+});
+
+describe('a release build', () => {
+  it("is for the emulator's architecture", () => {
+    expect(emulatorAbi('x64')).toBe('x86_64');
+    expect(emulatorAbi('arm64')).toBe('arm64-v8a');
+  });
+
+  it('is kept under the commit it was built from', () => {
+    expect(releaseApk('/qa', 'c8646738ce1413ea1e718dce85ff4973f0f9b22c')).toBe(
+      '/qa/.qa/release/soirely-c8646738ce14.apk',
+    );
+  });
+
+  it('leaves only the APK of the commit just built', () => {
+    const apk = releaseApk('/qa', 'c8646738ce1413ea1e718dce85ff4973f0f9b22c');
+    expect(
+      staleApks(
+        [
+          'soirely-c8646738ce14.apk',
+          'soirely-0123456789ab.apk',
+          'installed',
+          'launch-0123456789ab.mp4',
+        ],
+        apk,
+      ),
+    ).toEqual(['soirely-0123456789ab.apk']);
+  });
+
+  it('launches offline only once the emulator has no default network', () => {
+    expect(defaultNetwork('Active default network: none\n')).toBeNull();
+    expect(defaultNetwork('NetworkProviders:\nActive default network: 100\n')).toBe('100');
+    expect(() => defaultNetwork("Can't find service: connectivity")).toThrow(/no default network/);
+  });
+
+  it("is the app config's Android package", () => {
+    const config = readFileSync(join(import.meta.dirname, '../apps/mobile/app.config.ts'), 'utf8');
+    expect(androidPackage(config)).toBe('com.soirely.app');
+    expect(() => androidPackage('ios: {}')).toThrow(/no android.package/);
+  });
+
+  it('may reach a stack over http', () => {
+    const manifest = '<manifest>\n  <application android:name=".MainApplication">\n</manifest>';
+    expect(allowCleartext(manifest)).toContain(
+      '<application android:usesCleartextTraffic="true" android:name=".MainApplication">',
+    );
+  });
+
+  it('leaves a manifest that already allows http alone', () => {
+    const manifest = '<application android:usesCleartextTraffic="true" android:name=".X">';
+    expect(allowCleartext(manifest)).toBe(manifest);
+  });
+
+  it('is an error when the manifest refuses http', () => {
+    const manifest = '<application android:usesCleartextTraffic="false" android:name=".X">';
+    expect(() => allowCleartext(manifest)).toThrow(/usesCleartextTraffic="false"/);
+  });
+
+  it('is an error when prebuild wrote no application', () => {
+    expect(() => allowCleartext('<manifest/>')).toThrow(/no <application>/);
+  });
+});
+
+describe('the image an emulator is made on', () => {
+  const sdkWith = (...paths) => {
+    const sdk = mkdtempSync(join(tmpdir(), 'sdk-'));
+    for (const path of paths) mkdirSync(join(sdk, 'system-images', path), { recursive: true });
+    return sdk;
+  };
+
+  it('is the newest Play image installed for this machine', () => {
+    const sdk = sdkWith(
+      'android-35/google_apis_playstore/arm64-v8a',
+      'android-37.0/google_apis_playstore_ps16k/arm64-v8a',
+      'android-37.0/google_apis/arm64-v8a',
+      'android-38/google_apis_playstore/x86_64',
+    );
+    expect(playImage(sdk, 'arm64')).toBe(
+      'system-images;android-37.0;google_apis_playstore_ps16k;arm64-v8a',
+    );
+  });
+
+  it('passes over a file beside the images, as Finder leaves', () => {
+    const sdk = sdkWith('android-37.0/google_apis_playstore_ps16k/arm64-v8a');
+    writeFileSync(join(sdk, 'system-images', '.DS_Store'), '');
+    expect(playImage(sdk, 'arm64')).toBe(
+      'system-images;android-37.0;google_apis_playstore_ps16k;arm64-v8a',
+    );
+  });
+
+  it('follows an image directory that is a link', () => {
+    const elsewhere = sdkWith('android-37.0/google_apis_playstore_ps16k/arm64-v8a');
+    const sdk = sdkWith();
+    mkdirSync(join(sdk, 'system-images'));
+    symlinkSync(
+      join(elsewhere, 'system-images', 'android-37.0'),
+      join(sdk, 'system-images', 'android-37.0'),
+    );
+    expect(playImage(sdk, 'arm64')).toBe(
+      'system-images;android-37.0;google_apis_playstore_ps16k;arm64-v8a',
+    );
+  });
+
+  it('passes over a link whose image has gone, as on an unmounted disk', () => {
+    const elsewhere = sdkWith('android-36/google_apis_playstore/arm64-v8a');
+    const sdk = sdkWith('android-37.0/google_apis_playstore_ps16k/arm64-v8a');
+    symlinkSync(
+      join(elsewhere, 'system-images', 'android-36'),
+      join(sdk, 'system-images', 'android-36'),
+    );
+    rmSync(elsewhere, { recursive: true });
+    expect(playImage(sdk, 'arm64')).toBe(
+      'system-images;android-37.0;google_apis_playstore_ps16k;arm64-v8a',
+    );
+  });
+
+  it('is a released version, never a preview', () => {
+    const sdk = sdkWith(
+      'android-37.0/google_apis_playstore_ps16k/arm64-v8a',
+      'android-CANARY/google_apis_playstore/arm64-v8a',
+    );
+    expect(playImage(sdk, 'arm64')).toBe(
+      'system-images;android-37.0;google_apis_playstore_ps16k;arm64-v8a',
+    );
+  });
+
+  it('is never a Google APIs image, which has no TalkBack', () => {
+    expect(playImage(sdkWith('android-37/google_apis/x86_64'), 'x64')).toBe(
+      'system-images;android-35;google_apis_playstore;x86_64',
+    );
   });
 });
 
