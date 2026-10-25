@@ -210,6 +210,13 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   "o seu acesso a eventos individuais". The card and the server's refusal say the same
   sentence, "… por isso não a pode desativar".
 
+- **26 Oct 2026. Two-factor for everyone, the artboard's lines** (sc-13182,
+  `signInRules.everyoneOn`, `everyoneOff`, `everyoneWithoutBody_*`, `everyoneStillWithout_*`,
+  `emails:signInRules.twoFactorDue.*`). A banner is "um aviso". Their deadline is "a sua
+  data-limite", "até à sua data-limite", and the email's facts label it "Data-limite", since
+  "Obrigatória a partir de" cannot stand before a colon. "Turn it on once" is "Basta ativá-la
+  uma vez".
+
 - **21 Oct 2026. Company domain joining** (`domainJoining.*`, `companyDomains.*`,
   `messages:domain_joining.*`, sc-4434). The act is "pedir para aderir", the wait "A
   aguardar aprovação", as the Members state. What gets approved is "o pedido", so no "o/a"
