@@ -536,15 +536,23 @@ describe('A time the clocks skip, in New event (sc-10638)', () => {
     answering({});
     await form();
 
+    const ends = document.getElementById('event-end-gap')!.closest('fieldset')!;
+    expect(ends.hasAttribute('aria-describedby')).toBe(false);
+
     fill('event-start-date', '2027-03-28');
     fill('event-start-time', '02:00');
     fill('event-end-time', '02:45');
 
     expect(gapLine('event-start-gap')).toContain('It will be saved as 03:00.');
     expect(gapLine('event-end-gap')).toContain('It will be saved as 03:45.');
+    expect(described(ends)).toContain('It will be saved as 03:45.');
     expect(described('event-end-time')).toContain(
       'An event can run past midnight. Choose the day it ends.',
     );
+
+    fill('event-end-time', '04:00');
+    expect(gapLine('event-end-gap')).toBe('');
+    expect(ends.hasAttribute('aria-describedby')).toBe(false);
   });
 
   it("writes the night in the browser's regional order, as the event's page does", async () => {
