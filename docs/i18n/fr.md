@@ -54,6 +54,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. A count of a round million, `_many`** (every web and app count family,
+  sc-8529, now that the key-parity guard allows it, PR #324). At 1 000 000 and every exact
+  million, i18next picks `_many`. It is `_other` with « de », or « d’ » before a vowel or a
+  mute h, between the count and what it counts: « 1 000 000 de personnes », « d’événements »,
+  « vos {{count}} d’autres appareils », « et {{count}} d’autres ». Where no noun follows the count
+  (« les {{count}} seront déconnectés », « Déconnecter les {{count}} »), `_many` is `_other` as
+  it stands. Every new count family gets its `_many`,
+  except the proof window's lines (`waysCard.proveLink_*`, `proveUnlink_*`, `codeKeepsSignIn_*`):
+  they count PROOF_MINUTES, a constant that is never a million, and the app's test holds them to
+  `_one` and `_other`.
 - **25 Oct 2026. Settings > Members on the web, the invitation link and the invitation email**
   (`web:membersScreen.*`, `web:join.*`, `invitations.*` web and app, `emails:invitation.*`,
   `messages:invitations.*`, sc-2922). The web twins of the app’s Members keys are the app’s
@@ -121,7 +131,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **24 Oct 2026. The rest of a role's holders** (`rolesScreen.moreHolders_*`, web and app,
   sc-9068). « et {{count}} autre », « et {{count}} autres », after the five names: « autre »
   is the same for women and men, and reads as people where « de plus » reads as a quantity.
-  No `_many` (sc-4188).
+  `_many`: « et {{count}} d’autres » (25 Oct).
 - **24 Oct 2026. A request refused for its shape** (`messages:validation.invalid_shape`,
   `validation.request_shape`, sc-8716). « Ce champ n’accepte pas cette valeur », which also
   holds for a required field left out, then « Vérifiez-le et réessayez », the pronoun for the
@@ -261,8 +271,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   app, sc-4188). The invitation is the subject, « Une invitation vous attend », « {{count}}
   invitations vous attendent », shorter than « Vous avez … en attente ». With several, "that
   organisation" is « l'organisation qui vous invite ». A button in a sentence is chosen, as
-  `proofExpired_*`: « Choisissez « Enregistrer et continuer » pour y accéder ». No `_many`
-  yet: the key-parity guard refuses a form English lacks (sc-4188, [dev2]).
+  `proofExpired_*`: « Choisissez « Enregistrer et continuer » pour y accéder ». `_many` as the
+  25 Oct entry says.
 
 - **21 Oct 2026. Starting your own organisation** (`noOrganisation.start*`, web, and the app
   once sc-5932 adds it, sc-6897). "Start" is « créer », since « démarrer une organisation » is
