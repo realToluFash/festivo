@@ -1,4 +1,5 @@
 {
   "guests_one": "{{count}} convidado",
-  "guests_other": "{{count}} convidados"
+  "guests_other": "{{count}} convidados",
+  "hosts_other": "{{count}} anfitriões"
 }

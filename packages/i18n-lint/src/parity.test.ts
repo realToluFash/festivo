@@ -128,7 +128,10 @@ describe('the checks catch what they are for', () => {
       surfaceFor('packages/i18n-lint/src/__fixtures__/half-plural'),
     );
 
-    expect(incomplete).toEqual([{ locale: 'fr', present: 'guests_one', missing: 'guests_other' }]);
+    expect(incomplete).toEqual([
+      { locale: 'fr', present: 'guests_one', missing: 'guests_other' },
+      { locale: 'pt', present: 'hosts_other', missing: 'hosts_one' },
+    ]);
   });
 
   it('notices a shared word one copy reads differently, or lacks', () => {
