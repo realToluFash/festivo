@@ -116,7 +116,11 @@ export function TwoFactorCard({
             title={t('twoFactorCard.failedTitle')}
             body={t('twoFactorCard.failedBody')}
           />
-          <SecondaryButton label={t('error.retry')} onPress={reload} testID="twoFactor.retry" />
+          <SecondaryButton
+            label={t('twoFactorCard.retry')}
+            onPress={reload}
+            testID="twoFactor.retry"
+          />
         </>
       )}
 
