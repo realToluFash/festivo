@@ -69,9 +69,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   cannot change and they cannot be removed …", as sc-4259 settled. `ownRole` keeps "You can't"
   and "General" (the web's section; the app says "Organisation"), because `Members.test.tsx`
   matches "You can't change your own role"; it should read "You cannot change your own role."
-  and waits on [dev]. `beyondGrant` stays as written, also pinned; on the suspension card the
-  action it leaves out is restoring, so "you cannot change their role or their access" would
-  read truer there, asked of [dev3]. es, fr and pt write the web twins as the app's, word for
+  and waits on [dev]. `beyondGrant` reads "you cannot change their role or their access" since
+  sc-13023 (#582), so it holds on the suspension cards too, where restoring is what it rules out. es, fr and pt write the web twins as the app's, word for
   word, and write `ownRole` without the contraction. An invitation is "withdrawn" in prose and
   "Revoke" stays the manager's button; the invitee reads "Withdrawn". "Works until" is the
   invitation's life, never "valid until".
