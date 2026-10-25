@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { setLanguage } from '../i18n/index.ts';
 import { LanguagePicker } from './LanguagePicker.tsx';
@@ -9,6 +9,7 @@ function options(): string[] {
 }
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   localStorage.clear();
   await setLanguage(null);
 });
@@ -20,10 +21,14 @@ describe('the language picker (sc-9797)', () => {
     expect(options()).toEqual(['English', 'Español', 'Français', 'Português']);
   });
 
-  it('shows the language the screen is in when nothing is stored', () => {
+  it('shows the language the screen is in when nothing is stored', async () => {
+    vi.spyOn(navigator, 'language', 'get').mockReturnValue('pt-BR');
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['pt-BR']);
+    await setLanguage(null);
+
     render(<LanguagePicker automatic={false} />);
 
-    expect(screen.getByRole<HTMLSelectElement>('combobox').value).toBe('en');
+    expect(screen.getByRole<HTMLSelectElement>('combobox').value).toBe('pt');
   });
 
   it('shows the stored language', async () => {

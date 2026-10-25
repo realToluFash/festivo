@@ -10,21 +10,30 @@ const CHOSEN_SIGNED_OUT = 'soirely:language:chosen-signed-out';
 /** The signed-in account's language, as last read or saved; null when it has none of the four. */
 let saved: string | null = null;
 
+/** The latest pick still being saved, which entering the app waits on rather than undoes, however many follow it. */
+let saving: Promise<void> | null = null;
+
 /** The switcher: signed in, the account keeps it for every device and email; signed out, this device does. */
 export async function chooseLanguage(locale: string | null, signedIn: boolean): Promise<void> {
-  await setLanguage(locale);
+  const shown = setLanguage(locale);
 
-  if (locale == null) return;
+  if (locale == null) return shown;
 
   if (signedIn) {
-    await api.setLocale(locale).then(
+    const save = api.setLocale(locale).then(
       () => {
         saved = locale;
       },
       () => {},
     );
+    saving = save;
+    await shown;
+    await save;
+    if (saving === save) saving = null;
     return;
   }
+
+  await shown;
 
   try {
     localStorage.setItem(CHOSEN_SIGNED_OUT, '1');
@@ -62,5 +71,7 @@ export async function followAccount(account: Account): Promise<void> {
 
 /** Entering the signed-in app: Automatic, or a failed save, picked elsewhere gives way to the account's language (sc-9797). */
 export async function followSavedLanguage(): Promise<void> {
+  while (saving != null) await saving;
+
   if (saved != null && saved !== storedLanguage()) await setLanguage(saved);
 }

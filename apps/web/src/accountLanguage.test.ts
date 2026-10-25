@@ -3,7 +3,7 @@ import i18next from 'i18next';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { chooseLanguage, followAccount, followSavedLanguage } from './accountLanguage.ts';
-import { setLanguage, storedLanguage } from './i18n/index.ts';
+import { LANGUAGE_KEY, currentLocale, setLanguage, storedLanguage } from './i18n/index.ts';
 
 const ACCOUNT: Account = {
   id: 'acc_1',
@@ -116,11 +116,66 @@ describe('the signed-in app shows the account language (sc-9797)', () => {
 
   it('follows the browser, and saves nothing, for an account with none of the four', async () => {
     const sent = saved();
+    vi.spyOn(navigator, 'language', 'get').mockReturnValue('pt-BR');
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['pt-BR']);
+    await setLanguage(null);
 
     await followAccount({ ...ACCOUNT, locale: 'de' });
     await followSavedLanguage();
 
-    expect(storedLanguage()).toBeNull();
+    expect(localStorage.getItem(LANGUAGE_KEY)).toBeNull();
+    expect(currentLocale()).toBe('pt');
     expect(sent).toEqual([]);
+  });
+
+  it('keeps a pick whose save is still on its way', async () => {
+    saved();
+    await followAccount({ ...ACCOUNT, locale: 'es' });
+    let answer: (response: Response) => void = () => {};
+    vi.spyOn(globalThis, 'fetch').mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      }),
+    );
+
+    const picking = chooseLanguage('pt', true);
+    const entering = followSavedLanguage();
+    answer(
+      new Response(JSON.stringify({ locale: 'pt' }), {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    await Promise.all([picking, entering]);
+
+    expect(i18next.language).toBe('pt');
+  });
+
+  it('keeps a second pick made while entering waits on the first', async () => {
+    saved();
+    await followAccount({ ...ACCOUNT, locale: 'es' });
+    const answers: ((response: Response) => void)[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          answers.push(resolve);
+        }),
+    );
+    const answer = (locale: string) =>
+      answers.shift()?.(
+        new Response(JSON.stringify({ locale }), {
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+    const first = chooseLanguage('pt', true);
+    const entering = followSavedLanguage();
+    const second = chooseLanguage('fr', true);
+    await vi.waitFor(() => expect(answers).toHaveLength(2));
+    answer('pt');
+    await first;
+    answer('fr');
+    await Promise.all([second, entering]);
+
+    expect(i18next.language).toBe('fr');
   });
 });

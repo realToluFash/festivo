@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router';
 
@@ -99,7 +99,8 @@ function Shell() {
   const overdue = useTwoFactorStanding(organisation) === 'overdue';
   const switchTo = switchOf(location.state);
 
-  useEffect(() => {
+  // Before the first paint, so the first signed-in screen is already in the account's language.
+  useLayoutEffect(() => {
     void followSavedLanguage();
   }, []);
 
