@@ -1179,7 +1179,6 @@ export function batchCheck(flow, check, language, { reset }) {
 export function batchFlow({ checks, languages, cold }) {
   const lines = [`appId: ${EXPO_GO}`, '---', '- launchApp:', `    appId: ${EXPO_GO}`];
   lines.push(`    stopApp: ${cold ? 'true' : 'false'}`);
-  // A sheet the last run left open hides Home from the session's first wait.
   if (cold) lines.push('- runFlow: batch/sign-out.yaml');
   else lines.push(helperStep('/reload', 'batch/helper.js').trimEnd());
   lines.push('- runFlow: batch/session.yaml');
@@ -1305,7 +1304,6 @@ async function apiSession(email, password, secret) {
   ).accessToken;
 }
 
-// Node 20 has no global WebSocket; the QA hosts run it, so `ws` stands in there.
 async function reloadApp() {
   const Socket = globalThis.WebSocket ?? (await import('ws')).WebSocket;
   return new Promise((done, failed) => {
