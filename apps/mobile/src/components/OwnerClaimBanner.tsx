@@ -116,7 +116,7 @@ function Withdrew({ told }: { told: boolean }) {
 
   return (
     <View ref={shown} testID="ownerClaim.withdrew">
-      <Notice tone="done" mark={tokens.marks.done.glyph} body={words} words={read} />
+      <Notice tone="done" mark={tokens.marks.done.glyph} body={words} wordsRef={read} />
     </View>
   );
 }
@@ -131,7 +131,7 @@ function WithdrawRefused({ words, onReload }: { words: string; onReload: () => v
         tone="broken"
         mark="✕"
         body={words}
-        words={read}
+        wordsRef={read}
         action={{ label: t('ownerClaim.reload'), onPress: onReload, testID: 'ownerClaim.reload' }}
       />
     </View>

@@ -18,7 +18,7 @@ export function Notice({
   action,
   heading = false,
   announce = false,
-  words,
+  wordsRef,
 }: {
   tone: NoticeTone;
   mark: string;
@@ -33,7 +33,7 @@ export function Notice({
   /** The notice appears in answer to something the person did, so a screen reader reads it out. */
   announce?: boolean;
   /** Its words as one item, without the action, for screen reader focus to be moved to. */
-  words?: Ref<View>;
+  wordsRef?: Ref<View> | undefined;
 }) {
   const surface = {
     quiet: styles.quiet,
@@ -76,9 +76,9 @@ export function Notice({
       </View>
       <View style={styles.body}>
         <View
-          ref={words}
+          ref={wordsRef}
           style={styles.words}
-          accessible={announce || words != null || undefined}
+          accessible={announce || wordsRef != null || undefined}
           accessibilityLiveRegion={announce ? 'polite' : undefined}
         >
           {title != null && (
