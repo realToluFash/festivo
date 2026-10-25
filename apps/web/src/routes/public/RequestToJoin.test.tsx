@@ -251,6 +251,51 @@ describe('a request link (sc-562)', () => {
     expect(screen.queryByText(/Ìrè Events/)).toBeNull();
   });
 
+  it('brings the dead-link page, focused on its heading, when Ask to join finds the link replaced (sc-11707)', async () => {
+    signedIn();
+    const sent = answering({
+      [LINK]: () => json(PREVIEW),
+      [ASK]: () => problem(404, 'request_link_dead'),
+    });
+    open();
+
+    fireEvent.change(await screen.findByLabelText(/Message/), {
+      target: { value: 'I run the Abuja office.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
+
+    const heading = await screen.findByRole('heading', {
+      level: 1,
+      name: "This link doesn't work",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    const body = screen.getByText(
+      "This link doesn't work any more. Ask the organisation for a new one.",
+    );
+    expect(body.closest('[role]')).toBeNull();
+    expect(screen.getByRole('link', { name: 'Go to Soirely' })).toBeDefined();
+    expect(screen.queryByText(/Ìrè Events/)).toBeNull();
+    expect(screen.queryByLabelText(/Message/)).toBeNull();
+    expect(screen.queryByText('Asking did not work')).toBeNull();
+    expect(sent.map((one) => one.line)).toEqual([LINK, ASK]);
+  });
+
+  it('still says asking did not work when Soirely cannot be reached', async () => {
+    signedIn();
+    answering({ [LINK]: () => json(PREVIEW) });
+    open();
+
+    fireEvent.change(await screen.findByLabelText(/Message/), {
+      target: { value: 'I run the Abuja office.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
+
+    expect(await screen.findByText('Asking did not work')).toBeDefined();
+    expect(screen.getByLabelText<HTMLTextAreaElement>(/Message/).value).toBe(
+      'I run the Abuja office.',
+    );
+  });
+
   it('leaves an invitation link to the invitation page', async () => {
     __setSessionState({ status: 'signedOut', ended: false });
     const sent = answering({});

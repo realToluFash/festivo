@@ -1,5 +1,5 @@
 import { ApiError, type CompanyDomains, type Membership } from '@soirely/api-client';
-import { companyDomainProblem, domainOf, normaliseDomain } from '@soirely/domain';
+import { companyDomainProblem, domainOf, normaliseDomain, removalAnswers } from '@soirely/domain';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -9,13 +9,15 @@ import { useStepFocus } from '../../../stepFocus.ts';
 
 type Flash = { kind: 'added' | 'removed'; domain: string; answers: boolean } | null;
 
+type Refusal = { message: string; code?: string };
+
 /** General's "Company domain joining" (sc-561), for those who can manage members. */
 export function CompanyDomainsCard({ organisation }: { organisation: Membership }) {
   const { t } = useTranslation();
   const [list, setList] = useState<CompanyDomains | null>(null);
   const [failed, setFailed] = useState(false);
   const [typed, setTyped] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Refusal | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [flash, setFlash] = useState<Flash>(null);
@@ -62,11 +64,12 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
     const problem = companyDomainProblem(typed);
 
     if (problem != null) {
-      setError(
-        problem === 'blank'
-          ? t('companyDomains.blank', { example })
-          : t('companyDomains.shape', { example }),
-      );
+      setError({
+        message:
+          problem === 'blank'
+            ? t('companyDomains.blank', { example })
+            : t('companyDomains.shape', { example }),
+      });
       input.current?.focus();
       return;
     }
@@ -85,11 +88,11 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
       setFlash({ kind: 'added', domain, answers: filled });
       if (filled) arriveAtAnswer();
     } catch (refusal) {
-      const message =
+      const violation =
         refusal instanceof ApiError && refusal.is('validation_failed')
-          ? refusal.fieldErrors().domain
+          ? refusal.problem.violations?.find((one) => one.propertyPath === 'domain')
           : undefined;
-      setError(message ?? t('companyDomains.failed'));
+      setError(violation ?? { message: t('companyDomains.failed') });
       input.current?.focus();
     } finally {
       setBusy(false);
@@ -104,6 +107,7 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
     try {
       setList(await api.removeCompanyDomain(organisation.id, domain));
       setFlash({ kind: 'removed', domain, answers: true });
+      if (removalAnswers(error?.code, typed, domain)) setError(null);
     } catch {
       setRemoveFailed(true);
     } finally {
@@ -254,7 +258,7 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
               {t('companyDomains.add')}
             </button>
           </div>
-          {error != null && <FieldError id="company-domain-error" message={error} />}
+          {error != null && <FieldError id="company-domain-error" message={error.message} />}
           <p className="field-help" id="company-domain-help">
             {list.ownAddress == null
               ? t('companyDomains.helpNoAddress', { count: list.most })

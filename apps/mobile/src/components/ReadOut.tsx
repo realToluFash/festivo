@@ -1,14 +1,19 @@
 import { useEffect, useRef } from 'react';
 import { AccessibilityInfo, Platform, View, type ViewProps } from 'react-native';
 
-import { howToReadOut, settleMs, shownAtMount } from '../kit/readOut.ts';
+import { howToReadOut, settleMs, shownAtMount, shownOnceSaid } from '../kit/readOut.ts';
 
 /** Hands words to the screen reader to say, without moving its focus; the returned function takes them back unsaid. */
 export function readOut(
   words: string,
-  { interrupts = false, afterMs = settleMs(Platform.OS) } = {},
+  {
+    interrupts = false,
+    afterMs = settleMs(Platform.OS),
+    onSaid,
+  }: { interrupts?: boolean; afterMs?: number; onSaid?: (() => void) | undefined } = {},
 ): () => void {
   const timer = setTimeout(() => {
+    onSaid?.();
     if (Platform.OS === 'ios') {
       AccessibilityInfo.announceForAccessibilityWithOptions(words, { queue: !interrupts });
     } else if (Platform.OS === 'android') {
@@ -20,8 +25,8 @@ export function readOut(
 }
 
 export interface ReadOutOptions {
-  /** Said once as the words appear, and not again as they change while they stay. */
-  once?: boolean | undefined;
+  /** The field being typed in: the words wait until it has stopped changing, and are said only when they differ from the last said. */
+  afterTyping?: string | undefined;
   /** On iOS, said before whatever VoiceOver was saying rather than after it; TalkBack says it after the settle like any other. */
   interrupts?: boolean | undefined;
   /** Words already there as this mounts were not an answer to anything, so they are not said. */
@@ -31,21 +36,15 @@ export interface ReadOutOptions {
 /** Applies howToReadOut to a message as its words change. */
 export function useReadOut(
   words: string | null,
-  { once = false, interrupts = false, quietAtMount = false }: ReadOutOptions = {},
+  { afterTyping, interrupts = false, quietAtMount = false }: ReadOutOptions = {},
 ): void {
   const shown = useRef(shownAtMount(words, quietAtMount));
   const unsaid = useRef<(() => void) | null>(null);
+  const typing = afterTyping !== undefined;
 
   useEffect(() => {
-    const {
-      shown: now,
-      handOver,
-      takeBack,
-    } = howToReadOut(shown.current, words, {
-      os: Platform.OS,
-      once,
-      interrupts,
-    });
+    const reading = { os: Platform.OS, afterTyping: typing, interrupts };
+    const { shown: now, handOver, takeBack } = howToReadOut(shown.current, words, reading);
     shown.current = now;
 
     if (takeBack) {
@@ -56,9 +55,12 @@ export function useReadOut(
       unsaid.current = readOut(handOver.words, {
         interrupts: !handOver.queue,
         afterMs: handOver.afterMs,
+        onSaid: () => {
+          shown.current = shownOnceSaid(shown.current, handOver, reading);
+        },
       });
     }
-  }, [words, once, interrupts]);
+  }, [words, afterTyping, typing, interrupts]);
 
   useEffect(() => () => unsaid.current?.(), []);
 }
@@ -66,12 +68,11 @@ export function useReadOut(
 /** A message read out as it appears; `words` are what it says, without its mark or its actions. */
 export function ReadOut({
   words,
-  once,
   interrupts,
   children,
   ...view
-}: ViewProps & { words: string } & Omit<ReadOutOptions, 'quietAtMount'>) {
-  useReadOut(words, { once, interrupts });
+}: ViewProps & { words: string } & Pick<ReadOutOptions, 'interrupts'>) {
+  useReadOut(words, { interrupts });
 
   return <View {...view}>{children}</View>;
 }

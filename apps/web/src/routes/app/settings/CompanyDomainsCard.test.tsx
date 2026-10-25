@@ -60,6 +60,18 @@ function listed(domains: { domain: string; stopped: boolean }[]) {
   return { domains, most: 5, ownAddress: 'folake@ire.events' };
 }
 
+function refused(message: string, code: string): Response {
+  return json(
+    {
+      type: 'https://soirely.com/errors/validation_failed',
+      title: 'Validation failed',
+      status: 422,
+      violations: [{ propertyPath: 'domain', message, code }],
+    },
+    422,
+  );
+}
+
 async function removing(domain: string) {
   fireEvent.click(await screen.findByRole('button', { name: `Remove ${domain}` }));
   const confirm = screen.getAllByRole('button', { name: `Remove ${domain}` }).at(-1);
@@ -144,7 +156,7 @@ describe('Settings > General > Company domain joining (sc-561)', () => {
               {
                 propertyPath: 'domain',
                 message: 'Add a domain your own address is at.',
-                code: 'validation_failed',
+                code: 'domain_not_yours',
               },
             ],
           },
@@ -362,6 +374,141 @@ describe('Settings > General > Company domain joining (sc-561)', () => {
     expect(screen.getByText('That did not work. Try again in a moment.')).toBeDefined();
     expect(field.getAttribute('aria-invalid')).toBe('true');
     expect((field as HTMLInputElement).value).toBe('ire.events');
+  });
+
+  describe('a refusal a removal that works has made untrue (sc-11816)', () => {
+    const FOUR = ['ire.ng', 'ire-catering.com', 'ireweddings.com', 'ireevents.com'].map(
+      (domain) => ({ domain, stopped: false }),
+    );
+
+    async function refusedAdd(typed: string, message: string) {
+      const field = await screen.findByLabelText('Add a domain');
+      fireEvent.change(field, { target: { value: typed } });
+      fireEvent.click(screen.getByRole('button', { name: 'Add domain' }));
+      expect(await screen.findByText(message)).toBeDefined();
+
+      return field as HTMLInputElement;
+    }
+
+    it('goes when the domain it said was on the list is removed', async () => {
+      answering({
+        'GET /api/orgs/org_1/domains': () =>
+          json(listed([{ domain: 'ire.events', stopped: true }, ...FOUR.slice(0, 1)])),
+        'POST /api/orgs/org_1/domains': () =>
+          refused('ire.events is already on the list.', 'domain_listed'),
+        'DELETE /api/orgs/org_1/domains/ire.events': () => json(listed(FOUR.slice(0, 1))),
+      });
+      settings();
+
+      const field = await refusedAdd(' IRE.events', 'ire.events is already on the list.');
+      await removing('ire.events');
+
+      expect(await screen.findByText('ire.events removed.')).toBeDefined();
+      expect(screen.queryByText('ire.events is already on the list.')).toBeNull();
+      expect(field.getAttribute('aria-invalid')).toBe('false');
+      expect(field.className).not.toContain('input-wrong');
+      expect(field.value).toBe(' IRE.events');
+    });
+
+    it('stays when another domain is removed', async () => {
+      answering({
+        'GET /api/orgs/org_1/domains': () =>
+          json(listed([{ domain: 'ire.events', stopped: true }, ...FOUR.slice(0, 1)])),
+        'POST /api/orgs/org_1/domains': () =>
+          refused('ire.events is already on the list.', 'domain_listed'),
+        'DELETE /api/orgs/org_1/domains/ire.ng': () =>
+          json(listed([{ domain: 'ire.events', stopped: true }])),
+      });
+      settings();
+
+      const field = await refusedAdd('ire.events', 'ire.events is already on the list.');
+      await removing('ire.ng');
+
+      expect(await screen.findByText('ire.ng removed.')).toBeDefined();
+      expect(screen.getByText('ire.events is already on the list.')).toBeDefined();
+      expect(field.getAttribute('aria-invalid')).toBe('true');
+      expect(field.value).toBe('ire.events');
+    });
+
+    it('goes when it said the list was full, whichever domain is removed', async () => {
+      const full = 'That is 5 domains, the most the list can hold. Remove one to add another.';
+      answering({
+        'GET /api/orgs/org_1/domains': () => json(listed(FOUR)),
+        'POST /api/orgs/org_1/domains': () => refused(full, 'domain_full'),
+        'DELETE /api/orgs/org_1/domains/ireweddings.com': () =>
+          json(listed(FOUR.filter((one) => one.domain !== 'ireweddings.com'))),
+      });
+      settings();
+
+      const field = await refusedAdd('ire.events', full);
+      await removing('ireweddings.com');
+
+      expect(await screen.findByText('ireweddings.com removed.')).toBeDefined();
+      expect(screen.queryByText(full)).toBeNull();
+      expect(field.getAttribute('aria-invalid')).toBe('false');
+      expect(field.value).toBe('ire.events');
+    });
+
+    it.each([
+      ['Add a domain your own address is at.', 'domain_not_yours'],
+      ['You cannot use a public email domain.', 'domain_public'],
+      [
+        'Another organisation has proved ire.events on Enterprise, so only its listing works.',
+        'domain_proved_elsewhere',
+      ],
+    ])('leaves "%s" as it was', async (message, code) => {
+      answering({
+        'GET /api/orgs/org_1/domains': () => json(listed(FOUR.slice(0, 1))),
+        'POST /api/orgs/org_1/domains': () => refused(message, code),
+        'DELETE /api/orgs/org_1/domains/ire.ng': () => json(listed([])),
+      });
+      settings();
+
+      const field = await refusedAdd('ire.ng', message);
+      await removing('ire.ng');
+
+      expect(await screen.findByText('ire.ng removed.')).toBeDefined();
+      expect(screen.getByText(message)).toBeDefined();
+      expect(field.getAttribute('aria-invalid')).toBe('true');
+      expect(field.value).toBe('ire.ng');
+    });
+
+    it("leaves the card's own refusal as it was", async () => {
+      answering({
+        'GET /api/orgs/org_1/domains': () => json(listed(FOUR.slice(0, 1))),
+        'DELETE /api/orgs/org_1/domains/ire.ng': () => json(listed([])),
+      });
+      settings();
+
+      const field = await refusedAdd(
+        'ireng',
+        'Enter a domain with a dot and no spaces, like ire.events.',
+      );
+      await removing('ire.ng');
+
+      expect(await screen.findByText('ire.ng removed.')).toBeDefined();
+      expect(
+        screen.getByText('Enter a domain with a dot and no spaces, like ire.events.'),
+      ).toBeDefined();
+      expect(field.getAttribute('aria-invalid')).toBe('true');
+    });
+
+    it('stays through a removal that fails', async () => {
+      answering({
+        'GET /api/orgs/org_1/domains': () =>
+          json(listed([{ domain: 'ire.events', stopped: true }])),
+        'POST /api/orgs/org_1/domains': () =>
+          refused('ire.events is already on the list.', 'domain_listed'),
+      });
+      settings();
+
+      const field = await refusedAdd('ire.events', 'ire.events is already on the list.');
+      await removing('ire.events');
+
+      expect(await screen.findByRole('alert')).toBeDefined();
+      expect(screen.getByText('ire.events is already on the list.')).toBeDefined();
+      expect(field.getAttribute('aria-invalid')).toBe('true');
+    });
   });
 
   describe('a removal that fails (sc-11339)', () => {

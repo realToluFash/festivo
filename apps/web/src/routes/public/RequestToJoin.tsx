@@ -24,7 +24,7 @@ import { useStepFocus } from '../../stepFocus.ts';
 
 type View =
   | { kind: 'loading' }
-  | { kind: 'dead' }
+  | { kind: 'dead'; brought?: boolean }
   | { kind: 'unreachable' }
   | { kind: 'open'; preview: RequestLinkPreview }
   | { kind: 'sent'; preview: RequestLinkPreview }
@@ -36,6 +36,7 @@ export function RequestToJoin({ token }: { token: string }) {
   const [view, setView] = useState<View>({ kind: 'loading' });
   const [answer, arriveAtAnswer] = useStepFocus<HTMLDivElement>();
   const [answered, setAnswered] = useState(false);
+  const [deadHeading, arriveAtDead] = useStepFocus();
   const settled = session.status === 'signedIn' || session.status === 'signedOut';
 
   useEffect(() => {
@@ -61,24 +62,30 @@ export function RequestToJoin({ token }: { token: string }) {
     };
   }, [settled, token]);
 
+  function change(next: View): void {
+    setView(next);
+    if (next.kind === 'dead') {
+      arriveAtDead();
+    } else {
+      setAnswered(true);
+      arriveAtAnswer();
+    }
+  }
+
   if (session.status === 'unreachable' || view.kind === 'unreachable') return <Unreachable />;
   if (view.kind === 'loading') return <Pending />;
 
   return (
     <AuthPage>
       {view.kind === 'dead' ? (
-        <Dead />
+        <Dead heading={deadHeading} brought={view.brought === true} />
       ) : (
         <Asking
           token={token}
           view={view}
           signedIn={session.status === 'signedIn'}
           answer={answered ? answer : null}
-          onChange={(next) => {
-            setView(next);
-            setAnswered(true);
-            arriveAtAnswer();
-          }}
+          onChange={change}
         />
       )}
     </AuthPage>
@@ -86,15 +93,23 @@ export function RequestToJoin({ token }: { token: string }) {
 }
 
 /** Unknown, switched off and replaced alike, with no organisation named. */
-function Dead() {
+function Dead({
+  heading,
+  brought,
+}: {
+  heading: RefObject<HTMLHeadingElement | null>;
+  brought: boolean;
+}) {
   const { t } = useTranslation();
 
   return (
     <>
       <div className="auth-heading">
-        <h1>{t('requestToJoin.deadTitle')}</h1>
+        <h1 ref={heading} tabIndex={-1}>
+          {t('requestToJoin.deadTitle')}
+        </h1>
       </div>
-      <div className="notice notice-quiet" role="status">
+      <div className="notice notice-quiet" role={brought ? undefined : 'status'}>
         <span className="mark mark-info" aria-hidden="true">
           i
         </span>
@@ -255,7 +270,7 @@ function Ask({
     }
 
     if (problem.is('request_link_dead')) {
-      setFailed(true);
+      onChange({ kind: 'dead', brought: true });
       return;
     }
 
