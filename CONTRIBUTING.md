@@ -69,7 +69,8 @@ offline from first launch, or its own splash screen, needs the app itself.
 builds a release APK of the QA worktree's commit, with the bundle and fonts inside, installs
 it on the tester's phone emulator (`--tablet` for the other) and opens it. Run `checkout main`
 first for main. It needs no Expo account: `expo prebuild` writes `apps/mobile/android`, which
-is ignored, and Gradle builds it, the first time in about ten minutes. The APK is kept in
+is ignored, and Gradle builds it. The first build on a machine fetches the NDK and an SDK
+platform and took an hour here. The APK is kept in
 `.qa/release`, named by its commit, so the next install of the same commit skips the build
 (`--rebuild` forces one). The iOS build comes with the Mac runner.
 
