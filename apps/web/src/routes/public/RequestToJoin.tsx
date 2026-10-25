@@ -82,10 +82,10 @@ export function RequestToJoin({ token }: { token: string }) {
   }, [settled, token, attempt, arrive]);
 
   function change(next: View): void {
+    const dead = next.kind === 'dead';
     setView(next);
-    if (next.kind !== 'dead') return;
-    setBrought(true);
-    arrive();
+    setBrought(dead);
+    if (dead) arrive();
   }
 
   if (session.status === 'unreachable') return <Unreachable signedIn={false} />;

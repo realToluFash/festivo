@@ -389,6 +389,34 @@ describe('a request link that did not load (sc-11488)', () => {
     expect(screen.queryByRole('status')).toBeNull();
   });
 
+  it('reads out the standing an ask after Try again finds', async () => {
+    signedIn();
+    let reachable = false;
+    answering({
+      [LINK]: () => {
+        if (!reachable) throw new TypeError('Failed to fetch');
+        return json(PREVIEW);
+      },
+      [ASK]: () => problem(409, 'join_request_waiting'),
+    });
+    open();
+
+    expect(await screen.findByText(`${SIGNED_IN} ${NOT_ANSWERING}`)).toBeDefined();
+
+    reachable = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    fireEvent.change(await screen.findByLabelText(/Message/), {
+      target: { value: 'I run the Abuja office.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
+
+    expect(
+      (await screen.findByRole('status')).textContent?.includes(
+        "You have already asked to join Ìrè Events. We'll email you when they answer.",
+      ),
+    ).toBe(true);
+  });
+
   it('keeps the full words signed in', async () => {
     signedIn();
     answering({});
