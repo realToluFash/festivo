@@ -13,6 +13,18 @@ import { LOCALES, ROOT, type Surface, type WordCopy } from './surfaces.ts';
 
 export type Catalogue = Record<string, unknown>;
 
+const PLURAL_CATEGORIES = ['zero', 'one', 'two', 'few', 'many', 'other'];
+
+/** `guests_many` is the `many` form of `guests`; every check that reads a suffix asks here. */
+export function pluralForm(key: string): { base: string; category: string } | null {
+  const cut = key.lastIndexOf('_');
+  if (cut <= 0) return null;
+
+  const category = key.slice(cut + 1);
+
+  return PLURAL_CATEGORIES.includes(category) ? { base: key.slice(0, cut), category } : null;
+}
+
 export function load(surface: Pick<Surface, 'catalogues' | 'file'>, locale: string): Catalogue {
   const path = join(ROOT, surface.catalogues, surface.file(locale));
 
@@ -77,7 +89,7 @@ export function keyParity(
       if (!actual.includes(key)) missing.push({ locale, key });
     }
     for (const key of actual) {
-      if (!expected.includes(key) && !isOwnPluralForm(key, locale, expected)) {
+      if (!expected.includes(key) && ownPluralOf(key, locale, expected) == null) {
         extra.push({ locale, key });
       }
     }
@@ -86,18 +98,15 @@ export function keyParity(
   return { missing, extra };
 }
 
-/** `_many` in es: without it, i18next falls back to the reference's sentence. */
-function isOwnPluralForm(key: string, locale: string, expected: readonly string[]): boolean {
-  const form = /^(.+)_([a-z]+)$/.exec(key);
-  if (form == null) return false;
+/** A form the locale has and the reference does not: without it, i18next falls back to the reference. */
+function ownPluralOf(key: string, locale: string, expected: readonly string[]): string | null {
+  const form = pluralForm(key);
+  if (form == null) return null;
 
-  const [, base, category] = form;
+  const categories = new Intl.PluralRules(locale).resolvedOptions().pluralCategories as string[];
+  const other = `${form.base}_other`;
 
-  return (
-    (new Intl.PluralRules(locale).resolvedOptions().pluralCategories as string[]).includes(
-      category!,
-    ) && expected.includes(`${base}_other`)
-  );
+  return categories.includes(form.category) && expected.includes(other) ? other : null;
 }
 
 /** An empty message renders as nothing at all, which reads as a layout bug. */
@@ -134,10 +143,7 @@ export function slotParity(surface: Surface, reference = 'en'): SlotMismatch[] {
 
     for (const [key, text] of stringsOf(load(surface, locale))) {
       const reference =
-        expected.get(key) ??
-        (isOwnPluralForm(key, locale, [...expected.keys()])
-          ? expected.get(key.replace(/_[a-z]+$/, '_other'))
-          : undefined);
+        expected.get(key) ?? expected.get(ownPluralOf(key, locale, [...expected.keys()]) ?? '');
       if (reference == null) continue;
 
       const want = slotsIn(reference);

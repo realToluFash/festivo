@@ -1,9 +1,7 @@
 /** A key missing from all four catalogues passes parity and renders its own path (sc-11036). */
 import ts from 'typescript';
 
-import { keysOf, type Catalogue } from './catalogues.ts';
-
-const PLURAL_SUFFIXES = ['_zero', '_one', '_two', '_few', '_many', '_other'];
+import { keysOf, pluralForm, type Catalogue } from './catalogues.ts';
 
 export interface KeyUse {
   line: number;
@@ -61,7 +59,5 @@ function isTranslator(callee: ts.Expression): boolean {
 export function resolves(catalogue: Catalogue | readonly string[], key: string): boolean {
   const keys = Array.isArray(catalogue) ? catalogue : keysOf(catalogue);
 
-  return keys.some(
-    (each) => each === key || PLURAL_SUFFIXES.some((suffix) => each === `${key}${suffix}`),
-  );
+  return keys.some((each) => each === key || pluralForm(each)?.base === key);
 }
