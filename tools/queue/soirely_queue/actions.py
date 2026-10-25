@@ -703,8 +703,7 @@ def pr_create(c, a):
                       "woken for them")
     headings = {h.lower() for h, _, _ in T.sections(a.text)}
     if missing := [h for h in PR_SECTIONS if h.lower() not in headings]:
-        deeper = {m.group(2).lower(): len(m.group(1))
-                  for m in re.finditer(r"^(#{4,})\s+(.+?)\s*$", a.text, re.M)}
+        deeper = {h.lower(): level for h, level, _ in T.sections(a.text, T.DEEPER) if level}
         levels = "".join(f"; {h} is at level {deeper[h.lower()]}" for h in missing
                          if h.lower() in deeper)
         raise Refused(f"the body has no {', '.join(missing)} heading at levels 1-3{levels}; "

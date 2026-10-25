@@ -1156,7 +1156,9 @@ class OpsOwnsItsTickets(Base):
                                         "Next Steps"),
                                   (fenced, "no Risks heading at levels 1-3;"),
                                   (BODY.replace("## Risks", "#### Risks"),
-                                   "no Risks heading at levels 1-3; Risks is at level 4")):
+                                   "no Risks heading at levels 1-3; Risks is at level 4"),
+                                  (BODY.replace("## Risks", "```\n#### Risks\n```"),
+                                   "no Risks heading at levels 1-3; open")):
                 with self.assertRaisesRegex(actions.Refused, missing):
                     actions.pr_create(self.as_("dev"), args(head="b", title="t", text=body,
                                                             draft=False))
