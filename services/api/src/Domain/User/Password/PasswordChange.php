@@ -81,7 +81,7 @@ final readonly class PasswordChange
         if ($this->passwordResolver->verify($user, $new)) {
             throw ApiException::validation([[
                 'propertyPath' => 'newPassword',
-                'message' => $this->translator->trans('validation.' . PasswordFailure::Unchanged->value),
+                'message' => $this->translator->trans('validation.password_unchanged'),
                 'code' => PasswordFailure::Unchanged->value,
             ]]);
         }
