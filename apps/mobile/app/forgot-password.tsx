@@ -26,7 +26,7 @@ type Status =
 export default function ForgotPassword() {
   const { t } = useTranslation();
   const [status, setStatus] = useState<Status>({ kind: 'asking' });
-  const typed = useRef('');
+  const [typed, setTyped] = useState('');
   const emailInput = useRef<TextInput>(null);
   const checks = useFormChecks(
     ['email'] as const,
@@ -48,7 +48,7 @@ export default function ForgotPassword() {
   function submit(): void {
     if (status.kind === 'sending') return;
 
-    const email = typed.current.trim();
+    const email = typed.trim();
     if (!checks.passes({ email })) return;
 
     void send(email);
@@ -114,11 +114,12 @@ export default function ForgotPassword() {
             autoComplete="email"
             textContentType="emailAddress"
             autoCapitalize="none"
+            value={typed}
             onChangeText={(text) => {
-              typed.current = text;
+              setTyped(text);
               checks.edited('email', text);
             }}
-            onBlur={() => checks.left('email', typed.current)}
+            onBlur={() => checks.left('email', typed)}
             returnKeyType="send"
             onSubmitEditing={submit}
             accessibilityLabel={t('recovery.email')}
