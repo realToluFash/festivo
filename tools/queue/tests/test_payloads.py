@@ -64,6 +64,22 @@ class FollowUp(unittest.TestCase):
         self.assertNotIn("Ready For QA", said)
 
 
+    def test_a_done_storys_inbox_says_it_is_done(self):
+        p = Lines("dev")
+        story = dict(ticket(labels=()), done=True, state="Done", description="")
+        with mock.patch.object(payloads, "V"), \
+                mock.patch.object(payloads.store, "prs_for_story", return_value=[]):
+            payloads.inbox(p, None, {"id": 5}, story)
+        said = " ".join(p.lines)
+        self.assertIn("sc-9 is Done and stays Done", said)
+        story.update(done=False, state="In Progress")
+        p = Lines("dev")
+        with mock.patch.object(payloads, "V"), \
+                mock.patch.object(payloads.store, "prs_for_story", return_value=[]):
+            payloads.inbox(p, None, {"id": 5}, story)
+        self.assertNotIn("stays Done", " ".join(p.lines))
+
+
 class StrandedList(unittest.TestCase):
     def test_each_stranded_pr_shows_its_age_story_and_step(self):
         from soirely_queue import store
