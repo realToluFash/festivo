@@ -33,6 +33,7 @@ import { FieldError } from '../../../components/FieldError.tsx';
 import { OwnerClaimBanner } from '../../../components/OwnerClaimBanner.tsx';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
+import { offButton } from '../../../offButton.ts';
 import { dateLocale, useShownLanguage } from '../../../i18n/index.ts';
 import { can, useSession } from '../../../session.ts';
 import { Forbidden } from '../Forbidden.tsx';
@@ -510,7 +511,12 @@ function InvitationRow({
           {t(`membersScreen.invitationState.${invitation.status}`)}
         </span>
         {manages && invitation.status === 'pending' && (
-          <button type="button" className="button" disabled={busy} onClick={() => void revoke()}>
+          <button
+            type="button"
+            className="button"
+            {...offButton(busy)}
+            onClick={() => void revoke()}
+          >
             {t('membersScreen.revoke')}
           </button>
         )}
@@ -590,8 +596,13 @@ function MemberDetail({
     if (outcome != null) said.current?.focus();
   }, [outcome]);
 
+  const askOpened = useRef(false);
+
   useEffect(() => {
-    if (suspending === 'confirming') asking.current?.focus();
+    if (!askOpened.current) return;
+
+    askOpened.current = false;
+    asking.current?.focus();
   }, [suspending]);
 
   async function reload(): Promise<void> {
@@ -840,7 +851,14 @@ function MemberDetail({
               <p className="muted">
                 {t('membersScreen.suspendBody', { organisation: organisation.name })}
               </p>
-              <button type="button" className="button" onClick={() => setSuspending('confirming')}>
+              <button
+                type="button"
+                className="button"
+                onClick={() => {
+                  askOpened.current = true;
+                  setSuspending('confirming');
+                }}
+              >
                 {t('membersScreen.suspendButton')}
               </button>
             </>
@@ -862,7 +880,7 @@ function MemberDetail({
                   type="button"
                   className="button button-dark"
                   aria-busy={suspending === 'suspending'}
-                  disabled={suspending === 'suspending'}
+                  {...offButton(suspending === 'suspending')}
                   onClick={() => void suspend()}
                 >
                   {t('membersScreen.suspendConfirm', { name: member.user.name })}
@@ -913,7 +931,7 @@ function MemberDetail({
                 type="button"
                 className="button button-danger"
                 aria-busy={removal === 'removing'}
-                disabled={removal === 'removing'}
+                {...offButton(removal === 'removing')}
                 onClick={() => (onlyOwner ? void remove() : setRemoval('confirming'))}
               >
                 {t('membersScreen.removeButton', { organisation: organisation.name })}
@@ -939,7 +957,7 @@ function MemberDetail({
                   type="button"
                   className="button button-danger"
                   aria-busy={removal === 'removing'}
-                  disabled={removal === 'removing'}
+                  {...offButton(removal === 'removing')}
                   onClick={() => void remove()}
                 >
                   {t('membersScreen.removeConfirm', { name: member.user.name })}
@@ -1074,7 +1092,7 @@ function Suspension({
             type="button"
             className="button button-primary"
             aria-busy={restoring}
-            disabled={restoring}
+            {...offButton(restoring)}
             onClick={() => void restore()}
           >
             {t(byHand ? 'membersScreen.restoreAccess' : 'membersScreen.restore', named)}
@@ -1315,7 +1333,7 @@ function JoinRequestAnswer({
             type="button"
             className="button button-danger"
             aria-busy={busy}
-            disabled={busy}
+            {...offButton(busy)}
             onClick={() => void answer()}
           >
             {t('membersScreen.awaiting.turnDownConfirm', { name })}
@@ -1358,7 +1376,8 @@ function JoinRequestAnswer({
           type="button"
           className="button button-primary"
           aria-busy={busy}
-          disabled={busy || role == null}
+          disabled={role == null}
+          {...offButton(busy)}
           onClick={() => void answer()}
         >
           {t('membersScreen.awaiting.approveAs', { role: role == null ? '' : roleName(t, role) })}
@@ -1471,8 +1490,8 @@ function RolePicker({
         <button
           type="button"
           className="button button-primary"
-          disabled={!changed || busy}
           aria-busy={busy}
+          {...offButton(!changed || busy)}
           onClick={() => void save()}
         >
           {changed

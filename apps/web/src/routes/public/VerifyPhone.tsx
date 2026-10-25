@@ -4,7 +4,7 @@ import {
   type PhoneCodeRoute,
   phoneAwaitingCode,
 } from '@soirely/api-client';
-import { cleanCode, codeProblem, codeWording, formatCountdown, formatPhone } from '@soirely/domain';
+import { cleanCode, codeProblem, codeWording, formatPhone } from '@soirely/domain';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
@@ -20,6 +20,7 @@ import {
 import { Pending } from '../../components/Pending.tsx';
 import { refreshAccount } from '../../session.ts';
 import { FieldError } from '../../components/FieldError.tsx';
+import { useResendCountdown } from '../../resendCountdown.ts';
 
 /** "Check your messages": the code texted to the primary phone, under email's rules and with its parts. */
 export function VerifyPhone() {
@@ -31,7 +32,11 @@ export function VerifyPhone() {
   const onboarding = params.get('from') === 'onboarding' && alternative == null;
   const [account, setAccount] = useState<Account | 'none' | null>(null);
   const [status, setStatus] = useState<CodeStatus>({ kind: 'entering' });
-  const [cooldown, setCooldown] = useState(0);
+  const resending = useResendCountdown({
+    resend: 'verifyPhone.resend',
+    resendIn: 'verifyPhone.resendIn',
+  });
+  const { begin } = resending;
   const [codeError, setCodeError] = useState<string | null>(null);
   const [route, setRoute] = useState<PhoneCodeRoute | null>(null);
   const [textingFailed, setTextingFailed] = useState(false);
@@ -55,7 +60,7 @@ export function VerifyPhone() {
       .phoneOpening(alternative)
       .then(({ cooldownSeconds, codeState, route: sent }) => {
         if (!live) return;
-        setCooldown(cooldownSeconds);
+        begin(cooldownSeconds);
         setRoute(sent);
         setStatus((now) => openingStatus(now, codeState));
       })
@@ -64,7 +69,7 @@ export function VerifyPhone() {
     return () => {
       live = false;
     };
-  }, [alternative]);
+  }, [alternative, begin]);
 
   // While the code is on WhatsApp, the server may hand it to SMS: the line follows within a few seconds.
   useEffect(() => {
@@ -79,14 +84,6 @@ export function VerifyPhone() {
 
     return () => clearInterval(watching);
   }, [wording.watch, alternative]);
-
-  useEffect(() => {
-    if (cooldown <= 0) return;
-
-    const tick = setTimeout(() => setCooldown((left) => left - 1), 1000);
-
-    return () => clearTimeout(tick);
-  }, [cooldown]);
 
   if (account === 'none') return <Navigate to="/sign-in" replace />;
   if (account == null) return <Pending />;
@@ -132,9 +129,11 @@ export function VerifyPhone() {
     }
   }
 
-  async function resend(): Promise<void> {
+  const resend = (): Promise<void> => resending.once(sendOnce);
+
+  async function sendOnce(): Promise<void> {
     try {
-      setCooldown(await api.resendPhoneCode(alternative));
+      resending.countDown(await api.resendPhoneCode(alternative));
       setStatus({ kind: 'entering' });
       setRoute((await api.phoneOpening(alternative)).route);
     } catch (error) {
@@ -142,7 +141,7 @@ export function VerifyPhone() {
         error instanceof ApiError ? Number(error.response?.headers.get('Retry-After')) : NaN;
 
       if (Number.isFinite(seconds) && seconds > 0) {
-        setCooldown(seconds);
+        resending.countDown(seconds);
         setStatus({ kind: 'entering' });
         return;
       }
@@ -307,14 +306,15 @@ export function VerifyPhone() {
                 <button
                   className="button"
                   type="button"
-                  disabled={cooldown > 0}
+                  {...resending.button}
                   onClick={() => void resend()}
                 >
-                  {cooldown > 0
-                    ? t('verifyPhone.resendIn', { time: formatCountdown(cooldown) })
-                    : t('verifyPhone.resend')}
+                  {resending.label}
                 </button>
                 <p>{t('verifyPhone.resendNote')}</p>
+                <span className="visually-hidden" role="status">
+                  {resending.status}
+                </span>
               </div>
 
               {wording.offerText && (

@@ -14,6 +14,7 @@ import { Link, useBlocker, useNavigate, useParams } from 'react-router';
 import { api } from '../../../api.ts';
 import { useDialogKeys } from '../../../dialogFocus.ts';
 import { currentLocale } from '../../../i18n/index.ts';
+import { offButton } from '../../../offButton.ts';
 import { can, useSession } from '../../../session.ts';
 import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
 import { Forbidden } from '../Forbidden.tsx';
@@ -484,7 +485,6 @@ function Confirm({
   const { t } = useTranslation();
   const dialog = useRef<HTMLDivElement>(null);
   const keep = useRef<HTMLButtonElement>(null);
-  const unlessPending = (act: () => void) => () => !pending && act();
 
   useEffect(() => {
     const opener = document.activeElement;
@@ -518,17 +518,17 @@ function Confirm({
             ref={keep}
             type="button"
             className="button button-primary"
-            aria-disabled={pending}
-            onClick={unlessPending(onKeep)}
+            {...offButton(pending, { dim: false })}
+            onClick={onKeep}
           >
             {t('eventEdit.keepEditing')}
           </button>
           <button
             type="button"
             className="button"
-            aria-disabled={pending}
+            {...offButton(pending, { dim: false })}
             aria-busy={pending}
-            onClick={unlessPending(onGo)}
+            onClick={onGo}
           >
             {go}
           </button>

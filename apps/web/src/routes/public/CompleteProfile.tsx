@@ -26,6 +26,7 @@ import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { currentLocale, dateLocale } from '../../i18n/index.ts';
 import { useWaitingInvitations } from '../../invitations.ts';
+import { offButton } from '../../offButton.ts';
 import { phoneProblemMessage } from '../../phoneProblem.ts';
 import {
   adoptAccount,
@@ -193,7 +194,7 @@ function Waiting({ request, email }: { request: JoinRequest; email: string }) {
         className="button"
         type="button"
         aria-busy={withdrawing}
-        disabled={withdrawing}
+        {...offButton(withdrawing)}
         onClick={() => void startOwn()}
       >
         {t('domainJoining.startOwnInstead')}
@@ -236,6 +237,7 @@ function Details({
   const [phonePicked, setPhonePicked] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
+  const [askingToJoin, setAskingToJoin] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   // Read once, when the page opens asking for an organisation; the rows stay until the person leaves (sc-3353).
   const waiting = useWaitingInvitations(needsOrganisation);
@@ -348,6 +350,7 @@ function Details({
     }
 
     setSaving(true);
+    setAskingToJoin(askToJoin);
     setFailed(false);
     setUnavailable(false);
 
@@ -492,8 +495,9 @@ function Details({
               <button
                 className={offers.length === 1 ? 'button button-primary' : 'button'}
                 type="button"
-                disabled={saving}
                 aria-label={t('domainJoining.askLabel', { organisation: offer.name })}
+                disabled={saving && askingToJoin !== offer.id}
+                {...offButton(saving && askingToJoin === offer.id)}
                 onClick={() => void send(offer.id)}
               >
                 {t('domainJoining.ask')}

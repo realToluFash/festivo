@@ -178,10 +178,9 @@ describe('Settings > Sign-in rules, for someone who manages the organisation', (
         }),
       ).getByText('Not required'),
     ).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Rules are saved' })).toHaveProperty(
-      'disabled',
-      true,
-    );
+    expect(
+      screen.getByRole('button', { name: 'Rules are saved' }).getAttribute('aria-disabled'),
+    ).toBe('true');
     expect(sent.filter(({ method }) => method === 'PATCH')).toEqual([]);
   });
 
@@ -262,10 +261,9 @@ describe('Settings > Sign-in rules, for someone who manages the organisation', (
     expect(sent.filter(({ method }) => method === 'PATCH')).toEqual([]);
     expect((screen.getByLabelText(/Any method/) as HTMLInputElement).checked).toBe(true);
     expect(screen.getByText('Link Google or Apple for yourself first')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Rules are saved' })).toHaveProperty(
-      'disabled',
-      true,
-    );
+    expect(
+      screen.getByRole('button', { name: 'Rules are saved' }).getAttribute('aria-disabled'),
+    ).toBe('true');
   });
 
   it('keeps the other unsaved choices when the provider choice is refused, and saves them on a second press', async () => {
@@ -377,7 +375,7 @@ describe('Settings > Sign-in rules, for someone who manages the organisation', (
 
     const save = await screen.findByRole('button', { name: 'Rules are saved' });
 
-    expect((save as HTMLButtonElement).disabled).toBe(true);
+    expect(save.getAttribute('aria-disabled')).toBe('true');
     expect(screen.getByText('Nothing changes. These are the rules in force.')).toBeDefined();
   });
 });
