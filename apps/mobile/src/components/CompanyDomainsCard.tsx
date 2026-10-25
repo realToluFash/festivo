@@ -13,8 +13,9 @@ import { Field, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
 import { ReadOut } from './ReadOut.tsx';
+import { useScrolledToTop } from './Screen.tsx';
 
-type Flash = { kind: 'added' | 'removed'; domain: string } | { kind: 'notRemoved' } | null;
+type Flash = { kind: 'added' | 'removed'; domain: string } | null;
 
 /** Settings > Organisation's "Company domain joining" (sc-561), for those who can manage members. */
 export function CompanyDomainsCard({
@@ -31,6 +32,7 @@ export function CompanyDomainsCard({
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [flash, setFlash] = useState<Flash>(null);
+  const [notRemoved, setNotRemoved] = useState(false);
   const input = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -54,9 +56,7 @@ export function CompanyDomainsCard({
   const flashTitle =
     flash?.kind === 'added'
       ? t('companyDomains.added', { domain: flash.domain })
-      : flash?.kind === 'removed'
-        ? t('companyDomains.removed', { domain: flash.domain })
-        : t('companyDomains.failed');
+      : t('companyDomains.removed', { domain: flash?.domain ?? '' });
   const flashBody =
     flash?.kind === 'added' ? t('companyDomains.addedNext') : t('companyDomains.removedNext');
 
@@ -77,6 +77,7 @@ export function CompanyDomainsCard({
 
     setBusy(true);
     setFlash(null);
+    setNotRemoved(false);
 
     try {
       const domain = normaliseDomain(typed);
@@ -98,12 +99,13 @@ export function CompanyDomainsCard({
   async function remove(domain: string): Promise<void> {
     setBusy(true);
     setFlash(null);
+    setNotRemoved(false);
 
     try {
       setList(await api.removeCompanyDomain(organisation.id, domain));
       setFlash({ kind: 'removed', domain });
     } catch {
-      setFlash({ kind: 'notRemoved' });
+      setNotRemoved(true);
     } finally {
       setConfirming(null);
       setBusy(false);
@@ -128,19 +130,12 @@ export function CompanyDomainsCard({
       </Text>
 
       {flash != null && (
-        <ReadOut words={flash.kind === 'notRemoved' ? flashTitle : `${flashTitle}\n${flashBody}`}>
-          {flash.kind === 'notRemoved' ? (
-            <Notice tone="broken" mark={tokens.marks.broken.glyph} title={flashTitle} />
-          ) : (
-            <Notice
-              tone="done"
-              mark={tokens.marks.done.glyph}
-              title={flashTitle}
-              body={flashBody}
-            />
-          )}
+        <ReadOut words={`${flashTitle}\n${flashBody}`}>
+          <Notice tone="done" mark={tokens.marks.done.glyph} title={flashTitle} body={flashBody} />
         </ReadOut>
       )}
+
+      {notRemoved && <NotRemovedLine words={t('companyDomains.failed')} />}
 
       {list.domains.map(({ domain, stopped }) => (
         <View key={domain} style={styles.row}>
@@ -239,6 +234,19 @@ export function CompanyDomainsCard({
           />
         </>
       )}
+    </View>
+  );
+}
+
+/** Scrolled into view when it appears, since the removal it answers can sit a screen below it. */
+function NotRemovedLine({ words }: { words: string }) {
+  const top = useScrolledToTop();
+
+  return (
+    <View ref={top}>
+      <ReadOut words={words} interrupts accessibilityRole="alert">
+        <Notice tone="broken" mark={tokens.marks.broken.glyph} body={words} />
+      </ReadOut>
     </View>
   );
 }
