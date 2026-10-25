@@ -1,14 +1,29 @@
 import { roleHolds } from '@soirely/domain';
 
-export type Destination = 'home' | 'settings';
+export type Destination = 'home' | 'events' | 'settings';
 
-/** Only what a story has built: Calendar, Guests and Messages each add their own (sc-722, #727). */
-export const DESTINATIONS: readonly Destination[] = ['home', 'settings'];
+export const DESTINATION_HREF = {
+  home: '/',
+  events: '/events',
+  settings: '/settings',
+} as const satisfies Record<Destination, string>;
 
-export const DESTINATION_HREF = { home: '/', settings: '/settings' } as const satisfies Record<
-  Destination,
-  string
->;
+/** Only what a story has built (sc-722, #727), and Events only for a role that can read them (sc-1593). */
+export function destinations(
+  organisation: { permissions: readonly string[] } | null,
+): readonly Destination[] {
+  return [
+    'home',
+    ...(organisation != null && roleHolds(organisation, 'events.read')
+      ? (['events'] as const)
+      : []),
+    'settings',
+  ];
+}
+
+export function eventHref(eventId: string): string {
+  return `${DESTINATION_HREF.events}/${encodeURIComponent(eventId)}`;
+}
 
 export type SettingsSection =
   'account' | 'security' | 'organisation' | 'members' | 'roles' | 'signInRules';
@@ -29,7 +44,13 @@ export const INTERIM_HREF = {
 } as const;
 
 export function destinationOf(pathname: string): Destination {
-  return pathname === '/settings' || pathname.startsWith('/settings/') ? 'settings' : 'home';
+  const under = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+
+  return under(DESTINATION_HREF.settings)
+    ? 'settings'
+    : under(DESTINATION_HREF.events)
+      ? 'events'
+      : 'home';
 }
 
 export interface SettingsGroup {

@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 
 import { type WaitingInvitations, useWaitingInvitations } from '../invitations.ts';
 import { type DomainOffer, useDomainOffer } from '../joinOffers.ts';
-import { DESTINATIONS, DESTINATION_HREF, type Destination } from '../kit/appNav.ts';
+import { DESTINATION_HREF, type Destination, destinations } from '../kit/appNav.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { joinOrganisation, switchOrganisation, useSignedIn } from '../signedIn.ts';
@@ -71,6 +71,10 @@ export function useHeaderWithoutBack(hidden: boolean): void {
 
 const ICONS: Record<Destination, readonly [string, string]> = {
   home: ['M3 10.5 12 3l9 7.5', 'M5 9.5V21h14V9.5M10 21v-6h4v6'],
+  events: [
+    'M2 9a3 3 0 0 0 0 6v3a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3a3 3 0 0 0 0-6V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z',
+    'M13 5v2M13 17v2M13 11v2',
+  ],
   settings: [
     'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
     'M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z',
@@ -275,7 +279,7 @@ function FrameHeader({
           <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
         )}
         <View style={styles.pills} accessibilityRole="tablist">
-          {DESTINATIONS.map((destination) => {
+          {destinations(organisation).map((destination) => {
             const on = destination === current;
 
             return (
@@ -341,13 +345,14 @@ function FrameHeader({
 function TabBar({ current }: { current: Destination }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { organisation } = useSignedIn();
 
   return (
     <View
       style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, tokens.spaceSm) }]}
       accessibilityRole="tablist"
     >
-      {DESTINATIONS.map((destination) => {
+      {destinations(organisation).map((destination) => {
         const on = destination === current;
 
         return (
@@ -440,7 +445,11 @@ function Rail({
           ref={pill}
         />
       )}
-      <View style={styles.railGroup}>{DESTINATIONS.filter((d) => d !== 'settings').map(item)}</View>
+      <View style={styles.railGroup}>
+        {destinations(organisation)
+          .filter((d) => d !== 'settings')
+          .map(item)}
+      </View>
       <View style={styles.fill} />
       <View style={[styles.railGroup, styles.railFoot]}>
         {item('settings')}

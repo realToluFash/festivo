@@ -1,4 +1,5 @@
 import {
+  type ReactElement,
   type ReactNode,
   type RefObject,
   createContext,
@@ -14,6 +15,7 @@ import {
   Keyboard,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  type RefreshControlProps,
   ScrollView,
   type StyleProp,
   StyleSheet,
@@ -397,10 +399,12 @@ export function ScrollColumn({
   children,
   style,
   contentContainerStyle,
+  refreshControl,
 }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
+  refreshControl?: ReactElement<RefreshControlProps> | undefined;
 }) {
   const { screenScroll, scrollProps } = useScreenScrollView();
   const docked = useContext(Dock)?.docked ?? false;
@@ -411,6 +415,7 @@ export function ScrollColumn({
         {...scrollProps}
         style={style}
         contentContainerStyle={contentContainerStyle}
+        refreshControl={refreshControl}
         keyboardShouldPersistTaps="handled"
         {...scrollInsets(LIFT, docked)}
       >

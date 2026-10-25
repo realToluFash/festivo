@@ -663,6 +663,7 @@
   },
   "frame": {
     "home": "Inicio",
+    "events": "Eventos",
     "settings": "Configuración",
     "organisation": "Organización"
   },
@@ -1397,5 +1398,21 @@
     "youWithdrewTold": "Ha retirado su solicitud. Se avisa por correo electrónico a todas las personas a las que se informó.",
     "withdrawEnded": "Esta solicitud ya ha terminado.",
     "withdrawNotClaimant": "Solo la persona que inició esta solicitud puede retirarla."
+  },
+  "eventsScreen": {
+    "title": "Events",
+    "loading": "Loading events…",
+    "refreshing": "Refreshing…",
+    "draft": "Draft",
+    "failedLoad": "Your events did not load. Check your connection and try again.",
+    "retry": "Try again",
+    "noneTitle": "No events yet",
+    "noneCreateOnWeb": "Create events in Soirely on the web, and they will show here.",
+    "noneWillShow": "Events your organisation creates will show here.",
+    "choose": "Choose an event",
+    "loadingEvent": "Loading the event…",
+    "when": "{{range}} · {{timeZone}}",
+    "notFound": "This event is not available",
+    "backToEvents": "Back to Events"
   }
 }
