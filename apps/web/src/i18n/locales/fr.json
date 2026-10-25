@@ -1180,9 +1180,9 @@
     "removeMove_other": "{{count}} personnes ont ce rôle. Les passer à :",
     "removeMove_many": "{{count}} de personnes ont ce rôle. Les passer à :",
     "replacementLegend": "Rôle de remplacement",
-    "removeNoReplacement": "Choisissez le rôle que ces personnes reçoivent.",
+    "removeNoReplacement": "Choisissez le rôle de remplacement.",
     "removeAfter": "Elles deviennent {{role}} à leur prochaine requête. Personne n’est déconnecté.",
-    "removeConfirm": "Les passer et supprimer {{role}}",
+    "removeConfirm": "Réattribuer et supprimer {{role}}",
     "removeConfirmEmpty": "Supprimer {{role}}",
     "keep": "Garder {{role}}",
     "failedRemove": "La suppression n’a pas fonctionné. Rien n’a été modifié. Réessayez dans un instant."
