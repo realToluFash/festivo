@@ -63,12 +63,11 @@ def make_checkout(config, role, say, home):
             "mainCheckout")
         return
     say(f"  {role}: creating {path}")
-    subprocess.run(["git", f"--git-dir={home.parent}", "fetch", "--quiet", "origin"],
-                   check=True)
     try:
+        checkout.fetch(home.parent)
         checkout.ensure(home.parent, path)
     except checkout.Unprepared as refused:
-        say(f"  {role}: could not create {path}: {refused}")
+        say(f"  {role}: could not create it: {refused}")
 
 
 def stack_running(project):
