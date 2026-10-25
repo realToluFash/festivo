@@ -1,6 +1,7 @@
 """Who each role is, what it watches, and how a comment says who it is for."""
 
 import re
+import sys
 
 DEVELOPERS = {"dev": "dev1", "dev2": "dev2", "dev3": "dev3", "dev4": "dev4"}
 DEVS = tuple(DEVELOPERS)
@@ -161,6 +162,20 @@ def author(text):
 BUILDERS = DEVS + ("l10n", "ops")
 TESTERS = ("qa", "qa2", "qa3")
 LINGUISTS = ("l10n",)
+
+ANDROID_ONLY = re.compile(r"\s*(?:Android:|On Android\b)", re.IGNORECASE)
+
+
+def android_only(story):
+    return bool(ANDROID_ONLY.match(story.get("name") or ""))
+
+
+def can_test(role, story, platform=None):
+    """The Android emulators run on Linux, so a tester elsewhere takes no Android-only story."""
+    platform = platform or sys.platform
+    return role not in TESTERS or platform.startswith("linux") or not android_only(story)
+
+
 EVERYONE = tuple(ROLES)
 
 # What each role may write, from the "must not" sections of the skills. A command not

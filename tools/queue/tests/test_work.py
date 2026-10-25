@@ -382,6 +382,19 @@ class Queue(unittest.TestCase):
         items = work.queue_items([story(state="Ready For QA")])
         self.assertEqual([sorted(i["roles"]) for i in items], [["qa", "qa2", "qa3"]])
 
+    def test_an_android_only_story_is_no_tester_s_off_linux(self):
+        android = {**story(state="Ready For QA"), "name": "On Android, back closes the sheet"}
+        self.assertEqual(work.queue_items([android], platform="darwin"), [])
+        items = work.queue_items([android], platform="linux")
+        self.assertEqual([sorted(i["roles"]) for i in items], [["qa", "qa2", "qa3"]])
+
+    def test_a_story_naming_android_later_is_still_offered_off_linux(self):
+        stories = [{**story(1, state="Ready For QA"), "name": "Android: the PIN"},
+                   {**story(2, state="Ready For QA"),
+                    "name": "The picker reads in VoiceOver as well as TalkBack on Android"}]
+        items = work.queue_items(stories, platform="darwin")
+        self.assertEqual([i["story_id"] for i in items], [2])
+
     def test_a_translation_ticket_is_only_the_linguists(self):
         for state in ("To Do", "Ready For Dev", "In Progress", "Failed QA"):
             items = work.queue_items([story(state=state, labels=["translation"])])

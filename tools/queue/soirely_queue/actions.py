@@ -343,6 +343,9 @@ def claim(c, a):
                 takeover = f", taking over from {R.claimant(last)}'s of {last['at'][11:16]}"
         elif story["state"] != "Ready For QA":
             raise Refused(f"sc-{story['id']} is {story['state']}, not Ready For QA")
+        elif not R.can_test(c.role, story):
+            raise Refused(f"sc-{story['id']} is Android only, and the emulators are on the "
+                          "Linux machine: pick another")
         else:
             first = W.retester(story)
             if first and first != c.role:

@@ -168,6 +168,17 @@ class Writes(Base):
         self.assertEqual(self.fake.comments, [(1, "QA claim: qa2")])
         self.assertIn("qa2", self.labels(1))
 
+    def test_a_tester_off_linux_never_claims_an_android_only_story(self):
+        self.fake.add(1, "Ready For QA")
+        self.fake.raw[1]["name"] = "Android: the hardware back key closes the sheet"
+        with mock.patch("soirely_queue.roles.sys.platform", "darwin"), \
+                self.assertRaisesRegex(actions.Refused, "Android only"):
+            actions.claim(self.as_("qa3"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "Ready For QA")
+        with mock.patch("soirely_queue.roles.sys.platform", "linux"):
+            actions.claim(self.as_("qa2"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In QA")
+
     def test_a_failed_story_back_for_qa_is_its_first_tester_s_to_retest(self):
         import datetime
         self.fake.add(1, "Ready For QA", ["qa failed"])
