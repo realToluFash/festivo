@@ -385,6 +385,7 @@ function Leave({
   const [busy, setBusy] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
   const [refusedLast, setRefusedLast] = useState(false);
+  const [onlyOwnerAsOpened] = useState(onlyOwner);
   const name = organisation.name;
   const onlyOwnerTitle = t('ownership.onlyOwnerTitle');
   const onlyOwnerBody = t('ownership.onlyOwnerBody');
@@ -405,18 +406,33 @@ function Leave({
 
   return (
     <View style={styles.form}>
-      <AnswerHeading answer={answer} size={tokens.typeButton.size} weight="semibold">
+      <AnswerHeading
+        answer={onlyOwnerAsOpened ? undefined : answer}
+        size={tokens.typeButton.size}
+        weight="semibold"
+      >
         {t('ownership.leaveTitle', { organisation: name })}
       </AnswerHeading>
       {onlyOwner || refusedLast ? (
         <>
-          <ReadOut
-            words={`${onlyOwnerTitle}\n${onlyOwnerBody}`}
-            interrupts
-            accessibilityRole="alert"
-          >
-            <Notice tone="attention" mark="!" title={onlyOwnerTitle} body={onlyOwnerBody} />
-          </ReadOut>
+          {onlyOwnerAsOpened ? (
+            <Notice
+              tone="attention"
+              mark="!"
+              title={onlyOwnerTitle}
+              body={onlyOwnerBody}
+              answer={answer}
+              takesFocus
+            />
+          ) : (
+            <ReadOut
+              words={`${onlyOwnerTitle}\n${onlyOwnerBody}`}
+              interrupts
+              accessibilityRole="alert"
+            >
+              <Notice tone="attention" mark="!" title={onlyOwnerTitle} body={onlyOwnerBody} />
+            </ReadOut>
+          )}
           <PrimaryButton
             label={t('ownership.transfer')}
             onPress={onTransfer}
