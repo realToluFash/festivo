@@ -157,6 +157,13 @@ class SidePullRequests(unittest.TestCase):
                 self.assertEqual([(i["kind"], i["roles"]) for i in items], [(kind, ["l10n"])],
                                  (state, checks))
 
+    def test_the_linguists_conflicting_pr_asks_the_linguist_for_main_whatever_its_checks(self):
+        for checks in ("green", "red", "pending"):
+            conflicting = dict(self.side("l10n/sc-9", checks=checks), mergeable="conflicting")
+            items = work.developer_items([self.ticket()], [conflicting])
+            self.assertEqual([(i["kind"], i["roles"]) for i in items], [("conflict", ["l10n"])],
+                             checks)
+
     def test_the_linguists_pr_with_checks_running_wakes_nobody(self):
         self.assertEqual(work.developer_items([self.ticket()],
                                               [self.side("l10n/sc-9", checks="pending")]), [])

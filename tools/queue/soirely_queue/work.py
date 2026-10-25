@@ -343,7 +343,11 @@ def developer_items(stories, prs):
             continue
         if own:
             # The linguist merges its own once green, with no lead pass to wait for.
-            if pr["state"] == "open" and pr["checks"] == "red":
+            if pr["state"] == "open" and pr["mergeable"] == "conflicting" \
+                    and not pr.get("draft"):
+                add("conflict", f"PR #{number} conflicts with main at {sha}: merge origin/main "
+                                "into the branch, resolve it and push")
+            elif pr["state"] == "open" and pr["checks"] == "red":
                 add("checks-red", f"PR #{number} checks are red at {sha}")
             elif pr["state"] == "open" and pr["checks"] == "green":
                 add("merge", f"PR #{number} is green at {sha}: merge it")

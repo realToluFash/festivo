@@ -50,7 +50,7 @@ Every read goes through a ledger of what the role has already been shown.
 | `review`                       | lead        | the AC, the involving threads, PR status with open and resolved threads, Risks, the diff stat, what changed since the last verdict |
 | `threads`                      | lead        | the PR's status with every open thread, when a reply lands on any open thread, whoever opened it, in any story state               |
 | `merge`                        | developers  | the PR's status, read live; a conflict says to bring main in rather than merge                                                     |
-| `conflict`                     | developers  | the PR's status and how to bring main in, for an open PR that conflicts with main in any state; it goes ahead of comments          |
+| `conflict`                     | builders    | an open PR that conflicts with main in any state, the linguist's own too: how to bring main in; ahead of comments                  |
 | `answer-threads`               | developers  | the PR's status with every open thread, when the lead passed the head but a thread it has not had your reply on holds the merge    |
 | `to-qa`                        | developers  | the merge commit, and the one command that hands the story to QA                                                                   |
 | `to-review`, `merged-unpassed` | developers  | the PR's status and the command to run                                                                                             |
