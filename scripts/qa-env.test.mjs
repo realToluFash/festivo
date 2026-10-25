@@ -760,6 +760,19 @@ describe('the batch command', () => {
       'node .qa/bin/qa-env.mjs batch tour-home home --cold --android EMAIL=a@b.test PASSWORD=…',
     ]);
   });
+
+  it("keeps the batch's other variables, quoted for the shell", () => {
+    expect(
+      rerunHints('tour', [{ check: 'home', language: 'any' }], {
+        args: [],
+        email: 'a@b.test',
+        secret: null,
+        rest: { ORG_NAME: "Ana's Events", ROLE: 'admin' },
+      }),
+    ).toEqual([
+      "node .qa/bin/qa-env.mjs batch tour-home home --cold EMAIL=a@b.test PASSWORD=… 'ORG_NAME=Ana'\\''s Events' ROLE=admin",
+    ]);
+  });
 });
 
 describe('the flows a batch runs', () => {
