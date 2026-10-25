@@ -57,6 +57,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   English quotes them; "system prompt" stays English. Where a screen says the same sentence
   (`lostTwoFactor.*`, `signIn.timedOutBody_*`, `createOrganisation.limitedTitle`, the
   lock-outs' «Inténtelo de nuevo a las {time}»), the refusal says it too.
+- **25 Oct 2026. The article before an API time** (sc-11332). The 01 hour is «la una», so the
+  lock-outs (`messages+intl-icu:limits.*`) and `emails+intl-icu:time.dateAt` choose the article
+  from `{hour}` (0–23): `{hour, plural, =1 {a la} other {a las}} {time}`, «a la 01:05», «a las
+  00:05», «a las 13:05». Any new string that puts an article before a clock time takes the same
+  form, or «la hora {time}» where no `{hour}` reaches it.
 - **25 Oct 2026. A time the clocks skip** (`eventForm.clocksSkip`, `clocksSkipNextDay`,
   sc-10675, reworded in sc-11163). «En {{zone}}, la hora {{time}} del {{day}} no existe: esa noche
   se adelantan los relojes. Se guardará como {{savedAs}}.»; the next-day line ends «Se guardará
