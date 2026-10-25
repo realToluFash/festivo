@@ -157,6 +157,7 @@ describe('email addresses and phone numbers', () => {
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Make primary' }));
+    expect(document.activeElement).toBe(screen.getByText('Make this your primary address?'));
     expect(
       screen.getByText(
         'You will sign in with it from now on, and account mail goes there. folake@ire.events stays linked and stops signing you in.',
@@ -324,6 +325,15 @@ describe('email addresses and phone numbers', () => {
       expect(sent.some((s) => s.call === 'DELETE /api/auth/emails/e2')).toBe(true),
     );
     expect(screen.queryByText('Remove this address?')).toBeNull();
+  });
+
+  it('takes focus to the confirm’s title when removing a verified address', async () => {
+    answering({ 'GET /api/auth/me': () => json(ME) });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove folake.adeyemi@gmail.com' }));
+
+    expect(document.activeElement).toBe(screen.getByText('Remove this address?'));
   });
 
   it('never offers to remove the primary', async () => {

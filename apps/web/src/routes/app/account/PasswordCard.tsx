@@ -8,7 +8,7 @@ import {
   meetsPasswordLength,
 } from '@soirely/domain';
 import { type TFunction } from 'i18next';
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
@@ -19,6 +19,7 @@ import { PasswordRule } from '../../../components/PasswordRule.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { PROVIDER_NAMES } from '../../../providerSignIn.ts';
+import { focusStep, useStepFocus } from '../../../stepFocus.ts';
 import { currentSessionId } from '../../../tokens.ts';
 
 type Stage =
@@ -141,6 +142,7 @@ function Setting({
   const [passwordRefusal, setPasswordRefusal] = useState<string | null>(null);
   const codeInput = useRef<HTMLInputElement>(null);
   const passwordInput = useRef<HTMLInputElement>(null);
+  const [stepHeading, arriveAtStep] = useStepFocus();
   const codeChecks = useFormChecks(
     ['code'] as const,
     (_field, value) => {
@@ -171,6 +173,9 @@ function Setting({
     }
   }
 
+  // Only ever opened by a click, so focus goes with it.
+  useLayoutEffect(() => focusStep(stepHeading.current), [stepHeading]);
+
   // Sent once, when the step opens; Send a new code sends again.
   const sent = useRef(false);
   useEffect(() => {
@@ -194,6 +199,7 @@ function Setting({
 
     try {
       setStep({ kind: 'password', stepUp: await api.passPasswordCode(cleanCode(code)) });
+      arriveAtStep();
     } catch (error) {
       setStep({ kind: 'code', ...codeRefusal(error, t) });
     } finally {
@@ -242,7 +248,9 @@ function Setting({
 
     return (
       <>
-        <h2 id="password-title">{t('passwordCard.setNewTitle')}</h2>
+        <h2 id="password-title" ref={stepHeading} tabIndex={-1}>
+          {t('passwordCard.setNewTitle')}
+        </h2>
         <form className="auth-form" noValidate onSubmit={(event) => void save(event)}>
           <div className="field">
             <label htmlFor="set-password">{t('passwordCard.setNewLabel')}</label>
@@ -288,7 +296,9 @@ function Setting({
 
   return (
     <>
-      <h2 id="password-title">{t('passwordCard.setCodeTitle')}</h2>
+      <h2 id="password-title" ref={stepHeading} tabIndex={-1}>
+        {t('passwordCard.setCodeTitle')}
+      </h2>
 
       {step.paused != null && (
         <div className="notice notice-attention" role="alert">
@@ -425,6 +435,7 @@ function Changing({
   const [refusal, setRefusal] = useState<Refusal | null>(null);
   const currentInput = useRef<HTMLInputElement>(null);
   const nextInput = useRef<HTMLInputElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
   const checks = useFormChecks(
     ['currentPassword', 'newPassword'] as const,
     (field, value) =>
@@ -435,6 +446,8 @@ function Changing({
           : t('passwordCard.newBlank'),
     (field) => (field === 'currentPassword' ? currentInput : nextInput).current?.focus(),
   );
+
+  useLayoutEffect(() => focusStep(heading.current), []);
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -471,7 +484,9 @@ function Changing({
 
   return (
     <>
-      <h2 id="password-title">{t('passwordCard.formTitle')}</h2>
+      <h2 id="password-title" ref={heading} tabIndex={-1}>
+        {t('passwordCard.formTitle')}
+      </h2>
 
       {refusal?.field === 'paused' && (
         <div className="notice notice-attention" role="alert">

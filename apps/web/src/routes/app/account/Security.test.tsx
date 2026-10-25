@@ -228,7 +228,9 @@ describe('the devices signed in to an account', () => {
     await waitFor(() => expect(screen.getByText('Chrome on Windows')).toBeDefined());
     fireEvent.click(endOf('Chrome on Windows'));
 
-    expect(screen.getByRole('heading', { name: 'Sign out Chrome on Windows?' })).toBeDefined();
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { name: 'Sign out Chrome on Windows?' }),
+    );
     expect(screen.getByText(/Whoever has it is signed out/)).toBeDefined();
     expect(document.body.textContent).toMatch(/has to sign in again before it can carry on/);
     expect(document.body.textContent).toMatch(/change your password as well/);
@@ -361,6 +363,30 @@ describe('the devices signed in to an account', () => {
 
     // Absent, not merely hidden: a `.card` sets its own display, which beats `hidden`.
     await waitFor(() => expect(document.getElementById('devices-title')).toBeNull());
+  });
+
+  it('leaves focus where it is when the card comes back still asking about a device', async () => {
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'POST /api/auth/two-factor/enrol': () =>
+        json({
+          secret: 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP',
+          otpauthUri: 'otpauth://totp/Soirely:folake@ire.events?secret=JBSW&issuer=Soirely',
+          qrSvg: '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
+        }),
+    });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByText('Chrome on Windows')).toBeDefined());
+    fireEvent.click(endOf('Chrome on Windows'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Turn on two-factor' }));
+    await screen.findByRole('heading', { name: 'Turn on two-factor authentication' });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    const check = await screen.findByRole('heading', { name: 'Sign out Chrome on Windows?' });
+
+    expect(document.activeElement).not.toBe(check);
   });
 });
 
@@ -778,6 +804,17 @@ describe('changing the password', () => {
     ).toBeDefined();
   });
 
+  it('takes focus to Change your password when it opens', () => {
+    answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
+    openSecurity();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change password' }));
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 2, name: 'Change your password' }),
+    );
+  });
+
   it('sends the current and the new password with this session, then says how many were signed out', async () => {
     let sent: unknown = null;
     const calls = answering({
@@ -959,6 +996,9 @@ describe('adding a password to a Google account', () => {
 
     openSecurity();
     fireEvent.click(passwordCard().getByRole('button', { name: 'Set a password' }));
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 2, name: 'Check your email' }),
+    );
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Send a new code in 1:00' })).toBeDefined(),
@@ -971,7 +1011,9 @@ describe('adding a password to a Google account', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { level: 2, name: 'Choose a password' })).toBeDefined(),
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 2, name: 'Choose a password' }),
+      ),
     );
     fireEvent.change(screen.getByLabelText('Password'), {
       target: { value: 'a brand new passphrase' },

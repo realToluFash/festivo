@@ -81,7 +81,12 @@ describe('turning two-factor on', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Turn on two-factor' }, UNDER_LOAD));
 
-    await screen.findByRole('heading', { name: 'Turn on two-factor authentication' }, UNDER_LOAD);
+    const setup = await screen.findByRole(
+      'heading',
+      { name: 'Turn on two-factor authentication' },
+      UNDER_LOAD,
+    );
+    expect(document.activeElement).toBe(setup);
     expect(screen.getByText('JBSW Y3DP EHPK 3PXP JBSW Y3DP EHPK 3PXP')).toBeDefined();
     expect(screen.getByRole('img', { name: 'QR code for your authenticator app' })).toBeDefined();
     await waitFor(() => expect(onBusy).toHaveBeenLastCalledWith(true), UNDER_LOAD);
@@ -105,7 +110,12 @@ describe('turning two-factor on', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Check the code' }));
 
-    await screen.findByRole('heading', { name: 'Save your recovery codes' }, UNDER_LOAD);
+    const save = await screen.findByRole(
+      'heading',
+      { name: 'Save your recovery codes' },
+      UNDER_LOAD,
+    );
+    expect(document.activeElement).toBe(save);
     expect(screen.getAllByRole('listitem')).toHaveLength(10);
 
     const finish = screen.getByRole('button', { name: 'Finish' }) as HTMLButtonElement;
@@ -129,6 +139,9 @@ describe('turning two-factor on', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Make new codes' }, UNDER_LOAD));
     expect(screen.getByText('Your current codes stop working')).toBeDefined();
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { name: 'Make new recovery codes?' }),
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Make new codes' }));
     expect(screen.getByText('Enter a code from your app, or a recovery code.')).toBeDefined();
@@ -138,11 +151,34 @@ describe('turning two-factor on', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Make new codes' }));
 
     fireEvent.click(await screen.findByRole('button', { name: 'Copy all' }, UNDER_LOAD));
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { name: 'Save your recovery codes' }),
+    );
 
     await screen.findByText('All 10 codes are on your clipboard.', undefined, UNDER_LOAD);
     expect(writeText).toHaveBeenCalledWith(CODES.join('\n'));
     expect(sent.find((r) => r.path.endsWith('/recovery-codes'))?.body).toEqual({ code: '123456' });
     expect(screen.queryByRole('button', { name: /download/i })).toBeNull();
+  });
+
+  it('takes focus to the notice when the key cannot be fetched, read once', async () => {
+    answering({ 'GET /api/auth/two-factor': () => json({ on: false, recoveryCodesLeft: 0 }) });
+    card();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Turn on two-factor' }, UNDER_LOAD));
+
+    const notice = await screen.findByText('Two-factor did not load', undefined, UNDER_LOAD);
+    expect(document.activeElement).toBe(notice.parentElement);
+    expect(document.activeElement?.textContent).toMatch(/Try again in a moment/);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('reads out a card that fails to load, and leaves focus alone', async () => {
+    answering({});
+    card();
+
+    expect(await screen.findByRole('alert', undefined, UNDER_LOAD)).toBeDefined();
+    expect(document.activeElement).toBe(document.body);
   });
 });
 
@@ -162,6 +198,9 @@ describe('turning two-factor off', () => {
     expect(
       screen.getByText('We will email folake@ire.events to say it was turned off.'),
     ).toBeDefined();
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { name: 'Turn off two-factor authentication' }),
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Turn it off' }));
     expect(screen.getByText('Enter a code from your app, or a recovery code.')).toBeDefined();
