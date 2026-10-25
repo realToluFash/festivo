@@ -8,6 +8,7 @@ use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Entity\TwoFactorFactor;
 use App\Entity\User;
 use App\Enum\ErrorCode;
+use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\RecoveryCodeRepository;
 use App\Repository\TwoFactorFactorRepository;
@@ -31,6 +32,7 @@ final readonly class TwoFactorSettings
         private AuthenticatorCodes $authenticatorCodes,
         private SecretBox $secretBox,
         private TwoFactorMailer $twoFactorMailer,
+        private AfterResponse $afterResponse,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
         private SignInRules $signInRules,
@@ -55,7 +57,7 @@ final readonly class TwoFactorSettings
         $existing = $this->twoFactorFactorRepository->findOneFor($user);
 
         if (null !== $existing && $existing->isActive()) {
-            throw new ApiException(ErrorCode::TwoFactorAlreadyOn, 'Two-factor is already on.');
+            throw new ApiException(ErrorCode::TwoFactorAlreadyOn, 'two_factor.already_on');
         }
 
         if (null !== $existing) {
@@ -74,12 +76,12 @@ final readonly class TwoFactorSettings
     }
 
     /** @return list<string> the recovery codes, shown this once */
-    public function activate(User $user, #[SensitiveParameter] string $code): array
+    public function activate(User $user, #[SensitiveParameter] string $code, ?string $asked = null): array
     {
         $factor = $this->twoFactorFactorRepository->findOneFor($user);
 
         if (null === $factor || $factor->isActive()) {
-            throw new ApiException(ErrorCode::TwoFactorNotEnrolled, 'Start setting up two-factor first.');
+            throw new ApiException(ErrorCode::TwoFactorNotEnrolled, 'two_factor.not_enrolled');
         }
 
         $this->secondFactorCheck->passCode($factor, $code);
@@ -87,6 +89,9 @@ final readonly class TwoFactorSettings
         $user->setTwoFactorSetupPrompt(false);
         $codes = $this->recoveryCodes->issueFor($user);
         $this->entityManager->flush();
+
+        $now = $this->clock->now();
+        $this->afterResponse->defer(fn () => $this->twoFactorMailer->sendTurnedOn($user, $now, $asked));
 
         return $codes;
     }
@@ -113,7 +118,7 @@ final readonly class TwoFactorSettings
         if (null !== $requiring) {
             throw new ApiException(
                 ErrorCode::TwoFactorKeptByRule,
-                'Your organisation requires two-factor, so you cannot turn it off.',
+                'two_factor.required_by_organisation',
                 [],
                 null,
                 [],
@@ -133,6 +138,6 @@ final readonly class TwoFactorSettings
     private function active(User $user): TwoFactorFactor
     {
         return $this->twoFactorFactorRepository->findActiveFor($user)
-            ?? throw new ApiException(ErrorCode::TwoFactorOff, 'Two-factor is not on.');
+            ?? throw new ApiException(ErrorCode::TwoFactorOff, 'two_factor.off');
     }
 }

@@ -6,6 +6,7 @@ import { browser } from '../../../providerSignIn.ts';
 import { holdProof } from '../../../recentProof.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
+import { renderInterrupted } from '../../../test-interrupted.tsx';
 import { tokens } from '../../../tokens.ts';
 import { routes } from '../../index.tsx';
 
@@ -126,7 +127,6 @@ afterEach(() => {
   proofWindow.minutes = null;
   vi.restoreAllMocks();
   sessionStorage.clear();
-  __setSessionState({ status: 'unknown' });
   tokens.clear();
 });
 
@@ -242,6 +242,64 @@ describe('linking a provider', () => {
         nonce: 'n',
       },
     });
+  });
+
+  it('links once, back from Google, when React abandons the render it arrives in', async () => {
+    holdProof({ proof: 'the-proof', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+    const signIn = { code: 'the-code', codeVerifier: 'v', redirectUri: 'r', nonce: 'n' };
+    const returned = JSON.stringify({ provider: 'google', purpose: { kind: 'link' }, signIn });
+    sessionStorage.setItem('soirely.provider.returned', returned);
+    const sent = answering({
+      'POST /api/auth/providers/google': () => json({ provider: 'google', email: GMAIL }, 201),
+      'GET /api/auth/me': () =>
+        json({ ...ACCOUNT, providers: [{ provider: 'google', email: GMAIL }] }),
+    });
+
+    const { release } = await renderInterrupted(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/app/account/security'] })}
+      />,
+    );
+    expect(
+      sessionStorage.getItem('soirely.provider.returned'),
+      'an abandoned render leaves it in place',
+    ).toBe(returned);
+
+    await release();
+
+    expect(await screen.findByText('Google is linked.')).toBeDefined();
+    expect(sent.filter((s) => s.call === 'POST /api/auth/providers/google')).toHaveLength(1);
+    expect(sessionStorage.getItem('soirely.provider.returned')).toBeNull();
+  });
+
+  it('leaves a Make primary result in place for the Account page, whose trip it was', async () => {
+    const signIn = { code: 'the-code', codeVerifier: 'v', redirectUri: 'r', nonce: 'n' };
+    const returned = JSON.stringify({
+      provider: 'google',
+      purpose: { kind: 'makePrimary', address: 'e2' },
+      signIn,
+    });
+    sessionStorage.setItem('soirely.provider.returned', returned);
+    const sent = answering({});
+
+    open();
+
+    await waitFor(() => expect(sent.map((s) => s.call)).toContain('GET /api/auth/two-factor'));
+    expect(sessionStorage.getItem('soirely.provider.returned')).toBe(returned);
+  });
+
+  it('forgets a link the person cancelled at Google, once the page is up', async () => {
+    sessionStorage.setItem(
+      'soirely.provider.returned',
+      JSON.stringify({ provider: 'google', purpose: { kind: 'link' }, failed: 'cancelled' }),
+    );
+    const sent = answering({});
+
+    open();
+
+    await waitFor(() => expect(sent.map((s) => s.call)).toContain('GET /api/auth/two-factor'));
+    expect(screen.getByRole('list', { name: 'Ways to sign in' })).toBeDefined();
+    expect(sessionStorage.getItem('soirely.provider.returned')).toBeNull();
   });
 
   it("refuses a Google account that is another Soirely account's, and changes nothing", async () => {
@@ -402,10 +460,9 @@ describe('a wrong code after Google', () => {
     vi.spyOn(browser, 'leaveFor').mockImplementation(() => {});
 
     open('/oauth/google');
+    await screen.findByText('Signed in with Google', {}, { timeout: 3000 });
 
-    fireEvent.change(await screen.findByLabelText('Code', {}, { timeout: 3000 }), {
-      target: { value: '000000' },
-    });
+    fireEvent.change(screen.getByLabelText('Code'), { target: { value: '000000' } });
     fireEvent.click(ways().getByRole('button', { name: 'Continue' }));
     expect(
       await screen.findByText('That code did not work. Check your app and try again.'),
@@ -562,9 +619,8 @@ describe('a kept sign-in that ran out', () => {
 
     // qa2's case: the right code typed first, after the five minutes from the Google sign-in.
     open('/oauth/google');
-    fireEvent.change(await screen.findByLabelText('Code', {}, { timeout: 3000 }), {
-      target: { value: '123456' },
-    });
+    await screen.findByText('Signed in with Google', {}, { timeout: 3000 });
+    fireEvent.change(screen.getByLabelText('Code'), { target: { value: '123456' } });
     fireEvent.click(ways().getByRole('button', { name: 'Continue' }));
 
     expect(
@@ -608,6 +664,10 @@ describe('unlinking a provider', () => {
     expect(
       await screen.findByText('Google is unlinked. Devices signed in with it are signed out.'),
     ).toBeDefined();
+    expect(document.activeElement?.textContent).toBe(
+      '✓Google is unlinked. Devices signed in with it are signed out.You can link it again here at any time. We emailed your verified addresses to say so.',
+    );
+    expect(screen.queryByRole('status')).toBeNull();
     expect(sent.find((s) => s.call === 'POST /api/auth/providers/google/unlink')?.body).toEqual({
       proof: 'the-proof',
     });
@@ -687,7 +747,7 @@ describe('unlinking a provider', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Unlink Google' }));
     fireEvent.click(screen.getByRole('button', { name: 'Keep it linked' }));
 
-    expect(screen.getByRole('button', { name: 'Unlink Google' })).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Unlink Google' }));
     expect(sent.some((s) => s.call.endsWith('/unlink'))).toBe(false);
   });
 
@@ -705,6 +765,74 @@ describe('unlinking a provider', () => {
     expect(
       await screen.findByText('Set a password or link another account before removing this one.'),
     ).toBeDefined();
+    expect(document.activeElement?.textContent).toBe(
+      'Set a password or link another account before removing this one.',
+    );
+    expect(ways().queryByRole('alert')).toBeNull();
+  });
+
+  it('reads the ways in again when refused, so a provider gone elsewhere stops showing as linked (sc-7415)', async () => {
+    signedInAs({
+      hasPassword: false,
+      providers: [
+        { provider: 'google', email: GMAIL },
+        { provider: 'apple', email: null },
+      ],
+    });
+    holdProof({ proof: 'the-proof', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+    answering({
+      'POST /api/auth/providers/google/unlink': () => problem('last_sign_in_method', 409),
+      'GET /api/auth/me': () =>
+        json({ ...ACCOUNT, hasPassword: false, providers: [{ provider: 'google', email: GMAIL }] }),
+    });
+    open();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unlink Google' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Unlink Google' }));
+
+    expect(
+      await screen.findByText('Set a password or link another account before removing this one.'),
+    ).toBeDefined();
+    const list = within(screen.getByRole('list', { name: 'Ways to sign in' }));
+    expect(
+      list.getByText(/Google is your only way to sign in, so it can't be removed/),
+    ).toBeDefined();
+    expect(list.queryByRole('button', { name: 'Unlink Google' })).toBeNull();
+    expect(list.queryByRole('button', { name: 'Unlink Apple' })).toBeNull();
+    expect(list.getByText('Not linked')).toBeDefined();
+  });
+
+  it('keeps the refusal and the rows as they were when the read again fails (sc-7415)', async () => {
+    signedInAs({
+      hasPassword: false,
+      providers: [
+        { provider: 'google', email: GMAIL },
+        { provider: 'apple', email: null },
+      ],
+    });
+    holdProof({ proof: 'the-proof', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+    const sent = answering({
+      'POST /api/auth/providers/google/unlink': () => problem('last_sign_in_method', 409),
+      'GET /api/auth/me': () => {
+        throw new TypeError('Failed to fetch');
+      },
+    });
+    open();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unlink Google' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Unlink Google' }));
+
+    expect(
+      await screen.findByText('Set a password or link another account before removing this one.'),
+    ).toBeDefined();
+    expect(sent.some((s) => s.call === 'GET /api/auth/me')).toBe(true);
+    expect(document.activeElement?.textContent).toBe(
+      'Set a password or link another account before removing this one.',
+    );
+    expect(document.querySelectorAll('.notice-broken')).toHaveLength(1);
+    const list = within(screen.getByRole('list', { name: 'Ways to sign in' }));
+    expect(list.getByRole('button', { name: 'Unlink Google' })).toBeDefined();
+    expect(list.getByRole('button', { name: 'Unlink Apple' })).toBeDefined();
   });
 
   it('names the organisation whose rule keeps the last provider linked (sc-69)', async () => {
@@ -725,5 +853,71 @@ describe('unlinking a provider', () => {
       ),
     ).toBeDefined();
     expect(screen.getByText('Link Apple first if you want to unlink Google.')).toBeDefined();
+    expect(document.activeElement?.textContent).toBe(
+      'A rule set by Ìrè Events: everyone in it signs in with Google or Apple, so your last one cannot be removed.Link Apple first if you want to unlink Google.',
+    );
+  });
+
+  it('takes focus to what went wrong when there is no connection', async () => {
+    signedInAs({ providers: [{ provider: 'google', email: GMAIL }] });
+    holdProof({ proof: 'the-proof', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+    answering({
+      'POST /api/auth/providers/google/unlink': () => {
+        throw new TypeError('Failed to fetch');
+      },
+    });
+    open();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unlink Google' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Unlink Google' }));
+
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toBe(
+        "Nothing was changedThat didn't go through. Check your connection and try again.",
+      ),
+    );
+    expect(ways().queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('closing a step on Ways to sign in', () => {
+  it('puts focus back on Link Google after Cancel on Confirm it’s you', () => {
+    answering({});
+    open();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Link Google' }));
+    fireEvent.click(ways().getByRole('button', { name: 'Cancel' }));
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Link Google' }));
+  });
+
+  it('puts focus back on Unlink after Cancel on Confirm it’s you', () => {
+    signedInAs({ providers: [{ provider: 'google', email: GMAIL }] });
+    answering({});
+    open();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unlink Google' }));
+    expect(screen.getByRole('heading', { name: "Confirm it's you" })).toBeDefined();
+    fireEvent.click(ways().getByRole('button', { name: 'Cancel' }));
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Unlink Google' }));
+  });
+
+  it('puts focus back on the Set a password that opened Check your email, once it is cancelled', async () => {
+    signedInAs({ hasPassword: false, providers: [{ provider: 'google', email: GMAIL }] });
+    answering({ 'POST /api/auth/password/set/start': () => json({ cooldownSeconds: 60 }) });
+    open();
+
+    const list = () => within(screen.getByRole('list', { name: 'Ways to sign in' }));
+
+    for (const index of [0, 1]) {
+      fireEvent.click(list().getAllByRole('button', { name: 'Set a password' })[index]!);
+      await screen.findByRole('heading', { level: 2, name: 'Check your email' });
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      expect(document.activeElement).toBe(
+        list().getAllByRole('button', { name: 'Set a password' })[index],
+      );
+    }
   });
 });

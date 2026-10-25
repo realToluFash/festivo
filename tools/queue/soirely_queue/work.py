@@ -199,6 +199,24 @@ def queue_items(stories, moves=None, now=None, epics=None):
     return list(merged.values())
 
 
+def held_items(stories):
+    """A story left In QA under a tester's claim is that tester's before anything new in Ready
+    For QA, to test or to give back with `unclaim`, so no tester strands one and moves on."""
+    items = []
+    for story in stories:
+        if story["done"] or story["state"] != "In QA":
+            continue
+        tester = R.last_tester(story)
+        if tester:
+            items.append(_item(f"{tester}:held:sc-{story['id']}:{story['moved_at']}", tester,
+                               [tester], "held",
+                               f"sc-{story['id']} is In QA under your claim with no report",
+                               QUEUE - 1, story))
+    return items
+
+
+# A push after the pass leaves the story in Passed Code Review, but the pass no longer
+# covers its head, so the lead looks again.
 REVIEWED = ("In Review", "Passed Code Review")
 
 
@@ -209,11 +227,13 @@ def review_items(stories, prs):
             by_story.setdefault(pr["story_id"], []).append(pr)
     items = []
     for story in stories:
-        # A push after the pass leaves the story in Passed Code Review, but the pass no
-        # longer covers its head, so the lead looks again.
-        if story["done"] or story["state"] not in REVIEWED:
+        if story["done"]:
             continue
         open_prs = by_story.get(story["id"], [])
+        if story["state"] not in REVIEWED:
+            open_prs = [pr for pr in open_prs if side_pr(story, pr)]
+            if not open_prs:
+                continue
         merged = any(pr["story_id"] == story["id"] and pr["state"] == "merged" for pr in prs)
         if not open_prs and not merged and story["state"] == "In Review":
             items.append(_item(f"lead:review:sc-{story['id']}:none:{story['moved_at']}", "lead",
@@ -258,18 +278,30 @@ def review_items(stories, prs):
     return items
 
 
+def side_pr(story, pr):
+    """A developer's pull request on a linguist's ticket, such as a test that has to take the
+    new wording. The lead reviews it and its developer merges it, while the ticket keeps the
+    state the linguist gives it."""
+    return linguists(story) and not (pr.get("branch") or "").startswith("l10n/")
+
+
+def linguists(story):
+    return R.translation(story["labels"], None) and R.OPS_LABEL not in story["labels"]
+
+
 # The states in which an open pull request is its developer's to act on.
 BUILDING_PR = ("In Progress", "Failed Code Review", "In Review", "Passed Code Review")
 
 
 def voided_passes(stories, prs):
-    """Stories in Passed Code Review whose open pull request moved past the pass."""
+    """Stories in Passed Code Review whose open pull request moved past the pass. A side
+    pull request leaves the linguist's ticket where it is: `review_items` wakes the lead."""
     by_id = {story["id"]: story for story in stories}
     found = []
     for pr in prs:
         story = by_id.get(pr["story_id"])
         if not story or story["done"] or story["state"] != "Passed Code Review" \
-                or pr["state"] != "open":
+                or pr["state"] != "open" or side_pr(story, pr):
             continue
         verdict = latest_verdict(pr)
         if not (verdict and verdict["verdict"] == "pass"
@@ -285,7 +317,9 @@ def developer_items(stories, prs):
         story = by_id.get(pr["story_id"])
         if not story or story["done"]:
             continue
-        role = R.builder_of(story["labels"])
+        side = side_pr(story, pr)
+        own = linguists(story) and not side
+        role = "l10n" if own else R.builder_of(story["labels"])
         sha = pr["head_sha"][:7]
         verdict = latest_verdict(pr)
         covered = covers(verdict, pr["head_sha"], pr.get("carried"))
@@ -296,7 +330,7 @@ def developer_items(stories, prs):
                                reason, PULL_REQUEST, story, pr))
 
         if pr["state"] == "merged":
-            if story["state"] in R.MERGING:
+            if story["state"] in R.MERGING and not linguists(story):
                 if covered and verdict["verdict"] == "pass":
                     after = "Ready For QA" if role != "ops" or "needs qa" in story["labels"] \
                         else "Done"
@@ -306,15 +340,23 @@ def developer_items(stories, prs):
                     add("merged-unpassed", f"PR #{number} merged at {sha}, "
                                            "which no lead pass covers: ask [lead]")
             continue
-        if pr["state"] != "open" or story["state"] not in BUILDING_PR:
+        if own:
+            # The linguist merges its own once green, with no lead pass to wait for.
+            if pr["state"] == "open" and pr["checks"] == "red":
+                add("checks-red", f"PR #{number} checks are red at {sha}")
+            elif pr["state"] == "open" and pr["checks"] == "green":
+                add("merge", f"PR #{number} is green at {sha}: merge it")
+            continue
+        if pr["state"] != "open" or not (side or story["state"] in BUILDING_PR):
             continue
         if pr["checks"] == "red":
             add("checks-red", f"PR #{number} checks are red at {sha}")
         elif pr["checks"] == "green" and story["state"] in ("In Progress", "Failed Code Review") \
-                and not covered:
+                and not covered and not linguists(story):
             add("to-review", f"PR #{number} is green at {sha}: move sc-{story['id']} "
                              "to In Review")
-        elif pr["checks"] == "green" and story["state"] in R.MERGING \
+        elif pr["checks"] == "green" and (side or story["state"] in R.MERGING
+                                          and not linguists(story)) \
                 and covered and verdict["verdict"] == "pass":
             if open_threads(pr):
                 unanswered = unanswered_by(role, pr)
@@ -331,7 +373,7 @@ def developer_items(stories, prs):
     return items
 
 
-TRANSLATING = ("To Do", "In Progress")
+TRANSLATING = ("To Do", "Ready For Dev", "In Progress")
 
 
 def covered(ticket):
@@ -360,24 +402,28 @@ def unblocked_items(stories, prs, runs=None, raised=()):
             merged.setdefault(pr["story_id"], []).append(pr)
     items = []
     for ticket in stories:
-        if ticket["done"] or ticket["state"] not in TRANSLATING \
-                or "translation" not in ticket["labels"]:
+        if ticket["done"] or "translation" not in ticket["labels"]:
             continue
+        # A developer's pull request on the ticket itself wakes it in any state, since the
+        # old flow left such tickets in review; one it covers, only while it is translated.
+        own = ticket["state"] not in TRANSLATING
         since = last_worked(ticket, runs)
         wakes = []
-        for story_id in sorted(set(covered(ticket))):
+        for story_id in sorted({ticket["id"]} if own else set(covered(ticket)) | {ticket["id"]}):
             for pr in merged.get(story_id, []):
                 if T.epoch(pr["merged_at"]) <= since:
                     continue
+                can = "go on" if story_id == ticket["id"] else "start"
                 wakes.append(_item(f"l10n:unblocked:sc-{ticket['id']}:#{pr['number']}", "l10n",
                                    ["l10n"], "unblocked",
                                    f"PR #{pr['number']} (sc-{story_id}) merged: "
-                                   f"sc-{ticket['id']} can start", INBOX, ticket, pr))
+                                   f"sc-{ticket['id']} can {can}", INBOX, ticket, pr))
         seen = {item["fingerprint"] for item in wakes}
         wakes += [_item(row["fingerprint"], "l10n", ["l10n"], "unblocked", row["reason"], INBOX,
                         ticket, {"number": row["pr"]})
                   for row in raised if row["story_id"] == ticket["id"]
-                  and row["fingerprint"] not in seen and row["first_seen"] > since]
+                  and row["fingerprint"] not in seen and row["first_seen"] > since
+                  and not (own and not row["reason"].endswith("can go on"))]
         items += wakes
     return items
 
@@ -391,8 +437,9 @@ def main_items(main_run):
                   PULL_REQUEST)]
 
 
-def heartbeat_items(stories, last_runs, busy_roles, now, epics=None):
-    """After a quiet spell, a sweeping role sweeps and any other role with a queue picks."""
+def heartbeat_items(stories, last_runs, busy_roles, now, epics=None, last_sweeps=None):
+    """After a quiet spell, a sweeping role sweeps and any other role with a queue picks. A
+    role with `sweepEvery` picks too, and sweeps once that long has passed since its last."""
     items = []
     for role, config in R.ROLES.items():
         if role in busy_roles:
@@ -401,8 +448,10 @@ def heartbeat_items(stories, last_runs, busy_roles, now, epics=None):
         last = last_runs.get(role)
         if last and now - last < period:
             continue
-        if config.get("sweeps"):
-            kind, reason = "sweep", f"your sweep, {config['heartbeat']} minutes on"
+        every = config.get("sweepEvery")
+        swept = (last_sweeps or {}).get(role)
+        if config.get("sweeps") and not (every and swept and now - swept < every * 60):
+            kind, reason = "sweep", f"your sweep, {every or config['heartbeat']} minutes on"
         elif queued(role, stories, epics):
             kind, reason = "pick", f"{len(queued(role, stories, epics))} stories in your queue"
         else:
@@ -435,11 +484,12 @@ def finishing_first(items, stories):
 
 def derive(stories, prs, main_run=None, last_runs=None, busy_roles=(), now=0,
            handled=frozenset(), moves=None, checks=None, epics=None, translated=None,
-           raised=()):
+           raised=(), last_sweeps=None):
     return finishing_first(
         inbox_items(stories, handled) + developer_items(stories, prs)
         + unblocked_items(stories, prs, translated, raised)
-        + review_items(stories, prs) + queue_items(stories, moves, now, epics)
+        + review_items(stories, prs) + held_items(stories)
+        + queue_items(stories, moves, now, epics)
         + main_items(main_run)
-        + heartbeat_items(stories, last_runs or {}, set(busy_roles), now, epics)
+        + heartbeat_items(stories, last_runs or {}, set(busy_roles), now, epics, last_sweeps)
         + machine_items(checks), stories)

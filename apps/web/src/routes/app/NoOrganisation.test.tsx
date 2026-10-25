@@ -34,7 +34,7 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-function answering(answers: Record<string, () => Response>) {
+function answering(answers: Record<string, () => Response | Promise<Response>>) {
   const sent: { line: string; body: unknown }[] = [];
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -58,7 +58,6 @@ function app() {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('No organisation', () => {
@@ -72,6 +71,7 @@ describe('No organisation', () => {
 
     expect(screen.getByText("Enter the organisation's name.")).toBeDefined();
     expect(screen.getByText('Choose a country.')).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByLabelText('Organisation name'));
     expect(sent.some((one) => one.line === 'POST /api/orgs')).toBe(false);
   });
 
@@ -142,6 +142,154 @@ describe('No organisation', () => {
 
     expect(await screen.findByText('Keep it to 100 characters.')).toBeDefined();
     expect(screen.getByRole('heading', { name: 'You are not in an organisation' })).toBeDefined();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByLabelText('Organisation name')),
+    );
+    expect(screen.queryByText('Starting it did not work. Try again in a moment.')).toBeNull();
+  });
+
+  it('puts focus on the country when the refusal names only the country', async () => {
+    inNone();
+    answering({
+      'GET /api/invitations': () => json({ invitations: [] }),
+      'POST /api/orgs': () =>
+        json(
+          {
+            type: 'https://soirely.com/errors/validation_failed',
+            title: 'Some fields need attention.',
+            status: 422,
+            violations: [{ propertyPath: 'countryCode', message: 'Not a country.', code: 'x' }],
+          },
+          422,
+        ),
+    });
+    app();
+
+    fireEvent.change(await screen.findByLabelText('Organisation name'), {
+      target: { value: 'Okoro Weddings' },
+    });
+    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Start organisation' }));
+
+    expect(await screen.findByText('Not a country.')).toBeDefined();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Country')));
+  });
+
+  it('holds both fields while it starts, the button reading Starting…', async () => {
+    inNone();
+    answering({
+      'GET /api/invitations': () => json({ invitations: [] }),
+      'POST /api/orgs': () => new Promise<Response>(() => {}),
+    });
+    app();
+
+    fireEvent.change(await screen.findByLabelText('Organisation name'), {
+      target: { value: 'Okoro Weddings' },
+    });
+    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Start organisation' }));
+
+    expect(await screen.findByRole('button', { name: 'Starting…' })).toBeDefined();
+    expect((screen.getByLabelText('Organisation name') as HTMLInputElement).readOnly).toBe(true);
+    expect((screen.getByLabelText('Country') as HTMLSelectElement).disabled).toBe(true);
+  });
+
+  it('keeps focus in Organisation name while it starts after Enter, and there once refused (sc-11588)', async () => {
+    inNone();
+    let answer: (response: Response) => void = () => {};
+    answering({
+      'GET /api/invitations': () => json({ invitations: [] }),
+      'POST /api/orgs': () => new Promise<Response>((resolve) => (answer = resolve)),
+    });
+    app();
+
+    const name = (await screen.findByLabelText('Organisation name')) as HTMLInputElement;
+    fireEvent.change(name, { target: { value: 'Okoro Weddings' } });
+    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
+    name.focus();
+    fireEvent.submit(name);
+
+    await screen.findByRole('button', { name: 'Starting…' });
+    expect(document.activeElement).toBe(name);
+
+    answer(json({ type: 'about:blank', title: 'Internal Server Error', status: 500 }, 500));
+    expect(await screen.findByRole('button', { name: 'Start organisation' })).toBeDefined();
+    expect(document.activeElement).toBe(name);
+  });
+
+  it('sends one request for a double press, then one more after a failure (sc-8327)', async () => {
+    inNone();
+    let answer: (response: Response) => void = () => {};
+    const sent = answering({
+      'GET /api/invitations': () => json({ invitations: [] }),
+      'POST /api/orgs': () => new Promise<Response>((resolve) => (answer = resolve)),
+    });
+    const posts = () => sent.filter(({ line }) => line === 'POST /api/orgs');
+    app();
+
+    fireEvent.change(await screen.findByLabelText('Organisation name'), {
+      target: { value: 'Okoro Weddings' },
+    });
+    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
+    const form = screen.getByLabelText('Organisation name').closest('form') as HTMLFormElement;
+    fireEvent.submit(form);
+    fireEvent.submit(form);
+    const starting = await screen.findByRole('button', { name: 'Starting…' });
+    expect(starting.matches(':disabled')).toBe(true);
+    fireEvent.click(starting);
+    await waitFor(() => expect(posts()).toHaveLength(1));
+
+    answer(json({ type: 'about:blank', title: 'Internal Server Error', status: 500 }, 500));
+    const start = await screen.findByRole('button', { name: 'Start organisation' });
+    expect(start.matches(':disabled')).toBe(false);
+    expect(posts()).toHaveLength(1);
+    fireEvent.click(start);
+    await waitFor(() => expect(posts()).toHaveLength(2));
+  });
+
+  it.each([
+    [
+      'too many new organisations',
+      () =>
+        json(
+          {
+            type: 'https://soirely.com/errors/too_many_attempts',
+            title: 'Too many attempts.',
+            status: 429,
+          },
+          429,
+        ),
+    ],
+    [
+      'a server error',
+      () => json({ type: 'about:blank', title: 'Internal Server Error', status: 500 }, 500),
+    ],
+    [
+      'no network',
+      () => {
+        throw new TypeError('Failed to fetch');
+      },
+    ],
+  ])('puts focus back on the name, keeping what was entered, after %s', async (_, answer) => {
+    inNone();
+    answering({
+      'GET /api/invitations': () => json({ invitations: [] }),
+      'POST /api/orgs': answer,
+    });
+    app();
+
+    fireEvent.change(await screen.findByLabelText('Organisation name'), {
+      target: { value: 'Okoro Weddings' },
+    });
+    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Start organisation' }));
+
+    expect(await screen.findByRole('alert')).toBeDefined();
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    const name = screen.getByLabelText<HTMLInputElement>('Organisation name');
+    await waitFor(() => expect(document.activeElement).toBe(name));
+    expect(name.value).toBe('Okoro Weddings');
+    expect(screen.getByLabelText<HTMLSelectElement>('Country').value).toBe('GH');
   });
 
   it('says starting it did not work when the refusal names no field the page has', async () => {
@@ -171,5 +319,108 @@ describe('No organisation', () => {
       await screen.findByText('Starting it did not work. Try again in a moment.'),
     ).toBeDefined();
     expect(screen.queryByText('Bad address.')).toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByLabelText('Organisation name')),
+    );
+  });
+});
+
+describe('where focus goes on No organisation (sc-11369)', () => {
+  const PREVIEW = {
+    id: 'inv_1',
+    organisation: { id: 'org_7', name: 'Adunni Weddings' },
+    email: 'chidi@ire.events',
+    role: { id: 'role_3', seededAs: 'event_manager', name: null },
+    invitedBy: { name: 'Bisi Adeyemi' },
+    expiresAt: '2026-10-23T09:00:00+00:00',
+    refusal: null,
+    forYou: true,
+    signedInAs: 'chidi@ire.events',
+  };
+  const ADUNNI = membership({
+    id: 'org_7',
+    name: 'Adunni Weddings',
+    role: { id: 'role_3', seededAs: 'event_manager', name: null },
+  });
+
+  function nowWorkingIn(name: string): HTMLElement | null {
+    return screen.getByText(`Now working in ${name}.`).closest('.notice');
+  }
+
+  it('takes Start organisation to "Now working in", read once, above Dashboard', async () => {
+    inNone();
+    const started = membership({ id: 'org_9', name: 'Okoro Weddings', countryCode: 'GH' });
+    answering({
+      'GET /api/invitations': () => json({ invitations: [] }),
+      'POST /api/orgs': () => json({ organisation: started }, 201),
+    });
+    app();
+
+    fireEvent.change(await screen.findByLabelText('Organisation name'), {
+      target: { value: 'Okoro Weddings' },
+    });
+    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Start organisation' }));
+
+    await screen.findByRole('heading', { level: 1, name: 'Dashboard' });
+    expect(document.activeElement).toBe(nowWorkingIn('Okoro Weddings'));
+    expect(nowWorkingIn('Okoro Weddings')?.getAttribute('role')).toBeNull();
+  });
+
+  it('takes Decline to the line that answers it, read once', async () => {
+    inNone();
+    answering({
+      'GET /api/invitations': () => json({ invitations: [PREVIEW] }),
+      'POST /api/invitations/inv_1/decline': () => new Response(null, { status: 204 }),
+    });
+    app();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Decline the invitation to Adunni Weddings' }),
+    );
+
+    const line = await screen.findByText('You declined. Bisi Adeyemi will see that you said no.');
+    await waitFor(() => expect(document.activeElement).toBe(line.closest('.invitation-row-said')));
+    expect(line.closest('[role="status"]')).toBeNull();
+  });
+
+  it('takes Accept and join to "You joined", then Open to "Now working in"', async () => {
+    inNone();
+    answering({
+      'GET /api/invitations': () => json({ invitations: [PREVIEW] }),
+      'POST /api/invitations/inv_1/accept': () => json({ organisation: ADUNNI }),
+    });
+    app();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Accept and join Adunni Weddings' }));
+
+    const line = await screen.findByText('You joined Adunni Weddings as Event manager.');
+    const said = line.closest('.invitation-row-said');
+    await waitFor(() => expect(document.activeElement).toBe(said));
+    expect(said?.nextElementSibling?.textContent).toBe('Open Adunni Weddings');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open Adunni Weddings' }));
+
+    await screen.findByRole('heading', { level: 1, name: 'Dashboard' });
+    expect(document.activeElement).toBe(nowWorkingIn('Adunni Weddings'));
+  });
+
+  it('takes a refused Accept and join to its word and sentence', async () => {
+    inNone();
+    answering({
+      'GET /api/invitations': () => json({ invitations: [PREVIEW] }),
+      'POST /api/invitations/inv_1/accept': () =>
+        json(
+          { type: 'https://soirely.com/errors/invitation_revoked', title: 'No.', status: 409 },
+          409,
+        ),
+    });
+    app();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Accept and join Adunni Weddings' }));
+
+    const notice = (await screen.findByText('Withdrawn')).closest('.notice');
+    await waitFor(() => expect(document.activeElement).toBe(notice));
+    expect(notice?.getAttribute('role')).toBeNull();
   });
 });

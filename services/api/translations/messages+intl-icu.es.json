@@ -1,0 +1,9 @@
+{
+    "members.seats_in_use": "{count, plural, one {La única plaza de equipo del plan de esta organización está ocupada, así que no ha cambiado nada.} other {Están ocupadas las # plazas de equipo del plan de esta organización, así que no ha cambiado nada.}}",
+    "limits.tries": "Demasiados intentos. Inténtelo de nuevo {hour, plural, =1 {a la {time}} other {a las {time}}}.",
+    "limits.wrong_codes": "Demasiados códigos incorrectos. Inténtelo de nuevo {hour, plural, =1 {a la {time}} other {a las {time}}}.",
+    "limits.sign_in": "Demasiados intentos de inicio de sesión. Inténtelo de nuevo {hour, plural, =1 {a la {time}} other {a las {time}}}.",
+    "limits.reset_requests": "Demasiadas solicitudes de restablecimiento. Inténtelo de nuevo {hour, plural, =1 {a la {time}} other {a las {time}}}.",
+    "limits.organisations": "Por ahora no se pueden crear más organizaciones. Inténtelo de nuevo {hour, plural, =1 {a la {time}} other {a las {time}}}.",
+    "limits.sign_ups": "Demasiados registros desde esta red. Inténtelo de nuevo {hour, plural, =1 {a la {time}} other {a las {time}}}."
+}

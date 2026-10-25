@@ -38,13 +38,50 @@ class Sections(unittest.TestCase):
         self.assertNotIn("What it is.", out)
         self.assertIn("under AC", out)
 
-    def test_replace_takes_a_sections_subsections_with_it(self):
+    def test_replace_takes_only_what_find_reads_and_keeps_the_headings_under_it(self):
         out = T.replace(STORY, "AC", "- three")
-        self.assertNotIn("under AC", out)
-        self.assertIn("frames", out)
+        self.assertNotIn("- one", out)
+        self.assertIn("## Detail\nunder AC", out)
+        out = T.replace(STORY, "Design", "drawn")
+        self.assertEqual(T.find(out, "Design")[2], "drawn")
 
-    def test_replace_adds_a_missing_section_at_the_end(self):
-        self.assertTrue(T.replace(STORY, "Risks", "none").rstrip().endswith("## Risks\n\nnone"))
+    def test_replace_adds_a_missing_section_at_the_top_level(self):
+        self.assertTrue(T.replace(STORY, "Risks", "none").rstrip().endswith("\n# Risks\n\nnone"))
+        self.assertTrue(T.replace("text", "Risks", "none").rstrip().endswith("\n## Risks\n\nnone"))
+
+    def test_a_section_added_after_the_last_one_survives_its_edit(self):
+        story = T.append_dated(STORY, "Decided, 21 Oct (pm)", "kept")
+        out = T.replace(story, "Design", "redrawn")
+        self.assertEqual(T.find(out, "Decided, 21 Oct (pm)")[2], "kept")
+        nested = STORY + "\n## English copy (l10n)\n\nwords\n"
+        self.assertIn("words", T.replace(nested, "Design", "redrawn"))
+
+    def test_swap_changes_one_section_and_every_other_byte_stays(self):
+        body = ("Fixes it.\r\n\r\n## Description\r\n\r\nOld words.\r\nMore.\r\n\r\n"
+                "## Risks\r\n- one  \r\n\r\n\r\n## References\r\n```\r\n## no\r\n```\r\n"
+                "## Next Steps\r\nNone.")
+        out = T.swap(body, "Risks", "- new\n- two")
+        self.assertEqual(out, body.replace("- one  ", "- new\r\n- two"))
+        out = T.swap(body, "Next Steps", "Merge it.")
+        self.assertEqual(out, body.replace("None.", "Merge it."))
+        self.assertEqual(T.swap("## A\n\n## B\nb\n", "A", "a"), "## A\n\na\n\n## B\nb\n")
+
+    def test_matching_names_every_heading_a_name_could_mean(self):
+        body = "## Risks\nr\n## Evidence of work\ne\n## Evidence, again\nx\n"
+        self.assertEqual(T.matching(body, "risks"), ["Risks"])
+        self.assertEqual(T.matching(body, "Evidence"), ["Evidence of work", "Evidence, again"])
+        self.assertEqual(T.matching(body, "Evidence of work"), ["Evidence of work"])
+        self.assertEqual(T.matching(body, "Design"), [])
+        exact_below = "## Risks, more\nm\n## Risks\nr\n"
+        self.assertEqual(T.matching(exact_below, "Risks"), ["Risks"])
+        self.assertEqual(T.find(exact_below, "Risks")[0], "Risks")
+
+    def test_find_takes_the_first_heading_matching_names(self):
+        body = "## Acceptance criteria\na\n## AC notes\nn\n## Risks\nr\n## Risks, more\nm\n"
+        for name in ("ac", "risks", "Risks, more", "evidence"):
+            found = T.find(body, name)
+            self.assertEqual(found and found[0], (T.matching(body, name) or [None])[0])
+        self.assertEqual(T.find(body, "ac")[0], "Acceptance criteria")
 
     def test_outstanding_items(self):
         report = "Tested on main\n\nOutstanding items:\n- first\n- second\n\nAfter."

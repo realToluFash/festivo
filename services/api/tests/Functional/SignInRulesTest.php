@@ -26,6 +26,7 @@ use App\Tests\ApiTestCase;
 use App\Tests\Fixtures\OpenIdConnect\TestSigningKeys;
 use App\Tests\Traits\OnboardsAccounts;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Iter;
 use Psl\Json;
@@ -38,6 +39,7 @@ use stdClass;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\Mime\Email;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 final class SignInRulesTest extends ApiTestCase
 {
@@ -426,6 +428,147 @@ final class SignInRulesTest extends ApiTestCase
         self::assertSame(422, $this->statusCode());
     }
 
+    /** @return iterable<string, array{array<string, mixed>, string}> */
+    public static function rulesOfAnotherJsonType(): iterable
+    {
+        yield 'a numeric string for the timeout' => [['inactivityTimeoutDays' => '30'], 'inactivityTimeoutDays'];
+        yield '1 for Google or Apple only' => [['providerOnly' => 1], 'providerOnly'];
+        yield '0 for Google or Apple only' => [['providerOnly' => 0], 'providerOnly'];
+        yield '"true" for two-factor for everyone' => [['everyoneNeedsTwoFactor' => 'true'], 'everyoneNeedsTwoFactor'];
+        yield '"false" for two-factor for administrators' => [['administratorsNeedTwoFactor' => 'false'], 'administratorsNeedTwoFactor'];
+        yield '"30.0" for the timeout' => [['inactivityTimeoutDays' => '30.0'], 'inactivityTimeoutDays'];
+        yield 'true for the timeout' => [['inactivityTimeoutDays' => true], 'inactivityTimeoutDays'];
+        yield 'a list for the timeout' => [['inactivityTimeoutDays' => [30]], 'inactivityTimeoutDays'];
+        yield 'an object for the timeout' => [['inactivityTimeoutDays' => ['days' => 30]], 'inactivityTimeoutDays'];
+        yield '1.0 for Google or Apple only' => [['providerOnly' => 1.0], 'providerOnly'];
+    }
+
+    /** @return iterable<string, array{string, int}> */
+    public static function wholeTimeoutsWrittenAsFloats(): iterable
+    {
+        yield '30.0' => ['30.0', 30];
+        yield '7.0' => ['7.0', 7];
+        yield '3e1' => ['3e1', 30];
+        yield '3.0E1' => ['3.0E1', 30];
+        yield '30.0000000000000001, a fraction finer than a double holds' => ['30.0000000000000001', 30];
+    }
+
+    /** JSON has one number type, so 30.0 is 30 (sc-10158). */
+    #[Test]
+    #[DataProvider('wholeTimeoutsWrittenAsFloats')]
+    public function aWholeTimeoutWrittenAsAFloatIsSavedAsTheWholeNumber(string $sent, int $days): void
+    {
+        $body = $this->setRaw('{"inactivityTimeoutDays":' . $sent . '}');
+
+        self::assertSame(200, $this->statusCode());
+        self::assertSame($days, $body['inactivityTimeoutDays'] ?? null);
+        self::assertSame($days, $this->as($this->owner, 'GET', $this->path())['inactivityTimeoutDays'] ?? null);
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function timeoutsThatAreNotWholeNumbers(): iterable
+    {
+        yield '30.5' => ['30.5'];
+        yield '7.25' => ['7.25'];
+        yield '30.00000000000001' => ['30.00000000000001'];
+        yield '1e20, past the integer range' => ['1e20'];
+        yield '12345678901234567890, past the integer range' => ['12345678901234567890'];
+    }
+
+    #[Test]
+    #[DataProvider('timeoutsThatAreNotWholeNumbers')]
+    public function aTimeoutThatIsNotAnIntegerIsRefusedRatherThanRoundedOrWrapped(string $sent): void
+    {
+        $body = $this->setRaw('{"inactivityTimeoutDays":' . $sent . '}');
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame(ErrorCode::ValidationFailed->type(), $body['type'] ?? null);
+        self::assertSame([['propertyPath' => 'inactivityTimeoutDays', 'message' => 'This field cannot take that value. Check it and try again.', 'code' => 'invalid_shape']], $body['violations'] ?? null);
+        self::assertNull($this->as($this->owner, 'GET', $this->path())['inactivityTimeoutDays'] ?? null);
+    }
+
+    #[Test]
+    public function aWholeTimeoutWrittenAsAFloatThatIsNotOfferedIsRefusedAsTheIntegerIs(): void
+    {
+        $asInteger = $this->setRaw('{"inactivityTimeoutDays":14}');
+        $asFloat = $this->setRaw('{"inactivityTimeoutDays":14.0}');
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame($asInteger['violations'] ?? null, $asFloat['violations'] ?? null);
+        self::assertSame('choice', $asFloat['violations'][0]['code'] ?? null);
+        self::assertSame('Choose 7 days, 30 days or no limit.', $asFloat['violations'][0]['message'] ?? null);
+    }
+
+    /** @return iterable<string, array{string, string, string}> */
+    public static function requestLanguages(): iterable
+    {
+        yield 'en' => ['', 'en', 'en'];
+        yield 'es' => ['', 'es', 'es'];
+        yield 'fr' => ['', 'fr', 'fr'];
+        yield 'pt' => ['', 'pt', 'pt'];
+        yield 'pt-BR reads as pt' => ['', 'pt-BR', 'pt'];
+        yield 'an unknown language reads as English' => ['', 'xx', 'en'];
+        yield 'the parameter outranks the header' => ['?locale=fr', 'en', 'fr'];
+    }
+
+    /** One response, one language: each refusal's sentences come from the catalogue its title does (sc-10594). */
+    #[Test]
+    #[DataProvider('requestLanguages')]
+    public function eachRefusalIsWrittenInTheLanguageTheRequestAsks(string $query, string $header, string $locale): void
+    {
+        $translator = self::service(TranslatorInterface::class);
+        $catalogued = static fn (string $key, string $domain = 'messages'): string => $translator->trans($key, [], $domain, $locale);
+
+        $choice = $this->setIn($query, $header, ['inactivityTimeoutDays' => 14]);
+        self::assertSame(422, $this->statusCode());
+        self::assertSame($catalogued('validation_failed', ErrorCode::DOMAIN), $choice['title'] ?? null);
+        self::assertSame($catalogued('sign_in_rules.inactivity_choice'), $choice['detail'] ?? null);
+        self::assertSame([['propertyPath' => 'inactivityTimeoutDays', 'message' => $catalogued('sign_in_rules.inactivity_choice'), 'code' => 'choice']], $choice['violations'] ?? null);
+
+        foreach ([['administratorsNeedTwoFactor' => true], ['everyoneNeedsTwoFactor' => true]] as $rules) {
+            $twoFactor = $this->setIn($query, $header, $rules);
+            self::assertSame(409, $this->statusCode());
+            self::assertSame($catalogued('two_factor_off', ErrorCode::DOMAIN), $twoFactor['title'] ?? null);
+            self::assertSame($catalogued('sign_in_rules.two_factor_off'), $twoFactor['detail'] ?? null);
+        }
+
+        $this->unlink($this->owner);
+        $unlinked = $this->setIn($query, $header, ['providerOnly' => true]);
+        self::assertSame(403, $this->statusCode());
+        self::assertSame($catalogued('oauth_only_unlinked', ErrorCode::DOMAIN), $unlinked['title'] ?? null);
+        self::assertSame($catalogued('sign_in_rules.provider_unlinked'), $unlinked['detail'] ?? null);
+
+        $rules = $this->as($this->owner, 'GET', $this->path());
+        self::assertSame([false, null, false, false, null, []], [$rules['providerOnly'] ?? null, $rules['inactivityTimeoutDays'] ?? null, $rules['administratorsNeedTwoFactor'] ?? null, $rules['everyoneNeedsTwoFactor'] ?? null, $rules['changedAt'] ?? null, $rules['changes'] ?? null]);
+    }
+
+    #[Test]
+    public function eachRefusalReadsInEnglish(): void
+    {
+        $this->set(['inactivityTimeoutDays' => 14]);
+        self::assertSame(['Choose 7 days, 30 days or no limit.', 'Choose 7 days, 30 days or no limit.'], [$this->last()['detail'] ?? null, $this->last()['violations'][0]['message'] ?? null]);
+
+        $this->set(['everyoneNeedsTwoFactor' => true]);
+        self::assertSame('Turn on two-factor for yourself before requiring it.', $this->last()['detail'] ?? null);
+
+        $this->unlink($this->owner);
+        $this->set(['providerOnly' => true]);
+        self::assertSame('Link Google or Apple for yourself before requiring it.', $this->last()['detail'] ?? null);
+    }
+
+    /** @param array<string, mixed> $rules */
+    #[Test]
+    #[DataProvider('rulesOfAnotherJsonType')]
+    public function aRuleOfAnotherJsonTypeIsRefusedAndChangesNothing(array $rules, string $path): void
+    {
+        $body = $this->set($rules);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame([$path, 'invalid_shape'], [$body['violations'][0]['propertyPath'] ?? null, $body['violations'][0]['code'] ?? null]);
+        $saved = $this->as($this->owner, 'GET', $this->path());
+        self::assertSame([false, null], [$saved['providerOnly'] ?? null, $saved['inactivityTimeoutDays'] ?? null]);
+    }
+
     #[Test]
     public function changingTheRulesNeedsOrganisationManage(): void
     {
@@ -569,6 +712,33 @@ final class SignInRulesTest extends ApiTestCase
     private function set(array $rules): array
     {
         return $this->as($this->owner, 'PATCH', $this->path(), $rules);
+    }
+
+    /** @return array<string, mixed> */
+    private function setRaw(string $json): array
+    {
+        $this->client->request('PATCH', $this->path(), server: [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($this->fresh($this->owner)),
+        ], content: $json);
+
+        return $this->last();
+    }
+
+    /**
+     * @param array<string, mixed> $rules
+     *
+     * @return array<string, mixed>
+     */
+    private function setIn(string $query, string $language, array $rules): array
+    {
+        $this->client->request('PATCH', $this->path() . $query, server: [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_ACCEPT_LANGUAGE' => $language,
+            'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($this->fresh($this->owner)),
+        ], content: Json\encode($rules));
+
+        return $this->last();
     }
 
     private function account(string $address, string $name): User

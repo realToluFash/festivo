@@ -23,6 +23,12 @@ final class SupportedLocales
         return self::PLURALS[$locale] ?? $locale;
     }
 
+    /** Bare `en` is ICU's US order; the house English is en-GB (docs/i18n/en.md). */
+    public static function dates(string $locale): string
+    {
+        return 'en' === $locale ? 'en_GB' : $locale;
+    }
+
     public static function supports(?string $locale): bool
     {
         return null !== $locale && \in_array(self::normalise($locale), self::ALL, true);

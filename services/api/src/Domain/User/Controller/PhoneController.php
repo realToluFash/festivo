@@ -120,7 +120,7 @@ final readonly class PhoneController
         if (\is_int($issued)) {
             throw new ApiException(
                 ErrorCode::TooManyAttempts,
-                'Wait before asking for another code.',
+                'code.wait',
                 [],
                 null,
                 ['Retry-After' => (string) $issued],
@@ -153,7 +153,7 @@ final readonly class PhoneController
             ? $user->getPhoneNumberAwaitingCode()
             : Iter\search($user->getPhoneNumbers(), static fn (PhoneNumber $held): bool => $held->getId()->toRfc4122() === $id);
 
-        return $phone ?? throw ApiException::notFound('That number is not linked to this account.');
+        return $phone ?? throw ApiException::notFound('contacts.number_not_linked');
     }
 
     private static function named(Request $request): ?string
@@ -166,7 +166,7 @@ final readonly class PhoneController
         $user = $this->security->getUser();
 
         if (!$user instanceof User) {
-            throw new ApiException(ErrorCode::Unauthenticated, 'Please sign in to continue.');
+            throw new ApiException(ErrorCode::Unauthenticated, 'access.sign_in');
         }
 
         return $user;

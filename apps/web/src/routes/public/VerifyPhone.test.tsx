@@ -202,7 +202,9 @@ describe('check your messages', () => {
     fireEvent.change(screen.getByLabelText('Code from the text'), { target: { value: '184231' } });
     fireEvent.click(screen.getByRole('button', { name: 'Verify number' }));
     await waitFor(() =>
-      expect(screen.getByRole('heading', { level: 1, name: 'Number verified' })).toBeDefined(),
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'Number verified' }),
+      ),
     );
     expect(screen.getByText(/Soirely can reach you on \+234 803 555 0142/)).toBeDefined();
   });
@@ -531,5 +533,82 @@ describe('change your mobile number', () => {
       ).toBeDefined(),
     );
     expect(screen.getByLabelText('Mobile number').getAttribute('aria-invalid')).toBe('true');
+  });
+});
+
+describe('where focus goes once a code is refused or sent again (sc-11369)', () => {
+  function enter(code: string): void {
+    fireEvent.change(screen.getByLabelText('Code from the text'), { target: { value: code } });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify number' }));
+  }
+
+  it.each([
+    ['verification_code_expired', 'That code has expired', /in the newest text/],
+    ['verification_code_exhausted', 'Too many wrong tries', /Send a new one to carry on/],
+  ])('takes Verify number refused as %s to its notice, read once', async (code, title, body) => {
+    answering({
+      'GET /api/auth/me': () => json(account()),
+      'POST /api/auth/verify/phone': () => problem(422, code),
+    });
+    at('/verify-phone');
+
+    await screen.findByLabelText('Code from the text');
+    enter('123456');
+
+    const heading = await screen.findByText(title);
+    expect(document.activeElement).toBe(heading);
+    expect(
+      document.getElementById(heading.getAttribute('aria-describedby') ?? '')?.textContent,
+    ).toMatch(body);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('takes Send a new code, in place of the code, to Code from the text', async () => {
+    answering({
+      'GET /api/auth/me': () => json(account()),
+      'GET /api/auth/verify/phone/resend': () => json({ cooldownSeconds: 0, codeState: 'expired' }),
+      'POST /api/auth/verify/phone/resend': () => json({ cooldownSeconds: 60 }),
+    });
+    at('/verify-phone');
+
+    await screen.findByText('That code has expired');
+    fireEvent.click(screen.getByRole('button', { name: 'Send a new code' }));
+
+    const field = await screen.findByLabelText('Code from the text');
+    await waitFor(() => expect(document.activeElement).toBe(field));
+  });
+
+  it('takes Send a new code with no connection to "That did not work"', async () => {
+    answering({
+      'GET /api/auth/me': () => json(account()),
+      'GET /api/auth/verify/phone/resend': () =>
+        json({ cooldownSeconds: 0, codeState: 'exhausted' }),
+    });
+    at('/verify-phone');
+
+    await screen.findByText('Too many wrong tries');
+    fireEvent.click(screen.getByRole('button', { name: 'Send a new code' }));
+
+    const notice = (await screen.findByText('That did not work')).closest('.notice-body');
+    await waitFor(() => expect(document.activeElement).toBe(notice));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('takes Text it to me instead to the line that says the code was texted, not announced', async () => {
+    answering({
+      'GET /api/auth/me': () => json(account()),
+      'GET /api/auth/verify/phone/resend': () =>
+        json({ cooldownSeconds: 60, codeState: 'live', route: 'whatsapp' }),
+      'POST /api/auth/verify/phone/text-instead': () => json({ route: 'sms_chosen' }),
+    });
+    at('/verify-phone');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Text it to me instead' }));
+
+    const line = await screen.findByText(
+      'We texted the same code to +234 803 555 0142. The one on WhatsApp works too.',
+    );
+    await waitFor(() => expect(document.activeElement).toBe(line));
+    expect(line.getAttribute('aria-live')).toBe('off');
   });
 });

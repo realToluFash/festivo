@@ -12,6 +12,7 @@ import {
   timezoneLabel,
 } from '@soirely/domain';
 import { type FormEvent, useMemo, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
@@ -22,7 +23,9 @@ import { RecoveryRequestsCard } from './RecoveryRequestsCard.tsx';
 import { RequestLinkCard } from './RequestLinkCard.tsx';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
+import { focusWhereSent, offField } from '../../../offField.ts';
 import { can, replaceOrganisation, useSession } from '../../../session.ts';
+import { useStepFocus } from '../../../stepFocus.ts';
 import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
 
 type Field = OrganisationField;
@@ -39,6 +42,7 @@ export function General() {
   const session = useSession();
   const organisation = session.organisation;
   const [refusedIn, setRefusedIn] = useState<string | null>(null);
+  const [refusal, arriveAtRefusal] = useStepFocus<HTMLDivElement>();
 
   if (organisation == null) return null;
 
@@ -55,7 +59,7 @@ export function General() {
       <RecoveryRequestsCard />
 
       {refused && (
-        <div className="notice notice-broken" role="alert">
+        <div className="notice notice-broken" ref={refusal} tabIndex={-1}>
           <span className="mark mark-broken" aria-hidden="true">
             ✕
           </span>
@@ -69,7 +73,10 @@ export function General() {
           <Editable
             key={organisation.id}
             organisation={organisation}
-            onRefused={() => setRefusedIn(organisation.id)}
+            onRefused={() => {
+              setRefusedIn(organisation.id);
+              arriveAtRefusal();
+            }}
           />
         ) : (
           <ReadOnly organisation={organisation} />
@@ -126,15 +133,18 @@ function Editable({
 
   async function save(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+    if (busy) return;
 
     const checked = checkBeforeSending(values, t);
 
     if (Object.keys(checked).length > 0) {
       setErrors(checked);
+      focusFirst(checked, (id) => document.getElementById(id)?.focus());
       return;
     }
 
     setStatus({ kind: 'saving' });
+    const land = focusWhereSent();
 
     try {
       const saved = await api.updateOrganisation(
@@ -155,8 +165,10 @@ function Editable({
       }
 
       if (error instanceof ApiError && error.is('validation_failed')) {
-        setErrors(error.fieldErrors() as Errors);
-        setStatus({ kind: 'editing' });
+        const refused = error.fieldErrors() as Errors;
+        setErrors(refused);
+        flushSync(() => setStatus({ kind: 'editing' }));
+        focusFirst(refused, land);
         return;
       }
 
@@ -380,7 +392,7 @@ function Text({
         autoComplete={autoComplete}
         autoCorrect="off"
         spellCheck={false}
-        disabled={busy}
+        {...offField(busy)}
         aria-invalid={error != null}
         aria-describedby={error == null ? undefined : `${id}-error`}
         onChange={(event) => onChange(field, event.target.value)}
@@ -457,6 +469,11 @@ function FieldError({ id, message }: { id: string; message: string }) {
       <p>{message}</p>
     </div>
   );
+}
+
+function focusFirst(errors: Errors, focus: (id: string) => void): void {
+  const first = ORGANISATION_FIELDS.find((field) => errors[field] != null);
+  if (first != null) focus(`organisation-${first}`);
 }
 
 function checkBeforeSending(values: Record<Field, string>, t: (key: string) => string): Errors {

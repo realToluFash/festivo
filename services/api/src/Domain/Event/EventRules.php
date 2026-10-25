@@ -26,10 +26,11 @@ final readonly class EventRules
 
     /**
      * @param array{name: ?string, startsAt: ?string, endsAt: ?string, timeZone: string, currency: string} $fields
+     * @param ?string                                                                                      $held   the event's currency on an edit, which may stay although no longer offered
      *
      * @return array{name: string, startsAt: DateTimeImmutable, endsAt: DateTimeImmutable, currency: string}
      */
-    public function check(array $fields): array
+    public function check(array $fields, ?string $held = null): array
     {
         $name = Str\trim($fields['name'] ?? '');
         $currency = Str\uppercase(Str\trim($fields['currency']));
@@ -49,7 +50,7 @@ final readonly class EventRules
             $violations[] = $this->violation('timeZone', 'validation.timezone_invalid');
         }
 
-        if (!Regions::isCurrency($currency)) {
+        if ($currency !== $held && !Regions::isCurrency($currency)) {
             $violations[] = $this->violation('currency', 'validation.currency_invalid');
         }
 

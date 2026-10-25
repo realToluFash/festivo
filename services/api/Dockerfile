@@ -15,6 +15,11 @@ RUN install-php-extensions \
     redis \
     zip
 
+# PHP otherwise sends X-Powered-By: PHP/<patch release> on every response, and
+# an exact release tells a prober which advisories apply. Set in base so the
+# stacks and production cannot differ on it.
+RUN echo 'expose_php = Off' > "$PHP_INI_DIR/conf.d/zz-soirely.ini"
+
 WORKDIR /app
 
 # --- dependencies -----------------------------------------------------------

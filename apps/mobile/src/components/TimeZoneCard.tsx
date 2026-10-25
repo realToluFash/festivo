@@ -19,8 +19,9 @@ import { tokens } from '../theme/tokens.ts';
 import { useHeaderWithoutBack } from './AppFrame.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
-import { Field, TextField } from './Field.tsx';
+import { Field, focusChecked, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
+import { useReadOut } from './ReadOut.tsx';
 import { useAboveKeyboard, useRoomAboveKeyboard, useScrolledToTop } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
@@ -107,6 +108,7 @@ export function TimeZoneCard({
               tone="done"
               mark={tokens.marks.done.glyph}
               body={t('timeZone.saved', { zone: saved })}
+              answer={saved}
             />
           )}
           <SecondaryButton
@@ -168,6 +170,9 @@ function Choosing({
   };
   const help = t('timeZone.help', { now: now ?? t('timeZone.nowUnset') });
   const noneMatch = typed.trim() !== '' && !showingPicked && matches.length === 0;
+  const nothing = t('timeZone.noneMatch', { typed: typed.trim() });
+  // Said as each key lands, it would talk over the typing (sc-10955); said only as it appears, it goes unheard by somebody still typing (sc-11930).
+  useReadOut(noneMatch && error == null ? nothing : null, { afterTyping: typed });
   const listMost =
     room == null
       ? LIST_HEIGHT
@@ -188,7 +193,7 @@ function Choosing({
           ? t('timeZone.choose')
           : t('timeZone.chooseNoMatch', { typed: typed.trim() }),
       );
-      input.current?.focus();
+      focusChecked(input);
       return;
     }
 
@@ -219,7 +224,7 @@ function Choosing({
             <TextField
               ref={input}
               wrong={error != null}
-              editable={!saving}
+              submitting={saving}
               autoFocus
               autoCapitalize="none"
               placeholder={t('timeZone.placeholder')}
@@ -231,6 +236,7 @@ function Choosing({
               }}
               returnKeyType="done"
               onSubmitEditing={() => void save()}
+              submitBehavior="submit"
               accessibilityLabel={t('timeZone.find')}
               accessibilityHint={short ? help : undefined}
               testID="timeZone.search"
@@ -243,7 +249,6 @@ function Choosing({
               onLayout={(event) => setListHeight(event.nativeEvent.layout.height)}
               nestedScrollEnabled
               keyboardShouldPersistTaps="handled"
-              accessibilityLabel={t('timeZone.listLabel')}
             >
               {matches.map((zone, index) => (
                 <Pressable
@@ -277,7 +282,7 @@ function Choosing({
               style={styles.secondary}
               accessibilityRole="alert"
             >
-              {t('timeZone.noneMatch', { typed: typed.trim() })}
+              {nothing}
             </Text>
           )}
 
@@ -289,7 +294,12 @@ function Choosing({
           />
         </View>
       </View>
-      <QuietButton label={t('timeZone.cancel')} onPress={onCancel} testID="timeZone.cancel" />
+      <QuietButton
+        label={t('timeZone.cancel')}
+        onPress={onCancel}
+        off={saving}
+        testID="timeZone.cancel"
+      />
     </>
   );
 }

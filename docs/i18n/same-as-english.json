@@ -37,7 +37,19 @@
     "mobile:rolesScreen.area.messages",
     "mobile:rolesScreen.area.organisation",
     "web:requestToJoin.message",
-    "mobile:requestToJoin.message"
+    "mobile:requestToJoin.message",
+    "web:ownerClaim.type",
+    "mobile:ownerClaim.type",
+    "mobile:invitations.count_one",
+    "mobile:invitations.count_other",
+    "mobile:invitations.fromNobody",
+    "mobile:invitations.heading",
+    "web:invitations.count_one",
+    "web:invitations.count_other",
+    "web:invitations.fromNobody",
+    "web:invitations.heading",
+    "web:membersScreen.how.invitation",
+    "web:membersScreen.invitations"
   ],
   "pt": [
     "web:app.name",

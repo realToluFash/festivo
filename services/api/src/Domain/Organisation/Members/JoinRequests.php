@@ -53,8 +53,17 @@ final readonly class JoinRequests
     ) {
     }
 
+    /** Never into Owner: somebody nobody inside chose is let in at least privilege, and made an owner later from Members. */
     public function approve(Organisation $organisation, string $membershipId, Role $role, User $by): Membership
     {
+        if ($role->isOwner()) {
+            throw ApiException::validation([[
+                'propertyPath' => 'roleId',
+                'message' => $this->translator->trans('members.approve_not_owner'),
+                'code' => ErrorCode::ValidationFailed->value,
+            ]]);
+        }
+
         $this->roleManager->mayGrant($organisation, $by, $role);
 
         return $this->answer($organisation, $membershipId, $by, function (Membership $membership) use ($role, $by): void {
@@ -119,7 +128,7 @@ final readonly class JoinRequests
     public function noticeDue(): int
     {
         $now = $this->clock->now();
-        $lifetime = new DateInterval(Membership::REQUEST_LIFETIME);
+        $lifetime = new DateInterval(Membership::UNANSWERED_FOR);
         $waiting = Dict\group_by(
             $this->membershipRepository->findRequestsWaitingAt($now),
             static fn (Membership $membership): string => $membership->getOrganisation()->getId()->toRfc4122(),
@@ -173,7 +182,7 @@ final readonly class JoinRequests
             : null;
 
         if (null === $membership) {
-            throw ApiException::notFound('That person has not asked to join this organisation.');
+            throw ApiException::notFound('members.not_asked');
         }
 
         if ($membership->getUser()->getId()->equals($by->getId())) {

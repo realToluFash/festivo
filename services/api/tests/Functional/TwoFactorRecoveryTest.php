@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\Organisation\OrganisationFounder;
+use App\Domain\User\Mail\UserMailer;
 use App\Domain\User\TokenIssuer;
 use App\Domain\User\TwoFactor\Recovery\NotMeLink;
 use App\Domain\User\UserRegistrar;
@@ -22,14 +23,17 @@ use App\Enum\ErrorCode;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Repository\TwoFactorFactorRepository;
+use App\Repository\TwoFactorRecoveryRepository;
 use App\Tests\ApiTestCase;
 use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use OTPHP\TOTP;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestWith;
 use Psl\Iter;
 use Psl\Json;
+use Psl\Math;
 use Psl\Regex;
 use Psl\Str;
 use Psl\Type;
@@ -414,18 +418,85 @@ final class TwoFactorRecoveryTest extends ApiTestCase
 
         $this->fresh($this->person)->setTimezone('Africa/Lagos');
         self::em()->flush();
-        self::assertSame('Saturday, Oct 24 at 14:20 WAT', $ends($this->state($handle)));
+        self::assertSame('Saturday 24 Oct at 14:20 WAT', $ends($this->state($handle)));
         $this->fresh($this->person)->setTimezone('Europe/London');
         self::em()->flush();
-        self::assertSame('Saturday, Oct 24 at 14:20 BST', $ends($this->state($handle)));
+        self::assertSame('Saturday 24 Oct at 14:20 BST', $ends($this->state($handle)));
         $this->fresh($this->person)->setTimezone(null);
         self::em()->flush();
-        self::assertSame('Saturday, Oct 24 at 13:20 UTC', $ends($this->state($handle)));
+        self::assertSame('Saturday 24 Oct at 13:20 UTC', $ends($this->state($handle)));
         self::assertSame('2026-10-24T13:20:00+00:00', $this->state($handle)['expiresAt']);
 
         self::mockTime('2026-10-24 13:19:59');
         $this->asApprover('POST', '/api/auth/recovery-requests/' . $this->requestId() . '/approve');
         self::assertSame(204, $this->statusCode(), 'one second before the instant');
+    }
+
+    /** sc-9267: the screen's dates follow the language the request asks for, over the account's saved one. */
+    #[Test]
+    public function theTimesAreWrittenInTheLanguageTheRequestAsksFor(): void
+    {
+        self::mockTime('2026-10-17 13:20:00');
+        $handle = $this->proved();
+        $this->fresh($this->person)->setTimezone(null);
+        $this->fresh($this->person)->setLocale('en');
+        self::em()->flush();
+
+        $this->client->setServerParameter('HTTP_ACCEPT_LANGUAGE', 'es');
+        $asked = $this->state($handle);
+
+        $mailer = self::service(UserMailer::class);
+        self::assertSame($mailer->deadline(new DateTimeImmutable('2026-10-24 13:20:00'), $this->fresh($this->person), 'es'), $asked['expires']);
+        self::assertSame($mailer->deadline(new DateTimeImmutable('2026-10-17 13:20:00'), $this->fresh($this->person), 'es'), $asked['asked']);
+    }
+
+    /** sc-9267: a request that names none of the four reads the account's saved language, not the default. */
+    #[Test]
+    #[DataProvider('namingNoneOfTheFour')]
+    public function theTimesAreWrittenInTheSavedLanguageWhenTheRequestNamesNone(string $header): void
+    {
+        self::mockTime('2026-10-17 13:20:00');
+        $handle = $this->proved();
+        $this->fresh($this->person)->setTimezone(null);
+        $this->fresh($this->person)->setLocale('pt');
+        self::em()->flush();
+
+        $this->client->setServerParameter('HTTP_ACCEPT_LANGUAGE', $header);
+        $expires = $this->state($handle)['expires'];
+
+        $written = fn (string $locale): string => self::service(UserMailer::class)->deadline(new DateTimeImmutable('2026-10-24 13:20:00'), $this->fresh($this->person), $locale);
+        self::assertSame($written('pt'), $expires);
+        self::assertNotSame($written('en'), $expires);
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function namingNoneOfTheFour(): iterable
+    {
+        yield 'no header' => [''];
+        yield 'only German' => ['de'];
+    }
+
+    /** sc-9267, sc-11329: the refusal's retry time is in the language of its sentence, the request's, not the saved one. */
+    #[Test]
+    public function theRetryTimeIsWrittenInTheLanguageTheRequestAsksFor(): void
+    {
+        $written = $this->refusedFourthIn('en', 'fr');
+
+        self::assertSame($written('fr'), $this->last()['retryAt'] ?? null);
+        self::assertSame('Vous pouvez le demander 3 fois par jour. Réessayez à partir du ' . $written('fr') . '.', $this->last()['detail']);
+        self::assertNotSame($written('en'), $written('fr'));
+    }
+
+    /** sc-11329: a request naming none of the four reads the refusal in English, its date too, whatever the account saved. */
+    #[Test]
+    #[DataProvider('namingNoneOfTheFour')]
+    public function theRetryTimeIsInTheSentencesLanguageWhenTheRequestNamesNone(string $header): void
+    {
+        $written = $this->refusedFourthIn('fr', $header);
+
+        self::assertSame($written('en'), $this->last()['retryAt'] ?? null);
+        self::assertSame('You can ask 3 times a day. Try again ' . $written('en') . '.', $this->last()['detail']);
+        self::assertNotSame($written('fr'), $written('en'));
     }
 
     #[Test]
@@ -461,7 +532,7 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         self::assertSame(ErrorCode::TooManyAttempts->type(), $this->last()['type']);
         self::assertNotNull($this->client->getResponse()->headers->get('Retry-After'));
         $retryAt = Type\string()->coerce($this->last()['retryAt'] ?? null);
-        self::assertMatchesRegularExpression('/^[A-Z][a-z]+day, [A-Z][a-z]{2} \d{1,2} at \d{2}:\d{2} UTC$/', $retryAt, 'the instant, with its day and zone (#1118)');
+        self::assertMatchesRegularExpression('/^[A-Z][a-z]+day \d{1,2} [A-Z][a-z]{2} at \d{2}:\d{2} UTC$/', $retryAt, 'the instant, with its day and zone (#1118)');
         self::assertSame('You can ask 3 times a day. Try again ' . $retryAt . '.', $this->last()['detail']);
     }
 
@@ -529,6 +600,26 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         self::assertSame(ErrorCode::TwoFactorChallengeInvalid->type(), $this->last()['type']);
         $this->call('POST', '/api/auth/two-factor/recovery/state', ['recovery' => 'not-a-handle']);
         self::assertSame(ErrorCode::RecoveryRequestInvalid->type(), $this->last()['type']);
+    }
+
+    /** @return callable(string): string the refusal's instant, as each language writes it */
+    private function refusedFourthIn(string $saved, string $header): callable
+    {
+        $this->fresh($this->person)->setTimezone(null);
+        $this->fresh($this->person)->setLocale($saved);
+        self::em()->flush();
+        $this->client->setServerParameter('HTTP_ACCEPT_LANGUAGE', $header);
+        $this->start();
+        $this->start();
+        $this->start();
+
+        $this->call('POST', '/api/auth/two-factor/recovery', ['challenge' => $this->challenge()]);
+
+        self::assertSame(429, $this->statusCode());
+        $lifts = self::service(TwoFactorRecoveryRepository::class)->startedSince($this->fresh($this->person), new DateTimeImmutable('-24 hours'))[0]->modify('+24 hours');
+        $stated = new DateTimeImmutable('@' . (string) (Math\div($lifts->getTimestamp() + 60, 60) * 60));
+
+        return fn (string $locale): string => self::service(UserMailer::class)->deadline($stated, $this->fresh($this->person), $locale);
     }
 
     private function proved(): string

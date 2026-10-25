@@ -7,6 +7,7 @@ namespace App\Domain\Organisation\RequestLink;
 use App\Audit\Auditor;
 use App\Domain\Organisation\DomainJoining\JoinOfferFinder;
 use App\Domain\Organisation\Members\MembershipMachine;
+use App\Domain\User\Mail\UserMailer;
 use App\Entity\Membership;
 use App\Entity\MembershipTransition;
 use App\Entity\Organisation;
@@ -50,6 +51,7 @@ final readonly class LinkRequester
         private Auditor $auditor,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
+        private UserMailer $userMailer,
     ) {
     }
 
@@ -63,9 +65,11 @@ final readonly class LinkRequester
 
     public function standingOf(User $user, Organisation $organisation): ?RequestStanding
     {
-        return match ($this->membershipRepository->findOneBy(['organisation' => $organisation, 'user' => $user])?->getStatus()) {
-            MembershipStatus::Active, MembershipStatus::Suspended => RequestStanding::Member,
-            MembershipStatus::PendingApproval => RequestStanding::Waiting,
+        $status = $this->membershipRepository->findOneBy(['organisation' => $organisation, 'user' => $user])?->getStatus();
+
+        return match (true) {
+            true === $status?->holdsRole() => RequestStanding::Member,
+            MembershipStatus::PendingApproval === $status => RequestStanding::Waiting,
             default => null === $this->coolingOffUntil($user, $organisation) ? null : RequestStanding::CoolingOff,
         };
     }
@@ -103,7 +107,11 @@ final readonly class LinkRequester
                 // Whose limit it is goes unsaid (#605): the person learns only when they may try again.
                 $until = Iter\reduce($spent, static fn (?DateTimeImmutable $at, RateLimit $peek): DateTimeImmutable => null === $at || $peek->getRetryAfter() > $at ? $peek->getRetryAfter() : $at, null);
 
-                return ApiException::tooManyAttempts('Too many requests for now.', $until ?? $this->clock->now());
+                return ApiException::tooManyAttemptsOn(
+                    'limits.join_requests',
+                    $until ?? $this->clock->now(),
+                    fn (DateTimeImmutable $at): string => $this->userMailer->deadlineInUtc($at, $this->userMailer->answeredLocale()),
+                );
             }
 
             $membership = $this->membershipMachine->ask($organisation, $user, MembershipChannel::Request);

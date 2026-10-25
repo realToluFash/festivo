@@ -1,8 +1,9 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import type { Membership } from '@soirely/api-client';
+import { setLanguage } from '../../../i18n/index.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
@@ -94,7 +95,6 @@ function open(path = '/app/settings/sign-in-rules') {
 afterEach(() => {
   vi.restoreAllMocks();
   window.localStorage.clear();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('Settings > Sign-in rules, for someone who manages the organisation', () => {
@@ -178,10 +178,9 @@ describe('Settings > Sign-in rules, for someone who manages the organisation', (
         }),
       ).getByText('Not required'),
     ).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Rules are saved' })).toHaveProperty(
-      'disabled',
-      true,
-    );
+    expect(
+      screen.getByRole('button', { name: 'Rules are saved' }).getAttribute('aria-disabled'),
+    ).toBe('true');
     expect(sent.filter(({ method }) => method === 'PATCH')).toEqual([]);
   });
 
@@ -262,10 +261,9 @@ describe('Settings > Sign-in rules, for someone who manages the organisation', (
     expect(sent.filter(({ method }) => method === 'PATCH')).toEqual([]);
     expect((screen.getByLabelText(/Any method/) as HTMLInputElement).checked).toBe(true);
     expect(screen.getByText('Link Google or Apple for yourself first')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Rules are saved' })).toHaveProperty(
-      'disabled',
-      true,
-    );
+    expect(
+      screen.getByRole('button', { name: 'Rules are saved' }).getAttribute('aria-disabled'),
+    ).toBe('true');
   });
 
   it('keeps the other unsaved choices when the provider choice is refused, and saves them on a second press', async () => {
@@ -377,7 +375,7 @@ describe('Settings > Sign-in rules, for someone who manages the organisation', (
 
     const save = await screen.findByRole('button', { name: 'Rules are saved' });
 
-    expect((save as HTMLButtonElement).disabled).toBe(true);
+    expect(save.getAttribute('aria-disabled')).toBe('true');
     expect(screen.getByText('Nothing changes. These are the rules in force.')).toBeDefined();
   });
 });
@@ -475,7 +473,11 @@ describe('Two-factor for everyone (sc-609), for someone who manages the organisa
     fireEvent.click(await screen.findByRole('button', { name: 'Require two-factor for everyone' }));
 
     expect(screen.getByText('1 person doesn’t have two-factor yet')).toBeDefined();
-    expect(screen.getByText(/until Saturday, Oct 24 at 14:20 WAT to turn it on/)).toBeDefined();
+    expect(
+      screen.getByText(
+        /^When you save, they get an email\. They have until Saturday, Oct 24 at 14:20 WAT to turn it on/,
+      ),
+    ).toBeDefined();
     const without = within(screen.getByRole('list', { name: 'People without two-factor' }));
     expect(without.getByText('Chidi Okoro · Coordinator')).toBeDefined();
 
@@ -483,6 +485,25 @@ describe('Two-factor for everyone (sc-609), for someone who manages the organisa
 
     expect(await screen.findByText('Required from Saturday, Oct 24 at 14:20 WAT')).toBeDefined();
     expect(sent.at(-1)?.body).toEqual({ everyoneNeedsTwoFactor: true });
+  });
+
+  it('counts two or more people without two-factor and says each gets an email', async () => {
+    signedIn(membership());
+    answering({
+      ...WITH_OWN,
+      withoutTwoFactor: [
+        ...WITH_OWN.withoutTwoFactor,
+        { userId: 'user_5', name: 'Amaka Eze', role: COORDINATOR },
+      ],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Require two-factor for everyone' }));
+
+    expect(screen.getByText('2 people don’t have two-factor yet')).toBeDefined();
+    expect(
+      screen.getByText(/^When you save, each gets an email\. They have until Saturday/),
+    ).toBeDefined();
   });
 
   it('keeps the administrators’ switch, reading that everyone’s rule covers it', async () => {
@@ -590,7 +611,7 @@ describe('what the rules ask of a member, on every page', () => {
     expect(
       await screen.findByText('Ìrè Events requires two-factor from Saturday, Oct 24 at 14:20 WAT.'),
     ).toBeDefined();
-    expect(screen.getByRole('link', { name: 'Set it up now' }).getAttribute('href')).toBe(
+    expect(screen.getByRole('link', { name: 'Turn it on now' }).getAttribute('href')).toBe(
       '/app/account/security',
     );
     expect(screen.queryByRole('button', { name: 'Close this notice' })).toBeNull();
@@ -611,7 +632,7 @@ describe('what the rules ask of a member, on every page', () => {
 
     expect(await screen.findByText('Turn on two-factor to carry on')).toBeDefined();
     expect(
-      screen.getByText('Ìrè Events requires two-factor. Set it up to carry on.'),
+      screen.getByText('Ìrè Events requires two-factor, and the time to turn it on has passed.'),
     ).toBeDefined();
     expect(
       screen.getByText('Your other organisations and single-event access are not affected.'),
@@ -622,5 +643,173 @@ describe('what the rules ask of a member, on every page', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Turn on two-factor' }));
 
     await waitFor(() => expect(screen.queryByText('Turn on two-factor to carry on')).toBeNull());
+  });
+
+  it('past the deadline, stays signed in and says so when signing out cannot reach Soirely', async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    signedIn(
+      membership({
+        twoFactorDue: {
+          at: '2026-10-24T13:20:00+00:00',
+          written: 'Saturday, Oct 24 at 14:20 WAT',
+          overdue: true,
+        },
+      }),
+    );
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      if (new URL(String(input)).pathname === '/api/auth/logout') {
+        throw new TypeError('Failed to fetch');
+      }
+
+      return new Response(JSON.stringify(PAGE), { status: 200 });
+    });
+    open('/app/settings/sign-in-rules');
+
+    await screen.findByText('Turn on two-factor to carry on');
+    const button = screen.getByRole('button', { name: 'Sign out' });
+    button.focus();
+    fireEvent.click(button);
+
+    expect((await screen.findByRole('alert')).textContent).toMatch(/You are still signed in/);
+    expect(document.activeElement).toBe(button);
+    expect(screen.queryByRole('heading', { name: 'Sign in' })).toBeNull();
+  });
+});
+
+describe('the two-factor deadline after a language change (sc-9267)', () => {
+  const WRITTEN: Record<string, string> = {
+    en: 'Saturday 31 Oct at 10:44 GMT',
+    es: 'sábado 31 oct a las 10:44 GMT',
+  };
+
+  afterEach(async () => {
+    await act(() => setLanguage(null));
+  });
+
+  function answeringIn(spanish: () => Promise<Response> = async () => rulesIn('es')): string[] {
+    const asked: string[] = [];
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (!new URL(String(input)).pathname.endsWith('/sign-in-rules')) {
+        return new Response(null, { status: 500 });
+      }
+
+      const language = new Headers(init?.headers).get('Accept-Language') ?? '';
+      asked.push(language);
+
+      return language === 'es' ? spanish() : rulesIn(language);
+    });
+
+    return asked;
+  }
+
+  function rulesIn(language: string): Response {
+    const deadline = { at: '2026-10-31T10:44:00+00:00', written: WRITTEN[language] ?? '' };
+
+    return new Response(
+      JSON.stringify({
+        ...PAGE,
+        everyoneNeedsTwoFactor: true,
+        ownTwoFactor: true,
+        twoFactorDeadline: deadline,
+        withoutTwoFactor: [],
+      }),
+      { status: 200 },
+    );
+  }
+
+  it('is asked for again in the picked language, without a reload', async () => {
+    signedIn(membership());
+    const asked = answeringIn();
+    open();
+    expect(await screen.findByText('Required from Saturday 31 Oct at 10:44 GMT')).toBeDefined();
+
+    await act(() => setLanguage('es'));
+
+    expect(
+      await screen.findByText('Obligatoria a partir del sábado 31 oct a las 10:44 GMT'),
+    ).toBeDefined();
+    expect(asked).toEqual(['en', 'es']);
+
+    await act(() => setLanguage('en'));
+
+    expect(await screen.findByText('Required from Saturday 31 Oct at 10:44 GMT')).toBeDefined();
+  });
+
+  it('keeps the date it had while asking, and after a failed ask, with no error', async () => {
+    signedIn(membership());
+    let answer: (response: Response) => void = () => {};
+    let spanish = () =>
+      new Promise<Response>((resolve) => {
+        answer = resolve;
+      });
+    answeringIn(() => spanish());
+    open();
+    await screen.findByText('Required from Saturday 31 Oct at 10:44 GMT');
+
+    await act(() => setLanguage('es'));
+
+    expect(screen.getByText('Obligatoria a partir del Saturday 31 Oct at 10:44 GMT')).toBeDefined();
+
+    await act(async () => answer(new Response(null, { status: 500 })));
+
+    expect(screen.getByText('Obligatoria a partir del Saturday 31 Oct at 10:44 GMT')).toBeDefined();
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    spanish = async () => rulesIn('es');
+    await act(() => setLanguage('fr'));
+    await act(() => setLanguage('es'));
+
+    expect(
+      await screen.findByText('Obligatoria a partir del sábado 31 oct a las 10:44 GMT'),
+    ).toBeDefined();
+  });
+});
+
+describe('Try again under "The sign-in rules did not load." (sc-11369)', () => {
+  function failingTwice(): void {
+    let reads = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      if (!new URL(String(input)).pathname.endsWith('/sign-in-rules')) {
+        throw new TypeError('Failed to fetch');
+      }
+      reads += 1;
+      if (reads < 3) throw new TypeError('Failed to fetch');
+
+      return new Response(JSON.stringify(PAGE), { status: 200 });
+    });
+  }
+
+  async function retryTwice(heading: string): Promise<void> {
+    const failed = 'The sign-in rules did not load.';
+    expect(await screen.findByText(failed)).toBeDefined();
+    expect(document.activeElement).toBe(document.body);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    const again = await screen.findByText(failed);
+    await waitFor(() => expect(document.activeElement).toBe(again));
+    expect(again.closest('[role="alert"]')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: heading })),
+    );
+    expect(screen.queryByText(failed)).toBeNull();
+  }
+
+  it('puts focus on Sign-in rules once they load, or on the line once it fails again', async () => {
+    signedIn(membership({}));
+    failingTwice();
+    open();
+
+    await retryTwice('Sign-in rules');
+  });
+
+  it('puts focus on the organisation’s sign-in rules for a member who cannot change them', async () => {
+    signedIn(membership({ role: COORDINATOR, permissions: ['events.read', 'events.manage'] }));
+    failingTwice();
+    open();
+
+    await retryTwice('Ìrè Events’s sign-in rules');
   });
 });

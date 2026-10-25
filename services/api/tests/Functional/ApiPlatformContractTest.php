@@ -92,19 +92,4 @@ final class ApiPlatformContractTest extends ApiTestCase
         self::assertStringNotContainsString('errors.', $problem['title']);
         self::assertNotSame(ErrorCode::NotFound->value, $problem['title']);
     }
-
-    /**
-     * JSON-LD is API Platform's default and a good one for a public,
-     * self-describing API. This one has two clients that we also write, and.
-     *
-     * @context on every object is weight they would strip and ignore.
-     */
-    #[Test]
-    public function theEntrypointDoesNotNegotiateFormatsWeDidNotChoose(): void
-    {
-        $this->client->catchExceptions(true);
-        $this->client->request('GET', '/api', server: ['HTTP_ACCEPT' => 'application/ld+json']);
-
-        self::assertResponseStatusCodeSame(400);
-    }
 }

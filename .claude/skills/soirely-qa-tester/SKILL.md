@@ -82,6 +82,18 @@ and says who, and you post nothing more on it and pick again. On success it prin
 story. A story back in Ready For QA after a failure is the failing tester's to retest for
 its first 30 minutes there: the claim refuses the others, who pick another.
 
+**A claim needs a stack that answers.** The claim first checks that your stack's API
+answers, and refuses with the reason when it does not (Docker hung, the api service
+stopped, its port refused). Nothing is claimed then: report that the stack is down, tag
+`[ops]` if it stays down, and stop.
+
+**A story you cannot test goes back, never stays In QA under your name.** If the stack dies
+part way, or anything else stops the test, give it back before you finish:
+`sq qa unclaim sc-55 --text "<why it was not tested>"`. It moves the story back to
+`Ready For QA`, removes your label, and posts `QA claim released: qa<n>, …`, so any tester
+may take it at once. A story left `In QA` under your claim with no report comes back to
+you as your next work, ahead of anything new: test it, or give it back.
+
 **A story stuck in `In QA`** has a winning claim more than three hours old and no report,
 which means its tester's run died. Any tester may take it over with the same
 `sq qa claim sc-55`: it refuses a claim younger than three hours, and on an older one posts
@@ -277,7 +289,13 @@ With no MCP, fall back to a script — `npx playwright` with a `page.goto`,
 node .qa/bin/qa-env.mjs ios [--ipad]                     # the bundler, in Expo Go, on the QA phone (or iPad); shuts the other
 node .qa/bin/qa-env.mjs maestro sign-in EMAIL=… PASSWORD=…        # one flow, on the phone
 node .qa/bin/qa-env.mjs maestro sign-in --ipad EMAIL=… PASSWORD=… # on the tablet
+node .qa/bin/qa-env.mjs hierarchy [--ipad | --android]           # what is on screen, for writing a flow
 ```
+
+Never a bare `maestro --device …` on iOS. Maestro's iOS driver answers on one port, so a
+run by hand drives whichever tester's simulator started it first; `qa-env.mjs` gives each
+tester a port of their own. A `.qa/bin/qa-env.mjs` copied before that change still shares one
+port, and has no `hierarchy`: refresh it as below before your next iOS flow.
 
 `ios` keeps running — start it in the background, and restart it after a `checkout`, or it
 serves the previous commit. Never `just qa-ios` or `just qa-mobile`: those drive the
@@ -290,10 +308,21 @@ developer's bundler and whichever simulator happens to be booted.
 node .qa/bin/qa-env.mjs android [--tablet]               # the bundler, in Expo Go, on the phone (or tablet); stops the other
 node .qa/bin/qa-env.mjs maestro sign-in --android EMAIL=… PASSWORD=…  # one flow, on whichever is running
 node .qa/bin/qa-env.mjs link 'soirely://oauth/…'          # hand a provider redirect back to Expo Go
+node .qa/bin/qa-env.mjs release [--offline] [--tablet]   # a release build of the commit, on its first launch; for offline-from-first-launch or splash bullets
 node .qa/bin/qa-env.mjs android --stop                   # the emulator, when the pass is done
 ```
 
 `android` behaves like `ios`: start it in the background, and restart it after a `checkout`.
+`release` needs no bundler and takes an hour the first time on a machine. The next `android`
+removes it. The emulator has no window, so `release` records the launch's first 15 seconds and
+prints where: judge a splash bullet on that video, frame by frame, never on a screenshot taken
+afterwards. With `--offline` it launches only once the emulator reports no network, and stops
+with an error otherwise. If your worktree says `unknown command` for any command this skill
+names (`release`, `hierarchy`, …), its `.qa/bin` copy predates it. Refresh that copy alone, which leaves your branch and data as they are:
+`cd ~/Projects/soirely-qa<n> && git fetch origin main && git show origin/main:scripts/qa-env.mjs > .qa/bin/qa-env.mjs`.
+It brings the `android` that removes a release build and turns airplane mode off; an old
+`android` does neither, and the release build then takes a provider's sign-in redirect. Never
+run `setup` part way through a pass for this: it checks out main and rebuilds the database.
 To switch to the tablet, stop it, then run `android --tablet`. Stop the emulator when you
 finish, because it holds several GB of memory on a host every other role shares. The app uses
 the same `127.0.0.1` URLs as on a simulator, and a flow runs unchanged. A screenshot outside a
@@ -426,6 +455,10 @@ until the claim goes stale. It refuses a story you have not claimed.
 Then **tag what needs another role** — one `sq qa comment sc-55 --to <role>` per Outstanding
 item that someone else has to decide or fix: `[pm]` for an undecided behaviour, `[ux]` for a
 missing state on an artboard, `[dev]` for a question about the build. See `role-comments`.
+**End each device pass by closing what it opened**: stop the background `ios` or `android`
+command (it is the bundler), then the device, with `node .qa/bin/qa-env.mjs android --stop`
+or `xcrun simctl shutdown "Soirely QA<n> iPhone"` (and `iPad`). A bundler left running
+holds your worker as busy, and an emulator holds several GB.
 Finish with `sq qa done <id> --note "<one line>"`; the note is what your next run on the
 story sees.
 

@@ -6,6 +6,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { holdProof } from '../../../recentProof.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
+import { renderInterrupted } from '../../../test-interrupted.tsx';
 import { tokens } from '../../../tokens.ts';
 import { routes } from '../../index.tsx';
 
@@ -46,7 +47,7 @@ interface Sent {
   body: unknown;
 }
 
-function answering(answers: Record<string, () => Response> = {}): Sent[] {
+function answering(answers: Record<string, () => Response | Promise<Response>> = {}): Sent[] {
   const sent: Sent[] = [];
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -84,7 +85,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks();
   sessionStorage.clear();
-  __setSessionState({ status: 'unknown' });
   tokens.clear();
 });
 
@@ -157,6 +157,7 @@ describe('email addresses and phone numbers', () => {
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Make primary' }));
+    expect(document.activeElement).toBe(screen.getByText('Make this your primary address?'));
     expect(
       screen.getByText(
         'You will sign in with it from now on, and account mail goes there. folake@ire.events stays linked and stops signing you in.',
@@ -245,6 +246,63 @@ describe('email addresses and phone numbers', () => {
     );
   });
 
+  it('makes it primary once, back from Google, when React abandons the render it arrives in', async () => {
+    const signIn = { code: 'the-code', codeVerifier: 'v', redirectUri: 'r', nonce: 'n' };
+    const returned = JSON.stringify({
+      provider: 'google',
+      purpose: { kind: 'makePrimary', address: 'e2' },
+      signIn,
+    });
+    sessionStorage.setItem('soirely.provider.returned', returned);
+    const sent = answering({
+      'GET /api/auth/me': () =>
+        json({
+          ...ME,
+          hasPassword: false,
+          providers: [{ provider: 'google', email: 'folake@gmail.com' }],
+        }),
+      'GET /api/orgs': () => json({ organisations: [] }),
+      'POST /api/auth/proof': () =>
+        json({ proof: 'p-g', expiresAt: new Date(Date.now() + 300_000).toISOString() }),
+      'PATCH /api/auth/emails/e2/primary': () =>
+        json({ id: 'e2', address: 'folake.adeyemi@gmail.com', verified: true, primary: true }),
+    });
+    __setSessionState({ status: 'signedIn', session: { ...FOLAKE, hasPassword: false } });
+
+    const { release } = await renderInterrupted(
+      <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/app/account'] })} />,
+    );
+    expect(
+      sessionStorage.getItem('soirely.provider.returned'),
+      'an abandoned render leaves it in place',
+    ).toBe(returned);
+
+    await release();
+
+    expect(
+      await screen.findByText(
+        'folake.adeyemi@gmail.com is now your primary address. Sign in with it from now on.',
+      ),
+    ).toBeDefined();
+    expect(sent.filter((s) => s.call === 'PATCH /api/auth/emails/e2/primary')).toHaveLength(1);
+    expect(sessionStorage.getItem('soirely.provider.returned')).toBeNull();
+  });
+
+  it('leaves a link result in place for the Security page, whose trip it was', async () => {
+    const signIn = { code: 'the-code', codeVerifier: 'v', redirectUri: 'r', nonce: 'n' };
+    const returned = JSON.stringify({ provider: 'google', purpose: { kind: 'link' }, signIn });
+    sessionStorage.setItem('soirely.provider.returned', returned);
+    answering({
+      'GET /api/auth/me': () => json(ME),
+      'GET /api/orgs': () => json({ organisations: [] }),
+    });
+
+    open();
+
+    expect(await screen.findByText('folake.adeyemi@gmail.com')).toBeDefined();
+    expect(sessionStorage.getItem('soirely.provider.returned')).toBe(returned);
+  });
+
   it('asks before removing a verified address, and removes an unverified one at once', async () => {
     const unverified = {
       ...ME,
@@ -267,6 +325,15 @@ describe('email addresses and phone numbers', () => {
       expect(sent.some((s) => s.call === 'DELETE /api/auth/emails/e2')).toBe(true),
     );
     expect(screen.queryByText('Remove this address?')).toBeNull();
+  });
+
+  it('takes focus to the confirm’s title when removing a verified address', async () => {
+    answering({ 'GET /api/auth/me': () => json(ME) });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove folake.adeyemi@gmail.com' }));
+
+    expect(document.activeElement).toBe(screen.getByText('Remove this address?'));
   });
 
   it('never offers to remove the primary', async () => {
@@ -326,6 +393,94 @@ describe('email addresses and phone numbers', () => {
     await waitFor(() =>
       expect(sent.some((s) => s.call === 'PATCH /api/auth/phones/p2/primary')).toBe(true),
     );
+  });
+});
+
+describe('focus after a step on the cards closes', () => {
+  const ONE_EACH = { ...ME, emailAddresses: [ME.emailAddresses[0]] };
+
+  it('goes back to Add an email address after Cancel', async () => {
+    answering({ 'GET /api/auth/me': () => json(ONE_EACH) });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add an email address' }));
+    expect(document.activeElement).toBe(screen.getByLabelText('Email address to add'));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Add an email address' }),
+    );
+  });
+
+  it('starts adding a number in Code, holding the country, and goes back to Add a phone number after Cancel', async () => {
+    answering({ 'GET /api/auth/me': () => json(ME) });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a phone number' }));
+    const code = screen.getByLabelText('Code') as HTMLSelectElement;
+    expect(document.activeElement).toBe(code);
+    expect(code.value).toBe('NG');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Add a phone number' }));
+  });
+
+  it('goes back to Make primary after Keep, and after Cancel on Confirm it’s you', async () => {
+    answering({
+      'GET /api/auth/me': () => json(ME),
+      'GET /api/orgs': () => json({ organisations: [] }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Make primary' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep folake@ire.events' }));
+    expect(screen.queryByText('Make this your primary address?')).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Make primary' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Make primary' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Make it primary' }));
+    await screen.findByText("Confirm it's you before changing the address you sign in with.");
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Make primary' }));
+  });
+
+  it('goes back to Remove beside the address or number after Keep it', async () => {
+    const twoPhones = {
+      ...ME,
+      phoneNumbers: [
+        ME.phoneNumbers[0],
+        { ...ME.phoneNumbers[0], id: 'p2', number: '+2347015550188', primary: false },
+      ],
+    };
+    answering({ 'GET /api/auth/me': () => json(twoPhones) });
+    open();
+
+    const address = 'Remove folake.adeyemi@gmail.com';
+    fireEvent.click(await screen.findByRole('button', { name: address }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: address }));
+
+    const number = 'Remove +234 701 555 0188';
+    fireEvent.click(screen.getByRole('button', { name: number }));
+    expect(document.activeElement).toBe(screen.getByText('Remove this number?'));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: number }));
+  });
+
+  it('still lands on the line that says what a remove did', async () => {
+    let reads = 0;
+    answering({
+      'GET /api/auth/me': () => json(++reads === 1 ? ME : ONE_EACH),
+      'DELETE /api/auth/emails/e2': () => new Response(null, { status: 204 }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove folake.adeyemi@gmail.com' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove it' }));
+
+    const line = await screen.findByText('folake.adeyemi@gmail.com has been removed.');
+    await waitFor(() => expect(document.activeElement).toBe(line.closest('.notice-done')));
   });
 });
 
@@ -476,8 +631,50 @@ describe('a refusal shows the account as it is now', () => {
       expect(shows(phones)).toBeDefined();
       expect(screen.queryByText('+234 701 555 0188 is verified.')).toBeNull();
       expect(screen.queryByText('Remove this number?')).toBeNull();
+      expect(document.activeElement).toBe(screen.getByText(reason).closest('.way-last'));
+      expect(screen.getByText(reason).closest('.field-error')?.getAttribute('role')).toBeNull();
     },
   );
+
+  it('takes focus to the reason when an address became unverified elsewhere', async () => {
+    holdProof({ proof: 'held', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+    const after = {
+      ...ME,
+      emailAddresses: [ME.emailAddresses[0], { ...ME.emailAddresses[1], verified: false }],
+    };
+    const { release } = refusing(
+      'PATCH /api/auth/emails/e2/primary',
+      'address_not_verified',
+      ME,
+      after,
+    );
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Make primary' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Make it primary' }));
+    release();
+
+    const reason = await screen.findByText('Verify this address before making it primary.');
+    expect(screen.queryByText('Make this your primary address?')).toBeNull();
+    expect(document.activeElement).toBe(reason.closest('.way-last'));
+    expect(reason.closest('.field-error')?.getAttribute('role')).toBeNull();
+  });
+
+  it('takes focus to the card’s heading when the refused row is gone', async () => {
+    const { release } = refusing('DELETE /api/auth/emails/e2', 'primary_address', ME, {
+      ...ME,
+      emailAddresses: [ME.emailAddresses[0]],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove folake.adeyemi@gmail.com' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove it' }));
+    release();
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Email addresses' })),
+    );
+  });
 
   it('keeps the form open after a limit refusal, with the count and line another tab left', async () => {
     const one = { ...ME, emailAddresses: [ME.emailAddresses[0]] };
@@ -511,6 +708,7 @@ describe('a refusal shows the account as it is now', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByLabelText('Email address to add')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Add an email address' })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Email addresses' }));
   });
 
   it('does the same for a number', async () => {
@@ -540,6 +738,7 @@ describe('a refusal shows the account as it is now', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByRole('button', { name: 'Add a phone number' })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Phone numbers' }));
   });
 
   it('reads the list again for an address already linked, and keeps what was typed', async () => {
@@ -672,5 +871,109 @@ describe('back from verifying an address or number', () => {
 
     await screen.findByText('folake.adeyemi@gmail.com');
     expect(screen.queryByText('folake.adeyemi@gmail.com is verified.')).toBeNull();
+  });
+});
+
+describe('a confirmation while its request runs (sc-12546)', () => {
+  /** Each request waits until `drop` fails it as one that never reached the server. */
+  function holding(): { answer: () => Promise<Response>; drop: () => void } {
+    const waiting: Array<(reason: unknown) => void> = [];
+
+    return {
+      answer: () => new Promise<Response>((_resolve, reject) => waiting.push(reject)),
+      drop: () => waiting.splice(0).forEach((reject) => reject(new TypeError('Failed to fetch'))),
+    };
+  }
+
+  it.each([
+    {
+      call: 'PATCH /api/auth/emails/e2/primary',
+      open: 'Make primary',
+      send: 'Make it primary',
+      keep: 'Keep folake@ire.events',
+      title: 'Make this your primary address?',
+    },
+    {
+      call: 'DELETE /api/auth/emails/e2',
+      open: 'Remove folake.adeyemi@gmail.com',
+      send: 'Remove it',
+      keep: 'Keep it',
+      title: 'Remove this address?',
+    },
+  ])(
+    'shows $send busy and $keep off until the answer, then gives both back',
+    async ({ call, open: opener, send, keep, title }) => {
+      holdProof({ proof: 'held', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+      const request = holding();
+      const sent = answering({ 'GET /api/auth/me': () => json(ME), [call]: request.answer });
+      open();
+
+      fireEvent.click(await screen.findByRole('button', { name: opener }));
+      fireEvent.click(screen.getByRole('button', { name: send }));
+      await waitFor(() => expect(sent.filter((s) => s.call === call)).toHaveLength(1));
+
+      const sending = screen.getByRole('button', { name: send });
+      const way = screen.getByRole('button', { name: keep });
+      expect(sending.getAttribute('aria-busy')).toBe('true');
+      expect(way.getAttribute('aria-disabled')).toBe('true');
+      expect(way.hasAttribute('data-off')).toBe(true);
+      fireEvent.click(way);
+      fireEvent.click(sending);
+      expect(screen.getByText(title)).toBeDefined();
+      expect(sent.filter((s) => s.call === call)).toHaveLength(1);
+
+      request.drop();
+
+      expect(await screen.findByText('That did not work. Try again.')).toBeDefined();
+      expect(screen.getByRole('button', { name: send }).getAttribute('aria-busy')).toBe('false');
+      expect(screen.getByRole('button', { name: keep }).getAttribute('aria-disabled')).toBe(
+        'false',
+      );
+      expect(screen.getByRole('button', { name: keep }).hasAttribute('data-off')).toBe(false);
+      fireEvent.click(screen.getByRole('button', { name: keep }));
+      expect(screen.queryByText(title)).toBeNull();
+      expect(sent.filter((s) => s.call === call)).toHaveLength(1);
+    },
+  );
+
+  it('goes back to the confirmation when the change after Confirm it’s you does not go through', async () => {
+    const request = holding();
+    const sent = answering({
+      'GET /api/auth/me': () => json(ME),
+      'GET /api/orgs': () => json({ organisations: [] }),
+      'POST /api/auth/proof': () =>
+        json({ proof: 'p-1', expiresAt: new Date(Date.now() + 300_000).toISOString() }),
+      'PATCH /api/auth/emails/e2/primary': request.answer,
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Make primary' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Make it primary' }));
+    fireEvent.change(await screen.findByLabelText('Your password'), {
+      target: { value: 'a decent passphrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() =>
+      expect(sent.some((s) => s.call === 'PATCH /api/auth/emails/e2/primary')).toBe(true),
+    );
+
+    request.drop();
+
+    expect(await screen.findByText('That did not work. Try again.')).toBeDefined();
+    expect(screen.queryByLabelText('Your password')).toBeNull();
+    expect(document.activeElement).toBe(screen.getByText('Make this your primary address?'));
+    expect(
+      screen.getByRole('button', { name: 'Keep folake@ire.events' }).getAttribute('aria-disabled'),
+    ).toBe('false');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Make it primary' }));
+
+    await waitFor(() =>
+      expect(sent.filter((s) => s.call === 'PATCH /api/auth/emails/e2/primary')).toHaveLength(2),
+    );
+    expect(sent.filter((s) => s.call === 'POST /api/auth/proof')).toHaveLength(1);
+    expect(sent.filter((s) => s.call === 'PATCH /api/auth/emails/e2/primary')[1]?.body).toEqual({
+      proof: 'p-1',
+    });
   });
 });

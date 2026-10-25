@@ -62,6 +62,119 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. Settings > Members on the web, the invitation link and the invitation email
+  (sc-67, sc-68, sc-11160, sc-2922, `web:membersScreen.*`, `web:join.*`, `invitations.*` web and
+  app, `emails:invitation.*`, `messages:invitations.*`).** Settled as sc-67 wrote them. The web
+  twins of the app's Members keys say what the app says: `onlyOwner` now reads "so their role
+  cannot change and they cannot be removed …", as sc-4259 settled. `ownRole` keeps "You can't"
+  and "General" (the web's section; the app says "Organisation"), because `Members.test.tsx`
+  matches "You can't change your own role"; it should read "You cannot change your own role."
+  and waits on [dev]. `beyondGrant` stays as written, also pinned; on the suspension card the
+  action it leaves out is restoring, so "you cannot change their role or their access" would
+  read truer there, asked of [dev3]. es, fr and pt write the web twins as the app's, word for
+  word, and write `ownRole` without the contraction. An invitation is "withdrawn" in prose and
+  "Revoke" stays the manager's button; the invitee reads "Withdrawn". "Works until" is the
+  invitation's life, never "valid until".
+- **25 Oct 2026. Deleting an organisation (sc-68, sc-3215, `errors:owner_required`,
+  `messages:organisation.owner_required`, `delete_name_mismatch`, `emails:organisationDeleted.*`).**
+  Settled as sc-68 wrote it; `OrganisationDeletionTest` and `OwnershipCard.test.tsx` pin the
+  refusals, the subject and the restore line. `delete_name_mismatch` is the same sentence as
+  `ownership.deleteMismatch`, the check made twice, and `organisationDeleted.restore` repeats
+  `ownership.deleteWindow`, the sentence the owner read before deleting. `errors:owner_required`
+  is the code's own, any act; `organisation.owner_required` names the act. The footer says "you
+  were a member": the organisation no longer exists when it is read.
+- **25 Oct 2026. The sign-in rules refusals (sc-10594, sc-10716, `messages:sign_in_rules.*`).**
+  `inactivity_choice` stays: "Choose 7 days, 30 days or no limit." The other two are the
+  Owner's own state, as the page's `needsOwn*` says it, and should read "Turn on two-factor for
+  yourself before requiring it." and "Link Google or Apple for yourself before requiring it.",
+  but `SignInRulesTest::eachRefusalReadsInEnglishAsItDidBefore` pins the English, so that waits on
+  `[dev]`. es, fr and pt already say it the page's way, after the `errors:` title.
+- **25 Oct 2026. The API's refusals in the request's language (sc-10700, sc-10809, `messages:*`).**
+  Settled as sc-10700 wrote them, with three changes. `event.currency_in_use` says "against this
+  event", as its screen twin `eventEdit.currencyInUse`. `access.two_factor_required` says "requires
+  two-factor for this", the verb `two_factor_overdue` uses, over "asks for two-factor before this".
+  `provider.unlink_first` says "the account that is linked now". Field and header names an
+  integrator sends (`idToken`, `recoveryCode`, `If-Match`, `context`, the assistant's roles) stay as
+  written in every locale. Where a refusal's screen already words the same sentence (the lock-outs,
+  `lostTwoFactor.*`, `signIn.timedOutBody_*`), es, fr and pt say what the screen says.
+- **25 Oct 2026. A time the clocks skip (sc-10638, sc-10675, `eventForm.clocksSkip`,
+  `clocksSkipNextDay`).** Settled as sc-10638 wrote it; `Events.test.tsx` pins it. "There is no
+  {{time}} on {{day}} in {{zone}}: the clocks go forward that night. It will be saved as
+  {{savedAs}}." The next-day line adds "on {{savedDay}}". "The clocks go forward" also covers
+  Lord Howe's half hour; rejected "daylight saving time", which reads American and is a term
+  es, fr and pt each say differently.
+- **25 Oct 2026. Editing an event's details (sc-9704, sc-3587, `eventEdit.*`,
+  `errors:precondition_failed`, `precondition_required`, `event_currency_in_use`).** Settled as
+  sc-3587 wrote it; `Events.test.tsx` pins most of it. "Edit details" opens and heads the form,
+  "Save changes" saves it. A refused save starts "Not saved." and says what is kept. A
+  colleague is "somebody else", in the notice and the dialog alike. The currency refusal is
+  checked on screen and by the server, so `errors:event_currency_in_use` now says "against this
+  event", as `eventEdit.currencyInUse` does.
+- **24 Oct 2026. Suspending a member by hand and restoring them (sc-3575, sc-8735,
+  `membersScreen.suspend*`, `restore*`, `seats*`, `ownerNoSuspend`, `accessConflict`,
+  `emails:memberSuspended.*`, `memberRestored.*`, `memberAccess.footer`, `messages:members.*`).**
+  Settled as sc-3575 wrote it. "Suspend" is the act and "Restore access" the way back; a seat
+  is "a team seat" on "the plan". Three refusals keep their contractions for now because
+  `Members.test.tsx` pins them: `ownerNoSuspend` should read "Owners cannot be suspended",
+  `accessConflict` "your change was not made", and `seatsSuspendedFree` "Suspended members do
+  not take a seat". They wait on [dev2]. es, fr and pt write `ownerNoSuspend` and
+  `members.suspend_owner` as one sentence, as a limit checked twice.
+- **24 Oct 2026. The claim that lapsed (sc-9151, sc-9219, `emails:ownerClaim.lapsed.*`).**
+  `{claimant}` can be a bare address, so it is never a possessive: the subject is "{claimant}
+  did not become the owner of {organisation}. The claim lapsed", as "is now the owner". Each
+  reason ends ", so ownership did not pass.", as the web `recordRemoved`; the role is "an
+  Administrator", and the date "Lapsed on {deadline}.", as "Withdrawn on". `OwnerClaimTest` pins
+  the old English, so the English reword waits on [dev]; es, fr and pt already say the new one.
+- **24 Oct 2026. The rest of a role's holders (sc-9068, `rolesScreen.moreHolders_*`, web
+  and app).** "and {{count}} more", kept: it closes the list of five names it follows, and the
+  button reveals them in place, so "Show" would only lengthen it. The count is never below 1.
+- **24 Oct 2026. A request refused for its shape (sc-8708, sc-8716,
+  `messages:validation.invalid_shape`, `validation.request_shape`).** Kept as sc-8708 wrote
+  them: "This field cannot take that value. Check it and try again." under the field, and "The
+  request does not have the expected shape." as the 422 `detail`. The field sentence also
+  answers a required field left out (the refresh call with no token), so the other locales
+  word it as the value the field will not take, never as a format. The API tests pin both
+  English sentences, so a reword waits on [dev].
+- **24 Oct 2026. Withdrawing your own claim (sc-8204, sc-8556, `ownerClaim.withdraw*`,
+  `youWithdrew*`, `emails:ownerClaim.withdrawn.*`, `messages:owner_claims.not_claimant`).** The
+  claimant "withdraws" their claim; anybody else "stops" one. The confirm is "Withdraw your
+  claim?" with Withdraw / Keep my claim, the button "Withdraw my claim" in the first person, as
+  the person acts on their own claim. `withdrawBody` keeps "won't": it is a confirm, not an
+  error. `withdrawEnded` and `owner_claims.not_claimant` match the claim's other refusals. The
+  email date reads "Withdrawn on {deadline}.", as "Stopped on" and "Ownership passed on".
+- **24 Oct 2026. Getting an owner back (sc-6640, sc-8216, `ownerClaim.*`, web and app,
+  `emails:ownerClaim.*`, `messages:owner_claims.*`, `errors:owner_claim_*`).** Settled as sc-6640
+  wrote it. The act is "become the owner"; what is under way is "the claim", which "lapses",
+  is "stopped", or "passes" ownership. The record is "the DNS record", or "the record" once
+  named. Who restores ownership is "Soirely support". The administrators' email footer names
+  the role, "an Administrator of {organisation}", as the refusals do. Contractions came out of
+  `lapsed`, `recordRemoved`, `failed` ("That did not work.") and `owner_claims.own` /
+  `owner_claim_own` ("You cannot stop your own claim.").
+- **24 Oct 2026. The only owner left suspended (sc-7831, `accessPaused.stillOnlyOwner`,
+  `membersScreen.suspendedOnlyOwner`, `onlyOwnerNotRemovable`, `onlyOwnerRestoreNeedsAddress`,
+  `membersScreen.history.suspendedAddressGone`).** `onlyOwnerNotRemovable` is a refusal, so
+  "cannot": "{{name}} is the only owner, so they cannot be removed." The history line shows for
+  every domain reason (address gone, domain closed, managed elsewhere), so it reads "Suspended:
+  their company email address no longer gives access", true for each and naming nobody. Both
+  wait on [dev2], because `Members.test.tsx` matches the current English; es, fr and pt are
+  written from the settled wording.
+- **23 Oct 2026. Ownership and leaving (sc-68, sc-7715, `ownership.*`, web and app,
+  `messages:organisation.transfer_owner_required`, `emails:ownershipTransferred.*`).** Settled
+  as sc-68 wrote it. The act is "transfer ownership"; in prose ownership is "handed" to a
+  member, and the old owner "becomes an Administrator", the role's own name. Deleting closes
+  on "gone for good" after Soirely support's restore window, "until {{deadline}}" in the
+  server's `deadline` words. `onlyOwnerBody` no longer repeats its title ("You are the only
+  owner"), which sits above it in the same notice: it is now "Make somebody else an owner,
+  then you can leave." es, fr and pt name the role, never "the owner", so nothing agrees with
+  the person: "the new owner" (`theNewOwner`, the email subject) becomes "the chosen person"
+  or "a change of owner".
+- **21 Oct 2026. A domain member paused (sc-564, sc-6703, `accessPaused.*`,
+  `membersScreen.suspended*`, `restore*`, `emails:domainSuspended.*`).** The person reads
+  "Paused", the admins "Suspended": both are the AC's words, kept apart on purpose. The next
+  step says "make it primary", the glossary's word, over the drafted "make it your main
+  address". The email footer says "an admin" though owners get it too; es, fr and pt say
+  "owner or administrator", as `twoFactorRecovery.approver.footer`, and the English waits on
+  [dev] because `DomainSuspensionTest` matches the text.
 - **21 Oct 2026. Request link (sc-562, sc-6460, `requestLink.*`, `requestToJoin.*`,
   `messages:request_link.*`, `errors:request_link_dead`, `join_request_*`).** Settled as sc-562
   wrote it, as domain joining: the act is "ask to join", the setting "Requests to join", and

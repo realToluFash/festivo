@@ -2,13 +2,12 @@ import { ApiError, type LinkedProvider } from '@soirely/api-client';
 import {
   cleanCode,
   codeProblem,
-  formatCountdown,
   formatTimeOfDay,
   lockLiftsAt,
   meetsPasswordLength,
 } from '@soirely/domain';
 import { type TFunction } from 'i18next';
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
@@ -17,8 +16,11 @@ import { FieldError } from '../../../components/FieldError.tsx';
 import { PasswordField } from '../../../components/PasswordField.tsx';
 import { PasswordRule } from '../../../components/PasswordRule.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
-import { currentLocale } from '../../../i18n/index.ts';
+import { focusWhereSent } from '../../../offField.ts';
+import { useResendCountdown } from '../../../resendCountdown.ts';
+import { dateLocale } from '../../../i18n/index.ts';
 import { PROVIDER_NAMES } from '../../../providerSignIn.ts';
+import { focusStep, useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { currentSessionId } from '../../../tokens.ts';
 
 type Stage =
@@ -35,6 +37,7 @@ export function PasswordCard({
   onAdded,
   setting = false,
   onSetting,
+  returnTo,
 }: {
   email: string;
   hasPassword: boolean;
@@ -44,9 +47,15 @@ export function PasswordCard({
   /** Opened from elsewhere too: the ways-to-sign-in card offers Set a password for the last way in. */
   setting?: boolean;
   onSetting?: (on: boolean) => void;
+  /** Where Cancel on Set a password goes back to when another card opened it. */
+  returnTo?: () => HTMLElement | null;
 }) {
   const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>({ kind: 'at-rest', signedOut: null, added: null });
+  const heading = useRef<HTMLHeadingElement>(null);
+  const opener = useRef<HTMLButtonElement>(null);
+  const said = useRef<HTMLParagraphElement>(null);
+  const land = useFocusOnceShown();
   const open = (next: Stage) => {
     setStage(next);
     onSetting?.(next.kind === 'setting');
@@ -63,15 +72,27 @@ export function PasswordCard({
             onAdded={async () => {
               await onAdded();
               open({ kind: 'at-rest', signedOut: null, added: provider });
+              land(() => said.current);
             }}
-            onCancel={() => open({ kind: 'at-rest', signedOut: null, added: null })}
+            onCancel={() => {
+              const back = stage.kind === 'setting' ? null : returnTo;
+              open({ kind: 'at-rest', signedOut: null, added: null });
+              land(() => back?.() ?? opener.current ?? heading.current);
+            }}
           />
         ) : (
           <>
-            <h2 id="password-title">{t('passwordCard.title')}</h2>
+            <h2 id="password-title" ref={heading} tabIndex={-1}>
+              {t('passwordCard.title')}
+            </h2>
             <p>{t('passwordCard.setRest', { provider })}</p>
             <div className="actions">
-              <button className="button" type="button" onClick={() => open({ kind: 'setting' })}>
+              <button
+                className="button"
+                type="button"
+                ref={opener}
+                onClick={() => open({ kind: 'setting' })}
+              >
                 {t('passwordCard.set')}
               </button>
             </div>
@@ -89,14 +110,20 @@ export function PasswordCard({
           onChanged={(signedOut) => {
             setStage({ kind: 'at-rest', signedOut, added: null });
             onChanged();
+            land(() => said.current);
           }}
-          onCancel={() => setStage({ kind: 'at-rest', signedOut: null, added: null })}
+          onCancel={() => {
+            setStage({ kind: 'at-rest', signedOut: null, added: null });
+            land(() => opener.current ?? heading.current);
+          }}
         />
       ) : (
         <>
-          <h2 id="password-title">{t('passwordCard.title')}</h2>
+          <h2 id="password-title" ref={heading} tabIndex={-1}>
+            {t('passwordCard.title')}
+          </h2>
           {stage.kind === 'at-rest' && (stage.signedOut != null || stage.added != null) && (
-            <p className="status-done" role="status">
+            <p className="status-done" ref={said} tabIndex={-1}>
               <span className="mark mark-done" aria-hidden="true">
                 ✓
               </span>
@@ -107,7 +134,12 @@ export function PasswordCard({
           )}
           <p>{t('passwordCard.intro')}</p>
           <div className="actions">
-            <button className="button" type="button" onClick={() => setStage({ kind: 'changing' })}>
+            <button
+              className="button"
+              type="button"
+              ref={opener}
+              onClick={() => setStage({ kind: 'changing' })}
+            >
               {t('passwordCard.change')}
             </button>
           </div>
@@ -118,7 +150,7 @@ export function PasswordCard({
 }
 
 type SetStep =
-  | { kind: 'code'; refusal: string | null; paused: string | null }
+  | { kind: 'code'; refusal: string | null; paused: string | null; expired?: boolean }
   | { kind: 'password'; stepUp: string };
 
 /** The code from the email first, then the password: the provider session alone may not add one. */
@@ -133,7 +165,10 @@ function Setting({
 }) {
   const { t } = useTranslation();
   const [step, setStep] = useState<SetStep>({ kind: 'code', refusal: null, paused: null });
-  const [cooldown, setCooldown] = useState(0);
+  const resending = useResendCountdown({
+    resend: 'passwordCard.resend',
+    resendIn: 'passwordCard.resendIn',
+  });
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [code, setCode] = useState('');
@@ -141,6 +176,9 @@ function Setting({
   const [passwordRefusal, setPasswordRefusal] = useState<string | null>(null);
   const codeInput = useRef<HTMLInputElement>(null);
   const passwordInput = useRef<HTMLInputElement>(null);
+  const [stepHeading, arriveAtStep] = useStepFocus();
+  const expiredLine = useRef<HTMLDivElement>(null);
+  const land = useFocusOnceShown();
   const codeChecks = useFormChecks(
     ['code'] as const,
     (_field, value) => {
@@ -157,45 +195,49 @@ function Setting({
     () => passwordInput.current?.focus(),
   );
 
-  async function send(): Promise<void> {
+  const send = (clicked: boolean): Promise<void> => resending.once(() => sendOnce(clicked));
+
+  async function sendOnce(clicked: boolean): Promise<void> {
     setFailed(false);
 
+    const countDown = clicked ? resending.countDown : resending.begin;
+
     try {
-      setCooldown(await api.startSettingPassword());
+      countDown(await api.startSettingPassword());
     } catch (error) {
       const seconds =
         error instanceof ApiError ? Number(error.response?.headers.get('Retry-After')) : NaN;
 
-      if (Number.isFinite(seconds) && seconds > 0) setCooldown(seconds);
+      if (Number.isFinite(seconds) && seconds > 0) countDown(seconds);
       else setFailed(true);
     }
   }
+
+  // Only ever opened by a click, so focus goes with it.
+  useLayoutEffect(() => focusStep(stepHeading.current), [stepHeading]);
 
   // Sent once, when the step opens; Send a new code sends again.
   const sent = useRef(false);
   useEffect(() => {
     if (sent.current) return;
     sent.current = true;
-    void send();
+    void send(false);
   });
-
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const tick = setTimeout(() => setCooldown((left) => left - 1), 1000);
-
-    return () => clearTimeout(tick);
-  }, [cooldown]);
 
   async function passCode(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (busy || !codeChecks.passes({ code })) return;
 
     setBusy(true);
+    const land = focusWhereSent();
 
     try {
       setStep({ kind: 'password', stepUp: await api.passPasswordCode(cleanCode(code)) });
+      arriveAtStep();
     } catch (error) {
-      setStep({ kind: 'code', ...codeRefusal(error, t) });
+      const refused = codeRefusal(error, t);
+      setStep({ kind: 'code', ...refused });
+      if (refused.refusal != null) land('set-code');
     } finally {
       setBusy(false);
     }
@@ -212,6 +254,7 @@ function Setting({
     }
 
     setBusy(true);
+    const landWhereSent = focusWhereSent();
 
     try {
       await api.setPassword(password, step.stepUp);
@@ -221,7 +264,13 @@ function Setting({
 
       if (error instanceof ApiError && error.is('verification_code_expired')) {
         setCode('');
-        setStep({ kind: 'code', refusal: t('passwordCard.setCodeExpired'), paused: null });
+        setStep({
+          kind: 'code',
+          refusal: t('passwordCard.setCodeExpired'),
+          paused: null,
+          expired: true,
+        });
+        land(() => expiredLine.current);
         return;
       }
 
@@ -234,6 +283,7 @@ function Setting({
           ? t('register.breached')
           : (violation?.message ?? t('passwordCard.failedBody')),
       );
+      landWhereSent('set-password');
     }
   }
 
@@ -242,7 +292,9 @@ function Setting({
 
     return (
       <>
-        <h2 id="password-title">{t('passwordCard.setNewTitle')}</h2>
+        <h2 id="password-title" ref={stepHeading} tabIndex={-1}>
+          {t('passwordCard.setNewTitle')}
+        </h2>
         <form className="auth-form" noValidate onSubmit={(event) => void save(event)}>
           <div className="field">
             <label htmlFor="set-password">{t('passwordCard.setNewLabel')}</label>
@@ -288,7 +340,9 @@ function Setting({
 
   return (
     <>
-      <h2 id="password-title">{t('passwordCard.setCodeTitle')}</h2>
+      <h2 id="password-title" ref={stepHeading} tabIndex={-1}>
+        {t('passwordCard.setCodeTitle')}
+      </h2>
 
       {step.paused != null && (
         <div className="notice notice-attention" role="alert">
@@ -340,7 +394,14 @@ function Setting({
             }}
             onBlur={(event) => codeChecks.left('code', event.target.value)}
           />
-          {codeError != null && <FieldError id="set-code-error" message={codeError} />}
+          {codeError != null &&
+            (step.expired === true && codeChecks.errors.code == null ? (
+              <div ref={expiredLine} tabIndex={-1}>
+                <FieldError id="set-code-error" message={codeError} quiet />
+              </div>
+            ) : (
+              <FieldError id="set-code-error" message={codeError} />
+            ))}
         </div>
 
         <p className="muted">{t('passwordCard.setCodeNote')}</p>
@@ -352,17 +413,18 @@ function Setting({
           <button
             className="button"
             type="button"
-            disabled={cooldown > 0}
-            onClick={() => void send()}
+            {...resending.button}
+            onClick={() => void send(true)}
           >
-            {cooldown > 0
-              ? t('passwordCard.resendIn', { time: formatCountdown(cooldown) })
-              : t('passwordCard.resend')}
+            {resending.label}
           </button>
           <button className="button" type="button" onClick={onCancel}>
             {t('passwordCard.cancel')}
           </button>
         </div>
+        <span className="visually-hidden" role="status">
+          {resending.status}
+        </span>
       </form>
     </>
   );
@@ -381,7 +443,7 @@ function codeRefusal(
       paused:
         liftsAt == null
           ? t('passwordCard.pausedSoon')
-          : t('passwordCard.pausedBody', { time: formatTimeOfDay(liftsAt, currentLocale()) }),
+          : t('passwordCard.pausedBody', { time: formatTimeOfDay(liftsAt, dateLocale()) }),
     };
   }
 
@@ -425,6 +487,7 @@ function Changing({
   const [refusal, setRefusal] = useState<Refusal | null>(null);
   const currentInput = useRef<HTMLInputElement>(null);
   const nextInput = useRef<HTMLInputElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
   const checks = useFormChecks(
     ['currentPassword', 'newPassword'] as const,
     (field, value) =>
@@ -435,6 +498,8 @@ function Changing({
           : t('passwordCard.newBlank'),
     (field) => (field === 'currentPassword' ? currentInput : nextInput).current?.focus(),
   );
+
+  useLayoutEffect(() => focusStep(heading.current), []);
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -449,6 +514,7 @@ function Changing({
 
     setSaving(true);
     setRefusal(null);
+    const land = focusWhereSent();
 
     try {
       const { signedOut } = await api.changePassword({
@@ -459,7 +525,11 @@ function Changing({
       onChanged(signedOut);
     } catch (error) {
       setSaving(false);
-      setRefusal(refusalFrom(error, t));
+
+      const refused = refusalFrom(error, t);
+      setRefusal(refused);
+      if (refused.field === 'currentPassword') land('current-password');
+      if (refused.field === 'newPassword') land('new-password');
     }
   }
 
@@ -471,7 +541,9 @@ function Changing({
 
   return (
     <>
-      <h2 id="password-title">{t('passwordCard.formTitle')}</h2>
+      <h2 id="password-title" ref={heading} tabIndex={-1}>
+        {t('passwordCard.formTitle')}
+      </h2>
 
       {refusal?.field === 'paused' && (
         <div className="notice notice-attention" role="alert">
@@ -584,7 +656,7 @@ function refusalFrom(error: unknown, t: TFunction): Refusal {
       message:
         liftsAt == null
           ? t('passwordCard.pausedSoon')
-          : t('passwordCard.pausedBody', { time: formatTimeOfDay(liftsAt, currentLocale()) }),
+          : t('passwordCard.pausedBody', { time: formatTimeOfDay(liftsAt, dateLocale()) }),
     };
   }
 

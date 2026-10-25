@@ -61,7 +61,7 @@ final class AccountController
         if (!SupportedLocales::supports($body['locale'])) {
             throw ApiException::validation([[
                 'propertyPath' => 'locale',
-                'message' => 'Choose English, Español, Français or Português.',
+                'message' => 'validation.locale_invalid',
                 'code' => ErrorCode::ValidationFailed->value,
             ]]);
         }
@@ -142,14 +142,14 @@ final class AccountController
     public function endSession(string $id): JsonResponse
     {
         if (!Uuid::isValid($id)) {
-            throw ApiException::notFound('No session with that id.');
+            throw ApiException::notFound('sessions.unknown');
         }
 
         $session = $this->refreshTokenRepository->find(Uuid::fromString($id));
 
         // not_found, not forbidden: the distinction would confirm it exists.
         if (null === $session || $session->getUser()->getId() !== $this->user()->getId()) {
-            throw ApiException::notFound('No session with that id.');
+            throw ApiException::notFound('sessions.unknown');
         }
 
         $this->tokenIssuer->end($session);
@@ -163,7 +163,7 @@ final class AccountController
         $user = $this->security->getUser();
 
         if (!$user instanceof User) {
-            throw new ApiException(ErrorCode::Unauthenticated, 'Please sign in to continue.');
+            throw new ApiException(ErrorCode::Unauthenticated, 'access.sign_in');
         }
 
         return $user;

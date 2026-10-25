@@ -5,6 +5,7 @@ import {
   membersAfterWrite,
   withApproved,
   withRemoved,
+  withRestored,
   withRole,
   withTurnedDown,
 } from './membersAfterWrite.ts';
@@ -23,6 +24,7 @@ const member = (id: string): OrganisationMember => ({
   invitedAt: null,
   self: false,
   history: [],
+  suspension: null,
 });
 
 const list: MembersList = { members: [member('m1'), member('m2')], invitations: [] };
@@ -79,5 +81,28 @@ describe('the members list after a write that landed', () => {
       former: 'removed',
       removesAt: null,
     });
+  });
+
+  it('still shows a restore when the read fails', async () => {
+    const suspended: MembersList = {
+      members: [
+        {
+          ...member('m1'),
+          status: 'suspended',
+          suspension: {
+            reason: 'manual',
+            domain: null,
+            since: { at: '2026-10-20T08:40:00+00:00', written: 'Tuesday, Oct 20 at 09:40 WAT' },
+            removesAt: null,
+            onlyOwner: false,
+          },
+        },
+      ],
+      invitations: [],
+    };
+
+    expect(
+      (await membersAfterWrite(unreadable, suspended, withRestored('m1'))).members[0],
+    ).toMatchObject({ status: 'active', suspension: null, role: member('m1').role });
   });
 });

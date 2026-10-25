@@ -292,6 +292,11 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_us
 namespace = "App\\Integrations\\OpenIdConnect\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user", "@layer:oidc"]
 
+# DNS over HTTPS, for proving a domain (sc-6640). It sees the port it implements and nothing else of ours.
+[[guard.perimeter.rules]]
+namespace = "App\\Integrations\\Dns\\"
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_organisation"]
+
 [[guard.perimeter.rules]]
 namespace = "App\\Integrations\\Nominatim\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:address"]

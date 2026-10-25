@@ -1,14 +1,18 @@
-import { primaryEmailAddress } from '@soirely/api-client';
+import { type Membership, primaryEmailAddress } from '@soirely/api-client';
 import { roleName } from '@soirely/domain';
 import { router } from 'expo-router';
+import { useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { useSignedIn } from '../signedIn.ts';
+import { useTappedSwitch } from '../tappedSwitch.ts';
 import { tokens } from '../theme/tokens.ts';
-import { AppFrame, bodyEdges, useOpenSwitcher } from './AppFrame.tsx';
+import { AnswerHeading } from './AnswerHeading.tsx';
+import { AppFrame, useOpenSwitcher } from './AppFrame.tsx';
+import { bodyEdges } from './bodyEdges.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { LinkedNotice } from './LinkedNotice.tsx';
 import { NoOrganisation } from './NoOrganisation.tsx';
@@ -22,7 +26,7 @@ export function Home() {
   const { t } = useTranslation();
 
   return (
-    <AppFrame current="home" title={t('frame.home')}>
+    <AppFrame current="home" title={t('frame.home')} bodyTakesSwitch>
       <HomeBody />
     </AppFrame>
   );
@@ -33,6 +37,7 @@ function HomeBody() {
   const { kind } = useLayout();
   const { account, organisation } = useSignedIn();
   const openSwitcher = useOpenSwitcher();
+  const switchButton = useRef<View>(null);
 
   return (
     <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
@@ -43,9 +48,7 @@ function HomeBody() {
       {account != null && organisation == null && <NoOrganisation />}
       {account != null && organisation != null && (
         <View style={[cardFrame(kind), styles.card]}>
-          <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
-            {t('home.signedInTo', { name: organisation.name })}
-          </Text>
+          <SignedInHeading organisation={organisation} />
           <View style={styles.lines}>
             <Text size={tokens.typeBodyPhone.size}>
               {t('switcher.yourRole', { role: roleName(t, organisation.role) })}
@@ -63,7 +66,8 @@ function HomeBody() {
             {openSwitcher != null && (
               <SecondaryButton
                 label={t('home.switchOrganisation')}
-                onPress={openSwitcher}
+                onPress={() => openSwitcher(switchButton)}
+                ref={switchButton}
                 testID="home.switchOrganisation"
               />
             )}
@@ -71,6 +75,16 @@ function HomeBody() {
         </View>
       )}
     </Screen>
+  );
+}
+
+function SignedInHeading({ organisation }: { organisation: Membership }) {
+  const { t } = useTranslation();
+
+  return (
+    <AnswerHeading size={tokens.typeTitleDialog.size} weight="bold" answer={useTappedSwitch()}>
+      {t('home.signedInTo', { name: organisation.name })}
+    </AnswerHeading>
   );
 }
 

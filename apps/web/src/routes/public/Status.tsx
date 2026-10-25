@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../api.ts';
 import { Pending } from '../../components/Pending.tsx';
+import { useStepFocus } from '../../stepFocus.ts';
 
 /**
  * The health endpoint, read through the shared client.
@@ -19,6 +20,8 @@ export function Status() {
   const { t } = useTranslation();
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const retried = attempt > 0;
+  const [answer, arrive] = useStepFocus<HTMLParagraphElement>();
 
   useEffect(() => {
     let live = true;
@@ -26,18 +29,22 @@ export function Status() {
     api
       .health()
       .then((health) => {
-        if (live) setState({ kind: 'ok', health });
+        if (!live) return;
+        setState({ kind: 'ok', health });
+        if (attempt > 0) arrive();
       })
       .catch(() => {
         // Deliberately not surfacing the thrown message: it names a host and a
         // port, which is internal detail on a page anybody can open.
-        if (live) setState({ kind: 'failed' });
+        if (!live) return;
+        setState({ kind: 'failed' });
+        if (attempt > 0) arrive();
       });
 
     return () => {
       live = false;
     };
-  }, [attempt]);
+  }, [attempt, arrive]);
 
   return (
     <main id="content" className="public-main">
@@ -47,8 +54,10 @@ export function Status() {
       {state.kind === 'loading' && <Pending />}
 
       {state.kind === 'failed' && (
-        <div className="panel panel-error" role="alert">
-          <p>{t('status.unreachable')}</p>
+        <div className="panel panel-error" role={retried ? undefined : 'alert'}>
+          <p ref={answer} tabIndex={retried ? -1 : undefined}>
+            {t('status.unreachable')}
+          </p>
           <button type="button" onClick={() => setAttempt((n) => n + 1)}>
             {t('status.retry')}
           </button>
@@ -57,7 +66,7 @@ export function Status() {
 
       {state.kind === 'ok' && (
         <>
-          <p role="status">
+          <p role={retried ? undefined : 'status'} ref={answer} tabIndex={retried ? -1 : undefined}>
             {state.health.status === 'ok' ? t('status.healthy') : t('status.degraded')}
           </p>
           <table className="table">

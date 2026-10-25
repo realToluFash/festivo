@@ -104,7 +104,7 @@ final readonly class AnthropicAssistant implements AssistantInterface
     private function answer(Message $response): Answer
     {
         if (StopReason::REFUSAL->value === $response->stopReason) {
-            throw new AssistantRefused('The assistant would not answer that.');
+            throw new AssistantRefused('assistant.refused');
         }
 
         $in = $response->usage->inputTokens;

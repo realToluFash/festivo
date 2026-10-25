@@ -6,7 +6,7 @@ import re
 import socket
 import time
 
-from . import github, store, sync
+from . import github, local, store, sync
 from . import roles as R
 from . import text as T
 from . import work as W
@@ -287,6 +287,19 @@ def label(c, a):
 STALE_CLAIM_HOURS = 3
 
 
+def stack_up(c, story, held=False):
+    """A tester claims only what its own stack can test, so a dead stack strands nothing."""
+    problem = local.stack_problem(c.role)
+    if not problem:
+        return
+    if held:
+        raise Refused(f"your QA stack cannot be tested against: {problem}. sc-{story['id']} "
+                      "is still In QA under your claim: bring the stack up, or give it back "
+                      f"with `sq {c.role} unclaim sc-{story['id']} --text \"<why>\"`")
+    raise Refused(f"your QA stack cannot be tested against: {problem}. Nothing claimed: "
+                  "bring the stack up, or leave the story for another tester")
+
+
 def claim(c, a):
     guard(c, "claim")
     story = c.story(a.story)
@@ -308,16 +321,18 @@ def claim(c, a):
     else:
         takeover = ""
         if story["state"] == "In QA":
-            last = next((x for x in reversed(story["comments"])
-                         if x["text"].startswith("QA claim:")), None)
+            last = R.last_claim(story)
+            if last and R.last_tester(story) == c.role:
+                stack_up(c, story, held=True)
+                c.refresh(story["id"])
+                return None
             age = time.time() - datetime.datetime.fromisoformat(
                 last["at"].replace("Z", "+00:00")).timestamp() if last else float("inf")
             if age < STALE_CLAIM_HOURS * 3600:
                 raise Refused(f"sc-{story['id']} is In QA under \"{last['text']}\"; "
                               f"a claim goes stale after {STALE_CLAIM_HOURS} hours")
             if last:
-                who = last["text"].split(":", 1)[1].split(",")[0].strip()
-                takeover = f", taking over from {who}'s of {last['at'][11:16]}"
+                takeover = f", taking over from {R.claimant(last)}'s of {last['at'][11:16]}"
         elif story["state"] != "Ready For QA":
             raise Refused(f"sc-{story['id']} is {story['state']}, not Ready For QA")
         else:
@@ -325,6 +340,7 @@ def claim(c, a):
             if first and first != c.role:
                 raise Refused(f"sc-{story['id']} came back after {first} failed it, and is "
                               f"{first}'s to retest for {R.RETEST_MINUTES} minutes: pick another")
+        stack_up(c, story)
         holder = store.take_story(c.db, story, c.role)
         if holder != c.role:
             raise Refused(f"{holder} claimed sc-{story['id']} first: pick another")
@@ -333,6 +349,22 @@ def claim(c, a):
         c.shortcut.comment(story["id"], f"QA claim: {c.role}{takeover}")
     c.refresh(story["id"])
     return None
+
+
+def unclaim(c, a):
+    """A tester that cannot test a story it holds gives it back to Ready For QA, so it never
+    sits in In QA under a claim nobody is working on."""
+    guard(c, "unclaim")
+    story = c.story(a.story)
+    if story["state"] != "In QA" or R.last_tester(story) != c.role:
+        raise Refused(f"sc-{story['id']} is {story['state']} and not under your QA claim")
+    if not a.text.strip():
+        raise Refused("say why it was not tested, with --text")
+    set_state(c, story, "Ready For QA", check=False)
+    set_labels(c, story["id"], remove={R.TESTERS_LABELS[c.role]})
+    c.shortcut.comment(story["id"], f"{R.RELEASED} {c.role}, {a.text.strip()}")
+    c.refresh(story["id"])
+    return f"sc-{story['id']} is back in Ready For QA for any tester"
 
 
 def report(c, a):
@@ -358,16 +390,33 @@ def report(c, a):
 
 def description_of(c, target):
     if target.startswith("epic-"):
-        epic = c.shortcut.epic(int(target[5:]))
-        return epic.get("description") or "", lambda body: c.shortcut.update_epic(
-            epic["id"], description=body)
+        epic_id = int(target[5:])
+        return lambda: c.shortcut.epic(epic_id), lambda body: c.shortcut.update_epic(
+            epic_id, description=body)
     story_id = story_number(target)
-    raw = c.shortcut.story(story_id)
 
     def save(body):
         c.shortcut.update(story_id, description=body)
         c.refresh(story_id)
-    return raw.get("description") or "", save
+    return lambda: c.shortcut.story(story_id), save
+
+
+def rewrite(c, target, change, attempts=3):
+    """Saves change(description) only if the story still reads as the version it was worked
+    out from. Shortcut's PUT takes no precondition, so a save landing between that last
+    read and this one is still written over: this narrows the window, it does not close it."""
+    read, save = description_of(c, target)
+    raw = read()
+    seen, body = raw.get("updated_at"), raw.get("description") or ""
+    for _ in range(attempts):
+        changed = change(body)
+        latest = read()
+        if latest.get("updated_at") == seen:
+            save(changed)
+            return
+        seen, body = latest.get("updated_at"), latest.get("description") or ""
+    raise Refused(f"{target} kept changing while this edit was saving; nothing saved, "
+                  f"run it again")
 
 
 def edit_line(c, a):
@@ -380,29 +429,35 @@ def edit_line(c, a):
         raise Refused("say what replaces it: --with \"<new>\" (an empty one deletes it)")
     if not a.replace:
         raise Refused("--replace needs the text to find")
-    found, problems = [], []
-    for target in a.targets:
-        body, save = description_of(c, target)
+
+    def problem(target, body):
         count = body.count(a.replace)
-        if count == 1:
-            found.append((target, body.replace(a.replace, a.with_), save))
-        else:
-            problems.append(f"{target} has it {count} times" if count
-                            else f"{target} does not have it")
+        return None if count == 1 else (f"{target} has it {count} times" if count
+                                         else f"{target} does not have it")
+    problems = [p for target in a.targets
+                if (p := problem(target, description_of(c, target)[0]().get("description")
+                                 or ""))]
     if problems:
         raise Refused(f"{'; '.join(problems)}; nothing changed")
     if a.dry:
-        return "would change " + ", ".join(target for target, _, _ in found)
+        return "would change " + ", ".join(a.targets)
+
+    def change(target):
+        def apply(body):
+            if found := problem(target, body):
+                raise Refused(f"{found} any more")
+            return body.replace(a.replace, a.with_)
+        return apply
     saved = []
-    for target, body, save in found:
+    for target in a.targets:
         try:
-            save(body)
-        except ShortcutError as error:
-            rest = [t for t, _, _ in found[len(saved) + 1:]]
+            rewrite(c, target, change(target))
+        except (ShortcutError, Refused) as error:
+            rest = a.targets[len(saved) + 1:]
             raise Refused(f"changed {', '.join(saved) or 'nothing'}; {target} failed: {error}"
                           + (f"; not tried: {', '.join(rest)}" if rest else "")) from error
         saved.append(target)
-    return "changed " + ", ".join(target for target, _, _ in found)
+    return "changed " + ", ".join(saved)
 
 
 def edit(c, a):
@@ -418,22 +473,19 @@ def edit(c, a):
     if not (a.section or a.dated):
         raise Refused("say which part: --section <name> or --dated <title>, "
                       "or --replace <old> --with <new>")
-    if a.target.startswith("epic-"):
-        epic_id = int(a.target[5:])
-        epic = c.shortcut.epic(epic_id)
-        body = T.append_dated(epic.get("description"), a.dated, a.text) if a.dated else \
-            T.replace(epic.get("description"), a.section, a.text)
-        c.shortcut.update_epic(epic_id, description=body)
-        return f"epic {epic_id}: {'added ' + a.dated if a.dated else 'replaced ' + a.section}"
     name = a.section or a.dated
-    if c.role == "ux" and not T.is_design(name):
+    if c.role == "ux" and not a.target.startswith("epic-") and not T.is_design(name):
         raise Refused("the designer writes only the Design section")
-    raw = c.shortcut.story(story_number(a.target))
-    body = T.append_dated(raw.get("description"), a.dated, a.text) if a.dated else \
-        T.replace(raw.get("description"), a.section, a.text)
-    c.shortcut.update(raw["id"], description=body)
-    c.refresh(raw["id"])
-    return f"sc-{raw['id']}: {'added ' + a.dated if a.dated else 'replaced ' + a.section}"
+    if headed := [h for h, _, _ in T.sections(a.text) if h != T.TOP]:
+        raise Refused(f"the text brings its own heading ({headed[0]}), which would add a "
+                      f"section beside the one already there: edit that one with "
+                      f"--section \"{headed[0]}\", one section per edit")
+    target = a.target if a.target.startswith("epic-") else f"sc-{story_number(a.target)}"
+    rewrite(c, target, lambda body: T.append_dated(body, a.dated, a.text) if a.dated
+            else T.replace(body, a.section, a.text))
+    what = "added " + a.dated if a.dated else "replaced " + a.section
+    return f"epic {a.target[5:]}: {what}" if a.target.startswith("epic-") else \
+        f"{target}: {what}"
 
 
 MAX_IDEAS = 3
@@ -583,11 +635,13 @@ def review(c, a):
                                  for i in items])
     url = posted.get("html_url", pr["url"])
     # Only a story in review moves: a linguist's ticket, say, keeps its own state.
-    if story and story["state"] in W.REVIEWED:
+    if story and story["state"] in W.REVIEWED and not W.side_pr(story, pr):
         set_state(c, story, "Passed Code Review" if a.verdict == "pass" else "Failed Code Review")
     if story and a.verdict == "pass":
-        post(c, story, ["qa"], f"PR #{a.pr} passed review at {head[:7]}: {pr['url']}\n\n"
-                               f"{a.qa or 'Nothing beyond the AC to look at hard.'}")
+        # A developer's change on a linguist's ticket is not the ticket ready for QA.
+        if not W.side_pr(story, pr):
+            post(c, story, ["qa"], f"PR #{a.pr} passed review at {head[:7]}: {pr['url']}\n\n"
+                                   f"{a.qa or 'Nothing beyond the AC to look at hard.'}")
     elif story:
         post(c, story, [R.developer_of(story["labels"])],
              f"Review of PR #{a.pr} at {head[:7]}: {blocking} blocking. {url}\n"
@@ -714,7 +768,7 @@ def merge(c, a):
     pr = c.pr(a.pr)
     if pr["state"] == "merged" and pr["story_id"] and c.role not in R.LINGUISTS:
         story = c.story(pr["story_id"])
-        if story["state"] in R.MERGING:
+        if story["state"] in R.MERGING and not W.linguists(story):
             return f"PR #{a.pr} was already merged; " + finish_handover(c, story, pr, a.text)
     if pr["state"] != "open":
         raise Refused(f"PR #{a.pr} is {pr['state']}")
@@ -739,7 +793,9 @@ def merge(c, a):
         github.merge(a.pr, head, delete_branch=True)
         return f"merged PR #{a.pr}"
     story = c.story(pr["story_id"]) if pr["story_id"] else None
-    if not story or story["state"] not in R.MERGING:
+    side = bool(story) and W.side_pr(story, pr)
+    follow_up = bool(story) and not side and story["state"] in R.FOLLOWING_UP
+    if not story or story["state"] not in R.MERGING and not side and not follow_up:
         raise Refused(f"its story is {story['state'] if story else 'unknown'}, not "
                       "Passed Code Review")
     if R.builder_of(story["labels"]) != c.role and not (
@@ -756,6 +812,11 @@ def merge(c, a):
         github.ready(a.pr)
     github.merge(a.pr, head)
     merged = github.live(a.pr)["mergeCommit"]
+    if side:
+        return (f"merged PR #{a.pr} as {merged}; sc-{story['id']} stays {story['state']}, "
+                f"the linguist's to move, and the linguist is woken{resync(c)}")
+    if follow_up:
+        return f"merged PR #{a.pr} as {merged}; sc-{story['id']} stays {story['state']}{resync(c)}"
     try:
         went = hand_to_qa(c, story, pr, merged, a.text)
     except ShortcutError as error:
@@ -764,6 +825,54 @@ def merge(c, a):
                       f"{resync(c)}") from error
     told = "; QA is told" if went == "Ready For QA" else ""
     return f"merged PR #{a.pr} as {merged}; sc-{story['id']} is {went}{told}{resync(c)}"
+
+
+def owns(c, story_id, refusal):
+    """The story's builder, or the developers on each other's, or ops on any."""
+    story = c.story(story_id) if story_id else None
+    builder = (None if not story else "l10n" if W.linguists(story)
+               else R.builder_of(story["labels"]))
+    if c.role != "ops" and builder != c.role and not (
+            c.role in R.DEVS and builder in R.DEVS):
+        raise Refused(refusal.format(builder or "nobody"))
+
+
+def pr_close(c, a):
+    """Closes unmerged. The story's builder closes its own; ops, which keeps the queue, any."""
+    guard(c, "pr-close")
+    if not (a.text or "").strip():
+        raise Refused("say why it closes unmerged: --text")
+    pr = c.pr(a.pr)
+    if pr["state"] != "open":
+        raise Refused(f"PR #{a.pr} is {pr['state']}")
+    owns(c, pr["story_id"], f"PR #{a.pr} is {{}}'s to close; ask [ops]")
+    github.close(a.pr, f"{a.text.rstrip()} (from {signature(c.role)})")
+    return f"closed PR #{a.pr} unmerged{resync(c)}"
+
+
+def pr_edit(c, a):
+    """One section of the body, read from GitHub now; a merged body is the record, so it is
+    corrected too. The pull request is all that changes: no commit, no story, no wake."""
+    guard(c, "pr-edit")
+    if not (a.text or "").strip():
+        raise Refused("the new text is empty; a section that does not apply says `None.`")
+    if headed := [h for h, _, _ in T.sections(a.text) if h != T.TOP]:
+        raise Refused(f"the text brings its own heading ({headed[0]}); send only the "
+                      "section's text")
+    live = github.live(a.pr)
+    if live["state"] == "CLOSED":
+        raise Refused(f"PR #{a.pr} is closed unmerged")
+    owns(c, live["story_id"], f"PR #{a.pr} is {{}}'s to edit; ask [ops]")
+    found = [h for h in T.matching(live["body"], a.section) if h != T.TOP]
+    if len(found) != 1:
+        headings = "; ".join(h for h, _, _ in T.sections(live["body"]) if h != T.TOP)
+        raise Refused(f"{'no heading matches' if not found else f'{len(found)} headings match'} "
+                      f"{a.section}; the body has: {headings or 'no headings'}")
+    body = T.swap(live["body"], found[0], a.text)
+    github.edit_body(a.pr, body)
+    if known := store.pr(c.db, a.pr):
+        store.put_pr(c.db, dict(known, body=body))
+    return f"PR #{a.pr}: replaced {found[0]}"
 
 
 def to_qa(c, a):

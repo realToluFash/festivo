@@ -100,7 +100,7 @@ final readonly class SignInMethodsController
         $user = $this->security->getUser();
 
         if (!$user instanceof User) {
-            throw new ApiException(ErrorCode::Unauthenticated, 'Please sign in to continue.');
+            throw new ApiException(ErrorCode::Unauthenticated, 'access.sign_in');
         }
 
         return $user;

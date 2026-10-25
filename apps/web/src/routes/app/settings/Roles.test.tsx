@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
@@ -33,6 +36,10 @@ function role(
   name: string | null,
   permissions: string[],
   holders = 0,
+  holderNames = Array.from({ length: holders }, (_, n) => ({
+    name: `Holder ${n + 1}`,
+    suspended: false,
+  })),
 ) {
   return {
     id,
@@ -42,8 +49,19 @@ function role(
     removable: seededAs == null,
     permissions,
     holders,
+    holderNames,
   };
 }
+
+const DOOR_TEAM = [
+  'Ada Okeke',
+  'bisi Ade',
+  'Chidi Eze',
+  'Émeka Obi',
+  'Funmi Bello',
+  'Kemi Lawal',
+  'Tope Alade',
+].map((name) => ({ name, suspended: name === 'Émeka Obi' }));
 
 const ROLES = [
   role('role_1', 'owner', null, OWNER_PERMISSIONS, 1),
@@ -63,7 +81,7 @@ const ROLES = [
   ),
   role('role_4', 'coordinator', null, ['events.read', 'events.manage', 'budget.read'], 2),
   role('role_5', 'read_only', null, ['events.read', 'budget.read']),
-  role('role_6', null, 'Door team', ['events.read', 'guests.read'], 2),
+  role('role_6', null, 'Door team', ['events.read', 'guests.read'], 7, DOOR_TEAM),
 ];
 
 function signedIn(organisation = IRE): void {
@@ -142,7 +160,6 @@ beforeEach(() => signedIn());
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('Settings > Roles', () => {
@@ -160,6 +177,75 @@ describe('Settings > Roles', () => {
     ])
       expect(screen.getByRole('button', { name: new RegExp(`^${name}`) })).toBeDefined();
     expect(screen.getByRole('button', { name: /^Coordinator.*2 people/ })).toBeDefined();
+  });
+
+  it('names the open role’s first five holders, and the rest once asked', async () => {
+    answering();
+    await roles();
+
+    pick(/^Door team/);
+
+    const who = screen.getByText('Who has this role').parentElement as HTMLElement;
+    expect(within(who).getByText('7 people')).toBeDefined();
+    expect(
+      within(who)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual([
+      'Ada Okeke',
+      'bisi Ade',
+      'Chidi Eze',
+      'Émeka ObiSuspended',
+      'Funmi Bello',
+      'and 2 more',
+    ]);
+    expect(screen.getByRole('button', { name: /^Door team/ }).textContent).not.toMatch(/Ada/);
+
+    fireEvent.click(within(who).getByRole('button', { name: 'and 2 more' }));
+
+    expect(document.activeElement?.textContent).toBe('Kemi Lawal');
+    expect(
+      within(who)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual([
+      'Ada Okeke',
+      'bisi Ade',
+      'Chidi Eze',
+      'Émeka ObiSuspended',
+      'Funmi Bello',
+      'Kemi Lawal',
+      'Tope Alade',
+    ]);
+    expect(within(who).queryByRole('button')).toBeNull();
+  });
+
+  it('names nobody on a role nobody holds, and every holder of five without "and N more"', async () => {
+    answering((method) =>
+      method === 'GET'
+        ? new Response(
+            JSON.stringify({
+              roles: ROLES.map((one) =>
+                one.id === 'role_4'
+                  ? { ...one, holders: 5, holderNames: DOOR_TEAM.slice(0, 5) }
+                  : one,
+              ),
+              areas: AREAS,
+            }),
+            { status: 200 },
+          )
+        : null,
+    );
+    await roles();
+
+    pick(/^Read-only/);
+    const who = () => screen.getByText('Who has this role').parentElement as HTMLElement;
+    expect(within(who()).getByText('Nobody yet.')).toBeDefined();
+    expect(within(who()).queryByRole('list')).toBeNull();
+
+    pick(/^Coordinator/);
+    expect(within(who()).getAllByRole('listitem')).toHaveLength(5);
+    expect(within(who()).queryByRole('button')).toBeNull();
   });
 
   it('shows Owner with everything and no control to change it', async () => {
@@ -236,6 +322,41 @@ describe('Settings > Roles', () => {
     );
   });
 
+  it('names the people a removed role moved onto its replacement, without a reload', async () => {
+    let removed = false;
+    answering((method) => {
+      if (method === 'DELETE') {
+        removed = true;
+        return new Response(null, { status: 204 });
+      }
+
+      return removed
+        ? new Response(
+            JSON.stringify({
+              roles: ROLES.filter((one) => one.id !== 'role_6').map((one) =>
+                one.id === 'role_5' ? { ...one, holders: 7, holderNames: DOOR_TEAM } : one,
+              ),
+              areas: AREAS,
+            }),
+            { status: 200 },
+          )
+        : null;
+    });
+    await roles();
+    pick(/^Door team/);
+    fireEvent.click(screen.getByRole('button', { name: 'Remove role' }));
+    fireEvent.click(screen.getByLabelText(/^Read-only/));
+    fireEvent.click(screen.getByRole('button', { name: 'Move them and remove Door team' }));
+
+    await waitFor(() => expect(screen.queryByRole('button', { name: /^Door team/ })).toBeNull());
+    pick(/^Read-only/);
+
+    const who = screen.getByText('Who has this role').parentElement as HTMLElement;
+    expect(within(who).getByText('7 people')).toBeDefined();
+    expect(within(who).getByText('Ada Okeke')).toBeDefined();
+    expect(within(who).getByRole('button', { name: 'and 2 more' })).toBeDefined();
+  });
+
   it('checks a new role’s name before sending, and says the server’s refusal under it', async () => {
     const sent = answering((method) => (method === 'POST' ? nameTaken() : null));
     await roles();
@@ -272,7 +393,7 @@ describe('Settings > Roles', () => {
     fireEvent.change(screen.getByLabelText('Role name'), { target: { value: ' Door crew ' } });
     fireEvent.click(level('Seating', 'Read'));
 
-    expect(screen.getByText(/Unsaved changes to Door team\. 2 people get them/)).toBeDefined();
+    expect(screen.getByText(/Unsaved changes to Door team\. 7 people get them/)).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Save Door team' }));
 
     await screen.findByText("Saved. Applies on each person's next request.");
@@ -557,6 +678,24 @@ describe('Settings > Roles', () => {
     expect(maximum).toBeGreaterThanOrEqual('e\u0301'.repeat(40).length);
   });
 
+  it('names a long role in full on its row, for screen readers and as its title', async () => {
+    const long = 'VenueAndSupplierLiaisonsForLagosWeddings';
+    answering(
+      () =>
+        new Response(
+          JSON.stringify({
+            roles: [...ROLES, role('role_7', null, long, ['events.read'], 2)],
+            areas: AREAS,
+          }),
+          { status: 200 },
+        ),
+    );
+    await roles();
+
+    const row = screen.getByRole('button', { name: new RegExp(`^${long}`) });
+    expect(row.getAttribute('title')).toBe(long);
+  });
+
   it('opens a role on its own page at narrow widths, with Roles to go back', async () => {
     answering();
     await roles();
@@ -568,6 +707,86 @@ describe('Settings > Roles', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Roles$/ }));
     expect(layout?.getAttribute('data-open')).toBe('false');
+  });
+
+  describe('where a role opens on its own page', () => {
+    // The query that hides the list once a role is open, as styles.css has it, not as Roles.tsx copies it.
+    const onePane = /@media (\([^)]*\)) \{[^@]*\.roles\[data-open='true'\] \.roles-list/u.exec(
+      readFileSync(join(import.meta.dirname, '../../../styles.css'), 'utf8'),
+    )?.[1];
+
+    beforeEach(() => {
+      vi.spyOn(window, 'matchMedia').mockImplementation(
+        (query) => ({ matches: query === onePane, media: query }) as MediaQueryList,
+      );
+    });
+
+    it('takes focus to the role’s name heading', async () => {
+      answering();
+      await roles();
+
+      pick(/^Coordinator/);
+
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 2, name: 'Coordinator' }),
+      );
+    });
+
+    it('takes focus to the Role name field where the name can be changed', async () => {
+      answering();
+      await roles();
+
+      pick(/^Door team/);
+      expect(document.activeElement).toBe(screen.getByLabelText('Role name'));
+
+      fireEvent.click(screen.getByRole('button', { name: /Roles$/ }));
+      fireEvent.click(screen.getByRole('button', { name: 'New role' }));
+      expect(document.activeElement).toBe(screen.getByLabelText('Role name'));
+    });
+  });
+
+  it('leaves focus on the row where the role shows beside the list', async () => {
+    answering();
+    await roles();
+    const row = screen.getByRole('button', { name: /^Coordinator/ });
+    row.focus();
+
+    fireEvent.click(row);
+
+    expect(document.activeElement).toBe(row);
+  });
+
+  it('takes focus to Remove ‹role›? once Remove role is pressed', async () => {
+    answering();
+    await roles();
+    pick(/^Door team/);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove role' }));
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 2, name: 'Remove Door team?' }),
+    );
+  });
+
+  it('takes focus to Saved once a new role is created, read once', async () => {
+    answering((method, body) =>
+      method === 'POST'
+        ? new Response(
+            JSON.stringify(
+              role('role_9', null, 'Venue lead', (body as { permissions: string[] }).permissions),
+            ),
+            { status: 201 },
+          )
+        : null,
+    );
+    await roles();
+    fireEvent.click(screen.getByRole('button', { name: 'New role' }));
+    fireEvent.change(screen.getByLabelText('Role name'), { target: { value: 'Venue lead' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create role' }));
+
+    const saved = await screen.findByText("Saved. Applies on each person's next request.");
+    await waitFor(() => expect(document.activeElement).toBe(saved.closest('.notice')));
+    expect(screen.queryByRole('status')).toBeNull();
   });
 
   it('shows a role that can read members the grid, with nothing to change', async () => {
@@ -632,5 +851,180 @@ describe('Settings > Roles', () => {
 
     expect(await screen.findByRole('alert')).toBeDefined();
     expect(screen.queryByRole('heading', { level: 1, name: 'Roles' })).toBeNull();
+  });
+});
+
+describe('where focus goes once a click on Roles is answered (sc-11369)', () => {
+  function removed(): (method: string) => Response | null {
+    let gone = false;
+
+    return (method) => {
+      if (method === 'DELETE') {
+        gone = true;
+        return new Response(null, { status: 204 });
+      }
+
+      return gone
+        ? new Response(
+            JSON.stringify({ roles: ROLES.filter((one) => one.id !== 'role_6'), areas: AREAS }),
+            { status: 200 },
+          )
+        : null;
+    };
+  }
+
+  it('puts focus back on Remove role after Keep ‹role›', async () => {
+    answering();
+    await roles();
+    pick(/^Door team/);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove role' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep Door team' }));
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Remove role' }));
+  });
+
+  it('puts focus on Roles once a role is removed beside the list', async () => {
+    answering(removed());
+    await roles();
+    pick(/^Door team/);
+    fireEvent.click(screen.getByRole('button', { name: 'Remove role' }));
+    fireEvent.click(screen.getByLabelText(/^Read-only/));
+    fireEvent.click(screen.getByRole('button', { name: 'Move them and remove Door team' }));
+
+    const heading = screen.getByRole('heading', { level: 1, name: 'Roles' });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+  });
+
+  it('takes focus to Saved after Save ‹role›, read once', async () => {
+    answering((method, body) =>
+      method === 'PATCH'
+        ? new Response(JSON.stringify({ ...ROLES[3], ...(body as object) }), { status: 200 })
+        : null,
+    );
+    await roles();
+    pick(/^Coordinator/);
+    fireEvent.click(level('Billing', 'Read'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save Coordinator' }));
+
+    const saved = await screen.findByText("Saved. Applies on each person's next request.");
+    await waitFor(() => expect(document.activeElement).toBe(saved.closest('.notice')));
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('puts focus on the role’s name after Discard changes', async () => {
+    answering();
+    await roles();
+
+    pick(/^Coordinator/);
+    fireEvent.click(level('Billing', 'Read'));
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 2, name: 'Coordinator' }),
+    );
+
+    pick(/^Door team/);
+    fireEvent.change(screen.getByLabelText('Role name'), { target: { value: 'Door crew' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
+    expect(document.activeElement).toBe(screen.getByLabelText('Role name'));
+  });
+
+  it('puts focus on Roles after Try again, or on the line once it fails again', async () => {
+    let reads = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      if (new URL(String(input)).pathname !== '/api/orgs/org_1/roles') {
+        throw new TypeError('Failed to fetch');
+      }
+      reads += 1;
+      if (reads < 3) throw new TypeError('Failed to fetch');
+
+      return new Response(JSON.stringify({ roles: ROLES, areas: AREAS }), { status: 200 });
+    });
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/app/settings/roles'] })}
+      />,
+    );
+
+    const failed = 'The roles did not load. Try again in a moment.';
+    expect(await screen.findByText(failed)).toBeDefined();
+    expect(document.activeElement).toBe(document.body);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    const again = await screen.findByText(failed);
+    await waitFor(() => expect(document.activeElement).toBe(again));
+    expect(again.closest('[role="alert"]')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Roles' });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+  });
+
+  describe('in a window 960 pixels wide or less', () => {
+    beforeEach(() => {
+      vi.spyOn(window, 'matchMedia').mockImplementation(
+        (query) => ({ matches: query === '(width <= 60rem)', media: query }) as MediaQueryList,
+      );
+    });
+
+    it('puts focus on the role’s row after ‹ Roles, or on New role for one not yet made', async () => {
+      answering();
+      await roles();
+
+      pick(/^Coordinator/);
+      fireEvent.click(screen.getByRole('button', { name: /Roles$/ }));
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: /^Coordinator/ }));
+
+      fireEvent.click(screen.getByRole('button', { name: 'New role' }));
+      fireEvent.click(screen.getByRole('button', { name: /Roles$/ }));
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'New role' }));
+    });
+
+    it('puts focus on the next role’s name once a role is removed', async () => {
+      answering(removed());
+      await roles();
+      pick(/^Door team/);
+      fireEvent.click(screen.getByRole('button', { name: 'Remove role' }));
+      fireEvent.click(screen.getByLabelText(/^Read-only/));
+      fireEvent.click(screen.getByRole('button', { name: 'Move them and remove Door team' }));
+
+      await waitFor(() =>
+        expect(document.activeElement).toBe(
+          screen.getByRole('heading', { level: 2, name: 'Administrator' }),
+        ),
+      );
+    });
+
+    it('puts focus on Roles after ‹ Roles once the role’s row has gone', async () => {
+      let gone = false;
+      answering((method) => {
+        if (method === 'DELETE') {
+          gone = true;
+          return new Response(null, { status: 204 });
+        }
+
+        return gone
+          ? new Response(
+              JSON.stringify({
+                roles: ROLES.filter((one) => one.id !== 'role_6' && one.id !== 'role_2'),
+                areas: AREAS,
+              }),
+              { status: 200 },
+            )
+          : null;
+      });
+      await roles();
+      pick(/^Door team/);
+      fireEvent.click(screen.getByRole('button', { name: 'Remove role' }));
+      fireEvent.click(screen.getByLabelText(/^Read-only/));
+      fireEvent.click(screen.getByRole('button', { name: 'Move them and remove Door team' }));
+      await waitFor(() =>
+        expect(screen.queryByRole('button', { name: /^Administrator/ })).toBeNull(),
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /Roles$/ }));
+
+      expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Roles' }));
+    });
   });
 });

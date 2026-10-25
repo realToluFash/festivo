@@ -93,6 +93,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
             muted
             accessibilityElementsHidden
             importantForAccessibility="no"
+            accessible={false}
           >
             ›
           </Text>
@@ -135,7 +136,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
   }
 
   return (
-    <View style={styles.tabletList} accessibilityLabel={t('settings.sections')}>
+    <View style={styles.tabletList}>
       {groups.map(({ key, heading, rows }) => (
         <Fragment key={key}>
           {heading}

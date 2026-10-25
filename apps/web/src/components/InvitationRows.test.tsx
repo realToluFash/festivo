@@ -95,7 +95,6 @@ async function openSwitcher(): Promise<HTMLElement> {
 afterEach(() => {
   vi.restoreAllMocks();
   window.localStorage.clear();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('an invitation in the organisation switcher', () => {

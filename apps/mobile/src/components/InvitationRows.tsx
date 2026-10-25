@@ -1,19 +1,21 @@
 import type { InvitationPreview } from '@soirely/api-client';
 import {
   formatDay,
-  initials,
+  type InvitationOutcome,
   invitationWording,
   isWaiting,
   refusalBody,
   roleName,
 } from '@soirely/domain';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { currentLocale } from '../i18n/index.ts';
+import { dateLocale } from '../i18n/index.ts';
 import type { WaitingInvitations } from '../invitations.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
+import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
 
@@ -54,6 +56,8 @@ function InvitationRow({
 }) {
   const { t } = useTranslation();
   const outcome = waiting.outcomes[invitation.id];
+  const [answered, setAnswered] = useState<InvitationOutcome | null>(null);
+  const answer = outcome === answered ? outcome : undefined;
   const keys = invitationWording(invitation);
   const organisation = invitation.organisation.name;
   const inviter = invitation.invitedBy?.name ?? '';
@@ -61,12 +65,14 @@ function InvitationRow({
   const busy = outcome?.kind === 'busy' ? outcome.answer : null;
 
   return (
-    <View style={styles.row} accessibilityLabel={organisation}>
+    <View style={styles.row}>
       <View style={styles.head}>
-        <View style={styles.tile}>
-          <Text size={tokens.typeMeta.size} weight="bold" muted>
-            {initials(organisation)}
-          </Text>
+        <View
+          style={styles.tile}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          <Initials name={organisation} size={tokens.typeMeta.size} weight="bold" muted />
         </View>
         <View style={styles.naming}>
           <Text size={tokens.typeRowTitle.size} weight="semibold">
@@ -77,7 +83,7 @@ function InvitationRow({
           </Text>
           <Text size={tokens.typeSmall.size} muted>
             {t(keys.until, {
-              date: formatDay(invitation.expiresAt, currentLocale()),
+              date: formatDay(invitation.expiresAt, dateLocale()),
               email: invitation.email,
             })}
           </Text>
@@ -87,7 +93,7 @@ function InvitationRow({
       {isWaiting(outcome) && (
         <View style={styles.answer}>
           {outcome?.kind === 'failed' && (
-            <Notice tone="broken" mark="✕" body={t('invitations.failed')} />
+            <Notice tone="broken" mark="✕" body={t('invitations.failed')} answer={answer} />
           )}
           <View style={styles.buttons}>
             <PrimaryButton
@@ -95,14 +101,14 @@ function InvitationRow({
               accessibilityLabel={t('invitations.acceptLabel', { organisation })}
               busy={busy === 'accept'}
               off={busy === 'decline'}
-              onPress={() => void waiting.answer(invitation, 'accept')}
+              onPress={() => void waiting.answer(invitation, 'accept').then(setAnswered)}
               testID={`invitation.${invitation.id}.accept`}
             />
             <SecondaryButton
               label={t('invitations.decline')}
               accessibilityLabel={t('invitations.declineLabel', { organisation })}
               off={busy != null}
-              onPress={() => void waiting.answer(invitation, 'decline')}
+              onPress={() => void waiting.answer(invitation, 'decline').then(setAnswered)}
               testID={`invitation.${invitation.id}.decline`}
             />
           </View>
@@ -115,7 +121,12 @@ function InvitationRow({
       {outcome?.kind === 'accepted' &&
         ('open' in after ? (
           <View style={styles.answer}>
-            <Notice tone="done" mark="✓" body={t('invitations.joined', { organisation, role })} />
+            <Notice
+              tone="done"
+              mark="✓"
+              body={t('invitations.joined', { organisation, role })}
+              answer={answer}
+            />
             <PrimaryButton
               label={t('invitations.open', { organisation })}
               onPress={() => after.open(outcome.organisationId)}
@@ -128,11 +139,12 @@ function InvitationRow({
             mark="✓"
             title={t('invitations.joined', { organisation, role })}
             body={after.note(invitation.id)}
+            answer={answer}
           />
         ))}
 
       {outcome?.kind === 'declined' && (
-        <Notice tone="quiet" mark="–" body={t(keys.declined, { inviter })} />
+        <Notice tone="quiet" mark="–" body={t(keys.declined, { inviter })} answer={answer} />
       )}
 
       {outcome?.kind === 'refused' && (
@@ -146,6 +158,7 @@ function InvitationRow({
             email: invitation.email,
             signedInAs: invitation.signedInAs ?? '',
           })}
+          answer={answer}
         />
       )}
     </View>

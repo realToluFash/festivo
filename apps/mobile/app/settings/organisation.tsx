@@ -3,10 +3,12 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { AppFrame, bodyEdges } from '../../src/components/AppFrame.tsx';
+import { AppFrame } from '../../src/components/AppFrame.tsx';
+import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import { api } from '../../src/api.ts';
 import { CompanyDomainsCard } from '../../src/components/CompanyDomainsCard.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
+import { ReadOut } from '../../src/components/ReadOut.tsx';
 import { EditableDetails, ReadOnlyDetails } from '../../src/components/OrganisationDetails.tsx';
 import { OwnershipCard } from '../../src/components/OwnershipCard.tsx';
 import { RequestLinkCard } from '../../src/components/RequestLinkCard.tsx';
@@ -25,6 +27,7 @@ export default function Organisation() {
   const phone = kind === 'phone';
   const [refusedIn, setRefusedIn] = useState<string | null>(null);
   const refused = organisation != null && refusedIn === organisation.id;
+  const notAllowed = t('orgGeneral.refused');
 
   return (
     <AppFrame
@@ -51,13 +54,9 @@ export default function Organisation() {
           {organisation != null && (
             <View style={styles.cards}>
               {refused && (
-                <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
-                  <Notice
-                    tone="broken"
-                    mark={tokens.marks.broken.glyph}
-                    body={t('orgGeneral.refused')}
-                  />
-                </View>
+                <ReadOut words={notAllowed} interrupts accessibilityRole="alert">
+                  <Notice tone="broken" mark={tokens.marks.broken.glyph} body={notAllowed} />
+                </ReadOut>
               )}
               {roleHolds(organisation, 'organisation.manage') && !refused ? (
                 <EditableDetails

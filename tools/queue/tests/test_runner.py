@@ -1,18 +1,23 @@
 """`sq run` and `sq worker`, against a fake platform: nothing here starts a unit or a model."""
 
 import json
+import os
 import pathlib
 import subprocess
+import sys
 import tempfile
+import textwrap
+import time
 import unittest
 from unittest import mock
 
-from soirely_queue import checkout, github, runlog, runner, shared, store
+from soirely_queue import checkout, github, review, runlog, runner, shared, store
 
 from .fakes import FakeRefs
 
 MINUTE = 60
 ON_ZERO = 3 * MINUTE * 1000  # a minute whose offset is 0
+FIXTURES = pathlib.Path(__file__).parent / "fixtures"
 ON_ONE = ON_ZERO + MINUTE
 
 
@@ -133,6 +138,17 @@ class Run(unittest.TestCase):
         self.run_once(ON_ZERO + 60)
         self.assertIn("pm-2: item 2 given back, its worker ended without finishing it",
                       self.said)
+
+    def test_the_lead_may_run_two_workers_on_two_pull_requests(self):
+        self.config["roles"]["lead"] = {"workers": 2, "wakeEvery": "1m"}
+        store.record(self.db, [dict(work("lead", f"lead:{n}"), pr=n, kind="review")
+                               for n in (40, 41)], ON_ZERO)
+        with mock.patch("soirely_queue.checkout.ensure"):
+            self.run_once()
+        self.assertFalse([line for line in self.said if line.startswith("error: lead")])
+        self.assertEqual([r for r, _, _ in self.platform.launched], ["lead", "lead-2"])
+        self.assertEqual({row["pr"] for row in self.db.execute(
+            "select pr from work where status = 'claimed'")}, {40, 41})
 
     def test_only_a_role_without_a_stack_may_run_several_workers(self):
         self.config["roles"]["dev2"] = {"workers": 2}
@@ -439,12 +455,18 @@ class Worker(unittest.TestCase):
     def tearDown(self):
         self.folder.cleanup()
 
-    def work_with(self, result, code=0):
+    def work_with(self, result, code=0, *later, ended=None):
         calls = []
+        self.answers = []
 
-        def claude(argv, **kwargs):
-            calls.append((argv, kwargs))
-            return subprocess.CompletedProcess(argv, code, json.dumps(result), "")
+        def claude(argv, input, cwd, env, finished):
+            calls.append((argv, {"input": input, "cwd": cwd, "env": env,
+                                 "run_dir_there": pathlib.Path(env["SQ_RUN_DIR"]).is_dir()}))
+            self.answers.append(finished())
+            store.finish(self.db, 1, "done")
+            self.answers.append(finished())
+            stream = [dict(event, type="result") for event in (result, *later)]
+            return code, "".join(json.dumps(event) + "\n" for event in stream), "", ended
 
         entry = runner.worker(self.db, self.home, self.platform, "ops", 1, run_claude=claude,
                               load=lambda: config(self.root),
@@ -464,11 +486,55 @@ class Worker(unittest.TestCase):
         self.assertEqual(kwargs["env"]["CLAUDE_CONFIG_DIR"], str(self.root / "claude"))
         self.assertEqual(self.platform.notes, [])
 
+    def test_the_item_counts_as_finished_once_the_run_closes_it(self):
+        self.work_with({"result": "Done."})
+        self.assertEqual(self.answers, [False, True])
+
+    def test_the_report_is_the_runs_own_answer_not_a_later_notice(self):
+        # Both results as claude 2.1.310 wrote them, the second after a background sleep ended.
+        own, notice = [json.loads(line) for line in
+                       (FIXTURES / "background-task-results.jsonl").read_text().splitlines()]
+        entry, _ = self.work_with(own, 0, notice, ended=["expo start --port 28081"])
+        self.assertEqual(entry["report"], "started")
+        self.assertEqual(entry["cost_usd"], notice["total_cost_usd"])
+        self.assertEqual(entry["exit"], 0)
+        self.assertEqual(entry["ended"], ["expo start --port 28081"])
+
     def test_a_report_waiting_on_the_owner_notifies(self):
         self.work_with({"result": "PR #280 is open.\nWaiting on the owner to merge #280."})
         self.assertEqual(self.platform.notes[0][0], "Soirely: ops needs you")
         self.assertEqual(store.get_meta(self.db, "owner:ops")["lines"],
                          ["Waiting on the owner to merge #280."])
+
+    def test_the_run_gets_a_private_folder_that_is_removed_afterwards(self):
+        _, calls = self.work_with({"result": "Done."})
+        folder = pathlib.Path(calls[0][1]["env"]["SQ_RUN_DIR"])
+        self.assertEqual(folder, runner.run_dir(self.home, "ops", 1))
+        self.assertTrue(calls[0][1]["run_dir_there"])
+        self.assertFalse(folder.exists())
+
+    def test_a_further_worker_gets_a_folder_of_its_own(self):
+        self.assertNotEqual(runner.run_dir(self.home, "dev", 1),
+                            runner.run_dir(self.home, "dev-2", 1))
+
+    def test_the_folder_is_removed_when_the_model_crashes(self):
+        def claude(argv, input, cwd, env, finished):
+            (pathlib.Path(env["SQ_RUN_DIR"]) / "check.out").write_text("partial")
+            raise OSError("claude is not installed")
+
+        with self.assertRaises(OSError):
+            runner.worker(self.db, self.home, self.platform, "ops", 1, run_claude=claude,
+                          load=lambda: config(self.root),
+                          prepare=lambda *_: ("c" * 40, None), now=ON_ZERO)
+        self.assertFalse(runner.run_dir(self.home, "ops", 1).exists())
+
+    def test_a_worker_stopped_by_its_limit_has_its_folder_removed(self):
+        folder = runner.run_dir(self.home, "ops", 1)
+        folder.mkdir(parents=True)
+        (folder / "check.out").write_text("half a log")
+        with mock.patch.dict("os.environ", {"SERVICE_RESULT": "timeout"}):
+            runner.worker_ended(self.home, self.platform, "ops", 1, now=ON_ZERO)
+        self.assertFalse(folder.exists())
 
     def test_a_checkout_that_cannot_fetch_is_reported_and_runs_no_model(self):
         def unprepared(*_):
@@ -483,6 +549,62 @@ class Worker(unittest.TestCase):
                                                   entry["report"]))
         self.assertIsNone(runner.worker_ended(self.home, self.platform, "ops", 1))
 
+    def lead_review(self, claude, pr=None):
+        (self.root / "soirely-lead").mkdir()
+        made = []
+
+        def make(path, base, head, number, rules):
+            made.append((path.name, base.name, head, number))
+            self.rules = rules
+            return review.place(path)
+
+        if pr:
+            store.put_pr(self.db, {"number": pr, "story_id": 1, "head_sha": "e" * 40})
+        store.record(self.db, [dict(work("lead"), pr=pr)], ON_ZERO)
+        item_id = store.waiting(self.db, "lead")[0]["id"]
+        with mock.patch("soirely_queue.review.remove") as removed:
+            try:
+                runner.worker(self.db, self.home, self.platform, "lead-2", item_id,
+                              run_claude=claude, load=lambda: config(self.root),
+                              prepare=lambda *_: ("c" * 40, None), make_review=make,
+                              now=ON_ZERO)
+            finally:
+                self.removed = [call.args[0].name for call in removed.call_args_list]
+        return made
+
+    def test_a_lead_review_runs_in_a_worktree_at_the_pull_requests_head(self):
+        calls = []
+
+        def claude(argv, input, cwd, env, finished):
+            calls.append((input, cwd))
+            return 0, json.dumps({"type": "result", "result": "Passed."}), "", None
+
+        made = self.lead_review(claude, pr=40)
+        self.assertEqual(made, [("soirely-lead-2", "soirely-lead", "e" * 40, 40)])
+        self.assertEqual(self.rules, "c" * 40)
+        self.assertEqual(calls[0][1], self.root / "soirely-lead-2-review")
+        self.assertIn("#40's head eeeeeee", calls[0][0])
+        self.assertEqual(self.removed, ["soirely-lead-2"])
+
+    def test_a_lead_item_with_no_pull_request_reviews_at_main(self):
+        made = self.lead_review(lambda *_: (0, "", "", None))
+        self.assertEqual(made, [("soirely-lead-2", "soirely-lead", "c" * 40, None)])
+
+    def test_the_review_worktree_goes_even_when_the_run_fails(self):
+        def claude(*_):
+            raise OSError("claude is not installed")
+
+        with self.assertRaises(OSError):
+            self.lead_review(claude, pr=40)
+        self.assertEqual(self.removed, ["soirely-lead-2"])
+
+    def test_a_lead_run_stopped_at_its_limit_takes_its_worktree_away(self):
+        with mock.patch.dict("os.environ", {"SERVICE_RESULT": "timeout"}), \
+                mock.patch("soirely_queue.review.remove") as removed:
+            runner.worker_ended(self.home, self.platform, "lead-2", 1, now=ON_ZERO,
+                                load=lambda: config(self.root))
+        removed.assert_called_once_with(self.root / "soirely-lead-2")
+
     def test_a_worker_that_exits_with_an_error_says_its_status(self):
         with mock.patch.dict("os.environ", {"SERVICE_RESULT": "exit-code", "EXIT_STATUS": "1"}):
             entry = runner.worker_ended(self.home, self.platform, "ops", 1, now=ON_ZERO)
@@ -494,3 +616,88 @@ class Worker(unittest.TestCase):
             entry = runner.worker_ended(self.home, self.platform, "ops", 1, now=ON_ZERO)
         self.assertEqual(entry["report"], "the worker ended without a report: timeout")
         self.assertIsNone(runner.worker_ended(self.home, self.platform, "ops", 1))
+
+
+FAKE_CLAUDE = textwrap.dedent("""
+    import json, subprocess, sys, time
+    sys.stdin.read()
+    def result(text, **more):
+        print(json.dumps(dict(type="result", result=text, **more)), flush=True)
+    # As claude does, the background shell gets a session of its own.
+    background = subprocess.Popen(["sleep", sys.argv[1]], start_new_session=True)
+    result("Done, item closed.", total_cost_usd=1.0)
+    background.wait()
+    result("The background sleep ended.", total_cost_usd=1.1,
+           origin={"kind": "task-notification"})
+""")
+
+
+class RunUntilDone(unittest.TestCase):
+    """A stand-in for claude that answers, leaves a background process running, and stays up
+    until it ends, as `claude -p` does."""
+
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.script = pathlib.Path(self.folder.name) / "claude.py"
+        self.script.write_text(FAKE_CLAUDE)
+
+    def tearDown(self):
+        self.folder.cleanup()
+
+    def run_fake(self, seconds, finished):
+        started = time.monotonic()
+        with mock.patch.object(runner, "SETTLE_SECONDS", 0):
+            outcome = runner.run_until_done([sys.executable, str(self.script), seconds],
+                                            "the prompt", self.folder.name, dict(os.environ),
+                                            finished, poll=0.1)
+        return outcome, time.monotonic() - started
+
+    def test_a_done_run_is_ended_with_what_it_left_running(self):
+        (code, stdout, _, ended), took = self.run_fake("307", lambda: True)
+        self.assertLess(took, runner.STOP_GRACE_SECONDS)
+        self.assertEqual(code, 0)
+        self.assertEqual(ended, ["sleep 307"])
+        self.assertEqual(runner.own_result([stdout])["result"], "Done, item closed.")
+        self.assertNotIn("sleep 307",
+                         [command for _, command in runner.process_table().values()])
+
+    def test_a_run_whose_item_is_open_is_left_to_end_by_itself(self):
+        (code, stdout, _, ended), _ = self.run_fake("1", lambda: False)
+        self.assertEqual(code, 0)
+        self.assertIsNone(ended)
+        self.assertEqual([event["result"] for event in runner.results(stdout)],
+                         ["Done, item closed.", "The background sleep ended."])
+        self.assertEqual(runner.own_result([stdout])["result"], "Done, item closed.")
+
+    def test_a_done_item_without_an_answer_yet_is_not_ended(self):
+        calls = []
+
+        def finished():
+            calls.append(1)
+            return True
+
+        script = pathlib.Path(self.folder.name) / "quiet.py"
+        script.write_text("import sys, time\nsys.stdin.read()\ntime.sleep(1)\n")
+        with mock.patch.object(runner, "SETTLE_SECONDS", 0):
+            code, _, _, ended = runner.run_until_done([sys.executable, str(script)], "",
+                                                      self.folder.name, dict(os.environ),
+                                                      finished, poll=0.1)
+        self.assertEqual((code, ended, calls), (0, None, []))
+
+    def test_a_process_that_escaped_with_the_pipes_does_not_hold_the_worker(self):
+        pidfile = pathlib.Path(self.folder.name) / "orphan.pid"
+        script = pathlib.Path(self.folder.name) / "escaped.py"
+        script.write_text(textwrap.dedent(f"""
+            import subprocess, sys
+            sys.stdin.read()
+            subprocess.run(["sh", "-c", "sleep 30 & echo $! > {pidfile}"])
+            print('{{"type": "result", "result": "Done."}}', flush=True)
+        """))
+        started = time.monotonic()
+        with mock.patch.object(runner, "READER_SECONDS", 0.5):
+            code, stdout, _, _ = runner.run_until_done([sys.executable, str(script)], "",
+                                                       self.folder.name, dict(os.environ),
+                                                       lambda: False, poll=0.1)
+        subprocess.run(["kill", pidfile.read_text().strip()])
+        self.assertLess(time.monotonic() - started, 10)
+        self.assertEqual((code, runner.own_result([stdout])["result"]), (0, "Done."))

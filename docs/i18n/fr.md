@@ -7,7 +7,8 @@ whenever you decide something a second string will need.
 
 France French (fr-FR). _Vouvoiement_ throughout: "Veuillez…". France typography: a
 non-breaking space, U+00A0, before `: ; ? !` and inside « guillemets », except in an SMS
-(sc-2504, under Decided phrasings).
+(sc-2504, under Decided phrasings). The typographic apostrophe ’, U+2019, never the straight
+', except in an SMS (sc-7455, under Decided phrasings).
 
 The rules every locale shares are in `.claude/skills/locale-parity`.
 
@@ -53,6 +54,158 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. Settings > Members on the web, the invitation link and the invitation email**
+  (`web:membersScreen.*`, `web:join.*`, `invitations.*` web and app, `emails:invitation.*`,
+  `messages:invitations.*`, sc-2922). The web twins of the app’s Members keys are the app’s
+  words, except where they put « à » or « de » straight before {{organisation}}: the web’s
+  `removeBody`, `removeConfirmBody`, `removed`, `removeButton` and `empty.suspended.body` say
+  « l’organisation {{organisation}} », keeping every slot English has (the parity guard counts
+  them, so « y » cannot stand in for a second {{organisation}}), and the app’s are swept when
+  next touched. An invitation is feminine and its states agree with it: « En attente »,
+  « Expirée », « Retirée » (revoked and withdrawn alike), « Refusée », « Acceptée »,
+  « Supprimée »; "Revoke" is « Retirer ». "Works until" is « Valable jusqu’au {{date}} ».
+  Joining is « rejoindre {{organisation}} », or « rejoindre l’organisation » where no name
+  follows; the progress is « Adhésion en cours… ». "Whoever invited you" is « la personne à
+  l’origine de l’invitation », so nothing agrees with the reader. The subtitle names its
+  counts after a colon, « avec accès : {{active}} · invitations : {{invited}} », so nothing
+  agrees with a count. History lines name what was acted on, « Invitation envoyée par »,
+  « Demande approuvée par », « Accès suspendu / rétabli / retiré par ». « Invitation »,
+  « Invitations » and « {{count}} invitation(s) » are the French words, in
+  `same-as-english.json`.
+- **25 Oct 2026. Deleting an organisation** (`errors:owner_required`,
+  `messages:organisation.owner_required`, `delete_name_mismatch`, `emails:organisationDeleted.*`,
+  sc-3215). The refusals name the role, « Seule une personne ayant le rôle Propriétaire… », as
+  `transfer_owner_required`. `delete_name_mismatch` is `ownership.deleteMismatch` word for
+  word. The subject is « L’organisation {organisation} a été supprimée », so the participle
+  agrees with « organisation », never with a name of unknown gender. Support is « l’assistance
+  Soirely », as decided on 24 Oct; `ownership.deleteWindow` still says « Le support Soirely » and
+  follows on the next ticket that touches it. Restoring a deleted organisation is
+  « restaurer », as on that screen; « rétablir » stays for access. The footer says « vous étiez
+  membre ».
+- **25 Oct 2026. The API's refusals** (`messages:*`, sc-10809). An HTTP request is « la
+  requête », kept apart from « la demande », which is a request to join or a recovery request;
+  an API path is « cette URL ». An id is « cet identifiant »: « Aucune session ne porte cet
+  identifiant. » Field names an integrator sends (`idToken`, `code`, `recoveryCode`,
+  `If-Match`, `context`, the assistant's roles) stay as written, in straight quotes where the
+  English quotes them, since they are code; "system prompt" stays English. Where a screen says
+  the same sentence (`lostTwoFactor.*`, `signIn.timedOutBody_*`, the lock-outs' « Réessayez à
+  {time} »), the refusal says it too.
+- **25 Oct 2026. A time the clocks skip** (`eventForm.clocksSkip`, `clocksSkipNextDay`,
+  sc-10675). « Le {{day}}, l’heure {{time}} n’existe pas dans le fuseau {{zone}} : c’est la
+  nuit du passage à l’heure d’été. Elle sera remplacée par {{savedAs}}. » The next-day line ends
+  « remplacée par le {{savedDay}} à {{savedAs}}. », so the short date never closes the sentence
+  (the 19 Oct rule). « Passage à l’heure d’été » is what a French reader calls that night, in
+  either hemisphere; rejected « les horloges avancent », a calque. « Elle » is « l’heure », so
+  nothing agrees with the person or the field.
+- **25 Oct 2026. Editing an event's details (sc-9704, `eventEdit.*`).** "Edit details" is
+  « Modifier les informations », never « détails »; "Save changes" « Enregistrer les
+  modifications ». A refused save starts « Non enregistré. »; the colleague is « quelqu’un
+  d’autre », as `errors:precondition_failed`. What was typed is « ce que vous avez saisi ».
+  After a save the live region says « Modifications enregistrées », not a bare « Enregistré ».
+  The currency refusal is one sentence in `web` and `errors`, « … pour cet événement ».
+- **24 Oct 2026. Suspending a member by hand and restoring them** (`membersScreen.suspend*`,
+  `restore*`, `seats*`, `emails:memberSuspended.*`, `memberRestored.*`, `messages:members.*`,
+  sc-8735). « Suspendre {{name}} », « Rétablir l’accès ». What is suspended is « l’accès », so
+  nothing agrees with the member: « L’accès est suspendu pour {{name}} », « Un accès suspendu
+  n’occupe pas de place », « Seul un accès actif peut être suspendu ». The organisation is
+  « l’accès à l’organisation {{organisation}} » or « dans {organisation} », never « à » before
+  the slot. A team seat is « place d’équipe » of « le forfait », as `errors:team_seats_in_use`.
+  "An administrator of" in the email is « une personne qui administre l’organisation … »,
+  which also covers owners. The email facts read « Date de suspension » and « Date de
+  rétablissement ». `ownerNoSuspend` and `members.suspend_owner` open on the same sentence.
+- **24 Oct 2026. The claim that lapsed** (`emails:ownerClaim.lapsed.*`, sc-9219). "Lapse" is
+  « expirer », as the web. The subject is « {claimant} ne deviendra pas propriétaire de
+  l’organisation {organisation}. La demande a expiré », as the started email: « propriétaire »
+  with no article agrees with nobody, and « la demande faite par » ran past a phone inbox. Each reason ends « la propriété n’a donc pas été
+  transférée »; the date « Expirée le {deadline} », as « Retirée le ».
+- **24 Oct 2026. The rest of a role's holders** (`rolesScreen.moreHolders_*`, web and app,
+  sc-9068). « et {{count}} autre », « et {{count}} autres », after the five names: « autre »
+  is the same for women and men, and reads as people where « de plus » reads as a quantity.
+  No `_many` (sc-4188).
+- **24 Oct 2026. A request refused for its shape** (`messages:validation.invalid_shape`,
+  `validation.request_shape`, sc-8716). « Ce champ n’accepte pas cette valeur », which also
+  holds for a required field left out, then « Vérifiez-le et réessayez », the pronoun for the
+  field. The 422 `detail` speaks of « les données envoyées », not « la requête », which is jargon.
+- **24 Oct 2026. Withdrawing your own claim** (`ownerClaim.withdraw*`, `youWithdrew*`,
+  `emails:ownerClaim.withdrawn.*`, `messages:owner_claims.not_claimant`, sc-8556). The claimant
+  « retire » sa demande ; anybody else « arrête » une demande. Button « Retirer ma demande »,
+  confirm « Retirer votre demande ? » with « Retirer » / « Maintenir ma demande »; pending is
+  « Retrait en cours », as « Vérification de l’enregistrement ». "You included" is « vous y
+  compris », which agrees with nobody. The email is « sa demande de propriété pour
+  {organisation} », as the stopped email, and ends « Personne n’en est devenu propriétaire ».
+- **24 Oct 2026. Getting an owner back** (`ownerClaim.*`, web and app, `emails:ownerClaim.*`,
+  `messages:owner_claims.*`, `errors:owner_claim_*`, sc-8216). "Become the owner" is « devenir
+  propriétaire », with no article, so it agrees with nobody; "has an active owner" is « une
+  personne ayant le rôle Propriétaire est déjà en fonction ». The claim is « la demande », and
+  a claimant's is « la demande faite par {{claimant}} », never « de {{claimant}} ». A domain
+  takes « une adresse {{domain}} » and « du domaine {{domain}} », for the same elision.
+  "Soirely support" is « l’assistance Soirely », as the drafted errors; restoring is
+  « rétablir ». « Type » stays as in English (`same-as-english.json`). Members is « Membres ».
+- **24 Oct 2026. The only owner left suspended** (`accessPaused.stillOnlyOwner`,
+  `membersScreen.suspendedOnlyOwner`, `onlyOwnerNotRemovable`, `onlyOwnerRestoreNeedsAddress`,
+  `history.suspendedAddressGone`, sc-7831). As `emails:domainSuspended.keptOnlyOwner`: « la
+  seule personne ayant le rôle Propriétaire dans {{organisation}} ». What is not removed is the
+  person, from the organisation, never « son accès » (under « Retirer de … » and « Votre accès
+  … est en pause » that reads as access not taken away). Nothing agrees with the member:
+  « cette personne ne peut donc pas être retirée de l’organisation », « cette personne garde ce
+  rôle et reste membre de l’organisation », and to the owner « vous en restez donc membre ».
+  The history line is « Accès suspendu : son adresse e-mail professionnelle ne lui ouvre plus
+  l’accès », « ne donne plus accès » would say « accès » twice.
+- **23 Oct 2026. Ownership and leaving** (`ownership.*`, web and app,
+  `messages:organisation.transfer_owner_required`, `emails:ownershipTransferred.*`, sc-7715).
+  The act is « transférer la propriété », the organisation « cédée ». « Propriétaire » with no
+  article is epicene, so « devenir propriétaire », « rester propriétaire » and « est désormais
+  propriétaire » agree with nobody; with an article it is « le rôle Propriétaire » or « une
+  personne ayant le rôle Propriétaire », never « le nouveau propriétaire ». "The new owner" is
+  « la personne qui deviendra propriétaire », the legend « Transférer à », the email subject
+  « Changement de propriétaire pour {organisation} ». Both people are told by « Un e-mail vous
+  le confirmera, à vous et à {{name}} », never « chacun » or « tous les deux ». Deleted
+  counts are all masculine (événements, invités, membres), so « seront supprimés » holds at
+  any count; French `one` covers 0, « 0 événement », which is right. A slot
+  appears once per key (the parity guard counts them), so `transferred` closes « … envoyé aux
+  deux comptes », not a second {{name}}.
+
+- **21 Oct 2026. The apostrophe is ’, U+2019** (sc-7455), in every value of every catalogue,
+  as France typography sets it and as a straight ' beside a curly one reads like a typo on the
+  same screen. Type the character itself. The SMS (`emails:verification.text`, and any SMS
+  string after it) keeps the straight ': ’ is outside GSM-7 and would send the message as
+  UCS-2, at 70 characters a segment. ’ is also the safe one in an ICU string, where a straight
+  ' is the quote character. Keys and markup quoting never change.
+- **21 Oct 2026. Approving or turning down a request to join** (`membersScreen.awaiting.*`,
+  `membersScreen.history.turnedDown`, `requestExpired`, `emails:joinRequest.*`,
+  `messages:members.request_answered`, sc-7217). "Approve" is « Approuver », matching « En
+  attente d’approbation »; "turn down" is « Refuser », and what is refused is « la demande »,
+  never the person: « Refuser la demande de {{name}} ? », « Refuser la demande de {{name}} », « Demande
+  refusée par {{by}} ». A request nobody answered is « retirée faute de réponse ». A role
+  given on approval is « avec le rôle {{role}} », so nothing agrees with the person; the
+  person refused « ne fait donc pas partie de l’organisation », never « n’a pas été ajouté ».
+  The waiting email’s count takes `many`, « 1 000 000 de personnes ».
+- **24 Oct 2026. Who did it, in a history line** (`membersScreen.byYou`, `membersScreen.someone`,
+  sc-7217, from QA). Both fill `{{by}}` after « par » : the reader is « vous » (« Demande refusée par
+  vous »), and a person who has since left is « une personne qui n’est plus membre ».
+- **24 Oct 2026. No « à » or « de » straight before {organisation}** (sc-7217, from QA). A
+  name that opens on an article reads « à Les Événements… », where French wants « aux ».
+  Take a verb that needs no preposition, with the organisation as its object: « sa demande
+  pour rejoindre {{organisation}} » (« demande d’adhésion » alone, with no object, stays); or
+  name it: « les membres de l’organisation {organisation} »; « chez {organisation} » also
+  holds. Older strings that still read « à {{organisation}} » are swept as they are touched.
+
+- **21 Oct 2026. A domain member paused** (`accessPaused.*`, `membersScreen.suspended*`,
+  `restore*`, `emails:domainSuspended.*`, sc-6703). The person reads « En pause », the admins
+  « Accès suspendu », as the English keeps them apart. Restoring is « rétablir ». Nothing
+  agrees with the member: the removal is « son accès sera retiré », and the admins are told to
+  « retirer cette personne ». Joining through a domain that closed is « n'accepte plus les
+  adhésions via {{domain}} », as the setting's « Adhésion par domaine d'entreprise ». An
+  address at a domain is « votre adresse {{domain}} ». "What happens next" is « La suite ».
+  "Account settings" is « Paramètres du compte », button and sentence alike.
+  24 Oct (qa2, #8038): no « de » stands before {{organisation}} or {{name}}, which may open on a
+  vowel. The organisation is « de l’organisation {{organisation}} », or « à » and « dans »; a
+  person is the subject (« {{name}} a de nouveau accès à », « {{name}} n’a plus d’adresse »)
+  or « pour {name} ». The email opens « L’accès à {organisation} est en pause pour {name} »,
+  its subject on the pause, « Accès en pause : {name} dans {organisation} », so a phone inbox
+  shows it before the names. The admins' label is « Accès suspendu : domaine d’entreprise »
+  for all three reasons, as the setting. The member's history line
+  (`history.suspendedAddressGone`, sc-8868) is the label's words, whatever the reason.
 - **21 Oct 2026. Request link** (`requestLink.*`, `requestToJoin.*`,
   `messages:request_link.*`, `errors:request_link_dead`, `join_request_*`, sc-6460). The
   setting is « Demandes d'adhésion », so its state agrees: « Activées » / « Désactivées »; the
@@ -91,8 +244,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   domaine d'entreprise », « Activée » / « Désactivée »; a working domain « Ouvert aux
   demandes », a stopped one « Sans effet ». "… instead" is « … plutôt ».
   The button alone is « Demander l'accès » (`domainJoining.ask`), since « Demander à rejoindre »
-  squeezed the organisation name beside it on the app phone (QA, sc-4434); its screen-reader
-  label keeps « Demander à rejoindre {{organisation}} ».
+  squeezed the organisation name beside it on the app phone (QA, sc-4434). Its screen-reader
+  label starts with the same words, « Demander l’accès à {{organisation}} », so the name a
+  voice-control user says is the one they see (WCAG 2.5.3, sc-8863). Any label beside a
+  shortened button begins with that button's words.
 
 - **21 Oct 2026. Members in the app** (`mobile:membersScreen.*`, sc-4259). The screen is
   « Membres »; a member is removed with « Retirer », as the glossary's Remove. A person's state
@@ -258,6 +413,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **17 Oct 2026. Section names stand alone as nouns** in running text: « Compte réunit… »,
   « Sécurité réunit… » (`settings.chooseLine`), « Organisation réunit les réglages de
   {{name}} » (`settings.chooseLineWithOrganisation`), « vérifiez Sécurité » (emails).
+- **24 Oct 2026. A running count reads « Caractères : N sur M »** (sc-6302,
+  `eventForm.nameCount`). « N caractères sur M » misagrees at 0 and 1, which French counts
+  as one. With the noun as a label first, nothing has to agree with N, so the key needs no
+  `_one` form even though it is passed `count`. Use the same shape for a counter with no
+  plural; a counter that is passed `count` may still take plural forms where they read better.
 - **17 Oct 2026. A picker's search field reads « Rechercher un/une … »** in the singular:
   « Rechercher un pays », « Rechercher une devise », « Rechercher un fuseau horaire ».
 

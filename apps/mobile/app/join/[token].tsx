@@ -1,5 +1,11 @@
 import { ApiError, ApiUnreachableError, type RequestLinkPreview } from '@soirely/api-client';
-import { REQUEST_MESSAGE_MAXIMUM, formatDay, formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
+import {
+  REQUEST_MESSAGE_MAXIMUM,
+  fallsOnLaterDay,
+  formatDay,
+  formatTimeOfDay,
+  lockLiftsAt,
+} from '@soirely/domain';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, type TextInput, View } from 'react-native';
@@ -10,9 +16,10 @@ import { AuthFrame, AuthHeading } from '../../src/components/AuthFrame.tsx';
 import { PrimaryButton, SecondaryButton } from '../../src/components/Buttons.tsx';
 import { Field, TextField } from '../../src/components/Field.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
+import { ReadOut } from '../../src/components/ReadOut.tsx';
 import { Text } from '../../src/components/Text.tsx';
 import { holdLink } from '../../src/heldLink.ts';
-import { currentLocale } from '../../src/i18n/index.ts';
+import { dateLocale } from '../../src/i18n/index.ts';
 import { useFormChecks } from '../../src/kit/formChecks.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
@@ -105,6 +112,8 @@ function Asking({
   const { t } = useTranslation();
   const { preview } = view;
   const organisation = preview.organisation.name;
+  // Where the person stood as the link opened was not an answer to Ask to join, so it is not read out.
+  const [opened] = useState(view);
 
   return (
     <>
@@ -137,9 +146,14 @@ function Asking({
             body={
               view.until == null
                 ? t('requestToJoin.limitedLater')
-                : t('requestToJoin.limited', {
-                    time: formatTimeOfDay(view.until, currentLocale()),
-                  })
+                : fallsOnLaterDay(view.until)
+                  ? t('requestToJoin.limitedOnDay', {
+                      day: formatDay(view.until, dateLocale()),
+                      time: formatTimeOfDay(view.until, dateLocale()),
+                    })
+                  : t('requestToJoin.limited', {
+                      time: formatTimeOfDay(view.until, dateLocale()),
+                    })
             }
             announce
           />
@@ -150,7 +164,7 @@ function Asking({
         <SignedOut token={token} organisation={organisation} />
       )}
       {view.kind === 'open' && view.signedIn && preview.standing != null && (
-        <Standing preview={preview} />
+        <Standing preview={preview} answer={view === opened ? undefined : view} />
       )}
       {view.kind === 'open' && view.signedIn && preview.standing == null && (
         <Ask token={token} preview={preview} onChange={onChange} />
@@ -198,7 +212,7 @@ function Ask({
   const organisation = preview.organisation.name;
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<object | null>(null);
   const [refused, setRefused] = useState<string | null>(null);
   const input = useRef<TextInput>(null);
   const checks = useFormChecks(
@@ -215,7 +229,7 @@ function Ask({
     if (busy || !checks.passes({ message })) return;
 
     setBusy(true);
-    setFailed(false);
+    setFailed(null);
 
     try {
       await api.askThroughRequestLink(token, message);
@@ -228,7 +242,7 @@ function Ask({
 
   function settle(problem: unknown): void {
     if (!(problem instanceof ApiError)) {
-      setFailed(true);
+      setFailed({});
       return;
     }
 
@@ -265,20 +279,28 @@ function Ask({
       return;
     }
 
-    setFailed(true);
+    setFailed({});
   }
+
+  const failedTitle = t('requestToJoin.failedTitle');
+  const failedBody = t('requestToJoin.failedBody');
 
   return (
     <>
-      {failed && (
-        <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
+      {failed != null && (
+        <ReadOut
+          words={`${failedTitle}\n${failedBody}`}
+          interrupts
+          answer={failed}
+          accessibilityRole="alert"
+        >
           <Notice
             tone="broken"
             mark={tokens.marks.broken.glyph}
-            title={t('requestToJoin.failedTitle')}
-            body={t('requestToJoin.failedBody')}
+            title={failedTitle}
+            body={failedBody}
           />
-        </View>
+        </ReadOut>
       )}
       <Field
         label={t('requestToJoin.message')}
@@ -320,7 +342,7 @@ function Ask({
   );
 }
 
-function Standing({ preview }: { preview: RequestLinkPreview }) {
+function Standing({ preview, answer }: { preview: RequestLinkPreview; answer: Shown | undefined }) {
   const { t } = useTranslation();
   const organisation = preview.organisation.name;
   const from = preview.askAgainFrom;
@@ -333,12 +355,12 @@ function Standing({ preview }: { preview: RequestLinkPreview }) {
           ? t('requestToJoin.coolingOffLater', { organisation })
           : t('requestToJoin.coolingOff', {
               organisation,
-              date: formatDay(from, currentLocale()),
+              date: formatDay(from, dateLocale()),
             });
 
   return (
     <>
-      <Notice tone="quiet" mark={tokens.marks.info.glyph} body={body} />
+      <Notice tone="quiet" mark={tokens.marks.info.glyph} body={body} answer={answer} />
       <CarryOn
         label={
           preview.standing === 'member' ? t('requestToJoin.open', { organisation }) : undefined

@@ -52,10 +52,30 @@ final class AccountLanguageTest extends ApiTestCase
     /** @return iterable<string, array{0: string, 1: string}> */
     public static function momentsInEachLanguage(): iterable
     {
-        yield 'en' => ['en', 'October 17, 2026 at 15:05 UTC'];
+        yield 'en' => ['en', '17 October 2026 at 15:05 UTC'];
         yield 'es' => ['es', '17 de octubre de 2026, 15:05 UTC'];
         yield 'fr' => ['fr', '17 octobre 2026 à 15:05 UTC'];
         yield 'pt' => ['pt', '17 de outubro de 2026 às 15:05 UTC'];
+    }
+
+    /** sc-6758: English in the house's British order, the others as CLDR writes them. */
+    #[Test]
+    #[DataProvider('deadlinesInEachLanguage')]
+    public function deadlinesAreInEachLanguagesOrder(string $locale, string $expected): void
+    {
+        $user = self::service(UserRegistrar::class)->register($locale . '@example.com', 'Someone', self::PASSWORD)->user;
+        $user->setTimezone('Africa/Lagos');
+
+        self::assertSame($expected, self::service(UserMailer::class)->deadline(new DateTimeImmutable('2026-10-24 13:20:00 UTC'), $user, $locale));
+    }
+
+    /** @return iterable<string, array{0: string, 1: string}> */
+    public static function deadlinesInEachLanguage(): iterable
+    {
+        yield 'en' => ['en', 'Saturday 24 Oct at 14:20 WAT'];
+        yield 'es' => ['es', 'sábado, 24 oct a las 14:20 WAT'];
+        yield 'fr' => ['fr', 'samedi 24 oct. à 14:20 WAT'];
+        yield 'pt' => ['pt', 'sábado, 24 de out. às 14:20 WAT'];
     }
 
     #[Test]

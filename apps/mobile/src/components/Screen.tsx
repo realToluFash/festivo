@@ -5,15 +5,17 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
 import {
+  AccessibilityInfo,
   Keyboard,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
-  Platform,
   ScrollView,
+  type StyleProp,
   StyleSheet,
   View,
   type ViewStyle,
@@ -21,20 +23,19 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
-  coveredBy,
+  barFits,
   groupInWindow,
-  keyboardInWindow,
-  keyboardLift,
   keysOver,
+  liftNeeded,
   offsetAboveKeyboard,
+  offsetIntoView,
+  scrollInsets,
+  shownEnd,
 } from '../kit/keyboard.ts';
 import { tokens } from '../theme/tokens.ts';
-
-const LIFT = keyboardLift(Platform.OS);
-
-// Once the avoiding view shrinks it, Android's ScrollView smooth-scrolls the focused field to its
-// own bottom edge over 250ms, and that can land after our lift and leave the button under the keys.
-const NATIVE_FOCUS_SCROLL_MS = 400;
+import { focusedField, watchFocusedField } from './focusedField.ts';
+import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { LIFT, keyboardTopNow, settledLift, watchKeyboardTop } from './keyboardWatch.ts';
 
 type InnerViewRef = ScrollView & { getInnerViewRef(): View | null };
 
@@ -49,6 +50,29 @@ interface ScreenScrollView {
 }
 
 const ScreenScroll = createContext<ScreenScrollView | null>(null);
+
+interface ScreenDock {
+  /** The height between the scroll view's top and the keys, or null while the keys are down. */
+  room: number | null;
+  /** Whether the keys cover the screen's end, the only time a bar needs resting on them. */
+  covered: boolean;
+  /** Whether a bar rests on the keys now. */
+  docked: boolean;
+  show(docked: Docked | null): void;
+}
+
+export interface DockInset {
+  horizontal: number;
+  vertical: number;
+}
+
+interface Docked {
+  children: ReactNode;
+  inset: DockInset;
+  measured: (height: number) => void;
+}
+
+const Dock = createContext<ScreenDock | null>(null);
 
 const Origin = createContext(0);
 
@@ -89,45 +113,39 @@ function liftAboveKeyboard(
   if (group == null || keyboardTop == null) return;
 
   group.measureLayout(content, (_x, contentY, _w, height) => {
-    scrollHost.measureInWindow((_sx, scrollTop) => {
-      const groupY = groupInWindow({ scrollTop, contentY, offset: scroll.offset.current });
-      if (!coveredBy(keyboardTop, { y: groupY, height }, tokens.spaceLg)) return;
+    scrollHost.measureInWindow((_sx, scrollTop, _sw, scrollHeight) => {
+      const lift = (focusY?: number) => {
+        const offset = scroll.offset.current;
+        const groupY = groupInWindow({ scrollTop, contentY, offset });
+        const shown = shownEnd(keyboardTop, { y: scrollTop, height: scrollHeight });
+        const focusTop =
+          focusY == null ? undefined : groupInWindow({ scrollTop, contentY: focusY, offset });
+        const group = { y: groupY, height };
+        if (!liftNeeded({ shown, group, focusTop, scrollTop, margin: tokens.spaceLg })) return;
 
-      view.scrollTo({
-        y: offsetAboveKeyboard({
-          contentY,
-          height,
-          scrollTop,
-          keyboardTop,
-          margin: tokens.spaceLg,
-        }),
-        animated: true,
-      });
+        view.scrollTo({
+          y: offsetAboveKeyboard({
+            contentY,
+            height,
+            scrollTop,
+            keyboardTop: shown,
+            margin: tokens.spaceLg,
+            focusY,
+          }),
+          animated: true,
+        });
+      };
+      // The field typed in comes first: a group under it lifts only as far as keeps it in sight (sc-11978).
+      const field = focusedField();
+      if (field == null) lift();
+      else
+        field.measureLayout(
+          content,
+          (_fx, focusY) => lift(focusY),
+          () => lift(),
+        );
     });
   });
-}
-
-/** Where the keyboard's top edge sits in the window, or null while the keys are down. */
-function keyboardTopNow(origin: number): number | null {
-  const screenY = Keyboard.isVisible() ? Keyboard.metrics()?.screenY : undefined;
-
-  return screenY == null ? null : keyboardInWindow(screenY, origin);
-}
-
-/** Calls `changed` with the keyboard's new top edge each time the keys go up or down. Returns the unsubscribe. */
-function watchKeyboardTop(
-  scroll: ScreenScrollView | null,
-  changed: (top: number | null) => void,
-): () => void {
-  const shown = Keyboard.addListener('keyboardDidShow', (event) =>
-    changed(keyboardInWindow(event.endCoordinates.screenY, scroll?.origin.current ?? 0)),
-  );
-  const hidden = Keyboard.addListener('keyboardDidHide', () => changed(null));
-
-  return () => {
-    shown.remove();
-    hidden.remove();
-  };
 }
 
 /** For a field and the button under it, spread on their View. It lifts again when an error grows the group. */
@@ -137,25 +155,26 @@ export function useAboveKeyboard(): AboveKeyboard {
   const keyboardTop = useRef<number | null>(keyboardTopNow(scroll?.origin.current ?? 0));
 
   useEffect(() => {
-    let settled: ReturnType<typeof setTimeout> | undefined;
-    const liftNow = () => liftAboveKeyboard(scroll, ref.current, keyboardTop.current);
-    const lift = () => {
-      liftNow();
-      if (LIFT.avoid == null) return;
-      clearTimeout(settled);
-      settled = setTimeout(liftNow, NATIVE_FOCUS_SCROLL_MS);
-    };
-    const unwatch = watchKeyboardTop(scroll, (top) => {
-      keyboardTop.current = top;
-      lift();
-    });
+    const { lift, cancel } = settledLift(() =>
+      liftAboveKeyboard(scroll, ref.current, keyboardTop.current),
+    );
+    const unwatch = watchKeyboardTop(
+      () => scroll?.origin.current ?? 0,
+      (top) => {
+        keyboardTop.current = top;
+        lift();
+      },
+    );
     // On Android the avoiding view shrinks the scroll view after keyboardDidShow, and a scroll
     // asked for before that is clamped short.
     scroll?.resized.add(lift);
+    // Next on the keys moves focus without the keys going up again.
+    const unwatchFocus = watchFocusedField(lift);
 
     return () => {
-      clearTimeout(settled);
+      cancel();
       unwatch();
+      unwatchFocus();
       scroll?.resized.delete(lift);
     };
   }, [scroll]);
@@ -168,36 +187,36 @@ export function useAboveKeyboard(): AboveKeyboard {
 
 /** The height a group may take between the scroll view's top and the keyboard, or null while the keys are down. */
 export function useRoomAboveKeyboard(): number | null {
-  const scroll = useContext(ScreenScroll);
-  const [room, setRoom] = useState<number | null>(null);
+  const room = useContext(Dock)?.room;
+
+  return room == null ? null : room - 2 * tokens.spaceLg;
+}
+
+export interface AboveKeysProps {
+  children: ReactNode;
+  inset: DockInset;
+  /** The height of the field the children save, kept in sight above them. */
+  field: number;
+}
+
+/** Rests its children directly on the keys, outside the scroll, while they and the field fit above them; in place otherwise. */
+export function AboveKeys({ children, inset, field }: AboveKeysProps) {
+  const dock = useContext(Dock);
+  const [height, setHeight] = useState<number | null>(null);
+  const docked =
+    dock?.room != null &&
+    dock.covered &&
+    height != null &&
+    barFits({ room: dock.room, field, bar: height + 2 * inset.vertical, margin: tokens.spaceLg });
 
   useEffect(() => {
-    let keyboardTop = keyboardTopNow(scroll?.origin.current ?? 0);
-    const measure = () => {
-      const scrollHost = scroll?.ref.current?.getNativeScrollRef();
-      if (keyboardTop == null || scrollHost == null) {
-        setRoom(null);
-        return;
-      }
-      const top = keyboardTop;
-      scrollHost.measureInWindow((_x, scrollTop) => {
-        setRoom(top - scrollTop - 2 * tokens.spaceLg);
-      });
-    };
-    const unwatch = watchKeyboardTop(scroll, (top) => {
-      keyboardTop = top;
-      measure();
-    });
-    scroll?.resized.add(measure);
-    measure();
+    if (docked) dock.show({ children, inset, measured: setHeight });
+  }, [dock, docked, children, inset]);
+  useEffect(() => (docked ? () => dock.show(null) : undefined), [dock, docked]);
 
-    return () => {
-      unwatch();
-      scroll?.resized.delete(measure);
-    };
-  }, [scroll]);
-
-  return room;
+  return docked ? null : (
+    <View onLayout={(event) => setHeight(event.nativeEvent.layout.height)}>{children}</View>
+  );
 }
 
 /** Brings the view to the top of the screen once it mounts, whatever the scroll it mounted into. */
@@ -227,6 +246,170 @@ export function useScrolledToTop(): RefObject<View | null> {
   }, [scroll]);
 
   return top;
+}
+
+// VoiceOver drops a focus asked for while a sheet is still sliding away, and the scroll has to land first.
+export const SETTLED_MS = 500;
+
+function bringIntoView(scroll: ScreenScrollView | null, line: ScreenReaderTarget | null): void {
+  const view = scroll?.ref.current;
+  const content = (view as InnerViewRef | null | undefined)?.getInnerViewRef();
+  const scrollHost = view?.getNativeScrollRef();
+  if (scroll == null || view == null || content == null || scrollHost == null || line == null)
+    return;
+
+  line.measureLayout(content, (_x, contentY, _w, height) => {
+    scrollHost.measureInWindow((_sx, _sy, _sw, shown) => {
+      const y = offsetIntoView({
+        contentY,
+        height,
+        offset: scroll.offset.current,
+        shown,
+        margin: tokens.spaceLg,
+      });
+      if (y != null) view.scrollTo({ y, animated: true });
+    });
+  });
+}
+
+/** Brings `shown` wholly into sight, and again once it has settled, then moves screen reader focus to `read`; returns what cancels the second step. */
+function settleOnto(
+  scroll: ScreenScrollView | null,
+  shown: () => ScreenReaderTarget | null,
+  read: () => ScreenReaderTarget | null,
+): () => void {
+  bringIntoView(scroll, shown());
+
+  const focus = setTimeout(() => {
+    // Content that shrinks around the line as it mounts can stop the first scroll short (sc-9382).
+    bringIntoView(scroll, shown());
+    moveScreenReaderFocus(read());
+  }, SETTLED_MS);
+
+  return () => clearTimeout(focus);
+}
+
+export interface BroughtIntoView {
+  shown: RefObject<View | null>;
+  read: RefObject<View | null>;
+}
+
+/** Brings `shown` wholly into sight once it mounts, unless it already is, then moves screen reader focus to `read`. */
+export function useBroughtIntoView(): BroughtIntoView {
+  const scroll = useContext(ScreenScroll);
+  const ref = useRef<View>(null);
+  const read = useRef<View>(null);
+
+  useEffect(
+    () =>
+      settleOnto(
+        scroll,
+        () => ref.current,
+        () => read.current,
+      ),
+    [scroll],
+  );
+
+  return { shown: ref, read };
+}
+
+export interface FocusedOnAnswer<Read extends ScreenReaderTarget> {
+  shown: RefObject<View | null>;
+  read: RefObject<Read | null>;
+}
+
+/** With a screen reader on, once a tap's `answer` shows, brings `shown` (or `read`, with nothing on `shown`) wholly into sight and moves focus to `read` (`readRef` when given), and again with each new answer; with `answer` undefined, or no screen reader, nothing moves (sc-11032). */
+export function useFocusOnAnswer<Read extends ScreenReaderTarget = View>(
+  answer: unknown,
+  readRef?: RefObject<Read | null>,
+): FocusedOnAnswer<Read> {
+  const scroll = useContext(ScreenScroll);
+  const shown = useRef<View>(null);
+  const ownRead = useRef<Read>(null);
+  const read = readRef ?? ownRead;
+
+  useEffect(() => {
+    if (answer === undefined) return;
+
+    let gone = false;
+    let cancel = () => {};
+    void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
+      if (!on || gone) return;
+
+      cancel = settleOnto(
+        scroll,
+        () => shown.current ?? read.current,
+        () => read.current,
+      );
+    });
+
+    return () => {
+      gone = true;
+      cancel();
+    };
+  }, [answer, read, scroll]);
+
+  return { shown, read };
+}
+
+/** The scroll context a ScrollView provides, and the props that keep it in step with that view. */
+function useScreenScrollView() {
+  const windowOrigin = useContext(Origin);
+  const origin = useRef(windowOrigin);
+  const scrollView = useRef<ScrollView>(null);
+  const offset = useRef(0);
+  const [screenScroll] = useState<ScreenScrollView>(() => ({
+    ref: scrollView,
+    resized: new Set(),
+    origin,
+    offset,
+  }));
+  useEffect(() => {
+    origin.current = windowOrigin;
+  }, [windowOrigin]);
+
+  const follow = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    offset.current = event.nativeEvent.contentOffset.y;
+  };
+
+  return {
+    screenScroll,
+    scrollProps: {
+      ref: scrollView,
+      onLayout: () => screenScroll.resized.forEach((resized) => resized()),
+      onScroll: follow,
+      onScrollEndDrag: follow,
+      onMomentumScrollEnd: follow,
+    },
+  };
+}
+
+/** A scrolling column inside a Screen that does not scroll, so what it holds can bring itself into view. */
+export function ScrollColumn({
+  children,
+  style,
+  contentContainerStyle,
+}: {
+  children: ReactNode;
+  style?: StyleProp<ViewStyle>;
+  contentContainerStyle?: StyleProp<ViewStyle>;
+}) {
+  const { screenScroll, scrollProps } = useScreenScrollView();
+  const docked = useContext(Dock)?.docked ?? false;
+
+  return (
+    <ScreenScroll.Provider value={screenScroll}>
+      <ScrollView
+        {...scrollProps}
+        style={style}
+        contentContainerStyle={contentContainerStyle}
+        keyboardShouldPersistTaps="handled"
+        {...scrollInsets(LIFT, docked)}
+      >
+        {children}
+      </ScrollView>
+    </ScreenScroll.Provider>
+  );
 }
 
 /**
@@ -265,48 +448,45 @@ export function Screen({
   contentStyle,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
-  const windowOrigin = useContext(Origin);
-  const origin = useRef(windowOrigin);
-  const scrollView = useRef<ScrollView>(null);
-  const offset = useRef(0);
-  const [screenScroll] = useState<ScreenScrollView>(() => ({
-    ref: scrollView,
-    resized: new Set(),
-    origin,
-    offset,
-  }));
-  useEffect(() => {
-    origin.current = windowOrigin;
-  }, [windowOrigin]);
+  const { screenScroll, scrollProps } = useScreenScrollView();
   const avoider = useRef<View>(null);
   const keyboardTop = useRef<number | null>(null);
   const [keysCover, setKeysCover] = useState(0);
+  const [room, setRoom] = useState<number | null>(null);
+  const [docked, setDocked] = useState<Docked | null>(null);
+  const barDocked = docked != null;
+  const dock = useMemo<ScreenDock>(
+    () => ({ room, covered: keysCover > 0, docked: barDocked, show: setDocked }),
+    [room, keysCover, barDocked],
+  );
   // Not KeyboardAvoidingView: it takes the screen's top as a prop and does not re-read it when the
   // frame's header shrinks under the keys, so the freed height ends up as padding above them.
   const avoid = useCallback(() => {
     const top = keyboardTop.current;
     if (top == null) {
       setKeysCover(0);
+      setRoom(null);
       return;
     }
-    avoider.current?.measureInWindow((_x, y, _w, height) =>
-      setKeysCover(keysOver({ y, height }, top)),
-    );
+    avoider.current?.measureInWindow((_x, y, _w, height) => {
+      const cover = keysOver({ y, height }, top);
+      setKeysCover(cover);
+      setRoom(top - y);
+    });
   }, []);
+  // iOS needs the cover too, but only to rest a docked bar on the keys: its scroll view lifts itself.
   useEffect(() => {
-    if (LIFT.avoid == null) return;
-    keyboardTop.current = keyboardTopNow(origin.current);
+    keyboardTop.current = keyboardTopNow(screenScroll.origin.current);
     avoid();
 
-    return watchKeyboardTop(screenScroll, (top) => {
-      keyboardTop.current = top;
-      avoid();
-    });
+    return watchKeyboardTop(
+      () => screenScroll.origin.current,
+      (top) => {
+        keyboardTop.current = top;
+        avoid();
+      },
+    );
   }, [screenScroll, avoid]);
-
-  const followOffset = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    offset.current = event.nativeEvent.contentOffset.y;
-  };
 
   const padding: ViewStyle = {
     paddingTop: edges.includes('top') ? insets.top : 0,
@@ -317,18 +497,14 @@ export function Screen({
 
   const body = scroll ? (
     <ScrollView
-      ref={scrollView}
-      onLayout={() => screenScroll.resized.forEach((resized) => resized())}
-      onScroll={followOffset}
-      onScrollEndDrag={followOffset}
-      onMomentumScrollEnd={followOffset}
+      {...scrollProps}
       style={styles.fill}
       contentContainerStyle={[styles.content, contentStyle]}
       // So the first tap after typing hits the control rather than only
       // dismissing the keyboard, which otherwise makes every button in a
       // form need pressing twice.
       keyboardShouldPersistTaps="handled"
-      automaticallyAdjustKeyboardInsets={LIFT.adjustScrollInsets}
+      {...scrollInsets(LIFT, docked != null)}
     >
       {children}
     </ScrollView>
@@ -338,15 +514,32 @@ export function Screen({
 
   return (
     <ScreenScroll.Provider value={scroll ? screenScroll : null}>
-      <View style={[styles.root, padding, style]}>
-        {LIFT.avoid == null ? (
-          body
-        ) : (
-          <View ref={avoider} onLayout={avoid} style={[styles.fill, { paddingBottom: keysCover }]}>
+      <Dock.Provider value={dock}>
+        <View style={[styles.root, padding, style]}>
+          <View
+            ref={avoider}
+            onLayout={avoid}
+            style={[
+              styles.fill,
+              { paddingBottom: LIFT.avoid != null || docked != null ? keysCover : 0 },
+            ]}
+          >
             {body}
+            {docked != null && (
+              <View
+                style={{
+                  paddingHorizontal: docked.inset.horizontal,
+                  paddingVertical: docked.inset.vertical,
+                }}
+              >
+                <View onLayout={(event) => docked.measured(event.nativeEvent.layout.height)}>
+                  {docked.children}
+                </View>
+              </View>
+            )}
           </View>
-        )}
-      </View>
+        </View>
+      </Dock.Provider>
     </ScreenScroll.Provider>
   );
 }

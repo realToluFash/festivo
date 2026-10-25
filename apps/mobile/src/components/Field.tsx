@@ -1,8 +1,20 @@
-import type { ReactNode, Ref } from 'react';
-import { Pressable, StyleSheet, TextInput, type TextInputProps, View } from 'react-native';
+import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
+import {
+  Keyboard,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  type TextInputProps,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
-import { codeProps, FIELD_DEFAULTS } from '../kit/fields.ts';
+import { codeProps, FIELD_DEFAULTS, fieldText, nextPin } from '../kit/fields.ts';
+import { faced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
+import { fieldFocused, fieldLeft } from './focusedField.ts';
+import { ReadOut } from './ReadOut.tsx';
+import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text } from './Text.tsx';
 
 /** 16 is the smallest size iOS Safari will not zoom into on focus. */
@@ -26,8 +38,21 @@ export function Field({
   help?: string | readonly string[] | undefined;
   children: ReactNode;
 }) {
+  const field = useRef<View>(null);
+  useEffect(() => {
+    const mounted = field.current;
+
+    return () => fieldLeft(mounted);
+  }, []);
+
+  // A control's focus and blur bubble up to here.
   return (
-    <View style={styles.field}>
+    <View
+      ref={field}
+      onFocus={() => fieldFocused(field.current)}
+      onBlur={() => fieldLeft(field.current)}
+      style={styles.field}
+    >
       <View style={styles.labelRow}>
         <Text size={tokens.typeButton.size} weight="semibold">
           {label}
@@ -78,9 +103,13 @@ export function FieldError({
   actions?: readonly FieldAction[] | undefined;
 }) {
   return (
-    <View style={styles.fieldError} accessibilityLiveRegion="polite">
-      <View style={styles.mark}>
-        <Text size={tokens.typePill.size} weight="bold" style={styles.broken}>
+    <ReadOut style={styles.fieldError} words={message}>
+      <View
+        style={styles.mark}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <Text size={tokens.typePill.size} weight="bold" style={styles.broken} accessible={false}>
           {tokens.marks.broken.glyph}
         </Text>
       </View>
@@ -106,22 +135,80 @@ export function FieldError({
           </View>
         )}
       </View>
-    </View>
+    </ReadOut>
   );
 }
 
 export type TextFieldProps = TextInputProps & {
   wrong?: boolean;
+  submitting?: boolean;
   ref?: Ref<TextInput> | undefined;
 };
 
-export function TextField({ wrong = false, style, ref, ...rest }: TextFieldProps) {
+/** Held while a submit runs: focused and the keyboard up, which `editable={false}` would drop, but nothing typed is taken. */
+export function useHeld(
+  held: boolean,
+  value: string | undefined,
+  defaultValue: string | undefined,
+  onChangeText: ((text: string) => void) | undefined,
+): Pick<TextInputProps, 'value' | 'defaultValue' | 'onChangeText'> {
+  const [typed, setTyped] = useState(value ?? defaultValue ?? '');
+  const [pinned, setPinned] = useState<string>();
+  const { fontScale } = useWindowDimensions();
+  const [scale, setScale] = useState(fontScale);
+  const field = { held, value, defaultValue, typed, pinned };
+  const next = nextPin(field, fontScale, scale);
+
+  if (next.scale !== scale) setScale(next.scale);
+  if (next.pinned !== pinned) setPinned(next.pinned);
+
+  if (held) return { ...fieldText(field), onChangeText: undefined };
+
+  return {
+    ...fieldText(field),
+    onChangeText: (text) => {
+      if (value === undefined) setTyped(text);
+      onChangeText?.(text);
+    },
+  };
+}
+
+/** To the field a server refusal names: the keyboard moves there if it was up, and a server refusal never raises it. */
+export function focusRefused(field: RefObject<TextInput | null>): void {
+  if (Keyboard.isVisible()) {
+    field.current?.focus();
+    return;
+  }
+
+  moveScreenReaderFocus(field.current);
+}
+
+/** To the field a client check names, with the keyboard up on it. */
+export function focusChecked(field: RefObject<TextInput | null>): void {
+  // Android's back gesture hides the keys and leaves the field focused, and focus() skips a focused field.
+  if (field.current?.isFocused() === true && !Keyboard.isVisible()) field.current.blur();
+  field.current?.focus();
+}
+
+export function TextField({
+  wrong = false,
+  submitting = false,
+  style,
+  ref,
+  value,
+  onChangeText,
+  ...rest
+}: TextFieldProps) {
+  const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
+
   return (
     <TextInput
       {...FIELD_DEFAULTS}
       {...rest}
+      value={value}
+      {...holding}
       ref={ref}
-      style={[styles.input, wrong && styles.wrong, style]}
+      style={faced([styles.input, wrong && styles.wrong, style])}
       aria-invalid={wrong}
     />
   );
@@ -133,18 +220,25 @@ export type CodeFieldProps = TextFieldProps & {
 
 export function CodeField({
   wrong = false,
+  submitting = false,
   takesRecoveryCode = false,
   style,
   ref,
+  value,
+  onChangeText,
   ...rest
 }: CodeFieldProps) {
+  const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
+
   return (
     <TextInput
       {...codeProps(takesRecoveryCode)}
       autoComplete="sms-otp"
       {...rest}
+      value={value}
+      {...holding}
       ref={ref}
-      style={[styles.code, wrong && styles.wrong, style]}
+      style={faced([styles.code, wrong && styles.wrong, style])}
       aria-invalid={wrong}
     />
   );

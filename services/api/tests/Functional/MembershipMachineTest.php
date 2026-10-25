@@ -13,6 +13,7 @@ use App\Entity\User;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
+use App\Enum\Suspension;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Tests\FunctionalTestCase;
 use App\Tests\Traits\InvitesPeople;
@@ -43,7 +44,7 @@ final class MembershipMachineTest extends FunctionalTestCase
         [$organisation, $member, $membership] = $this->member();
         self::assertNotNull(self::service(MembershipDirectoryInterface::class)->grantsIn($member, $organisation->getId()));
 
-        $this->machine()->move($membership, $state, MembershipChannel::Invitation, null);
+        $this->machine()->move($membership, $state, MembershipChannel::Invitation, null, why: MembershipStatus::Suspended === $state ? Suspension::Manual : null);
         self::em()->flush();
 
         self::assertNull(self::service(MembershipDirectoryInterface::class)->grantsIn($member, $organisation->getId()));

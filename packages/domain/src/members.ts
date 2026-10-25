@@ -47,7 +47,12 @@ export function historyLine(step: HistoryStep, member: string): { key: string; n
     return { key: 'removed', named: true };
   }
 
-  if (step.to === 'suspended') return { key: 'suspended', named: true };
+  // Decided 23 Oct (sc-564): nobody performs a domain suspension, whatever triggered it.
+  if (step.to === 'suspended') {
+    return step.channel === 'domain'
+      ? { key: 'suspendedAddressGone', named: false }
+      : { key: 'suspended', named: true };
+  }
   if (step.from === 'suspended') return { key: 'restored', named: true };
   if (step.from === 'pending_approval' && step.channel !== 'invitation') {
     return { key: 'approved', named: true };
@@ -58,18 +63,26 @@ export function historyLine(step: HistoryStep, member: string): { key: string; n
 }
 
 /** What a member's page offers: sc-68's rules, read from the list the screen loaded, and checked again by the API. */
-export type MemberStanding = 'self' | 'onlyOwner' | 'ownerOnly' | 'readOnly' | 'manageable';
+export type MemberStanding =
+  | 'self'
+  | 'onlyOwner'
+  | 'suspendedOnlyOwner'
+  | 'ownerOnly'
+  | 'beyondGrant'
+  | 'readOnly'
+  | 'manageable';
 
 interface StandingMember {
   self: boolean;
   status: MemberState;
-  role: { seededAs: string | null };
+  role: { id: string; seededAs: string | null };
+  suspension?: { onlyOwner: boolean } | null;
 }
 
 export function memberStanding(
   member: StandingMember,
   members: readonly StandingMember[],
-  caller: { owns: boolean; manages: boolean },
+  caller: { owns: boolean; manages: boolean; withholds: readonly { id: string }[] },
 ): MemberStanding {
   const owner = member.role.seededAs === 'owner';
   const activeOwners = members.filter(
@@ -77,9 +90,19 @@ export function memberStanding(
   ).length;
 
   if (member.self) return 'self';
+  if (member.status === 'left_or_removed') return 'readOnly';
   if (owner && member.status === 'active' && activeOwners === 1) return 'onlyOwner';
   if (!caller.manages) return 'readOnly';
+  // Decided 23 Oct (sc-564): nobody else could restore them, so members.manage may.
+  if (owner && member.suspension?.onlyOwner === true) return 'suspendedOnlyOwner';
   if (owner && !caller.owns) return 'ownerOnly';
+  // sc-11160: the rule the role choices follow (sc-392). A role the loaded catalogue lacks falls to the picker and the API's answer.
+  if (
+    !caller.owns &&
+    member.status !== 'pending_approval' &&
+    caller.withholds.some((role) => role.id === member.role.id)
+  )
+    return 'beyondGrant';
 
   return 'manageable';
 }
@@ -95,11 +118,32 @@ interface RowMember {
   invitedBy: { name: string } | null;
   self: boolean;
   role: { seededAs: string | null; name: string | null };
+  suspension?: { reason: string } | null;
+  history: readonly { from: MemberState | null; to: MemberState }[];
+}
+
+/** Awaiting approval, or turned down, withdrawn or expired while awaiting it: Read-only is only where a request is parked (sc-7217). */
+export function memberHeldNoRole(member: Pick<RowMember, 'status' | 'history'>): boolean {
+  if (member.status === 'pending_approval') return true;
+  const last = member.history.at(-1);
+
+  return (
+    member.status === 'left_or_removed' &&
+    last?.from === 'pending_approval' &&
+    last.to === 'left_or_removed'
+  );
 }
 
 export function memberStatusWord(word: Word, member: RowMember): string {
   if (member.status === 'left_or_removed')
     return word(`membersScreen.state.${member.former ?? 'removed'}`, {});
+
+  if (
+    member.status === 'suspended' &&
+    member.suspension != null &&
+    member.suspension.reason !== 'manual'
+  )
+    return word('membersScreen.state.domainSuspended', {});
 
   return word(`membersScreen.state.${member.status}`, {});
 }
@@ -134,7 +178,7 @@ export function memberRowLine(
   day: (at: string) => string,
 ): string {
   return [
-    member.status === 'pending_approval'
+    memberHeldNoRole(member)
       ? word('membersScreen.noRoleYet', {})
       : roleName((key) => word(key, {}), member.role),
     ...(member.self ? [word('membersScreen.you', {})] : []),

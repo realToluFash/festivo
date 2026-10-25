@@ -81,7 +81,7 @@ final readonly class ProviderSignIn
 
         // An address the provider has not verified is a self-asserted string, never an identity.
         if (null === $claims->email || !$claims->emailVerified) {
-            throw new ApiException(ErrorCode::OAuthTokenInvalid, 'That sign-in did not come with a verified address.');
+            throw new ApiException(ErrorCode::OAuthTokenInvalid, 'provider.address_unverified');
         }
 
         // Only an account that proved the address itself, or a password typed by somebody else would stay in.

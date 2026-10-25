@@ -7,6 +7,7 @@ namespace App\Tests\Functional;
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Organisation\RequestLink\LinkRequester;
+use App\Domain\User\Mail\UserMailer;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
 use App\Entity\Membership;
@@ -22,6 +23,7 @@ use App\Enum\SeededRole;
 use App\Repository\MembershipRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
@@ -43,7 +45,7 @@ final class JoinRequestsTest extends ApiTestCase
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
 
-    /** Monday, Oct 12 at 09:40 WAT: the AC's own ask. */
+    /** Monday 12 Oct at 09:40 WAT: the AC's own ask. */
     private const string ASKED = '2026-10-12 08:40:00';
 
     #[Test]
@@ -66,17 +68,54 @@ final class JoinRequestsTest extends ApiTestCase
     }
 
     #[Test]
+    public function anApprovedMemberIsStillListedAsHavingAskedToJoin(): void
+    {
+        [$owner, $organisation] = $this->organisation();
+        $asker = $this->asks($organisation, 'ada@okeke.ng');
+        $this->signIn($owner);
+
+        $this->send('POST', $this->path($organisation, $asker, '/approve'), ['roleId' => $this->role($organisation, SeededRole::ReadOnly)->getId()->toRfc4122()]);
+
+        $listed = Iter\first(Vec\filter($this->listed($organisation), static fn (array $member): bool => 'ada@okeke.ng' === ($member['user']['email'] ?? null)));
+        self::assertSame(['active', 'request'], [$listed['status'] ?? null, $listed['channel'] ?? null]);
+    }
+
+    #[Test]
     public function nobodyApprovesIntoARoleTheyCouldNotGrant(): void
     {
         [, $organisation] = $this->organisation();
-        $admin = $this->member($organisation, 'tunde@ire.events', SeededRole::Administrator);
+        $manager = $this->member($organisation, 'tunde@ire.events', SeededRole::Coordinator);
+        $this->role($organisation, SeededRole::Coordinator)->setPermissions([Permission::MembersRead, Permission::MembersManage]);
         $asker = $this->asks($organisation, 'ada@okeke.ng');
-        $this->signIn($admin);
+        $this->signIn($manager);
 
-        $this->send('POST', $this->path($organisation, $asker, '/approve'), ['roleId' => $this->role($organisation, SeededRole::Owner)->getId()->toRfc4122()]);
+        $this->send('POST', $this->path($organisation, $asker, '/approve'), ['roleId' => $this->role($organisation, SeededRole::EventManager)->getId()->toRfc4122()]);
 
         self::assertResponseStatusCodeSame(403);
         self::assertSame(MembershipStatus::PendingApproval, $this->membershipOf($asker, $organisation)->getStatus());
+    }
+
+    #[Test]
+    public function nobodyIsApprovedStraightIntoOwner(): void
+    {
+        [$owner, $organisation] = $this->organisation();
+        $asker = $this->asks($organisation, 'ada@okeke.ng');
+        $this->signIn($owner);
+        $mailed = Iter\count(self::getMailerMessages());
+
+        $body = $this->send('POST', $this->path($organisation, $asker, '/approve'), ['roleId' => $this->role($organisation, SeededRole::Owner)->getId()->toRfc4122()]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(ErrorCode::ValidationFailed->type(), $body['type'] ?? null);
+        self::assertSame(
+            [['propertyPath' => 'roleId', 'message' => 'Approve them first, then make them an owner from Members.']],
+            Vec\map(Type\vec(Type\shape(['propertyPath' => Type\string(), 'message' => Type\string()], true))->coerce($body['violations'] ?? null), static fn (array $violation): array => ['propertyPath' => $violation['propertyPath'], 'message' => $violation['message']]),
+        );
+        $membership = $this->membershipOf($asker, $organisation);
+        self::assertSame(MembershipStatus::PendingApproval, $membership->getStatus());
+        self::assertSame(SeededRole::ReadOnly, $membership->getRole()->getSeededAs());
+        self::assertNull(self::service(EntityManagerInterface::class)->getRepository(AuditEntry::class)->findOneBy(['subjectId' => $membership->getId(), 'action' => 'membership.approved']));
+        self::assertCount($mailed, self::getMailerMessages());
     }
 
     #[Test]
@@ -131,6 +170,94 @@ final class JoinRequestsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aRequesterNeverLetInIsNowhereForAViewerWhoCannotManageMembers(): void
+    {
+        self::mockTime(self::ASKED);
+        [$owner, $organisation] = $this->organisation();
+        $coordinator = $this->member($organisation, 'tunde@ire.events', SeededRole::Coordinator);
+        $reads = $this->role($organisation, SeededRole::Coordinator);
+        $reads->setPermissions([...$reads->getPermissions(), Permission::MembersRead]);
+        $turnedDown = $this->asks($organisation, 'kemi@lawal.ng');
+        $expired = $this->asks($organisation, 'ada@okeke.ng');
+        $this->signIn($owner);
+        $this->send('POST', $this->path($organisation, $turnedDown, '/turn-down'));
+        self::mockTime('2026-11-11 08:40:00');
+        $this->runJob();
+        $this->signIn($coordinator);
+
+        $this->listed($organisation);
+        $content = (string) $this->client->getResponse()->getContent();
+
+        foreach ([$turnedDown, $expired] as $requester) {
+            self::assertSame(MembershipStatus::LeftOrRemoved, $this->membershipOf($requester, $organisation)->getStatus());
+            self::assertStringNotContainsString($requester->getId()->toRfc4122(), $content);
+            self::assertStringNotContainsString($this->membershipOf($requester, $organisation)->getId()->toRfc4122(), $content);
+        }
+    }
+
+    #[Test]
+    public function whoeverManagesMembersStillSeesARequesterNeverLetInUnderFormer(): void
+    {
+        [$owner, $organisation] = $this->organisation();
+        $turnedDown = $this->asks($organisation, 'kemi@lawal.ng');
+        $this->signIn($owner);
+        $this->send('POST', $this->path($organisation, $turnedDown, '/turn-down'));
+
+        $listed = Iter\first(Vec\filter($this->listed($organisation), static fn (array $member): bool => 'kemi@lawal.ng' === ($member['user']['email'] ?? null)));
+
+        self::assertSame('left_or_removed', $listed['status'] ?? null);
+        self::assertSame(
+            [[null, 'pending_approval'], ['pending_approval', 'left_or_removed']],
+            Vec\map(
+                Type\vec(Type\shape(['from' => Type\nullable(Type\string()), 'to' => Type\string()], true))->coerce($listed['history'] ?? null),
+                static fn (array $step): array => [$step['from'], $step['to']],
+            ),
+        );
+    }
+
+    #[Test]
+    public function aFormerMemberWhoAskedAgainStillShowsUnderFormerToAViewerWhoCannotManageMembers(): void
+    {
+        [$owner, $organisation] = $this->organisation();
+        $coordinator = $this->member($organisation, 'tunde@ire.events', SeededRole::Coordinator);
+        $reads = $this->role($organisation, SeededRole::Coordinator);
+        $reads->setPermissions([...$reads->getPermissions(), Permission::MembersRead]);
+        $removed = $this->member($organisation, 'bola@ire.events', SeededRole::ReadOnly);
+        $returning = $this->member($organisation, 'chidi@ire.events', SeededRole::ReadOnly);
+        $this->signIn($owner);
+        $this->send('DELETE', $this->path($organisation, $removed, ''));
+        $this->send('DELETE', $this->path($organisation, $returning, ''));
+        self::service(MembershipMachine::class)->ask($this->membershipOf($returning, $organisation)->getOrganisation(), $this->fresh($returning), MembershipChannel::Request);
+        $this->send('POST', $this->path($organisation, $returning, '/turn-down'));
+        $this->signIn($coordinator);
+
+        $former = Vec\filter($this->listed($organisation), static fn (array $member): bool => 'left_or_removed' === $member['status']);
+
+        self::assertEqualsCanonicalizing(['bola@ire.events', 'chidi@ire.events'], Vec\map($former, static fn (array $member): mixed => $member['user']['email'] ?? null));
+    }
+
+    #[Test]
+    public function aRoleCountsOnlyThePeopleWhoHoldIt(): void
+    {
+        [$owner, $organisation] = $this->organisation();
+        $coordinator = $this->member($organisation, 'tunde@ire.events', SeededRole::Coordinator);
+        $reads = $this->role($organisation, SeededRole::Coordinator);
+        $reads->setPermissions([...$reads->getPermissions(), Permission::MembersRead]);
+        $this->asks($organisation, 'ada@okeke.ng');
+        $turnedDown = $this->asks($organisation, 'kemi@lawal.ng');
+        $this->signIn($owner);
+        $this->send('POST', $this->path($organisation, $turnedDown, '/turn-down'));
+        self::service(EntityManagerInterface::class)->flush();
+        $this->signIn($coordinator);
+
+        $roles = Type\vec(Type\shape(['seededAs' => Type\nullable(Type\string()), 'holders' => Type\int()], true))
+            ->coerce($this->send('GET', Str\format('/api/orgs/%s/roles', $organisation->getId()->toRfc4122()))['roles'] ?? null);
+
+        $readOnly = Iter\first(Vec\filter($roles, static fn (array $role): bool => SeededRole::ReadOnly->value === $role['seededAs']));
+        self::assertSame(0, $readOnly['holders'] ?? null);
+    }
+
+    #[Test]
     public function aRequestIsNotRemovedOrRoledThroughTheMemberRoutes(): void
     {
         [$owner, $organisation] = $this->organisation();
@@ -144,7 +271,7 @@ final class JoinRequestsTest extends ApiTestCase
         self::assertSame(MembershipStatus::PendingApproval, $this->membershipOf($asker, $organisation)->getStatus());
     }
 
-    /** The AC's instant: asked Monday, Oct 12 at 09:40 WAT, removed 30 × 24 h later, read in each reader's zone. */
+    /** The AC's instant: asked Monday 12 Oct at 09:40 WAT, removed 30 × 24 h later, read in each reader's zone. */
     #[Test]
     public function theRemovalIsOneInstantInEveryReadersZone(): void
     {
@@ -155,11 +282,30 @@ final class JoinRequestsTest extends ApiTestCase
         $removes = fn (): mixed => Iter\first(Vec\filter($this->listed($organisation), static fn (array $member): bool => 'pending_approval' === $member['status']))['removesAt'] ?? null;
 
         $this->fresh($owner)->setTimezone('Africa/Lagos');
-        self::assertSame(['at' => '2026-11-11T08:40:00+00:00', 'written' => 'Wednesday, Nov 11 at 09:40 WAT'], $removes());
+        self::assertSame(['at' => '2026-11-11T08:40:00+00:00', 'written' => 'Wednesday 11 Nov at 09:40 WAT'], $removes());
         $this->fresh($owner)->setTimezone('Europe/London');
-        self::assertSame('Wednesday, Nov 11 at 08:40 GMT', Type\shape(['written' => Type\string()], true)->coerce($removes())['written']);
+        self::assertSame('Wednesday 11 Nov at 08:40 GMT', Type\shape(['written' => Type\string()], true)->coerce($removes())['written']);
         $this->fresh($owner)->setTimezone(null);
-        self::assertSame('Wednesday, Nov 11 at 08:40 UTC', Type\shape(['written' => Type\string()], true)->coerce($removes())['written']);
+        self::assertSame('Wednesday 11 Nov at 08:40 UTC', Type\shape(['written' => Type\string()], true)->coerce($removes())['written']);
+    }
+
+    /** sc-9267: written in the language the request asks for, not the one the reader saved. */
+    #[Test]
+    public function theRemovalIsWrittenInTheLanguageTheRequestAsksFor(): void
+    {
+        self::mockTime(self::ASKED);
+        [$owner, $organisation] = $this->organisation();
+        $this->asks($organisation, 'ada@okeke.ng');
+        $this->signIn($owner);
+        $this->fresh($owner)->setLocale('pt');
+        $this->client->setServerParameter('HTTP_ACCEPT_LANGUAGE', 'es');
+
+        $pending = Iter\first(Vec\filter($this->listed($organisation), static fn (array $member): bool => 'pending_approval' === $member['status']));
+        $removes = Type\shape(['at' => Type\string(), 'written' => Type\string()], true)->coerce($pending['removesAt'] ?? null);
+
+        $written = fn (string $locale): string => self::service(UserMailer::class)->deadline(new DateTimeImmutable($removes['at']), $this->fresh($owner), $locale);
+        self::assertSame($written('es'), $removes['written']);
+        self::assertNotSame($written('pt'), $removes['written']);
     }
 
     #[Test]
@@ -198,7 +344,7 @@ final class JoinRequestsTest extends ApiTestCase
         self::assertSame('2026-11-11 08:40:00', $this->lastStep($membership)->getOccurredAt()->format('Y-m-d H:i:s'));
         self::assertNull($this->lastStep($membership)->getActor());
         self::assertSame('membership.request_expired', $this->audited($membership)->getAction());
-        self::assertStringContainsString('mercredi 11 nov. à 09:40 WAT', $this->mailTo('ada@okeke.ng', 'Your request to join Ìrè Events was removed'));
+        self::assertStringContainsString('mercredi 11 nov. à 09:40 WAT', $this->mailTo('ada@okeke.ng', self::service(UserMailer::class)->line('joinRequest.expired.subject', 'fr', ['{organisation}' => 'Ìrè Events'])));
     }
 
     #[Test]

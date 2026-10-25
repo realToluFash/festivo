@@ -40,7 +40,7 @@ final readonly class ScriptedAssistant implements AssistantInterface
         [$directive, $argument] = $this->directive($message);
 
         return match ($directive) {
-            '!refuse' => throw new AssistantRefused('The assistant would not answer that.'),
+            '!refuse' => throw new AssistantRefused('assistant.refused'),
             '!busy' => throw new AssistantUnavailable('The assistant is busy. Please try again.'),
             '!fail' => throw new AssistantFailed('A scripted failure.'),
             '!tool' => $this->toolCall($ask, $argument),

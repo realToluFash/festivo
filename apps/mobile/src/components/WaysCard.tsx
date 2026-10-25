@@ -11,11 +11,12 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { proveIntro } from '../kit/waysProof.ts';
+import { proveIntro, unlinkProofLapsed } from '../kit/waysProof.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { heldProof } from '../recentProof.ts';
 import { tokens } from '../theme/tokens.ts';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { ConfirmItsYou } from './ConfirmItsYou.tsx';
@@ -33,7 +34,7 @@ type Said =
 type Stage =
   | { kind: 'list'; said: Said | null }
   | { kind: 'proving'; act: Act }
-  | { kind: 'confirming'; act: Act }
+  | { kind: 'confirming'; act: Act; proof: string }
   | { kind: 'working' };
 
 /** Settings > Security, between Password and Two-factor: link or unlink Google and Apple (sc-510). */
@@ -43,6 +44,7 @@ export function WaysCard({
   providers,
   kind,
   onChanged,
+  onRefused,
   onSetPassword,
   onSignedOutHere,
   onCodeSpent,
@@ -52,6 +54,8 @@ export function WaysCard({
   providers: readonly LinkedProvider[];
   kind: LayoutKind;
   onChanged: () => Promise<void>;
+  /** The server refused an unlink, so the rows on screen may be stale; a failed read leaves them. */
+  onRefused: () => Promise<void>;
   onSetPassword: () => void;
   onSignedOutHere: () => void;
   /** A two-factor or recovery code was accepted, so the two-factor card's count may be stale. */
@@ -79,20 +83,14 @@ export function WaysCard({
   }, []);
 
   function begin(act: Act): void {
-    if (heldProof() == null) setStage({ kind: 'proving', act });
-    else void proceed(act);
+    const proof = heldProof();
+    if (proof == null) setStage({ kind: 'proving', act });
+    else void proceed(act, proof);
   }
 
-  async function proceed(act: Act): Promise<void> {
+  async function proceed(act: Act, proof: string): Promise<void> {
     if (act.action === 'unlink') {
-      setStage({ kind: 'confirming', act });
-
-      return;
-    }
-
-    const proof = heldProof();
-    if (proof == null) {
-      setStage({ kind: 'proving', act });
+      setStage({ kind: 'confirming', act, proof });
 
       return;
     }
@@ -126,14 +124,7 @@ export function WaysCard({
     }
   }
 
-  async function unlink(provider: Provider): Promise<void> {
-    const proof = heldProof();
-    if (proof == null) {
-      setStage({ kind: 'proving', act: { action: 'unlink', provider } });
-
-      return;
-    }
-
+  async function unlink(provider: Provider, proof: string): Promise<void> {
     setStage({ kind: 'working' });
 
     try {
@@ -148,6 +139,13 @@ export function WaysCard({
       await onChanged();
       setStage({ kind: 'list', said: { kind: 'unlinked', provider } });
     } catch (error) {
+      if (unlinkProofLapsed(error)) {
+        setStage({ kind: 'proving', act: { action: 'unlink', provider } });
+
+        return;
+      }
+
+      if (error instanceof ApiError) await onRefused().catch(() => {});
       setStage({ kind: 'list', said: refused(error, provider) });
     }
   }
@@ -161,7 +159,7 @@ export function WaysCard({
           hasPassword={hasPassword}
           providers={providers}
           twoFactorOn={twoFactorOn}
-          onProved={() => void proceed(stage.act)}
+          onProved={(proof) => void proceed(stage.act, proof)}
           onCodeSpent={onCodeSpent}
           onCancel={() => setStage({ kind: 'list', said: null })}
         />
@@ -176,7 +174,7 @@ export function WaysCard({
           act={stage.act}
           hasPassword={hasPassword}
           providers={providers}
-          onUnlink={() => void unlink(stage.act.provider)}
+          onUnlink={() => void unlink(stage.act.provider, stage.proof)}
           onKeep={() => setStage({ kind: 'list', said: null })}
         />
       </View>
@@ -194,7 +192,7 @@ export function WaysCard({
 
       {stage.kind === 'list' && stage.said != null && <SaidNotice said={stage.said} />}
 
-      <View accessibilityLabel={t('waysCard.title')}>
+      <View>
         <View style={styles.row}>
           <View style={styles.detail}>
             <Text size={tokens.typeRowTitle.size} weight="semibold">
@@ -295,9 +293,13 @@ function Row({
 function State({ on, word, address }: { on: boolean; word: string; address?: string | null }) {
   return (
     <View style={styles.state}>
-      <View style={on ? styles.markOn : styles.markOff}>
+      <View
+        style={on ? styles.markOn : styles.markOff}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
         {on && (
-          <Text size={tokens.typePill.size} weight="bold" style={styles.markInk}>
+          <Text size={tokens.typePill.size} weight="bold" style={styles.markInk} accessible={false}>
             {tokens.marks.done.glyph}
           </Text>
         )}
@@ -340,6 +342,7 @@ function SaidNotice({ said }: { said: Said }) {
               : t('waysCard.linkedNext', { provider, address: said.email })
             : t('waysCard.unlinkedNext')
         }
+        answer={said}
       />
     );
   }
@@ -354,6 +357,7 @@ function SaidNotice({ said }: { said: Said }) {
           provider: PROVIDER_NAMES[said.provider],
           other: PROVIDER_NAMES[said.provider === 'google' ? 'apple' : 'google'],
         })}
+        answer={said}
       />
     );
   }
@@ -367,6 +371,7 @@ function SaidNotice({ said }: { said: Said }) {
         mark={tokens.marks.broken.glyph}
         title={t('waysCard.taken', { provider })}
         body={t('waysCard.takenNext', { provider })}
+        answer={said}
       />
     );
   }
@@ -382,6 +387,7 @@ function SaidNotice({ said }: { said: Said }) {
             ? t('waysCard.providerFailed', { provider: PROVIDER_NAMES[said.provider] })
             : t('waysCard.failedBody')
       }
+      answer={said}
     />
   );
 }
@@ -402,7 +408,7 @@ function Proving({
   hasPassword: boolean;
   providers: readonly LinkedProvider[];
   twoFactorOn: boolean;
-  onProved: () => void;
+  onProved: (proof: string) => void;
   onCodeSpent: () => void;
   onCancel: () => void;
 }) {
@@ -415,6 +421,7 @@ function Proving({
       intro={proveIntro(t, act.action, name)}
       via={proveWith(hasPassword, providers, act.provider)}
       twoFactorOn={twoFactorOn}
+      answer={act}
       note={
         act.action === 'link' && (
           <Notice tone="quiet" mark="i" body={t('waysCard.linkNote', { provider: name, email })} />
@@ -454,9 +461,9 @@ function Confirming({
 
   return (
     <>
-      <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+      <AnswerHeading size={tokens.typeTitleSection.size} weight="bold" answer={act}>
         {t('waysCard.confirmTitle', { provider: name })}
-      </Text>
+      </AnswerHeading>
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
         {[
           address == null

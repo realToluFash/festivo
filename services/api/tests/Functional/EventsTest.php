@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\Event\EventCreator;
+use App\Domain\Event\EventEditor;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
@@ -16,12 +17,14 @@ use App\Enum\ErrorCode;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
+use App\Tests\Double\ScriptedEventAmounts;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Dict;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;
@@ -66,6 +69,7 @@ final class EventsTest extends ApiTestCase
         self::assertSame('2026-11-15T02:00:00+01:00', $event['endsAt']);
         self::assertSame('Africa/Lagos', $event['timeZone']);
         self::assertSame('NGN', $event['currency']);
+        self::assertSame(2, $event['dayCount']);
         self::assertSame($this->organisation->getId()->toRfc4122(), $event['organisationId']);
 
         self::assertSame($event, $this->event($this->as($this->owner, 'GET', '/api/events/' . $event['id'])));
@@ -88,7 +92,7 @@ final class EventsTest extends ApiTestCase
     public static function refusals(): iterable
     {
         yield 'a blank name' => [['name' => '   '], 'name', 'Give the event a name.'];
-        yield 'a name past 120' => [['name' => Str\repeat('a', 121)], 'name', 'Use at most 120 characters for the name.'];
+        yield 'a name past 120' => [['name' => Str\repeat('a', 121)], 'name', 'Shorten the name to 120 characters or fewer.'];
         yield 'no start' => [['startsAt' => ''], 'startsAt', 'Choose when the event starts.'];
         yield 'no end' => [['endsAt' => ''], 'endsAt', 'Choose when the event ends.'];
         yield 'an end before the start' => [['endsAt' => '2026-11-14T15:59'], 'endsAt', 'The end is before the start. Choose a later end.'];
@@ -184,6 +188,19 @@ final class EventsTest extends ApiTestCase
     }
 
     #[Test]
+    public function everyResponseCountsTheDatesTheEventTouches(): void
+    {
+        $overnight = $this->event($this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'name' => 'Overnight', 'startsAt' => '2026-11-14T19:00', 'endsAt' => '2026-11-15T02:00']));
+        $daytime = $this->event($this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'name' => 'Daytime', 'startsAt' => '2026-11-14T10:00', 'endsAt' => '2026-11-14T23:00']));
+
+        self::assertSame([2, 1], [$overnight['dayCount'], $daytime['dayCount']]);
+        self::assertSame(2, $this->event($this->as($this->owner, 'GET', '/api/events/' . $overnight['id']))['dayCount']);
+
+        $listed = Type\vec(Type\shape(['name' => Type\string(), 'dayCount' => Type\int()], true))->coerce($this->as($this->owner, 'GET', $this->path('events'))['events']);
+        self::assertSame(['Daytime' => 1, 'Overnight' => 2], Dict\from_entries(Vec\map($listed, static fn (array $event): array => [$event['name'], $event['dayCount']])));
+    }
+
+    #[Test]
     public function theListIsSoonestFirstThenByName(): void
     {
         $this->create('Later', '2026-12-01T10:00');
@@ -273,6 +290,229 @@ final class EventsTest extends ApiTestCase
         self::assertEqualsWithDelta(new DateTimeImmutable()->getTimestamp(), $entry->getOccurredAt()->getTimestamp(), 5);
     }
 
+    #[Test]
+    public function anOrganiserEditsWithTheTagTheyRead(): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+        $read = $this->tagOf($id);
+
+        $edited = $this->event($this->edit($id, ['name' => '  Adé at 40  ', 'startsAt' => '2026-11-14T18:00', 'endsAt' => '2026-11-15T01:00', 'currency' => 'GHS'], $read));
+
+        self::assertSame(200, $this->statusCode());
+        self::assertSame(['Adé at 40', '2026-11-14T18:00:00+01:00', '2026-11-15T01:00:00+01:00', 'Africa/Lagos', 'GHS'], [$edited['name'], $edited['startsAt'], $edited['endsAt'], $edited['timeZone'], $edited['currency']]);
+        $tag = $this->tag();
+        self::assertNotSame($read, $tag);
+        self::assertSame($edited, $this->event($this->as($this->owner, 'GET', '/api/events/' . $id)));
+        self::assertSame($tag, $this->tag());
+    }
+
+    #[Test]
+    public function aFieldLeftOutKeepsItsValue(): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+
+        $edited = $this->event($this->edit($id, ['name' => 'Owambe at night'], $this->tagOf($id)));
+
+        self::assertSame(['Owambe at night', '2026-11-14T16:00:00+01:00', 'NGN'], [$edited['name'], $edited['startsAt'], $edited['currency']]);
+    }
+
+    /** @param array<string, string> $change */
+    #[Test]
+    #[DataProvider('refusals')]
+    public function anEditIsRefusedWhatTheFormRefuses(array $change, string $field, string $message): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+        $read = $this->tagOf($id);
+        $before = $this->event($this->as($this->owner, 'GET', '/api/events/' . $id));
+
+        $this->edit($id, $change, $read);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame([$field => $message], $this->violations());
+        self::assertSame($before, $this->event($this->as($this->owner, 'GET', '/api/events/' . $id)));
+        self::assertSame($read, $this->tag());
+    }
+
+    /** London's clocks go forward on 29 March 2026, Paris's the same night: both times stay as typed, each at its own offset. */
+    #[Test]
+    public function aNewZoneKeepsTheTimesAsTypedAcrossAChangeOfClocks(): void
+    {
+        $id = $this->event($this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'startsAt' => '2026-03-28T19:00', 'endsAt' => '2026-03-29T19:00', 'timeZone' => 'Europe/London']))['id'];
+
+        $edited = $this->event($this->edit($id, ['timeZone' => 'Europe/Paris'], $this->tagOf($id)));
+
+        self::assertSame(['2026-03-28T19:00:00+01:00', '2026-03-29T19:00:00+02:00', 'Europe/Paris'], [$edited['startsAt'], $edited['endsAt'], $edited['timeZone']]);
+        self::assertSame(
+            ['starts_at' => '2026-03-28 19:00:00', 'starts_at_utc' => '2026-03-28 18:00:00', 'ends_at_utc' => '2026-03-29 17:00:00'],
+            self::service(Connection::class)->fetchAssociative('SELECT starts_at, starts_at_utc, ends_at_utc FROM events WHERE id = :id', ['id' => $id]),
+        );
+    }
+
+    /** @return iterable<string, array{?string}> */
+    public static function unnamedVersions(): iterable
+    {
+        yield 'no If-Match' => [null];
+        yield 'If-Match: *' => ['*'];
+    }
+
+    #[Test]
+    #[DataProvider('unnamedVersions')]
+    public function anEditWithoutIfMatchIsRefusedAndSavesNothing(?string $ifMatch): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+
+        $this->edit($id, ['name' => 'Changed'], $ifMatch);
+
+        self::assertSame(428, $this->statusCode());
+        self::assertSame(ErrorCode::PreconditionRequired->type(), $this->last()['type'] ?? null);
+        self::assertSame('Send the version you are changing, as If-Match.', $this->last()['detail'] ?? null);
+        self::assertSame('Owambe', $this->event($this->as($this->owner, 'GET', '/api/events/' . $id))['name']);
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function staleTags(): iterable
+    {
+        yield 'the tag before a colleague saved' => ['stale'];
+        yield 'the current tag, weak' => ['weak'];
+    }
+
+    #[Test]
+    #[DataProvider('staleTags')]
+    public function anEditFromAnOlderVersionIsRefusedAndKeepsTheColleaguesChange(string $which): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+        $read = $this->tagOf($id);
+        $this->edit($id, ['name' => 'Colleague’s name'], $read);
+        $current = $this->tag();
+
+        $this->edit($id, ['name' => 'Mine'], 'stale' === $which ? $read : 'W/' . $current);
+
+        self::assertSame(412, $this->statusCode());
+        self::assertSame(ErrorCode::PreconditionFailed->type(), $this->last()['type'] ?? null);
+        self::assertSame('Somebody else changed this event since you opened it.', $this->last()['detail'] ?? null);
+        self::assertSame('Colleague’s name', $this->event($this->as($this->owner, 'GET', '/api/events/' . $id))['name']);
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function codings(): iterable
+    {
+        yield 'zstd' => ['zstd'];
+        yield 'br' => ['br'];
+        yield 'gzip' => ['gzip'];
+    }
+
+    #[Test]
+    #[DataProvider('codings')]
+    public function theTagOfACompressedReadStillMatches(string $coding): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+
+        self::assertSame('"1"', $this->tagOf($id));
+
+        $this->edit($id, ['name' => 'Renamed'], '"1-' . $coding . '"');
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame('Renamed', $this->event($this->last())['name']);
+    }
+
+    #[Test]
+    public function aCurrencyNoLongerOfferedStaysThroughAnEditThatLeavesItOut(): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+        self::service(Connection::class)->executeStatement("UPDATE events SET currency = 'ZWL' WHERE id = :id", ['id' => $id]);
+
+        $this->edit($id, ['name' => 'Renamed'], $this->tagOf($id));
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(['ZWL', 'Renamed'], [$this->event($this->last())['currency'], $this->event($this->last())['name']]);
+    }
+
+    #[Test]
+    public function theCurrencyCannotChangeOnceAnAmountIsRecorded(): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+        self::service(ScriptedEventAmounts::class)->record($id);
+
+        $this->edit($id, ['currency' => 'GHS', 'name' => 'Renamed'], $this->tagOf($id));
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(ErrorCode::EventCurrencyInUse->type(), $this->last()['type'] ?? null);
+        self::assertSame('application/problem+json', $this->client->getResponse()->headers->get('Content-Type'));
+        $kept = $this->event($this->as($this->owner, 'GET', '/api/events/' . $id));
+        self::assertSame(['NGN', 'Owambe'], [$kept['currency'], $kept['name']]);
+
+        $this->edit($id, ['currency' => 'NGN', 'name' => 'Renamed'], $this->tagOf($id));
+        self::assertSame(200, $this->statusCode());
+    }
+
+    /** @return iterable<string, array{SeededRole, bool}> */
+    public static function editors(): iterable
+    {
+        yield 'an administrator' => [SeededRole::Administrator, true];
+        yield 'an event manager' => [SeededRole::EventManager, true];
+        yield 'a coordinator' => [SeededRole::Coordinator, true];
+        yield 'a read-only member' => [SeededRole::ReadOnly, false];
+    }
+
+    #[Test]
+    #[DataProvider('editors')]
+    public function onlyEventsManageEdits(SeededRole $seeded, bool $edits): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+        $tag = $this->tagOf($id);
+        $member = $this->member('member@ire.events', $seeded);
+
+        $this->as($member, 'PATCH', '/api/events/' . $id, ['name' => 'Theirs'], $tag);
+
+        self::assertSame($edits ? 200 : 403, $this->statusCode());
+
+        if (!$edits) {
+            self::assertSame(ErrorCode::PermissionRequired->type(), $this->last()['type'] ?? null);
+        }
+    }
+
+    #[Test]
+    public function anotherOrganisationsEventCannotBeEdited(): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+        $tag = $this->tagOf($id);
+        $stranger = $this->account('stranger@elsewhere.events');
+        self::service(OrganisationFounder::class)->found($stranger, 'Elsewhere', 'NG', 'Africa/Lagos');
+        self::em()->flush();
+
+        $this->as($stranger, 'PATCH', '/api/events/' . $id, ['name' => 'Theirs'], $tag);
+
+        self::assertSame(404, $this->statusCode());
+    }
+
+    #[Test]
+    public function anEditIsAuditedWithWhatChangedFromWhatToWhat(): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+
+        $this->edit($id, ['name' => 'Owambe', 'endsAt' => '2026-11-14T23:00'], $this->tagOf($id));
+
+        $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => EventEditor::UPDATED, 'subjectType' => 'Event']);
+        self::assertInstanceOf(AuditEntry::class, $entry);
+        self::assertSame($id, $entry->getSubjectId()->toRfc4122());
+        self::assertSame($this->owner->getId()->toRfc4122(), $entry->getActorId()?->toRfc4122());
+        self::assertSame(['endsAt' => ['2026-11-14T16:00:00+01:00', '2026-11-14T23:00:00+01:00']], $entry->getChanges());
+        self::assertEqualsWithDelta(new DateTimeImmutable()->getTimestamp(), $entry->getOccurredAt()->getTimestamp(), 5);
+    }
+
+    #[Test]
+    public function anEditThatChangesNothingRecordsNothing(): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+        $read = $this->tagOf($id);
+
+        $this->edit($id, ['name' => 'Owambe', 'timeZone' => 'Africa/Lagos'], $read);
+
+        self::assertSame(200, $this->statusCode());
+        self::assertSame($read, $this->tag());
+        self::assertNull(self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => EventEditor::UPDATED]));
+    }
+
     /** @return array{name: string, startsAt: string, endsAt: string, timeZone: string, currency: string} */
     private static function valid(): array
     {
@@ -287,6 +527,28 @@ final class EventsTest extends ApiTestCase
         return $this->event($body)['id'];
     }
 
+    private function tagOf(string $id): string
+    {
+        $this->as($this->owner, 'GET', '/api/events/' . $id);
+
+        return $this->tag();
+    }
+
+    private function tag(): string
+    {
+        return (string) $this->client->getResponse()->headers->get('ETag');
+    }
+
+    /**
+     * @param array<string, string> $body
+     *
+     * @return array<string, mixed>
+     */
+    private function edit(string $id, array $body, ?string $ifMatch): array
+    {
+        return $this->as($this->owner, 'PATCH', '/api/events/' . $id, $body, $ifMatch);
+    }
+
     /** @return list<string> */
     private function listed(): array
     {
@@ -298,7 +560,7 @@ final class EventsTest extends ApiTestCase
     /**
      * @param array<string, mixed> $body
      *
-     * @return array{id: string, organisationId: string, name: string, status: string, startsAt: string, endsAt: string, timeZone: string, currency: string, createdAt: string}
+     * @return array{id: string, organisationId: string, name: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, createdAt: string}
      */
     private function event(array $body): array
     {
@@ -310,6 +572,7 @@ final class EventsTest extends ApiTestCase
             'startsAt' => Type\string(),
             'endsAt' => Type\string(),
             'timeZone' => Type\string(),
+            'dayCount' => Type\int(),
             'currency' => Type\string(),
             'createdAt' => Type\string(),
         ])->assert($body['event'] ?? null);
@@ -356,12 +619,13 @@ final class EventsTest extends ApiTestCase
      *
      * @return array<string, mixed>
      */
-    private function as(User $user, string $method, string $path, ?array $body = null): array
+    private function as(User $user, string $method, string $path, ?array $body = null, ?string $ifMatch = null): array
     {
         $who = self::em()->find(User::class, $user->getId()) ?? self::fail('no user');
         $this->client->request($method, $path, server: [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($who),
+            ...null === $ifMatch ? [] : ['HTTP_IF_MATCH' => $ifMatch],
         ], content: null === $body ? null : Json\encode($body));
 
         return $this->last();

@@ -7,3 +7,4 @@
 30 3 * * * php /app/bin/console app:prune-deleted-organisations --no-interaction
 */5 * * * * php /app/bin/console app:sign-in-rules:record-two-factor-holds --no-interaction
 * * * * * php /app/bin/console app:join-requests:run --no-interaction
+* * * * * php /app/bin/console app:owner-claims:run --no-interaction

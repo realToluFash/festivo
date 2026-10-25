@@ -45,7 +45,7 @@ final class AccountTimeZoneTest extends ApiTestCase
     {
         $user = $this->registered('folake@example.com', 'Africa/Lagos');
 
-        self::assertSame('October 17, 2026 at 14:05 WAT', $this->moment($user, 'en'));
+        self::assertSame('17 October 2026 at 14:05 WAT', $this->moment($user, 'en'));
         self::assertSame('17 octobre 2026 à 14:05 WAT', $this->moment($user, 'fr'));
     }
 
@@ -53,13 +53,13 @@ final class AccountTimeZoneTest extends ApiTestCase
     #[Test]
     public function aZoneWithNoShortNameShowsItsOffset(): void
     {
-        self::assertSame('October 17, 2026 at 17:05 UTC+04:00', $this->moment($this->registered('dubai@example.com', 'Asia/Dubai'), 'en'));
+        self::assertSame('17 October 2026 at 17:05 UTC+04:00', $this->moment($this->registered('dubai@example.com', 'Asia/Dubai'), 'en'));
     }
 
     #[Test]
     public function anAccountWithNoneGetsUtcLabelled(): void
     {
-        self::assertSame('October 17, 2026 at 13:05 UTC', $this->moment($this->registered('nobody@example.com', null), 'en'));
+        self::assertSame('17 October 2026 at 13:05 UTC', $this->moment($this->registered('nobody@example.com', null), 'en'));
     }
 
     #[Test]

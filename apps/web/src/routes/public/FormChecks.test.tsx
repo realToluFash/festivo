@@ -58,7 +58,6 @@ function invalid(label: string | RegExp): boolean {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('sign in checks before it sends', () => {
@@ -73,7 +72,9 @@ describe('sign in checks before it sends', () => {
     expect(invalid('Email')).toBe(true);
     expect(invalid('Password')).toBe(true);
     expect(document.activeElement).toBe(screen.getByLabelText('Email'));
-    expect(screen.getByRole('button', { name: 'Sign in' }).hasAttribute('disabled')).toBe(false);
+    expect(screen.getByRole('button', { name: 'Sign in' }).getAttribute('aria-disabled')).toBe(
+      'false',
+    );
     expect(posts(sent, '/api/auth/login')).toEqual([]);
   });
 
