@@ -1,5 +1,10 @@
 import { type Ref } from 'react';
-import { Text as RNText, StyleSheet, type TextProps as RNTextProps } from 'react-native';
+import {
+  Text as RNText,
+  StyleSheet,
+  type TextProps as RNTextProps,
+  useWindowDimensions,
+} from 'react-native';
 
 import { WEIGHTS, faced, type WeightName } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -34,8 +39,12 @@ export function Text({
   style,
   ...rest
 }: TextProps) {
+  const { fontScale } = useWindowDimensions();
+
   return (
     <RNText
+      // Native measures text again when the text size changes, but lays out nothing around it: a new text is laid out from the root down.
+      key={fontScale}
       style={faced(
         [
           styles.base,
