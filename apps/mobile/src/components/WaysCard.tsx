@@ -198,7 +198,7 @@ export function WaysCard({
 
       {stage.kind === 'list' && stage.said != null && <SaidNotice said={stage.said} />}
 
-      <View accessibilityLabel={t('waysCard.title')}>
+      <View>
         <View style={styles.row}>
           <View style={styles.detail}>
             <Text size={tokens.typeRowTitle.size} weight="semibold">

@@ -248,7 +248,6 @@ function Choosing({
               onLayout={(event) => setListHeight(event.nativeEvent.layout.height)}
               nestedScrollEnabled
               keyboardShouldPersistTaps="handled"
-              accessibilityLabel={t('timeZone.listLabel')}
             >
               {matches.map((zone, index) => (
                 <Pressable

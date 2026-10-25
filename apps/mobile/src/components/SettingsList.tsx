@@ -135,7 +135,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
   }
 
   return (
-    <View style={styles.tabletList} accessibilityLabel={t('settings.sections')}>
+    <View style={styles.tabletList}>
       {groups.map(({ key, heading, rows }) => (
         <Fragment key={key}>
           {heading}
