@@ -152,7 +152,9 @@ describe('verifying an email address', () => {
     enter('123456');
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { level: 1, name: 'Email verified' })).toBeDefined(),
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'Email verified' }),
+      ),
     );
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDefined();
     expect(seen).toContain('POST /api/auth/verify/email');
@@ -265,6 +267,7 @@ describe('verifying an email address', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Email verified' })).toBeDefined();
     expect(screen.queryByLabelText('Code from the email')).toBeNull();
+    expect(document.activeElement).toBe(document.body);
   });
 
   it('sends somebody with no session to sign in', async () => {

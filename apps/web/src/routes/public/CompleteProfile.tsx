@@ -11,7 +11,7 @@ import {
   startingPhoneCountry,
   waitingInvitations,
 } from '@soirely/domain';
-import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type FormEvent, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from 'react-router';
 
@@ -34,6 +34,7 @@ import {
   restoreSession,
   useSessionState,
 } from '../../session.ts';
+import { useStepFocus } from '../../stepFocus.ts';
 
 type Field =
   'name' | 'organisationName' | 'countryCode' | 'timezone' | 'phoneCountryCode' | 'phoneNumber';
@@ -44,6 +45,8 @@ export function CompleteProfile() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const state = useSessionState();
+  const [waitingHeading, arriveAtWaiting] = useStepFocus();
+  const [askedHere, setAskedHere] = useState(false);
 
   useEffect(() => {
     void restoreSession();
@@ -87,7 +90,12 @@ export function CompleteProfile() {
       <LinkedNotice />
 
       {state.session.waitingFor != null ? (
-        <Waiting request={state.session.waitingFor} email={state.session.email} />
+        <Waiting
+          request={state.session.waitingFor}
+          email={state.session.email}
+          pressed={askedHere}
+          headingRef={waitingHeading}
+        />
       ) : (
         <>
           <div className="auth-heading">
@@ -115,10 +123,12 @@ export function CompleteProfile() {
             organisationCountry={
               state.session.organisation?.countryCode ?? state.session.organisationCountry
             }
+            onAsked={() => setAskedHere(true)}
             onSaved={(verificationNeeded, asked) => {
               // A phone to verify comes first; after it, an account that asked lands back here, waiting.
               if (verificationNeeded) navigate('/verify-phone?from=onboarding', { replace: true });
-              else if (!asked) navigate('/app', { replace: true });
+              else if (asked) arriveAtWaiting();
+              else navigate('/app', { replace: true });
             }}
           />
         </>
@@ -135,7 +145,17 @@ export function CompleteProfile() {
 }
 
 /** Asked to join at its domain, with nothing of that organisation's to see until somebody approves. */
-function Waiting({ request, email }: { request: JoinRequest; email: string }) {
+function Waiting({
+  request,
+  email,
+  pressed,
+  headingRef,
+}: {
+  request: JoinRequest;
+  email: string;
+  pressed: boolean;
+  headingRef: RefObject<HTMLHeadingElement | null>;
+}) {
   const { t } = useTranslation();
   const [withdrawing, setWithdrawing] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -159,7 +179,9 @@ function Waiting({ request, email }: { request: JoinRequest; email: string }) {
   return (
     <>
       <div className="auth-heading">
-        <h1>{t('domainJoining.waitingTitle', { organisation })}</h1>
+        <h1 ref={headingRef} tabIndex={-1}>
+          {t('domainJoining.waitingTitle', { organisation })}
+        </h1>
         <p>{t('domainJoining.waitingIntro', { email })}</p>
       </div>
 
@@ -175,7 +197,7 @@ function Waiting({ request, email }: { request: JoinRequest; email: string }) {
         </div>
       )}
 
-      <div className="notice notice-attention" role="status">
+      <div className="notice notice-attention" role={pressed ? undefined : 'status'}>
         <span className="mark mark-attention" aria-hidden="true">
           …
         </span>
@@ -208,11 +230,13 @@ function Details({
   name,
   needsOrganisation,
   organisationCountry,
+  onAsked,
   onSaved,
 }: {
   name: string;
   needsOrganisation: boolean;
   organisationCountry: string | null;
+  onAsked: () => void;
   onSaved: (verificationNeeded: boolean, asked: boolean) => void;
 }) {
   const { t } = useTranslation();
@@ -369,6 +393,8 @@ function Details({
       });
 
       if (firstJoined != null) rememberOrganisation(firstJoined);
+      // Before the session says it is waiting, so the waiting screen knows a click brought it as it mounts.
+      if (askToJoin != null) onAsked();
       await adoptAccount(saved.account);
       onSaved(saved.verificationNeeded, askToJoin != null);
     } catch (error) {

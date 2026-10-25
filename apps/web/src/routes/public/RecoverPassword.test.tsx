@@ -100,7 +100,9 @@ describe('asking for a reset link', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send the link' }));
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { level: 1, name: 'Check your email' })).toBeDefined(),
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'Check your email' }),
+      ),
     );
     expect(
       screen.getByText(/If that address has an account, we have sent it a link/),
@@ -125,6 +127,49 @@ describe('asking for a reset link', () => {
     expect(
       screen.getByText(/^Try again at \d\d:\d\d\. Any link already sent still works\.$/),
     ).toBeDefined();
+    // The button that was pressed is still there, so focus stays and the notice is read out.
+    expect(screen.getByRole('alert').textContent).toMatch(/Too many requests/);
+  });
+
+  async function sentOnce(again: () => Response) {
+    let sends = 0;
+    answering({
+      'POST /api/auth/password/forgot': () => (++sends === 1 ? json({}, 202) : again()),
+    });
+    at('/forgot-password');
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'folake@ire.events' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the link' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Send it again' }));
+  }
+
+  it('takes focus back to Check your email once Send it again has sent', async () => {
+    await sentOnce(() => json({}, 202));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'Check your email' }),
+      ),
+    );
+  });
+
+  it('takes focus to the notice when Send it again fails, read once rather than announced too', async () => {
+    await sentOnce(() => {
+      throw new TypeError('Failed to fetch');
+    });
+
+    const notice = await screen.findByText('That did not work');
+    await waitFor(() => expect(document.activeElement).toBe(notice.closest('.notice')));
+    expect(document.activeElement?.textContent).toMatch(/Something went wrong on the way/);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('takes focus to the notice when Send it again is refused for too many', async () => {
+    await sentOnce(() => problem('too_many_attempts', 429, { 'Retry-After': '600' }));
+
+    const notice = await screen.findByText('Too many requests');
+    await waitFor(() => expect(document.activeElement).toBe(notice.closest('.notice')));
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });
 
@@ -295,7 +340,9 @@ describe('setting a new password from the link', () => {
 
     await waitFor(
       () =>
-        expect(screen.getByRole('heading', { level: 1, name: 'Password changed' })).toBeDefined(),
+        expect(document.activeElement).toBe(
+          screen.getByRole('heading', { level: 1, name: 'Password changed' }),
+        ),
       { timeout: 3000 },
     );
     expect(
@@ -365,7 +412,12 @@ describe('setting a new password from the link', () => {
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '123456' } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue to a new password' }));
 
-    fireEvent.change(await screen.findByLabelText('New password'), {
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'Set a new password' }),
+      ),
+    );
+    fireEvent.change(screen.getByLabelText('New password'), {
       target: { value: 'a brand new passphrase' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Set password and sign in' }));
@@ -397,6 +449,50 @@ describe('setting a new password from the link', () => {
     );
     expect(screen.getByRole('link', { name: 'Send a new link' }).getAttribute('href')).toBe(
       '/forgot-password',
+    );
+    // Shown as the page opens: nobody clicked, so focus is not moved.
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it.each([
+    ['reset_link_used', 410, 'This link has already been used'],
+    ['reset_link_expired', 410, 'This link has expired'],
+  ])(
+    'takes focus to its page for %s once the link dies under a click',
+    async (code, status, title) => {
+      checked({ 'POST /api/auth/password/reset': () => problem(code, status) });
+      at('/reset-password?token=t1');
+
+      fireEvent.change(await screen.findByLabelText('New password'), {
+        target: { value: 'a brand new passphrase' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Set password and sign in' }));
+
+      await waitFor(() =>
+        expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: title })),
+      );
+    },
+  );
+
+  it.each([
+    ['reset_link_used', 410, 'This link has already been used'],
+    ['two_factor_challenge_invalid', 401, 'This link has expired'],
+  ])('takes focus to its page for %s once the code is checked', async (code, status, title) => {
+    answering({
+      'POST /api/auth/password/reset/check': () =>
+        json({ email: 'folake@ire.events', twoFactor: true }),
+      'POST /api/auth/password/reset/code': () => problem(code, status),
+      // A 401 is retried after a refresh; signed out, the refresh is refused.
+      'POST /api/auth/refresh': () => problem('invalid_refresh_token', 401),
+    });
+    at('/reset-password?token=t1');
+
+    await screen.findByRole('heading', { level: 1, name: 'Enter your code' });
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to a new password' }));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: title })),
     );
   });
 });

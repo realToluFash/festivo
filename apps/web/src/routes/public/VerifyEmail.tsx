@@ -30,6 +30,7 @@ import {
   restoreSession,
   useSessionState,
 } from '../../session.ts';
+import { useStepFocus } from '../../stepFocus.ts';
 import { FieldError } from '../../components/FieldError.tsx';
 import { useFormChecks } from '../../formChecks.ts';
 
@@ -192,6 +193,7 @@ function CodeScreen({
   const { t } = useTranslation();
   const [status, setStatus] = useState<CodeStatus>({ kind: 'entering' });
   const [cooldown, setCooldown] = useState(0);
+  const [doneHeading, arriveAtDone] = useStepFocus();
   const checks = useFormChecks(
     ['code'] as const,
     (_field, value) => {
@@ -253,6 +255,7 @@ function CodeScreen({
     try {
       await verify(code);
       setStatus({ kind: 'verified' });
+      arriveAtDone();
     } catch (error) {
       if (error instanceof ApiError && error.is('registration_expired')) {
         onExpired();
@@ -319,7 +322,9 @@ function CodeScreen({
             ✓
           </span>
           <div>
-            <h1>{t('verifyEmail.doneTitle')}</h1>
+            <h1 ref={doneHeading} tabIndex={-1}>
+              {t('verifyEmail.doneTitle')}
+            </h1>
             <p className="muted">
               {fromAccount == null
                 ? t('verifyEmail.doneBody', { address })
