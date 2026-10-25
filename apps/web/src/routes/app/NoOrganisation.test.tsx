@@ -190,8 +190,31 @@ describe('No organisation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Start organisation' }));
 
     expect(await screen.findByRole('button', { name: 'Starting…' })).toBeDefined();
-    expect((screen.getByLabelText('Organisation name') as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByLabelText('Organisation name') as HTMLInputElement).readOnly).toBe(true);
     expect((screen.getByLabelText('Country') as HTMLSelectElement).disabled).toBe(true);
+  });
+
+  it('keeps focus in Organisation name while it starts after Enter, and there once refused (sc-11588)', async () => {
+    inNone();
+    let answer: (response: Response) => void = () => {};
+    answering({
+      'GET /api/invitations': () => json({ invitations: [] }),
+      'POST /api/orgs': () => new Promise<Response>((resolve) => (answer = resolve)),
+    });
+    app();
+
+    const name = (await screen.findByLabelText('Organisation name')) as HTMLInputElement;
+    fireEvent.change(name, { target: { value: 'Okoro Weddings' } });
+    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
+    name.focus();
+    fireEvent.submit(name);
+
+    await screen.findByRole('button', { name: 'Starting…' });
+    expect(document.activeElement).toBe(name);
+
+    answer(json({ type: 'about:blank', title: 'Internal Server Error', status: 500 }, 500));
+    expect(await screen.findByRole('button', { name: 'Start organisation' })).toBeDefined();
+    expect(document.activeElement).toBe(name);
   });
 
   it('sends one request for a double press, then one more after a failure (sc-8327)', async () => {

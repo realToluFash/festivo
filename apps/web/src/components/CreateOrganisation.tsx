@@ -9,11 +9,13 @@ import {
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { useFocusAfterSave, useFormChecks } from '../formChecks.ts';
+import { useFormChecks } from '../formChecks.ts';
 import { currentLocale, dateLocale } from '../i18n/index.ts';
+import { focusWhereSent, offField } from '../offField.ts';
 import { FieldError } from './FieldError.tsx';
 import { useDialogKeys } from '../dialogFocus.ts';
 
@@ -53,7 +55,6 @@ export function CreateOrganisation({
     (field, value) => problemMessage(field, value, t),
     focusField,
   );
-  const focusAfterSave = useFocusAfterSave(saving, focusField);
   const errors = { ...refused, ...checks.errors };
 
   useEffect(() => {
@@ -82,7 +83,9 @@ export function CreateOrganisation({
     if (!checks.passes(values)) return;
 
     setSaving(true);
-    dialog.current?.focus();
+    // A click's button turns off under it (sc-8898); Enter leaves focus in the field.
+    if (document.activeElement !== nameInput.current) dialog.current?.focus();
+    const land = focusWhereSent();
     setFailed(false);
     setLimitedUntil(null);
 
@@ -95,10 +98,10 @@ export function CreateOrganisation({
         }),
       );
     } catch (error) {
-      focusAfterSave('name');
-      setSaving(false);
+      flushSync(() => setSaving(false));
 
       if (error instanceof ApiError && error.is('too_many_attempts')) {
+        land('create-organisation-name');
         const liftsAt = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));
         setLimitedUntil(liftsAt == null ? '' : formatTimeOfDay(liftsAt, dateLocale()));
         return;
@@ -106,6 +109,11 @@ export function CreateOrganisation({
 
       if (error instanceof ApiError && error.is('validation_failed')) {
         const fields = error.fieldErrors();
+        land(
+          fields.name == null && fields.countryCode != null
+            ? 'create-organisation-country'
+            : 'create-organisation-name',
+        );
 
         // A refusal naming only a field this form lacks, such as the derived contact address.
         if (fields.name == null && fields.countryCode == null) {
@@ -114,10 +122,10 @@ export function CreateOrganisation({
         }
 
         setRefused({ name: fields.name, countryCode: fields.countryCode });
-        if (fields.name == null) focusAfterSave('countryCode');
         return;
       }
 
+      land('create-organisation-name');
       setFailed(true);
     }
   }
@@ -183,7 +191,7 @@ export function CreateOrganisation({
               autoCorrect="off"
               spellCheck={false}
               value={values.name}
-              disabled={saving}
+              {...offField(saving)}
               aria-invalid={errors.name != null}
               aria-describedby={
                 errors.name == null
