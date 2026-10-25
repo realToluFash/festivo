@@ -34,7 +34,7 @@ export function Moment({
   const className = error == null ? 'input' : 'input input-wrong';
 
   return (
-    <fieldset className="event-moment" aria-describedby={described}>
+    <fieldset className="event-moment" aria-describedby={skipped == null ? undefined : described}>
       <legend>{legend}</legend>
       <div className="event-moment-inputs">
         <div className="field event-moment-date">
@@ -64,7 +64,7 @@ export function Moment({
           />
         </div>
       </div>
-      <div id={`${id}-gap`} aria-live="polite">
+      <div className="event-moment-live" id={`${id}-gap`} aria-live="polite">
         {skipped != null && (
           <div className="notice notice-quiet event-moment-gap">
             <span className="mark mark-info" aria-hidden="true">

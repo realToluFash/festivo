@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -21,42 +23,42 @@ const DRAFT: EventDraft = {
 
 describe('the new event form', () => {
   it('accepts a named event that ends after it starts', () => {
-    expect(eventProblems(DRAFT)).toEqual([]);
+    expect(eventProblems(DRAFT, '')).toEqual([]);
   });
 
   it('refuses a blank name, spaces included', () => {
-    expect(eventProblems({ ...DRAFT, name: '   ' })).toEqual([
+    expect(eventProblems({ ...DRAFT, name: '   ' }, '')).toEqual([
       { field: 'name', problem: 'nameBlank' },
     ]);
   });
 
   it('counts the name after trimming, up to 120 characters', () => {
-    expect(eventProblems({ ...DRAFT, name: ` ${'x'.repeat(120)} ` })).toEqual([]);
-    expect(eventProblems({ ...DRAFT, name: 'x'.repeat(121) })).toEqual([
+    expect(eventProblems({ ...DRAFT, name: ` ${'x'.repeat(120)} ` }, '')).toEqual([]);
+    expect(eventProblems({ ...DRAFT, name: 'x'.repeat(121) }, '')).toEqual([
       { field: 'name', problem: 'nameTooLong' },
     ]);
     expect(eventNameLength('  Ìrè 🎉  ')).toBe(5);
   });
 
   it('says which of the start and the end is missing, a date or a time alone included', () => {
-    expect(eventProblems({ ...DRAFT, startTime: '' })).toEqual([
+    expect(eventProblems({ ...DRAFT, startTime: '' }, '')).toEqual([
       { field: 'startsAt', problem: 'startMissing' },
     ]);
-    expect(eventProblems({ ...DRAFT, endDate: '' })).toEqual([
+    expect(eventProblems({ ...DRAFT, endDate: '' }, '')).toEqual([
       { field: 'endsAt', problem: 'endMissing' },
     ]);
   });
 
   it('refuses an end before the start and accepts one equal to it', () => {
-    expect(eventProblems({ ...DRAFT, endDate: '2026-11-14', endTime: '15:59' })).toEqual([
+    expect(eventProblems({ ...DRAFT, endDate: '2026-11-14', endTime: '15:59' }, '')).toEqual([
       { field: 'endsAt', problem: 'endBeforeStart' },
     ]);
-    expect(eventProblems({ ...DRAFT, endDate: '2026-11-14', endTime: '16:00' })).toEqual([]);
+    expect(eventProblems({ ...DRAFT, endDate: '2026-11-14', endTime: '16:00' }, '')).toEqual([]);
   });
 
   it('lists every problem at once, in the order of the fields', () => {
     expect(
-      eventProblems({ name: '', startDate: '', startTime: '', endDate: '', endTime: '' }).map(
+      eventProblems({ name: '', startDate: '', startTime: '', endDate: '', endTime: '' }, '').map(
         ({ field }) => field,
       ),
     ).toEqual(['name', 'startsAt', 'endsAt']);
@@ -123,6 +125,28 @@ describe('a time the clocks skip (sc-10638)', () => {
     expect(skippedTime('2027-10-03', '02:15', 'Australia/Lord_Howe')).toEqual({
       savedAs: '2027-10-03T02:45',
     });
+  });
+
+  it("names the time the API's LocalTimeResolver saves", () => {
+    const table: Record<string, { zone: string; typed: string; saved: string }> = JSON.parse(
+      readFileSync(
+        new URL(
+          '../../../services/api/tests/Fixtures/LocalTime/wall-clock-times.json',
+          import.meta.url,
+        ),
+        'utf8',
+      ),
+    );
+
+    for (const [name, { zone, typed, saved }] of Object.entries(table)) {
+      const [date, time] = [typed.slice(0, 10), typed.slice(11)];
+      const wallClock = saved.slice(0, 16);
+
+      expect(savedWallClock(date, time, zone), name).toBe(wallClock);
+      expect(skippedTime(date, time, zone), name).toEqual(
+        wallClock === typed ? null : { savedAs: wallClock },
+      );
+    }
   });
 
   it('says nothing either side of the gap', () => {

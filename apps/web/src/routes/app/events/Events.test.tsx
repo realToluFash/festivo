@@ -493,8 +493,9 @@ describe('A time the clocks skip, in New event (sc-10638)', () => {
     fireEvent.change(document.getElementById(id)!, { target: { value } });
   }
 
-  function described(id: string): string {
-    const ids = (document.getElementById(id)!.getAttribute('aria-describedby') ?? '').split(' ');
+  function described(element: string | Element): string {
+    const owner = typeof element === 'string' ? document.getElementById(element)! : element;
+    const ids = (owner.getAttribute('aria-describedby') ?? '').split(' ');
 
     return ids.map((one) => document.getElementById(one)?.textContent ?? '').join(' ');
   }
@@ -509,18 +510,26 @@ describe('A time the clocks skip, in New event (sc-10638)', () => {
     answering({});
     await form();
 
+    const region = document.getElementById('event-start-gap')!;
+    const starts = region.closest('fieldset')!;
+    expect(region.getAttribute('aria-live')).toBe('polite');
+    expect(region.textContent).toBe('');
+    expect(starts.hasAttribute('aria-describedby')).toBe(false);
+
     fill('event-start-time', '02:30');
     expect(screen.queryByText(START_SKIPPED)).toBeNull();
     fill('event-start-date', '2027-03-28');
 
     expect(gapLine('event-start-gap')).toBe(START_SKIPPED);
-    expect(document.getElementById('event-start-gap')!.getAttribute('aria-live')).toBe('polite');
+    expect(document.getElementById('event-start-gap')).toBe(region);
+    expect(described(starts)).toContain(START_SKIPPED);
     expect(described('event-start-date')).toContain(START_SKIPPED);
     expect(described('event-start-time')).toContain(START_SKIPPED);
     expect(document.getElementById('event-start-time')!.getAttribute('aria-invalid')).toBe('false');
 
     fill('event-start-date', '2027-03-27');
     expect(gapLine('event-start-gap')).toBe('');
+    expect(starts.hasAttribute('aria-describedby')).toBe(false);
   });
 
   it('shows it under Starts and Ends at once, keeping the Ends hint', async () => {
@@ -948,6 +957,27 @@ describe("Editing an event's details (sc-3587)", () => {
     expect(document.getElementById('event-time-zone-hint')!.textContent).toBe(
       'Changing the zone keeps the times as typed.',
     );
+  });
+
+  it('refuses a start the gap moves past the end, and sends nothing (sc-10638)', async () => {
+    signedIn();
+    const { sent } = serving();
+    await editing();
+
+    fireEvent.change(screen.getByLabelText('Time zone'), { target: { value: 'Europe/Paris' } });
+    for (const [id, value] of [
+      ['event-start-date', '2027-03-28'],
+      ['event-start-time', '02:30'],
+      ['event-end-date', '2027-03-28'],
+      ['event-end-time', '03:15'],
+    ] as const)
+      fireEvent.change(document.getElementById(id)!, { target: { value } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(
+      await screen.findByText('The end is before the start. Choose a later end.'),
+    ).toBeDefined();
+    expect(sent.filter(({ line }) => line.startsWith('PATCH'))).toEqual([]);
   });
 
   it('is refused to a role without events.manage', async () => {

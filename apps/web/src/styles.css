@@ -3220,6 +3220,10 @@ button.members-row {
   flex: 1 1 7rem;
 }
 
+.event-moment-live:empty {
+  margin-top: calc(-1 * var(--spaceSm));
+}
+
 .event-moment-gap {
   padding: var(--spaceMd) var(--spaceLg);
   font: var(--typeSmall);

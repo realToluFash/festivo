@@ -30,7 +30,7 @@ export function localDateTime(date: string, time: string): string | null {
 /** In the order the form shows its fields, so the first is the one focus goes to. */
 export function eventProblems(
   draft: EventDraft,
-  timeZone = '',
+  timeZone: string,
 ): { field: EventField; problem: EventProblem }[] {
   const problems: { field: EventField; problem: EventProblem }[] = [];
   const length = eventNameLength(draft.name);
@@ -52,7 +52,7 @@ export function eventProblems(
 const MINUTE = 60_000;
 const DAY = 86_400_000;
 
-/** As the API saves it (RFC 5545 §3.3.5): a time the clocks skip moves later by the gap. */
+/** As the API's LocalTimeResolver saves it (RFC 5545 §3.3.5): a time the clocks skip moves later by the gap. */
 export function savedWallClock(date: string, time: string, timeZone: string): string | null {
   const typed = localDateTime(date, time);
 
