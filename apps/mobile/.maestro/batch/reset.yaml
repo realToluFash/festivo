@@ -17,3 +17,13 @@ appId: host.exp.Exponent
 - extendedWaitUntil:
     visible: '{{t:any:settings.signedInAs}}'
     timeout: 60000
+    optional: true
+# The first reload after signing in can close Expo Go rather than reload it: open it again.
+- runFlow:
+    when:
+      notVisible: '{{t:any:settings.signedInAs}}'
+    commands:
+      - openLink: ${METRO_URL}/--/
+      - extendedWaitUntil:
+          visible: '{{t:any:settings.signedInAs}}'
+          timeout: 60000

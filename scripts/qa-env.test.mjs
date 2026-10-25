@@ -688,6 +688,12 @@ describe('a batch flow', () => {
     expect(flow.indexOf('/language?to=es')).toBeLessThan(flow.indexOf('_checks/home.es.yaml'));
   });
 
+  it('reloads first, so nothing the last run left open hides Home', () => {
+    const flow = batchFlow({ checks: ['home'], languages: ['en'], cold: false });
+    expect(flow.indexOf("ASK: '/reload'")).toBeGreaterThan(flow.indexOf('launchApp'));
+    expect(flow.indexOf("ASK: '/reload'")).toBeLessThan(flow.indexOf('session.yaml'));
+  });
+
   it('relaunches and signs out first when it is one check, cold', () => {
     const flow = batchFlow({ checks: ['home'], languages: ['any'], cold: true });
     expect(flow).toContain('stopApp: true');

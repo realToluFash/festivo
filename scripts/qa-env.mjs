@@ -1179,7 +1179,9 @@ export function batchCheck(flow, check, language, { reset }) {
 export function batchFlow({ checks, languages, cold }) {
   const lines = [`appId: ${EXPO_GO}`, '---', '- launchApp:', `    appId: ${EXPO_GO}`];
   lines.push(`    stopApp: ${cold ? 'true' : 'false'}`);
+  // A sheet the last run left open hides Home from the session's first wait.
   if (cold) lines.push('- runFlow: batch/sign-out.yaml');
+  else lines.push(helperStep('/reload', 'batch/helper.js').trimEnd());
   lines.push('- runFlow: batch/session.yaml');
   languages.forEach((language, index) => {
     if (index > 0) lines.push(helperStep(`/language?to=${language}`, 'batch/helper.js').trimEnd());
