@@ -7,16 +7,16 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../src/api.ts';
 import { AppFrame } from '../../src/components/AppFrame.tsx';
-import { bodyEdges } from '../../src/components/bodyEdges.ts';
-import { PrimaryButton, QuietButton, SecondaryButton } from '../../src/components/Buttons.tsx';
+import { PrimaryButton, SecondaryButton } from '../../src/components/Buttons.tsx';
+import { type ListAndPageSpacing, ListAndPage } from '../../src/components/ListAndPage.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
 import { RoleList, RolePage, RemoveRole } from '../../src/components/Roles.tsx';
-import { Screen, ScrollColumn, useFocusOnAnswer } from '../../src/components/Screen.tsx';
+import { useFocusOnAnswer } from '../../src/components/Screen.tsx';
 import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
 import { Text, type TextHandle } from '../../src/components/Text.tsx';
 import { cardFrame } from '../../src/components/cardFrame.ts';
 import { DESTINATION_HREF } from '../../src/kit/appNav.ts';
-import { type LayoutKind, useLayout } from '../../src/layout/useLayout.ts';
+import { useLayout } from '../../src/layout/useLayout.ts';
 import { useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
@@ -25,8 +25,6 @@ type Load =
 
 /** What the detail shows: a role, a role being made, or a role being removed. */
 type Pane = { kind: 'role'; id: string } | { kind: 'new' } | { kind: 'removing'; id: string };
-
-const LIST_COLUMN = 236;
 
 const LOADING: Load = { kind: 'loading' };
 
@@ -53,7 +51,6 @@ export default function RolesScreen() {
   const [arrival, setArrival] = useState<{ pane: Pane; at: 'name' | 'saved' } | null>(null);
   const phone = kind === 'phone';
   const landscape = kind === 'tabletLandscape';
-  const columnContent = landscape ? styles.columnContent : CONTENT[kind];
 
   useEffect(() => {
     if (organisationId == null) return;
@@ -234,46 +231,20 @@ export default function RolesScreen() {
       }
     >
       <SettingsSplit open="roles">
-        <Screen
-          edges={bodyEdges(kind)}
-          scroll={false}
-          contentStyle={landscape ? styles.landscape : styles.bare}
-        >
-          {landscape && (
-            <View style={styles.landscapeHead}>
-              <View style={styles.fill}>{heading}</View>
-              {catalogue != null && newRole}
-            </View>
-          )}
-          <View style={landscape ? styles.split : styles.fill}>
-            <View
-              style={[
-                landscape ? styles.listColumn : styles.fill,
-                !landscape && inDetail && styles.behind,
-              ]}
-            >
-              <ScrollColumn style={styles.fill} contentContainerStyle={columnContent}>
-                {!landscape && heading}
-                {waiting ?? list}
-                {!landscape && waiting == null && newRole}
-              </ScrollColumn>
-            </View>
-            <View style={[styles.fill, !landscape && !inDetail && styles.behind]}>
-              <ScrollColumn style={styles.fill} contentContainerStyle={columnContent}>
-                {!landscape && !phone && (
-                  <View style={styles.start}>
-                    <QuietButton
-                      label={t('settings.rolesBack')}
-                      onPress={toList}
-                      testID="roles.back"
-                    />
-                  </View>
-                )}
-                {page}
-              </ScrollColumn>
-            </View>
-          </View>
-        </Screen>
+        <ListAndPage
+          heading={heading}
+          besideHeading={catalogue != null && newRole}
+          list={
+            <>
+              {waiting ?? list}
+              {!landscape && waiting == null && newRole}
+            </>
+          }
+          page={page}
+          pageInFront={inDetail}
+          back={{ label: t('settings.rolesBack'), onPress: toList, testID: 'roles.back' }}
+          spacing={SPACING}
+        />
       </SettingsSplit>
     </AppFrame>
   );
@@ -285,9 +256,6 @@ function firstEditable(catalogue: RolesCatalogue): string {
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, minWidth: 0 },
-  bare: { padding: 0, gap: 0 },
-  behind: { display: 'none' },
   start: { alignSelf: 'flex-start' },
   stack: { gap: tokens.spaceMd },
   heading: { gap: tokens.spaceXxs },
@@ -308,13 +276,14 @@ const styles = StyleSheet.create({
     paddingTop: tokens.space3xl,
     paddingHorizontal: tokens.space5xl,
   },
-  landscapeHead: { flexDirection: 'row', alignItems: 'flex-end', gap: tokens.spaceLg },
-  split: { flex: 1, minHeight: 0, flexDirection: 'row', gap: tokens.spaceXl },
-  listColumn: { width: LIST_COLUMN },
-  columnContent: { gap: tokens.spaceLg, paddingBottom: tokens.space6xl },
+  column: { gap: tokens.spaceLg, paddingBottom: tokens.space6xl },
 });
 
-const CONTENT: Record<Exclude<LayoutKind, 'tabletLandscape'>, object> = {
+const SPACING: ListAndPageSpacing = {
   phone: styles.phone,
   tabletPortrait: styles.portrait,
+  landscape: styles.landscape,
+  column: styles.column,
+  listWidth: 236,
+  between: tokens.spaceXl,
 };

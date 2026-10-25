@@ -7,24 +7,24 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../src/api.ts';
 import { AppFrame } from '../../src/components/AppFrame.tsx';
-import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import { ComeForward, FocusWhenBehind } from '../../src/components/comeForward.ts';
-import { QuietButton, SecondaryButton } from '../../src/components/Buttons.tsx';
+import { SecondaryButton } from '../../src/components/Buttons.tsx';
 import {
   type Answered,
   MemberList,
   MemberPage,
   activeCount,
 } from '../../src/components/Members.tsx';
+import { type ListAndPageSpacing, ListAndPage } from '../../src/components/ListAndPage.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
-import { Screen, ScrollColumn, useFocusOnAnswer } from '../../src/components/Screen.tsx';
+import { useFocusOnAnswer } from '../../src/components/Screen.tsx';
 import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
 import { SheetsAtRoot } from '../../src/components/Sheet.tsx';
 import { type TextHandle, Text } from '../../src/components/Text.tsx';
 import { cardFrame } from '../../src/components/cardFrame.ts';
 import { useShownLanguage } from '../../src/i18n/index.ts';
 import { DESTINATION_HREF, SECTION_HREF } from '../../src/kit/appNav.ts';
-import { type LayoutKind, useLayout } from '../../src/layout/useLayout.ts';
+import { useLayout } from '../../src/layout/useLayout.ts';
 import { useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
@@ -36,8 +36,6 @@ type Load =
 type Showing =
   | { kind: 'list'; flash: string | null; answered?: Answered }
   | { kind: 'member'; id: string; behind?: boolean; tapped?: object };
-
-const LIST_COLUMN = 300;
 
 const LIST: Showing = { kind: 'list', flash: null };
 
@@ -67,7 +65,6 @@ export default function MembersScreen() {
   if (landscape && shown.showing.kind === 'member' && shown.showing.behind === true) {
     setShown({ ...shown, showing: { kind: 'member', id: shown.showing.id } });
   }
-  const columnContent = landscape ? styles.columnContent : CONTENT[kind];
   const landscapeNow = useRef(landscape);
   useEffect(() => {
     landscapeNow.current = landscape;
@@ -238,48 +235,29 @@ export default function MembersScreen() {
     >
       <SettingsSplit open="members">
         <SheetsAtRoot>
-          <Screen
-            edges={bodyEdges(kind)}
-            scroll={false}
-            contentStyle={landscape ? styles.landscape : styles.bare}
-          >
-            {landscape && heading}
-            <View style={landscape ? styles.split : styles.fill}>
-              <View
-                style={[landscape ? styles.listColumn : styles.fill, listBehind && styles.behind]}
-              >
-                <ComeForward.Provider value={listForward}>
-                  <FocusWhenBehind.Provider value={nameWhenBehind}>
-                    <ScrollColumn style={styles.fill} contentContainerStyle={columnContent}>
-                      {!landscape && heading}
-                      {waiting ?? list}
-                    </ScrollColumn>
-                  </FocusWhenBehind.Provider>
-                </ComeForward.Provider>
-              </View>
-              <View style={[styles.fill, !landscape && inFront == null && styles.behind]}>
-                <ScrollColumn style={styles.fill} contentContainerStyle={columnContent}>
-                  {!landscape && !phone && (
-                    <View style={styles.start}>
-                      <QuietButton
-                        label={t('membersScreen.backToList')}
-                        onPress={toList}
-                        testID="members.back"
-                      />
-                    </View>
-                  )}
-                  {page ??
-                    (landscape && load.kind === 'loaded' && (
-                      <Notice
-                        tone="quiet"
-                        mark={tokens.marks.info.glyph}
-                        body={t('membersScreen.pickSomebody')}
-                      />
-                    ))}
-                </ScrollColumn>
-              </View>
-            </View>
-          </Screen>
+          <ListAndPage
+            heading={heading}
+            list={
+              <ComeForward.Provider value={listForward}>
+                <FocusWhenBehind.Provider value={nameWhenBehind}>
+                  {waiting ?? list}
+                </FocusWhenBehind.Provider>
+              </ComeForward.Provider>
+            }
+            page={
+              page ??
+              (landscape && load.kind === 'loaded' && (
+                <Notice
+                  tone="quiet"
+                  mark={tokens.marks.info.glyph}
+                  body={t('membersScreen.pickSomebody')}
+                />
+              ))
+            }
+            pageInFront={inFront != null}
+            back={{ label: t('membersScreen.backToList'), onPress: toList, testID: 'members.back' }}
+            spacing={SPACING}
+          />
         </SheetsAtRoot>
       </SettingsSplit>
     </AppFrame>
@@ -287,10 +265,6 @@ export default function MembersScreen() {
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, minWidth: 0 },
-  bare: { padding: 0, gap: 0 },
-  behind: { display: 'none' },
-  start: { alignSelf: 'flex-start' },
   stack: { gap: tokens.spaceMd },
   heading: { gap: tokens.spaceXxs },
   phone: {
@@ -310,12 +284,14 @@ const styles = StyleSheet.create({
     paddingTop: tokens.space3xl,
     paddingHorizontal: tokens.space3xl,
   },
-  split: { flex: 1, minHeight: 0, flexDirection: 'row', gap: tokens.spaceXxl },
-  listColumn: { width: LIST_COLUMN },
-  columnContent: { gap: tokens.spaceLg, paddingBottom: tokens.space5xl },
+  column: { gap: tokens.spaceLg, paddingBottom: tokens.space5xl },
 });
 
-const CONTENT: Record<Exclude<LayoutKind, 'tabletLandscape'>, object> = {
+const SPACING: ListAndPageSpacing = {
   phone: styles.phone,
   tabletPortrait: styles.portrait,
+  landscape: styles.landscape,
+  column: styles.column,
+  listWidth: 300,
+  between: tokens.spaceXxl,
 };

@@ -289,7 +289,13 @@ With no MCP, fall back to a script — `npx playwright` with a `page.goto`,
 node .qa/bin/qa-env.mjs ios [--ipad]                     # the bundler, in Expo Go, on the QA phone (or iPad); shuts the other
 node .qa/bin/qa-env.mjs maestro sign-in EMAIL=… PASSWORD=…        # one flow, on the phone
 node .qa/bin/qa-env.mjs maestro sign-in --ipad EMAIL=… PASSWORD=… # on the tablet
+node .qa/bin/qa-env.mjs hierarchy [--ipad | --android]           # what is on screen, for writing a flow
 ```
+
+Never a bare `maestro --device …` on iOS. Maestro's iOS driver answers on one port, so a
+run by hand drives whichever tester's simulator started it first; `qa-env.mjs` gives each
+tester a port of their own. A `.qa/bin/qa-env.mjs` copied before that change still shares one
+port, and has no `hierarchy`: refresh it as below before your next iOS flow.
 
 `ios` keeps running — start it in the background, and restart it after a `checkout`, or it
 serves the previous commit. Never `just qa-ios` or `just qa-mobile`: those drive the
@@ -311,8 +317,8 @@ node .qa/bin/qa-env.mjs android --stop                   # the emulator, when th
 removes it. The emulator has no window, so `release` records the launch's first 15 seconds and
 prints where: judge a splash bullet on that video, frame by frame, never on a screenshot taken
 afterwards. With `--offline` it launches only once the emulator reports no network, and stops
-with an error otherwise. If your worktree says `unknown command release`, its `.qa/bin` copy
-predates it. Refresh that copy alone, which leaves your branch and data as they are:
+with an error otherwise. If your worktree says `unknown command` for any command this skill
+names (`release`, `hierarchy`, …), its `.qa/bin` copy predates it. Refresh that copy alone, which leaves your branch and data as they are:
 `cd ~/Projects/soirely-qa<n> && git fetch origin main && git show origin/main:scripts/qa-env.mjs > .qa/bin/qa-env.mjs`.
 It brings the `android` that removes a release build and turns airplane mode off; an old
 `android` does neither, and the release build then takes a provider's sign-in redirect. Never
