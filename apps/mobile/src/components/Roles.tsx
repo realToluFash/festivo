@@ -34,7 +34,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
-import { roomBeside, stacksRows } from '../rowArrangement.ts';
+import { LEVEL_BORDER_ON, LEVEL_PADDING, roomBeside, stacksRows } from '../rowArrangement.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { focusPicker } from './CountryPicker.tsx';
@@ -851,7 +851,7 @@ const styles = StyleSheet.create({
     height: tokens.sizeHit,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: tokens.spaceLg,
+    paddingHorizontal: LEVEL_PADDING,
     borderRadius: tokens.sizeHit / 2,
     borderWidth: 1,
     borderColor: tokens.colorControlBorder,
@@ -859,7 +859,7 @@ const styles = StyleSheet.create({
   },
   levelGrow: { flexGrow: 1 },
   levelOn: {
-    borderWidth: 2,
+    borderWidth: LEVEL_BORDER_ON,
     borderColor: tokens.colorAccent,
     backgroundColor: tokens.colorAccentTint,
   },

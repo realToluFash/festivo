@@ -3,8 +3,11 @@ import { tokens } from './theme/tokens.ts';
 /** What a row's name and line keep beside its buttons before a role's page stacks (sc-12226). */
 export const NAME_ROOM = 120;
 
-// Each level button's padding, and its border at its widest, when picked.
-const BUTTON_CHROME = 2 * tokens.spaceLg + 2 * 2;
+/** A level button's padding on each side, and its border at its widest, when picked. */
+export const LEVEL_PADDING = tokens.spaceLg;
+export const LEVEL_BORDER_ON = 2;
+
+const BUTTON_CHROME = 2 * LEVEL_PADDING + 2 * LEVEL_BORDER_ON;
 
 /** The width a row's name and line keep with its buttons, at their labels' widths, beside them. */
 export function roomBeside(row: number, labels: readonly number[]): number {
