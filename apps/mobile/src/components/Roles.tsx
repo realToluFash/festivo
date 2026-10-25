@@ -27,13 +27,14 @@ import {
   withoutRole,
 } from '@soirely/domain';
 import { type TFunction, getFixedT } from 'i18next';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
+import { roomBeside, stacksRows } from '../rowArrangement.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { focusPicker } from './CountryPicker.tsx';
@@ -170,6 +171,18 @@ export function RolePage({
   const [typed, setTyped] = useState(role?.name ?? '');
   const [nameError, setNameError] = useState<string | null>(null);
   const [status, setStatus] = useState<'editing' | 'saving' | 'failed'>('editing');
+  const [rooms, setRooms] = useState<ReadonlyMap<string, number>>(new Map());
+  const stacked = phone || stacksRows(rooms.values());
+  const measured = useCallback((row: string, room: number | null) => {
+    setRooms((before) => {
+      if ((before.get(row) ?? null) === room) return before;
+      const after = new Map(before);
+      if (room == null) after.delete(row);
+      else after.set(row, room);
+
+      return after;
+    });
+  }, []);
   const title = role == null ? '' : roleName(t, role);
   // The API refuses a seeded role's label in every language (sc-2301), whatever the caller reads.
   const everyLanguage = LOCALE_CODES.map((locale) => getFixedT(locale));
@@ -261,7 +274,7 @@ export function RolePage({
 
   return (
     <View style={styles.stack}>
-      <View style={[styles.card, styles.padded, !phone && styles.head]}>
+      <View style={[styles.card, styles.padded, !stacked && styles.head]}>
         <View style={[styles.fill, styles.headText]}>
           {naming ? (
             <View
@@ -300,7 +313,7 @@ export function RolePage({
             {t(describe(role), { name: organisation.name })}
           </Text>
         </View>
-        {!phone && remove}
+        {!stacked && remove}
       </View>
 
       {role?.fixed === true && (
@@ -341,6 +354,8 @@ export function RolePage({
             <View key={area} style={[styles.area, styles.divided]}>
               <GridRow
                 phone={phone}
+                stacked={stacked}
+                onRoom={measured}
                 name={named}
                 means={t(`rolesScreen.means.${area}`)}
                 fixed={editable && !locked ? null : t(`rolesScreen.level.${level}`)}
@@ -362,6 +377,8 @@ export function RolePage({
                   <View key={permission} style={styles.extra}>
                     <GridRow
                       phone={phone}
+                      stacked={stacked}
+                      onRoom={measured}
                       name={t(words.name)}
                       means={t(words.means, { name: organisation.name })}
                       fixed={
@@ -447,7 +464,7 @@ export function RolePage({
           {t('rolesScreen.seeHeading')}
         </Text>
         <WhatTheySee grant={grant} areas={catalogue.areas.map((entry) => entry.area)} />
-        {phone && remove}
+        {stacked && remove}
       </View>
     </View>
   );
@@ -508,6 +525,8 @@ function Holders({ holders, onMore }: { holders: readonly RoleHolder[]; onMore: 
 
 function GridRow<T extends string>({
   phone,
+  stacked,
+  onRoom,
   name,
   means,
   fixed,
@@ -517,6 +536,10 @@ function GridRow<T extends string>({
   testID,
 }: {
   phone: boolean;
+  /** Buttons under the name rather than beside it, as on the phone (sc-12226). */
+  stacked: boolean;
+  /** What the name keeps with the buttons beside it, or null where it has none to keep. */
+  onRoom: (row: string, room: number | null) => void;
   name: string;
   means: string;
   /** The level shown as words, where this caller cannot pick one. */
@@ -526,18 +549,44 @@ function GridRow<T extends string>({
   onPick: (value: T) => void;
   testID: string;
 }) {
+  const [row, setRow] = useState(0);
+  const [labels, setLabels] = useState<Partial<Record<T, number>>>({});
+  const widths = options.flatMap((option) => labels[option.value] ?? []);
+  const room =
+    fixed == null && row > 0 && widths.length === options.length ? roomBeside(row, widths) : null;
+
+  useEffect(() => onRoom(testID, room), [onRoom, testID, room]);
+  useEffect(() => () => onRoom(testID, null), [onRoom, testID]);
+
   const picker = fixed == null && (
-    <View style={[styles.levels, !phone && styles.levelsBeside]} accessibilityRole="radiogroup">
+    <View
+      style={[styles.levels, stacked ? !phone && styles.levelsWrap : styles.levelsBeside]}
+      accessibilityRole="radiogroup"
+    >
       {options.map((option) => (
         <Pressable
           key={option.value}
-          style={[styles.level, phone && styles.fill, option.value === value && styles.levelOn]}
+          style={[
+            styles.level,
+            phone && styles.fill,
+            stacked && !phone && styles.levelGrow,
+            option.value === value && styles.levelOn,
+          ]}
           onPress={() => onPick(option.value)}
           accessibilityRole="radio"
           accessibilityState={{ checked: option.value === value }}
           testID={`${testID}.${option.value}`}
         >
-          <Text size={tokens.typeBody.size} weight="semibold">
+          <Text
+            size={tokens.typeBody.size}
+            weight="semibold"
+            onLayout={(event) => {
+              const width = event.nativeEvent.layout.width;
+              setLabels((before) =>
+                before[option.value] === width ? before : { ...before, [option.value]: width },
+              );
+            }}
+          >
             {option.label}
           </Text>
         </Pressable>
@@ -547,7 +596,7 @@ function GridRow<T extends string>({
 
   return (
     <>
-      <View style={styles.rowHead}>
+      <View style={styles.rowHead} onLayout={(event) => setRow(event.nativeEvent.layout.width)}>
         <View style={[styles.fill, styles.rowText]}>
           <Text size={tokens.typeBodyPhone.size} weight="semibold">
             {name}
@@ -561,9 +610,9 @@ function GridRow<T extends string>({
             {fixed}
           </Text>
         )}
-        {!phone && picker}
+        {!stacked && picker}
       </View>
-      {phone && picker}
+      {stacked && picker}
     </>
   );
 }
@@ -797,6 +846,7 @@ const styles = StyleSheet.create({
   rowText: { gap: tokens.spaceHair },
   levels: { flexDirection: 'row', gap: tokens.spaceXs },
   levelsBeside: { flexShrink: 0 },
+  levelsWrap: { flexWrap: 'wrap' },
   level: {
     height: tokens.sizeHit,
     alignItems: 'center',
@@ -807,6 +857,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorControlBorder,
     backgroundColor: tokens.colorCard,
   },
+  levelGrow: { flexGrow: 1 },
   levelOn: {
     borderWidth: 2,
     borderColor: tokens.colorAccent,
