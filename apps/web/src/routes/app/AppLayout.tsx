@@ -21,6 +21,7 @@ import {
   useSessionState,
 } from '../../session.ts';
 import { useWaitingInvitations } from '../../invitations.ts';
+import { useStepFocus } from '../../stepFocus.ts';
 import { useDomainOffer } from '../../joinOffers.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
 import { heldRegistration } from '../../pendingRegistration.ts';
@@ -79,7 +80,13 @@ function Shell() {
   const location = useLocation();
   const { pathname } = location;
   const navigate = useNavigate();
-  const [switched, setSwitched] = useState<{ id: string; name: string; at: string } | null>(null);
+  const [switched, setSwitched] = useState<{
+    id: string;
+    name: string;
+    at: string;
+    fromPaused?: boolean;
+  } | null>(null);
+  const [switchedNotice, arriveAtSwitched] = useStepFocus<HTMLDivElement>();
   const [creating, setCreating] = useState(false);
   const [choosing, setChoosing] = useState(0);
   const organisation = session.organisation;
@@ -159,7 +166,12 @@ function Shell() {
         )}
         {/* Said on the page it happened on, and gone once the person moves on. */}
         {switched != null && switched.at === pathname && switched.id === organisation?.id && (
-          <div className="notice notice-done" role="status">
+          <div
+            className="notice notice-done"
+            role={switched.fromPaused === true ? undefined : 'status'}
+            ref={switchedNotice}
+            tabIndex={switched.fromPaused === true ? -1 : undefined}
+          >
             <span className="mark mark-done" aria-hidden="true">
               ✓
             </span>
@@ -174,7 +186,8 @@ function Shell() {
               others={session.organisations}
               onSwitch={(next) => {
                 switchOrganisation(next.id);
-                setSwitched({ id: next.id, name: next.name, at: pathname });
+                setSwitched({ id: next.id, name: next.name, at: pathname, fromPaused: true });
+                arriveAtSwitched();
               }}
               onChoose={() => setChoosing((times) => times + 1)}
             />

@@ -584,6 +584,9 @@ describe('inviting somebody', () => {
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Invite somebody' }));
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 1, name: 'Invite somebody' }),
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }));
 
     expect(screen.getByText('Enter their email address.')).toBeDefined();
@@ -715,7 +718,13 @@ describe('inviting somebody', () => {
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 1, name: 'Bisi Adeyemi' }),
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Remove from Ìrè Events' }));
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 2, name: 'Remove Bisi Adeyemi?' }),
+    );
     expect(sent.some((one) => one.line.startsWith('DELETE'))).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: 'Remove Bisi Adeyemi' }));
 
@@ -1474,6 +1483,9 @@ describe('suspending and restoring a member', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Remove Bisi Adeyemi' }));
 
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 2, name: 'Remove Bisi Adeyemi?' }),
+    );
     expect(
       screen.getByText(
         'Removing Bisi Adeyemi ends their membership of Ìrè Events. Their events stay with Ìrè Events.',

@@ -7,7 +7,7 @@ import {
   roleName,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { type FormEvent, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
 
@@ -32,6 +32,7 @@ import {
   switchOrganisation,
   useSessionState,
 } from '../../session.ts';
+import { useStepFocus } from '../../stepFocus.ts';
 import { useSignOut } from '../../signOut.ts';
 
 type Refusal = InvitationRefusal | 'invitation_not_yours';
@@ -74,9 +75,12 @@ function Invited({ token }: { token: string }) {
   const { t } = useTranslation();
   const session = useSessionState();
   const [view, setView] = useState<View>({ kind: 'loading' });
+  const [stepHeading, arriveAtStep] = useStepFocus();
+  const [brought, setBrought] = useState(false);
   const settled = session.status === 'signedIn' || session.status === 'signedOut';
 
   const [attempt, setAttempt] = useState(0);
+  const reloadArrives = useRef(false);
 
   useEffect(() => {
     dropHeldInvitation();
@@ -88,18 +92,31 @@ function Invited({ token }: { token: string }) {
     let current = true;
 
     api.invitationLink(token).then(
-      (preview) => current && setView(viewOf(preview)),
+      (preview) => {
+        if (!current) return;
+        setView(viewOf(preview));
+        if (reloadArrives.current) {
+          setBrought(true);
+          arriveAtStep();
+        }
+        reloadArrives.current = false;
+      },
       (error: unknown) => {
         if (!current) return;
         const missing = error instanceof ApiError && error.is('invitation_not_found');
         setView({ kind: missing ? 'notFound' : 'unreachable' });
+        if (missing && reloadArrives.current) {
+          setBrought(true);
+          arriveAtStep();
+        }
+        reloadArrives.current = false;
       },
     );
 
     return () => {
       current = false;
     };
-  }, [settled, token, attempt]);
+  }, [settled, token, attempt, arriveAtStep]);
 
   if (session.status === 'unreachable' || view.kind === 'unreachable') return <Unreachable />;
   if (view.kind === 'loading') return <Pending />;
@@ -108,9 +125,11 @@ function Invited({ token }: { token: string }) {
     return (
       <AuthPage>
         <div className="auth-heading">
-          <h1>{t('join.notFoundTitle')}</h1>
+          <h1 ref={stepHeading} tabIndex={-1}>
+            {t('join.notFoundTitle')}
+          </h1>
         </div>
-        <div className="notice notice-quiet" role="status">
+        <div className="notice notice-quiet" role={brought ? undefined : 'status'}>
           <span className="mark mark-info" aria-hidden="true">
             i
           </span>
@@ -127,11 +146,20 @@ function Invited({ token }: { token: string }) {
 
   return (
     <JoinPage
-      key={view.kind}
+      key={brought ? `${view.kind}:brought` : view.kind}
       token={token}
       view={view}
-      onChange={setView}
-      onReload={() => setAttempt((n) => n + 1)}
+      brought={brought}
+      headingRef={stepHeading}
+      onChange={(next) => {
+        setView(next);
+        setBrought(true);
+        arriveAtStep();
+      }}
+      onReload={() => {
+        reloadArrives.current = true;
+        setAttempt((n) => n + 1);
+      }}
     />
   );
 }
@@ -148,11 +176,15 @@ function viewOf(preview: InvitationPreview): View {
 function JoinPage({
   token,
   view,
+  brought,
+  headingRef,
   onChange,
   onReload,
 }: {
   token: string;
   view: Exclude<View, { kind: 'loading' | 'notFound' | 'unreachable' }>;
+  brought: boolean;
+  headingRef: RefObject<HTMLHeadingElement | null>;
   onChange: (next: View) => void;
   onReload: () => void;
 }) {
@@ -164,7 +196,9 @@ function JoinPage({
   return (
     <AuthPage>
       <div className="auth-heading">
-        <h1>{title(t, view, words.organisation)}</h1>
+        <h1 ref={headingRef} tabIndex={-1}>
+          {title(t, view, words.organisation)}
+        </h1>
       </div>
 
       <div className="join-org">
@@ -191,7 +225,7 @@ function JoinPage({
       {view.kind === 'accepted' && <Accepted preview={preview} />}
       {view.kind === 'declined' && <Declined inviter={words.inviter} />}
       {view.kind === 'refused' && (
-        <Refused preview={preview} refusal={view.refusal} onReload={onReload} />
+        <Refused preview={preview} refusal={view.refusal} brought={brought} onReload={onReload} />
       )}
     </AuthPage>
   );
@@ -425,7 +459,7 @@ function EmailTaken({ token, email }: { token: string; email: string }) {
 
   return (
     <>
-      <div className="notice notice-quiet" role="status">
+      <div className="notice notice-quiet">
         <span className="mark mark-info" aria-hidden="true">
           i
         </span>
@@ -545,7 +579,7 @@ function Accepted({ preview }: { preview: InvitationPreview }) {
 
   return (
     <>
-      <div className="notice notice-done" role="status">
+      <div className="notice notice-done">
         <span className="mark mark-done" aria-hidden="true">
           ✓
         </span>
@@ -564,7 +598,7 @@ function Declined({ inviter }: { inviter: string }) {
 
   return (
     <>
-      <div className="notice notice-quiet" role="status">
+      <div className="notice notice-quiet">
         <span className="mark mark-info" aria-hidden="true">
           –
         </span>
@@ -580,10 +614,12 @@ function Declined({ inviter }: { inviter: string }) {
 function Refused({
   preview,
   refusal,
+  brought,
   onReload,
 }: {
   preview: InvitationPreview;
   refusal: Refusal;
+  brought: boolean;
   onReload: () => void;
 }) {
   const { t } = useTranslation();
@@ -598,7 +634,7 @@ function Refused({
 
   return (
     <>
-      <div className={`notice ${tone}`} role="status">
+      <div className={`notice ${tone}`} role={brought ? undefined : 'status'}>
         <span className={`mark ${mark}`} aria-hidden="true">
           {attention ? '!' : done ? '✓' : 'i'}
         </span>

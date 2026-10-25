@@ -9,33 +9,38 @@ import { AuthPage } from '../../components/AuthPage.tsx';
 import { FieldError } from '../../components/FieldError.tsx';
 import { emailMessage, useFormChecks } from '../../formChecks.ts';
 import { dateLocale } from '../../i18n/index.ts';
+import { useStepFocus } from '../../stepFocus.ts';
 
 type Status =
   | { kind: 'asking' }
   | { kind: 'sending' }
   | { kind: 'sent'; email: string }
-  | { kind: 'limited'; time: string }
-  | { kind: 'failed' };
+  | { kind: 'limited'; time: string; again: boolean }
+  | { kind: 'failed'; again: boolean };
 
 /** "Reset your password": an address in, and the same answer whether or not it has an account. */
 export function ForgotPassword() {
   const { t } = useTranslation();
   const [status, setStatus] = useState<Status>({ kind: 'asking' });
   const [typed, setTyped] = useState('');
+  const [sentHeading, arriveAtSent] = useStepFocus();
+  const [refusedNotice, arriveAtRefused] = useStepFocus<HTMLDivElement>();
   const checks = useFormChecks(
     ['email'] as const,
     (_field, value) => emailMessage(value, t),
     () => document.getElementById('email')?.focus(),
   );
 
-  async function send(email: string): Promise<void> {
+  async function send(email: string, again: boolean): Promise<void> {
     setStatus({ kind: 'sending' });
 
     try {
       await api.forgotPassword(email);
       setStatus({ kind: 'sent', email });
+      arriveAtSent();
     } catch (error) {
-      setStatus(refusalFrom(error));
+      setStatus(refusalFrom(error, again));
+      if (again) arriveAtRefused();
     }
   }
 
@@ -46,14 +51,16 @@ export function ForgotPassword() {
     const email = typed.trim();
     if (!checks.passes({ email })) return;
 
-    void send(email);
+    void send(email, false);
   }
 
   if (status.kind === 'sent') {
     return (
       <AuthPage>
         <div className="auth-heading">
-          <h1>{t('recovery.sentTitle')}</h1>
+          <h1 ref={sentHeading} tabIndex={-1}>
+            {t('recovery.sentTitle')}
+          </h1>
           <p>{t('recovery.sentBody')}</p>
         </div>
 
@@ -62,7 +69,11 @@ export function ForgotPassword() {
             <p className="notice-title">{t('recovery.nothingTitle')}</p>
             <p>{t('recovery.nothingBody')}</p>
             <p className="notice-action">
-              <button className="link-button" type="button" onClick={() => void send(status.email)}>
+              <button
+                className="link-button"
+                type="button"
+                onClick={() => void send(status.email, true)}
+              >
                 {t('recovery.sendAgain')}
               </button>
             </p>
@@ -89,7 +100,12 @@ export function ForgotPassword() {
       </div>
 
       {status.kind === 'limited' && (
-        <div className="notice notice-attention" role="alert">
+        <div
+          className="notice notice-attention"
+          role={status.again ? undefined : 'alert'}
+          ref={refusedNotice}
+          tabIndex={status.again ? -1 : undefined}
+        >
           <span className="mark mark-attention" aria-hidden="true">
             !
           </span>
@@ -101,7 +117,12 @@ export function ForgotPassword() {
       )}
 
       {status.kind === 'failed' && (
-        <div className="notice notice-broken" role="alert">
+        <div
+          className="notice notice-broken"
+          role={status.again ? undefined : 'alert'}
+          ref={refusedNotice}
+          tabIndex={status.again ? -1 : undefined}
+        >
           <span className="mark mark-broken" aria-hidden="true">
             ✕
           </span>
@@ -158,12 +179,14 @@ export function ForgotPassword() {
   );
 }
 
-function refusalFrom(error: unknown): Status {
+function refusalFrom(error: unknown, again: boolean): Status {
   if (error instanceof ApiError && error.is('too_many_attempts')) {
     const liftsAt = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));
 
-    if (liftsAt != null) return { kind: 'limited', time: formatTimeOfDay(liftsAt, dateLocale()) };
+    if (liftsAt != null) {
+      return { kind: 'limited', time: formatTimeOfDay(liftsAt, dateLocale()), again };
+    }
   }
 
-  return { kind: 'failed' };
+  return { kind: 'failed', again };
 }

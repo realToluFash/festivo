@@ -30,6 +30,7 @@ import { emailMessage, useFormChecks } from '../../../formChecks.ts';
 import { PhoneEntry } from '../../../components/PhoneEntry.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
 import { phoneProblemMessage } from '../../../phoneProblem.ts';
+import { useStepFocus } from '../../../stepFocus.ts';
 
 type Kind = 'email' | 'phone';
 
@@ -161,6 +162,7 @@ function ContactsCard({
   const [said, setSaid] = useState<string | null>(null);
   const [arrived, setArrived] = useState(verified);
   const doneLine = useRef<HTMLDivElement>(null);
+  const [confirmTitle, arriveAtConfirm] = useStepFocus<HTMLParagraphElement>();
   const email = kind === 'email';
   const primary = rows.find((row) => row.primary);
   const arrival = justVerified(rows, arrived);
@@ -175,6 +177,11 @@ function ContactsCard({
           : t('contacts.verifiedDonePhone', { number: arrival.shown }));
 
   useEffect(() => doneLine.current?.focus(), [done]);
+
+  function ask(id: string, what: 'promote' | 'remove'): void {
+    setAsking({ id, what });
+    arriveAtConfirm();
+  }
 
   function setDone(line: string | null): void {
     setArrived(null);
@@ -293,11 +300,7 @@ function ContactsCard({
                     <button
                       className="button"
                       type="button"
-                      onClick={() =>
-                        email
-                          ? setAsking({ id: row.id, what: 'promote' })
-                          : void act(row, 'promote')
-                      }
+                      onClick={() => (email ? ask(row.id, 'promote') : void act(row, 'promote'))}
                     >
                       {t(email ? 'contacts.makePrimary' : 'contacts.makePrimaryPhone')}
                     </button>
@@ -308,9 +311,7 @@ function ContactsCard({
                       type="button"
                       aria-label={t('contacts.removeLabel', { address: row.shown })}
                       onClick={() =>
-                        offers.askBeforeRemoving
-                          ? setAsking({ id: row.id, what: 'remove' })
-                          : void act(row, 'remove')
+                        offers.askBeforeRemoving ? ask(row.id, 'remove') : void act(row, 'remove')
                       }
                     >
                       {t('contacts.remove')}
@@ -322,7 +323,9 @@ function ContactsCard({
               {here === 'promote' && (
                 <div className="notice notice-quiet way-last">
                   <div className="notice-body">
-                    <p className="notice-title">{t('contacts.promoteTitle')}</p>
+                    <p className="notice-title" ref={confirmTitle} tabIndex={-1}>
+                      {t('contacts.promoteTitle')}
+                    </p>
                     <p>{t('contacts.promoteBody', { old: primary?.shown ?? '' })}</p>
                     <div className="actions">
                       <button
@@ -360,7 +363,7 @@ function ContactsCard({
               {here === 'remove' && (
                 <div className="notice notice-quiet way-last">
                   <div className="notice-body">
-                    <p className="notice-title">
+                    <p className="notice-title" ref={confirmTitle} tabIndex={-1}>
                       {email ? t('contacts.removeTitle') : t('contacts.removeTitlePhone')}
                     </p>
                     <p>{t('contacts.removeBody')}</p>

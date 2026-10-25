@@ -191,8 +191,29 @@ describe('Settings > General, ownership and leaving', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Leave Ìrè Events' }));
 
     expect(await screen.findByText('You are the only owner')).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Leave Ìrè Events?' }));
+    expect(screen.queryByRole('alert')).toBeNull();
     expect(sent.some((one) => one.line === 'POST /api/orgs/org_1/leave')).toBe(false);
     expect(screen.queryByRole('button', { name: 'Leave Ìrè Events' })).toBeNull();
+  });
+
+  it('says the only owner cannot leave when the members come after Leave was pressed', async () => {
+    signedIn();
+    let release: () => void = () => {};
+    const held = new Promise<Response>((resolve) => {
+      release = () => resolve(json(MEMBERS));
+    });
+    answering({ 'GET /api/orgs/org_1/members': () => held });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave Ìrè Events' }));
+    expect(screen.queryByText('You are the only owner')).toBeNull();
+    release();
+
+    expect(await screen.findByRole('alert')).toHaveProperty(
+      'textContent',
+      expect.stringContaining('You are the only owner'),
+    );
   });
 
   it('lets a member leave once they confirm', async () => {
@@ -212,6 +233,7 @@ describe('Settings > General, ownership and leaving', () => {
     expect(screen.queryByRole('button', { name: 'Transfer ownership' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Delete organisation' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Leave Ìrè Events' }));
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Leave Ìrè Events?' }));
     expect(screen.getByText('You lose access to Ìrè Events as soon as you leave.')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Leave Ìrè Events' }));
 
@@ -282,12 +304,15 @@ describe('Settings > General, ownership and leaving', () => {
     settings();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation' }));
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { name: 'Delete Ìrè Events?' }),
+    );
+    expect(screen.getByRole('alert').textContent).toBe('');
 
-    expect(
-      await screen.findByText(
-        '5 events, 1,204 guests and 9 members are deleted with it. This deletes it for everybody now. Soirely support can restore it until Monday, Nov 16 at 14:20 WAT; after that it is gone for good.',
-      ),
-    ).toBeDefined();
+    const counts = await screen.findByText(
+      '5 events, 1,204 guests and 9 members are deleted with it. This deletes it for everybody now. Soirely support can restore it until Monday, Nov 16 at 14:20 WAT; after that it is gone for good.',
+    );
+    expect(screen.getByRole('alert').contains(counts)).toBe(true);
   });
 
   it.each([

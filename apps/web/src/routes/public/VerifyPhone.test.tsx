@@ -202,7 +202,9 @@ describe('check your messages', () => {
     fireEvent.change(screen.getByLabelText('Code from the text'), { target: { value: '184231' } });
     fireEvent.click(screen.getByRole('button', { name: 'Verify number' }));
     await waitFor(() =>
-      expect(screen.getByRole('heading', { level: 1, name: 'Number verified' })).toBeDefined(),
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'Number verified' }),
+      ),
     );
     expect(screen.getByText(/Soirely can reach you on \+234 803 555 0142/)).toBeDefined();
   });

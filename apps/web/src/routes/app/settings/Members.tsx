@@ -24,7 +24,15 @@ import {
   roleName,
   withheldRoles,
 } from '@soirely/domain';
-import { type FormEvent, type Ref, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type FormEvent,
+  type Ref,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
@@ -36,6 +44,7 @@ import { useFormChecks } from '../../../formChecks.ts';
 import { offButton } from '../../../offButton.ts';
 import { dateLocale, useShownLanguage } from '../../../i18n/index.ts';
 import { can, useSession } from '../../../session.ts';
+import { focusStep, useStepFocus } from '../../../stepFocus.ts';
 import { Forbidden } from '../Forbidden.tsx';
 
 type Load =
@@ -573,6 +582,8 @@ function MemberDetail({
   const [outcome, setOutcome] = useState<AccessOutcome | null>(null);
   const said = useRef<HTMLDivElement>(null);
   const asking = useRef<HTMLHeadingElement>(null);
+  const name = useRef<HTMLHeadingElement>(null);
+  const [removeTitle, arriveAtRemove] = useStepFocus();
   const callerOwns = organisation.role.seededAs === 'owner';
   const standing = memberStanding(member, list.members, {
     owns: callerOwns,
@@ -588,9 +599,16 @@ function MemberDetail({
   const active = member.status === 'active';
   const byHand = member.status === 'suspended' && member.suspension?.reason === 'manual';
 
+  useLayoutEffect(() => focusStep(name.current), []);
+
   useEffect(() => {
     if (onlyOwner && failed != null) refusal.current?.focus();
   }, [onlyOwner, failed]);
+
+  function confirmRemoving(): void {
+    setRemoval('confirming');
+    arriveAtRemove();
+  }
 
   useEffect(() => {
     if (outcome != null) said.current?.focus();
@@ -710,7 +728,9 @@ function MemberDetail({
           {initials(member.user.name)}
         </span>
         <div className="org-naming">
-          <h1>{member.user.name}</h1>
+          <h1 ref={name} tabIndex={-1}>
+            {member.user.name}
+          </h1>
           <p className="muted">
             {member.self
               ? t('membersScreen.youAs', { role: roleName(t, member.role) })
@@ -825,7 +845,7 @@ function MemberDetail({
                 : setRestored(true)
             }
             onChangedElsewhere={changedElsewhere}
-            onRemove={() => setRemoval('confirming')}
+            onRemove={confirmRemoving}
             onMembers={onBack}
             onChanged={onChanged}
           />
@@ -932,14 +952,14 @@ function MemberDetail({
                 className="button button-danger"
                 aria-busy={removal === 'removing'}
                 {...offButton(removal === 'removing')}
-                onClick={() => (onlyOwner ? void remove() : setRemoval('confirming'))}
+                onClick={() => (onlyOwner ? void remove() : confirmRemoving())}
               >
                 {t('membersScreen.removeButton', { organisation: organisation.name })}
               </button>
             </>
           ) : (
             <>
-              <h2 id="remove-title">
+              <h2 id="remove-title" ref={removeTitle} tabIndex={-1}>
                 {t('membersScreen.removeConfirmTitle', { name: member.user.name })}
               </h2>
               <p>
@@ -1541,6 +1561,9 @@ function Invite({
     document.getElementById('invite-email')?.focus(),
   );
   const emailError = checks.errors.email ?? refused;
+  const heading = useRef<HTMLHeadingElement>(null);
+
+  useLayoutEffect(() => focusStep(heading.current), []);
 
   async function send(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -1580,7 +1603,9 @@ function Invite({
         <span aria-hidden="true">‹ </span>
         {t('membersScreen.title')}
       </button>
-      <h1>{t('membersScreen.invite')}</h1>
+      <h1 ref={heading} tabIndex={-1}>
+        {t('membersScreen.invite')}
+      </h1>
       <p className="muted">{organisation.name}</p>
 
       {failed != null && (

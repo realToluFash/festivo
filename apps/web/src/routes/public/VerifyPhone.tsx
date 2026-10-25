@@ -19,6 +19,7 @@ import {
 } from '../../components/BackToAccount.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { refreshAccount } from '../../session.ts';
+import { useStepFocus } from '../../stepFocus.ts';
 import { FieldError } from '../../components/FieldError.tsx';
 import { useResendCountdown } from '../../resendCountdown.ts';
 
@@ -42,6 +43,7 @@ export function VerifyPhone() {
   const [textingFailed, setTextingFailed] = useState(false);
   // From the verify answer, never the list read before it: the server decides (sc-2244).
   const [madePrimary, setMadePrimary] = useState<boolean | null>(null);
+  const [doneHeading, arriveAtDone] = useStepFocus();
   const wording = codeWording(route);
 
   useEffect(() => {
@@ -124,6 +126,7 @@ export function VerifyPhone() {
     try {
       setMadePrimary((await api.verifyPhone(code, alternative)).primary);
       setStatus({ kind: 'verified' });
+      arriveAtDone();
     } catch (error) {
       setStatus(codeRefusal(error));
     }
@@ -213,7 +216,9 @@ export function VerifyPhone() {
             ✓
           </span>
           <div className="auth-heading">
-            <h1>{t('verifyPhone.doneTitle')}</h1>
+            <h1 ref={doneHeading} tabIndex={-1}>
+              {t('verifyPhone.doneTitle')}
+            </h1>
             <p>
               {alternative == null
                 ? t('verifyPhone.doneBody', { number })
