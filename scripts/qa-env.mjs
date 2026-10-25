@@ -1042,16 +1042,16 @@ function maestroDevice(args) {
   return udid;
 }
 
-function maestroTarget(device, onAndroid) {
+export function maestroTarget(device, onAndroid, driverPort) {
   const target = ['--device', device];
-  return onAndroid ? target : [...target, '--driver-host-port', String(CONFIG.driverPort)];
+  return onAndroid ? target : [...target, '--driver-host-port', String(driverPort)];
 }
 
 function hierarchy(args) {
   const onAndroid = args.includes('--android');
   const ok = run(
     maestroBin() ?? 'maestro',
-    [...maestroTarget(maestroDevice(args), onAndroid), 'hierarchy'],
+    [...maestroTarget(maestroDevice(args), onAndroid, CONFIG.driverPort), 'hierarchy'],
     {
       cwd: qaWorktree(),
       optional: true,
@@ -1084,7 +1084,7 @@ function maestro(args) {
   const ok = run(
     maestroBin() ?? 'maestro',
     [
-      ...maestroTarget(device, onAndroid),
+      ...maestroTarget(device, onAndroid, CONFIG.driverPort),
       'test',
       '--debug-output',
       out,

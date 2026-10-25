@@ -27,6 +27,7 @@ import {
   expoSdkMajor,
   forAndroid,
   linkIntent,
+  maestroTarget,
   parseTarget,
   playImage,
   QA_OVERRIDES,
@@ -176,6 +177,22 @@ describe('the simulator ios opens', () => {
     [['--ipad'], { open: 'ipad', shut: 'phone' }],
   ])('%j opens one and shuts the other', (args, expected) => {
     expect(simulatorFor(args)).toEqual(expected);
+  });
+});
+
+describe('the device a maestro run drives', () => {
+  it.each(TESTERS)("is tester %i's own iPhone, through their own driver port", (tester) => {
+    const port = qaConfig(tester).driverPort;
+    expect(maestroTarget('UDID', false, port)).toEqual([
+      '--device',
+      'UDID',
+      '--driver-host-port',
+      String(22087 + tester),
+    ]);
+  });
+
+  it('is only the emulator on android, which has no shared driver', () => {
+    expect(maestroTarget('emulator-5564', true, 22088)).toEqual(['--device', 'emulator-5564']);
   });
 });
 
