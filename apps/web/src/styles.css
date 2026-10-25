@@ -867,6 +867,12 @@ span {
   border-color: var(--colorDarkInset);
 }
 
+.button-dark[aria-busy='true'] {
+  background: var(--colorDarkInset);
+  border-color: var(--colorDarkInset);
+  color: var(--colorInkOnDark);
+}
+
 /* ── Your account at phone width ──────────────────────────────────────────── */
 
 @media (width <= 40rem) {

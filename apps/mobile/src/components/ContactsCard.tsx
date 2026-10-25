@@ -126,6 +126,7 @@ function ContactsCard({
   const [asking, setAsking] = useState<Asking>(null);
   const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
   const [adding, setAdding] = useState(false);
+  const [sending, setSending] = useState(false);
   const [said, setSaid] = useState<{ line: string } | null>(null);
   const [arrived, setArrived] = useState(verified);
   const email = kind === 'email';
@@ -156,6 +157,8 @@ function ContactsCard({
   }
 
   async function act(row: Row, what: 'promote' | 'remove', proof?: string): Promise<void> {
+    if (sending) return;
+
     setRowError(null);
     const standing = proof ?? heldProof();
 
@@ -164,6 +167,8 @@ function ContactsCard({
       setAsking({ id: row.id, what: 'prove' });
       return;
     }
+
+    setSending(true);
 
     try {
       if (what === 'promote') {
@@ -184,7 +189,11 @@ function ContactsCard({
       await onChanged();
     } catch (refusal) {
       if (await rereadFor(refusal)) setAsking(null);
+      // The check has passed and is held, so a retry from the confirmation needs no second one.
+      else if (proof != null) setAsking({ id: row.id, what: 'promote' });
       setRowError({ id: row.id, message: rowRefusal(refusal, kind, t) });
+    } finally {
+      setSending(false);
     }
   }
 
@@ -321,6 +330,7 @@ function ContactsCard({
                         : t(email ? 'contacts.removeConfirm' : 'contacts.removeConfirmPhone')
                     }
                     onPress={() => void act(row, here)}
+                    busy={sending}
                     testID={`contacts.${row.id}.confirm`}
                   />
                   <QuietButton
@@ -330,6 +340,7 @@ function ContactsCard({
                         : t(email ? 'contacts.removeKeep' : 'contacts.removeKeepPhone')
                     }
                     onPress={() => setAsking(null)}
+                    off={sending}
                     testID={`contacts.${row.id}.keep`}
                   />
                 </View>
@@ -496,6 +507,7 @@ function Adding({
       <QuietButton
         label={t('contacts.cancel')}
         onPress={onCancel}
+        off={sending}
         testID={`contacts.${kind}.cancel`}
       />
     </View>

@@ -29,6 +29,7 @@ import { FieldError } from '../../../components/FieldError.tsx';
 import { emailMessage, useFormChecks } from '../../../formChecks.ts';
 import { PhoneEntry } from '../../../components/PhoneEntry.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
+import { offButton } from '../../../offButton.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
 import { phoneProblemMessage } from '../../../phoneProblem.ts';
 import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
@@ -165,6 +166,7 @@ function ContactsCard({
   } | null>(null);
   const reason = useRef<HTMLDivElement>(null);
   const [adding, setAdding] = useState(false);
+  const [sending, setSending] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
   const [arrived, setArrived] = useState(verified);
   const doneLine = useRef<HTMLDivElement>(null);
@@ -221,6 +223,8 @@ function ContactsCard({
   }
 
   async function act(row: Row, what: 'promote' | 'remove', proof?: string): Promise<void> {
+    if (sending) return;
+
     setRowError(null);
     const standing = proof ?? heldProof();
 
@@ -229,6 +233,8 @@ function ContactsCard({
       setAsking({ id: row.id, what: 'prove' });
       return;
     }
+
+    setSending(true);
 
     try {
       if (what === 'promote') {
@@ -252,8 +258,12 @@ function ContactsCard({
       const changed = await rereadFor(refusal);
 
       if (changed) setAsking(null);
+      // The check has passed and is held, so a retry from the confirmation needs no second one.
+      else if (proof != null) ask(row.id, 'promote');
       setRowError({ id: row.id, message: rowRefusal(refusal, kind, t), changed });
       if (changed) land(() => reason.current ?? heading.current);
+    } finally {
+      setSending(false);
     }
   }
 
@@ -364,6 +374,7 @@ function ContactsCard({
                       <button
                         className="button button-primary"
                         type="button"
+                        aria-busy={sending}
                         onClick={() => void act(row, 'promote')}
                       >
                         {t('contacts.promoteConfirm')}
@@ -371,6 +382,7 @@ function ContactsCard({
                       <button
                         className="button"
                         type="button"
+                        {...offButton(sending)}
                         onClick={() => closeBackTo(`promote ${row.id}`)}
                       >
                         {t('contacts.promoteKeep', { old: primary?.shown ?? '' })}
@@ -408,6 +420,7 @@ function ContactsCard({
                       <button
                         className="button button-dark"
                         type="button"
+                        aria-busy={sending}
                         onClick={() => void act(row, 'remove')}
                       >
                         {t(email ? 'contacts.removeConfirm' : 'contacts.removeConfirmPhone')}
@@ -415,6 +428,7 @@ function ContactsCard({
                       <button
                         className="button"
                         type="button"
+                        {...offButton(sending)}
                         onClick={() => closeBackTo(`remove ${row.id}`)}
                       >
                         {t(email ? 'contacts.removeKeep' : 'contacts.removeKeepPhone')}
