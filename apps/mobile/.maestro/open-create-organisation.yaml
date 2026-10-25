@@ -1,0 +1,18 @@
+# Create an organisation, from the switcher's row. Shared, as open-settings.yaml is.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'home.switchOrganisation'
+- scrollUntilVisible:
+    element:
+      id: 'switcher.create'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'switcher.create'
+- extendedWaitUntil:
+    visible:
+      id: 'createOrganisation'
+    timeout: 30000
+- takeScreenshot: mobile-create-organisation

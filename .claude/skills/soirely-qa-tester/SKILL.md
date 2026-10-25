@@ -355,8 +355,23 @@ sign-ins inside one 30-second step wait for the next, as the API refuses a code 
 Flows live in `~/Projects/soirely-qa<n>/apps/mobile/.maestro`, one per outcome, reach the bundler as `${METRO_URL}`
 and Mailpit as `${MAILPIT_URL}` (the harness passes both), and **target `testID`** rather than
 prose — a flow that taps `"Sign in"` taps whichever one it finds first and breaks in
-Spanish. A story that needs a new flow gets one committed beside the others; that is the
-part of a QA pass that survives it.
+Spanish.
+
+**The steps every pass repeats are shared flows: use them rather than write them again.**
+Each runs alone on a signed-in phone (`qa-env.mjs maestro <name>`) or as a step inside your
+own flow (`- runFlow: open-settings.yaml`), without relaunching Expo Go or signing in:
+
+| Flow                       | Leaves the app on                |
+| -------------------------- | -------------------------------- |
+| `sign-out`                 | the sign-in screen               |
+| `open-settings`            | Settings                         |
+| `open-switcher`            | Your organisations               |
+| `open-create-organisation` | the Create an organisation sheet |
+
+**A check needing a flow the repository lacks** writes it in `apps/mobile/.maestro/`, named
+for its outcome and never `_tmp-`, and posts it to `[ops]` on the story under test with the
+flow's whole contents in the comment, for ops to commit. That is the part of a QA pass that
+survives it: a flow left only in your worktree is lost at the next checkout.
 
 Maestro needs a Java runtime (`brew install --cask temurin@21`). Rotating a simulator is
 `xcrun simctl` — and **the three layouts are three arrangements**, so test the tablet in
