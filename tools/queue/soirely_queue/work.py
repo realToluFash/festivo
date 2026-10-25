@@ -524,7 +524,9 @@ def waits_on(story, pr):
         if role != "l10n" and open_threads(pr):
             return role, f"{role} to answer its open threads, and lead to resolve them"
         return role, f"{role} to merge it"
-    if covered and verdict["verdict"] == "back":
+    returned = not story["done"] and story["state"] in REVIEWED \
+        and (story["moved_at"] or "") > verdict["at"] if verdict else False
+    if covered and verdict["verdict"] == "back" and not returned:
         return role, f"{role} to fix the findings and push"
     if story["state"] in ("In Progress", "Failed Code Review"):
         return role, f"{role} to move sc-{story['id']} to In Review"
