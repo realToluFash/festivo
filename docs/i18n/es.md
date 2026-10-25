@@ -209,6 +209,13 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   "Single-event access" is «su acceso a eventos concretos». The card and the server's refusal
   say the same sentence, «… así que no puede desactivarla».
 
+- **26 Oct 2026. Two-factor for everyone, the artboard's lines** (sc-13182,
+  `signInRules.everyoneOn`, `everyoneOff`, `everyoneWithoutBody_*`, `everyoneStillWithout_*`,
+  `emails:signInRules.twoFactorDue.*`). A banner is «un aviso». A person who must act is
+  «cada una» after the count's «personas», with the verb in the singular. Their deadline is
+  «su fecha límite», and the email's facts label it «Fecha límite», since «Obligatoria a partir
+  del:» cannot stand before a colon. "Turns it on once" is «Se activa una sola vez».
+
 - **21 Oct 2026. Company domain joining** (`domainJoining.*`, `companyDomains.*`,
   `messages:domain_joining.*`, sc-4434). The act is «solicitar unirse», the button «Solicitar
   unirse», and the wait «Pendiente de aprobación», as the Members state. The approver is
