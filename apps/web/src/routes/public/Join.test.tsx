@@ -219,6 +219,32 @@ describe('an invitation, signed out', () => {
     expect(sessionStorage.getItem('soirely.invitation')).toBe(TOKEN);
   });
 
+  it('takes focus to “We could not find that invitation” when a newer invitation replaced the link', async () => {
+    __setSessionState({ status: 'signedOut', ended: false });
+    answering({
+      [LINK]: () => json(PREVIEW),
+      'POST /api/auth/register': () => problem(404, 'invitation_not_found'),
+    });
+    open();
+
+    fireEvent.change(await screen.findByLabelText('Full name'), { target: { value: 'Kemi' } });
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'lagos-evening-air' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create account and join' }));
+
+    const missing = await screen.findByRole('heading', {
+      level: 1,
+      name: 'We could not find that invitation',
+    });
+    await waitFor(() => expect(document.activeElement).toBe(missing));
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByLabelText('Full name')).toBeNull();
+    expect(screen.queryByText('Ìrè Events')).toBeNull();
+    expect(screen.getByRole('link', { name: 'Go to Soirely' })).toBeDefined();
+  });
+
   it('says a link that names nothing could not be found', async () => {
     __setSessionState({ status: 'signedOut', ended: false });
     answering({ [LINK]: () => problem(404, 'invitation_not_found') });

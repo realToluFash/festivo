@@ -331,6 +331,11 @@ function Register({
       return;
     }
 
+    if (error.is('invitation_not_found')) {
+      onChange({ kind: 'notFound' });
+      return;
+    }
+
     if (error.is('email_taken')) {
       onChange({ kind: 'emailTaken', preview });
       return;
