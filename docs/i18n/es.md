@@ -49,6 +49,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. Deleting an organisation** (`errors:owner_required`,
+  `messages:organisation.owner_required`, `delete_name_mismatch`, `emails:organisationDeleted.*`,
+  sc-3215). The refusals name the role, «Solo alguien con el rol Propietario…», as
+  `transfer_owner_required`. `delete_name_mismatch` is `ownership.deleteMismatch` word for
+  word, and `restore` is the second sentence of `ownership.deleteWindow`. The subject opens on
+  the verb, «Se ha eliminado {organisation}», so nothing agrees with the name. The footer says
+  «era miembro», as the organisation is gone when it is read.
 - **25 Oct 2026. The API's refusals** (`messages:*`, sc-10809). An HTTP request is «la
   petición», never «la solicitud», which is a request to join or a recovery request; an API
   path is «esta URL», since «dirección» is a postal or email address here. An id is «ese
