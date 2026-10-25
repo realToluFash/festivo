@@ -240,9 +240,10 @@ Screen-reader focus on mobile, which fails silently — no test and no review se
 a TalkBack or VoiceOver pass:
 
 - Move it only through `moveScreenReaderFocus` (`screenReaderFocus.ts`), and only to a view
-  a screen reader can land on: a `Pressable`, a `TextInput`, or a `View` with `accessible`.
-  A ref on a plain wrapper `View` drops the move, because the view can be flattened away
-  and is no focus stop (sc-9950).
+  a screen reader can land on: a `Pressable`, a `TextInput`, a `View` with `accessible`, or
+  a `Text`, which is a native text view, never flattened, and a stop for both readers as a
+  `header` (sc-11462). A ref on a plain wrapper `View` drops the move, because the view can
+  be flattened away and is no focus stop (sc-9950).
 - A move to something the same change draws, or one that follows a sheet closing, waits
   `SETTLED_MS` first, as `useBroughtIntoView` does. TalkBack drops a hover on a view not
   yet in its tree, and VoiceOver drops a focus asked for while a sheet slides away

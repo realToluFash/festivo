@@ -222,7 +222,7 @@ export default function MembersScreen() {
     <AppFrame
       current="settings"
       title={phone ? (inFront?.user.name ?? t('membersScreen.title')) : t('settings.title')}
-      titleRef={phone ? memberName : undefined}
+      titleRef={phone && inFront != null ? memberName : undefined}
       back={
         phone
           ? inFront != null
