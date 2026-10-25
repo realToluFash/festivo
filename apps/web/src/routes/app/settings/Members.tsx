@@ -22,6 +22,7 @@ import {
   memberStanding,
   memberStatusWord,
   roleName,
+  withheldRoles,
 } from '@soirely/domain';
 import { type FormEvent, type Ref, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -186,6 +187,7 @@ function MembersLoaded({
         member={member}
         list={list}
         roles={grantableRoles(roles, organisation)}
+        withheld={withheldRoles(roles, organisation)}
         manages={manages}
         caller={list.members.find((one) => one.self)?.user.id ?? null}
         onChanged={onChange}
@@ -544,6 +546,7 @@ function MemberDetail({
   member,
   list,
   roles,
+  withheld,
   manages,
   caller,
   onChanged,
@@ -554,6 +557,7 @@ function MemberDetail({
   member: OrganisationMember;
   list: MembersList;
   roles: OrganisationRole[];
+  withheld: OrganisationRole[];
   manages: boolean;
   caller: string | null;
   onChanged: (list: MembersList) => void;
@@ -570,7 +574,11 @@ function MemberDetail({
   const said = useRef<HTMLDivElement>(null);
   const asking = useRef<HTMLHeadingElement>(null);
   const callerOwns = organisation.role.seededAs === 'owner';
-  const standing = memberStanding(member, list.members, { owns: callerOwns, manages });
+  const standing = memberStanding(member, list.members, {
+    owns: callerOwns,
+    manages,
+    withholds: withheld,
+  });
   const waiting = member.status === 'pending_approval';
   const noRole = memberHeldNoRole(member);
   const onlyOwner = standing === 'suspendedOnlyOwner';
@@ -765,9 +773,7 @@ function MemberDetail({
         ) : standing !== 'manageable' ? (
           <>
             <p className="members-row-name">{roleName(t, member.role)}</p>
-            {standing === 'ownerOnly' && member.suspension == null && (
-              <p className="muted">{t('membersScreen.ownerOnly')}</p>
-            )}
+            {member.suspension == null && <FixedLine standing={standing} />}
           </>
         ) : (
           <RolePicker
@@ -1098,10 +1104,20 @@ function Suspension({
           )}
         </div>
       ) : (
-        standing === 'ownerOnly' && <p className="muted">{t('membersScreen.ownerOnly')}</p>
+        <FixedLine standing={standing} />
       )}
     </section>
   );
+}
+
+/** Why a manager can't change this member: an owner's role, or one holding what the viewer lacks (sc-11160). */
+function FixedLine({ standing }: { standing: MemberStanding }) {
+  const { t } = useTranslation();
+
+  if (standing === 'ownerOnly') return <p className="muted">{t('membersScreen.ownerOnly')}</p>;
+  if (standing === 'beyondGrant') return <p className="muted">{t('membersScreen.beyondGrant')}</p>;
+
+  return null;
 }
 
 /** Restore refused at the seat limit (sc-3575): the reason, the way through, and why suspending frees a seat. */

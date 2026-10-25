@@ -1,5 +1,5 @@
 import type { MembersList as Members, OrganisationRole } from '@soirely/api-client';
-import { grantableRoles, roleHolds } from '@soirely/domain';
+import { grantableRoles, roleHolds, withheldRoles } from '@soirely/domain';
 import { Redirect, router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -190,6 +190,7 @@ export default function MembersScreen() {
         member={member}
         list={load.list}
         roles={grantableRoles(load.roles, organisation)}
+        withheld={withheldRoles(load.roles, organisation)}
         manages={roleHolds(organisation, 'members.manage')}
         onChanged={(list) => setLoad({ ...load, list })}
         onRemoved={(list) => {

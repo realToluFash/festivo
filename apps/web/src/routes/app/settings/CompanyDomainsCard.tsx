@@ -80,6 +80,7 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
       const domain = normaliseDomain(typed);
       setList(await api.addCompanyDomain(organisation.id, domain));
       setTyped('');
+      setError(null);
       setFlash({ kind: 'added', domain });
     } catch (refusal) {
       const message =

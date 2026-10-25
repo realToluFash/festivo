@@ -301,6 +301,7 @@ function Transfer({
         >
           <PasswordField
             ref={passwordInput}
+            accessibilityLabel={t('ownership.password')}
             value={password}
             wrong={passwordError != null}
             submitting={busy}
@@ -322,6 +323,7 @@ function Transfer({
         <Field label={t('ownership.code')} error={codeError}>
           <CodeField
             ref={codeInput}
+            accessibilityLabel={t('ownership.code')}
             value={code}
             wrong={codeError != null}
             takesRecoveryCode
@@ -518,6 +520,7 @@ function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: ()
         >
           <TextField
             ref={input}
+            accessibilityLabel={t('ownership.deleteType', { organisation: name })}
             value={typed}
             wrong={mismatch != null}
             editable={!busy}

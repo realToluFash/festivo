@@ -1170,6 +1170,7 @@
     "onlyOwner": "{{name}} é a única pessoa com a função Proprietário. Uma organização tem sempre uma, por isso essa função não pode mudar e esta pessoa não pode ser removida até que outra tenha também a função Proprietário.",
     "askOwner": "Só quem tem a função Proprietário a pode atribuir a outra pessoa. Peça a {{name}}.",
     "ownerOnly": "Só quem tem a função Proprietário pode alterar a função de outra pessoa com essa função ou removê-la da organização.",
+    "beyondGrant": "Their role holds a permission yours does not, so you cannot change their role or remove them.",
     "removeTitle": "Remover {{name}}",
     "removeBody": "Esta pessoa perde o acesso assim que voltar a usar a Soirely. Os eventos desta pessoa continuam associados a {{organisation}}.",
     "removeButton": "Remover de {{organisation}}",
