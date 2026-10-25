@@ -100,7 +100,11 @@ function openSecurity() {
   );
 }
 
+const scrolled = vi.fn();
+
 beforeEach(() => {
+  scrolled.mockClear();
+  Element.prototype.scrollIntoView = scrolled;
   __setSessionState({ status: 'signedIn', session: FOLAKE });
   tokens.save({ accessToken: 'live', refreshExpiresAt: '', sessionId: HERE });
 });
@@ -301,6 +305,102 @@ describe('the devices signed in to an account', () => {
       expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined(),
     );
     expect(calls).toContainEqual({ method: 'POST', path: '/api/auth/logout' });
+  });
+
+  it('keeps this device signed in, and says so, when its sign-out cannot reach Soirely', async () => {
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'POST /api/auth/logout': () => {
+        throw new TypeError('Failed to fetch');
+      },
+    });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByText('This device')).toBeDefined());
+    const button = endOf('Chrome on macOS');
+    button.focus();
+    fireEvent.click(button);
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toMatch(/You are still signed in/),
+    );
+    expect(screen.getByRole('alert').textContent).toMatch(/this device was not signed out/);
+    expect(document.activeElement).toBe(button);
+    expect(scrolled).toHaveBeenCalledWith({ block: 'nearest' });
+    expect(screen.getByText('This device')).toBeDefined();
+    expect(screen.queryByRole('heading', { name: 'Sign in' })).toBeNull();
+    expect(tokens.access()).toBe('live');
+  });
+
+  it("counts an error of Soirely on this device's sign-out as not reached", async () => {
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'POST /api/auth/logout': () => new Response(null, { status: 500 }),
+    });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByText('This device')).toBeDefined());
+    fireEvent.click(endOf('Chrome on macOS'));
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toMatch(/You are still signed in/),
+    );
+    expect(tokens.access()).toBe('live');
+  });
+
+  it('shows one notice at a time, the newer in place of the older', async () => {
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      [`DELETE /api/auth/sessions/${ELSEWHERE}`]: () =>
+        json({ type: 'https://soirely.com/errors/not_found', title: 'Gone.', status: 404 }, 404),
+      'POST /api/auth/logout': () => {
+        throw new TypeError('Failed to fetch');
+      },
+    });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByText('Chrome on Windows')).toBeDefined());
+    fireEvent.click(endOf('Chrome on Windows'));
+    fireEvent.click(screen.getByRole('button', { name: 'Sign it out' }));
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toMatch(/That device was not signed out/),
+    );
+
+    fireEvent.click(endOf('Chrome on macOS'));
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toMatch(/You are still signed in/),
+    );
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+  });
+
+  it('signs out on the next press once Soirely answers', async () => {
+    let offline = true;
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'POST /api/auth/logout': () => {
+        if (offline) throw new TypeError('Failed to fetch');
+
+        return new Response(null, { status: 204 });
+      },
+    });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByText('This device')).toBeDefined());
+    fireEvent.click(endOf('Chrome on macOS'));
+    await waitFor(() => expect(screen.getByRole('alert')).toBeDefined());
+
+    offline = false;
+    fireEvent.click(endOf('Chrome on macOS'));
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined(),
+    );
+    expect(tokens.access()).toBeNull();
   });
 
   it('offers a retry when the list cannot be loaded, and says what it is about', async () => {

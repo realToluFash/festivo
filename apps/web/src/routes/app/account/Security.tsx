@@ -16,6 +16,7 @@ import { useNavigate } from 'react-router';
 import { api } from '../../../api.ts';
 import { AccountSections } from '../../../components/AccountSections.tsx';
 import { Pending } from '../../../components/Pending.tsx';
+import { StillSignedIn } from '../../../components/StillSignedIn.tsx';
 import { EverywhereElse } from './EverywhereElse.tsx';
 import { PasswordCard } from './PasswordCard.tsx';
 import { TwoFactorCard } from './TwoFactorCard.tsx';
@@ -28,6 +29,7 @@ import {
 } from '../../../providerSignIn.ts';
 import { forgetSession, refreshAccount, rereadCredentials, useSession } from '../../../session.ts';
 import { currentSessionId } from '../../../tokens.ts';
+import { useSignOut } from '../../../signOut.ts';
 
 type Devices =
   { kind: 'loading' } | { kind: 'failed' } | { kind: 'ready'; sessions: DeviceSession[] };
@@ -51,6 +53,7 @@ export function Security() {
   const [everywhereDone, setEverywhereDone] = useState<number | null>(null);
   const [codesSpent, setCodesSpent] = useState(0);
   const codeSpent = () => setCodesSpent((n) => n + 1);
+  const here = useSignOut(() => navigate('/sign-in'));
 
   // Removed only once committed: React may abandon a render and run the initializer again.
   useEffect(() => {
@@ -77,6 +80,7 @@ export function Security() {
 
   async function end(device: DeviceSession): Promise<void> {
     setEndFailed(false);
+    here.dismiss();
     setEverywhereDone(null);
 
     try {
@@ -120,9 +124,8 @@ export function Security() {
   }
 
   async function endHere(): Promise<void> {
-    await api.signOut();
-    forgetSession();
-    navigate('/sign-in');
+    setEndFailed(false);
+    await here.signOut();
   }
 
   return (
@@ -226,6 +229,8 @@ export function Security() {
                   </div>
                 </div>
               )}
+
+              {here.unreached && <StillSignedIn />}
 
               {devices.kind === 'loading' && <Pending />}
 
