@@ -1,5 +1,5 @@
 {
     "signInRules.rule.inactivity": "Quem passar {days, plural, =0 {# dias} one {# dia} other {# dias}} sem utilizar a Soirely terá de iniciar sessão novamente.",
     "joinRequest.waiting.body": "{count, plural, =0 {# pessoas aguardam resposta ao pedido de adesão a {organisation}:} one {# pessoa aguarda resposta ao pedido de adesão a {organisation}:} many {# de pessoas aguardam resposta ao pedido de adesão a {organisation}:} other {# pessoas aguardam resposta ao pedido de adesão a {organisation}:}}",
-    "time.dateAt": "{date} às {time} {zone}"
+    "time.dateAt": "{date} {hour, plural, =1 {à} other {às}} {time} {zone}"
 }

@@ -49,6 +49,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   quotes where the English quotes them; "system prompt" stays English. Where a screen says the
   same sentence (`lostTwoFactor.*`, `signIn.timedOutBody_*`, `createOrganisation.limitedTitle`,
   the lock-outs' "Tente novamente às {time}"), the refusal says it too.
+- **25 Oct 2026. The article before an API time** (sc-11332). The 01 hour is "a uma", so the
+  lock-outs (`messages+intl-icu:limits.*`) and `emails+intl-icu:time.dateAt` choose the
+  contraction from `{hour}` (0–23): `{hour, plural, =1 {à} other {às}} {time}`, "à 01:05",
+  "às 00:05" (zero horas), "às 13:05". Any new string that puts "à/às" before a clock time takes
+  the same form, or "a hora {time}" where no `{hour}` reaches it.
 - **25 Oct 2026. A time the clocks skip** (`eventForm.clocksSkip`, `clocksSkipNextDay`,
   sc-10675, reworded in sc-11163). "Em {{zone}}, a hora {{time}} do dia {{day}} não existe:
   nessa noite, os relógios são adiantados. Será guardada como {{savedAs}}." The next-day line
