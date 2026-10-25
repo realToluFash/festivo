@@ -19,6 +19,7 @@ import { fieldKeptInSight, offsetToFocus, titleScrollsWhileTyping } from '../kit
 import {
   NEW_ORGANISATION_FIELDS,
   createOrganisation,
+  dropsKeysAfter,
   limitMessage,
   newOrganisationMessage,
 } from '../kit/organisationCreate.ts';
@@ -199,6 +200,7 @@ function Form({
     }
 
     setSaving(false);
+    if (dropsKeysAfter(outcome.kind, Platform.OS)) nameInput.current?.blur();
     if (outcome.kind === 'limited') setLimited(limitMessage(outcome.until, locale, t));
     if (outcome.kind === 'failed') setFailed(true);
     if (outcome.kind === 'refused') {
