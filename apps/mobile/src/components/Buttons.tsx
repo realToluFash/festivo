@@ -40,7 +40,7 @@ export function PrimaryButton({
       <Text
         size={CONTROL_TEXT_SIZE}
         weight="semibold"
-        style={off ? styles.secondaryInk : styles.onAccent}
+        style={[styles.label, off ? styles.secondaryInk : styles.onAccent]}
       >
         {label}
       </Text>
@@ -81,7 +81,7 @@ export function SecondaryButton({
       <Text
         size={tokens.typeButton.size}
         weight="semibold"
-        style={off ? styles.secondaryInk : styles.ink}
+        style={[styles.label, off ? styles.secondaryInk : styles.ink]}
       >
         {label}
       </Text>
@@ -152,10 +152,11 @@ export function Footnote({
 
 const styles = StyleSheet.create({
   primary: {
-    height: tokens.sizeHitPhonePrimary,
+    minHeight: tokens.sizeHitPhonePrimary,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: tokens.spaceXxl,
+    paddingVertical: tokens.spaceXs,
     borderRadius: tokens.sizeHitPhonePrimary / 2,
     backgroundColor: tokens.colorAccent,
   },
@@ -163,9 +164,10 @@ const styles = StyleSheet.create({
   primaryOff: { backgroundColor: tokens.colorBorder },
   secondary: {
     alignSelf: 'flex-start',
-    height: tokens.sizeHit,
+    minHeight: tokens.sizeHit,
     justifyContent: 'center',
     paddingHorizontal: tokens.spaceXl,
+    paddingVertical: tokens.spaceXs,
     borderRadius: tokens.sizeHit / 2,
     borderWidth: 1,
     borderColor: tokens.colorControlBorder,
@@ -174,7 +176,7 @@ const styles = StyleSheet.create({
   secondaryStacked: {
     alignSelf: 'stretch',
     alignItems: 'center',
-    height: tokens.sizeHitPhonePrimary,
+    minHeight: tokens.sizeHitPhonePrimary,
     borderRadius: tokens.sizeHitPhonePrimary / 2,
   },
   secondaryOff: { backgroundColor: tokens.colorInset, borderColor: tokens.colorBorder },
@@ -189,6 +191,7 @@ const styles = StyleSheet.create({
     borderTopColor: tokens.colorInsetBorder,
   },
   footnoteAction: { minHeight: tokens.sizeHit, justifyContent: 'center' },
+  label: { textAlign: 'center' },
   onAccent: { color: tokens.colorInkOnDark },
   ink: { color: tokens.colorInk },
   secondaryInk: { color: tokens.colorInkSecondary },
