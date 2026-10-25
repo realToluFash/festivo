@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
+import { focusWhereSent, offField } from '../../../offField.ts';
 
 type Flash = { kind: 'added' | 'removed'; domain: string } | null;
 
@@ -59,6 +60,7 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
 
   async function add(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+    if (busy) return;
 
     const problem = companyDomainProblem(typed);
 
@@ -75,6 +77,7 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
     setBusy(true);
     setFlash(null);
     setRemoveFailed(false);
+    const land = focusWhereSent();
 
     try {
       const domain = normaliseDomain(typed);
@@ -88,7 +91,7 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
           ? refusal.fieldErrors().domain
           : undefined;
       setError(message ?? t('companyDomains.failed'));
-      input.current?.focus();
+      land('company-domain');
     } finally {
       setBusy(false);
     }
@@ -225,7 +228,7 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
               spellCheck={false}
               placeholder={example}
               value={typed}
-              disabled={busy}
+              {...offField(busy)}
               aria-invalid={error != null}
               aria-describedby={
                 error == null ? 'company-domain-help' : 'company-domain-error company-domain-help'

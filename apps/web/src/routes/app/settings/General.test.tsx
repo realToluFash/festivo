@@ -202,6 +202,7 @@ describe('Settings > General', () => {
     expect(screen.getByText("Enter the organisation's name.")).toBeDefined();
     expect(screen.getByText(/That does not look like an email address/)).toBeDefined();
     expect(screen.getByLabelText('Name').getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(screen.getByLabelText('Name'));
     expect(sent).toEqual([]);
   });
 

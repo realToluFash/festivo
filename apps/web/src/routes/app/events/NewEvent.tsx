@@ -15,6 +15,7 @@ import { Link, useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { currentLocale } from '../../../i18n/index.ts';
+import { focusWhereSent, offField } from '../../../offField.ts';
 import { can, useSession } from '../../../session.ts';
 import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
 import { Forbidden } from '../Forbidden.tsx';
@@ -51,15 +52,13 @@ function EventForm({ organisation }: { organisation: Membership }) {
   const [errors, setErrors] = useState<Errors>({});
   const [unsent, setUnsent] = useState(0);
   const [status, setStatus] = useState<'editing' | 'creating' | 'failed'>('editing');
-  const focusNext = useRef<string | null>(null);
+  const focusNext = useRef<(() => void) | null>(null);
   const currencies = useMemo(() => currencyChoices('', currency, locale, t), [currency, locale, t]);
   const zones = useMemo(() => timeZoneChoices(organisation.timezone), [organisation.timezone]);
   const busy = status === 'creating';
 
   useEffect(() => {
-    if (focusNext.current == null) return;
-
-    document.getElementById(focusNext.current)?.focus();
+    focusNext.current?.();
     focusNext.current = null;
   }, [errors]);
 
@@ -68,10 +67,13 @@ function EventForm({ organisation }: { organisation: Membership }) {
     setErrors((previous) => ({ ...previous, [field]: undefined }));
   }
 
-  function refuse(found: Errors): void {
+  function refuse(
+    found: Errors,
+    focus = (id: string) => document.getElementById(id)?.focus(),
+  ): void {
     const first = FIELDS.find((field) => found[field] != null);
 
-    focusNext.current = first == null ? null : inputFor(first, draft);
+    focusNext.current = first == null ? null : () => focus(inputFor(first, draft));
     setErrors(found);
   }
 
@@ -95,6 +97,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
 
     setUnsent(0);
     setStatus('creating');
+    const land = focusWhereSent();
 
     try {
       const created = await api.createEvent(organisation.id, {
@@ -113,7 +116,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
 
       if (Object.keys(found).length > 0) {
         setStatus('editing');
-        refuse(found);
+        refuse(found, land);
         return;
       }
 
@@ -156,7 +159,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
               value={draft.name}
               autoComplete="off"
               spellCheck={false}
-              disabled={busy}
+              {...offField(busy)}
               aria-invalid={errors.name != null}
               aria-describedby={describedBy(
                 errors.name == null ? null : 'event-name-error',
