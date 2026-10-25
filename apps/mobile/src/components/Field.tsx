@@ -94,7 +94,7 @@ export function FieldError({
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
-        <Text size={tokens.typePill.size} weight="bold" style={styles.broken}>
+        <Text size={tokens.typePill.size} weight="bold" style={styles.broken} accessible={false}>
           {tokens.marks.broken.glyph}
         </Text>
       </View>

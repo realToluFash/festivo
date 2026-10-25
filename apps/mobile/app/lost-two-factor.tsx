@@ -258,7 +258,12 @@ function Start({
               accessibilityElementsHidden
               importantForAccessibility="no-hide-descendants"
             >
-              <Text size={tokens.typePill.size} weight="bold" style={styles.secondary}>
+              <Text
+                size={tokens.typePill.size}
+                weight="bold"
+                style={styles.secondary}
+                accessible={false}
+              >
                 {String(index + 1)}
               </Text>
             </View>

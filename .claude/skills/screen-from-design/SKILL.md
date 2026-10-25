@@ -240,7 +240,9 @@ A mark, or a name's initials in a tile beside the name, next to words that say t
 thing is hidden from screen readers. On the web that is `aria-hidden="true"`. On the app it
 is `accessibilityElementsHidden` and `importantForAccessibility="no-hide-descendants"` on
 the view holding the mark, never `"no"` on a view with text inside it, because Android
-hides only that view and still reads the text. A checkbox's or a chosen option's ✓ goes
+hides only that view and still reads the text. Its `Text` also carries
+`accessible={false}`, after any spread, because iOS still reports a hidden `Text` on some
+opens without it. A checkbox's or a chosen option's ✓ goes
 too, since its state is already read. A mark that is part of a control's name, such as
 **✓ Copied**, stays. (sc-10365, sc-10664, sc-10712)
 

@@ -207,7 +207,12 @@ function AtRest({
             importantForAccessibility="no-hide-descendants"
           >
             {status.on && (
-              <Text size={tokens.typePill.size} weight="bold" style={styles.markOnInk}>
+              <Text
+                size={tokens.typePill.size}
+                weight="bold"
+                style={styles.markOnInk}
+                accessible={false}
+              >
                 ✓
               </Text>
             )}
@@ -420,7 +425,12 @@ function SavingCodes({
           importantForAccessibility="no-hide-descendants"
         >
           {saved && (
-            <Text size={tokens.typePill.size} weight="bold" style={styles.markOnInk}>
+            <Text
+              size={tokens.typePill.size}
+              weight="bold"
+              style={styles.markOnInk}
+              accessible={false}
+            >
               ✓
             </Text>
           )}

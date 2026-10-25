@@ -40,7 +40,12 @@ export function AuthHeading({
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          <Text size={tokens.typeTitlePage.size} weight="bold" style={styles.onAccent}>
+          <Text
+            size={tokens.typeTitlePage.size}
+            weight="bold"
+            style={styles.onAccent}
+            accessible={false}
+          >
             ✓
           </Text>
         </View>

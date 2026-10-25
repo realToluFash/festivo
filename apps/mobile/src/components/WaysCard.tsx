@@ -305,7 +305,7 @@ function State({ on, word, address }: { on: boolean; word: string; address?: str
         importantForAccessibility="no-hide-descendants"
       >
         {on && (
-          <Text size={tokens.typePill.size} weight="bold" style={styles.markInk}>
+          <Text size={tokens.typePill.size} weight="bold" style={styles.markInk} accessible={false}>
             {tokens.marks.done.glyph}
           </Text>
         )}

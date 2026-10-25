@@ -16,7 +16,12 @@ export function StatusMark({ tone, word }: { tone: StatusTone; word: string }) {
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
-        <Text size={tokens.typePill.size} weight="bold" style={{ color: mark.ink }}>
+        <Text
+          size={tokens.typePill.size}
+          weight="bold"
+          style={{ color: mark.ink }}
+          accessible={false}
+        >
           {mark.glyph}
         </Text>
       </View>

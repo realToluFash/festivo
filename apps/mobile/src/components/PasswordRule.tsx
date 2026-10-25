@@ -22,7 +22,12 @@ export function PasswordRule({ met, testID }: { met: boolean; testID: string }) 
           importantForAccessibility="no-hide-descendants"
         >
           {lengthMet && (
-            <Text size={tokens.typeMeta.size} weight="bold" style={styles.onAccent}>
+            <Text
+              size={tokens.typeMeta.size}
+              weight="bold"
+              style={styles.onAccent}
+              accessible={false}
+            >
               ✓
             </Text>
           )}

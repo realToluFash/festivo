@@ -25,7 +25,13 @@ export function OnboardingSteps({
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          <Text size={tokens.typePill.size} weight="bold" mono style={styles.onMark}>
+          <Text
+            size={tokens.typePill.size}
+            weight="bold"
+            mono
+            style={styles.onMark}
+            accessible={false}
+          >
             {emailDone ? '✓' : '1'}
           </Text>
         </View>
@@ -52,6 +58,7 @@ export function OnboardingSteps({
             weight="bold"
             mono
             style={detailsNow ? styles.onMark : styles.secondary}
+            accessible={false}
           >
             2
           </Text>

@@ -153,6 +153,7 @@ export function ListPicker({
                       size={tokens.typeButton.size}
                       weight="semibold"
                       style={styles.accentText}
+                      accessible={false}
                       accessibilityElementsHidden
                       importantForAccessibility="no-hide-descendants"
                     >
