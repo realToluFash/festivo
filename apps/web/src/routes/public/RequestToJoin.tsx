@@ -7,7 +7,7 @@ import {
   initials,
   lockLiftsAt,
 } from '@soirely/domain';
-import { type FormEvent, type RefObject, useEffect, useState } from 'react';
+import { type FormEvent, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 
@@ -19,12 +19,13 @@ import { Unreachable } from '../../components/Unreachable.tsx';
 import { useFormChecks } from '../../formChecks.ts';
 import { dropHeldInvitation, holdInvitation } from '../../heldInvitation.ts';
 import { dateLocale } from '../../i18n/index.ts';
+import { useLinkRetry } from '../../linkRetry.ts';
 import { landingFor, refreshAccount, restoreSession, useSessionState } from '../../session.ts';
 import { useStepFocus } from '../../stepFocus.ts';
 
 type View =
   | { kind: 'loading' }
-  | { kind: 'dead'; brought?: boolean }
+  | { kind: 'dead' }
   | { kind: 'unreachable' }
   | { kind: 'open'; preview: RequestLinkPreview }
   | { kind: 'sent'; preview: RequestLinkPreview }
@@ -36,8 +37,15 @@ export function RequestToJoin({ token }: { token: string }) {
   const [view, setView] = useState<View>({ kind: 'loading' });
   const [answer, arriveAtAnswer] = useStepFocus<HTMLDivElement>();
   const [answered, setAnswered] = useState(false);
-  const [deadHeading, arriveAtDead] = useStepFocus();
   const settled = session.status === 'signedIn' || session.status === 'signedOut';
+  const [heading, arrive] = useStepFocus();
+  const [brought, setBrought] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const retryArrives = useRef(false);
+  const retry = useLinkRetry(view, () => {
+    retryArrives.current = true;
+    setAttempt((n) => n + 1);
+  });
 
   useEffect(() => {
     dropHeldInvitation();
@@ -49,42 +57,62 @@ export function RequestToJoin({ token }: { token: string }) {
     let current = true;
 
     api.requestLinkPreview(token).then(
-      (preview) => current && setView({ kind: 'open', preview }),
+      (preview) => {
+        if (!current) return;
+        setView({ kind: 'open', preview });
+        if (retryArrives.current) {
+          setBrought(true);
+          arrive();
+        }
+        retryArrives.current = false;
+      },
       (error: unknown) => {
         if (!current) return;
         const dead = error instanceof ApiError && error.is('request_link_dead');
         setView({ kind: dead ? 'dead' : 'unreachable' });
+        if (dead && retryArrives.current) {
+          setBrought(true);
+          arrive();
+        }
+        retryArrives.current = false;
       },
     );
 
     return () => {
       current = false;
     };
-  }, [settled, token]);
+  }, [settled, token, attempt, arrive]);
 
   function change(next: View): void {
+    const dead = next.kind === 'dead';
     setView(next);
-    if (next.kind === 'dead') {
-      arriveAtDead();
+    setBrought(dead);
+    if (dead) {
+      arrive();
     } else {
       setAnswered(true);
       arriveAtAnswer();
     }
   }
 
-  if (session.status === 'unreachable' || view.kind === 'unreachable') return <Unreachable />;
+  if (session.status === 'unreachable') return <Unreachable signedIn={false} />;
+  if (view.kind === 'unreachable') {
+    return <Unreachable signedIn={session.status === 'signedIn'} retry={retry} />;
+  }
   if (view.kind === 'loading') return <Pending />;
 
   return (
     <AuthPage>
       {view.kind === 'dead' ? (
-        <Dead heading={deadHeading} brought={view.brought === true} />
+        <Dead brought={brought} headingRef={heading} />
       ) : (
         <Asking
           token={token}
           view={view}
           signedIn={session.status === 'signedIn'}
           answer={answered ? answer : null}
+          brought={brought}
+          headingRef={heading}
           onChange={change}
         />
       )}
@@ -94,18 +122,18 @@ export function RequestToJoin({ token }: { token: string }) {
 
 /** Unknown, switched off and replaced alike, with no organisation named. */
 function Dead({
-  heading,
   brought,
+  headingRef,
 }: {
-  heading: RefObject<HTMLHeadingElement | null>;
   brought: boolean;
+  headingRef: RefObject<HTMLHeadingElement | null>;
 }) {
   const { t } = useTranslation();
 
   return (
     <>
       <div className="auth-heading">
-        <h1 ref={heading} tabIndex={-1}>
+        <h1 ref={headingRef} tabIndex={-1}>
           {t('requestToJoin.deadTitle')}
         </h1>
       </div>
@@ -127,6 +155,8 @@ function Asking({
   view,
   signedIn,
   answer,
+  brought,
+  headingRef,
   onChange,
 }: {
   token: string;
@@ -134,6 +164,8 @@ function Asking({
   signedIn: boolean;
   /** Where focus lands once Ask to join is answered; none when the page opened on its answer. */
   answer: RefObject<HTMLDivElement | null> | null;
+  brought: boolean;
+  headingRef: RefObject<HTMLHeadingElement | null>;
   onChange: (next: View) => void;
 }) {
   const { t } = useTranslation();
@@ -143,7 +175,9 @@ function Asking({
   return (
     <>
       <div className="auth-heading">
-        <h1>{t('requestToJoin.title', { organisation })}</h1>
+        <h1 ref={headingRef} tabIndex={-1}>
+          {t('requestToJoin.title', { organisation })}
+        </h1>
       </div>
 
       <div className="join-org">
@@ -160,7 +194,7 @@ function Asking({
       {view.kind === 'limited' && <Limited until={view.until} answer={answer} />}
       {view.kind === 'open' && !signedIn && <SignedOut token={token} organisation={organisation} />}
       {view.kind === 'open' && signedIn && preview.standing != null && (
-        <Standing preview={preview} answer={answer} />
+        <Standing preview={preview} answer={answer} brought={brought} />
       )}
       {view.kind === 'open' && signedIn && preview.standing == null && (
         <Ask token={token} preview={preview} onChange={onChange} />
@@ -270,7 +304,7 @@ function Ask({
     }
 
     if (problem.is('request_link_dead')) {
-      onChange({ kind: 'dead', brought: true });
+      onChange({ kind: 'dead' });
       return;
     }
 
@@ -347,8 +381,9 @@ function useLanding(): string {
 type Answer = RefObject<HTMLDivElement | null> | null;
 
 /** A notice that answers Ask to join takes focus in place of its button, and so is not also announced. */
-function answering(answer: Answer) {
-  return answer == null ? { role: 'status' } : { ref: answer, tabIndex: -1 };
+function answering(answer: Answer, brought = false) {
+  if (answer != null) return { ref: answer, tabIndex: -1 };
+  return brought ? {} : { role: 'status' };
 }
 
 function Sent({ organisation, answer }: { organisation: string; answer: Answer }) {
@@ -398,7 +433,15 @@ function Limited({ until, answer }: { until: Date | null; answer: Answer }) {
   );
 }
 
-function Standing({ preview, answer }: { preview: RequestLinkPreview; answer: Answer }) {
+function Standing({
+  preview,
+  answer,
+  brought,
+}: {
+  preview: RequestLinkPreview;
+  answer: Answer;
+  brought: boolean;
+}) {
   const { t } = useTranslation();
   const landing = useLanding();
   const organisation = preview.organisation.name;
@@ -417,7 +460,7 @@ function Standing({ preview, answer }: { preview: RequestLinkPreview; answer: An
 
   return (
     <>
-      <div className="notice notice-quiet" {...answering(answer)}>
+      <div className="notice notice-quiet" {...answering(answer, brought)}>
         <span className="mark mark-info" aria-hidden="true">
           i
         </span>

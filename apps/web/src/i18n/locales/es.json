@@ -354,6 +354,7 @@
   "session": {
     "unreachableTitle": "No se puede conectar con Soirely",
     "unreachableBody": "Su sesión sigue abierta. Soirely no responde, así que todavía no se puede cargar nada. Compruebe su conexión y vuelva a intentarlo.",
+    "unreachableBodySignedOut": "Soirely no responde, así que todavía no se puede cargar nada. Compruebe su conexión y vuelva a intentarlo.",
     "retrying": "Intentándolo de nuevo…",
     "stillSignedInTitle": "Su sesión sigue abierta",
     "stillSignedInBody": "No se ha podido conectar con Soirely, así que no se ha cerrado la sesión en este dispositivo. Compruebe su conexión y vuelva a intentarlo."

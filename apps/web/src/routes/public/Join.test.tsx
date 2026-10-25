@@ -472,3 +472,130 @@ describe('an invitation, signed in', () => {
     expect(screen.queryByRole('link', { name: /^Open/ })).toBeNull();
   });
 });
+
+describe('an invitation whose link did not load (sc-11488)', () => {
+  const SIGNED_IN = 'You are still signed in.';
+  const NOT_ANSWERING =
+    'Soirely is not answering, so nothing can load yet. Check your connection, then try again.';
+
+  it('says nothing of being signed in to somebody signed out, and Try again reads the link', async () => {
+    __setSessionState({ status: 'signedOut', ended: false });
+    let release: (answer: Response) => void = () => undefined;
+    let reachable = false;
+    const sent = answering({
+      [LINK]: () => {
+        if (!reachable) throw new TypeError('Failed to fetch');
+        return new Promise<Response>((resolve) => (release = resolve)) as unknown as Response;
+      },
+    });
+    open();
+
+    expect(await screen.findByText(NOT_ANSWERING)).toBeDefined();
+    expect(screen.queryByText(new RegExp(SIGNED_IN))).toBeNull();
+
+    reachable = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByRole('button', { name: 'Trying again…' })).toBeDefined();
+    expect(screen.getByText(NOT_ANSWERING)).toBeDefined();
+
+    release(json(PREVIEW));
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Join Ìrè Events' });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(sent.map((one) => one.line)).toEqual([LINK, LINK]);
+  });
+
+  it('keeps the full words signed in, and puts focus on the notice when it fails again', async () => {
+    signedIn();
+    const sent = answering({});
+    open();
+
+    expect(await screen.findByText(`${SIGNED_IN} ${NOT_ANSWERING}`)).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    const button = await screen.findByRole('button', { name: 'Try again' });
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('status')));
+    expect(screen.getByRole('status').textContent).toContain('Cannot reach Soirely');
+    expect(button.hasAttribute('disabled')).toBe(false);
+    expect(sent.map((one) => one.line)).toEqual([LINK, LINK]);
+  });
+
+  it('puts focus on the heading when Try again finds no invitation', async () => {
+    __setSessionState({ status: 'signedOut', ended: false });
+    let reachable = false;
+    answering({
+      [LINK]: () => {
+        if (!reachable) throw new TypeError('Failed to fetch');
+        return problem(404, 'invitation_not_found');
+      },
+    });
+    open();
+
+    expect(await screen.findByText(NOT_ANSWERING)).toBeDefined();
+
+    reachable = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    const heading = await screen.findByRole('heading', {
+      level: 1,
+      name: 'We could not find that invitation',
+    });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('puts focus on the heading alone when Try again finds the invitation expired', async () => {
+    __setSessionState({ status: 'signedOut', ended: false });
+    let reachable = false;
+    answering({
+      [LINK]: () => {
+        if (!reachable) throw new TypeError('Failed to fetch');
+        return json({ ...PREVIEW, refusal: 'invitation_expired' });
+      },
+    });
+    open();
+
+    expect(await screen.findByText(NOT_ANSWERING)).toBeDefined();
+
+    reachable = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    const heading = await screen.findByRole('heading', {
+      level: 1,
+      name: 'This invitation has expired',
+    });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    expect(
+      screen.getByText('This invitation has expired. Ask Bisi Adeyemi to send a new one.'),
+    ).toBeDefined();
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('shows the words true for everybody when the account did not load, and reads it then the link', async () => {
+    __setSessionState({ status: 'unknown' });
+    let reachable = false;
+    const sent = answering({
+      'GET /api/auth/me': () => {
+        if (!reachable) throw new TypeError('Failed to fetch');
+        return problem(401, 'unauthenticated');
+      },
+      'POST /api/auth/refresh': () => problem(401, 'unauthenticated'),
+      [LINK]: () => json(PREVIEW),
+    });
+    open();
+
+    expect(await screen.findByText(NOT_ANSWERING)).toBeDefined();
+    expect(screen.queryByText(new RegExp(SIGNED_IN))).toBeNull();
+
+    reachable = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Join Ìrè Events' })).toBeDefined();
+    expect(sent.map((one) => one.line).filter((line) => line !== 'POST /api/auth/refresh')).toEqual(
+      ['GET /api/auth/me', 'GET /api/auth/me', LINK],
+    );
+  });
+});

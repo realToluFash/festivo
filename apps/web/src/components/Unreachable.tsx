@@ -1,18 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import type { LinkRetry } from '../linkRetry.ts';
 import { retrySession, useSessionState } from '../session.ts';
 import { focusStep, useStepFocus } from '../stepFocus.ts';
 import { LanguageChoice } from './LanguageChoice.tsx';
 
-/** No sign-in heading or form: the person is still signed in, and those would say otherwise. */
-export function Unreachable() {
+/** No sign-in heading or form, which would tell somebody signed in otherwise. Without `retry`, Try again reads the account. */
+export function Unreachable({ signedIn, retry }: { signedIn: boolean; retry?: LinkRetry }) {
   const { t } = useTranslation();
   const state = useSessionState();
-  const retrying = state.status === 'unreachable' && state.retrying;
+  const retrying = retry?.retrying ?? (state.status === 'unreachable' && state.retrying);
+  const linked = retry != null;
+  const linkNotice = useRef<HTMLDivElement>(null);
+  const wasRetrying = useRef(false);
   const [pressed, setPressed] = useState(false);
   const [notice, arriveAtNotice] = useStepFocus<HTMLDivElement>();
   const retried = useRef(false);
+
+  useEffect(() => {
+    if (linked && wasRetrying.current && !retrying) linkNotice.current?.focus();
+    wasRetrying.current = retrying;
+  }, [linked, retrying]);
 
   useEffect(
     () => () => {
@@ -21,7 +30,7 @@ export function Unreachable() {
     [],
   );
 
-  async function retry(): Promise<void> {
+  async function retryAccount(): Promise<void> {
     setPressed(true);
     retried.current = true;
     await retrySession();
@@ -37,13 +46,20 @@ export function Unreachable() {
 
       <main id="content" className="auth-main">
         <section className="auth-card">
-          <div className="notice notice-quiet" role={pressed ? undefined : 'status'}>
+          <div
+            ref={linkNotice}
+            className="notice notice-quiet"
+            role={pressed ? undefined : 'status'}
+            tabIndex={linked ? -1 : undefined}
+          >
             <span className="mark mark-info" aria-hidden="true">
               i
             </span>
             <div className="notice-body" ref={notice} tabIndex={pressed ? -1 : undefined}>
               <h1 className="notice-heading">{t('session.unreachableTitle')}</h1>
-              <p>{t('session.unreachableBody')}</p>
+              <p>
+                {signedIn ? t('session.unreachableBody') : t('session.unreachableBodySignedOut')}
+              </p>
             </div>
           </div>
 
@@ -52,7 +68,7 @@ export function Unreachable() {
             type="button"
             disabled={retrying}
             aria-busy={retrying}
-            onClick={() => void retry()}
+            onClick={() => void (retry == null ? retryAccount() : retry.again())}
           >
             {retrying ? t('session.retrying') : t('error.retry')}
           </button>

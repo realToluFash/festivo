@@ -23,6 +23,7 @@ import { Unreachable } from '../../components/Unreachable.tsx';
 import { useFormChecks } from '../../formChecks.ts';
 import { dropHeldInvitation, holdInvitation } from '../../heldInvitation.ts';
 import { dateLocale } from '../../i18n/index.ts';
+import { useLinkRetry } from '../../linkRetry.ts';
 import { offButton } from '../../offButton.ts';
 import {
   adoptAccount,
@@ -81,6 +82,11 @@ function Invited({ token }: { token: string }) {
 
   const [attempt, setAttempt] = useState(0);
   const reloadArrives = useRef(false);
+  const reload = () => {
+    reloadArrives.current = true;
+    setAttempt((n) => n + 1);
+  };
+  const retry = useLinkRetry(view, reload);
 
   useEffect(() => {
     dropHeldInvitation();
@@ -118,7 +124,10 @@ function Invited({ token }: { token: string }) {
     };
   }, [settled, token, attempt, arriveAtStep]);
 
-  if (session.status === 'unreachable' || view.kind === 'unreachable') return <Unreachable />;
+  if (session.status === 'unreachable') return <Unreachable signedIn={false} />;
+  if (view.kind === 'unreachable') {
+    return <Unreachable signedIn={session.status === 'signedIn'} retry={retry} />;
+  }
   if (view.kind === 'loading') return <Pending />;
 
   if (view.kind === 'notFound') {
@@ -156,10 +165,7 @@ function Invited({ token }: { token: string }) {
         setBrought(true);
         arriveAtStep();
       }}
-      onReload={() => {
-        reloadArrives.current = true;
-        setAttempt((n) => n + 1);
-      }}
+      onReload={reload}
     />
   );
 }
