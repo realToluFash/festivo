@@ -515,6 +515,7 @@ function Switcher({
   onCreate: () => void;
 }) {
   const { t } = useTranslation();
+  const { width, height } = useLayout();
 
   return (
     <Modal
@@ -524,7 +525,12 @@ function Switcher({
       supportedOrientations={TURNS_WITH_THE_APP}
       onRequestClose={onClose}
     >
-      <View style={styles.scrim} accessibilityViewIsModal onAccessibilityEscape={onClose}>
+      {/* Sized from the window: on an iPhone on its side the modal can keep its upright height (sc-10118). */}
+      <View
+        style={[styles.scrim, { width, height }]}
+        accessibilityViewIsModal
+        onAccessibilityEscape={onClose}
+      >
         {/* A sibling, not a parent: iOS reads a labelled button as one item and nothing inside it (sc-10712).
             VoiceOver closes the sheet from this Close or the two-finger escape on the scrim. */}
         <Pressable
@@ -872,7 +878,6 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorAccentTint,
   },
   scrim: {
-    flex: 1,
     justifyContent: 'center',
     padding: tokens.spaceXxl,
     backgroundColor: tokens.scrimDialog,
