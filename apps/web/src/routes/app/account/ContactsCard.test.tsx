@@ -47,7 +47,7 @@ interface Sent {
   body: unknown;
 }
 
-function answering(answers: Record<string, () => Response> = {}): Sent[] {
+function answering(answers: Record<string, () => Response | Promise<Response>> = {}): Sent[] {
   const sent: Sent[] = [];
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -871,5 +871,109 @@ describe('back from verifying an address or number', () => {
 
     await screen.findByText('folake.adeyemi@gmail.com');
     expect(screen.queryByText('folake.adeyemi@gmail.com is verified.')).toBeNull();
+  });
+});
+
+describe('a confirmation while its request runs (sc-12546)', () => {
+  /** Each request waits until `drop` fails it as one that never reached the server. */
+  function holding(): { answer: () => Promise<Response>; drop: () => void } {
+    const waiting: Array<(reason: unknown) => void> = [];
+
+    return {
+      answer: () => new Promise<Response>((_resolve, reject) => waiting.push(reject)),
+      drop: () => waiting.splice(0).forEach((reject) => reject(new TypeError('Failed to fetch'))),
+    };
+  }
+
+  it.each([
+    {
+      call: 'PATCH /api/auth/emails/e2/primary',
+      open: 'Make primary',
+      send: 'Make it primary',
+      keep: 'Keep folake@ire.events',
+      title: 'Make this your primary address?',
+    },
+    {
+      call: 'DELETE /api/auth/emails/e2',
+      open: 'Remove folake.adeyemi@gmail.com',
+      send: 'Remove it',
+      keep: 'Keep it',
+      title: 'Remove this address?',
+    },
+  ])(
+    'shows $send busy and $keep off until the answer, then gives both back',
+    async ({ call, open: opener, send, keep, title }) => {
+      holdProof({ proof: 'held', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+      const request = holding();
+      const sent = answering({ 'GET /api/auth/me': () => json(ME), [call]: request.answer });
+      open();
+
+      fireEvent.click(await screen.findByRole('button', { name: opener }));
+      fireEvent.click(screen.getByRole('button', { name: send }));
+      await waitFor(() => expect(sent.filter((s) => s.call === call)).toHaveLength(1));
+
+      const sending = screen.getByRole('button', { name: send });
+      const way = screen.getByRole('button', { name: keep });
+      expect(sending.getAttribute('aria-busy')).toBe('true');
+      expect(way.getAttribute('aria-disabled')).toBe('true');
+      expect(way.hasAttribute('data-off')).toBe(true);
+      fireEvent.click(way);
+      fireEvent.click(sending);
+      expect(screen.getByText(title)).toBeDefined();
+      expect(sent.filter((s) => s.call === call)).toHaveLength(1);
+
+      request.drop();
+
+      expect(await screen.findByText('That did not work. Try again.')).toBeDefined();
+      expect(screen.getByRole('button', { name: send }).getAttribute('aria-busy')).toBe('false');
+      expect(screen.getByRole('button', { name: keep }).getAttribute('aria-disabled')).toBe(
+        'false',
+      );
+      expect(screen.getByRole('button', { name: keep }).hasAttribute('data-off')).toBe(false);
+      fireEvent.click(screen.getByRole('button', { name: keep }));
+      expect(screen.queryByText(title)).toBeNull();
+      expect(sent.filter((s) => s.call === call)).toHaveLength(1);
+    },
+  );
+
+  it('goes back to the confirmation when the change after Confirm it’s you does not go through', async () => {
+    const request = holding();
+    const sent = answering({
+      'GET /api/auth/me': () => json(ME),
+      'GET /api/orgs': () => json({ organisations: [] }),
+      'POST /api/auth/proof': () =>
+        json({ proof: 'p-1', expiresAt: new Date(Date.now() + 300_000).toISOString() }),
+      'PATCH /api/auth/emails/e2/primary': request.answer,
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Make primary' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Make it primary' }));
+    fireEvent.change(await screen.findByLabelText('Your password'), {
+      target: { value: 'a decent passphrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() =>
+      expect(sent.some((s) => s.call === 'PATCH /api/auth/emails/e2/primary')).toBe(true),
+    );
+
+    request.drop();
+
+    expect(await screen.findByText('That did not work. Try again.')).toBeDefined();
+    expect(screen.queryByLabelText('Your password')).toBeNull();
+    expect(document.activeElement).toBe(screen.getByText('Make this your primary address?'));
+    expect(
+      screen.getByRole('button', { name: 'Keep folake@ire.events' }).getAttribute('aria-disabled'),
+    ).toBe('false');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Make it primary' }));
+
+    await waitFor(() =>
+      expect(sent.filter((s) => s.call === 'PATCH /api/auth/emails/e2/primary')).toHaveLength(2),
+    );
+    expect(sent.filter((s) => s.call === 'POST /api/auth/proof')).toHaveLength(1);
+    expect(sent.filter((s) => s.call === 'PATCH /api/auth/emails/e2/primary')[1]?.body).toEqual({
+      proof: 'p-1',
+    });
   });
 });
