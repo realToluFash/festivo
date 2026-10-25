@@ -1,6 +1,7 @@
 import { primaryEmailAddress } from '@soirely/api-client';
 import { roleName } from '@soirely/domain';
 import { router } from 'expo-router';
+import { useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -34,6 +35,7 @@ function HomeBody() {
   const { kind } = useLayout();
   const { account, organisation } = useSignedIn();
   const openSwitcher = useOpenSwitcher();
+  const switchButton = useRef<View>(null);
 
   return (
     <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
@@ -64,7 +66,8 @@ function HomeBody() {
             {openSwitcher != null && (
               <SecondaryButton
                 label={t('home.switchOrganisation')}
-                onPress={openSwitcher}
+                onPress={() => openSwitcher(switchButton)}
+                ref={switchButton}
                 testID="home.switchOrganisation"
               />
             )}

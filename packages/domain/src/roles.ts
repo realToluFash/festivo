@@ -117,12 +117,26 @@ export function grantableRoles<
   roles: readonly R[],
   granter: { role: { seededAs: string | null }; permissions: readonly string[] },
 ): R[] {
-  const owner = granter.role.seededAs === 'owner';
+  return roles.filter((role) => mayGrant(role, granter));
+}
 
-  return roles.filter(
-    (role) =>
-      (owner || role.seededAs !== 'owner') &&
-      role.permissions.every((permission) => granter.permissions.includes(permission)),
+/** The roles in the catalogue a granter may not hand out: a member holding one is beyond their grant (sc-11160). */
+export function withheldRoles<
+  R extends { seededAs: string | null; permissions: readonly string[] },
+>(
+  roles: readonly R[],
+  granter: { role: { seededAs: string | null }; permissions: readonly string[] },
+): R[] {
+  return roles.filter((role) => !mayGrant(role, granter));
+}
+
+function mayGrant(
+  role: { seededAs: string | null; permissions: readonly string[] },
+  granter: { role: { seededAs: string | null }; permissions: readonly string[] },
+): boolean {
+  return (
+    (granter.role.seededAs === 'owner' || role.seededAs !== 'owner') &&
+    role.permissions.every((permission) => granter.permissions.includes(permission))
   );
 }
 

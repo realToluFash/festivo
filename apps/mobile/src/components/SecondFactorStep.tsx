@@ -129,7 +129,6 @@ export function SecondFactorStep({
     },
     returnKeyType: 'go' as const,
     onSubmitEditing: () => void submit(),
-    accessibilityLabel: label,
     testID: 'twoFactor.code',
   };
 
@@ -183,9 +182,14 @@ export function SecondFactorStep({
         {/* Keyed by mode, so switching never carries a typed code into the other field. */}
         <Field key={mode} label={label} error={error}>
           {mode === 'app' ? (
-            <CodeField {...sharedInput} />
+            <CodeField {...sharedInput} accessibilityLabel={label} />
           ) : (
-            <TextField {...sharedInput} autoCapitalize="none" autoComplete="off" />
+            <TextField
+              {...sharedInput}
+              accessibilityLabel={label}
+              autoCapitalize="none"
+              autoComplete="off"
+            />
           )}
         </Field>
 

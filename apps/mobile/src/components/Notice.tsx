@@ -72,7 +72,7 @@ export function Notice({
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
-        <Text size={tokens.typePill.size} weight="bold" style={ink[markTone]}>
+        <Text size={tokens.typePill.size} weight="bold" style={ink[markTone]} accessible={false}>
           {mark}
         </Text>
       </View>
