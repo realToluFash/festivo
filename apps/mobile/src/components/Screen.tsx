@@ -251,7 +251,11 @@ export function useScrolledToTop(): RefObject<View | null> {
 // VoiceOver drops a focus asked for while a sheet is still sliding away, and the scroll has to land first.
 export const SETTLED_MS = 500;
 
-function bringIntoView(scroll: ScreenScrollView | null, line: ScreenReaderTarget | null): void {
+function bringIntoView(
+  scroll: ScreenScrollView | null,
+  line: ScreenReaderTarget | null,
+  animated: boolean,
+): void {
   const view = scroll?.ref.current;
   const content = (view as InnerViewRef | null | undefined)?.getInnerViewRef();
   const scrollHost = view?.getNativeScrollRef();
@@ -267,7 +271,7 @@ function bringIntoView(scroll: ScreenScrollView | null, line: ScreenReaderTarget
         shown,
         margin: tokens.spaceLg,
       });
-      if (y != null) view.scrollTo({ y, animated: true });
+      if (y != null) view.scrollTo({ y, animated });
     });
   });
 }
@@ -277,12 +281,13 @@ function settleOnto(
   scroll: ScreenScrollView | null,
   shown: () => ScreenReaderTarget | null,
   read: () => ScreenReaderTarget | null,
+  animated: boolean,
 ): () => void {
-  bringIntoView(scroll, shown());
+  bringIntoView(scroll, shown(), animated);
 
   const focus = setTimeout(() => {
     // Content that shrinks around the line as it mounts can stop the first scroll short (sc-9382).
-    bringIntoView(scroll, shown());
+    bringIntoView(scroll, shown(), animated);
     moveScreenReaderFocus(read());
   }, SETTLED_MS);
 
@@ -306,6 +311,7 @@ export function useBroughtIntoView(): BroughtIntoView {
         scroll,
         () => ref.current,
         () => read.current,
+        true,
       ),
     [scroll],
   );
@@ -336,10 +342,12 @@ export function useFocusOnAnswer<Read extends ScreenReaderTarget = View>(
     void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
       if (!on || gone) return;
 
+      // TalkBack moves its focus onto the rows a running scroll passes, over the words it is saying (sc-11563).
       cancel = settleOnto(
         scroll,
         () => shown.current ?? read.current,
         () => read.current,
+        false,
       );
     });
 

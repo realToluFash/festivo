@@ -157,6 +157,13 @@ class SidePullRequests(unittest.TestCase):
                 self.assertEqual([(i["kind"], i["roles"]) for i in items], [(kind, ["l10n"])],
                                  (state, checks))
 
+    def test_the_linguists_conflicting_pr_asks_the_linguist_for_main_whatever_its_checks(self):
+        for checks in ("green", "red", "pending"):
+            conflicting = dict(self.side("l10n/sc-9", checks=checks), mergeable="conflicting")
+            items = work.developer_items([self.ticket()], [conflicting])
+            self.assertEqual([(i["kind"], i["roles"]) for i in items], [("conflict", ["l10n"])],
+                             checks)
+
     def test_the_linguists_pr_with_checks_running_wakes_nobody(self):
         self.assertEqual(work.developer_items([self.ticket()],
                                               [self.side("l10n/sc-9", checks="pending")]), [])
@@ -236,6 +243,20 @@ class Developer(unittest.TestCase):
     def test_a_pass_carried_over_a_merge_of_main_is_a_merge(self):
         carried = pr(lead=[verdict("pass", OLD[:7])], carried=OLD[:7])
         self.assertEqual(kinds(work.developer_items([story()], [carried])), ["merge"])
+
+    def test_a_pull_request_that_conflicts_with_main_asks_for_main_and_nothing_else(self):
+        conflicting = dict(pr(lead=[verdict("pass", HEAD[:7])]), mergeable="conflicting")
+        for state in ("In Progress", "Failed Code Review", "In Review", "Passed Code Review"):
+            items = work.developer_items([story(state=state, labels=["dev2"])], [conflicting])
+            self.assertEqual([(i["kind"], i["roles"]) for i in items], [("conflict", ["dev2"])])
+            self.assertIn("merge origin/main", items[0]["reason"])
+        red = dict(pr(checks="red"), mergeable="conflicting")
+        self.assertEqual(kinds(work.developer_items([story(labels=["dev2"])], [red])),
+                         ["conflict"])
+
+    def test_a_conflicting_draft_is_not_raised_as_a_conflict(self):
+        draft = dict(pr(), mergeable="conflicting", draft=True)
+        self.assertNotIn("conflict", kinds(work.developer_items([story()], [draft])))
 
     def test_an_open_thread_holds_the_merge(self):
         thread = {"id": "T", "resolved": False, "outdated": False, "path": "x", "line": 1,
@@ -552,6 +573,16 @@ class FinishingFirst(unittest.TestCase):
         self.assertEqual(found[-1], (1, "inbox"))
         self.assertEqual({k for k in found[:-1]}, {(2, "story"), (3, "merge"), (4, "story")})
 
+    def test_a_passed_merge_and_a_conflict_go_ahead_of_comments_in_any_state(self):
+        asked = [comment(1, "[dev] (from pm)\nA question.")]
+        stories = [story(1, "Backlog", comments=asked), story(2, "In Review", labels=["dev1"]),
+                   story(3, "In Progress", labels=["dev1"])]
+        prs = [pr(8, 2, lead=[verdict("pass", HEAD)]),
+               dict(pr(9, 3), mergeable="conflicting")]
+        found = self.order(stories, prs)
+        self.assertLess(found.index((2, "merge")), found.index((1, "inbox")))
+        self.assertLess(found.index((3, "conflict")), found.index((1, "inbox")))
+
     def test_the_lead_reviews_before_it_answers_comments(self):
         asked = [comment(1, "[lead] (from pm)\nA question.")]
         stories = [story(1, "Backlog", comments=asked), story(2, "In Review", labels=["dev1"])]
@@ -773,8 +804,8 @@ class FinishedStories(unittest.TestCase):
         merge = work.developer_items([self.done()], [passed])
         self.assertEqual([(i["kind"], i["roles"]) for i in merge], [("merge", ["dev3"])])
         conflict = work.developer_items([self.done()], [dict(passed, mergeable="conflicting")])
-        self.assertEqual([i["kind"] for i in conflict], ["merge"])
-        self.assertIn("merge main in", conflict[0]["reason"])
+        self.assertEqual([(i["kind"], i["roles"]) for i in conflict], [("conflict", ["dev3"])])
+        self.assertIn("merge origin/main", conflict[0]["reason"])
         self.assertNotEqual(conflict[0]["fingerprint"], merge[0]["fingerprint"])
 
     def test_a_merged_pr_on_a_done_story_hands_nothing_on(self):
