@@ -35,14 +35,16 @@ import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 
 const RAIL_WIDTH = 220;
 
-const OpenSwitcher = createContext<(() => void) | undefined>(undefined);
+type Opening = (opener: RefObject<View | null>) => void;
+
+const OpenSwitcher = createContext<Opening | undefined>(undefined);
 
 /** Opens the frame's organisation switcher; undefined while there is no organisation and no invitation. */
-export function useOpenSwitcher(): (() => void) | undefined {
+export function useOpenSwitcher(): Opening | undefined {
   return useContext(OpenSwitcher);
 }
 
-type OrganisationStart = (opener: RefObject<View | null>) => void;
+type OrganisationStart = Opening;
 
 const StartOrganisation = createContext<OrganisationStart | undefined>(undefined);
 
@@ -93,7 +95,8 @@ export function AppFrame({
   const [choosing, setChoosing] = useState(false);
   const [creating, setCreating] = useState(false);
   const pill = useRef<View>(null);
-  const creatingFrom = useRef<View>(null);
+  const [switcherFrom, setSwitcherFrom] = useState<RefObject<View | null> | null>(null);
+  const [creatingFrom, setCreatingFrom] = useState<RefObject<View | null> | null>(null);
   const [created, setCreated] = useState<string | null>(null);
   const switched = created == null ? null : t('switcher.switched', { name: created });
   const [backHidden, setBackHidden] = useState(false);
@@ -104,14 +107,16 @@ export function AppFrame({
   // It opens with one organisation too, because it ends with "Create an organisation" (sc-390).
   const openSwitcher =
     signedIn.organisation != null || waiting.invitations.length > 0 || offer.organisation != null
-      ? () => {
+      ? (opener: RefObject<View | null>) => {
           setCreated(null);
+          setSwitcherFrom(opener);
           setChoosing(true);
         }
       : undefined;
+  const switchFromPill = openSwitcher && (() => openSwitcher(pill));
   const startOrganisation = (opener: RefObject<View | null>) => {
     setCreated(null);
-    creatingFrom.current = opener.current;
+    setCreatingFrom(opener);
     setCreating(true);
   };
   const email = signedIn.account == null ? '' : (primaryEmailAddress(signedIn.account) ?? '');
@@ -124,7 +129,7 @@ export function AppFrame({
           current={current}
           organisation={signedIn.organisation}
           waiting={count}
-          onSwitch={openSwitcher}
+          onSwitch={switchFromPill}
           pill={pill}
         />
       )}
@@ -138,7 +143,7 @@ export function AppFrame({
           email={email}
           organisation={signedIn.organisation}
           waiting={count}
-          onSwitch={openSwitcher}
+          onSwitch={switchFromPill}
           pill={pill}
         />
         <View style={styles.body}>
@@ -155,7 +160,7 @@ export function AppFrame({
                     paused={signedIn.pausedIn}
                     others={signedIn.organisations}
                     onSwitch={(next) => switchOrganisation(next.id)}
-                    onChoose={() => openSwitcher?.()}
+                    onChoose={() => switchFromPill?.()}
                   />
                 ) : overdue && !aboutTheAccount && signedIn.organisation != null ? (
                   <TwoFactorOverdue organisation={signedIn.organisation} />
@@ -178,13 +183,13 @@ export function AppFrame({
         onClose={() => setChoosing(false)}
         onCreate={() => {
           setChoosing(false);
-          startOrganisation(pill);
+          startOrganisation(switcherFrom ?? pill);
         }}
       />
       <CreateOrganisation
         open={creating}
         email={email}
-        opener={creatingFrom}
+        opener={creatingFrom ?? pill}
         onCancel={() => setCreating(false)}
         onCreated={(organisation) => {
           setCreating(false);
