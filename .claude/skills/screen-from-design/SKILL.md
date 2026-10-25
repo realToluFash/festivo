@@ -215,6 +215,15 @@ is held to what both can do:
 - `autoCorrect={false}` and `spellCheck={false}` on names, codes, emails and search.
 - A `returnKeyType` and an `onSubmitEditing` — the return key always has a job.
 - Check `autoFocus`: a reference sets it on an input that was conditionally mounted.
+- A field whose text lives in a ref (uncontrolled, since a `value` prop drops characters)
+  is drawn again with that text as its `defaultValue`, from state set while the field is
+  off screen, or its ref is emptied in the handler that removes it. A button sends what
+  its field shows (sc-11175, sc-11253). A `defaultValue` that follows the ref while the
+  field is up gets rewritten into the native field (`kit/fields.ts`).
+- Every `TextField`, `PasswordField` and `CodeField` takes its shown label as
+  `accessibilityLabel`, on the tag itself rather than through a spread. A `Field` label
+  beside it is not read with it, so TalkBack reads a bare "Edit box"; `kitGuard.test.ts`
+  holds the rule (sc-11297).
 
 Accessible as drawn: real `button`, `a`, `input` + `label`; `aria-label` on icon-only
 controls; focus always visible; **and anything designed around dragging needs a
@@ -232,10 +241,6 @@ a TalkBack or VoiceOver pass:
   `SETTLED_MS` first, as `useBroughtIntoView` does. TalkBack drops a hover on a view not
   yet in its tree, and VoiceOver drops a focus asked for while a sheet slides away
   (sc-9950, sc-9382).
-- Every `TextField`, `PasswordField` and `CodeField` takes its shown label as
-  `accessibilityLabel`, on the tag itself rather than through a spread. A `Field` label
-  beside it is not read with it, so TalkBack reads a bare "Edit box"; `kitGuard.test.ts`
-  holds the rule (sc-11297).
 
 **Never verify in a browser unless asked.** Use `tsc --noEmit`, the affected suites, and a
 reading of the branch you did not change. Put the judgement in a **pure function with

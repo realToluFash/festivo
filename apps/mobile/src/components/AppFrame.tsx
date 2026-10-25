@@ -2,7 +2,7 @@ import { type Membership, primaryEmailAddress } from '@soirely/api-client';
 import { initials, roleName, waitingInvitations } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type ReactNode, createContext, useContext, useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
@@ -514,6 +514,19 @@ function Switcher({
 }) {
   const { t } = useTranslation();
   const { width, height } = useLayout();
+  const insets = useSafeAreaInsets();
+  // Android's window runs behind the bars and the cutout, so the card keeps its margin from them, not from the edge.
+  const fit =
+    Platform.OS === 'android'
+      ? {
+          flex: 1,
+          paddingTop: insets.top + tokens.spaceXxl,
+          paddingBottom: insets.bottom + tokens.spaceXxl,
+          paddingLeft: insets.left + tokens.spaceXxl,
+          paddingRight: insets.right + tokens.spaceXxl,
+        }
+      : // Sized from the window: on an iPhone on its side the modal can keep its upright height (sc-10118).
+        { width, height };
 
   return (
     <Modal
@@ -521,14 +534,12 @@ function Switcher({
       transparent
       animationType="fade"
       supportedOrientations={TURNS_WITH_THE_APP}
+      // Android's modal window stops at the system bars unless told otherwise, leaving them undimmed.
+      statusBarTranslucent
+      navigationBarTranslucent
       onRequestClose={onClose}
     >
-      {/* Sized from the window: on an iPhone on its side the modal can keep its upright height (sc-10118). */}
-      <View
-        style={[styles.scrim, { width, height }]}
-        accessibilityViewIsModal
-        onAccessibilityEscape={onClose}
-      >
+      <View style={[styles.scrim, fit]} accessibilityViewIsModal onAccessibilityEscape={onClose}>
         {/* A sibling, not a parent: iOS reads a labelled button as one item and nothing inside it (sc-10712).
             VoiceOver closes the sheet from this Close or the two-finger escape on the scrim. */}
         <Pressable
