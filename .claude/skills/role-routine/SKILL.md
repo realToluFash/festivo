@@ -150,6 +150,11 @@ fails>'`, note it on your story, do what you can without it, and move on. Only t
   only the owner can make — merging, Done, money, production, anything the skill reserves
   for them — goes in the report, and the run moves on to work that does not depend on it. A
   run that can do nothing without that decision says so and stops.
+- **A Done story is still read, but not reopened.** A comment on it wakes whoever it
+  names, and a follow-up pull request on it is reviewed and merged as usual; the story stays
+  Done, and new work goes on an open story or a new one. A pull request on an archived story
+  is closed by its builder with `pr-close`, saying why. Ops gets the stranded ones once a
+  day and tags the role whose step each waits on.
 - **An empty run is one line.** If the reason it woke turns out to need nothing, say so and
   finish. Do not go looking for work to justify the wake.
 - **Stay out of each other's checkouts.** The routines run side by side:

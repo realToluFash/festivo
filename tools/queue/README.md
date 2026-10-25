@@ -55,6 +55,8 @@ Every read goes through a ledger of what the role has already been shown.
 | `to-review`, `merged-unpassed` | developers  | the PR's status and the command to run                                                                                             |
 | `checks-red`                   | developers  | each failing check with its log's last 40 lines                                                                                    |
 | `main`                         | ops         | main's last runs and the failed log                                                                                                |
+| `close`                        | the builder | a pull request open on an archived story, once, and the `pr-close` to run                                                          |
+| `stranded`                     | ops         | each open PR with no story, or untouched for 24 hours: its age, its story's state and whose step it waits on; at most once a day   |
 | `pick`, `sweep`                | the role    | the role's digest (below)                                                                                                          |
 
 The digests: queue order for developers and testers; To Do and Waiting On Owner for the PM, Needs Design for the designer, QA outstanding items,
@@ -118,6 +120,16 @@ story or pull request, read fresh rather than from the last sync, and says why i
   Only an epic in progress offers its Ready For Dev stories (`work.held_epic`): one in To
   Do or Waiting for Owner Approval holds them, and they come back when it moves to In
   Progress. Epics are read on every sync, so the change reaches the queue within a minute.
+- **A Done story still wakes.** A comment addressed to a role after the story went Done
+  wakes it, and its payload says the story is Done and new work goes on an open story. An
+  open pull request on a Done story is a follow-up, reviewed and merged like any other: the
+  lead reviews it, its builder is woken by its checks, by the pass and by a conflict with
+  main, and `merge` leaves the story Done. An archived story wakes nobody by comment, and its
+  open pull request wakes its builder once to close it. The sync fetches the story of every
+  open pull request however old it is, and remembers one Shortcut does not have.
+- **Nothing is stranded.** An open pull request with no story, or untouched for 24 hours,
+  is listed in ops' `stranded` item, at most once a day, with the step it waits on. Ops
+  tags that role on the story, or closes the pull request with the reason.
 - **`store.py`** holds the claims. A role holds one item at a time, a pooled item (Ready For
   QA, unlabelled Ready For Dev) goes to one role only, and a claim lapses after 90 minutes.
 
