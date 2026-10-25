@@ -366,7 +366,7 @@ describe('Settings > General > Company domain joining (sc-561)', () => {
         'GET /api/orgs/org_1/domains': () => json(listed(FOUR)),
         'POST /api/orgs/org_1/domains': () => refused(full, 'domain_full'),
         'DELETE /api/orgs/org_1/domains/ireweddings.com': () =>
-          json(listed([...FOUR, { domain: 'ire.co', stopped: false }].slice(1))),
+          json(listed(FOUR.filter((one) => one.domain !== 'ireweddings.com'))),
       });
       settings();
 

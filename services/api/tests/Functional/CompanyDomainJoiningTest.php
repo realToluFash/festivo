@@ -117,6 +117,19 @@ final class CompanyDomainJoiningTest extends ApiTestCase
     }
 
     #[Test]
+    public function aDomainSomebodyElseListedIsRefusedAsListedToo(): void
+    {
+        [$owner, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
+        $this->list($organisation, 'ire-catering.com');
+        $this->signIn($owner);
+
+        $body = $this->send('POST', $this->domains($organisation), ['domain' => 'ire-catering.com']);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame([['domain', 'ire-catering.com is already on the list.', 'domain_listed']], $this->violations($body));
+    }
+
+    #[Test]
     public function theListHoldsFiveDomains(): void
     {
         [$owner, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
