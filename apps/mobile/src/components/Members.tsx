@@ -40,7 +40,7 @@ import { cardFrame } from './cardFrame.ts';
 import { FieldError } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { OwnerClaimBanner } from './OwnerClaimBanner.tsx';
-import { useScrolledToTop } from './Screen.tsx';
+import { useBroughtIntoView, useScrolledToTop } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 const AVATAR = 40;
@@ -127,6 +127,25 @@ function AnsweredLine({ answered, onNext }: { answered: Answered; onNext: () => 
         body={answered.text}
         action={{ label: answered.next.label, onPress: onNext, testID: 'members.answered.next' }}
       />
+    </View>
+  );
+}
+
+/** Answers a tap that may sit far below it, so it comes wholly into view and takes screen reader focus (sc-10639). */
+function AnswerNotice({
+  tone,
+  mark,
+  body,
+}: {
+  tone: 'quiet' | 'done';
+  mark: string;
+  body: string;
+}) {
+  const { shown, read } = useBroughtIntoView();
+
+  return (
+    <View ref={shown}>
+      <Notice tone={tone} mark={mark} body={body} wordsRef={read} />
     </View>
   );
 }
@@ -385,12 +404,13 @@ export function MemberPage({
   const acts = standing === 'manageable' || standing === 'suspendedOnlyOwner';
   const [conflict, setConflict] = useState(false);
 
-  function changedElsewhere(): void {
-    setConflict(true);
-    api
+  function changedElsewhere(): Promise<void> {
+    // Shown once the member is reloaded, so the role card has settled under it before it is brought into view.
+    return api
       .members(organisation.id)
       .then(onChanged)
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => setConflict(true));
   }
 
   return (
@@ -426,13 +446,11 @@ export function MemberPage({
       </View>
 
       {conflict && (
-        <View accessibilityLiveRegion="polite">
-          <Notice
-            tone="quiet"
-            mark={tokens.marks.info.glyph}
-            body={t('membersScreen.accessConflict', { name: member.user.name })}
-          />
-        </View>
+        <AnswerNotice
+          tone="quiet"
+          mark={tokens.marks.info.glyph}
+          body={t('membersScreen.accessConflict', { name: member.user.name })}
+        />
       )}
 
       <View style={cardFrame(kind)}>
@@ -773,7 +791,7 @@ function RolePicker({
   list: MembersList;
   roles: OrganisationRole[];
   onChanged: (list: MembersList) => void;
-  onChangedElsewhere: () => void;
+  onChangedElsewhere: () => Promise<void>;
 }) {
   const { t } = useTranslation();
   const [picked, setPicked] = useState(member.role.id);
@@ -795,12 +813,12 @@ function RolePicker({
     try {
       await api.changeMemberRole(organisation.id, member.id, picked);
     } catch (error) {
-      setBusy(false);
       if (error instanceof ApiError && error.status === 409) {
-        onChangedElsewhere();
+        await onChangedElsewhere();
       } else {
         setFailed(refusalTitle(error, t('membersScreen.actionFailed')));
       }
+      setBusy(false);
       return;
     }
 
@@ -813,11 +831,7 @@ function RolePicker({
 
   return (
     <>
-      {done != null && (
-        <View accessibilityLiveRegion="polite">
-          <Notice tone="done" mark={tokens.marks.done.glyph} body={done} />
-        </View>
-      )}
+      {done != null && <AnswerNotice tone="done" mark={tokens.marks.done.glyph} body={done} />}
       <View
         style={styles.choices}
         accessibilityRole="radiogroup"
