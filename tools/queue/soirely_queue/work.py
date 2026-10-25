@@ -517,12 +517,12 @@ def waits_on(story, pr):
         return role, f"{role} to close it: sc-{story['id']} is archived"
     if pr["draft"]:
         return role, f"{role} to mark it ready for review"
+    if pr.get("mergeable") == "conflicting":
+        return role, f"{role} to merge main in"
     if pr["checks"] == "pending":
         return role, "its checks, or a push to start them"
     if pr["checks"] == "red":
         return role, f"{role} to fix its red checks"
-    if pr.get("mergeable") == "conflicting":
-        return role, f"{role} to merge main in"
     if role == "l10n" or passed:
         if role != "l10n" and open_threads(pr):
             return role, f"{role} to answer its open threads, and lead to resolve them"
