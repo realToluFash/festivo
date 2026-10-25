@@ -414,3 +414,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   18 de outubro de 2026 às 14:30". European Portuguese dates a day with "a"; "em {when}" is
   the Brazilian habit, and two password emails disagreed. A label keeps the colon
   ("Quando: {when}"), and a range keeps "até" / "a partir de".
+- **25 Oct 2026. Moving the people off a removed role** is worded so it reads for one person
+  or many, because the button and the refusal get no {{count}}: "Reatribuir e remover {{role}}",
+  and "Escolha a função de substituição", the legend's own noun. Not "Passá-las…" or "estas
+  pessoas" after "1 pessoa tem esta função" (sc-13017).

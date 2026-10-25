@@ -442,3 +442,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   one.
 - **17 Oct 2026. "Code" stays "Code"** as a field label (`twoFactor.code`,
   `waysCard.code`, `devices.everywhereCode`): it is the French word, listed in `same-as-english.json`.
+- **25 Oct 2026. Moving the people off a removed role** is worded so it reads for one person
+  or many, because the button and the refusal get no {{count}} : « Réattribuer et supprimer
+  {{role}} », and « Choisissez le rôle de remplacement », the legend’s own noun. Not « Les
+  passer… » or « ces personnes » after « 1 personne a ce rôle. La passer à : » (sc-13017).

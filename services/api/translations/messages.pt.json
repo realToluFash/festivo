@@ -28,7 +28,7 @@
     "roles.owner_fixed": "A função Proprietário é predefinida e não pode ser alterada nem removida. Tem sempre tudo.",
     "roles.permission_unknown": "A Soirely não tem nenhuma permissão com esse nome. Recarregue a página e tente novamente.",
     "roles.replacement_invalid": "Escolha outra função desta organização.",
-    "roles.replacement_required": "Escolha a função para onde estas pessoas passam.",
+    "roles.replacement_required": "Escolha a função de substituição.",
     "roles.seeded_kept": "As funções predefinidas não podem ser removidas, mas pode alterar o que incluem. Se ninguém precisar desta, não a atribua a ninguém.",
     "seeded_role.administrator": "Administrador",
     "seeded_role.coordinator": "Coordenador",

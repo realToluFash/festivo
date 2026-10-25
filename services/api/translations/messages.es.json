@@ -28,7 +28,7 @@
     "roles.owner_fixed": "Propietario es un rol predefinido y no se puede cambiar ni eliminar. Siempre lo tiene todo.",
     "roles.permission_unknown": "Soirely no tiene ningún permiso con ese nombre. Vuelva a cargar la página e inténtelo de nuevo.",
     "roles.replacement_invalid": "Elija otro rol de esta organización.",
-    "roles.replacement_required": "Elija el rol al que pasan estas personas.",
+    "roles.replacement_required": "Elija el rol de sustitución.",
     "roles.seeded_kept": "Los roles predefinidos no se pueden eliminar, pero sí puede cambiar lo que incluyen. Si nadie necesita este, déjelo sin asignar.",
     "seeded_role.administrator": "Administrador",
     "seeded_role.coordinator": "Coordinador",
