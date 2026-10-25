@@ -295,9 +295,11 @@ function OwnerClaimCard({
           </span>
           <div className="notice-body">
             <p>{withdrawRefused}</p>
-            <button type="button" className="link-button" onClick={onReload}>
-              {t('ownerClaim.reload')}
-            </button>
+            <p className="notice-action">
+              <button type="button" className="link-button" onClick={onReload}>
+                {t('ownerClaim.reload')}
+              </button>
+            </p>
           </div>
         </div>
       )}
@@ -358,9 +360,11 @@ function OwnerClaimCard({
           </span>
           <div className="notice-body">
             <p>{t('ownerClaim.stopEnded')}</p>
-            <button type="button" className="link-button" onClick={onReload}>
-              {t('ownerClaim.reload')}
-            </button>
+            <p className="notice-action">
+              <button type="button" className="link-button" onClick={onReload}>
+                {t('ownerClaim.reload')}
+              </button>
+            </p>
           </div>
         </div>
       )}

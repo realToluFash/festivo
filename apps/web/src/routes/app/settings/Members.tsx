@@ -304,17 +304,19 @@ function MembersOverview({
           </span>
           <div className="notice-body">
             <p>{answered.text}</p>
-            <button
-              type="button"
-              className="link-button"
-              onClick={() => {
-                const next = answered.next;
-                if ('member' in next) onOpen(next.member);
-                else setFilter(next.filter);
-              }}
-            >
-              {answered.next.label}
-            </button>
+            <p className="notice-action">
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => {
+                  const next = answered.next;
+                  if ('member' in next) onOpen(next.member);
+                  else setFilter(next.filter);
+                }}
+              >
+                {answered.next.label}
+              </button>
+            </p>
           </div>
         </div>
       )}
