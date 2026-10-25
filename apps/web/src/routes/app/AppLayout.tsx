@@ -22,6 +22,7 @@ import {
 } from '../../session.ts';
 import { useWaitingInvitations } from '../../invitations.ts';
 import { useStepFocus } from '../../stepFocus.ts';
+import { UNASKED } from '../../pageArrival.ts';
 import { useDomainOffer } from '../../joinOffers.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
 import { heldRegistration } from '../../pendingRegistration.ts';
@@ -53,11 +54,12 @@ export function AppLayout() {
     return (
       <Navigate
         to={state.ended ? '/sign-in?signed-out' : '/sign-in'}
-        state={
-          state.timedOut == null && state.providerOnly == null
-            ? undefined
-            : { timedOut: state.timedOut, providerOnly: state.providerOnly }
-        }
+        state={{
+          ...(state.ended ? UNASKED : {}),
+          ...(state.timedOut == null && state.providerOnly == null
+            ? {}
+            : { timedOut: state.timedOut, providerOnly: state.providerOnly }),
+        }}
         replace
       />
     );

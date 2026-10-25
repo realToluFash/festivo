@@ -1,5 +1,7 @@
 import { createBrowserRouter } from 'react-router';
 
+import { PageArrival } from '../components/PageArrival.tsx';
+
 import { Account } from './app/account/Account.tsx';
 import { Security } from './app/account/Security.tsx';
 import { AppLayout } from './app/AppLayout.tsx';
@@ -49,48 +51,53 @@ import { Status } from './public/Status.tsx';
  * does not lead anywhere blank.
  */
 export const routes = [
-  { path: '/', element: <Home /> },
-  { path: '/sign-in', element: <SignIn /> },
-  { path: '/sign-in/code', element: <TwoFactorSignIn /> },
-  { path: '/two-factor/recovery', element: <LostTwoFactor /> },
-  { path: '/two-factor/again', element: <TwoFactorAgain /> },
-  { path: '/two-factor/not-me', element: <RecoveryNotMe /> },
-  { path: '/register', element: <Register /> },
-  { path: '/forgot-password', element: <ForgotPassword /> },
-  { path: '/reset-password', element: <ResetPassword /> },
-  { path: '/oauth/google', element: <OAuthCallback provider="google" /> },
-  { path: '/oauth/apple', element: <OAuthCallback provider="apple" /> },
-  { path: '/verify-email', element: <VerifyEmail /> },
-  { path: '/verify-phone', element: <VerifyPhone /> },
-  { path: '/phone', element: <ChangePhone /> },
-  { path: '/complete-profile', element: <CompleteProfile /> },
-  { path: '/status', element: <Status /> },
-  { path: '/join/:token', element: <Join /> },
   {
-    path: '/app',
-    element: <AppLayout />,
+    element: <PageArrival />,
     children: [
-      { index: true, element: <Dashboard /> },
-      { path: 'events', element: <Events /> },
-      { path: 'events/new', element: <NewEvent /> },
-      { path: 'events/:eventId', element: <EventView /> },
-      { path: 'events/:eventId/edit', element: <EditEvent /> },
-      { path: 'events/:eventId/guests', element: <EventGuests /> },
-      { path: 'guests', element: <Dashboard /> },
-      { path: 'account', element: <Account /> },
-      { path: 'account/security', element: <Security /> },
-      { path: 'settings', element: <General /> },
-      { path: 'settings/members', element: <Members /> },
-      { path: 'settings/roles', element: <Roles /> },
-      { path: 'settings/sign-in-rules', element: <SignInRules /> },
+      { path: '/', element: <Home /> },
+      { path: '/sign-in', element: <SignIn /> },
+      { path: '/sign-in/code', element: <TwoFactorSignIn /> },
+      { path: '/two-factor/recovery', element: <LostTwoFactor /> },
+      { path: '/two-factor/again', element: <TwoFactorAgain /> },
+      { path: '/two-factor/not-me', element: <RecoveryNotMe /> },
+      { path: '/register', element: <Register /> },
+      { path: '/forgot-password', element: <ForgotPassword /> },
+      { path: '/reset-password', element: <ResetPassword /> },
+      { path: '/oauth/google', element: <OAuthCallback provider="google" /> },
+      { path: '/oauth/apple', element: <OAuthCallback provider="apple" /> },
+      { path: '/verify-email', element: <VerifyEmail /> },
+      { path: '/verify-phone', element: <VerifyPhone /> },
+      { path: '/phone', element: <ChangePhone /> },
+      { path: '/complete-profile', element: <CompleteProfile /> },
+      { path: '/status', element: <Status /> },
+      { path: '/join/:token', element: <Join /> },
+      {
+        path: '/app',
+        element: <AppLayout />,
+        children: [
+          { index: true, element: <Dashboard /> },
+          { path: 'events', element: <Events /> },
+          { path: 'events/new', element: <NewEvent /> },
+          { path: 'events/:eventId', element: <EventView /> },
+          { path: 'events/:eventId/edit', element: <EditEvent /> },
+          { path: 'events/:eventId/guests', element: <EventGuests /> },
+          { path: 'guests', element: <Dashboard /> },
+          { path: 'account', element: <Account /> },
+          { path: 'account/security', element: <Security /> },
+          { path: 'settings', element: <General /> },
+          { path: 'settings/members', element: <Members /> },
+          { path: 'settings/roles', element: <Roles /> },
+          { path: 'settings/sign-in-rules', element: <SignInRules /> },
+        ],
+      },
+      {
+        path: '/i/:token',
+        element: <GuestLayout />,
+        children: [{ index: true, element: <Invitation /> }],
+      },
+      { path: '*', element: <NotFound /> },
     ],
   },
-  {
-    path: '/i/:token',
-    element: <GuestLayout />,
-    children: [{ index: true, element: <Invitation /> }],
-  },
-  { path: '*', element: <NotFound /> },
 ];
 
 export const router = createBrowserRouter(routes);

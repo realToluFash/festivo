@@ -275,7 +275,7 @@ function ContactsCard({
       <p>{email ? t('contacts.emailsIntro') : t('contacts.phonesIntro')}</p>
 
       {done != null && (
-        <div className="notice notice-done" tabIndex={-1} ref={doneLine}>
+        <div className="notice notice-done" tabIndex={-1} ref={doneLine} data-page-focus="">
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>

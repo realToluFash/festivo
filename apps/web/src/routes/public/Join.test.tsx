@@ -219,6 +219,32 @@ describe('an invitation, signed out', () => {
     expect(sessionStorage.getItem('soirely.invitation')).toBe(TOKEN);
   });
 
+  it('takes focus to “We could not find that invitation” when a newer invitation replaced the link', async () => {
+    __setSessionState({ status: 'signedOut', ended: false });
+    answering({
+      [LINK]: () => json(PREVIEW),
+      'POST /api/auth/register': () => problem(404, 'invitation_not_found'),
+    });
+    open();
+
+    fireEvent.change(await screen.findByLabelText('Full name'), { target: { value: 'Kemi' } });
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'lagos-evening-air' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create account and join' }));
+
+    const missing = await screen.findByRole('heading', {
+      level: 1,
+      name: 'We could not find that invitation',
+    });
+    await waitFor(() => expect(document.activeElement).toBe(missing));
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByLabelText('Full name')).toBeNull();
+    expect(screen.queryByText('Ìrè Events')).toBeNull();
+    expect(screen.getByRole('link', { name: 'Go to Soirely' })).toBeDefined();
+  });
+
   it('says a link that names nothing could not be found', async () => {
     __setSessionState({ status: 'signedOut', ended: false });
     answering({ [LINK]: () => problem(404, 'invitation_not_found') });
@@ -300,6 +326,31 @@ describe('an invitation, signed in', () => {
     await waitFor(() => expect(document.activeElement).toBe(joined));
     expect(screen.queryByRole('status')).toBeNull();
     expect(sent.map((one) => one.line)).toContain('POST /api/invitations/inv_1/accept');
+  });
+
+  it('names the role the API joined with, which a newer invitation may have changed', async () => {
+    signedIn();
+    const joinedAs = membership({ role: { id: 'role_3', seededAs: 'event_manager', name: null } });
+    answering({
+      [LINK]: () =>
+        json({
+          ...PREVIEW,
+          role: { id: 'role_5', seededAs: 'coordinator', name: null },
+          forYou: true,
+          signedInAs: 'kemi.l@gmail.com',
+        }),
+      'POST /api/invitations/inv_1/accept': () => json({ organisation: joinedAs }),
+      'GET /api/auth/me': () => json(ACCOUNT),
+      'GET /api/orgs': () => json({ organisations: [joinedAs] }),
+      'PUT /api/auth/locale': () => json({}),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Accept and join' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'You are in' })).toBeDefined();
+    expect(screen.getByText('Invitation from Bisi Adeyemi · Event manager')).toBeDefined();
+    expect(screen.getByText('You joined Ìrè Events as Event manager.')).toBeDefined();
   });
 
   it('takes focus to the refusal’s heading when the invitation changed in the meantime', async () => {

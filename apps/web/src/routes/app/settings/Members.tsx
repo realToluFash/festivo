@@ -48,6 +48,7 @@ import { dateLocale, useShownLanguage } from '../../../i18n/index.ts';
 import { can, useSession } from '../../../session.ts';
 import { focusStep, useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { Forbidden } from '../Forbidden.tsx';
+import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 
 type Load =
   | { kind: 'loading' }
@@ -130,27 +131,18 @@ export function Members() {
         </p>
       )}
       {load.kind === 'failed' && (
-        <div className="notice notice-broken" role={load.retried ? undefined : 'alert'}>
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <div className="notice-body">
-            <p ref={failedLine} tabIndex={load.retried ? -1 : undefined}>
-              {t('membersScreen.failedLoad')}
-            </p>
-            <button
-              type="button"
-              className="button"
-              onClick={() => {
-                retrying.current = true;
-                setLoad({ kind: 'loading' });
-                setAttempt((n) => n + 1);
-              }}
-            >
-              {t('rolesScreen.retry')}
-            </button>
-          </div>
-        </div>
+        <ArrivalNotice
+          role={load.retried ? undefined : 'alert'}
+          line={t('membersScreen.failedLoad')}
+          lineRef={failedLine}
+          focusable={load.retried}
+          retry={t('rolesScreen.retry')}
+          onRetry={() => {
+            retrying.current = true;
+            setLoad({ kind: 'loading' });
+            setAttempt((n) => n + 1);
+          }}
+        />
       )}
       {load.kind === 'loaded' && (
         <MembersLoaded
