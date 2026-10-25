@@ -150,6 +150,7 @@ def slim(raw, states, epics):
         "moved_at": raw.get("moved_at"),
         "updated_at": raw.get("updated_at"),
         "done": bool(raw.get("completed") or raw.get("archived")),
+        "archived": bool(raw.get("archived")),
         "description": raw.get("description") or "",
         "tasks": [{"id": t["id"], "text": t["description"], "done": t["complete"]}
                   for t in raw.get("tasks", [])],

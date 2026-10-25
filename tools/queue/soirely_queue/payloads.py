@@ -1,6 +1,8 @@
 """The payload for each kind of work: what the role needs to act, and the commands to act
 with, filled in. Anything more is one `sq <role> <read>` away."""
 
+import time
+
 from . import github, store
 from . import roles as R
 from . import text as T
@@ -64,6 +66,9 @@ def story_for(p, db, story, kind_role):
 
 def inbox(p, db, row, story):
     p.add(*V.header(story))
+    if story["done"]:
+        p.add("", f"sc-{story['id']} is Done and stays Done. Answer here, but new work goes on "
+                  "an open story or a new one.")
     V.notes(p, story)
     V.comments(p, story, mode="open")
     for pr in store.prs_for_story(db, story["id"]):
@@ -166,6 +171,8 @@ def merge(p, pr, story, row):
     if p.role in R.LINGUISTS:
         merges = ("merges it once it changes only locale files; then move the ticket to Ready "
                   "For QA if everything it covers is merged, as your skill's section 5 says")
+    elif W.finished(story):
+        merges = f"merges at the passed sha; sc-{story['id']} stays Done"
     elif W.side_pr(story, pr):
         merges = (f"merges at the passed sha; sc-{story['id']} is a translation ticket and "
                   "stays where the linguist put it, so the merge is still yours")
@@ -174,6 +181,31 @@ def merge(p, pr, story, row):
                   "For QA and tells QA")
     next_lines(p, f"{SQ} {p.role} merge {pr['number']}   ({merges})",
                f"{SQ} {p.role} done {row['id']} --note \"<one line>\"")
+
+
+def close(p, pr, story, row):
+    p.add(*V.header(story))
+    V.pr_status(p, pr, compact=True)
+    p.add("", f"sc-{story['id']} is archived, so this pull request has nowhere to land. If its "
+              "change is still wanted, say on the open story that carries it on; then close it.")
+    next_lines(p, f"{SQ} {p.role} pr-close {pr['number']} --text \"sc-{story['id']} is archived: "
+                  "<why, and where its change went>\"",
+               f"{SQ} {p.role} done {row['id']} --note \"<one line>\"")
+
+
+def stranded(p, db, row):
+    found = W.stranded(store.stories(db), store.prs(db), time.time())
+    p.add(f"Open pull requests with no story, or untouched for a day ({len(found)}):")
+    for f in found:
+        story = f["story"]
+        where = f"sc-{story['id']} {story['state']}" if story else "no story"
+        p.add(f"  #{f['pr']['number']} {f['hours']}h idle · {where} · {f['pr']['title']}",
+              f"    waits on: {f['step']}")
+    p.add("", "Tag the role whose step it is on its story, or close the pull request with the "
+              "reason. One with no story is yours to place or close.")
+    next_lines(p, f"{SQ} ops comment sc-<n> --to <role> --text \"PR #<n> waits on you: …\"",
+               f"{SQ} ops pr-close <n> --text \"<why>\"",
+               f"{SQ} ops done {row['id']} --note \"<one line>\"")
 
 
 def main_red(p, db, row):
@@ -231,6 +263,10 @@ def render(p, db, row, cache):
         return next_lines(p, f"{SQ} {p.role} done {row['id']} --note \"<one line>\"")
     if kind == "main":
         return main_red(p, db, row)
+    if kind == "close":
+        return close(p, pr, story, row)
+    if kind == "stranded":
+        return stranded(p, db, row)
     if kind in ("pick", "sweep"):
         return digests.render(p, db, row)
     if kind == "held":
