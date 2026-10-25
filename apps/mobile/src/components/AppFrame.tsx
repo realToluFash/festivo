@@ -524,8 +524,16 @@ function Switcher({
       supportedOrientations={TURNS_WITH_THE_APP}
       onRequestClose={onClose}
     >
-      <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel={t('switcher.close')}>
-        <View style={styles.sheetFrame} onStartShouldSetResponder={() => true}>
+      {/* The backdrop beside the sheet, not around it: iOS reads a pressable as one item and hides all it holds. */}
+      <View style={styles.scrim} onAccessibilityEscape={onClose}>
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel={t('switcher.close')}
+          testID="switcher.close"
+        />
+        <View style={styles.sheetFrame}>
           <ScrollView contentContainerStyle={styles.sheet}>
             <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
               {t('switcher.heading')}
@@ -606,7 +614,7 @@ function Switcher({
             )}
           </ScrollView>
         </View>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
