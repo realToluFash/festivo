@@ -294,7 +294,12 @@ function Choosing({
           />
         </View>
       </View>
-      <QuietButton label={t('timeZone.cancel')} onPress={onCancel} testID="timeZone.cancel" />
+      <QuietButton
+        label={t('timeZone.cancel')}
+        onPress={onCancel}
+        off={saving}
+        testID="timeZone.cancel"
+      />
     </>
   );
 }

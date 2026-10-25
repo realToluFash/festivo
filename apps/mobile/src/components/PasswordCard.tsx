@@ -286,7 +286,12 @@ function Changing({
           testID="password.save"
         />
       </View>
-      <QuietButton label={t('passwordCard.cancel')} onPress={onCancel} testID="password.cancel" />
+      <QuietButton
+        label={t('passwordCard.cancel')}
+        onPress={onCancel}
+        off={saving}
+        testID="password.cancel"
+      />
     </>
   );
 }
@@ -458,6 +463,7 @@ function Setting({
         <QuietButton
           label={t('passwordCard.cancel')}
           onPress={onCancel}
+          off={busy}
           testID="password.setCancel"
         />
       </>

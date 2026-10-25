@@ -460,6 +460,38 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
   });
 });
 
+describe('a Cancel is off while the change beside it runs (sc-12545)', () => {
+  const offWhile = (file: string, busy: string) =>
+    selfClosing('QuietButton', readFileSync(join('src', 'components', file), 'utf8'))
+      .filter(({ markup }) => markup.includes(`off={${busy}}`))
+      .map(({ markup }) => propValue(markup, 'testID'));
+
+  it('in Password, beside Save new password and Save password, not beside the code check', () => {
+    expect([
+      ...offWhile('PasswordCard.tsx', 'saving'),
+      ...offWhile('PasswordCard.tsx', 'busy'),
+    ]).toEqual(['"password.cancel"', '"password.setCancel"']);
+  });
+
+  it('in Time zone, beside Save time zone', () => {
+    expect(offWhile('TimeZoneCard.tsx', 'saving')).toEqual(['"timeZone.cancel"']);
+  });
+
+  it("in Confirm it's you, beside Continue", () => {
+    expect(offWhile('ConfirmItsYou.tsx', 'checking')).toEqual(['{`${idPrefix}.cancel`}']);
+  });
+});
+
+describe("a lapsed proof at Unlink goes back to Confirm it's you (sc-12545)", () => {
+  it('in the ways card, before the refusal reaches the list', () => {
+    const text = readFileSync(join('src', 'components', 'WaysCard.tsx'), 'utf8');
+
+    expect(text).toMatch(
+      /if \(unlinkProofLapsed\(error\)\) \{\s*setStage\(\{ kind: 'proving', act: \{ action: 'unlink', provider \} \}\);/,
+    );
+  });
+});
+
 describe('a contact confirmation shows its request running, its way back off (sc-12546)', () => {
   const text = readFileSync(join('src', 'components', 'ContactsCard.tsx'), 'utf8');
 
