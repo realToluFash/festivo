@@ -17,6 +17,7 @@ import { useReadOut } from './ReadOut.tsx';
 import { useFocusOnAnswer } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text, type TextHandle } from './Text.tsx';
+import { useMarkSide } from './markSide.ts';
 
 /** 16 is the smallest size iOS Safari will not zoom into on focus. */
 export const CONTROL_TEXT_SIZE = 16;
@@ -118,13 +119,14 @@ export function FieldError({
   /** The error answers a tap whose button went, so it takes focus in place of being read out. */
   answer?: unknown;
 }) {
+  const markSide = useMarkSide(tokens.sizeMark);
   useReadOut(answer === undefined ? message : null);
   const { shown, read } = useFocusOnAnswer<TextHandle>(answer);
 
   return (
     <View ref={shown} style={styles.fieldError}>
       <View
-        style={styles.mark}
+        style={[styles.mark, markSide]}
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
@@ -265,8 +267,9 @@ export function CodeField({
 
 export const fieldStyles = StyleSheet.create({
   input: {
-    height: tokens.sizeHitPhonePrimary,
+    minHeight: tokens.sizeHitPhonePrimary,
     paddingHorizontal: tokens.spaceLg,
+    paddingVertical: tokens.spaceSm,
     borderWidth: 1,
     borderColor: tokens.colorControlBorder,
     borderRadius: tokens.radiusField,
@@ -279,9 +282,9 @@ export const fieldStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   field: { gap: tokens.spaceXs },
-  labelRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
+  labelRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
   pill: {
-    height: tokens.sizePill,
+    minHeight: tokens.sizePill,
     justifyContent: 'center',
     paddingHorizontal: tokens.spaceMd,
     borderRadius: tokens.radiusPill,
@@ -292,13 +295,14 @@ const styles = StyleSheet.create({
   grow: { flex: 1, gap: tokens.spaceHair },
   accent: { color: tokens.colorAccentText },
   actions: { flexDirection: 'row', flexWrap: 'wrap', columnGap: tokens.spaceXl },
-  action: { minHeight: tokens.sizeHit, justifyContent: 'center' },
+  action: { flexShrink: 1, minHeight: tokens.sizeHit, justifyContent: 'center' },
   trailing: { marginLeft: 'auto' },
   input: fieldStyles.input,
   wrong: fieldStyles.wrong,
   code: {
-    height: tokens.sizeHitPhoneHero,
+    minHeight: tokens.sizeHitPhoneHero,
     paddingHorizontal: tokens.spaceLg,
+    paddingVertical: tokens.spaceSm,
     borderWidth: 1,
     borderColor: tokens.colorControlBorder,
     borderRadius: tokens.radiusInset,
@@ -310,11 +314,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   mark: {
-    width: tokens.sizeMark,
-    height: tokens.sizeMark,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: tokens.sizeMark / 2,
+    borderRadius: tokens.radiusPill,
     borderWidth: 1.5,
     borderColor: tokens.marks.broken.ring,
     backgroundColor: tokens.marks.broken.fill,

@@ -877,10 +877,11 @@ const styles = StyleSheet.create({
   pickOpen: { backgroundColor: tokens.colorNeutralFill },
   pickName: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
   pill: {
-    height: 22,
+    minHeight: tokens.sizePill,
     justifyContent: 'center',
+    paddingVertical: tokens.spaceHair,
     paddingHorizontal: tokens.spaceSm,
-    borderRadius: 11,
+    borderRadius: tokens.radiusPill,
     backgroundColor: tokens.colorNeutralFill,
   },
   head: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: tokens.spaceLg },
