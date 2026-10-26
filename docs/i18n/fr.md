@@ -54,6 +54,17 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. En cours, terminer ou annuler un événement** (sc-14189 pour sc-3585,
+  `events.happeningNow`, `eventsScreen.happeningNow`, `eventEnd.*` web et app,
+  `eventEdit.schedule*`, `messages:event.already_over|schedule_concluded`). « En cours » dans
+  la pastille. "End now" est « Terminer maintenant », comme l’état « Terminé » ; "Call
+  off" est « Annuler l’événement », avec le nom, car un « Annuler » seul se lit comme le
+  bouton qui ferme la fenêtre. La sortie est « Le maintenir » dans les deux fenêtres, le mot
+  d’un événement « maintenu » plutôt qu’« annulé ». Un refus commence par « Non terminé. ».
+  Les invités sont « les invités qui ouvrent leur lien ». `already_over` dit « il n’est
+  donc plus possible d’y mettre fin », pour ne pas répéter « terminé ». `scheduleLocked` et
+  `scheduleConcluded` sont la même phrase : le français n’a pas la contraction qui les
+  distingue.
 - **26 Oct 2026. Publier un brouillon, et les états d’un événement** (sc-13956, sc-3584,
   `eventLive.*` web et app, `events.*`, `eventsScreen.*`, `messages:event.*`,
   `event.plan_limit`). "Make live" est « Publier », comme la permission « Créer, publier,

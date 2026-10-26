@@ -35,7 +35,7 @@
     "firstRunCreate": "Créer un événement",
     "firstRunAskOwner": "Les événements créés par votre organisation s’afficheront ici. Pour en créer un, adressez-vous à une personne ayant le rôle Propriétaire.",
     "live": "Publié",
-    "happeningNow": "Happening now",
+    "happeningNow": "En cours",
     "paused": "En pause",
     "finished": "Terminé"
   },
@@ -140,18 +140,18 @@
     "close": "Fermer"
   },
   "eventEnd": {
-    "callOff": "Call off",
-    "endNow": "End now",
-    "callOffTitle": "Call off {{name}}?",
-    "callOffBody": "It won't go ahead. Guests following their link will be told.",
-    "endTitle": "End {{name}} now?",
-    "endBody": "It will be over for everybody.",
-    "final": "You can't undo this.",
-    "keepItOn": "Keep it on",
-    "failed": "Not ended. Try again in a moment.",
-    "notEnded": "Not ended.",
-    "alreadyOver": "This event is already over.",
-    "calledOffNotice": "Called off on {{date}}, before it started. Guests following their link are told it won't go ahead."
+    "callOff": "Annuler l’événement",
+    "endNow": "Terminer maintenant",
+    "callOffTitle": "Annuler {{name}} ?",
+    "callOffBody": "L’événement n’aura pas lieu. Les invités qui ouvriront leur lien en seront informés.",
+    "endTitle": "Terminer {{name}} maintenant ?",
+    "endBody": "L’événement sera terminé pour tout le monde.",
+    "final": "Cette action est irréversible.",
+    "keepItOn": "Le maintenir",
+    "failed": "Non terminé. Réessayez dans un instant.",
+    "notEnded": "Non terminé.",
+    "alreadyOver": "Cet événement est déjà terminé.",
+    "calledOffNotice": "Annulé le {{date}}, avant son début. Les invités qui ouvrent leur lien voient qu’il n’aura pas lieu."
   },
   "eventEdit": {
     "open": "Modifier les informations",
@@ -173,8 +173,8 @@
     "leave": "Quitter sans enregistrer",
     "saved": "Modifications enregistrées",
     "nothingChanged": "Rien n’a changé, donc rien n’a été envoyé.",
-    "scheduleConcluded": "This event is over, so its start, end and time zone cannot be changed.",
-    "scheduleLocked": "This event is over, so its start, end and time zone can't be changed."
+    "scheduleConcluded": "Cet événement est terminé, son début, sa fin et son fuseau horaire ne peuvent donc plus être modifiés.",
+    "scheduleLocked": "Cet événement est terminé, son début, sa fin et son fuseau horaire ne peuvent donc plus être modifiés."
   },
   "eventCover": {
     "heading": "Image de couverture",
