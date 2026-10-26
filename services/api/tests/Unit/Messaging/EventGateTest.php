@@ -25,6 +25,7 @@ final class EventGateTest extends TestCase
         $paused = self::state(EventStatus::Paused, '+10 days');
         $finished = self::state(EventStatus::Live, '-10 days');
         $longFinished = self::state(EventStatus::Live, '-40 days');
+        $calledOff = new EventState(EventStatus::Live, new DateTimeImmutable('2026-10-25 18:00'), new DateTimeImmutable('2026-10-25 23:00'), new DateTimeImmutable('2026-10-20 09:00'), false);
         $deleted = new EventState(EventStatus::Live, new DateTimeImmutable('2026-11-11 18:00'), new DateTimeImmutable('2026-11-11 23:00'), null, true);
 
         yield 'live, automatic' => [NotificationEventRule::Automatic, $live, EventVerdict::Send];
@@ -34,6 +35,8 @@ final class EventGateTest extends TestCase
         yield 'paused, a change notice goes' => [NotificationEventRule::ChangeNotice, $paused, EventVerdict::Send];
         yield 'finished, automatic stops' => [NotificationEventRule::Automatic, $finished, EventVerdict::Cancel];
         yield 'finished, a payment reminder goes on' => [NotificationEventRule::AfterConclusion, $finished, EventVerdict::Send];
+        yield 'called off, a payment reminder stops' => [NotificationEventRule::AfterConclusion, $calledOff, EventVerdict::Cancel];
+        yield 'called off, automatic stops' => [NotificationEventRule::Automatic, $calledOff, EventVerdict::Cancel];
         yield 'finished, a host message within 30 days' => [NotificationEventRule::HostMessage, $finished, EventVerdict::Send];
         yield 'finished, a host message after 30 days' => [NotificationEventRule::HostMessage, $longFinished, EventVerdict::Cancel];
         yield 'deleted, automatic stops' => [NotificationEventRule::Automatic, $deleted, EventVerdict::Cancel];
