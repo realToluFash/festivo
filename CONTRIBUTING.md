@@ -10,6 +10,10 @@ docker compose up -d   # the stack
 `npm run setup` reports what it did and what it skipped. PHP tooling runs in Docker —
 you do not need PHP installed.
 
+Node is 22.18 or later (`.nvmrc`, so `nvm use` picks it). The agent gateway and the Expo config
+are TypeScript that Node runs directly, which it does without a flag from 22.18, and CI runs
+only Node 22.
+
 ## Routines
 
 ```bash

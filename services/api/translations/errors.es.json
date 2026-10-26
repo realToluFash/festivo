@@ -67,7 +67,7 @@
     "organisation_deleted": "Esta organización ya no existe, así que no se puede aceptar la invitación.",
     "provider_kept_by_rule": "Su organización solo admite Google o Apple, así que la última cuenta vinculada se mantiene.",
     "oauth_only": "Esta organización solo admite el inicio de sesión con Google o Apple.",
-    "oauth_only_unlinked": "Solo lectura hasta que vincule Google o Apple.",
+    "oauth_only_unlinked": "No hay ninguna cuenta de Google o Apple vinculada.",
     "organisation_two_factor_required": "Esta organización pide primero la verificación en dos pasos.",
     "organisation_two_factor_overdue": "Esta organización exige la verificación en dos pasos.",
     "two_factor_kept_by_rule": "Su organización exige la verificación en dos pasos, así que no puede desactivarla.",
