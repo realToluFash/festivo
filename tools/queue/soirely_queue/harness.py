@@ -15,8 +15,9 @@ def refresh(db, path, main):
     the worker is told, or None when the copy is missing or already main's."""
     copy = path / COPY
     try:
-        if not copy.exists():
-            return None
+        copy.stat()
+    except FileNotFoundError:
+        return None
     except OSError as error:
         return f"Your QA harness ({COPY}) was kept: it could not be read ({error})."
     short = main[:7]
