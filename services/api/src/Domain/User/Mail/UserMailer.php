@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\User\Mail;
 
 use App\Entity\User;
+use App\Locale\SupportedLocales;
 use DateTimeImmutable;
 use DateTimeZone;
 use IntlDateFormatter;
@@ -64,11 +65,23 @@ final readonly class UserMailer
         return $this->accountLanguage->of($user, $asked);
     }
 
+    /** The language a server-written date on a screen is in: the one the request asked for, else the account's (sc-9267). */
+    public function shownLocaleFor(User $user): string
+    {
+        return $this->accountLanguage->shown($user);
+    }
+
+    /** The language of a date inside the API's own sentence, which is the sentence's (sc-11329). */
+    public function answeredLocale(): string
+    {
+        return $this->accountLanguage->answered();
+    }
+
     /** A time for a person (sc-868), in the zone and with the label `deadline()` shares: their zone, else UTC, "WAT" or "UTC+04:00". */
     public function moment(DateTimeImmutable $at, User $user, string $locale): string
     {
         [$local, $label] = self::local($at, $user);
-        $formatter = IntlDateFormatter::create($locale, IntlDateFormatter::LONG, IntlDateFormatter::SHORT, $local->getTimezone()->getName());
+        $formatter = IntlDateFormatter::create(SupportedLocales::dates($locale), IntlDateFormatter::LONG, IntlDateFormatter::SHORT, $local->getTimezone()->getName());
 
         if (null === $formatter) {
             return $local->format('Y-m-d H:i') . ' ' . $label;
@@ -79,16 +92,30 @@ final readonly class UserMailer
         return ($formatter->format($local) ?: $local->format('Y-m-d H:i')) . ' ' . $label;
     }
 
-    /** A deadline as the screens write it (sc-509): "Saturday, Oct 24 at 14:20 WAT". */
+    /** A deadline in the house order for English (sc-6758), not always as the screens write it: "Saturday 24 Oct at 14:20 WAT". */
     public function deadline(DateTimeImmutable $at, User $user, string $locale): string
     {
         [$local, $label] = self::local($at, $user);
-        $pattern = new IntlDatePatternGenerator($locale)->getBestPattern('EEEEMMMd') ?: 'EEEE, MMM d';
-        $formatter = IntlDateFormatter::create($locale, IntlDateFormatter::NONE, IntlDateFormatter::NONE, $local->getTimezone()->getName(), null, $pattern);
+
+        return $this->dateAt($local, $label, $locale);
+    }
+
+    /** The same words in UTC, for a `detail` read raw from anywhere (sc-12379): "Monday 26 Oct at 16:32 UTC". */
+    public function deadlineInUtc(DateTimeImmutable $at, string $locale): string
+    {
+        return $this->dateAt($at->setTimezone(new DateTimeZone('UTC')), 'UTC', $locale);
+    }
+
+    private function dateAt(DateTimeImmutable $local, string $label, string $locale): string
+    {
+        $dates = SupportedLocales::dates($locale);
+        $pattern = new IntlDatePatternGenerator($dates)->getBestPattern('EEEEMMMd') ?: 'EEEE d MMM';
+        $formatter = IntlDateFormatter::create($dates, IntlDateFormatter::NONE, IntlDateFormatter::NONE, $local->getTimezone()->getName(), null, $pattern);
 
         return $this->line('time.dateAt', $locale, [
             '{date}' => $formatter?->format($local) ?: $local->format('Y-m-d'),
             '{time}' => $local->format('H:i'),
+            '{hour}' => (int) $local->format('G'),
             '{zone}' => $label,
         ]);
     }

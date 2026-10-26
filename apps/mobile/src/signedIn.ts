@@ -7,9 +7,11 @@ import type {
 } from '@soirely/api-client';
 import { type InvitationOutcome, chooseOrganisation, choosePaused } from '@soirely/domain';
 import { router } from 'expo-router';
+import i18next from 'i18next';
 import { useEffect, useSyncExternalStore } from 'react';
 
 import { api } from './api.ts';
+import { currentLocale } from './i18n/index.ts';
 import { tokens } from './tokens.ts';
 
 const REMEMBERED = 'soirely.organisation';
@@ -71,6 +73,38 @@ export async function rereadAccount(): Promise<void> {
   set({ ...state, account });
 }
 
+let rereads = 0;
+
+/** Read again in a newly picked language, so the dates the server wrote follow it; a failed read leaves them as they were (sc-9267). */
+export async function rereadOrganisations(): Promise<void> {
+  if (state.account == null) return;
+
+  const account = state.account;
+  const known = state.organisations;
+  rereads += 1;
+  const reread = rereads;
+  const read = await api.organisationsWithPaused().catch(() => null);
+  if (
+    read == null ||
+    reread !== rereads ||
+    state.account?.id !== account.id ||
+    state.organisations !== known
+  )
+    return;
+
+  const organisation =
+    read.organisations.find((membership) => membership.id === state.organisation?.id) ??
+    state.organisation;
+  const pausedIn =
+    state.pausedIn == null
+      ? null
+      : (read.paused.find((paused) => paused.id === state.pausedIn?.id) ?? state.pausedIn);
+
+  set({ ...state, organisations: read.organisations, organisation, pausedIn });
+}
+
+i18next.on('languageChanged', () => void rereadOrganisations());
+
 /** False when the account could not be read and sign-in has opened instead. */
 export function launchSignedIn(): Promise<boolean> {
   ended = false;
@@ -82,6 +116,7 @@ export function launchSignedIn(): Promise<boolean> {
 let loading: Promise<boolean> | null = null;
 
 function load(): Promise<boolean> {
+  const askedIn = currentLocale();
   loading ??= Promise.all([
     api.me(),
     api.organisationsWithPaused(),
@@ -97,6 +132,8 @@ function load(): Promise<boolean> {
         pausedIn: choosePaused(paused, id, organisations.length),
         invitations,
       });
+      // The account's language, followed at launch while this read was on its way (sc-9267).
+      if (currentLocale() !== askedIn) void rereadOrganisations();
 
       return true;
     })
@@ -115,12 +152,31 @@ export function rememberOrganisation(id: string): Promise<void> {
   return AsyncStorage.setItem(REMEMBERED, id).catch(() => {});
 }
 
-export function switchOrganisation(id: string): void {
-  const organisation = state.organisations.find((membership) => membership.id === id);
-  if (organisation == null) return;
+let switchHeld: ((go: () => void) => void) | null = null;
 
-  set({ ...state, organisation, pausedIn: null });
-  void AsyncStorage.setItem(REMEMBERED, id).catch(() => {});
+/** A screen with unsaved work asks before the organisation changes under it, and calls `go` to switch anyway. */
+export function holdSwitches(ask: (go: () => void) => void): () => void {
+  switchHeld = ask;
+
+  return () => {
+    if (switchHeld === ask) switchHeld = null;
+  };
+}
+
+export function switchOrganisation(id: string, landed?: () => void): boolean {
+  const organisation = state.organisations.find((membership) => membership.id === id);
+  if (organisation == null) return false;
+
+  const go = (): void => {
+    set({ ...state, organisation, pausedIn: null });
+    void AsyncStorage.setItem(REMEMBERED, id).catch(() => {});
+    landed?.();
+  };
+
+  if (switchHeld == null) go();
+  else switchHeld(go);
+
+  return true;
 }
 
 /** An invitation accepted in the app: the organisation joins the list, and nobody is moved into it. */

@@ -260,7 +260,8 @@ check the same file on `main` — then use `--no-verify` and **say so**, naming 
 was failing on.
 
 Bypassing is also right mid-split: the hook stashes unstaged changes, which is dangerous
-when several commits' worth of work is still in the tree.
+when several commits' worth of work is still in the tree. Split by whole files, never with
+`git add -p`: a hook that fails can lose the half of a file you left unstaged.
 
 ### Running them without committing
 

@@ -32,7 +32,7 @@ final readonly class TokenRefusalListener
         $event->setResponse($this->problemRenderer->render(
             $request,
             ErrorCode::Unauthenticated,
-            'Please sign in to continue.',
+            'access.sign_in',
             [],
             ['WWW-Authenticate' => 'Bearer'],
         ));

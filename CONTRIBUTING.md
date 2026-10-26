@@ -10,6 +10,10 @@ docker compose up -d   # the stack
 `npm run setup` reports what it did and what it skipped. PHP tooling runs in Docker —
 you do not need PHP installed.
 
+Node is 22.18 or later (`.nvmrc`, so `nvm use` picks it). The agent gateway and the Expo config
+are TypeScript that Node runs directly, which it does without a flag from 22.18, and CI runs
+only Node 22.
+
 ## Routines
 
 ```bash
@@ -57,18 +61,43 @@ An agent in QA mode does not use them here. There are three QA testers, and
 `just qa-env setup --tester N` makes a stack for tester N. Each stack is a worktree at
 `../soirely-qa`, `../soirely-qa2` or `../soirely-qa3` on the pushed head of the pull request
 under test, with its own containers and database, every port moved up by N×10000, and its
-own simulators, or Android emulators on a host without Xcode. A developer running the suite and a QA pass stopping the API to test the
-offline state then never meet, and nor do two testers. Run `/soirely-qa-tester`, `… qa2` or
+own simulators and Android emulators on the Mac, or emulators only on a host without Xcode.
+A developer running the suite and a QA pass stopping the API to test the offline state then never meet, and nor do two testers. Run `/soirely-qa-tester`, `… qa2` or
 `… qa3` from the main checkout as usual; each does its work in its own worktree, through
 `node .qa/bin/qa-env.mjs`. Expo Go does not own the app's `soirely://` scheme, so on Android
 a provider's redirect is handed back with `node .qa/bin/qa-env.mjs link 'soirely://oauth/…'`.
+`android` removes any release build first, because while it is installed it owns that scheme.
 
-There are two developers. Developer 1 works in this checkout on the development ports.
-`just dev-env setup --developer 2` makes developer 2's: a worktree at `../soirely-dev2` with
-its own containers and database, every port moved up by 40000. Start `/soirely-developer dev2`
-from that worktree. Every `just` recipe and `npm run` check works there as it does here,
+Expo Go fetches the bundle from Metro and draws its own splash, so a bullet about the app
+offline from first launch, or its own splash screen, needs the app itself.
+`node .qa/bin/qa-env.mjs release` builds a release APK of the QA worktree's commit, with the bundle and fonts inside, installs
+it fresh on the tester's phone emulator (`--tablet` for the other) and opens it, so that launch
+is its first. `--offline` turns airplane mode on, cuts the stack and waits until the emulator has no
+network before that launch. It records the launch's first 15 seconds under `.qa/release`, since
+the emulator has no window to watch the splash in. Run
+`checkout main` first for main. A QA worktree made before the command existed has an old
+`.qa/bin` copy, whose `android` neither removes a release build nor turns airplane mode off.
+Each tester's start brings that copy to `main`'s once CI has passed `main`, and says
+when it kept the old one; never copy `main`'s harness in by hand ahead of CI. It needs no Expo account: `expo prebuild` writes `apps/mobile/android`, which
+is ignored, and Gradle builds it. The first build on a machine fetches the NDK and an SDK
+platform and took an hour here. The APK is kept in
+`.qa/release`, named by its commit, so the next install of the same commit skips the build
+(`--rebuild` forces one).
+
+On the Mac, `release` does the same for the tester's iPhone simulator (`--ipad` for the iPad,
+`--android` for the emulator instead): `expo prebuild --platform ios`, `pod install` and an
+`xcodebuild` Release build for the simulator, with no signing, no Expo account and no EAS, kept as
+`.qa/release/soirely-<commit>.app`. It needs Xcode and CocoaPods. A simulator shares the Mac's
+network, so `--offline` stops the services the app reaches (`api`, `mercure`, `storage`, `oidc`)
+before that launch rather than cutting the network. The next `ios` removes the build and starts
+them again.
+
+There are several developers. Developer 1 works in this checkout on the development ports.
+`just dev-env setup --developer N` (2 to 4) makes developer N's: a worktree at
+`../soirely-devN` with its own containers and database, on ports of its own (`STACKS` in
+`scripts/dev-env.mjs`). Start `/soirely-developer devN` from that worktree. Every `just` recipe and `npm run` check works there as it does here,
 because its `.env` names its own compose project. A developer claims a story by adding its
-label, `dev1` or `dev2`, so the other leaves it alone; `.claude/skills/soirely-developer`
+label, `dev1` to `devN`, so the others leave it alone; `.claude/skills/soirely-developer`
 has the details.
 
 Every other role that raises pull requests has a stack of its own the same way:

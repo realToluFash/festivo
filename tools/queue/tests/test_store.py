@@ -45,6 +45,13 @@ class Claims(unittest.TestCase):
         store.claim(self.db, "pm", NOW, worker="pm", workers=2)
         self.assertEqual(store.claim(self.db, "pm", NOW, worker="pm-2", workers=2)["story_id"], 8)
 
+    def test_two_lead_workers_never_hold_the_same_pull_request(self):
+        store.record(self.db, [dict(item("review", ["lead"]), story_id=None, pr=40),
+                               dict(item("threads", ["lead"]), story_id=None, pr=40),
+                               dict(item("other", ["lead"]), story_id=None, pr=41)], NOW)
+        self.assertEqual(store.claim(self.db, "lead", NOW, worker="lead", workers=2)["pr"], 40)
+        self.assertEqual(store.claim(self.db, "lead", NOW, worker="lead-2", workers=2)["pr"], 41)
+
     def test_a_claim_made_by_hand_counts_as_the_first_worker_s(self):
         store.record(self.db, [item("a", ["pm"]), item("b", ["pm"])], NOW)
         store.claim(self.db, "pm", NOW)
@@ -64,6 +71,30 @@ class Claims(unittest.TestCase):
         store.record(self.db, [item("a", ["dev"]), dict(item("b", ["dev"]), priority=5)],
                      NOW + 60)
         self.assertEqual(store.claim(self.db, "dev", NOW + 60)["fingerprint"], "b")
+
+    def test_an_open_item_follows_the_roles_it_is_now_derived_for(self):
+        store.record(self.db, [item("dev:story:sc-1", ["dev", "dev2"])], NOW)
+        store.record(self.db, [item("dev:story:sc-1", ["dev", "dev2", "dev3"])], NOW + 60)
+        self.assertEqual(store.waiting(self.db, "dev3")[0]["fingerprint"], "dev:story:sc-1")
+        self.assertIsNotNone(store.claim(self.db, "dev3", NOW + 60))
+
+    def test_a_role_dropped_from_an_open_item_is_no_longer_offered_it(self):
+        store.record(self.db, [item("a", ["qa", "qa2"])], NOW)
+        store.record(self.db, [item("a", ["qa"])], NOW + 60)
+        self.assertEqual(store.waiting(self.db, "qa2"), [])
+
+    def test_a_claimed_item_keeps_its_roles(self):
+        store.record(self.db, [item("a", ["dev", "dev2"])], NOW)
+        store.claim(self.db, "dev", NOW)
+        store.record(self.db, [item("a", ["dev2", "dev3"])], NOW + 60)
+        row = store.held_by(self.db, "dev", NOW + 60)
+        self.assertEqual(row["roles"], "dev,dev2")
+
+    def test_a_gone_item_reopens_for_its_new_roles(self):
+        store.record(self.db, [item("a", ["dev"])], NOW)
+        store.record(self.db, [], NOW + 60)
+        store.record(self.db, [item("a", ["dev", "dev2"])], NOW + 120)
+        self.assertEqual(store.waiting(self.db, "dev2")[0]["status"], "open")
 
     def test_within_a_priority_the_lower_rank_is_claimed_first(self):
         store.record(self.db, [dict(item("a", ["dev"]), rank=4),

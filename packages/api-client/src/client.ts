@@ -5,6 +5,17 @@
  * are decided once here. Written per client, each would grow its own error path
  * and most of those would never be exercised.
  */
+import {
+  type EventPhase,
+  type EventState,
+  type EventType,
+  EVENT_PHASES,
+  EVENT_STATES,
+  isEventType,
+  type ServerClock,
+  serverClock,
+} from '@soirely/domain';
+
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
 
 /** See docs/architecture/sessions.md. */
@@ -260,6 +271,14 @@ export interface OrganisationRole extends MemberRole {
   removable: boolean;
   permissions: string[];
   holders: number;
+  /** Whom `holders` counts, alphabetical by name, ties by email (sc-6447). */
+  holderNames: RoleHolder[];
+}
+
+/** A name as its person wrote it, never translated; a suspended holder still holds the role. */
+export interface RoleHolder {
+  name: string;
+  suspended: boolean;
 }
 
 /** Every role, and every registered permission grouped by area, in the order the grid shows them. */
@@ -268,28 +287,108 @@ export interface RolesCatalogue {
   areas: { area: string; permissions: string[] }[];
 }
 
-export type EventStatus = 'draft';
+/** Stored, as /event-states.json declares them; what the clock makes of it is its phase (sc-3584). */
+export type EventStatus = EventState;
 
 /** `startsAt` and `endsAt` carry the offset in force at that moment in `timeZone` (sc-1486). */
 export interface OrganisationEvent {
   id: string;
   organisationId: string;
   name: string;
+  type: EventType;
   status: EventStatus;
   startsAt: string;
   endsAt: string;
   timeZone: string;
+  /** The calendar dates in `timeZone` the event touches, at least 1; an end at 00:00 does not touch the new date (sc-98). */
+  dayCount: number;
   currency: string;
+  cover: EventCover | null;
+  /** Null until a venue is added: the page says "Venue to be confirmed" (sc-3589). */
+  venue: EventVenue | null;
+  /** Null while it is a Draft. */
+  madeLiveAt: string | null;
+  /** The server's, as the page shows it on load; a client works one out only to flip it at a boundary (sc-3585). */
+  phase: EventPhase;
+  /** The end, or when it was ended or called off; null until it is Finished. */
+  concludedAt: string | null;
   createdAt: string;
+}
+
+/** The organiser's photo, re-encoded as WebP at each width. `position` is how far down the photo the 16:9 frame sits, 0 to 100. */
+export interface EventCover {
+  position: number;
+  description: string | null;
+  sizes: { width: number; url: string }[];
+}
+
+/** Where the browser PUTs the photo, with `contentType` as its Content-Type; `key` then names it to setEventCover. */
+export interface CoverUpload {
+  url: string;
+  key: string;
+  contentType: string;
+}
+
+export interface CoverChange {
+  uploadKey?: string;
+  position: number;
+  description: string | null;
+}
+
+export interface EventVenue {
+  name: string | null;
+  address: VenueAddress | null;
+}
+
+/** A typed address carries `formatted` alone; a picked one its parts and coordinates too, where the lookup knew them. */
+export interface VenueAddress {
+  formatted: string;
+  line1: string | null;
+  line2: string | null;
+  city: string | null;
+  region: string | null;
+  postalCode: string | null;
+  countryCode: string | null;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+/** Both blank removes the venue. `addressId` is the suggestion the address was picked from; without it the address is saved as typed. */
+export interface VenueInput {
+  name: string | null;
+  address: string | null;
+  addressId?: string | null;
 }
 
 /** `startsAt` and `endsAt` are local to `timeZone`, with no offset: "2026-11-14T16:00". */
 export interface NewEvent {
   name: string;
+  type: EventType;
   startsAt: string;
   endsAt: string;
   timeZone: string;
   currency: string;
+  venue?: VenueInput | null;
+}
+
+/** One of the address lookup's suggestions (sc-53): the place's name, and the rest of its line. */
+export interface AddressSuggestion {
+  id: string;
+  text: string;
+  secondaryText: string | null;
+}
+
+export interface PickedAddress extends VenueAddress {
+  timeZone: string | null;
+}
+
+/** What an edit sends: any of the fields, those left out keep their value (sc-3587). */
+export type EventChanges = Partial<NewEvent>;
+
+/** An event with its `ETag`, which an edit sends back as `If-Match`. */
+export interface TaggedEvent {
+  event: OrganisationEvent;
+  tag: string;
 }
 
 export interface Membership extends Organisation {
@@ -311,19 +410,50 @@ export interface TwoFactorDeadline {
   written: string;
 }
 
-export type DomainSuspensionReason = 'address_gone' | 'domain_closed' | 'domain_managed_elsewhere';
+/** `manual` is somebody who manages members suspending them (sc-3575): it is never removed by itself, and its organisation is never listed as paused. */
+export type SuspensionReason =
+  'address_gone' | 'domain_closed' | 'domain_managed_elsewhere' | 'manual';
 
-/** A member who joined through the company domain, paused when it stopped bringing them in (sc-564); each instant in the reader's zone, and no removal for the only owner. */
-export interface DomainSuspension {
-  reason: DomainSuspensionReason;
+/** Why and since when a member is suspended: by the company domain (sc-564) or by hand (sc-3575); each instant in the reader's zone, and no removal for the only owner. */
+export interface Suspension {
+  reason: SuspensionReason;
   domain: string | null;
   since: TwoFactorDeadline;
   removesAt: TwoFactorDeadline | null;
+  /** The organisation's only Owner: never removed, and restored by anyone holding members.manage. */
+  onlyOwner: boolean;
 }
 
 /** An organisation the account's access to is paused in: no grant at all, only why. */
 export interface PausedOrganisation extends Organisation {
-  suspension: DomainSuspension;
+  suspension: Suspension;
+  /** An open claim to own it, for a suspended Owner to stop (sc-6640). */
+  ownerClaim: OwnerClaim | null;
+}
+
+export type OwnerClaimState = 'no_owner' | 'open' | 'found' | 'closed';
+
+/** An Administrator becoming the owner while no Owner is active (sc-6640); each instant as the reader writes it. */
+export interface OwnerClaim {
+  id: string;
+  claimant: { id: string; name: string; email: string | null };
+  mine: boolean;
+  domain: string;
+  record: { type: 'TXT'; name: string; value: string } | null;
+  startedAt: TwoFactorDeadline;
+  lapsesAt: TwoFactorDeadline;
+  foundAt: TwoFactorDeadline | null;
+  passesAt: TwoFactorDeadline | null;
+}
+
+/** The banner at the top of Members, only for an active Administrator while no Owner is active. */
+export interface OwnerClaimBanner {
+  state: OwnerClaimState;
+  domain: string | null;
+  claim: OwnerClaim | null;
+  /** Once a claim is stopped, self-serve is closed for good. */
+  stopped: { by: string; claimant: string; mine: boolean; at: TwoFactorDeadline } | null;
+  lapsed: { outcome: 'unfound' | 'record_removed'; at: TwoFactorDeadline } | null;
 }
 
 export interface TwoFactorDue extends TwoFactorDeadline {
@@ -343,6 +473,8 @@ export interface OrganisationSignInRules {
 export type SignInRulesChanges = Partial<Omit<OrganisationSignInRules, 'changedAt'>>;
 
 export interface SignInRuleChange {
+  /** The saved change it came from; one save that changes two rules gives two rows with the same entry. */
+  entry: string;
   at: string;
   by: { name: string; role: MemberRole | null };
   rule: (typeof RULES)[number];
@@ -437,7 +569,7 @@ export interface OrganisationMember {
   invitedAt: string | null;
   self: boolean;
   history: MembershipStep[];
-  suspension: DomainSuspension | null;
+  suspension: Suspension | null;
 }
 
 export type SentInvitationStatus = 'pending' | 'accepted' | 'declined' | 'revoked' | 'expired';
@@ -465,6 +597,13 @@ export interface OrganisationDeletion {
   events: number;
   guests: number;
   members: number;
+  restoreClosesAt: string;
+  restoreCloses: string;
+}
+
+/** What an event's delete asks for: its name typed unless it is a Draft, and until when support can restore it (sc-3592). */
+export interface EventDeletion {
+  needsName: boolean;
   restoreClosesAt: string;
   restoreCloses: string;
 }
@@ -519,6 +658,8 @@ export interface ClientOptions {
   /** Called when the API refuses a request because the account is behind an onboarding gate. */
   onGate?: (gate: Gate) => void;
   fetch?: typeof fetch;
+  /** Fed every response's `Date` header; the shared one unless a test gives its own (sc-3585). */
+  clock?: ServerClock;
 }
 
 export interface RequestOptions {
@@ -537,6 +678,13 @@ export class ApiClient {
   constructor(private readonly options: ClientOptions) {}
 
   async request<T>(path: string, init: RequestOptions = {}): Promise<T> {
+    return (await this.exchange<T>(path, init)).body;
+  }
+
+  private async exchange<T>(
+    path: string,
+    init: RequestOptions,
+  ): Promise<{ body: T; response: Response }> {
     let response = await this.send(path, init);
 
     // One retry, and only after a refresh that actually succeeded. Retrying a
@@ -562,9 +710,9 @@ export class ApiClient {
       throw error;
     }
 
-    if (response.status === 204) return undefined as T;
+    if (response.status === 204) return { body: undefined as T, response };
 
-    return (await response.json()) as T;
+    return { body: (await response.json()) as T, response };
   }
 
   get<T>(path: string, init?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
@@ -1296,7 +1444,7 @@ export class ApiClient {
     return events as OrganisationEvent[];
   }
 
-  /** Refused `validation_failed` with violations on name, startsAt, endsAt, timeZone or currency. */
+  /** Refused `validation_failed` with violations on name, type, startsAt, endsAt, timeZone or currency. */
   async createEvent(organisationId: string, event: NewEvent): Promise<OrganisationEvent> {
     return this.organisationEvent(
       await this.post<{ event?: unknown }>(
@@ -1306,11 +1454,201 @@ export class ApiClient {
     );
   }
 
+  /** Empty under three characters, with nothing asked. Refused 503 when the lookup is down. */
+  async addressSuggestions(query: string): Promise<AddressSuggestion[]> {
+    if (query.trim().length < 3) return [];
+
+    const body = await this.get<{ data?: unknown }>(
+      `/api/addresses/suggest?${new URLSearchParams({ q: query.trim() }).toString()}`,
+    );
+    const suggestions = Array.isArray(body?.data) ? body.data.map(asAddressSuggestion) : null;
+
+    if (suggestions == null || suggestions.some((suggestion) => suggestion == null)) {
+      throw new Error(
+        'The API answered GET /api/addresses/suggest in a shape this client does not know. Check the address controller in services/api.',
+      );
+    }
+
+    return suggestions as AddressSuggestion[];
+  }
+
+  /** Refused 404 for an id the lookup no longer knows, 503 when it is down. */
+  async address(id: string): Promise<PickedAddress> {
+    const body = await this.get<{ data?: unknown }>(`/api/addresses/${encodeURIComponent(id)}`);
+    const address = asPickedAddress(body?.data);
+
+    if (address == null) {
+      throw new Error(
+        'The API answered GET /api/addresses/{id} in a shape this client does not know. Check the address controller in services/api.',
+      );
+    }
+
+    return address;
+  }
+
   /** Refused `not_found` alike for an event that does not exist and one in another organisation. */
   async event(eventId: string): Promise<OrganisationEvent> {
     return this.organisationEvent(
       await this.get<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}`),
     );
+  }
+
+  /** The event as an edit form opens it, with the tag the save sends back. */
+  async taggedEvent(eventId: string): Promise<TaggedEvent> {
+    return this.tagged(
+      await this.exchange<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}`, {
+        method: 'GET',
+      }),
+    );
+  }
+
+  /** Refused 412 when somebody saved since `tag`, 409 `event_currency_in_use`, and as createEvent. */
+  async updateEvent(eventId: string, changes: EventChanges, tag: string): Promise<TaggedEvent> {
+    return this.tagged(
+      await this.exchange<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}`, {
+        method: 'PATCH',
+        body: changes,
+        headers: { 'If-Match': tag },
+      }),
+    );
+  }
+
+  /** Refused `validation_failed` on `file` for a type or a size the cover does not take (sc-3590). */
+  async signEventCoverUpload(
+    organisationId: string,
+    file: { contentType: string; size: number; filename: string },
+  ): Promise<CoverUpload> {
+    const body = await this.post<{ upload?: unknown }>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/event-cover-uploads`,
+      file,
+    );
+    const { url, key, content_type: contentType } = (body?.upload ?? {}) as Record<string, unknown>;
+
+    if (typeof url !== 'string' || typeof key !== 'string' || typeof contentType !== 'string') {
+      throw new Error(
+        'The API answered a cover upload in a shape this client does not know. Check the event cover controller in services/api.',
+      );
+    }
+
+    return { url, key, contentType };
+  }
+
+  async uploadTo(upload: CoverUpload, file: Blob): Promise<void> {
+    const doFetch = this.options.fetch ?? fetch;
+    const response = await doFetch(upload.url, {
+      method: 'PUT',
+      body: file,
+      headers: { 'Content-Type': upload.contentType },
+    });
+
+    if (!response.ok) throw new Error(`The store refused the upload with ${response.status}.`);
+  }
+
+  /** For a browser that cannot show the original (sc-13861); refused on `file` as setEventCover refuses it. */
+  async previewEventCoverUpload(organisationId: string, uploadKey: string): Promise<string> {
+    const body = await this.post<{ preview?: unknown }>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/event-cover-uploads/preview`,
+      { uploadKey },
+    );
+
+    if (typeof body?.preview !== 'string' || !body.preview.startsWith('data:image/')) {
+      throw new Error(
+        'The API answered a cover preview in a shape this client does not know. Check the event cover controller in services/api.',
+      );
+    }
+
+    return body.preview;
+  }
+
+  /** A photo uploaded and then not used, deleted so its original, metadata and all, is not kept. */
+  async discardEventCoverUpload(organisationId: string, uploadKey: string): Promise<void> {
+    await this.request(`/api/orgs/${encodeURIComponent(organisationId)}/event-cover-uploads`, {
+      method: 'DELETE',
+      body: { uploadKey },
+    });
+  }
+
+  /** Refused `validation_failed` on `file` (the photo itself), `uploadKey`, `position` or `description`. */
+  async setEventCover(eventId: string, change: CoverChange): Promise<OrganisationEvent> {
+    return this.organisationEvent(
+      await this.put<{ event?: unknown }>(
+        `/api/events/${encodeURIComponent(eventId)}/cover`,
+        change,
+      ),
+    );
+  }
+
+  async removeEventCover(eventId: string): Promise<OrganisationEvent> {
+    return this.organisationEvent(
+      await this.delete<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}/cover`),
+    );
+  }
+
+  /** Refused 409 `event_state_invalid` once it is not a Draft, 409 `event_concluded` once its end has passed, and 403 `plan_limit` with `plan` and `limit`. */
+  async makeLive(eventId: string): Promise<TaggedEvent> {
+    return this.tagged(
+      await this.exchange<{ event?: unknown }>(
+        `/api/events/${encodeURIComponent(eventId)}/make-live`,
+        { method: 'POST' },
+      ),
+    );
+  }
+
+  /** Calls it off before its start, ends it after: refused 409 `event_state_invalid` unless Live or Paused, and 409 `event_concluded` once its end has passed. */
+  async endEvent(eventId: string): Promise<TaggedEvent> {
+    return this.tagged(
+      await this.exchange<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}/end`, {
+        method: 'POST',
+      }),
+    );
+  }
+
+  async eventDeletion(eventId: string): Promise<EventDeletion> {
+    const body = await this.get<Record<string, unknown>>(
+      `/api/events/${encodeURIComponent(eventId)}/deletion`,
+    );
+
+    if (
+      typeof body.needsName !== 'boolean' ||
+      typeof body.restoreClosesAt !== 'string' ||
+      typeof body.restoreCloses !== 'string'
+    ) {
+      throw new Error(
+        'The API answered an event deletion in a shape this client does not know. Check EventDeletionController in services/api.',
+      );
+    }
+
+    return {
+      needsName: body.needsName,
+      restoreClosesAt: body.restoreClosesAt,
+      restoreCloses: body.restoreCloses,
+    };
+  }
+
+  /** `name` is needed unless it is a Draft: refused with a violation on `name`, code `event_name_mismatch`, unless it matches. */
+  async deleteEvent(eventId: string, name?: string): Promise<void> {
+    await this.request<unknown>(`/api/events/${encodeURIComponent(eventId)}`, {
+      method: 'DELETE',
+      body: { name: name ?? null },
+    });
+  }
+
+  private tagged({
+    body,
+    response,
+  }: {
+    body: { event?: unknown } | null | undefined;
+    response: Response;
+  }): TaggedEvent {
+    const tag = response.headers.get('ETag');
+
+    if (tag == null || tag === '') {
+      throw new Error(
+        'The API answered an event with no ETag. Check that the events controller tags it and that CORS exposes ETag.',
+      );
+    }
+
+    return { event: this.organisationEvent(body), tag };
   }
 
   private organisationEvent(body: { event?: unknown } | null | undefined): OrganisationEvent {
@@ -1380,7 +1718,81 @@ export class ApiClient {
     );
   }
 
-  /** Refused `restore_needs_address` while an address that went is not back, verified and primary (sc-564). */
+  /** Refused 403 for yourself or an Owner, and 409 unless they are active. */
+  async suspendMember(organisationId: string, membershipId: string): Promise<void> {
+    await this.post<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}/suspend`,
+      {},
+    );
+  }
+
+  /** Null for anybody the banner is not shown to (sc-6640). */
+  async ownerClaim(organisationId: string): Promise<OwnerClaimBanner | null> {
+    return this.ownerClaimBanner(
+      await this.get<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/owner-claim`),
+    );
+  }
+
+  /** For the domain of the caller's own address. Refused `owner_claim_address`, `owner_claim_managed`, `owner_claim_open` or `owner_claim_closed`. */
+  async startOwnerClaim(organisationId: string): Promise<OwnerClaimBanner | null> {
+    return this.ownerClaimBanner(
+      await this.post<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/owner-claim`, {}),
+    );
+  }
+
+  async checkOwnerClaim(
+    organisationId: string,
+  ): Promise<{ ownerClaim: OwnerClaimBanner | null; found: boolean }> {
+    const raw = await this.post<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/owner-claim/check`,
+      {},
+    );
+
+    return {
+      ownerClaim: this.ownerClaimBanner(raw),
+      found: (raw as Record<string, unknown> | null)?.found === true,
+    };
+  }
+
+  /** By an Administrator other than the claimant, or a suspended Owner. Refused `owner_claim_own` for the claimant, `owner_claim_ended` once it has ended. */
+  async stopOwnerClaim(organisationId: string): Promise<OwnerClaimBanner | null> {
+    return this.ownerClaimBanner(
+      await this.post<unknown>(
+        `/api/orgs/${encodeURIComponent(organisationId)}/owner-claim/stop`,
+        {},
+      ),
+    );
+  }
+
+  /** By the claimant only (sc-8204), leaving the way open. `told` when the record had been found, so everybody told then is emailed. Refused `owner_claim_ended` once it has ended. */
+  async withdrawOwnerClaim(
+    organisationId: string,
+  ): Promise<{ ownerClaim: OwnerClaimBanner | null; told: boolean }> {
+    const raw = await this.post<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/owner-claim/withdraw`,
+      {},
+    );
+    const withdrawn = (raw as Record<string, unknown> | null)?.withdrawn as
+      Record<string, unknown> | undefined;
+
+    return { ownerClaim: this.ownerClaimBanner(raw), told: withdrawn?.told === true };
+  }
+
+  private ownerClaimBanner(raw: unknown): OwnerClaimBanner | null {
+    const body = (raw ?? {}) as Record<string, unknown>;
+    const banner = body.ownerClaim === null ? null : asOwnerClaimBanner(body.ownerClaim);
+
+    if (banner === undefined) {
+      throw new Error(
+        'The API answered an owner claim in a shape this client does not know. Check OwnerClaimDescriber in services/api.',
+      );
+    }
+
+    return banner;
+  }
+
+  /** Refused 409 unless they are suspended, `restore_needs_address` while an address that went is not back, verified and primary (sc-564),
+   * and `team_seats_in_use`, with the `limit`, when every seat is taken. */
   async restoreMember(organisationId: string, membershipId: string): Promise<void> {
     await this.request<unknown>(
       `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}/restore`,
@@ -1729,7 +2141,13 @@ export class ApiClient {
       if (token != null && token !== '') body.refreshToken = token;
     }
 
-    await this.sendTokenRequest('/api/auth/logout', body).catch(() => null);
+    const response = await this.sendTokenRequest('/api/auth/logout', body).catch(() => null);
+
+    // Only the API can clear an httpOnly cookie, so a sign-out it never answered has not happened.
+    if (this.delivery() === 'cookie' && (response == null || response.status >= 500)) {
+      throw new ApiUnreachableError();
+    }
+
     await this.options.tokens?.clear();
   }
 
@@ -1772,7 +2190,11 @@ export class ApiClient {
     if (init.signal !== undefined) request.signal = init.signal;
 
     try {
-      return await doFetch(this.url(path, init.query), request);
+      const response = await doFetch(this.url(path, init.query), request);
+
+      (this.options.clock ?? serverClock).observe(response.headers.get('Date'));
+
+      return response;
     } catch (error) {
       if (init.signal?.aborted === true) throw error;
 
@@ -2102,13 +2524,16 @@ function asOrganisationRole(raw: unknown): OrganisationRole | null {
 
   const role = raw as Record<string, unknown>;
   const permissions = stringList(role.permissions);
+  const holderNames = Array.isArray(role.holderNames) ? role.holderNames.map(asRoleHolder) : null;
 
   if (
     typeof role.id !== 'string' ||
     typeof role.fixed !== 'boolean' ||
     typeof role.removable !== 'boolean' ||
     typeof role.holders !== 'number' ||
-    permissions == null
+    permissions == null ||
+    holderNames == null ||
+    !holderNames.every((holder) => holder != null)
   )
     return null;
 
@@ -2120,7 +2545,16 @@ function asOrganisationRole(raw: unknown): OrganisationRole | null {
     removable: role.removable,
     permissions,
     holders: role.holders,
+    holderNames,
   };
+}
+
+function asRoleHolder(raw: unknown): RoleHolder | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const { name, suspended } = raw as Record<string, unknown>;
+
+  return typeof name === 'string' && typeof suspended === 'boolean' ? { name, suspended } : null;
 }
 
 function asRolesCatalogue(raw: unknown): RolesCatalogue | null {
@@ -2151,7 +2585,8 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   if (typeof raw !== 'object' || raw == null) return null;
 
   const candidate = raw as Record<string, unknown>;
-  const status = oneOf(candidate.status, EVENT_STATUSES);
+  const status = oneOf(candidate.status, EVENT_STATES);
+  const type = isEventType(candidate.type) ? candidate.type : null;
   const fields = [
     'id',
     'organisationId',
@@ -2163,22 +2598,152 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     'createdAt',
   ] as const;
 
-  if (status == null || fields.some((field) => typeof candidate[field] !== 'string')) return null;
+  const dayCount = candidate.dayCount;
+  const cover = candidate.cover === null ? null : asEventCover(candidate.cover);
+  const venue = candidate.venue === null ? null : asEventVenue(candidate.venue);
+  const madeLiveAt = candidate.madeLiveAt;
+  const phase = oneOf(candidate.phase, EVENT_PHASES);
+  const concludedAt = candidate.concludedAt;
+
+  if (
+    status == null ||
+    phase == null ||
+    !isStringOrNull(concludedAt) ||
+    !isStringOrNull(madeLiveAt) ||
+    type == null ||
+    cover === undefined ||
+    venue === undefined ||
+    fields.some((field) => typeof candidate[field] !== 'string') ||
+    typeof dayCount !== 'number' ||
+    !Number.isInteger(dayCount) ||
+    dayCount < 1
+  )
+    return null;
 
   return {
     id: candidate.id as string,
     organisationId: candidate.organisationId as string,
     name: candidate.name as string,
+    type,
     status,
     startsAt: candidate.startsAt as string,
     endsAt: candidate.endsAt as string,
     timeZone: candidate.timeZone as string,
+    dayCount,
     currency: candidate.currency as string,
+    cover,
+    venue,
+    madeLiveAt,
+    phase,
+    concludedAt,
     createdAt: candidate.createdAt as string,
   };
 }
 
-const EVENT_STATUSES: readonly EventStatus[] = ['draft'];
+function asEventCover(raw: unknown): EventCover | undefined {
+  if (typeof raw !== 'object' || raw == null) return undefined;
+
+  const { position, description, sizes } = raw as Record<string, unknown>;
+  const parsed = Array.isArray(sizes)
+    ? sizes.map((size: unknown) => {
+        const { width, url } = (size ?? {}) as Record<string, unknown>;
+
+        return typeof width === 'number' && typeof url === 'string' ? { width, url } : null;
+      })
+    : null;
+
+  if (
+    typeof position !== 'number' ||
+    (description !== null && typeof description !== 'string') ||
+    parsed == null ||
+    parsed.length === 0 ||
+    parsed.some((size) => size == null)
+  )
+    return undefined;
+
+  return { position, description, sizes: parsed as EventCover['sizes'] };
+}
+
+/** Undefined when the shape is not one this client knows. */
+function asEventVenue(raw: unknown): EventVenue | undefined {
+  if (typeof raw !== 'object' || raw == null) return undefined;
+
+  const candidate = raw as Record<string, unknown>;
+  const address = candidate.address === null ? null : asVenueAddress(candidate.address, 'camel');
+
+  if (!isStringOrNull(candidate.name) || address === undefined) return undefined;
+
+  return { name: candidate.name as string | null, address };
+}
+
+/** The event resource names the parts in camelCase; the address lookup, older, in snake_case. */
+function asVenueAddress(raw: unknown, naming: 'camel' | 'snake'): VenueAddress | undefined {
+  if (typeof raw !== 'object' || raw == null) return undefined;
+
+  const candidate = raw as Record<string, unknown>;
+  const postalCode = candidate[naming === 'camel' ? 'postalCode' : 'postal_code'];
+  const countryCode = candidate[naming === 'camel' ? 'countryCode' : 'country_code'];
+  const texts = [
+    candidate.line1,
+    candidate.line2,
+    candidate.city,
+    candidate.region,
+    postalCode,
+    countryCode,
+  ];
+  const coordinates = [candidate.latitude, candidate.longitude];
+
+  if (
+    typeof candidate.formatted !== 'string' ||
+    !texts.every(isStringOrNull) ||
+    !coordinates.every((value) => value === null || typeof value === 'number')
+  )
+    return undefined;
+
+  return {
+    formatted: candidate.formatted,
+    line1: candidate.line1 as string | null,
+    line2: candidate.line2 as string | null,
+    city: candidate.city as string | null,
+    region: candidate.region as string | null,
+    postalCode: postalCode as string | null,
+    countryCode: countryCode as string | null,
+    latitude: candidate.latitude as number | null,
+    longitude: candidate.longitude as number | null,
+  };
+}
+
+function asPickedAddress(raw: unknown): PickedAddress | null {
+  const address = asVenueAddress(raw, 'snake');
+  const timeZone = (raw as Record<string, unknown> | null)?.time_zone;
+
+  if (address == null || !isStringOrNull(timeZone)) return null;
+
+  return { ...address, timeZone: timeZone as string | null };
+}
+
+function asAddressSuggestion(raw: unknown): AddressSuggestion | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const candidate = raw as Record<string, unknown>;
+
+  if (
+    typeof candidate.id !== 'string' ||
+    typeof candidate.text !== 'string' ||
+    !isStringOrNull(candidate.secondary_text)
+  )
+    return null;
+
+  return {
+    id: candidate.id,
+    text: candidate.text,
+    secondaryText: candidate.secondary_text as string | null,
+  };
+}
+
+function isStringOrNull(value: unknown): value is string | null {
+  return value === null || typeof value === 'string';
+}
 
 function asOrganisation(raw: unknown): Organisation | null {
   if (typeof raw !== 'object' || raw == null) return null;
@@ -2339,7 +2904,7 @@ function asOrganisationMember(raw: unknown): OrganisationMember | null {
     invitedAt: stringOrNull(member.invitedAt),
     self: member.self === true,
     history: history as MembershipStep[],
-    suspension: asDomainSuspension(member.suspension),
+    suspension: asSuspension(member.suspension),
   };
 }
 
@@ -2458,13 +3023,14 @@ function asTwoFactorDeadline(raw: unknown): TwoFactorDeadline | null {
     : null;
 }
 
-const SUSPENSION_REASONS: readonly DomainSuspensionReason[] = [
+const SUSPENSION_REASONS: readonly SuspensionReason[] = [
   'address_gone',
   'domain_closed',
   'domain_managed_elsewhere',
+  'manual',
 ];
 
-function asDomainSuspension(raw: unknown): DomainSuspension | null {
+function asSuspension(raw: unknown): Suspension | null {
   const suspension = (raw ?? {}) as Record<string, unknown>;
   const reason = oneOf(suspension.reason, SUSPENSION_REASONS);
   const since = asTwoFactorDeadline(suspension.since);
@@ -2472,14 +3038,91 @@ function asDomainSuspension(raw: unknown): DomainSuspension | null {
 
   return reason == null || since == null
     ? null
-    : { reason, domain: stringOrNull(suspension.domain), since, removesAt };
+    : {
+        reason,
+        domain: stringOrNull(suspension.domain),
+        since,
+        removesAt,
+        onlyOwner: suspension.onlyOwner === true,
+      };
 }
 
 function asPausedOrganisation(raw: unknown): PausedOrganisation | null {
   const organisation = asOrganisation(raw);
-  const suspension = asDomainSuspension((raw as Record<string, unknown> | null)?.suspension);
+  const suspension = asSuspension((raw as Record<string, unknown> | null)?.suspension);
+  const claim = (raw as Record<string, unknown> | null)?.ownerClaim;
+  const ownerClaim = claim == null ? null : asOwnerClaim(claim);
 
-  return organisation == null || suspension == null ? null : { ...organisation, suspension };
+  return organisation == null || suspension == null || ownerClaim === undefined
+    ? null
+    : { ...organisation, suspension, ownerClaim };
+}
+
+const OWNER_CLAIM_STATES: readonly OwnerClaimState[] = ['no_owner', 'open', 'found', 'closed'];
+
+/** `undefined` for a shape this client does not know, so it is never read as no claim. */
+function asOwnerClaim(raw: unknown): OwnerClaim | undefined {
+  const claim = (raw ?? {}) as Record<string, unknown>;
+  const claimant = (claim.claimant ?? {}) as Record<string, unknown>;
+  const record = claim.record as Record<string, unknown> | null | undefined;
+  const startedAt = asTwoFactorDeadline(claim.startedAt);
+  const lapsesAt = asTwoFactorDeadline(claim.lapsesAt);
+
+  if (
+    typeof claim.id !== 'string' ||
+    typeof claimant.id !== 'string' ||
+    typeof claimant.name !== 'string' ||
+    typeof claim.domain !== 'string' ||
+    startedAt == null ||
+    lapsesAt == null
+  ) {
+    return undefined;
+  }
+
+  return {
+    id: claim.id,
+    claimant: { id: claimant.id, name: claimant.name, email: stringOrNull(claimant.email) },
+    mine: claim.mine === true,
+    domain: claim.domain,
+    record:
+      typeof record?.name === 'string' && typeof record.value === 'string'
+        ? { type: 'TXT', name: record.name, value: record.value }
+        : null,
+    startedAt,
+    lapsesAt,
+    foundAt: asTwoFactorDeadline(claim.foundAt),
+    passesAt: asTwoFactorDeadline(claim.passesAt),
+  };
+}
+
+function asOwnerClaimBanner(raw: unknown): OwnerClaimBanner | undefined {
+  const banner = (raw ?? {}) as Record<string, unknown>;
+  const state = oneOf(banner.state, OWNER_CLAIM_STATES);
+  const claim = banner.claim == null ? null : asOwnerClaim(banner.claim);
+  const stopped = banner.stopped as Record<string, unknown> | null | undefined;
+  const stoppedAt = asTwoFactorDeadline(stopped?.at);
+  const lapsed = banner.lapsed as Record<string, unknown> | null | undefined;
+  const lapsedOutcome = oneOf(lapsed?.outcome, ['unfound', 'record_removed'] as const);
+  const lapsedAt = asTwoFactorDeadline(lapsed?.at);
+
+  if (state == null || claim === undefined) return undefined;
+
+  return {
+    state,
+    domain: typeof banner.domain === 'string' ? banner.domain : null,
+    claim,
+    stopped:
+      stopped != null && stoppedAt != null
+        ? {
+            by: typeof stopped.by === 'string' ? stopped.by : '',
+            claimant: typeof stopped.claimant === 'string' ? stopped.claimant : '',
+            mine: stopped.mine === true,
+            at: stoppedAt,
+          }
+        : null,
+    lapsed:
+      lapsedOutcome != null && lapsedAt != null ? { outcome: lapsedOutcome, at: lapsedAt } : null,
+  };
 }
 
 function asTwoFactorDue(raw: unknown): TwoFactorDue | null {
@@ -2514,10 +3157,18 @@ function asSignInRuleChange(raw: unknown): SignInRuleChange | null {
   const was = asRuleValue(change.was);
   const rule = RULES.find((one) => one === change.rule);
 
-  if (typeof change.at !== 'string' || typeof by.name !== 'string' || rule == null) return null;
+  if (typeof change.entry !== 'string' || typeof change.at !== 'string') return null;
+  if (typeof by.name !== 'string' || rule == null) return null;
   if (now === undefined || was === undefined) return null;
 
-  return { at: change.at, by: { name: by.name, role: asMemberRole(by.role) }, rule, now, was };
+  return {
+    entry: change.entry,
+    at: change.at,
+    by: { name: by.name, role: asMemberRole(by.role) },
+    rule,
+    now,
+    was,
+  };
 }
 
 function asSignInRulesPage(raw: unknown): SignInRulesPage | null {

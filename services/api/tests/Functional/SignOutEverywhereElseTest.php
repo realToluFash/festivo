@@ -175,7 +175,7 @@ final class SignOutEverywhereElseTest extends ApiTestCase
 
         self::assertSame(429, $this->statusCode());
         self::assertSame(ErrorCode::TooManyAttempts->type(), $refused['type']);
-        self::assertMatchesRegularExpression('/Try again at \d\d:\d\d\./', Type\string()->coerce($refused['detail'] ?? ''));
+        self::assertMatchesRegularExpression('/Try again at \d\d:\d\d UTC\./', Type\string()->coerce($refused['detail'] ?? ''));
         self::assertNotNull($this->client->getResponse()->headers->get('Retry-After'));
         self::assertSame(200, $this->me($phone['accessToken']));
     }

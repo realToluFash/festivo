@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { __setSessionState, type Session } from '../../../session.ts';
+import { renderInterrupted } from '../../../test-interrupted.tsx';
 import { tokens } from '../../../tokens.ts';
 import { routes } from '../../index.tsx';
 import { membership } from '../../../test-memberships.ts';
@@ -57,7 +58,10 @@ interface Call {
   path: string;
 }
 
-function answering(answers: Record<string, () => Response>, calls: Call[] = []) {
+function answering(
+  answers: Record<string, () => Response | Promise<Response>>,
+  calls: Call[] = [],
+) {
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const { pathname } = new URL(String(input));
     const method = init?.method ?? 'GET';
@@ -99,14 +103,18 @@ function openSecurity() {
   );
 }
 
+const scrolled = vi.fn();
+
 beforeEach(() => {
+  scrolled.mockClear();
+  Element.prototype.scrollIntoView = scrolled;
   __setSessionState({ status: 'signedIn', session: FOLAKE });
   tokens.save({ accessToken: 'live', refreshExpiresAt: '', sessionId: HERE });
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
+  sessionStorage.clear();
   tokens.clear();
 });
 
@@ -227,7 +235,9 @@ describe('the devices signed in to an account', () => {
     await waitFor(() => expect(screen.getByText('Chrome on Windows')).toBeDefined());
     fireEvent.click(endOf('Chrome on Windows'));
 
-    expect(screen.getByRole('heading', { name: 'Sign out Chrome on Windows?' })).toBeDefined();
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { name: 'Sign out Chrome on Windows?' }),
+    );
     expect(screen.getByText(/Whoever has it is signed out/)).toBeDefined();
     expect(document.body.textContent).toMatch(/has to sign in again before it can carry on/);
     expect(document.body.textContent).toMatch(/change your password as well/);
@@ -260,7 +270,7 @@ describe('the devices signed in to an account', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sign it out' }));
 
     await waitFor(() =>
-      expect(screen.getByRole('status').textContent).toMatch(/Chrome on Windows is signed out\.$/),
+      expect(document.activeElement?.textContent).toMatch(/Chrome on Windows is signed out\.$/),
     );
     expect(screen.queryByText('Chrome on Windows')).toBeNull();
     expect(calls).toContainEqual({ method: 'DELETE', path: `/api/auth/sessions/${ELSEWHERE}` });
@@ -279,10 +289,9 @@ describe('the devices signed in to an account', () => {
     fireEvent.click(endOf('Chrome on Windows'));
     fireEvent.click(screen.getByRole('button', { name: 'Sign it out' }));
 
-    await waitFor(() =>
-      expect(screen.getByRole('alert').textContent).toMatch(/was not signed out/),
-    );
-    expect(screen.getByRole('alert').textContent).toMatch(/Nothing has changed/);
+    await waitFor(() => expect(document.activeElement?.textContent).toMatch(/was not signed out/));
+    expect(document.activeElement?.textContent).toMatch(/check the list afterwards\.$/);
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('signs this device out without asking, and lands on sign-in', async () => {
@@ -300,6 +309,162 @@ describe('the devices signed in to an account', () => {
       expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined(),
     );
     expect(calls).toContainEqual({ method: 'POST', path: '/api/auth/logout' });
+  });
+
+  it('keeps this device signed in, and says so, when its sign-out cannot reach Soirely', async () => {
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'POST /api/auth/logout': () => {
+        throw new TypeError('Failed to fetch');
+      },
+    });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByText('This device')).toBeDefined());
+    const button = endOf('Chrome on macOS');
+    button.focus();
+    fireEvent.click(button);
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toMatch(/You are still signed in/),
+    );
+    expect(screen.getByRole('alert').textContent).toMatch(/this device was not signed out/);
+    expect(document.activeElement).toBe(button);
+    expect(scrolled).toHaveBeenCalledWith({ block: 'nearest' });
+    expect(screen.getByText('This device')).toBeDefined();
+    expect(screen.queryByRole('heading', { name: 'Sign in' })).toBeNull();
+    expect(tokens.access()).toBe('live');
+  });
+
+  it("counts an error of Soirely on this device's sign-out as not reached", async () => {
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'POST /api/auth/logout': () => new Response(null, { status: 500 }),
+    });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByText('This device')).toBeDefined());
+    fireEvent.click(endOf('Chrome on macOS'));
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toMatch(/You are still signed in/),
+    );
+    expect(tokens.access()).toBe('live');
+  });
+
+  it('shows one notice at a time, the newer in place of the older', async () => {
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      [`DELETE /api/auth/sessions/${ELSEWHERE}`]: () =>
+        json({ type: 'https://soirely.com/errors/not_found', title: 'Gone.', status: 404 }, 404),
+      'POST /api/auth/logout': () => {
+        throw new TypeError('Failed to fetch');
+      },
+    });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByText('Chrome on Windows')).toBeDefined());
+    fireEvent.click(endOf('Chrome on Windows'));
+    fireEvent.click(screen.getByRole('button', { name: 'Sign it out' }));
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toMatch(/That device was not signed out/),
+    );
+
+    fireEvent.click(endOf('Chrome on macOS'));
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toMatch(/You are still signed in/),
+    );
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(screen.queryByText('That device was not signed out')).toBeNull();
+  });
+
+  it('takes the notice away while a second press tries, and says it again when that fails too', async () => {
+    let fail: (() => void) | null = null;
+    let presses = 0;
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'POST /api/auth/logout': () => {
+        presses += 1;
+        if (presses === 1) throw new TypeError('Failed to fetch');
+
+        return new Promise<Response>((_, reject) => {
+          fail = () => reject(new TypeError('Failed to fetch'));
+        });
+      },
+    });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByText('This device')).toBeDefined());
+    fireEvent.click(endOf('Chrome on macOS'));
+    const first = await screen.findByRole('alert');
+    scrolled.mockClear();
+
+    fireEvent.click(endOf('Chrome on macOS'));
+
+    await waitFor(() => expect(fail).not.toBeNull());
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    fail!();
+
+    const second = await screen.findByRole('alert');
+    expect(second.textContent).toMatch(/You are still signed in/);
+    expect(second).not.toBe(first);
+    expect(scrolled).toHaveBeenCalledWith({ block: 'nearest' });
+  });
+
+  it("keeps one answer per press, dropping another device's sign-out once this one's fails", async () => {
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      [`DELETE /api/auth/sessions/${ELSEWHERE}`]: () => new Response(null, { status: 204 }),
+      'POST /api/auth/logout': () => {
+        throw new TypeError('Failed to fetch');
+      },
+    });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByText('Chrome on Windows')).toBeDefined());
+    fireEvent.click(endOf('Chrome on Windows'));
+    fireEvent.click(screen.getByRole('button', { name: 'Sign it out' }));
+    await waitFor(() => expect(screen.getByText('Chrome on Windows is signed out.')).toBeDefined());
+
+    fireEvent.click(endOf('Chrome on macOS'));
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toMatch(/You are still signed in/),
+    );
+    expect(screen.queryByText('Chrome on Windows is signed out.')).toBeNull();
+  });
+
+  it('signs out on the next press once Soirely answers', async () => {
+    let offline = true;
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'POST /api/auth/logout': () => {
+        if (offline) throw new TypeError('Failed to fetch');
+
+        return new Response(null, { status: 204 });
+      },
+    });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByText('This device')).toBeDefined());
+    fireEvent.click(endOf('Chrome on macOS'));
+    await waitFor(() => expect(screen.getByRole('alert')).toBeDefined());
+
+    offline = false;
+    fireEvent.click(endOf('Chrome on macOS'));
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined(),
+    );
+    expect(tokens.access()).toBeNull();
   });
 
   it('offers a retry when the list cannot be loaded, and says what it is about', async () => {
@@ -337,7 +502,7 @@ describe('the devices signed in to an account', () => {
     fireEvent.click(endOf('Chrome on Windows'));
     fireEvent.click(screen.getByRole('button', { name: 'Sign it out' }));
 
-    await waitFor(() => expect(screen.getByRole('status')).toBeDefined());
+    await waitFor(() => expect(document.activeElement?.className).toBe('status-done'));
     expect(document.body.textContent).not.toMatch(/immediate/i);
   });
 
@@ -360,6 +525,30 @@ describe('the devices signed in to an account', () => {
 
     // Absent, not merely hidden: a `.card` sets its own display, which beats `hidden`.
     await waitFor(() => expect(document.getElementById('devices-title')).toBeNull());
+  });
+
+  it('leaves focus where it is when the card comes back still asking about a device', async () => {
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'POST /api/auth/two-factor/enrol': () =>
+        json({
+          secret: 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP',
+          otpauthUri: 'otpauth://totp/Soirely:folake@ire.events?secret=JBSW&issuer=Soirely',
+          qrSvg: '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
+        }),
+    });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByText('Chrome on Windows')).toBeDefined());
+    fireEvent.click(endOf('Chrome on Windows'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Turn on two-factor' }));
+    await screen.findByRole('heading', { name: 'Turn on two-factor authentication' });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    const check = await screen.findByRole('heading', { name: 'Sign out Chrome on Windows?' });
+
+    expect(document.activeElement).not.toBe(check);
   });
 });
 
@@ -490,9 +679,7 @@ describe('signing out everywhere else', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sign them out' }));
 
     await waitFor(() =>
-      expect(screen.getByRole('status').textContent).toMatch(
-        'Your 2 other devices are signed out.',
-      ),
+      expect(document.activeElement?.textContent).toMatch('Your 2 other devices are signed out.'),
     );
     expect(sent.filter((entry) => entry.call.startsWith('POST'))).toEqual([
       { call: 'POST /api/auth/proof', body: { password: 'a decent passphrase' } },
@@ -515,7 +702,7 @@ describe('signing out everywhere else', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sign them out' }));
 
     await waitFor(() =>
-      expect(screen.getByRole('status').textContent).toMatch('No other devices were signed in.'),
+      expect(document.activeElement?.textContent).toMatch('No other devices were signed in.'),
     );
   });
 
@@ -548,7 +735,7 @@ describe('signing out everywhere else', () => {
       /Try again at .+\. Nothing was signed out\./,
     );
     const paused = screen.getByRole('button', { name: /^Try again at / });
-    expect((paused as HTMLButtonElement).disabled).toBe(true);
+    expect(paused.getAttribute('aria-disabled')).toBe('true');
   });
 
   it('asks for the code as well when two-factor is on', async () => {
@@ -578,7 +765,7 @@ describe('signing out everywhere else', () => {
     fireEvent.change(code, { target: { value: 'abcd-efgh' } });
     fireEvent.click(screen.getByRole('button', { name: 'Sign them out' }));
 
-    await waitFor(() => expect(screen.getByRole('status')).toBeDefined());
+    await waitFor(() => expect(document.activeElement?.className).toBe('status-done'));
     expect(sent.find((entry) => entry.call === 'POST /api/auth/proof')?.body).toEqual({
       password: 'a decent passphrase',
       code: 'abcd-efgh',
@@ -685,11 +872,51 @@ describe('signing out everywhere else', () => {
         'Your 2 other devices are signed out.',
       ),
     );
+    expect(document.activeElement).toBe(document.body);
     expect(sent.filter((entry) => entry.call.startsWith('POST'))).toEqual([
       { call: 'POST /api/auth/proof', body: { provider: 'google', providerSignIn: signIn } },
       { call: 'POST /api/auth/sessions/others', body: { proof: 'p-1', sessionId: HERE } },
     ]);
     sessionStorage.clear();
+  });
+
+  it('signs the others out once, back from Google, when React abandons the render it arrives in', async () => {
+    __setSessionState({
+      status: 'signedIn',
+      session: { ...FOLAKE, hasPassword: false, providers: [{ provider: 'google', email: null }] },
+    });
+    const signIn = { code: 'the-code', codeVerifier: 'v', redirectUri: 'r', nonce: 'n' };
+    const returned = JSON.stringify({
+      provider: 'google',
+      purpose: { kind: 'signOutOthers' },
+      signIn,
+    });
+    sessionStorage.setItem('soirely.provider.returned', returned);
+    const sent = stub({
+      'POST /api/auth/proof': () => json({ proof: 'p-1', expiresAt: '' }),
+      'POST /api/auth/sessions/others': () => json({ signedOut: 2, thisDevice: false }),
+    });
+
+    const { release } = await renderInterrupted(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/app/account/security'] })}
+      />,
+    );
+    expect(
+      sessionStorage.getItem('soirely.provider.returned'),
+      'an abandoned render leaves it in place',
+    ).toBe(returned);
+
+    await release();
+
+    await waitFor(() =>
+      expect(screen.getByRole('status').textContent).toMatch(
+        'Your 2 other devices are signed out.',
+      ),
+    );
+    expect(document.activeElement).toBe(document.body);
+    expect(sent.filter((entry) => entry.call === 'POST /api/auth/sessions/others')).toHaveLength(1);
+    expect(sessionStorage.getItem('soirely.provider.returned')).toBeNull();
   });
 
   it('without this device in the list, says it signs out all of them and lands on sign-in', async () => {
@@ -737,6 +964,17 @@ describe('changing the password', () => {
         'Used with your email to sign in. Changing it signs out your other devices; this one stays signed in.',
       ),
     ).toBeDefined();
+  });
+
+  it('takes focus to Change your password when it opens', () => {
+    answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
+    openSecurity();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change password' }));
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 2, name: 'Change your password' }),
+    );
   });
 
   it('sends the current and the new password with this session, then says how many were signed out', async () => {
@@ -809,6 +1047,41 @@ describe('changing the password', () => {
       ).toBeDefined(),
     );
     expect(screen.getByLabelText('Current password').getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('keeps focus in New password while it saves after Enter, then moves it to a refused Current password (sc-11588)', async () => {
+    let answer: (response: Response) => void = () => {};
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'PATCH /api/auth/password': () => new Promise<Response>((resolve) => (answer = resolve)),
+    });
+
+    openSecurity();
+    fireEvent.click(screen.getByRole('button', { name: 'Change password' }));
+    fireEvent.change(screen.getByLabelText('Current password'), {
+      target: { value: 'not the password' },
+    });
+    const next = screen.getByLabelText<HTMLInputElement>('New password');
+    fireEvent.change(next, { target: { value: 'a brand new passphrase' } });
+    next.focus();
+    fireEvent.submit(next);
+
+    await waitFor(() => expect(next.readOnly).toBe(true));
+    expect(document.activeElement).toBe(next);
+
+    answer(
+      json(
+        { type: 'https://soirely.com/errors/invalid_credentials', title: 'No', status: 401 },
+        401,
+      ),
+    );
+
+    expect(
+      await screen.findByText(
+        'That is not your current password. Try again, or reset it by email.',
+      ),
+    ).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByLabelText('Current password'));
   });
 
   it('says the same password is already the password, under the new one', async () => {
@@ -915,11 +1188,14 @@ describe('adding a password to a Google account', () => {
           ],
           phoneNumbers: [],
         }),
-      'GET /api/orgs': () => json({ organisations: [] }),
+      'GET /api/orgs': () => json({ organisations: [MEMBERSHIP] }),
     });
 
     openSecurity();
     fireEvent.click(passwordCard().getByRole('button', { name: 'Set a password' }));
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 2, name: 'Check your email' }),
+    );
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Send a new code in 1:00' })).toBeDefined(),
@@ -932,7 +1208,9 @@ describe('adding a password to a Google account', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { level: 2, name: 'Choose a password' })).toBeDefined(),
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 2, name: 'Choose a password' }),
+      ),
     );
     fireEvent.change(screen.getByLabelText('Password'), {
       target: { value: 'a brand new passphrase' },
@@ -946,6 +1224,33 @@ describe('adding a password to a Google account', () => {
     );
     expect(screen.getByRole('button', { name: 'Change password' })).toBeDefined();
     expect(calls.filter((call) => call.path === '/api/auth/password/set/start')).toHaveLength(1);
+  });
+
+  it('reads the countdown once after Send a new code, and not as the code step opens', async () => {
+    let starts = 0;
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'POST /api/auth/password/set/start': () => json({ cooldownSeconds: ++starts === 1 ? 1 : 60 }),
+    });
+    const said = () => screen.queryAllByRole('status').map(({ textContent }) => textContent);
+
+    openSecurity();
+    fireEvent.click(passwordCard().getByRole('button', { name: 'Set a password' }));
+
+    expect(await screen.findByRole('button', { name: 'Send a new code in 0:01' })).toBeDefined();
+    expect(said()).not.toContain('Send a new code in 0:01');
+
+    const resend = await screen.findByRole(
+      'button',
+      { name: 'Send a new code' },
+      { timeout: 2000 },
+    );
+    resend.focus();
+    fireEvent.click(resend);
+
+    expect(await screen.findByRole('button', { name: 'Send a new code in 1:00' })).toBeDefined();
+    expect(said()).toContain('Send a new code in 1:00');
+    expect(document.activeElement).toBe(resend);
   });
 
   it('checks the code before sending it, and says a wrong one is wrong', async () => {
@@ -980,6 +1285,266 @@ describe('adding a password to a Google account', () => {
         ),
       ).toBeDefined(),
     );
+  });
+});
+
+describe('where focus carries on (sc-11369)', () => {
+  const ME = {
+    id: 'acc_1',
+    name: 'Folake Ire',
+    businessName: null,
+    countryCode: null,
+    organisationCountry: null,
+    locale: 'en',
+    timezone: null,
+    waitingFor: null,
+    verified: true,
+    complete: true,
+    needsOrganisation: false,
+    hasPassword: true,
+    providers: [{ provider: 'google', email: null }],
+    emailAddresses: [{ id: 'a1', address: 'folake@ire.events', verified: true, primary: true }],
+    phoneNumbers: [],
+  };
+
+  function problem(code: string, status: number): Response {
+    return new Response(
+      JSON.stringify({ type: `https://soirely.com/errors/${code}`, title: code, status }),
+      { status, headers: { 'Content-Type': 'application/problem+json' } },
+    );
+  }
+
+  it('goes back to Sign out beside the device kept signed in, then to the line saying it is signed out', async () => {
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      [`DELETE /api/auth/sessions/${ELSEWHERE}`]: () => new Response(null, { status: 204 }),
+    });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByText('Chrome on Windows')).toBeDefined());
+    fireEvent.click(endOf('Chrome on Windows'));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it signed in' }));
+
+    expect(document.activeElement).toBe(endOf('Chrome on Windows'));
+
+    fireEvent.click(endOf('Chrome on Windows'));
+    fireEvent.click(screen.getByRole('button', { name: 'Sign it out' }));
+
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toBe('✓Chrome on Windows is signed out.'),
+    );
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('goes to Signed in on when the device kept signed in has gone from the list meanwhile', async () => {
+    let lists = 0;
+    answering({
+      'GET /api/auth/sessions': () =>
+        json(++lists === 1 ? SESSIONS : { sessions: [SESSIONS.sessions[0]] }),
+      'PATCH /api/auth/password': () => json({ signedOut: 1 }),
+    });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByText('Chrome on Windows')).toBeDefined());
+    fireEvent.click(endOf('Chrome on Windows'));
+    fireEvent.click(screen.getByRole('button', { name: 'Change password' }));
+    fireEvent.change(screen.getByLabelText('Current password'), { target: { value: 'old one' } });
+    fireEvent.change(screen.getByLabelText('New password'), {
+      target: { value: 'a brand new passphrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save new password' }));
+    await waitFor(() => expect(lists).toBe(2));
+    await screen.findByText('Password changed. Your other device is signed out.');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it signed in' }));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 2, name: 'Signed in on' }),
+      ),
+    );
+  });
+
+  it('goes back to Sign out everywhere else when that check is declined', async () => {
+    answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
+
+    openSecurity();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign out everywhere else' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Keep it signed in' }));
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Sign out everywhere else' }),
+    );
+  });
+
+  it('takes focus to the line saying the others are signed out', async () => {
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'POST /api/auth/proof': () => json({ proof: 'p-1', expiresAt: '' }),
+      'POST /api/auth/sessions/others': () => json({ signedOut: 1, thisDevice: false }),
+    });
+
+    openSecurity();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign out everywhere else' }));
+    fireEvent.change(await screen.findByLabelText('Your password'), {
+      target: { value: 'a decent passphrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign it out' }));
+
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toBe('✓Your other device is signed out.'),
+    );
+  });
+
+  it('takes Try again to Signed in on once the list loads, and to the notice when it fails again', async () => {
+    let failing = true;
+    answering({
+      'GET /api/auth/sessions': () =>
+        failing ? json({ type: 'x', title: 'No.', status: 500 }, 500) : json(SESSIONS),
+    });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/could not be/));
+    expect(document.activeElement).toBe(document.body);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toBe(
+        'The devices could not be listedThis is about reaching the API rather than about your account. Nothing has changed.',
+      ),
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    failing = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 2, name: 'Signed in on' }),
+      ),
+    );
+    expect(screen.getByText('Chrome on Windows')).toBeDefined();
+  });
+
+  it('goes back to Change password after Cancel', () => {
+    answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
+    openSecurity();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change password' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Change password' }));
+  });
+
+  it('takes Save new password to the line saying what it did, read once', async () => {
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'PATCH /api/auth/password': () => json({ signedOut: 0 }),
+    });
+    openSecurity();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change password' }));
+    fireEvent.change(screen.getByLabelText('Current password'), { target: { value: 'old one' } });
+    fireEvent.change(screen.getByLabelText('New password'), {
+      target: { value: 'a brand new passphrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save new password' }));
+
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toBe(
+        '✓Password changed. No other device was signed in.',
+      ),
+    );
+    expect(passwordCard().queryByRole('status')).toBeNull();
+  });
+
+  describe('on an account with Google and no password', () => {
+    beforeEach(() => {
+      __setSessionState({
+        status: 'signedIn',
+        session: {
+          ...FOLAKE,
+          hasPassword: false,
+          providers: [{ provider: 'google', email: null }],
+        },
+      });
+    });
+
+    it("goes back to the Password card's Set a password after Cancel", async () => {
+      answering({
+        'GET /api/auth/sessions': () => json(SESSIONS),
+        'POST /api/auth/password/set/start': () => json({ cooldownSeconds: 60 }),
+      });
+      openSecurity();
+
+      fireEvent.click(passwordCard().getByRole('button', { name: 'Set a password' }));
+      await screen.findByRole('button', { name: 'Send a new code in 1:00' });
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      expect(document.activeElement).toBe(
+        passwordCard().getByRole('button', { name: 'Set a password' }),
+      );
+    });
+
+    it('takes Save password to the line saying it was added', async () => {
+      answering({
+        'GET /api/auth/sessions': () => json(SESSIONS),
+        'POST /api/auth/password/set/start': () => json({ cooldownSeconds: 60 }),
+        'POST /api/auth/password/set/code': () => json({ stepUp: 'the-step-up' }),
+        'POST /api/auth/password/set': () => new Response(null, { status: 204 }),
+        'GET /api/auth/me': () => json(ME),
+        'GET /api/orgs': () => json({ organisations: [MEMBERSHIP] }),
+      });
+      openSecurity();
+
+      fireEvent.click(passwordCard().getByRole('button', { name: 'Set a password' }));
+      fireEvent.change(screen.getByLabelText('Code from the email'), {
+        target: { value: '123456' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+      fireEvent.change(await screen.findByLabelText('Password'), {
+        target: { value: 'a brand new passphrase' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Save password' }));
+
+      await waitFor(() =>
+        expect(document.activeElement?.textContent).toBe(
+          '✓Password added. You can sign in with it or with Google.',
+        ),
+      );
+    });
+
+    it('takes Save password with an expired code to the line that says so', async () => {
+      answering({
+        'GET /api/auth/sessions': () => json(SESSIONS),
+        'POST /api/auth/password/set/start': () => json({ cooldownSeconds: 60 }),
+        'POST /api/auth/password/set/code': () => json({ stepUp: 'the-step-up' }),
+        'POST /api/auth/password/set': () => problem('verification_code_expired', 410),
+      });
+      openSecurity();
+
+      fireEvent.click(passwordCard().getByRole('button', { name: 'Set a password' }));
+      fireEvent.change(screen.getByLabelText('Code from the email'), {
+        target: { value: '123456' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+      fireEvent.change(await screen.findByLabelText('Password'), {
+        target: { value: 'a brand new passphrase' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Save password' }));
+
+      await waitFor(() =>
+        expect(document.activeElement?.textContent).toBe('✕This code has expired. Send a new one.'),
+      );
+      expect(screen.getByRole('heading', { level: 2, name: 'Check your email' })).toBeDefined();
+      expect(screen.queryByRole('alert')).toBeNull();
+    });
   });
 });
 

@@ -1,6 +1,6 @@
 import {
   ApiError,
-  type DomainSuspension,
+  type Suspension,
   type Membership,
   type MembersList,
   type OrganisationMember,
@@ -11,34 +11,49 @@ import {
   type MemberStanding,
   approvalRoles,
   formatDay,
-  initials,
+  memberHeldNoRole,
   memberIsShown,
   memberRowLine,
   memberStanding,
   memberStatusWord,
+  ownRoleLine,
   roleName,
 } from '@soirely/domain';
-import { useState } from 'react';
+import { type Ref, type RefObject, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { currentLocale } from '../i18n/index.ts';
+import { dateLocale } from '../i18n/index.ts';
 import {
   membersAfterWrite,
   withApproved,
   withRemoved,
+  withRestored,
   withRole,
   withTurnedDown,
 } from '../kit/membersAfterWrite.ts';
-import { refusalTitle } from '../kit/refusal.ts';
-import { type LayoutKind } from '../layout/useLayout.ts';
+import { refusalFor, refusalTitle } from '../kit/refusal.ts';
+import { breakableEmail } from '../layout/textSize.ts';
+import { type LayoutKind, useAccessibilitySizes } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
+import { useComeForward } from './comeForward.ts';
 import { FieldError } from './Field.tsx';
+import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
-import { Text } from './Text.tsx';
+import { OwnerClaimBanner } from './OwnerClaimBanner.tsx';
+import { GlyphMark, type Mark } from './StatusMark.tsx';
+import { AnswerHeading } from './AnswerHeading.tsx';
+import {
+  type StepClosed,
+  stepClosed,
+  useBroughtIntoView,
+  useFocusBackToOpener,
+  useScrolledToTop,
+} from './Screen.tsx';
+import { type TextHandle, Text } from './Text.tsx';
 
 const AVATAR = 40;
 const AVATAR_LARGE = 48;
@@ -56,7 +71,9 @@ export function activeCount(list: MembersList): number {
   return list.members.filter((member) => member.status === 'active').length;
 }
 
-const FORMER_MARK = {
+const MEMBER_MARK = 18;
+
+const FORMER_MARK: Mark = {
   glyph: tokens.marks.broken.glyph,
   fill: tokens.colorCard,
   ring: tokens.colorInkSecondary,
@@ -78,17 +95,7 @@ function MemberState({ member }: { member: OrganisationMember }) {
 
   return (
     <View style={styles.state}>
-      <View style={[styles.mark, { backgroundColor: mark.fill, borderColor: mark.ring }]}>
-        <Text
-          size={tokens.typeMeta.size}
-          weight="bold"
-          style={{ color: mark.ink }}
-          accessibilityElementsHidden
-          importantForAccessibility="no"
-        >
-          {mark.glyph}
-        </Text>
-      </View>
+      <GlyphMark mark={mark} side={MEMBER_MARK} />
       <Text size={tokens.typeSmall.size} weight="semibold" style={word}>
         {memberStatusWord(t, member)}
       </Text>
@@ -98,16 +105,67 @@ function MemberState({ member }: { member: OrganisationMember }) {
 
 function Avatar({ name, large = false }: { name: string; large?: boolean }) {
   const size = large ? AVATAR_LARGE : AVATAR;
+  const giveWay = useAccessibilitySizes() && !large;
+  // It repeats the name beside it, and at the accessibility sizes takes the width the name needs (sc-13496).
+  if (giveWay) return null;
 
   return (
     <View
       style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}
       accessibilityElementsHidden
-      importantForAccessibility="no"
+      importantForAccessibility="no-hide-descendants"
     >
-      <Text size={large ? tokens.typeBodyPhone.size : tokens.typeSmall.size} weight="bold" muted>
-        {initials(name)}
-      </Text>
+      <Initials
+        name={name}
+        size={large ? tokens.typeBodyPhone.size : tokens.typeSmall.size}
+        weight="bold"
+        muted
+      />
+    </View>
+  );
+}
+
+/** Scrolled into view when it appears, since the answer was given further down the list. */
+function AnsweredLine({ answered, onNext }: { answered: Answered; onNext: () => void }) {
+  const top = useScrolledToTop();
+
+  return (
+    <View ref={top}>
+      <Notice
+        tone="done"
+        mark={tokens.marks.done.glyph}
+        body={answered.text}
+        action={{ label: answered.next.label, onPress: onNext, testID: 'members.answered.next' }}
+        answer={answered}
+        takesFocus
+      />
+    </View>
+  );
+}
+
+/** Answers a tap that may sit far below it, so it comes wholly into view and takes screen reader focus (sc-10639). */
+function NoticeInView({
+  tone,
+  mark,
+  title,
+  body,
+}: {
+  tone: 'quiet' | 'done';
+  mark: string;
+  title?: string;
+  body: string;
+}) {
+  const { shown, read } = useBroughtIntoView();
+
+  return (
+    <View ref={shown}>
+      <Notice
+        tone={tone}
+        mark={mark}
+        {...(title != null && { title })}
+        body={body}
+        wordsRef={read}
+      />
     </View>
   );
 }
@@ -122,6 +180,8 @@ export function MemberList({
   open,
   flash,
   answered,
+  closed,
+  title,
   onAnswered,
   onOpen,
 }: {
@@ -133,47 +193,61 @@ export function MemberList({
   open: string | null;
   flash: string | null;
   answered: Answered | null;
+  /** A member's page was left, back to their row (sc-11173). */
+  closed: StepClosed | undefined;
+  /** The Members heading, where focus goes when the row it was going back to has gone. */
+  title: RefObject<TextHandle | null>;
   onAnswered: (list: MembersList, answered: Answered) => void;
   onOpen: (id: string) => void;
 }) {
   const { t } = useTranslation();
   const [filter, setFilter] = useState<MemberFilter>('all');
+  const [closedFor, setClosedFor] = useState(closed);
+  const [back, setBack] = useState(closed);
+  const opener = useFocusBackToOpener(back, title);
+  if (closedFor !== closed) {
+    setClosedFor(closed);
+    setBack(closed);
+  }
   const shown = list.members.filter((member) => memberIsShown(member.status, filter));
   const waiting = list.members.filter((member) => member.status === 'pending_approval');
+  const removedNext = t('membersScreen.removedNext');
   const count = (one: MemberFilter) =>
     list.members.filter((member) => memberIsShown(member.status, one)).length;
 
   return (
     <View style={styles.stack}>
+      {organisation.role.seededAs === 'administrator' && (
+        <OwnerClaimBanner
+          kind={kind}
+          organisationId={organisation.id}
+          organisation={organisation.name}
+          title={title}
+        />
+      )}
+
       {flash != null && (
-        <View accessibilityLiveRegion="polite">
-          <Notice
-            tone="done"
-            mark={tokens.marks.done.glyph}
-            title={flash}
-            accentTitle
-            body={t('membersScreen.removedNext')}
-          />
-        </View>
+        <Notice
+          tone="done"
+          mark={tokens.marks.done.glyph}
+          title={flash}
+          accentTitle
+          body={removedNext}
+          answer={flash}
+          takesFocus
+        />
       )}
 
       {answered != null && (
-        <View accessibilityLiveRegion="polite">
-          <Notice
-            tone="done"
-            mark={tokens.marks.done.glyph}
-            body={answered.text}
-            action={{
-              label: answered.next.label,
-              onPress: () => {
-                const next = answered.next;
-                if ('member' in next) onOpen(next.member);
-                else setFilter(next.filter);
-              },
-              testID: 'members.answered.next',
-            }}
-          />
-        </View>
+        <AnsweredLine
+          key={answered.text}
+          answered={answered}
+          onNext={() => {
+            const next = answered.next;
+            if ('member' in next) onOpen(next.member);
+            else setFilter(next.filter);
+          }}
+        />
       )}
 
       {manages && waiting.length > 0 && (
@@ -198,7 +272,9 @@ export function MemberList({
                     {member.user.name}
                   </Text>
                   {member.user.email != null && (
-                    <Text size={tokens.typeBody.size}>{member.user.email}</Text>
+                    <Text size={tokens.typeBody.size} accessibilityLabel={member.user.email}>
+                      {breakableEmail(member.user.email)}
+                    </Text>
                   )}
                   <RequestLines organisation={organisation} member={member} />
                 </View>
@@ -215,7 +291,7 @@ export function MemberList({
         </View>
       )}
 
-      <View style={styles.chips} accessibilityLabel={t('membersScreen.show')}>
+      <View style={styles.chips}>
         {APP_FILTERS.map((one) => (
           <Pressable
             key={one}
@@ -247,12 +323,16 @@ export function MemberList({
           )}
           <SecondaryButton
             label={t('membersScreen.showEveryone')}
-            onPress={() => setFilter('all')}
+            onPress={() => {
+              const first = list.members.find((member) => memberIsShown(member.status, 'all'));
+              setFilter('all');
+              setBack(first == null ? undefined : stepClosed(`row.${first.id}`));
+            }}
             testID="members.showEveryone"
           />
         </View>
       ) : (
-        <View style={styles.rows} accessibilityLabel={t('membersScreen.shown')}>
+        <View style={styles.rows}>
           {shown.map((member, index) => (
             <MemberRow
               key={member.id}
@@ -260,6 +340,7 @@ export function MemberList({
               member={member}
               first={index === 0}
               open={open === member.id}
+              opener={opener(`row.${member.id}`)}
               onOpen={() => onOpen(member.id)}
             />
           ))}
@@ -280,12 +361,14 @@ function MemberRow({
   member,
   first,
   open,
+  opener,
   onOpen,
 }: {
   organisation: Membership;
   member: OrganisationMember;
   first: boolean;
   open: boolean;
+  opener: Ref<View>;
   onOpen: () => void;
 }) {
   const { t } = useTranslation();
@@ -297,9 +380,13 @@ function MemberRow({
         <Text size={tokens.typeRowTitle.size} weight="semibold">
           {member.user.name}
         </Text>
-        {member.user.email != null && <Text size={tokens.typeBody.size}>{member.user.email}</Text>}
+        {member.user.email != null && (
+          <Text size={tokens.typeBody.size} accessibilityLabel={member.user.email}>
+            {breakableEmail(member.user.email)}
+          </Text>
+        )}
         <Text size={tokens.typeSmall.size} muted>
-          {memberRowLine(t, member, organisation.name, (at) => formatDay(at, currentLocale()))}
+          {memberRowLine(t, member, organisation.name, (at) => formatDay(at, dateLocale()))}
         </Text>
         <MemberState member={member} />
       </View>
@@ -312,6 +399,7 @@ function MemberRow({
 
   return (
     <Pressable
+      ref={opener}
       style={[styles.row, !first && styles.rowDivider, open && styles.rowOpen]}
       onPress={onOpen}
       accessibilityRole="button"
@@ -324,12 +412,18 @@ function MemberRow({
         muted
         accessibilityElementsHidden
         importantForAccessibility="no"
+        accessible={false}
       >
         ›
       </Text>
     </Pressable>
   );
 }
+
+/** What the last restore or stale answer came to; `seen` keys each answer so its notice mounts afresh. */
+type AccessOutcome = { seen: number } & (
+  { kind: 'conflict' } | { kind: 'restored'; byHand: boolean; role: string }
+);
 
 type Removal = 'resting' | 'confirming' | 'removing';
 
@@ -340,28 +434,48 @@ export function MemberPage({
   member,
   list,
   roles,
+  withheld,
   manages,
   onChanged,
   onRemoved,
   onAnswered,
   onGoToOrganisation,
+  nameRef,
 }: {
   kind: LayoutKind;
   organisation: Membership;
   member: OrganisationMember;
   list: MembersList;
   roles: OrganisationRole[];
+  withheld: OrganisationRole[];
   manages: boolean;
   onChanged: (list: MembersList) => void;
   onRemoved: (list: MembersList) => void;
   onAnswered: (list: MembersList, answered: Answered) => void;
   onGoToOrganisation: () => void;
+  nameRef?: Ref<TextHandle> | undefined;
 }) {
   const { t } = useTranslation();
   const callerOwns = organisation.role.seededAs === 'owner';
-  const standing = memberStanding(member, list.members, { owns: callerOwns, manages });
+  const standing = memberStanding(member, list.members, {
+    owns: callerOwns,
+    manages,
+    withholds: withheld,
+  });
   const waiting = member.status === 'pending_approval';
-  const role = waiting ? t('membersScreen.noRoleYet') : roleName(t, member.role);
+  const role = memberHeldNoRole(member) ? t('membersScreen.noRoleYet') : roleName(t, member.role);
+  const acts = standing === 'manageable' || standing === 'suspendedOnlyOwner';
+  const [outcome, setOutcome] = useState<AccessOutcome | null>(null);
+  const restored = outcome?.kind === 'restored' ? outcome : null;
+
+  function changedElsewhere(): Promise<void> {
+    // Shown once the member is reloaded, so the role card has settled under it before it is brought into view.
+    return api
+      .members(organisation.id)
+      .then(onChanged)
+      .catch(() => undefined)
+      .finally(() => setOutcome((last) => ({ seen: (last?.seen ?? 0) + 1, kind: 'conflict' })));
+  }
 
   return (
     <View style={styles.stack}>
@@ -369,7 +483,12 @@ export function MemberPage({
         <Avatar name={member.user.name} large />
         <View style={styles.rowText}>
           {kind !== 'phone' && (
-            <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
+            <Text
+              size={tokens.typeTitleDialog.size}
+              weight="bold"
+              accessibilityRole="header"
+              ref={nameRef}
+            >
               {member.user.name}
             </Text>
           )}
@@ -382,18 +501,38 @@ export function MemberPage({
               muted
               accessibilityElementsHidden
               importantForAccessibility="no"
+              accessible={false}
             >
               ·
             </Text>
             <MemberState member={member} />
           </View>
           {member.user.email != null && (
-            <Text size={tokens.typeBody.size} muted>
-              {member.user.email}
+            <Text size={tokens.typeBody.size} muted accessibilityLabel={member.user.email}>
+              {breakableEmail(member.user.email)}
             </Text>
           )}
         </View>
       </View>
+
+      {outcome?.kind === 'conflict' ? (
+        <NoticeInView
+          key={outcome.seen}
+          tone="quiet"
+          mark={tokens.marks.info.glyph}
+          body={t('membersScreen.accessConflict', { name: member.user.name })}
+        />
+      ) : (
+        restored?.byHand === true && (
+          <NoticeInView
+            key={restored.seen}
+            tone="done"
+            mark={tokens.marks.done.glyph}
+            title={t('membersScreen.restoredNow', { name: member.user.name, role: restored.role })}
+            body={t('membersScreen.restoredNowNext', { organisation: organisation.name })}
+          />
+        )
+      )}
 
       <View style={cardFrame(kind)}>
         <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
@@ -415,6 +554,15 @@ export function MemberPage({
               />
             )}
           </>
+        ) : standing === 'manageable' && member.status === 'suspended' ? (
+          <>
+            <Text size={tokens.typeTitleSection.size} weight="semibold">
+              {role}
+            </Text>
+            <Text size={tokens.typeBodyPhone.size} muted>
+              {t('membersScreen.roleKeptWhileSuspended')}
+            </Text>
+          </>
         ) : standing === 'manageable' ? (
           <RolePicker
             organisation={organisation}
@@ -422,6 +570,7 @@ export function MemberPage({
             list={list}
             roles={roles}
             onChanged={onChanged}
+            onChangedElsewhere={changedElsewhere}
           />
         ) : (
           <FixedRole
@@ -434,22 +583,47 @@ export function MemberPage({
         )}
       </View>
 
-      {standing === 'manageable' && member.suspension != null && (
-        <Suspension
-          kind={kind}
-          organisation={organisation}
-          member={member}
-          suspension={member.suspension}
-          onChanged={onChanged}
+      {restored?.byHand === false ? (
+        <NoticeInView
+          key={restored.seen}
+          tone="done"
+          mark={tokens.marks.done.glyph}
+          body={t('membersScreen.restored', {
+            name: member.user.name,
+            organisation: organisation.name,
+          })}
         />
+      ) : (
+        member.suspension != null && (
+          <Suspension
+            kind={kind}
+            organisation={organisation}
+            member={member}
+            list={list}
+            suspension={member.suspension}
+            standing={standing}
+            acts={acts}
+            onRestored={(list) => {
+              onChanged(list);
+              setOutcome((last) => ({
+                seen: (last?.seen ?? 0) + 1,
+                kind: 'restored',
+                byHand: member.suspension?.reason === 'manual',
+                role,
+              }));
+            }}
+            onChangedElsewhere={changedElsewhere}
+          />
+        )
       )}
 
-      {standing === 'manageable' && !waiting && (
+      {acts && !waiting && (
         <Remove
           kind={kind}
           organisation={organisation}
           member={member}
           list={list}
+          onlyOwner={member.suspension?.onlyOwner === true}
           onRemoved={onRemoved}
         />
       )}
@@ -474,7 +648,7 @@ function RequestLines({
           channel: t(`membersScreen.how.${member.channel ?? 'request'}`, {
             organisation: organisation.name,
           }),
-          date: member.since == null ? '' : formatDay(member.since, currentLocale()),
+          date: member.since == null ? '' : formatDay(member.since, dateLocale()),
         })}
       </Text>
       {member.removesAt != null && (
@@ -508,6 +682,9 @@ function JoinRequestAnswer({
   const [picked, setPicked] = useState(offered[0]?.id ?? '');
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const [closed, setClosed] = useState<StepClosed | undefined>(undefined);
+  const opener = useFocusBackToOpener(answering === 'resting' ? closed : undefined);
+  const comeForward = useComeForward();
   const role = offered.find((one) => one.id === picked);
   const name = member.user.name;
   const read = () => api.members(organisation.id);
@@ -523,8 +700,9 @@ function JoinRequestAnswer({
         await api.turnDownMember(organisation.id, member.id);
       }
     } catch (error) {
-      setFailed(refusalTitle(error, t('membersScreen.actionFailed')));
+      setFailed(refusalFor(error, 'roleId', t('membersScreen.actionFailed')));
       setBusy(false);
+      comeForward();
       return;
     }
 
@@ -543,7 +721,13 @@ function JoinRequestAnswer({
 
   function back(): void {
     setFailed(null);
+    setClosed(stepClosed(answering === 'approving' ? 'approve' : 'turnDown'));
     setAnswering('resting');
+  }
+
+  function open(next: Answering): void {
+    setClosed(undefined);
+    setAnswering(next);
   }
 
   const refusal = failed != null && (
@@ -556,13 +740,15 @@ function JoinRequestAnswer({
     return (
       <View style={styles.actions}>
         <PrimaryButton
+          ref={opener('approve')}
           label={t('membersScreen.awaiting.approve')}
-          onPress={() => setAnswering('approving')}
+          onPress={() => open('approving')}
           testID={`members.approve.${member.id}`}
         />
         <SecondaryButton
+          ref={opener('turnDown')}
           label={t('membersScreen.awaiting.turnDown')}
-          onPress={() => setAnswering('turningDown')}
+          onPress={() => open('turningDown')}
           testID={`members.turnDown.${member.id}`}
         />
       </View>
@@ -572,9 +758,9 @@ function JoinRequestAnswer({
   if (answering === 'turningDown') {
     return (
       <View style={styles.actions}>
-        <Text size={tokens.typeRowTitle.size} weight="bold" accessibilityRole="header">
+        <AnswerHeading size={tokens.typeRowTitle.size} weight="bold" answer={answering}>
           {t('membersScreen.awaiting.turnDownTitle', { name })}
-        </Text>
+        </AnswerHeading>
         <Text size={tokens.typeBodyPhone.size}>
           {t('membersScreen.awaiting.turnDownBody', { name, organisation: organisation.name })}
         </Text>
@@ -597,11 +783,7 @@ function JoinRequestAnswer({
 
   return (
     <View style={styles.actions}>
-      <View
-        style={styles.choices}
-        accessibilityRole="radiogroup"
-        accessibilityLabel={t('membersScreen.awaiting.roleFor', { name })}
-      >
+      <View style={styles.choices} accessibilityRole="radiogroup">
         {offered.map((one) => (
           <Pressable
             key={one.id}
@@ -648,6 +830,34 @@ function JoinRequestAnswer({
   );
 }
 
+function OwnRole({
+  standing,
+  onGoToOrganisation,
+}: {
+  standing: 'self' | 'selfOwner';
+  onGoToOrganisation: () => void;
+}) {
+  const { t } = useTranslation();
+  const line = ownRoleLine(standing);
+
+  return (
+    <>
+      <Text size={tokens.typeBodyPhone.size} muted>
+        {t(`membersScreen.${line.key}`)}
+      </Text>
+      {line.handsOn && (
+        <View style={styles.start}>
+          <QuietButton
+            label={t('membersScreen.goToOrganisation')}
+            onPress={onGoToOrganisation}
+            testID="members.goToOrganisation"
+          />
+        </View>
+      )}
+    </>
+  );
+}
+
 function FixedRole({
   standing,
   member,
@@ -669,19 +879,8 @@ function FixedRole({
       <Text size={tokens.typeTitleSection.size} weight="semibold">
         {role}
       </Text>
-      {standing === 'self' && (
-        <>
-          <Text size={tokens.typeBodyPhone.size} muted>
-            {t('membersScreen.ownRole')}
-          </Text>
-          <View style={styles.start}>
-            <QuietButton
-              label={t('membersScreen.goToOrganisation')}
-              onPress={onGoToOrganisation}
-              testID="members.goToOrganisation"
-            />
-          </View>
-        </>
+      {(standing === 'self' || standing === 'selfOwner') && (
+        <OwnRole standing={standing} onGoToOrganisation={onGoToOrganisation} />
       )}
       {standing === 'onlyOwner' && (
         <>
@@ -697,28 +896,39 @@ function FixedRole({
           )}
         </>
       )}
-      {standing === 'ownerOnly' && (
-        <Text size={tokens.typeBodyPhone.size} muted>
-          {t('membersScreen.ownerOnly')}
-        </Text>
-      )}
+      {member.suspension == null && <FixedLine standing={standing} />}
     </>
   );
 }
 
-/** Every role is offered, Owner too: the API answers a grant the caller may not make, under the button. */
+/** Why a manager can't change this member: an owner's role, or one holding what the viewer lacks (sc-11160). */
+function FixedLine({ standing }: { standing: MemberStanding }) {
+  const { t } = useTranslation();
+
+  if (standing !== 'ownerOnly' && standing !== 'beyondGrant') return null;
+
+  return (
+    <Text size={tokens.typeBodyPhone.size} muted>
+      {t(`membersScreen.${standing}`)}
+    </Text>
+  );
+}
+
+/** Only the roles the caller may give are offered (sc-392); a page opened before a change still meets the API's refusal, under the button. */
 function RolePicker({
   organisation,
   member,
   list,
   roles,
   onChanged,
+  onChangedElsewhere,
 }: {
   organisation: Membership;
   member: OrganisationMember;
   list: MembersList;
   roles: OrganisationRole[];
   onChanged: (list: MembersList) => void;
+  onChangedElsewhere: () => Promise<void>;
 }) {
   const { t } = useTranslation();
   const [picked, setPicked] = useState(member.role.id);
@@ -740,7 +950,11 @@ function RolePicker({
     try {
       await api.changeMemberRole(organisation.id, member.id, picked);
     } catch (error) {
-      setFailed(refusalTitle(error, t('membersScreen.actionFailed')));
+      if (error instanceof ApiError && error.status === 409) {
+        await onChangedElsewhere();
+      } else {
+        setFailed(refusalTitle(error, t('membersScreen.actionFailed')));
+      }
       setBusy(false);
       return;
     }
@@ -754,16 +968,8 @@ function RolePicker({
 
   return (
     <>
-      {done != null && (
-        <View accessibilityLiveRegion="polite">
-          <Notice tone="done" mark={tokens.marks.done.glyph} body={done} />
-        </View>
-      )}
-      <View
-        style={styles.choices}
-        accessibilityRole="radiogroup"
-        accessibilityLabel={t('membersScreen.roleFor', { name: member.user.name })}
-      >
+      {done != null && <NoticeInView tone="done" mark={tokens.marks.done.glyph} body={done} />}
+      <View style={styles.choices} accessibilityRole="radiogroup">
         {offered.map((one) => (
           <Pressable
             key={one.id}
@@ -817,23 +1023,32 @@ function RolePicker({
   );
 }
 
-/** A domain member paused when the company domain stopped bringing them in (sc-564): Restore, or Remove below. */
+/** A domain member paused when the company domain stopped bringing them in (sc-564): Restore, or Remove below; read-only to a viewer who can't act. */
 function Suspension({
   kind,
   organisation,
   member,
   suspension,
-  onChanged,
+  list,
+  standing,
+  acts,
+  onRestored,
+  onChangedElsewhere,
 }: {
   kind: LayoutKind;
   organisation: Membership;
   member: OrganisationMember;
-  suspension: DomainSuspension;
-  onChanged: (list: MembersList) => void;
+  list: MembersList;
+  suspension: Suspension;
+  standing: MemberStanding;
+  acts: boolean;
+  onRestored: (list: MembersList) => void;
+  onChangedElsewhere: () => Promise<void>;
 }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const byHand = suspension.reason === 'manual';
   const named = {
     name: member.user.name,
     organisation: organisation.name,
@@ -846,40 +1061,72 @@ function Suspension({
 
     try {
       await api.restoreMember(organisation.id, member.id);
-      onChanged(await api.members(organisation.id));
     } catch (error) {
-      setFailed(
-        error instanceof ApiError && error.is('restore_needs_address')
-          ? t('membersScreen.restoreNeedsAddress', named)
-          : refusalTitle(error, t('membersScreen.actionFailed')),
-      );
-    } finally {
+      if (error instanceof ApiError && error.is('conflict')) {
+        await onChangedElsewhere();
+      } else {
+        setFailed(
+          error instanceof ApiError && error.is('restore_needs_address')
+            ? t('membersScreen.restoreNeedsAddress', named)
+            : error instanceof ApiError && error.is('team_seats_in_use')
+              ? t('membersScreen.seatsInUse', { count: error.problem.limit ?? 0 })
+              : refusalTitle(error, t('membersScreen.actionFailed')),
+        );
+      }
       setBusy(false);
+      return;
     }
+
+    onRestored(
+      await membersAfterWrite(() => api.members(organisation.id), list, withRestored(member.id)),
+    );
   }
 
   return (
     <View style={cardFrame(kind)}>
-      <Notice tone="attention" mark="!" title={t('membersScreen.state.domainSuspended')} />
-      <Text size={tokens.typeBodyPhone.size}>
-        {t(`membersScreen.suspendedBecause.${suspension.reason}`, named)}
-      </Text>
-      {suspension.removesAt != null && (
+      {byHand ? (
+        <>
+          <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+            {t('membersScreen.suspendedTitle', named)}
+          </Text>
+          <Text size={tokens.typeBodyPhone.size} muted>
+            {t('membersScreen.suspendedBody', named)}
+          </Text>
+        </>
+      ) : (
+        <>
+          <Notice tone="attention" mark="!" title={t('membersScreen.state.domainSuspended')} />
+          <Text size={tokens.typeBodyPhone.size}>
+            {t(`membersScreen.suspendedBecause.${suspension.reason}`, named)}
+          </Text>
+        </>
+      )}
+      {suspension.onlyOwner ? (
         <Text size={tokens.typeBodyPhone.size} muted>
-          {t('membersScreen.suspendedRemovedOn', { when: suspension.removesAt.written })}
+          {t('membersScreen.suspendedOnlyOwner', named)}
         </Text>
+      ) : (
+        suspension.removesAt != null && (
+          <Text size={tokens.typeBodyPhone.size} muted>
+            {t('membersScreen.suspendedRemovedOn', { when: suspension.removesAt.written })}
+          </Text>
+        )
       )}
       {failed != null && (
         <View accessibilityRole="alert">
           <FieldError message={failed} />
         </View>
       )}
-      <PrimaryButton
-        label={t('membersScreen.restore', named)}
-        busy={busy}
-        onPress={() => void restore()}
-        testID="members.restore"
-      />
+      {acts ? (
+        <PrimaryButton
+          label={t(byHand ? 'membersScreen.restoreAccess' : 'membersScreen.restore', named)}
+          busy={busy}
+          onPress={() => void restore()}
+          testID="members.restore"
+        />
+      ) : (
+        <FixedLine standing={standing} />
+      )}
     </View>
   );
 }
@@ -889,17 +1136,22 @@ function Remove({
   organisation,
   member,
   list,
+  onlyOwner,
   onRemoved,
 }: {
   kind: LayoutKind;
   organisation: Membership;
   member: OrganisationMember;
   list: MembersList;
+  /** The suspended only Owner: Remove asks nothing first and shows the server's last_owner refusal. */
+  onlyOwner: boolean;
   onRemoved: (list: MembersList) => void;
 }) {
   const { t } = useTranslation();
   const [removal, setRemoval] = useState<Removal>('resting');
   const [failed, setFailed] = useState<string | null>(null);
+  const [kept, setKept] = useState<StepClosed | undefined>(undefined);
+  const opener = useFocusBackToOpener(removal === 'resting' ? kept : undefined);
   const name = member.user.name;
   const organisationName = organisation.name;
 
@@ -910,7 +1162,7 @@ function Remove({
     try {
       await api.removeMember(organisation.id, member.id);
     } catch (error) {
-      setRemoval('confirming');
+      setRemoval(onlyOwner ? 'resting' : 'confirming');
       setFailed(refusalTitle(error, t('membersScreen.actionFailed')));
       return;
     }
@@ -920,7 +1172,7 @@ function Remove({
     );
   }
 
-  if (removal === 'resting') {
+  if (removal === 'resting' || (onlyOwner && removal === 'removing')) {
     return (
       <View style={cardFrame(kind)}>
         <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
@@ -929,9 +1181,30 @@ function Remove({
         <Text size={tokens.typeBodyPhone.size} muted>
           {t('membersScreen.removeBody', { organisation: organisationName })}
         </Text>
+        {onlyOwner && failed != null && (
+          <View accessibilityRole="alert">
+            <FieldError message={failed} />
+            <Text size={tokens.typeBodyPhone.size} muted>
+              {t('membersScreen.onlyOwnerNotRemovable', { name })}
+            </Text>
+            {member.suspension?.reason === 'address_gone' && (
+              <Text size={tokens.typeBodyPhone.size} muted>
+                {t('membersScreen.onlyOwnerRestoreNeedsAddress', {
+                  domain: member.suspension.domain ?? '',
+                })}
+              </Text>
+            )}
+          </View>
+        )}
         <SecondaryButton
+          ref={opener('remove')}
           label={t('membersScreen.removeButton', { organisation: organisationName })}
-          onPress={() => setRemoval('confirming')}
+          off={removal === 'removing'}
+          onPress={() => {
+            setKept(undefined);
+            if (onlyOwner) void remove();
+            else setRemoval('confirming');
+          }}
           testID="members.remove"
         />
       </View>
@@ -940,9 +1213,9 @@ function Remove({
 
   return (
     <View style={cardFrame(kind)}>
-      <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
+      <AnswerHeading size={tokens.typeTitleDialog.size} weight="bold" answer="confirming">
         {t('membersScreen.removeConfirmTitle', { name })}
-      </Text>
+      </AnswerHeading>
       <Text size={tokens.typeBodyPhone.size}>
         {t('membersScreen.removeConfirmBody', { name, organisation: organisationName })}
       </Text>
@@ -962,6 +1235,7 @@ function Remove({
           label={t('membersScreen.removeKeep', { name })}
           onPress={() => {
             setFailed(null);
+            setKept(stepClosed('remove'));
             setRemoval('resting');
           }}
           testID="members.remove.keep"
@@ -976,12 +1250,13 @@ const styles = StyleSheet.create({
   start: { alignSelf: 'flex-start' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceXs },
   chip: {
-    height: tokens.sizeHit,
+    minHeight: tokens.sizeHit,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceXs,
     paddingHorizontal: 14,
-    borderRadius: tokens.sizeHit / 2,
+    paddingVertical: tokens.spaceXxs,
+    borderRadius: tokens.radiusPill,
     borderWidth: 1,
     borderColor: tokens.colorControlBorder,
     backgroundColor: tokens.colorCard,
@@ -1032,14 +1307,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.spaceXs,
     marginTop: tokens.spaceHair,
-  },
-  mark: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   wordActive: { color: tokens.colorAccentText },
   wordQuiet: { color: tokens.colorInkSecondary },

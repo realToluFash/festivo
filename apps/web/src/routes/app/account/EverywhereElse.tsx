@@ -7,6 +7,7 @@ import {
 import { formatTimeOfDay } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
@@ -14,7 +15,9 @@ import { FieldError } from '../../../components/FieldError.tsx';
 import { PasswordField } from '../../../components/PasswordField.tsx';
 import { AppleMark, GoogleMark } from '../../../components/ProviderSignIn.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
-import { currentLocale } from '../../../i18n/index.ts';
+import { dateLocale } from '../../../i18n/index.ts';
+import { offButton } from '../../../offButton.ts';
+import { focusWhereSent, offField } from '../../../offField.ts';
 import {
   PROVIDER_NAMES,
   type ProviderReturn,
@@ -44,7 +47,8 @@ export function EverywhereElse({
   hasPassword: boolean;
   providers: readonly LinkedProvider[];
   returned: ProviderReturn | null;
-  onDone: (result: { signedOut: number; thisDevice: boolean }) => void;
+  /** `arrived` when it finished on the way back from Google or Apple, with no click on this page. */
+  onDone: (result: { signedOut: number; thisDevice: boolean }, arrived: boolean) => void;
   onKeep: () => void;
   onCodeSpent: () => void;
 }) {
@@ -85,8 +89,9 @@ export function EverywhereElse({
         : document.getElementById('everywhere-code')?.focus(),
   );
 
-  async function signOut(second: string | undefined): Promise<void> {
+  async function signOut(second: string | undefined, arrived = false): Promise<void> {
     setWorking(true);
+    const land = focusWhereSent();
 
     try {
       const { proof } = await api.prove(
@@ -94,17 +99,27 @@ export function EverywhereElse({
         second,
       );
       if (second != null) onCodeSpent();
-      onDone(await api.signOutEverywhereElse(proof, sessionId));
+      onDone(await api.signOutEverywhereElse(proof, sessionId), arrived);
     } catch (error) {
       setWorking(false);
 
       if (error instanceof ApiError && error.is('two_factor_required')) {
-        setCodeAsked(true);
+        if (signIn != null) {
+          setCodeAsked(true);
+
+          return;
+        }
+
+        // The field the answer asks for, once it is there to take focus.
+        flushSync(() => setCodeAsked(true));
+        land('everywhere-code');
 
         return;
       }
 
-      setRefusal(refusalFor(error, signIn != null, t));
+      const refused = refusalFor(error, signIn != null, t);
+      setRefusal(refused);
+      if (refused.kind === 'field') land(`everywhere-${refused.field}`);
     }
   }
 
@@ -120,7 +135,7 @@ export function EverywhereElse({
       .catch(() => ({ on: false, recoveryCodesLeft: 0 }))
       .then((status) => {
         setCodeAsked(status.on);
-        if (signIn != null && !status.on) void signOut(undefined);
+        if (signIn != null && !status.on) void signOut(undefined, true);
       });
     // Once, on arrival: what came back from the provider is taken then and never again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -135,7 +150,7 @@ export function EverywhereElse({
 
   const until =
     refusal?.kind === 'limited' && refusal.until != null
-      ? formatTimeOfDay(refusal.until, currentLocale())
+      ? formatTimeOfDay(refusal.until, dateLocale())
       : null;
   const passwordError =
     checks.errors.password ??
@@ -242,7 +257,7 @@ export function EverywhereElse({
               autoCorrect="off"
               spellCheck={false}
               value={code}
-              disabled={working}
+              {...offField(working)}
               aria-invalid={codeError != null}
               aria-describedby={
                 codeError == null
@@ -299,7 +314,7 @@ export function EverywhereElse({
               className="button button-dark"
               type="submit"
               aria-busy={working}
-              disabled={refusal?.kind === 'limited'}
+              {...offButton(refusal?.kind === 'limited')}
             >
               {refusal?.kind === 'limited'
                 ? until == null

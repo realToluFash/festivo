@@ -6,12 +6,12 @@ import {
   type ProviderSignInAttempt,
 } from '@soirely/api-client';
 import { formatDay, formatTimeOfDay, othersOf, thisDeviceFirst } from '@soirely/domain';
-import { useEffect, useRef, useState } from 'react';
+import { type Ref, useEffect, useRef, useState } from 'react';
 import { StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { currentLocale } from '../i18n/index.ts';
+import { dateLocale } from '../i18n/index.ts';
 import {
   type EverywhereRefusal,
   deviceMoment,
@@ -23,16 +23,20 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { currentSessionId } from '../tokens.ts';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field } from './Field.tsx';
 import { Notice } from './Notice.tsx';
+import { useReadOut } from './ReadOut.tsx';
 import { PasswordField } from './PasswordField.tsx';
-import { useAboveKeyboard } from './Screen.tsx';
-import { Text } from './Text.tsx';
+import { type StepClosed, stepClosed, useAboveKeyboard, useFocusBackToOpener } from './Screen.tsx';
+import { Text, type TextHandle } from './Text.tsx';
 
 type Devices =
-  { kind: 'loading' } | { kind: 'failed' } | { kind: 'ready'; sessions: DeviceSession[] };
+  | { kind: 'loading' }
+  | { kind: 'failed'; tapped: boolean }
+  | { kind: 'ready'; sessions: DeviceSession[] };
 
 type Said =
   | { kind: 'ended'; name: string }
@@ -40,7 +44,7 @@ type Said =
   | { kind: 'everywhere'; signedOut: number };
 
 type Stage =
-  | { kind: 'list'; said: Said | null }
+  | { kind: 'list'; said: Said | null; closed?: StepClosed }
   | { kind: 'checking'; device: DeviceSession }
   | { kind: 'everywhere' };
 
@@ -70,6 +74,10 @@ export function DevicesCard({
   const [attempt, setAttempt] = useState(0);
   const [stage, setStage] = useState<Stage>({ kind: 'list', said: null });
   const [listedFor, setListedFor] = useState(reload);
+  const [retried, setRetried] = useState<object | null>(null);
+  const tappedRetry = useRef(false);
+  const title = useRef<TextHandle>(null);
+  const opener = useFocusBackToOpener(stage.kind === 'list' ? stage.closed : undefined, title);
   const frame = cardFrame(kind);
   const here = currentSessionId();
 
@@ -77,7 +85,12 @@ export function DevicesCard({
     setListedFor(reload);
     setDevices({ kind: 'loading' });
     setStage({ kind: 'list', said: null });
+    setRetried(null);
   }
+
+  useEffect(() => {
+    tappedRetry.current = false;
+  }, [reload]);
 
   useEffect(() => {
     let live = true;
@@ -88,7 +101,7 @@ export function DevicesCard({
         if (live) setDevices({ kind: 'ready', sessions });
       })
       .catch(() => {
-        if (live) setDevices({ kind: 'failed' });
+        if (live) setDevices({ kind: 'failed', tapped: tappedRetry.current });
       });
 
     return () => {
@@ -97,20 +110,28 @@ export function DevicesCard({
   }, [attempt, reload]);
 
   function retry(): void {
+    tappedRetry.current = true;
+    setRetried({});
     setDevices({ kind: 'loading' });
     setAttempt((n) => n + 1);
+  }
+
+  function show(next: Stage): void {
+    tappedRetry.current = false;
+    setRetried(null);
+    setStage(next);
   }
 
   async function end(device: DeviceSession): Promise<void> {
     try {
       await api.endSession(device.id);
     } catch {
-      setStage({ kind: 'list', said: { kind: 'endFailed' } });
+      show({ kind: 'list', said: { kind: 'endFailed' } });
 
       return;
     }
 
-    setStage({ kind: 'list', said: { kind: 'ended', name: deviceName(device, t) } });
+    show({ kind: 'list', said: { kind: 'ended', name: deviceName(device, t) } });
     setDevices((current) =>
       current.kind === 'ready'
         ? { kind: 'ready', sessions: current.sessions.filter((s) => s.id !== device.id) }
@@ -125,7 +146,7 @@ export function DevicesCard({
       return;
     }
 
-    setStage({ kind: 'list', said: { kind: 'everywhere', signedOut: result.signedOut } });
+    show({ kind: 'list', said: { kind: 'everywhere', signedOut: result.signedOut } });
     setDevices((current) =>
       current.kind === 'ready'
         ? { kind: 'ready', sessions: current.sessions.filter((s) => s.id === currentSessionId()) }
@@ -139,7 +160,9 @@ export function DevicesCard({
         <Check
           device={stage.device}
           onEnd={() => void end(stage.device)}
-          onKeep={() => setStage({ kind: 'list', said: null })}
+          onKeep={() =>
+            show({ kind: 'list', said: null, closed: stepClosed(`signOut.${stage.device.id}`) })
+          }
         />
       </View>
     );
@@ -153,7 +176,7 @@ export function DevicesCard({
           hasPassword={hasPassword}
           providers={providers}
           onDone={endedElsewhere}
-          onKeep={() => setStage({ kind: 'list', said: null })}
+          onKeep={() => show({ kind: 'list', said: null, closed: stepClosed('everywhere') })}
           onCodeSpent={onCodeSpent}
         />
       </View>
@@ -165,9 +188,14 @@ export function DevicesCard({
   return (
     <View style={frame}>
       <View style={styles.heading}>
-        <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+        <AnswerHeading
+          ref={title}
+          size={tokens.typeTitleSection.size}
+          weight="bold"
+          answer={devices.kind === 'ready' ? (retried ?? undefined) : undefined}
+        >
           {t('devices.title')}
-        </Text>
+        </AnswerHeading>
         {devices.kind === 'ready' && (
           <Text size={tokens.typeSmall.size} style={styles.secondary}>
             {t('devices.count', { count: devices.sessions.length })}
@@ -183,6 +211,8 @@ export function DevicesCard({
           tone="done"
           mark={tokens.marks.done.glyph}
           body={t('devices.ended', { name: said.name })}
+          answer={said}
+          takesFocus
         />
       )}
       {said?.kind === 'everywhere' && (
@@ -194,6 +224,8 @@ export function DevicesCard({
               ? t('devices.everywhereNone')
               : t('devices.everywhereDone', { count: said.signedOut })
           }
+          answer={said}
+          takesFocus
         />
       )}
       {said?.kind === 'endFailed' && (
@@ -202,6 +234,8 @@ export function DevicesCard({
           mark={tokens.marks.broken.glyph}
           title={t('devices.endFailedTitle')}
           body={t('devices.endFailedBody')}
+          answer={said}
+          takesFocus
         />
       )}
 
@@ -218,20 +252,23 @@ export function DevicesCard({
             mark={tokens.marks.broken.glyph}
             title={t('devices.failedTitle')}
             body={t('devices.failedBody')}
+            answer={devices}
+            takesFocus={devices.tapped}
           />
           <SecondaryButton label={t('devices.retry')} onPress={retry} testID="devices.retry" />
         </>
       )}
 
       {devices.kind === 'ready' && (
-        <View accessibilityLabel={t('devices.listLabel')}>
+        <View>
           {thisDeviceFirst(devices.sessions, here).map((device) => (
             <Row
               key={device.id}
               device={device}
               here={device.id === here}
               onEndHere={() => onSignOutHere()}
-              onCheck={() => setStage({ kind: 'checking', device })}
+              opener={opener(`signOut.${device.id}`)}
+              onCheck={() => show({ kind: 'checking', device })}
             />
           ))}
         </View>
@@ -241,7 +278,8 @@ export function DevicesCard({
         <View style={styles.footer}>
           <SecondaryButton
             label={t('devices.everywhere')}
-            onPress={() => setStage({ kind: 'everywhere' })}
+            ref={opener('everywhere')}
+            onPress={() => show({ kind: 'everywhere' })}
             testID="devices.everywhere"
           />
           <Text size={tokens.typeSmall.size} style={styles.secondary}>
@@ -256,16 +294,18 @@ export function DevicesCard({
 function Row({
   device,
   here,
+  opener,
   onCheck,
   onEndHere,
 }: {
   device: DeviceSession;
   here: boolean;
+  opener: Ref<View>;
   onCheck: () => void;
   onEndHere: () => void;
 }) {
   const { t } = useTranslation();
-  const locale = currentLocale();
+  const locale = dateLocale();
 
   return (
     <View style={styles.row} testID={here ? 'devices.here' : `devices.row.${device.id}`}>
@@ -302,6 +342,7 @@ function Row({
 
       {/* Your own signs out at once; another device opens a check first, since it may be mid-event. */}
       <SecondaryButton
+        ref={here ? undefined : opener}
         label={t('devices.signOut')}
         onPress={here ? onEndHere : onCheck}
         testID={here ? 'devices.here.signOut' : `devices.row.${device.id}.signOut`}
@@ -320,14 +361,14 @@ function Check({
   onKeep: () => void;
 }) {
   const { t } = useTranslation();
-  const locale = currentLocale();
+  const locale = dateLocale();
   const name = deviceName(device, t);
 
   return (
     <>
-      <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+      <AnswerHeading size={tokens.typeTitleSection.size} weight="bold" answer={device}>
         {t('devices.checkTitle', { name })}
-      </Text>
+      </AnswerHeading>
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
         {t('devices.checkBody', {
           started: deviceMoment(device.startedAt, locale, t),
@@ -459,7 +500,7 @@ function EverywhereElse({
 
   const until =
     refusal?.kind === 'limited' && refusal.until != null
-      ? formatTimeOfDay(refusal.until, currentLocale())
+      ? formatTimeOfDay(refusal.until, dateLocale())
       : null;
   const passwordError =
     checks.errors.password ??
@@ -468,12 +509,17 @@ function EverywhereElse({
     checks.errors.code ??
     (refusal?.kind === 'field' && refusal.field === 'code' ? refusal.message : null);
   const viaName = provider != null && !confirmed ? PROVIDER_NAMES[provider] : null;
+  const confirmedLine =
+    provider != null && confirmed && codeAsked
+      ? t('devices.everywhereProviderConfirmed', { provider: PROVIDER_NAMES[provider] })
+      : null;
+  useReadOut(confirmedLine);
 
   return (
     <>
-      <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+      <AnswerHeading size={tokens.typeTitleSection.size} weight="bold" answer="everywhere">
         {t('devices.everywhereTitle')}
-      </Text>
+      </AnswerHeading>
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
         {keepsThisDevice
           ? t('devices.everywhereBody', { count })
@@ -490,6 +536,7 @@ function EverywhereElse({
               ? t('devices.everywhereLimitedSoon')
               : t('devices.everywhereLimitedBody', { time: until })
           }
+          answer={refusal}
         />
       )}
       {refusal?.kind === 'failed' && (
@@ -498,12 +545,13 @@ function EverywhereElse({
           mark={tokens.marks.broken.glyph}
           title={t('devices.everywhereFailedTitle')}
           body={refusal.message}
+          answer={refusal}
         />
       )}
 
-      {provider != null && confirmed && codeAsked && (
+      {confirmedLine != null && (
         <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
-          {t('devices.everywhereProviderConfirmed', { provider: PROVIDER_NAMES[provider] })}
+          {confirmedLine}
         </Text>
       )}
 

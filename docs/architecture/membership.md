@@ -130,7 +130,11 @@ loses access without anybody remembering to revoke it.
 
 - The member list with roles, and every pending invitation with its delivery status
 - The audit trail: who invited whom, who changed a role, who removed somebody
-- To restore an owner when the last one has left — the lockout that cannot be self-served
+- To restore an owner when self-serve cannot (sc-6666): no active Administrator, a domain
+  nobody can prove, or a claim somebody stopped. Otherwise an organisation whose only Owner is
+  suspended gets one back by itself (sc-6640): an active Administrator with a verified address
+  at the domain publishes a fresh TXT record, and ownership passes 72 hours after it is found
+  unless an Administrator or the suspended Owner stops it
 - To issue **emergency event access** mid-event, which is time-critical in a way nothing
   else here is
 - To undo an organisation deletion inside its recovery window

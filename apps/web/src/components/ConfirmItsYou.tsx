@@ -7,11 +7,13 @@ import {
 import { PROOF_MINUTES, formatTimeOfDay } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { useFormChecks } from '../formChecks.ts';
-import { currentLocale } from '../i18n/index.ts';
+import { dateLocale } from '../i18n/index.ts';
+import { focusWhereSent, offField } from '../offField.ts';
 import { PROVIDER_NAMES, type ReturnPurpose, startProviderSignIn } from '../providerSignIn.ts';
 import { dropProof, holdProof } from '../recentProof.ts';
 import { FieldError } from './FieldError.tsx';
@@ -90,6 +92,7 @@ export function ConfirmItsYou({
 
   async function send(second: string | undefined): Promise<void> {
     setChecking(true);
+    const land = focusWhereSent();
 
     try {
       const proof = await api.prove(
@@ -112,8 +115,14 @@ export function ConfirmItsYou({
           kept.current = error.problem.pendingProof ?? kept.current;
           const email = error.problem.providerEmail ?? null;
           setVouched((now) => now ?? { email });
+          setCodeAsked(true);
+
+          return;
         }
-        setCodeAsked(true);
+
+        // The field the answer asks for, once it is there to take focus.
+        flushSync(() => setCodeAsked(true));
+        land(`${idPrefix}-code`);
 
         return;
       }
@@ -132,13 +141,13 @@ export function ConfirmItsYou({
 
       if (signIn != null && error instanceof ApiError)
         kept.current = error.problem.pendingProof ?? kept.current;
-      setRefusal(
-        provingRefusal(
-          error,
-          t,
-          signIn != null && viaProvider != null ? PROVIDER_NAMES[viaProvider] : null,
-        ),
+      const refused = provingRefusal(
+        error,
+        t,
+        signIn != null && viaProvider != null ? PROVIDER_NAMES[viaProvider] : null,
       );
+      setRefusal(refused);
+      if (refused.field !== 'failed') land(`${idPrefix}-${refused.field}`);
     }
   }
 
@@ -245,7 +254,7 @@ export function ConfirmItsYou({
               autoCorrect="off"
               spellCheck={false}
               value={code}
-              disabled={checking}
+              {...offField(checking)}
               aria-invalid={codeError != null}
               aria-describedby={codeError == null ? codeHelp : `${idPrefix}-code-error ${codeHelp}`}
               onChange={(event) => {
@@ -337,7 +346,7 @@ function provingRefusal(
       message:
         refusal.until == null
           ? t('passwordCard.pausedSoon')
-          : t('passwordCard.pausedBody', { time: formatTimeOfDay(refusal.until, currentLocale()) }),
+          : t('passwordCard.pausedBody', { time: formatTimeOfDay(refusal.until, dateLocale()) }),
     };
   if (refusal.kind === 'field')
     return {

@@ -12,12 +12,14 @@ use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
+use App\Enum\MembershipStatus;
 use App\Enum\Permission;
 use App\Enum\SeededRole;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Exception\ApiException;
 use App\Locale\SupportedLocales;
 use App\Repository\InvitationRepository;
+use Collator;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Dict;
 use Psl\Iter;
@@ -60,7 +62,7 @@ final readonly class RoleManager
         $role = Uuid::isValid($id) ? $this->entityManager->getRepository(Role::class)->find(Uuid::fromString($id)) : null;
 
         if (null === $role || !$role->getOrganisation()->getId()->equals($organisation->getId())) {
-            throw ApiException::notFound('That role is not in this organisation.');
+            throw ApiException::notFound('roles.not_in_organisation');
         }
 
         return $role;
@@ -68,7 +70,30 @@ final readonly class RoleManager
 
     public function holders(Role $role): int
     {
-        return $this->entityManager->getRepository(Membership::class)->count(['role' => $role]);
+        return $this->entityManager->getRepository(Membership::class)->count([
+            'role' => $role,
+            'status' => MembershipStatus::holding(),
+        ]);
+    }
+
+    /** @return list<Membership> whom `holders` counts, by name in the root collation, then by email (sc-6447) */
+    public function holdersOf(Role $role): array
+    {
+        $memberships = Type\vec(Type\instance_of(Membership::class))->coerce($this->entityManager->createQuery(
+            'SELECT m, u, e FROM ' . Membership::class . ' m JOIN m.user u LEFT JOIN u.emailAddresses e WHERE m.role = :role AND m.status IN (:holding)',
+        )
+            ->setParameter('role', $role)
+            ->setParameter('holding', Vec\map(MembershipStatus::holding(), static fn (MembershipStatus $status): string => $status->value))
+            ->getResult());
+        $collator = new Collator('root');
+        $collator->setStrength(Collator::PRIMARY);
+        $email = static fn (Membership $membership): string => $membership->getUser()->getPrimaryEmailAddress()?->getAddress() ?? '';
+
+        return Vec\sort($memberships, static function (Membership $a, Membership $b) use ($collator, $email): int {
+            $byName = (int) $collator->compare($a->getUser()->getName(), $b->getUser()->getName());
+
+            return 0 !== $byName ? $byName : $email($a) <=> $email($b);
+        });
     }
 
     /** @param list<string> $permissions */
@@ -116,7 +141,7 @@ final readonly class RoleManager
         return $role;
     }
 
-    /** Deleting one that members hold needs the role they move to: nobody is left with none. */
+    /** Deleting one that members hold needs the role they move to; anyone else on it, former, pending or invited, moves to Read-only when none is chosen. */
     public function delete(Role $role, User $by, ?string $replacementId): void
     {
         if ($role->isOwner()) {
@@ -127,19 +152,15 @@ final readonly class RoleManager
             throw new ApiException(ErrorCode::SeededRoleKept, $this->translator->trans('roles.seeded_kept'));
         }
 
-        $holders = $this->entityManager->getRepository(Membership::class)->findBy(['role' => $role]);
+        // Every membership on it, not only its holders: the column is not nullable.
+        $memberships = $this->entityManager->getRepository(Membership::class)->findBy(['role' => $role]);
         // An invitation still pending would otherwise lose its role and could never be accepted.
         $invited = $this->invitationRepository->findPendingWithRole($role);
 
-        if ([] !== $holders || [] !== $invited) {
-            if (null === $replacementId || '' === $replacementId) {
-                throw $this->invalid('replacement', 'roles.replacement_required');
-            }
+        if ([] !== $memberships || [] !== $invited) {
+            $replacement = $this->movedTo($role, $by, $replacementId);
 
-            $replacement = $this->replacement($role, $replacementId);
-            $this->mayGrant($role->getOrganisation(), $by, $replacement);
-
-            foreach ($holders as $membership) {
+            foreach ($memberships as $membership) {
                 $this->roleAssignment->assign($membership, $replacement);
             }
 
@@ -151,6 +172,23 @@ final readonly class RoleManager
         $this->record($by, $role, 'role.deleted', ['name' => [$role->getName(), null]]);
         $this->entityManager->remove($role);
         $this->entityManager->flush();
+    }
+
+    private function movedTo(Role $role, User $by, ?string $replacementId): Role
+    {
+        if (null !== $replacementId && '' !== $replacementId) {
+            $replacement = $this->replacement($role, $replacementId);
+            $this->mayGrant($role->getOrganisation(), $by, $replacement);
+
+            return $replacement;
+        }
+
+        if (0 < $this->holders($role)) {
+            throw $this->invalid('replacement', 'roles.replacement_required');
+        }
+
+        return $this->entityManager->getRepository(Role::class)->findOneBy(['organisation' => $role->getOrganisation(), 'seededAs' => SeededRole::ReadOnly])
+            ?? throw new ApiException(ErrorCode::InternalError, 'The organisation is missing a seeded role.');
     }
 
     private function replacement(Role $role, string $id): Role

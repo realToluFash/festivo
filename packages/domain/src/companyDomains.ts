@@ -22,3 +22,8 @@ export function domainOf(address: string | null): string | null {
 
   return domain === '' ? null : domain;
 }
+
+/** The two refusals a removal that works makes untrue (sc-11816); the rest describe the domain typed, and stay. */
+export function removalAnswers(code: string | undefined, typed: string, removed: string): boolean {
+  return code === 'domain_full' || (code === 'domain_listed' && normaliseDomain(typed) === removed);
+}

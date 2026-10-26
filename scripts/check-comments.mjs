@@ -66,6 +66,20 @@ export function problemsFor(file, added) {
   return problems;
 }
 
+/** The lines a merge adds to both of its parents: what the merge itself wrote. */
+export function newToBoth(addedToOurs, addedToTheirs) {
+  const left = [...addedToTheirs];
+
+  return addedToOurs.filter((line) => {
+    const at = left.indexOf(line);
+
+    if (at === -1) return false;
+    left.splice(at, 1);
+
+    return true;
+  });
+}
+
 function changedFiles(ref) {
   const args = ref
     ? ['diff', '--name-only', '--diff-filter=ACMR', `${ref}...HEAD`]
@@ -74,10 +88,10 @@ function changedFiles(ref) {
   return git(args).split('\n').filter(Boolean);
 }
 
-function addedLines(file, ref) {
+function addedLines(file, ref, base = 'HEAD') {
   const args = ref
     ? ['diff', '-U0', `${ref}...HEAD`, '--', file]
-    : ['diff', '--cached', '-U0', '--', file];
+    : ['diff', '--cached', '-U0', base, '--', file];
 
   return git(args)
     .split('\n')
@@ -113,9 +127,17 @@ if (process.argv[1] != null && import.meta.url.endsWith(process.argv[1].split('/
     process.exit(0);
   }
 
+  const merging = against == null && resolves('MERGE_HEAD');
   const problems = changedFiles(against)
     .filter(isChecked)
-    .flatMap((file) => problemsFor(file, addedLines(file, against)));
+    .flatMap((file) =>
+      problemsFor(
+        file,
+        merging
+          ? newToBoth(addedLines(file, null), addedLines(file, null, 'MERGE_HEAD'))
+          : addedLines(file, against),
+      ),
+    );
 
   if (problems.length > 0) {
     process.stderr.write('\n  ✗ Too much comment in this change.\n\n');

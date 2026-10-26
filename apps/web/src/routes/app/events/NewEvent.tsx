@@ -3,27 +3,34 @@ import {
   CURRENCY_CODES,
   EVENT_NAME_MAXIMUM,
   type EventDraft,
-  type EventField,
   eventNameLength,
   eventNameOf,
-  eventProblems,
+  eventFormErrors,
+  skippedLine,
+  isEventType,
   filledEndDate,
   localDateTime,
+  type VenueDraft,
+  venueDraftOf,
+  venueSent,
 } from '@soirely/domain';
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { currentLocale } from '../../../i18n/index.ts';
+import { currentLocale, dateLocale } from '../../../i18n/index.ts';
+import { focusWhereSent, offField } from '../../../offField.ts';
 import { can, useSession } from '../../../session.ts';
 import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
 import { Forbidden } from '../Forbidden.tsx';
-
-type Field = EventField | 'timeZone' | 'currency';
-type Errors = Partial<Record<Field, string | undefined>>;
-
-const FIELDS: readonly Field[] = ['name', 'startsAt', 'endsAt', 'timeZone', 'currency'];
+import { CoverSection } from './CoverSection.tsx';
+import { discardCoverUpload, refusalOf } from './coverPhoto.ts';
+import type { CoverPhoto } from './EventCoverImage.tsx';
+import { Choice, FieldError, Moment } from './EventFields.tsx';
+import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
+import { typeChoices } from './eventTypes.ts';
+import { VenueSection } from './VenueSection.tsx';
 
 export function NewEvent() {
   const session = useSession();
@@ -41,40 +48,63 @@ function EventForm({ organisation }: { organisation: Membership }) {
   const locale = currentLocale();
   const [draft, setDraft] = useState<EventDraft>({
     name: '',
+    type: '',
     startDate: '',
     startTime: '',
     endDate: '',
     endTime: '',
   });
   const [endChosen, setEndChosen] = useState(false);
+  const [venue, setVenue] = useState<VenueDraft>(() => venueDraftOf(null));
   const [timeZone, setTimeZone] = useState(organisation.timezone);
   const [currency, setCurrency] = useState(
     CURRENCY_CODES.includes(organisation.currency) ? organisation.currency : '',
   );
   const [errors, setErrors] = useState<Errors>({});
+  const [cover, setCover] = useState<{ uploadKey: string; photo: CoverPhoto } | null>(null);
+  const staged = useRef<string | null>(null);
   const [unsent, setUnsent] = useState(0);
   const [status, setStatus] = useState<'editing' | 'creating' | 'failed'>('editing');
-  const focusNext = useRef<string | null>(null);
+  const focusNext = useRef<(() => void) | null>(null);
   const currencies = useMemo(() => currencyChoices('', currency, locale, t), [currency, locale, t]);
-  const zones = useMemo(() => timeZoneChoices(organisation.timezone), [organisation.timezone]);
+  const zones = useMemo(
+    () => timeZoneChoices(organisation.timezone, timeZone),
+    [organisation.timezone, timeZone],
+  );
+  const types = useMemo(() => typeChoices(draft.type, t), [draft.type, t]);
   const busy = status === 'creating';
 
   useEffect(() => {
-    if (focusNext.current == null) return;
-
-    document.getElementById(focusNext.current)?.focus();
+    focusNext.current?.();
     focusNext.current = null;
   }, [errors]);
+
+  useEffect(
+    () => () => {
+      if (staged.current != null) discardCoverUpload(organisation.id, staged.current);
+    },
+    [organisation.id],
+  );
+
+  function stage(next: { uploadKey: string; photo: CoverPhoto } | null): void {
+    if (staged.current != null && staged.current !== next?.uploadKey)
+      discardCoverUpload(organisation.id, staged.current);
+    staged.current = next?.uploadKey ?? null;
+    setCover(next);
+  }
 
   function edit(field: Field, changes: Partial<EventDraft>): void {
     setDraft((previous) => ({ ...previous, ...changes }));
     setErrors((previous) => ({ ...previous, [field]: undefined }));
   }
 
-  function refuse(found: Errors): void {
+  function refuse(
+    found: Errors,
+    focus = (id: string) => document.getElementById(id)?.focus(),
+  ): void {
     const first = FIELDS.find((field) => found[field] != null);
 
-    focusNext.current = first == null ? null : inputFor(first, draft);
+    focusNext.current = first == null ? null : () => focus(inputFor(first, draft));
     setErrors(found);
   }
 
@@ -82,14 +112,12 @@ function EventForm({ organisation }: { organisation: Membership }) {
     event.preventDefault();
     if (busy) return;
 
-    const found: Errors = {};
-    for (const { field, problem } of eventProblems(draft))
-      found[field] ??= t(`eventForm.${problem}`, { most: EVENT_NAME_MAXIMUM });
-    if (currency === '') found.currency = t('orgGeneral.currencyBlank');
+    const found: Errors = eventFormErrors({ draft, venue, timeZone, currency }, t);
 
     const unsentFields = Object.keys(found).length;
+    const { type } = draft;
 
-    if (unsentFields > 0) {
+    if (unsentFields > 0 || type === '') {
       setUnsent(unsentFields);
       setStatus('editing');
       refuse(found);
@@ -98,17 +126,44 @@ function EventForm({ organisation }: { organisation: Membership }) {
 
     setUnsent(0);
     setStatus('creating');
+    const land = focusWhereSent();
+
+    const sentVenue = venueSent(venue);
 
     try {
       const created = await api.createEvent(organisation.id, {
         name: eventNameOf(draft.name),
+        type,
         startsAt: localDateTime(draft.startDate, draft.startTime) ?? '',
         endsAt: localDateTime(draft.endDate, draft.endTime) ?? '',
         timeZone,
         currency,
+        ...(sentVenue == null ? {} : { venue: sentVenue }),
       });
 
-      void navigate(`/app/events/${encodeURIComponent(created.id)}`);
+      let coverRefused: string | null = null;
+
+      if (cover != null) {
+        const { uploadKey, photo } = cover;
+        staged.current = null;
+
+        // The event exists either way, so a refused or failed cover is said on its page rather than here.
+        coverRefused = await api
+          .setEventCover(created.id, {
+            uploadKey,
+            position: photo.position,
+            description: photo.description,
+          })
+          .then(
+            () => null,
+            (error: unknown) => refusalOf(error, t),
+          );
+      }
+
+      void navigate(
+        `/app/events/${encodeURIComponent(created.id)}`,
+        coverRefused == null ? undefined : { state: { coverRefused } },
+      );
     } catch (error) {
       const refused = error instanceof ApiError && error.status === 422 ? error.fieldErrors() : {};
       const found: Errors = {};
@@ -116,7 +171,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
 
       if (Object.keys(found).length > 0) {
         setStatus('editing');
-        refuse(found);
+        refuse(found, land);
         return;
       }
 
@@ -125,6 +180,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
   }
 
   const nameLength = eventNameLength(draft.name);
+  const startSkipped = skippedLine(draft.startDate, draft.startTime, timeZone, dateLocale(), t);
 
   return (
     <div className="event-form-page">
@@ -158,7 +214,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
               value={draft.name}
               autoComplete="off"
               spellCheck={false}
-              disabled={busy}
+              {...offField(busy)}
               aria-invalid={errors.name != null}
               aria-describedby={describedBy(
                 errors.name == null ? null : 'event-name-error',
@@ -168,16 +224,40 @@ function EventForm({ organisation }: { organisation: Membership }) {
             />
             <FieldError id="event-name-error" message={errors.name} />
             <p className="field-help" id="event-name-count">
-              {t('eventForm.nameCount', { length: nameLength, most: EVENT_NAME_MAXIMUM })}
+              {t('eventForm.nameCount', { count: nameLength, most: EVENT_NAME_MAXIMUM })}
             </p>
           </div>
+          <Choice
+            id="event-type"
+            label={t('eventForm.type')}
+            value={draft.type}
+            error={errors.type}
+            busy={busy}
+            options={types}
+            onChange={(value) => edit('type', { type: isEventType(value) ? value : '' })}
+          />
         </section>
+
+        <CoverSection
+          type={draft.type}
+          photo={cover?.photo ?? null}
+          organisationId={organisation.id}
+          onUse={async ({ upload, position, description }) => {
+            const uploadKey = upload?.key ?? cover?.uploadKey;
+            const sizes = upload?.preview.sizes ?? cover?.photo.sizes;
+
+            if (uploadKey != null && sizes != null)
+              stage({ uploadKey, photo: { sizes, position, description } });
+          }}
+          onRemove={async () => stage(null)}
+        />
 
         <section className="card" aria-labelledby="event-when">
           <h2 id="event-when">{t('eventForm.whenHeading')}</h2>
           <Moment
             id="event-start"
             legend={t('eventForm.starts')}
+            skipped={startSkipped}
             date={draft.startDate}
             time={draft.startTime}
             error={errors.startsAt}
@@ -193,6 +273,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
           <Moment
             id="event-end"
             legend={t('eventForm.ends')}
+            skipped={skippedLine(draft.endDate, draft.endTime, timeZone, dateLocale(), t)}
             hint={t('eventForm.endsHint')}
             date={draft.endDate}
             time={draft.endTime}
@@ -205,6 +286,25 @@ function EventForm({ organisation }: { organisation: Membership }) {
             onTime={(endTime) => edit('endsAt', { endTime })}
           />
         </section>
+
+        <VenueSection
+          venue={venue}
+          errors={errors}
+          busy={busy}
+          timeZone={timeZone}
+          onVenue={(change) => {
+            setVenue((previous) => ({ ...previous, ...change }));
+            setErrors((previous) => ({
+              ...previous,
+              ...('name' in change ? { venueName: undefined } : {}),
+              ...('address' in change ? { venueAddress: undefined } : {}),
+            }));
+          }}
+          onUseZone={(zone) => {
+            setTimeZone(zone);
+            setErrors((previous) => ({ ...previous, timeZone: undefined }));
+          }}
+        />
 
         <section className="card" aria-labelledby="event-defaults">
           <h2 id="event-defaults">{t('eventForm.zoneHeading')}</h2>
@@ -243,154 +343,6 @@ function EventForm({ organisation }: { organisation: Membership }) {
           </button>
         </div>
       </form>
-    </div>
-  );
-}
-
-/** The input focus goes to: the empty half of a start or an end, or the end's date when it is too early. */
-function inputFor(field: Field, draft: EventDraft): string {
-  if (field === 'name') return 'event-name';
-  if (field === 'timeZone') return 'event-time-zone';
-  if (field === 'currency') return 'event-currency';
-
-  const [prefix, date, time] =
-    field === 'startsAt'
-      ? ['event-start', draft.startDate, draft.startTime]
-      : ['event-end', draft.endDate, draft.endTime];
-
-  return date !== '' && time === '' ? `${prefix}-time` : `${prefix}-date`;
-}
-
-function describedBy(...ids: (string | null)[]): string | undefined {
-  const joined = ids.filter((id) => id != null).join(' ');
-
-  return joined === '' ? undefined : joined;
-}
-
-function Moment({
-  id,
-  legend,
-  hint,
-  date,
-  time,
-  error,
-  busy,
-  onDate,
-  onTime,
-}: {
-  id: string;
-  legend: string;
-  hint?: string;
-  date: string;
-  time: string;
-  error: string | undefined;
-  busy: boolean;
-  onDate: (date: string) => void;
-  onTime: (time: string) => void;
-}) {
-  const { t } = useTranslation();
-  const described = describedBy(
-    error == null ? null : `${id}-error`,
-    hint == null ? null : `${id}-hint`,
-  );
-  const className = error == null ? 'input' : 'input input-wrong';
-
-  return (
-    <fieldset className="event-moment">
-      <legend>{legend}</legend>
-      <div className="event-moment-inputs">
-        <div className="field event-moment-date">
-          <label htmlFor={`${id}-date`}>{t('eventForm.date')}</label>
-          <input
-            id={`${id}-date`}
-            className={className}
-            type="date"
-            value={date}
-            disabled={busy}
-            aria-invalid={error != null}
-            aria-describedby={described}
-            onChange={(event) => onDate(event.target.value)}
-          />
-        </div>
-        <div className="field event-moment-time">
-          <label htmlFor={`${id}-time`}>{t('eventForm.time')}</label>
-          <input
-            id={`${id}-time`}
-            className={className}
-            type="time"
-            value={time}
-            disabled={busy}
-            aria-invalid={error != null}
-            aria-describedby={described}
-            onChange={(event) => onTime(event.target.value)}
-          />
-        </div>
-      </div>
-      <FieldError id={`${id}-error`} message={error} />
-      {hint != null && (
-        <p className="field-help" id={`${id}-hint`}>
-          {hint}
-        </p>
-      )}
-    </fieldset>
-  );
-}
-
-function Choice({
-  id,
-  label,
-  value,
-  error,
-  busy,
-  options,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  error: string | undefined;
-  busy: boolean;
-  options: { value: string; label: string }[];
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="field">
-      <label htmlFor={id}>{label}</label>
-      <select
-        id={id}
-        className={[
-          'input',
-          error == null ? null : 'input-wrong',
-          value === '' ? 'input-unchosen' : null,
-        ]
-          .filter((one) => one != null)
-          .join(' ')}
-        value={value}
-        disabled={busy}
-        aria-invalid={error != null}
-        aria-describedby={error == null ? undefined : `${id}-error`}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      <FieldError id={`${id}-error`} message={error} />
-    </div>
-  );
-}
-
-function FieldError({ id, message }: { id: string; message: string | undefined }) {
-  if (message == null) return null;
-
-  return (
-    <div className="field-error" id={id}>
-      <span className="mark mark-broken" aria-hidden="true">
-        ✕
-      </span>
-      <p>{message}</p>
     </div>
   );
 }

@@ -48,6 +48,13 @@ describe('a single-surface change runs that surface and no other', () => {
   it.each([
     ['the agent gateway', 'tools/agent-gateway/src/gateway.ts'],
     ['a pair the gateway replays', 'services/api/tests/Fixtures/AgentGateway/text.json'],
+    [
+      'a saved wall clock the form names',
+      'services/api/tests/Fixtures/LocalTime/wall-clock-times.json',
+    ],
+    ['the regions the domain reads', 'services/api/src/Domain/Organisation/Regions.php'],
+    ['the domain refusals the cards read', 'services/api/src/Enum/DomainRefusal.php'],
+    ['the event types the domain lists', 'services/api/src/Enum/EventType.php'],
   ])('%s runs the packages', (_name, path) => {
     expect(changedSurfaces([path]).packages).toBe(true);
   });
@@ -62,11 +69,19 @@ describe('a catalogue runs localisation wherever it lives', () => {
   });
 });
 
+/** The Packages job only typechecks the lint; its tests run in Localisation. */
+describe('the lint itself runs localisation', () => {
+  it('a change to the lint alone', () => {
+    expect(changedSurfaces(['packages/i18n-lint/src/keys.ts']).locales).toBe(true);
+  });
+});
+
 describe('shared root configuration runs everything', () => {
   it.each([
     ['the lockfile, because a resolution change breaks untouched surfaces', 'package-lock.json'],
     ['the eslint config', 'eslint.config.mjs'],
     ['the compose stack', 'compose.yaml'],
+    ['what each event state allows', 'event-states.json'],
     ['a script', 'scripts/test-db.mjs'],
     ['the workflow itself', '.github/workflows/pull-request.yml'],
   ])('%s', (_name, path) => {

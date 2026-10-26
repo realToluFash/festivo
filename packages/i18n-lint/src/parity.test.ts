@@ -100,6 +100,21 @@ describe('the checks catch what they are for', () => {
     expect(missing).toEqual([{ locale: 'fr', key: 'greeting' }]);
   });
 
+  it('allows a plural form the locale has and English does not, and no other', () => {
+    const surface = surfaceFor('packages/i18n-lint/src/__fixtures__/own-plural-form');
+
+    expect(keyParity(surface)).toEqual({
+      missing: [],
+      extra: [
+        { locale: 'fr', key: 'guests_few' },
+        { locale: 'pt', key: 'greeting_many' },
+      ],
+    });
+    expect(slotParity(surface)).toEqual([
+      { locale: 'fr', key: 'guests_many', expected: ['count'], actual: ['total'] },
+    ]);
+  });
+
   it('notices a renamed interpolation slot', () => {
     const mismatches = slotParity(surfaceFor('packages/i18n-lint/src/__fixtures__/wrong-slot'));
 
@@ -113,7 +128,10 @@ describe('the checks catch what they are for', () => {
       surfaceFor('packages/i18n-lint/src/__fixtures__/half-plural'),
     );
 
-    expect(incomplete).toEqual([{ locale: 'fr', present: 'guests_one', missing: 'guests_other' }]);
+    expect(incomplete).toEqual([
+      { locale: 'fr', present: 'guests_one', missing: 'guests_other' },
+      { locale: 'pt', present: 'hosts_other', missing: 'hosts_one' },
+    ]);
   });
 
   it('notices a shared word one copy reads differently, or lacks', () => {

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
-use App\Enum\DomainSuspension;
 use App\Enum\MembershipStatus;
+use App\Enum\Suspension;
 use DateInterval;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
@@ -64,8 +64,8 @@ class Membership
     #[ORM\Column(type: Types::STRING, length: 253, nullable: true)]
     private ?string $domain = null;
 
-    #[ORM\Column(type: Types::STRING, length: 30, nullable: true, enumType: DomainSuspension::class)]
-    private ?DomainSuspension $suspension = null;
+    #[ORM\Column(type: Types::STRING, length: 30, nullable: true, enumType: Suspension::class)]
+    private ?Suspension $suspension = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $suspendedAt = null;
@@ -160,6 +160,12 @@ class Membership
         return $this->joinedAt;
     }
 
+    /** Somebody who asked and was never let in was never a member (sc-8168), whatever they are now. */
+    public function hasBeenActive(): bool
+    {
+        return null !== $this->joinedAt;
+    }
+
     public function getTwoFactorBlockedAt(): ?DateTimeImmutable
     {
         return $this->twoFactorBlockedAt;
@@ -180,7 +186,7 @@ class Membership
         $this->domain = $domain;
     }
 
-    public function getSuspension(): ?DomainSuspension
+    public function getSuspension(): ?Suspension
     {
         return $this->suspension;
     }
@@ -204,7 +210,7 @@ class Membership
         $this->removesAt = $removesAt;
     }
 
-    public function setSuspension(?DomainSuspension $suspension, ?DateTimeImmutable $at): void
+    public function setSuspension(?Suspension $suspension, ?DateTimeImmutable $at): void
     {
         if (null !== $suspension && MembershipStatus::Suspended !== $this->status) {
             throw new LogicException('Only a suspended membership carries why.');

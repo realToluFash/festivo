@@ -19,9 +19,18 @@ import { tokens } from '../theme/tokens.ts';
 import { useHeaderWithoutBack } from './AppFrame.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
-import { Field, TextField } from './Field.tsx';
+import { Field, focusChecked, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
-import { useAboveKeyboard, useRoomAboveKeyboard, useScrolledToTop } from './Screen.tsx';
+import { useReadOut } from './ReadOut.tsx';
+import {
+  type StepClosed,
+  stepClosed,
+  useAboveKeyboard,
+  useFocusBackToOpener,
+  useFocusOnAnswer,
+  useRoomAboveKeyboard,
+  useScrolledToTop,
+} from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 /** How many rows the list shows at once; the search narrows the rest. */
@@ -49,6 +58,8 @@ export function TimeZoneCard({
   const [zones, setZones] = useState<TimeZoneOption[]>([]);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
+  const [closed, setClosed] = useState<StepClosed | undefined>(undefined);
+  const opener = useFocusBackToOpener(editing ? undefined : closed);
   const frame = cardFrame(kind);
 
   useEffect(() => {
@@ -88,7 +99,10 @@ export function TimeZoneCard({
             setEditing(false);
             setSaved(zoneLabel(zone));
           }}
-          onCancel={() => setEditing(false)}
+          onCancel={() => {
+            setClosed(stepClosed('change'));
+            setEditing(false);
+          }}
         />
       ) : (
         <>
@@ -107,12 +121,16 @@ export function TimeZoneCard({
               tone="done"
               mark={tokens.marks.done.glyph}
               body={t('timeZone.saved', { zone: saved })}
+              answer={saved}
+              takesFocus
             />
           )}
           <SecondaryButton
+            ref={opener('change')}
             label={t('timeZone.change')}
             onPress={() => {
               setSaved(null);
+              setClosed(undefined);
               setEditing(true);
             }}
             testID="timeZone.change"
@@ -143,6 +161,8 @@ function Choosing({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const input = useRef<TextInput>(null);
+  // A zone picked from the list takes the list's place, so focus goes to the field now holding it.
+  useFocusOnAnswer(picked ?? undefined, input);
   const aboveKeyboard = useAboveKeyboard();
   const room = useRoomAboveKeyboard();
   // With no on-screen keyboard (a hardware one), nothing lifts, so the card is brought up on opening.
@@ -168,6 +188,9 @@ function Choosing({
   };
   const help = t('timeZone.help', { now: now ?? t('timeZone.nowUnset') });
   const noneMatch = typed.trim() !== '' && !showingPicked && matches.length === 0;
+  const nothing = t('timeZone.noneMatch', { typed: typed.trim() });
+  // Said as each key lands, it would talk over the typing (sc-10955); said only as it appears, it goes unheard by somebody still typing (sc-11930).
+  useReadOut(noneMatch && error == null ? nothing : null, { afterTyping: typed });
   const listMost =
     room == null
       ? LIST_HEIGHT
@@ -188,7 +211,7 @@ function Choosing({
           ? t('timeZone.choose')
           : t('timeZone.chooseNoMatch', { typed: typed.trim() }),
       );
-      input.current?.focus();
+      focusChecked(input);
       return;
     }
 
@@ -219,7 +242,7 @@ function Choosing({
             <TextField
               ref={input}
               wrong={error != null}
-              editable={!saving}
+              submitting={saving}
               autoFocus
               autoCapitalize="none"
               placeholder={t('timeZone.placeholder')}
@@ -231,6 +254,7 @@ function Choosing({
               }}
               returnKeyType="done"
               onSubmitEditing={() => void save()}
+              submitBehavior="submit"
               accessibilityLabel={t('timeZone.find')}
               accessibilityHint={short ? help : undefined}
               testID="timeZone.search"
@@ -243,7 +267,6 @@ function Choosing({
               onLayout={(event) => setListHeight(event.nativeEvent.layout.height)}
               nestedScrollEnabled
               keyboardShouldPersistTaps="handled"
-              accessibilityLabel={t('timeZone.listLabel')}
             >
               {matches.map((zone, index) => (
                 <Pressable
@@ -277,7 +300,7 @@ function Choosing({
               style={styles.secondary}
               accessibilityRole="alert"
             >
-              {t('timeZone.noneMatch', { typed: typed.trim() })}
+              {nothing}
             </Text>
           )}
 
@@ -289,7 +312,12 @@ function Choosing({
           />
         </View>
       </View>
-      <QuietButton label={t('timeZone.cancel')} onPress={onCancel} testID="timeZone.cancel" />
+      <QuietButton
+        label={t('timeZone.cancel')}
+        onPress={onCancel}
+        off={saving}
+        testID="timeZone.cancel"
+      />
     </>
   );
 }

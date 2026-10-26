@@ -45,6 +45,7 @@ final readonly class OrganisationRules
             $violations[] = $this->violation('name', 'validation.organisation_name_required');
         } elseif (Str\length($checked['name']) > self::NAME_MAXIMUM) {
             $violations[] = $this->violation('name', 'validation.organisation_name_too_long', [
+                '{length}' => (string) Str\length($checked['name']),
                 '{count}' => (string) self::NAME_MAXIMUM,
             ]);
         }

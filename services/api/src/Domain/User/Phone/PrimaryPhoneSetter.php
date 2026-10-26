@@ -53,7 +53,7 @@ final readonly class PrimaryPhoneSetter
 
         if (null !== $held && $held->getUser() !== $user) {
             if ($held->isVerified()) {
-                throw new ApiException(ErrorCode::PhoneTaken, 'This number is already verified on another account.');
+                throw new ApiException(ErrorCode::PhoneTaken, 'contacts.phone_taken');
             }
 
             // Never proved by whoever typed it there, so it does not keep the number from its owner.

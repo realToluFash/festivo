@@ -12,10 +12,12 @@ import {
   primaryEmailAddress,
 } from '@soirely/api-client';
 import { chooseOrganisation, choosePaused, roleHolds } from '@soirely/domain';
+import i18next from 'i18next';
 import { useSyncExternalStore } from 'react';
 
 import { followAccount } from './accountLanguage.ts';
 import { GATED, SIGNED_OUT, api } from './api.ts';
+import { currentLocale } from './i18n/index.ts';
 
 export interface Session {
   name: string;
@@ -68,6 +70,7 @@ export interface ProviderOnly {
 const ACTIVE_ORGANISATION = 'soirely.organisation';
 
 let state: SessionState = { status: 'unknown' };
+let generation = 0;
 const listeners = new Set<() => void>();
 
 export function useSessionState(): SessionState {
@@ -106,9 +109,13 @@ export async function retrySession(): Promise<void> {
 }
 
 async function askForAccount(): Promise<void> {
+  const asked = generation;
+
   try {
-    await adoptAccount(await api.me());
+    await adoptAccount(await api.me(), asked);
   } catch (error) {
+    if (generation !== asked) return;
+
     set(
       error instanceof ApiUnreachableError
         ? { status: 'unreachable', retrying: false }
@@ -118,19 +125,67 @@ async function askForAccount(): Promise<void> {
 }
 
 /** The account, with its organisations; one behind the onboarding gate is not asked for them. */
-export async function adoptAccount(account: Account): Promise<void> {
+export async function adoptAccount(account: Account, asked = generation): Promise<void> {
+  const askedIn = currentLocale();
   const { organisations, paused } =
     account.verified && account.complete
       ? await api.organisationsWithPaused()
       : { organisations: [], paused: [] };
   await followAccount(account);
+  if (generation !== asked) return;
 
   set({ status: 'signedIn', session: sessionFrom(account, organisations, paused) });
+  // The account's language, followed after this read and before the session was set (sc-9267).
+  if (currentLocale() !== askedIn) void rereadOrganisations();
 }
 
 /** After a gate has been passed, or the API says one has closed: the account read afresh. */
 export async function refreshAccount(): Promise<void> {
   await askForAccount();
+}
+
+/** The password and linked providers, read again; a failed read rejects and leaves the page where it is. */
+export async function rereadCredentials(): Promise<void> {
+  const asked = generation;
+  const { hasPassword, providers } = await api.me();
+  if (generation !== asked || state.status !== 'signedIn') return;
+
+  set({ status: 'signedIn', session: { ...state.session, hasPassword, providers } });
+}
+
+let rereads = 0;
+
+/** Read again in a newly picked language, so the dates the server wrote follow it; a failed read leaves them as they were (sc-9267). */
+export async function rereadOrganisations(): Promise<void> {
+  if (state.status !== 'signedIn' || state.session.awaiting != null) return;
+
+  const asked = generation;
+  const known = state.session.organisations;
+  rereads += 1;
+  const reread = rereads;
+  const read = await api.organisationsWithPaused().catch(() => null);
+  if (
+    read == null ||
+    generation !== asked ||
+    reread !== rereads ||
+    state.status !== 'signedIn' ||
+    state.session.organisations !== known
+  )
+    return;
+
+  const current = state.session;
+  const organisation =
+    read.organisations.find((membership) => membership.id === current.organisation?.id) ??
+    current.organisation;
+  const pausedIn =
+    current.pausedIn == null
+      ? null
+      : (read.paused.find((paused) => paused.id === current.pausedIn?.id) ?? current.pausedIn);
+
+  set({
+    status: 'signedIn',
+    session: { ...current, organisations: read.organisations, organisation, pausedIn },
+  });
 }
 
 /** Where a signed-in account belongs: the gate it is behind, or the product. */
@@ -189,6 +244,7 @@ export function forgetSession(ended = false, why?: Problem): void {
   const timedOut = timedOutBy(why);
   const providerOnly = providerOnlyBy(why);
 
+  generation += 1;
   set({
     status: 'signedOut',
     ended,
@@ -197,7 +253,9 @@ export function forgetSession(ended = false, why?: Problem): void {
   });
 }
 
+/** A test starts afresh: an answer still in flight from the test before it is dropped, not adopted. */
 export function __setSessionState(next: SessionState): void {
+  generation += 1;
   set(next);
 }
 
@@ -275,6 +333,8 @@ if (typeof window !== 'undefined') {
   window.addEventListener(SIGNED_OUT, (event) => {
     forgetSession(true, (event as CustomEvent<Problem | undefined>).detail);
   });
+
+  i18next.on('languageChanged', () => void rereadOrganisations());
 
   // The API said the account is behind a gate this session did not know about, so read it again.
   window.addEventListener(GATED, () => {

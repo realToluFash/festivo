@@ -490,6 +490,17 @@ final class InvitationTest extends ApiTestCase
         self::assertStringNotContainsString('..', $this->lastText());
     }
 
+    /** sc-6758: English in the house's British order, the day before the month. */
+    #[Test]
+    public function theEnglishExpiryLinePutsTheDayFirst(): void
+    {
+        [$organisation, $owner] = $this->organisation();
+
+        $this->as($owner)->invite($organisation, 'kemi@example.com', SeededRole::Coordinator);
+
+        self::assertMatchesRegularExpression('/(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) \\d{1,2} (January|February|March|April|May|June|July|August|September|October|November|December)\\.$/mu', $this->lastText());
+    }
+
     /** sc-2914: a new language is for what is sent after it; nothing already sent goes out again. */
     #[Test]
     public function changingTheLanguageSendsNothingAgain(): void

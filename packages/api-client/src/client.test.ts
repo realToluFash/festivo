@@ -1,4 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, test, vi } from 'vitest';
+import { createServerClock } from '@soirely/domain';
 
 import {
   ApiClient,
@@ -721,6 +723,10 @@ describe('a browser never holds the refresh token', () => {
       removable: true,
       permissions: ['events.read'],
       holders: 2,
+      holderNames: [
+        { name: 'Ada Okeke', suspended: false },
+        { name: 'Émeka Obi', suspended: true },
+      ],
     };
 
     const client = new ApiClient({
@@ -746,6 +752,7 @@ describe('a browser never holds the refresh token', () => {
     await client.deleteRole('org_1', 'role_6', 'role_5');
 
     expect(catalogue.roles[0]?.name).toBe('Door team');
+    expect(catalogue.roles[0]?.holderNames).toEqual(door.holderNames);
     expect(catalogue.areas).toEqual([{ area: 'events', permissions: ['events.read'] }]);
     expect(sent.slice(1)).toEqual([
       {
@@ -804,6 +811,7 @@ describe('a browser never holds the refresh token', () => {
       inactivityChoices: [7, 30],
       changes: [
         {
+          entry: 'entry_1',
           at: '2026-10-19T10:00:00+00:00',
           by: { name: 'Adaeze Okafor', role: { id: 'role_1', seededAs: 'owner', name: null } },
           rule: 'providerOnly',
@@ -839,6 +847,7 @@ describe('a browser never holds the refresh token', () => {
     const read = await client.signInRules('org_1');
     await client.updateSignInRules('org_1', { providerOnly: true });
 
+    expect(read.changes[0]?.entry).toBe('entry_1');
     expect(read.changes[0]?.by.name).toBe('Adaeze Okafor');
     expect(read.passwordOnly?.[0]?.name).toBe('Bola Ade');
     expect(read.ownTwoFactor).toBe(true);
@@ -982,13 +991,57 @@ describe('a browser never holds the refresh token', () => {
     expect(saved.verificationNeeded).toBe(false);
   });
 
-  test('signing out clears the session even when the request fails', async () => {
+  test('a sign-out the API never answered keeps the session where only the API can clear the cookie', async () => {
     const tokens = store('good', null);
 
     const client = new ApiClient({
       baseUrl: () => 'http://api.test',
       tokens,
       refreshTokenIn: 'cookie',
+      fetch: async () => {
+        throw new Error('offline');
+      },
+    });
+
+    await expect(client.signOut()).rejects.toBeInstanceOf(ApiUnreachableError);
+    expect(await tokens.access()).toBe('good');
+  });
+
+  test('an error of the API on a sign-out counts as not reached', async () => {
+    const tokens = store('good', null);
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      refreshTokenIn: 'cookie',
+      fetch: async () => problem(500, 'internal'),
+    });
+
+    await expect(client.signOut()).rejects.toBeInstanceOf(ApiUnreachableError);
+    expect(await tokens.access()).toBe('good');
+  });
+
+  test('any other answer to a sign-out ends the session', async () => {
+    const tokens = store('good', null);
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      refreshTokenIn: 'cookie',
+      fetch: async () => problem(401, 'invalid_refresh_token'),
+    });
+
+    await client.signOut();
+
+    expect(await tokens.access()).toBeNull();
+  });
+
+  test('a sign-out that holds its refresh token clears it even when the request fails', async () => {
+    const tokens = store('good', 'refresh');
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
       fetch: async () => {
         throw new Error('offline');
       },
@@ -1159,6 +1212,7 @@ describe('company domain joining (sc-561)', () => {
       domain: 'ire.events',
       since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday, Oct 16 at 09:40 WAT' },
       removesAt: { at: '2026-11-15T08:40:00+00:00', written: 'Sunday, Nov 15 at 09:40 WAT' },
+      onlyOwner: false,
     };
     const { client } = answering({
       organisations: [],
@@ -2147,6 +2201,36 @@ describe('invitations and members', () => {
     expect(deletion.restoreCloses).toBe('Monday, Nov 16 at 14:20 WAT');
     expect(sent[0]).toEqual({ line: 'DELETE /api/orgs/org_1', body: { name: 'Ìrè Events' } });
   });
+
+  test('an event deletion preview says whether the name is asked for and until when it can be restored', async () => {
+    const { api, sent } = client(
+      json({
+        needsName: true,
+        restoreClosesAt: '2026-11-16T13:20:00+00:00',
+        restoreCloses: 'Monday 16 Nov at 14:20 WAT',
+      }),
+    );
+
+    expect(await api.eventDeletion('event_1')).toEqual({
+      needsName: true,
+      restoreClosesAt: '2026-11-16T13:20:00+00:00',
+      restoreCloses: 'Monday 16 Nov at 14:20 WAT',
+    });
+    expect(sent[0]?.line).toBe('GET /api/events/event_1/deletion');
+  });
+
+  test('an event delete sends the name as typed, and none for a Draft', async () => {
+    const sent: { line: string; body: unknown }[] = [];
+
+    await client(json({}), sent).api.deleteEvent('event_1', 'Amara & Tobi’s wedding');
+    await client(json({}), sent).api.deleteEvent('event_1');
+
+    expect(sent[0]).toEqual({
+      line: 'DELETE /api/events/event_1',
+      body: { name: 'Amara & Tobi’s wedding' },
+    });
+    expect(sent[1]).toEqual({ line: 'DELETE /api/events/event_1', body: { name: null } });
+  });
 });
 
 describe('events (sc-1486)', () => {
@@ -2155,11 +2239,18 @@ describe('events (sc-1486)', () => {
     id: '0199f0aa-1111-7000-8000-000000000001',
     organisationId: 'org_1',
     name: 'Adaeze and Tunde',
+    type: 'wedding',
     status: 'draft',
     startsAt: '2026-11-14T16:00:00+01:00',
     endsAt: '2026-11-15T02:00:00+01:00',
     timeZone: 'Africa/Lagos',
+    dayCount: 2,
     currency: 'NGN',
+    cover: null,
+    venue: null,
+    madeLiveAt: null,
+    phase: 'draft',
+    concludedAt: null,
     createdAt: '2026-10-21T09:00:00+00:00',
   };
 
@@ -2197,6 +2288,7 @@ describe('events (sc-1486)', () => {
     const { api, sent } = client(() => json({ event: EVENT }, 201));
     const body = {
       name: 'Adaeze and Tunde',
+      type: 'wedding' as const,
       startsAt: '2026-11-14T16:00',
       endsAt: '2026-11-15T02:00',
       timeZone: 'Africa/Lagos',
@@ -2213,11 +2305,130 @@ describe('events (sc-1486)', () => {
 
   test('an event in a shape it does not know, or a status it does not know, is an error', async () => {
     await expect(
-      client(() => json({ events: [{ ...EVENT, status: 'live' }] })).api.events('org_1'),
+      client(() => json({ events: [{ ...EVENT, status: 'published' }] })).api.events('org_1'),
     ).rejects.toThrow(/events controller/);
     await expect(
       client(() => json({ event: { ...EVENT, timeZone: undefined } })).api.event('e1'),
     ).rejects.toThrow(/events controller/);
+    await expect(
+      client(() => json({ event: { ...EVENT, dayCount: 0 } })).api.event('e1'),
+    ).rejects.toThrow(/events controller/);
+    await expect(
+      client(() => json({ event: { ...EVENT, type: 'burial' } })).api.event('e1'),
+    ).rejects.toThrow(/events controller/);
+    await expect(
+      client(() => json({ event: { ...EVENT, type: undefined } })).api.event('e1'),
+    ).rejects.toThrow(/events controller/);
+  });
+
+  test('an edit opens with the tag it read, and sends it back as If-Match', async () => {
+    const headers: (string | null)[] = [];
+    const api = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (_url, init) => {
+        headers.push(new Headers(init?.headers).get('If-Match'));
+
+        return new Response(JSON.stringify({ event: EVENT }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ETag: '"2"' },
+        });
+      },
+    });
+
+    expect(await api.taggedEvent(EVENT.id)).toEqual({ event: EVENT, tag: '"2"' });
+    expect(await api.updateEvent(EVENT.id, { name: 'Renamed' }, '"2"')).toEqual({
+      event: EVENT,
+      tag: '"2"',
+    });
+    expect(headers).toEqual([null, '"2"']);
+  });
+
+  test('making it live posts nothing and answers the live event with its tag', async () => {
+    const live = { ...EVENT, status: 'live', madeLiveAt: '2026-10-26T15:00:00+00:00' };
+    const sent: { line: string; body: unknown }[] = [];
+    const api = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (url, init) => {
+        sent.push({
+          line: `${init?.method ?? 'GET'} ${new URL(String(url)).pathname}`,
+          body: init?.body ?? null,
+        });
+
+        return new Response(JSON.stringify({ event: live }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ETag: '"3"' },
+        });
+      },
+    });
+
+    expect(await api.makeLive(EVENT.id)).toEqual({ event: live, tag: '"3"' });
+    expect(sent).toEqual([{ line: `POST /api/events/${EVENT.id}/make-live`, body: null }]);
+  });
+
+  test('ending it posts nothing and answers the finished event with its tag', async () => {
+    const ended = {
+      ...EVENT,
+      status: 'ended',
+      phase: 'finished',
+      concludedAt: '2026-11-13T10:00:00+01:00',
+    };
+    const sent: { line: string; body: unknown }[] = [];
+    const api = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (url, init) => {
+        sent.push({
+          line: `${init?.method ?? 'GET'} ${new URL(String(url)).pathname}`,
+          body: init?.body ?? null,
+        });
+
+        return new Response(JSON.stringify({ event: ended }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ETag: '"4"' },
+        });
+      },
+    });
+
+    expect(await api.endEvent(EVENT.id)).toEqual({ event: ended, tag: '"4"' });
+    expect(sent).toEqual([{ line: `POST /api/events/${EVENT.id}/end`, body: null }]);
+  });
+
+  test.each([
+    ['a phase nobody declared', { phase: 'over' }],
+    ['no phase', { phase: undefined }],
+    ['a concludedAt that is not a string or null', { concludedAt: 1 }],
+  ])('an event with %s is an error', async (_, change) => {
+    await expect(
+      client(() => json({ event: { ...EVENT, ...change } })).api.event('e1'),
+    ).rejects.toThrow(/events controller/);
+  });
+
+  test("every response's Date header corrects the clock", async () => {
+    const clock = createServerClock(() => Date.parse('2026-11-14T15:10:00Z'));
+    const api = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      clock,
+      fetch: async () =>
+        new Response(JSON.stringify({ event: EVENT }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', Date: 'Sat, 14 Nov 2026 15:00:00 GMT' },
+        }),
+    });
+
+    await api.event('e1').catch(() => null);
+
+    expect(clock.now().toISOString()).toBe('2026-11-14T15:00:00.000Z');
+  });
+
+  test('an event with a madeLiveAt that is not a string or null is an error', async () => {
+    await expect(
+      client(() => json({ event: { ...EVENT, madeLiveAt: 1 } })).api.event('e1'),
+    ).rejects.toThrow(/events controller/);
+  });
+
+  test('an event answered without its ETag is an error, as an edit could not be saved', async () => {
+    await expect(client(() => json({ event: EVENT })).api.taggedEvent('e1')).rejects.toThrow(
+      /ETag/,
+    );
   });
 
   test('a refused create carries its violations by field', async () => {
@@ -2236,6 +2447,7 @@ describe('events (sc-1486)', () => {
     await api
       .createEvent('org_1', {
         name: 'X',
+        type: 'party',
         startsAt: '2026-11-14T16:00',
         endsAt: '2026-11-14T15:00',
         timeZone: 'Africa/Lagos',
@@ -2247,5 +2459,209 @@ describe('events (sc-1486)', () => {
         });
       });
     expect.assertions(1);
+  });
+});
+
+describe('claiming an organisation with no active owner (sc-6640)', () => {
+  function answering(body: unknown, status = 200) {
+    const sent: { url: string; method: string; body: unknown }[] = [];
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (input, init) => {
+        sent.push({
+          url: String(input),
+          method: init?.method ?? 'GET',
+          body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
+        });
+
+        return new Response(JSON.stringify(body), {
+          status,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      },
+    });
+
+    return { client, sent };
+  }
+
+  const when = { at: '2026-10-27T09:00:00+00:00', written: 'Tuesday 27 Oct at 10:00 WAT' };
+  // Every key OwnerClaimDescriber writes; OwnerClaimTest asserts the same list on the server.
+  const claim = {
+    id: 'claim_1',
+    claimant: { id: 'u_bisi', name: 'Bisi', email: 'bisi@ire.events' },
+    mine: true,
+    domain: 'ire.events',
+    record: { type: 'TXT', name: '_soirely-verify.ire.events', value: 'soirely-claim=abc' },
+    startedAt: when,
+    lapsesAt: when,
+    foundAt: null,
+    passesAt: null,
+  };
+
+  test('reads the banner with the claimant’s record', async () => {
+    const banner = { state: 'open', domain: 'ire.events', claim, stopped: null, lapsed: null };
+    const { client, sent } = answering({ ownerClaim: banner });
+
+    expect(await client.startOwnerClaim('org_1')).toEqual(banner);
+    expect(sent).toEqual([
+      {
+        url: 'http://api.test/api/orgs/org_1/owner-claim',
+        method: 'POST',
+        body: {},
+      },
+    ]);
+  });
+
+  test('reads no banner as null, and a shape it does not know as an error', async () => {
+    expect(await answering({ ownerClaim: null }).client.ownerClaim('org_1')).toBeNull();
+    await expect(
+      answering({ ownerClaim: { state: 'odd' } }).client.ownerClaim('org_1'),
+    ).rejects.toThrow(/OwnerClaimDescriber/);
+  });
+
+  test('says whether Check record found it', async () => {
+    const banner = {
+      state: 'found',
+      domain: 'ire.events',
+      claim: { ...claim, foundAt: when, passesAt: when },
+      stopped: null,
+      lapsed: null,
+    };
+    const { client } = answering({ ownerClaim: banner, found: true });
+
+    expect(await client.checkOwnerClaim('org_1')).toEqual({ ownerClaim: banner, found: true });
+  });
+
+  test('says whether anybody is told of a withdrawal (sc-8204)', async () => {
+    const banner = {
+      state: 'no_owner',
+      domain: 'ire.events',
+      claim: null,
+      stopped: null,
+      lapsed: null,
+    };
+
+    expect(
+      await answering({ ownerClaim: banner, withdrawn: { told: true } }).client.withdrawOwnerClaim(
+        'org_1',
+      ),
+    ).toEqual({ ownerClaim: banner, told: true });
+    expect(
+      await answering({ ownerClaim: banner, withdrawn: { told: false } }).client.withdrawOwnerClaim(
+        'org_1',
+      ),
+    ).toEqual({ ownerClaim: banner, told: false });
+  });
+});
+
+describe("an event's venue (sc-3589)", () => {
+  const picked: unknown = JSON.parse(
+    readFileSync(
+      new URL('../../../services/api/tests/Fixtures/Venue/picked-venue.json', import.meta.url),
+      'utf8',
+    ),
+  );
+
+  const event = {
+    id: 'e1',
+    organisationId: 'o1',
+    name: 'Owambe',
+    type: 'wedding',
+    status: 'draft',
+    startsAt: '2026-11-14T16:00:00+01:00',
+    endsAt: '2026-11-15T02:00:00+01:00',
+    timeZone: 'Africa/Lagos',
+    dayCount: 2,
+    currency: 'NGN',
+    cover: null,
+    madeLiveAt: null,
+    phase: 'draft',
+    concludedAt: null,
+    createdAt: '2026-10-26T09:00:00+00:00',
+  };
+
+  function client(response: Response, sent: string[] = []) {
+    return {
+      api: new ApiClient({
+        baseUrl: () => 'http://api.test',
+        tokens: store('live', null),
+        fetch: async (url, init) => {
+          const target = new URL(String(url));
+          sent.push(`${init?.method ?? 'GET'} ${target.pathname}${target.search}`);
+
+          return response;
+        },
+      }),
+      sent,
+    };
+  }
+
+  test('reads the venue the API serves for a picked address', async () => {
+    const read = await client(json({ event: { ...event, venue: picked } })).api.event('e1');
+
+    expect(read.venue).toEqual(picked);
+  });
+
+  test('reads no venue, and a typed one', async () => {
+    const typed = {
+      name: null,
+      address: {
+        formatted: '12 Bode Thomas Street',
+        line1: null,
+        line2: null,
+        city: null,
+        region: null,
+        postalCode: null,
+        countryCode: null,
+        latitude: null,
+        longitude: null,
+      },
+    };
+
+    expect((await client(json({ event: { ...event, venue: null } })).api.event('e1')).venue).toBe(
+      null,
+    );
+    expect(
+      (await client(json({ event: { ...event, venue: typed } })).api.event('e1')).venue,
+    ).toEqual(typed);
+  });
+
+  test('refuses an event with no venue field, naming where to look', async () => {
+    await expect(client(json({ event })).api.event('e1')).rejects.toThrow(/events controller/);
+  });
+
+  const answers = JSON.parse(
+    readFileSync(
+      new URL('../../../services/api/tests/Fixtures/Address/lookup-answers.json', import.meta.url),
+      'utf8',
+    ),
+  ) as { suggest: unknown; resolve: unknown };
+
+  test('asks for suggestions from three characters, and reads them as the API serves them', async () => {
+    const sent: string[] = [];
+    const { api } = client(json({ success: true, data: answers.suggest }), sent);
+
+    expect(await api.addressSuggestions('Oz')).toEqual([]);
+    expect(await api.addressSuggestions(' Ozumba ')).toEqual([
+      {
+        id: 'node:3589',
+        text: 'Ozumba Mbadiwe Avenue',
+        secondaryText: 'Victoria Island, Lagos, Nigeria',
+      },
+    ]);
+    expect(sent).toEqual(['GET /api/addresses/suggest?q=Ozumba']);
+  });
+
+  test('reads a picked address with its time zone as the API serves it', async () => {
+    const { api, sent } = client(json({ success: true, data: answers.resolve }));
+
+    const address = await api.address('node:3589');
+
+    expect(address).toMatchObject({
+      postalCode: '101241',
+      countryCode: 'NG',
+      timeZone: 'Africa/Lagos',
+    });
+    expect(sent).toEqual(['GET /api/addresses/node%3A3589']);
   });
 });

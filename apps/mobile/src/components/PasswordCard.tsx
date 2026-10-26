@@ -6,7 +6,7 @@ import { StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { currentLocale } from '../i18n/index.ts';
+import { dateLocale } from '../i18n/index.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
 import { retryAfter } from '../kit/code.ts';
@@ -17,19 +17,20 @@ import {
 } from '../kit/passwordChange.ts';
 import { tokens } from '../theme/tokens.ts';
 import { currentSessionId } from '../tokens.ts';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
-import { CodeField, Field } from './Field.tsx';
+import { CodeField, Field, focusChecked } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import { PasswordRule } from './PasswordRule.tsx';
-import { useAboveKeyboard } from './Screen.tsx';
+import { type StepClosed, stepClosed, useAboveKeyboard, useFocusBackToOpener } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 const PROVIDER_NAMES: Record<string, string> = { google: 'Google', apple: 'Apple' };
 
 type Stage =
-  | { kind: 'atRest'; signedOut: number | null; added: string | null }
+  | { kind: 'atRest'; signedOut: number | null; added: string | null; closed?: StepClosed }
   | { kind: 'changing' }
   | { kind: 'setting' };
 
@@ -42,6 +43,7 @@ export function PasswordCard({
   onAdded,
   setting = false,
   onSetting,
+  onSetCancelled,
   onChanged,
 }: {
   email: string;
@@ -52,6 +54,8 @@ export function PasswordCard({
   /** Opened from elsewhere too: the ways-to-sign-in card offers Set a password for the last way in. */
   setting?: boolean;
   onSetting?: (on: boolean) => void;
+  /** Setting a password opened from elsewhere was cancelled, so focus goes back to what opened it. */
+  onSetCancelled?: () => void;
   /** A change signs out every other device, so a list of them is now out of date. */
   onChanged?: () => void;
 }) {
@@ -61,6 +65,7 @@ export function PasswordCard({
     setStage(next);
     onSetting?.(next.kind === 'setting');
   };
+  const opener = useFocusBackToOpener(stage.kind === 'atRest' ? stage.closed : undefined);
   const frame = cardFrame(kind);
   const first = providers[0]?.provider;
   const provider = first == null ? '' : (PROVIDER_NAMES[first] ?? first);
@@ -75,7 +80,16 @@ export function PasswordCard({
               await onAdded();
               open({ kind: 'atRest', signedOut: null, added: provider });
             }}
-            onCancel={() => open({ kind: 'atRest', signedOut: null, added: null })}
+            onCancel={() => {
+              if (stage.kind === 'setting') {
+                open({ kind: 'atRest', signedOut: null, added: null, closed: stepClosed('set') });
+
+                return;
+              }
+
+              open({ kind: 'atRest', signedOut: null, added: null });
+              onSetCancelled?.();
+            }}
           />
         ) : (
           <>
@@ -84,6 +98,7 @@ export function PasswordCard({
               {t('passwordCard.setRest', { provider })}
             </Text>
             <SecondaryButton
+              ref={opener('set')}
               label={t('passwordCard.set')}
               onPress={() => open({ kind: 'setting' })}
               testID="password.set"
@@ -108,12 +123,15 @@ export function PasswordCard({
                   ? t('passwordCard.added', { provider: stage.added })
                   : t('passwordCard.done', { count: stage.signedOut ?? 0 })
               }
+              answer={stage}
+              takesFocus
             />
           )}
           <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
             {t('passwordCard.intro')}
           </Text>
           <SecondaryButton
+            ref={opener('change')}
             label={t('passwordCard.change')}
             onPress={() => setStage({ kind: 'changing' })}
             testID="password.change"
@@ -126,7 +144,9 @@ export function PasswordCard({
             setStage({ kind: 'atRest', signedOut, added: null });
             onChanged?.();
           }}
-          onCancel={() => setStage({ kind: 'atRest', signedOut: null, added: null })}
+          onCancel={() =>
+            setStage({ kind: 'atRest', signedOut: null, added: null, closed: stepClosed('change') })
+          }
         />
       )}
     </View>
@@ -159,7 +179,7 @@ function Changing({
         : field === 'currentPassword'
           ? t('passwordCard.currentBlank')
           : t('passwordCard.newBlank'),
-    (field) => (field === 'currentPassword' ? currentInput : nextInput).current?.focus(),
+    (field) => focusChecked(field === 'currentPassword' ? currentInput : nextInput),
   );
 
   async function submit(): Promise<void> {
@@ -168,7 +188,7 @@ function Changing({
 
     // The rule is stated before submit, so a short password is never sent.
     if (!meetsPasswordLength(next.current)) {
-      nextInput.current?.focus();
+      focusChecked(nextInput);
       return;
     }
 
@@ -184,7 +204,7 @@ function Changing({
       onChanged(signedOut);
     } catch (error) {
       setSaving(false);
-      setRefusal(passwordRefusal(error, t, currentLocale()));
+      setRefusal(passwordRefusal(error, t, dateLocale()));
     }
   }
 
@@ -196,7 +216,7 @@ function Changing({
 
   return (
     <>
-      <Title text={t('passwordCard.formTitle')} />
+      <Title text={t('passwordCard.formTitle')} answer="changing" />
 
       {refusal?.field === 'paused' && (
         <Notice
@@ -204,6 +224,7 @@ function Changing({
           mark="!"
           title={t('passwordCard.pausedTitle')}
           body={refusal.message}
+          answer={refusal}
         />
       )}
       {refusal?.field === 'failed' && (
@@ -212,6 +233,7 @@ function Changing({
           mark={tokens.marks.broken.glyph}
           title={t('passwordCard.failedTitle')}
           body={refusal.message}
+          answer={refusal}
         />
       )}
 
@@ -228,7 +250,6 @@ function Changing({
           ref={currentInput}
           wrong={currentError != null}
           submitting={saving}
-          editable={!saving}
           autoComplete="current-password"
           textContentType="password"
           onChangeText={(text) => {
@@ -250,7 +271,6 @@ function Changing({
             ref={nextInput}
             wrong={nextError != null}
             submitting={saving}
-            editable={!saving}
             autoComplete="new-password"
             textContentType="newPassword"
             onChangeText={(text) => {
@@ -262,6 +282,7 @@ function Changing({
             onBlur={() => checks.left('newPassword', next.current)}
             returnKeyType="done"
             onSubmitEditing={() => void submit()}
+            submitBehavior="submit"
             accessibilityLabel={t('passwordCard.new')}
             testID="password.new"
           />
@@ -283,7 +304,12 @@ function Changing({
           testID="password.save"
         />
       </View>
-      <QuietButton label={t('passwordCard.cancel')} onPress={onCancel} testID="password.cancel" />
+      <QuietButton
+        label={t('passwordCard.cancel')}
+        onPress={onCancel}
+        off={saving}
+        testID="password.cancel"
+      />
     </>
   );
 }
@@ -302,14 +328,17 @@ function Setting({
   const [step, setStep] = useState<'code' | 'password'>('code');
   const stepUp = useRef('');
   const [codeRefusal, setCodeRefusal] = useState<string | null>(null);
-  const [paused, setPaused] = useState<string | null>(null);
+  const [paused, setPaused] = useState<{ message: string } | null>(null);
   const [cooldown, setCooldown] = useState(0);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<object | null>(null);
   const [busy, setBusy] = useState(false);
   const [lengthMet, setLengthMet] = useState(false);
   const [passwordRefusal, setPasswordRefusal] = useState<string | null>(null);
   const code = useRef('');
   const password = useRef('');
+  // What Password remounts with after an expired code sends the card back to the code.
+  const [kept, setKept] = useState('');
+  const [expired, setExpired] = useState<object | undefined>(undefined);
   const codeInput = useRef<TextInput>(null);
   const passwordInput = useRef<TextInput>(null);
   const aboveKeyboard = useAboveKeyboard();
@@ -321,22 +350,22 @@ function Setting({
 
       return problem === 'blank' ? t('passwordCard.setCodeBlank') : t('passwordCard.setCodeShort');
     },
-    () => codeInput.current?.focus(),
+    () => focusChecked(codeInput),
   );
   const passwordChecks = useFormChecks(
     ['password'] as const,
     (_field, value) => (value === '' ? t('passwordCard.setNewBlank') : null),
-    () => passwordInput.current?.focus(),
+    () => focusChecked(passwordInput),
   );
 
   async function send(): Promise<void> {
-    setFailed(false);
+    setFailed(null);
 
     try {
       setCooldown(await api.startSettingPassword());
     } catch (error) {
       const seconds = retryAfter(error);
-      if (seconds == null) setFailed(true);
+      if (seconds == null) setFailed({});
       else setCooldown(seconds);
     }
   }
@@ -364,9 +393,9 @@ function Setting({
       stepUp.current = await api.passPasswordCode(cleanCode(code.current));
       setStep('password');
     } catch (error) {
-      const refused = setCodeRefusalFrom(error, t, currentLocale());
+      const refused = setCodeRefusalFrom(error, t, dateLocale());
       setCodeRefusal(refused.refusal);
-      setPaused(refused.paused);
+      setPaused(refused.paused == null ? null : { message: refused.paused });
     } finally {
       setBusy(false);
     }
@@ -377,7 +406,7 @@ function Setting({
 
     // The rule is stated before submit, so a short password is never sent.
     if (!meetsPasswordLength(password.current)) {
-      passwordInput.current?.focus();
+      focusChecked(passwordInput);
       return;
     }
 
@@ -390,7 +419,11 @@ function Setting({
       setBusy(false);
 
       if (error instanceof ApiError && error.is('verification_code_expired')) {
+        code.current = '';
+        setKept(password.current);
         setCodeRefusal(t('passwordCard.setCodeExpired'));
+        setExpired({});
+        setPaused(null);
         setStep('code');
         return;
       }
@@ -412,14 +445,14 @@ function Setting({
 
     return (
       <>
-        <Title text={t('passwordCard.setNewTitle')} />
+        <Title text={t('passwordCard.setNewTitle')} answer="password" />
         <View {...aboveKeyboard} style={styles.group}>
           <Field label={t('passwordCard.setNewLabel')} error={error}>
             <PasswordField
               ref={passwordInput}
+              defaultValue={kept}
               wrong={error != null}
               submitting={busy}
-              editable={!busy}
               autoComplete="new-password"
               textContentType="newPassword"
               onChangeText={(text) => {
@@ -431,6 +464,7 @@ function Setting({
               onBlur={() => passwordChecks.left('password', password.current)}
               returnKeyType="done"
               onSubmitEditing={() => void save()}
+              submitBehavior="submit"
               accessibilityLabel={t('passwordCard.setNewLabel')}
               testID="password.setNew"
             />
@@ -449,6 +483,7 @@ function Setting({
         <QuietButton
           label={t('passwordCard.cancel')}
           onPress={onCancel}
+          off={busy}
           testID="password.setCancel"
         />
       </>
@@ -459,35 +494,48 @@ function Setting({
 
   return (
     <>
-      <Title text={t('passwordCard.setCodeTitle')} />
+      <Title text={t('passwordCard.setCodeTitle')} answer={kept === '' ? 'code' : undefined} />
       {paused != null && (
-        <Notice tone="attention" mark="!" title={t('passwordCard.pausedTitle')} body={paused} />
+        <Notice
+          tone="attention"
+          mark="!"
+          title={t('passwordCard.pausedTitle')}
+          body={paused.message}
+          answer={paused}
+        />
       )}
-      {failed && (
+      {failed != null && (
         <Notice
           tone="broken"
           mark={tokens.marks.broken.glyph}
           title={t('passwordCard.failedTitle')}
           body={t('passwordCard.setSendFailed')}
+          answer={failed}
         />
       )}
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
         {t('passwordCard.setCodeIntro', { email })}
       </Text>
       <View {...aboveKeyboard} style={styles.group}>
-        <Field label={t('passwordCard.setCodeLabel')} error={codeError}>
+        <Field
+          label={t('passwordCard.setCodeLabel')}
+          error={codeError}
+          errorAnswer={codeChecks.errors.code == null ? expired : undefined}
+        >
           <CodeField
             ref={codeInput}
             wrong={codeError != null}
-            editable={!busy}
+            submitting={busy}
             onChangeText={(text) => {
               code.current = text;
               setCodeRefusal(null);
+              setExpired(undefined);
               codeChecks.edited('code', text);
             }}
             onBlur={() => codeChecks.left('code', code.current)}
             returnKeyType="done"
             onSubmitEditing={() => void passCode()}
+            submitBehavior="submit"
             accessibilityLabel={t('passwordCard.setCodeLabel')}
             testID="password.setCode"
           />
@@ -521,11 +569,11 @@ function Setting({
   );
 }
 
-function Title({ text }: { text: string }) {
+function Title({ text, answer }: { text: string; answer?: unknown }) {
   return (
-    <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+    <AnswerHeading size={tokens.typeTitleSection.size} weight="bold" answer={answer}>
       {text}
-    </Text>
+    </AnswerHeading>
   );
 }
 

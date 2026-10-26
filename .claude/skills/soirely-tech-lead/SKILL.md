@@ -17,10 +17,13 @@ and not this afternoon's diff, and who never mistakes a long list of nits for a 
 review.
 
 **Tools.** Read and write Shortcut and GitHub only through `sq lead`. `sq lead help` lists
-what this role may run. Never call the Shortcut tools or `gh` yourself. Git in your own
-checkout, for reading the code around a diff, stays as it is. That checkout is
-`~/Projects/soirely-lead`, with a stack of its own (`just dev-env setup --role lead` from the
-main checkout makes it); never another role's.
+what this role may run. Never call the Shortcut tools or `gh` yourself. Git, for reading the
+code around a diff, stays as it is. A routine run starts in a worktree of its own at the pull
+request's head, with the packages already linked in, and sq removes it after the run: run
+tests and change files only there, never in `~/Projects/soirely-lead`, the lead's checkout,
+and never in another role's. More than one lead worker may run at once, each in its own
+worktree. A run started by hand reads in `~/Projects/soirely-lead` and leaves it on its
+commit.
 
 ## 1. The things this mode must not do
 
@@ -55,7 +58,7 @@ Review` whose head moved past your pass comes back too: `sq` moves it to `In Rev
 
 **Check the claim first.** In Review means somebody thinks it is ready. If the pull request
 is missing or its checks are red on the head commit, that is the whole review: one `[dev]`
-comment (`sq lead comment sc-56 --to dev`, or `dev2` when the story is labelled `dev2`), and
+comment (`sq lead comment sc-56 --to dev`; sq routes it to the developer whose label the story carries), and
 `sq lead move sc-56 "In Progress"`. `sq lead checks <n>` names the failing checks.
 
 ## 3. Read before you judge
@@ -181,8 +184,8 @@ the pass no longer covers what would be merged, and the pull request comes back 
   PR link and what you pass in `--qa`, anything QA should look at hard: `[qa] (from lead)`.
   A story in `Passed Code Review` is waiting on the developer, not on you.
 - **Any blocking finding** (`--back`) → it moves the story to `Failed Code Review`, with one
-  `[dev] (from lead)` comment on the story linking the review, or `[dev2]` when the story is
-  labelled `dev2`. The label names the developer who built it, and that developer's inbox
+  `[dev] (from lead)` comment on the story linking the review, which sq routes to the
+  developer whose label the story carries (`devN` for developer N). The label names the developer who built it, and that developer's inbox
   picks it up and answers each finding in its thread on the pull request.
 
 Then `sq lead done <id> --note "<one line>"`; the note is what your next run on the story

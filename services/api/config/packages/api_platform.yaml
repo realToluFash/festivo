@@ -22,6 +22,10 @@ api_platform:
     # The OpenAPI document is how they learn the shape.
     formats:
         json: ['application/json']
+    # The entrypoint at /api can render none of the formats above, and nothing
+    # reads it, so the API's root is the same 404 as any unknown path.
+    enable_entrypoint: false
+
     docs_formats:
         json: ['application/json']
         jsonopenapi: ['application/vnd.openapi+json']

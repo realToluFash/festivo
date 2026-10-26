@@ -7,7 +7,7 @@ namespace App\Domain\Organisation\DomainJoining;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\Membership;
 use App\Entity\User;
-use App\Enum\DomainSuspension;
+use App\Enum\Suspension;
 use Psl\Str;
 
 /** `domain_suspended`: the organisation's owners and administrators, each told the removal instant in their own zone. */
@@ -30,8 +30,8 @@ final readonly class DomainSuspensionMailer
             '{domain}' => $membership->getDomain() ?? '',
         ];
         $reason = match ($membership->getSuspension()) {
-            DomainSuspension::DomainClosed => 'domainSuspended.domainClosed',
-            DomainSuspension::DomainManagedElsewhere => 'domainSuspended.managedElsewhere',
+            Suspension::DomainClosed => 'domainSuspended.domainClosed',
+            Suspension::DomainManagedElsewhere => 'domainSuspended.managedElsewhere',
             default => 'domainSuspended.addressGone',
         };
         $link = Str\trim_right($this->webOrigin, '/') . '/app/settings/members';

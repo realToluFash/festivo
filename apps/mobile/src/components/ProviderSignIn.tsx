@@ -68,23 +68,28 @@ export function ProviderButtons({
     }
   }
 
+  const googleLabel = t('signIn.withGoogle', { provider: 'Google' });
+  const appleLabel = t('signIn.withApple', { provider: 'Apple' });
+
   const shows = (provider: Provider): boolean =>
     only == null || only.length === 0 || only.includes(provider);
 
   return (
     <View style={styles.group}>
+      {/* Android names an unlabelled busy view "busy" alone, and keeps that name once it is idle. */}
       {shows('google') && (
         <Pressable
           style={[styles.button, styles.google]}
           onPress={() => void continueWith('google')}
           disabled={busy}
+          accessibilityLabel={googleLabel}
           accessibilityRole="button"
           accessibilityState={{ busy, disabled: busy }}
           testID="signIn.google"
         >
           <GoogleMark />
           <Text size={tokens.typeButton.size} weight="medium" style={styles.googleText}>
-            {t('signIn.withGoogle', { provider: 'Google' })}
+            {googleLabel}
           </Text>
         </Pressable>
       )}
@@ -103,13 +108,14 @@ export function ProviderButtons({
           style={[styles.button, styles.apple]}
           onPress={() => void continueWith('apple')}
           disabled={busy}
+          accessibilityLabel={appleLabel}
           accessibilityRole="button"
           accessibilityState={{ busy, disabled: busy }}
           testID="signIn.apple"
         >
           <AppleMark />
           <Text size={tokens.typeButton.size} weight="medium" style={styles.appleText}>
-            {t('signIn.withApple', { provider: 'Apple' })}
+            {appleLabel}
           </Text>
         </Pressable>
       )}
@@ -159,13 +165,14 @@ const styles = StyleSheet.create({
   orText: { color: tokens.colorInkSecondary },
 
   button: {
-    height: tokens.sizeHitPhonePrimary,
+    minHeight: tokens.sizeHitPhonePrimary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: tokens.spaceMd,
     paddingHorizontal: tokens.spaceXxl,
-    borderRadius: tokens.sizeHitPhonePrimary / 2,
+    paddingVertical: tokens.spaceSm,
+    borderRadius: tokens.radiusPill,
     borderWidth: 1,
   },
   google: { backgroundColor: brand.googleSurface, borderColor: brand.googleBorder },

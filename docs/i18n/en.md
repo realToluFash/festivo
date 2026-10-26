@@ -62,6 +62,176 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. Deleting an event** (sc-14417 for sc-3592, `eventDelete.*` web and app,
+  `messages:event.delete_name_mismatch`). Settled as sc-3592 wrote it; `DeleteEvent.test.tsx`
+  pins it. The act is "Delete event", the dialog "Delete {{event}}?", the way out "Keep it". It
+  follows deleting an organisation: `mismatch` and the API's refusal are one sentence, the check
+  made twice, and the restore window closes on "gone for good". The reader's team is "your whole
+  team"; guests are "Guests following their link", as for calling off. The app's `failed` is
+  `ownership.failed` word for word. es, fr and pt name "support" in full, as
+  `ownership.deleteWindow` does, and agree `deleted` with "event", never with the name.
+- **26 Oct 2026. Happening now, ending or calling off an event** (sc-14189 for sc-3585,
+  `web:events.happeningNow`, `mobile:eventsScreen.happeningNow`, `eventEnd.*` web and app,
+  `eventEdit.scheduleLocked|scheduleConcluded`, `messages:event.already_over|schedule_concluded`).
+  Settled as sc-3585 wrote it. Before the start the act is "Call off" (it won't go ahead); from
+  the start it is "End now"; afterwards the event is "Finished", as sc-3584 settled. A refusal
+  starts "Not ended.", as "Not made live." does. The confirmation's way out is "Keep it on", for
+  both acts, never "Cancel", which in es, fr and pt is the same word as calling off. The read-only
+  help line (`scheduleLocked`) explains, so it keeps "can't"; the refusal of a save that changes
+  the dates anyway (`scheduleConcluded`) and the API's say "cannot". es, fr and pt write the two
+  as one sentence. Guests are "Guests following their link", the people who open the invitation.
+- **26 Oct 2026. Making a draft event live, and the event states** (sc-13956, sc-3584,
+  `eventLive.*` web and app, `events.live|paused|finished`, `eventsScreen.*`,
+  `messages:event.state_invalid`, `event.concluded`, `messages+intl-icu:event.plan_limit`).
+  Settled as sc-3584 wrote it; `Events.test.tsx` pins most of it. An event is "Draft", "Live",
+  "Paused" or "Finished"; the act is "Make live", and a refusal starts "Not made live.", as a
+  refused save starts "Not saved.". A colleague is "somebody else". The plan limit is one
+  sentence on screen and from the API, with the limit as a plural. One line waits on [dev]:
+  `endPassed` should read "… so it cannot be made live. …", as `messages:event.concluded` does,
+  since a refusal takes no contraction, but the test matches "can't". The role permission
+  `rolesScreen…events` still says "publish … conclude", the older words; es, fr and pt already
+  write making live as publishing (_publicar_, _publier_), so the states read _Publicado_,
+  _Publié_, and the permission and the button agree in those three.
+- **26 Oct 2026. The Google-or-Apple refusal's title** (sc-13612, `errors:oauth_only_unlinked`).
+  One 403 code answers an Owner requiring Google or Apple before linking their own and a member
+  stranded read-only, so its title states the shared fact, "No Google or Apple account is
+  linked.", and each `detail` says what to do. "Read-only" stays on the stranded member's banner
+  (`unlinkedTitle`), the only place it is true. es, fr and pt name the account, as their details do.
+- **26 Oct 2026. An event's venue, and the app's event list** (`web:eventForm.venue*`,
+  `web:eventPage.venue*`, `addVenue`, `openInMaps`, `messages:validation.event_venue_*`,
+  `mobile:eventsScreen.*`, sc-3589 and sc-1593 via sc-13205). Settled as built, except two lines
+  that wait on [dev], because `Events.test.tsx` matches their English: `venueLookupDown` should
+  read "Suggestions are not available right now. …", no contraction, as it reports a failure;
+  `venueZoneOffer` should read "The venue is in {{zone}}. Use that time zone?", since "Use it?"
+  leaves the reader to work out what "it" is. es, fr and pt are written to the settled meaning
+  already. A venue is "Venue" in every label; its address is "Address". The two length limits
+  say the same sentence on the web and from the API, the house "Shorten the … to {{most}}
+  characters or fewer.".
+- **26 Oct 2026. An event's cover** (sc-13587, `web:eventCover.*`, `messages:validation.cover_*`).
+  The section is "Cover" and the dialog "Cover photo"; the person's own image is "photo"
+  throughout, and "image" only in "Describe the image", the screen reader's word. The API's
+  description limit now reads as the web's, "Shorten the description to {count} characters or
+  fewer.", replacing "… characters at most." The refusals read "That file is not a photo we can
+  use. Choose a JPEG, PNG, WebP or HEIC." and "The photo did not upload. Try again." (web and API
+  alike), and the created line "The event is saved without its photo. {{reason}}", with no comma:
+  no contractions in an error, as the house rule has it (changed in the catalogues and
+  `Events.test.tsx` by [dev] in #634, sc-3590). Every
+  locale's created line must read with any refusal after it as `{{reason}}`.
+- **26 Oct 2026. An event's type** (`web:eventForm.type`, `typePlaceholder`, `typeMissing`,
+  `web:eventTypes.*`, `messages:validation.event_type_required`, sc-3588 via sc-13205). The
+  field is "Type", its prompt "Choose what kind of event", and the refusal, on screen and from
+  the server alike, "Choose what kind of event it is.". The fourteen labels stand as built:
+  sentence case, a noun phrase, no article. "Anniversary" means a couple's (a firm's is
+  "Corporate event"), which is how es, fr and pt can tell it from "Birthday". "Gala or
+  fundraiser" keeps both words: a gala alone misses the charity dinner. Any new type keeps to
+  about 22 characters, the width of the narrow web select.
+
+- **25 Oct 2026. Settings > Members on the web, the invitation link and the invitation email
+  (sc-67, sc-68, sc-11160, sc-2922, `web:membersScreen.*`, `web:join.*`, `invitations.*` web and
+  app, `emails:invitation.*`, `messages:invitations.*`).** Settled as sc-67 wrote them. The web
+  twins of the app's Members keys say what the app says: `onlyOwner` now reads "so their role
+  cannot change and they cannot be removed …", as sc-4259 settled. `ownRole` keeps "You can't"
+  and "General" (the web's section; the app says "Organisation"), because `Members.test.tsx`
+  matches "You can't change your own role"; it should read "You cannot change your own role."
+  and waits on [dev]. `beyondGrant` reads "you cannot change their role or their access" since
+  sc-13023 (#582), so it holds on the suspension cards too, where restoring is what it rules out. es, fr and pt write the web twins as the app's, word for
+  word, and write `ownRole` without the contraction. An invitation is "withdrawn" in prose and
+  "Revoke" stays the manager's button; the invitee reads "Withdrawn". "Works until" is the
+  invitation's life, never "valid until".
+- **25 Oct 2026. Deleting an organisation (sc-68, sc-3215, `errors:owner_required`,
+  `messages:organisation.owner_required`, `delete_name_mismatch`, `emails:organisationDeleted.*`).**
+  Settled as sc-68 wrote it; `OrganisationDeletionTest` and `OwnershipCard.test.tsx` pin the
+  refusals, the subject and the restore line. `delete_name_mismatch` is the same sentence as
+  `ownership.deleteMismatch`, the check made twice, and `organisationDeleted.restore` repeats
+  `ownership.deleteWindow`, the sentence the owner read before deleting. `errors:owner_required`
+  is the code's own, any act; `organisation.owner_required` names the act. The footer says "you
+  were a member": the organisation no longer exists when it is read.
+- **25 Oct 2026. The sign-in rules refusals (sc-10594, sc-10716, `messages:sign_in_rules.*`).**
+  `inactivity_choice` stays: "Choose 7 days, 30 days or no limit." The other two are the
+  Owner's own state, as the page's `needsOwn*` says it, and should read "Turn on two-factor for
+  yourself before requiring it." and "Link Google or Apple for yourself before requiring it.",
+  but `SignInRulesTest::eachRefusalReadsInEnglishAsItDidBefore` pins the English, so that waits on
+  `[dev]`. es, fr and pt already say it the page's way, after the `errors:` title.
+- **25 Oct 2026. The API's refusals in the request's language (sc-10700, sc-10809, `messages:*`).**
+  Settled as sc-10700 wrote them, with three changes. `event.currency_in_use` says "against this
+  event", as its screen twin `eventEdit.currencyInUse`. `access.two_factor_required` says "requires
+  two-factor for this", the verb `two_factor_overdue` uses, over "asks for two-factor before this".
+  `provider.unlink_first` says "the account that is linked now". Field and header names an
+  integrator sends (`idToken`, `recoveryCode`, `If-Match`, `context`, the assistant's roles) stay as
+  written in every locale. Where a refusal's screen already words the same sentence (the lock-outs,
+  `lostTwoFactor.*`, `signIn.timedOutBody_*`), es, fr and pt say what the screen says.
+- **25 Oct 2026. A time the clocks skip (sc-10638, sc-10675, `eventForm.clocksSkip`,
+  `clocksSkipNextDay`).** Settled as sc-10638 wrote it; `Events.test.tsx` pins it. "There is no
+  {{time}} on {{day}} in {{zone}}: the clocks go forward that night. It will be saved as
+  {{savedAs}}." The next-day line adds "on {{savedDay}}". "The clocks go forward" also covers
+  Lord Howe's half hour; rejected "daylight saving time", which reads American and is a term
+  es, fr and pt each say differently.
+- **25 Oct 2026. Editing an event's details (sc-9704, sc-3587, `eventEdit.*`,
+  `errors:precondition_failed`, `precondition_required`, `event_currency_in_use`).** Settled as
+  sc-3587 wrote it; `Events.test.tsx` pins most of it. "Edit details" opens and heads the form,
+  "Save changes" saves it. A refused save starts "Not saved." and says what is kept. A
+  colleague is "somebody else", in the notice and the dialog alike. The currency refusal is
+  checked on screen and by the server, so `errors:event_currency_in_use` now says "against this
+  event", as `eventEdit.currencyInUse` does.
+- **24 Oct 2026. Suspending a member by hand and restoring them (sc-3575, sc-8735,
+  `membersScreen.suspend*`, `restore*`, `seats*`, `ownerNoSuspend`, `accessConflict`,
+  `emails:memberSuspended.*`, `memberRestored.*`, `memberAccess.footer`, `messages:members.*`).**
+  Settled as sc-3575 wrote it. "Suspend" is the act and "Restore access" the way back; a seat
+  is "a team seat" on "the plan". Three refusals keep their contractions for now because
+  `Members.test.tsx` pins them: `ownerNoSuspend` should read "Owners cannot be suspended",
+  `accessConflict` "your change was not made", and `seatsSuspendedFree` "Suspended members do
+  not take a seat". They wait on [dev2]. es, fr and pt write `ownerNoSuspend` and
+  `members.suspend_owner` as one sentence, as a limit checked twice.
+- **24 Oct 2026. The claim that lapsed (sc-9151, sc-9219, `emails:ownerClaim.lapsed.*`).**
+  The subject leads with the outcome, "Claim lapsed: {organisation}", as sc-14100: the long
+  sentence ran past one row of a 360dp inbox at 473px (QA, 26 Oct). The heading still names
+  the claimant, "{claimant} did not become the owner of {organisation}. The claim lapsed", as
+  "is now the owner"; `{claimant}` can be a bare address, so it is never a possessive. Each
+  reason ends ", so ownership did not pass.", as the web `recordRemoved`; the role is "an
+  Administrator", and the date "Lapsed on {deadline}.", as "Withdrawn on".
+- **24 Oct 2026. The rest of a role's holders (sc-9068, `rolesScreen.moreHolders_*`, web
+  and app).** "and {{count}} more", kept: it closes the list of five names it follows, and the
+  button reveals them in place, so "Show" would only lengthen it. The count is never below 1.
+- **24 Oct 2026. A request refused for its shape (sc-8708, sc-8716,
+  `messages:validation.invalid_shape`, `validation.request_shape`).** Kept as sc-8708 wrote
+  them: "This field cannot take that value. Check it and try again." under the field, and "The
+  request does not have the expected shape." as the 422 `detail`. The field sentence also
+  answers a required field left out (the refresh call with no token), so the other locales
+  word it as the value the field will not take, never as a format. The API tests pin both
+  English sentences, so a reword waits on [dev].
+- **24 Oct 2026. Withdrawing your own claim (sc-8204, sc-8556, `ownerClaim.withdraw*`,
+  `youWithdrew*`, `emails:ownerClaim.withdrawn.*`, `messages:owner_claims.not_claimant`).** The
+  claimant "withdraws" their claim; anybody else "stops" one. The confirm is "Withdraw your
+  claim?" with Withdraw / Keep my claim, the button "Withdraw my claim" in the first person, as
+  the person acts on their own claim. `withdrawBody` keeps "won't": it is a confirm, not an
+  error. `withdrawEnded` and `owner_claims.not_claimant` match the claim's other refusals. The
+  email date reads "Withdrawn on {deadline}.", as "Stopped on" and "Ownership passed on".
+- **24 Oct 2026. Getting an owner back (sc-6640, sc-8216, `ownerClaim.*`, web and app,
+  `emails:ownerClaim.*`, `messages:owner_claims.*`, `errors:owner_claim_*`).** Settled as sc-6640
+  wrote it. The act is "become the owner"; what is under way is "the claim", which "lapses",
+  is "stopped", or "passes" ownership. The record is "the DNS record", or "the record" once
+  named. Who restores ownership is "Soirely support". The administrators' email footer names
+  the role, "an Administrator of {organisation}", as the refusals do. Contractions came out of
+  `lapsed`, `recordRemoved`, `failed` ("That did not work.") and `owner_claims.own` /
+  `owner_claim_own` ("You cannot stop your own claim.").
+- **24 Oct 2026. The only owner left suspended (sc-7831, `accessPaused.stillOnlyOwner`,
+  `membersScreen.suspendedOnlyOwner`, `onlyOwnerNotRemovable`, `onlyOwnerRestoreNeedsAddress`,
+  `membersScreen.history.suspendedAddressGone`).** `onlyOwnerNotRemovable` is a refusal, so
+  "cannot": "{{name}} is the only owner, so they cannot be removed." The history line shows for
+  every domain reason (address gone, domain closed, managed elsewhere), so it reads "Suspended:
+  their company email address no longer gives access", true for each and naming nobody. Both
+  wait on [dev2], because `Members.test.tsx` matches the current English; es, fr and pt are
+  written from the settled wording.
+- **23 Oct 2026. Ownership and leaving (sc-68, sc-7715, `ownership.*`, web and app,
+  `messages:organisation.transfer_owner_required`, `emails:ownershipTransferred.*`).** Settled
+  as sc-68 wrote it. The act is "transfer ownership"; in prose ownership is "handed" to a
+  member, and the old owner "becomes an Administrator", the role's own name. Deleting closes
+  on "gone for good" after Soirely support's restore window, "until {{deadline}}" in the
+  server's `deadline` words. `onlyOwnerBody` no longer repeats its title ("You are the only
+  owner"), which sits above it in the same notice: it is now "Make somebody else an owner,
+  then you can leave." es, fr and pt name the role, never "the owner", so nothing agrees with
+  the person: "the new owner" (`theNewOwner`, the email subject) becomes "the chosen person"
+  or "a change of owner".
 - **21 Oct 2026. A domain member paused (sc-564, sc-6703, `accessPaused.*`,
   `membersScreen.suspended*`, `restore*`, `emails:domainSuspended.*`).** The person reads
   "Paused", the admins "Suspended": both are the AC's words, kept apart on purpose. The next
@@ -102,6 +272,13 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `errors:two_factor_kept_by_rule`. es, fr and pt are written to the settled meaning already.
   A deadline is "from {{deadline}}" and "until {{deadline}}", the server's `time.dateAt`. The
   emails keep straight apostrophes, as every other line in `emails.en.json`.
+- **26 Oct 2026. Two-factor for everyone, the artboard's lines (sc-13182, sc-13026,
+  `signInRules.everyoneOn`, `everyoneOff`, `everyoneWithoutBody_*`, `everyoneStillWithout_*`,
+  `emails:signInRules.twoFactorDue.*`).** Settled as sc-13026 wrote them. The web lines keep
+  their contractions: they explain, they do not refuse. Somebody without two-factor "sees a
+  banner" until their deadline; other locales name it as their banner word, not "notice".
+  "Required from" in the email's facts is the deadline's label; a locale whose "from" will not
+  stand before a colon may say "Deadline", as the body already says "You have until".
 - **21 Oct 2026. Company domain joining (sc-561, sc-4434, `domainJoining.*`,
   `companyDomains.*`, `messages:domain_joining.*`).** Settled as sc-561 wrote it. The act is
   "ask to join", the button "Ask to join", and "Somebody there approves you before you see

@@ -1,5 +1,6 @@
 """`sq web`: the snapshot it serves, and the page and JSON it answers with."""
 
+import io
 import json
 import pathlib
 import tempfile
@@ -7,9 +8,10 @@ import threading
 import time
 import unittest
 import urllib.request
+from contextlib import redirect_stdout
 from unittest import mock
 
-from soirely_queue import dashboard, runlog, store
+from soirely_queue import dashboard, runlog, runner, store
 
 from tests.test_runner import FakePlatform, config, work
 
@@ -101,6 +103,82 @@ class Snapshot(unittest.TestCase):
         store.record(self.db, [work("qa")], NOW)
         view = self.snap()
         self.assertEqual([(r["role"], r["waiting"]) for r in view["elsewhere"]], [("qa", 1)])
+
+    def test_other_machines_their_roles_and_what_they_hold_are_shown(self):
+        store.set_meta(self.db, "shared_view", {
+            "elsewhere": {"dev2": ["tolu-mac", 40]}, "conflicts": [["dev2", "tolu-mac"]],
+            "paused": {"machine": "tolu-mac"},
+            "machines": {"tolu-mac": {"seen": 40, "started": ["dev2", "ops"]}}})
+        runner.set_started(self.db, ["ops", "dev2"], True)
+        view = self.snap()
+        roles = {r["role"]: r for r in view["roles"]}
+        self.assertEqual((roles["dev2"]["state"], roles["dev2"]["detail"]),
+                         ("elsewhere", {"machine": "tolu-mac", "seen": 40}))
+        self.assertEqual(view["machines"],
+                         [{"name": "tolu-mac", "seen": 40, "started": ["dev2", "ops"]}])
+        self.assertIn("paused everywhere by tolu-mac: sq resume --everywhere", view["warnings"])
+        self.assertIn("dev2 is listed here and on tolu-mac, and neither marks it standby; only "
+                      "one runs it", view["warnings"])
+
+    def test_status_says_which_machine_runs_a_role_and_when_it_was_seen(self):
+        from soirely_queue import cli
+        store.set_meta(self.db, "shared_view", {"elsewhere": {"dev2": ["tolu-mac", 40]}})
+        runner.set_started(self.db, ["ops", "dev2"], True)
+        view, out = self.snap(), io.StringIO()
+        with mock.patch.object(cli.dashboard, "snapshot", return_value=view), \
+                mock.patch.object(cli, "home", return_value=self.home), redirect_stdout(out):
+            cli.status(self.db, self.platform, NOW)
+        self.assertIn("  dev2  on tolu-mac, seen 40s ago", out.getvalue())
+
+    def test_status_prints_other_machines_each_warning_and_the_ops_refusal(self):
+        from soirely_queue import cli
+        self.settings["roles"] = {"dev2": {}}
+        store.set_meta(self.db, "shared_view", {
+            "conflicts": [["dev2", "tolu-mac"]], "paused": {"machine": "tolu-mac"},
+            "machines": {"tolu-mac": {"seen": 40, "started": ["dev2", "ops"]}}})
+        with mock.patch("soirely_queue.permissions.pending", return_value=["+ a", "- b"]):
+            view = self.snap()
+        out = io.StringIO()
+        with mock.patch.object(cli.dashboard, "snapshot", return_value=view), \
+                mock.patch.object(cli, "home", return_value=self.home), \
+                mock.patch.object(cli.shutil, "get_terminal_size",
+                                  return_value=cli.os.terminal_size((1000, 50))), \
+                redirect_stdout(out):
+            cli.status(self.db, self.platform, NOW)
+        lines = out.getvalue().splitlines()
+        for line in ("warning: paused everywhere by tolu-mac: sq resume --everywhere",
+                     "warning: dev2 is listed here and on tolu-mac, and neither marks it "
+                     "standby; only one runs it",
+                     "warning: permissions: main grants 2 change(s) this machine has not "
+                     "applied: just agents permissions apply",
+                     "other machines",
+                     "  tolu-mac  seen 40s ago   dev2, ops"):
+            self.assertIn(line, lines)
+        self.assertIn(f"  ops   refused: not listed in {cli.machine.path()}: every machine runs "
+                      "ops, for its own disk, Docker, stacks and manager (ops@here)", lines)
+
+    def test_status_names_the_host_in_the_ops_refusal_of_an_unnamed_machine(self):
+        from soirely_queue import cli
+        self.settings["roles"] = {"dev2": {}}
+        del self.settings["machine"]
+        with mock.patch("socket.gethostname", return_value="tolu-linux"):
+            view = self.snap()
+        out = io.StringIO()
+        with mock.patch.object(cli.dashboard, "snapshot", return_value=view), \
+                mock.patch.object(cli, "home", return_value=self.home), \
+                mock.patch.object(cli.shutil, "get_terminal_size",
+                                  return_value=cli.os.terminal_size((1000, 50))), \
+                redirect_stdout(out):
+            cli.status(self.db, self.platform, NOW)
+        self.assertIn(f"  ops   refused: not listed in {cli.machine.path()}: every machine runs "
+                      "ops, for its own disk, Docker, stacks and manager (ops@tolu-linux)",
+                      out.getvalue().splitlines())
+
+    def test_rules_main_grants_and_this_machine_has_not_applied_are_a_warning(self):
+        with mock.patch("soirely_queue.permissions.pending", return_value=["+ a", "- b"]):
+            warnings = self.snap()["warnings"]
+        self.assertIn("permissions: main grants 2 change(s) this machine has not applied: "
+                      "just agents permissions apply", warnings)
 
     def test_a_failed_run_is_marked(self):
         runlog.append(self.home, "ops", {"at": NOW, "role": "ops", "exit": "1",

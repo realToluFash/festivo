@@ -10,6 +10,7 @@ use App\Entity\Role;
 use App\Enum\ErrorCode;
 use App\Enum\MembershipStatus;
 use App\Http\Exception\ApiException;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Type;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -24,7 +25,8 @@ final readonly class RoleAssignment
     ) {
     }
 
-    public function assign(Membership $membership, Role $role): void
+    /** `$at` is when it took effect, for a change made at its own instant rather than now (sc-6640). */
+    public function assign(Membership $membership, Role $role, ?DateTimeImmutable $at = null): void
     {
         if (!$role->isOwner()) {
             $this->release($membership);
@@ -32,7 +34,7 @@ final readonly class RoleAssignment
 
         $wasOwner = $membership->getRole()->isOwner();
         $membership->changeRole($role);
-        $this->removalClock->wind($membership, $wasOwner);
+        $this->removalClock->wind($membership, $wasOwner, $at);
     }
 
     /** Refused for the last owner: demoting, removing and leaving all pass through here. */
@@ -44,10 +46,10 @@ final readonly class RoleAssignment
     }
 
     /** An owner, active or suspended (sc-564), with no other active owner beside them. */
-    private function isLastOwner(Membership $membership): bool
+    public function isLastOwner(Membership $membership): bool
     {
         return $membership->getRole()->isOwner()
-            && ($membership->isActive() || MembershipStatus::Suspended === $membership->getStatus())
+            && $membership->getStatus()->holdsRole()
             && 0 === $this->otherActiveOwners($membership);
     }
 

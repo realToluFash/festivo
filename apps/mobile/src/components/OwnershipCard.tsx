@@ -4,9 +4,9 @@ import {
   type OrganisationDeletion,
   type OrganisationMember,
 } from '@soirely/api-client';
-import { roleName } from '@soirely/domain';
+import { roleName, typedNameMatches } from '@soirely/domain';
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { type Ref, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -20,15 +20,17 @@ import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field, FieldError, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
+import { ReadOut } from './ReadOut.tsx';
 import { PasswordField } from './PasswordField.tsx';
-import { useAboveKeyboard } from './Screen.tsx';
+import { AnswerHeading } from './AnswerHeading.tsx';
+import { type StepClosed, stepClosed, useAboveKeyboard, useFocusBackToOpener } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 type Step =
-  | { kind: 'resting'; flash: string | null }
-  | { kind: 'transfer' }
+  | { kind: 'resting'; flash: string | null; closed?: StepClosed }
+  | { kind: 'transfer'; fromLeave: boolean }
   | { kind: 'leave' }
-  | { kind: 'delete'; preview: OrganisationDeletion | null };
+  | { kind: 'delete' };
 
 /** After leaving or deleting: launch reads the account again and opens its gate, or the app. */
 function landAfterLeaving(): void {
@@ -47,6 +49,8 @@ export function OwnershipCard({
   const owner = organisation.role.seededAs === 'owner';
   const [step, setStep] = useState<Step>({ kind: 'resting', flash: null });
   const [members, setMembers] = useState<OrganisationMember[] | null>(null);
+  const opener = useFocusBackToOpener(step.kind === 'resting' ? step.closed : undefined);
+  const backTo = (to: string) => setStep({ kind: 'resting', flash: null, closed: stepClosed(to) });
 
   useEffect(() => {
     if (!owner) return;
@@ -78,16 +82,21 @@ export function OwnershipCard({
       {step.kind === 'resting' && (
         <>
           {step.flash != null && (
-            <View accessibilityLiveRegion="polite">
-              <Notice tone="done" mark={tokens.marks.done.glyph} body={step.flash} />
-            </View>
+            <Notice
+              tone="done"
+              mark={tokens.marks.done.glyph}
+              body={step.flash}
+              answer={step}
+              takesFocus
+            />
           )}
           {owner && (
             <Row
               title={t('ownership.transfer')}
               note={t('ownership.transferNote', { organisation: name })}
               action={t('ownership.transfer')}
-              onPress={() => setStep({ kind: 'transfer' })}
+              opener={opener('transfer')}
+              onPress={() => setStep({ kind: 'transfer', fromLeave: false })}
               testID="ownership.transfer"
             />
           )}
@@ -95,6 +104,7 @@ export function OwnershipCard({
             title={t('ownership.leave', { organisation: name })}
             note={t('ownership.leaveNote', { organisation: name })}
             action={t('ownership.leave', { organisation: name })}
+            opener={opener('leave')}
             onPress={() => setStep({ kind: 'leave' })}
             testID="ownership.leave"
           />
@@ -103,13 +113,8 @@ export function OwnershipCard({
               title={t('ownership.delete')}
               note={t('ownership.deleteNote')}
               action={t('ownership.delete')}
-              onPress={() => {
-                setStep({ kind: 'delete', preview: null });
-                api.organisationDeletion(organisation.id).then(
-                  (preview) => setStep({ kind: 'delete', preview }),
-                  () => setStep({ kind: 'delete', preview: null }),
-                );
-              }}
+              opener={opener('delete')}
+              onPress={() => setStep({ kind: 'delete' })}
               testID="ownership.delete"
             />
           )}
@@ -118,9 +123,10 @@ export function OwnershipCard({
 
       {step.kind === 'transfer' && (
         <Transfer
+          answer={step}
           organisation={organisation}
           candidates={others}
-          onCancel={() => setStep({ kind: 'resting', flash: null })}
+          onCancel={() => backTo(step.fromLeave ? 'leave' : 'transfer')}
           onDone={(to) =>
             setStep({
               kind: 'resting',
@@ -132,19 +138,16 @@ export function OwnershipCard({
 
       {step.kind === 'leave' && (
         <Leave
+          answer={step}
           organisation={organisation}
           onlyOwner={onlyOwner}
-          onTransfer={() => setStep({ kind: 'transfer' })}
-          onStay={() => setStep({ kind: 'resting', flash: null })}
+          onTransfer={() => setStep({ kind: 'transfer', fromLeave: true })}
+          onStay={() => backTo('leave')}
         />
       )}
 
       {step.kind === 'delete' && (
-        <Delete
-          organisation={organisation}
-          preview={step.preview}
-          onKeep={() => setStep({ kind: 'resting', flash: null })}
-        />
+        <Delete answer={step} organisation={organisation} onKeep={() => backTo('delete')} />
       )}
     </View>
   );
@@ -154,12 +157,14 @@ function Row({
   title,
   note,
   action,
+  opener,
   onPress,
   testID,
 }: {
   title: string;
   note: string;
   action: string;
+  opener: Ref<View>;
   onPress: () => void;
   testID: string;
 }) {
@@ -171,7 +176,7 @@ function Row({
       <Text size={tokens.typeSmall.size} style={styles.secondary}>
         {note}
       </Text>
-      <SecondaryButton label={action} onPress={onPress} testID={testID} />
+      <SecondaryButton ref={opener} label={action} onPress={onPress} testID={testID} />
     </View>
   );
 }
@@ -179,11 +184,13 @@ function Row({
 type TransferField = 'owner' | 'password' | 'code';
 
 function Transfer({
+  answer,
   organisation,
   candidates,
   onCancel,
   onDone,
 }: {
+  answer: Step;
   organisation: Membership;
   candidates: OrganisationMember[];
   onCancel: () => void;
@@ -258,17 +265,17 @@ function Transfer({
 
   return (
     <View style={styles.form}>
-      <Text size={tokens.typeButton.size} weight="semibold" accessibilityRole="header">
+      <AnswerHeading answer={answer} size={tokens.typeButton.size} weight="semibold">
         {t('ownership.transfer')}
-      </Text>
+      </AnswerHeading>
       <Text size={tokens.typeSmall.size} style={styles.secondary}>
         {t('ownership.transferBody', { organisation: name })}
       </Text>
 
       {refused?.field === null && (
-        <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
+        <ReadOut words={refused.message} interrupts accessibilityRole="alert">
           <Notice tone="broken" mark={tokens.marks.broken.glyph} body={refused.message} />
-        </View>
+        </ReadOut>
       )}
 
       <View ref={ownerRow} accessibilityRole="radiogroup" style={styles.choices}>
@@ -307,11 +314,13 @@ function Transfer({
         >
           <PasswordField
             ref={passwordInput}
+            accessibilityLabel={t('ownership.password')}
             value={password}
             wrong={passwordError != null}
             submitting={busy}
             editable={!busy}
             autoComplete="current-password"
+            textContentType="password"
             onChangeText={(typed) => {
               setPassword(typed);
               if (refused?.field === 'password') setRefused(null);
@@ -327,6 +336,7 @@ function Transfer({
         <Field label={t('ownership.code')} error={codeError}>
           <CodeField
             ref={codeInput}
+            accessibilityLabel={t('ownership.code')}
             value={code}
             wrong={codeError != null}
             takesRecoveryCode
@@ -359,6 +369,7 @@ function Transfer({
       <QuietButton
         label={t('ownership.keep')}
         onPress={onCancel}
+        off={busy}
         testID="ownership.transfer.keep"
       />
     </View>
@@ -366,11 +377,13 @@ function Transfer({
 }
 
 function Leave({
+  answer,
   organisation,
   onlyOwner,
   onTransfer,
   onStay,
 }: {
+  answer: Step;
   organisation: Membership;
   onlyOwner: boolean;
   onTransfer: () => void;
@@ -380,7 +393,10 @@ function Leave({
   const [busy, setBusy] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
   const [refusedLast, setRefusedLast] = useState(false);
+  const [onlyOwnerAsOpened] = useState(onlyOwner);
   const name = organisation.name;
+  const onlyOwnerTitle = t('ownership.onlyOwnerTitle');
+  const onlyOwnerBody = t('ownership.onlyOwnerBody');
 
   async function leave(): Promise<void> {
     setBusy(true);
@@ -398,19 +414,42 @@ function Leave({
 
   return (
     <View style={styles.form}>
-      <Text size={tokens.typeButton.size} weight="semibold" accessibilityRole="header">
+      <AnswerHeading
+        answer={onlyOwnerAsOpened ? undefined : answer}
+        size={tokens.typeButton.size}
+        weight="semibold"
+      >
         {t('ownership.leaveTitle', { organisation: name })}
-      </Text>
+      </AnswerHeading>
       {onlyOwner || refusedLast ? (
         <>
-          <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
+          {onlyOwnerAsOpened ? (
             <Notice
               tone="attention"
               mark="!"
-              title={t('ownership.onlyOwnerTitle')}
-              body={t('ownership.onlyOwnerBody')}
+              title={onlyOwnerTitle}
+              body={onlyOwnerBody}
+              answer={answer}
+              takesFocus
             />
-          </View>
+          ) : refusedLast ? (
+            <Notice
+              tone="attention"
+              mark="!"
+              title={onlyOwnerTitle}
+              body={onlyOwnerBody}
+              answer={refusedLast}
+              takesFocus
+            />
+          ) : (
+            <ReadOut
+              words={`${onlyOwnerTitle}\n${onlyOwnerBody}`}
+              interrupts
+              accessibilityRole="alert"
+            >
+              <Notice tone="attention" mark="!" title={onlyOwnerTitle} body={onlyOwnerBody} />
+            </ReadOut>
+          )}
           <PrimaryButton
             label={t('ownership.transfer')}
             onPress={onTransfer}
@@ -430,7 +469,12 @@ function Leave({
             onPress={() => void leave()}
             testID="ownership.leave.send"
           />
-          <QuietButton label={t('ownership.stay')} onPress={onStay} testID="ownership.leave.stay" />
+          <QuietButton
+            label={t('ownership.stay')}
+            onPress={onStay}
+            off={busy}
+            testID="ownership.leave.stay"
+          />
         </>
       )}
     </View>
@@ -438,15 +482,16 @@ function Leave({
 }
 
 function Delete({
+  answer,
   organisation,
-  preview,
   onKeep,
 }: {
+  answer: Step;
   organisation: Membership;
-  preview: OrganisationDeletion | null;
   onKeep: () => void;
 }) {
   const { t } = useTranslation();
+  const [preview, setPreview] = useState<OrganisationDeletion | null>(null);
   const [typed, setTyped] = useState('');
   const [busy, setBusy] = useState(false);
   const [mismatch, setMismatch] = useState<string | null>(null);
@@ -454,7 +499,20 @@ function Delete({
   const input = useRef<TextInput>(null);
   const aboveKeyboard = useAboveKeyboard();
   const name = organisation.name;
-  const matches = typed.trim() === name;
+  const matches = typedNameMatches(typed, name);
+
+  useEffect(() => {
+    let current = true;
+
+    api.organisationDeletion(organisation.id).then(
+      (counted) => current && setPreview(counted),
+      () => {},
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [organisation.id]);
 
   async function submit(): Promise<void> {
     if (busy) return;
@@ -486,9 +544,9 @@ function Delete({
 
   return (
     <View style={styles.form}>
-      <Text size={tokens.typeButton.size} weight="semibold" accessibilityRole="header">
+      <AnswerHeading answer={answer} size={tokens.typeButton.size} weight="semibold">
         {t('ownership.deleteTitle', { organisation: name })}
-      </Text>
+      </AnswerHeading>
       <Notice
         tone="attention"
         mark="!"
@@ -504,9 +562,9 @@ function Delete({
         }
       />
       {failed != null && (
-        <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
+        <ReadOut words={failed} interrupts accessibilityRole="alert">
           <Notice tone="broken" mark={tokens.marks.broken.glyph} body={failed} />
-        </View>
+        </ReadOut>
       )}
       <View {...aboveKeyboard} style={styles.form}>
         <Field
@@ -516,6 +574,7 @@ function Delete({
         >
           <TextField
             ref={input}
+            accessibilityLabel={t('ownership.deleteType', { organisation: name })}
             value={typed}
             wrong={mismatch != null}
             editable={!busy}
@@ -524,7 +583,7 @@ function Delete({
             autoComplete="off"
             onChangeText={(value) => {
               setTyped(value);
-              if (value.trim() === name) setMismatch(null);
+              if (typedNameMatches(value, name)) setMismatch(null);
             }}
             testID="ownership.delete.name"
           />
@@ -538,6 +597,7 @@ function Delete({
         <QuietButton
           label={t('ownership.deleteKeep', { organisation: name })}
           onPress={onKeep}
+          off={busy}
           testID="ownership.delete.keep"
         />
       </View>

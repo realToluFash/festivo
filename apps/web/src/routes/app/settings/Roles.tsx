@@ -2,9 +2,11 @@ import {
   ApiError,
   type Membership,
   type OrganisationRole,
+  type RoleHolder,
   type RolesCatalogue,
 } from '@soirely/api-client';
 import {
+  HOLDERS_SHOWN,
   LOCALE_CODES,
   MARGIN,
   ROLE_NAME_MAXIMUM,
@@ -15,8 +17,10 @@ import {
   roleName,
   roleNameOf,
   roleNameProblem,
+  type RoleNameProblem,
   sameGrant,
   settableLevels,
+  shownHolders,
   takenRoleNames,
   whatTheySee,
   withExtra,
@@ -24,17 +28,32 @@ import {
   withoutRole,
 } from '@soirely/domain';
 import i18next, { type TFunction } from 'i18next';
-import { type FormEvent, Fragment, useEffect, useState } from 'react';
+import {
+  type FormEvent,
+  Fragment,
+  type RefCallback,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
+import { offButton } from '../../../offButton.ts';
 import { can, useSession } from '../../../session.ts';
+import { focusStep, useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { Forbidden } from '../Forbidden.tsx';
+import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 
 type Load =
-  { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; catalogue: RolesCatalogue };
+  | { kind: 'loading' }
+  | { kind: 'failed'; retried: boolean }
+  | { kind: 'loaded'; catalogue: RolesCatalogue };
 
 /** maxLength counts UTF-16 units, and a letter typed with its accent decomposed is two or more of them. */
 const TYPED_MAXIMUM = ROLE_NAME_MAXIMUM * 4;
@@ -55,6 +74,9 @@ const EXTRAS: Record<string, { name: string; means: string; off: string; on: str
   },
 };
 
+/** The width at which styles.css shows a role on its own page, in place of the list. */
+const ONE_PANE = '(width <= 60rem)';
+
 /** What the detail pane shows: a role, a role being made, or a role being removed. */
 type Pane = { kind: 'role'; id: string } | { kind: 'new' } | { kind: 'removing'; id: string };
 
@@ -65,20 +87,34 @@ export function Roles() {
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const organisationId = organisation?.id;
+  const retrying = useRef(false);
+  const [heading, arriveAtHeading] = useStepFocus();
+  const [failedLine, arriveAtFailed] = useStepFocus<HTMLParagraphElement>();
 
   useEffect(() => {
     if (organisationId == null) return;
     let current = true;
 
     api.roles(organisationId).then(
-      (catalogue) => current && setLoad({ kind: 'loaded', catalogue }),
-      () => current && setLoad({ kind: 'failed' }),
+      (catalogue) => {
+        if (!current) return;
+        setLoad({ kind: 'loaded', catalogue });
+        if (retrying.current) arriveAtHeading();
+        retrying.current = false;
+      },
+      () => {
+        if (!current) return;
+        const retried = retrying.current;
+        retrying.current = false;
+        setLoad({ kind: 'failed', retried });
+        if (retried) arriveAtFailed();
+      },
     );
 
     return () => {
       current = false;
     };
-  }, [organisationId, attempt]);
+  }, [organisationId, attempt, arriveAtHeading, arriveAtFailed]);
 
   if (organisation == null) return null;
   if (!can(session, 'members.read')) return <Forbidden />;
@@ -92,24 +128,18 @@ export function Roles() {
         </p>
       )}
       {load.kind === 'failed' && (
-        <div className="notice notice-broken" role="alert">
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <div className="notice-body">
-            <p>{t('rolesScreen.failedLoad')}</p>
-            <button
-              type="button"
-              className="button"
-              onClick={() => {
-                setLoad({ kind: 'loading' });
-                setAttempt((n) => n + 1);
-              }}
-            >
-              {t('rolesScreen.retry')}
-            </button>
-          </div>
-        </div>
+        <ArrivalNotice
+          role={load.retried ? undefined : 'alert'}
+          line={t('rolesScreen.failedLoad')}
+          lineRef={failedLine}
+          focusable={load.retried}
+          retry={t('rolesScreen.retry')}
+          onRetry={() => {
+            retrying.current = true;
+            setLoad({ kind: 'loading' });
+            setAttempt((n) => n + 1);
+          }}
+        />
       )}
       {load.kind === 'loaded' && (
         <RolesLoaded
@@ -118,6 +148,7 @@ export function Roles() {
           catalogue={load.catalogue}
           manages={can(session, 'members.manage')}
           held={organisation.permissions}
+          headingRef={heading}
           onChange={(catalogue) => setLoad({ kind: 'loaded', catalogue })}
           onReload={() => setAttempt((n) => n + 1)}
         />
@@ -131,6 +162,7 @@ function RolesLoaded({
   catalogue,
   manages,
   held,
+  headingRef,
   onChange,
   onReload,
 }: {
@@ -138,6 +170,7 @@ function RolesLoaded({
   catalogue: RolesCatalogue;
   manages: boolean;
   held: string[];
+  headingRef: RefObject<HTMLHeadingElement | null>;
   onChange: (catalogue: RolesCatalogue) => void;
   onReload: () => void;
 }) {
@@ -149,6 +182,18 @@ function RolesLoaded({
   const [saved, setSaved] = useState(false);
   // At phone and tablet portrait width a role opens on its own page, with ‹ Roles back to the list.
   const [opened, setOpened] = useState(false);
+  const [roleStartRef, arriveAtRole] = useStepFocus<HTMLElement>();
+  const startsRole = useCallback(
+    (element: HTMLElement | null) => {
+      roleStartRef.current = element;
+    },
+    [roleStartRef],
+  );
+  const [savedNotice, arriveAtSaved] = useStepFocus<HTMLDivElement>();
+  const land = useFocusOnceShown();
+  const listed = useRef<HTMLElement>(null);
+  const newRole = useRef<HTMLButtonElement>(null);
+  const removeButton = useRef<HTMLButtonElement>(null);
   const name = (role: OrganisationRole) => roleName(t, role);
   const selected =
     pane.kind === 'new' ? null : (catalogue.roles.find((role) => role.id === pane.id) ?? null);
@@ -159,17 +204,36 @@ function RolesLoaded({
     setOpened(true);
   }
 
+  function backToList(): void {
+    setOpened(false);
+    land(
+      () =>
+        (pane.kind === 'new'
+          ? newRole.current
+          : listed.current?.querySelector<HTMLElement>(`[data-role="${pane.id}"]`)) ??
+        headingRef.current,
+    );
+  }
+
+  function pick(next: Pane): void {
+    open(next);
+    if (window.matchMedia(ONE_PANE).matches) arriveAtRole();
+  }
+
   return (
     <div className="roles" data-open={opened}>
-      <section className="card roles-list" aria-labelledby="roles-title">
+      <section ref={listed} className="card roles-list" aria-labelledby="roles-title">
         <div className="roles-list-head">
-          <h1 id="roles-title">{t('rolesScreen.title')}</h1>
+          <h1 id="roles-title" ref={headingRef} tabIndex={-1}>
+            {t('rolesScreen.title')}
+          </h1>
           <p className="muted">{t('rolesScreen.intro', { name: organisation.name })}</p>
           {manages && (
             <button
+              ref={newRole}
               type="button"
               className="button button-primary"
-              onClick={() => open({ kind: 'new' })}
+              onClick={() => pick({ kind: 'new' })}
             >
               {t('rolesScreen.newRole')}
             </button>
@@ -180,8 +244,10 @@ function RolesLoaded({
             key={role.id}
             type="button"
             className="roles-pick"
+            data-role={role.id}
+            title={name(role)}
             aria-pressed={pane.kind !== 'new' && pane.id === role.id}
-            onClick={() => open({ kind: 'role', id: role.id })}
+            onClick={() => pick({ kind: 'role', id: role.id })}
           >
             <span className="roles-pick-text">
               <span className="roles-pick-name">
@@ -198,7 +264,7 @@ function RolesLoaded({
       </section>
 
       <section className="card roles-detail" aria-labelledby="role-title">
-        <button type="button" className="link-button roles-back" onClick={() => setOpened(false)}>
+        <button type="button" className="link-button roles-back" onClick={backToList}>
           <span aria-hidden="true">‹ </span>
           {t('rolesScreen.title')}
         </button>
@@ -208,10 +274,15 @@ function RolesLoaded({
             role={selected}
             roles={catalogue.roles}
             held={held}
-            onKeep={() => open({ kind: 'role', id: selected.id })}
+            onKeep={() => {
+              open({ kind: 'role', id: selected.id });
+              land(() => removeButton.current);
+            }}
             onRemoved={(roles) => {
               onChange({ ...catalogue, roles });
               open({ kind: 'role', id: roles.find((role) => !role.fixed)?.id ?? '' });
+              if (window.matchMedia(ONE_PANE).matches) arriveAtRole();
+              else land(() => headingRef.current);
               onReload();
             }}
           />
@@ -224,6 +295,9 @@ function RolesLoaded({
             manages={manages}
             held={held}
             saved={saved}
+            startRef={startsRole}
+            savedRef={savedNotice}
+            removeRef={removeButton}
             onRemove={() => selected != null && open({ kind: 'removing', id: selected.id })}
             onSaved={(role) => {
               const exists = catalogue.roles.some((one) => one.id === role.id);
@@ -235,8 +309,10 @@ function RolesLoaded({
               });
               setPane({ kind: 'role', id: role.id });
               setSaved(true);
+              arriveAtSaved();
             }}
             onEdited={() => setSaved(false)}
+            onDiscarded={arriveAtRole}
           />
         )}
       </section>
@@ -251,9 +327,13 @@ function Editing({
   manages,
   held,
   saved,
+  startRef,
+  savedRef,
+  removeRef,
   onRemove,
   onSaved,
   onEdited,
+  onDiscarded,
 }: {
   organisation: Membership;
   role: OrganisationRole | null;
@@ -261,9 +341,14 @@ function Editing({
   manages: boolean;
   held: string[];
   saved: boolean;
+  /** The role's name, or the field it is typed in: where its own page begins. */
+  startRef: RefCallback<HTMLElement>;
+  savedRef: RefObject<HTMLDivElement | null>;
+  removeRef: RefObject<HTMLButtonElement | null>;
   onRemove: () => void;
   onSaved: (role: OrganisationRole) => void;
   onEdited: () => void;
+  onDiscarded: () => void;
 }) {
   const { t } = useTranslation();
   const creating = role == null;
@@ -272,7 +357,16 @@ function Editing({
   const startingGrant = role?.permissions ?? [];
   const [grant, setGrant] = useState<string[]>(startingGrant);
   const [typed, setTyped] = useState(role?.name ?? '');
-  const [nameError, setNameError] = useState<string | null>(null);
+  // A problem the screen has words for is translated as it shows, so it follows a language change (sc-13151).
+  const [nameRefusal, setNameRefusal] = useState<
+    { problem: RoleNameProblem } | { words: string } | null
+  >(null);
+  const nameError =
+    nameRefusal == null
+      ? null
+      : 'problem' in nameRefusal
+        ? t(`rolesScreen.${nameRefusal.problem}`, { most: ROLE_NAME_MAXIMUM })
+        : nameRefusal.words;
   const [status, setStatus] = useState<'editing' | 'saving' | 'failed'>('editing');
   const title = role == null ? '' : roleName(t, role);
   // The API refuses a seeded role's label in every language (sc-2301), whatever the caller reads.
@@ -319,7 +413,7 @@ function Editing({
       );
 
       if (problem != null) {
-        setNameError(t(`rolesScreen.${problem}`, { most: ROLE_NAME_MAXIMUM }));
+        setNameRefusal({ problem });
         document.getElementById('role-name')?.focus();
         return;
       }
@@ -340,10 +434,17 @@ function Editing({
       setTyped(result.name ?? '');
       onSaved(result);
     } catch (error) {
-      const refusal = error instanceof ApiError ? error.fieldErrors().name : undefined;
+      const refusal =
+        error instanceof ApiError
+          ? error.problem.violations?.find((one) => one.propertyPath === 'name')
+          : undefined;
 
       if (naming && refusal != null) {
-        setNameError(refusal);
+        setNameRefusal(
+          refusal.code === 'role_name_taken'
+            ? { problem: 'nameTaken' }
+            : { words: refusal.message },
+        );
         setStatus('editing');
         document.getElementById('role-name')?.focus();
         return;
@@ -353,6 +454,13 @@ function Editing({
     }
   }
 
+  const saveLabel =
+    status === 'saving'
+      ? t('rolesScreen.saving')
+      : creating
+        ? t('rolesScreen.create')
+        : t('rolesScreen.save', { role: title });
+
   return (
     <form noValidate onSubmit={(event) => void save(event)}>
       <div className="roles-detail-head">
@@ -361,6 +469,7 @@ function Editing({
             <div className="field">
               <label htmlFor="role-name">{t('rolesScreen.nameLabel')}</label>
               <input
+                ref={startRef}
                 id="role-name"
                 className={nameError == null ? 'input' : 'input input-wrong'}
                 type="text"
@@ -373,7 +482,7 @@ function Editing({
                 aria-describedby={nameError == null ? undefined : 'role-name-error'}
                 onChange={(event) => {
                   setTyped(event.target.value);
-                  setNameError(null);
+                  setNameRefusal(null);
                   onEdited();
                 }}
               />
@@ -387,7 +496,9 @@ function Editing({
               )}
             </div>
           ) : (
-            <h2 id="role-title">{title}</h2>
+            <h2 id="role-title" ref={startRef} tabIndex={-1}>
+              {title}
+            </h2>
           )}
           <p className="muted">
             {t(describe(role, manages), {
@@ -397,7 +508,7 @@ function Editing({
           </p>
         </div>
         {manages && role?.removable === true && (
-          <button type="button" className="button button-danger" onClick={onRemove}>
+          <button ref={removeRef} type="button" className="button button-danger" onClick={onRemove}>
             {t('rolesScreen.remove')}
           </button>
         )}
@@ -412,7 +523,7 @@ function Editing({
         </div>
       )}
       {saved && (
-        <div className="notice notice-done" role="status">
+        <div className="notice notice-done" ref={savedRef} tabIndex={-1}>
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>
@@ -527,18 +638,20 @@ function Editing({
                 onClick={() => {
                   setGrant(startingGrant);
                   setTyped(role.name ?? '');
-                  setNameError(null);
+                  setNameRefusal(null);
+                  onDiscarded();
                 }}
               >
                 {t('rolesScreen.discard')}
               </button>
             )}
-            <button type="submit" className="button button-primary" disabled={status === 'saving'}>
-              {status === 'saving'
-                ? t('rolesScreen.saving')
-                : creating
-                  ? t('rolesScreen.create')
-                  : t('rolesScreen.save', { role: title })}
+            <button
+              type="submit"
+              className="button button-primary"
+              title={saveLabel}
+              {...offButton(status === 'saving')}
+            >
+              <span className="button-label">{saveLabel}</span>
             </button>
           </div>
         </div>
@@ -552,6 +665,7 @@ function Editing({
               ? t('rolesScreen.nobody')
               : t('rolesScreen.holders', { count: role?.holders ?? 0 })}
           </p>
+          {role != null && <Holders holders={role.holderNames} />}
         </div>
         <div className="roles-panel">
           <span className="roles-panel-heading">{t('rolesScreen.seeHeading')}</span>
@@ -559,6 +673,43 @@ function Editing({
         </div>
       </div>
     </form>
+  );
+}
+
+function Holders({ holders }: { holders: readonly RoleHolder[] }) {
+  const { t } = useTranslation();
+  const [all, setAll] = useState(false);
+  const { shown, more } = shownHolders(holders, all);
+  const firstRevealed = useRef<HTMLLIElement>(null);
+
+  useEffect(() => {
+    if (all) firstRevealed.current?.focus();
+  }, [all]);
+
+  if (holders.length === 0) return null;
+
+  return (
+    <ul className="roles-holders">
+      {shown.map((holder, index) => (
+        <li
+          key={index}
+          ref={index === HOLDERS_SHOWN ? firstRevealed : undefined}
+          tabIndex={index === HOLDERS_SHOWN ? -1 : undefined}
+        >
+          {holder.name}
+          {holder.suspended && (
+            <span className="pill-quiet">{t('membersScreen.state.suspended')}</span>
+          )}
+        </li>
+      ))}
+      {more > 0 && (
+        <li>
+          <button type="button" className="link-button" onClick={() => setAll(true)}>
+            {t('rolesScreen.moreHolders', { count: more })}
+          </button>
+        </li>
+      )}
+    </ul>
   );
 }
 
@@ -658,6 +809,9 @@ function Removing({
   const title = roleName(t, role);
   const choices = replacementsFor(roles, role, held);
   const chosen = choices.find((one) => one.id === replacement);
+  const heading = useRef<HTMLHeadingElement>(null);
+
+  useLayoutEffect(() => focusStep(heading.current), []);
 
   async function remove(): Promise<void> {
     if (role.holders > 0 && replacement == null) {
@@ -679,9 +833,17 @@ function Removing({
     onRemoved(withoutRole(roles, role, moving));
   }
 
+  const removeLabel =
+    role.holders === 0
+      ? t('rolesScreen.removeConfirmEmpty', { role: title })
+      : t('rolesScreen.removeConfirm', { role: title });
+  const keepLabel = t('rolesScreen.keep', { role: title });
+
   return (
     <div className="roles-removing">
-      <h2 id="role-title">{t('rolesScreen.removeTitle', { role: title })}</h2>
+      <h2 id="role-title" ref={heading} tabIndex={-1}>
+        {t('rolesScreen.removeTitle', { role: title })}
+      </h2>
       {role.holders === 0 ? (
         <p>{t('rolesScreen.removeNobody')}</p>
       ) : (
@@ -740,15 +902,14 @@ function Removing({
         <button
           type="button"
           className="button button-dark"
-          disabled={status === 'removing'}
+          title={removeLabel}
+          {...offButton(status === 'removing')}
           onClick={() => void remove()}
         >
-          {role.holders === 0
-            ? t('rolesScreen.removeConfirmEmpty', { role: title })
-            : t('rolesScreen.removeConfirm', { role: title })}
+          <span className="button-label">{removeLabel}</span>
         </button>
-        <button type="button" className="button" onClick={onKeep}>
-          {t('rolesScreen.keep', { role: title })}
+        <button type="button" className="button" title={keepLabel} onClick={onKeep}>
+          <span className="button-label">{keepLabel}</span>
         </button>
       </div>
     </div>

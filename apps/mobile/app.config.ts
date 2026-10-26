@@ -1,5 +1,8 @@
 import type { ExpoConfig } from 'expo/config';
 
+import { withFontScaleKept } from './plugins/withFontScaleKept.ts';
+import { tokens } from './src/theme/tokens.ts';
+
 /**
  * Expo configuration, as code so it can read the environment.
  *
@@ -26,6 +29,8 @@ const config: ExpoConfig = {
   scheme: 'soirely',
   orientation: 'default',
   userInterfaceStyle: 'light',
+  icon: './assets/icon.png',
+  backgroundColor: tokens.colorPage,
   // No newArchEnabled either, and for the same reason as the edge-to-edge flag
   // below: the New Architecture is the only architecture in this SDK, so the
   // toggle no longer exists. Both keys typecheck as errors rather than being
@@ -39,6 +44,10 @@ const config: ExpoConfig = {
   },
   android: {
     package: 'com.soirely.app',
+    adaptiveIcon: {
+      foregroundImage: './assets/adaptive-icon.png',
+      backgroundColor: tokens.colorPage,
+    },
     ...(appleAppLink == null
       ? {}
       : {
@@ -73,6 +82,20 @@ const config: ExpoConfig = {
     'expo-localization',
     'expo-web-browser',
     'expo-apple-authentication',
+    'expo-system-ui',
+    // The system's photo picker needs no library access, so nothing asks for it or for the camera.
+    [
+      'expo-image-picker',
+      { photosPermission: false, cameraPermission: false, microphonePermission: false },
+    ],
+    [
+      'expo-splash-screen',
+      {
+        backgroundColor: tokens.colorPage,
+        // iOS shows the page colour alone; Apple's launch screen is not for branding.
+        android: { image: './assets/splash-icon.png', imageWidth: 288 },
+      },
+    ],
   ],
   experiments: {
     typedRoutes: true,
@@ -95,4 +118,4 @@ const config: ExpoConfig = {
   },
 };
 
-export default config;
+export default withFontScaleKept(config);

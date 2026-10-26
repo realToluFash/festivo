@@ -20,15 +20,18 @@
  */
 export const SURFACE_PATTERNS = {
   everything:
-    /^(package\.json|package-lock\.json|eslint\.config\.mjs|\.prettierrc|lefthook\.yml|compose\.yaml|locales\.json|\.php-cs-fixer\.dist\.php|scripts\/|\.github\/workflows\/)/,
+    /^(package\.json|package-lock\.json|eslint\.config\.mjs|\.prettierrc|lefthook\.yml|compose\.yaml|locales\.json|event-states\.json|\.php-cs-fixer\.dist\.php|scripts\/|\.github\/workflows\/)/,
   api: /^services\/api\//,
   web: /^apps\/web\//,
   mobile: /^apps\/mobile\//,
-  // The gateway replays the API's recorded pairs, so a change to them runs its suite.
-  packages: /^(packages\/|tools\/agent-gateway\/|services\/api\/tests\/Fixtures\/AgentGateway\/)/,
+  // The gateway replays the API's recorded pairs, and the domain's tests read the
+  // API's own tables, so a change to either side runs the suite that compares them.
+  packages:
+    /^(packages\/|tools\/agent-gateway\/|services\/api\/tests\/Fixtures\/(AgentGateway|LocalTime|Venue|Address)\/|services\/api\/src\/(Domain\/Organisation\/Regions|Enum\/(DomainRefusal|EventType))\.php$)/,
   // Any catalogue anywhere, plus any client surface — a new screen can
-  // introduce an untranslated literal without touching a locale file.
-  locales: /(locales\/|translations\/|^locales\.json$|^apps\/)/,
+  // introduce an untranslated literal without touching a locale file — plus
+  // the lint itself, whose tests run only in that job.
+  locales: /(locales\/|translations\/|^locales\.json$|^apps\/|^packages\/i18n-lint\/)/,
 };
 
 /**

@@ -1,12 +1,34 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { type Account } from '@soirely/api-client';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { followAccount } from '../accountLanguage.ts';
+import { setLanguage } from '../i18n/index.ts';
 import { __setSessionState, type Session } from '../session.ts';
 import { routes } from './index.tsx';
 import { membership } from '../test-memberships.ts';
 
 const MEMBERSHIP = membership({ id: 'org_1', name: 'Okonkwo Events' });
+
+const ADA_ACCOUNT: Account = {
+  id: 'acc_1',
+  name: 'Ada Okonkwo',
+  businessName: null,
+  countryCode: null,
+  organisationCountry: null,
+  locale: null,
+  timezone: null,
+  verified: true,
+  complete: true,
+  needsOrganisation: false,
+  hasPassword: true,
+  twoFactorSetupPrompt: false,
+  waitingFor: null,
+  providers: [],
+  emailAddresses: [],
+  phoneNumbers: [],
+};
 
 const ADA: Session = {
   name: 'Ada Okonkwo',
@@ -37,10 +59,10 @@ function at(path: string) {
   return render(<RouterProvider router={router} />);
 }
 
-afterEach(() => {
+afterEach(async () => {
   vi.restoreAllMocks();
-  // A module-level store: one test's session is the next test's unless it is put back.
-  __setSessionState({ status: 'unknown' });
+  await followAccount(ADA_ACCOUNT);
+  await setLanguage(null);
 });
 
 describe('the public tree', () => {
@@ -79,7 +101,25 @@ describe('the application tree', () => {
     expect(screen.getByText('Signed in as Ada Okonkwo')).toBeDefined();
   });
 
-  it('shows an account in no organisation where it stands, and keeps the navigation', () => {
+  it('opens in the account language, with no Automatic, after Automatic was picked outside (sc-9797)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
+    await followAccount({ ...ADA_ACCOUNT, locale: 'es' });
+    await setLanguage(null);
+
+    at('/app');
+
+    const picker = screen.getByRole<HTMLSelectElement>('combobox', { name: 'Idioma' });
+    expect(picker.value).toBe('es');
+    expect([...picker.options].map((option) => option.textContent)).toEqual([
+      'English',
+      'Español',
+      'Français',
+      'Português',
+    ]);
+    expect(screen.getByRole('link', { name: 'Eventos' })).toBeDefined();
+  });
+
+  it('shows an account in no organisation where it stands, with no product page to open', () => {
     __setSessionState({
       status: 'signedIn',
       session: { ...ADA, organisation: null, organisations: [] },
@@ -88,7 +128,7 @@ describe('the application tree', () => {
     at('/app/settings');
 
     expect(screen.getByRole('heading', { name: 'You are not in an organisation' })).toBeDefined();
-    expect(screen.getByRole('link', { name: 'Dashboard' })).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Dashboard' })).toBeNull();
   });
 
   it('sends somebody with no session to sign in, saying nothing about being signed out', async () => {
@@ -216,6 +256,155 @@ describe('the application tree', () => {
     expect(screen.queryByRole('heading', { level: 1, name: 'Sign in' })).toBeNull();
   });
 
+  describe("at a phone's width, the menu (sc-13413)", () => {
+    beforeEach(() => {
+      vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
+    });
+
+    function openMenu(): HTMLElement {
+      const menu = screen.getByRole('button', { name: 'Menu' });
+      menu.focus();
+      fireEvent.click(menu);
+
+      return screen.getByRole('dialog', { name: 'Menu' });
+    }
+
+    it("holds the links in the sidebar's order, then the account, then the language", () => {
+      at('/app/settings');
+
+      const dialog = openMenu();
+      const links = [...dialog.querySelectorAll('a')];
+
+      expect(links.map((link) => link.textContent)).toEqual([
+        'Dashboard',
+        'Events',
+        'Guests',
+        'Settings',
+        'Your account',
+      ]);
+      expect(links[3]!.getAttribute('aria-current')).toBe('page');
+      expect(dialog.textContent).toContain('ada@example.com');
+      expect(dialog.querySelector('select[aria-label="Language"]')).not.toBeNull();
+      expect(document.activeElement).toBe(
+        within(dialog).getByRole('button', { name: 'Close menu' }),
+      );
+    });
+
+    it('closes on a link to another page, focus where that page puts it', async () => {
+      at('/app/settings/members');
+
+      const dialog = openMenu();
+      fireEvent.click(within(dialog).getByRole('link', { name: 'Settings' }));
+
+      await waitFor(() =>
+        expect(document.activeElement).toBe(
+          screen.getByRole('heading', { level: 1, name: 'General' }),
+        ),
+      );
+      await act(() => new Promise((resolve) => setTimeout(resolve)));
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'General' }),
+      );
+      expect(screen.queryByRole('dialog', { name: 'Menu' })).toBeNull();
+    });
+
+    it('closes on the link to the page already showing, focus back on Menu', async () => {
+      at('/app/settings');
+
+      const dialog = openMenu();
+      fireEvent.click(within(dialog).getByRole('link', { name: 'Settings' }));
+
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Menu' })).toBeNull());
+      await act(() => new Promise((resolve) => setTimeout(resolve)));
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Menu' }));
+    });
+
+    it("closes when widened past a phone's width, focus on the sidebar's current link", () => {
+      const listeners: (() => void)[] = [];
+      vi.spyOn(window, 'matchMedia').mockImplementation(
+        (query) =>
+          ({
+            matches: false,
+            media: query,
+            addEventListener: (_: string, listener: () => void) => listeners.push(listener),
+            removeEventListener() {},
+          }) as never,
+      );
+      at('/app/settings/members');
+
+      openMenu();
+      act(() => listeners.forEach((listener) => listener()));
+
+      expect(screen.queryByRole('dialog', { name: 'Menu' })).toBeNull();
+      expect(document.activeElement).toBe(
+        document.querySelector('.shell-sidebar .shell-nav [aria-current="page"]'),
+      );
+      expect(document.activeElement?.textContent).toBe('Settings');
+    });
+
+    it('closes on a link, opening its page', async () => {
+      at('/app/settings');
+
+      const dialog = openMenu();
+      fireEvent.click([...dialog.querySelectorAll('a')].find((a) => a.textContent === 'Events')!);
+
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Menu' })).toBeNull());
+      expect(screen.getAllByRole('link', { name: 'Events' })[0]!.getAttribute('aria-current')).toBe(
+        'page',
+      );
+    });
+
+    it('closes on Escape and on its close button, focus back on Menu', () => {
+      at('/app');
+
+      openMenu();
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Menu' }));
+
+      fireEvent.click(within(openMenu()).getByRole('button', { name: 'Close menu' }));
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Menu' }));
+    });
+
+    it('stays open on a language chosen in it, and the menu changes language', async () => {
+      at('/app');
+
+      const dialog = openMenu();
+      const select = dialog.querySelector('select')!;
+      select.focus();
+      fireEvent.change(select, { target: { value: 'fr' } });
+
+      await waitFor(() =>
+        expect(within(dialog).getByRole('link', { name: 'Tableau de bord' })).toBeDefined(),
+      );
+      expect(screen.getByRole('dialog')).toBe(dialog);
+      expect(document.activeElement).toBe(select);
+    });
+
+    it('says on Menu whether it is open, and which dialog it opens', () => {
+      at('/app');
+
+      const menu = screen.getByRole('button', { name: 'Menu' });
+      expect(menu.getAttribute('aria-expanded')).toBe('false');
+
+      const dialog = openMenu();
+      expect(menu.getAttribute('aria-expanded')).toBe('true');
+      expect(menu.getAttribute('aria-controls')).toBe(dialog.id);
+    });
+
+    it('keeps Tab inside while it is open', () => {
+      at('/app');
+
+      const dialog = openMenu();
+      const select = dialog.querySelector('select')!;
+      select.focus();
+      fireEvent.keyDown(document, { key: 'Tab' });
+
+      expect(document.activeElement).toBe(dialog.querySelector('button'));
+    });
+  });
+
   it('keeps the shell usable when a screen throws', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -227,7 +416,7 @@ describe('the application tree', () => {
       [
         {
           path: '/app',
-          element: routes.find((route) => route.path === '/app')!.element,
+          element: routes[0]!.children.find((route) => route.path === '/app')!.element,
           children: [{ index: true, element: <Boom /> }],
         },
       ],

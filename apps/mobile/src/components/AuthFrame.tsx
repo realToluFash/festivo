@@ -5,8 +5,11 @@ import { useTranslation } from 'react-i18next';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { LanguageChoice } from './LanguageChoice.tsx';
-import { Screen } from './Screen.tsx';
-import { Text } from './Text.tsx';
+import { useMarkSide } from './markSide.ts';
+import { useReadOut } from './ReadOut.tsx';
+import { Screen, useFocusOnAnswer } from './Screen.tsx';
+import { Text, type TextHandle } from './Text.tsx';
+import { Title } from './Title.tsx';
 
 const CARD_WIDTH = 520;
 const FORM_COLUMN_WIDTH = 600;
@@ -18,6 +21,8 @@ export function AuthHeading({
   introBeside = false,
   introLive = false,
   done = false,
+  answer,
+  introAnswer,
 }: {
   title: string;
   intro?: string | undefined;
@@ -25,30 +30,45 @@ export function AuthHeading({
   /** The intro is a status that changes in place, announced politely (WCAG 2.2 SC 4.1.3). */
   introLive?: boolean;
   done?: boolean;
+  /** The tap this step answers: the title takes screen reader focus as it shows, and again with each new answer. */
+  answer?: unknown;
+  /** The tap the intro answers, where the tap's button went: the intro takes focus in place of being read out (sc-11173). */
+  introAnswer?: unknown;
 }) {
   const { kind } = useLayout();
+  const doneMarkSide = useMarkSide(tokens.sizeHitPhoneHero);
+  const { shown, read } = useFocusOnAnswer<TextHandle>(answer);
+  const { read: introRead } = useFocusOnAnswer<TextHandle>(introAnswer);
   const size = kind === 'phone' ? tokens.typeTitlePhone.size : tokens.typeTitlePage.size;
   const showIntro = intro != null && (!introBeside || kind === 'tabletLandscape');
+  useReadOut(introLive && showIntro && introAnswer === undefined ? intro : null, {
+    quietAtMount: true,
+  });
 
   return (
     <>
       {done && (
-        <View style={styles.doneMark}>
-          <Text size={tokens.typeTitlePage.size} weight="bold" style={styles.onAccent}>
+        <View
+          style={[styles.doneMark, doneMarkSide]}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          <Text
+            size={tokens.typeTitlePage.size}
+            weight="bold"
+            style={styles.onAccent}
+            accessible={false}
+          >
             ✓
           </Text>
         </View>
       )}
-      <View style={styles.heading}>
-        <Text size={size} weight="bold" style={styles.title} accessibilityRole="header">
+      <View ref={shown} style={styles.heading}>
+        <Title ref={read} size={size} style={styles.title} accessibilityRole="header">
           {title}
-        </Text>
+        </Title>
         {showIntro && (
-          <Text
-            size={tokens.typeBodyPhone.size}
-            style={styles.secondary}
-            accessibilityLiveRegion={introLive ? 'polite' : 'none'}
-          >
+          <Text ref={introRead} size={tokens.typeBodyPhone.size} style={styles.secondary}>
             {intro}
           </Text>
         )}
@@ -76,9 +96,9 @@ export function AuthFrame({
 
   const brand = (
     <View style={styles.brandRow}>
-      <Text size={tokens.typeTitleDialog.size} weight="bold" style={styles.brand}>
+      <Title size={tokens.typeTitleDialog.size} style={styles.brand}>
         {t('app.name')}
-      </Text>
+      </Title>
     </View>
   );
 
@@ -133,11 +153,9 @@ const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   onAccent: { color: tokens.colorInkOnDark },
   doneMark: {
-    width: tokens.sizeHitPhoneHero,
-    height: tokens.sizeHitPhoneHero,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: tokens.sizeHitPhoneHero / 2,
+    borderRadius: tokens.radiusPill,
     backgroundColor: tokens.colorAccent,
   },
   spacer: { flex: 1 },

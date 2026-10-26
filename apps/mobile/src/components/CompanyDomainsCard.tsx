@@ -1,5 +1,5 @@
 import { ApiError, type CompanyDomains, type Membership } from '@soirely/api-client';
-import { companyDomainProblem, domainOf, normaliseDomain } from '@soirely/domain';
+import { companyDomainProblem, domainOf, normaliseDomain, removalAnswers } from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -10,10 +10,16 @@ import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Field, TextField } from './Field.tsx';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
+import { ReadOut } from './ReadOut.tsx';
+import { type StepClosed, stepClosed, useFocusBackToOpener } from './Screen.tsx';
 
-type Flash = { kind: 'added' | 'removed'; domain: string } | null;
+/** `takesFocus` where the tap's button went with it: a removal, or the domain that fills the list (sc-11173). */
+type Flash = { kind: 'added' | 'removed'; domain: string; takesFocus: boolean } | null;
+
+type Refusal = { message: string; code?: string };
 
 /** Settings > Organisation's "Company domain joining" (sc-561), for those who can manage members. */
 export function CompanyDomainsCard({
@@ -26,10 +32,13 @@ export function CompanyDomainsCard({
   const { t } = useTranslation();
   const [list, setList] = useState<CompanyDomains | null>(null);
   const [typed, setTyped] = useState('');
-  const [error, setError] = useState<string | undefined>(undefined);
+  const [error, setError] = useState<Refusal | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [flash, setFlash] = useState<Flash>(null);
+  const [notRemoved, setNotRemoved] = useState<object | null>(null);
+  const [closed, setClosed] = useState<StepClosed | undefined>(undefined);
+  const opener = useFocusBackToOpener(closed);
   const input = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -50,6 +59,12 @@ export function CompanyDomainsCard({
   const on = list.domains.some((one) => !one.stopped);
   const full = list.domains.length >= list.most;
   const example = domainOf(list.ownAddress) ?? 'example.com';
+  const flashTitle =
+    flash?.kind === 'added'
+      ? t('companyDomains.added', { domain: flash.domain })
+      : t('companyDomains.removed', { domain: flash?.domain ?? '' });
+  const flashBody =
+    flash?.kind === 'added' ? t('companyDomains.addedNext') : t('companyDomains.removedNext');
 
   async function add(): Promise<void> {
     if (busy) return;
@@ -57,29 +72,34 @@ export function CompanyDomainsCard({
     const problem = companyDomainProblem(typed);
 
     if (problem != null) {
-      setError(
-        problem === 'blank'
-          ? t('companyDomains.blank', { example })
-          : t('companyDomains.shape', { example }),
-      );
+      setError({
+        message:
+          problem === 'blank'
+            ? t('companyDomains.blank', { example })
+            : t('companyDomains.shape', { example }),
+      });
       input.current?.focus();
       return;
     }
 
     setBusy(true);
     setFlash(null);
+    setNotRemoved(null);
+    setClosed(undefined);
 
     try {
       const domain = normaliseDomain(typed);
-      setList(await api.addCompanyDomain(organisation.id, domain));
+      const added = await api.addCompanyDomain(organisation.id, domain);
+      setList(added);
       setTyped('');
-      setFlash({ kind: 'added', domain });
+      setError(undefined);
+      setFlash({ kind: 'added', domain, takesFocus: added.domains.length >= added.most });
     } catch (refusal) {
-      const message =
+      const violation =
         refusal instanceof ApiError && refusal.is('validation_failed')
-          ? refusal.fieldErrors().domain
+          ? refusal.problem.violations?.find((one) => one.propertyPath === 'domain')
           : undefined;
-      setError(message ?? t('companyDomains.failed'));
+      setError(violation ?? { message: t('companyDomains.failed') });
       input.current?.focus();
     } finally {
       setBusy(false);
@@ -89,12 +109,15 @@ export function CompanyDomainsCard({
   async function remove(domain: string): Promise<void> {
     setBusy(true);
     setFlash(null);
+    setNotRemoved(null);
+    setClosed(undefined);
 
     try {
       setList(await api.removeCompanyDomain(organisation.id, domain));
-      setFlash({ kind: 'removed', domain });
+      setFlash({ kind: 'removed', domain, takesFocus: true });
+      if (removalAnswers(error?.code, typed, domain)) setError(undefined);
     } catch {
-      setError(t('companyDomains.failed'));
+      setNotRemoved({});
     } finally {
       setConfirming(null);
       setBusy(false);
@@ -118,23 +141,30 @@ export function CompanyDomainsCard({
         {t('companyDomains.intro', { organisation: organisation.name })}
       </Text>
 
-      {flash != null && (
-        <View accessibilityLiveRegion="polite">
-          <Notice
-            tone="done"
-            mark={tokens.marks.done.glyph}
-            title={
-              flash.kind === 'added'
-                ? t('companyDomains.added', { domain: flash.domain })
-                : t('companyDomains.removed', { domain: flash.domain })
-            }
-            body={
-              flash.kind === 'added'
-                ? t('companyDomains.addedNext')
-                : t('companyDomains.removedNext')
-            }
-          />
-        </View>
+      {flash?.takesFocus === true && (
+        <Notice
+          tone="done"
+          mark={tokens.marks.done.glyph}
+          title={flashTitle}
+          body={flashBody}
+          answer={flash}
+          takesFocus
+        />
+      )}
+      {flash?.takesFocus === false && (
+        <ReadOut words={`${flashTitle}\n${flashBody}`}>
+          <Notice tone="done" mark={tokens.marks.done.glyph} title={flashTitle} body={flashBody} />
+        </ReadOut>
+      )}
+
+      {notRemoved != null && (
+        <Notice
+          tone="broken"
+          mark={tokens.marks.broken.glyph}
+          body={t('companyDomains.failed')}
+          answer={notRemoved}
+          takesFocus
+        />
       )}
 
       {list.domains.map(({ domain, stopped }) => (
@@ -151,10 +181,14 @@ export function CompanyDomainsCard({
             </View>
             {confirming !== domain && (
               <SecondaryButton
+                ref={opener(domain)}
                 label={t('companyDomains.remove')}
                 accessibilityLabel={t('companyDomains.removeLabel', { domain })}
                 off={busy}
-                onPress={() => setConfirming(domain)}
+                onPress={() => {
+                  setClosed(undefined);
+                  setConfirming(domain);
+                }}
                 testID={`companyDomains.remove.${domain}`}
               />
             )}
@@ -166,9 +200,9 @@ export function CompanyDomainsCard({
           )}
           {confirming === domain && (
             <View style={styles.confirm}>
-              <Text size={tokens.typeRowTitle.size} weight="bold" accessibilityRole="header">
+              <AnswerHeading answer={confirming} size={tokens.typeRowTitle.size} weight="bold">
                 {t('companyDomains.removeTitle', { domain })}
-              </Text>
+              </AnswerHeading>
               <Text size={tokens.typeBodyPhone.size}>
                 {t('companyDomains.removeBody', { domain })}
               </Text>
@@ -182,7 +216,10 @@ export function CompanyDomainsCard({
                 <SecondaryButton
                   label={t('companyDomains.keep')}
                   off={busy}
-                  onPress={() => setConfirming(null)}
+                  onPress={() => {
+                    setConfirming(null);
+                    setClosed(stepClosed(domain));
+                  }}
                   testID={`companyDomains.keep.${domain}`}
                 />
               </View>
@@ -199,7 +236,7 @@ export function CompanyDomainsCard({
         <>
           <Field
             label={t('companyDomains.addLabel')}
-            error={error}
+            error={error?.message}
             help={
               list.ownAddress == null
                 ? t('companyDomains.helpNoAddress', { count: list.most })

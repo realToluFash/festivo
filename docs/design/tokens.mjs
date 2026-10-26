@@ -35,7 +35,7 @@
 export const tokens = {
   // ── Colour · text and surfaces ─────────────────────────────────────────────
   colorInk: '#15171C', // primary text; also the dark surface (banners, toasts, speaker phone, support bar)
-  colorInkSecondary: '#6B7280', // secondary text, 4.5:1 on white. The most-used colour in the product (1,026 uses)
+  colorInkSecondary: '#5F6673', // secondary text, 4.5:1 on every light surface (lowest: colorHeaderTrack 4.55). The most-used colour in the product (1,026 uses)
   colorInkTertiary: '#9CA3AF', // decoration, placeholders, disabled text, the "Not coming" dot. Fails 4.5:1: never for information
   colorInkOnDark: '#FFFFFF',
   colorInkOnDarkSecondary: '#D1D5DB', // secondary text on dark surfaces (room screen, speaker phone, support bar, landing banner)
@@ -96,7 +96,7 @@ export const tokens = {
 
   // ── Type ───────────────────────────────────────────────────────────────────
   fontFamily: "'Instrument Sans', sans-serif", // all reading text, all names
-  fontFamilyMono: "'JetBrains Mono', monospace", // times, codes, table numbers, counts in tickets, references, step numbers
+  fontFamilyMono: "'JetBrains Mono', monospace", // step numbers, keyboard shortcuts, codes read or copied by character; never money, counts or times (Instrument Sans, tabular-nums)
   // Native: choose files by weight (Instrument Sans 400/500/600/700; JetBrains Mono 500/700), never by family name in a style.
   // size · weight · line height · letter spacing. Roles come from where the screens use them.
   typeDisplay: { size: 48, weight: 700, lineHeight: 1, letterSpacing: '-0.03em' }, // one big number per panel (Messaging reach, Import count); 52 once
@@ -119,7 +119,7 @@ export const tokens = {
   // which is tested.
   typePill: { size: 12, weight: 600, lineHeight: 1, letterSpacing: '0' }, // status pills
   typeButton: { size: 14, weight: 600, lineHeight: 1, letterSpacing: '0' }, // 44px buttons; 15 on phone primaries; 13 inside dense rows
-  typeMonoTime: { size: 14, weight: 600, lineHeight: 1, letterSpacing: '0' }, // mono; 12–13 for provider strings, 20–26 for table numbers
+  typeCode: { size: 14, weight: 600, lineHeight: 1, letterSpacing: '0' }, // codes read or copied by character, step numbers; never times, money or counts
   typeRoomNow: { size: 64, weight: 700, lineHeight: 1.05, letterSpacing: '-0.02em' }, // room screen only; 30 for "coming up", 20 for labels
   typeLandingH1: { size: 60, weight: 700, lineHeight: 1.02, letterSpacing: '-0.03em' }, // public pages only
 

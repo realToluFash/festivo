@@ -19,7 +19,7 @@ almost everything below follows from it.
 | `/soirely-qa-tester qa3` | tester 3 | `[qa3]`, `(from qa3)` | `~/Projects/soirely-qa3`, `soirely-qa3` | API 38080, web 35173  |
 
 Below, **N is your tester number**, and **`soirely-qa<n>` is your worktree and project**:
-`<n>` is empty for tester 1, and `2` or `3` otherwise. Your simulators are `Soirely QA<n> iPhone` and `Soirely QA<n> iPad`, and on a host without Xcode your emulators are `Soirely_QA<n>_Phone` and `Soirely_QA<n>_Tablet`.
+`<n>` is empty for tester 1, and `2` or `3` otherwise. Your simulators are `Soirely QA<n> iPhone` and `Soirely QA<n> iPad`, and your emulators are `Soirely_QA<n>_Phone` and `Soirely_QA<n>_Tablet`. The Mac has both; a host without Xcode (tolu-linux) has the emulators only.
 Examples show tester 1's ports; `node .qa/bin/qa-env.mjs status` prints yours. Never touch
 another tester's worktree, stack, simulators or browser.
 
@@ -81,6 +81,18 @@ wakes nobody. The first claim recorded wins: if another tester got there first i
 and says who, and you post nothing more on it and pick again. On success it prints the
 story. A story back in Ready For QA after a failure is the failing tester's to retest for
 its first 30 minutes there: the claim refuses the others, who pick another.
+
+**A claim needs a stack that answers.** The claim first checks that your stack's API
+answers, and refuses with the reason when it does not (Docker hung, the api service
+stopped, its port refused). Nothing is claimed then: report that the stack is down, tag
+`[ops]` if it stays down, and stop.
+
+**A story you cannot test goes back, never stays In QA under your name.** If the stack dies
+part way, or anything else stops the test, give it back before you finish:
+`sq qa unclaim sc-55 --text "<why it was not tested>"`. It moves the story back to
+`Ready For QA`, removes your label, and posts `QA claim released: qa<n>, …`, so any tester
+may take it at once. A story left `In QA` under your claim with no report comes back to
+you as your next work, ahead of anything new: test it, or give it back.
 
 **A story stuck in `In QA`** has a winning claim more than three hours old and no report,
 which means its tester's run died. Any tester may take it over with the same
@@ -201,6 +213,11 @@ The harness is `.qa/bin/qa-env.mjs`, not `scripts/`, on purpose: `checkout` move
 to the commit under test, which may predate the harness. `checkout` starts the database from
 nothing every time (`--keep-data` to only migrate); every account in it is yours.
 
+The copy follows `main` by itself: each start of your run replaces it with `main`'s harness
+once CI has passed that commit, and says so in the run's opening lines. When the start says it
+kept the old copy, test with the commands the copy has, name in your report any command it
+lacked, and never copy `main`'s harness in ahead of CI.
+
 From inside the worktree, `docker compose …` and `just psql` reach the QA stack on their
 own, because its `.env` names the project. `docker compose stop api` for the offline case stops **your**
 API, and nobody else's.
@@ -275,37 +292,102 @@ With no MCP, fall back to a script — `npx playwright` with a `page.goto`,
 
 ```sh
 node .qa/bin/qa-env.mjs ios [--ipad]                     # the bundler, in Expo Go, on the QA phone (or iPad); shuts the other
+node .qa/bin/qa-env.mjs release [--offline] [--ipad]     # a release build of the commit on the simulator, on its first launch
 node .qa/bin/qa-env.mjs maestro sign-in EMAIL=… PASSWORD=…        # one flow, on the phone
 node .qa/bin/qa-env.mjs maestro sign-in --ipad EMAIL=… PASSWORD=… # on the tablet
+node .qa/bin/qa-env.mjs hierarchy [--ipad | --android]           # what is on screen, for writing a flow
 ```
+
+Never a bare `maestro --device …` on iOS. Maestro's iOS driver answers on one port, so a
+run by hand drives whichever tester's simulator started it first; `qa-env.mjs` gives each
+tester a port of their own.
+
+On the Mac `release` builds for the simulator (`release --android` for the emulator), with
+Xcode and CocoaPods, and takes the better part of an hour the first time. A simulator shares
+the Mac's network, so `--offline` stops the stack the app reaches (api, mercure, storage, oidc)
+rather than the network: the app's offline state, never iOS's own no-network screens. It records
+the first 15 seconds under `.qa/release`, as on Android; judge a splash bullet on that video.
+The next `ios` removes the build and starts the stack again.
 
 `ios` keeps running — start it in the background, and restart it after a `checkout`, or it
 serves the previous commit. Never `just qa-ios` or `just qa-mobile`: those drive the
 developer's bundler and whichever simulator happens to be booted.
 
-**On a host without Xcode, Android instead**, on your emulators `Soirely_QA<n>_Phone` and
-`Soirely_QA<n>_Tablet`:
+**Android**, on your emulators `Soirely_QA<n>_Phone` and `Soirely_QA<n>_Tablet`. On a host
+without Xcode it is the whole app pass. On the Mac it is the pass for every bullet whose AC
+names Android, alone or beside iOS, and an Android-only story is yours to take as much as
+qa2's. On the Mac keep one device of your own booted: shut the simulator
+(`xcrun simctl shutdown "Soirely QA<n> iPhone"`, and `iPad`) before `android`, and run
+`android --stop` before `ios`.
 
 ```sh
 node .qa/bin/qa-env.mjs android [--tablet]               # the bundler, in Expo Go, on the phone (or tablet); stops the other
 node .qa/bin/qa-env.mjs maestro sign-in --android EMAIL=… PASSWORD=…  # one flow, on whichever is running
 node .qa/bin/qa-env.mjs link 'soirely://oauth/…'          # hand a provider redirect back to Expo Go
+node .qa/bin/qa-env.mjs release [--offline] [--tablet]   # a release build of the commit, on its first launch; for offline-from-first-launch or splash bullets
 node .qa/bin/qa-env.mjs android --stop                   # the emulator, when the pass is done
 ```
 
 `android` behaves like `ios`: start it in the background, and restart it after a `checkout`.
+`release` needs no bundler and takes an hour the first time on a machine. The next `android`
+removes it. The emulator has no window, so `release` records the launch's first 15 seconds and
+prints where: judge a splash bullet on that video, frame by frame, never on a screenshot taken
+afterwards. With `--offline` it launches only once the emulator reports no network, and stops
+with an error otherwise. If your worktree says `unknown command` for any command this skill
+names (`release`, `hierarchy`, …), its `.qa/bin` copy predates it, and the start said why it
+kept it: name the missing command in your report. An old `android` neither removes a release
+build nor turns airplane mode off, and the release build then takes a provider's sign-in
+redirect. Never run `setup` part way through a pass for this: it checks out main and rebuilds
+the database.
 To switch to the tablet, stop it, then run `android --tablet`. Stop the emulator when you
 finish, because it holds several GB of memory on a host every other role shares. The app uses
 the same `127.0.0.1` URLs as on a simulator, and a flow runs unchanged. A screenshot outside a
-flow is `~/Android/Sdk/platform-tools/adb -s <serial> exec-out screencap -p > .qa/<name>.png`. Your
-serial is `emulator-5572`, `emulator-5574` or `emulator-5576` for tester 1, 2 or 3. Use the
+flow is `<sdk>/platform-tools/adb -s <serial> exec-out screencap -p > .qa/<name>.png`, where
+`<sdk>` is `~/Library/Android/sdk` on the Mac and `~/Android/Sdk` on Linux. Your serial is `emulator-5572`, `emulator-5574` or `emulator-5576` for tester 1, 2 or 3. Use the
 SDK's `adb` and never a bare `adb`: another version knocks the emulator offline.
+
+**Run a mobile story's checks as batches**, one signed-in session per device, never one
+Maestro run per check. A cold start (relaunch, bundle, sign-in) costs 30 to 45 seconds; a
+check in a batch costs a reload and its own few seconds.
+
+```sh
+node .qa/bin/qa-env.mjs account --ready                  # profile complete, owning one organisation
+node .qa/bin/qa-env.mjs account --two-factor             # the same, two-factor on; prints TOTP_SECRET
+node .qa/bin/qa-env.mjs batch <name> <check>… EMAIL=… PASSWORD=… [TOTP_SECRET=…] [--lang en,es] [--ipad | --android]
+node .qa/bin/qa-env.mjs batch <name>-<check> <check> --cold EMAIL=… PASSWORD=…   # one check alone, cold
+```
+
+A check is a file in `apps/mobile/.maestro/checks/` (its README says how one is written).
+A batch launches Expo Go once, signs in only when it is not already signed in as that account
+(another one is signed out first), and reloads the bundle before each check, so each starts
+clean with the session kept. A failing check does not stop it: it ends listing every check as
+passed or failed, with every screenshot in `.qa/<name>/`. **Re-run a failure alone with
+`--cold`** before reporting it, to tell a check the batch broke from a product that is broken.
+`--lang en,es` runs every check in each language, switched through the account, with one
+sign-in. A two-factor account is signed in with codes the harness makes as they are typed:
+pass its `TOTP_SECRET` as you pass its password, and compute and type none yourself. Two
+sign-ins inside one 30-second step wait for the next, as the API refuses a code it has used.
 
 Flows live in `~/Projects/soirely-qa<n>/apps/mobile/.maestro`, one per outcome, reach the bundler as `${METRO_URL}`
 and Mailpit as `${MAILPIT_URL}` (the harness passes both), and **target `testID`** rather than
 prose — a flow that taps `"Sign in"` taps whichever one it finds first and breaks in
-Spanish. A story that needs a new flow gets one committed beside the others; that is the
-part of a QA pass that survives it.
+Spanish.
+
+**The steps every pass repeats are shared flows: use them rather than write them again.**
+Each runs alone on a signed-in phone (`qa-env.mjs maestro <name>`) or as a step inside your
+own flow (`- runFlow: open-settings.yaml`), without relaunching Expo Go or signing in:
+
+| Flow                       | Leaves the app on                |
+| -------------------------- | -------------------------------- |
+| `sign-out`                 | the sign-in screen               |
+| `open-settings`            | Settings                         |
+| `open-switcher`            | Your organisations               |
+| `open-create-organisation` | the Create an organisation sheet |
+
+**A check needing a flow the repository lacks** writes it in `apps/mobile/.maestro/`, named
+for its outcome and never `_tmp-`, and posts it to `[ops]` on the story under test with the
+flow's whole contents in the comment, for ops to commit. That is the part of a QA pass that
+survives it: a flow left only in your worktree is lost at the next checkout.
 
 Maestro needs a Java runtime (`brew install --cask temurin@21`). Rotating a simulator is
 `xcrun simctl` — and **the three layouts are three arrangements**, so test the tablet in
@@ -317,12 +399,12 @@ drop, and anything about performance. Say so rather than implying it was covered
 **What Maestro will do to you.** Each of these was mistaken for a product failure while
 these flows were being written, and each cost a run:
 
-| It looks like                                                            | It is                                                                                                                                                                      |
-| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| "Signed in as" not found, on a screen that says "Signed in as QA Tester" | Text is matched as a WHOLE regex. Write `Signed in as.*`.                                                                                                                  |
-| Two empty fields and a refusal                                           | A flow's own `env:` defaults shadow the values passed with `-e`. Declare no defaults.                                                                                      |
-| Text typed on top of other text                                          | `eraseText` clears 50 characters unless told otherwise, and `openLink` reaches a route without remounting the screen. Erase generously, and relaunch with `stopApp: true`. |
-| Every element on the screen missing at once                              | An iOS dialog is over the app — "Save Password?" after any sign-in. Dismiss it with a conditional `runFlow`.                                                               |
+| It looks like                                                            | It is                                                                                                                                                                 |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Signed in as" not found, on a screen that says "Signed in as QA Tester" | Text is matched as a WHOLE regex. Write `Signed in as.*`.                                                                                                             |
+| Two empty fields and a refusal                                           | A flow's own `env:` defaults shadow the values passed with `-e`. Declare no defaults.                                                                                 |
+| Text typed on top of other text                                          | `eraseText` clears 50 characters unless told otherwise, and `openLink` reaches a route without remounting the screen. Erase generously; a batch's reload remounts it. |
+| Every element on the screen missing at once                              | An iOS dialog is over the app — "Save Password?" after any sign-in. Dismiss it with a conditional `runFlow`.                                                          |
 
 **So: a failing flow is not a failing product until the screenshot says so.** Open the
 failure screenshot before writing anything down. Of the first five failures these flows
@@ -426,6 +508,10 @@ until the claim goes stale. It refuses a story you have not claimed.
 Then **tag what needs another role** — one `sq qa comment sc-55 --to <role>` per Outstanding
 item that someone else has to decide or fix: `[pm]` for an undecided behaviour, `[ux]` for a
 missing state on an artboard, `[dev]` for a question about the build. See `role-comments`.
+**End each device pass by closing what it opened**: stop the background `ios` or `android`
+command (it is the bundler), then the device, with `node .qa/bin/qa-env.mjs android --stop`
+or `xcrun simctl shutdown "Soirely QA<n> iPhone"` (and `iPad`). A bundler left running
+holds your worker as busy, and an emulator holds several GB.
 Finish with `sq qa done <id> --note "<one line>"`; the note is what your next run on the
 story sees.
 

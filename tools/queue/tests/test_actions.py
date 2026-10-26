@@ -1,7 +1,10 @@
 """The guarded writes, against fakes: nothing here reaches Shortcut or GitHub."""
 
 import argparse
+import datetime
+import io
 import unittest
+from contextlib import redirect_stdout
 from unittest import mock
 
 from soirely_queue import actions, cli, github, roles, store, sync
@@ -66,7 +69,11 @@ def slim(raw):
             "labels": sorted(label["name"] for label in raw["labels"]),
             "comments": [{"id": c["id"], "parent": c["parent_id"], "at": c["created_at"],
                           "text": c["text"]} for c in raw["comments"]],
-            "description": raw["description"], "tasks": [], "links": [], "done": False,
+            "description": raw["description"], "tasks": [],
+            "links": [{"verb": x["verb"], "subject": x["subject_id"], "object": x["object_id"]}
+                      for x in raw.get("story_links", [])],
+            "done": STATES[str(raw["workflow_state_id"])] == "Done" or bool(raw.get("archived")),
+            "archived": bool(raw.get("archived")),
             "position": 1, "updated_at": raw["moved_at"], "type": "feature"}
 
 
@@ -108,6 +115,10 @@ class Base(unittest.TestCase):
         files = mock.patch("soirely_queue.github.files", return_value=[])
         files.start()
         self.addCleanup(files.stop)
+        # Nor does any reach a tester's Docker stack; one that needs it down patches this.
+        stack = mock.patch("soirely_queue.local.stack_problem", return_value=None)
+        stack.start()
+        self.addCleanup(stack.stop)
 
     def as_(self, role):
         return FakeContext(self.db, role, self.fake)
@@ -159,6 +170,30 @@ class Writes(Base):
         self.assertEqual(self.fake.comments, [(1, "QA claim: qa2")])
         self.assertIn("qa2", self.labels(1))
 
+    def test_a_tester_without_xcode_never_claims_a_story_that_needs_ios(self):
+        self.fake.add(1, "Ready For QA", ["needs ios"])
+        with mock.patch("soirely_queue.machine.has_xcode", return_value=False), \
+                self.assertRaisesRegex(actions.Refused, "needs iOS"):
+            actions.claim(self.as_("qa2"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "Ready For QA")
+        self.assertEqual(self.fake.comments, [])
+        with mock.patch("soirely_queue.machine.has_xcode", return_value=True):
+            actions.claim(self.as_("qa"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In QA")
+
+    def test_a_tester_without_xcode_never_takes_over_a_stale_claim_that_needs_ios(self):
+        self.fake.add(1, "In QA", ["needs ios"])
+        self.fake.comment(1, "QA claim: qa")
+        before = list(self.fake.comments)
+        with mock.patch("soirely_queue.machine.has_xcode", return_value=False), \
+                self.assertRaisesRegex(actions.Refused, "needs iOS"):
+            actions.claim(self.as_("qa2"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In QA")
+        self.assertEqual(self.fake.comments, before)
+        with mock.patch("soirely_queue.machine.has_xcode", return_value=True):
+            actions.claim(self.as_("qa3"), args(story="sc-1"))
+        self.assertEqual(self.fake.comments[-1][1][:31], "QA claim: qa3, taking over from")
+
     def test_a_failed_story_back_for_qa_is_its_first_tester_s_to_retest(self):
         import datetime
         self.fake.add(1, "Ready For QA", ["qa failed"])
@@ -167,6 +202,68 @@ class Writes(Base):
         with self.assertRaisesRegex(actions.Refused, "qa2's to retest"):
             actions.claim(self.as_("qa"), args(story="sc-1"))
         actions.claim(self.as_("qa2"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In QA")
+
+    def test_a_tester_whose_stack_is_down_claims_nothing(self):
+        self.fake.add(1, "Ready For QA")
+        with mock.patch("soirely_queue.local.stack_problem",
+                        return_value="Docker did not answer within 30 seconds"), \
+                self.assertRaisesRegex(actions.Refused, "Docker did not answer"):
+            actions.claim(self.as_("qa2"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "Ready For QA")
+        self.assertEqual(self.fake.comments, [])
+
+    def test_a_tester_gives_back_a_story_it_cannot_test_to_any_tester(self):
+        self.fake.add(1, "Ready For QA", ["qa failed"])
+        actions.claim(self.as_("qa2"), args(story="sc-1"))
+        actions.unclaim(self.as_("qa2"), args(story="sc-1", text="Docker is down"))
+        self.assertEqual(self.state(1), "Ready For QA")
+        self.assertNotIn("qa2", self.labels(1))
+        self.assertEqual(self.fake.comments[-1], (1, "QA claim released: qa2, Docker is down"))
+        self.fake.raw[1]["moved_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        actions.claim(self.as_("qa3"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In QA")
+
+    def test_only_the_claiming_tester_gives_a_story_back(self):
+        self.fake.add(1, "Ready For QA")
+        actions.claim(self.as_("qa3"), args(story="sc-1"))
+        with self.assertRaisesRegex(actions.Refused, "not under your QA claim"):
+            actions.unclaim(self.as_("qa2"), args(story="sc-1", text="no stack"))
+        self.assertEqual(self.state(1), "In QA")
+
+    def test_a_story_already_reported_is_not_given_back(self):
+        self.fake.add(1, "Ready For QA")
+        actions.claim(self.as_("qa2"), args(story="sc-1"))
+        actions.report(self.as_("qa2"), args(story="sc-1", result="failed", files=None,
+                                             text="Tested on main\nBroken."))
+        with self.assertRaisesRegex(actions.Refused, "not under your QA claim"):
+            actions.unclaim(self.as_("qa2"), args(story="sc-1", text="no stack"))
+        self.assertEqual(self.state(1), "Failed QA")
+
+    def test_the_reason_for_giving_back_can_be_piped_in(self):
+        self.fake.add(1, "Ready For QA")
+        actions.claim(self.as_("qa2"), args(story="sc-1"))
+        session = mock.Mock(db=self.db, role="qa2")
+        with mock.patch("soirely_queue.actions.Context",
+                        lambda db, role, cache: self.as_(role)), \
+                mock.patch("sys.stdin", io.StringIO("Docker is down\n")), \
+                redirect_stdout(io.StringIO()):
+            cli.write(actions.unclaim)(session, args(story="sc-1", text=None))
+        self.assertEqual(self.state(1), "Ready For QA")
+        self.assertEqual(self.fake.comments[-1], (1, "QA claim released: qa2, Docker is down"))
+
+    def test_a_tester_whose_stack_is_down_is_told_to_give_back_its_held_story(self):
+        self.fake.add(1, "Ready For QA")
+        actions.claim(self.as_("qa2"), args(story="sc-1"))
+        with mock.patch("soirely_queue.local.stack_problem", return_value="no api"), \
+                self.assertRaisesRegex(actions.Refused, "qa2 unclaim sc-1"):
+            actions.claim(self.as_("qa2"), args(story="sc-1"))
+
+    def test_a_tester_takes_up_its_own_held_story_again(self):
+        self.fake.add(1, "Ready For QA")
+        actions.claim(self.as_("qa2"), args(story="sc-1"))
+        actions.claim(self.as_("qa2"), args(story="sc-1"))
+        self.assertEqual(self.fake.comments, [(1, "QA claim: qa2")])
         self.assertEqual(self.state(1), "In QA")
 
     def test_the_lead_never_hands_a_story_to_qa(self):
@@ -250,6 +347,57 @@ class LanguageTags(Base):
                                                  untagged=False, text="x"))
 
 
+class HeldByBlockers(Base):
+    def setUp(self):
+        super().setUp()
+        self.fake.add(1, "Ready For Dev", ["backend"])
+        self.fake.add(7, "Ready For Dev")
+        self.fake.add(8, "In Review")
+        self.fake.relate(7, 1, "blocks")
+        self.fake.relate(8, 1, "blocks")
+
+    def test_a_developer_s_claim_names_each_blocker_and_its_state(self):
+        with self.assertRaisesRegex(actions.Refused,
+                                    r"held by sc-7 \(Ready For Dev\), sc-8 \(In Review\)"):
+            actions.claim(self.as_("dev3"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "Ready For Dev")
+        self.assertEqual(self.labels(1), {"backend"})
+        self.assertEqual(self.fake.comments, [])
+
+    def test_the_claim_goes_through_once_every_blocker_has_merged(self):
+        self.fake.update(7, workflow_state_id=IDS["Done"])
+        self.fake.update(8, workflow_state_id=IDS["Failed QA"])
+        actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_a_rework_claim_fetches_no_blocker(self):
+        self.fake.update(1, workflow_state_id=IDS["Failed QA"],
+                         labels=[{"name": "backend"}, {"name": "dev2"}])
+        del self.fake.raw[7]
+        actions.claim(self.as_("dev2"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_the_product_manager_s_move_still_moves_and_says_what_holds_it(self):
+        self.fake.update(1, workflow_state_id=IDS["To Do"])
+        said = actions.move(self.as_("pm"), args(story="sc-1", state="Ready For Dev"))
+        self.assertEqual(self.state(1), "Ready For Dev")
+        self.assertIn("held by sc-7 (Ready For Dev), sc-8 (In Review)", said)
+
+    def wakes_for_1(self):
+        return [w for w in self.queue_wakes("dev") if w.startswith("sc-1 ")]
+
+    def test_a_held_story_wakes_no_developer_until_its_last_blocker_merges(self):
+        for story_id in (1, 7, 8):
+            self.as_("pm").story(story_id)
+        self.assertEqual(self.wakes_for_1(), [])
+        self.fake.update(7, workflow_state_id=IDS["Ready For QA"])
+        self.as_("pm").story(7)
+        self.assertEqual(self.wakes_for_1(), [])
+        self.fake.update(8, workflow_state_id=IDS["Ready For QA"])
+        self.as_("pm").story(8)
+        self.assertEqual(self.wakes_for_1(), ["sc-1 moved to Ready For Dev"])
+
+
 class PmMoves(Base):
     def test_pm_moves_any_story_from_any_state_to_any_other(self):
         self.fake.add(1, "In Progress", ["dev2"])
@@ -262,6 +410,16 @@ class PmMoves(Base):
         self.fake.add(1, "In Progress")
         with self.assertRaisesRegex(actions.Refused, "dev never moves a story to Backlog"):
             actions.move(self.as_("dev"), args(story="sc-1", state="Backlog"))
+
+
+class LinguistMoves(Base):
+    def test_the_linguist_starts_a_ticket_from_ready_for_dev(self):
+        self.fake.add(1, "Ready For Dev", ["translation"])
+        actions.move(self.as_("l10n"), args(story="sc-1", state="In Progress"))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_the_linguist_may_rerun_its_checks(self):
+        self.assertTrue(roles.may("l10n", "rerun"))
 
 
 def line_edit(targets, old, new, dry=False):
@@ -640,6 +798,34 @@ class Merging(Base):
         body = post.call_args.args[4]
         self.assertEqual(github.verdict({"body": body}), {"verdict": "pass", "sha": HEAD})
 
+    def test_a_pass_on_a_done_story_wakes_no_tester(self):
+        self.fake.add(1, "Done", ["dev2"])
+        store.put_pr(self.db, pr())
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.post_review", return_value={}), \
+                mock.patch("soirely_queue.sync.sync_github"):
+            actions.review(self.as_("lead"), args(pr=9, verdict="pass", findings=None,
+                                                  qa=None, text="summary"))
+        self.assertEqual(self.state(1), "Done")
+        self.assertEqual(self.fake.comments, [])
+
+    def test_findings_on_a_done_story_ask_only_for_a_push(self):
+        self.fake.add(1, "Done", ["dev2"])
+        store.put_pr(self.db, pr())
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.post_review", return_value={}), \
+                mock.patch("soirely_queue.sync.sync_github"), \
+                mock.patch("soirely_queue.actions.findings",
+                           return_value=[{"path": "a", "line": 1, "blocking": True,
+                                          "body": "b"}]):
+            actions.review(self.as_("lead"), args(pr=9, verdict="back", findings="f",
+                                                  qa=None, text="summary"))
+        self.assertEqual(self.state(1), "Done")
+        said = self.fake.comments[-1][1]
+        self.assertIn("[dev2]", said)
+        self.assertIn("the lead is woken by the push", said)
+        self.assertNotIn("In Review", said)
+
     def test_a_push_after_the_pass_reviewed_again_can_fail(self):
         self.fake.add(1, "Passed Code Review", ["dev2"])
         store.put_pr(self.db, pr())
@@ -678,6 +864,16 @@ class Merging(Base):
             actions.merge(self.as_("l10n"), args(pr=9, text=None))
         merge.assert_called_once_with(9, HEAD, delete_branch=True)
 
+    def test_the_linguist_merges_the_apis_icu_catalogues(self):
+        store.put_pr(self.db, pr())
+        files = [(f"services/api/translations/{name}+intl-icu.pt.json", 1, 0)
+                 for name in ("messages", "errors", "emails")]
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.files", return_value=files), \
+                mock.patch("soirely_queue.github.merge") as merge:
+            actions.merge(self.as_("l10n"), args(pr=9, text=None))
+        merge.assert_called_once_with(9, HEAD, delete_branch=True)
+
     def test_the_linguist_merges_no_code(self):
         store.put_pr(self.db, pr())
         files = [("apps/web/src/i18n/locales/fr.json", 1, 0), ("apps/web/src/App.tsx", 1, 0)]
@@ -687,6 +883,41 @@ class Merging(Base):
             with self.assertRaisesRegex(actions.Refused, "only locale files.*App.tsx"):
                 actions.merge(self.as_("l10n"), args(pr=9, text=None))
             merge.assert_not_called()
+
+    def test_a_developers_pr_on_a_translation_ticket_merges_and_leaves_the_ticket(self):
+        for state in ("In Progress", "Passed Code Review"):
+            self.fake.add(1, state, ["translation"])
+            store.put_pr(self.db, dict(pr("pass"), branch="fix/sc-1/test-wording"))
+            told = len(self.fake.comments)
+            with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                    mock.patch("soirely_queue.github.merge") as merge, \
+                    mock.patch("soirely_queue.sync.sync_github"):
+                said = actions.merge(self.as_("dev"), args(pr=9, text=None))
+            merge.assert_called_once_with(9, HEAD)
+            self.assertEqual(self.state(1), state)
+            self.assertIn(f"stays {state}", said)
+            self.assertEqual(len(self.fake.comments), told)
+
+    def test_the_linguists_own_pr_is_not_a_developers_to_merge(self):
+        self.fake.add(1, "In Progress", ["translation"])
+        store.put_pr(self.db, dict(pr("pass"), branch="l10n/sc-1"))
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge") as merge:
+            with self.assertRaisesRegex(actions.Refused, "In Progress, not Passed Code Review"):
+                actions.merge(self.as_("dev"), args(pr=9, text=None))
+            merge.assert_not_called()
+
+    def test_a_pass_on_a_developers_pr_on_a_translation_ticket_tags_no_qa(self):
+        for state in ("In Progress", "In Review"):
+            self.fake.add(1, state, ["translation"])
+            store.put_pr(self.db, dict(pr(), branch="fix/sc-1/test-wording"))
+            with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                    mock.patch("soirely_queue.github.post_review", return_value={}), \
+                    mock.patch("soirely_queue.sync.sync_github"):
+                actions.review(self.as_("lead"), args(pr=9, verdict="pass", findings=None,
+                                                      qa=None, text="summary"))
+            self.assertEqual(self.state(1), state)
+            self.assertFalse(any("[qa]" in text for _, text, *_ in self.fake.comments))
 
     def test_a_pass_with_a_blocking_finding_is_refused_before_posting(self):
         self.fake.add(1, "In Review")
@@ -768,6 +999,84 @@ class Merging(Base):
         self.assertIn("already merged", said)
         self.assertEqual(self.state(1), "Ready For QA")
         self.assertIn("m" * 40, self.fake.comments[-1][1])
+
+    def test_a_follow_up_pr_on_a_story_in_qa_merges_and_leaves_the_story(self):
+        for state in ("Ready For QA", "In QA", "Failed QA"):
+            self.fake.add(1, state, ["dev2"])
+            store.put_pr(self.db, pr("pass"))
+            told = len(self.fake.comments)
+            with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                    mock.patch("soirely_queue.github.merge") as merge, \
+                    mock.patch("soirely_queue.sync.sync_github"):
+                said = actions.merge(self.as_("dev2"), args(pr=9, text=None))
+            merge.assert_called_once_with(9, HEAD)
+            self.assertEqual(self.state(1), state)
+            self.assertIn(f"stays {state}", said)
+            self.assertEqual(len(self.fake.comments), told)
+
+    def test_a_follow_up_pr_still_needs_a_pass_at_the_head(self):
+        self.fake.add(1, "Ready For QA", ["dev2"])
+        store.put_pr(self.db, pr("pass", at=OLD))
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge") as merge:
+            with self.assertRaisesRegex(actions.Refused, "no lead pass"):
+                actions.merge(self.as_("dev2"), args(pr=9, text=None))
+            merge.assert_not_called()
+
+    def test_a_follow_up_pr_is_still_its_builders_and_held_by_open_threads(self):
+        self.fake.add(1, "Ready For QA", ["dev2"])
+        store.put_pr(self.db, pr("pass"))
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge") as merge:
+            with self.assertRaisesRegex(actions.Refused, "dev2's to merge"):
+                actions.merge(self.as_("ops"), args(pr=9, text=None))
+            self.fake.add(1, "In QA", ["ops"])
+            with self.assertRaisesRegex(actions.Refused, "ops's to merge"):
+                actions.merge(self.as_("dev2"), args(pr=9, text=None))
+            self.fake.add(1, "Ready For QA", ["dev2"])
+            store.put_pr(self.db, pr("pass", threads=[{"resolved": False, "comments": []}]))
+            with self.assertRaisesRegex(actions.Refused, "1 review threads are open"):
+                actions.merge(self.as_("dev2"), args(pr=9, text=None))
+            merge.assert_not_called()
+
+    def test_a_follow_up_pr_on_a_done_story_merges_and_leaves_it_done(self):
+        self.fake.add(1, "Done", ["dev2"])
+        store.put_pr(self.db, pr("pass"))
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge") as merge, \
+                mock.patch("soirely_queue.sync.sync_github"):
+            said = actions.merge(self.as_("dev2"), args(pr=9, text=None))
+        merge.assert_called_once_with(9, HEAD)
+        self.assertEqual(self.state(1), "Done")
+        self.assertIn("stays Done", said)
+        self.assertEqual(self.fake.comments, [])
+
+    def test_a_done_storys_pr_still_needs_the_pass(self):
+        self.fake.add(1, "Done", ["dev2"])
+        store.put_pr(self.db, pr())
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge") as merge:
+            with self.assertRaisesRegex(actions.Refused, "wait for the lead's review"):
+                actions.merge(self.as_("dev2"), args(pr=9, text=None))
+            merge.assert_not_called()
+
+    def test_an_archived_storys_pr_is_closed_not_merged(self):
+        self.fake.add(1, "Done", ["dev2"])
+        self.fake.raw[1]["archived"] = True
+        store.put_pr(self.db, pr("pass"))
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge") as merge:
+            with self.assertRaisesRegex(actions.Refused, "archived.*pr-close 9"):
+                actions.merge(self.as_("dev2"), args(pr=9, text=None))
+            merge.assert_not_called()
+
+    def test_a_pr_with_no_story_says_whose_it_is(self):
+        store.put_pr(self.db, dict(pr("pass"), story_id=None))
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge") as merge:
+            with self.assertRaisesRegex(actions.Refused, "names no story.*\\[ops\\]"):
+                actions.merge(self.as_("dev2"), args(pr=9, text=None))
+            merge.assert_not_called()
 
     def test_merging_a_merged_pr_whose_story_moved_on_is_refused(self):
         self.fake.add(1, "Ready For QA", ["dev2"])
@@ -917,6 +1226,28 @@ class OpsOwnsItsTickets(Base):
         with self.assertRaisesRegex(actions.Refused, "ready for review"):
             actions.pr_create(self.as_("ops"), args(head="b", title="t", text="x", draft=True))
 
+    def test_a_body_without_the_five_headings_does_not_open(self):
+        fenced = BODY.replace("## Risks", "```\n## Risks\n```")
+        with mock.patch("soirely_queue.github.create_pr") as created:
+            for body, missing in (("x", "Description, Risks, References, Evidence of work, "
+                                        "Next Steps"),
+                                  (fenced, "no Risks heading at levels 1-3;"),
+                                  (BODY.replace("## Risks", "#### Risks"),
+                                   "no Risks heading at levels 1-3; Risks is at level 4"),
+                                  (BODY.replace("## Risks", "```\n#### Risks\n```"),
+                                   "no Risks heading at levels 1-3; open")):
+                with self.assertRaisesRegex(actions.Refused, missing):
+                    actions.pr_create(self.as_("dev"), args(head="b", title="t", text=body,
+                                                            draft=False))
+            created.assert_not_called()
+
+    def test_a_body_with_the_five_headings_opens_at_any_level(self):
+        with mock.patch("soirely_queue.github.create_pr", return_value="u") as created:
+            for body in (BODY, BODY.replace("## ", "# ")):
+                actions.pr_create(self.as_("dev"), args(head="b", title="t", text=body,
+                                                        draft=False))
+        self.assertEqual(created.call_count, 2)
+
     def test_an_ops_story_wakes_ops_and_no_one_else(self):
         self.fake.add(1, "To Do", ["ops"])
         self.as_("ops").story("sc-1")
@@ -979,6 +1310,90 @@ class Closing(Base):
             self.close("lead")
 
 
+BODY = ("## Description\n\nWhat it did.\n\n## Risks\n\n- the old one\n\n## References\n\n"
+        "sc-1\n\n## Evidence of work\n\nTests.\n\n## Next Steps\n\nNone.\n")
+
+
+class EditingABody(Base):
+    def setUp(self):
+        super().setUp()
+        edited = mock.patch("soirely_queue.github.edit_body")
+        self.edited = edited.start()
+        self.addCleanup(edited.stop)
+
+    def live(self, state="OPEN"):
+        return {"headRefOid": HEAD, "state": state, "body": BODY, "story_id": 1,
+                "mergeCommit": None}
+
+    def edit(self, role, section="Risks", text="- the new one", state="OPEN"):
+        with mock.patch("soirely_queue.github.live", return_value=self.live(state)), \
+                mock.patch("soirely_queue.sync.sync_github") as synced, \
+                mock.patch("soirely_queue.github.merge") as merged:
+            said = actions.pr_edit(self.as_(role), args(pr=9, section=section, text=text))
+        merged.assert_not_called()
+        synced.assert_not_called()
+        return said
+
+    def refused(self, why, role="ops", **kw):
+        with self.assertRaisesRegex(actions.Refused, why):
+            self.edit(role, **kw)
+        self.edited.assert_not_called()
+
+    def test_one_section_changes_and_reads_back_at_once(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        store.put_pr(self.db, dict(pr("pass"), body=BODY))
+        said = self.edit("dev2", section="risks")
+        new = BODY.replace("- the old one", "- the new one")
+        self.edited.assert_called_once_with(9, new)
+        self.assertIn("PR #9: replaced Risks", said)
+        self.assertEqual(store.pr(self.db, 9)["body"], new)
+        self.assertEqual(store.pr(self.db, 9)["lead"], pr("pass")["lead"])
+        self.assertEqual(self.state(1), "In Review")
+
+    def test_a_closed_body_is_not_corrected(self):
+        self.fake.add(1, "Done", ["ops"])
+        self.refused("closed unmerged", state="CLOSED")
+
+    def test_a_merged_body_is_corrected(self):
+        self.fake.add(1, "Done", ["ops"])
+        self.edit("ops", state="MERGED")
+        self.edited.assert_called_once_with(9, BODY.replace("- the old one", "- the new one"))
+
+    def test_an_unknown_name_changes_nothing(self):
+        self.fake.add(1, "In Review", ["ops"])
+        self.refused("no heading matches Design; the body has: Description; Risks; References; "
+                     "Evidence of work; Next Steps", section="Design")
+
+    def test_a_name_matching_two_headings_changes_nothing(self):
+        self.fake.add(1, "In Review", ["ops"])
+        self.refused("2 headings match R", section="R")
+
+    def test_empty_text_changes_nothing(self):
+        self.fake.add(1, "In Review", ["ops"])
+        self.refused("the new text is empty", text=" \n")
+
+    def test_text_with_its_own_heading_changes_nothing(self):
+        self.fake.add(1, "In Review", ["ops"])
+        self.refused("brings its own heading", text="## Risks\n- x")
+
+    def test_another_builder_s_pr_is_refused_with_whose_it_is(self):
+        self.fake.add(1, "In Review", ["translation"])
+        self.refused("l10n's to edit", role="dev")
+
+    def test_a_role_that_builds_nothing_edits_nothing(self):
+        self.fake.add(1, "In Review", ["dev3"])
+        for role in ("lead", "pm", "qa"):
+            self.refused(f"{role} may not pr-edit", role=role)
+
+    def test_whoever_may_close_it_may_edit_it(self):
+        self.fake.add(1, "In Review", ["translation"])
+        self.edit("l10n")
+        self.edit("ops")
+        self.fake.add(1, "In Review", ["dev3"])
+        self.edit("dev")
+        self.assertEqual(self.edited.call_count, 3)
+
+
 class PermissionAsks(Base):
     def setUp(self):
         super().setUp()
@@ -1023,3 +1438,31 @@ class PermissionAsks(Base):
             actions.merge(self.as_("ops"), args(pr=9, text=None))
         merged.assert_not_called()
 
+
+
+class FinishedStories(Base):
+    def test_a_comment_on_a_done_story_says_who_it_wakes(self):
+        self.fake.add(1, "Done", ["dev3"])
+        said = actions.comment(self.as_("l10n"), args(story="sc-1", to="dev", untagged=False,
+                                                     reply_to=None, text="Fix the test."))
+        self.assertIn("which is Done: it wakes dev3", said)
+        self.assertIn("new one", said)
+
+    def test_a_tagged_comment_on_an_archived_story_is_refused(self):
+        self.fake.add(1, "Done", ["dev3"])
+        self.fake.raw[1]["archived"] = True
+        with self.assertRaisesRegex(actions.Refused, "archived, so a comment there wakes nobody"):
+            actions.comment(self.as_("l10n"), args(story="sc-1", to="dev3", untagged=False,
+                                                  reply_to=None, text="Still there?"))
+        actions.comment(self.as_("ops"), args(story="sc-1", to=None, untagged=True,
+                                             reply_to=None, text="Closed PR #498."))
+        self.assertEqual(len(self.fake.comments), 1)
+
+    def test_a_pr_on_an_archived_story_is_its_builders_to_close(self):
+        self.fake.add(1, "Done", ["dev2"])
+        self.fake.raw[1]["archived"] = True
+        store.put_pr(self.db, pr())
+        with mock.patch("soirely_queue.github.close") as close, \
+                mock.patch("soirely_queue.sync.sync_github"):
+            actions.pr_close(self.as_("dev2"), args(pr=9, text="sc-1 is archived"))
+        close.assert_called_once_with(9, "sc-1 is archived (from dev2)")

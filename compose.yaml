@@ -72,12 +72,14 @@ services:
     restart: unless-stopped
 
   api:
-    build:
+    build: &api-build
       context: ./services/api
       target: dev
-    environment:
+    # Shared with the notification worker by anchor, so the two cannot drift.
+    environment: &api-environment
       APP_ENV: ${APP_ENV:-dev}
       LOCALES_FILE: /locales.json
+      EVENT_STATES_FILE: /event-states.json
       ADDRESS_ENDPOINT: ${ADDRESS_ENDPOINT}
       ADDRESS_USER_AGENT: ${ADDRESS_USER_AGENT}
       STORAGE_ENDPOINT: ${STORAGE_ENDPOINT}
@@ -91,6 +93,7 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       MAILER_DSN: ${MAILER_DSN:-smtp://mailpit:1025}
       MAIL_FROM: ${MAIL_FROM:-Soirely <no-reply@soirely.com>}
+      DNS_TXT_ENDPOINT: ${DNS_TXT_ENDPOINT:-http://smocker:8080/dns-query}
       SMS_API_BASE: ${SMS_API_BASE:-http://smocker:8080}
       SMS_ACCOUNT_SID: ${SMS_ACCOUNT_SID:-ACdevelopment00000000000000000000}
       SMS_AUTH_TOKEN: ${SMS_AUTH_TOKEN:-development-token}
@@ -118,6 +121,7 @@ services:
       # Must equal the return route the app sends Apple; defaults to this stack's own API port.
       OAUTH_APPLE_RETURN_URI: ${OAUTH_APPLE_RETURN_URI:-http://localhost:${API_PORT:-8080}/api/auth/oauth/apple/return}
       CORS_WEB_ORIGIN: ${CORS_WEB_ORIGIN:-http://localhost:5173}
+      TEAM_SEAT_LIMIT: ${TEAM_SEAT_LIMIT:-}
       CORS_EXPO_WEB_ORIGIN: ${CORS_EXPO_WEB_ORIGIN:-http://localhost:8081}
       REDIS_HOST: redis
       REDIS_PORT_INTERNAL: 6379
@@ -134,7 +138,7 @@ services:
       ASSISTANT_MAX_TOKENS: ${ASSISTANT_MAX_TOKENS:-16000}
       # FrankenPHP serves plain HTTP here; TLS terminates upstream in deployment.
       SERVER_NAME: ':80'
-    volumes:
+    volumes: &api-volumes
       # The whole directory, vendor included. An anonymous volume over /app/vendor
       # looks tidier and is a trap: Docker reuses the existing volume rather than
       # taking the rebuilt image's, so a newly required package is missing inside
@@ -146,6 +150,8 @@ services:
       # mobile clients read it too. Mounted read-only at a fixed path rather
       # than reached by path arithmetic from inside the application.
       - ./locales.json:/locales.json:ro
+      # What each event state allows, which the clients read too (sc-3584).
+      - ./event-states.json:/event-states.json:ro
     ports:
       - '${API_PORT:-8080}:80'
     depends_on:
@@ -155,7 +161,41 @@ services:
         condition: service_healthy
       mercure:
         condition: service_healthy
-      # S3, locally.
+
+  # Sends the notifications that are due (sc-104). It waits for the schema
+  # rather than crash-looping on a database not yet migrated, so the stack
+  # scripts wait on it only after migrating, by its label.
+  notification-worker:
+    build: *api-build
+    environment: *api-environment
+    volumes: *api-volumes
+    command:
+      - sh
+      - -c
+      - >-
+        trap 'exit 0' TERM INT;
+        rm -f /app/var/notifications-worker.heartbeat;
+        until php bin/console doctrine:migrations:up-to-date --quiet; do sleep 2; done;
+        exec php bin/console app:notifications:work --time-limit=3600 --memory-limit=128
+    labels:
+      soirely.after-migrations: 'true'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # The worker touches its heartbeat on every poll, about once a second.
+      test:
+        - CMD-SHELL
+        - >-
+          test $$(( $$(date +%s) - $$(stat -c %Y /app/var/notifications-worker.heartbeat) )) -lt 30
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 10s
+    restart: unless-stopped
+
+  # S3, locally.
   #
   # LocalStack rather than MinIO: MinIO's images are no longer pullable from
   # Docker Hub, and an unavailable base image is a stack that cannot be brought
@@ -200,6 +240,8 @@ services:
       AWS_ACCESS_KEY_ID: ${STORAGE_KEY:-soirely}
       AWS_SECRET_ACCESS_KEY: ${STORAGE_SECRET:-soirely-dev-secret}
       AWS_DEFAULT_REGION: ${STORAGE_REGION:-us-east-1}
+      # The api's own default, so the bucket and the api never admit different origins.
+      CORS_WEB_ORIGIN: ${CORS_WEB_ORIGIN:-http://localhost:5173}
     entrypoint:
       - sh
       - -c
@@ -216,6 +258,19 @@ services:
           --bucket $${BUCKET_PRIVATE} \
           --public-access-block-configuration \
           BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+
+        # A cover photo's original carries its EXIF and GPS until the API
+        # re-encodes and deletes it. One a closed tab never confirmed or
+        # cancelled is deleted after a day (sc-3590).
+        aws --endpoint-url $$E s3api put-bucket-lifecycle-configuration \
+          --bucket $${BUCKET_PRIVATE} --lifecycle-configuration \
+          '{"Rules":[{"ID":"event-cover-uploads","Status":"Enabled","Filter":{"Prefix":"event_cover/"},"Expiration":{"Days":1}}]}'
+
+        # The web client PUTs a cover straight to the private bucket, so the
+        # store must answer that preflight for the web origin alone. A
+        # deployed store needs the same rule (docs/architecture/sessions.md).
+        aws --endpoint-url $$E s3api put-bucket-cors --bucket $${BUCKET_PRIVATE} --cors-configuration \
+          '{"CORSRules":[{"AllowedOrigins":["'$${CORS_WEB_ORIGIN}'"],"AllowedMethods":["PUT"],"AllowedHeaders":["Content-Type"]}]}'
 
         # The public bucket is public on purpose: an invitation page is read by
         # a guest with no account and no credentials.
@@ -245,6 +300,9 @@ services:
       # that works in curl and fails on screen.
       SOIRELY_API_URL: ${SOIRELY_API_URL:-http://localhost:8080}
       SOIRELY_MERCURE_URL: ${SOIRELY_MERCURE_URL:-http://localhost:3000/.well-known/mercure}
+      # The store's public origin, for img-src and connect-src: covers and
+      # avatars are uploaded to and load from it.
+      SOIRELY_STORAGE_URL: ${STORAGE_PUBLIC_ENDPOINT:-http://localhost:4566}
       SOIRELY_ENVIRONMENT: ${APP_ENV:-dev}
       # The local sign-in sandbox (service `oidc`) stands in for Google.
       SOIRELY_GOOGLE_AUTHORIZE_URL: ${SOIRELY_GOOGLE_AUTHORIZE_URL:-http://localhost:8089/google/authorize}

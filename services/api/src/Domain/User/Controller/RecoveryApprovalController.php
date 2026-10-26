@@ -15,7 +15,6 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psl\Vec;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -32,13 +31,13 @@ final readonly class RecoveryApprovalController
     }
 
     #[Route('/api/auth/recovery-requests', name: 'auth_recovery_requests', methods: ['GET'])]
-    public function waiting(Request $request): JsonResponse
+    public function waiting(): JsonResponse
     {
         $approver = $this->user();
 
         return new JsonResponse(['requests' => Vec\map(
             $this->recoveryDecisions->waitingFor($approver),
-            fn (TwoFactorRecovery $recovery): array => $this->recoveryView->request($recovery, $approver, $request->getLocale()),
+            fn (TwoFactorRecovery $recovery): array => $this->recoveryView->request($recovery, $approver),
         )]);
     }
 
@@ -73,7 +72,7 @@ final readonly class RecoveryApprovalController
         $user = $this->security->getUser();
 
         if (!$user instanceof User) {
-            throw new ApiException(ErrorCode::Unauthenticated, 'Please sign in to continue.');
+            throw new ApiException(ErrorCode::Unauthenticated, 'access.sign_in');
         }
 
         return $user;

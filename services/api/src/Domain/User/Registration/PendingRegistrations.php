@@ -64,7 +64,7 @@ final readonly class PendingRegistrations
         try {
             // Held until the account exists, so a second press of the same code finds nothing left.
             $pending = $this->pendingRegistrationRepository->findForUpdate($id)
-                ?? throw new ApiException(ErrorCode::RegistrationExpired, 'Start registering again.');
+                ?? throw new ApiException(ErrorCode::RegistrationExpired, 'registration.expired');
             $this->check($pending, $code);
 
             $result = $this->userRegistrar->registerConfirmed($pending->getEmail(), $pending->getName(), (string) $pending->getPasswordHash(), $request, $pending->getLocale());
@@ -144,15 +144,15 @@ final readonly class PendingRegistrations
         $now = $this->clock->now();
 
         if ('' === Str\trim($code)) {
-            throw new ApiException(ErrorCode::VerificationCodeInvalid, 'That code does not match.');
+            throw new ApiException(ErrorCode::VerificationCodeInvalid, 'code.mismatch');
         }
 
         if ($pending->isCodeExpiredAt($now)) {
-            throw new ApiException(ErrorCode::VerificationCodeExpired, 'That code has expired.');
+            throw new ApiException(ErrorCode::VerificationCodeExpired, 'code.expired');
         }
 
         if ($pending->isExhausted()) {
-            throw new ApiException(ErrorCode::VerificationCodeExhausted, 'That code no longer works.');
+            throw new ApiException(ErrorCode::VerificationCodeExhausted, 'code.exhausted');
         }
 
         if ($pending->isForTakenAddress() || !\hash_equals($pending->getCodeHash(), VerificationCodeIssuer::hash(Str\trim($code)))) {
@@ -160,8 +160,8 @@ final readonly class PendingRegistrations
             $this->entityManager->flush();
 
             throw $pending->isExhausted()
-                ? new ApiException(ErrorCode::VerificationCodeExhausted, 'That code no longer works.')
-                : new ApiException(ErrorCode::VerificationCodeInvalid, 'That code does not match.');
+                ? new ApiException(ErrorCode::VerificationCodeExhausted, 'code.exhausted')
+                : new ApiException(ErrorCode::VerificationCodeInvalid, 'code.mismatch');
         }
     }
 
@@ -170,7 +170,7 @@ final readonly class PendingRegistrations
         $pending = '' === $handle ? null : $this->pendingRegistrationRepository->findOneByHandleHash(TokenIssuer::hash($handle));
 
         if (null === $pending || !$pending->isOpenAt($this->clock->now())) {
-            throw new ApiException(ErrorCode::RegistrationExpired, 'Start registering again.');
+            throw new ApiException(ErrorCode::RegistrationExpired, 'registration.expired');
         }
 
         return $pending;

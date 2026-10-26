@@ -1,6 +1,7 @@
 import { useWindowDimensions } from 'react-native';
 
 import { classifyLayout, type LayoutKind } from './classify.ts';
+import { atAccessibilitySizes, nameLines, railWidth, sideListWidth } from './textSize.ts';
 
 /**
  * The current layout, recomputed when the window changes.
@@ -17,6 +18,23 @@ export function useLayout(): { kind: LayoutKind; width: number; height: number }
   const { width, height } = useWindowDimensions();
 
   return { kind: classifyLayout({ width, height }), width, height };
+}
+
+/** Whether the system text size is one of the accessibility sizes, where the frame changes its form (sc-13496). */
+export function useAccessibilitySizes(): boolean {
+  return atAccessibilitySizes(useWindowDimensions().fontScale);
+}
+
+export function useNameLines(): 1 | 2 {
+  return nameLines(useWindowDimensions().fontScale);
+}
+
+/** A list beside a page on a tablet, widened at the accessibility sizes. */
+export function useSideListWidth(width: number): number {
+  const { width: window, height, fontScale } = useWindowDimensions();
+  const landscape = classifyLayout({ width: window, height }) === 'tabletLandscape';
+
+  return sideListWidth(width, window - (landscape ? railWidth(fontScale) : 0), fontScale);
 }
 
 export { classifyLayout, isTablet, TABLET_MIN_DIMENSION } from './classify.ts';

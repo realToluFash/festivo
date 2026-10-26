@@ -9,11 +9,18 @@ FROM dunglas/frankenphp:1.13.0-php8.4.26 AS base
 # the extension without naming what wanted it.
 RUN install-php-extensions \
     bcmath \
+    imagick \
     pdo_pgsql \
     intl \
     opcache \
+    pcntl \
     redis \
     zip
+
+# PHP otherwise sends X-Powered-By: PHP/<patch release> on every response, and
+# an exact release tells a prober which advisories apply. Set in base so the
+# stacks and production cannot differ on it.
+RUN echo 'expose_php = Off' > "$PHP_INI_DIR/conf.d/zz-soirely.ini"
 
 WORKDIR /app
 

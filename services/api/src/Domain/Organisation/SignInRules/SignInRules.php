@@ -62,7 +62,7 @@ final readonly class SignInRules
 
         return new ApiException(
             ErrorCode::OAuthOnly,
-            'This organisation signs in with Google or Apple only.',
+            'sign_in.provider_only',
             [],
             null,
             [],
@@ -133,7 +133,7 @@ final readonly class SignInRules
 
         return [
             'at' => $deadline->format(DateTimeInterface::ATOM),
-            'written' => $this->userMailer->deadline($deadline, $user, $this->userMailer->localeFor($user)),
+            'written' => $this->userMailer->deadline($deadline, $user, $this->userMailer->shownLocaleFor($user)),
             'overdue' => $deadline <= $this->clock->now(),
         ];
     }

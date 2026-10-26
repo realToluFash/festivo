@@ -7,5 +7,6 @@
  * what parity meant.
  */
 export * from './catalogues.ts';
+export * from './keys.ts';
 export * from './literals.ts';
 export * from './surfaces.ts';

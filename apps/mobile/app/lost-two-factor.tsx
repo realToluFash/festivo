@@ -7,8 +7,16 @@ import {
   recoveryIntroKey,
 } from '@soirely/domain';
 import { Redirect, router } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Linking, StyleSheet, type TextInput, View } from 'react-native';
+import {
+  type ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import { Linking, StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
@@ -17,6 +25,8 @@ import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from '../src/components/Buttons.tsx';
 import { CodeField, Field, FieldError } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
+import { useFocusOnAnswer } from '../src/components/Screen.tsx';
+import { readOut } from '../src/components/ReadOut.tsx';
 import { StatusMark, type StatusTone } from '../src/components/StatusMark.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { dropRecovery, heldRecovery, holdRecovery } from '../src/heldRecovery.ts';
@@ -26,19 +36,34 @@ import {
   type RecoveryField,
   loadRecovery,
   type RecoveryShown,
+  recoveryCodeLabel,
   recoveryCodeProblems,
   replacedElsewhere,
   startRefusal,
   wrongRecoveryCodes,
 } from '../src/kit/recovery.ts';
 import { tokens } from '../src/theme/tokens.ts';
+import { useMarkSide } from '../src/components/markSide.ts';
 
 type Shown = RecoveryShown;
+
+/** The tap the step showing answers, for its heading to take screen reader focus (sc-11032). */
+const Tapped = createContext<object | undefined>(undefined);
 
 /** Lost both the authenticator and the recovery codes (sc-509): nothing on this screen signs anybody in. */
 export default function LostTwoFactor() {
   const challenge = heldChallenge()?.challenge ?? null;
-  const [view, setView] = useState<Shown>({ kind: 'loading' });
+  const [view, setShown] = useState<Shown>({ kind: 'loading' });
+  const [tapped, setTapped] = useState<object | undefined>(undefined);
+  const tapping = useRef(false);
+  const markTap = useCallback(() => {
+    tapping.current = true;
+  }, []);
+  const setView = useCallback((next: Shown) => {
+    setTapped(tapping.current ? {} : undefined);
+    tapping.current = false;
+    setShown(next);
+  }, []);
 
   const load = useCallback(
     async (): Promise<Shown> =>
@@ -63,10 +88,13 @@ export default function LostTwoFactor() {
     return () => {
       live = false;
     };
-  }, [load]);
+  }, [load, setView]);
 
   const reload = (): void => {
-    void load().then(setView);
+    void load().then((next) => {
+      markTap();
+      setView(next);
+    });
   };
 
   /** "Start again" from a replaced request: the start screen, never the newer request another device holds. */
@@ -78,8 +106,10 @@ export default function LostTwoFactor() {
 
     try {
       const opening = await api.recoveryOpening(challenge);
+      markTap();
       setView({ kind: 'start', opening, limitedUntil: null, sending: false });
     } catch (refusal) {
+      markTap();
       setView(startRefusal(refusal) === 'signIn' ? { kind: 'signIn' } : { kind: 'failed' });
     }
   }
@@ -95,6 +125,7 @@ export default function LostTwoFactor() {
     try {
       const started = await api.startRecovery(challenge);
       await holdRecovery(started.recovery);
+      markTap();
       setView({ kind: 'request', ...started });
     } catch (refusal) {
       const why = startRefusal(refusal);
@@ -107,47 +138,59 @@ export default function LostTwoFactor() {
           sending: false,
         });
       } else if (why === 'nobody') {
+        markTap();
         setView({ kind: 'nobody', supportAddress: opening.supportAddress });
       } else {
+        markTap();
         setView(why === 'signIn' ? { kind: 'signIn' } : { kind: 'failed' });
       }
     }
   }
 
-  if (view.kind === 'signIn') return <Redirect href="/sign-in" />;
-  if (view.kind === 'loading') return <AuthFrame>{null}</AuthFrame>;
-  if (view.kind === 'start') {
+  return <Tapped.Provider value={tapped}>{shown()}</Tapped.Provider>;
+
+  function shown(): ReactNode {
+    if (view.kind === 'signIn') return <Redirect href="/sign-in" />;
+    if (view.kind === 'loading') return <AuthFrame>{null}</AuthFrame>;
+    if (view.kind === 'start') {
+      return (
+        <Start
+          opening={view.opening}
+          limitedUntil={view.limitedUntil}
+          sending={view.sending}
+          onSend={() => void start(view.opening)}
+        />
+      );
+    }
+    if (view.kind === 'nobody') return <Nobody supportAddress={view.supportAddress} />;
+    if (view.kind === 'replaced') return <Replaced onStartAgain={() => void startAgain()} />;
+    if (view.kind === 'failed') return <Failed failure={view} onRetry={reload} />;
+
     return (
-      <Start
-        opening={view.opening}
-        limitedUntil={view.limitedUntil}
-        sending={view.sending}
-        onSend={() => void start(view.opening)}
+      <Request
+        recovery={view.recovery}
+        state={view.state}
+        onTap={markTap}
+        onState={(state) => {
+          // A step that changes on its own brings a new heading, which takes focus as after a tap (sc-11173).
+          if (state.status !== view.state.status) markTap();
+          setView({ ...view, state });
+        }}
+        onNobody={() => {
+          void dropRecovery();
+          setView({ kind: 'nobody', supportAddress: view.state.supportAddress });
+        }}
+        onAskAgain={() => {
+          void dropRecovery().then(reload);
+        }}
+        onReplaced={() => {
+          void dropRecovery();
+          markTap();
+          setView({ kind: 'replaced' });
+        }}
       />
     );
   }
-  if (view.kind === 'nobody') return <Nobody supportAddress={view.supportAddress} />;
-  if (view.kind === 'replaced') return <Replaced onStartAgain={() => void startAgain()} />;
-  if (view.kind === 'failed') return <Failed onRetry={reload} />;
-
-  return (
-    <Request
-      recovery={view.recovery}
-      state={view.state}
-      onState={(state) => setView({ ...view, state })}
-      onNobody={() => {
-        void dropRecovery();
-        setView({ kind: 'nobody', supportAddress: view.state.supportAddress });
-      }}
-      onAskAgain={() => {
-        void dropRecovery().then(reload);
-      }}
-      onReplaced={() => {
-        void dropRecovery();
-        setView({ kind: 'replaced' });
-      }}
-    />
-  );
 }
 
 type Tone = StatusTone;
@@ -161,10 +204,12 @@ function Saying({
   intro: string;
   mark?: { tone: Tone; word: string };
 }) {
+  const tapped = useContext(Tapped);
+
   return (
     <View style={styles.saying}>
       {mark != null && <StatusMark tone={mark.tone} word={mark.word} />}
-      <AuthHeading title={title} intro={intro} />
+      <AuthHeading title={title} intro={intro} answer={tapped} />
     </View>
   );
 }
@@ -219,6 +264,7 @@ function Start({
   sending: boolean;
   onSend: () => void;
 }) {
+  const markSide = useMarkSide(tokens.sizeMark);
   const { t } = useTranslation();
   const steps = [
     opening.phone == null
@@ -246,13 +292,23 @@ function Start({
               ? t('lostTwoFactor.limitedBodyLater')
               : t('lostTwoFactor.limitedBody', { when: limitedUntil })
           }
+          answer={limitedUntil}
         />
       )}
       <View style={styles.steps}>
         {steps.map((step, index) => (
           <View key={step} style={styles.step}>
-            <View style={styles.stepMark}>
-              <Text size={tokens.typePill.size} weight="bold" style={styles.secondary}>
+            <View
+              style={[styles.stepMark, markSide]}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
+              <Text
+                size={tokens.typePill.size}
+                weight="bold"
+                style={styles.secondary}
+                accessible={false}
+              >
                 {String(index + 1)}
               </Text>
             </View>
@@ -296,8 +352,9 @@ function Nobody({ supportAddress }: { supportAddress: string }) {
   );
 }
 
-function Failed({ onRetry }: { onRetry: () => void }) {
+function Failed({ failure, onRetry }: { failure: Shown; onRetry: () => void }) {
   const { t } = useTranslation();
+  const tapped = useContext(Tapped);
 
   return (
     <AuthFrame>
@@ -306,6 +363,8 @@ function Failed({ onRetry }: { onRetry: () => void }) {
         mark={tokens.marks.broken.glyph}
         title={t('lostTwoFactor.failedTitle')}
         body={t('lostTwoFactor.failedBody')}
+        answer={tapped ?? failure}
+        takesFocus={tapped != null}
       />
       <SecondaryButton
         label={t('lostTwoFactor.retry')}
@@ -320,6 +379,7 @@ function Failed({ onRetry }: { onRetry: () => void }) {
 function Request({
   recovery,
   state,
+  onTap,
   onState,
   onNobody,
   onAskAgain,
@@ -327,6 +387,8 @@ function Request({
 }: {
   recovery: string;
   state: RecoveryState;
+  /** The next change of step answers a tap. */
+  onTap: () => void;
   onState: (state: RecoveryState) => void;
   onNobody: () => void;
   onAskAgain: () => void;
@@ -359,6 +421,7 @@ function Request({
       <Codes
         recovery={recovery}
         state={state}
+        onTap={onTap}
         onState={onState}
         onNobody={onNobody}
         onReplaced={onReplaced}
@@ -399,9 +462,14 @@ function Request({
           onPress={() => {
             api
               .cancelRecovery(recovery)
-              .then(onState)
+              .then((cancelled) => {
+                onTap();
+                onState(cancelled);
+              })
               .catch((refusal: unknown) => {
-                if (replacedElsewhere(refusal)) onReplaced();
+                if (!replacedElsewhere(refusal)) return;
+                onTap();
+                onReplaced();
               });
           }}
           testID="lostTwoFactor.cancel"
@@ -504,12 +572,14 @@ function Request({
 function Codes({
   recovery,
   state,
+  onTap,
   onState,
   onNobody,
   onReplaced,
 }: {
   recovery: string;
   state: RecoveryState;
+  onTap: () => void;
   onState: (state: RecoveryState) => void;
   onNobody: () => void;
   onReplaced: () => void;
@@ -521,11 +591,17 @@ function Codes({
   const number = state.phone == null ? '' : formatPhone(state.phone);
   const fields: RecoveryField[] = hasPhone ? ['emailCode', 'phoneCode'] : ['emailCode'];
   const typed = useRef<Record<RecoveryField, string>>({ emailCode: '', phoneCode: '' });
-  const inputs = { emailCode: useRef<TextInput>(null), phoneCode: useRef<TextInput>(null) };
+  const emailInput = useRef<TextInput>(null);
+  const inputs = { emailCode: emailInput, phoneCode: useRef<TextInput>(null) };
   const [errors, setErrors] = useState<Partial<Record<RecoveryField, string>>>({});
   const [asking, setAsking] = useState(false);
-  const [failed, setFailed] = useState(false);
+  // New with each tap that fails, or that finds the codes spent, so the same words are read out again.
+  const [failed, setFailed] = useState<object | null>(null);
+  const [foundSpent, setFoundSpent] = useState<object | null>(null);
   const [textingFailed, setTextingFailed] = useState(false);
+  // Send new codes in the codes' place brings the fields back, so focus goes to the first (sc-11173).
+  const [resentInPlace, setResentInPlace] = useState<object | undefined>(undefined);
+  const [textedInPlace, setTextedInPlace] = useState<object | undefined>(undefined);
   const [cooldown, setCooldown] = useState(codes?.cooldownSeconds ?? 0);
   const lastRoute = useRef(codes?.route ?? null);
 
@@ -559,10 +635,10 @@ function Codes({
     texted: t('lostTwoFactor.sentText', { number }),
   }[wording.line];
 
-  // iOS has no live regions, so a fallback is announced by hand, as Android's live region does.
+  // The line is help under the field, not a live region, so the fallback is read out by hand.
   useEffect(() => {
     if (lastRoute.current === 'whatsapp' && codes?.route === 'sms_fallback') {
-      AccessibilityInfo.announceForAccessibility(sent);
+      readOut(sent);
     }
 
     lastRoute.current = codes?.route ?? null;
@@ -588,26 +664,29 @@ function Codes({
     }
 
     setAsking(true);
-    setFailed(false);
+    setFailed(null);
+    setResentInPlace(undefined);
 
     try {
-      onState(
-        await api.proveRecovery(
-          recovery,
-          cleanCode(typed.current.emailCode),
-          hasPhone ? cleanCode(typed.current.phoneCode) : null,
-        ),
+      const proved = await api.proveRecovery(
+        recovery,
+        cleanCode(typed.current.emailCode),
+        hasPhone ? cleanCode(typed.current.phoneCode) : null,
       );
+      onTap();
+      onState(proved);
     } catch (refusal) {
       setAsking(false);
 
       if (replacedElsewhere(refusal)) {
+        onTap();
         onReplaced();
         return;
       }
 
       // The last approver left while the codes were out: the request is cancelled, nobody is told.
       if (startRefusal(refusal) === 'nobody') {
+        onTap();
         onNobody();
         return;
       }
@@ -627,16 +706,18 @@ function Codes({
           refusal.is('recovery_request_proved'))
       ) {
         onState(await api.recoveryState(recovery).catch(() => state));
+        setFoundSpent({});
         return;
       }
 
-      setFailed(true);
+      setFailed({});
     }
   }
 
   async function resend(): Promise<void> {
     try {
       const next = await api.resendRecoveryCodes(recovery);
+      setFoundSpent(null);
       typed.current = { emailCode: '', phoneCode: '' };
       inputs.emailCode.current?.clear();
       inputs.phoneCode.current?.clear();
@@ -658,7 +739,7 @@ function Codes({
       const seconds = retryAfter(refusal);
 
       if (seconds != null) setCooldown(seconds);
-      else setFailed(true);
+      else setFailed({});
     }
   }
 
@@ -667,6 +748,7 @@ function Codes({
 
     try {
       onState(await api.textRecoveryCodeInstead(recovery));
+      setTextedInPlace({});
     } catch (refusal) {
       if (replacedElsewhere(refusal)) {
         onReplaced();
@@ -683,6 +765,7 @@ function Codes({
   }
 
   const spent = codes?.state === 'expired' || codes?.state === 'exhausted';
+  useFocusOnAnswer<TextInput>(spent ? undefined : resentInPlace, emailInput);
 
   return (
     <AuthFrame
@@ -717,21 +800,27 @@ function Codes({
                   })
                 : t('lostTwoFactor.expiredBodyEmailOnly')
           }
+          answer={foundSpent ?? undefined}
+          takesFocus={foundSpent != null}
         />
       )}
-      {failed && (
+      {failed != null && (
         <Notice
           tone="broken"
           mark={tokens.marks.broken.glyph}
           title={t('lostTwoFactor.failedTitle')}
           body={t('lostTwoFactor.failedBody')}
+          answer={failed}
         />
       )}
 
       {spent ? (
         <PrimaryButton
           label={t('lostTwoFactor.resend')}
-          onPress={() => void resend()}
+          onPress={() => {
+            setResentInPlace({});
+            void resend();
+          }}
           testID="lostTwoFactor.resend"
         />
       ) : (
@@ -739,16 +828,11 @@ function Codes({
           {fields.map((field, index) => (
             <Field
               key={field}
-              label={
-                field === 'emailCode'
-                  ? t('lostTwoFactor.emailLabel')
-                  : wording.fromWhatsApp
-                    ? t('lostTwoFactor.phoneLabelWhatsApp')
-                    : t('lostTwoFactor.phoneLabel')
-              }
+              label={t(recoveryCodeLabel(field, wording.fromWhatsApp))}
               help={
                 field === 'emailCode' ? t('lostTwoFactor.sentTo', { email: state.email }) : sent
               }
+              helpAnswer={field === 'phoneCode' ? textedInPlace : undefined}
               error={errors[field] ?? null}
             >
               <CodeField
@@ -763,11 +847,7 @@ function Codes({
                 onSubmitEditing={() =>
                   index === fields.length - 1 ? void submit() : inputs.phoneCode.current?.focus()
                 }
-                accessibilityLabel={
-                  field === 'emailCode'
-                    ? t('lostTwoFactor.emailLabel')
-                    : t('lostTwoFactor.phoneLabel')
-                }
+                accessibilityLabel={t(recoveryCodeLabel(field, wording.fromWhatsApp))}
                 testID={`lostTwoFactor.${field}`}
               />
             </Field>
@@ -811,9 +891,7 @@ const styles = StyleSheet.create({
   steps: { gap: tokens.spaceMd },
   step: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceMd },
   stepMark: {
-    width: tokens.sizeMark,
-    height: tokens.sizeMark,
-    borderRadius: tokens.sizeMark / 2,
+    borderRadius: tokens.radiusPill,
     borderWidth: 1.5,
     borderColor: tokens.colorMarkEmpty,
     alignItems: 'center',

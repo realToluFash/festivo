@@ -64,6 +64,12 @@ text again. Take the work in this order:
    product question on it is open, send it on: `sq pm move sc-N "Needs Design"` when it
    needs a screen nobody has drawn, `sq pm move sc-N "Ready For Dev"` when it needs none.
    The developers build only from Ready For Dev.
+   A story that must merge before another is built is recorded as a **blocks** link,
+   `sq pm relate sc-<dependency> sc-<story> --verb blocks`, and that link is what holds the
+   story: sq offers it to no developer until every story blocking it reaches Ready For QA
+   or later, then offers it with nobody moving it. So a held story whose AC and design are
+   settled goes to Ready For Dev rather than waiting in To Do; your To Do list and the move
+   both end its line with `held by sc-N (<state>)`.
 3. **An idea waiting on a decision**: a `Backlog` story labelled `idea` with a `[pm]
 (from cd)` question. Accept (write the AC, or fold it into a story, and move it to
    `To Do`), park, or reject (archive), each with a one-line reason. The creative director
@@ -142,6 +148,18 @@ they are where AC fails:
 - **Name the exact options**, the exact labels, the exact navigation path. QA has to find
   the thing before they can test it, and "the closest match" is not verifiable while "the
   highest amount that does not exceed the figure" is.
+- **Name a device only on the bullet that needs it.** QA tests on an iPhone 17 Pro and an
+  iPad, in English and one other language, unless a bullet says otherwise. A bullet about
+  a small screen — the keyboard up, a phone on its side, a long label — names the iPhone SE
+  (375×667pt) and its languages: English and the longest, not all four. An SE named for
+  the whole story is a second full pass in every language, and the tester's run outlasts
+  its time limit.
+- **Label `needs ios` a story that only an iOS simulator can verify**: a bullet on VoiceOver,
+  on an iPad layout, or on "the iOS simulator and the Android emulator". The tester on
+  tolu-linux has no Xcode and is not offered it (`sq pm label sc-N --add "needs ios"`).
+  Add it at grooming, or when you read the AC of a story already in Ready For QA. A story
+  that takes either platform ("an iPhone 17 Pro or, on a host without Xcode, an Android
+  phone") gets no label.
 - **Close with a regression bullet** naming what must keep working untouched.
 - **Never invent a field name or a label.** Search the codebase for the real one. If it does
   not exist, that is a question, not a guess.

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "de77ac2d61ca77031b988a32115cb116",
+    "content-hash": "263a49d9bd82f680bc72774344fe6546",
     "packages": [
         {
             "name": "anthropic-ai/sdk",
@@ -12128,7 +12128,9 @@
         "ext-bcmath": "*",
         "ext-ctype": "*",
         "ext-iconv": "*",
+        "ext-imagick": "*",
         "ext-intl": "*",
+        "ext-pcntl": "*",
         "ext-pdo_pgsql": "*",
         "ext-redis": "*"
     },
@@ -12138,7 +12140,9 @@
         "ext-bcmath": "8.4",
         "ext-ctype": "8.4",
         "ext-iconv": "8.4",
+        "ext-imagick": "3.8.1",
         "ext-intl": "8.4",
+        "ext-pcntl": "8.4",
         "ext-pdo_pgsql": "8.4",
         "ext-redis": "8.4"
     },

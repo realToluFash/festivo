@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { blocks, isChecked, isCounted, problemsFor } from './check-comments.mjs';
+import { blocks, isChecked, isCounted, newToBoth, problemsFor } from './check-comments.mjs';
 
 describe('what counts as a comment', () => {
   it.each([
@@ -147,5 +147,18 @@ describe('the shape that caused this check to exist', () => {
     ];
 
     expect(problemsFor('services/api/src/Verifier.php', added)).toEqual([]);
+  });
+});
+
+describe('a merge commit', () => {
+  it('answers only for the lines it adds to both parents', () => {
+    const fromMain = ['// main wrote this', 'const kept = true;'];
+    const resolved = ['// the resolution wrote this'];
+
+    expect(newToBoth([...fromMain, ...resolved], resolved)).toEqual(resolved);
+  });
+
+  it('counts a line the merge repeats as often as it repeats it', () => {
+    expect(newToBoth(['// twice', '// twice'], ['// twice'])).toEqual(['// twice']);
   });
 });

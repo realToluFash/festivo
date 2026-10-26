@@ -10,20 +10,24 @@ use DateTimeZone;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Psl\File;
+use Psl\Json;
+use Psl\Type;
 
 final class LocalTimeResolverTest extends TestCase
 {
     /** @return iterable<string, array{string, string, string}> */
     public static function times(): iterable
     {
-        yield 'an ordinary time keeps its offset' => ['Europe/Madrid', '2026-11-14T16:00', '2026-11-14T16:00:00+01:00'];
-        yield 'summer time' => ['Europe/Madrid', '2026-07-01T19:00', '2026-07-01T19:00:00+02:00'];
-        yield 'a time the clocks skip moves later by the gap' => ['Europe/Madrid', '2026-03-29T02:30', '2026-03-29T03:30:00+02:00'];
-        yield 'the first minute of the gap' => ['Europe/Madrid', '2026-03-29T02:00', '2026-03-29T03:00:00+02:00'];
-        yield 'a time the clocks repeat takes the earlier offset' => ['Europe/Madrid', '2026-10-25T02:30', '2026-10-25T02:30:00+02:00'];
-        yield 'just after the repeat' => ['Europe/Madrid', '2026-10-25T03:00', '2026-10-25T03:00:00+01:00'];
-        yield 'a zone with no clock changes' => ['Africa/Lagos', '2026-03-29T02:30', '2026-03-29T02:30:00+01:00'];
-        yield 'a gap of half an hour' => ['Australia/Lord_Howe', '2026-10-04T02:15', '2026-10-04T02:45:00+11:00'];
+        $table = Type\dict(Type\string(), Type\shape([
+            'zone' => Type\string(),
+            'typed' => Type\string(),
+            'saved' => Type\string(),
+        ]))->coerce(Json\decode(File\read(\dirname(__DIR__) . '/Fixtures/LocalTime/wall-clock-times.json')));
+
+        foreach ($table as $case => $time) {
+            yield $case => [$time['zone'], $time['typed'], $time['saved']];
+        }
     }
 
     #[Test]

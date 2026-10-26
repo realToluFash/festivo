@@ -1,15 +1,17 @@
 import type { Membership, PausedOrganisation } from '@soirely/api-client';
 import { pausedReasonKey, pausedSwitch } from '@soirely/domain';
 import { router } from 'expo-router';
+import { type RefObject, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { SECTION_HREF } from '../kit/appNav.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { bodyEdges } from './AppFrame.tsx';
+import { bodyEdges } from './bodyEdges.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { Notice } from './Notice.tsx';
+import { PausedOwnerClaim } from './OwnerClaimBanner.tsx';
 import { Screen } from './Screen.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Text } from './Text.tsx';
@@ -24,9 +26,10 @@ export function AccessPaused({
   paused: PausedOrganisation;
   others: readonly Membership[];
   onSwitch: (to: Membership) => void;
-  onChoose: () => void;
+  onChoose: (opener: RefObject<View | null>) => void;
 }) {
   const { t } = useTranslation();
+  const switchButton = useRef<View>(null);
   const { kind } = useLayout();
   const { suspension } = paused;
   const named = { organisation: paused.name, domain: suspension.domain ?? '' };
@@ -53,11 +56,26 @@ export function AccessPaused({
         </Text>
         <Text size={tokens.typeBodyPhone.size}>{t('accessPaused.kept', named)}</Text>
         <Text size={tokens.typeBodyPhone.size}>{t('accessPaused.untouched')}</Text>
-        {suspension.removesAt != null && (
+        {suspension.onlyOwner ? (
           <Notice
-            tone="attention"
-            mark="!"
-            body={t('accessPaused.removedBy', { ...named, when: suspension.removesAt.written })}
+            tone="quiet"
+            mark={tokens.marks.info.glyph}
+            body={t('accessPaused.stillOnlyOwner', named)}
+          />
+        ) : (
+          suspension.removesAt != null && (
+            <Notice
+              tone="attention"
+              mark="!"
+              body={t('accessPaused.removedBy', { ...named, when: suspension.removesAt.written })}
+            />
+          )
+        )}
+        {paused.ownerClaim != null && (
+          <PausedOwnerClaim
+            organisationId={paused.id}
+            organisation={paused.name}
+            claim={paused.ownerClaim}
           />
         )}
         <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
@@ -80,7 +98,10 @@ export function AccessPaused({
           {switchTo != null && (
             <SecondaryButton
               label={t('accessPaused.switch')}
-              onPress={() => (switchTo === 'switcher' ? onChoose() : onSwitch(switchTo))}
+              onPress={() =>
+                switchTo === 'switcher' ? onChoose(switchButton) : onSwitch(switchTo)
+              }
+              ref={switchButton}
               testID="accessPaused.switch"
             />
           )}

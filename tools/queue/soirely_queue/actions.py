@@ -6,7 +6,7 @@ import re
 import socket
 import time
 
-from . import github, store, sync
+from . import github, local, machine, store, sync
 from . import roles as R
 from . import text as T
 from . import work as W
@@ -174,10 +174,18 @@ def comment(c, a):
     unknown = [t for t in to if t not in R.ROLES and t != "dev" and t not in R.LOCALES]
     if unknown:
         raise Refused(f"no role {', '.join(unknown)}")
+    if to and story.get("archived"):
+        raise Refused(f"sc-{story['id']} is archived, so a comment there wakes nobody: ask on "
+                      "the story that replaced it, or an open one")
     posted = post(c, story, to, a.text, parent)
     if a.reply_to:
         store.mark_handled(c.db, c.role, [a.reply_to])
     c.refresh(story["id"])
+    if to and story["done"]:
+        woken = ", ".join(sorted({R.developer_of(story["labels"]) if t == "dev"
+                                  else R.FORMER.get(t, t) for t in to}))
+        return (f"posted #{posted['id']} on sc-{story['id']}, which is Done: it wakes "
+                f"{woken}. New work goes on an open story or a new one")
     return f"posted #{posted['id']} on sc-{story['id']}"
 
 
@@ -237,12 +245,23 @@ def ops_only(c, story):
                       f"sc-{story['id']} is not")
 
 
+def holding_now(c, story):
+    """The blockers holding the story, each as Shortcut has it now."""
+    if story["state"] not in W.HOLDABLE:
+        return []
+    return W.holding(story, {b: c.story(b) for b in W.blockers(story)})
+
+
 def move(c, a):
     guard(c, "move")
     story = c.story(a.story)
     ops_only(c, story)
     state = set_state(c, story, a.state, check=c.role != "pm")
-    c.refresh(story["id"])
+    moved = c.refresh(story["id"])
+    holders = holding_now(c, moved) if state == "Ready For Dev" else []
+    if holders:
+        return (f"sc-{story['id']} is now {state}, {W.held_by(holders)}: no developer is "
+                "offered it until they merge")
     return f"sc-{story['id']} is now {state}"
 
 
@@ -285,6 +304,21 @@ def label(c, a):
 
 
 STALE_CLAIM_HOURS = 3
+NEEDS_IOS = ("sc-{} needs iOS, and this machine has no Xcode: it is for a tester on the Mac, "
+             "pick another")
+
+
+def stack_up(c, story, held=False):
+    """A tester claims only what its own stack can test, so a dead stack strands nothing."""
+    problem = local.stack_problem(c.role)
+    if not problem:
+        return
+    if held:
+        raise Refused(f"your QA stack cannot be tested against: {problem}. sc-{story['id']} "
+                      "is still In QA under your claim: bring the stack up, or give it back "
+                      f"with `sq {c.role} unclaim sc-{story['id']} --text \"<why>\"`")
+    raise Refused(f"your QA stack cannot be tested against: {problem}. Nothing claimed: "
+                  "bring the stack up, or leave the story for another tester")
 
 
 def claim(c, a):
@@ -300,6 +334,10 @@ def claim(c, a):
             raise Refused(f"sc-{story['id']} is in epic {held['name']}, which is "
                           f"{held.get('state_name') or held.get('state')}: its stories wait "
                           "until the owner moves it to In Progress")
+        holders = holding_now(c, story)
+        if holders:
+            raise Refused(f"sc-{story['id']} is {W.held_by(holders)}: it is offered once "
+                          "they merge, at Ready For QA or later. Nothing claimed: pick another")
         holder = store.take_story(c.db, story, c.role)
         if holder != c.role:
             raise Refused(f"{holder} claimed sc-{story['id']} first: pick another")
@@ -308,23 +346,30 @@ def claim(c, a):
     else:
         takeover = ""
         if story["state"] == "In QA":
-            last = next((x for x in reversed(story["comments"])
-                         if x["text"].startswith("QA claim:")), None)
+            last = R.last_claim(story)
+            if last and R.last_tester(story) == c.role:
+                stack_up(c, story, held=True)
+                c.refresh(story["id"])
+                return None
+            if not R.can_test(c.role, story, machine.has_xcode):
+                raise Refused(NEEDS_IOS.format(story["id"]))
             age = time.time() - datetime.datetime.fromisoformat(
                 last["at"].replace("Z", "+00:00")).timestamp() if last else float("inf")
             if age < STALE_CLAIM_HOURS * 3600:
                 raise Refused(f"sc-{story['id']} is In QA under \"{last['text']}\"; "
                               f"a claim goes stale after {STALE_CLAIM_HOURS} hours")
             if last:
-                who = last["text"].split(":", 1)[1].split(",")[0].strip()
-                takeover = f", taking over from {who}'s of {last['at'][11:16]}"
+                takeover = f", taking over from {R.claimant(last)}'s of {last['at'][11:16]}"
         elif story["state"] != "Ready For QA":
             raise Refused(f"sc-{story['id']} is {story['state']}, not Ready For QA")
+        elif not R.can_test(c.role, story, machine.has_xcode):
+            raise Refused(NEEDS_IOS.format(story["id"]))
         else:
             first = W.retester(story)
             if first and first != c.role:
                 raise Refused(f"sc-{story['id']} came back after {first} failed it, and is "
                               f"{first}'s to retest for {R.RETEST_MINUTES} minutes: pick another")
+        stack_up(c, story)
         holder = store.take_story(c.db, story, c.role)
         if holder != c.role:
             raise Refused(f"{holder} claimed sc-{story['id']} first: pick another")
@@ -333,6 +378,22 @@ def claim(c, a):
         c.shortcut.comment(story["id"], f"QA claim: {c.role}{takeover}")
     c.refresh(story["id"])
     return None
+
+
+def unclaim(c, a):
+    """A tester that cannot test a story it holds gives it back to Ready For QA, so it never
+    sits in In QA under a claim nobody is working on."""
+    guard(c, "unclaim")
+    story = c.story(a.story)
+    if story["state"] != "In QA" or R.last_tester(story) != c.role:
+        raise Refused(f"sc-{story['id']} is {story['state']} and not under your QA claim")
+    if not a.text.strip():
+        raise Refused("say why it was not tested, with --text")
+    set_state(c, story, "Ready For QA", check=False)
+    set_labels(c, story["id"], remove={R.TESTERS_LABELS[c.role]})
+    c.shortcut.comment(story["id"], f"{R.RELEASED} {c.role}, {a.text.strip()}")
+    c.refresh(story["id"])
+    return f"sc-{story['id']} is back in Ready For QA for any tester"
 
 
 def report(c, a):
@@ -540,6 +601,7 @@ def relate(c, a):
         return f"already linked: sc-{subject} {a.verb} sc-{other}"
     c.shortcut.relate(subject, other, a.verb)
     c.refresh(subject)
+    c.refresh(other)
     return f"sc-{subject} {a.verb} sc-{other}"
 
 
@@ -603,15 +665,21 @@ def review(c, a):
                                  for i in items])
     url = posted.get("html_url", pr["url"])
     # Only a story in review moves: a linguist's ticket, say, keeps its own state.
-    if story and story["state"] in W.REVIEWED:
+    if story and story["state"] in W.REVIEWED and not W.side_pr(story, pr):
         set_state(c, story, "Passed Code Review" if a.verdict == "pass" else "Failed Code Review")
+    # A Done story stays Done: QA has nothing to take, and a push alone wakes the lead.
+    done = story and W.finished(story)
     if story and a.verdict == "pass":
-        post(c, story, ["qa"], f"PR #{a.pr} passed review at {head[:7]}: {pr['url']}\n\n"
-                               f"{a.qa or 'Nothing beyond the AC to look at hard.'}")
+        # A developer's change on a linguist's ticket is not the ticket ready for QA.
+        if not W.side_pr(story, pr) and not done:
+            post(c, story, ["qa"], f"PR #{a.pr} passed review at {head[:7]}: {pr['url']}\n\n"
+                                   f"{a.qa or 'Nothing beyond the AC to look at hard.'}")
     elif story:
         post(c, story, [R.developer_of(story["labels"])],
              f"Review of PR #{a.pr} at {head[:7]}: {blocking} blocking. {url}\n"
-             "Answer each finding in its thread, fix, push, and hand it back to In Review.")
+             + ("Answer each finding in its thread, fix and push; the lead is woken by the push."
+                if done else
+                "Answer each finding in its thread, fix, push, and hand it back to In Review."))
     stale = resync(c)
     if story:
         c.refresh(story["id"])
@@ -647,11 +715,22 @@ def resolve(c, a):
     return f"resolved {found['path']}:{found['line'] or '-'} on PR #{a.pr}{resync(c)}"
 
 
+PR_SECTIONS = ("Description", "Risks", "References", "Evidence of work", "Next Steps")
+
+
 def pr_create(c, a):
     guard(c, "pr-create")
     if a.draft:
         raise Refused("pull requests open ready for review, not as drafts, so the lead is "
                       "woken for them")
+    headings = {h.lower() for h, _, _ in T.sections(a.text)}
+    if missing := [h for h in PR_SECTIONS if h.lower() not in headings]:
+        deeper = {h.lower(): level for h, level, _ in T.sections(a.text, T.DEEPER) if level}
+        levels = "".join(f"; {h} is at level {deeper[h.lower()]}" for h in missing
+                         if h.lower() in deeper)
+        raise Refused(f"the body has no {', '.join(missing)} heading at levels 1-3{levels}; "
+                      f"open it in create-pr's shape, since pr-edit can only replace a section "
+                      f"it can find")
     url = github.create_pr(a.head, a.title, a.text, draft=a.draft)
     return f"opened {url}{resync(c)}"
 
@@ -699,7 +778,7 @@ ASK_PARTS = ("Machine", "Rule", "For", "Without it")
 def this_machine():
     from . import machine
     try:
-        return machine.load().get("machine") or socket.gethostname()
+        return machine.machine_name(machine.load())
     except machine.ConfigError:
         return socket.gethostname()
 
@@ -734,7 +813,7 @@ def merge(c, a):
     pr = c.pr(a.pr)
     if pr["state"] == "merged" and pr["story_id"] and c.role not in R.LINGUISTS:
         story = c.story(pr["story_id"])
-        if story["state"] in R.MERGING:
+        if story["state"] in R.MERGING and not W.linguists(story):
             return f"PR #{a.pr} was already merged; " + finish_handover(c, story, pr, a.text)
     if pr["state"] != "open":
         raise Refused(f"PR #{a.pr} is {pr['state']}")
@@ -759,9 +838,17 @@ def merge(c, a):
         github.merge(a.pr, head, delete_branch=True)
         return f"merged PR #{a.pr}"
     story = c.story(pr["story_id"]) if pr["story_id"] else None
-    if not story or story["state"] not in R.MERGING:
-        raise Refused(f"its story is {story['state'] if story else 'unknown'}, not "
-                      "Passed Code Review")
+    if not story:
+        raise Refused(f"PR #{a.pr} names no story (sc-N in its branch or title), so nothing "
+                      "says whose it is: ask [ops] to give it one or close it")
+    if story.get("archived"):
+        raise Refused(f"sc-{story['id']} is archived, so its PR merges nowhere: close it with "
+                      f"`sq {c.role} pr-close {a.pr} --text \"<why>\"`")
+    side = W.side_pr(story, pr)
+    follow_up = not side and (story["state"] in R.FOLLOWING_UP or W.finished(story))
+    if story["state"] not in R.MERGING and not side and not follow_up:
+        raise Refused(f"its story is {story['state']}, not Passed Code Review: move it to "
+                      "In Review for the lead once its checks are green")
     if R.builder_of(story["labels"]) != c.role and not (
             c.role in R.DEVS and R.builder_of(story["labels"]) in R.DEVS):
         raise Refused(f"sc-{story['id']} is {R.builder_of(story['labels'])}'s to merge")
@@ -776,6 +863,11 @@ def merge(c, a):
         github.ready(a.pr)
     github.merge(a.pr, head)
     merged = github.live(a.pr)["mergeCommit"]
+    if side:
+        return (f"merged PR #{a.pr} as {merged}; sc-{story['id']} stays {story['state']}, "
+                f"the linguist's to move, and the linguist is woken{resync(c)}")
+    if follow_up:
+        return f"merged PR #{a.pr} as {merged}; sc-{story['id']} stays {story['state']}{resync(c)}"
     try:
         went = hand_to_qa(c, story, pr, merged, a.text)
     except ShortcutError as error:
@@ -786,6 +878,16 @@ def merge(c, a):
     return f"merged PR #{a.pr} as {merged}; sc-{story['id']} is {went}{told}{resync(c)}"
 
 
+def owns(c, story_id, refusal):
+    """The story's builder, or the developers on each other's, or ops on any."""
+    story = c.story(story_id) if story_id else None
+    builder = (None if not story else "l10n" if W.linguists(story)
+               else R.builder_of(story["labels"]))
+    if c.role != "ops" and builder != c.role and not (
+            c.role in R.DEVS and builder in R.DEVS):
+        raise Refused(refusal.format(builder or "nobody"))
+
+
 def pr_close(c, a):
     """Closes unmerged. The story's builder closes its own; ops, which keeps the queue, any."""
     guard(c, "pr-close")
@@ -794,15 +896,34 @@ def pr_close(c, a):
     pr = c.pr(a.pr)
     if pr["state"] != "open":
         raise Refused(f"PR #{a.pr} is {pr['state']}")
-    story = c.story(pr["story_id"]) if pr["story_id"] else None
-    labels = story["labels"] if story else []
-    builder = (None if not story else "l10n" if R.translation(labels, None)
-               and R.OPS_LABEL not in labels else R.builder_of(labels))
-    if c.role != "ops" and builder != c.role and not (
-            c.role in R.DEVS and builder in R.DEVS):
-        raise Refused(f"PR #{a.pr} is {builder or 'nobody'}'s to close; ask [ops]")
+    owns(c, pr["story_id"], f"PR #{a.pr} is {{}}'s to close; ask [ops]")
     github.close(a.pr, f"{a.text.rstrip()} (from {signature(c.role)})")
     return f"closed PR #{a.pr} unmerged{resync(c)}"
+
+
+def pr_edit(c, a):
+    """One section of the body, read from GitHub now; a merged body is the record, so it is
+    corrected too. The pull request is all that changes: no commit, no story, no wake."""
+    guard(c, "pr-edit")
+    if not (a.text or "").strip():
+        raise Refused("the new text is empty; a section that does not apply says `None.`")
+    if headed := [h for h, _, _ in T.sections(a.text) if h != T.TOP]:
+        raise Refused(f"the text brings its own heading ({headed[0]}); send only the "
+                      "section's text")
+    live = github.live(a.pr)
+    if live["state"] == "CLOSED":
+        raise Refused(f"PR #{a.pr} is closed unmerged")
+    owns(c, live["story_id"], f"PR #{a.pr} is {{}}'s to edit; ask [ops]")
+    found = [h for h in T.matching(live["body"], a.section) if h != T.TOP]
+    if len(found) != 1:
+        headings = "; ".join(h for h, _, _ in T.sections(live["body"]) if h != T.TOP)
+        raise Refused(f"{'no heading matches' if not found else f'{len(found)} headings match'} "
+                      f"{a.section}; the body has: {headings or 'no headings'}")
+    body = T.swap(live["body"], found[0], a.text)
+    github.edit_body(a.pr, body)
+    if known := store.pr(c.db, a.pr):
+        store.put_pr(c.db, dict(known, body=body))
+    return f"PR #{a.pr}: replaced {found[0]}"
 
 
 def to_qa(c, a):

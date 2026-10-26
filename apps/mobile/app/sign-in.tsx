@@ -10,10 +10,11 @@ import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { Footnote, PrimaryButton, QuietButton } from '../src/components/Buttons.tsx';
 import { Field, TextField } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
+import { useFocusOnAnswer } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { PasswordField } from '../src/components/PasswordField.tsx';
 import { ProviderButtons, ProviderSignIn } from '../src/components/ProviderSignIn.tsx';
-import { currentLocale } from '../src/i18n/index.ts';
+import { currentLocale, dateLocale } from '../src/i18n/index.ts';
 import { emailMessage, useFormChecks } from '../src/kit/formChecks.ts';
 import { tokens } from '../src/theme/tokens.ts';
 import { nextAfterSignIn } from '../src/challenge.ts';
@@ -26,11 +27,13 @@ import {
 import { useLayout } from '../src/layout/useLayout.ts';
 
 type Status =
-  | { kind: 'ready' }
+  /** `another`: Sign in with another account brought the form back in its place. */
+  | { kind: 'ready'; another?: true }
   | { kind: 'signingIn' }
   | { kind: 'refused' }
   | { kind: 'rateLimited'; retryAt: string; liftsAt: number }
-  | { kind: 'providerFailed'; provider: string }
+  /** `ruled`: tapped on the provider buttons a rule left, which give way to the form. */
+  | { kind: 'providerFailed'; provider: string; ruled?: true }
   | { kind: 'failed' }
   | { kind: 'sessionEnded' }
   | { kind: 'ruled'; refusal: RuleRefusal };
@@ -78,8 +81,15 @@ export default function SignIn() {
         status={status}
         onSubmit={signIn}
         onLockLifted={liftLock}
-        onProviderFailed={(provider) => setStatus({ kind: 'providerFailed', provider })}
-        onAnotherAccount={() => setStatus({ kind: 'ready' })}
+        onProviderFailed={(provider) =>
+          setStatus({
+            kind: 'providerFailed',
+            provider,
+            ...(status.kind === 'ruled' &&
+              status.refusal.kind === 'providerOnly' && { ruled: true }),
+          })
+        }
+        onAnotherAccount={() => setStatus({ kind: 'ready', another: true })}
       />
     </AuthFrame>
   );
@@ -122,11 +132,19 @@ function Credentials({
     onSubmit(typed.current.email.trim(), typed.current.password);
   };
 
+  // What the screen opened with was not an answer to a tap, so it is not read out.
+  const [opened] = useState(status);
+  const answer = status === opened ? undefined : status;
   const busy = status.kind === 'signingIn';
   const refusal = status.kind === 'ruled' ? status.refusal : null;
   // A password cannot sign this account in, so the form gives way to the provider buttons.
   const providerOnly = refusal?.kind === 'providerOnly';
   const locked = status.kind === 'rateLimited';
+  // Where the tap's button went, its answer takes focus (sc-11173).
+  useFocusOnAnswer<TextInput>(
+    status.kind === 'ready' && status.another ? status : undefined,
+    email,
+  );
   const liftsAt = status.kind === 'rateLimited' ? status.liftsAt : null;
 
   useEffect(() => {
@@ -178,6 +196,8 @@ function Credentials({
               providerNames(refusal.providers),
             ),
           })}
+          answer={answer}
+          takesFocus={answer !== undefined}
         />
       )}
 
@@ -187,6 +207,7 @@ function Credentials({
           mark={tokens.marks.broken.glyph}
           title={t('signIn.failedTitle')}
           body={t('signIn.failedBody')}
+          answer={answer}
         />
       )}
 
@@ -201,6 +222,7 @@ function Credentials({
             onPress: () => router.push('/forgot-password'),
             testID: 'signIn.locked.reset',
           }}
+          answer={answer}
         />
       )}
 
@@ -210,6 +232,8 @@ function Credentials({
           mark={tokens.marks.broken.glyph}
           title={t('signIn.providerFailedTitle', { provider: status.provider })}
           body={t('signIn.providerFailedBody', { provider: status.provider })}
+          answer={answer}
+          takesFocus={status.ruled === true}
         />
       )}
 
@@ -349,7 +373,7 @@ function refusalFrom(error: unknown): Status {
     if (liftsAt != null) {
       return {
         kind: 'rateLimited',
-        retryAt: formatTimeOfDay(liftsAt, currentLocale()),
+        retryAt: formatTimeOfDay(liftsAt, dateLocale()),
         liftsAt: liftsAt.getTime(),
       };
     }

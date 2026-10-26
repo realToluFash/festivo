@@ -3,16 +3,23 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { AppFrame, bodyEdges } from '../../src/components/AppFrame.tsx';
+import { AppFrame } from '../../src/components/AppFrame.tsx';
+import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import { DevicesCard } from '../../src/components/DevicesCard.tsx';
 import { PasswordCard } from '../../src/components/PasswordCard.tsx';
-import { Screen } from '../../src/components/Screen.tsx';
+import { Screen, type StepClosed, stepClosed } from '../../src/components/Screen.tsx';
 import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
 import { Text } from '../../src/components/Text.tsx';
 import { TwoFactorCard } from '../../src/components/TwoFactorCard.tsx';
 import { WaysCard } from '../../src/components/WaysCard.tsx';
 import { type LayoutKind, useLayout } from '../../src/layout/useLayout.ts';
-import { endedHere, reloadSignedIn, signOutHere, useSignedIn } from '../../src/signedIn.ts';
+import {
+  endedHere,
+  reloadSignedIn,
+  rereadAccount,
+  signOutHere,
+  useSignedIn,
+} from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
 /** Settings > Security, `AppSettings-*` state `security`: every card the interim screen held. */
@@ -21,6 +28,8 @@ export default function Security() {
   const { kind } = useLayout();
   const { account, organisations } = useSignedIn();
   const [settingPassword, setSettingPassword] = useState(false);
+  const [setFrom, setSetFrom] = useState('setPassword');
+  const [setClosed, setSetClosed] = useState<StepClosed | undefined>(undefined);
   const [sessionsEnded, setSessionsEnded] = useState(0);
   const [codesSpent, setCodesSpent] = useState(0);
   const codeSpent = () => setCodesSpent((n) => n + 1);
@@ -58,6 +67,7 @@ export default function Security() {
                 onAdded={reloadSignedIn}
                 setting={settingPassword}
                 onSetting={setSettingPassword}
+                onSetCancelled={() => setSetClosed(stepClosed(setFrom))}
                 onChanged={() => setSessionsEnded((n) => n + 1)}
               />
               <WaysCard
@@ -69,7 +79,12 @@ export default function Security() {
                   await reloadSignedIn();
                   setSessionsEnded((n) => n + 1);
                 }}
-                onSetPassword={() => setSettingPassword(true)}
+                onRefused={rereadAccount}
+                onSetPassword={(from) => {
+                  setSetFrom(from);
+                  setSettingPassword(true);
+                }}
+                setPasswordClosed={setClosed}
                 onSignedOutHere={signOutHere}
                 onCodeSpent={codeSpent}
               />

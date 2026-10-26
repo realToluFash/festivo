@@ -8,11 +8,12 @@ use App\Entity\Membership;
 use App\Enum\MembershipStatus;
 use App\Repository\MembershipRepository;
 use DateInterval;
+use DateTimeImmutable;
 use Psl\Iter;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
 
-/** A suspension's 30 days run only beside another active Owner, starting afresh when one arrives (sc-564). Flushing is the caller's. */
+/** A domain suspension's 30 days run only beside another active Owner, starting afresh when one arrives (sc-564). Flushing is the caller's. */
 final readonly class RemovalClock
 {
     public function __construct(
@@ -21,8 +22,8 @@ final readonly class RemovalClock
     ) {
     }
 
-    /** After any move or role change: the owners are read as they stand in memory, so it runs before the flush. */
-    public function wind(Membership $changed, bool $wasOwner = false): void
+    /** After any move or role change: the owners are read as they stand in memory, so it runs before the flush. The 30 days run from `$at`, or now. */
+    public function wind(Membership $changed, bool $wasOwner = false, ?DateTimeImmutable $at = null): void
     {
         if ($wasOwner || $changed->getRole()->isOwner()) {
             $owners = Vec\filter(
@@ -32,25 +33,25 @@ final readonly class RemovalClock
             $alone = !Iter\any($owners, static fn (Membership $owner): bool => $owner->isActive());
 
             foreach ($owners as $owner) {
-                $this->start($owner, held: $alone);
+                $this->start($owner, held: $alone, at: $at);
             }
         }
 
         if (!$changed->getRole()->isOwner()) {
-            $this->start($changed, held: false);
+            $this->start($changed, held: false, at: $at);
         }
     }
 
-    private function start(Membership $membership, bool $held): void
+    private function start(Membership $membership, bool $held, ?DateTimeImmutable $at): void
     {
-        if (MembershipStatus::Suspended !== $membership->getStatus()) {
+        if (MembershipStatus::Suspended !== $membership->getStatus() || true !== $membership->getSuspension()?->runsOut()) {
             return;
         }
 
         if ($held) {
             $membership->setRemovesAt(null);
         } elseif (null === $membership->getRemovesAt()) {
-            $membership->setRemovesAt($this->clock->now()->add(new DateInterval(Membership::UNANSWERED_FOR)));
+            $membership->setRemovesAt(($at ?? $this->clock->now())->add(new DateInterval(Membership::UNANSWERED_FOR)));
         }
     }
 }

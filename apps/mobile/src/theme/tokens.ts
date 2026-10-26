@@ -2,7 +2,7 @@
 
 export const tokens = {
   "colorInk": "#15171C",
-  "colorInkSecondary": "#6B7280",
+  "colorInkSecondary": "#5F6673",
   "colorInkTertiary": "#9CA3AF",
   "colorInkOnDark": "#FFFFFF",
   "colorInkOnDarkSecondary": "#D1D5DB",
@@ -140,7 +140,7 @@ export const tokens = {
     "lineHeight": 1,
     "letterSpacing": "0"
   },
-  "typeMonoTime": {
+  "typeCode": {
     "size": 14,
     "weight": 600,
     "lineHeight": 1,

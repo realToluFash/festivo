@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\User\Mail\UserMailer;
+use App\Domain\User\SignInMethods\RecentProof;
 use App\Domain\User\TwoFactor\SecondFactorCheck;
 use App\Domain\User\TwoFactor\SecretBox;
 use App\Domain\User\UserRegistrar;
@@ -13,6 +15,7 @@ use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\IdentityProvider;
 use App\Http\Exception\ApiException;
+use App\Locale\SupportedLocales;
 use App\Repository\ProviderIdentityRepository;
 use App\Repository\TwoFactorFactorRepository;
 use App\Tests\ApiTestCase;
@@ -78,6 +81,48 @@ final class TwoFactorTest extends ApiTestCase
 
         self::assertCount(10, Type\vec(Type\string())->coerce($codes['recoveryCodes']));
         self::assertSame(['on' => true, 'recoveryCodesLeft' => 10], $this->call('GET', '/api/auth/two-factor'));
+    }
+
+    #[Test]
+    public function onlyTheMatchingCodeEmailsTheAddressThatItWasTurnedOn(): void
+    {
+        $this->authenticated();
+        $this->call('POST', '/api/auth/two-factor/enrol');
+        self::assertCount(0, $this->turnedOnEmails(), 'starting setup sends nothing');
+        $secret = Type\string()->coerce($this->call('POST', '/api/auth/two-factor/enrol')['secret']);
+        self::assertCount(0, $this->turnedOnEmails(), 'nor does starting it again');
+        $this->call('POST', '/api/auth/two-factor/activate', ['code' => '000000']);
+        self::assertCount(0, $this->turnedOnEmails(), 'nor does a wrong code');
+
+        $this->call('POST', '/api/auth/two-factor/activate', ['code' => $this->codeNow($secret)]);
+        $sent = $this->turnedOnEmails();
+        self::assertCount(1, $sent);
+        $email = $sent[0];
+        self::assertSame(self::ADDRESS, $email->getTo()[0]->getAddress());
+        self::assertStringContainsString('turned on for your Soirely account on 17 October 2026', (string) $email->getTextBody());
+        self::assertStringContainsString('"Lost your authenticator and your recovery codes?"', (string) $email->getTextBody());
+
+        $this->call('POST', '/api/auth/two-factor/enrol');
+        self::assertSame(ErrorCode::TwoFactorAlreadyOn->type(), $this->last()['type']);
+        self::assertCount(0, $this->turnedOnEmails(), 'setting it up while it is on sends nothing');
+        $this->call('POST', '/api/auth/two-factor/activate', ['code' => $this->codeNow($secret)]);
+        self::assertSame(ErrorCode::TwoFactorNotEnrolled->type(), $this->last()['type']);
+        self::assertCount(0, $this->turnedOnEmails(), 'nor does a code while it is on');
+    }
+
+    #[Test]
+    public function theTurnedOnEmailSpeaksTheLanguageItWasTurnedOnInWhenTheAccountHasNone(): void
+    {
+        $this->fresh()->setLocale(null);
+        self::em()->flush();
+        $this->authenticated();
+        $this->client->setServerParameter('HTTP_ACCEPT_LANGUAGE', 'fr');
+        $secret = Type\string()->coerce($this->call('POST', '/api/auth/two-factor/enrol')['secret']);
+
+        $this->call('POST', '/api/auth/two-factor/activate', ['code' => $this->codeNow($secret)]);
+
+        self::assertCount(10, Type\vec(Type\string())->coerce($this->last()['recoveryCodes']));
+        self::assertStringContainsString('17 octobre 2026', (string) $this->turnedOnEmails()[0]->getTextBody());
     }
 
     #[Test]
@@ -149,7 +194,7 @@ final class TwoFactorTest extends ApiTestCase
             ['/api/auth/two-factor/verify', ['challenge' => $challenge, 'recoveryCode' => 12345], 'recoveryCode', 'Enter one of your recovery codes.', false],
             ['/api/auth/two-factor/disable', ['code' => 123456], 'code', 'Enter a code from your app, or a recovery code.', true],
             ['/api/auth/two-factor/recovery-codes', ['code' => null], 'code', 'Enter a code from your app, or a recovery code.', true],
-            ['/api/auth/two-factor/disable', [], 'code', 'Enter a code from your app, or a recovery code.', true],
+            ['/api/auth/two-factor/disable', null, 'code', 'Enter a code from your app, or a recovery code.', true],
             ['/api/auth/two-factor/verify', ['challenge' => $challenge], 'code', 'Enter the 6-digit code from your app.', false],
             ['/api/auth/two-factor/verify', ['challenge' => $challenge, 'code' => null, 'recoveryCode' => null], 'code', 'Enter the 6-digit code from your app.', false],
         ];
@@ -254,12 +299,28 @@ final class TwoFactorTest extends ApiTestCase
 
         $paused = $this->refusal(static fn () => $check->passCode($factor, '000000'));
         self::assertSame(ErrorCode::TooManyAttempts, $paused->errorCode);
-        self::assertMatchesRegularExpression('/Try again at \d\d:\d\d\./', $paused->getMessage());
+        self::assertMatchesRegularExpression('/Try again at \d\d:\d\d UTC\./', self::worded($paused));
         self::assertArrayHasKey('Retry-After', $paused->headers);
 
         self::mockTime('+30 seconds');
         $code = $this->codeNow($secret);
         self::assertSame(ErrorCode::TooManyAttempts, $this->refusal(static fn () => $check->passCode($factor, $code))->errorCode, 'a right code waits out the pause too');
+    }
+
+    #[Test]
+    public function theProofStepsPauseSaysUntilWhenToo(): void
+    {
+        $this->turnedOn();
+        $proof = self::service(RecentProof::class);
+
+        foreach (Vec\range(1, 4) as $_) {
+            self::assertSame(ErrorCode::TwoFactorCodeInvalid, $this->refusal(fn () => $proof->prove($this->fresh(), self::PASSWORD, null, '000000'))->errorCode);
+        }
+
+        $paused = $this->refusal(fn () => $proof->prove($this->fresh(), self::PASSWORD, null, '000000'));
+        self::assertSame(ErrorCode::TooManyAttempts, $paused->errorCode);
+        self::assertMatchesRegularExpression('/^Too many wrong codes\. Try again at \d\d:\d\d UTC\.$/', self::worded($paused));
+        self::assertArrayHasKey('pendingProof', $paused->members);
     }
 
     #[Test]
@@ -395,6 +456,17 @@ final class TwoFactorTest extends ApiTestCase
         $body = $this->call('POST', '/api/auth/login', ['email' => self::ADDRESS, 'password' => self::PASSWORD]);
 
         return [$this->statusCode(), $body];
+    }
+
+    /** @return list<Email> */
+    private function turnedOnEmails(): array
+    {
+        $subjects = Vec\map(SupportedLocales::ALL, static fn (string $locale): string => self::service(UserMailer::class)->line('twoFactor.on.subject', $locale));
+
+        return Vec\filter(
+            Vec\map(self::getMailerMessages(), static fn (object $message): Email => Type\instance_of(Email::class)->coerce($message)),
+            static fn (Email $email): bool => Iter\contains($subjects, $email->getSubject()),
+        );
     }
 
     private function codeNow(#[SensitiveParameter] string $secret): string

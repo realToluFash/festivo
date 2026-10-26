@@ -41,7 +41,7 @@ final readonly class SignOutEverywhereElse
         $limit = $this->signOutElsewhereAccountLimiter->create($user->getId()->toRfc4122())->consume();
 
         if (!$limit->isAccepted()) {
-            throw ApiException::tooManyAttempts('Too many tries.', $limit->getRetryAfter());
+            throw ApiException::tooManyAttempts('limits.tries', $limit->getRetryAfter());
         }
 
         $ended = $this->entityManager->wrapInTransaction(function () use ($user, $keep): array {

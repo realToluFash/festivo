@@ -1,41 +1,59 @@
 import {
   ApiError,
-  type DomainSuspension,
   type Membership,
   type MembersList,
   type OrganisationMember,
   type OrganisationRole,
   type SentInvitation,
+  type Suspension as MemberSuspension,
 } from '@soirely/api-client';
 import {
   type MemberFilter,
+  type MemberStanding,
   approvalRoles,
   emailProblem,
   formatDay,
   grantableRoles,
   historyLine,
   initials,
+  memberHeldNoRole,
   memberIsShown,
   memberRowLine,
   memberStanding,
   memberStatusWord,
+  ownRoleLine,
   roleName,
+  withheldRoles,
 } from '@soirely/domain';
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import {
+  type FormEvent,
+  type Ref,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
+import { OwnerClaimBanner } from '../../../components/OwnerClaimBanner.tsx';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
-import { currentLocale } from '../../../i18n/index.ts';
+import { offButton } from '../../../offButton.ts';
+import { focusWhereSent, offField } from '../../../offField.ts';
+import { dateLocale, useShownLanguage } from '../../../i18n/index.ts';
 import { can, useSession } from '../../../session.ts';
+import { focusStep, useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { Forbidden } from '../Forbidden.tsx';
+import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 
 type Load =
   | { kind: 'loading' }
-  | { kind: 'failed' }
+  | { kind: 'failed'; retried: boolean }
   | { kind: 'loaded'; list: MembersList; roles: OrganisationRole[] };
 
 /** What answering a request to join leaves on the list (sc-392): the done line and its next step. */
@@ -47,7 +65,7 @@ interface Answered {
 type View =
   | { kind: 'list'; flash: string | null; answered?: Answered }
   | { kind: 'member'; id: string }
-  | { kind: 'invite'; email: string; roleId: string | null };
+  | { kind: 'invite'; email: string; roleId: string | null; again: string | null };
 
 const FILTERS: readonly MemberFilter[] = [
   'all',
@@ -67,20 +85,40 @@ export function Members() {
   const manages = can(session, 'members.manage');
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const language = useShownLanguage();
+  const loadedFor = useRef<string | null>(null);
+  const retrying = useRef(false);
+  const [heading, arriveAtHeading] = useStepFocus();
+  const [failedLine, arriveAtFailed] = useStepFocus<HTMLParagraphElement>();
 
   useEffect(() => {
     if (organisationId == null) return;
     let current = true;
+    const askedAgain = loadedFor.current === organisationId;
 
     Promise.all([api.members(organisationId), api.roles(organisationId)]).then(
-      ([list, catalogue]) => current && setLoad({ kind: 'loaded', list, roles: catalogue.roles }),
-      () => current && setLoad({ kind: 'failed' }),
+      ([list, catalogue]) => {
+        if (!current) return;
+        loadedFor.current = organisationId;
+        setLoad({ kind: 'loaded', list, roles: catalogue.roles });
+        if (retrying.current) arriveAtHeading();
+        retrying.current = false;
+      },
+      () => {
+        if (!current) return;
+        const retried = retrying.current;
+        retrying.current = false;
+        setLoad((before) =>
+          askedAgain && before.kind === 'loaded' ? before : { kind: 'failed', retried },
+        );
+        if (retried) arriveAtFailed();
+      },
     );
 
     return () => {
       current = false;
     };
-  }, [organisationId, attempt]);
+  }, [organisationId, attempt, language, arriveAtHeading, arriveAtFailed]);
 
   if (organisation == null) return null;
   if (!can(session, 'members.read')) return <Forbidden />;
@@ -94,24 +132,18 @@ export function Members() {
         </p>
       )}
       {load.kind === 'failed' && (
-        <div className="notice notice-broken" role="alert">
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <div className="notice-body">
-            <p>{t('membersScreen.failedLoad')}</p>
-            <button
-              type="button"
-              className="button"
-              onClick={() => {
-                setLoad({ kind: 'loading' });
-                setAttempt((n) => n + 1);
-              }}
-            >
-              {t('rolesScreen.retry')}
-            </button>
-          </div>
-        </div>
+        <ArrivalNotice
+          role={load.retried ? undefined : 'alert'}
+          line={t('membersScreen.failedLoad')}
+          lineRef={failedLine}
+          focusable={load.retried}
+          retry={t('rolesScreen.retry')}
+          onRetry={() => {
+            retrying.current = true;
+            setLoad({ kind: 'loading' });
+            setAttempt((n) => n + 1);
+          }}
+        />
       )}
       {load.kind === 'loaded' && (
         <MembersLoaded
@@ -120,6 +152,7 @@ export function Members() {
           list={load.list}
           roles={load.roles}
           manages={manages}
+          headingRef={heading}
           onChange={(list) => setLoad({ ...load, list })}
         />
       )}
@@ -132,25 +165,43 @@ function MembersLoaded({
   list,
   roles,
   manages,
+  headingRef,
   onChange,
 }: {
   organisation: Membership;
   list: MembersList;
   roles: OrganisationRole[];
   manages: boolean;
+  headingRef: RefObject<HTMLHeadingElement | null>;
   onChange: (list: MembersList) => void;
 }) {
   const [view, setView] = useState<View>({ kind: 'list', flash: null });
   const member = view.kind === 'member' ? list.members.find((one) => one.id === view.id) : null;
+  const land = useFocusOnceShown();
+  const inviteButton = useRef<HTMLButtonElement>(null);
+  const flashNotice = useRef<HTMLDivElement>(null);
+
+  function backToList(find: () => HTMLElement | null | undefined): void {
+    setView({ kind: 'list', flash: null });
+    land(() => find() ?? headingRef.current);
+  }
 
   if (view.kind === 'invite') {
+    const again = view.again;
+
     return (
       <Invite
         organisation={organisation}
         roles={grantableRoles(roles, organisation)}
         email={view.email}
         roleId={view.roleId}
-        onCancel={() => setView({ kind: 'list', flash: null })}
+        onCancel={() =>
+          backToList(() =>
+            again == null
+              ? inviteButton.current
+              : document.querySelector<HTMLElement>(`[data-invite-again="${again}"]`),
+          )
+        }
         onSent={(invitation, flash) => {
           onChange({
             ...list,
@@ -160,6 +211,7 @@ function MembersLoaded({
             ],
           });
           setView({ kind: 'list', flash });
+          land(() => flashNotice.current);
         }}
       />
     );
@@ -173,6 +225,7 @@ function MembersLoaded({
         member={member}
         list={list}
         roles={grantableRoles(roles, organisation)}
+        withheld={withheldRoles(roles, organisation)}
         manages={manages}
         caller={list.members.find((one) => one.self)?.user.id ?? null}
         onChanged={onChange}
@@ -180,7 +233,10 @@ function MembersLoaded({
           onChange(changed);
           setView({ kind: 'list', flash: null, answered });
         }}
-        onBack={() => setView({ kind: 'list', flash: null })}
+        onBack={() =>
+          backToList(() => document.querySelector<HTMLElement>(`[data-member="${member.id}"]`))
+        }
+        onBackToMembers={() => backToList(() => headingRef.current)}
       />
     );
   }
@@ -191,6 +247,9 @@ function MembersLoaded({
       list={list}
       roles={grantableRoles(roles, organisation)}
       manages={manages}
+      headingRef={headingRef}
+      inviteRef={inviteButton}
+      flashRef={flashNotice}
       flash={view.kind === 'list' ? view.flash : null}
       answered={view.kind === 'list' ? (view.answered ?? null) : null}
       onAnswered={(changed, answered) => {
@@ -198,7 +257,7 @@ function MembersLoaded({
         setView({ kind: 'list', flash: null, answered });
       }}
       onOpen={(id) => setView({ kind: 'member', id })}
-      onInvite={(email, roleId) => setView({ kind: 'invite', email, roleId })}
+      onInvite={(email, roleId, again) => setView({ kind: 'invite', email, roleId, again })}
       onRevoked={(invitation) =>
         onChange({
           ...list,
@@ -214,6 +273,9 @@ function MembersOverview({
   list,
   roles,
   manages,
+  headingRef,
+  inviteRef,
+  flashRef,
   flash,
   answered,
   onAnswered,
@@ -225,11 +287,14 @@ function MembersOverview({
   list: MembersList;
   roles: OrganisationRole[];
   manages: boolean;
+  headingRef: RefObject<HTMLHeadingElement | null>;
+  inviteRef: RefObject<HTMLButtonElement | null>;
+  flashRef: RefObject<HTMLDivElement | null>;
   flash: string | null;
   answered: Answered | null;
   onAnswered: (list: MembersList, answered: Answered) => void;
   onOpen: (id: string) => void;
-  onInvite: (email: string, roleId: string | null) => void;
+  onInvite: (email: string, roleId: string | null, again: string | null) => void;
   onRevoked: (invitation: SentInvitation) => void;
 }) {
   const { t } = useTranslation();
@@ -239,6 +304,14 @@ function MembersOverview({
   const shown = list.members.filter((member) => memberIsShown(member.status, filter));
   const waiting = list.members.filter((member) => member.status === 'pending_approval');
   const filters = FILTERS.filter((one) => manages || one !== 'waiting');
+  const done = useRef<HTMLDivElement>(null);
+  const listed = useRef<HTMLElement>(null);
+  const land = useFocusOnceShown();
+
+  useEffect(() => {
+    if (answered != null) done.current?.focus();
+  }, [answered]);
+
   const count = (one: MemberFilter) =>
     one === 'invited'
       ? pending
@@ -247,7 +320,9 @@ function MembersOverview({
   return (
     <div className="members">
       <div className="members-head">
-        <h1>{t('membersScreen.title')}</h1>
+        <h1 ref={headingRef} tabIndex={-1}>
+          {t('membersScreen.title')}
+        </h1>
         <p className="muted">
           {t('membersScreen.subtitle', {
             organisation: organisation.name,
@@ -257,17 +332,26 @@ function MembersOverview({
         </p>
         {manages && (
           <button
+            ref={inviteRef}
             type="button"
             className="button button-primary"
-            onClick={() => onInvite('', null)}
+            onClick={() => onInvite('', null, null)}
           >
             {t('membersScreen.invite')}
           </button>
         )}
       </div>
 
+      {organisation.role.seededAs === 'administrator' && (
+        <OwnerClaimBanner
+          organisationId={organisation.id}
+          organisation={organisation.name}
+          pageHeading={headingRef}
+        />
+      )}
+
       {flash != null && (
-        <div className="notice notice-done" role="status">
+        <div ref={flashRef} className="notice notice-done" tabIndex={-1}>
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>
@@ -276,23 +360,25 @@ function MembersOverview({
       )}
 
       {answered != null && (
-        <div className="notice notice-done" role="status">
+        <div ref={done} className="notice notice-done" tabIndex={-1}>
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>
           <div className="notice-body">
             <p>{answered.text}</p>
-            <button
-              type="button"
-              className="link-button"
-              onClick={() => {
-                const next = answered.next;
-                if ('member' in next) onOpen(next.member);
-                else setFilter(next.filter);
-              }}
-            >
-              {answered.next.label}
-            </button>
+            <p className="notice-action">
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => {
+                  const next = answered.next;
+                  if ('member' in next) onOpen(next.member);
+                  else setFilter(next.filter);
+                }}
+              >
+                {answered.next.label}
+              </button>
+            </p>
           </div>
         </div>
       )}
@@ -303,7 +389,12 @@ function MembersOverview({
           <p className="muted">{t('membersScreen.awaiting.note')}</p>
           {waiting.map((member) => (
             <div key={member.id} className="members-request">
-              <button type="button" className="members-row" onClick={() => onOpen(member.id)}>
+              <button
+                type="button"
+                className="members-row"
+                data-member={member.id}
+                onClick={() => onOpen(member.id)}
+              >
                 <span className="org-tile" aria-hidden="true">
                   {initials(member.user.name)}
                 </span>
@@ -341,7 +432,7 @@ function MembersOverview({
       </div>
 
       {filter !== 'invited' && (
-        <section className="card members-list" aria-label={t('membersScreen.shown')}>
+        <section ref={listed} className="card members-list" aria-label={t('membersScreen.shown')}>
           {shown.map((member) => (
             <MemberRow
               key={member.id}
@@ -358,7 +449,18 @@ function MembersOverview({
                   {t(`membersScreen.empty.${filter}.body`, { organisation: organisation.name })}
                 </p>
               )}
-              <button type="button" className="link-button" onClick={() => setFilter('all')}>
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => {
+                  setFilter('all');
+                  land(
+                    () =>
+                      listed.current?.querySelector<HTMLElement>('.members-row') ??
+                      headingRef.current,
+                  );
+                }}
+              >
                 {t('membersScreen.showEveryone')}
               </button>
             </div>
@@ -378,7 +480,7 @@ function MembersOverview({
               invitation={invitation}
               caller={list.members.find((one) => one.self)?.user.id ?? null}
               manages={manages}
-              onAgain={() => onInvite(invitation.email, invitation.role?.id ?? null)}
+              onAgain={() => onInvite(invitation.email, invitation.role?.id ?? null, invitation.id)}
               onRevoked={onRevoked}
             />
           ))}
@@ -398,8 +500,7 @@ function MemberRow({
   onOpen: () => void;
 }) {
   const { t } = useTranslation();
-  const former = member.status === 'left_or_removed';
-  const line = memberRowLine(t, member, organisation.name, (at) => formatDay(at, currentLocale()));
+  const line = memberRowLine(t, member, organisation.name, (at) => formatDay(at, dateLocale()));
   const content = (
     <>
       <span className="org-tile" aria-hidden="true">
@@ -415,10 +516,8 @@ function MemberRow({
     </>
   );
 
-  return former ? (
-    <div className="members-row">{content}</div>
-  ) : (
-    <button type="button" className="members-row" onClick={onOpen}>
+  return (
+    <button type="button" className="members-row" data-member={member.id} onClick={onOpen}>
       {content}
       <span aria-hidden="true">›</span>
     </button>
@@ -443,7 +542,9 @@ function InvitationRow({
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
-  const day = (at: string | null) => (at == null ? '' : formatDay(at, currentLocale()));
+  const again = useRef<HTMLButtonElement>(null);
+  const land = useFocusOnceShown();
+  const day = (at: string | null) => (at == null ? '' : formatDay(at, dateLocale()));
   const ended: Record<string, string | null> = {
     pending: invitation.expiresAt,
     expired: invitation.expiresAt,
@@ -456,7 +557,9 @@ function InvitationRow({
     setFailed(false);
 
     try {
-      onRevoked(await api.revokeInvitation(organisation.id, invitation.id));
+      const revoked = await api.revokeInvitation(organisation.id, invitation.id);
+      land(() => again.current);
+      onRevoked(revoked);
     } catch {
       setFailed(true);
     } finally {
@@ -487,12 +590,23 @@ function InvitationRow({
           {t(`membersScreen.invitationState.${invitation.status}`)}
         </span>
         {manages && invitation.status === 'pending' && (
-          <button type="button" className="button" disabled={busy} onClick={() => void revoke()}>
+          <button
+            type="button"
+            className="button"
+            {...offButton(busy)}
+            onClick={() => void revoke()}
+          >
             {t('membersScreen.revoke')}
           </button>
         )}
         {manages && invitation.status !== 'pending' && (
-          <button type="button" className="button" onClick={onAgain}>
+          <button
+            ref={again}
+            type="button"
+            className="button"
+            data-invite-again={invitation.id}
+            onClick={onAgain}
+          >
             {t('membersScreen.inviteAgain')}
           </button>
         )}
@@ -506,34 +620,125 @@ function InvitationRow({
 
 type Removal = 'resting' | 'confirming' | 'removing' | 'removed';
 
+type Suspending = 'resting' | 'confirming' | 'suspending';
+
+/** What the last suspend or restore came to, said at the top of the member's page (sc-3575). */
+type AccessOutcome =
+  { kind: 'suspended' } | { kind: 'restored'; role: string } | { kind: 'conflict' };
+
 function MemberDetail({
   organisation,
   member,
   list,
   roles,
+  withheld,
   manages,
   caller,
   onChanged,
   onAnswered,
   onBack,
+  onBackToMembers,
 }: {
   organisation: Membership;
   member: OrganisationMember;
   list: MembersList;
   roles: OrganisationRole[];
+  withheld: OrganisationRole[];
   manages: boolean;
   caller: string | null;
   onChanged: (list: MembersList) => void;
   onAnswered: (list: MembersList, answered: Answered) => void;
   onBack: () => void;
+  onBackToMembers: () => void;
 }) {
   const { t } = useTranslation();
   const [removal, setRemoval] = useState<Removal>('resting');
   const [failed, setFailed] = useState<string | null>(null);
+  const [restored, setRestored] = useState(false);
+  const [suspending, setSuspending] = useState<Suspending>('resting');
+  const [suspendFailed, setSuspendFailed] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<AccessOutcome | null>(null);
+  const said = useRef<HTMLDivElement>(null);
+  const asking = useRef<HTMLHeadingElement>(null);
+  const name = useRef<HTMLHeadingElement>(null);
+  const [removeTitle, arriveAtRemove] = useStepFocus();
+  const land = useFocusOnceShown();
+  const suspendButton = useRef<HTMLButtonElement>(null);
+  const removeButton = useRef<HTMLButtonElement>(null);
+  const removeSuspended = useRef<HTMLButtonElement>(null);
+  const removedNotice = useRef<HTMLDivElement>(null);
+  const [removedRead, setRemovedRead] = useState(false);
+  const restoredNotice = useRef<HTMLDivElement>(null);
   const callerOwns = organisation.role.seededAs === 'owner';
-  const standing = memberStanding(member, list.members, { owns: callerOwns, manages });
+  const standing = memberStanding(member, list.members, {
+    owns: callerOwns,
+    manages,
+    withholds: withheld,
+  });
   const waiting = member.status === 'pending_approval';
-  const acts = standing === 'manageable' && !waiting;
+  const noRole = memberHeldNoRole(member);
+  const ownRole = ownRoleLine(standing === 'selfOwner' ? 'selfOwner' : 'self');
+  const onlyOwner = standing === 'suspendedOnlyOwner';
+  const acts = (standing === 'manageable' || onlyOwner) && !waiting;
+  const refusal = useRef<HTMLDivElement>(null);
+  const owner = member.role.seededAs === 'owner';
+  const active = member.status === 'active';
+  const byHand = member.status === 'suspended' && member.suspension?.reason === 'manual';
+
+  useLayoutEffect(() => focusStep(name.current), []);
+
+  useEffect(() => {
+    if (onlyOwner && failed != null) refusal.current?.focus();
+  }, [onlyOwner, failed]);
+
+  function confirmRemoving(): void {
+    setRemoval('confirming');
+    arriveAtRemove();
+  }
+
+  useEffect(() => {
+    if (outcome != null) said.current?.focus();
+  }, [outcome]);
+
+  const askOpened = useRef(false);
+
+  useEffect(() => {
+    if (!askOpened.current) return;
+
+    askOpened.current = false;
+    asking.current?.focus();
+  }, [suspending]);
+
+  async function reload(): Promise<void> {
+    onChanged(await api.members(organisation.id));
+  }
+
+  function changedElsewhere(): void {
+    setOutcome({ kind: 'conflict' });
+    reload().catch(() => undefined);
+  }
+
+  async function suspend(): Promise<void> {
+    setSuspending('suspending');
+    setSuspendFailed(null);
+
+    try {
+      await api.suspendMember(organisation.id, member.id);
+      setSuspending('resting');
+      setOutcome({ kind: 'suspended' });
+      await reload();
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        setSuspending('resting');
+        changedElsewhere();
+      } else {
+        setSuspending('confirming');
+        setSuspendFailed(
+          error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'),
+        );
+      }
+    }
+  }
 
   async function remove(): Promise<void> {
     setRemoval('removing');
@@ -542,9 +747,10 @@ function MemberDetail({
     try {
       await api.removeMember(organisation.id, member.id);
       setRemoval('removed');
+      land(() => removedNotice.current);
       onChanged(await api.members(organisation.id));
     } catch (error) {
-      setRemoval('confirming');
+      setRemoval(onlyOwner ? 'resting' : 'confirming');
       setFailed(error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'));
     }
   }
@@ -552,7 +758,13 @@ function MemberDetail({
   if (removal === 'removed') {
     return (
       <div className="members">
-        <div className="notice notice-done" role="status">
+        <div
+          ref={removedNotice}
+          className="notice notice-done"
+          tabIndex={-1}
+          aria-describedby={removedRead ? undefined : 'member-removed-next'}
+          onBlur={() => setRemovedRead(true)}
+        >
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>
@@ -563,8 +775,10 @@ function MemberDetail({
             })}
           </p>
         </div>
-        <p className="muted">{t('membersScreen.removedNext')}</p>
-        <button type="button" className="link-button" onClick={onBack}>
+        <p id="member-removed-next" className="muted">
+          {t('membersScreen.removedNext')}
+        </p>
+        <button type="button" className="link-button" onClick={onBackToMembers}>
           {t('membersScreen.backToMembers')}
         </button>
       </div>
@@ -609,15 +823,25 @@ function MemberDetail({
           {initials(member.user.name)}
         </span>
         <div className="org-naming">
-          <h1>{member.user.name}</h1>
+          <h1 ref={name} tabIndex={-1}>
+            {member.user.name}
+          </h1>
           <p className="muted">
             {member.self
               ? t('membersScreen.youAs', { role: roleName(t, member.role) })
-              : `${waiting ? t('membersScreen.noRoleYet') : roleName(t, member.role)} · ${memberStatusWord(t, member)}`}
+              : `${noRole ? t('membersScreen.noRoleYet') : roleName(t, member.role)} · ${memberStatusWord(t, member)}`}
           </p>
           {member.user.email != null && <p className="muted">{member.user.email}</p>}
         </div>
       </div>
+      {outcome != null && (
+        <AccessNotice
+          ref={said}
+          outcome={outcome}
+          name={member.user.name}
+          organisation={organisation.name}
+        />
+      )}
       <section className="card" aria-labelledby="role-title">
         <h2 id="role-title">{t('membersScreen.roleTitle')}</h2>
         {waiting ? (
@@ -633,13 +857,17 @@ function MemberDetail({
               />
             )}
           </>
+        ) : noRole ? (
+          <p className="members-row-name">{t('membersScreen.noRoleYet')}</p>
         ) : member.self ? (
           <>
             <p className="members-row-name">{roleName(t, member.role)}</p>
-            <p className="muted">{t('membersScreen.ownRole')}</p>
-            <Link className="link-button" to="/app/settings">
-              {t('membersScreen.goToGeneral')}
-            </Link>
+            <p className="muted">{t(`membersScreen.${ownRole.key}`)}</p>
+            {ownRole.handsOn && (
+              <Link className="link-button" to="/app/settings">
+                {t('membersScreen.goToGeneral')}
+              </Link>
+            )}
           </>
         ) : standing === 'onlyOwner' ? (
           <>
@@ -654,10 +882,15 @@ function MemberDetail({
               <p className="muted">{t('membersScreen.askOwner', { name: member.user.name })}</p>
             )}
           </>
+        ) : member.status === 'suspended' && standing === 'manageable' ? (
+          <>
+            <p className="members-row-name">{roleName(t, member.role)}</p>
+            <p className="muted">{t('membersScreen.roleKeptWhileSuspended')}</p>
+          </>
         ) : standing !== 'manageable' ? (
           <>
             <p className="members-row-name">{roleName(t, member.role)}</p>
-            {standing === 'ownerOnly' && <p className="muted">{t('membersScreen.ownerOnly')}</p>}
+            {member.suspension == null && <FixedLine standing={standing} />}
           </>
         ) : (
           <RolePicker
@@ -665,6 +898,7 @@ function MemberDetail({
             member={member}
             roles={roles}
             onChanged={onChanged}
+            onChangedElsewhere={changedElsewhere}
           />
         )}
       </section>
@@ -675,24 +909,124 @@ function MemberDetail({
           {history.map((step, index) => (
             <li key={index}>
               <span>{step.what}</span>
-              <span className="muted">{formatDay(step.at, currentLocale())}</span>
+              <span className="muted">{formatDay(step.at, dateLocale())}</span>
             </li>
           ))}
         </ul>
       </section>
 
-      {acts && member.suspension != null && (
-        <Suspension
-          organisation={organisation}
-          member={member}
-          suspension={member.suspension}
-          onChanged={onChanged}
-        />
+      {restored ? (
+        <div ref={restoredNotice} className="notice notice-done" tabIndex={-1}>
+          <span className="mark mark-done" aria-hidden="true">
+            ✓
+          </span>
+          <p>
+            {t('membersScreen.restored', {
+              name: member.user.name,
+              organisation: organisation.name,
+            })}
+          </p>
+        </div>
+      ) : (
+        member.suspension != null &&
+        (!byHand || removal === 'resting') && (
+          <Suspension
+            organisation={organisation}
+            member={member}
+            suspension={member.suspension}
+            standing={standing}
+            acts={acts}
+            removeRef={removeSuspended}
+            onRestored={() => {
+              if (byHand) {
+                setOutcome({ kind: 'restored', role: roleName(t, member.role) });
+              } else {
+                setRestored(true);
+                land(() => restoredNotice.current);
+              }
+            }}
+            onChangedElsewhere={changedElsewhere}
+            onRemove={confirmRemoving}
+            onMembers={onBack}
+            onChanged={onChanged}
+          />
+        )
       )}
 
-      {acts && (
+      {manages && !member.self && owner && active && (
+        <div className="notice notice-quiet">
+          <span className="mark mark-info" aria-hidden="true">
+            i
+          </span>
+          <p>{t('membersScreen.ownerNoSuspend', { name: member.user.name })}</p>
+        </div>
+      )}
+
+      {standing === 'manageable' && active && !owner && (
+        <section className="card" aria-labelledby="suspend-title">
+          {suspending === 'resting' ? (
+            <>
+              <h2 id="suspend-title">
+                {t('membersScreen.suspendTitle', { name: member.user.name })}
+              </h2>
+              <p className="muted">
+                {t('membersScreen.suspendBody', { organisation: organisation.name })}
+              </p>
+              <button
+                ref={suspendButton}
+                type="button"
+                className="button"
+                onClick={() => {
+                  askOpened.current = true;
+                  setSuspending('confirming');
+                }}
+              >
+                {t('membersScreen.suspendButton')}
+              </button>
+            </>
+          ) : (
+            <>
+              <h2 id="suspend-title" ref={asking} tabIndex={-1}>
+                {t('membersScreen.suspendConfirmTitle', { name: member.user.name })}
+              </h2>
+              <p>
+                {t('membersScreen.suspendConfirmBody', {
+                  name: member.user.name,
+                  organisation: organisation.name,
+                })}
+              </p>
+              <p className="muted">{t('membersScreen.suspendConfirmEmail')}</p>
+              {suspendFailed != null && <FieldError id="suspend-failed" message={suspendFailed} />}
+              <div className="actions">
+                <button
+                  type="button"
+                  className="button button-dark"
+                  aria-busy={suspending === 'suspending'}
+                  {...offButton(suspending === 'suspending')}
+                  onClick={() => void suspend()}
+                >
+                  {t('membersScreen.suspendConfirm', { name: member.user.name })}
+                </button>
+                <button
+                  type="button"
+                  className="button"
+                  onClick={() => {
+                    setSuspendFailed(null);
+                    setSuspending('resting');
+                    land(() => suspendButton.current);
+                  }}
+                >
+                  {t('membersScreen.suspendKeep', { name: member.user.name })}
+                </button>
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
+      {acts && (!byHand || removal !== 'resting') && (
         <section className="card" aria-labelledby="remove-title">
-          {removal === 'resting' ? (
+          {removal === 'resting' || (onlyOwner && removal === 'removing') ? (
             <>
               <h2 id="remove-title">
                 {t('membersScreen.removeTitle', { name: member.user.name })}
@@ -700,24 +1034,49 @@ function MemberDetail({
               <p className="muted">
                 {t('membersScreen.removeBody', { organisation: organisation.name })}
               </p>
+              {onlyOwner && failed != null && (
+                <div ref={refusal} tabIndex={-1}>
+                  <FieldError id="remove-failed" message={failed}>
+                    <p className="muted">
+                      {t('membersScreen.onlyOwnerNotRemovable', { name: member.user.name })}
+                    </p>
+                    {member.suspension?.reason === 'address_gone' && (
+                      <p className="muted">
+                        {t('membersScreen.onlyOwnerRestoreNeedsAddress', {
+                          domain: member.suspension.domain ?? '',
+                        })}
+                      </p>
+                    )}
+                  </FieldError>
+                </div>
+              )}
               <button
+                ref={removeButton}
                 type="button"
                 className="button button-danger"
-                onClick={() => setRemoval('confirming')}
+                aria-busy={removal === 'removing'}
+                {...offButton(removal === 'removing')}
+                onClick={() => (onlyOwner ? void remove() : confirmRemoving())}
+                title={t('membersScreen.removeButton', { organisation: organisation.name })}
               >
-                {t('membersScreen.removeButton', { organisation: organisation.name })}
+                <span className="button-label">
+                  {t('membersScreen.removeButton', { organisation: organisation.name })}
+                </span>
               </button>
             </>
           ) : (
             <>
-              <h2 id="remove-title">
+              <h2 id="remove-title" ref={removeTitle} tabIndex={-1}>
                 {t('membersScreen.removeConfirmTitle', { name: member.user.name })}
               </h2>
               <p>
-                {t('membersScreen.removeConfirmBody', {
-                  name: member.user.name,
-                  organisation: organisation.name,
-                })}
+                {t(
+                  byHand ? 'membersScreen.suspendedRemoveBody' : 'membersScreen.removeConfirmBody',
+                  {
+                    name: member.user.name,
+                    organisation: organisation.name,
+                  },
+                )}
               </p>
               {failed != null && <FieldError id="remove-failed" message={failed} />}
               <div className="actions">
@@ -725,7 +1084,7 @@ function MemberDetail({
                   type="button"
                   className="button button-danger"
                   aria-busy={removal === 'removing'}
-                  disabled={removal === 'removing'}
+                  {...offButton(removal === 'removing')}
                   onClick={() => void remove()}
                 >
                   {t('membersScreen.removeConfirm', { name: member.user.name })}
@@ -736,9 +1095,12 @@ function MemberDetail({
                   onClick={() => {
                     setFailed(null);
                     setRemoval('resting');
+                    land(() => (byHand ? removeSuspended.current : removeButton.current));
                   }}
                 >
-                  {t('membersScreen.removeKeep', { name: member.user.name })}
+                  {byHand
+                    ? t('membersScreen.suspendedRemoveKeep')
+                    : t('membersScreen.removeKeep', { name: member.user.name })}
                 </button>
               </div>
             </>
@@ -749,23 +1111,37 @@ function MemberDetail({
   );
 }
 
-type Restoring = 'resting' | 'restoring' | 'restored';
-
-/** A domain member paused when the company domain stopped bringing them in (sc-564): Restore, or Remove below. */
+/** Suspended by the company domain (sc-564), Remove below, or by hand (sc-3575), Remove in the card; read-only to a viewer who can't act. */
 function Suspension({
   organisation,
   member,
   suspension,
+  standing,
+  acts,
+  removeRef,
+  onRestored,
+  onChangedElsewhere,
+  onRemove,
+  onMembers,
   onChanged,
 }: {
   organisation: Membership;
   member: OrganisationMember;
-  suspension: DomainSuspension;
+  suspension: MemberSuspension;
+  standing: MemberStanding;
+  acts: boolean;
+  removeRef: RefObject<HTMLButtonElement | null>;
+  onRestored: () => void;
+  onChangedElsewhere: () => void;
+  onRemove: () => void;
+  onMembers: () => void;
   onChanged: (list: MembersList) => void;
 }) {
   const { t } = useTranslation();
-  const [restoring, setRestoring] = useState<Restoring>('resting');
+  const [restoring, setRestoring] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const [seats, setSeats] = useState<number | null>(null);
+  const byHand = suspension.reason === 'manual';
   const named = {
     name: member.user.name,
     organisation: organisation.name,
@@ -773,63 +1149,192 @@ function Suspension({
   };
 
   async function restore(): Promise<void> {
-    setRestoring('restoring');
+    setRestoring(true);
     setFailed(null);
+    setSeats(null);
 
     try {
       await api.restoreMember(organisation.id, member.id);
-      setRestoring('restored');
+      // Told by the member page: once the list reloads unsuspended, this card is gone (sc-564).
+      onRestored();
       onChanged(await api.members(organisation.id));
     } catch (error) {
-      setRestoring('resting');
-      setFailed(
-        error instanceof ApiError && error.is('restore_needs_address')
-          ? t('membersScreen.restoreNeedsAddress', named)
-          : error instanceof ApiError
-            ? error.problem.title
-            : t('membersScreen.actionFailed'),
-      );
+      setRestoring(false);
+
+      if (error instanceof ApiError && error.is('team_seats_in_use')) {
+        setSeats(error.problem.limit ?? 0);
+      } else if (error instanceof ApiError && error.is('restore_needs_address')) {
+        setFailed(t('membersScreen.restoreNeedsAddress', named));
+      } else if (error instanceof ApiError && error.status === 409) {
+        onChangedElsewhere();
+      } else {
+        setFailed(
+          error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'),
+        );
+      }
     }
   }
 
-  if (restoring === 'restored') {
+  return (
+    <section className="card" aria-labelledby="suspension-title">
+      {byHand ? (
+        <>
+          <h2 id="suspension-title">{t('membersScreen.suspendedTitle', named)}</h2>
+          <p className="muted">{t('membersScreen.suspendedBody', named)}</p>
+          {acts && (
+            <p className="muted">
+              {t('membersScreen.suspendedRestoreNote', { role: roleName(t, member.role) })}
+            </p>
+          )}
+        </>
+      ) : (
+        <>
+          <h2 id="suspension-title">
+            <span className="mark mark-attention" aria-hidden="true">
+              !
+            </span>{' '}
+            {t('membersScreen.state.domainSuspended')}
+          </h2>
+          <p>{t(`membersScreen.suspendedBecause.${suspension.reason}`, named)}</p>
+          {suspension.onlyOwner ? (
+            <p className="muted">{t('membersScreen.suspendedOnlyOwner', named)}</p>
+          ) : (
+            suspension.removesAt != null && (
+              <p className="muted">
+                {t('membersScreen.suspendedRemovedOn', { when: suspension.removesAt.written })}
+              </p>
+            )
+          )}
+        </>
+      )}
+      {seats != null && (
+        <SeatsInUse
+          name={member.user.name}
+          limit={seats}
+          owns={organisation.role.seededAs === 'owner'}
+          onMembers={onMembers}
+        />
+      )}
+      {failed != null && <FieldError id="restore-failed" message={failed} />}
+      {acts ? (
+        <div className="actions">
+          <button
+            type="button"
+            className="button button-primary"
+            aria-busy={restoring}
+            {...offButton(restoring)}
+            onClick={() => void restore()}
+          >
+            {t(byHand ? 'membersScreen.restoreAccess' : 'membersScreen.restore', named)}
+          </button>
+          {byHand && (
+            <button
+              ref={removeRef}
+              type="button"
+              className="button button-danger"
+              onClick={onRemove}
+            >
+              {t('membersScreen.removeTitle', named)}
+            </button>
+          )}
+        </div>
+      ) : (
+        <FixedLine standing={standing} />
+      )}
+    </section>
+  );
+}
+
+/** Why a manager can't change this member: an owner's role, or one holding what the viewer lacks (sc-11160). */
+function FixedLine({ standing }: { standing: MemberStanding }) {
+  const { t } = useTranslation();
+
+  if (standing === 'ownerOnly') return <p className="muted">{t('membersScreen.ownerOnly')}</p>;
+  if (standing === 'beyondGrant') return <p className="muted">{t('membersScreen.beyondGrant')}</p>;
+
+  return null;
+}
+
+/** Restore refused at the seat limit (sc-3575): the reason, the way through, and why suspending frees a seat. */
+function SeatsInUse({
+  name,
+  limit,
+  owns,
+  onMembers,
+}: {
+  name: string;
+  limit: number;
+  owns: boolean;
+  onMembers: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="notice notice-broken" role="alert">
+      <span className="mark mark-broken" aria-hidden="true">
+        ✕
+      </span>
+      <div className="notice-body">
+        <p className="notice-title">{t('membersScreen.seatsInUse', { count: limit })}</p>
+        <p>
+          {owns
+            ? t('membersScreen.seatsWayOwner', { name })
+            : t('membersScreen.seatsWayAdmin', { name })}
+        </p>
+        <div className="actions">
+          <button type="button" className="link-button" onClick={onMembers}>
+            {t('membersScreen.seatsOpenMembers')}
+          </button>
+        </div>
+        <p className="muted">{t('membersScreen.seatsSuspendedFree')}</p>
+      </div>
+    </div>
+  );
+}
+
+/** The status line after a suspend or restore, or the 409 when somebody else got there first; focus moves to it. */
+function AccessNotice({
+  ref,
+  outcome,
+  name,
+  organisation,
+}: {
+  ref: Ref<HTMLDivElement>;
+  outcome: AccessOutcome;
+  name: string;
+  organisation: string;
+}) {
+  const { t } = useTranslation();
+
+  if (outcome.kind === 'conflict') {
     return (
-      <div className="notice notice-done" role="status">
-        <span className="mark mark-done" aria-hidden="true">
-          ✓
+      <div ref={ref} tabIndex={-1} className="notice notice-quiet">
+        <span className="mark mark-info" aria-hidden="true">
+          i
         </span>
-        <p>{t('membersScreen.restored', named)}</p>
+        <p>{t('membersScreen.accessConflict', { name })}</p>
       </div>
     );
   }
 
   return (
-    <section className="card" aria-labelledby="suspension-title">
-      <h2 id="suspension-title">
-        <span className="mark mark-attention" aria-hidden="true">
-          !
-        </span>{' '}
-        {t('membersScreen.state.domainSuspended')}
-      </h2>
-      <p>{t(`membersScreen.suspendedBecause.${suspension.reason}`, named)}</p>
-      {suspension.removesAt != null && (
-        <p className="muted">
-          {t('membersScreen.suspendedRemovedOn', { when: suspension.removesAt.written })}
+    <div ref={ref} tabIndex={-1} className="notice notice-done">
+      <span className="mark mark-done" aria-hidden="true">
+        ✓
+      </span>
+      <div className="notice-body">
+        <p className="notice-title">
+          {outcome.kind === 'suspended'
+            ? t('membersScreen.suspendedNow', { name })
+            : t('membersScreen.restoredNow', { name, role: outcome.role })}
         </p>
-      )}
-      {failed != null && <FieldError id="restore-failed" message={failed} />}
-      <div className="actions">
-        <button
-          type="button"
-          className="button button-primary"
-          aria-busy={restoring === 'restoring'}
-          disabled={restoring === 'restoring'}
-          onClick={() => void restore()}
-        >
-          {t('membersScreen.restore', named)}
-        </button>
+        <p>
+          {outcome.kind === 'suspended'
+            ? t('membersScreen.suspendedNowNext', { organisation })
+            : t('membersScreen.restoredNowNext', { organisation })}
+        </p>
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -850,7 +1355,7 @@ function RequestLines({
           channel: t(`membersScreen.how.${member.channel ?? 'request'}`, {
             organisation: organisation.name,
           }),
-          date: member.since == null ? '' : formatDay(member.since, currentLocale()),
+          date: member.since == null ? '' : formatDay(member.since, dateLocale()),
         })}
       </span>
       {member.removesAt != null && (
@@ -882,8 +1387,10 @@ function JoinRequestAnswer({
   const [picked, setPicked] = useState(offered[0]?.id ?? '');
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const [left, setLeft] = useState<Answering | null>(null);
   const role = offered.find((one) => one.id === picked);
   const name = member.user.name;
+  const step = useCallback((element: HTMLElement | null) => element?.focus(), []);
 
   async function answer(): Promise<void> {
     setBusy(true);
@@ -905,12 +1412,23 @@ function JoinRequestAnswer({
       }
     } catch (error) {
       setBusy(false);
-      setFailed(error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'));
+      setFailed(
+        error instanceof ApiError
+          ? (error.problem.violations?.find((one) => one.propertyPath === 'roleId')?.message ??
+              error.problem.title)
+          : t('membersScreen.actionFailed'),
+      );
     }
+  }
+
+  function open(next: Answering): void {
+    setLeft(null);
+    setAnswering(next);
   }
 
   function back(): void {
     setFailed(null);
+    setLeft(answering);
     setAnswering('resting');
   }
 
@@ -918,13 +1436,19 @@ function JoinRequestAnswer({
     return (
       <div className="actions">
         <button
+          ref={left === 'approving' ? step : undefined}
           type="button"
           className="button button-primary"
-          onClick={() => setAnswering('approving')}
+          onClick={() => open('approving')}
         >
           {t('membersScreen.awaiting.approve')}
         </button>
-        <button type="button" className="button" onClick={() => setAnswering('turningDown')}>
+        <button
+          ref={left === 'turningDown' ? step : undefined}
+          type="button"
+          className="button"
+          onClick={() => open('turningDown')}
+        >
           {t('membersScreen.awaiting.turnDown')}
         </button>
       </div>
@@ -934,7 +1458,9 @@ function JoinRequestAnswer({
   if (answering === 'turningDown') {
     return (
       <div className="members-answer">
-        <h3>{t('membersScreen.awaiting.turnDownTitle', { name })}</h3>
+        <h3 ref={step} tabIndex={-1}>
+          {t('membersScreen.awaiting.turnDownTitle', { name })}
+        </h3>
         <p>{t('membersScreen.awaiting.turnDownBody', { name, organisation: organisation.name })}</p>
         {failed != null && <FieldError id={`turn-down-${member.id}`} message={failed} />}
         <div className="actions">
@@ -942,7 +1468,7 @@ function JoinRequestAnswer({
             type="button"
             className="button button-danger"
             aria-busy={busy}
-            disabled={busy}
+            {...offButton(busy)}
             onClick={() => void answer()}
           >
             {t('membersScreen.awaiting.turnDownConfirm', { name })}
@@ -962,6 +1488,7 @@ function JoinRequestAnswer({
         {offered.map((one) => (
           <label key={one.id} className="members-role">
             <input
+              ref={picked === one.id ? step : undefined}
               type="radio"
               name={`approve-role-${member.id}`}
               value={one.id}
@@ -984,7 +1511,8 @@ function JoinRequestAnswer({
           type="button"
           className="button button-primary"
           aria-busy={busy}
-          disabled={busy || role == null}
+          disabled={role == null}
+          {...offButton(busy)}
           onClick={() => void answer()}
         >
           {t('membersScreen.awaiting.approveAs', { role: role == null ? '' : roleName(t, role) })}
@@ -1002,11 +1530,13 @@ function RolePicker({
   member,
   roles,
   onChanged,
+  onChangedElsewhere,
 }: {
   organisation: Membership;
   member: OrganisationMember;
   roles: OrganisationRole[];
   onChanged: (list: MembersList) => void;
+  onChangedElsewhere: () => void;
 }) {
   const { t } = useTranslation();
   const [picked, setPicked] = useState(member.role.id);
@@ -1015,7 +1545,17 @@ function RolePicker({
   const [failed, setFailed] = useState<string | null>(null);
   const offered = roles.some((one) => one.id === member.role.id)
     ? roles
-    : [{ ...member.role, fixed: false, removable: false, permissions: [], holders: 0 }, ...roles];
+    : [
+        {
+          ...member.role,
+          fixed: false,
+          removable: false,
+          permissions: [],
+          holders: 0,
+          holderNames: [],
+        },
+        ...roles,
+      ];
   const role = offered.find((one) => one.id === picked);
   const changed = picked !== member.role.id && role != null;
 
@@ -1030,7 +1570,13 @@ function RolePicker({
       setDone(t('membersScreen.roleChanged', { name: member.user.name, role: roleName(t, role) }));
       onChanged(await api.members(organisation.id));
     } catch (error) {
-      setFailed(error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'));
+      if (error instanceof ApiError && error.status === 409) {
+        onChangedElsewhere();
+      } else {
+        setFailed(
+          error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'),
+        );
+      }
     } finally {
       setBusy(false);
     }
@@ -1079,8 +1625,8 @@ function RolePicker({
         <button
           type="button"
           className="button button-primary"
-          disabled={!changed || busy}
           aria-busy={busy}
+          {...offButton(!changed || busy)}
           onClick={() => void save()}
         >
           {changed
@@ -1130,9 +1676,13 @@ function Invite({
     document.getElementById('invite-email')?.focus(),
   );
   const emailError = checks.errors.email ?? refused;
+  const heading = useRef<HTMLHeadingElement>(null);
+
+  useLayoutEffect(() => focusStep(heading.current), []);
 
   async function send(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+    if (busy) return;
 
     const typed = String(new FormData(event.currentTarget).get('email') ?? '');
 
@@ -1141,6 +1691,7 @@ function Invite({
     setBusy(true);
     setRefused(null);
     setFailed(null);
+    const land = focusWhereSent();
 
     try {
       const invitation = await api.inviteMember(organisation.id, typed.trim(), role.id);
@@ -1154,7 +1705,7 @@ function Invite({
       ) {
         const violation = error.problem.violations?.find((one) => one.propertyPath === 'email');
         setRefused(violation?.message ?? error.problem.title);
-        document.getElementById('invite-email')?.focus();
+        land('invite-email');
       } else if (error instanceof ApiError && error.is('grant_not_held')) {
         setFailed(error.problem.title);
       } else {
@@ -1169,7 +1720,9 @@ function Invite({
         <span aria-hidden="true">‹ </span>
         {t('membersScreen.title')}
       </button>
-      <h1>{t('membersScreen.invite')}</h1>
+      <h1 ref={heading} tabIndex={-1}>
+        {t('membersScreen.invite')}
+      </h1>
       <p className="muted">{organisation.name}</p>
 
       {failed != null && (
@@ -1196,7 +1749,7 @@ function Invite({
             autoCapitalize="none"
             spellCheck={false}
             defaultValue={email}
-            disabled={busy}
+            {...offField(busy)}
             aria-invalid={emailError != null}
             aria-describedby={emailError != null ? 'invite-email-error' : undefined}
             onBlur={(event) => checks.left('email', event.target.value)}

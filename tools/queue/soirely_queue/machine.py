@@ -3,11 +3,14 @@
 Nothing here guesses. A role whose settings fail a check is refused with a reason, and the
 roles beside it keep running."""
 
+import functools
 import json
 import os
 import pathlib
 import re
 import shutil
+import socket
+import subprocess
 import sys
 
 from . import roles
@@ -23,10 +26,27 @@ RUNTIME = re.compile(r"^(\d+)(m|h)$")
 CLAUDE_DEFAULT = pathlib.Path("~/.claude").expanduser()
 # Under everything in agents.json: a worker is never left without a time limit.
 BUILT_IN = {"maxRuntime": "90m", "wakeEvery": "3m", "workers": 1}
+# What every worker on the machine may use between them, the systemd slice's MemoryMax.
+SLICE_MEMORY = "16G"
+
+
+@functools.cache
+def has_xcode():
+    if not shutil.which("xcrun"):
+        return False
+    try:
+        return subprocess.run(["xcrun", "simctl", "help"], capture_output=True,
+                              timeout=20).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
 
 
 class ConfigError(RuntimeError):
     pass
+
+
+def machine_name(config):
+    return config.get("machine") or socket.gethostname()
 
 
 def config_dir():
@@ -163,6 +183,12 @@ def settings(config, role):
     return merged
 
 
+def slice_memory(config):
+    """`sliceMemoryMax`, or 16G when it is unset or not a size, which `check` reports."""
+    value = config.get("sliceMemoryMax")
+    return str(value) if value is not None and SIZE.match(str(value)) else SLICE_MEMORY
+
+
 def minutes(runtime):
     number, unit = RUNTIME.match(runtime).groups()
     return int(number) * (60 if unit == "h" else 1)
@@ -216,7 +242,7 @@ def check(config, known=None, logged_in=account):
     if "ops" not in listed:
         # A refusal, not an error: an older file must not stop the self-update that fixes it.
         refused["ops"] = (f"not listed in {path()}: every machine runs ops, for its own disk, "
-                          "Docker, stacks and manager (ops@<machine>)")
+                          f"Docker, stacks and manager (ops@{machine_name(config)})")
     defaults = config.get("defaults") or {}
     if not config.get("claudeConfigDir"):
         errors.append(f"no claudeConfigDir in {path()}: the Claude config folder the workers "
@@ -234,6 +260,9 @@ def check(config, known=None, logged_in=account):
         if value is not None and (isinstance(value, bool) or not isinstance(value, (int, float))
                                   or value < 0):
             errors.append(f"{name} is {value!r} in {path()}: a number, or null")
+    limit = config.get("sliceMemoryMax")
+    if limit is not None and not SIZE.match(str(limit)):
+        errors.append(f"sliceMemoryMax is {limit!r} in {path()}: a size such as 28G, or null")
     for role in listed:
         if role in unknown:
             continue

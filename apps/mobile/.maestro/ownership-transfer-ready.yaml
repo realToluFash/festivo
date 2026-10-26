@@ -1,0 +1,29 @@
+# Settings > Organisation > Ownership and leaving: Transfer ownership open, a new owner
+# picked and a password typed, not yet sent. On a signed-in phone. sc-12511.
+#
+#   node .qa/bin/qa-env.mjs maestro ownership-transfer-ready --android MEMBERSHIP=… TYPED=…
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- scrollUntilVisible:
+    element:
+      id: 'ownership.transfer'
+    timeout: 60000
+- tapOn:
+    id: 'ownership.transfer'
+- scrollUntilVisible:
+    element:
+      id: 'ownership.transfer.keep'
+    timeout: 30000
+- tapOn:
+    id: 'ownership.owner.${MEMBERSHIP}'
+- tapOn:
+    id: 'ownership.password'
+- eraseText: 120
+- inputText: ${TYPED}
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'ownership.transfer.keep'
+    timeout: 30000
+- takeScreenshot: ownership-transfer-ready

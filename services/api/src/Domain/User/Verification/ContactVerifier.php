@@ -61,7 +61,7 @@ final readonly class ContactVerifier
         }
 
         $challenge = $this->verificationChallengeRepository->findLiveFor($contact)
-            ?? throw new ApiException(ErrorCode::VerificationCodeInvalid, 'That code does not match.');
+            ?? throw new ApiException(ErrorCode::VerificationCodeInvalid, 'code.mismatch');
 
         $this->check($challenge, $code);
 
@@ -73,16 +73,16 @@ final readonly class ContactVerifier
     public function check(VerificationChallenge $challenge, string $code): void
     {
         if ('' === Str\trim($code)) {
-            throw new ApiException(ErrorCode::VerificationCodeInvalid, 'That code does not match.');
+            throw new ApiException(ErrorCode::VerificationCodeInvalid, 'code.mismatch');
         }
 
         if ($challenge->isExpired()) {
-            throw new ApiException(ErrorCode::VerificationCodeExpired, 'That code has expired.');
+            throw new ApiException(ErrorCode::VerificationCodeExpired, 'code.expired');
         }
 
         // Stays the live challenge once spent, so every later try hears why, until a resend replaces it.
         if ($challenge->isExhausted()) {
-            throw new ApiException(ErrorCode::VerificationCodeExhausted, 'That code no longer works.');
+            throw new ApiException(ErrorCode::VerificationCodeExhausted, 'code.exhausted');
         }
 
         if (!\hash_equals($challenge->getCodeHash(), VerificationCodeIssuer::hash($code))) {
@@ -96,7 +96,7 @@ final readonly class ContactVerifier
         $this->verificationChallengeRepository->recordWrongAttempt($challenge);
 
         throw $challenge->isExhausted()
-            ? new ApiException(ErrorCode::VerificationCodeExhausted, 'That code no longer works.')
-            : new ApiException(ErrorCode::VerificationCodeInvalid, 'That code does not match.');
+            ? new ApiException(ErrorCode::VerificationCodeExhausted, 'code.exhausted')
+            : new ApiException(ErrorCode::VerificationCodeInvalid, 'code.mismatch');
     }
 }

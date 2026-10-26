@@ -1,24 +1,60 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
 import {
+  allowCleartext,
+  batchCheck,
+  batchFlow,
+  checkId,
+  codeStep,
+  databaseCommands,
+  composeBatch,
+  localise,
+  parseBatch,
+  REBUILD,
+  rerunHints,
+  STEP_MS,
+  totp,
   androidFlows,
+  androidPackage,
   androidSdk,
   branchForStory,
   clearApiCache,
+  defaultNetwork,
   COMPOSE_PROJECT,
+  emulatorAbi,
   emulatorFor,
   expoGoApk,
   expoSdkMajor,
   forAndroid,
   linkIntent,
+  maestroTarget,
   parseTarget,
+  playImage,
   QA_OVERRIDES,
   QA_PORTS,
   qaConfig,
+  APP_SERVICES,
+  launchVideo,
+  iosBundle,
+  releaseApk,
+  releaseApp,
+  releasePlatform,
+  simulatorArch,
+  staleBuilds,
+  xcodeWorkspace,
   renderQaEnv,
   reversedPorts,
   simulatorFor,
@@ -164,6 +200,22 @@ describe('the simulator ios opens', () => {
   });
 });
 
+describe('the device a maestro run drives', () => {
+  it.each(TESTERS)("is tester %i's own iPhone, through their own driver port", (tester) => {
+    const port = qaConfig(tester).driverPort;
+    expect(maestroTarget('UDID', false, port)).toEqual([
+      '--device',
+      'UDID',
+      '--driver-host-port',
+      String(22087 + tester),
+    ]);
+  });
+
+  it('is only the emulator on android, which has no shared driver', () => {
+    expect(maestroTarget('emulator-5564', true, 22088)).toEqual(['--device', 'emulator-5564']);
+  });
+});
+
 describe('the emulator android opens', () => {
   it.each([
     [[], { open: 'phone', shut: 'tablet' }],
@@ -207,6 +259,186 @@ describe('the Android SDK', () => {
   it('is where Android Studio puts it, without either', () => {
     expect(androidSdk({}, 'linux', '/h')).toBe('/h/Android/Sdk');
     expect(androidSdk({}, 'darwin', '/h')).toBe('/h/Library/Android/sdk');
+  });
+});
+
+describe('a release build', () => {
+  it("is for the emulator's architecture", () => {
+    expect(emulatorAbi('x64')).toBe('x86_64');
+    expect(emulatorAbi('arm64')).toBe('arm64-v8a');
+  });
+
+  it('is kept under the commit it was built from', () => {
+    expect(releaseApk('/qa', 'c8646738ce1413ea1e718dce85ff4973f0f9b22c')).toBe(
+      '/qa/.qa/release/soirely-c8646738ce14.apk',
+    );
+  });
+
+  it('leaves only the APK of the commit just built', () => {
+    const apk = releaseApk('/qa', 'c8646738ce1413ea1e718dce85ff4973f0f9b22c');
+    expect(
+      staleBuilds(
+        [
+          'soirely-c8646738ce14.apk',
+          'soirely-0123456789ab.apk',
+          'installed',
+          'launch-0123456789ab.mp4',
+        ],
+        apk,
+      ),
+    ).toEqual(['soirely-0123456789ab.apk']);
+  });
+
+  it('names the launch video by platform, so both launches of a commit are kept', () => {
+    const sha = 'c8646738ce1413ea1e718dce85ff4973f0f9b22c';
+    expect(launchVideo('/qa', sha, 'ios')).toBe('/qa/.qa/release/launch-c8646738ce14.ios.mp4');
+    expect(launchVideo('/qa', sha, 'android')).not.toBe(launchVideo('/qa', sha, 'ios'));
+  });
+
+  it('keeps the app beside the APK, and replaces only an older app', () => {
+    const app = releaseApp('/qa', 'c8646738ce1413ea1e718dce85ff4973f0f9b22c');
+    expect(app).toBe('/qa/.qa/release/soirely-c8646738ce14.app');
+    expect(
+      staleBuilds(
+        ['soirely-c8646738ce14.app', 'soirely-0123456789ab.app', 'soirely-0123456789ab.apk'],
+        app,
+      ),
+    ).toEqual(['soirely-0123456789ab.app']);
+  });
+
+  it('is for the simulator on a Mac, unless --android asks for the emulator', () => {
+    expect(releasePlatform([], 'darwin')).toBe('ios');
+    expect(releasePlatform(['--ipad', '--offline'], 'darwin')).toBe('ios');
+    expect(releasePlatform(['--android'], 'darwin')).toBe('android');
+    expect(releasePlatform(['--ipad'], 'linux')).toBe('android');
+  });
+
+  it("builds for the Mac's own simulator architecture", () => {
+    expect(simulatorArch('arm64')).toBe('arm64');
+    expect(simulatorArch('x64')).toBe('x86_64');
+  });
+
+  it('installs the bundle the app config names', () => {
+    const config = readFileSync(new URL('../apps/mobile/app.config.ts', import.meta.url), 'utf8');
+    expect(iosBundle(config)).toBe('com.soirely.app');
+    expect(() => iosBundle('ios: { supportsTablet: true }')).toThrow(/bundleIdentifier/);
+  });
+
+  it('builds the one workspace prebuild made', () => {
+    expect(xcodeWorkspace(['Podfile', 'Soirely.xcodeproj', 'Soirely.xcworkspace'])).toBe(
+      'Soirely.xcworkspace',
+    );
+    expect(() => xcodeWorkspace(['Soirely.xcodeproj'])).toThrow(/found 0/);
+  });
+
+  it('takes offline as every service the app reaches, stopped', () => {
+    const compose = readFileSync(new URL('../compose.yaml', import.meta.url), 'utf8');
+    for (const service of APP_SERVICES) {
+      expect(compose).toMatch(new RegExp(`^  ${service}:$`, 'm'));
+    }
+  });
+
+  it('launches offline only once the emulator has no default network', () => {
+    expect(defaultNetwork('Active default network: none\n')).toBeNull();
+    expect(defaultNetwork('NetworkProviders:\nActive default network: 100\n')).toBe('100');
+    expect(() => defaultNetwork("Can't find service: connectivity")).toThrow(/no default network/);
+  });
+
+  it("is the app config's Android package", () => {
+    const config = readFileSync(join(import.meta.dirname, '../apps/mobile/app.config.ts'), 'utf8');
+    expect(androidPackage(config)).toBe('com.soirely.app');
+    expect(() => androidPackage('ios: {}')).toThrow(/no android.package/);
+  });
+
+  it('may reach a stack over http', () => {
+    const manifest = '<manifest>\n  <application android:name=".MainApplication">\n</manifest>';
+    expect(allowCleartext(manifest)).toContain(
+      '<application android:usesCleartextTraffic="true" android:name=".MainApplication">',
+    );
+  });
+
+  it('leaves a manifest that already allows http alone', () => {
+    const manifest = '<application android:usesCleartextTraffic="true" android:name=".X">';
+    expect(allowCleartext(manifest)).toBe(manifest);
+  });
+
+  it('is an error when the manifest refuses http', () => {
+    const manifest = '<application android:usesCleartextTraffic="false" android:name=".X">';
+    expect(() => allowCleartext(manifest)).toThrow(/usesCleartextTraffic="false"/);
+  });
+
+  it('is an error when prebuild wrote no application', () => {
+    expect(() => allowCleartext('<manifest/>')).toThrow(/no <application>/);
+  });
+});
+
+describe('the image an emulator is made on', () => {
+  const sdkWith = (...paths) => {
+    const sdk = mkdtempSync(join(tmpdir(), 'sdk-'));
+    for (const path of paths) mkdirSync(join(sdk, 'system-images', path), { recursive: true });
+    return sdk;
+  };
+
+  it('is the newest Play image installed for this machine', () => {
+    const sdk = sdkWith(
+      'android-35/google_apis_playstore/arm64-v8a',
+      'android-37.0/google_apis_playstore_ps16k/arm64-v8a',
+      'android-37.0/google_apis/arm64-v8a',
+      'android-38/google_apis_playstore/x86_64',
+    );
+    expect(playImage(sdk, 'arm64')).toBe(
+      'system-images;android-37.0;google_apis_playstore_ps16k;arm64-v8a',
+    );
+  });
+
+  it('passes over a file beside the images, as Finder leaves', () => {
+    const sdk = sdkWith('android-37.0/google_apis_playstore_ps16k/arm64-v8a');
+    writeFileSync(join(sdk, 'system-images', '.DS_Store'), '');
+    expect(playImage(sdk, 'arm64')).toBe(
+      'system-images;android-37.0;google_apis_playstore_ps16k;arm64-v8a',
+    );
+  });
+
+  it('follows an image directory that is a link', () => {
+    const elsewhere = sdkWith('android-37.0/google_apis_playstore_ps16k/arm64-v8a');
+    const sdk = sdkWith();
+    mkdirSync(join(sdk, 'system-images'));
+    symlinkSync(
+      join(elsewhere, 'system-images', 'android-37.0'),
+      join(sdk, 'system-images', 'android-37.0'),
+    );
+    expect(playImage(sdk, 'arm64')).toBe(
+      'system-images;android-37.0;google_apis_playstore_ps16k;arm64-v8a',
+    );
+  });
+
+  it('passes over a link whose image has gone, as on an unmounted disk', () => {
+    const elsewhere = sdkWith('android-36/google_apis_playstore/arm64-v8a');
+    const sdk = sdkWith('android-37.0/google_apis_playstore_ps16k/arm64-v8a');
+    symlinkSync(
+      join(elsewhere, 'system-images', 'android-36'),
+      join(sdk, 'system-images', 'android-36'),
+    );
+    rmSync(elsewhere, { recursive: true });
+    expect(playImage(sdk, 'arm64')).toBe(
+      'system-images;android-37.0;google_apis_playstore_ps16k;arm64-v8a',
+    );
+  });
+
+  it('is a released version, never a preview', () => {
+    const sdk = sdkWith(
+      'android-37.0/google_apis_playstore_ps16k/arm64-v8a',
+      'android-CANARY/google_apis_playstore/arm64-v8a',
+    );
+    expect(playImage(sdk, 'arm64')).toBe(
+      'system-images;android-37.0;google_apis_playstore_ps16k;arm64-v8a',
+    );
+  });
+
+  it('is never a Google APIs image, which has no TalkBack', () => {
+    expect(playImage(sdkWith('android-37/google_apis/x86_64'), 'x64')).toBe(
+      'system-images;android-35;google_apis_playstore;x86_64',
+    );
   });
 });
 
@@ -313,14 +545,15 @@ describe('the three QA testers', () => {
     expect(configs[0].simulators.phone.name).toBe('Soirely QA iPhone');
   });
 
-  it('each have their own project, simulators, emulators and Chrome', () => {
-    for (const key of ['project', 'chromePort', 'emulatorPort']) {
+  it('each have their own project, simulators, emulators, Chrome and Maestro driver', () => {
+    for (const key of ['project', 'chromePort', 'emulatorPort', 'driverPort']) {
       expect(new Set(configs.map((c) => c[key])).size, key).toBe(TESTERS.length);
     }
     const names = configs.flatMap((c) =>
       [...Object.values(c.simulators), ...Object.values(c.emulators)].map((d) => d.name),
     );
     expect(new Set(names).size).toBe(names.length);
+    expect(configs.map((c) => c.driverPort)).not.toContain(22087);
   });
 
   it('name emulators an AVD can carry, on a console adb finds', () => {
@@ -397,5 +630,293 @@ describe('the API cache a checkout leaves behind', () => {
 
   it('is no error when there is none', () => {
     expect(() => clearApiCache(mkdtempSync(join(tmpdir(), 'qa-cache-')))).not.toThrow();
+  });
+});
+
+describe('a two-factor code', () => {
+  // RFC 6238, appendix B: the SHA-1 secret is "12345678901234567890", and six digits are the last six.
+  const secret = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
+
+  it.each([
+    [59, '287082'],
+    [1111111109, '081804'],
+    [1234567890, '005924'],
+    [20000000000, '353130'],
+  ])('at %i seconds is %s', (seconds, code) => {
+    expect(totp(secret, Math.floor(seconds / 30))).toBe(code);
+  });
+
+  it('refuses a secret that is not base32', () => {
+    expect(() => totp('not-base32!', 1)).toThrow('base32');
+  });
+});
+
+describe('the step a code is made in', () => {
+  it('is now, for an account given none yet', () => {
+    expect(codeStep(10 * STEP_MS + 5000, undefined)).toEqual({ step: 10, waitMs: 0 });
+  });
+
+  it('is the next one, when this one was given, and waits for it', () => {
+    expect(codeStep(10 * STEP_MS + 5000, 10)).toEqual({ step: 11, waitMs: STEP_MS - 5000 });
+  });
+
+  it('is now, when the last was long ago', () => {
+    expect(codeStep(10 * STEP_MS, 3)).toEqual({ step: 10, waitMs: 0 });
+  });
+});
+
+describe('a flow in a language', () => {
+  const catalogues = {
+    en: { settings: { title: 'Settings', signedInAs: 'Signed in as {{email}}' } },
+    es: { settings: { title: 'Configuración', signedInAs: 'Sesión iniciada como {{email}}' } },
+    fr: { settings: { title: "L'accueil", signedInAs: 'Connecté en tant que {{email}}' } },
+  };
+
+  it('takes the batch language', () => {
+    expect(localise("visible: '{{t:settings.title}}'", catalogues, 'es')).toBe(
+      "visible: 'Configuración'",
+    );
+  });
+
+  it('takes any language, for a session left in any of them', () => {
+    expect(localise("'{{t:any:settings.title}}'", catalogues, 'en')).toBe(
+      "'(?:Settings|Configuración|L''accueil)'",
+    );
+  });
+
+  it('puts the address in, escaped, only where asked', () => {
+    const values = { email: 'qa-1@soirely.test' };
+    expect(localise('{{t:settings.signedInAs|email}}', catalogues, 'en', values)).toBe(
+      'Signed in as qa-1@soirely\\.test',
+    );
+    expect(localise('{{t:settings.signedInAs}}', catalogues, 'en', values)).toBe('Signed in as .*');
+  });
+
+  it('names a key no catalogue holds', () => {
+    expect(() => localise('{{t:settings.nope}}', catalogues, 'en')).toThrow(
+      'no settings.nope in the en',
+    );
+  });
+});
+
+describe('a check in a batch', () => {
+  const flow = [
+    'appId: host.exp.Exponent',
+    '---',
+    '- openLink: ${METRO_URL}/--/settings',
+    '- takeScreenshot: settings',
+    "- takeScreenshot: 'settings-open'",
+    '',
+  ].join('\n');
+
+  it('starts from a reload, names its screenshots for itself, and reports it passed', () => {
+    expect(batchCheck(flow, 'settings', 'es', { reset: true })).toBe(
+      [
+        'appId: host.exp.Exponent',
+        '---',
+        '- runFlow: ../batch/reset.yaml',
+        '- openLink: ${METRO_URL}/--/settings',
+        '- takeScreenshot: settings.es-settings',
+        '- takeScreenshot: settings.es-settings-open',
+        '- runScript:',
+        '    file: ../batch/helper.js',
+        '    env:',
+        "      ASK: '/passed?check=settings.es'",
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('starts without a reload when it runs alone, cold', () => {
+    expect(batchCheck(flow, 'settings', 'any', { reset: false })).not.toContain('reset.yaml');
+  });
+
+  it('carries no language in its name when the batch names none', () => {
+    expect(checkId('settings', 'any')).toBe('settings');
+    expect(checkId('settings', 'es')).toBe('settings.es');
+  });
+});
+
+describe('a batch flow', () => {
+  it('keeps the loaded bundle, signs in once, and runs every check in every language', () => {
+    const flow = batchFlow({ checks: ['home', 'settings'], languages: ['en', 'es'], cold: false });
+    expect(flow.match(/launchApp/g)).toHaveLength(1);
+    expect(flow).toContain('stopApp: false');
+    expect(flow.match(/session\.yaml/g)).toHaveLength(1);
+    expect(flow.match(/optional: true/g)).toHaveLength(4);
+    expect(flow.indexOf('_checks/settings.en.yaml')).toBeLessThan(flow.indexOf('/language?to=es'));
+    expect(flow.indexOf('/language?to=es')).toBeLessThan(flow.indexOf('_checks/home.es.yaml'));
+  });
+
+  it('reloads first, so nothing the last run left open hides Home', () => {
+    const flow = batchFlow({ checks: ['home'], languages: ['en'], cold: false });
+    expect(flow.indexOf("ASK: '/reload'")).toBeGreaterThan(flow.indexOf('launchApp'));
+    expect(flow.indexOf("ASK: '/reload'")).toBeLessThan(flow.indexOf('session.yaml'));
+  });
+
+  it('relaunches and signs out first when it is one check, cold', () => {
+    const flow = batchFlow({ checks: ['home'], languages: ['any'], cold: true });
+    expect(flow).toContain('stopApp: true');
+    expect(flow.indexOf('sign-out.yaml')).toBeLessThan(flow.indexOf('session.yaml'));
+  });
+});
+
+describe('the batch command', () => {
+  it('reads its name, checks, account and languages', () => {
+    expect(
+      parseBatch([
+        'tour',
+        'home',
+        'settings',
+        'EMAIL=a@b.test',
+        'PASSWORD=x=y',
+        '--lang',
+        'en,es',
+        '--ipad',
+      ]),
+    ).toEqual({
+      name: 'tour',
+      checks: ['home', 'settings'],
+      languages: ['en', 'es'],
+      vars: { EMAIL: 'a@b.test', PASSWORD: 'x=y' },
+      cold: false,
+    });
+  });
+
+  it("runs in the account's own language when none is named", () => {
+    expect(parseBatch(['tour', 'home', '--cold']).languages).toEqual(['any']);
+  });
+
+  it('asks for a check', () => {
+    expect(() => parseBatch(['tour', 'EMAIL=a@b.test'])).toThrow('which batch?');
+  });
+
+  it('re-runs every failed check on the same device in its own language', () => {
+    const failures = [
+      { check: 'settings', language: 'es' },
+      { check: 'home', language: 'en' },
+    ];
+    expect(
+      rerunHints('tour', failures, {
+        args: ['--ipad', '--lang', 'en,es'],
+        email: 'a@b.test',
+        secret: 'S',
+      }),
+    ).toEqual([
+      'node .qa/bin/qa-env.mjs batch tour-settings-es settings --lang es --cold --ipad EMAIL=a@b.test PASSWORD=… TOTP_SECRET=…',
+      'node .qa/bin/qa-env.mjs batch tour-home-en home --lang en --cold --ipad EMAIL=a@b.test PASSWORD=… TOTP_SECRET=…',
+    ]);
+  });
+
+  it("re-runs in the account's own language when the batch named none", () => {
+    expect(
+      rerunHints('tour', [{ check: 'home', language: 'any' }], {
+        args: ['--android'],
+        email: 'a@b.test',
+        secret: null,
+      }),
+    ).toEqual([
+      'node .qa/bin/qa-env.mjs batch tour-home home --cold --android EMAIL=a@b.test PASSWORD=…',
+    ]);
+  });
+
+  it("keeps the batch's other variables, quoted for the shell", () => {
+    expect(
+      rerunHints('tour', [{ check: 'home', language: 'any' }], {
+        args: [],
+        email: 'a@b.test',
+        secret: null,
+        rest: { ORG_NAME: "Ana's Events", ROLE: 'admin' },
+      }),
+    ).toEqual([
+      "node .qa/bin/qa-env.mjs batch tour-home home --cold EMAIL=a@b.test PASSWORD=… 'ORG_NAME=Ana'\\''s Events' ROLE=admin",
+    ]);
+  });
+});
+
+describe('the flows a batch runs', () => {
+  it("composes the repository's checks in all four languages", () => {
+    const root = join(import.meta.dirname, '..');
+    const dir = join(root, 'apps/mobile/src/i18n/locales');
+    const catalogues = Object.fromEntries(
+      ['en', 'es', 'fr', 'pt'].map((code) => [
+        code,
+        JSON.parse(readFileSync(join(dir, `${code}.json`), 'utf8')),
+      ]),
+    );
+    const source = join(root, 'apps/mobile/.maestro');
+    const checks = readdirSync(join(source, 'checks'))
+      .filter((file) => file.endsWith('.yaml'))
+      .map((file) => file.slice(0, -'.yaml'.length));
+    const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    try {
+      composeBatch(source, target, {
+        checks,
+        languages: ['en', 'es', 'fr', 'pt'],
+        cold: false,
+        catalogues,
+        email: 'qa@soirely.test',
+        onAndroid: false,
+      });
+      expect(readFileSync(join(target, '_checks/settings.es.yaml'), 'utf8')).toContain(
+        "'Configuración'",
+      );
+      expect(readFileSync(join(target, '_checks/security.es.yaml'), 'utf8')).toContain(
+        "'Seguridad'",
+      );
+      expect(readFileSync(join(target, '_checks/sign-in-rules.fr.yaml'), 'utf8')).toContain(
+        "'Règles de connexion|Règles de connexion de .*'",
+      );
+      expect(readFileSync(join(target, 'batch/session.yaml'), 'utf8')).not.toContain('{{t:');
+      expect(readFileSync(join(target, 'batch/reopen.yaml'), 'utf8')).not.toContain('{{t:');
+      expect(readFileSync(join(target, 'sign-in.yaml'), 'utf8')).toContain('stopApp: true');
+    } finally {
+      rmSync(target, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('the harness in .qa/bin', () => {
+  it('imports nothing from beside itself, so a copy refreshed alone runs', () => {
+    const source = readFileSync(join(import.meta.dirname, 'qa-env.mjs'), 'utf8');
+    expect([...source.matchAll(/from '\.{1,2}\/[^']+'/g)]).toEqual([]);
+  });
+
+  it('runs from a copy alone in a folder', () => {
+    const bin = mkdtempSync(join(tmpdir(), 'qa-bin-'));
+    writeFileSync(join(bin, 'qa-env.mjs'), readFileSync(join(import.meta.dirname, 'qa-env.mjs')));
+    return expect(import(join(bin, 'qa-env.mjs'))).resolves.toHaveProperty('databaseCommands');
+  });
+
+  it('removes a worker the checked-out compose.yaml no longer names', () => {
+    expect(REBUILD).toContain('--remove-orphans');
+  });
+});
+
+describe('the database, from a checkout', () => {
+  const console_ = ['console'];
+  const verbs = (commands) => commands.map((args) => args.slice(0, 2).join(' '));
+
+  it('stops the worker before the drop and recreates it after migrating', () => {
+    expect(verbs(databaseCommands(console_, ['notification-worker'], false))).toEqual([
+      'compose stop',
+      'console doctrine:database:drop',
+      'console doctrine:database:create',
+      'console doctrine:migrations:migrate',
+      'compose up',
+    ]);
+  });
+
+  it('keeps the data, and still recreates the worker after migrating', () => {
+    expect(verbs(databaseCommands(console_, ['notification-worker'], true))).toEqual([
+      'console doctrine:migrations:migrate',
+      'compose up',
+    ]);
+  });
+
+  it('touches no service on a commit with nothing waiting for migrations', () => {
+    const commands = databaseCommands(console_, [], false);
+    expect(commands.filter(([first]) => first === 'compose')).toEqual([]);
+    expect(commands).toHaveLength(3);
   });
 });

@@ -65,7 +65,8 @@ span {
 
 /* Columns of money, counts and times are read downwards, and proportional
    figures make that harder than it needs to be. Monospace is reserved for step
-   numbers and shortcuts, so the answer is tabular figures in the body face. */
+   numbers, shortcuts and copied codes, so the answer is tabular figures in the
+   body face. */
 .num {
   font-variant-numeric: tabular-nums;
 }
@@ -158,6 +159,15 @@ span {
   font: var(--typeSmall);
 }
 
+.shell-menu-button {
+  display: none;
+}
+
+/* The wrapper exists for the phone's bar to hide; on a desk its children stay the sidebar's flex items. */
+.shell-links {
+  display: contents;
+}
+
 /* The width is used rather than reserved: a 1200px content column on a 2560px
    monitor is the layout this product exists to avoid. */
 .shell-content {
@@ -225,8 +235,15 @@ span {
   background: var(--colorCard);
   color: var(--colorInk);
   font: var(--typeButton);
+  max-width: 100%;
   text-decoration: none;
   cursor: pointer;
+}
+
+.button-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .button:hover {
@@ -356,6 +373,82 @@ span {
   .public-header {
     padding: var(--spaceXl);
   }
+}
+
+/* ── A phone: one bar, its links behind Menu (sc-13413) ───────────────────── */
+
+@media (width <= 40rem) {
+  .shell-sidebar {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spaceMd);
+    padding: var(--spaceSm) var(--spaceLg);
+  }
+
+  .shell-sidebar .brand,
+  .shell-links {
+    display: none;
+  }
+
+  /* An account in no organisation has no switcher, so the bar says whose it is instead. */
+  .shell-sidebar:not(:has(.org-switcher)) .brand {
+    display: block;
+    flex: 1;
+  }
+
+  .shell-sidebar .org-switcher {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .shell-menu-button {
+    display: block;
+    flex: none;
+    min-height: var(--sizeHit);
+    padding: 0 var(--spaceLg);
+    border: var(--borderControl);
+    border-radius: var(--radiusField);
+    background: var(--colorCard);
+    color: var(--colorInk);
+    font: var(--typeButton);
+    cursor: pointer;
+  }
+}
+
+.shell-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space3xl);
+  box-sizing: border-box;
+  overflow-y: auto;
+  padding: var(--spaceLg) var(--spaceLg) var(--spaceXxl);
+  background: var(--colorCard);
+}
+
+.shell-menu .brand {
+  display: flex;
+  align-items: center;
+  min-height: var(--sizeHit);
+}
+
+.shell-menu .shell-nav {
+  flex-direction: column;
+}
+
+.shell-menu .shell-nav a {
+  min-height: var(--sizeHitPhonePrimary);
+  font-size: 16px;
+}
+
+.shell-menu:focus {
+  outline: none;
+}
+
+.shell-menu .shell-account {
+  margin-top: 0;
 }
 
 /* ── Sign in ──────────────────────────────────────────────────────────────── */
@@ -578,7 +671,8 @@ span {
   margin: 0;
 }
 
-.button-primary:disabled {
+.button-primary:disabled,
+.button-primary[data-off] {
   background: var(--colorBorder);
   border-color: var(--colorBorder);
   color: var(--colorInkSecondary);
@@ -866,6 +960,12 @@ span {
   border-color: var(--colorDarkInset);
 }
 
+.button-dark[aria-busy='true'] {
+  background: var(--colorDarkInset);
+  border-color: var(--colorDarkInset);
+  color: var(--colorInkOnDark);
+}
+
 /* ── Your account at phone width ──────────────────────────────────────────── */
 
 @media (width <= 40rem) {
@@ -1115,11 +1215,22 @@ span {
   color: var(--colorInkSecondary);
 }
 
-.button:disabled {
+.button:disabled,
+.button[data-off] {
   background: var(--colorInset);
   border-color: var(--colorBorder);
   color: var(--colorInkSecondary);
   cursor: default;
+}
+
+/* The browser paints a :disabled button in GrayText here, and nothing paints an aria-disabled one. */
+@media (forced-colors: active) {
+  [data-off],
+  .button[data-off],
+  .button-primary[data-off] {
+    color: GrayText;
+    border-color: GrayText;
+  }
 }
 
 /* ── Done ─────────────────────────────────────────────────────────────────── */
@@ -1164,10 +1275,59 @@ span {
   text-decoration: none;
 }
 
-.auth-back {
+/* Lines at the body leading, so a wrapped label reads as one, with padding making a one-line label's 44px. */
+.notice-action {
+  padding-block: calc((var(--sizeHit) - 1lh) / 2);
+  font: var(--typeButton);
+  line-height: 1.5;
+}
+
+.notice-action:last-child {
+  margin-bottom: calc(var(--spaceLg) * -1);
+}
+
+/* Inline, so a wrapped label takes clicks on its own lines only, its first line's area reaching over the next. An inline box is as tall as the font's ascent and descent, 1.22em in Instrument Sans, so its padding is what tops it up to 44px. */
+.notice-action > a.link-button {
+  display: inline;
+  padding: calc((var(--sizeHit) - 1.22em) / 2) var(--spaceXs);
+  margin-inline: calc(var(--spaceXs) * -1);
+  box-decoration-break: clone;
+}
+
+.notice-action > button.link-button {
+  min-width: var(--sizeHit);
+  min-height: 0;
+  padding: calc((var(--sizeHit) - 1lh) / 2) var(--spaceXs);
+  margin: calc((1lh - var(--sizeHit)) / 2) calc(var(--spaceXs) * -1);
+  line-height: 1.5;
+  text-align: start;
+}
+
+/* The link's ring is drawn on its paragraph, one box however the link wraps, because Firefox outlines each line of an inline element on its own. */
+.notice-action:has(> a.link-button) {
+  width: fit-content;
+  padding-inline: var(--spaceXs);
+  margin-inline: calc(var(--spaceXs) * -1);
+}
+
+.notice-action:has(> a.link-button) > a.link-button:focus-visible {
+  outline: none;
+}
+
+.notice-action:has(> a.link-button:focus-visible) {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: -2px;
+}
+
+.notice-action > button.link-button:focus-visible {
+  outline-offset: -2px;
+}
+
+.back-link {
   display: inline-flex;
   align-items: center;
   align-self: flex-start;
+  gap: var(--spaceXs);
   text-decoration: none;
 }
 
@@ -1658,6 +1818,10 @@ span {
   cursor: pointer;
 }
 
+.dialog-scrim:disabled {
+  cursor: progress;
+}
+
 .dialog {
   position: fixed;
   top: 6rem;
@@ -1677,6 +1841,10 @@ span {
   border: var(--borderCard);
   border-radius: var(--radiusCardDesktop);
   box-shadow: var(--shadowDialog);
+}
+
+.dialog:focus {
+  outline: none;
 }
 
 .dialog-heading {
@@ -1742,6 +1910,15 @@ span {
 
 .notice-done p {
   margin: 0;
+}
+
+/* Margins on the notices rather than a gap on the column, so the spacing inside a screen and its heading's place with no notice stay as they are. */
+.shell-content > .notice {
+  margin: 0 0 var(--spaceLg);
+}
+
+.shell-content > .notice:has(+ :not(.notice)) {
+  margin-bottom: var(--spaceXl);
 }
 
 /* ── Settings > General ───────────────────────────────────────────────────── */
@@ -1839,6 +2016,71 @@ span {
   max-width: 85rem;
 }
 
+/* The name under the heading is OrgGeneral-Phone's; the desktop boards leave it to the switcher. */
+.settings-organisation {
+  display: none;
+}
+
+/* ── Settings > General at phone width (OrgGeneral-Phone-v2, sc-13348) ────── */
+
+@media (width <= 40rem) {
+  .settings-general {
+    gap: var(--spaceXxl);
+  }
+
+  .settings-general .settings-heading h1 {
+    font: var(--typeTitlePhone);
+    letter-spacing: var(--typeTitlePhoneTracking);
+  }
+
+  .settings-general .settings-heading .settings-organisation {
+    display: block;
+    color: var(--colorInk);
+    font: var(--typeRowTitle);
+    overflow-wrap: anywhere;
+  }
+
+  .settings-general .settings-fields {
+    flex-flow: column nowrap;
+  }
+
+  .settings-general .settings-fields .field {
+    flex: none;
+  }
+
+  .settings-general .input,
+  .settings-general .settings-save .button {
+    min-height: var(--sizeHitPhonePrimary);
+  }
+
+  /* 16px is the smallest size iOS Safari will not zoom into on focus. */
+  .settings-general .input {
+    font-size: 1rem;
+  }
+
+  .settings-general .settings-save .button {
+    width: 100%;
+    font-size: 1rem;
+  }
+
+  .settings-general .settings-read-only div {
+    flex-direction: column;
+  }
+
+  .settings-general .settings-read-only dt {
+    flex: none;
+  }
+
+  .settings-general .settings-read-only dd {
+    overflow-wrap: anywhere;
+  }
+
+  .settings-general .ownership-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 /* Roles-Desktop: the list beside the role, wrapping to one column, with flex as the app needs. */
 .roles {
   display: flex;
@@ -1852,6 +2094,7 @@ span {
   flex: 1 1 15rem;
   flex-direction: column;
   gap: var(--spaceXxs);
+  min-width: 0;
 }
 
 .roles-list-head {
@@ -1860,6 +2103,13 @@ span {
   align-items: flex-start;
   gap: var(--spaceXs);
   padding-bottom: var(--spaceSm);
+}
+
+.roles h1,
+.roles h2,
+.roles p,
+.roles-grid-head {
+  overflow-wrap: anywhere;
 }
 
 .roles-list-head h1,
@@ -1901,9 +2151,14 @@ span {
 
 .roles-pick-name {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: var(--spaceSm);
+}
+
+.roles-pick-name strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .roles-detail {
@@ -2031,6 +2286,7 @@ span {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spaceSm);
+  min-width: 0;
 }
 
 .roles-panels {
@@ -2055,6 +2311,23 @@ span {
   font: var(--typeLabel);
   letter-spacing: var(--typeLabelTracking);
   text-transform: uppercase;
+}
+
+.roles-holders {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.roles-holders li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+  overflow-wrap: anywhere;
 }
 
 .roles-removing {
@@ -2087,6 +2360,7 @@ span {
 
 .roles-replacement .roles-row-name {
   flex: 1;
+  overflow-wrap: anywhere;
 }
 
 /* Under the name, past the radio: a 20px control and the row's gap. */
@@ -2112,13 +2386,33 @@ span {
   }
 }
 
+@media (width <= 40rem) {
+  .roles-pick-text,
+  .roles-row-text {
+    flex-basis: 13rem;
+  }
+}
+
 .roles-replacement:has(input:checked) {
   border: var(--borderSelected);
   background: var(--colorAccentTint);
 }
 
+.no-organisation-main {
+  padding: var(--space6xl) var(--spaceXl);
+}
+
+.no-organisation-account {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  max-width: calc(47.5rem + 2 * var(--space5xl));
+  margin: 0 auto;
+}
+
 .no-organisation {
-  max-width: 40rem;
+  max-width: 35rem;
+  margin: 0 auto;
 }
 
 .no-organisation h1,
@@ -2166,8 +2460,10 @@ span {
   gap: var(--spaceSm);
 }
 
+/* Text on web breaks words anywhere; a pill's never break, so what is beside it gives way. */
 .pill-quiet {
   display: inline-flex;
+  flex: none;
   align-items: center;
   height: var(--sizePill);
   padding: 0 var(--spaceMd);
@@ -2175,13 +2471,38 @@ span {
   background: var(--colorInset);
   color: var(--colorInkSecondary);
   font: var(--typePill);
+  white-space: nowrap;
 }
 
 /* ── A notice that can be put away ─────────────────────────────────────────── */
 
+/* The notice breaks words anywhere so a long address fits; its button's one word never breaks. */
 .notice-dismiss {
+  flex: none;
+  min-width: var(--sizeHit);
   min-height: var(--sizeHit);
   margin-left: auto;
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+
+.notice-action-row {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--spaceMd);
+  min-width: 0;
+}
+
+/* Taking no height, the button centres on the sentence instead of making the row 44px tall and pulling the sentence off its mark. */
+.notice-action-row .notice-dismiss {
+  margin-block: calc(var(--sizeHit) / -2);
+  padding-inline: var(--spaceXxs);
+}
+
+/* The box overhangs a one-line notice, so the ring is drawn inside it rather than across the notice's border, in the padding clear of the word. */
+.notice-action-row .notice-dismiss:focus-visible {
+  outline-offset: -2px;
 }
 
 /* ── Two-factor, in Settings > Security ──────────────────────────────────── */
@@ -2305,8 +2626,8 @@ span {
 }
 
 .account-section[aria-current='page'] {
-  background: var(--colorInset);
-  color: var(--colorInk);
+  background: var(--colorDark);
+  color: var(--colorInkOnDark);
 }
 
 .tz-current {
@@ -2487,6 +2808,98 @@ span {
 
 .members-back {
   align-self: flex-start;
+}
+
+/* The banner while an organisation has no active Owner (sc-6640): wraps rather than truncates at every width. */
+.owner-claim {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+}
+
+.owner-claim p,
+.owner-claim h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.owner-claim-head {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.owner-claim-skeleton {
+  min-height: calc(var(--sizeHit) * 2);
+  background: var(--colorInset);
+}
+
+.mark-waiting {
+  border: var(--borderMark) var(--colorInkSecondary);
+  color: var(--colorInkSecondary);
+}
+
+.owner-claim-record {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: var(--spaceLg);
+  background: var(--colorInset);
+  border: var(--borderInset);
+  border-radius: var(--radiusInset);
+}
+
+.owner-claim-record-row dt {
+  color: var(--colorInkSecondary);
+}
+
+.owner-claim-record-row dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin: 0;
+}
+
+.owner-claim-record-row code {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--fontFamilyMono);
+  word-break: break-all;
+}
+
+/* Withdraw your claim? (sc-8204): the scrim is not a way out, and the sheet stacks its buttons. */
+.dialog-scrim[aria-hidden='true'] {
+  cursor: default;
+}
+
+.dialog-close {
+  position: absolute;
+  top: var(--spaceLg);
+  right: var(--spaceLg);
+  width: var(--sizeHit);
+  height: var(--sizeHit);
+  border: 0;
+  border-radius: var(--radiusPill);
+  background: transparent;
+  color: var(--colorInkSecondary);
+  cursor: pointer;
+}
+
+.owner-claim-withdraw .dialog-actions {
+  justify-content: flex-start;
+}
+
+@media (width <= 40rem) {
+  .owner-claim-withdraw {
+    border-radius: var(--radiusSheet) var(--radiusSheet) 0 0;
+  }
+
+  .owner-claim-withdraw .dialog-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 .members-chips {
@@ -2748,7 +3161,12 @@ button.members-row {
 
 .join-offer-title {
   font: var(--typeRowTitle);
-  overflow-wrap: anywhere;
+}
+
+@media (width <= 40rem) {
+  .join-offer-text {
+    flex-basis: 100%;
+  }
 }
 
 .join-offers-back {
@@ -2976,9 +3394,14 @@ button.members-row {
   text-decoration: none;
 }
 
-.events-row-name {
+.events-row-title {
+  display: flex;
   flex: 0 1 auto;
+  flex-direction: column;
   min-width: 0;
+}
+
+.events-row-name {
   font: var(--typeRowTitle);
   overflow-wrap: anywhere;
 }
@@ -3039,9 +3462,636 @@ button.members-row {
   flex: 1 1 7rem;
 }
 
+.event-moment-live:empty {
+  margin-top: calc(-1 * var(--spaceSm));
+}
+
+.event-moment-gap {
+  padding: var(--spaceMd) var(--spaceLg);
+  font: var(--typeSmall);
+  color: var(--colorInk);
+}
+
+.event-moment-gap p {
+  margin: 0;
+}
+
+.event-page-outcome {
+  margin: 0;
+  font: var(--typeRowTitle);
+  color: var(--colorAccentText);
+}
+
+.event-form-actions,
+.event-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceMd);
+}
+
+/* The event's cover (sc-3590): 16:9 reserved before it loads, the photo or its type's default pattern. */
+.cover {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cover-default {
+  --coverA: var(--colorInset);
+  --coverB: var(--colorInsetBorder);
+
+  background-color: var(--coverA);
+  background-image: radial-gradient(circle at 70% 40%, var(--coverB) 0 20%, transparent 20%);
+}
+
+.cover-default-wedding {
+  --coverA: var(--colorAttentionTint);
+
+  background-image:
+    radial-gradient(
+      circle at 42% 50%,
+      transparent 20%,
+      var(--colorAttention) 20% 23%,
+      transparent 23%
+    ),
+    radial-gradient(
+      circle at 58% 50%,
+      transparent 20%,
+      var(--colorAttentionBorder) 20% 23%,
+      transparent 23%
+    );
+}
+
+.cover-default-birthday {
+  --coverA: var(--colorAccentTint);
+
+  background-image:
+    radial-gradient(circle, var(--colorAccent) 0 0.1875rem, transparent 0.1875rem),
+    radial-gradient(circle, var(--colorAttention) 0 0.1875rem, transparent 0.1875rem);
+  background-position:
+    0 0,
+    0.875rem 0.875rem;
+  background-size: 1.75rem 1.75rem;
+}
+
+.cover-default-anniversary {
+  --coverA: var(--colorAttentionTint);
+
+  background-image: repeating-radial-gradient(
+    circle,
+    var(--colorAttentionBorder) 0 0.375rem,
+    var(--colorAttentionTint) 0.375rem 1.125rem
+  );
+}
+
+.cover-default-engagement {
+  --coverA: var(--colorAccentTint);
+
+  background-image: radial-gradient(
+    circle at 50% 55%,
+    transparent 18%,
+    var(--colorAccentText) 18% 21%,
+    transparent 21%
+  );
+}
+
+.cover-default-baby-shower {
+  --coverA: var(--colorHeader);
+
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--colorHeader) 0 1.5rem,
+    var(--colorHeaderBorder) 1.5rem 3rem
+  );
+}
+
+.cover-default-graduation {
+  --coverA: var(--colorHeader);
+
+  background-image: linear-gradient(
+    135deg,
+    transparent 44%,
+    var(--colorInkSecondary) 44% 56%,
+    transparent 56%
+  );
+}
+
+.cover-default-memorial {
+  --coverA: var(--colorInset);
+
+  background-image: linear-gradient(180deg, var(--colorInset) 0 62%, var(--colorInsetBorder) 62%);
+}
+
+.cover-default-religious {
+  --coverA: var(--colorAttentionTint);
+
+  background-image: radial-gradient(
+    ellipse 30% 62% at 50% 100%,
+    var(--colorAttentionBorder) 0 100%,
+    transparent 100%
+  );
+}
+
+.cover-default-cultural {
+  --coverA: var(--colorAttentionTint);
+
+  background-image:
+    linear-gradient(135deg, var(--colorAccent) 25%, transparent 25%),
+    linear-gradient(225deg, var(--colorAttention) 25%, transparent 25%);
+  background-size: 2rem 2rem;
+}
+
+.cover-default-party {
+  --coverA: var(--colorCard);
+
+  background-image:
+    radial-gradient(circle, var(--colorAttention) 0 2.5px, transparent 2.5px),
+    repeating-linear-gradient(
+      45deg,
+      var(--colorAccentTint) 0 0.875rem,
+      var(--colorCard) 0.875rem 1.75rem
+    );
+  background-size:
+    1.375rem 1.375rem,
+    auto;
+}
+
+.cover-default-gala {
+  --coverA: var(--colorAttentionTint);
+
+  background-image:
+    radial-gradient(circle, var(--colorAttention) 0 6%, transparent 6%),
+    repeating-conic-gradient(
+      var(--colorAttentionTint) 0 10deg,
+      var(--colorAttentionBorder) 10deg 20deg
+    );
+}
+
+.cover-default-conference {
+  --coverA: var(--colorHeader);
+
+  background-image:
+    linear-gradient(var(--colorHeaderBorder) 1px, transparent 1px),
+    linear-gradient(90deg, var(--colorHeaderBorder) 1px, transparent 1px);
+  background-size: 1.5rem 1.5rem;
+}
+
+.cover-default-corporate {
+  --coverA: var(--colorHeader);
+
+  background-image: linear-gradient(
+    180deg,
+    transparent 55%,
+    var(--colorAccentText) 55% 60%,
+    transparent 60%
+  );
+}
+
+.cover-field {
+  display: grid;
+  grid-template-columns: minmax(0, 27.5rem) 1fr;
+  gap: var(--space3xl);
+  align-items: start;
+}
+
+.cover-field-image {
+  min-width: 0;
+  width: 100%;
+}
+
+.cover-field-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+}
+
+.cover-field-side .field-help {
+  margin: 0;
+}
+
+.cover-control {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radiusInset);
+  background: none;
+  cursor: pointer;
+}
+
+.cover-control:focus-visible {
+  outline: 3px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
+.cover-control:focus-visible::after {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radiusInset);
+  box-shadow: inset 0 0 0 3px var(--colorCard);
+  content: '';
+}
+
+.cover-control:hover img {
+  filter: brightness(0.8);
+}
+
+.cover-pill {
+  position: absolute;
+  right: var(--spaceLg);
+  bottom: var(--spaceLg);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  box-sizing: border-box;
+  min-height: 2.25rem;
+  max-width: calc(100% - var(--space3xl));
+  padding: var(--spaceXs) var(--spaceLg);
+  border-radius: var(--radiusPill);
+  background: color-mix(in srgb, var(--colorInk) 72%, transparent);
+  color: var(--colorInkOnDark);
+  font: var(--typeButton);
+  line-height: 1.3;
+}
+
+.cover-pill svg {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+}
+
+.cover-control:hover .cover-pill,
+.cover-control:focus-visible .cover-pill {
+  background: var(--colorInk);
+}
+
+.cover-removed {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin: 0;
+  color: var(--colorInk);
+  font-weight: 500;
+}
+
+.cover-removed svg {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--colorAccent);
+}
+
+.cover-dialog {
+  width: 45rem;
+  padding: 0;
+  overflow: hidden;
+  gap: 0;
+}
+
+.cover-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceLg);
+  padding: var(--spaceXl) var(--spaceXl) var(--spaceLg) var(--space3xl);
+  border-bottom: 1px solid var(--colorHeaderBorder);
+  background: var(--colorHeader);
+}
+
+.cover-dialog-header h2 {
+  margin: 0;
+  font: var(--typeTitleDialog);
+  letter-spacing: var(--typeTitleDialogTracking);
+}
+
+.cover-dialog-close {
+  flex: none;
+  width: var(--sizeHit);
+  height: var(--sizeHit);
+  border: var(--borderControl);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  cursor: pointer;
+}
+
+.cover-dialog-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceXl);
+  overflow-y: auto;
+  padding: var(--space3xl);
+}
+
+.cover-dialog-actions {
+  justify-content: space-between;
+  padding: var(--spaceLg) var(--space3xl);
+  border-top: 1px solid var(--colorInsetBorder);
+  background: var(--colorInset);
+}
+
+.cover-dialog-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceMd);
+  margin-left: auto;
+}
+
+.cover-frame {
+  position: relative;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.cover-frame::after {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radiusInset);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--colorCard) 85%, transparent);
+  content: '';
+  pointer-events: none;
+}
+
+.cover-frame:active {
+  cursor: grabbing;
+}
+
+.cover-frame-state {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  background: color-mix(in srgb, var(--colorCard) 70%, transparent);
+}
+
+.cover-slider {
+  width: 100%;
+  min-height: var(--sizeHit);
+  accent-color: var(--colorAccent);
+}
+
+.cover-slider-marks {
+  display: flex;
+  justify-content: space-between;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+.cover-optional {
+  display: inline-flex;
+  align-items: center;
+  height: 1.375rem;
+  margin-left: var(--spaceXs);
+  padding: 0 var(--spaceSm);
+  border-radius: var(--radiusPill);
+  background: var(--colorNeutralFill);
+  color: var(--colorInkSecondary);
+  font: var(--typePill);
+  vertical-align: middle;
+}
+
+.cover-remove {
+  color: var(--colorBrokenText);
+}
+
+.cover-remove-below {
+  padding-top: var(--spaceXs);
+  border-top: 1px solid var(--colorInsetBorder);
+}
+
+.cover-remove-below .cover-remove {
+  width: 100%;
+}
+
+.event-page-cover {
+  margin-bottom: var(--spaceXl);
+}
+
+.events-row-cover {
+  flex: 0 0 6rem;
+  border-radius: var(--radiusSmall);
+}
+
+@media (width <= 40rem) {
+  .cover-dialog {
+    inset: 0;
+    width: 100%;
+    max-height: none;
+    height: 100%;
+    border-radius: 0;
+  }
+
+  .cover-dialog-body {
+    padding: var(--spaceXl);
+  }
+
+  .cover-dialog-actions {
+    padding: var(--spaceLg) var(--spaceXl);
+  }
+
+  .cover-dialog-confirm {
+    flex-direction: column-reverse;
+    flex: 1;
+    margin-left: 0;
+  }
+}
+
+@media (width < 43.75rem) {
+  .cover-field {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--spaceXl);
+  }
+}
+
 .event-page-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--spaceSm) var(--spaceMd);
+}
+
+/* ── Make live (sc-3584) ──────────────────────────────────────────────────── */
+
+/* Each phase has a shape of its own beside its word (sc-3585): Draft a ring, Live a dot, Happening now a half-filled ring, Paused two bars, Finished a tick. */
+.pill-phase {
+  gap: var(--spaceXs);
+}
+
+.pill-phase::before {
+  flex: none;
+  box-sizing: border-box;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  content: '';
+}
+
+.pill-draft::before {
+  border: var(--borderMark) var(--colorInkSecondary);
+}
+
+.pill-live {
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
+}
+
+.pill-live::before {
+  background: var(--colorAccent);
+}
+
+.pill-happening-now,
+.pill-paused {
+  background: var(--colorAttentionTint);
+  color: var(--colorAttentionText);
+}
+
+.pill-happening-now::before {
+  border: var(--borderMark) var(--colorAttentionText);
+  background: linear-gradient(90deg, var(--colorAttentionText) 50%, transparent 50%);
+}
+
+.pill-paused::before {
+  border-left: 0.1875rem solid var(--colorAttentionText);
+  border-right: 0.1875rem solid var(--colorAttentionText);
+  border-radius: 0;
+}
+
+.pill-finished::before {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  content: '✓';
+}
+
+.event-draft-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceMd);
+  padding: var(--spaceMd) var(--spaceLg);
+  border: var(--borderInset);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.event-draft-line {
+  flex: 1 1 12rem;
+  margin: 0;
+}
+
+/* ── End now and Call off (sc-3585) ───────────────────────────────────────── */
+
+.event-called-off p {
+  margin: 0;
+}
+
+/* ── Delete an event (sc-3592): under a rule, apart from the actions ───────── */
+
+.event-delete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceMd) var(--spaceLg);
+  padding-top: var(--spaceXl);
+  border-top: var(--borderInset);
+}
+
+.event-delete-note {
+  flex: 1 1 18rem;
+  margin: 0;
+  color: var(--colorInkSecondary);
+}
+
+.event-delete > .field-error {
+  flex-basis: 100%;
+}
+
+.event-delete-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.event-delete-list {
+  margin: 0;
+  padding-left: var(--spaceXl);
+  color: var(--colorInkSecondary);
+}
+
+@media (width <= 40rem) {
+  .event-delete-dialog .dialog-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+}
+
+/* ── An event's venue (sc-3589) ───────────────────────────────────────────── */
+
+.venue-suggestions {
+  max-width: none;
+  margin-top: var(--spaceXs);
+}
+
+.venue-suggestions .tz-option {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  padding-block: var(--spaceXs);
+}
+
+.venue-suggestions .tz-option .muted {
+  margin-left: 0;
+  text-align: left;
+}
+
+.venue-lookup-down {
+  padding: var(--spaceMd) var(--spaceLg);
+  font: var(--typeSmall);
+}
+
+.venue-lookup-down p {
+  margin: 0;
+}
+
+.mark-half {
+  background: linear-gradient(90deg, var(--colorAttentionText) 50%, transparent 50%);
+}
+
+.venue-zone-offer {
+  margin-top: var(--spaceLg);
+}
+
+.event-page-venue {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.event-page-venue p {
+  margin: 0;
+}
+
+.event-page-venue-name {
+  font: var(--typeRowTitle);
+}
+
+.event-page-venue-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
 }

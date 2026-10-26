@@ -51,7 +51,7 @@ describe('the CSS output', () => {
   });
 
   it('uses the mono family for the one mono style', () => {
-    expect(css).toContain('--typeMonoTime: 600 14px/1 var(--fontFamilyMono);');
+    expect(css).toContain('--typeCode: 600 14px/1 var(--fontFamilyMono);');
   });
 
   it('leaves native elevation out, because a CSS variable for it would be a lie', () => {
@@ -114,12 +114,30 @@ describe('what the source itself asserts', () => {
     }
   });
 
-  it('computes 4.5:1 for the secondary ink and less for the tertiary', () => {
-    // The source's own claim about these two, proved. It is why the decisions
-    // below moved information off the tertiary.
-    expect(contrast(tokens.colorInkSecondary, tokens.colorCard)).toBeGreaterThanOrEqual(4.5);
+  it('computes less than 4.5:1 for the tertiary ink', () => {
+    // It is why the decisions below moved information off the tertiary.
     expect(contrast(tokens.colorInkTertiary, tokens.colorCard)).toBeLessThan(4.5);
   });
+
+  for (const surface of [
+    'colorCard',
+    'colorPage',
+    'colorInset',
+    'colorRowHover',
+    'colorRowSelected',
+    'colorNeutralFill',
+    'colorInsetBorder',
+    'colorHeader',
+    'colorHeaderTrack',
+    'colorAccentTint',
+    'colorAttentionTint',
+    'colorAttentionWash',
+    'colorBrokenTint',
+  ]) {
+    it(`computes 4.5:1 for the secondary ink on ${surface}`, () => {
+      expect(contrast(tokens.colorInkSecondary, tokens[surface])).toBeGreaterThanOrEqual(4.5);
+    });
+  }
 });
 
 /**
@@ -192,10 +210,10 @@ describe('settled: an option colour never borrows a colour that means something'
 describe('settled: the reply states are told apart by shape, not by shades of grey', () => {
   const { coming, maybe, notComing, held, noReply } = tokens.replyStates;
 
-  it('uses one grey, and it is the one that passes contrast', () => {
-    expect(notComing.dot).toBe(tokens.colorInkSecondary);
-    expect(noReply.ring).toContain(tokens.colorInkSecondary);
-    expect(held.ring).toContain(tokens.colorInkSecondary);
+  it('uses one grey, and it is one that passes contrast', () => {
+    expect(contrast(notComing.dot, tokens.colorCard)).toBeGreaterThanOrEqual(4.5);
+    expect(noReply.ring).toContain(notComing.dot);
+    expect(held.ring).toContain(notComing.dot);
   });
 
   it('puts no information on the tertiary ink', () => {

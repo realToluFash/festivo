@@ -34,7 +34,7 @@ final readonly class AppleAppController
         $limit = $this->appleAppAttemptLimiter->create($request->getClientIp())->consume();
 
         if (!$limit->isAccepted()) {
-            throw ApiException::tooManyAttempts('Too many sign-in attempts.', $limit->getRetryAfter());
+            throw ApiException::tooManyAttempts('limits.sign_in', $limit->getRetryAfter());
         }
 
         $body = Input::body($request, Type\shape(['state' => Type\string(), 'codeChallenge' => Type\string()]));

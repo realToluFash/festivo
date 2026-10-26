@@ -144,8 +144,13 @@ def lead_verdicts(reviews):
     return lead
 
 
+def story_of(branch, title):
+    """The story a pull request is for: its branch names it, or failing that its title."""
+    found = STORY.search(branch) or STORY.search(title or "")
+    return int(found.group(1)) if found else None
+
+
 def slim(node):
-    story = STORY.search(node["headRefName"]) or STORY.search(node["title"])
     return {
         "number": node["number"],
         "title": node["title"],
@@ -153,7 +158,7 @@ def slim(node):
         "state": node["state"].lower(),
         "draft": node["isDraft"],
         "branch": node["headRefName"],
-        "story_id": int(story.group(1)) if story else None,
+        "story_id": story_of(node["headRefName"], node["title"]),
         "head_sha": node["headRefOid"],
         "base": node["baseRefName"],
         "body": node.get("body") or "",
@@ -237,6 +242,7 @@ def rest_checks(owner, name, sha):
 
 def rest_pull_requests(owner, name, known):
     base = f"repos/{owner}/{name}/pulls"
+    main = api(f"repos/{owner}/{name}/git/ref/heads/main")["object"]["sha"]
     opened = api(f"{base}?state=open&sort=updated&direction=desc&per_page=30")
     closed = api(f"{base}?state=closed&sort=updated&direction=desc&per_page=30")
     out = []
@@ -246,6 +252,12 @@ def rest_pull_requests(owner, name, known):
         same = before.get("updated_at") == pull["updated_at"] \
             and before.get("head_sha") == pull["head"]["sha"]
         if same and (merged or before.get("checks") != "pending"):
+            # A pull request that never changes still starts to conflict when main moves, and
+            # GitHub answers null until it has worked the answer out.
+            if not merged and (before.get("mergeable") == "unknown"
+                               or before.get("main_sha") != main):
+                before = dict(before, main_sha=main, mergeable=MERGEABLE[
+                    api(f"{base}/{pull['number']}").get("mergeable")].lower())
             out.append(before)
             continue
         pr = slim({**rest_node(pull, merged), "reviews": {"nodes": []}})
@@ -255,8 +267,10 @@ def rest_pull_requests(owner, name, known):
             pr["threads"] = before["threads"] if same else \
                 rest_threads(owner, name, pull["number"], before.get("threads", []))
             pr["checks"] = rest_checks(owner, name, pull["head"]["sha"])
-            pr["mergeable"] = before["mergeable"] if same else \
+            pr["mergeable"] = before["mergeable"] if same and before.get("main_sha") == main \
+                and before["mergeable"] != "unknown" else \
                 MERGEABLE[api(f"{base}/{pull['number']}").get("mergeable")].lower()
+            pr["main_sha"] = main
         out.append(pr)
     return out
 
@@ -356,7 +370,8 @@ def live(number):
     return {"headRefOid": pull["head"]["sha"], "mergeable": MERGEABLE[pull.get("mergeable")],
             "mergeStateStatus": (pull.get("mergeable_state") or "unknown").upper(),
             "state": "MERGED" if pull.get("merged") else pull["state"].upper(),
-            "draft": bool(pull.get("draft")),
+            "draft": bool(pull.get("draft")), "body": pull.get("body") or "",
+            "story_id": story_of(pull["head"]["ref"], pull.get("title")),
             "mergeCommit": pull["merge_commit_sha"] if pull.get("merged") else None}
 
 
@@ -413,6 +428,11 @@ def close(number, text):
         stdin=json.dumps({"body": text}))
     api(f"{repo_path()}/pulls/{number}", "--method", "PATCH", "--input", "-",
         stdin=json.dumps({"state": "closed"}))
+
+
+def edit_body(number, body):
+    api(f"{repo_path()}/pulls/{number}", "--method", "PATCH", "--input", "-",
+        stdin=json.dumps({"body": body}))
 
 
 def ready(number):

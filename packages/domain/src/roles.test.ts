@@ -11,10 +11,12 @@ import {
   roleNameProblem,
   sameGrant,
   settableLevels,
+  shownHolders,
   takenRoleNames,
   whatTheySee,
   withLevel,
   withExtra,
+  withheldRoles,
   withoutRole,
 } from './roles.ts';
 
@@ -167,21 +169,71 @@ describe('the levels a caller can set', () => {
 });
 
 describe('removing a role', () => {
-  const planner = { id: 'planner', holders: 3, permissions: ['events.read', 'events.manage'] };
-  const viewer = { id: 'viewer', holders: 1, permissions: ['events.read'] };
-  const treasurer = { id: 'treasurer', holders: 2, permissions: ['billing.manage'] };
+  const holder = (name: string) => ({ name, suspended: false });
+  const planner = {
+    id: 'planner',
+    holders: 3,
+    holderNames: [holder('bisi Ade'), holder('Zara Bello'), holder('Émeka Obi')],
+    permissions: ['events.read', 'events.manage'],
+  };
+  const viewer = {
+    id: 'viewer',
+    holders: 1,
+    holderNames: [holder('Ada Okeke')],
+    permissions: ['events.read'],
+  };
+  const treasurer = {
+    id: 'treasurer',
+    holders: 2,
+    holderNames: [holder('Kemi'), holder('Tope')],
+    permissions: ['billing.manage'],
+  };
   const roles = [planner, viewer, treasurer];
 
   it('moves its members only to another role the caller holds all of', () => {
     expect(replacementsFor(roles, planner, ['events.read', 'events.manage'])).toEqual([viewer]);
   });
 
-  it('counts its members on the role they moved to', () => {
-    expect(withoutRole(roles, planner, 'viewer')).toEqual([{ ...viewer, holders: 4 }, treasurer]);
+  it('counts and names its members on the role they moved to, alphabetically', () => {
+    expect(withoutRole(roles, planner, 'viewer')).toEqual([
+      {
+        ...viewer,
+        holders: 4,
+        holderNames: [
+          holder('Ada Okeke'),
+          holder('bisi Ade'),
+          holder('Émeka Obi'),
+          holder('Zara Bello'),
+        ],
+      },
+      treasurer,
+    ]);
   });
 
   it('leaves the other counts alone when nobody moves', () => {
-    expect(withoutRole(roles, { id: 'viewer', holders: 0 }, null)).toEqual([planner, treasurer]);
+    const empty = { ...viewer, holders: 0, holderNames: [] };
+
+    expect(withoutRole([planner, empty, treasurer], empty, null)).toEqual([planner, treasurer]);
+  });
+});
+
+describe('the holders the open role names', () => {
+  const six = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+  it('names five and counts the rest', () => {
+    expect(shownHolders(six, false)).toEqual({ shown: ['A', 'B', 'C', 'D', 'E'], more: 1 });
+  });
+
+  it('names exactly five without "and N more"', () => {
+    expect(shownHolders(six.slice(0, 5), false)).toEqual({ shown: six.slice(0, 5), more: 0 });
+  });
+
+  it('names everybody once asked', () => {
+    expect(shownHolders(six, true)).toEqual({ shown: six, more: 0 });
+  });
+
+  it('names nobody when nobody holds it', () => {
+    expect(shownHolders([], false)).toEqual({ shown: [], more: 0 });
   });
 });
 
@@ -235,15 +287,35 @@ describe('the areas a caller cannot change', () => {
 });
 
 describe('the roles a caller may grant', () => {
-  const owner = { id: 'r1', seededAs: 'owner', permissions: ['members.manage', 'billing.manage'] };
+  const owner = {
+    id: 'r1',
+    seededAs: 'owner',
+    permissions: ['members.manage', 'billing.read', 'billing.manage'],
+  };
   const administrator = { id: 'r2', seededAs: 'administrator', permissions: ['members.manage'] };
-  const billing = { id: 'r6', seededAs: null, permissions: ['billing.manage'] };
+  const billing = { id: 'r6', seededAs: null, permissions: ['billing.read', 'billing.manage'] };
   const roles = [owner, administrator, billing];
 
   it('offers only what they hold, and Owner only to an owner', () => {
-    expect(grantableRoles(roles, { role: administrator, permissions: ['members.manage'] })).toEqual(
-      [administrator],
-    );
+    expect(
+      grantableRoles(roles, {
+        role: administrator,
+        permissions: ['members.manage', 'billing.read'],
+      }),
+    ).toEqual([administrator]);
     expect(grantableRoles(roles, { role: owner, permissions: owner.permissions })).toEqual(roles);
+  });
+
+  it('withholds what they may not grant, and nothing from an owner', () => {
+    expect(
+      withheldRoles(roles, {
+        role: administrator,
+        permissions: ['members.manage', 'billing.read'],
+      }),
+    ).toEqual([owner, billing]);
+    expect(withheldRoles(roles, { role: administrator, permissions: owner.permissions })).toEqual([
+      owner,
+    ]);
+    expect(withheldRoles(roles, { role: owner, permissions: owner.permissions })).toEqual([]);
   });
 });

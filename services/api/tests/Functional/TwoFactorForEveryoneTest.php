@@ -26,6 +26,7 @@ use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Iter;
 use Psl\Json;
@@ -94,13 +95,43 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
         ));
         $mails = $this->mails();
         self::assertSame(['bisi@ire.events'], Vec\map($mails, static fn (Email $mail): string => $mail->getTo()[0]->getAddress()));
-        self::assertSame('Ìrè Events requires two-factor', $mails[0]->getSubject());
         $deadline = Type\shape(['at' => Type\string(), 'written' => Type\string()], true)->coerce($body['twoFactorDeadline'] ?? null);
-        self::assertStringContainsString('Ìrè Events requires two-factor from ' . $deadline['written'], (string) $mails[0]->getTextBody());
+        self::assertSame('Ìrè Events requires two-factor from ' . $deadline['written'], $mails[0]->getSubject());
         self::assertSame(
             new Clock()->now()->modify('+7 days')->format('Y-m-d H:i'),
             new DateTimeImmutable($deadline['at'])->setTimezone(new Clock()->now()->getTimezone())->format('Y-m-d H:i'),
         );
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function lagosAndLondon(): iterable
+    {
+        yield 'a member in Lagos' => ['Africa/Lagos', 'Saturday 31 Oct at 14:20 WAT'];
+        yield 'a member in London' => ['Europe/London', 'Saturday 31 Oct at 13:20 GMT'];
+    }
+
+    #[Test]
+    #[DataProvider('lagosAndLondon')]
+    public function theDueEmailGivesTheDeadlineInTheMembersZoneEverywhereItAppears(string $zone, string $written): void
+    {
+        self::mockTime('2026-10-24 13:20:00 UTC');
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Coordinator);
+        $this->zone($bisi, $zone);
+        $this->turnOnTwoFactor($this->owner);
+
+        $this->set(['everyoneNeedsTwoFactor' => true]);
+
+        $mails = $this->mails();
+        self::assertCount(1, $mails);
+        self::assertSame('Ìrè Events requires two-factor from ' . $written, $mails[0]->getSubject());
+        $paragraphs = Str\split((string) $mails[0]->getTextBody(), "\n\n");
+        self::assertSame([
+            "Ìrè Events now requires two-factor for everyone in it. You have until {$written} to turn it on. After that, you can't open anything in Ìrè Events until it's on. Your other organisations and your access to single events are not affected.",
+            "Two-factor asks for a code from an authenticator app when you sign in, so a stolen password isn't enough on its own. You turn it on once, and it covers every organisation that requires it.",
+            "Organisation: Ìrè Events\nRequired from: {$written}\nYour account: bisi@ire.events",
+        ], Vec\take($paragraphs, 3));
+        self::assertMatchesRegularExpression('~^Turn on two-factor: https?://\S+/app/account/security$~', $paragraphs[3] ?? '');
+        self::assertSame(['--', "You're getting this because you're a member of Ìrè Events."], Vec\slice($paragraphs, 4));
     }
 
     #[Test]
@@ -284,8 +315,8 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
 
         $mailer = self::service(UserMailer::class);
         $deadline = new DateTimeImmutable('2026-10-31 13:20:00 UTC');
-        self::assertSame('Saturday, Oct 31 at 14:20 WAT', $mailer->deadline($deadline, $this->fresh($lagos), 'en'));
-        self::assertSame('Saturday, Oct 31 at 13:20 GMT', $mailer->deadline($deadline, $this->fresh($london), 'en'));
+        self::assertSame('Saturday 31 Oct at 14:20 WAT', $mailer->deadline($deadline, $this->fresh($lagos), 'en'));
+        self::assertSame('Saturday 31 Oct at 13:20 GMT', $mailer->deadline($deadline, $this->fresh($london), 'en'));
     }
 
     #[Test]
@@ -323,6 +354,54 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
         $body = $this->set(['everyoneNeedsTwoFactor' => false]);
 
         self::assertTrue($body['administratorsNeedTwoFactor'] ?? null);
+    }
+
+    /** sc-9267: a picker switch asks before the account has saved the language, and the date follows the asking. */
+    #[Test]
+    public function theDeadlineIsWrittenInTheLanguageTheRequestAsksForOverTheStoredOne(): void
+    {
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Coordinator);
+        $this->turnOnTwoFactor($this->owner);
+        $this->set(['everyoneNeedsTwoFactor' => true]);
+        $this->fresh($this->owner)->setLocale('en');
+        $this->fresh($bisi)->setLocale('en');
+        self::em()->flush();
+        $written = Type\shape(['at' => Type\string(), 'written' => Type\string()], true);
+
+        $rules = $written->coerce($this->as($this->owner, 'GET', $this->path(), language: 'es')['twoFactorDeadline']);
+        $due = $written->coerce($this->standingOf($bisi, 'fr')['twoFactorDue']);
+
+        $mailer = self::service(UserMailer::class);
+        self::assertSame($mailer->deadline(new DateTimeImmutable($rules['at']), $this->fresh($this->owner), 'es'), $rules['written']);
+        self::assertSame($mailer->deadline(new DateTimeImmutable($due['at']), $this->fresh($bisi), 'fr'), $due['written']);
+    }
+
+    /** sc-9267: a request that names none of the four reads the account's saved language, not the default. */
+    #[Test]
+    #[DataProvider('namingNoneOfTheFour')]
+    public function theDeadlineIsWrittenInTheSavedLanguageWhenTheRequestNamesNone(string $language): void
+    {
+        $this->turnOnTwoFactor($this->owner);
+        $this->set(['everyoneNeedsTwoFactor' => true]);
+        $this->fresh($this->owner)->setLocale('pt');
+        self::em()->flush();
+
+        $deadline = Type\shape(['at' => Type\string(), 'written' => Type\string()], true)->coerce($this->as($this->owner, 'GET', $this->path(), language: $language)['twoFactorDeadline']);
+
+        $written = fn (string $locale): string => self::service(UserMailer::class)->deadline(new DateTimeImmutable($deadline['at']), $this->fresh($this->owner), $locale);
+        self::assertSame($written('pt'), $deadline['written']);
+        self::assertNotSame($written('en'), $deadline['written']);
+    }
+
+    /**
+     * An empty header, because the test client otherwise sends `en-us` for us.
+     *
+     * @return iterable<string, array{string}>
+     */
+    public static function namingNoneOfTheFour(): iterable
+    {
+        yield 'no header' => [''];
+        yield 'only German' => ['de'];
     }
 
     /** Regression: an organisation without the rule never holds anybody back. */
@@ -404,9 +483,9 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
         return self::em()->find(User::class, $user->getId()) ?? self::fail('no user');
     }
 
-    private function standingOf(User $user): array
+    private function standingOf(User $user, ?string $language = null): array
     {
-        $organisations = Type\vec(Type\shape(['id' => Type\string(), 'twoFactorDue' => Type\mixed()], true))->coerce($this->as($user, 'GET', '/api/orgs')['organisations']);
+        $organisations = Type\vec(Type\shape(['id' => Type\string(), 'twoFactorDue' => Type\mixed()], true))->coerce($this->as($user, 'GET', '/api/orgs', language: $language)['organisations']);
         $mine = Iter\first(Vec\filter($organisations, fn (array $organisation): bool => $organisation['id'] === $this->organisation->getId()->toRfc4122())) ?? self::fail('not a member');
 
         return ['twoFactorDue' => $mine['twoFactorDue']];
@@ -417,7 +496,7 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
     {
         return Vec\map(Vec\filter(
             self::getMailerMessages(),
-            static fn (object $message): bool => $message instanceof Email && Str\ends_with((string) $message->getSubject(), 'requires two-factor'),
+            static fn (object $message): bool => $message instanceof Email && Str\contains((string) $message->getSubject(), ' requires two-factor from '),
         ), static fn (object $message): Email => Type\instance_of(Email::class)->coerce($message));
     }
 
@@ -431,11 +510,12 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
      *
      * @return array<string, mixed>
      */
-    private function as(User $user, string $method, string $path, ?array $body = null): array
+    private function as(User $user, string $method, string $path, ?array $body = null, ?string $language = null): array
     {
         $this->client->request($method, $path, server: [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($this->fresh($user)),
+            ...(null === $language ? [] : ['HTTP_ACCEPT_LANGUAGE' => $language]),
         ], content: null === $body ? null : Json\encode([] === $body ? new stdClass() : $body));
 
         return $this->last();

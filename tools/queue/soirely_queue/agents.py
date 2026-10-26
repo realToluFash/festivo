@@ -10,7 +10,7 @@ import subprocess
 import sys
 import time
 
-from . import machine, permissions, runner, store, update
+from . import checkout, machine, permissions, runner, store, update
 
 WAIT_SECONDS = 10 * 60
 REPO = pathlib.Path(__file__).resolve().parents[3]
@@ -63,14 +63,11 @@ def make_checkout(config, role, say, home):
             "mainCheckout")
         return
     say(f"  {role}: creating {path}")
-    git = ["git", f"--git-dir={home.parent}"]
-    subprocess.run([*git, "fetch", "--quiet", "origin"], check=True)
-    # A checkout deleted by hand stays registered, and git refuses its path until pruned.
-    subprocess.run([*git, "worktree", "prune"], check=True)
-    made = subprocess.run([*git, "worktree", "add", "--detach", str(path), "origin/main"],
-                          capture_output=True, text=True)
-    if made.returncode:
-        say(f"  {role}: could not create {path}: {made.stderr.strip()}")
+    try:
+        checkout.fetch(home.parent)
+        checkout.ensure(home.parent, path)
+    except checkout.Unprepared as refused:
+        say(f"  {role}: could not create it: {refused}")
 
 
 def stack_running(project):

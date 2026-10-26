@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Enum;
 
+use Psl\Iter;
+
 /** docs/architecture/membership.md: every channel enters at active or pending_approval, and only active grants anything. */
 enum MembershipStatus: string
 {
@@ -11,6 +13,17 @@ enum MembershipStatus: string
     case Active = 'active';
     case Suspended = 'suspended';
     case LeftOrRemoved = 'left_or_removed';
+
+    /** @return list<self> whom a role counts as its holders, and whom an invitation finds already a member */
+    public static function holding(): array
+    {
+        return [self::Active, self::Suspended];
+    }
+
+    public function holdsRole(): bool
+    {
+        return Iter\contains(self::holding(), $this);
+    }
 
     public function isEntry(): bool
     {

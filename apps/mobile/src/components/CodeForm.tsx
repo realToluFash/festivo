@@ -1,5 +1,5 @@
 import { formatCountdown } from '@soirely/domain';
-import { type ReactNode, type Ref, useRef } from 'react';
+import { type ReactNode, type RefObject, useRef, useState } from 'react';
 import { StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -8,6 +8,7 @@ import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { CodeField, Field } from './Field.tsx';
 import { Notice } from './Notice.tsx';
+import { useFocusOnAnswer } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 /** The code screens' form, an email's and a phone's: `copy` names whose words it speaks in. */
@@ -34,12 +35,18 @@ export function CodeForm({
   onLeft: (code: string) => void;
   onVerify: (code: string) => void;
   onResend: () => void;
-  inputRef?: Ref<TextInput> | undefined;
+  inputRef?: RefObject<TextInput | null> | undefined;
   children?: ReactNode;
 }) {
   const { t } = useTranslation();
   const typed = useRef('');
   const verifying = status.kind === 'verifying';
+  const answer = 'opened' in status ? undefined : status;
+  const ownInput = useRef<TextInput>(null);
+  const input = inputRef ?? ownInput;
+  // Send a new code in the code's place brings the field back, or a failure, in its place (sc-11173).
+  const [resentInPlace, setResentInPlace] = useState<object | undefined>(undefined);
+  useFocusOnAnswer<TextInput>(status.kind === 'entering' ? resentInPlace : undefined, input);
 
   return (
     <View style={styles.form}>
@@ -49,6 +56,8 @@ export function CodeForm({
           mark="!"
           title={t(`${copy}.expiredTitle`)}
           body={t(`${copy}.expiredBody`)}
+          answer={answer}
+          takesFocus
         />
       )}
 
@@ -58,6 +67,8 @@ export function CodeForm({
           mark="!"
           title={t(`${copy}.exhaustedTitle`)}
           body={t(`${copy}.exhaustedBody`)}
+          answer={answer}
+          takesFocus
         />
       )}
 
@@ -67,23 +78,33 @@ export function CodeForm({
           mark={tokens.marks.broken.glyph}
           title={t(`${copy}.failedTitle`)}
           body={t(`${copy}.failedBody`)}
+          answer={answer}
+          takesFocus={resentInPlace != null}
         />
       )}
 
       {!asksForCode(status) && (
-        <PrimaryButton label={t(`${copy}.resend`)} onPress={onResend} testID={`${copy}.resend`} />
+        <PrimaryButton
+          label={t(`${copy}.resend`)}
+          onPress={() => {
+            setResentInPlace({});
+            onResend();
+          }}
+          testID={`${copy}.resend`}
+        />
       )}
 
       {asksForCode(status) && (
         <>
           <Field label={codeLabel ?? t(`${copy}.codeLabel`)} error={error}>
             <CodeField
-              ref={inputRef}
+              ref={input}
               wrong={error != null}
               editable={!verifying}
               returnKeyType="done"
               onChangeText={(text) => {
                 typed.current = text;
+                setResentInPlace(undefined);
                 onTyped(text);
               }}
               onBlur={() => onLeft(typed.current)}
@@ -95,7 +116,10 @@ export function CodeForm({
 
           <PrimaryButton
             label={verifying ? t(`${copy}.submitting`) : t(`${copy}.submit`)}
-            onPress={() => onVerify(typed.current)}
+            onPress={() => {
+              setResentInPlace(undefined);
+              onVerify(typed.current);
+            }}
             busy={verifying}
             testID={`${copy}.submit`}
           />
@@ -107,7 +131,10 @@ export function CodeForm({
                   ? t(`${copy}.resendIn`, { time: formatCountdown(cooldown) })
                   : t(`${copy}.resend`)
               }
-              onPress={onResend}
+              onPress={() => {
+                setResentInPlace(undefined);
+                onResend();
+              }}
               off={cooldown > 0}
               testID={`${copy}.resendSoon`}
             />

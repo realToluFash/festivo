@@ -64,9 +64,19 @@ services:
     # class, and nothing above it learns which one is in use.
     App\Address\Interfaces\AddressProviderInterface: '@App\Integrations\Nominatim\NominatimProvider'
 
+    App\Address\AddressLookup:
+        arguments:
+            $cache: '@cache.address'
+
     # One adapter behind the port. Have I Been Pwned is the only corpus worth
     # querying and swapping it is this line plus a class.
     App\Domain\User\Interfaces\BreachedPasswordCheckerInterface: '@App\Integrations\Hibp\HibpBreachedPasswordChecker'
+
+    # One adapter behind the port; in development it reaches the DNS mock, where a record can be published.
+    App\Integrations\Dns\DnsOverHttpsTxtLookup:
+        arguments:
+            $endpoint: '%env(DNS_TXT_ENDPOINT)%'
+    App\Domain\Organisation\Interfaces\TxtRecordLookupInterface: '@App\Integrations\Dns\DnsOverHttpsTxtLookup'
 
     # One adapter behind the port; in development it reaches the SMS mock.
     App\Integrations\Twilio\TwilioTextMessageSender:
@@ -90,6 +100,9 @@ services:
         arguments:
             $whatsAppEnabled: '%env(bool:WHATSAPP_ENABLED)%'
             $smsOnlyCountries: '%env(PHONE_CODES_SMS_ONLY_COUNTRIES)%'
+    App\Domain\Organisation\Members\TeamSeats:
+        arguments:
+            $teamSeatLimit: '%env(TEAM_SEAT_LIMIT)%'
     App\Domain\User\Controller\WhatsAppWebhookController:
         arguments:
             $verifyToken: '%env(WHATSAPP_WEBHOOK_VERIFY_TOKEN)%'
@@ -148,7 +161,13 @@ services:
     App\Domain\User\SignInMethods\SignInMethodMailer:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Organisation\Members\MemberAccessMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\Organisation\DomainJoining\DomainSuspensionMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Organisation\OwnerClaims\OwnerClaimMailer:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\Organisation\SignInRules\SignInRulesMailer:
@@ -183,8 +202,70 @@ services:
 
     App\Http\Access\Interfaces\EventDirectoryInterface: '@App\Domain\Event\EventDirectory'
 
+    App\Domain\Event\Interfaces\ActiveEventsLimitInterface: '@App\Domain\Event\UnlimitedActiveEvents'
+
+    # Epic 36's product defaults until sc-3980 stores each member's own; that story swaps this line.
+    App\Domain\Messaging\Interfaces\NotificationPreferencesInterface: '@App\Domain\Messaging\ProductDefaultPreferences'
+
 when@test:
     services:
+        # No notification type has merged yet (sc-104 is the machine); the suite schedules these.
+        App\Tests\Double\Messaging\RecordingEmailSender:
+            public: true
+            autoconfigure: true
+        App\Domain\Messaging\Channel\EmailSender: '@App\Tests\Double\Messaging\RecordingEmailSender'
+        App\Tests\Double\Messaging\Meanwhile:
+            public: true
+        test.notification.notice:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments: ['test.notice']
+        test.notification.urgent:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments: ['test.urgent', !php/enum App\Enum\NotificationPriority::Urgent]
+        test.notification.info:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments: ['test.info', !php/enum App\Enum\NotificationPriority::Info]
+        test.notification.interrupted:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                { $name: 'test.interrupted', $meanwhile: '@App\Tests\Double\Messaging\Meanwhile' }
+        test.notification.collapsing:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments: { $name: 'test.collapsing', $collapseKey: 'test.collapsing' }
+        test.notification.timely:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments: { $name: 'test.timely', $tooLateAfter: 'PT1H' }
+        test.notification.deletion:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                {
+                    $name: 'test.deletion',
+                    $eventRule: !php/enum App\Enum\NotificationEventRule::DeletionNotice,
+                }
+        test.notification.host_message:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                {
+                    $name: 'test.host_message',
+                    $eventRule: !php/enum App\Enum\NotificationEventRule::HostMessage,
+                }
+        test.notification.guest:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                {
+                    $name: 'test.guest',
+                    $audienceKind: !php/enum App\Enum\NotificationAudienceKind::Guest,
+                }
+
         # Routes that exist only in the suite, to prove the access layer before
         # any real organisation or event route uses it.
         App\Tests\Fixtures\Access\:
@@ -198,10 +279,27 @@ when@test:
         # billable or dependent on somebody having an account.
         App\AI\Interfaces\AssistantInterface: '@App\AI\ScriptedAssistant'
 
+        # Nothing records an amount against an event yet (sc-100 will); a test records one here.
+        App\Tests\Double\ScriptedEventAmounts:
+            public: true
+            autoconfigure: true
+
+        # A test sets the plan's limit here, and sees it consulted, until billing has one (sc-581).
+        App\Tests\Double\ScriptedActiveEventsLimit:
+            public: true
+        App\Domain\Event\Interfaces\ActiveEventsLimitInterface: '@App\Tests\Double\ScriptedActiveEventsLimit'
+
+        App\Tests\Double\ScriptedAddressProvider:
+            public: true
+        App\Address\Interfaces\AddressProviderInterface: '@App\Tests\Double\ScriptedAddressProvider'
+
         # No test reaches Have I Been Pwned. The stand-in's list is what makes
         # "this password is in a breach" assertable at all: the real corpus is
         # somebody else's data and could answer differently tomorrow.
         App\Domain\User\Interfaces\BreachedPasswordCheckerInterface: '@App\Domain\User\Password\ScriptedBreachedPasswordChecker'
+
+        # No test asks real DNS: a test publishes the record it means to be found.
+        App\Domain\Organisation\Interfaces\TxtRecordLookupInterface: '@App\Domain\Organisation\OwnerClaims\ScriptedTxtRecordLookup'
 
         # No test reaches a provider; the suite signs its own tokens and can rotate the key.
         App\Tests\Fixtures\OpenIdConnect\TestSigningKeys:
@@ -218,6 +316,13 @@ when@test:
         App\Domain\User\Verification\RecordingWhatsAppSender:
             public: true
         App\Domain\User\Interfaces\WhatsAppSenderInterface: '@App\Domain\User\Verification\RecordingWhatsAppSender'
+        # No limit in the suite, whatever the stack's environment says: the seat tests set their own.
+        App\Domain\Organisation\Members\TeamSeats:
+            public: true
+            autowire: true
+            arguments:
+                $teamSeatLimit: ''
+
         # Pinned off, as the container's environment wins over .env.test: codes are texted in the
         # suite as before sc-750, and the WhatsApp tests replace this with WhatsApp first.
         App\Domain\User\Verification\PhoneCodeChannels:

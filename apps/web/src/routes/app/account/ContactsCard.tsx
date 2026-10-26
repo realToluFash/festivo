@@ -22,14 +22,17 @@ import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { takeProviderReturn } from '../../../providerSignIn.ts';
+import { dropProviderReturn, heldProviderReturn } from '../../../providerSignIn.ts';
 import { heldProof } from '../../../recentProof.ts';
 import { ConfirmItsYou } from '../../../components/ConfirmItsYou.tsx';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { emailMessage, useFormChecks } from '../../../formChecks.ts';
 import { PhoneEntry } from '../../../components/PhoneEntry.tsx';
-import { currentLocale } from '../../../i18n/index.ts';
+import { dateLocale } from '../../../i18n/index.ts';
+import { offButton } from '../../../offButton.ts';
+import { focusWhereSent, offField } from '../../../offField.ts';
 import { phoneProblemMessage } from '../../../phoneProblem.ts';
+import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 
 type Kind = 'email' | 'phone';
 
@@ -55,7 +58,7 @@ export function ContactsCards({ onPrimaryChanged }: { onPrimaryChanged: () => Pr
   const [account, setAccount] = useState<Account | null>(null);
   const [twoFactorOn, setTwoFactorOn] = useState<boolean | null>(null);
   // Back from Google or Apple, started by "Make primary": once, on arrival.
-  const [returned] = useState(() => takeProviderReturn(['makePrimary']));
+  const [returned] = useState(() => heldProviderReturn(['makePrimary']));
   // Back from a verify screen, with the row it verified: once, on arrival.
   const [params, setParams] = useSearchParams();
   const [verified] = useState(() => params.get('verified'));
@@ -63,6 +66,11 @@ export function ContactsCards({ onPrimaryChanged }: { onPrimaryChanged: () => Pr
   useEffect(() => {
     if (params.has('verified')) setParams({}, { replace: true });
   }, [params, setParams]);
+
+  // Removed only once committed: React may abandon a render and run the initializer again.
+  useEffect(() => {
+    if (returned != null) dropProviderReturn();
+  }, [returned]);
 
   async function reload(): Promise<void> {
     setAccount(await api.me());
@@ -151,11 +159,21 @@ function ContactsCard({
   const [asking, setAsking] = useState<Asking>(() =>
     confirming?.returned == null ? null : { id: confirming.returned.address, what: 'prove' },
   );
-  const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
+  const [rowError, setRowError] = useState<{
+    id: string;
+    message: string;
+    changed: boolean;
+  } | null>(null);
+  const reason = useRef<HTMLDivElement>(null);
   const [adding, setAdding] = useState(false);
+  const [sending, setSending] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
   const [arrived, setArrived] = useState(verified);
   const doneLine = useRef<HTMLDivElement>(null);
+  const [confirmTitle, arriveAtConfirm] = useStepFocus<HTMLParagraphElement>();
+  const heading = useRef<HTMLHeadingElement>(null);
+  const card = useRef<HTMLElement>(null);
+  const land = useFocusOnceShown();
   const email = kind === 'email';
   const primary = rows.find((row) => row.primary);
   const arrival = justVerified(rows, arrived);
@@ -170,6 +188,25 @@ function ContactsCard({
           : t('contacts.verifiedDonePhone', { number: arrival.shown }));
 
   useEffect(() => doneLine.current?.focus(), [done]);
+
+  function ask(id: string, what: 'promote' | 'remove'): void {
+    setAsking({ id, what });
+    arriveAtConfirm();
+  }
+
+  function backTo(opener: string): void {
+    land(
+      () =>
+        [...(card.current?.querySelectorAll<HTMLElement>('[data-opens]') ?? [])].find(
+          (button) => button.dataset.opens === opener,
+        ) ?? heading.current,
+    );
+  }
+
+  function closeBackTo(opener: string): void {
+    setAsking(null);
+    backTo(opener);
+  }
 
   function setDone(line: string | null): void {
     setArrived(null);
@@ -186,6 +223,8 @@ function ContactsCard({
   }
 
   async function act(row: Row, what: 'promote' | 'remove', proof?: string): Promise<void> {
+    if (sending) return;
+
     setRowError(null);
     const standing = proof ?? heldProof();
 
@@ -194,6 +233,8 @@ function ContactsCard({
       setAsking({ id: row.id, what: 'prove' });
       return;
     }
+
+    setSending(true);
 
     try {
       if (what === 'promote') {
@@ -214,15 +255,27 @@ function ContactsCard({
         await onChanged();
       }
     } catch (refusal) {
-      if (await rereadFor(refusal)) setAsking(null);
-      setRowError({ id: row.id, message: rowRefusal(refusal, kind, t) });
+      const changed = await rereadFor(refusal);
+
+      if (changed) setAsking(null);
+      // The check has passed and is held, so a retry from the confirmation needs no second one.
+      else if (proof != null) ask(row.id, 'promote');
+      setRowError({ id: row.id, message: rowRefusal(refusal, kind, t), changed });
+      if (changed) land(() => reason.current ?? heading.current);
+    } finally {
+      setSending(false);
     }
   }
 
+  function stopAdding(): void {
+    setAdding(false);
+    backTo('add');
+  }
+
   return (
-    <section className="card settings-card" aria-labelledby={`${kind}s-title`}>
+    <section ref={card} className="card settings-card" aria-labelledby={`${kind}s-title`}>
       <div className="contacts-head">
-        <h2 id={`${kind}s-title`}>
+        <h2 id={`${kind}s-title`} ref={heading} tabIndex={-1}>
           {email ? t('contacts.emailsTitle') : t('contacts.phonesTitle')}
         </h2>
         <span className="field-help">
@@ -232,7 +285,7 @@ function ContactsCard({
       <p>{email ? t('contacts.emailsIntro') : t('contacts.phonesIntro')}</p>
 
       {done != null && (
-        <div className="notice notice-done" role="status" tabIndex={-1} ref={doneLine}>
+        <div className="notice notice-done" tabIndex={-1} ref={doneLine} data-page-focus="">
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>
@@ -286,26 +339,22 @@ function ContactsCard({
                   )}
                   {offers.makePrimary && (
                     <button
+                      data-opens={`promote ${row.id}`}
                       className="button"
                       type="button"
-                      onClick={() =>
-                        email
-                          ? setAsking({ id: row.id, what: 'promote' })
-                          : void act(row, 'promote')
-                      }
+                      onClick={() => (email ? ask(row.id, 'promote') : void act(row, 'promote'))}
                     >
                       {t(email ? 'contacts.makePrimary' : 'contacts.makePrimaryPhone')}
                     </button>
                   )}
                   {offers.remove && (
                     <button
+                      data-opens={`remove ${row.id}`}
                       className="button"
                       type="button"
                       aria-label={t('contacts.removeLabel', { address: row.shown })}
                       onClick={() =>
-                        offers.askBeforeRemoving
-                          ? setAsking({ id: row.id, what: 'remove' })
-                          : void act(row, 'remove')
+                        offers.askBeforeRemoving ? ask(row.id, 'remove') : void act(row, 'remove')
                       }
                     >
                       {t('contacts.remove')}
@@ -317,17 +366,25 @@ function ContactsCard({
               {here === 'promote' && (
                 <div className="notice notice-quiet way-last">
                   <div className="notice-body">
-                    <p className="notice-title">{t('contacts.promoteTitle')}</p>
+                    <p className="notice-title" ref={confirmTitle} tabIndex={-1}>
+                      {t('contacts.promoteTitle')}
+                    </p>
                     <p>{t('contacts.promoteBody', { old: primary?.shown ?? '' })}</p>
                     <div className="actions">
                       <button
                         className="button button-primary"
                         type="button"
+                        aria-busy={sending}
                         onClick={() => void act(row, 'promote')}
                       >
                         {t('contacts.promoteConfirm')}
                       </button>
-                      <button className="button" type="button" onClick={() => setAsking(null)}>
+                      <button
+                        className="button"
+                        type="button"
+                        {...offButton(sending)}
+                        onClick={() => closeBackTo(`promote ${row.id}`)}
+                      >
                         {t('contacts.promoteKeep', { old: primary?.shown ?? '' })}
                       </button>
                     </div>
@@ -347,7 +404,7 @@ function ContactsCard({
                     }
                     purpose={{ kind: 'makePrimary', address: row.id }}
                     onProved={(proof) => void act(row, 'promote', proof)}
-                    onCancel={() => setAsking(null)}
+                    onCancel={() => closeBackTo(`promote ${row.id}`)}
                   />
                 </div>
               )}
@@ -355,7 +412,7 @@ function ContactsCard({
               {here === 'remove' && (
                 <div className="notice notice-quiet way-last">
                   <div className="notice-body">
-                    <p className="notice-title">
+                    <p className="notice-title" ref={confirmTitle} tabIndex={-1}>
                       {email ? t('contacts.removeTitle') : t('contacts.removeTitlePhone')}
                     </p>
                     <p>{t('contacts.removeBody')}</p>
@@ -363,11 +420,17 @@ function ContactsCard({
                       <button
                         className="button button-dark"
                         type="button"
+                        aria-busy={sending}
                         onClick={() => void act(row, 'remove')}
                       >
                         {t(email ? 'contacts.removeConfirm' : 'contacts.removeConfirmPhone')}
                       </button>
-                      <button className="button" type="button" onClick={() => setAsking(null)}>
+                      <button
+                        className="button"
+                        type="button"
+                        {...offButton(sending)}
+                        onClick={() => closeBackTo(`remove ${row.id}`)}
+                      >
                         {t(email ? 'contacts.removeKeep' : 'contacts.removeKeepPhone')}
                       </button>
                     </div>
@@ -376,8 +439,12 @@ function ContactsCard({
               )}
 
               {rowError?.id === row.id && (
-                <div className="way-last">
-                  <FieldError id={`${kind}-${row.id}-error`} message={rowError.message} />
+                <div className="way-last" ref={reason} tabIndex={-1}>
+                  <FieldError
+                    id={`${kind}-${row.id}-error`}
+                    message={rowError.message}
+                    quiet={rowError.changed}
+                  />
                 </div>
               )}
             </li>
@@ -394,7 +461,7 @@ function ContactsCard({
               await onChanged();
             }}
             onRefused={rereadFor}
-            onCancel={() => setAdding(false)}
+            onCancel={stopAdding}
           />
         ) : (
           <AddPhone
@@ -405,12 +472,13 @@ function ContactsCard({
               await onChanged();
             }}
             onRefused={rereadFor}
-            onCancel={() => setAdding(false)}
+            onCancel={stopAdding}
           />
         )
       ) : (
         left > 0 && (
           <button
+            data-opens="add"
             className="button"
             type="button"
             onClick={() => {
@@ -463,6 +531,7 @@ function AddEmail({
     if (sending || !checks.passes({ address })) return;
 
     setSending(true);
+    const land = focusWhereSent();
 
     try {
       await api.addEmailAddress(address.trim());
@@ -471,7 +540,7 @@ function AddEmail({
       await onRefused(refusal);
       setSending(false);
       setRefused(addRefusal(refusal, 'email', t));
-      field.current?.focus();
+      land('contacts-email');
     }
   }
 
@@ -488,7 +557,7 @@ function AddEmail({
           autoCorrect="off"
           spellCheck={false}
           value={address}
-          disabled={sending}
+          {...offField(sending)}
           aria-invalid={error != null}
           aria-describedby={
             error == null ? 'contacts-email-help' : 'contacts-email-error contacts-email-help'
@@ -533,9 +602,14 @@ function AddPhone({
   const [number, setNumber] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const code = useRef<HTMLSelectElement>(null);
+
+  useEffect(() => code.current?.focus(), []);
 
   async function send(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+    if (sending) return;
+
     const found = phoneLengthProblem(number, country);
     const problem = phoneProblemMessage(found, country, t);
 
@@ -548,6 +622,7 @@ function AddPhone({
     }
 
     setSending(true);
+    const land = focusWhereSent();
 
     try {
       await api.addPhoneNumber(country, number);
@@ -556,6 +631,7 @@ function AddPhone({
       await onRefused(refusal);
       setSending(false);
       setError(addRefusal(refusal, 'phone', t));
+      land('phone-number');
     }
   }
 
@@ -568,6 +644,7 @@ function AddPhone({
         error={error}
         disabled={sending}
         help={t('contacts.phoneHelp')}
+        countryRef={code}
         onCountry={(code) => {
           setCountry(code);
           setError(null);
@@ -621,7 +698,7 @@ function addRefusal(refusal: unknown, kind: Kind, t: T): string {
 
     return lifts == null
       ? t('contacts.limitedSoon')
-      : t('contacts.limitedBody', { time: formatTimeOfDay(lifts, currentLocale()) });
+      : t('contacts.limitedBody', { time: formatTimeOfDay(lifts, dateLocale()) });
   }
   if (refusal instanceof ApiError && refusal.is('validation_failed'))
     return Object.values(refusal.fieldErrors())[0] ?? t('contacts.failed');

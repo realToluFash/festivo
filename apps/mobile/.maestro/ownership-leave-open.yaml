@@ -1,0 +1,18 @@
+# Settings > Organisation > Ownership and leaving: "Leave ‹organisation›?" open, not yet sent.
+# On a signed-in phone, as a member who is not the only owner. sc-12511.
+#
+#   node .qa/bin/qa-env.mjs maestro ownership-leave-open --android
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- scrollUntilVisible:
+    element:
+      id: 'ownership.leave'
+    timeout: 60000
+- tapOn:
+    id: 'ownership.leave'
+- scrollUntilVisible:
+    element:
+      id: 'ownership.leave.stay'
+    timeout: 30000
+- takeScreenshot: ownership-leave-open

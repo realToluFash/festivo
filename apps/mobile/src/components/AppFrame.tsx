@@ -1,34 +1,75 @@
 import { type Membership, primaryEmailAddress } from '@soirely/api-client';
-import { initials, roleName, waitingInvitations } from '@soirely/domain';
+import { roleName, waitingInvitations } from '@soirely/domain';
 import { router } from 'expo-router';
-import { type ReactNode, createContext, useContext, useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import {
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
 import { type WaitingInvitations, useWaitingInvitations } from '../invitations.ts';
 import { type DomainOffer, useDomainOffer } from '../joinOffers.ts';
-import { DESTINATIONS, DESTINATION_HREF, type Destination } from '../kit/appNav.ts';
-import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
+import { DESTINATION_HREF, type Destination, destinations } from '../kit/appNav.ts';
+import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
+import { railWidth } from '../layout/textSize.ts';
+import {
+  type LayoutKind,
+  useAccessibilitySizes,
+  useLayout,
+  useNameLines,
+} from '../layout/useLayout.ts';
 import { joinOrganisation, switchOrganisation, useSignedIn } from '../signedIn.ts';
+import { FrameSwitch, switchByTap, useFrameSwitch } from '../tappedSwitch.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useTwoFactorStanding } from '../twoFactorStanding.ts';
 import { CreateOrganisation } from './CreateOrganisation.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
+import { useFocusBack } from './Sheet.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
+import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
-import { Text } from './Text.tsx';
+import { ReadOut, useReadOut } from './ReadOut.tsx';
+import { type StepClosed, stepClosed, useFocusBackToOpener, useFocusOnAnswer } from './Screen.tsx';
+import type { ScreenReaderTarget } from './screenReaderFocus.ts';
+import { type TextHandle, Text } from './Text.tsx';
+import { Title } from './Title.tsx';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 
-const RAIL_WIDTH = 220;
+type Opening = (opener: RefObject<View | null>) => void;
 
-const OpenSwitcher = createContext<(() => void) | undefined>(undefined);
+const OpenSwitcher = createContext<Opening | undefined>(undefined);
 
 /** Opens the frame's organisation switcher; undefined while there is no organisation and no invitation. */
-export function useOpenSwitcher(): (() => void) | undefined {
+export function useOpenSwitcher(): Opening | undefined {
   return useContext(OpenSwitcher);
+}
+
+type OrganisationStart = Opening;
+
+const StartOrganisation = createContext<OrganisationStart | undefined>(undefined);
+
+/** Opens the frame's Create an organisation sheet, as the switcher's last row does (sc-5932). */
+export function useStartOrganisation(): OrganisationStart | undefined {
+  return useContext(StartOrganisation);
 }
 
 const HideBack = createContext<((hidden: boolean) => void) | undefined>(undefined);
@@ -46,31 +87,34 @@ export function useHeaderWithoutBack(hidden: boolean): void {
 
 const ICONS: Record<Destination, readonly [string, string]> = {
   home: ['M3 10.5 12 3l9 7.5', 'M5 9.5V21h14V9.5M10 21v-6h4v6'],
+  events: [
+    'M2 9a3 3 0 0 0 0 6v3a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3a3 3 0 0 0 0-6V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z',
+    'M13 5v2M13 17v2M13 11v2',
+  ],
   settings: [
     'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
     'M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z',
   ],
 };
 
-/** The edges a signed-in screen's own `Screen` insets: the frame's header, rail and tab bar take the rest. */
-export function bodyEdges(kind: LayoutKind): readonly ('top' | 'bottom' | 'left' | 'right')[] {
-  if (kind === 'phone') return ['left', 'right'];
-
-  return kind === 'tabletPortrait' ? ['left', 'right', 'bottom'] : ['right', 'bottom'];
-}
-
 /** The body keeps its place in the tree on every layout, so a rotation keeps what was typed. */
 export function AppFrame({
   current,
   title,
   back,
+  titleRef,
   aboutTheAccount = false,
+  bodyTakesSwitch = false,
   children,
 }: {
   current: Destination;
   title: string;
+  /** The title on a phone, where it stands for the page's own heading. */
+  titleRef?: RefObject<TextHandle | null> | undefined;
   /** Security and Account stay open past an organisation's two-factor deadline, to set it up (sc-609). */
   aboutTheAccount?: boolean;
+  /** A heading in the body takes screen reader focus after a tapped switch of organisation, in place of the title (sc-11032). */
+  bodyTakesSwitch?: boolean;
   /** On a phone, the page this one was opened from, as Security's "Settings". */
   back?: { label: string; onPress: () => void } | undefined;
   children: ReactNode;
@@ -79,7 +123,16 @@ export function AppFrame({
   const { kind } = useLayout();
   const [choosing, setChoosing] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [created, setCreated] = useState<string | null>(null);
+  const pill = useRef<View>(null);
+  const ownTitle = useRef<TextHandle>(null);
+  const frameTitle = titleRef ?? ownTitle;
+  // Create an organisation's sheet takes focus from the switcher, and hands it back itself (sc-8606).
+  const [toSheet, setToSheet] = useState(false);
+  const [switcherFrom, setSwitcherFrom] = useState<RefObject<View | null> | null>(null);
+  const [creatingFrom, setCreatingFrom] = useState<RefObject<View | null> | null>(null);
+  const [created, setCreated] = useState<{ name: string; takesFocus: boolean } | null>(null);
+  const createdWords = useRef<View>(null);
+  const switched = created == null ? null : t('switcher.switched', { name: created.name });
   const [backHidden, setBackHidden] = useState(false);
   const signedIn = useSignedIn();
   const waiting = useWaitingInvitations();
@@ -88,13 +141,47 @@ export function AppFrame({
   // It opens with one organisation too, because it ends with "Create an organisation" (sc-390).
   const openSwitcher =
     signedIn.organisation != null || waiting.invitations.length > 0 || offer.organisation != null
-      ? () => {
+      ? (opener: RefObject<View | null>) => {
           setCreated(null);
+          setSwitcherFrom(opener);
+          setToSheet(false);
           setChoosing(true);
         }
       : undefined;
+  const switchFromPill = openSwitcher && (() => openSwitcher(pill));
+  // An opener a pick took away, as the paused screen's, falls back to the organisation's name, then the title (sc-11413).
+  const switcherOpener = useMemo<RefObject<ScreenReaderTarget | null>>(
+    () => ({
+      get current() {
+        if (toSheet) return null;
+
+        return switcherFrom?.current ?? pill.current ?? frameTitle.current;
+      },
+    }),
+    [toSheet, switcherFrom, frameTitle],
+  );
+  const startOrganisation = (opener: RefObject<View | null>) => {
+    setCreated(null);
+    setCreatingFrom(opener);
+    setCreating(true);
+  };
   const email = signedIn.account == null ? '' : (primaryEmailAddress(signedIn.account) ?? '');
   const overdue = useTwoFactorStanding(signedIn.organisation) === 'overdue';
+  // The deadline passing with the screen open replaces it under a new heading, which takes focus (sc-11173).
+  const [standingSeen, setStandingSeen] = useState({ id: signedIn.organisation?.id, overdue });
+  const [lapsed, setLapsed] = useState<object | undefined>(undefined);
+  if (standingSeen.id !== signedIn.organisation?.id || standingSeen.overdue !== overdue) {
+    setStandingSeen({ id: signedIn.organisation?.id, overdue });
+    setLapsed(standingSeen.id === signedIn.organisation?.id && overdue ? {} : undefined);
+  }
+  const switchAnswer = useFrameSwitch();
+  const standIn = aboutTheAccount
+    ? null
+    : signedIn.pausedIn != null
+      ? 'paused'
+      : overdue && signedIn.organisation != null
+        ? 'overdue'
+        : null;
 
   return (
     <View style={[styles.root, kind === 'tabletLandscape' && styles.row]}>
@@ -103,7 +190,8 @@ export function AppFrame({
           current={current}
           organisation={signedIn.organisation}
           waiting={count}
-          onSwitch={openSwitcher}
+          onSwitch={switchFromPill}
+          pill={pill}
         />
       )}
       <View style={styles.column}>
@@ -111,38 +199,52 @@ export function AppFrame({
           kind={kind}
           current={current}
           title={title}
+          titleRef={frameTitle}
+          switchAnswer={bodyTakesSwitch || standIn != null ? undefined : switchAnswer}
           back={back}
           backHidden={backHidden}
           email={email}
           organisation={signedIn.organisation}
           waiting={count}
-          onSwitch={openSwitcher}
+          onSwitch={switchFromPill}
+          pill={pill}
         />
         <View style={styles.body}>
-          {created != null && (
-            <View style={styles.created} accessibilityLiveRegion="polite">
-              <Notice
-                tone="done"
-                mark={tokens.marks.done.glyph}
-                body={t('switcher.switched', { name: created })}
-              />
-            </View>
-          )}
-          <OpenSwitcher.Provider value={openSwitcher}>
-            <HideBack.Provider value={setBackHidden}>
-              {signedIn.pausedIn != null && !aboutTheAccount ? (
-                <AccessPaused
-                  paused={signedIn.pausedIn}
-                  others={signedIn.organisations}
-                  onSwitch={(next) => switchOrganisation(next.id)}
-                  onChoose={() => openSwitcher?.()}
+          {switched != null &&
+            (created?.takesFocus === true ? (
+              <View style={styles.created}>
+                <Notice
+                  tone="done"
+                  mark={tokens.marks.done.glyph}
+                  body={switched}
+                  wordsRef={createdWords}
                 />
-              ) : overdue && !aboutTheAccount && signedIn.organisation != null ? (
-                <TwoFactorOverdue organisation={signedIn.organisation} />
-              ) : (
-                children
-              )}
-            </HideBack.Provider>
+              </View>
+            ) : (
+              <ReadOut style={styles.created} words={switched}>
+                <Notice tone="done" mark={tokens.marks.done.glyph} body={switched} />
+              </ReadOut>
+            ))}
+          <OpenSwitcher.Provider value={openSwitcher}>
+            <StartOrganisation.Provider value={startOrganisation}>
+              <HideBack.Provider value={setBackHidden}>
+                {standIn === 'paused' && signedIn.pausedIn != null ? (
+                  <AccessPaused
+                    paused={signedIn.pausedIn}
+                    others={signedIn.organisations}
+                    onSwitch={(next) => switchByTap(next.id)}
+                    onChoose={(opener) => openSwitcher?.(opener)}
+                  />
+                ) : standIn === 'overdue' && signedIn.organisation != null ? (
+                  <TwoFactorOverdue
+                    organisation={signedIn.organisation}
+                    answer={switchAnswer ?? lapsed}
+                  />
+                ) : (
+                  <FrameSwitch.Provider value={switchAnswer}>{children}</FrameSwitch.Provider>
+                )}
+              </HideBack.Provider>
+            </StartOrganisation.Provider>
           </OpenSwitcher.Provider>
         </View>
         {kind === 'phone' && <TabBar current={current} />}
@@ -154,21 +256,27 @@ export function AppFrame({
         waiting={waiting}
         offer={offer}
         email={email}
+        opener={switcherOpener}
         onClose={() => setChoosing(false)}
         onCreate={() => {
+          setToSheet(true);
           setChoosing(false);
-          setCreating(true);
+          startOrganisation(switcherFrom ?? pill);
         }}
       />
       <CreateOrganisation
         open={creating}
         email={email}
+        opener={creatingFrom ?? pill}
         onCancel={() => setCreating(false)}
         onCreated={(organisation) => {
+          // In no organisation, what opened the sheet goes with it, so the sheet hands focus to the notice (sc-11173).
+          const fromNone = signedIn.organisation == null;
+          if (fromNone) setCreatingFrom(createdWords);
           setCreating(false);
           joinOrganisation(organisation);
           switchOrganisation(organisation.id);
-          setCreated(organisation.name);
+          setCreated({ name: organisation.name, takesFocus: fromNone });
         }}
       />
     </View>
@@ -179,34 +287,43 @@ function FrameHeader({
   kind,
   current,
   title,
+  titleRef,
+  switchAnswer,
   back,
   backHidden,
   email,
   organisation,
   waiting,
   onSwitch,
+  pill,
 }: {
   kind: LayoutKind;
   current: Destination;
   title: string;
+  titleRef: RefObject<TextHandle | null> | undefined;
+  /** A tapped switch of organisation, which takes screen reader focus to the title. */
+  switchAnswer: unknown;
   back: { label: string; onPress: () => void } | undefined;
   backHidden: boolean;
   email: string;
   organisation: Membership | null;
   waiting: number;
   onSwitch: (() => void) | undefined;
+  pill: Ref<View>;
 }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const top = { paddingTop: insets.top + (kind === 'tabletLandscape' ? 0 : tokens.spaceXxs) };
+  const { read } = useFocusOnAnswer<TextHandle>(switchAnswer, titleRef);
+  const large = useAccessibilitySizes();
 
   if (kind === 'tabletLandscape') {
     return (
-      <View style={[styles.header, styles.landscapeHeader, top]}>
-        <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
+      <View style={[styles.header, styles.landscapeHeader, large && styles.stacked, top]}>
+        <Title size={tokens.typeTitlePhone.size} accessibilityRole="header" ref={read}>
           {title}
-        </Text>
-        <View style={styles.fill} />
+        </Title>
+        {!large && <View style={styles.fill} />}
         <Text size={tokens.typeBody.size} muted>
           {email}
         </Text>
@@ -218,10 +335,10 @@ function FrameHeader({
     return (
       <View style={[styles.header, styles.portraitHeader, top]}>
         {organisation != null && (
-          <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} />
+          <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
         )}
         <View style={styles.pills} accessibilityRole="tablist">
-          {DESTINATIONS.map((destination) => {
+          {destinations(organisation).map((destination) => {
             const on = destination === current;
 
             return (
@@ -245,9 +362,9 @@ function FrameHeader({
             );
           })}
         </View>
-        <Text size={tokens.typeTitlePage.size} weight="bold" accessibilityRole="header">
+        <Title size={tokens.typeTitlePage.size} accessibilityRole="header" ref={read}>
           {title}
-        </Text>
+        </Title>
       </View>
     );
   }
@@ -255,7 +372,7 @@ function FrameHeader({
   return (
     <View style={[styles.header, styles.phoneHeader, top]}>
       {current === 'home' && organisation != null && (
-        <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} />
+        <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
       )}
       {back != null && !backHidden && (
         <Pressable
@@ -272,13 +389,13 @@ function FrameHeader({
           </Text>
         </Pressable>
       )}
-      <Text
+      <Title
         size={back == null ? tokens.typeTitlePage.size : tokens.typeTitlePhone.size}
-        weight="bold"
         accessibilityRole="header"
+        ref={read}
       >
         {title}
-      </Text>
+      </Title>
     </View>
   );
 }
@@ -286,13 +403,14 @@ function FrameHeader({
 function TabBar({ current }: { current: Destination }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { organisation } = useSignedIn();
 
   return (
     <View
       style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, tokens.spaceSm) }]}
       accessibilityRole="tablist"
     >
-      {DESTINATIONS.map((destination) => {
+      {destinations(organisation).map((destination) => {
         const on = destination === current;
 
         return (
@@ -309,7 +427,7 @@ function TabBar({ current }: { current: Destination }) {
             <Text
               size={tokens.typeMeta.size}
               weight={on ? 'bold' : 'medium'}
-              style={on ? styles.ink : styles.secondaryInk}
+              style={[styles.centred, on ? styles.ink : styles.secondaryInk]}
             >
               {t(`frame.${destination}`)}
             </Text>
@@ -325,15 +443,20 @@ function Rail({
   organisation,
   waiting,
   onSwitch,
+  pill,
 }: {
   current: Destination;
   organisation: Membership | null;
   waiting: number;
   onSwitch: (() => void) | undefined;
+  pill: Ref<View>;
 }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { account } = useSignedIn();
+  const { fontScale } = useWindowDimensions();
+  const large = useAccessibilitySizes();
+  const lines = useNameLines();
   const item = (destination: Destination) => {
     const on = destination === current;
 
@@ -363,6 +486,7 @@ function Rail({
       style={[
         styles.rail,
         {
+          width: railWidth(fontScale),
           paddingTop: insets.top + tokens.spaceSm,
           paddingBottom: insets.bottom + tokens.space3xl,
           paddingLeft: insets.left + tokens.spaceMd,
@@ -370,30 +494,42 @@ function Rail({
       ]}
     >
       <View style={styles.brand}>
-        <Text size={tokens.typeTitleDialog.size} weight="bold">
-          {t('app.name')}
-        </Text>
+        <Title size={tokens.typeTitleDialog.size}>{t('app.name')}</Title>
       </View>
       {organisation != null && (
-        <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} railed />
+        <OrgPill
+          organisation={organisation}
+          waiting={waiting}
+          onSwitch={onSwitch}
+          railed
+          ref={pill}
+        />
       )}
-      <View style={styles.railGroup}>{DESTINATIONS.filter((d) => d !== 'settings').map(item)}</View>
+      <View style={styles.railGroup}>
+        {destinations(organisation)
+          .filter((d) => d !== 'settings')
+          .map(item)}
+      </View>
       <View style={styles.fill} />
       <View style={[styles.railGroup, styles.railFoot]}>
         {item('settings')}
         {account != null && (
           <View style={styles.person}>
-            <View style={styles.avatar}>
-              <Text size={tokens.typeMeta.size} weight="semibold">
-                {initials(account.name)}
-              </Text>
-            </View>
+            {!large && (
+              <View
+                style={styles.avatar}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              >
+                <Initials name={account.name} size={tokens.typeMeta.size} weight="semibold" />
+              </View>
+            )}
             <View style={styles.shrink}>
-              <Text size={tokens.typeBody.size} weight="semibold" numberOfLines={1}>
+              <Text size={tokens.typeBody.size} weight="semibold" numberOfLines={lines}>
                 {account.name}
               </Text>
               {organisation != null && (
-                <Text size={tokens.typeMeta.size} muted numberOfLines={1}>
+                <Text size={tokens.typeMeta.size} muted numberOfLines={large ? 0 : 1}>
                   {roleName(t, organisation.role)}
                 </Text>
               )}
@@ -410,13 +546,17 @@ function OrgPill({
   waiting,
   onSwitch,
   railed = false,
+  ref,
 }: {
   organisation: Membership;
   waiting: number;
   onSwitch: (() => void) | undefined;
   railed?: boolean;
+  ref: Ref<View>;
 }) {
   const { t } = useTranslation();
+  const large = useAccessibilitySizes();
+  const lines = useNameLines();
   const role = roleName(t, organisation.role);
   const label =
     onSwitch == null
@@ -427,10 +567,11 @@ function OrgPill({
 
   return (
     <Pressable
+      ref={ref}
       style={[
         styles.org,
         railed ? styles.orgRailed : styles.orgPill,
-        waiting > 0 && styles.orgWaiting,
+        (waiting > 0 || large) && styles.orgWaiting,
       ]}
       onPress={onSwitch}
       disabled={onSwitch == null}
@@ -438,17 +579,17 @@ function OrgPill({
       accessibilityLabel={label}
       testID="frame.organisation"
     >
-      <Tile name={organisation.name} />
+      {!large && <Tile name={organisation.name} />}
       <View style={styles.shrink}>
         <Text
           size={railed ? tokens.typeBody.size : tokens.typeBodyPhone.size}
           weight="semibold"
-          numberOfLines={1}
+          numberOfLines={lines}
         >
           {organisation.name}
         </Text>
         {railed && (
-          <Text size={tokens.typeMeta.size} muted numberOfLines={1}>
+          <Text size={tokens.typeMeta.size} muted numberOfLines={lines}>
             {t('frame.organisation')}
           </Text>
         )}
@@ -472,10 +613,12 @@ function OrgPill({
 
 function Tile({ name }: { name: string }) {
   return (
-    <View style={styles.tile}>
-      <Text size={tokens.typeMeta.size} weight="bold" style={styles.accent}>
-        {initials(name)}
-      </Text>
+    <View
+      style={styles.tile}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <Initials name={name} size={tokens.typeMeta.size} weight="bold" style={styles.accent} />
     </View>
   );
 }
@@ -487,6 +630,7 @@ function Switcher({
   waiting,
   offer,
   email,
+  opener,
   onClose,
   onCreate,
 }: {
@@ -496,19 +640,67 @@ function Switcher({
   waiting: WaitingInvitations;
   offer: DomainOffer;
   email: string;
+  /** Where screen reader focus goes back to once the switcher has gone. */
+  opener: RefObject<ScreenReaderTarget | null>;
   onClose: () => void;
   onCreate: () => void;
 }) {
   const { t } = useTranslation();
+  const { width, height } = useLayout();
+  const large = useAccessibilitySizes();
+  const lines = useNameLines();
+  const insets = useSafeAreaInsets();
+  const invitationsHeading = useRef<TextHandle>(null);
+  const remembered = useRef<TextHandle>(null);
+  const [offerClosed, setOfferClosed] = useState<StepClosed | undefined>(undefined);
+  const afterOffer = useMemo<RefObject<ScreenReaderTarget | null>>(
+    () => ({
+      get current() {
+        return invitationsHeading.current ?? remembered.current;
+      },
+    }),
+    [],
+  );
+  useFocusBackToOpener(offerClosed, afterOffer);
+  useFocusBack(open, opener);
+  // Android's window runs behind the bars and the cutout, so the card keeps its margin from them, not from the edge.
+  const fit =
+    Platform.OS === 'android'
+      ? {
+          flex: 1,
+          paddingTop: insets.top + tokens.spaceXxl,
+          paddingBottom: insets.bottom + tokens.spaceXxl,
+          paddingLeft: insets.left + tokens.spaceXxl,
+          paddingRight: insets.right + tokens.spaceXxl,
+        }
+      : // Sized from the window: on an iPhone on its side the modal can keep its upright height (sc-10118).
+        { width, height };
 
   return (
-    <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel={t('switcher.close')}>
-        <View style={styles.sheetFrame} onStartShouldSetResponder={() => true}>
+    <Modal
+      visible={open}
+      transparent
+      animationType="fade"
+      supportedOrientations={TURNS_WITH_THE_APP}
+      // Android's modal window stops at the system bars unless told otherwise, leaving them undimmed.
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={onClose}
+    >
+      <View style={[styles.scrim, fit]} accessibilityViewIsModal onAccessibilityEscape={onClose}>
+        {/* A sibling, not a parent: iOS reads a labelled button as one item and nothing inside it (sc-10712).
+            VoiceOver closes the sheet from this Close or the two-finger escape on the scrim. */}
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel={t('switcher.close')}
+        />
+        <View style={styles.sheetFrame}>
           <ScrollView contentContainerStyle={styles.sheet}>
-            <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
+            <Title size={tokens.typeTitleDialog.size} accessibilityRole="header">
               {t('switcher.heading')}
-            </Text>
+            </Title>
             {organisations.map((organisation) => {
               const isCurrent = organisation.id === current?.id;
 
@@ -524,27 +716,31 @@ function Switcher({
                   accessibilityState={{ selected: isCurrent }}
                   testID={`switcher.${organisation.id}`}
                 >
-                  <Tile name={organisation.name} />
+                  {!large && <Tile name={organisation.name} />}
                   <View style={[styles.fill, styles.shrink]}>
-                    <Text size={tokens.typeBodyPhone.size} weight="semibold" numberOfLines={1}>
+                    <Text size={tokens.typeBodyPhone.size} weight="semibold" numberOfLines={lines}>
                       {organisation.name}
                     </Text>
-                    <Text size={tokens.typeBody.size} muted numberOfLines={1}>
+                    <Text size={tokens.typeBody.size} muted numberOfLines={large ? 0 : 1}>
                       {t('switcher.yourRole', { role: roleName(t, organisation.role) })}
                     </Text>
+                    {isCurrent && large && <Current />}
                   </View>
-                  {isCurrent && (
-                    <Text size={tokens.typeBody.size} weight="semibold" style={styles.accent}>
-                      {t('switcher.current')}
-                    </Text>
-                  )}
+                  {isCurrent && !large && <Current />}
                 </Pressable>
               );
             })}
-            {offer.organisation != null && <OfferCard offer={offer} email={email} />}
+            {offer.organisation != null && (
+              <OfferCard
+                offer={offer}
+                email={email}
+                onDismissed={() => setOfferClosed(stepClosed('afterOffer'))}
+              />
+            )}
             {waiting.invitations.length > 0 && (
               <View style={styles.invitations}>
                 <Text
+                  ref={invitationsHeading}
                   size={tokens.typeLabel.size}
                   weight="semibold"
                   muted
@@ -563,7 +759,7 @@ function Switcher({
                 />
               </View>
             )}
-            <Text size={tokens.typeBody.size} muted>
+            <Text ref={remembered} size={tokens.typeBody.size} muted>
               {t('switcher.remembered')}
             </Text>
             {current != null && (
@@ -585,24 +781,55 @@ function Switcher({
             )}
           </ScrollView>
         </View>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
 
+function Current() {
+  const { t } = useTranslation();
+
+  return (
+    <Text size={tokens.typeBody.size} weight="semibold" style={styles.accent}>
+      {t('switcher.current')}
+    </Text>
+  );
+}
+
 /** An organisation at the domain of the primary address: Ask to join, or Not now for good. */
-function OfferCard({ offer, email }: { offer: DomainOffer; email: string }) {
+function OfferCard({
+  offer,
+  email,
+  onDismissed,
+}: {
+  offer: DomainOffer;
+  email: string;
+  /** Not now was tapped, so focus goes to the item after the card (sc-11173). */
+  onDismissed: () => void;
+}) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  // Ask to join's answer takes its buttons' place, so it takes focus in place of being read out (sc-11173).
+  const [askedByTap, setAskedByTap] = useState<object | undefined>(undefined);
+  const { read: askedWords } = useFocusOnAnswer(offer.asked ? askedByTap : undefined);
+  const unavailable = t('domainJoining.unavailable');
+  useReadOut(failed ? unavailable : null);
+  const waiting = t('domainJoining.waiting');
+  const asked = t('domainJoining.switcherAsked', { email });
+  useReadOut(offer.asked && askedByTap == null ? `${waiting}\n${asked}` : null, {
+    quietAtMount: true,
+  });
 
   async function ask(): Promise<void> {
     setBusy(true);
     setFailed(false);
+    setAskedByTap({});
 
     try {
       await offer.ask();
     } catch {
+      setAskedByTap(undefined);
       setFailed(true);
     } finally {
       setBusy(false);
@@ -618,22 +845,20 @@ function OfferCard({ offer, email }: { offer: DomainOffer; email: string }) {
         {t('domainJoining.switcherBody', { domain: offer.domain ?? '' })}
       </Text>
       {offer.asked ? (
-        <View style={styles.offerAsked} accessibilityLiveRegion="polite">
+        <View style={styles.offerAsked}>
           <View style={styles.offerRing} />
-          <View style={styles.offerAskedWords}>
+          <View ref={askedWords} style={styles.offerAskedWords} accessible>
             <Text size={tokens.typeBody.size} weight="semibold">
-              {t('domainJoining.waiting')}
+              {waiting}
             </Text>
-            <Text size={tokens.typeBody.size}>
-              {`· ${t('domainJoining.switcherAsked', { email })}`}
-            </Text>
+            <Text size={tokens.typeBody.size}>{`· ${asked}`}</Text>
           </View>
         </View>
       ) : (
         <>
           {failed && (
             <Text size={tokens.typeBody.size} style={styles.broken} accessibilityRole="alert">
-              {t('domainJoining.unavailable')}
+              {unavailable}
             </Text>
           )}
           <View style={styles.offerButtons}>
@@ -646,7 +871,10 @@ function OfferCard({ offer, email }: { offer: DomainOffer; email: string }) {
             <SecondaryButton
               label={t('domainJoining.notNow')}
               off={busy}
-              onPress={() => void offer.dismiss()}
+              onPress={() => {
+                void offer.dismiss();
+                onDismissed();
+              }}
               testID="switcher.offer.notNow"
             />
           </View>
@@ -679,6 +907,7 @@ const styles = StyleSheet.create({
   ink: { color: tokens.colorInk },
   secondaryInk: { color: tokens.colorInkSecondary },
   accent: { color: tokens.colorAccentText },
+  centred: { textAlign: 'center' },
   broken: { color: tokens.colorBrokenText },
   offer: {
     gap: tokens.spaceSm,
@@ -726,6 +955,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.space5xl,
     paddingBottom: tokens.spaceLg,
   },
+  stacked: { flexDirection: 'column', alignItems: 'flex-start', gap: tokens.spaceXs },
   back: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
@@ -774,14 +1004,13 @@ const styles = StyleSheet.create({
   },
   tabMarkOn: { backgroundColor: tokens.colorInk },
   rail: {
-    width: RAIL_WIDTH,
     gap: tokens.spaceXxl,
     paddingRight: tokens.spaceMd,
     backgroundColor: tokens.colorCard,
     borderRightWidth: 1,
     borderRightColor: tokens.colorBorder,
   },
-  brand: { height: tokens.sizeHit, justifyContent: 'center', paddingHorizontal: tokens.spaceMd },
+  brand: { minHeight: tokens.sizeHit, justifyContent: 'center', paddingHorizontal: tokens.spaceMd },
   railGroup: { gap: tokens.spaceHair },
   railFoot: {
     paddingTop: tokens.spaceLg,
@@ -829,7 +1058,7 @@ const styles = StyleSheet.create({
     borderRadius: tokens.sizeHit / 2,
   },
   orgRailed: {
-    height: tokens.sizeHitPhoneHero,
+    minHeight: tokens.sizeHitPhoneHero,
     paddingLeft: tokens.spaceXs,
     paddingRight: tokens.spaceMd,
     borderRadius: tokens.radiusField,
@@ -843,7 +1072,6 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorAccentTint,
   },
   scrim: {
-    flex: 1,
     justifyContent: 'center',
     padding: tokens.spaceXxl,
     backgroundColor: tokens.scrimDialog,

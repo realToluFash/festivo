@@ -15,6 +15,7 @@ import {
   LOCALE_CODES,
   followPluralLocales,
   followValueStops,
+  formattingLocale,
   narrowLocale,
 } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
@@ -23,11 +24,7 @@ import { getLocales } from 'expo-localization';
 // named export reached by mistake.
 /* eslint-disable import/no-named-as-default-member */
 import i18next from 'i18next';
-import { initReactI18next } from 'react-i18next';
-// Plural rules for the runtime, which Hermes does not ship with a full ICU.
-// Without it `_one`/`_other` silently resolves to the key path on device while
-// working perfectly in a browser.
-import 'intl-pluralrules';
+import { initReactI18next, useTranslation } from 'react-i18next';
 
 import en from './locales/en.json';
 import es from './locales/es.json';
@@ -70,6 +67,18 @@ async function resolveLocale(): Promise<string> {
 
 export function currentLocale(): string {
   return narrowLocale(i18next.resolvedLanguage ?? i18next.language);
+}
+
+/** The language the screen is shown in, which a fetch of server-written dates names so the picker asks again (sc-9267). */
+export function useShownLanguage(): string {
+  const { i18n } = useTranslation();
+
+  return narrowLocale(i18n.resolvedLanguage ?? i18n.language);
+}
+
+/** What dates and times are written in: the phone's region, while it speaks the shown language. */
+export function dateLocale(): string {
+  return formattingLocale(currentLocale(), getLocales()[0]?.languageTag);
 }
 
 /** Null clears the override and goes back to the device setting. */

@@ -1,0 +1,16 @@
+# Taps one control by its testID and takes a picture of what follows, for checking a
+# button while its request is held (the api paused). sc-12511.
+#
+#   node .qa/bin/qa-env.mjs maestro ownership-tap --android ID=ownership.transfer.send SHOT=…
+appId: host.exp.Exponent
+---
+- scrollUntilVisible:
+    element:
+      id: ${ID}
+    timeout: 20000
+- tapOn:
+    id: ${ID}
+    retryTapIfNoChange: false
+- waitForAnimationToEnd:
+    timeout: 1500
+- takeScreenshot: ${SHOT}

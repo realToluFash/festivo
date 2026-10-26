@@ -60,6 +60,6 @@ final readonly class UserAuthenticator
 
     private function refuse(): ApiException
     {
-        return new ApiException(ErrorCode::InvalidCredentials, 'That email and password do not match.');
+        return new ApiException(ErrorCode::InvalidCredentials, 'sign_in.credentials_invalid');
     }
 }

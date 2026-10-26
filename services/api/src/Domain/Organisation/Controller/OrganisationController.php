@@ -6,8 +6,10 @@ namespace App\Domain\Organisation\Controller;
 
 use App\Domain\Organisation\DomainJoining\DomainSuspender;
 use App\Domain\Organisation\Http\OrganisationSerialiser;
+use App\Domain\Organisation\Members\MemberSuspension;
 use App\Domain\Organisation\OrganisationCreator;
 use App\Domain\Organisation\OrganisationRules;
+use App\Domain\Organisation\OwnerClaims\OwnerClaimDescriber;
 use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Entity\Membership;
 use App\Entity\User;
@@ -43,10 +45,12 @@ final readonly class OrganisationController
         private SignInRules $signInRules,
         private OrganisationCreator $organisationCreator,
         private DomainSuspender $domainSuspender,
+        private MemberSuspension $memberSuspension,
+        private OwnerClaimDescriber $ownerClaimDescriber,
     ) {
     }
 
-    /** Each organisation the caller is an active member of, with their role in it, and those their access to is paused in (sc-564). */
+    /** Each organisation the caller is an active member of, with their role in it, and those their access to is paused in (sc-564), with any claim to own it a suspended Owner may stop (sc-6640). */
     #[Route('/api/orgs', name: 'orgs_list', methods: ['GET'])]
     #[Authenticated]
     public function list(): JsonResponse
@@ -66,10 +70,11 @@ final readonly class OrganisationController
                 $this->signInRules->twoFactorDue($membership),
             )),
             'paused' => Vec\map(
-                $user instanceof User ? $this->membershipRepository->findSuspendedFor($user) : [],
+                $user instanceof User ? $this->membershipRepository->findPausedFor($user) : [],
                 fn (Membership $membership): array => [
                     ...OrganisationSerialiser::organisation($membership->getOrganisation()),
-                    'suspension' => $user instanceof User ? $this->domainSuspender->describe($membership, $user) : null,
+                    'suspension' => $user instanceof User ? $this->memberSuspension->describe($membership, $user) : null,
+                    'ownerClaim' => $user instanceof User ? $this->ownerClaimDescriber->forSuspendedOwner($membership->getOrganisation(), $user) : null,
                 ],
             ),
         ]);
@@ -83,14 +88,14 @@ final readonly class OrganisationController
         $user = $this->security->getUser();
 
         if (!$user instanceof User) {
-            throw new ApiException(ErrorCode::Unauthenticated, 'Please sign in to continue.');
+            throw new ApiException(ErrorCode::Unauthenticated, 'access.sign_in');
         }
 
         $body = Input::body($request, Type\shape([
             'name' => Type\string(),
             'countryCode' => Type\string(),
             'timezone' => Type\optional(Type\string()),
-        ]));
+        ]), ['countryCode' => 'validation.country_invalid']);
 
         $organisation = $this->organisationCreator->create($user, $body['name'], $body['countryCode'], $body['timezone'] ?? '');
         $membership = $this->membershipRepository->findActive($user, $organisation->getId())
@@ -109,7 +114,7 @@ final readonly class OrganisationController
     public function update(Request $request, string $organisationId): JsonResponse
     {
         $organisation = $this->organisationRepository->find($organisationId)
-            ?? throw ApiException::notFound('Not found.');
+            ?? throw ApiException::notFound('access.not_found');
 
         $body = Input::body($request, Type\shape([
             'name' => Type\optional(Type\string()),
@@ -118,7 +123,7 @@ final readonly class OrganisationController
             'timezone' => Type\optional(Type\string()),
             'contactAddress' => Type\optional(Type\string()),
             'locale' => Type\optional(Type\string()),
-        ]));
+        ]), ['countryCode' => 'validation.country_invalid']);
 
         $fields = $this->organisationRules->check([
             'name' => $body['name'] ?? $organisation->getName(),

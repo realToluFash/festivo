@@ -1,3 +1,4 @@
+import datetime
 import unittest
 
 from soirely_queue import roles, work
@@ -42,6 +43,8 @@ class Header(unittest.TestCase):
     def test_a_bare_dev_tag_goes_to_the_labelled_developer(self):
         self.assertEqual(roles.addressees("[dev] (from lead)\n", ["dev2"]), ["dev2"])
         self.assertEqual(roles.addressees("[dev] (from lead)\n", []), ["dev"])
+        for label in ("dev3", "dev4"):
+            self.assertEqual(roles.addressees("[dev] (from lead)\n", [label]), [label])
 
     def test_a_former_locale_tag_or_signature_means_the_linguist(self):
         self.assertEqual(roles.addressees("[fr] [pm] (from qa2)\n", []), ["l10n", "pm"])
@@ -118,6 +121,75 @@ class Review(unittest.TestCase):
         self.assertEqual(work.review_items([story()], [pr(state="merged")]), [])
 
 
+class SidePullRequests(unittest.TestCase):
+    """A developer's pull request on a linguist's ticket, such as a test taking new wording."""
+
+    def ticket(self, state="In Progress", labels=("translation",)):
+        return story(9, state, labels=labels)
+
+    def side(self, branch="fix/sc-9/test-wording", **kw):
+        return dict(pr(40, 9, **kw), branch=branch)
+
+    def test_it_wakes_the_lead_whatever_state_the_ticket_is_in(self):
+        for state in ("To Do", "In Progress", "In Review", "Passed Code Review"):
+            items = work.review_items([self.ticket(state)], [self.side()])
+            self.assertEqual([(i["kind"], i["pr"]) for i in items], [("review", 40)], state)
+
+    def test_the_linguists_own_pr_on_an_in_progress_ticket_wakes_no_lead(self):
+        self.assertEqual(work.review_items([self.ticket()], [self.side("l10n/sc-9")]), [])
+
+    def test_once_passed_and_green_it_wakes_its_developer_to_merge(self):
+        passed = self.side(lead=[verdict("pass", HEAD[:7])])
+        for state in ("To Do", "In Progress", "In Review", "Passed Code Review"):
+            items = work.developer_items([self.ticket(state)], [passed])
+            self.assertEqual([(i["kind"], i["roles"]) for i in items], [("merge", ["dev"])], state)
+
+    def test_no_developer_is_told_to_move_the_ticket_to_review(self):
+        for branch in ("fix/sc-9/test-wording", "l10n/sc-9"):
+            items = work.developer_items([self.ticket()], [self.side(branch)])
+            self.assertEqual([i for i in items if set(i["roles"]) & set(roles.DEVS)], [])
+
+    def test_the_linguists_own_pr_wakes_the_linguist_when_its_checks_finish(self):
+        for state in ("To Do", "Ready For Dev", "In Progress", "Failed QA"):
+            for checks, kind in (("green", "merge"), ("red", "checks-red")):
+                items = work.developer_items([self.ticket(state)],
+                                             [self.side("l10n/sc-9", checks=checks)])
+                self.assertEqual([(i["kind"], i["roles"]) for i in items], [(kind, ["l10n"])],
+                                 (state, checks))
+
+    def test_the_linguists_conflicting_pr_asks_the_linguist_for_main_whatever_its_checks(self):
+        for checks in ("green", "red", "pending"):
+            conflicting = dict(self.side("l10n/sc-9", checks=checks), mergeable="conflicting")
+            items = work.developer_items([self.ticket()], [conflicting])
+            self.assertEqual([(i["kind"], i["roles"]) for i in items], [("conflict", ["l10n"])],
+                             checks)
+
+    def test_the_linguists_pr_with_checks_running_wakes_nobody(self):
+        self.assertEqual(work.developer_items([self.ticket()],
+                                              [self.side("l10n/sc-9", checks="pending")]), [])
+
+    def test_a_merged_pr_on_the_ticket_hands_nothing_to_qa(self):
+        for branch in ("fix/sc-9/test-wording", "l10n/sc-9"):
+            merged = self.side(branch, state="merged", lead=[verdict("pass", HEAD[:7])])
+            for state in ("In Progress", "In Review", "Passed Code Review"):
+                self.assertEqual(work.developer_items([self.ticket(state)], [merged]), [])
+
+    def test_a_push_after_the_pass_leaves_the_ticket_in_its_state(self):
+        pushed = self.side(head="b" * 40, lead=[verdict("pass", HEAD[:7])])
+        self.assertEqual(work.voided_passes([self.ticket("Passed Code Review")], [pushed]), [])
+        built = self.ticket("Passed Code Review", labels=())
+        self.assertEqual(work.voided_passes([built], [pushed]), [(built, pushed)])
+
+    def test_a_story_that_is_not_a_linguists_ticket_reviews_and_merges_as_before(self):
+        for labels in ((), ("translation", "ops")):
+            built = self.ticket(labels=labels)
+            self.assertEqual(work.review_items([built], [self.side()]), [])
+            self.assertEqual(kinds(work.developer_items([built], [self.side()])), ["to-review"])
+            merged = self.side(state="merged", lead=[verdict("pass", HEAD[:7])])
+            self.assertEqual(kinds(work.developer_items([self.ticket("Passed Code Review", labels)],
+                                                        [merged])), ["to-qa"])
+
+
 def thread(*texts, resolved=False):
     return {"id": "T", "resolved": resolved, "outdated": False, "path": "x", "line": 1,
             "comments": [{"id": 100 + i, "at": "", "text": t} for i, t in enumerate(texts)]}
@@ -161,9 +233,30 @@ class Developer(unittest.TestCase):
                                      [pr(lead=[verdict("pass", HEAD[:7])])])
         self.assertEqual([(i["kind"], i["roles"]) for i in items], [("merge", ["dev2"])])
 
+    def test_a_pass_and_red_checks_wake_only_the_labelled_developer(self):
+        for label in ("dev3", "dev4"):
+            passed = work.developer_items([story(labels=[label])],
+                                          [pr(lead=[verdict("pass", HEAD[:7])])])
+            red = work.developer_items([story(labels=[label])], [pr(checks="red")])
+            self.assertEqual([i["roles"] for i in passed + red], [[label], [label]])
+
     def test_a_pass_carried_over_a_merge_of_main_is_a_merge(self):
         carried = pr(lead=[verdict("pass", OLD[:7])], carried=OLD[:7])
         self.assertEqual(kinds(work.developer_items([story()], [carried])), ["merge"])
+
+    def test_a_pull_request_that_conflicts_with_main_asks_for_main_and_nothing_else(self):
+        conflicting = dict(pr(lead=[verdict("pass", HEAD[:7])]), mergeable="conflicting")
+        for state in ("In Progress", "Failed Code Review", "In Review", "Passed Code Review"):
+            items = work.developer_items([story(state=state, labels=["dev2"])], [conflicting])
+            self.assertEqual([(i["kind"], i["roles"]) for i in items], [("conflict", ["dev2"])])
+            self.assertIn("merge origin/main", items[0]["reason"])
+        red = dict(pr(checks="red"), mergeable="conflicting")
+        self.assertEqual(kinds(work.developer_items([story(labels=["dev2"])], [red])),
+                         ["conflict"])
+
+    def test_a_conflicting_draft_is_not_raised_as_a_conflict(self):
+        draft = dict(pr(), mergeable="conflicting", draft=True)
+        self.assertNotIn("conflict", kinds(work.developer_items([story()], [draft])))
 
     def test_an_open_thread_holds_the_merge(self):
         thread = {"id": "T", "resolved": False, "outdated": False, "path": "x", "line": 1,
@@ -268,18 +361,48 @@ class Carried(unittest.TestCase):
 
 
 class Queue(unittest.TestCase):
-    def test_an_unlabelled_ready_story_is_one_item_both_developers_can_claim(self):
+    def test_an_unlabelled_ready_story_is_one_item_every_developer_can_claim(self):
         items = [i for i in work.queue_items([story(state="Ready For Dev")]) if i["pool"] == "dev"]
         self.assertEqual(len(items), 1)
-        self.assertEqual(sorted(items[0]["roles"]), ["dev", "dev2"])
+        self.assertEqual(sorted(items[0]["roles"]), ["dev", "dev2", "dev3", "dev4"])
+
+    def test_beyond_ready_for_dev_a_developer_sees_only_its_own_label(self):
+        for state in ("Failed Code Review", "Failed QA", "In Progress", "Ready For Dev"):
+            for label in ("dev1", "dev2", "dev3", "dev4"):
+                items = work.queue_items([story(state=state, labels=[label])])
+                self.assertEqual(sorted(r for i in items for r in i["roles"]),
+                                 [roles.developer_of([label])], (state, label))
+
+    def test_developer_one_also_keeps_unlabelled_work_beyond_ready_for_dev(self):
+        for state in ("Failed Code Review", "Failed QA", "In Progress"):
+            items = work.queue_items([story(state=state)])
+            self.assertEqual(sorted(r for i in items for r in i["roles"]), ["dev"], state)
 
     def test_ready_for_qa_is_one_item_for_the_three_testers(self):
         items = work.queue_items([story(state="Ready For QA")])
         self.assertEqual([sorted(i["roles"]) for i in items], [["qa", "qa2", "qa3"]])
 
+    def test_a_story_that_needs_ios_is_no_tester_s_without_xcode(self):
+        labelled = story(1, state="Ready For QA", labels=["needs ios"])
+        named = {**story(2, state="Ready For QA"), "name": "On an iPhone and an iPad, it reads"}
+        self.assertEqual(work.queue_items([labelled, named], ios=False), [])
+        items = work.queue_items([labelled, named], ios=True)
+        self.assertEqual([sorted(i["roles"]) for i in items], [["qa", "qa2", "qa3"]] * 2)
+
+    def test_a_story_naming_an_iphone_later_is_still_offered_without_xcode(self):
+        later = {**story(state="Ready For QA"), "name": "Cancel is off on an iPhone and Android"}
+        items = work.queue_items([later], ios=False)
+        self.assertEqual([i["story_id"] for i in items], [1])
+
+    def test_needs_ios_holds_back_only_the_testers(self):
+        ready = story(state="Ready For Dev", labels=["needs ios"])
+        items = work.queue_items([ready], ios=False)
+        self.assertEqual([i["roles"] for i in items], [["dev", "dev2", "dev3", "dev4"]])
+
     def test_a_translation_ticket_is_only_the_linguists(self):
-        items = work.queue_items([story(state="To Do", labels=["translation"])])
-        self.assertEqual(sorted(r for i in items for r in i["roles"]), ["l10n"])
+        for state in ("To Do", "Ready For Dev", "In Progress", "Failed QA"):
+            items = work.queue_items([story(state=state, labels=["translation"])])
+            self.assertEqual(sorted(r for i in items for r in i["roles"]), ["l10n"], state)
 
     def test_a_role_s_own_move_is_no_wake_for_it(self):
         moved = story(state="To Do", moved_at="t1")
@@ -330,6 +453,26 @@ class Queue(unittest.TestCase):
         moved_again = story(state="To Do", moved_at="t2")
         items = work.queue_items([moved_again], {(1, "To Do", "t1"): "pm"})
         self.assertIn("pm", [r for i in items for r in i["roles"]])
+
+
+class Held(unittest.TestCase):
+    def test_a_story_left_in_qa_is_its_tester_s_before_anything_new(self):
+        held = story(id_=1, state="In QA", comments=[comment(1, "QA claim: qa2")])
+        ready = story(id_=2, state="Ready For QA")
+        items = work.queue_items([held, ready]) + work.held_items([held, ready])
+        mine = sorted((i for i in items if "qa2" in i["roles"]), key=lambda i: i["priority"])
+        self.assertEqual([(i["kind"], i["story_id"]) for i in mine], [("held", 1), ("story", 2)])
+        self.assertEqual([i["roles"] for i in work.held_items([held])], [["qa2"]])
+
+    def test_a_story_given_back_is_held_by_nobody_and_open_to_every_tester(self):
+        given = story(state="In QA", labels=["qa failed"],
+                      comments=[comment(1, "QA claim: qa2"),
+                                comment(2, "QA claim released: qa2, Docker is down")])
+        self.assertEqual(work.held_items([given]), [])
+        self.assertIsNone(roles.last_tester(given))
+        now = datetime.datetime.now(datetime.timezone.utc)
+        back = dict(given, state="Ready For QA", moved_at=now.isoformat())
+        self.assertIsNone(work.retester(back, now.timestamp()))
 
 
 class EveryWakeStillHappens(unittest.TestCase):
@@ -400,6 +543,26 @@ class Heartbeat(unittest.TestCase):
         quiet = work.heartbeat_items(stories, {"qa": now - 5 * 60}, set(), now)
         self.assertNotIn("qa", [r for i in quiet for r in i["roles"]])
 
+    def test_the_linguist_picks_from_its_queue_between_sweeps(self):
+        now = 10_000_000
+        tickets = [story(state="In Progress", labels=["translation"])]
+        quiet = {"l10n": now - 31 * 60}
+
+        def l10n(stories, swept):
+            return [i["kind"] for i in work.heartbeat_items(stories, quiet, set(), now,
+                                                            last_sweeps={"l10n": swept})
+                    if i["roles"] == ["l10n"]]
+        self.assertEqual(l10n(tickets, now - 40 * 60), ["pick"])
+        self.assertEqual(l10n(tickets, now - 121 * 60), ["sweep"])
+        self.assertEqual(l10n(tickets, None), ["sweep"])
+        self.assertEqual(l10n([], now - 40 * 60), [])
+
+    def test_other_sweeping_roles_sweep_whatever_their_last_sweep(self):
+        now = 10_000_000
+        items = work.heartbeat_items([story(state="To Do")], {"pm": now - 121 * 60}, set(), now,
+                                     last_sweeps={"pm": now - 60})
+        self.assertEqual([i["kind"] for i in items if i["roles"] == ["pm"]], ["sweep"])
+
     def test_a_role_with_no_queue_and_no_sweep_stays_asleep(self):
         items = work.heartbeat_items([], {}, set(), 10_000_000)
         self.assertNotIn("dev", [r for i in items for r in i["roles"]])
@@ -426,6 +589,16 @@ class FinishingFirst(unittest.TestCase):
         found = self.order(stories, [pr(9, 3, lead=lead)])
         self.assertEqual(found[-1], (1, "inbox"))
         self.assertEqual({k for k in found[:-1]}, {(2, "story"), (3, "merge"), (4, "story")})
+
+    def test_a_passed_merge_and_a_conflict_go_ahead_of_comments_in_any_state(self):
+        asked = [comment(1, "[dev] (from pm)\nA question.")]
+        stories = [story(1, "Backlog", comments=asked), story(2, "In Review", labels=["dev1"]),
+                   story(3, "In Progress", labels=["dev1"])]
+        prs = [pr(8, 2, lead=[verdict("pass", HEAD)]),
+               dict(pr(9, 3), mergeable="conflicting")]
+        found = self.order(stories, prs)
+        self.assertLess(found.index((2, "merge")), found.index((1, "inbox")))
+        self.assertLess(found.index((3, "conflict")), found.index((1, "inbox")))
 
     def test_the_lead_reviews_before_it_answers_comments(self):
         asked = [comment(1, "[lead] (from pm)\nA question.")]
@@ -516,6 +689,10 @@ class Unblocked(unittest.TestCase):
             self.assertEqual(self.wakes([self.ticket(state)], [self.merged()]),
                              [(["l10n"], 9, 40, "PR #40 (sc-4) merged: sc-9 can start")])
 
+    def test_a_ready_for_dev_ticket_is_woken_when_a_feature_it_covers_merges(self):
+        self.assertEqual(self.wakes([self.ticket("Ready For Dev")], [self.merged()]),
+                         [(["l10n"], 9, 40, "PR #40 (sc-4) merged: sc-9 can start")])
+
     def test_a_story_linking_to_the_ticket_is_not_one_it_covers(self):
         ticket = dict(story(9, "To Do", labels=["translation"]),
                       links=[{"verb": "relates to", "subject": 4, "object": 9}])
@@ -524,6 +701,17 @@ class Unblocked(unittest.TestCase):
 
     def test_the_linguists_own_translation_pr_wakes_nobody(self):
         self.assertEqual(self.wakes([self.ticket()], [self.merged(branch="l10n/sc-4")]), [])
+
+    def test_a_developers_pr_on_the_ticket_itself_wakes_the_linguist_to_go_on(self):
+        merged = self.merged(41, 9, branch="fix/sc-9/test-wording")
+        self.assertEqual(self.wakes([self.ticket("In Progress")], [merged]),
+                         [(["l10n"], 9, 41, "PR #41 (sc-9) merged: sc-9 can go on")])
+
+    def test_its_own_merged_pr_wakes_the_linguist_on_a_ticket_left_in_review(self):
+        merged = self.merged(41, 9, branch="fix/sc-9/test-wording")
+        for state in ("In Review", "Passed Code Review", "Ready For QA"):
+            self.assertEqual(self.wakes([self.ticket(state)], [merged, self.merged()]),
+                             [(["l10n"], 9, 41, "PR #41 (sc-9) merged: sc-9 can go on")], state)
 
     def test_a_raised_wake_stays_after_its_pr_leaves_the_synced_merges(self):
         row = {"fingerprint": "l10n:unblocked:sc-9:#40", "story_id": 9, "pr": 40,
@@ -536,6 +724,15 @@ class Unblocked(unittest.TestCase):
         later = {9: row["first_seen"] + 60}
         self.assertEqual(self.wakes([self.ticket()], [], later, raised=[row]), [])
         self.assertEqual(self.wakes([self.ticket("Ready For QA")], [], raised=[row]), [])
+
+    def test_a_raised_wake_to_go_on_stays_on_a_ticket_left_in_review(self):
+        start = {"fingerprint": "l10n:unblocked:sc-9:#40", "story_id": 9, "pr": 40,
+                 "reason": "PR #40 (sc-4) merged: sc-9 can start",
+                 "first_seen": T.epoch(self.MERGED) + 30}
+        go_on = dict(start, fingerprint="l10n:unblocked:sc-9:#41", pr=41,
+                     reason="PR #41 (sc-9) merged: sc-9 can go on")
+        self.assertEqual(self.wakes([self.ticket("In Review")], [], raised=[start, go_on]),
+                         [(["l10n"], 9, 41, "PR #41 (sc-9) merged: sc-9 can go on")])
 
     def test_an_open_pr_wakes_nobody(self):
         self.assertEqual(self.wakes([self.ticket()], [pr(40, 4)]), [])
@@ -583,3 +780,199 @@ class PmQueue(unittest.TestCase):
         ranks = {i["story_id"]: i["rank"] for i in work.queue_items([late, early], epics=epics)
                  if i["roles"] == ["pm"]}
         self.assertLess(ranks[1], ranks[2])
+
+
+class FinishedStories(unittest.TestCase):
+    """A Done story still wakes its roles; an archived one wakes its builder to close."""
+
+    DAY_AFTER = T.epoch("2026-10-19T12:00:00Z")
+
+    def done(self, comments=(), labels=("dev3",), archived=False):
+        return dict(story(state="Done", labels=labels, comments=comments,
+                          moved_at="2026-10-18T10:30:00Z"), done=True, archived=archived)
+
+    def test_a_comment_after_the_story_is_done_wakes_its_role_and_says_so(self):
+        asked = comment(40, "[dev3] (from l10n)\nThe test on #556 needs the new wording.")
+        items = work.inbox_items([self.done([asked])])
+        self.assertEqual([(i["kind"], i["roles"], i["comments"]) for i in items],
+                         [("inbox", ["dev3"], [40])])
+
+    def test_one_left_open_before_it_was_done_wakes_nobody(self):
+        asked = comment(10, "[dev3] (from lead)\nAn old question.")
+        self.assertEqual(work.inbox_items([self.done([asked])]), [])
+
+    def test_an_archived_story_wakes_nobody_by_comment(self):
+        asked = comment(40, "[dev3] (from l10n)\nStill there?")
+        self.assertEqual(work.inbox_items([self.done([asked], archived=True)]), [])
+
+    def test_an_open_pr_on_a_done_story_wakes_the_lead_to_review_it(self):
+        items = work.review_items([self.done()], [pr()])
+        self.assertEqual([(i["kind"], i["pr"]) for i in items], [("review", 7)])
+        reviewed = pr(lead=[verdict("pass", HEAD[:7])])
+        self.assertEqual(work.review_items([self.done()], [reviewed]), [])
+        self.assertEqual(work.review_items([self.done()], [dict(pr(), draft=True)]), [])
+        self.assertEqual(work.review_items([self.done()], [pr(checks="pending")]), [])
+        self.assertEqual(work.review_items([self.done()], [pr(checks="red")]), [])
+
+    def test_its_builder_is_woken_by_red_checks_by_the_pass_and_by_a_conflict(self):
+        red = work.developer_items([self.done()], [pr(checks="red")])
+        self.assertEqual([(i["kind"], i["roles"]) for i in red], [("checks-red", ["dev3"])])
+        passed = pr(lead=[verdict("pass", HEAD[:7])])
+        merge = work.developer_items([self.done()], [passed])
+        self.assertEqual([(i["kind"], i["roles"]) for i in merge], [("merge", ["dev3"])])
+        conflict = work.developer_items([self.done()], [dict(passed, mergeable="conflicting")])
+        self.assertEqual([(i["kind"], i["roles"]) for i in conflict], [("conflict", ["dev3"])])
+        self.assertIn("merge origin/main", conflict[0]["reason"])
+        self.assertNotEqual(conflict[0]["fingerprint"], merge[0]["fingerprint"])
+
+    def test_a_merged_pr_on_a_done_story_hands_nothing_on(self):
+        merged = pr(state="merged", lead=[verdict("pass", HEAD[:7])])
+        self.assertEqual(work.developer_items([self.done()], [merged]), [])
+
+    def test_a_pr_on_an_archived_story_wakes_its_builder_once_to_close_it(self):
+        archived = self.done(archived=True)
+        first = work.developer_items([archived], [pr()])
+        pushed = work.developer_items([archived], [pr(head=OLD, checks="red")])
+        self.assertEqual([(i["kind"], i["roles"]) for i in first], [("close", ["dev3"])])
+        self.assertEqual(first[0]["fingerprint"], pushed[0]["fingerprint"])
+        self.assertEqual(work.review_items([archived], [pr()]), [])
+        self.assertEqual(work.developer_items([archived], [pr(state="merged")]), [])
+
+
+class Stranded(unittest.TestCase):
+    NOW = T.epoch("2026-10-25T12:00:00Z")
+
+    def open_pr(self, number, story_id, updated="2026-10-25T11:00:00Z", **kw):
+        return dict(pr(number, story_id, **kw), updated_at=updated, title=f"PR {number}")
+
+    def test_a_pr_with_no_story_or_idle_a_day_is_stranded_with_its_step(self):
+        stories = [story(1, "In Review"), story(2, "In Progress"),
+                   dict(story(3, "Done"), done=True, archived=True)]
+        prs = [self.open_pr(355, None), self.open_pr(400, 9),
+               self.open_pr(401, 1, updated="2026-10-24T10:00:00Z"),
+               self.open_pr(402, 2, updated="2026-10-21T10:00:00Z"),
+               self.open_pr(403, 3, updated="2026-10-23T10:00:00Z"),
+               self.open_pr(404, 1),
+               dict(self.open_pr(405, 1, updated="2026-10-01T10:00:00Z"), state="merged")]
+        found = {f["pr"]["number"]: (f["role"], f["step"], f["hours"])
+                 for f in work.stranded(stories, prs, self.NOW)}
+        self.assertEqual(sorted(found), [355, 400, 401, 402, 403])
+        self.assertEqual(found[355][0], None)
+        self.assertIn("no sc-N", found[355][1])
+        self.assertIn("sc-9 is not in Shortcut", found[400][1])
+        self.assertEqual(found[401][:2], ("lead", "lead to review it"))
+        self.assertEqual(found[401][2], 26)
+        self.assertEqual(found[402][:2], ("dev", "dev to move sc-2 to In Review"))
+        self.assertIn("archived", found[403][1])
+
+    def test_a_passed_pr_waits_on_its_builder_to_merge_or_bring_main_in(self):
+        passed = self.open_pr(7, 1, updated="2026-10-20T10:00:00Z",
+                              lead=[verdict("pass", HEAD[:7])])
+        done = dict(story(1, "Done", labels=["dev2"]), done=True)
+        self.assertEqual(work.waits_on(done, passed), ("dev2", "dev2 to merge it"))
+        self.assertEqual(work.waits_on(done, dict(passed, mergeable="conflicting")),
+                         ("dev2", "dev2 to merge main in"))
+        self.assertEqual(work.waits_on(done, dict(passed, checks="red"))[0], "dev2")
+        unreviewed = dict(self.open_pr(7, 1), mergeable="conflicting")
+        self.assertEqual(work.waits_on(story(1, "In Review", labels=["dev2"]), unreviewed),
+                         ("dev2", "dev2 to merge main in"))
+        self.assertEqual(work.waits_on(story(1, "In Review", labels=["dev2"]),
+                                       dict(unreviewed, checks="pending")),
+                         ("dev2", "dev2 to merge main in"))
+
+    def test_a_pr_sent_back_at_its_head_waits_on_its_builder_until_handed_back_unpushed(self):
+        back = self.open_pr(7, 1, updated="2026-10-20T10:00:00Z",
+                            lead=[verdict("back", HEAD[:7])])
+        done = dict(story(1, "Done", labels=["dev2"]), done=True)
+        self.assertEqual(work.waits_on(done, back),
+                         ("dev2", "dev2 to fix the findings and push"))
+        self.assertEqual(work.waits_on(done, dict(back, head_sha="f" * 40)),
+                         ("lead", "lead to review it"))
+        failed = story(1, "Failed Code Review", labels=["dev2"], moved_at="2026-10-19T10:00:00Z")
+        self.assertEqual(work.waits_on(failed, back),
+                         ("dev2", "dev2 to fix the findings and push"))
+        handed_back = story(1, "In Review", labels=["dev2"], moved_at="2026-10-19T10:00:00Z")
+        self.assertEqual(work.waits_on(handed_back, back), ("lead", "lead to review it"))
+
+    def test_ops_gets_one_stranded_item_a_day_and_none_when_nothing_is(self):
+        prs = [self.open_pr(355, None)]
+        items = work.stranded_items([], prs, self.NOW)
+        later = work.stranded_items([], prs + [self.open_pr(356, None)], self.NOW + 3600)
+        tomorrow = work.stranded_items([], prs, self.NOW + work.DAY)
+        self.assertEqual([(i["kind"], i["roles"]) for i in items], [("stranded", ["ops"])])
+        self.assertEqual(items[0]["fingerprint"], later[0]["fingerprint"])
+        self.assertNotEqual(items[0]["fingerprint"], tomorrow[0]["fingerprint"])
+        self.assertEqual(work.stranded_items([story(1)], [self.open_pr(7, 1)], self.NOW), [])
+        self.assertIn("stranded", kinds(work.derive([], prs, now=self.NOW)))
+
+
+def blocks(subject, object_):
+    return {"verb": "blocks", "subject": subject, "object": object_}
+
+
+class HeldByBlockers(unittest.TestCase):
+    def held(self, *links, state="Ready For Dev", labels=()):
+        return dict(story(1, state, labels=labels), links=list(links))
+
+    def blocker(self, state, id_=7, **extra):
+        return dict(story(id_, state), links=[blocks(id_, 1)], **extra)
+
+    def offered(self, stories, role="dev"):
+        return [i["story_id"] for i in work.queue_items(stories) if role in i["roles"]]
+
+    def test_a_blocker_not_yet_merged_holds_the_story_from_every_developer(self):
+        for state in ("To Do", "Ready For Dev", "In Progress", "In Review",
+                      "Passed Code Review", "Waiting On Owner"):
+            stories = [self.held(blocks(7, 1)), self.blocker(state)]
+            for role in roles.DEVS:
+                self.assertNotIn(1, self.offered(stories, role), (state, role))
+                self.assertNotIn(1, [s["id"] for s in work.queued(role, stories)])
+
+    def test_an_ops_story_is_held_from_ops_too(self):
+        stories = [self.held(blocks(7, 1), labels=["ops"]), self.blocker("In Review")]
+        self.assertNotIn(1, self.offered(stories, "ops"))
+
+    def test_a_blocker_from_ready_for_qa_on_has_merged(self):
+        for state in work.MERGED:
+            stories = [self.held(blocks(7, 1)), self.blocker(state, done=state == "Done")]
+            self.assertIn(1, self.offered(stories), state)
+
+    def test_an_archived_blocker_holds_nothing(self):
+        stories = [self.held(blocks(7, 1)), self.blocker("To Do", archived=True, done=True)]
+        self.assertIn(1, self.offered(stories))
+
+    def test_a_blocker_the_sync_has_not_stored_holds_it(self):
+        self.assertEqual(work.holding(self.held(blocks(7, 1)), []),
+                         [{"id": 7, "state": "unknown"}])
+
+    def test_only_a_blocks_link_with_the_story_as_object_holds_it(self):
+        links = [blocks(1, 8), {"verb": "relates to", "subject": 7, "object": 1},
+                 {"verb": "duplicates", "subject": 7, "object": 1}]
+        self.assertIn(1, self.offered([self.held(*links), self.blocker("To Do")]))
+
+    def test_a_translation_ticket_s_link_holds_nothing(self):
+        ticket = dict(self.blocker("To Do"), labels=["translation"])
+        self.assertIn(1, self.offered([self.held(blocks(7, 1)), ticket]))
+
+    def test_a_claimed_story_is_never_held(self):
+        for state in ("In Progress", "Failed QA", "Failed Code Review"):
+            stories = [self.held(blocks(7, 1), state=state, labels=["dev1"]),
+                       self.blocker("To Do")]
+            self.assertIn(1, self.offered(stories), state)
+
+    def test_the_last_blocker_merging_offers_the_story_as_new_work(self):
+        ready = self.held(blocks(7, 1))
+        before = [i["fingerprint"] for i in work.queue_items([dict(ready, links=[])])]
+        after = [i["fingerprint"] for i in work.queue_items([ready, self.blocker("Ready For QA")])
+                 if i["story_id"] == 1 and "dev" in i["roles"]]
+        self.assertEqual(len(after), 1)
+        self.assertNotIn(after[0], before)
+
+    def test_a_held_story_wakes_nobody_to_pick(self):
+        stories = [self.held(blocks(7, 1)), self.blocker("In Review")]
+        picks = [i for i in work.heartbeat_items(stories, {}, set(), 10_000)
+                 if i["roles"] == ["dev"]]
+        self.assertEqual(picks, [])
+
+    def test_a_story_with_no_blocker_is_offered_as_before(self):
+        self.assertIn(1, self.offered([self.held()]))

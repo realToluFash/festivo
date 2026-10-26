@@ -2,29 +2,46 @@ import { ApiError, type TwoFactorEnrolment, type TwoFactorStatus } from '@soirel
 import { cleanCode, formatTimeOfDay, keyInGroups, lockLiftsAt } from '@soirely/domain';
 import { setStringAsync } from 'expo-clipboard';
 import { type TFunction } from 'i18next';
-import { useEffect, useRef, useState } from 'react';
+import { type Ref, type RefObject, useEffect, useRef, useState } from 'react';
 import { Keyboard, Pressable, StyleSheet, type TextInput, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { currentLocale } from '../i18n/index.ts';
+import { dateLocale } from '../i18n/index.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { typedCodeProblem } from '../kit/twoFactor.ts';
 import { tokens } from '../theme/tokens.ts';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
-import { useAboveKeyboard, useScrolledToTop } from './Screen.tsx';
-import { Text } from './Text.tsx';
+import { useReadOut } from './ReadOut.tsx';
+import {
+  type StepClosed,
+  stepClosed,
+  useAboveKeyboard,
+  useFocusBackToOpener,
+  useScrolledToTop,
+} from './Screen.tsx';
+import { Text, type TextHandle } from './Text.tsx';
+import { useMarkSide } from './markSide.ts';
+
+/** Said once, as the tap it answers lands; `AtRest` mounts again after every reload. */
+interface Refusal {
+  organisation: string;
+  said: boolean;
+  /** It answers Turn it off, whose step has closed, so it takes focus in place of being read out (sc-11173). */
+  takesFocus: boolean;
+}
 
 type Stage =
   | { kind: 'loading' }
-  | { kind: 'failed' }
+  | { kind: 'failed'; tapped: boolean }
   | { kind: 'atRest'; status: TwoFactorStatus }
   | { kind: 'settingUp'; enrolment: TwoFactorEnrolment }
-  | { kind: 'savingCodes'; codes: string[] }
+  | { kind: 'savingCodes'; codes: string[]; renewed: boolean }
   | { kind: 'turningOff' }
   | { kind: 'newCodes' };
 
@@ -50,7 +67,10 @@ export function TwoFactorCard({
   const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
-  const [refusedBy, setRefusedBy] = useState<string | null>(null);
+  const [refusedBy, setRefusedBy] = useState<Refusal | null>(null);
+  const [closed, setClosed] = useState<StepClosed | undefined>(undefined);
+  const title = useRef<TextHandle>(null);
+  const opener = useFocusBackToOpener(stage.kind === 'atRest' ? closed : undefined, title);
 
   useEffect(() => {
     let live = true;
@@ -61,7 +81,8 @@ export function TwoFactorCard({
         if (live) setStage({ kind: 'atRest', status });
       })
       .catch(() => {
-        if (live) setStage({ kind: 'failed' });
+        // Each load after the first follows a tap: a step closing, or Try again.
+        if (live) setStage({ kind: 'failed', tapped: attempt > 0 });
       });
 
     return () => {
@@ -85,7 +106,15 @@ export function TwoFactorCard({
     };
   }, [recount]);
 
-  function reload(): void {
+  function leaveAtRest(next?: Stage): void {
+    setRefusedBy((now) => now && { ...now, said: true });
+    setClosed(undefined);
+    if (next != null) setStage(next);
+  }
+
+  /** Loads the card again, then focus goes to `to`: an opener, or the title. */
+  function reload(to?: string): void {
+    setClosed(to == null ? undefined : stepClosed(to));
     setStage({ kind: 'loading' });
     setAttempt((n) => n + 1);
   }
@@ -94,7 +123,7 @@ export function TwoFactorCard({
     try {
       setStage({ kind: 'settingUp', enrolment: await api.enrolTwoFactor() });
     } catch {
-      setStage({ kind: 'failed' });
+      setStage({ kind: 'failed', tapped: true });
     }
   }
 
@@ -114,20 +143,33 @@ export function TwoFactorCard({
             mark={tokens.marks.broken.glyph}
             title={t('twoFactorCard.failedTitle')}
             body={t('twoFactorCard.failedBody')}
+            answer={stage}
+            takesFocus={stage.tapped}
           />
-          <SecondaryButton label={t('error.retry')} onPress={reload} testID="twoFactor.retry" />
+          <SecondaryButton
+            label={t('twoFactorCard.retry')}
+            onPress={() => reload('title')}
+            testID="twoFactor.retry"
+          />
         </>
       )}
 
       {stage.kind === 'atRest' && (
         <AtRest
           status={stage.status}
-          onTurnOn={() => void turnOn()}
+          title={title}
+          opener={opener}
+          onTurnOn={() => {
+            leaveAtRest();
+            void turnOn();
+          }}
           refusedBy={refusedBy}
           onTurnOff={() =>
-            keptBy == null ? setStage({ kind: 'turningOff' }) : setRefusedBy(keptBy)
+            keptBy == null
+              ? leaveAtRest({ kind: 'turningOff' })
+              : setRefusedBy({ organisation: keptBy, said: false, takesFocus: false })
           }
-          onNewCodes={() => setStage({ kind: 'newCodes' })}
+          onNewCodes={() => leaveAtRest({ kind: 'newCodes' })}
         />
       )}
 
@@ -135,70 +177,104 @@ export function TwoFactorCard({
         <SettingUp
           enrolment={stage.enrolment}
           phone={phone}
+          answer={stage}
           onActivated={(codes) => {
-            setStage({ kind: 'savingCodes', codes });
+            setStage({ kind: 'savingCodes', codes, renewed: false });
             onTurnedOn?.();
           }}
-          onCancel={reload}
+          onCancel={() => reload('turnOn')}
         />
       )}
 
       {stage.kind === 'savingCodes' && (
-        <SavingCodes codes={stage.codes} phone={phone} onFinish={reload} />
+        <SavingCodes
+          codes={stage.codes}
+          phone={phone}
+          answer={stage}
+          onFinish={() => reload(stage.renewed ? 'newCodes' : 'title')}
+        />
       )}
 
       {stage.kind === 'turningOff' && (
         <TurningOff
           email={email}
-          onDone={reload}
+          answer={stage}
+          onDone={() => reload('title')}
+          onKeep={() => reload('turnOff')}
           onKept={(organisation) => {
-            setRefusedBy(organisation);
+            setRefusedBy({ organisation, said: false, takesFocus: true });
             reload();
           }}
         />
       )}
 
       {stage.kind === 'newCodes' && (
-        <NewCodes onMade={(codes) => setStage({ kind: 'savingCodes', codes })} onKeep={reload} />
+        <NewCodes
+          answer={stage}
+          onMade={(codes) => setStage({ kind: 'savingCodes', codes, renewed: true })}
+          onKeep={() => reload('newCodes')}
+        />
       )}
     </View>
   );
 }
 
-function Title({ text }: { text: string }) {
+function Title({
+  text,
+  answer,
+  ref,
+}: {
+  text: string;
+  answer?: unknown;
+  ref?: RefObject<TextHandle | null>;
+}) {
   return (
-    <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+    <AnswerHeading size={tokens.typeTitleSection.size} weight="bold" answer={answer} ref={ref}>
       {text}
-    </Text>
+    </AnswerHeading>
   );
 }
 
 function AtRest({
   status,
+  title,
+  opener,
   refusedBy,
   onTurnOn,
   onTurnOff,
   onNewCodes,
 }: {
   status: TwoFactorStatus;
-  refusedBy: string | null;
+  title: RefObject<TextHandle | null>;
+  opener: (key: string) => Ref<View>;
+  refusedBy: Refusal | null;
   onTurnOn: () => void;
   onTurnOff: () => void;
   onNewCodes: () => void;
 }) {
+  const markSide = useMarkSide(tokens.sizeMark);
   const { t } = useTranslation();
 
   return (
     <>
       <View style={styles.heading}>
         <View style={styles.grow}>
-          <Title text={t('twoFactorCard.title')} />
+          <Title text={t('twoFactorCard.title')} ref={title} />
         </View>
         {/* A mark and the word, never the colour alone. */}
         <View style={styles.state}>
-          <View style={[styles.mark, status.on ? styles.markOn : styles.markOff]}>
+          <View
+            style={[styles.mark, markSide, status.on ? styles.markOn : styles.markOff]}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
             {status.on && (
-              <Text size={tokens.typePill.size} weight="bold" style={styles.markOnInk}>
+              <Text
+                size={tokens.typePill.size}
+                weight="bold"
+                style={styles.markOnInk}
+                accessible={false}
+              >
                 ✓
               </Text>
             )}
@@ -226,12 +302,14 @@ function AtRest({
               {t('twoFactorCard.unused', { left: status.recoveryCodesLeft, total: 10 })}
             </Text>
             <SecondaryButton
+              ref={opener('newCodes')}
               label={t('twoFactorCard.makeNewCodes')}
               onPress={onNewCodes}
               testID="twoFactor.newCodes"
             />
           </View>
           <SecondaryButton
+            ref={opener('turnOff')}
             label={t('twoFactorCard.turnOff')}
             onPress={onTurnOff}
             testID="twoFactor.turnOff"
@@ -240,7 +318,9 @@ function AtRest({
             <Notice
               tone="attention"
               mark="!"
-              body={t('twoFactorCard.keptByRule', { organisation: refusedBy })}
+              body={t('twoFactorCard.keptByRule', { organisation: refusedBy.organisation })}
+              answer={refusedBy.said ? undefined : refusedBy}
+              takesFocus={refusedBy.takesFocus}
             />
           )}
         </>
@@ -250,6 +330,7 @@ function AtRest({
             {t('twoFactorCard.offIntro')}
           </Text>
           <PrimaryButton
+            ref={opener('turnOn')}
             label={t('twoFactorCard.turnOn')}
             onPress={onTurnOn}
             testID="twoFactor.turnOn"
@@ -263,11 +344,13 @@ function AtRest({
 function SettingUp({
   enrolment,
   phone,
+  answer,
   onActivated,
   onCancel,
 }: {
   enrolment: TwoFactorEnrolment;
   phone: boolean;
+  answer: unknown;
   onActivated: (codes: string[]) => void;
   onCancel: () => void;
 }) {
@@ -300,7 +383,10 @@ function SettingUp({
 
   return (
     <>
-      <Title text={phone ? t('twoFactorCard.phoneSetupTitle') : t('twoFactorCard.setupTitle')} />
+      <Title
+        text={phone ? t('twoFactorCard.phoneSetupTitle') : t('twoFactorCard.setupTitle')}
+        answer={answer}
+      />
 
       <Text size={tokens.typeBodyPhone.size} weight="semibold">
         {t('twoFactorCard.scan')}
@@ -343,7 +429,12 @@ function SettingUp({
           testID="twoFactor.checkCode"
         />
       </View>
-      <QuietButton label={t('twoFactorCard.cancel')} onPress={onCancel} testID="twoFactor.cancel" />
+      <QuietButton
+        label={t('twoFactorCard.cancel')}
+        onPress={onCancel}
+        off={checking}
+        testID="twoFactor.cancel"
+      />
     </>
   );
 }
@@ -351,15 +442,20 @@ function SettingUp({
 function SavingCodes({
   codes,
   phone,
+  answer,
   onFinish,
 }: {
   codes: string[];
   phone: boolean;
+  answer: unknown;
   onFinish: () => void;
 }) {
+  const markSide = useMarkSide(tokens.sizeMark);
   const { t } = useTranslation();
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const copiedAll = t('twoFactorCard.copiedAll', { count: codes.length });
+  useReadOut(copied ? copiedAll : null);
   const top = useScrolledToTop();
 
   useEffect(() => Keyboard.dismiss(), []);
@@ -367,7 +463,7 @@ function SavingCodes({
   return (
     <>
       <View ref={top} collapsable={false}>
-        <Title text={t('twoFactorCard.saveTitle')} />
+        <Title text={t('twoFactorCard.saveTitle')} answer={answer} />
       </View>
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
         {phone
@@ -375,7 +471,7 @@ function SavingCodes({
           : t('twoFactorCard.saveIntro')}
       </Text>
 
-      <View style={styles.codes} accessibilityLabel={t('twoFactorCard.recoveryCodes')}>
+      <View style={styles.codes}>
         {codes.map((code) => (
           <Text key={code} size={tokens.typeBodyPhone.size} selectable style={styles.code}>
             {code}
@@ -391,13 +487,8 @@ function SavingCodes({
         testID="twoFactor.copyAll"
       />
       {copied && (
-        <Text
-          size={tokens.typeSmall.size}
-          weight="semibold"
-          style={styles.on}
-          accessibilityLiveRegion="polite"
-        >
-          {t('twoFactorCard.copiedAll', { count: codes.length })}
+        <Text size={tokens.typeSmall.size} weight="semibold" style={styles.on}>
+          {copiedAll}
         </Text>
       )}
 
@@ -408,9 +499,18 @@ function SavingCodes({
         accessibilityState={{ checked: saved }}
         testID="twoFactor.saved"
       >
-        <View style={[styles.box, saved && styles.boxOn]}>
+        <View
+          style={[styles.box, markSide, saved && styles.boxOn]}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
           {saved && (
-            <Text size={tokens.typePill.size} weight="bold" style={styles.markOnInk}>
+            <Text
+              size={tokens.typePill.size}
+              weight="bold"
+              style={styles.markOnInk}
+              accessible={false}
+            >
               ✓
             </Text>
           )}
@@ -433,11 +533,15 @@ function SavingCodes({
 
 function TurningOff({
   email,
+  answer,
   onDone,
+  onKeep,
   onKept,
 }: {
   email: string;
+  answer: unknown;
   onDone: () => void;
+  onKeep: () => void;
   onKept: (organisation: string) => void;
 }) {
   const { t } = useTranslation();
@@ -473,7 +577,7 @@ function TurningOff({
 
   return (
     <>
-      <Title text={t('twoFactorCard.offTitle')} />
+      <Title text={t('twoFactorCard.offTitle')} answer={answer} />
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
         {t('twoFactorCard.offBody')}
       </Text>
@@ -508,7 +612,8 @@ function TurningOff({
       />
       <QuietButton
         label={t('twoFactorCard.keepItOn')}
-        onPress={onDone}
+        onPress={onKeep}
+        off={checking}
         testID="twoFactor.keepItOn"
       />
     </>
@@ -516,7 +621,15 @@ function TurningOff({
 }
 
 /** Changing a factor takes the current one, or a stolen session could mint codes past it. */
-function NewCodes({ onMade, onKeep }: { onMade: (codes: string[]) => void; onKeep: () => void }) {
+function NewCodes({
+  answer,
+  onMade,
+  onKeep,
+}: {
+  answer: unknown;
+  onMade: (codes: string[]) => void;
+  onKeep: () => void;
+}) {
   const { t } = useTranslation();
   const typed = useRef('');
   const input = useRef<TextInput>(null);
@@ -544,7 +657,7 @@ function NewCodes({ onMade, onKeep }: { onMade: (codes: string[]) => void; onKee
 
   return (
     <>
-      <Title text={t('twoFactorCard.newTitle')} />
+      <Title text={t('twoFactorCard.newTitle')} answer={answer} />
       <Notice
         tone="attention"
         mark="!"
@@ -577,6 +690,7 @@ function NewCodes({ onMade, onKeep }: { onMade: (codes: string[]) => void; onKee
       <QuietButton
         label={t('twoFactorCard.keepCodes')}
         onPress={onKeep}
+        off={checking}
         testID="twoFactor.keepCodes"
       />
     </>
@@ -592,7 +706,7 @@ function refusalMessage(refusal: unknown, wrong: string, t: TFunction): string {
 
     return liftsAt == null
       ? t('twoFactorCard.failedBody')
-      : t('twoFactor.pausedBody', { time: formatTimeOfDay(liftsAt, currentLocale()) });
+      : t('twoFactor.pausedBody', { time: formatTimeOfDay(liftsAt, dateLocale()) });
   }
 
   if (refusal.is('recovery_code_used')) return t('twoFactor.recoveryUsed');
@@ -606,11 +720,9 @@ const styles = StyleSheet.create({
   grow: { flex: 1 },
   state: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
   mark: {
-    width: tokens.sizeMark,
-    height: tokens.sizeMark,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: tokens.sizeMark / 2,
+    borderRadius: tokens.radiusPill,
   },
   markOff: { borderWidth: 1.5, borderColor: tokens.colorInkSecondary },
   markOn: { backgroundColor: tokens.marks.done.fill },
@@ -648,8 +760,6 @@ const styles = StyleSheet.create({
     minHeight: tokens.sizeHit,
   },
   box: {
-    width: tokens.sizeMark,
-    height: tokens.sizeMark,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: tokens.radiusField,
