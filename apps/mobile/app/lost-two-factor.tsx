@@ -25,6 +25,7 @@ import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from '../src/components/Buttons.tsx';
 import { CodeField, Field, FieldError } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
+import { useFocusOnAnswer } from '../src/components/Screen.tsx';
 import { readOut } from '../src/components/ReadOut.tsx';
 import { StatusMark, type StatusTone } from '../src/components/StatusMark.tsx';
 import { Text } from '../src/components/Text.tsx';
@@ -169,7 +170,11 @@ export default function LostTwoFactor() {
         recovery={view.recovery}
         state={view.state}
         onTap={markTap}
-        onState={(state) => setView({ ...view, state })}
+        onState={(state) => {
+          // A step that changes on its own brings a new heading, which takes focus as after a tap (sc-11173).
+          if (state.status !== view.state.status) markTap();
+          setView({ ...view, state });
+        }}
         onNobody={() => {
           void dropRecovery();
           setView({ kind: 'nobody', supportAddress: view.state.supportAddress });
@@ -179,6 +184,7 @@ export default function LostTwoFactor() {
         }}
         onReplaced={() => {
           void dropRecovery();
+          markTap();
           setView({ kind: 'replaced' });
         }}
       />
@@ -583,13 +589,17 @@ function Codes({
   const number = state.phone == null ? '' : formatPhone(state.phone);
   const fields: RecoveryField[] = hasPhone ? ['emailCode', 'phoneCode'] : ['emailCode'];
   const typed = useRef<Record<RecoveryField, string>>({ emailCode: '', phoneCode: '' });
-  const inputs = { emailCode: useRef<TextInput>(null), phoneCode: useRef<TextInput>(null) };
+  const emailInput = useRef<TextInput>(null);
+  const inputs = { emailCode: emailInput, phoneCode: useRef<TextInput>(null) };
   const [errors, setErrors] = useState<Partial<Record<RecoveryField, string>>>({});
   const [asking, setAsking] = useState(false);
   // New with each tap that fails, or that finds the codes spent, so the same words are read out again.
   const [failed, setFailed] = useState<object | null>(null);
   const [foundSpent, setFoundSpent] = useState<object | null>(null);
   const [textingFailed, setTextingFailed] = useState(false);
+  // Send new codes in the codes' place brings the fields back, so focus goes to the first (sc-11173).
+  const [resentInPlace, setResentInPlace] = useState<object | undefined>(undefined);
+  const [textedInPlace, setTextedInPlace] = useState<object | undefined>(undefined);
   const [cooldown, setCooldown] = useState(codes?.cooldownSeconds ?? 0);
   const lastRoute = useRef(codes?.route ?? null);
 
@@ -653,6 +663,7 @@ function Codes({
 
     setAsking(true);
     setFailed(null);
+    setResentInPlace(undefined);
 
     try {
       const proved = await api.proveRecovery(
@@ -735,6 +746,7 @@ function Codes({
 
     try {
       onState(await api.textRecoveryCodeInstead(recovery));
+      setTextedInPlace({});
     } catch (refusal) {
       if (replacedElsewhere(refusal)) {
         onReplaced();
@@ -751,6 +763,7 @@ function Codes({
   }
 
   const spent = codes?.state === 'expired' || codes?.state === 'exhausted';
+  useFocusOnAnswer<TextInput>(spent ? undefined : resentInPlace, emailInput);
 
   return (
     <AuthFrame
@@ -786,6 +799,7 @@ function Codes({
                 : t('lostTwoFactor.expiredBodyEmailOnly')
           }
           answer={foundSpent ?? undefined}
+          takesFocus={foundSpent != null}
         />
       )}
       {failed != null && (
@@ -801,7 +815,10 @@ function Codes({
       {spent ? (
         <PrimaryButton
           label={t('lostTwoFactor.resend')}
-          onPress={() => void resend()}
+          onPress={() => {
+            setResentInPlace({});
+            void resend();
+          }}
           testID="lostTwoFactor.resend"
         />
       ) : (
@@ -813,6 +830,7 @@ function Codes({
               help={
                 field === 'emailCode' ? t('lostTwoFactor.sentTo', { email: state.email }) : sent
               }
+              helpAnswer={field === 'phoneCode' ? textedInPlace : undefined}
               error={errors[field] ?? null}
             >
               <CodeField

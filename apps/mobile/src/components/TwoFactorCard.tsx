@@ -2,7 +2,7 @@ import { ApiError, type TwoFactorEnrolment, type TwoFactorStatus } from '@soirel
 import { cleanCode, formatTimeOfDay, keyInGroups, lockLiftsAt } from '@soirely/domain';
 import { setStringAsync } from 'expo-clipboard';
 import { type TFunction } from 'i18next';
-import { useEffect, useRef, useState } from 'react';
+import { type Ref, type RefObject, useEffect, useRef, useState } from 'react';
 import { Keyboard, Pressable, StyleSheet, type TextInput, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
@@ -18,13 +18,21 @@ import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { useReadOut } from './ReadOut.tsx';
-import { useAboveKeyboard, useScrolledToTop } from './Screen.tsx';
-import { Text } from './Text.tsx';
+import {
+  type StepClosed,
+  stepClosed,
+  useAboveKeyboard,
+  useFocusBackToOpener,
+  useScrolledToTop,
+} from './Screen.tsx';
+import { Text, type TextHandle } from './Text.tsx';
 
 /** Said once, as the tap it answers lands; `AtRest` mounts again after every reload. */
 interface Refusal {
   organisation: string;
   said: boolean;
+  /** It answers Turn it off, whose step has closed, so it takes focus in place of being read out (sc-11173). */
+  takesFocus: boolean;
 }
 
 type Stage =
@@ -32,7 +40,7 @@ type Stage =
   | { kind: 'failed'; tapped: boolean }
   | { kind: 'atRest'; status: TwoFactorStatus }
   | { kind: 'settingUp'; enrolment: TwoFactorEnrolment }
-  | { kind: 'savingCodes'; codes: string[] }
+  | { kind: 'savingCodes'; codes: string[]; renewed: boolean }
   | { kind: 'turningOff' }
   | { kind: 'newCodes' };
 
@@ -59,6 +67,9 @@ export function TwoFactorCard({
   const [stage, setStage] = useState<Stage>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [refusedBy, setRefusedBy] = useState<Refusal | null>(null);
+  const [closed, setClosed] = useState<StepClosed | undefined>(undefined);
+  const title = useRef<TextHandle>(null);
+  const opener = useFocusBackToOpener(stage.kind === 'atRest' ? closed : undefined, title);
 
   useEffect(() => {
     let live = true;
@@ -69,7 +80,8 @@ export function TwoFactorCard({
         if (live) setStage({ kind: 'atRest', status });
       })
       .catch(() => {
-        if (live) setStage({ kind: 'failed', tapped: false });
+        // Each load after the first follows a tap: a step closing, or Try again.
+        if (live) setStage({ kind: 'failed', tapped: attempt > 0 });
       });
 
     return () => {
@@ -95,10 +107,13 @@ export function TwoFactorCard({
 
   function leaveAtRest(next?: Stage): void {
     setRefusedBy((now) => now && { ...now, said: true });
+    setClosed(undefined);
     if (next != null) setStage(next);
   }
 
-  function reload(): void {
+  /** Loads the card again, then focus goes to `to`: an opener, or the title. */
+  function reload(to?: string): void {
+    setClosed(to == null ? undefined : stepClosed(to));
     setStage({ kind: 'loading' });
     setAttempt((n) => n + 1);
   }
@@ -132,7 +147,7 @@ export function TwoFactorCard({
           />
           <SecondaryButton
             label={t('twoFactorCard.retry')}
-            onPress={reload}
+            onPress={() => reload('title')}
             testID="twoFactor.retry"
           />
         </>
@@ -141,6 +156,8 @@ export function TwoFactorCard({
       {stage.kind === 'atRest' && (
         <AtRest
           status={stage.status}
+          title={title}
+          opener={opener}
           onTurnOn={() => {
             leaveAtRest();
             void turnOn();
@@ -149,7 +166,7 @@ export function TwoFactorCard({
           onTurnOff={() =>
             keptBy == null
               ? leaveAtRest({ kind: 'turningOff' })
-              : setRefusedBy({ organisation: keptBy, said: false })
+              : setRefusedBy({ organisation: keptBy, said: false, takesFocus: false })
           }
           onNewCodes={() => leaveAtRest({ kind: 'newCodes' })}
         />
@@ -161,24 +178,30 @@ export function TwoFactorCard({
           phone={phone}
           answer={stage}
           onActivated={(codes) => {
-            setStage({ kind: 'savingCodes', codes });
+            setStage({ kind: 'savingCodes', codes, renewed: false });
             onTurnedOn?.();
           }}
-          onCancel={reload}
+          onCancel={() => reload('turnOn')}
         />
       )}
 
       {stage.kind === 'savingCodes' && (
-        <SavingCodes codes={stage.codes} phone={phone} answer={stage} onFinish={reload} />
+        <SavingCodes
+          codes={stage.codes}
+          phone={phone}
+          answer={stage}
+          onFinish={() => reload(stage.renewed ? 'newCodes' : 'title')}
+        />
       )}
 
       {stage.kind === 'turningOff' && (
         <TurningOff
           email={email}
           answer={stage}
-          onDone={reload}
+          onDone={() => reload('title')}
+          onKeep={() => reload('turnOff')}
           onKept={(organisation) => {
-            setRefusedBy({ organisation, said: false });
+            setRefusedBy({ organisation, said: false, takesFocus: true });
             reload();
           }}
         />
@@ -187,17 +210,25 @@ export function TwoFactorCard({
       {stage.kind === 'newCodes' && (
         <NewCodes
           answer={stage}
-          onMade={(codes) => setStage({ kind: 'savingCodes', codes })}
-          onKeep={reload}
+          onMade={(codes) => setStage({ kind: 'savingCodes', codes, renewed: true })}
+          onKeep={() => reload('newCodes')}
         />
       )}
     </View>
   );
 }
 
-function Title({ text, answer }: { text: string; answer?: unknown }) {
+function Title({
+  text,
+  answer,
+  ref,
+}: {
+  text: string;
+  answer?: unknown;
+  ref?: RefObject<TextHandle | null>;
+}) {
   return (
-    <AnswerHeading size={tokens.typeTitleSection.size} weight="bold" answer={answer}>
+    <AnswerHeading size={tokens.typeTitleSection.size} weight="bold" answer={answer} ref={ref}>
       {text}
     </AnswerHeading>
   );
@@ -205,12 +236,16 @@ function Title({ text, answer }: { text: string; answer?: unknown }) {
 
 function AtRest({
   status,
+  title,
+  opener,
   refusedBy,
   onTurnOn,
   onTurnOff,
   onNewCodes,
 }: {
   status: TwoFactorStatus;
+  title: RefObject<TextHandle | null>;
+  opener: (key: string) => Ref<View>;
   refusedBy: Refusal | null;
   onTurnOn: () => void;
   onTurnOff: () => void;
@@ -222,7 +257,7 @@ function AtRest({
     <>
       <View style={styles.heading}>
         <View style={styles.grow}>
-          <Title text={t('twoFactorCard.title')} />
+          <Title text={t('twoFactorCard.title')} ref={title} />
         </View>
         {/* A mark and the word, never the colour alone. */}
         <View style={styles.state}>
@@ -265,12 +300,14 @@ function AtRest({
               {t('twoFactorCard.unused', { left: status.recoveryCodesLeft, total: 10 })}
             </Text>
             <SecondaryButton
+              ref={opener('newCodes')}
               label={t('twoFactorCard.makeNewCodes')}
               onPress={onNewCodes}
               testID="twoFactor.newCodes"
             />
           </View>
           <SecondaryButton
+            ref={opener('turnOff')}
             label={t('twoFactorCard.turnOff')}
             onPress={onTurnOff}
             testID="twoFactor.turnOff"
@@ -281,6 +318,7 @@ function AtRest({
               mark="!"
               body={t('twoFactorCard.keptByRule', { organisation: refusedBy.organisation })}
               answer={refusedBy.said ? undefined : refusedBy}
+              takesFocus={refusedBy.takesFocus}
             />
           )}
         </>
@@ -290,6 +328,7 @@ function AtRest({
             {t('twoFactorCard.offIntro')}
           </Text>
           <PrimaryButton
+            ref={opener('turnOn')}
             label={t('twoFactorCard.turnOn')}
             onPress={onTurnOn}
             testID="twoFactor.turnOn"
@@ -493,11 +532,13 @@ function TurningOff({
   email,
   answer,
   onDone,
+  onKeep,
   onKept,
 }: {
   email: string;
   answer: unknown;
   onDone: () => void;
+  onKeep: () => void;
   onKept: (organisation: string) => void;
 }) {
   const { t } = useTranslation();
@@ -568,7 +609,7 @@ function TurningOff({
       />
       <QuietButton
         label={t('twoFactorCard.keepItOn')}
-        onPress={onDone}
+        onPress={onKeep}
         off={checking}
         testID="twoFactor.keepItOn"
       />

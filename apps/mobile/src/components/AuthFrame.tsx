@@ -20,6 +20,7 @@ export function AuthHeading({
   introLive = false,
   done = false,
   answer,
+  introAnswer,
 }: {
   title: string;
   intro?: string | undefined;
@@ -29,12 +30,17 @@ export function AuthHeading({
   done?: boolean;
   /** The tap this step answers: the title takes screen reader focus as it shows, and again with each new answer. */
   answer?: unknown;
+  /** The tap the intro answers, where the tap's button went: the intro takes focus in place of being read out (sc-11173). */
+  introAnswer?: unknown;
 }) {
   const { kind } = useLayout();
   const { shown, read } = useFocusOnAnswer<TextHandle>(answer);
+  const { read: introRead } = useFocusOnAnswer<TextHandle>(introAnswer);
   const size = kind === 'phone' ? tokens.typeTitlePhone.size : tokens.typeTitlePage.size;
   const showIntro = intro != null && (!introBeside || kind === 'tabletLandscape');
-  useReadOut(introLive && showIntro ? intro : null, { quietAtMount: true });
+  useReadOut(introLive && showIntro && introAnswer === undefined ? intro : null, {
+    quietAtMount: true,
+  });
 
   return (
     <>
@@ -59,7 +65,7 @@ export function AuthHeading({
           {title}
         </Text>
         {showIntro && (
-          <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
+          <Text ref={introRead} size={tokens.typeBodyPhone.size} style={styles.secondary}>
             {intro}
           </Text>
         )}

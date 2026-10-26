@@ -27,7 +27,7 @@ import {
   withoutRole,
 } from '@soirely/domain';
 import { type TFunction, getFixedT } from 'i18next';
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { type ReactNode, type Ref, useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -76,12 +76,15 @@ export function RoleList({
   organisation,
   roles,
   open,
+  opener,
   onOpen,
 }: {
   kind: LayoutKind;
   organisation: Membership;
   roles: OrganisationRole[];
   open: string | null;
+  /** Each row's ref, for focus to go back to the row whose page was left (sc-11173). */
+  opener?: ((key: string) => Ref<View>) | undefined;
   onOpen: (id: string) => void;
 }) {
   const { t } = useTranslation();
@@ -92,6 +95,7 @@ export function RoleList({
       {roles.map((role, index) => (
         <Pressable
           key={role.id}
+          ref={opener?.(`role.${role.id}`)}
           style={[
             styles.pick,
             landscape && styles.pickDense,
@@ -149,9 +153,11 @@ export function RolePage({
   saved,
   answer,
   savedAnswer,
+  removeAnswer,
   onRemove,
   onSaved,
   onEdited,
+  onDiscarded,
   onUsed,
 }: {
   kind: LayoutKind;
@@ -163,9 +169,13 @@ export function RolePage({
   answer?: unknown;
   /** The tap that created the role: "Saved." takes screen reader focus. */
   savedAnswer?: unknown;
+  /** Remove role was asked and kept: Remove role takes screen reader focus (sc-11173). */
+  removeAnswer?: unknown;
   onRemove: () => void;
   onSaved: (role: OrganisationRole) => void;
   onEdited: () => void;
+  /** Discard changes was tapped: on a phone, the title at the top takes focus. */
+  onDiscarded?: () => void;
   /** Anything done on the page, a change or a look, so it stays open through a turn. */
   onUsed: () => void;
 }) {
@@ -176,7 +186,10 @@ export function RolePage({
   const editable = !(role?.fixed ?? false);
   const naming = creating || (editable && role.seededAs == null);
   const startingGrant = role?.permissions ?? [];
-  const { read: nameInput } = useFocusOnAnswer<TextInput>(naming ? answer : undefined);
+  const [discarded, setDiscarded] = useState<object | undefined>(undefined);
+  const nameAnswer = phone ? answer : (discarded ?? answer);
+  const { read: nameInput } = useFocusOnAnswer<TextInput>(naming ? nameAnswer : undefined);
+  const { read: removeButton } = useFocusOnAnswer<View>(removeAnswer);
   const aboveKeyboard = useAboveKeyboard();
   const [nameHeight, setNameHeight] = useState(0);
   const [grant, setGrant] = useState<string[]>(startingGrant);
@@ -279,7 +292,12 @@ export function RolePage({
 
   const remove = removable && (
     <View style={styles.start}>
-      <SecondaryButton label={t('rolesScreen.remove')} onPress={onRemove} testID="roles.remove" />
+      <SecondaryButton
+        ref={removeButton}
+        label={t('rolesScreen.remove')}
+        onPress={onRemove}
+        testID="roles.remove"
+      />
     </View>
   );
   const savedLine = t('rolesScreen.saved');
@@ -317,7 +335,7 @@ export function RolePage({
               </Field>
             </View>
           ) : (
-            <AnswerHeading answer={answer} size={tokens.typeTitleDialog.size} weight="bold">
+            <AnswerHeading answer={nameAnswer} size={tokens.typeTitleDialog.size} weight="bold">
               {title}
             </AnswerHeading>
           )}
@@ -460,6 +478,8 @@ export function RolePage({
                   setTyped(role.name ?? '');
                   setNameError(null);
                   setStatus('editing');
+                  setDiscarded({});
+                  onDiscarded?.();
                 }}
                 testID="roles.discard"
               />

@@ -446,3 +446,4 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   or many, because the button and the refusal get no {{count}} : « Réattribuer et supprimer
   {{role}} », and « Choisissez le rôle de remplacement », the legend’s own noun. Not « Les
   passer… » or « ces personnes » after « 1 personne a ce rôle. La passer à : » (sc-13017).
+- **26 Oct 2026. The beyond-grant line names access** (`membersScreen.beyondGrant`, sc-13089). « … vous ne pouvez donc modifier ni son rôle ni son accès » : after « cette personne », « son accès » is hers; it rules out restoring on the suspension cards.

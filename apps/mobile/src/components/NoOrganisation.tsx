@@ -1,6 +1,6 @@
 import { primaryEmailAddress } from '@soirely/api-client';
 import { router } from 'expo-router';
-import { useRef } from 'react';
+import { type RefObject, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -14,10 +14,15 @@ import { useStartOrganisation } from './AppFrame.tsx';
 import { Footnote, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
 import { cardFrame } from './cardFrame.ts';
-import { Text } from './Text.tsx';
+import { Text, type TextHandle } from './Text.tsx';
 
 /** `OrgSwitcher-*` Tweak `no_org_invitation`: an account in no organisation, with any invitation waiting for it, as the web's `NoOrganisation`. */
-export function NoOrganisation() {
+export function NoOrganisation({
+  titleRef,
+}: {
+  /** For focus to land on once a notice above closes. */
+  titleRef?: RefObject<TextHandle | null> | undefined;
+} = {}) {
   const { t } = useTranslation();
   const { kind } = useLayout();
   const { account } = useSignedIn();
@@ -30,7 +35,12 @@ export function NoOrganisation() {
 
   return (
     <View style={[cardFrame(kind), styles.card]} testID="noOrganisation">
-      <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
+      <Text
+        ref={titleRef}
+        size={tokens.typeTitleDialog.size}
+        weight="bold"
+        accessibilityRole="header"
+      >
         {t('noOrganisation.title')}
       </Text>
       <Text size={tokens.typeBodyPhone.size}>{t('noOrganisation.body')}</Text>

@@ -5,6 +5,7 @@ import hashlib
 import re
 
 HEADING = re.compile(r"^(#{1,3})\s+(.+?)\s*$")
+DEEPER = re.compile(r"^(#{4,})\s+(.+?)\s*$")
 TOP = "(top)"
 
 
@@ -20,14 +21,14 @@ def epoch(stamp):
         return None
 
 
-def sections(markdown):
+def sections(markdown, heading=HEADING):
     """[(heading, level, body)] in order. Text before the first heading is `(top)`."""
     found = [[TOP, 0, []]]
     fence = False
     for line in (markdown or "").splitlines():
         if line.lstrip().startswith("```"):
             fence = not fence
-        match = None if fence else HEADING.match(line)
+        match = None if fence else heading.match(line)
         if match:
             found.append([match.group(2), len(match.group(1)), []])
         else:

@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../src/api.ts';
+import { AnswerHeading } from '../../src/components/AnswerHeading.tsx';
 import { AppFrame } from '../../src/components/AppFrame.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import { SecondaryButton } from '../../src/components/Buttons.tsx';
@@ -20,7 +21,11 @@ import { markRulesSeen } from '../../src/signInRulesSeen.ts';
 import { useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
-type Load = { kind: 'loading' } | { kind: 'loaded'; page: SignInRulesPage } | { kind: 'failed' };
+/** `tapped` when it answers Try again, so focus moves to it (sc-11173). */
+type Load =
+  | { kind: 'loading' }
+  | { kind: 'loaded'; page: SignInRulesPage; tapped: boolean }
+  | { kind: 'failed'; tapped: boolean };
 
 /** Settings > Sign-in rules, `PolicySignIn-*` state `policy_changes`: what changed, then what holds (sc-69). */
 export default function SignInRules() {
@@ -33,21 +38,26 @@ export default function SignInRules() {
   const organisationId = organisation?.id;
   const language = useShownLanguage();
   const loadedFor = useRef<string | null>(null);
+  const retried = useRef(false);
 
   useEffect(() => {
     if (organisationId == null) return;
     let live = true;
     const askedAgain = loadedFor.current === organisationId;
+    const tapped = retried.current;
+    retried.current = false;
 
     api.signInRules(organisationId).then(
       (page) => {
         if (!live) return;
         loadedFor.current = organisationId;
-        setLoad({ kind: 'loaded', page });
+        setLoad({ kind: 'loaded', page, tapped });
       },
       () =>
         live &&
-        setLoad((before) => (askedAgain && before.kind === 'loaded' ? before : { kind: 'failed' })),
+        setLoad((before) =>
+          askedAgain && before.kind === 'loaded' ? before : { kind: 'failed', tapped },
+        ),
     );
 
     return () => {
@@ -76,15 +86,15 @@ export default function SignInRules() {
     >
       <SettingsSplit open="signInRules">
         <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
-          <Text
+          <AnswerHeading
             size={
               kind === 'tabletLandscape' ? tokens.typeTitlePage.size : tokens.typeTitlePhone.size
             }
             weight="bold"
-            accessibilityRole="header"
+            answer={load.kind === 'loaded' && load.tapped ? load : undefined}
           >
             {title}
-          </Text>
+          </AnswerHeading>
           <Text size={tokens.typeBodyPhone.size} style={styles.intro}>
             {t('signInRules.readIntro')}
           </Text>
@@ -98,10 +108,12 @@ export default function SignInRules() {
                 mark={tokens.marks.broken.glyph}
                 body={t('signInRules.failedLoad')}
                 answer={load}
+                takesFocus={load.tapped}
               />
               <SecondaryButton
                 label={t('signInRules.retry')}
                 onPress={() => {
+                  retried.current = true;
                   setLoad({ kind: 'loading' });
                   setAttempt((n) => n + 1);
                 }}

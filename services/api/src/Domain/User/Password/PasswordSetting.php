@@ -133,7 +133,7 @@ final readonly class PasswordSetting
         match (true) {
             null === $held => throw new ApiException(ErrorCode::VerificationCodeInvalid, 'code.mismatch'),
             $held->isCodeExpiredAt($now) => throw new ApiException(ErrorCode::VerificationCodeExpired, 'code.expired'),
-            $held->isExhausted() => throw new ApiException(ErrorCode::VerificationCodeExhausted, 'code.exhausted'),
+            $held->isExhausted(), $held->isPassed() => throw new ApiException(ErrorCode::VerificationCodeExhausted, 'code.exhausted'),
             default => null,
         };
 

@@ -133,7 +133,8 @@ function Asking({
             tone="done"
             mark={tokens.marks.done.glyph}
             body={t('requestToJoin.sent', { organisation })}
-            announce
+            answer={view}
+            takesFocus
           />
           <CarryOn />
         </>
@@ -155,7 +156,8 @@ function Asking({
                       time: formatTimeOfDay(view.until, dateLocale()),
                     })
             }
-            announce
+            answer={view}
+            takesFocus
           />
           <CarryOn />
         </>
@@ -360,7 +362,13 @@ function Standing({ preview, answer }: { preview: RequestLinkPreview; answer: Sh
 
   return (
     <>
-      <Notice tone="quiet" mark={tokens.marks.info.glyph} body={body} answer={answer} />
+      <Notice
+        tone="quiet"
+        mark={tokens.marks.info.glyph}
+        body={body}
+        answer={answer}
+        takesFocus={answer !== undefined}
+      />
       <CarryOn
         label={
           preview.standing === 'member' ? t('requestToJoin.open', { organisation }) : undefined

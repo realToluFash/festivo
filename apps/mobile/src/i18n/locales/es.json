@@ -1194,7 +1194,7 @@
     "onlyOwner": "{{name}} es la única persona con el rol Propietario. Una organización siempre necesita una, así que su rol no puede cambiar y nadie puede quitar a esta persona de la organización hasta que otra tenga también el rol Propietario.",
     "askOwner": "Solo alguien con el rol Propietario puede dar ese rol a otra persona. Pídaselo a {{name}}.",
     "ownerOnly": "Solo alguien con el rol Propietario puede cambiar el rol de otro Propietario o quitar a esa persona de la organización.",
-    "beyondGrant": "Su rol tiene un permiso que el de usted no tiene, así que no puede cambiar el rol de esta persona ni quitarla de la organización.",
+    "beyondGrant": "El rol de esta persona incluye un permiso que el de usted no tiene, así que no puede cambiarle el rol ni el acceso.",
     "removeTitle": "Quitar a {{name}}",
     "removeBody": "Pierde el acceso en cuanto vuelva a usar Soirely. Sus eventos se quedan en {{organisation}}.",
     "removeButton": "Quitar de {{organisation}}",

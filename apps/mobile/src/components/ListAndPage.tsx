@@ -32,6 +32,8 @@ export interface ListAndPageProps {
   /** Pulling the list down. */
   listRefresh?: ReactElement<RefreshControlProps> | undefined;
   page: ReactNode;
+  /** Changes with the page, so a page opened after a longer one shows from its top. */
+  pageKey: string;
   /** On a phone and a tablet held upright, whether the page shows in place of the list. */
   pageInFront: boolean;
   /** On a tablet held upright, the page under the list in one column, with no back (Events, sc-1593). */
@@ -47,6 +49,7 @@ export function ListAndPage({
   list,
   listRefresh,
   page,
+  pageKey,
   pageInFront,
   pageBelowUpright = false,
   back,
@@ -105,7 +108,7 @@ export function ListAndPage({
           </ScrollColumn>
         </View>
         <View style={[styles.fill, !landscape && !pageInFront && styles.behind]}>
-          <ScrollColumn style={styles.fill} contentContainerStyle={column}>
+          <ScrollColumn key={pageKey} style={styles.fill} contentContainerStyle={column}>
             {kind === 'tabletPortrait' && (
               <View style={styles.start}>
                 <QuietButton label={back.label} onPress={back.onPress} testID={back.testID} />

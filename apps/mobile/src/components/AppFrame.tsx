@@ -8,6 +8,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -27,11 +28,13 @@ import { tokens } from '../theme/tokens.ts';
 import { useTwoFactorStanding } from '../twoFactorStanding.ts';
 import { CreateOrganisation } from './CreateOrganisation.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
+import { useFocusBack } from './Sheet.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
 import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut, useReadOut } from './ReadOut.tsx';
-import { useFocusOnAnswer } from './Screen.tsx';
+import { type StepClosed, stepClosed, useFocusBackToOpener, useFocusOnAnswer } from './Screen.tsx';
+import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type TextHandle, Text } from './Text.tsx';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
@@ -108,10 +111,15 @@ export function AppFrame({
   const [choosing, setChoosing] = useState(false);
   const [creating, setCreating] = useState(false);
   const pill = useRef<View>(null);
+  const ownTitle = useRef<TextHandle>(null);
+  const frameTitle = titleRef ?? ownTitle;
+  // Create an organisation's sheet takes focus from the switcher, and hands it back itself (sc-8606).
+  const [toSheet, setToSheet] = useState(false);
   const [switcherFrom, setSwitcherFrom] = useState<RefObject<View | null> | null>(null);
   const [creatingFrom, setCreatingFrom] = useState<RefObject<View | null> | null>(null);
-  const [created, setCreated] = useState<string | null>(null);
-  const switched = created == null ? null : t('switcher.switched', { name: created });
+  const [created, setCreated] = useState<{ name: string; takesFocus: boolean } | null>(null);
+  const createdWords = useRef<View>(null);
+  const switched = created == null ? null : t('switcher.switched', { name: created.name });
   const [backHidden, setBackHidden] = useState(false);
   const signedIn = useSignedIn();
   const waiting = useWaitingInvitations();
@@ -123,10 +131,22 @@ export function AppFrame({
       ? (opener: RefObject<View | null>) => {
           setCreated(null);
           setSwitcherFrom(opener);
+          setToSheet(false);
           setChoosing(true);
         }
       : undefined;
   const switchFromPill = openSwitcher && (() => openSwitcher(pill));
+  // An opener a pick took away, as the paused screen's, falls back to the organisation's name, then the title (sc-11413).
+  const switcherOpener = useMemo<RefObject<ScreenReaderTarget | null>>(
+    () => ({
+      get current() {
+        if (toSheet) return null;
+
+        return switcherFrom?.current ?? pill.current ?? frameTitle.current;
+      },
+    }),
+    [toSheet, switcherFrom, frameTitle],
+  );
   const startOrganisation = (opener: RefObject<View | null>) => {
     setCreated(null);
     setCreatingFrom(opener);
@@ -134,6 +154,13 @@ export function AppFrame({
   };
   const email = signedIn.account == null ? '' : (primaryEmailAddress(signedIn.account) ?? '');
   const overdue = useTwoFactorStanding(signedIn.organisation) === 'overdue';
+  // The deadline passing with the screen open replaces it under a new heading, which takes focus (sc-11173).
+  const [standingSeen, setStandingSeen] = useState({ id: signedIn.organisation?.id, overdue });
+  const [lapsed, setLapsed] = useState<object | undefined>(undefined);
+  if (standingSeen.id !== signedIn.organisation?.id || standingSeen.overdue !== overdue) {
+    setStandingSeen({ id: signedIn.organisation?.id, overdue });
+    setLapsed(standingSeen.id === signedIn.organisation?.id && overdue ? {} : undefined);
+  }
   const switchAnswer = useFrameSwitch();
   const standIn = aboutTheAccount
     ? null
@@ -159,7 +186,7 @@ export function AppFrame({
           kind={kind}
           current={current}
           title={title}
-          titleRef={titleRef}
+          titleRef={frameTitle}
           switchAnswer={bodyTakesSwitch || standIn != null ? undefined : switchAnswer}
           back={back}
           backHidden={backHidden}
@@ -170,11 +197,21 @@ export function AppFrame({
           pill={pill}
         />
         <View style={styles.body}>
-          {switched != null && (
-            <ReadOut style={styles.created} words={switched}>
-              <Notice tone="done" mark={tokens.marks.done.glyph} body={switched} />
-            </ReadOut>
-          )}
+          {switched != null &&
+            (created?.takesFocus === true ? (
+              <View style={styles.created}>
+                <Notice
+                  tone="done"
+                  mark={tokens.marks.done.glyph}
+                  body={switched}
+                  wordsRef={createdWords}
+                />
+              </View>
+            ) : (
+              <ReadOut style={styles.created} words={switched}>
+                <Notice tone="done" mark={tokens.marks.done.glyph} body={switched} />
+              </ReadOut>
+            ))}
           <OpenSwitcher.Provider value={openSwitcher}>
             <StartOrganisation.Provider value={startOrganisation}>
               <HideBack.Provider value={setBackHidden}>
@@ -183,10 +220,13 @@ export function AppFrame({
                     paused={signedIn.pausedIn}
                     others={signedIn.organisations}
                     onSwitch={(next) => switchByTap(next.id)}
-                    onChoose={() => switchFromPill?.()}
+                    onChoose={(opener) => openSwitcher?.(opener)}
                   />
                 ) : standIn === 'overdue' && signedIn.organisation != null ? (
-                  <TwoFactorOverdue organisation={signedIn.organisation} answer={switchAnswer} />
+                  <TwoFactorOverdue
+                    organisation={signedIn.organisation}
+                    answer={switchAnswer ?? lapsed}
+                  />
                 ) : (
                   <FrameSwitch.Provider value={switchAnswer}>{children}</FrameSwitch.Provider>
                 )}
@@ -203,8 +243,10 @@ export function AppFrame({
         waiting={waiting}
         offer={offer}
         email={email}
+        opener={switcherOpener}
         onClose={() => setChoosing(false)}
         onCreate={() => {
+          setToSheet(true);
           setChoosing(false);
           startOrganisation(switcherFrom ?? pill);
         }}
@@ -215,10 +257,13 @@ export function AppFrame({
         opener={creatingFrom ?? pill}
         onCancel={() => setCreating(false)}
         onCreated={(organisation) => {
+          // In no organisation, what opened the sheet goes with it, so the sheet hands focus to the notice (sc-11173).
+          const fromNone = signedIn.organisation == null;
+          if (fromNone) setCreatingFrom(createdWords);
           setCreating(false);
           joinOrganisation(organisation);
           switchOrganisation(organisation.id);
-          setCreated(organisation.name);
+          setCreated({ name: organisation.name, takesFocus: fromNone });
         }}
       />
     </View>
@@ -566,6 +611,7 @@ function Switcher({
   waiting,
   offer,
   email,
+  opener,
   onClose,
   onCreate,
 }: {
@@ -575,12 +621,27 @@ function Switcher({
   waiting: WaitingInvitations;
   offer: DomainOffer;
   email: string;
+  /** Where screen reader focus goes back to once the switcher has gone. */
+  opener: RefObject<ScreenReaderTarget | null>;
   onClose: () => void;
   onCreate: () => void;
 }) {
   const { t } = useTranslation();
   const { width, height } = useLayout();
   const insets = useSafeAreaInsets();
+  const invitationsHeading = useRef<TextHandle>(null);
+  const remembered = useRef<TextHandle>(null);
+  const [offerClosed, setOfferClosed] = useState<StepClosed | undefined>(undefined);
+  const afterOffer = useMemo<RefObject<ScreenReaderTarget | null>>(
+    () => ({
+      get current() {
+        return invitationsHeading.current ?? remembered.current;
+      },
+    }),
+    [],
+  );
+  useFocusBackToOpener(offerClosed, afterOffer);
+  useFocusBack(open, opener);
   // Android's window runs behind the bars and the cutout, so the card keeps its margin from them, not from the edge.
   const fit =
     Platform.OS === 'android'
@@ -651,10 +712,17 @@ function Switcher({
                 </Pressable>
               );
             })}
-            {offer.organisation != null && <OfferCard offer={offer} email={email} />}
+            {offer.organisation != null && (
+              <OfferCard
+                offer={offer}
+                email={email}
+                onDismissed={() => setOfferClosed(stepClosed('afterOffer'))}
+              />
+            )}
             {waiting.invitations.length > 0 && (
               <View style={styles.invitations}>
                 <Text
+                  ref={invitationsHeading}
                   size={tokens.typeLabel.size}
                   weight="semibold"
                   muted
@@ -673,7 +741,7 @@ function Switcher({
                 />
               </View>
             )}
-            <Text size={tokens.typeBody.size} muted>
+            <Text ref={remembered} size={tokens.typeBody.size} muted>
               {t('switcher.remembered')}
             </Text>
             {current != null && (
@@ -701,25 +769,39 @@ function Switcher({
 }
 
 /** An organisation at the domain of the primary address: Ask to join, or Not now for good. */
-function OfferCard({ offer, email }: { offer: DomainOffer; email: string }) {
+function OfferCard({
+  offer,
+  email,
+  onDismissed,
+}: {
+  offer: DomainOffer;
+  email: string;
+  /** Not now was tapped, so focus goes to the item after the card (sc-11173). */
+  onDismissed: () => void;
+}) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  // Ask to join's answer takes its buttons' place, so it takes focus in place of being read out (sc-11173).
+  const [askedByTap, setAskedByTap] = useState<object | undefined>(undefined);
+  const { read: askedWords } = useFocusOnAnswer(offer.asked ? askedByTap : undefined);
   const unavailable = t('domainJoining.unavailable');
   useReadOut(failed ? unavailable : null);
   const waiting = t('domainJoining.waiting');
   const asked = t('domainJoining.switcherAsked', { email });
-  useReadOut(offer.asked ? `${waiting}\n${asked}` : null, {
+  useReadOut(offer.asked && askedByTap == null ? `${waiting}\n${asked}` : null, {
     quietAtMount: true,
   });
 
   async function ask(): Promise<void> {
     setBusy(true);
     setFailed(false);
+    setAskedByTap({});
 
     try {
       await offer.ask();
     } catch {
+      setAskedByTap(undefined);
       setFailed(true);
     } finally {
       setBusy(false);
@@ -737,7 +819,7 @@ function OfferCard({ offer, email }: { offer: DomainOffer; email: string }) {
       {offer.asked ? (
         <View style={styles.offerAsked}>
           <View style={styles.offerRing} />
-          <View style={styles.offerAskedWords}>
+          <View ref={askedWords} style={styles.offerAskedWords} accessible>
             <Text size={tokens.typeBody.size} weight="semibold">
               {waiting}
             </Text>
@@ -761,7 +843,10 @@ function OfferCard({ offer, email }: { offer: DomainOffer; email: string }) {
             <SecondaryButton
               label={t('domainJoining.notNow')}
               off={busy}
-              onPress={() => void offer.dismiss()}
+              onPress={() => {
+                void offer.dismiss();
+                onDismissed();
+              }}
               testID="switcher.offer.notNow"
             />
           </View>

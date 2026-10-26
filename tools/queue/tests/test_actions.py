@@ -1149,6 +1149,28 @@ class OpsOwnsItsTickets(Base):
         with self.assertRaisesRegex(actions.Refused, "ready for review"):
             actions.pr_create(self.as_("ops"), args(head="b", title="t", text="x", draft=True))
 
+    def test_a_body_without_the_five_headings_does_not_open(self):
+        fenced = BODY.replace("## Risks", "```\n## Risks\n```")
+        with mock.patch("soirely_queue.github.create_pr") as created:
+            for body, missing in (("x", "Description, Risks, References, Evidence of work, "
+                                        "Next Steps"),
+                                  (fenced, "no Risks heading at levels 1-3;"),
+                                  (BODY.replace("## Risks", "#### Risks"),
+                                   "no Risks heading at levels 1-3; Risks is at level 4"),
+                                  (BODY.replace("## Risks", "```\n#### Risks\n```"),
+                                   "no Risks heading at levels 1-3; open")):
+                with self.assertRaisesRegex(actions.Refused, missing):
+                    actions.pr_create(self.as_("dev"), args(head="b", title="t", text=body,
+                                                            draft=False))
+            created.assert_not_called()
+
+    def test_a_body_with_the_five_headings_opens_at_any_level(self):
+        with mock.patch("soirely_queue.github.create_pr", return_value="u") as created:
+            for body in (BODY, BODY.replace("## ", "# ")):
+                actions.pr_create(self.as_("dev"), args(head="b", title="t", text=body,
+                                                        draft=False))
+        self.assertEqual(created.call_count, 2)
+
     def test_an_ops_story_wakes_ops_and_no_one_else(self):
         self.fake.add(1, "To Do", ["ops"])
         self.as_("ops").story("sc-1")

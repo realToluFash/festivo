@@ -22,9 +22,15 @@ import { useComeForward, useOpenerInSight } from './comeForward.ts';
 import { Notice, type NoticeTone } from './Notice.tsx';
 import { readOut } from './ReadOut.tsx';
 import { type ScreenReaderTarget } from './screenReaderFocus.ts';
-import { useBroughtIntoView } from './Screen.tsx';
+import {
+  type StepClosed,
+  stepClosed,
+  useBroughtIntoView,
+  useFocusBackToOpener,
+  useFocusOnAnswer,
+} from './Screen.tsx';
 import { Sheet } from './Sheet.tsx';
-import { Text } from './Text.tsx';
+import { Text, type TextHandle } from './Text.tsx';
 
 const TONES: Record<OwnerClaimView['tone'], { tone: NoticeTone; mark: string }> = {
   attention: { tone: 'attention', mark: '!' },
@@ -43,10 +49,13 @@ export function OwnerClaimBanner({
   kind,
   organisationId,
   organisation,
+  title,
 }: {
   kind: LayoutKind;
   organisationId: string;
   organisation: string;
+  /** The Members heading, where focus goes when Load Members again leaves no banner (sc-11173). */
+  title?: RefObject<TextHandle | null> | undefined;
 }) {
   const { t } = useTranslation();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
@@ -55,6 +64,10 @@ export function OwnerClaimBanner({
   const language = useShownLanguage();
   const loadedFor = useRef<string | null>(null);
   const reloadAnswers = useRef(false);
+  useFocusOnAnswer<TextHandle>(
+    load.kind === 'loaded' && load.banner == null ? load.tapped : undefined,
+    title,
+  );
 
   useEffect(() => {
     let current = true;
@@ -177,7 +190,9 @@ function OwnerClaimCard({
   const [refusal, setRefusal] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [stopEnded, setStopEnded] = useState(false);
+  const [stopEnded, setStopEnded] = useState<object | null>(null);
+  const [kept, setKept] = useState<StepClosed | undefined>(undefined);
+  const opener = useFocusBackToOpener(kept);
   const [withdrawing, setWithdrawing] = useState<'asking' | 'pending' | null>(null);
   const withdrawButton = useRef<View>(null);
   const withdrawOpener = useOpenerInSight(withdrawButton);
@@ -247,7 +262,7 @@ function OwnerClaimCard({
       onBanner(await api.stopOwnerClaim(organisationId));
     } catch (error) {
       if (error instanceof ApiError && error.is('owner_claim_ended')) {
-        setStopEnded(true);
+        setStopEnded({});
         setConfirming(false);
         setBusy(false);
 
@@ -336,7 +351,7 @@ function OwnerClaimCard({
       />
 
       {withdrawRefused != null && (
-        <WithdrawRefused words={withdrawRefused} onReload={() => onReload()} />
+        <WithdrawRefused words={withdrawRefused} onReload={() => onReload(true)} />
       )}
 
       {view.become && (
@@ -348,10 +363,14 @@ function OwnerClaimCard({
         />
       )}
 
-      {view.stop && !confirming && !stopEnded && (
+      {view.stop && !confirming && stopEnded == null && (
         <SecondaryButton
+          ref={opener('stop')}
           label={t('ownerClaim.stop')}
-          onPress={() => setConfirming(true)}
+          onPress={() => {
+            setKept(undefined);
+            setConfirming(true);
+          }}
           testID="ownerClaim.stop"
         />
       )}
@@ -362,21 +381,25 @@ function OwnerClaimCard({
           organisation={organisation}
           busy={busy}
           onStop={() => void stop()}
-          onKeep={() => setConfirming(false)}
+          onKeep={() => {
+            setKept(stepClosed('stop'));
+            setConfirming(false);
+          }}
         />
       )}
 
-      {stopEnded && (
+      {stopEnded != null && (
         <Notice
           tone="broken"
           mark="✕"
           body={t('ownerClaim.stopEnded')}
           action={{
             label: t('ownerClaim.reload'),
-            onPress: () => onReload(),
+            onPress: () => onReload(true),
             testID: 'ownerClaim.reload',
           }}
-          announce
+          answer={stopEnded}
+          takesFocus
         />
       )}
 
@@ -551,7 +574,9 @@ export function PausedOwnerClaim({
   const { t } = useTranslation();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [outcome, setOutcome] = useState<'stopped' | 'ended' | 'failed' | null>(null);
+  const [outcome, setOutcome] = useState<{ kind: 'stopped' | 'ended' | 'failed' } | null>(null);
+  const [kept, setKept] = useState<StepClosed | undefined>(undefined);
+  const opener = useFocusBackToOpener(confirming ? undefined : kept);
   const claimant = claim.claimant.name;
 
   async function stop(): Promise<void> {
@@ -559,33 +584,37 @@ export function PausedOwnerClaim({
 
     try {
       await api.stopOwnerClaim(organisationId);
-      setOutcome('stopped');
+      setOutcome({ kind: 'stopped' });
     } catch (error) {
-      setOutcome(error instanceof ApiError && error.is('owner_claim_ended') ? 'ended' : 'failed');
+      setOutcome({
+        kind: error instanceof ApiError && error.is('owner_claim_ended') ? 'ended' : 'failed',
+      });
     }
 
     setConfirming(false);
     setBusy(false);
   }
 
-  if (outcome === 'stopped') {
+  if (outcome?.kind === 'stopped') {
     return (
       <Notice
         tone="done"
         mark={tokens.marks.done.glyph}
         body={t('ownerClaim.pausedStopped', { claimant, organisation })}
-        announce
+        answer={outcome}
+        takesFocus
       />
     );
   }
 
-  if (outcome === 'ended') {
+  if (outcome?.kind === 'ended') {
     return (
       <Notice
         tone="quiet"
         mark={tokens.marks.info.glyph}
         body={t('ownerClaim.stopEnded')}
-        announce
+        answer={outcome}
+        takesFocus
       />
     );
   }
@@ -608,17 +637,24 @@ export function PausedOwnerClaim({
           organisation={organisation}
           busy={busy}
           onStop={() => void stop()}
-          onKeep={() => setConfirming(false)}
+          onKeep={() => {
+            setKept(stepClosed('stop'));
+            setConfirming(false);
+          }}
         />
       ) : (
         <SecondaryButton
+          ref={opener('stop')}
           label={t('ownerClaim.stop')}
-          onPress={() => setConfirming(true)}
+          onPress={() => {
+            setKept(undefined);
+            setConfirming(true);
+          }}
           testID="ownerClaim.paused.stop"
         />
       )}
-      {outcome === 'failed' && (
-        <Notice tone="broken" mark="✕" body={t('ownerClaim.failed')} announce />
+      {outcome?.kind === 'failed' && (
+        <Notice tone="broken" mark="✕" body={t('ownerClaim.failed')} answer={outcome} takesFocus />
       )}
     </View>
   );

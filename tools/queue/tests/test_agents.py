@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from soirely_queue import agents, runner, store
+from soirely_queue import agents, checkout, runner, store
 
 from tests.test_runner import FakePlatform, config, login, work
 
@@ -203,6 +203,12 @@ class Checkouts(unittest.TestCase):
             agents.make_checkout(self.config, "qa2", self.said.append, self.home)
         self.assertIn("could not create", self.said[-1])
         self.assertIn("fatal: no", self.said[-1])
+
+    def test_an_origin_out_of_reach_is_said_not_raised(self):
+        with mock.patch("soirely_queue.checkout.fetch",
+                        side_effect=checkout.Unprepared("git fetch failed 3 times: fatal: x")):
+            agents.make_checkout(self.config, "qa2", self.said.append, self.home)
+        self.assertIn("could not create it: git fetch failed", self.said[-1])
 
 
 class Stacks(unittest.TestCase):
