@@ -14,8 +14,11 @@ def refresh(db, path, main):
     """Replaces the copy with main's harness at the start of a tester's run. Returns the line
     the worker is told, or None when the copy is missing or already main's."""
     copy = path / COPY
-    if not copy.exists():
-        return None
+    try:
+        if not copy.exists():
+            return None
+    except OSError as error:
+        return f"Your QA harness ({COPY}) was kept: it could not be read ({error})."
     short = main[:7]
     shown = subprocess.run(["git", "-C", str(path), "show", f"{main}:{SOURCE}"],
                            capture_output=True, check=False)

@@ -48,8 +48,12 @@ class Refresh(unittest.TestCase):
         self.assertEqual(self.copy.stat().st_mode & 0o777, 0o755)
         self.assertFalse(self.copy.with_name("qa-env.mjs.new").exists())
 
-    def test_the_copy_comes_from_main_not_the_checked_out_files(self):
-        (self.path / "scripts" / "qa-env.mjs").write_text("console.log('old commit');\n")
+    def test_the_copy_comes_from_main_not_the_checked_out_commit(self):
+        git(self.path, "checkout", "--quiet", "-b", "pull-request")
+        (self.path / "scripts" / "qa-env.mjs").write_text("console.log('pull request');\n")
+        git(self.path, "-c", "user.name=t", "-c", "user.email=t@example.test", "-c",
+            "commit.gpgsign=false", "commit", "--quiet", "-am", "pull request")
+        self.assertNotEqual(git(self.path, "rev-parse", "HEAD"), self.main)
         self.runs("success")
         harness.refresh(self.db, self.path, self.main)
         self.assertEqual(self.copy.read_text(), MAIN_HARNESS)
@@ -89,6 +93,17 @@ class Refresh(unittest.TestCase):
         finally:
             self.copy.parent.chmod(0o755)
         self.assertIn("was kept: it could not be replaced", line)
+        self.assertTrue(self.copy.read_text().endswith("// stale\n"))
+
+    def test_an_unsearchable_qa_folder_keeps_the_start_going(self):
+        self.runs("success")
+        qa = self.path / ".qa"
+        qa.chmod(0o000)
+        try:
+            line = harness.refresh(self.db, self.path, self.main)
+        finally:
+            qa.chmod(0o755)
+        self.assertIn("was kept: it could not be read", line)
         self.assertTrue(self.copy.read_text().endswith("// stale\n"))
 
 
