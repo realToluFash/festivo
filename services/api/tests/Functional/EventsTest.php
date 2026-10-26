@@ -7,6 +7,7 @@ namespace App\Tests\Functional;
 use App\Address\Model\Address;
 use App\Domain\Event\EventCreator;
 use App\Domain\Event\EventEditor;
+use App\Domain\Event\EventLifecycle;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
@@ -19,6 +20,7 @@ use App\Enum\EventType;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
+use App\Tests\Double\ScriptedActiveEventsLimit;
 use App\Tests\Double\ScriptedAddressProvider;
 use App\Tests\Double\ScriptedEventAmounts;
 use App\Tests\Traits\OnboardsAccounts;
@@ -40,6 +42,9 @@ final class EventsTest extends ApiTestCase
 
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
+
+    /** Far enough ahead that its end has not passed. */
+    private const string AHEAD = '2030-11-14T16:00';
 
     private User $owner;
 
@@ -511,6 +516,179 @@ final class EventsTest extends ApiTestCase
         self::assertSame(200, $this->statusCode());
     }
 
+    #[Test]
+    public function aDraftIsMadeLiveAndAudited(): void
+    {
+        $id = $this->create('Owambe', self::AHEAD);
+        $limit = self::service(ScriptedActiveEventsLimit::class);
+        $asked = $limit->consulted;
+
+        $event = $this->event($this->as($this->owner, 'POST', '/api/events/' . $id . '/make-live'));
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame('live', $event['status']);
+        self::assertNotNull($event['madeLiveAt']);
+        self::assertEqualsWithDelta(new DateTimeImmutable()->getTimestamp(), new DateTimeImmutable($event['madeLiveAt'])->getTimestamp(), 5);
+        self::assertNotSame('', $this->tag());
+        self::assertSame($asked + 1, $limit->consulted, 'the plan limit was not consulted');
+        self::assertSame($event, $this->event($this->as($this->owner, 'GET', '/api/events/' . $id)));
+
+        $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => EventLifecycle::MADE_LIVE, 'subjectType' => 'Event']);
+        self::assertInstanceOf(AuditEntry::class, $entry);
+        self::assertSame($id, $entry->getSubjectId()->toRfc4122());
+        self::assertSame($this->owner->getId()->toRfc4122(), $entry->getActorId()?->toRfc4122());
+        self::assertSame(['status' => ['draft', 'live']], $entry->getChanges());
+    }
+
+    #[Test]
+    public function aDraftIsMadeLiveWithNoVenue(): void
+    {
+        $id = $this->create('Owambe', self::AHEAD);
+
+        $this->as($this->owner, 'POST', '/api/events/' . $id . '/make-live');
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertNull($this->event($this->last())['venue']);
+    }
+
+    /** Two tabs: the second Make live finds it Live already, and nothing changes. */
+    #[Test]
+    public function anEventAlreadyLiveIsRefusedAndKept(): void
+    {
+        $id = $this->create('Owambe', self::AHEAD);
+        $first = $this->event($this->as($this->owner, 'POST', '/api/events/' . $id . '/make-live'));
+
+        $this->as($this->owner, 'POST', '/api/events/' . $id . '/make-live');
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(ErrorCode::EventStateInvalid->type(), $this->last()['type'] ?? null);
+        self::assertSame('application/problem+json', $this->client->getResponse()->headers->get('Content-Type'));
+        self::assertSame($first, $this->event($this->as($this->owner, 'GET', '/api/events/' . $id)));
+        self::assertCount(1, self::em()->getRepository(AuditEntry::class)->findBy(['action' => EventLifecycle::MADE_LIVE]));
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function notDrafts(): iterable
+    {
+        yield 'paused' => ['paused', 'paused'];
+        yield 'ended' => ['ended', 'finished'];
+    }
+
+    #[Test]
+    #[DataProvider('notDrafts')]
+    public function onlyADraftIsMadeLive(string $status, string $phase): void
+    {
+        $id = $this->create('Owambe', self::AHEAD);
+        self::service(Connection::class)->executeStatement('UPDATE events SET status = :status WHERE id = :id', ['status' => $status, 'id' => $id]);
+
+        $this->as($this->owner, 'POST', '/api/events/' . $id . '/make-live');
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame([ErrorCode::EventStateInvalid->type(), $phase], [$this->last()['type'] ?? null, $this->last()['phase'] ?? null]);
+        self::assertSame($status, $this->event($this->as($this->owner, 'GET', '/api/events/' . $id))['status']);
+    }
+
+    #[Test]
+    public function aDraftWhoseEndHasPassedStaysADraft(): void
+    {
+        $id = $this->create('Owambe', '2020-11-14T16:00');
+
+        $this->as($this->owner, 'POST', '/api/events/' . $id . '/make-live');
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(ErrorCode::EventConcluded->type(), $this->last()['type'] ?? null);
+        self::assertSame("This event's end has passed, so it cannot be made live. Change its dates first.", $this->last()['detail'] ?? null);
+        $kept = $this->event($this->as($this->owner, 'GET', '/api/events/' . $id));
+        self::assertSame(['draft', null], [$kept['status'], $kept['madeLiveAt']]);
+    }
+
+    /** @return iterable<string, array{int, string}> */
+    public static function planLimits(): iterable
+    {
+        yield 'three' => [3, 'Not made live. Your Free plan allows 3 events to be live or paused at a time.'];
+        yield 'one' => [1, 'Not made live. Your Free plan allows 1 event to be live or paused at a time.'];
+    }
+
+    #[Test]
+    #[DataProvider('planLimits')]
+    public function overThePlansLimitItStaysADraftAndSaysWhichLimit(int $limit, string $detail): void
+    {
+        $id = $this->create('Owambe', self::AHEAD);
+        self::service(ScriptedActiveEventsLimit::class)->reach('Free', $limit);
+
+        $this->as($this->owner, 'POST', '/api/events/' . $id . '/make-live');
+
+        self::assertSame(403, $this->statusCode());
+        self::assertSame(ErrorCode::PlanLimit->type(), $this->last()['type'] ?? null);
+        self::assertSame(['Free', $limit], [$this->last()['plan'] ?? null, $this->last()['limit'] ?? null]);
+        self::assertSame($detail, $this->last()['detail'] ?? null);
+        self::assertSame('draft', $this->event($this->as($this->owner, 'GET', '/api/events/' . $id))['status']);
+        self::assertNull(self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => EventLifecycle::MADE_LIVE]));
+    }
+
+    #[Test]
+    #[DataProvider('editors')]
+    public function onlyEventsManageMakesLive(SeededRole $seeded, bool $manages): void
+    {
+        $id = $this->create('Owambe', self::AHEAD);
+        $member = $this->member('member@ire.events', $seeded);
+
+        $this->as($member, 'POST', '/api/events/' . $id . '/make-live');
+
+        self::assertSame($manages ? 200 : 403, $this->statusCode());
+    }
+
+    #[Test]
+    public function anotherOrganisationsEventIsNotFound(): void
+    {
+        $id = $this->create('Owambe', self::AHEAD);
+        $stranger = $this->account('stranger@elsewhere.events');
+        self::service(OrganisationFounder::class)->found($stranger, 'Elsewhere', 'NG', 'Africa/Lagos');
+        self::em()->flush();
+
+        $this->as($stranger, 'POST', '/api/events/' . $id . '/make-live');
+
+        self::assertSame(404, $this->statusCode());
+        self::assertSame('draft', $this->event($this->as($this->owner, 'GET', '/api/events/' . $id))['status']);
+    }
+
+    /** @return iterable<string, array{array<string, string>}> */
+    public static function editsOfEachKind(): iterable
+    {
+        yield 'edit alone' => [['name' => 'Renamed']];
+        yield 'edit_schedule alone' => [['endsAt' => '2030-11-14T23:00']];
+        yield 'both' => [['name' => 'Renamed', 'timeZone' => 'Europe/London']];
+    }
+
+    /** @param array<string, string> $change */
+    #[Test]
+    #[DataProvider('editsOfEachKind')]
+    public function aPausedEventAllowsNoEdit(array $change): void
+    {
+        $id = $this->create('Owambe', self::AHEAD);
+        self::service(Connection::class)->executeStatement("UPDATE events SET status = 'paused' WHERE id = :id", ['id' => $id]);
+
+        $this->edit($id, $change, $this->tagOf($id));
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(ErrorCode::EventStateInvalid->type(), $this->last()['type'] ?? null);
+        self::assertSame('Owambe', $this->event($this->as($this->owner, 'GET', '/api/events/' . $id))['name']);
+    }
+
+    /** @param array<string, string> $change */
+    #[Test]
+    #[DataProvider('editsOfEachKind')]
+    public function aLiveEventIsEditedAsADraftIs(array $change): void
+    {
+        $id = $this->create('Owambe', self::AHEAD);
+        $this->as($this->owner, 'POST', '/api/events/' . $id . '/make-live');
+
+        $this->edit($id, $change, $this->tagOf($id));
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame('live', $this->event($this->last())['status']);
+    }
+
     /** @return iterable<string, array{SeededRole, bool}> */
     public static function editors(): iterable
     {
@@ -827,7 +1005,7 @@ final class EventsTest extends ApiTestCase
     /**
      * @param array<string, mixed> $body
      *
-     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: null, venue: mixed, createdAt: string}
+     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: null, venue: mixed, madeLiveAt: ?string, createdAt: string}
      */
     private function event(array $body): array
     {
@@ -844,6 +1022,7 @@ final class EventsTest extends ApiTestCase
             'currency' => Type\string(),
             'cover' => Type\null(),
             'venue' => Type\mixed(),
+            'madeLiveAt' => Type\nullable(Type\string()),
             'createdAt' => Type\string(),
         ])->assert($body['event'] ?? null);
     }

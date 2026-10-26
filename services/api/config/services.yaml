@@ -202,6 +202,8 @@ services:
 
     App\Http\Access\Interfaces\EventDirectoryInterface: '@App\Domain\Event\EventDirectory'
 
+    App\Domain\Event\Interfaces\ActiveEventsLimitInterface: '@App\Domain\Event\UnlimitedActiveEvents'
+
 when@test:
     services:
         # Routes that exist only in the suite, to prove the access layer before
@@ -221,6 +223,11 @@ when@test:
         App\Tests\Double\ScriptedEventAmounts:
             public: true
             autoconfigure: true
+
+        # A test sets the plan's limit here, and sees it consulted, until billing has one (sc-581).
+        App\Tests\Double\ScriptedActiveEventsLimit:
+            public: true
+        App\Domain\Event\Interfaces\ActiveEventsLimitInterface: '@App\Tests\Double\ScriptedActiveEventsLimit'
 
         App\Tests\Double\ScriptedAddressProvider:
             public: true

@@ -31,6 +31,7 @@ function event(overrides: Record<string, unknown> = {}) {
     currency: 'NGN',
     cover: null,
     venue: null,
+    madeLiveAt: null,
     createdAt: '2026-10-21T09:00:00+00:00',
     ...overrides,
   };
@@ -1621,6 +1622,169 @@ describe("An event's venue (sc-3589)", () => {
     at('/app/events/ev_1');
     expect(await screen.findByText('Venue to be confirmed')).toBeDefined();
     expect(screen.queryByRole('link', { name: 'Add the venue' })).toBeNull();
+  });
+});
+
+describe('Make live (sc-3584)', () => {
+  const AHEAD = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+
+  function live(overrides: Record<string, unknown> = {}) {
+    return event({
+      ...AHEAD,
+      status: 'live',
+      madeLiveAt: '2026-10-26T15:00:00+00:00',
+      ...overrides,
+    });
+  }
+
+  function tagged(body: unknown, status = 200): Response {
+    return new Response(JSON.stringify(body), { status, headers: { ETag: '"2"' } });
+  }
+
+  async function onTheDraft(answers: Record<string, Answer> = {}) {
+    const sent = answering({
+      'GET /api/events/ev_1': () => json({ event: event(AHEAD) }),
+      ...answers,
+    });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    return sent;
+  }
+
+  async function confirming(answers: Record<string, Answer> = {}) {
+    const sent = await onTheDraft(answers);
+    fireEvent.click(screen.getByRole('button', { name: 'Make live' }));
+
+    return {
+      sent,
+      dialog: await screen.findByRole('dialog', { name: 'Make Adaeze and Tunde live?' }),
+    };
+  }
+
+  it("shows a Draft's Guests line with Make live beside it to somebody with events.manage", async () => {
+    signedIn();
+    await onTheDraft();
+
+    expect(screen.getByText("Guests can't be invited until this event is live.")).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Make live' })).toBeDefined();
+    expect(screen.getByText('Draft')).toBeDefined();
+  });
+
+  it('shows the line and no Make live without events.manage', async () => {
+    signedIn(READER);
+    await onTheDraft();
+
+    expect(screen.getByText("Guests can't be invited until this event is live.")).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
+  });
+
+  it('asks first, and Not yet changes nothing and returns focus to Make live', async () => {
+    signedIn();
+    const { sent, dialog } = await confirming();
+
+    expect(within(dialog).getByText('Guests can be invited, and they can see it.')).toBeDefined();
+    expect(within(dialog).getByText("It can't go back to being a draft.")).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Not yet' }));
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Make live' })),
+    );
+    expect(sent.map(({ line }) => line)).not.toContain('POST /api/events/ev_1/make-live');
+  });
+
+  it('makes it live: the pill reads Live, Live is announced, and Make live is gone', async () => {
+    signedIn();
+    const { sent, dialog } = await confirming({
+      'POST /api/events/ev_1/make-live': () => tagged({ event: live() }),
+    });
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Make live' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByText('Live')).toBeDefined();
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('✓ Live'));
+    expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
+    expect(screen.queryByText("Guests can't be invited until this event is live.")).toBeNull();
+    expect(sent.filter(({ line }) => line === 'POST /api/events/ev_1/make-live')).toHaveLength(1);
+  });
+
+  it('says somebody else changed it, and shows what it is now, on a 409 from another tab', async () => {
+    signedIn();
+    let reads = 0;
+    const { dialog } = await confirming({
+      'GET /api/events/ev_1': () => json({ event: (reads += 1) === 1 ? event(AHEAD) : live() }),
+      'POST /api/events/ev_1/make-live': () => problem(409, 'event_state_invalid'),
+    });
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Make live' }));
+
+    const changed = await screen.findByRole('alertdialog', {
+      name: 'Somebody else changed this event while you had it open.',
+    });
+    expect(
+      within(changed).getByText("It's live now. The page shows what it is now."),
+    ).toBeDefined();
+    fireEvent.click(within(changed).getByRole('button', { name: 'Close' }));
+    expect(screen.getByText('Live')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it("names the plan and its limit when the plan's limit is reached, and it stays a Draft", async () => {
+    signedIn();
+    const { dialog } = await confirming({
+      'POST /api/events/ev_1/make-live': () =>
+        problem(403, 'plan_limit', { plan: 'Free', limit: 3 }),
+    });
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Make live' }));
+
+    const refused = await screen.findByRole('alertdialog', {
+      name: 'Not made live. Your Free plan allows 3 events to be live or paused at a time.',
+    });
+    expect(
+      within(refused).getByText(
+        'This event stays a draft. Finish or call off another event, or change plan.',
+      ),
+    ).toBeDefined();
+    fireEvent.click(within(refused).getByRole('button', { name: 'Close' }));
+    expect(screen.getByText('Draft')).toBeDefined();
+  });
+
+  it('says so before the tap when the end has passed, pointing to its dates', async () => {
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () =>
+        json({
+          event: event({
+            startsAt: '2020-11-14T16:00:00+01:00',
+            endsAt: '2020-11-15T02:00:00+01:00',
+          }),
+        }),
+    });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    expect(
+      screen.getByText(
+        "This event's end has passed, so it can't be made live. Change its dates first.",
+      ),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Change dates' }).getAttribute('href')).toBe(
+      '/app/events/ev_1/edit',
+    );
+  });
+
+  it('shows Live in the list', async () => {
+    signedIn();
+    answering({ 'GET /api/orgs/org_1/events': () => json({ events: [live()] }) });
+    at('/app/events');
+
+    const [row] = await screen.findAllByRole('listitem');
+    expect(within(row!).getByText('Live')).toBeDefined();
   });
 });
 

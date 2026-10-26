@@ -1431,6 +1431,32 @@
     "loadingEvent": "A carregar o evento…",
     "when": "{{range}} · {{timeZone}}",
     "notFound": "Este evento não está disponível",
-    "backToEvents": "Voltar a Eventos"
+    "backToEvents": "Voltar a Eventos",
+    "live": "Live",
+    "paused": "Paused",
+    "finished": "Finished"
+  },
+  "eventLive": {
+    "guestsBlocked": "Guests can't be invited until this event is live.",
+    "makeLive": "Make live",
+    "endPassed": "This event's end has passed, so it can't be made live. Change its dates first.",
+    "changeDates": "Change dates",
+    "confirmTitle": "Make {{name}} live?",
+    "confirmGuests": "Guests can be invited, and they can see it.",
+    "confirmFinal": "It can't go back to being a draft.",
+    "notYet": "Not yet",
+    "madeLive": "✓ Live",
+    "failed": "Not made live. Try again in a moment.",
+    "changedElsewhere": "Somebody else changed this event while you had it open.",
+    "nowState_draft": "It's still a draft. The page shows what it is now.",
+    "nowState_live": "It's live now. The page shows what it is now.",
+    "nowState_paused": "It's paused now. The page shows what it is now.",
+    "nowState_finished": "It's finished now. The page shows what it is now.",
+    "notMadeLive": "Not made live.",
+    "planLimit_one": "Not made live. Your {{plan}} plan allows {{count}} event to be live or paused at a time.",
+    "planLimit_other": "Not made live. Your {{plan}} plan allows {{count}} events to be live or paused at a time.",
+    "planLimit_many": "Not made live. Your {{plan}} plan allows {{count}} events to be live or paused at a time.",
+    "planLimitStays": "This event stays a draft. Finish or call off another event, or change plan.",
+    "close": "Close"
   }
 }

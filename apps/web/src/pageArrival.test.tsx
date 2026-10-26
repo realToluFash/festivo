@@ -262,6 +262,7 @@ describe('the pages Soirely has, signed in', () => {
     currency: 'NGN',
     cover: null,
     venue: null,
+    madeLiveAt: null,
     createdAt: '2026-10-21T09:00:00+00:00',
   };
 
