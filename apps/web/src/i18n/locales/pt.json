@@ -173,7 +173,8 @@
     "leave": "Sair sem guardar",
     "saved": "Alterações guardadas",
     "nothingChanged": "Nada foi alterado, por isso nada foi enviado.",
-    "scheduleConcluded": "This event is over, so its start, end and time zone cannot be changed."
+    "scheduleConcluded": "This event is over, so its start, end and time zone cannot be changed.",
+    "scheduleLocked": "This event is over, so its start, end and time zone can't be changed."
   },
   "eventCover": {
     "heading": "Capa",

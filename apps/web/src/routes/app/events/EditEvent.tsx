@@ -429,7 +429,7 @@ function DetailsForm({
           <h2 id="event-when">{t('eventForm.whenHeading')}</h2>
           {over && (
             <p className="field-help" id="event-schedule-over">
-              {t('eventEdit.scheduleConcluded')}
+              {t('eventEdit.scheduleLocked')}
             </p>
           )}
           <Moment

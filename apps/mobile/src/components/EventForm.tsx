@@ -415,7 +415,7 @@ export function EventForm({
 
         {over && (
           <Text size={tokens.typeBody.size} muted testID="eventForm.scheduleOver">
-            {t('eventEdit.scheduleConcluded')}
+            {t('eventEdit.scheduleLocked')}
           </Text>
         )}
 

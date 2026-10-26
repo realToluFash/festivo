@@ -1502,7 +1502,8 @@
     "leaveTitle": "Quitter sans enregistrer ?",
     "leave": "Quitter sans enregistrer",
     "saved": "Modifications enregistrées",
-    "scheduleConcluded": "This event is over, so its start, end and time zone cannot be changed."
+    "scheduleConcluded": "This event is over, so its start, end and time zone cannot be changed.",
+    "scheduleLocked": "This event is over, so its start, end and time zone can't be changed."
   },
   "eventCover": {
     "heading": "Image de couverture",

@@ -169,7 +169,8 @@
     "leave": "Leave without saving",
     "saved": "Saved",
     "nothingChanged": "Nothing changed, so nothing was sent.",
-    "scheduleConcluded": "This event is over, so its start, end and time zone cannot be changed."
+    "scheduleConcluded": "This event is over, so its start, end and time zone cannot be changed.",
+    "scheduleLocked": "This event is over, so its start, end and time zone can't be changed."
   },
   "eventCover": {
     "heading": "Cover",

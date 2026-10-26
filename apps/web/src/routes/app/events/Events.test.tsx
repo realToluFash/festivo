@@ -2029,7 +2029,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     await screen.findByRole('heading', { level: 1, name: 'Edit details' });
 
     expect(
-      screen.getByText('This event is over, so its start, end and time zone cannot be changed.'),
+      screen.getByText("This event is over, so its start, end and time zone can't be changed."),
     ).toBeDefined();
     for (const id of ['event-start-date', 'event-start-time', 'event-end-date', 'event-end-time']) {
       expect((document.getElementById(id) as HTMLInputElement).readOnly).toBe(true);

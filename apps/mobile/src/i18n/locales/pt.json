@@ -1502,7 +1502,8 @@
     "leaveTitle": "Sair sem guardar?",
     "leave": "Sair sem guardar",
     "saved": "Alterações guardadas",
-    "scheduleConcluded": "This event is over, so its start, end and time zone cannot be changed."
+    "scheduleConcluded": "This event is over, so its start, end and time zone cannot be changed.",
+    "scheduleLocked": "This event is over, so its start, end and time zone can't be changed."
   },
   "eventCover": {
     "heading": "Capa",
