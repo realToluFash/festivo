@@ -1242,8 +1242,8 @@
     "suspendedBody": "Esta pessoa não pode usar {{organisation}}. A função, os eventos e o histórico desta pessoa são mantidos.",
     "restoreAccess": "Repor o acesso",
     "seatsInUse_one": "O único lugar de equipa do plano desta organização está ocupado, por isso nada mudou.",
-    "seatsInUse_other": "Os {{count}} lugares de equipa do plano desta organização estão todos ocupados, por isso nada mudou.",
-    "seatsInUse_many": "Os {{count}} de lugares de equipa do plano desta organização estão todos ocupados, por isso nada mudou.",
+    "seatsInUse_other": "Os {{count, number}} lugares de equipa do plano desta organização estão todos ocupados, por isso nada mudou.",
+    "seatsInUse_many": "Os {{count, number}} de lugares de equipa do plano desta organização estão todos ocupados, por isso nada mudou.",
     "suspendedBecause": {
       "address_gone": "{{name}} já não tem o endereço de {{domain}} na conta.",
       "domain_closed": "{{organisation}} deixou de aceitar adesões através de {{domain}}.",

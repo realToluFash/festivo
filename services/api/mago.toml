@@ -261,6 +261,7 @@ permit = [
     "@layer:domain_user",
     "@layer:repository",
     "@layer:audit",
+    "@layer:storage",
     "@layer:address",
 ]
 
