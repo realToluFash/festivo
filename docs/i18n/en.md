@@ -76,10 +76,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   The section is "Cover" and the dialog "Cover photo"; the person's own image is "photo"
   throughout, and "image" only in "Describe the image", the screen reader's word. The API's
   description limit now reads as the web's, "Shorten the description to {count} characters or
-  fewer.", replacing "… characters at most." The refusals still say "isn't" and "didn't", and the
-  created line keeps its comma, because `Events.test.tsx` pins them; they wait on [dev], who is
-  asked on sc-13587 for "That file is not a photo we can use. …", "The photo did not upload. Try
-  again." (web and API alike) and "The event is saved without its photo. {{reason}}". Every
+  fewer.", replacing "… characters at most." The refusals read "That file is not a photo we can
+  use. Choose a JPEG, PNG, WebP or HEIC." and "The photo did not upload. Try again." (web and API
+  alike), and the created line "The event is saved without its photo. {{reason}}", with no comma:
+  no contractions in an error, as the house rule has it (changed in the catalogues and
+  `Events.test.tsx` by [dev] in #634, sc-3590). Every
   locale's created line must read with any refusal after it as `{{reason}}`.
 - **26 Oct 2026. An event's type** (`web:eventForm.type`, `typePlaceholder`, `typeMissing`,
   `web:eventTypes.*`, `messages:validation.event_type_required`, sc-3588 via sc-13205). The
