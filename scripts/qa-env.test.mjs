@@ -20,6 +20,7 @@ import {
   checkId,
   codeStep,
   databaseCommands,
+  dependencySteps,
   composeBatch,
   localise,
   parseBatch,
@@ -890,6 +891,22 @@ describe('the harness in .qa/bin', () => {
 
   it('removes a worker the checked-out compose.yaml no longer names', () => {
     expect(REBUILD).toContain('--remove-orphans');
+  });
+});
+
+describe('the dependencies, from a checkout', () => {
+  it('clears the api cache after both installs', () => {
+    const steps = dependencySteps(false, false);
+    expect(steps.at(-1)).toBe('clearApiCache');
+    expect(steps.slice(0, -1).map((entry) => entry.run[0])).toEqual(['npm', 'node']);
+  });
+
+  it('still clears it when neither lockfile changed', () => {
+    expect(dependencySteps(true, true)).toEqual([
+      { step: 'Node dependencies', run: null },
+      { step: 'PHP dependencies', run: null },
+      'clearApiCache',
+    ]);
   });
 });
 

@@ -371,8 +371,7 @@ export function branchForStory(id, remoteBranches) {
 }
 
 // The api container mounts services/api, so its compiled container outlives a checkout
-// and can name a service the new commit removed. Cleared again once the new vendor is in: a
-// worker restarting meanwhile compiles one against the old vendor, dropping what it cannot load.
+// and can name a service the new commit removed.
 export function clearApiCache(root) {
   rmSync(join(root, 'services/api/var/cache'), { recursive: true, force: true });
 }
@@ -613,21 +612,20 @@ function checkout(args) {
   const npmLock = hashOf(join(root, 'package-lock.json'));
   const composerLock = hashOf(join(root, 'services/api/composer.lock'));
 
-  step('Node dependencies');
-  if (state.npmLock === npmLock && existsSync(join(root, 'node_modules'))) {
-    console.log('  lockfile unchanged');
-  } else {
-    run('npm', ['ci', '--no-audit', '--no-fund'], { cwd: root });
-  }
-
-  step('PHP dependencies');
-  if (state.composerLock === composerLock && existsSync(join(root, 'services/api/vendor'))) {
-    console.log('  lockfile unchanged');
-  } else {
-    run('node', ['scripts/php-tool.mjs', 'composer', 'install'], { cwd: root });
+  const steps = dependencySteps(
+    state.npmLock === npmLock && existsSync(join(root, 'node_modules')),
+    state.composerLock === composerLock && existsSync(join(root, 'services/api/vendor')),
+  );
+  for (const entry of steps) {
+    if (entry === 'clearApiCache') {
+      clearApiCache(root);
+      continue;
+    }
+    step(entry.step);
+    if (entry.run) run(...entry.run, { cwd: root });
+    else console.log('  lockfile unchanged');
   }
   writeFileSync(statePath, JSON.stringify({ npmLock, composerLock, head, label }, null, 2));
-  clearApiCache(root);
 
   step('The stack, rebuilt from this commit');
   run('docker', REBUILD, { cwd: root });
@@ -654,6 +652,22 @@ function checkout(args) {
 
 // With no names, compose stop and up act on the whole stack, so an old commit with no
 // worker skips both.
+// The api cache is cleared again once the new vendor is in: a worker restarting during the
+// install compiles a container against the old vendor, dropping what it cannot load.
+export function dependencySteps(npmUnchanged, composerUnchanged) {
+  return [
+    {
+      step: 'Node dependencies',
+      run: npmUnchanged ? null : ['npm', ['ci', '--no-audit', '--no-fund']],
+    },
+    {
+      step: 'PHP dependencies',
+      run: composerUnchanged ? null : ['node', ['scripts/php-tool.mjs', 'composer', 'install']],
+    },
+    'clearApiCache',
+  ];
+}
+
 export function databaseCommands(console_, afterMigrations, keepData) {
   const waiting = afterMigrations.length > 0;
   return [
