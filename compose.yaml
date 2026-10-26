@@ -257,7 +257,8 @@ services:
       # that works in curl and fails on screen.
       SOIRELY_API_URL: ${SOIRELY_API_URL:-http://localhost:8080}
       SOIRELY_MERCURE_URL: ${SOIRELY_MERCURE_URL:-http://localhost:3000/.well-known/mercure}
-      # The store's public origin, for img-src: covers and avatars load from it.
+      # The store's public origin, for img-src and connect-src: covers and
+      # avatars are uploaded to and load from it.
       SOIRELY_STORAGE_URL: ${STORAGE_PUBLIC_ENDPOINT:-http://localhost:4566}
       SOIRELY_ENVIRONMENT: ${APP_ENV:-dev}
       # The local sign-in sandbox (service `oidc`) stands in for Google.

@@ -60,8 +60,8 @@ fi
 
 # ── Security headers ─────────────────────────────────────────────────────────
 #
-# Generated rather than committed because connect-src has to name the API and
-# Mercure origins, and those are the two things that differ per deployment.
+# Generated rather than committed because the sources name the API, Mercure and
+# object store origins, and those differ per deployment.
 # `connect-src 'self'` with the API on another host blocks every call the
 # application makes.
 #
