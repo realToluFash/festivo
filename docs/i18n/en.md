@@ -62,6 +62,11 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. The Google-or-Apple refusal's title** (sc-13612, `errors:oauth_only_unlinked`).
+  One 403 code answers an Owner requiring Google or Apple before linking their own and a member
+  stranded read-only, so its title states the shared fact, "No Google or Apple account is
+  linked.", and each `detail` says what to do. "Read-only" stays on the stranded member's banner
+  (`unlinkedTitle`), the only place it is true. es, fr and pt name the account, as their details do.
 - **26 Oct 2026. An event's venue, and the app's event list** (`web:eventForm.venue*`,
   `web:eventPage.venue*`, `addVenue`, `openInMaps`, `messages:validation.event_venue_*`,
   `mobile:eventsScreen.*`, sc-3589 and sc-1593 via sc-13205). Settled as built, except two lines

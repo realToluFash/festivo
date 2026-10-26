@@ -12,9 +12,9 @@ export function BackToAccount() {
   const { t } = useTranslation();
 
   return (
-    <Link className="link-button auth-back" to={accountHref(null)}>
-      <span aria-hidden="true">← </span>
-      {t('contacts.backToAccount')}
+    <Link className="link-button back-link" to={accountHref(null)}>
+      <span aria-hidden="true">←</span>
+      <span>{t('contacts.backToAccount')}</span>
     </Link>
   );
 }
