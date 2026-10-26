@@ -214,6 +214,8 @@ when@test:
             public: true
             autoconfigure: true
         App\Domain\Messaging\Channel\EmailSender: '@App\Tests\Double\Messaging\RecordingEmailSender'
+        App\Tests\Double\Messaging\Meanwhile:
+            public: true
         test.notification.notice:
             class: App\Tests\Double\Messaging\ScriptedNotificationType
             autoconfigure: true
@@ -222,6 +224,15 @@ when@test:
             class: App\Tests\Double\Messaging\ScriptedNotificationType
             autoconfigure: true
             arguments: ['test.urgent', !php/enum App\Enum\NotificationPriority::Urgent]
+        test.notification.info:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments: ['test.info', !php/enum App\Enum\NotificationPriority::Info]
+        test.notification.interrupted:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                { $name: 'test.interrupted', $meanwhile: '@App\Tests\Double\Messaging\Meanwhile' }
         test.notification.collapsing:
             class: App\Tests\Double\Messaging\ScriptedNotificationType
             autoconfigure: true

@@ -16,6 +16,8 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'scheduled_notifications')]
 #[ORM\UniqueConstraint(name: 'uniq_scheduled_notification_pending_key', columns: ['cancellation_key'], options: ['where' => "((status)::text = 'pending'::text)"])]
 #[ORM\Index(name: 'idx_scheduled_notification_due', columns: ['priority', 'due_at'], options: ['where' => "((status)::text = 'pending'::text)"])]
+#[ORM\Index(name: 'idx_scheduled_notification_oldest', columns: ['due_at'], options: ['where' => "((status)::text = 'pending'::text)"])]
+#[ORM\Index(name: 'idx_scheduled_notification_claimed', columns: ['claimed_at'])]
 #[ORM\Index(name: 'idx_scheduled_notification_event', columns: ['event_id'])]
 class ScheduledNotification
 {

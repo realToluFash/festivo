@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional\Messaging;
 
 use App\Domain\Event\EventEditor;
+use App\Domain\Event\EventTimesRecomputer;
 use App\Domain\Messaging\Model\Audience;
 use App\Domain\Messaging\Model\EventAnchor;
 use App\Domain\Messaging\Model\Trigger;
@@ -37,6 +38,36 @@ final class NotificationEventsTest extends MessagingTestCase
         self::assertSame('10:00', $this->dueAt('day-before')->setTimezone(new DateTimeZone('Africa/Lagos'))->format('H:i'));
         self::assertEquals($payment, $this->dueAt('payment'));
         self::assertSame(2, self::rowCount("SELECT COUNT(*) FROM scheduled_notifications WHERE status = 'pending'"));
+    }
+
+    #[Test]
+    public function aNewZoneAloneMovesWhatCountsFromTheEvent(): void
+    {
+        $event = $this->event('+10 days');
+        self::scheduler()->schedule('test.notice', 'day-before', 'day-before', Trigger::relativeToEvent(EventAnchor::EventStart, '-P1D', '10:00'), $this->members(), [], $event);
+        $before = $this->dueAt('day-before');
+
+        self::service(EventEditor::class)->edit($event, EntityTag::of($event->getVersion()), $this->owner, ['timeZone' => 'Asia/Tokyo']);
+
+        self::assertSame('18:00', $event->getStartsAt()->format('H:i'));
+        self::assertSame(-8 * 3600, $this->dueAt('day-before')->getTimestamp() - $before->getTimestamp());
+        self::assertSame('10:00', $this->dueAt('day-before')->setTimezone(new DateTimeZone('Asia/Tokyo'))->format('H:i'));
+    }
+
+    #[Test]
+    public function recomputingAnEventsTimesMovesWhatCountsFromIt(): void
+    {
+        $event = $this->event('+10 days');
+        self::scheduler()->schedule('test.notice', 'day-before', 'day-before', Trigger::relativeToEvent(EventAnchor::EventStart, '-P1D', '10:00'), $this->members(), [], $event);
+        $id = ['id' => $event->getId()->toRfc4122()];
+        self::connection()->executeStatement("UPDATE events SET starts_at_utc = starts_at_utc - INTERVAL '3 hours', ends_at_utc = ends_at_utc - INTERVAL '3 hours' WHERE id = :id", $id);
+        self::connection()->executeStatement("UPDATE scheduled_notifications SET due_at = due_at - INTERVAL '3 hours' WHERE event_id = :id", $id);
+        self::em()->clear();
+
+        self::assertSame(1, self::service(EventTimesRecomputer::class)->recompute());
+
+        self::assertSame('10:00', $this->dueAt('day-before')->setTimezone(new DateTimeZone('Africa/Lagos'))->format('H:i'));
+        self::assertSame(1, self::rowCount("SELECT COUNT(*) FROM scheduled_notifications WHERE status = 'pending'"));
     }
 
     #[Test]

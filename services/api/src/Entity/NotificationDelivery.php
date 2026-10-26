@@ -19,6 +19,8 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'notification_deliveries')]
 #[ORM\UniqueConstraint(name: 'uniq_notification_delivery_idempotency', columns: ['type', 'source_id', 'recipient_kind', 'recipient_id', 'channel'])]
 #[ORM\Index(name: 'idx_notification_delivery_next', columns: ['priority', 'next_attempt_at'], options: ['where' => "((status)::text = 'pending'::text)"])]
+#[ORM\Index(name: 'idx_notification_delivery_oldest', columns: ['next_attempt_at'], options: ['where' => "((status)::text = 'pending'::text)"])]
+#[ORM\Index(name: 'idx_notification_delivery_claimed', columns: ['claimed_at'])]
 #[ORM\Index(name: 'idx_notification_delivery_finished', columns: ['finished_at'])]
 #[ORM\Index(name: 'idx_notification_delivery_scheduled', columns: ['scheduled_notification_id'])]
 #[ORM\Index(name: 'idx_notification_delivery_event', columns: ['event_id'])]

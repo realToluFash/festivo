@@ -84,7 +84,7 @@ final class NotificationWorker
                       AND due_at <= :now
                       AND priority <= :priority
                       AND (claimed_until IS NULL OR claimed_until < :now)
-                    ORDER BY priority, due_at, id
+                    ORDER BY due_at, id
                     LIMIT 1
                     FOR UPDATE SKIP LOCKED
                 )
@@ -104,12 +104,26 @@ final class NotificationWorker
         }
 
         $id = Type\string()->coerce($row['id']);
+
+        try {
+            $this->fanOut($id, $row, $now);
+        } catch (Throwable $failure) {
+            $this->finishScheduled($id, ScheduledNotificationStatus::Failed, $failure::class);
+            $this->logger->error('A scheduled notification could not be fanned out.', ['scheduled' => $id, 'reason' => $failure::class]);
+        }
+
+        return true;
+    }
+
+    /** @param array<string, mixed> $row */
+    private function fanOut(string $id, array $row, DateTimeImmutable $now): void
+    {
         $typeName = Type\string()->coerce($row['type']);
 
         if (!$this->notificationRegistry->has($typeName)) {
             $this->finishScheduled($id, ScheduledNotificationStatus::Failed, 'unregistered type');
 
-            return true;
+            return;
         }
 
         $type = $this->notificationRegistry->type($typeName);
@@ -118,7 +132,7 @@ final class NotificationWorker
         if (null !== $sendBy && $sendBy < $now) {
             $this->finishScheduled($id, ScheduledNotificationStatus::TooLate, 'too late');
 
-            return true;
+            return;
         }
 
         $eventId = Type\nullable(Type\string())->coerce($row['event_id']);
@@ -126,13 +140,13 @@ final class NotificationWorker
         if (null !== $eventId && EventVerdict::Cancel === EventGate::verdict($type->eventRule(), $this->eventState($eventId), $now)) {
             $this->finishScheduled($id, ScheduledNotificationStatus::Cancelled, 'the event no longer takes it');
 
-            return true;
+            return;
         }
 
         if (!$type->isStillDue(self::dict($row['payload']))) {
             $this->finishScheduled($id, ScheduledNotificationStatus::Cancelled, 'no longer due');
 
-            return true;
+            return;
         }
 
         $audience = Audience::fromArray(self::dict($row['audience']));
@@ -141,23 +155,37 @@ final class NotificationWorker
         if (null === $resolver) {
             $this->finishScheduled($id, ScheduledNotificationStatus::Failed, Str\format('nothing resolves a %s audience yet', $audience->kind->value));
 
-            return true;
+            return;
         }
 
         $after = Type\nullable(Type\string())->coerce($row['fanned_out_after']);
         $recipients = $resolver->resolve($audience, null === $after ? null : Uuid::fromString($after), self::CHUNK);
-        $this->writeDeliveries($id, $type, $audience->kind, $recipients, $eventId, self::moment($row['due_at']) ?? $now, $sendBy);
 
-        if (Iter\count($recipients) < self::CHUNK) {
-            $this->finishScheduled($id, ScheduledNotificationStatus::FannedOut, null);
-        } else {
-            $this->connection->executeStatement(
-                'UPDATE scheduled_notifications SET fanned_out_after = :after, claimed_until = NULL WHERE id = :id',
-                ['after' => Iter\last($recipients)?->toRfc4122(), 'id' => $id],
-            );
-        }
+        $this->connection->transactional(function () use ($id, $type, $audience, $recipients, $eventId, $row, $now, $sendBy): void {
+            if (!$this->lockPending($id)) {
+                return;
+            }
 
-        return true;
+            $this->writeDeliveries($id, $type, $audience->kind, $recipients, $eventId, self::moment($row['due_at']) ?? $now, $sendBy);
+
+            if (Iter\count($recipients) < self::CHUNK) {
+                $this->finishScheduled($id, ScheduledNotificationStatus::FannedOut, null);
+            } else {
+                $this->connection->executeStatement(
+                    'UPDATE scheduled_notifications SET fanned_out_after = :after, claimed_until = NULL WHERE id = :id',
+                    ['after' => Iter\last($recipients)?->toRfc4122(), 'id' => $id],
+                );
+            }
+        });
+    }
+
+    /** Cancelled or replaced since the claim: the scheduler's update waits on this lock, or this sees what it wrote. */
+    private function lockPending(string $id): bool
+    {
+        return false !== $this->connection->fetchOne(
+            'SELECT 1 FROM scheduled_notifications WHERE id = :id AND status = :pending FOR UPDATE',
+            ['id' => $id, 'pending' => ScheduledNotificationStatus::Pending->value],
+        );
     }
 
     /** @param list<Uuid> $recipients */
@@ -215,7 +243,7 @@ final class NotificationWorker
                       AND next_attempt_at <= :now
                       AND priority <= :priority
                       AND (claimed_until IS NULL OR claimed_until < :now)
-                    ORDER BY priority, next_attempt_at, id
+                    ORDER BY next_attempt_at, id
                     LIMIT 1
                     FOR UPDATE SKIP LOCKED
                 )
@@ -234,7 +262,14 @@ final class NotificationWorker
             return false;
         }
 
-        $this->deliver(Type\string()->coerce($row['id']), $now);
+        $id = Type\string()->coerce($row['id']);
+
+        try {
+            $this->deliver($id, $now);
+        } catch (Throwable $failure) {
+            $this->finishDelivery($id, NotificationDeliveryStatus::Failed, $failure::class);
+            $this->logger->error('A notification could not be delivered.', ['delivery' => $id, 'reason' => $failure::class]);
+        }
 
         return true;
     }
@@ -471,9 +506,9 @@ final class NotificationWorker
             <<<'SQL'
                 UPDATE scheduled_notifications
                 SET status = :status, outcome = :outcome, finished_at = :now, claimed_until = NULL
-                WHERE id = :id
+                WHERE id = :id AND status = :pending
                 SQL,
-            ['status' => $status->value, 'outcome' => $outcome, 'now' => $this->clock->now(), 'id' => $id],
+            ['status' => $status->value, 'outcome' => $outcome, 'now' => $this->clock->now(), 'id' => $id, 'pending' => ScheduledNotificationStatus::Pending->value],
             ['now' => Types::DATETIME_IMMUTABLE],
         );
     }

@@ -40,6 +40,8 @@ final class Version20261026190000 extends AbstractMigration
             )
             SQL);
         $this->addSql("CREATE INDEX idx_scheduled_notification_due ON scheduled_notifications (priority, due_at) WHERE ((status)::text = 'pending'::text)");
+        $this->addSql("CREATE INDEX idx_scheduled_notification_oldest ON scheduled_notifications (due_at) WHERE ((status)::text = 'pending'::text)");
+        $this->addSql('CREATE INDEX idx_scheduled_notification_claimed ON scheduled_notifications (claimed_at)');
         $this->addSql('CREATE INDEX idx_scheduled_notification_event ON scheduled_notifications (event_id)');
         $this->addSql("CREATE UNIQUE INDEX uniq_scheduled_notification_pending_key ON scheduled_notifications (cancellation_key) WHERE ((status)::text = 'pending'::text)");
         $this->addSql('ALTER TABLE scheduled_notifications ADD CONSTRAINT FK_E7DE778171F7E88B FOREIGN KEY (event_id) REFERENCES events (id) ON DELETE CASCADE NOT DEFERRABLE');
@@ -73,6 +75,8 @@ final class Version20261026190000 extends AbstractMigration
             )
             SQL);
         $this->addSql("CREATE INDEX idx_notification_delivery_next ON notification_deliveries (priority, next_attempt_at) WHERE ((status)::text = 'pending'::text)");
+        $this->addSql("CREATE INDEX idx_notification_delivery_oldest ON notification_deliveries (next_attempt_at) WHERE ((status)::text = 'pending'::text)");
+        $this->addSql('CREATE INDEX idx_notification_delivery_claimed ON notification_deliveries (claimed_at)');
         $this->addSql('CREATE INDEX idx_notification_delivery_finished ON notification_deliveries (finished_at)');
         $this->addSql('CREATE INDEX idx_notification_delivery_scheduled ON notification_deliveries (scheduled_notification_id)');
         $this->addSql('CREATE INDEX idx_notification_delivery_event ON notification_deliveries (event_id)');

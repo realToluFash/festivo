@@ -31,6 +31,7 @@ final readonly class ScriptedNotificationType implements NotificationTypeInterfa
         private ?string $tooLateAfter = null,
         private array $channels = [NotificationChannel::Email],
         private NotificationAudienceKind $audienceKind = NotificationAudienceKind::Member,
+        private ?Meanwhile $meanwhile = null,
     ) {
     }
 
@@ -81,6 +82,8 @@ final readonly class ScriptedNotificationType implements NotificationTypeInterfa
 
     public function isStillDue(array $payload): bool
     {
+        $this->meanwhile?->happen();
+
         return Type\bool()->coerce($payload['stillDue'] ?? true);
     }
 

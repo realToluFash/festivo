@@ -11,10 +11,13 @@ use App\Entity\Membership;
 use App\Enum\MembershipStatus;
 use App\Enum\Permission;
 use App\Enum\SeededRole;
+use App\Tests\Double\Messaging\Meanwhile;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Type;
+use Psl\Type\Exception\CoercionException;
 use Psl\Vec;
+use Symfony\Component\Uid\Uuid;
 
 final class NotificationWorkerTest extends MessagingTestCase
 {
@@ -209,6 +212,73 @@ final class NotificationWorkerTest extends MessagingTestCase
 
         self::assertSame(4, self::sender()->calls);
         self::assertSame('test.urgent', self::sender()->sent[3]['notification']->subject);
+    }
+
+    #[Test]
+    public function anOlderInfoRowGoesBeforeANewerNormalOne(): void
+    {
+        self::scheduler()->schedule('test.info', 'info', 'info', Trigger::at(new DateTimeImmutable('-10 minutes')), $this->budgetHolders());
+        self::scheduler()->schedule('test.notice', 'normal', 'normal', Trigger::at(new DateTimeImmutable('-1 minute')), $this->budgetHolders());
+
+        self::runUntilIdle();
+
+        self::assertSame(['test.info', 'test.notice'], Vec\map(self::sender()->sent, static fn (array $sent): string => $sent['notification']->subject));
+    }
+
+    #[Test]
+    public function aRowCancelledAfterItsClaimWritesNoDeliveries(): void
+    {
+        self::scheduler()->schedule('test.interrupted', 'payment:8', 'p8', Trigger::at(new DateTimeImmutable('-1 minute')), $this->budgetHolders());
+        self::service(Meanwhile::class)->happens = static fn (): int => self::scheduler()->cancel('payment:8');
+
+        self::runUntilIdle();
+
+        self::assertSame([], self::sender()->sent);
+        self::assertSame(0, self::rowCount('SELECT COUNT(*) FROM notification_deliveries'));
+        self::assertSame('cancelled', self::scalar('SELECT status FROM scheduled_notifications'));
+    }
+
+    #[Test]
+    public function aRowReplacedAfterItsClaimWritesNoDeliveries(): void
+    {
+        self::scheduler()->schedule('test.interrupted', 'reminder:2', 'r2', Trigger::at(new DateTimeImmutable('-1 minute')), $this->budgetHolders());
+        $audience = $this->budgetHolders();
+        self::service(Meanwhile::class)->happens = static fn (): Uuid => self::scheduler()->schedule('test.interrupted', 'reminder:2', 'r2', Trigger::at(new DateTimeImmutable('+1 day')), $audience);
+
+        self::runUntilIdle();
+
+        self::assertSame([], self::sender()->sent);
+        self::assertSame(0, self::rowCount('SELECT COUNT(*) FROM notification_deliveries'));
+        self::assertSame(1, self::rowCount("SELECT COUNT(*) FROM scheduled_notifications WHERE status = 'pending'"));
+    }
+
+    #[Test]
+    public function aRowWhoseCheckThrowsIsRecordedFailedAndTheNextOneStillGoes(): void
+    {
+        self::scheduler()->schedule('test.notice', 'broken', 'broken', Trigger::at(new DateTimeImmutable('-2 minutes')), $this->budgetHolders(), ['stillDue' => 'not a yes or no']);
+        self::scheduler()->schedule('test.notice', 'fine', 'fine', Trigger::at(new DateTimeImmutable('-1 minute')), $this->budgetHolders());
+
+        self::runUntilIdle();
+
+        self::assertSame(1, self::sender()->calls);
+        self::assertSame('failed', self::scalar("SELECT status FROM scheduled_notifications WHERE cancellation_key = 'broken'"));
+        self::assertSame(CoercionException::class, self::scalar("SELECT outcome FROM scheduled_notifications WHERE cancellation_key = 'broken'"));
+    }
+
+    #[Test]
+    public function aDeliveryWhoseCheckThrowsIsRecordedFailed(): void
+    {
+        self::scheduler()->schedule('test.notice', 'broken', 'broken', Trigger::at(new DateTimeImmutable('-1 minute')), $this->budgetHolders());
+        self::worker()->step();
+        self::connection()->executeStatement(<<<'SQL'
+            UPDATE scheduled_notifications SET payload = '{"stillDue": "not a yes or no"}'
+            SQL);
+
+        self::runUntilIdle();
+
+        self::assertSame([], self::sender()->sent);
+        self::assertSame('failed', self::scalar('SELECT status FROM notification_deliveries'));
+        self::assertSame(CoercionException::class, self::scalar('SELECT last_error FROM notification_deliveries'));
     }
 
     #[Test]
