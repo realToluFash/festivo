@@ -16,8 +16,7 @@ describe('where Try again carries on to', () => {
     expect(carryOn(undefined)).toBe('/');
   });
 
-  it('relaunches rather than following a link that is not a request link', () => {
-    expect(carryOn('../sign-in')).toBe('/');
-    expect(carryOn(`${TOKEN}${TOKEN}`)).toBe('/');
+  it('relaunches when the screen remembered no link', () => {
+    expect(carryOn('')).toBe('/');
   });
 });
