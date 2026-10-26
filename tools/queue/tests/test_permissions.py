@@ -57,7 +57,8 @@ class Permissions(unittest.TestCase):
 
     def test_a_rule_granting_a_whole_tool_is_refused(self):
         for rule in ("Bash", "Bash(*)", "Bash(:*)", "Edit(**)", "Write(~/**)", "*",
-                     "WebFetch(domain:*)", "WebFetch(domain:)", "WebFetch(domain:*.com)"):
+                     "WebFetch(domain:*)", "WebFetch(domain:)", "WebFetch(domain:*.com)",
+                     "WebFetch(domain:**.com)", "WebFetch(domain:*com)"):
             broad = json.dumps({"rules": [{"rule": rule, "roles": ["all"], "ask": 1}]})
             self.assertEqual(self.apply(text=broad), 1, rule)
         self.assertEqual(permissions.applied(), [])

@@ -365,7 +365,9 @@ closes it.
 
 **A rule names what it allows.** `Bash`, `Edit`, `Write` and the like, bare or with only
 wildcards (`Bash(*)`, `Edit(**)`), would grant the whole tool, so `apply` refuses a file
-holding one.
+holding one. `WebFetch` must name a host: `apply` refuses `domain:*` and a whole top-level
+domain such as `domain:*.com`. It has no list of public suffixes, so `domain:*.co.uk`
+gets through; whoever reviews `permissions.json` catches that one.
 
 **No Claude settings file is written by anyone.** Each worker is started with its role's
 applied rules as `--allowedTools`, and with `--disallowedTools` for what no worker may do

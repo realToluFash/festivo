@@ -20,7 +20,7 @@ RULE = re.compile(r"^([A-Za-z]+)(?:\((.+)\))?$")
 # Tools a rule must narrow: bare, or with only wildcards, each grants the whole tool.
 NARROW = {"Bash", "Edit", "Write", "MultiEdit", "NotebookEdit", "WebFetch"}
 WILDCARD = re.compile(r"^[\s*:/~.]*$")
-WHOLE_TLD = re.compile(r"^\*\.[^.]+$")
+WHOLE_TLD = re.compile(r"^\*+\.?[^.]+$")
 
 
 class Invalid(RuntimeError):
