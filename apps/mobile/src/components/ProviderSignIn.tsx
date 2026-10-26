@@ -165,13 +165,14 @@ const styles = StyleSheet.create({
   orText: { color: tokens.colorInkSecondary },
 
   button: {
-    height: tokens.sizeHitPhonePrimary,
+    minHeight: tokens.sizeHitPhonePrimary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: tokens.spaceMd,
     paddingHorizontal: tokens.spaceXxl,
-    borderRadius: tokens.sizeHitPhonePrimary / 2,
+    paddingVertical: tokens.spaceSm,
+    borderRadius: tokens.radiusPill,
     borderWidth: 1,
   },
   google: { backgroundColor: brand.googleSurface, borderColor: brand.googleBorder },

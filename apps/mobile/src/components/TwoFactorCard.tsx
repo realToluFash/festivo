@@ -26,6 +26,7 @@ import {
   useScrolledToTop,
 } from './Screen.tsx';
 import { Text, type TextHandle } from './Text.tsx';
+import { useMarkSide } from './markSide.ts';
 
 /** Said once, as the tap it answers lands; `AtRest` mounts again after every reload. */
 interface Refusal {
@@ -251,6 +252,7 @@ function AtRest({
   onTurnOff: () => void;
   onNewCodes: () => void;
 }) {
+  const markSide = useMarkSide(tokens.sizeMark);
   const { t } = useTranslation();
 
   return (
@@ -262,7 +264,7 @@ function AtRest({
         {/* A mark and the word, never the colour alone. */}
         <View style={styles.state}>
           <View
-            style={[styles.mark, status.on ? styles.markOn : styles.markOff]}
+            style={[styles.mark, markSide, status.on ? styles.markOn : styles.markOff]}
             accessibilityElementsHidden
             importantForAccessibility="no-hide-descendants"
           >
@@ -448,6 +450,7 @@ function SavingCodes({
   answer: unknown;
   onFinish: () => void;
 }) {
+  const markSide = useMarkSide(tokens.sizeMark);
   const { t } = useTranslation();
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -497,7 +500,7 @@ function SavingCodes({
         testID="twoFactor.saved"
       >
         <View
-          style={[styles.box, saved && styles.boxOn]}
+          style={[styles.box, markSide, saved && styles.boxOn]}
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
@@ -717,11 +720,9 @@ const styles = StyleSheet.create({
   grow: { flex: 1 },
   state: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
   mark: {
-    width: tokens.sizeMark,
-    height: tokens.sizeMark,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: tokens.sizeMark / 2,
+    borderRadius: tokens.radiusPill,
   },
   markOff: { borderWidth: 1.5, borderColor: tokens.colorInkSecondary },
   markOn: { backgroundColor: tokens.marks.done.fill },
@@ -759,8 +760,6 @@ const styles = StyleSheet.create({
     minHeight: tokens.sizeHit,
   },
   box: {
-    width: tokens.sizeMark,
-    height: tokens.sizeMark,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: tokens.radiusField,

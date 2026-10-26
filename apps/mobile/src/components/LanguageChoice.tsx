@@ -48,10 +48,11 @@ const styles = StyleSheet.create({
   },
   label: { marginRight: tokens.spaceXxs, color: tokens.colorInkSecondary },
   chip: {
-    height: tokens.sizeHit,
+    minHeight: tokens.sizeHit,
     justifyContent: 'center',
     paddingHorizontal: tokens.spaceLg,
-    borderRadius: tokens.sizeHit / 2,
+    paddingVertical: tokens.spaceXxs,
+    borderRadius: tokens.radiusPill,
   },
   chipPlain: {
     borderWidth: 1,

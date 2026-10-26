@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from soirely_queue import agents, checkout, runner, store
+from soirely_queue import agents, checkout, permissions, runner, store
 
 from tests.test_runner import FakePlatform, config, login, work
 
@@ -167,6 +167,43 @@ class Accounts(unittest.TestCase):
                                 for line in said))
             self.assertEqual((root / "claude-b" / "settings.json").read_text(),
                              '{"permissions": {}}')
+
+
+class SetupPermissions(unittest.TestCase):
+    def setUp(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.root = pathlib.Path(folder.name)
+        settings = config(self.root, claudeVersion="2.1.304")
+        for patch in (mock.patch("soirely_queue.machine.load", return_value=settings),
+                      mock.patch("soirely_queue.agents.prerequisites", return_value=[]),
+                      mock.patch("soirely_queue.agents.make_checkout"),
+                      mock.patch("soirely_queue.agents.make_stack"),
+                      mock.patch("soirely_queue.agents.accounts"),
+                      mock.patch("soirely_queue.agents.update.copy"),
+                      mock.patch("soirely_queue.agents.subprocess.run"),
+                      mock.patch.dict("os.environ", {"SOIRELY_WORKER": "",
+                                                     "SOIRELY_CONFIG": str(self.root)})):
+            patch.start()
+            self.addCleanup(patch.stop)
+        self.said = []
+
+    def setup(self, terminal):
+        with mock.patch("sys.stdin.isatty", return_value=terminal), \
+                mock.patch("soirely_queue.permissions.apply") as apply:
+            self.assertEqual(agents.setup(self.root / "home", FakePlatform(), self.said.append,
+                                          ask=lambda _: "yes"), 0)
+        return apply
+
+    def test_setup_at_a_terminal_ends_with_the_apply(self):
+        self.assertEqual(self.setup(True).call_count, 1)
+        self.assertIn("Permissions the owner has granted the workers, from main:", self.said)
+
+    def test_setup_without_a_terminal_says_to_run_the_apply_and_applies_nothing(self):
+        self.assertEqual(self.setup(False).call_count, 0)
+        self.assertIn("Run `just agents permissions apply` in your own terminal to grant the "
+                      "workers what main's permissions.json holds.", self.said)
+        self.assertEqual(permissions.applied(), [])
 
 
 class Checkouts(unittest.TestCase):

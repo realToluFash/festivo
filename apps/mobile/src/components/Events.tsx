@@ -7,6 +7,7 @@ import { dateLocale } from '../i18n/index.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { SecondaryButton } from './Buttons.tsx';
+import { EventCover } from './EventCover.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
@@ -60,6 +61,9 @@ export function EventList({
             accessibilityState={{ selected }}
             testID={`events.row.${event.id}`}
           >
+            <View style={styles.rowCover}>
+              <EventCover cover={event.cover} type={event.type} radius={tokens.radiusSmall} />
+            </View>
             <View style={styles.rowText}>
               <Text size={tokens.typeRowTitle.size} weight="semibold">
                 {event.name}
@@ -123,6 +127,7 @@ export function EventPage({ kind, event }: { kind: LayoutKind; event: Organisati
 
   return (
     <View style={cardFrame(kind)} testID="events.page">
+      <EventCover cover={event.cover} type={event.type} testID="events.page.cover" />
       <View style={styles.pageHead}>
         <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
           {event.name}
@@ -182,6 +187,7 @@ const styles = StyleSheet.create({
   },
   rowDivider: { borderTopWidth: 1, borderTopColor: tokens.colorInsetBorder },
   rowOpen: { backgroundColor: tokens.colorAccentTint },
+  rowCover: { width: 96 },
   rowText: { flex: 1, minWidth: 0, gap: 3 },
   pageHead: { gap: tokens.spaceXs },
   state: {
