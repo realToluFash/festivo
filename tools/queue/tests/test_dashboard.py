@@ -9,7 +9,7 @@ import unittest
 import urllib.request
 from unittest import mock
 
-from soirely_queue import dashboard, runlog, store
+from soirely_queue import dashboard, runlog, runner, store
 
 from tests.test_runner import FakePlatform, config, work
 
@@ -101,6 +101,28 @@ class Snapshot(unittest.TestCase):
         store.record(self.db, [work("qa")], NOW)
         view = self.snap()
         self.assertEqual([(r["role"], r["waiting"]) for r in view["elsewhere"]], [("qa", 1)])
+
+    def test_other_machines_their_roles_and_what_they_hold_are_shown(self):
+        store.set_meta(self.db, "shared_view", {
+            "elsewhere": {"dev2": ["tolu-mac", 40]}, "conflicts": [["dev2", "tolu-mac"]],
+            "paused": {"machine": "tolu-mac"},
+            "machines": {"tolu-mac": {"seen": 40, "started": ["dev2", "ops"]}}})
+        runner.set_started(self.db, ["ops", "dev2"], True)
+        view = self.snap()
+        roles = {r["role"]: r for r in view["roles"]}
+        self.assertEqual((roles["dev2"]["state"], roles["dev2"]["detail"]),
+                         ("elsewhere", {"machine": "tolu-mac", "seen": 40}))
+        self.assertEqual(view["machines"],
+                         [{"name": "tolu-mac", "seen": 40, "started": ["dev2", "ops"]}])
+        self.assertIn("paused everywhere by tolu-mac: sq resume --everywhere", view["warnings"])
+        self.assertIn("dev2 is listed here and on tolu-mac, and neither marks it standby; only "
+                      "one runs it", view["warnings"])
+
+    def test_rules_main_grants_and_this_machine_has_not_applied_are_a_warning(self):
+        with mock.patch("soirely_queue.permissions.pending", return_value=["+ a", "- b"]):
+            warnings = self.snap()["warnings"]
+        self.assertIn("permissions: main grants 2 change(s) this machine has not applied: "
+                      "just agents permissions apply", warnings)
 
     def test_a_failed_run_is_marked(self):
         runlog.append(self.home, "ops", {"at": NOW, "role": "ops", "exit": "1",

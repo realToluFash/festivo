@@ -68,6 +68,19 @@ class Permissions(unittest.TestCase):
         self.assertEqual(permissions.applied(), [])
         self.assertTrue(any(line.startswith("  - Bash(maestro test:*)") for line in self.said))
 
+    def test_apply_lists_each_change_and_asks_only_when_there_is_one(self):
+        asked = []
+        permissions.apply(self.home, self.said.append, lambda q: asked.append(q) or "YES", True,
+                          show=lambda: ("a" * 40, json.dumps(RULES)))
+        self.assertIn(f"main at {'a' * 7} changes what this machine's workers may run:",
+                      self.said)
+        self.assertIn("  + Bash(xcrun simctl boot:*)  for qa, qa2", self.said)
+        self.assertEqual(permissions.applied_path().stat().st_mode & 0o777, 0o600)
+        self.assertEqual(self.apply(answer="no"), 0)
+        self.assertEqual(len(asked), 1)
+        self.assertIn(f"this machine already has every rule main grants at {'a' * 7}",
+                      self.said[-1])
+
     def test_status_names_what_main_has_that_this_machine_has_not_applied(self):
         (self.home / "sq" / "permissions.json").write_text(json.dumps(RULES))
         self.assertEqual(len(permissions.pending(self.home)), 2)

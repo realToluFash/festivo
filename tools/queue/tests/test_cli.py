@@ -3,7 +3,9 @@ import unittest
 from contextlib import redirect_stdout
 from unittest import mock
 
-from soirely_queue import cli, store
+from soirely_queue import cli, shared, store
+
+from .fakes import FakeRefs
 
 
 class FormerLinguists(unittest.TestCase):
@@ -168,3 +170,48 @@ class Checks(unittest.TestCase):
             "  pending: Pull request / api",
         ])
         self.assertEqual((code, slept), (1, 2))
+
+
+class PauseEverywhere(unittest.TestCase):
+    def setUp(self):
+        self.db = store.connect(":memory:")
+        self.remote = FakeRefs()
+        for patch in (mock.patch("soirely_queue.cli.open_db", return_value=self.db),
+                      mock.patch("soirely_queue.cli.this_platform"),
+                      mock.patch("soirely_queue.machine.load_env"),
+                      mock.patch("soirely_queue.machine.load",
+                                 return_value={"machine": "tolu-mac"}),
+                      mock.patch("soirely_queue.shared.GitHubRefs", return_value=self.remote),
+                      mock.patch.dict("os.environ", {"SOIRELY_WORKER": ""})):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def sq(self, *argv):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            cli.main(list(argv))
+        return out.getvalue().strip()
+
+    def test_pause_and_resume_everywhere_say_what_they_did(self):
+        self.assertEqual(self.sq("pause", "--everywhere"),
+                         "paused every machine: no role ticks anywhere, running workers finish "
+                         "their item")
+        self.assertEqual(self.remote.data(shared.PAUSE)["machine"], "tolu-mac")
+        self.assertEqual(self.sq("pause", "--everywhere"), "every machine was already paused")
+        self.assertEqual(self.sq("resume", "--everywhere"),
+                         "resumed every machine; a machine paused on its own stays paused")
+        self.assertNotIn(shared.PAUSE, self.remote.refs)
+
+    def test_a_local_resume_leaves_the_pause_everywhere(self):
+        store.set_meta(self.db, "shared_view", {"paused": {"machine": "tolu-linux"}})
+        self.assertEqual(self.sq("resume"), "resumed; every machine is still paused by "
+                                            "tolu-linux: sq resume --everywhere")
+
+
+class Brief(unittest.TestCase):
+    def test_machine_work_opens_by_keeping_ops_to_this_machine(self):
+        row = {"id": 4, "pool": "ops@tolu-mac", "kind": "machine", "reason": "the daily sweep"}
+        self.assertTrue(cli.brief(row, "ops").startswith(
+            "This is ops@tolu-mac: work only on this machine (disk, Docker, the role stacks, "
+            "the manager). Shared duties belong to whichever machine holds the ops lease."))
+        self.assertFalse(cli.brief(dict(row, kind="main", pool="ops"), "ops").startswith("This is"))
