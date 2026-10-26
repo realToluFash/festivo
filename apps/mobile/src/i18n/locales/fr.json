@@ -1575,20 +1575,20 @@
     "close": "Fermer"
   },
   "eventDelete": {
-    "open": "Delete event",
-    "note": "Removes the event and everything in it for your whole team. Guests following its link see that it isn't available.",
-    "title": "Delete {{event}}?",
-    "draftBody": "It's a draft with nobody on its guest list. It will be removed for your whole team.",
-    "removes": "This removes, for your whole team:",
-    "removesEvent": "the event, its details and its schedule",
-    "guests": "Guests following their link will see that it isn't available.",
-    "window": "If this was a mistake, support can restore it until {{deadline}}. After that it's gone for good.",
-    "type": "Type {{event}} to delete it",
-    "typeHint": "Type it exactly, capitals included. A straight or curly apostrophe both count.",
-    "mismatch": "Type {{event}} exactly as shown to delete it.",
-    "keep": "Keep it",
-    "delete": "Delete",
-    "failed": "That did not go through, so nothing was changed. Try again.",
-    "deleted": "{{event}} was deleted."
+    "open": "Supprimer l’événement",
+    "note": "Supprime l’événement et tout son contenu pour toute votre équipe. Les invités qui ouvrent leur lien voient qu’il n’est plus disponible.",
+    "title": "Supprimer {{event}} ?",
+    "draftBody": "C’est un brouillon dont la liste d’invités est vide. Il sera supprimé pour toute votre équipe.",
+    "removes": "Pour toute votre équipe, cela supprime :",
+    "removesEvent": "l’événement, ses informations et son programme",
+    "guests": "Les invités qui ouvrent leur lien verront qu’il n’est plus disponible.",
+    "window": "En cas d’erreur, l’assistance Soirely peut le restaurer jusqu’au {{deadline}}. Ensuite, il disparaît définitivement.",
+    "type": "Saisissez {{event}} pour le supprimer",
+    "typeHint": "Tel qu’il est écrit, majuscules comprises. L’apostrophe droite comme l’apostrophe courbe sont acceptées.",
+    "mismatch": "Saisissez {{event}} exactement comme indiqué pour le supprimer.",
+    "keep": "Le conserver",
+    "delete": "Supprimer",
+    "failed": "La demande n’a pas abouti, donc rien n’a été modifié. Réessayez.",
+    "deleted": "L’événement {{event}} a été supprimé."
   }
 }
