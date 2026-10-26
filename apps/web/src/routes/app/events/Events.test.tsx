@@ -1910,7 +1910,7 @@ describe('The cover (sc-3590)', () => {
       'a.gif',
       'image/gif',
       1000,
-      "That file isn't a photo we can use. Choose a JPEG, PNG, WebP or HEIC.",
+      'That file is not a photo we can use. Choose a JPEG, PNG, WebP or HEIC.',
     ],
     [
       'over 15 MB',
@@ -2099,7 +2099,7 @@ describe('The cover (sc-3590)', () => {
     choose(file());
     const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
 
-    expect(await within(dialog).findByText("The photo didn't upload. Try again.")).toBeDefined();
+    expect(await within(dialog).findByText('The photo did not upload. Try again.')).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
@@ -2219,7 +2219,7 @@ describe('The cover (sc-3590)', () => {
 
     expect(
       await screen.findByText(
-        'The event is saved, without its photo. That photo is smaller than 1200 × 675 pixels, so it would look blurred. Choose a larger one.',
+        'The event is saved without its photo. That photo is smaller than 1200 × 675 pixels, so it would look blurred. Choose a larger one.',
       ),
     ).toBeDefined();
     expect(screen.getByRole('heading', { level: 1, name: 'Adaeze and Tunde' })).toBeDefined();

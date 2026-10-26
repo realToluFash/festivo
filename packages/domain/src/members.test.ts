@@ -10,6 +10,7 @@ import {
   memberRowVerb,
   memberStanding,
   memberStatusWord,
+  ownRoleLine,
 } from './members.ts';
 
 describe('which members a chip lists', () => {
@@ -125,7 +126,20 @@ describe("what a member's page offers", () => {
   const anOwner = { owns: true, manages: true, withholds: [] };
 
   it('offers nothing on your own page', () => {
-    expect(memberStanding(you, [owner, you], anOwner)).toBe('self');
+    expect(memberStanding(you, [owner, you], admin)).toBe('self');
+    expect(memberStanding(member('members desk', 'active', true), [owner], admin)).toBe('self');
+  });
+
+  it("tells an owner's own page from anybody else's", () => {
+    const yourself = member('owner', 'active', true);
+
+    expect(memberStanding(yourself, [owner, yourself], anOwner)).toBe('selfOwner');
+    expect(memberStanding(yourself, [yourself], anOwner)).toBe('selfOwner');
+  });
+
+  it('tells a non-owner an owner can change their role, and points only an owner on', () => {
+    expect(ownRoleLine('self')).toEqual({ key: 'ownRoleOwnerCan', handsOn: false });
+    expect(ownRoleLine('selfOwner')).toEqual({ key: 'ownRole', handsOn: true });
   });
 
   it('keeps the only active owner as they are, whoever looks', () => {
