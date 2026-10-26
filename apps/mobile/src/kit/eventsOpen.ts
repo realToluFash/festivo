@@ -39,11 +39,13 @@ export function openedOf(
     : { kind: 'failed' };
 }
 
-/** Settled without asking the API: loading until the organisation has loaded, then not found for a role that cannot read events, as the API would answer. */
+/** Settled without asking the API: loading until the account has loaded, then not found with no organisation or for a role that cannot read events, as the API would answer. */
 export function openedWithoutAsking(
+  accountLoaded: boolean,
   organisation: { permissions: readonly string[] } | null,
 ): Opened | null {
-  if (organisation == null) return { kind: 'loading' };
+  if (!accountLoaded) return { kind: 'loading' };
+  if (organisation == null) return { kind: 'notFound' };
 
   return roleHolds(organisation, 'events.read') ? null : { kind: 'notFound' };
 }

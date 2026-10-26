@@ -35,7 +35,7 @@ const LOADING: Load = { kind: 'loading' };
 export function EventsScreen({ linked = null }: { linked?: string | null }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
-  const { organisation } = useSignedIn();
+  const { account, organisation } = useSignedIn();
   const organisationId = organisation?.id;
   const reads = organisation != null && roleHolds(organisation, 'events.read');
   const phone = kind === 'phone';
@@ -95,6 +95,7 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
       : null;
   const opened = useOpened(
     open != null && listed == null && (load.kind !== 'loading' || !reads) ? open : null,
+    account != null,
     organisation,
   );
 
@@ -203,10 +204,11 @@ function Waiting({ words }: { words: string }) {
 /** An event opened by a link is read on its own, since the list may not hold it. */
 function useOpened(
   eventId: string | null,
+  accountLoaded: boolean,
   organisation: Membership | null,
 ): Opened & { retry: () => void } {
   const organisationId = organisation?.id;
-  const settled = openedWithoutAsking(organisation);
+  const settled = openedWithoutAsking(accountLoaded, organisation);
   const asks = settled == null;
   const [held, setHeld] = useState<{ for: string | null; opened: Opened }>({
     for: null,

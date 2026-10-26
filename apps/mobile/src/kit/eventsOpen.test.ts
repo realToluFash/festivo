@@ -65,15 +65,21 @@ describe('an event read on its own', () => {
 });
 
 describe('the event open, before asking the API', () => {
-  it('waits for the organisation to load rather than showing not found', () => {
-    expect(openedWithoutAsking(null)).toEqual({ kind: 'loading' });
+  it('waits for the account to load rather than showing not found', () => {
+    expect(openedWithoutAsking(false, null)).toEqual({ kind: 'loading' });
+  });
+
+  it('shows not found to an account with no organisation', () => {
+    expect(openedWithoutAsking(true, null)).toEqual({ kind: 'notFound' });
   });
 
   it('shows not found to a role that cannot read events', () => {
-    expect(openedWithoutAsking({ permissions: ['members.read'] })).toEqual({ kind: 'notFound' });
+    expect(openedWithoutAsking(true, { permissions: ['members.read'] })).toEqual({
+      kind: 'notFound',
+    });
   });
 
   it('asks the API for a role that reads events', () => {
-    expect(openedWithoutAsking({ permissions: ['events.read'] })).toBeNull();
+    expect(openedWithoutAsking(true, { permissions: ['events.read'] })).toBeNull();
   });
 });
