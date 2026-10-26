@@ -56,11 +56,14 @@ class Permissions(unittest.TestCase):
         self.assertEqual(self.apply(text=unasked), 1)
 
     def test_a_rule_granting_a_whole_tool_is_refused(self):
-        for rule in ("Bash", "Bash(*)", "Bash(:*)", "Edit(**)", "Write(~/**)", "*"):
+        for rule in ("Bash", "Bash(*)", "Bash(:*)", "Edit(**)", "Write(~/**)", "*",
+                     "WebFetch(domain:*)", "WebFetch(domain:)"):
             broad = json.dumps({"rules": [{"rule": rule, "roles": ["all"], "ask": 1}]})
             self.assertEqual(self.apply(text=broad), 1, rule)
         self.assertEqual(permissions.applied(), [])
-        self.assertIn("grants every Write call", self.said[-2])
+        self.assertIn("grants every WebFetch call", self.said[-2])
+        narrow = [{"rule": "WebFetch(domain:docs.example.com)", "roles": ["all"], "ask": 1}]
+        self.assertEqual(permissions.parse(json.dumps({"rules": narrow}), "x"), narrow)
 
     def test_a_file_deleted_from_main_revokes_what_it_granted(self):
         self.apply()

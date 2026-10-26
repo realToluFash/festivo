@@ -45,7 +45,10 @@ def parse(text, where):
         if not match:
             raise Invalid(f"{where}: {rule!r} is not a permission rule such as "
                                    "Bash(xcrun simctl boot:*)")
-        if match.group(1) in NARROW and WILDCARD.match(match.group(2) or ""):
+        scope = match.group(2) or ""
+        if match.group(1) == "WebFetch":
+            scope = scope.removeprefix("domain:")
+        if match.group(1) in NARROW and WILDCARD.match(scope):
             raise Invalid(f"{where}: {rule} grants every {match.group(1)} call; name the "
                           f"command or path, such as Bash(xcrun simctl boot:*)")
         if not isinstance(names, list) or not names or any(
