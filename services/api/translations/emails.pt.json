@@ -171,7 +171,7 @@
     "ownerClaim.granted.subject": "{claimant} tem agora a função Proprietário em {organisation}",
     "ownerClaim.granted.heading": "{claimant} tem agora a função Proprietário em {organisation}.",
     "ownerClaim.granted.when": "Data da transferência da propriedade: {deadline}.",
-    "ownerClaim.lapsed.subject": "{claimant} não assumiu a propriedade de {organisation}. O pedido caducou",
+    "ownerClaim.lapsed.subject": "Pedido caducado: {organisation}",
     "ownerClaim.lapsed.heading": "{claimant} não assumiu a propriedade de {organisation}. O pedido caducou.",
     "ownerClaim.lapsed.recordRemoved": "O registo DNS foi removido, por isso a propriedade não foi transferida.",
     "ownerClaim.lapsed.claimantGone": "{claimant} já não tem a função Administrador em {organisation}, por isso a propriedade não foi transferida.",
