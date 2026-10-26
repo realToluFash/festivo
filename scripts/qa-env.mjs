@@ -230,6 +230,11 @@ export function releaseApp(root, sha) {
 }
 
 // A Mac keeps an APK and an app side by side: each build replaces only its own kind.
+// By platform, so a Mac that launches both keeps both videos of the one commit.
+export function launchVideo(root, sha, platform) {
+  return join(root, '.qa/release', `launch-${sha.slice(0, 12)}.${platform}.mp4`);
+}
+
 export function staleBuilds(names, build) {
   const kind = extname(build);
   return names.filter(
@@ -674,7 +679,7 @@ async function ios(args) {
   const other = simulatorId(CONFIG.simulators[shut].name);
   if (other) run('xcrun', ['simctl', 'shutdown', other], { optional: true });
   // An offline release launch stopped these; a release build owns soirely:// while installed.
-  composeServices(root, 'start');
+  startAppServices(root);
   const id = iosBundle(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
   const devices = [open].map((key) => {
     const udid = simulatorId(CONFIG.simulators[key].name);
@@ -900,6 +905,8 @@ async function android(args) {
   const root = qaWorktree();
   assertQaStack(root);
   const { open } = emulatorFor(args);
+  // An offline iOS release launch on this Mac stopped these.
+  startAppServices(root);
 
   step(`The ${open}`);
   await bootEmulator(tools, CONFIG.emulators[open].name);
@@ -1042,6 +1049,7 @@ async function releaseAndroid(args) {
   const offline = args.includes('--offline');
 
   const apk = releaseApk(root, sha);
+  startAppServices(root);
   if (existsSync(apk) && !args.includes('--rebuild')) {
     console.log(`  already built: ${apk}`);
   } else {
@@ -1070,7 +1078,7 @@ async function releaseAndroid(args) {
   await pause(1000);
   adbOut(tools, ['shell', 'am', 'start', '-n', `${id}/.MainActivity`]);
   await recording;
-  const video = join(root, '.qa/release', `launch-${sha.slice(0, 12)}.mp4`);
+  const video = launchVideo(root, sha, 'android');
   rmSync(video, { force: true });
   adbOut(tools, ['pull', LAUNCH_RECORDING, video]);
   adbOut(tools, ['shell', 'rm', '-f', LAUNCH_RECORDING]);
@@ -1147,8 +1155,15 @@ function buildIosRelease(root, app) {
   }
 }
 
-function composeServices(root, verb) {
-  run('docker', ['compose', verb, ...APP_SERVICES], { cwd: root });
+function stopAppServices(root) {
+  run('docker', ['compose', 'stop', ...APP_SERVICES], { cwd: root });
+}
+
+// Makes what a `down` removed, where `start` fails on a stack with no containers.
+function startAppServices(root) {
+  run('docker', ['compose', 'up', '-d', '--wait', '--no-recreate', ...APP_SERVICES], {
+    cwd: root,
+  });
 }
 
 function recordSimulator(udid, video) {
@@ -1191,9 +1206,10 @@ async function releaseIos(args) {
   const id = iosBundle(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
   run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true });
   run('xcrun', ['simctl', 'install', udid, app]);
-  composeServices(root, offline ? 'stop' : 'start');
+  if (offline) stopAppServices(root);
+  else startAppServices(root);
 
-  const video = join(root, '.qa/release', `launch-${sha.slice(0, 12)}.mp4`);
+  const video = launchVideo(root, sha, 'ios');
   const recorded = recordSimulator(udid, video);
   await pause(1000);
   run('xcrun', ['simctl', 'launch', udid, id]);
@@ -1202,7 +1218,10 @@ async function releaseIos(args) {
     `\nSoirely ${sha.slice(0, 12)}, a release build, on its first launch on the ${open}` +
       `, ${offline ? `offline: ${APP_SERVICES.join(', ')} stopped` : 'online'}.` +
       `\n${existsSync(video) ? `Its first 15 seconds: ${video}` : 'The launch was not recorded.'}` +
-      `\nThe next \`ios\` removes it and starts the stack again.`,
+      `\nThe next \`ios\` removes it and starts the stack again.` +
+      (offline
+        ? `\nWeb and android see the stack stopped too, until \`ios\`, \`android\` or \`release\` without --offline starts it.`
+        : ''),
   );
 }
 

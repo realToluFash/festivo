@@ -45,6 +45,7 @@ import {
   QA_PORTS,
   qaConfig,
   APP_SERVICES,
+  launchVideo,
   iosBundle,
   releaseApk,
   releaseApp,
@@ -284,6 +285,12 @@ describe('a release build', () => {
         apk,
       ),
     ).toEqual(['soirely-0123456789ab.apk']);
+  });
+
+  it('names the launch video by platform, so both launches of a commit are kept', () => {
+    const sha = 'c8646738ce1413ea1e718dce85ff4973f0f9b22c';
+    expect(launchVideo('/qa', sha, 'ios')).toBe('/qa/.qa/release/launch-c8646738ce14.ios.mp4');
+    expect(launchVideo('/qa', sha, 'android')).not.toBe(launchVideo('/qa', sha, 'ios'));
   });
 
   it('keeps the app beside the APK, and replaces only an older app', () => {
