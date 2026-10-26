@@ -370,6 +370,13 @@ class HeldByBlockers(Base):
         actions.claim(self.as_("dev"), args(story="sc-1"))
         self.assertEqual(self.state(1), "In Progress")
 
+    def test_a_rework_claim_fetches_no_blocker(self):
+        self.fake.update(1, workflow_state_id=IDS["Failed QA"],
+                         labels=[{"name": "backend"}, {"name": "dev2"}])
+        del self.fake.raw[7]
+        actions.claim(self.as_("dev2"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In Progress")
+
     def test_the_product_manager_s_move_still_moves_and_says_what_holds_it(self):
         self.fake.update(1, workflow_state_id=IDS["To Do"])
         said = actions.move(self.as_("pm"), args(story="sc-1", state="Ready For Dev"))

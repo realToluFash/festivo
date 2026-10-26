@@ -247,6 +247,8 @@ def ops_only(c, story):
 
 def holding_now(c, story):
     """The blockers holding the story, each as Shortcut has it now."""
+    if story["state"] not in W.HOLDABLE:
+        return []
     return W.holding(story, {b: c.story(b) for b in W.blockers(story)})
 
 
