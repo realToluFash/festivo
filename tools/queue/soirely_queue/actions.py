@@ -187,8 +187,8 @@ def comment(c, a):
     if to and story["done"]:
         woken = ", ".join(sorted({R.developer_of(story["labels"]) if t == "dev"
                                   else R.FORMER.get(t, t) for t in to}))
-        return (f"posted #{posted['id']} on sc-{story['id']}, which is Done: it wakes "
-                f"{woken}. New work goes on an open story or a new one")
+        return (f"posted #{posted['id']} on sc-{story['id']}{with_files(files)}, which is Done: "
+                f"it wakes {woken}. New work goes on an open story or a new one")
     return (f"posted #{posted['id']} on sc-{story['id']}"
             f"{with_files(files)}")
 

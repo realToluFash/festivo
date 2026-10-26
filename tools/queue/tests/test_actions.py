@@ -1469,6 +1469,14 @@ class FinishedStories(Base):
         self.assertIn("which is Done: it wakes dev3", said)
         self.assertIn("new one", said)
 
+    def test_a_comment_on_a_done_story_says_its_files_went_up(self):
+        self.fake.add(1, "Done", ["dev3"])
+        said = actions.comment(self.as_("qa3"), args(story="sc-1", to="dev", untagged=False,
+                                                     reply_to=None, files=["a.png", "b.png"],
+                                                     text="Still broken."))
+        self.assertEqual(self.fake.uploads, [(1, ["a.png", "b.png"])])
+        self.assertIn("on sc-1 with 2 files, which is Done: it wakes dev3", said)
+
     def test_a_tagged_comment_on_an_archived_story_is_refused(self):
         self.fake.add(1, "Done", ["dev3"])
         self.fake.raw[1]["archived"] = True
