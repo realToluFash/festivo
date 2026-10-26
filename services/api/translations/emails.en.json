@@ -171,7 +171,7 @@
     "ownerClaim.granted.subject": "{claimant} is now the owner of {organisation}",
     "ownerClaim.granted.heading": "{claimant} is now the owner of {organisation}.",
     "ownerClaim.granted.when": "Ownership passed on {deadline}.",
-    "ownerClaim.lapsed.subject": "{claimant} did not become the owner of {organisation}. The claim lapsed",
+    "ownerClaim.lapsed.subject": "Claim lapsed: {organisation}",
     "ownerClaim.lapsed.heading": "{claimant} did not become the owner of {organisation}. The claim lapsed.",
     "ownerClaim.lapsed.recordRemoved": "The DNS record was removed, so ownership did not pass.",
     "ownerClaim.lapsed.claimantGone": "{claimant} is no longer an Administrator of {organisation}, so ownership did not pass.",

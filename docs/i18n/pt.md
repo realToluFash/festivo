@@ -140,8 +140,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   suspensão" and "Data da reposição". `ownerNoSuspend` and `members.suspend_owner` say the
   same sentence.
 - **24 Oct 2026. The claim that lapsed** (`emails:ownerClaim.lapsed.*`, sc-9219). "Lapse" is
-  "caducar", as the web. The subject is "{claimant} não assumiu a propriedade de
-  {organisation}. O pedido caducou", never "o pedido de {claimant}" with a bare address. Each
+  "caducar", as the web. The subject leads with the outcome, "Pedido caducado: {organisation}", as
+  sc-14100: the sentence ran past one row of a 360dp inbox (QA, 26 Oct). The heading keeps
+  "{claimant} não assumiu a propriedade de {organisation}. O pedido caducou", never "o pedido
+  de {claimant}" with a bare address. Each
   reason ends "por isso a propriedade não foi transferida"; the date takes a label, "Data em
   que o pedido caducou: {deadline}.", as the withdrawn email.
 - **24 Oct 2026. The rest of a role's holders** (`rolesScreen.moreHolders_*`, web and app,

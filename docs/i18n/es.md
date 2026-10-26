@@ -145,9 +145,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   suspensión» and «Fecha de restablecimiento». The screen's `ownerNoSuspend` and
   `members.suspend_owner` open on the same sentence.
 - **24 Oct 2026. The claim that lapsed** (`emails:ownerClaim.lapsed.*`, sc-9219). "Lapse" is
-  «caducar», as the web. The subject puts the claimant as subject, «{claimant} no ha obtenido la
-  propiedad de {organisation}. La solicitud ha caducado», never «la solicitud de {claimant}»
-  with a bare address. Each reason ends «así que la propiedad no se ha transferido»; the date
+  «caducar», as the web. The subject leads with the outcome, «Solicitud caducada: {organisation}», as
+  sc-14100: the long sentence ran past one row of a 360dp inbox and lost «caducado» (QA, 26 Oct);
+  the heading still names {claimant}, «{claimant} no ha obtenido la propiedad de
+  {organisation}. La solicitud ha caducado», never «la solicitud de {claimant}» with a bare address. Each reason ends «así que la propiedad no se ha transferido»; the date
   «Caducada el {deadline}», as «Retirada el».
 - **24 Oct 2026. The rest of a role's holders** (`rolesScreen.moreHolders_*`, web and app,
   sc-9068). «y {{count}} más», after the five names it continues; nothing agrees with the
