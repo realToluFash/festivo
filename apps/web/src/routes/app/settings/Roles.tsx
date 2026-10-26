@@ -634,7 +634,7 @@ function Editing({
               title={saveLabel}
               {...offButton(status === 'saving')}
             >
-              <span className="roles-button-label">{saveLabel}</span>
+              <span className="button-label">{saveLabel}</span>
             </button>
           </div>
         </div>
@@ -889,10 +889,10 @@ function Removing({
           {...offButton(status === 'removing')}
           onClick={() => void remove()}
         >
-          <span className="roles-button-label">{removeLabel}</span>
+          <span className="button-label">{removeLabel}</span>
         </button>
         <button type="button" className="button" title={keepLabel} onClick={onKeep}>
-          <span className="roles-button-label">{keepLabel}</span>
+          <span className="button-label">{keepLabel}</span>
         </button>
       </div>
     </div>
