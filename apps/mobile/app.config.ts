@@ -1,6 +1,6 @@
 import type { ExpoConfig } from 'expo/config';
 
-import { tokens } from './src/theme/tokens.ts';
+import { tokens } from '../../docs/design/tokens.mjs';
 
 /**
  * Expo configuration, as code so it can read the environment.
