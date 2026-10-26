@@ -71,7 +71,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `messages:invitations.*`, sc-2922). The web twins of the app's Members keys are the app's
   words. An invitation is feminine and its states agree with it: «Pendiente», «Caducada»,
   «Retirada» (revoked and withdrawn alike), «Rechazada», «Aceptada», «Eliminada»; "Revoke" is
-  «Retirar». "Works until" is «Funciona hasta el {{date}}», never «válida hasta». An invited
+  «Retirar». "Works until" is «Válida hasta el {{date}}» (as a sentence, «Esta invitación es válida hasta el {{date}}»), never «funciona hasta», which reads as a machine working (QA, 26 Oct). Who sent it is «invitación enviada por {{inviter}}», and the reader as sender is «usted», «enviada por usted». An invited
   person is «con invitación» in the subtitle and the chip, so no count agrees with anyone. The
   history lines name what was acted on, as «Solicitud rechazada por {{by}}»: «Invitación
   enviada por», «Solicitud aprobada por», «Acceso suspendido / restablecido / retirado por»;
