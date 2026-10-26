@@ -51,13 +51,11 @@ export function breakableEmail(email: string): string {
   return email.replace('@', '@​');
 }
 
-/** The size a title is drawn at, for the step's size and the text it was found for. */
 export interface TitleFit {
   readonly key: string;
   readonly drawn: number;
 }
 
-/** Starts again at the step's size whenever the step or the text changes. */
 export function fitTitle(
   fit: TitleFit | null,
   size: number,
