@@ -2201,6 +2201,36 @@ describe('invitations and members', () => {
     expect(deletion.restoreCloses).toBe('Monday, Nov 16 at 14:20 WAT');
     expect(sent[0]).toEqual({ line: 'DELETE /api/orgs/org_1', body: { name: 'Ìrè Events' } });
   });
+
+  test('an event deletion preview says whether the name is asked for and until when it can be restored', async () => {
+    const { api, sent } = client(
+      json({
+        needsName: true,
+        restoreClosesAt: '2026-11-16T13:20:00+00:00',
+        restoreCloses: 'Monday 16 Nov at 14:20 WAT',
+      }),
+    );
+
+    expect(await api.eventDeletion('event_1')).toEqual({
+      needsName: true,
+      restoreClosesAt: '2026-11-16T13:20:00+00:00',
+      restoreCloses: 'Monday 16 Nov at 14:20 WAT',
+    });
+    expect(sent[0]?.line).toBe('GET /api/events/event_1/deletion');
+  });
+
+  test('an event delete sends the name as typed, and none for a Draft', async () => {
+    const sent: { line: string; body: unknown }[] = [];
+
+    await client(json({}), sent).api.deleteEvent('event_1', 'Amara & Tobi’s wedding');
+    await client(json({}), sent).api.deleteEvent('event_1');
+
+    expect(sent[0]).toEqual({
+      line: 'DELETE /api/events/event_1',
+      body: { name: 'Amara & Tobi’s wedding' },
+    });
+    expect(sent[1]).toEqual({ line: 'DELETE /api/events/event_1', body: { name: null } });
+  });
 });
 
 describe('events (sc-1486)', () => {

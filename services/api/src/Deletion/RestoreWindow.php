@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\Organisation\Deletion;
+namespace App\Deletion;
 
 use DateInterval;
 use DateTimeImmutable;

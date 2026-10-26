@@ -1,22 +1,23 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
 import { type EventPhase, formatEventRange, shownPhase } from '@soirely/domain';
-import { type RefObject, useContext, useEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
-import { Arriving } from '../../../pageArrival.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { type EditOutcome } from './EditEvent.tsx';
+import { DeleteEvent } from './DeleteEvent.tsx';
 import { CalledOffNotice, EndButton } from './EndEvent.tsx';
 import { EventCoverImage } from './EventCoverImage.tsx';
 import { PHASE_WORD } from './eventWords.ts';
 import { DraftRow, StatusPill } from './MakeLive.tsx';
+import { OutcomeLine } from './OutcomeLine.tsx';
 import { typeLabel } from './eventTypes.ts';
 
 type Load =
@@ -250,6 +251,7 @@ function EventPage({
           {t('eventPage.guests')}
         </Link>
       </div>
+      {can(session, 'events.create') && <DeleteEvent event={event} />}
     </section>
   );
 }
@@ -292,32 +294,6 @@ function Venue({ event, manages }: { event: OrganisationEvent; manages: boolean 
         </a>
       )}
     </div>
-  );
-}
-
-/** Where the page begins after Save changes; once the person has moved focus, it is announced instead (sc-11370). */
-function OutcomeLine({ words }: { words: string }) {
-  const arriving = useContext(Arriving);
-  const [taking] = useState(arriving);
-  const [announced, setAnnounced] = useState('');
-
-  useEffect(() => {
-    if (taking) return;
-
-    // Set after the region is in the page, so a screen reader hears the change rather than missing a region born full.
-    const id = window.setTimeout(() => setAnnounced(words), 0);
-
-    return () => window.clearTimeout(id);
-  }, [taking, words]);
-
-  return taking ? (
-    <p className="event-page-outcome" tabIndex={-1} data-page-focus="">
-      {words}
-    </p>
-  ) : (
-    <p className={announced === '' ? 'visually-hidden' : 'event-page-outcome'} role="status">
-      {announced}
-    </p>
   );
 }
 
