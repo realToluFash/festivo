@@ -50,7 +50,8 @@
     "web:invitations.fromNobody",
     "web:invitations.heading",
     "web:membersScreen.how.invitation",
-    "web:membersScreen.invitations"
+    "web:membersScreen.invitations",
+    "web:eventTypes.baby_shower"
   ],
   "pt": [
     "web:app.name",
