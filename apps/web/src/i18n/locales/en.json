@@ -12,6 +12,8 @@
     "guests": "Guests",
     "settings": "Settings",
     "account": "Your account",
+    "menu": "Menu",
+    "closeMenu": "Close menu",
     "organisation": "Organisation",
     "signedInAs": "Signed in as {{name}}",
     "switchOrganisation": "Switch organisation",
