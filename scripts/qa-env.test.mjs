@@ -19,6 +19,8 @@ import {
   batchFlow,
   checkId,
   codeStep,
+  databaseCommands,
+  HARNESS,
   composeBatch,
   localise,
   parseBatch,
@@ -871,5 +873,49 @@ describe('the flows a batch runs', () => {
     } finally {
       rmSync(target, { recursive: true, force: true });
     }
+  });
+});
+
+describe('the harness in .qa/bin', () => {
+  it('carries every file qa-env.mjs imports from beside itself', () => {
+    const source = readFileSync(join(import.meta.dirname, 'qa-env.mjs'), 'utf8');
+    const local = [...source.matchAll(/from '\.\/([^']+)'/g)].map(([, file]) => file);
+    expect(HARNESS).toEqual(expect.arrayContaining(['qa-env.mjs', ...local]));
+  });
+
+  it('runs from a copy alone in a folder', () => {
+    const bin = mkdtempSync(join(tmpdir(), 'qa-bin-'));
+    for (const file of HARNESS) {
+      writeFileSync(join(bin, file), readFileSync(join(import.meta.dirname, file)));
+    }
+    return expect(import(join(bin, 'qa-env.mjs'))).resolves.toHaveProperty('HARNESS');
+  });
+});
+
+describe('the database, from a checkout', () => {
+  const console_ = ['console'];
+  const verbs = (commands) => commands.map((args) => args.slice(0, 2).join(' '));
+
+  it('stops the worker before the drop and recreates it after migrating', () => {
+    expect(verbs(databaseCommands(console_, ['notification-worker'], false))).toEqual([
+      'compose stop',
+      'console doctrine:database:drop',
+      'console doctrine:database:create',
+      'console doctrine:migrations:migrate',
+      'compose up',
+    ]);
+  });
+
+  it('keeps the data, and still recreates the worker after migrating', () => {
+    expect(verbs(databaseCommands(console_, ['notification-worker'], true))).toEqual([
+      'console doctrine:migrations:migrate',
+      'compose up',
+    ]);
+  });
+
+  it('touches no service on a commit with nothing waiting for migrations', () => {
+    const commands = databaseCommands(console_, [], false);
+    expect(commands.filter(([first]) => first === 'compose')).toEqual([]);
+    expect(commands).toHaveLength(3);
   });
 });

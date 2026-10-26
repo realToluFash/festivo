@@ -382,6 +382,9 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 // QA runs the copy in .qa/bin, gitignored, so checking out an old commit keeps the harness.
 const INSTALLED = basename(HERE) === 'bin' && basename(dirname(HERE)) === '.qa';
 
+// Every file qa-env.mjs imports from beside itself, so the copy runs on its own.
+export const HARNESS = ['qa-env.mjs', 'stack-services.mjs'];
+
 export function testerOf(worktree) {
   const match = /^soirely-qa(\d*)$/.exec(basename(worktree));
   return match ? Number(match[1] || 1) : null;
@@ -455,7 +458,7 @@ function setup() {
 
   step('The harness, into .qa/bin');
   mkdirSync(join(root, '.qa/bin'), { recursive: true });
-  copyFileSync(fileURLToPath(import.meta.url), join(root, '.qa/bin/qa-env.mjs'));
+  for (const file of HARNESS) copyFileSync(join(HERE, file), join(root, '.qa/bin', file));
 
   const settings = join(main, '.claude/settings.local.json');
   if (existsSync(settings) && !existsSync(join(root, '.claude/settings.local.json'))) {
@@ -608,25 +611,34 @@ function checkout(args) {
 
   step(keepData ? 'The database, migrated' : 'The database, from nothing');
   const afterMigrations = servicesAfterMigrations(composeServices(root));
-  // From nothing: an edited unreleased migration leaves a migrated database wrong.
-  if (!keepData) {
-    // Postgres refuses to drop a database the worker is still connected to.
-    run('docker', ['compose', 'stop', ...afterMigrations], { cwd: root });
-    run('docker', [...console_, 'doctrine:database:drop', '--if-exists', '--force'], { cwd: root });
-    run('docker', [...console_, 'doctrine:database:create'], { cwd: root });
+  for (const args of databaseCommands(console_, afterMigrations, keepData)) {
+    run('docker', args, { cwd: root });
   }
-  run('docker', [...console_, 'doctrine:migrations:migrate', '-n', '--allow-no-migration'], {
-    cwd: root,
-  });
-  // Recreated, so a health check failed while waiting for the schema does not end --wait at once.
-  run('docker', ['compose', 'up', '-d', '--wait', '--force-recreate', ...afterMigrations], {
-    cwd: root,
-  });
 
   status();
   console.log(
     '\nA bundler already running is serving the previous checkout. Restart `ios` or `android`.',
   );
+}
+
+// With no names, compose stop and up act on the whole stack, so an old commit with no
+// worker skips both.
+export function databaseCommands(console_, afterMigrations, keepData) {
+  const waiting = afterMigrations.length > 0;
+  return [
+    // From nothing: an edited unreleased migration leaves a migrated database wrong.
+    ...(keepData
+      ? []
+      : [
+          // Postgres refuses to drop a database the worker is still connected to.
+          ...(waiting ? [['compose', 'stop', ...afterMigrations]] : []),
+          [...console_, 'doctrine:database:drop', '--if-exists', '--force'],
+          [...console_, 'doctrine:database:create'],
+        ]),
+    [...console_, 'doctrine:migrations:migrate', '-n', '--allow-no-migration'],
+    // Recreated, so a health check failed while waiting for the schema does not end --wait at once.
+    ...(waiting ? [['compose', 'up', '-d', '--wait', '--force-recreate', ...afterMigrations]] : []),
+  ];
 }
 
 function status() {
