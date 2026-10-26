@@ -10,13 +10,14 @@ use DateTimeZone;
 
 final class EventSerialiser
 {
-    /** @return array{id: string, organisationId: string, name: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, createdAt: string} */
+    /** @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, createdAt: string} */
     public static function event(Event $event): array
     {
         return [
             'id' => $event->getId()->toRfc4122(),
             'organisationId' => $event->getOrganisation()->getId()->toRfc4122(),
             'name' => $event->getName(),
+            'type' => $event->getType()->value,
             'status' => $event->getStatus()->value,
             'startsAt' => $event->getStartsAt()->format(\DATE_ATOM),
             'endsAt' => $event->getEndsAt()->format(\DATE_ATOM),

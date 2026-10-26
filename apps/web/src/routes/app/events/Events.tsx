@@ -8,6 +8,7 @@ import { api } from '../../../api.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
+import { typeLabel } from './eventTypes.ts';
 
 type Load =
   { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; events: OrganisationEvent[] };
@@ -120,7 +121,10 @@ function EventsOf({
       {load.events.map((event) => (
         <li key={event.id}>
           <Link className="events-row" to={`/app/events/${encodeURIComponent(event.id)}`}>
-            <span className="events-row-name">{event.name}</span>
+            <span className="events-row-title">
+              <span className="events-row-name">{event.name}</span>
+              <span className="muted">{typeLabel(event.type, t)}</span>
+            </span>
             <span className="pill-quiet">{t('events.draft')}</span>
             <span className="muted events-row-date">
               {formatEventDate(event.startsAt, event.timeZone, dateLocale())}

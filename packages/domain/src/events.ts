@@ -1,13 +1,39 @@
 /** The API's event name limit, counted in characters after trimming. */
 export const EVENT_NAME_MAXIMUM = 120;
 
-export type EventField = 'name' | 'startsAt' | 'endsAt';
+/** The API's EventType, in the order the forms offer them, Other last (sc-3588). */
+export const EVENT_TYPES = [
+  'wedding',
+  'birthday',
+  'anniversary',
+  'engagement',
+  'baby_shower',
+  'graduation',
+  'memorial',
+  'religious',
+  'cultural',
+  'party',
+  'gala',
+  'conference',
+  'corporate',
+  'other',
+] as const;
+
+export type EventType = (typeof EVENT_TYPES)[number];
+
+export function isEventType(value: unknown): value is EventType {
+  return (EVENT_TYPES as readonly unknown[]).includes(value);
+}
+
+export type EventField = 'name' | 'type' | 'startsAt' | 'endsAt';
 
 export type EventProblem =
-  'nameBlank' | 'nameTooLong' | 'startMissing' | 'endMissing' | 'endBeforeStart';
+  'nameBlank' | 'nameTooLong' | 'typeMissing' | 'startMissing' | 'endMissing' | 'endBeforeStart';
 
 export interface EventDraft {
   name: string;
+  /** Empty until one is chosen, on a new event only. */
+  type: EventType | '';
   startDate: string;
   startTime: string;
   endDate: string;
@@ -39,6 +65,8 @@ export function eventProblems(
 
   if (length === 0) problems.push({ field: 'name', problem: 'nameBlank' });
   else if (length > EVENT_NAME_MAXIMUM) problems.push({ field: 'name', problem: 'nameTooLong' });
+
+  if (draft.type === '') problems.push({ field: 'type', problem: 'typeMissing' });
 
   if (startsAt == null) problems.push({ field: 'startsAt', problem: 'startMissing' });
 
@@ -123,9 +151,15 @@ export function filledEndDate(startDate: string, endDate: string, endChosen: boo
 }
 
 /** An event's saved values as the form types them: its wall-clock date and time, read off the offset form the API serves. */
-export function draftOf(event: { name: string; startsAt: string; endsAt: string }): EventDraft {
+export function draftOf(event: {
+  name: string;
+  type: EventType;
+  startsAt: string;
+  endsAt: string;
+}): EventDraft {
   return {
     name: event.name,
+    type: event.type,
     startDate: event.startsAt.slice(0, 10),
     startTime: event.startsAt.slice(11, 16),
     endDate: event.endsAt.slice(0, 10),
@@ -135,6 +169,7 @@ export function draftOf(event: { name: string; startsAt: string; endsAt: string 
 
 export interface EventDetails {
   name: string;
+  type: EventType;
   startsAt: string;
   endsAt: string;
   timeZone: string;
@@ -152,6 +187,7 @@ export function eventChanges(
   const endsAt = localDateTime(typed.draft.endDate, typed.draft.endTime) ?? '';
 
   if (eventNameOf(typed.draft.name) !== was.name) changes.name = eventNameOf(typed.draft.name);
+  if (typed.draft.type !== '' && typed.draft.type !== was.type) changes.type = typed.draft.type;
   if (startsAt !== localDateTime(was.startDate, was.startTime)) changes.startsAt = startsAt;
   if (endsAt !== localDateTime(was.endDate, was.endTime)) changes.endsAt = endsAt;
   if (typed.timeZone !== was.timeZone) changes.timeZone = typed.timeZone;

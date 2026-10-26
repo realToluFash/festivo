@@ -8,6 +8,7 @@ use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
 use App\Entity\Event;
 use App\Entity\Organisation;
+use App\Enum\EventType;
 use App\Repository\EventRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
@@ -142,6 +143,7 @@ final class EventTimesRecomputeTest extends ApiTestCase
         $event = new Event(
             $organisation,
             $name,
+            EventType::Other,
             new DateTimeImmutable($startsAt, new DateTimeZone($zone)),
             new DateTimeImmutable($endsAt, new DateTimeZone($zone)),
             'EUR',

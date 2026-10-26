@@ -4,11 +4,19 @@ export type Field = EventField | 'timeZone' | 'currency';
 export type Errors = Partial<Record<Field, string | undefined>>;
 
 /** In the order the form shows them, so the first refused is the one focus goes to. */
-export const FIELDS: readonly Field[] = ['name', 'startsAt', 'endsAt', 'timeZone', 'currency'];
+export const FIELDS: readonly Field[] = [
+  'name',
+  'type',
+  'startsAt',
+  'endsAt',
+  'timeZone',
+  'currency',
+];
 
 /** The input focus goes to: the empty half of a start or an end, or the end's date when it is too early. */
 export function inputFor(field: Field, draft: EventDraft): string {
   if (field === 'name') return 'event-name';
+  if (field === 'type') return 'event-type';
   if (field === 'timeZone') return 'event-time-zone';
   if (field === 'currency') return 'event-currency';
 
