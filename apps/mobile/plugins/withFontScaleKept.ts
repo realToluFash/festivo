@@ -8,10 +8,16 @@ const IMPORTS = [
 ];
 
 // React Native tells JavaScript about a new font scale only on resume, so a change made while the app stays open would never reach it.
+// DeviceInfo is internal to React Native, so a debug build fails here on the first upgrade that renames it or drops the interface.
 const OVERRIDE = `
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)
-    (reactHost?.currentReactContext?.getNativeModule("DeviceInfo") as? LifecycleEventListener)?.onHostResume()
+    val context = reactHost?.currentReactContext ?: return
+    val deviceInfo = context.getNativeModule("DeviceInfo") as? LifecycleEventListener
+    check(deviceInfo != null || !BuildConfig.DEBUG) {
+      "DeviceInfo no longer listens for resume; a font-size change will not reach JavaScript."
+    }
+    deviceInfo?.onHostResume()
   }
 `;
 

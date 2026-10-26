@@ -37,10 +37,13 @@ describe('withFontScaleForwarded', () => {
 
   it('passes the change on to DeviceInfo inside the class', () => {
     expect(forwarded).toContain('super.onConfigurationChanged(newConfig)');
-    expect(forwarded).toContain(
-      'getNativeModule("DeviceInfo") as? LifecycleEventListener)?.onHostResume()',
-    );
+    expect(forwarded).toContain('getNativeModule("DeviceInfo") as? LifecycleEventListener');
+    expect(forwarded).toContain('deviceInfo?.onHostResume()');
     expect(forwarded.trimEnd().endsWith('  }\n}')).toBe(true);
+  });
+
+  it('fails a debug build loudly when DeviceInfo stops listening for resume', () => {
+    expect(forwarded).toContain('check(deviceInfo != null || !BuildConfig.DEBUG)');
   });
 
   it('refuses an activity that already handles configuration changes, rather than declaring it twice', () => {
