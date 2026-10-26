@@ -3480,6 +3480,434 @@ button.members-row {
   gap: var(--spaceMd);
 }
 
+/* The event's cover (sc-3590): 16:9 reserved before it loads, the photo or its type's default pattern. */
+.cover {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cover-default {
+  --coverA: var(--colorInset);
+  --coverB: var(--colorInsetBorder);
+
+  background-color: var(--coverA);
+  background-image: radial-gradient(circle at 70% 40%, var(--coverB) 0 20%, transparent 20%);
+}
+
+.cover-default-wedding {
+  --coverA: var(--colorAttentionTint);
+
+  background-image:
+    radial-gradient(
+      circle at 42% 50%,
+      transparent 20%,
+      var(--colorAttention) 20% 23%,
+      transparent 23%
+    ),
+    radial-gradient(
+      circle at 58% 50%,
+      transparent 20%,
+      var(--colorAttentionBorder) 20% 23%,
+      transparent 23%
+    );
+}
+
+.cover-default-birthday {
+  --coverA: var(--colorAccentTint);
+
+  background-image:
+    radial-gradient(circle, var(--colorAccent) 0 0.1875rem, transparent 0.1875rem),
+    radial-gradient(circle, var(--colorAttention) 0 0.1875rem, transparent 0.1875rem);
+  background-position:
+    0 0,
+    0.875rem 0.875rem;
+  background-size: 1.75rem 1.75rem;
+}
+
+.cover-default-anniversary {
+  --coverA: var(--colorAttentionTint);
+
+  background-image: repeating-radial-gradient(
+    circle,
+    var(--colorAttentionBorder) 0 0.375rem,
+    var(--colorAttentionTint) 0.375rem 1.125rem
+  );
+}
+
+.cover-default-engagement {
+  --coverA: var(--colorAccentTint);
+
+  background-image: radial-gradient(
+    circle at 50% 55%,
+    transparent 18%,
+    var(--colorAccentText) 18% 21%,
+    transparent 21%
+  );
+}
+
+.cover-default-baby-shower {
+  --coverA: var(--colorHeader);
+
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--colorHeader) 0 1.5rem,
+    var(--colorHeaderBorder) 1.5rem 3rem
+  );
+}
+
+.cover-default-graduation {
+  --coverA: var(--colorHeader);
+
+  background-image: linear-gradient(
+    135deg,
+    transparent 44%,
+    var(--colorInkSecondary) 44% 56%,
+    transparent 56%
+  );
+}
+
+.cover-default-memorial {
+  --coverA: var(--colorInset);
+
+  background-image: linear-gradient(180deg, var(--colorInset) 0 62%, var(--colorInsetBorder) 62%);
+}
+
+.cover-default-religious {
+  --coverA: var(--colorAttentionTint);
+
+  background-image: radial-gradient(
+    ellipse 30% 62% at 50% 100%,
+    var(--colorAttentionBorder) 0 100%,
+    transparent 100%
+  );
+}
+
+.cover-default-cultural {
+  --coverA: var(--colorAttentionTint);
+
+  background-image:
+    linear-gradient(135deg, var(--colorAccent) 25%, transparent 25%),
+    linear-gradient(225deg, var(--colorAttention) 25%, transparent 25%);
+  background-size: 2rem 2rem;
+}
+
+.cover-default-party {
+  --coverA: var(--colorCard);
+
+  background-image:
+    radial-gradient(circle, var(--colorAttention) 0 2.5px, transparent 2.5px),
+    repeating-linear-gradient(
+      45deg,
+      var(--colorAccentTint) 0 0.875rem,
+      var(--colorCard) 0.875rem 1.75rem
+    );
+  background-size:
+    1.375rem 1.375rem,
+    auto;
+}
+
+.cover-default-gala {
+  --coverA: var(--colorAttentionTint);
+
+  background-image:
+    radial-gradient(circle, var(--colorAttention) 0 6%, transparent 6%),
+    repeating-conic-gradient(
+      var(--colorAttentionTint) 0 10deg,
+      var(--colorAttentionBorder) 10deg 20deg
+    );
+}
+
+.cover-default-conference {
+  --coverA: var(--colorHeader);
+
+  background-image:
+    linear-gradient(var(--colorHeaderBorder) 1px, transparent 1px),
+    linear-gradient(90deg, var(--colorHeaderBorder) 1px, transparent 1px);
+  background-size: 1.5rem 1.5rem;
+}
+
+.cover-default-corporate {
+  --coverA: var(--colorHeader);
+
+  background-image: linear-gradient(
+    180deg,
+    transparent 55%,
+    var(--colorAccentText) 55% 60%,
+    transparent 60%
+  );
+}
+
+.cover-field {
+  display: grid;
+  grid-template-columns: minmax(0, 27.5rem) 1fr;
+  gap: var(--space3xl);
+  align-items: start;
+}
+
+.cover-field-image {
+  min-width: 0;
+  width: 100%;
+}
+
+.cover-field-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+}
+
+.cover-field-side .field-help {
+  margin: 0;
+}
+
+.cover-control {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radiusInset);
+  background: none;
+  cursor: pointer;
+}
+
+.cover-control:focus-visible {
+  outline: 3px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
+.cover-control:focus-visible::after {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radiusInset);
+  box-shadow: inset 0 0 0 3px var(--colorCard);
+  content: '';
+}
+
+.cover-control:hover img {
+  filter: brightness(0.8);
+}
+
+.cover-pill {
+  position: absolute;
+  right: var(--spaceLg);
+  bottom: var(--spaceLg);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  box-sizing: border-box;
+  min-height: 2.25rem;
+  max-width: calc(100% - var(--space3xl));
+  padding: var(--spaceXs) var(--spaceLg);
+  border-radius: var(--radiusPill);
+  background: color-mix(in srgb, var(--colorInk) 72%, transparent);
+  color: var(--colorInkOnDark);
+  font: var(--typeButton);
+  line-height: 1.3;
+}
+
+.cover-pill svg {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+}
+
+.cover-control:hover .cover-pill,
+.cover-control:focus-visible .cover-pill {
+  background: var(--colorInk);
+}
+
+.cover-removed {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin: 0;
+  color: var(--colorInk);
+  font-weight: 500;
+}
+
+.cover-removed svg {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--colorAccent);
+}
+
+.cover-dialog {
+  width: 45rem;
+  padding: 0;
+  overflow: hidden;
+  gap: 0;
+}
+
+.cover-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceLg);
+  padding: var(--spaceXl) var(--spaceXl) var(--spaceLg) var(--space3xl);
+  border-bottom: 1px solid var(--colorHeaderBorder);
+  background: var(--colorHeader);
+}
+
+.cover-dialog-header h2 {
+  margin: 0;
+  font: var(--typeTitleDialog);
+  letter-spacing: var(--typeTitleDialogTracking);
+}
+
+.cover-dialog-close {
+  flex: none;
+  width: var(--sizeHit);
+  height: var(--sizeHit);
+  border: var(--borderControl);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  cursor: pointer;
+}
+
+.cover-dialog-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceXl);
+  overflow-y: auto;
+  padding: var(--space3xl);
+}
+
+.cover-dialog-actions {
+  justify-content: space-between;
+  padding: var(--spaceLg) var(--space3xl);
+  border-top: 1px solid var(--colorInsetBorder);
+  background: var(--colorInset);
+}
+
+.cover-dialog-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceMd);
+  margin-left: auto;
+}
+
+.cover-frame {
+  position: relative;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.cover-frame::after {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radiusInset);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--colorCard) 85%, transparent);
+  content: '';
+  pointer-events: none;
+}
+
+.cover-frame:active {
+  cursor: grabbing;
+}
+
+.cover-frame-state {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  background: color-mix(in srgb, var(--colorCard) 70%, transparent);
+}
+
+.cover-slider {
+  width: 100%;
+  min-height: var(--sizeHit);
+  accent-color: var(--colorAccent);
+}
+
+.cover-slider-marks {
+  display: flex;
+  justify-content: space-between;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+.cover-optional {
+  display: inline-flex;
+  align-items: center;
+  height: 1.375rem;
+  margin-left: var(--spaceXs);
+  padding: 0 var(--spaceSm);
+  border-radius: var(--radiusPill);
+  background: var(--colorNeutralFill);
+  color: var(--colorInkSecondary);
+  font: var(--typePill);
+  vertical-align: middle;
+}
+
+.cover-remove {
+  color: var(--colorBrokenText);
+}
+
+.cover-remove-below {
+  padding-top: var(--spaceXs);
+  border-top: 1px solid var(--colorInsetBorder);
+}
+
+.cover-remove-below .cover-remove {
+  width: 100%;
+}
+
+.event-page-cover {
+  margin-bottom: var(--spaceXl);
+}
+
+.events-row-cover {
+  flex: 0 0 6rem;
+  border-radius: var(--radiusSmall);
+}
+
+@media (width <= 40rem) {
+  .cover-dialog {
+    inset: 0;
+    width: 100%;
+    max-height: none;
+    height: 100%;
+    border-radius: 0;
+  }
+
+  .cover-dialog-body {
+    padding: var(--spaceXl);
+  }
+
+  .cover-dialog-actions {
+    padding: var(--spaceLg) var(--spaceXl);
+  }
+
+  .cover-dialog-confirm {
+    flex-direction: column-reverse;
+    flex: 1;
+    margin-left: 0;
+  }
+}
+
+@media (width < 43.75rem) {
+  .cover-field {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--spaceXl);
+  }
+}
+
 .event-page-head {
   display: flex;
   flex-wrap: wrap;

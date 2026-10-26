@@ -15,7 +15,14 @@ enum UploadPurpose: string
     public function allowedTypes(): array
     {
         return match ($this) {
-            self::EventCover, self::OrganisationLogo => [
+            self::EventCover => [
+                'image/jpeg',
+                'image/png',
+                'image/webp',
+                'image/heic',
+                'image/heif',
+            ],
+            self::OrganisationLogo => [
                 'image/jpeg',
                 'image/png',
                 'image/webp',
@@ -39,17 +46,17 @@ enum UploadPurpose: string
     {
         return match ($this) {
             self::OrganisationLogo => 2 * 1024 * 1024,
-            self::EventCover => 10 * 1024 * 1024,
-            self::GuestImport => 15 * 1024 * 1024,
+            self::EventCover, self::GuestImport => 15 * 1024 * 1024,
             self::SupportAttachment => 25 * 1024 * 1024,
         };
     }
 
+    /** An event cover is uploaded privately: what is published is the server's re-encoded copy, without the original's metadata (sc-3590). */
     public function isPublic(): bool
     {
         return match ($this) {
-            self::EventCover, self::OrganisationLogo => true,
-            self::GuestImport, self::SupportAttachment => false,
+            self::OrganisationLogo => true,
+            self::EventCover, self::GuestImport, self::SupportAttachment => false,
         };
     }
 

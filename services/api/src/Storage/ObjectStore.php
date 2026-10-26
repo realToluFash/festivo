@@ -23,7 +23,8 @@ final readonly class ObjectStore
     ) {
     }
 
-    public function signUpload(UploadPurpose $purpose, string $contentType, string $filename): SignedUpload
+    /** A scope, such as an organisation's id, starts the key, so a later request can check the key is its own. */
+    public function signUpload(UploadPurpose $purpose, string $contentType, string $filename, ?string $scope = null): SignedUpload
     {
         if (!$purpose->allows($contentType)) {
             throw new InvalidArgumentException(\sprintf(
@@ -33,8 +34,8 @@ final readonly class ObjectStore
             ));
         }
 
-        $key = $this->key($purpose, $filename);
-        $bucket = $purpose->isPublic() ? $this->publicBucket : $this->privateBucket;
+        $key = $this->key($purpose, $filename, $scope);
+        $bucket = $this->bucketFor($purpose);
 
         $request = $this->s3->presign(
             new \AsyncAws\S3\Input\PutObjectRequest([
@@ -79,14 +80,58 @@ final readonly class ObjectStore
         return $this->s3->objectExists(['Bucket' => $bucket, 'Key' => $key])->isSuccess();
     }
 
-    private function key(UploadPurpose $purpose, string $filename): string
+    /** A signed upload carries no length, so what arrived is measured before anything reads it. Null when nothing did. */
+    public function uploadSize(UploadPurpose $purpose, string $key): ?int
+    {
+        $bucket = $this->bucketFor($purpose);
+
+        if (!$this->exists($bucket, $key)) {
+            return null;
+        }
+
+        return (int) $this->s3->headObject(['Bucket' => $bucket, 'Key' => $key])->getContentLength();
+    }
+
+    public function readUpload(UploadPurpose $purpose, string $key): string
+    {
+        return $this->s3->getObject(['Bucket' => $this->bucketFor($purpose), 'Key' => $key])->getBody()->getContentAsString();
+    }
+
+    public function deleteUpload(UploadPurpose $purpose, string $key): void
+    {
+        $this->delete($this->bucketFor($purpose), $key);
+    }
+
+    /** Written by the server, readable by anyone at publicUrl(). */
+    public function publish(string $key, string $bytes, string $contentType): void
+    {
+        $this->s3->putObject(['Bucket' => $this->publicBucket, 'Key' => $key, 'Body' => $bytes, 'ContentType' => $contentType]);
+    }
+
+    public function unpublish(string $key): void
+    {
+        $this->delete($this->publicBucket, $key);
+    }
+
+    public function publicUrl(string $key): string
+    {
+        return $this->urlFor($this->publicBucket, $key);
+    }
+
+    private function bucketFor(UploadPurpose $purpose): string
+    {
+        return $purpose->isPublic() ? $this->publicBucket : $this->privateBucket;
+    }
+
+    private function key(UploadPurpose $purpose, string $filename, ?string $scope): string
     {
         $extension = \strtolower(\pathinfo($filename, \PATHINFO_EXTENSION));
         $extension = 1 === \preg_match('/^[a-z0-9]{1,8}$/', $extension) ? '.' . $extension : '';
 
         return \sprintf(
-            '%s/%s/%s%s',
+            '%s/%s%s/%s%s',
             $purpose->value,
+            null === $scope ? '' : $scope . '/',
             new DateTimeImmutable()->format('Y/m'),
             Uuid::v7()->toRfc4122(),
             $extension,
