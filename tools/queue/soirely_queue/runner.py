@@ -129,13 +129,16 @@ def agree(db, config, platform, now, say, remote, ready):
     GitHub cannot be reached: then another machine may be taking this one's roles over, so
     nothing shared starts here, and only this machine's own ops work runs."""
     try:
-        return shared.reconcile(remote, db, config, started(db) & ready,
-                                lambda role: any_active(platform, config, role),
-                                holding(db, now), now, bool(paused(db)))
+        agreed = shared.reconcile(remote, db, config, started(db) & ready,
+                                  lambda role: any_active(platform, config, role),
+                                  holding(db, now), now, bool(paused(db)))
     except Exception as error:  # noqa: BLE001 — offline, rate-limited, or GitHub refusing
+        store.set_meta(db, "shared_unreachable", str(error)[:160])
         say(f"warning: could not reach the shared leases ({str(error)[:160]}); starting only "
             "this machine's own ops work until it can")
         return None
+    store.set_meta(db, "shared_unreachable", None)
+    return agreed
 
 
 def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,

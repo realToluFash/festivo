@@ -398,6 +398,17 @@ class Run(unittest.TestCase):
         self.assertTrue(any(s.startswith("warning: could not reach the shared leases")
                             for s in self.said))
 
+    def test_status_warns_while_the_shared_leases_are_out_of_reach(self):
+        from soirely_queue import dashboard
+        self.platform.timer_active = lambda: True
+        status = lambda: dashboard.snapshot(self.db, self.platform, ON_ZERO, self.home,
+                                            load=lambda: self.config)["warnings"]
+        with mock.patch.object(self.remote, "list", side_effect=RuntimeError("offline")):
+            self.run_once()
+        self.assertIn("could not reach the shared leases (offline)", status())
+        self.run_once(ON_ZERO + MINUTE)
+        self.assertFalse([w for w in status() if "shared leases" in w])
+
     def test_a_pause_everywhere_wakes_nobody_here(self):
         shared.pause_everywhere(self.remote, "tolu-mac", ON_ZERO)
         store.record(self.db, [work("ops")], ON_ZERO)
