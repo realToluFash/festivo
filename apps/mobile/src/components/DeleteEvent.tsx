@@ -111,6 +111,8 @@ function Confirm({
   const input = useRef<TextInput>(null);
   const typed = useRef('');
   const typing = useRef(false);
+  const fieldShownByRefusal = useRef(false);
+  const [needsName, setNeedsName] = useState(deletion.needsName);
   const [answer, setAnswer] = useState<Exclude<DeleteAnswer, { kind: 'deleted' }> | null>(null);
   const mismatch = answer?.kind === 'mismatch' ? t('eventDelete.mismatch', { event: name }) : null;
   const failed =
@@ -122,6 +124,12 @@ function Confirm({
     return () => clearTimeout(focus);
   }, []);
 
+  useEffect(() => {
+    if (!needsName || !fieldShownByRefusal.current) return;
+    fieldShownByRefusal.current = false;
+    focusRefused(input);
+  }, [needsName]);
+
   const fieldInSight = () => {
     if (typing.current) body.current?.scrollToEnd({ animated: true });
   };
@@ -129,13 +137,13 @@ function Confirm({
   async function submit(): Promise<void> {
     if (pending) return;
 
-    const sends = !deletion.needsName || typedNameMatches(typed.current, name);
+    const sends = !needsName || typedNameMatches(typed.current, name);
     if (sends) {
       onPending(true);
       setAnswer(null);
     }
 
-    const answered = await deleteEvent(api, event, deletion.needsName, typed.current);
+    const answered = await deleteEvent(api, event, needsName, typed.current);
     onPending(false);
 
     if (answered.kind === 'deleted') {
@@ -145,7 +153,10 @@ function Confirm({
 
     setAnswer(answered);
     if (answered.kind === 'mismatch') {
-      if (sends) focusRefused(input);
+      if (!needsName) {
+        fieldShownByRefusal.current = true;
+        setNeedsName(true);
+      } else if (sends) focusRefused(input);
       else focusChecked(input);
     }
   }
@@ -186,7 +197,7 @@ function Confirm({
         >
           {t('eventDelete.title', { event: name })}
         </Text>
-        {deletion.needsName ? (
+        {needsName ? (
           <>
             <View style={styles.list}>
               <Text size={tokens.typeBodyPhone.size}>{t('eventDelete.removes')}</Text>
@@ -222,6 +233,7 @@ function Confirm({
                 submitting={pending}
                 autoCapitalize="none"
                 autoComplete="off"
+                autoCorrect={false}
                 returnKeyType="done"
                 onSubmitEditing={() => void submit()}
                 onFocus={() => {
