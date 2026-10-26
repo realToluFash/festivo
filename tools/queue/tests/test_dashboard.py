@@ -130,6 +130,35 @@ class Snapshot(unittest.TestCase):
             cli.status(self.db, self.platform, NOW)
         self.assertIn("  dev2  on tolu-mac, seen 40s ago", out.getvalue())
 
+    def test_status_prints_other_machines_each_warning_and_the_ops_refusal(self):
+        from soirely_queue import cli
+        self.settings["roles"] = {"dev2": {}}
+        store.set_meta(self.db, "shared_view", {
+            "conflicts": [["dev2", "tolu-mac"]], "paused": {"machine": "tolu-mac"},
+            "machines": {"tolu-mac": {"seen": 40, "started": ["dev2", "ops"]}}})
+        with mock.patch("soirely_queue.permissions.pending", return_value=["+ a", "- b"]):
+            view = self.snap()
+        out = io.StringIO()
+        with mock.patch.object(cli.dashboard, "snapshot", return_value=view), \
+                mock.patch.object(cli, "home", return_value=self.home), \
+                mock.patch.object(cli.shutil, "get_terminal_size",
+                                  return_value=cli.os.terminal_size((1000, 50))), \
+                redirect_stdout(out):
+            cli.status(self.db, self.platform, NOW)
+        lines = out.getvalue().splitlines()
+        for line in ("warning: paused everywhere by tolu-mac: sq resume --everywhere",
+                     "warning: dev2 is listed here and on tolu-mac, and neither marks it "
+                     "standby; only one runs it",
+                     "warning: permissions: main grants 2 change(s) this machine has not "
+                     "applied: just agents permissions apply",
+                     "other machines",
+                     "  tolu-mac  seen 40s ago   dev2, ops"):
+            self.assertIn(line, lines)
+        # The rest of the line is sc-13674's bug, which its own test pins.
+        refusal = (f"  ops   refused: not listed in {cli.machine.path()}: every machine runs "
+                   "ops, for its own disk, Docker, stacks and manager")
+        self.assertTrue(any(line.startswith(refusal) for line in lines), lines)
+
     def test_rules_main_grants_and_this_machine_has_not_applied_are_a_warning(self):
         with mock.patch("soirely_queue.permissions.pending", return_value=["+ a", "- b"]):
             warnings = self.snap()["warnings"]
