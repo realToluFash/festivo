@@ -10,6 +10,9 @@ docker compose up -d   # the stack
 `npm run setup` reports what it did and what it skipped. PHP tooling runs in Docker —
 you do not need PHP installed.
 
+Node is 22.18 or later (`.nvmrc`, so `nvm use` picks it). The Expo config imports TypeScript
+that only Node 22.18's own loader can read, so on Node 20 `expo` stops at `app.config.ts`.
+
 ## Routines
 
 ```bash
