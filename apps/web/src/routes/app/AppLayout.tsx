@@ -138,7 +138,7 @@ function Shell() {
         </a>
         <header className="public-header">
           <span className="brand">{t('app.name')}</span>
-          <LanguagePicker />
+          <LanguagePicker automatic={false} />
         </header>
         <main id="content" className="no-organisation-main">
           <LinkedNotice />

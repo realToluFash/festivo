@@ -1,7 +1,10 @@
+import { type Account } from '@soirely/api-client';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { followAccount } from '../../accountLanguage.ts';
+import { setLanguage } from '../../i18n/index.ts';
 import { __setSessionState } from '../../session.ts';
 import { membership } from '../../test-memberships.ts';
 import { routes } from '../index.tsx';
@@ -54,10 +57,31 @@ function app(path = '/app') {
   return render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
 }
 
+const CHIDI_ACCOUNT: Account = {
+  id: 'acc_1',
+  name: 'Chidi Okoro',
+  businessName: null,
+  countryCode: null,
+  organisationCountry: null,
+  locale: null,
+  timezone: null,
+  verified: true,
+  complete: true,
+  needsOrganisation: false,
+  hasPassword: true,
+  twoFactorSetupPrompt: false,
+  waitingFor: null,
+  providers: [],
+  emailAddresses: [],
+  phoneNumbers: [],
+};
+
 const PRODUCT_LINKS = ['Dashboard', 'Events', 'Guests', 'Settings'];
 
-afterEach(() => {
+afterEach(async () => {
   vi.restoreAllMocks();
+  await followAccount(CHIDI_ACCOUNT);
+  await setLanguage(null);
 });
 
 describe('the page an account in no organisation stands on (sc-13339)', () => {
@@ -84,6 +108,33 @@ describe('the page an account in no organisation stands on (sc-13339)', () => {
 
     for (const name of PRODUCT_LINKS) await screen.findByRole('link', { name });
     expect(screen.queryByRole('heading', { name: 'You are not in an organisation' })).toBeNull();
+  });
+
+  it('offers the four languages with no Automatic, and redraws in the one picked, saving it (sc-9797)', async () => {
+    inNone();
+    const sent = answering({
+      'GET /api/invitations': () => json({ invitations: [] }),
+      'PUT /api/auth/locale': () => new Response(null, { status: 204 }),
+    });
+    app();
+
+    await screen.findByRole('heading', { level: 1, name: 'You are not in an organisation' });
+    const picker = screen.getByRole<HTMLSelectElement>('combobox', { name: 'Language' });
+    expect([...picker.options].map((option) => option.textContent)).toEqual([
+      'English',
+      'Español',
+      'Français',
+      'Português',
+    ]);
+
+    fireEvent.change(picker, { target: { value: 'es' } });
+
+    await screen.findByRole('heading', { level: 1, name: 'No pertenece a ninguna organización' });
+    await waitFor(() =>
+      expect(sent.find((one) => one.line === 'PUT /api/auth/locale')?.body).toEqual({
+        locale: 'es',
+      }),
+    );
   });
 });
 
