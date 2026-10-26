@@ -1,4 +1,14 @@
-import type { EventType } from '@soirely/domain';
+import {
+  COVER_DESCRIPTION_MAXIMUM,
+  COVER_MIDDLE,
+  type CoverRefusal,
+  type EventType,
+  coverDimensionsRefusal,
+  coverFileRefusal,
+  coverTypeOf,
+  draggedPosition,
+  positionPart,
+} from '@soirely/domain';
 import {
   type ChangeEvent,
   type PointerEvent,
@@ -15,19 +25,7 @@ import { useDialogKeys } from '../../../dialogFocus.ts';
 import { offButton } from '../../../offButton.ts';
 import { FieldError } from './EventFields.tsx';
 import { type CoverPhoto, EventCoverImage } from './EventCoverImage.tsx';
-import {
-  COVER_DESCRIPTION_MAXIMUM,
-  COVER_MIDDLE,
-  type CoverRefusal,
-  coverDimensionsRefusal,
-  coverFileRefusal,
-  coverTypeOf,
-  discardCoverUpload,
-  draggedPosition,
-  imageSize,
-  positionPart,
-  refusalOf,
-} from './coverPhoto.ts';
+import { discardCoverUpload, imageSize, refusalOf } from './coverPhoto.ts';
 
 /** What Use this photo saves: a new photo when `upload` is set, and always the position and description. */
 export type CoverUse = {
