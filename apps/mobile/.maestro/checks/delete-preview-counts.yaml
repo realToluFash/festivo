@@ -3,7 +3,7 @@ appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/organisation
 - extendedWaitUntil:
-    visible: '{{t:orgGeneral.intro}}'
+    visible: '{{t:settings.organisation}}'
     timeout: 30000
 - scrollUntilVisible:
     element:
