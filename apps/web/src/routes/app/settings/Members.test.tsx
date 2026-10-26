@@ -1339,7 +1339,7 @@ describe('inviting somebody', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /^Folake Adeyemi/ }));
 
-    expect(screen.getByText(/You can't change your own role/)).toBeDefined();
+    expect(screen.getByText(/You cannot change your own role/)).toBeDefined();
     expect(screen.queryByRole('radio')).toBeNull();
     expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull();
   });
