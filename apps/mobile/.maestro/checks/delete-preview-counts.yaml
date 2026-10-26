@@ -15,5 +15,8 @@ appId: host.exp.Exponent
     visible:
       id: 'ownership.delete.name'
     timeout: 15000
+- extendedWaitUntil:
+    notVisible: '{{t:ownership.deleteLoading}}'
+    timeout: 15000
 - waitForAnimationToEnd
 - takeScreenshot: delete-preview-counts
