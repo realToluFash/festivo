@@ -433,3 +433,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   and «Elija el rol de sustitución», the same noun as the legend «Rol de sustitución». Not
   «Pasarlas…» or «estas personas» after «1 persona tiene este rol» (sc-13017).
 - **26 Oct 2026. The beyond-grant line names access** (`membersScreen.beyondGrant`, sc-13089). «… así que no puede cambiarle el rol ni el acceso»: the «le» points at the member, so neither noun takes «su», which would read as the reader's.
+- **26 Oct 2026. A security email's subject opens on the feature, then its state**
+  (`emails:twoFactor.on.subject`, `twoFactor.off.subject`, sc-14100): «Verificación en dos pasos
+  activada» / «desactivada», a pair that differs only in its last word. «Se ha desactivado la
+  verificación en dos pasos» ran past one line of a 360dp inbox row and hid the state.
