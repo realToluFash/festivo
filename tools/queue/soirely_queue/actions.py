@@ -177,7 +177,7 @@ def comment(c, a):
     if to and story.get("archived"):
         raise Refused(f"sc-{story['id']} is archived, so a comment there wakes nobody: ask on "
                       "the story that replaced it, or an open one")
-    files = getattr(a, "files", None) or []
+    files = a.files or []
     if files:
         c.shortcut.upload(story["id"], files)
     posted = post(c, story, to, a.text, parent)
@@ -190,7 +190,13 @@ def comment(c, a):
         return (f"posted #{posted['id']} on sc-{story['id']}, which is Done: it wakes "
                 f"{woken}. New work goes on an open story or a new one")
     return (f"posted #{posted['id']} on sc-{story['id']}"
-            f"{f' with {len(files)} files' if files else ''}")
+            f"{with_files(files)}")
+
+
+def with_files(files):
+    if not files:
+        return ""
+    return f" with {len(files)} file{'' if len(files) == 1 else 's'}"
 
 
 def note(c, a):
@@ -399,7 +405,7 @@ def report(c, a):
                remove={"qa failed", "needs qa"} if passed else {"qa passed"})
     c.refresh(story["id"])
     return (f"reported #{posted['id']} on sc-{story['id']}"
-            f"{f' with {len(a.files)} files' if a.files else ''}; "
+            f"{with_files(a.files)}; "
             f"it is now {'Passsed QA' if passed else 'Failed QA'}")
 
 
