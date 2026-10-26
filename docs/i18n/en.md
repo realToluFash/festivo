@@ -62,6 +62,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. An event's venue, and the app's event list** (`web:eventForm.venue*`,
+  `web:eventPage.venue*`, `addVenue`, `openInMaps`, `messages:validation.event_venue_*`,
+  `mobile:eventsScreen.*`, sc-3589 and sc-1593 via sc-13205). Settled as built, except two lines
+  that wait on [dev], because `Events.test.tsx` matches their English: `venueLookupDown` should
+  read "Suggestions are not available right now. …", no contraction, as it reports a failure;
+  `venueZoneOffer` should read "The venue is in {{zone}}. Use that time zone?", since "Use it?"
+  leaves the reader to work out what "it" is. es, fr and pt are written to the settled meaning
+  already. A venue is "Venue" in every label; its address is "Address". The two length limits
+  say the same sentence on the web and from the API, the house "Shorten the … to {{most}}
+  characters or fewer.".
 - **26 Oct 2026. An event's cover** (sc-13587, `web:eventCover.*`, `messages:validation.cover_*`).
   The section is "Cover" and the dialog "Cover photo"; the person's own image is "photo"
   throughout, and "image" only in "Describe the image", the screen reader's word. The API's

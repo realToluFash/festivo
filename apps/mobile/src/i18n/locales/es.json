@@ -1417,19 +1417,19 @@
     "other": "Otro"
   },
   "eventsScreen": {
-    "title": "Events",
-    "loading": "Loading events…",
-    "refreshing": "Refreshing…",
-    "draft": "Draft",
-    "failedLoad": "Your events did not load. Check your connection and try again.",
-    "retry": "Try again",
-    "noneTitle": "No events yet",
-    "noneCreateOnWeb": "Create events in Soirely on the web, and they will show here.",
-    "noneWillShow": "Events your organisation creates will show here.",
-    "choose": "Choose an event",
-    "loadingEvent": "Loading the event…",
+    "title": "Eventos",
+    "loading": "Cargando eventos…",
+    "refreshing": "Actualizando…",
+    "draft": "Borrador",
+    "failedLoad": "No se han podido cargar sus eventos. Compruebe su conexión y vuelva a intentarlo.",
+    "retry": "Inténtelo de nuevo",
+    "noneTitle": "Todavía no hay eventos",
+    "noneCreateOnWeb": "Cree eventos en Soirely desde la web y aparecerán aquí.",
+    "noneWillShow": "Aquí aparecerán los eventos que cree su organización.",
+    "choose": "Elija un evento",
+    "loadingEvent": "Cargando el evento…",
     "when": "{{range}} · {{timeZone}}",
-    "notFound": "This event is not available",
-    "backToEvents": "Back to Events"
+    "notFound": "Este evento no está disponible",
+    "backToEvents": "Volver a Eventos"
   }
 }
