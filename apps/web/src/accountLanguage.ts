@@ -27,9 +27,12 @@ export async function chooseLanguage(locale: string | null, signedIn: boolean): 
       () => {},
     );
     saving = save;
-    await shown;
-    await save;
-    if (saving === save) saving = null;
+    try {
+      await shown;
+      await save;
+    } finally {
+      if (saving === save) saving = null;
+    }
     return;
   }
 

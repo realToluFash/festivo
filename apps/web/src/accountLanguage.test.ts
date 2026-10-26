@@ -178,4 +178,16 @@ describe('the signed-in app shows the account language (sc-9797)', () => {
 
     expect(i18next.language).toBe('fr');
   });
+
+  it('enters the app after a pick this device could not store', async () => {
+    saved();
+    await followAccount({ ...ACCOUNT, locale: 'es' });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('full', 'QuotaExceededError');
+    });
+
+    await chooseLanguage('pt', true).catch(() => {});
+
+    await expect(followSavedLanguage()).resolves.toBeUndefined();
+  });
 });
