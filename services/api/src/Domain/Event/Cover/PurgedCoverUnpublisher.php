@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domain\Event\Cover;
 
-use App\Deletion\Interfaces\PurgedFilesInterface;
+use App\Deletion\Interfaces\PurgedFileRemoverInterface;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
 use Psl\Type;
 
-/** The cover photos of the events a purge takes, its own or its organisation's, which stay public until unpublished (sc-3592). */
-final readonly class PurgedCoverPhotos implements PurgedFilesInterface
+/** Unpublishes the cover photos of the events a purge takes, its own or its organisation's, which would otherwise stay public (sc-3592). */
+final readonly class PurgedCoverUnpublisher implements PurgedFileRemoverInterface
 {
     public function __construct(
         private Connection $connection,

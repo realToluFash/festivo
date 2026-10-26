@@ -148,6 +148,13 @@ final readonly class EventCoverEditor
         return 'data:image/webp;base64,' . Base64\encode($webp);
     }
 
+    public function unpublish(string $photoKey): void
+    {
+        foreach (Vec\keys(CoverPhotoProcessor::SIZES) as $size) {
+            $this->objectStore->unpublish(self::sizeKey($photoKey, $size));
+        }
+    }
+
     public static function sizeKey(string $photoKey, string $size): string
     {
         return Str\format('%s/%s.webp', $photoKey, $size);
@@ -208,13 +215,6 @@ final readonly class EventCoverEditor
     private function ours(Organisation $organisation, string $uploadKey): bool
     {
         return Regex\matches($uploadKey, '#^' . UploadPurpose::EventCover->value . '/' . $organisation->getId()->toRfc4122() . '/\d{4}/\d{2}/[0-9a-f-]{36}(\.[a-z0-9]{1,8})?$#');
-    }
-
-    public function unpublish(string $photoKey): void
-    {
-        foreach (Vec\keys(CoverPhotoProcessor::SIZES) as $size) {
-            $this->objectStore->unpublish(self::sizeKey($photoKey, $size));
-        }
     }
 
     private function refusal(CoverPhotoRefused $refused): ApiException

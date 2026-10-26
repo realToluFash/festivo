@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Deletion;
 
 use App\Audit\Auditor;
-use App\Deletion\Interfaces\PurgedFilesInterface;
+use App\Deletion\Interfaces\PurgedFileRemoverInterface;
 use App\Enum\DeletedKind;
 use DateInterval;
 use DateTimeImmutable;
@@ -22,14 +22,14 @@ use Symfony\Component\Uid\Uuid;
 /** Purges what support can no longer restore, of every kind; what lies beneath each goes with it by the foreign keys' cascade, and the files it cannot reach are removed after. */
 final readonly class Pruner
 {
-    /** @param iterable<PurgedFilesInterface> $purgedFiles */
+    /** @param iterable<PurgedFileRemoverInterface> $purgedFileRemovers */
     public function __construct(
         private Connection $connection,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
         private ClockInterface $clock,
-        #[AutowireIterator(PurgedFilesInterface::TAG)]
-        private iterable $purgedFiles,
+        #[AutowireIterator(PurgedFileRemoverInterface::TAG)]
+        private iterable $purgedFileRemovers,
     ) {
     }
 
@@ -53,8 +53,8 @@ final readonly class Pruner
         $count = 0;
         $cutoff = $this->cutoff();
         $files = [];
-        foreach ($this->purgedFiles as $purgedFiles) {
-            $files[] = [$purgedFiles, $purgedFiles->purgedBy($cutoff)];
+        foreach ($this->purgedFileRemovers as $remover) {
+            $files[] = [$remover, $remover->purgedBy($cutoff)];
         }
 
         foreach (DeletedKind::cases() as $kind) {
@@ -73,8 +73,8 @@ final readonly class Pruner
 
         $this->entityManager->flush();
 
-        foreach ($files as [$purgedFiles, $keys]) {
-            $purgedFiles->remove($keys);
+        foreach ($files as [$remover, $keys]) {
+            $remover->remove($keys);
         }
 
         return $count;
