@@ -83,7 +83,15 @@ worktree. It needs no Expo account: `expo prebuild` writes `apps/mobile/android`
 is ignored, and Gradle builds it. The first build on a machine fetches the NDK and an SDK
 platform and took an hour here. The APK is kept in
 `.qa/release`, named by its commit, so the next install of the same commit skips the build
-(`--rebuild` forces one). The iOS build is sc-10624.
+(`--rebuild` forces one).
+
+On the Mac, `release` does the same for the tester's iPhone simulator (`--ipad` for the iPad,
+`--android` for the emulator instead): `expo prebuild --platform ios`, `pod install` and an
+`xcodebuild` Release build for the simulator, with no signing, no Expo account and no EAS, kept as
+`.qa/release/soirely-<commit>.app`. It needs Xcode and CocoaPods. A simulator shares the Mac's
+network, so `--offline` stops the services the app reaches (`api`, `mercure`, `storage`, `oidc`)
+before that launch rather than cutting the network. The next `ios` removes the build and starts
+them again.
 
 There are several developers. Developer 1 works in this checkout on the development ports.
 `just dev-env setup --developer N` (2 to 4) makes developer N's: a worktree at

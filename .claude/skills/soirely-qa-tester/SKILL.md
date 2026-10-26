@@ -287,6 +287,7 @@ With no MCP, fall back to a script — `npx playwright` with a `page.goto`,
 
 ```sh
 node .qa/bin/qa-env.mjs ios [--ipad]                     # the bundler, in Expo Go, on the QA phone (or iPad); shuts the other
+node .qa/bin/qa-env.mjs release [--offline] [--ipad]     # a release build of the commit on the simulator, on its first launch
 node .qa/bin/qa-env.mjs maestro sign-in EMAIL=… PASSWORD=…        # one flow, on the phone
 node .qa/bin/qa-env.mjs maestro sign-in --ipad EMAIL=… PASSWORD=… # on the tablet
 node .qa/bin/qa-env.mjs hierarchy [--ipad | --android]           # what is on screen, for writing a flow
@@ -296,6 +297,13 @@ Never a bare `maestro --device …` on iOS. Maestro's iOS driver answers on one 
 run by hand drives whichever tester's simulator started it first; `qa-env.mjs` gives each
 tester a port of their own. A `.qa/bin/qa-env.mjs` copied before that change still shares one
 port, and has no `hierarchy`: refresh it as below before your next iOS flow.
+
+On the Mac `release` builds for the simulator (`release --android` for the emulator), with
+Xcode and CocoaPods, and takes the better part of an hour the first time. A simulator shares
+the Mac's network, so `--offline` stops the stack the app reaches (api, mercure, storage, oidc)
+rather than the network: the app's offline state, never iOS's own no-network screens. It records
+the first 15 seconds under `.qa/release`, as on Android; judge a splash bullet on that video.
+The next `ios` removes the build and starts the stack again.
 
 `ios` keeps running — start it in the background, and restart it after a `checkout`, or it
 serves the previous commit. Never `just qa-ios` or `just qa-mobile`: those drive the
