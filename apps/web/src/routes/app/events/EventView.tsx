@@ -13,6 +13,7 @@ import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { type EditOutcome } from './EditEvent.tsx';
 import { EventCoverImage } from './EventCoverImage.tsx';
+import { DraftRow, StatusPill } from './MakeLive.tsx';
 import { typeLabel } from './eventTypes.ts';
 
 type Load =
@@ -134,7 +135,11 @@ function EventOf({
 
       {load.kind === 'loaded' &&
         (page === 'event' ? (
-          <EventPage event={load.event} heading={heading} />
+          <EventPage
+            event={load.event}
+            heading={heading}
+            onChange={(event) => setLoad({ kind: 'loaded', event })}
+          />
         ) : (
           <GuestsComing event={load.event} heading={heading} />
         ))}
@@ -145,9 +150,11 @@ function EventOf({
 function EventPage({
   event,
   heading,
+  onChange,
 }: {
   event: OrganisationEvent;
   heading: RefObject<HTMLHeadingElement | null>;
+  onChange: (event: OrganisationEvent) => void;
 }) {
   const { t } = useTranslation();
   const session = useSession();
@@ -156,6 +163,7 @@ function EventPage({
   const [outcome] = useState(() => editOutcome(location.state));
   const [coverRefused] = useState(() => coverRefusal(location.state));
   const coverLine = useRef<HTMLParagraphElement>(null);
+  const [madeLive, setMadeLive] = useState(false);
 
   useEffect(() => {
     if (editOutcome(location.state) == null && coverRefusal(location.state) == null) return;
@@ -178,7 +186,7 @@ function EventPage({
         <h1 id="event-title" ref={heading} tabIndex={-1}>
           {event.name}
         </h1>
-        <span className="pill-quiet">{t('events.draft')}</span>
+        <StatusPill status={event.status} />
       </div>
       <p className="muted">{typeLabel(event.type, t)}</p>
       <p>
@@ -187,6 +195,16 @@ function EventPage({
           timeZone: event.timeZone,
         })}
       </p>
+      <DraftRow
+        event={event}
+        manages={can(session, 'events.manage')}
+        heading={heading}
+        onChange={(changed) => {
+          setMadeLive(event.status === 'draft' && changed.status === 'live');
+          onChange(changed);
+        }}
+      />
+      {madeLive && <OutcomeLine words={t('eventLive.madeLive')} />}
       <Venue event={event} manages={can(session, 'events.manage')} />
       {coverRefused != null && (
         <ArrivalNotice

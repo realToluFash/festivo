@@ -3915,6 +3915,38 @@ button.members-row {
   gap: var(--spaceSm) var(--spaceMd);
 }
 
+/* ── Make live (sc-3584) ──────────────────────────────────────────────────── */
+
+.pill-live {
+  gap: var(--spaceXs);
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
+}
+
+.pill-live::before {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--colorAccent);
+  content: '';
+}
+
+.event-draft-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceMd);
+  padding: var(--spaceMd) var(--spaceLg);
+  border: var(--borderInset);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.event-draft-line {
+  flex: 1 1 12rem;
+  margin: 0;
+}
+
 /* ── An event's venue (sc-3589) ───────────────────────────────────────────── */
 
 .venue-suggestions {
