@@ -1118,7 +1118,7 @@
     "roleSave": "Lui attribuer le rôle {{role}}",
     "roleChanged": "{{name}} a maintenant le rôle {{role}}. Cela s’applique dès sa prochaine utilisation de Soirely ; aucune session n’est fermée.",
     "ownRole": "Vous ne pouvez pas modifier votre propre rôle. Une autre personne ayant le rôle Propriétaire le peut, ou vous pouvez transmettre ce rôle à quelqu’un dans Général.",
-    "ownRoleOwnerCan": "You cannot change your own role. An owner can.",
+    "ownRoleOwnerCan": "Vous ne pouvez pas modifier votre propre rôle. Une personne ayant le rôle Propriétaire le peut.",
     "goToGeneral": "Aller dans Général ›",
     "onlyOwner": "{{name}} est la seule personne à avoir le rôle Propriétaire. Une organisation en a toujours une : son rôle ne peut donc pas changer, et cette personne ne peut pas être retirée tant qu’une autre n’a pas aussi le rôle Propriétaire.",
     "askOwner": "Seule une personne ayant le rôle Propriétaire peut le donner à quelqu’un d’autre. Demandez à {{name}}.",
