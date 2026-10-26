@@ -34,6 +34,7 @@ import {
   withTurnedDown,
 } from '../kit/membersAfterWrite.ts';
 import { refusalFor, refusalTitle } from '../kit/refusal.ts';
+import { breakableEmail } from '../layout/textSize.ts';
 import { type LayoutKind, useAccessibilitySizes } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
@@ -271,7 +272,9 @@ export function MemberList({
                     {member.user.name}
                   </Text>
                   {member.user.email != null && (
-                    <Text size={tokens.typeBody.size}>{member.user.email}</Text>
+                    <Text size={tokens.typeBody.size} accessibilityLabel={member.user.email}>
+                      {breakableEmail(member.user.email)}
+                    </Text>
                   )}
                   <RequestLines organisation={organisation} member={member} />
                 </View>
@@ -377,7 +380,11 @@ function MemberRow({
         <Text size={tokens.typeRowTitle.size} weight="semibold">
           {member.user.name}
         </Text>
-        {member.user.email != null && <Text size={tokens.typeBody.size}>{member.user.email}</Text>}
+        {member.user.email != null && (
+          <Text size={tokens.typeBody.size} accessibilityLabel={member.user.email}>
+            {breakableEmail(member.user.email)}
+          </Text>
+        )}
         <Text size={tokens.typeSmall.size} muted>
           {memberRowLine(t, member, organisation.name, (at) => formatDay(at, dateLocale()))}
         </Text>
@@ -501,8 +508,8 @@ export function MemberPage({
             <MemberState member={member} />
           </View>
           {member.user.email != null && (
-            <Text size={tokens.typeBody.size} muted>
-              {member.user.email}
+            <Text size={tokens.typeBody.size} muted accessibilityLabel={member.user.email}>
+              {breakableEmail(member.user.email)}
             </Text>
           )}
         </View>

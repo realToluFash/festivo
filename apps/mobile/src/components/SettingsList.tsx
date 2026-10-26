@@ -10,6 +10,7 @@ import {
   type SettingsSection,
   settingsGroups,
 } from '../kit/appNav.ts';
+import { breakableEmail } from '../layout/textSize.ts';
 import { type LayoutKind, useLayout, useSideListWidth } from '../layout/useLayout.ts';
 import { signOutHere, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -105,8 +106,14 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
   const signOut = (
     <View style={[styles.foot, !phone && styles.footTablet]}>
       {kind !== 'tabletLandscape' && account != null && (
-        <Text size={tokens.typeBody.size} muted>
-          {t('settings.signedInAs', { email: primaryEmailAddress(account) ?? '' })}
+        <Text
+          size={tokens.typeBody.size}
+          muted
+          accessibilityLabel={t('settings.signedInAs', {
+            email: primaryEmailAddress(account) ?? '',
+          })}
+        >
+          {t('settings.signedInAs', { email: breakableEmail(primaryEmailAddress(account) ?? '') })}
         </Text>
       )}
       <Pressable
@@ -214,7 +221,8 @@ const styles = StyleSheet.create({
   foot: { gap: tokens.spaceSm, paddingTop: tokens.spaceSm, paddingHorizontal: tokens.spaceXxs },
   footTablet: { paddingTop: 0, paddingHorizontal: tokens.spaceHair },
   signOut: {
-    height: tokens.sizeHitPhonePrimary,
+    minHeight: tokens.sizeHitPhonePrimary,
+    paddingVertical: tokens.spaceXxs,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: tokens.sizeHitPhonePrimary / 2,
@@ -222,7 +230,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorControlBorder,
     backgroundColor: tokens.colorCard,
   },
-  signOutDense: { height: tokens.sizeHit, borderRadius: tokens.sizeHit / 2 },
+  signOutDense: { minHeight: tokens.sizeHit, borderRadius: tokens.sizeHit / 2 },
   tabletList: {
     gap: tokens.spaceXs,
     paddingVertical: tokens.spaceXl,

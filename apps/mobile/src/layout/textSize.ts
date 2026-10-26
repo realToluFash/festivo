@@ -45,3 +45,34 @@ export function railWidth(fontScale: number): number {
 export function sideListWidth(width: number, contentWidth: number, fontScale: number): number {
   return atAccessibilitySizes(fontScale) ? Math.max(width, Math.round(contentWidth * 0.4)) : width;
 }
+
+/** An email as drawn, free to break after its @ when it is wider than its line. Its accessibility label stays the address. */
+export function breakableEmail(email: string): string {
+  return email.replace('@', '@​');
+}
+
+/** The size a title is drawn at, for the step's size and the text it was found for. */
+export interface TitleFit {
+  readonly key: string;
+  readonly drawn: number;
+}
+
+/** Starts again at the step's size whenever the step or the text changes. */
+export function fitTitle(
+  fit: TitleFit | null,
+  size: number,
+  fontScale: number,
+  text: string,
+): TitleFit {
+  const steps = titleSize(size, fontScale);
+  const key = `${steps}|${text}`;
+
+  return fit?.key === key ? fit : { key, drawn: steps };
+}
+
+/** After a layout: a point smaller while a word is broken, never below the default size. */
+export function settleTitle(fit: TitleFit, size: number, lines: readonly string[]): TitleFit {
+  if (fit.drawn <= size || !breaksAWord(lines)) return fit;
+
+  return { key: fit.key, drawn: Math.max(size, fit.drawn - 1) };
+}

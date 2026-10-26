@@ -529,7 +529,7 @@ function Rail({
                 {account.name}
               </Text>
               {organisation != null && (
-                <Text size={tokens.typeMeta.size} muted numberOfLines={lines}>
+                <Text size={tokens.typeMeta.size} muted numberOfLines={large ? 0 : 1}>
                   {roleName(t, organisation.role)}
                 </Text>
               )}
