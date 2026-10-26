@@ -1,31 +1,28 @@
-import { type AddressSuggestion, type PickedAddress } from '@soirely/api-client';
-import { type VenueDraft } from '@soirely/domain';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ASK_AFTER_MS, type LookupSeen, addressLookup } from './venueLookup.ts';
+import { type VenueDraft } from './events.ts';
+import {
+  ASK_AFTER_MS,
+  type AddressSuggestionInput,
+  type LookupSeen,
+  type PickedAddressInput,
+  addressLookup,
+} from './venueLookup.ts';
 
-const admiralty: AddressSuggestion = {
+const admiralty: AddressSuggestionInput = {
   id: 'node:1',
   text: '12 Admiralty Way',
   secondaryText: 'Lekki, Lagos',
 };
 
-const picked: PickedAddress = {
+const picked: PickedAddressInput = {
   formatted: '12 Admiralty Way, Lekki Phase 1, Lagos',
-  line1: '12 Admiralty Way',
-  line2: null,
-  city: 'Lagos',
-  region: 'Lagos',
-  postalCode: '106104',
-  countryCode: 'NG',
-  latitude: 6.4474,
-  longitude: 3.4723,
   timeZone: 'Africa/Lagos',
 };
 
 function lookupWith(
-  suggest: (query: string) => Promise<AddressSuggestion[]>,
-  resolve: (id: string) => Promise<PickedAddress> = () => Promise.resolve(picked),
+  suggest: (query: string) => Promise<AddressSuggestionInput[]>,
+  resolve: (id: string) => Promise<PickedAddressInput> = () => Promise.resolve(picked),
 ) {
   const venue: Partial<VenueDraft>[] = [];
   let seen: LookupSeen | null = null;
@@ -104,6 +101,16 @@ describe('addressLookup', () => {
     await lookup.pick(admiralty, 'Africa/Lagos');
 
     expect(seen()?.offered).toBeNull();
+  });
+
+  it('closes the list when dismissed', async () => {
+    const { lookup, seen } = lookupWith(() => Promise.resolve([admiralty]));
+
+    lookup.type('12 Adm');
+    await vi.advanceTimersByTimeAsync(ASK_AFTER_MS);
+    lookup.dismiss();
+
+    expect(seen()?.suggestions).toEqual([]);
   });
 
   it('typing after a pick drops the id, so the address is saved as typed', async () => {

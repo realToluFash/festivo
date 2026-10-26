@@ -1,32 +1,44 @@
-import { type AddressSuggestion, type PickedAddress } from '@soirely/api-client';
-import { type VenueDraft } from '@soirely/domain';
+import { type VenueDraft } from './events.ts';
+
+/** The shape `@soirely/api-client` reads as `AddressSuggestion`. */
+export interface AddressSuggestionInput {
+  id: string;
+  text: string;
+  secondaryText: string | null;
+}
+
+/** The shape `@soirely/api-client` reads as `PickedAddress`; only what the lookup needs. */
+export interface PickedAddressInput {
+  formatted: string;
+  timeZone: string | null;
+}
 
 export const ASK_AFTER_MS = 250;
 
 /** What the address field shows beside itself: the suggestions, the outage line, and the venue's zone offered. */
 export interface LookupSeen {
-  suggestions: readonly AddressSuggestion[];
+  suggestions: readonly AddressSuggestionInput[];
   down: boolean;
   offered: { zone: string; keep: string } | null;
 }
 
 export const NOTHING_SEEN: LookupSeen = { suggestions: [], down: false, offered: null };
 
-export function suggestionLine(suggestion: AddressSuggestion): string {
+export function suggestionLine(suggestion: AddressSuggestionInput): string {
   return suggestion.secondaryText == null
     ? suggestion.text
     : `${suggestion.text}, ${suggestion.secondaryText}`;
 }
 
-/** The web's VenueSection lookup (sc-3589): asked a moment after three characters, the latest answer only. */
+/** The venue's address lookup on both forms (sc-3589): asked a moment after three characters, the latest answer only. */
 export function addressLookup({
   suggest,
   resolve,
   onVenue,
   onSeen,
 }: {
-  suggest: (query: string) => Promise<AddressSuggestion[]>;
-  resolve: (id: string) => Promise<PickedAddress>;
+  suggest: (query: string) => Promise<AddressSuggestionInput[]>;
+  resolve: (id: string) => Promise<PickedAddressInput>;
   onVenue: (change: Partial<VenueDraft>) => void;
   onSeen: (seen: LookupSeen) => void;
 }) {
@@ -65,7 +77,7 @@ export function addressLookup({
       }, ASK_AFTER_MS);
     },
 
-    async pick(suggestion: AddressSuggestion, zoneBefore: string): Promise<void> {
+    async pick(suggestion: AddressSuggestionInput, zoneBefore: string): Promise<void> {
       const ask = ++asked;
 
       clearTimeout(timer);
@@ -82,6 +94,11 @@ export function addressLookup({
       } catch {
         // The suggestion's own line stays, and the API saves it as typed if it cannot resolve it either.
       }
+    },
+
+    /** Escape or leaving the field closes the list. */
+    dismiss(): void {
+      show({ suggestions: [] });
     },
 
     /** Use or Keep answered the offer. */

@@ -1,11 +1,10 @@
-import { type VenueDraft } from '@soirely/domain';
+import { NOTHING_SEEN, type VenueDraft, addressLookup } from '@soirely/domain';
 import { type RefObject, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { type EventErrors } from '../kit/eventForm.ts';
-import { NOTHING_SEEN, addressLookup } from '../kit/venueLookup.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { Field, TextField } from './Field.tsx';
