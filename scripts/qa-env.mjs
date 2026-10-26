@@ -607,19 +607,21 @@ function checkout(args) {
   run('docker', [...console_, 'lexik:jwt:generate-keypair', '--skip-if-exists'], { cwd: root });
 
   step(keepData ? 'The database, migrated' : 'The database, from nothing');
+  const afterMigrations = servicesAfterMigrations(composeServices(root));
   // From nothing: an edited unreleased migration leaves a migrated database wrong.
   if (!keepData) {
+    // Postgres refuses to drop a database the worker is still connected to.
+    run('docker', ['compose', 'stop', ...afterMigrations], { cwd: root });
     run('docker', [...console_, 'doctrine:database:drop', '--if-exists', '--force'], { cwd: root });
     run('docker', [...console_, 'doctrine:database:create'], { cwd: root });
   }
   run('docker', [...console_, 'doctrine:migrations:migrate', '-n', '--allow-no-migration'], {
     cwd: root,
   });
-  run(
-    'docker',
-    ['compose', 'up', '-d', '--wait', ...servicesAfterMigrations(composeServices(root))],
-    { cwd: root },
-  );
+  // Recreated, so a health check failed while waiting for the schema does not end --wait at once.
+  run('docker', ['compose', 'up', '-d', '--wait', '--force-recreate', ...afterMigrations], {
+    cwd: root,
+  });
 
   status();
   console.log(

@@ -125,7 +125,15 @@ function setup(config) {
   run('docker', [...console_, 'doctrine:migrations:migrate', '-n', '--allow-no-migration'], root);
   run(
     'docker',
-    ['compose', 'up', '-d', '--wait', ...servicesAfterMigrations(composeServices(root))],
+    // Recreated, so a health check failed while waiting for the schema does not end --wait at once.
+    [
+      'compose',
+      'up',
+      '-d',
+      '--wait',
+      '--force-recreate',
+      ...servicesAfterMigrations(composeServices(root)),
+    ],
     root,
   );
   run('npm', ['run', 'test:db'], root);

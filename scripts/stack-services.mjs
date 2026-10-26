@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Prints the services `just up` waits on. The stack scripts import the same choice.
+// Prints the services `just up` waits on, or with --after-migrations the ones it waits on
+// after migrating. The stack scripts import the same choice.
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -33,5 +34,13 @@ export function composeServices(cwd) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  console.log(servicesToWait(composeServices(process.cwd())).join(' '));
+  const services = composeServices(process.cwd());
+  const chosen = process.argv.includes('--after-migrations')
+    ? servicesAfterMigrations(services)
+    : servicesToWait(services);
+  if (chosen.length === 0) {
+    console.error('stack-services: no services found in `docker compose config`');
+    process.exit(1);
+  }
+  console.log(chosen.join(' '));
 }
