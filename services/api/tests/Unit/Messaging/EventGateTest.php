@@ -25,7 +25,7 @@ final class EventGateTest extends TestCase
         $paused = self::state(EventStatus::Paused, '+10 days');
         $finished = self::state(EventStatus::Live, '-10 days');
         $longFinished = self::state(EventStatus::Live, '-40 days');
-        $calledOff = new EventState(EventStatus::Live, new DateTimeImmutable('2026-10-25 18:00'), new DateTimeImmutable('2026-10-25 23:00'), new DateTimeImmutable('2026-10-20 09:00'), false);
+        $calledOff = new EventState(EventStatus::Ended, new DateTimeImmutable('2026-11-11 18:00'), new DateTimeImmutable('2026-11-11 23:00'), new DateTimeImmutable('2026-10-20 09:00'), false);
         $deleted = new EventState(EventStatus::Live, new DateTimeImmutable('2026-11-11 18:00'), new DateTimeImmutable('2026-11-11 23:00'), null, true);
 
         yield 'live, automatic' => [NotificationEventRule::Automatic, $live, EventVerdict::Send];
