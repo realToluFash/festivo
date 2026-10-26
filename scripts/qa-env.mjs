@@ -650,8 +650,6 @@ function checkout(args) {
   );
 }
 
-// With no names, compose stop and up act on the whole stack, so an old commit with no
-// worker skips both.
 // The api cache is cleared again once the new vendor is in: a worker restarting during the
 // install compiles a container against the old vendor, dropping what it cannot load.
 export function dependencySteps(npmUnchanged, composerUnchanged) {
@@ -668,6 +666,8 @@ export function dependencySteps(npmUnchanged, composerUnchanged) {
   ];
 }
 
+// With no names, compose stop and up act on the whole stack, so an old commit with no
+// worker skips both.
 export function databaseCommands(console_, afterMigrations, keepData) {
   const waiting = afterMigrations.length > 0;
   return [
