@@ -205,6 +205,8 @@ services:
       AWS_ACCESS_KEY_ID: ${STORAGE_KEY:-soirely}
       AWS_SECRET_ACCESS_KEY: ${STORAGE_SECRET:-soirely-dev-secret}
       AWS_DEFAULT_REGION: ${STORAGE_REGION:-us-east-1}
+      # The api's own default, so the bucket and the api never admit different origins.
+      CORS_WEB_ORIGIN: ${CORS_WEB_ORIGIN:-http://localhost:5173}
     entrypoint:
       - sh
       - -c
@@ -228,6 +230,12 @@ services:
         aws --endpoint-url $$E s3api put-bucket-lifecycle-configuration \
           --bucket $${BUCKET_PRIVATE} --lifecycle-configuration \
           '{"Rules":[{"ID":"event-cover-uploads","Status":"Enabled","Filter":{"Prefix":"event_cover/"},"Expiration":{"Days":1}}]}'
+
+        # The web client PUTs a cover straight to the private bucket, so the
+        # store must answer that preflight for the web origin alone. A
+        # deployed store needs the same rule (docs/architecture/sessions.md).
+        aws --endpoint-url $$E s3api put-bucket-cors --bucket $${BUCKET_PRIVATE} --cors-configuration \
+          '{"CORSRules":[{"AllowedOrigins":["'$${CORS_WEB_ORIGIN}'"],"AllowedMethods":["PUT"],"AllowedHeaders":["Content-Type"]}]}'
 
         # The public bucket is public on purpose: an invitation page is read by
         # a guest with no account and no credentials.

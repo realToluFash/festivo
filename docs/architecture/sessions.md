@@ -141,6 +141,11 @@ Two things to know before changing it:
   serves them. The container takes it from `SOIRELY_STORAGE_URL` (compose passes
   `STORAGE_PUBLIC_ENDPOINT`). A store moved behind another host, a CDN say, is a change to
   that variable.
+- The policy only lets the browser try that `PUT`; the store has to admit it too. Locally,
+  `storage-init` puts a CORS rule on the private bucket allowing `PUT` with `Content-Type`
+  from `CORS_WEB_ORIGIN` alone, never `*`. A deployed store needs the same rule on its
+  private bucket, for that deployment's web origin, or every cover upload fails its
+  preflight.
 
 `Strict-Transport-Security` is deliberately absent. TLS terminates upstream, so it belongs
 on the terminator where its `max-age` sits beside the certificate it depends on.
