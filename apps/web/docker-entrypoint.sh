@@ -60,8 +60,8 @@ fi
 
 # ── Security headers ─────────────────────────────────────────────────────────
 #
-# Generated rather than committed because connect-src has to name the API and
-# Mercure origins, and those are the two things that differ per deployment.
+# Generated rather than committed because the sources name the API, Mercure and
+# object store origins, and those differ per deployment.
 # `connect-src 'self'` with the API on another host blocks every call the
 # application makes.
 #
@@ -78,6 +78,15 @@ if [ -n "$MERCURE_ORIGIN" ]; then
     CONNECT="$CONNECT $MERCURE_ORIGIN"
 fi
 
+# Uploaded images (event covers, avatars) are sent to and served from the
+# object store's public origin, which is never 'self': the browser PUTs to it
+# and loads images from it.
+IMG="'self' data: blob:"
+STORAGE_ORIGIN="$(origin_of "${SOIRELY_STORAGE_URL:-}")"
+if [ -n "$STORAGE_ORIGIN" ]; then
+    CONNECT="$CONNECT $STORAGE_ORIGIN"
+    IMG="$IMG $STORAGE_ORIGIN"
+fi
 
 HEADERS=/etc/nginx/soirely-security-headers.conf
 
@@ -93,7 +102,7 @@ HEADERS=/etc/nginx/soirely-security-headers.conf
 # so it belongs on the terminator, where the max-age commitment is visible next
 # to the certificate it depends on.
 cat > "$HEADERS" <<CONF
-add_header Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src ${CONNECT}; manifest-src 'self'; worker-src 'self'" always;
+add_header Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src ${IMG}; connect-src ${CONNECT}; manifest-src 'self'; worker-src 'self'" always;
 add_header X-Content-Type-Options "nosniff" always;
 add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 add_header X-Frame-Options "DENY" always;
@@ -101,4 +110,4 @@ add_header Cross-Origin-Opener-Policy "same-origin-allow-popups" always;
 add_header Permissions-Policy "geolocation=(), microphone=(), payment=(), usb=()" always;
 CONF
 
-echo "soirely: wrote $HEADERS (connect-src ${CONNECT})"
+echo "soirely: wrote $HEADERS (connect-src ${CONNECT}; img-src ${IMG})"
