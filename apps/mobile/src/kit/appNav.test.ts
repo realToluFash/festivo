@@ -55,7 +55,8 @@ describe('the frame shows only what is built', () => {
     for (const href of [DESTINATION_HREF.events, DESTINATION_HREF.settings]) {
       expect(() => source(join(APP, href, 'index.tsx')), href).not.toThrow();
     }
-    expect(() => source(join(APP, 'events', '[id].tsx'))).not.toThrow();
+    for (const route of ['[id]/index.tsx', '[id]/edit.tsx', 'new.tsx'])
+      expect(() => source(join(APP, 'events', route)), route).not.toThrow();
     for (const href of Object.values(SECTION_HREF)) {
       expect(() => source(join(APP, `${href}.tsx`)), href).not.toThrow();
     }

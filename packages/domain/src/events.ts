@@ -222,6 +222,38 @@ export function venueSent(draft: VenueDraft): VenueSent | null {
   };
 }
 
+export type EventFormField = EventField | VenueField | 'timeZone' | 'currency';
+
+/** In the order both clients' forms show them, so the first refused is the one focus goes to. */
+export const EVENT_FORM_FIELDS: readonly EventFormField[] = [
+  'name',
+  'type',
+  'startsAt',
+  'endsAt',
+  'venueName',
+  'venueAddress',
+  'timeZone',
+  'currency',
+];
+
+/** Every check the event form makes before it sends anything, the first problem per field only. */
+export function eventFormProblems(typed: {
+  draft: EventDraft;
+  venue: VenueDraft;
+  timeZone: string;
+  currency: string;
+}): { field: EventFormField; problem: EventProblem | VenueProblem | 'currencyBlank' }[] {
+  const found = [
+    ...eventProblems(typed.draft, typed.timeZone),
+    ...venueProblems(typed.venue),
+    ...(typed.currency === ''
+      ? [{ field: 'currency' as const, problem: 'currencyBlank' as const }]
+      : []),
+  ];
+
+  return EVENT_FORM_FIELDS.flatMap((field) => found.find((one) => one.field === field) ?? []);
+}
+
 export interface EventDetails {
   name: string;
   type: EventType;

@@ -29,5 +29,8 @@ export * from './invitations.ts';
 export * from './companyDomains.ts';
 export * from './twoFactorDue.ts';
 export * from './events.ts';
+export * from './eventWords.ts';
+export * from './coverPhoto.ts';
 export * from './ownerClaims.ts';
 export * from './eventStates.ts';
+export * from './venueLookup.ts';

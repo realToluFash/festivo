@@ -5,13 +5,11 @@ import {
   draftOf,
   eventChanges,
   eventNameLength,
-  eventProblems,
+  eventFormErrors,
+  skippedLine,
   isEventType,
-  VENUE_ADDRESS_MAXIMUM,
-  VENUE_NAME_MAXIMUM,
   type VenueDraft,
   venueDraftOf,
-  venueProblems,
 } from '@soirely/domain';
 import {
   type FormEvent,
@@ -27,7 +25,7 @@ import { Link, useBlocker, useLocation, useNavigate, useParams } from 'react-rou
 
 import { api } from '../../../api.ts';
 import { useDialogKeys } from '../../../dialogFocus.ts';
-import { currentLocale } from '../../../i18n/index.ts';
+import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { offButton } from '../../../offButton.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
 import { can, useSession } from '../../../session.ts';
@@ -40,7 +38,6 @@ import { CoverSection } from './CoverSection.tsx';
 import { Choice, FieldError, Moment } from './EventFields.tsx';
 import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
 import { typeChoices } from './eventTypes.ts';
-import { skippedLine } from './skippedLine.ts';
 import { VenueSection } from './VenueSection.tsx';
 
 /** What the event page announces once the form has closed (sc-3587). */
@@ -263,14 +260,7 @@ function DetailsForm({
     event.preventDefault();
     if (busy) return;
 
-    const found: Errors = {};
-    for (const { field, problem } of eventProblems(draft, timeZone))
-      found[field] ??= t(`eventForm.${problem}`, { most: EVENT_NAME_MAXIMUM });
-    for (const { field, problem } of venueProblems(venue))
-      found[field] ??= t(`eventForm.${problem}`, {
-        most: field === 'venueName' ? VENUE_NAME_MAXIMUM : VENUE_ADDRESS_MAXIMUM,
-      });
-    if (currency === '') found.currency = t('orgGeneral.currencyBlank');
+    const found: Errors = eventFormErrors(typed, t);
 
     const unsentFields = Object.keys(found).length;
 
@@ -341,7 +331,7 @@ function DetailsForm({
 
   const nameLength = eventNameLength(draft.name);
   const typedStart = new Date(`${draft.startDate}T${draft.startTime}Z`);
-  const startSkipped = skippedLine(draft.startDate, draft.startTime, timeZone, t);
+  const startSkipped = skippedLine(draft.startDate, draft.startTime, timeZone, dateLocale(), t);
   const zoneHint =
     Number.isNaN(typedStart.getTime()) || startSkipped != null
       ? t('eventEdit.zoneHintPlain')
@@ -434,7 +424,7 @@ function DetailsForm({
           <Moment
             id="event-end"
             legend={t('eventForm.ends')}
-            skipped={skippedLine(draft.endDate, draft.endTime, timeZone, t)}
+            skipped={skippedLine(draft.endDate, draft.endTime, timeZone, dateLocale(), t)}
             hint={t('eventForm.endsHint')}
             date={draft.endDate}
             time={draft.endTime}
