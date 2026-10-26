@@ -20,7 +20,7 @@
  */
 export const SURFACE_PATTERNS = {
   everything:
-    /^(package\.json|package-lock\.json|eslint\.config\.mjs|\.prettierrc|lefthook\.yml|compose\.yaml|locales\.json|\.php-cs-fixer\.dist\.php|scripts\/|\.github\/workflows\/)/,
+    /^(package\.json|package-lock\.json|eslint\.config\.mjs|\.prettierrc|lefthook\.yml|compose\.yaml|locales\.json|event-states\.json|\.php-cs-fixer\.dist\.php|scripts\/|\.github\/workflows\/)/,
   api: /^services\/api\//,
   web: /^apps\/web\//,
   mobile: /^apps\/mobile\//,

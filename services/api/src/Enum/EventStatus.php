@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Enum;
 
-/** Where an event is in its lifecycle. Every event starts as a Draft (sc-1486); the rest arrive with epic 29's lifecycle stories. */
+/** An event's stored state, as /event-states.json declares it; what the clock makes of it is its EventPhase (sc-3584). */
 enum EventStatus: string
 {
     case Draft = 'draft';
+    case Live = 'live';
+    case Paused = 'paused';
+    case Ended = 'ended';
 }
