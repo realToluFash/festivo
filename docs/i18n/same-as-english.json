@@ -9,7 +9,8 @@
     "web:rolesScreen.title",
     "mobile:settings.roles",
     "mobile:settings.rolesBack",
-    "mobile:rolesScreen.title"
+    "mobile:rolesScreen.title",
+    "web:eventTypes.baby_shower"
   ],
   "fr": [
     "mobile:app.name",
