@@ -109,7 +109,7 @@ final readonly class NotificationScheduler
         return Iter\count($rows);
     }
 
-    /** The scheduled row is updated first: its lock makes a fan-out in progress finish its chunk before these deliveries are deleted. */
+    /** The scheduled row is updated first: its lock makes a fan-out in progress finish its chunk before these deliveries are deleted. A delivery a worker holds is left for it to record, so its key still stands. */
     private function remove(string $cancellationKey): int
     {
         $scheduled = (int) $this->connection->executeStatement(
@@ -131,11 +131,13 @@ final readonly class NotificationScheduler
             <<<'SQL'
                 DELETE FROM notification_deliveries
                 WHERE status = :pending
+                  AND (claimed_until IS NULL OR claimed_until < :now)
                   AND scheduled_notification_id IN (
                       SELECT id FROM scheduled_notifications WHERE cancellation_key = :key
                   )
                 SQL,
-            ['key' => $cancellationKey, 'pending' => NotificationDeliveryStatus::Pending->value],
+            ['key' => $cancellationKey, 'pending' => NotificationDeliveryStatus::Pending->value, 'now' => $this->clock->now()],
+            ['now' => Types::DATETIME_IMMUTABLE],
         );
 
         return $scheduled + $deliveries;

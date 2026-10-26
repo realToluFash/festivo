@@ -253,6 +253,22 @@ final class NotificationWorkerTest extends MessagingTestCase
     }
 
     #[Test]
+    public function aDeliveryCancelledWhileAWorkerSendsItIsRecordedAndNotSentAgain(): void
+    {
+        self::scheduler()->schedule('test.interrupted', 'reminder:3', 'r3', Trigger::at(new DateTimeImmutable('-1 minute')), $this->budgetHolders());
+        self::worker()->step();
+        self::service(Meanwhile::class)->happens = static fn (): int => self::scheduler()->cancel('reminder:3');
+
+        self::runUntilIdle();
+        self::scheduler()->schedule('test.interrupted', 'reminder:3', 'r3', Trigger::at(new DateTimeImmutable('-1 minute')), $this->budgetHolders());
+        self::runUntilIdle();
+
+        self::assertSame(1, self::sender()->calls);
+        self::assertSame(1, self::rowCount('SELECT COUNT(*) FROM notification_deliveries'));
+        self::assertSame('sent', self::scalar('SELECT status FROM notification_deliveries'));
+    }
+
+    #[Test]
     public function aRowWhoseCheckThrowsIsRecordedFailedAndTheNextOneStillGoes(): void
     {
         self::scheduler()->schedule('test.notice', 'broken', 'broken', Trigger::at(new DateTimeImmutable('-2 minutes')), $this->budgetHolders(), ['stillDue' => 'not a yes or no']);
