@@ -1,5 +1,6 @@
 import type { ExpoConfig } from 'expo/config';
 
+import { withFontScaleKept } from './plugins/withFontScaleKept.ts';
 import { tokens } from './src/theme/tokens.ts';
 
 /**
@@ -117,4 +118,4 @@ const config: ExpoConfig = {
   },
 };
 
-export default config;
+export default withFontScaleKept(config);
