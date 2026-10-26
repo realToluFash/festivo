@@ -1,5 +1,5 @@
 import { type OrganisationEvent } from '@soirely/api-client';
-import { formatEventDate } from '@soirely/domain';
+import { eventsInOrder, formatEventDate } from '@soirely/domain';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -119,7 +119,7 @@ function EventsOf({
 
   return (
     <ul className="card events-list" ref={list}>
-      {load.events.map((event) => (
+      {eventsInOrder(load.events, dateLocale()).map((event) => (
         <li key={event.id}>
           <Link className="events-row" to={`/app/events/${encodeURIComponent(event.id)}`}>
             <EventCoverImage

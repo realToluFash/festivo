@@ -12,6 +12,8 @@
     "guests": "Invitados",
     "settings": "Configuración",
     "account": "Su cuenta",
+    "menu": "Menú",
+    "closeMenu": "Cerrar el menú",
     "organisation": "Organización",
     "signedInAs": "Sesión iniciada como {{name}}",
     "switchOrganisation": "Cambiar de organización",
