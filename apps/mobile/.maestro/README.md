@@ -84,3 +84,6 @@ Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each co
   screen, so an `extendedWaitUntil` or `assertVisible` on a line under a phone's fold passes
   on the iPhone and times out there. Use `scrollUntilVisible`, which does not scroll when the
   line is already in view.
+- **On a tablet, a section's title is also a row in the split list** beside every settings
+  page, so a wait that ends on `{{t:settings.organisation}}` ends on the list, not the page.
+  Wait on a line only the page has, such as its intro or a field's `testID`.

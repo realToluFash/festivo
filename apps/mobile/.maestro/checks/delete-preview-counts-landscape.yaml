@@ -4,7 +4,7 @@ appId: host.exp.Exponent
 - setOrientation: LANDSCAPE_LEFT
 - openLink: ${METRO_URL}/--/settings/organisation
 - extendedWaitUntil:
-    visible: '{{t:settings.organisation}}'
+    visible: '{{t:orgGeneral.intro}}'
     timeout: 30000
 - scrollUntilVisible:
     element:
