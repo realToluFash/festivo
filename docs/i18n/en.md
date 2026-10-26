@@ -62,6 +62,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. Deleting an event** (sc-14417 for sc-3592, `eventDelete.*` web and app,
+  `messages:event.delete_name_mismatch`). Settled as sc-3592 wrote it; `DeleteEvent.test.tsx`
+  pins it. The act is "Delete event", the dialog "Delete {{event}}?", the way out "Keep it". It
+  follows deleting an organisation: `mismatch` and the API's refusal are one sentence, the check
+  made twice, and the restore window closes on "gone for good". The reader's team is "your whole
+  team"; guests are "Guests following their link", as for calling off. The app's `failed` is
+  `ownership.failed` word for word. es, fr and pt name "support" in full, as
+  `ownership.deleteWindow` does, and agree `deleted` with "event", never with the name.
 - **26 Oct 2026. Happening now, ending or calling off an event** (sc-14189 for sc-3585,
   `web:events.happeningNow`, `mobile:eventsScreen.happeningNow`, `eventEnd.*` web and app,
   `eventEdit.scheduleLocked|scheduleConcluded`, `messages:event.already_over|schedule_concluded`).
