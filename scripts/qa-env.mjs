@@ -229,11 +229,11 @@ export function releaseApp(root, sha) {
   return join(root, '.qa/release', `soirely-${sha.slice(0, 12)}.app`);
 }
 
-// A Mac keeps an APK and an app side by side: each build replaces only its own kind.
 export function launchVideo(root, sha, platform) {
   return join(root, '.qa/release', `launch-${sha.slice(0, 12)}.${platform}.mp4`);
 }
 
+// A Mac keeps an APK and an app side by side: each build replaces only its own kind.
 export function staleBuilds(names, build) {
   const kind = extname(build);
   return names.filter(
