@@ -43,10 +43,9 @@ final readonly class NotificationPathCheck
         $symptoms = [];
 
         if (null !== $waiting['oldest']) {
-            $lastClaim = $this->lastClaim();
             $stoppedSince = $now->sub(new DateInterval(self::STOPPED_AFTER));
 
-            if ($waiting['oldest'] < $stoppedSince && (null === $lastClaim || $lastClaim < $stoppedSince)) {
+            if ($waiting['oldest'] < $stoppedSince && !$this->claimedSince($stoppedSince)) {
                 $symptoms[] = PathSymptom::Stopped;
                 $this->logger->critical(Str\format('Notifications have stopped: %d waiting, the oldest due at %s, and nothing claimed in 5 minutes.', $waiting['count'], $waiting['oldest']->format(\DATE_ATOM)), [
                     'symptom' => PathSymptom::Stopped->value,
@@ -116,18 +115,16 @@ final readonly class NotificationPathCheck
         ];
     }
 
-    private function lastClaim(): ?DateTimeImmutable
+    private function claimedSince(DateTimeImmutable $since): bool
     {
-        $last = Type\nullable(Type\string())->coerce($this->connection->fetchOne(
+        return Type\bool()->coerce($this->connection->fetchOne(
             <<<'SQL'
-                SELECT GREATEST(
-                    (SELECT MAX(claimed_at) FROM scheduled_notifications),
-                    (SELECT MAX(claimed_at) FROM notification_deliveries)
-                )
+                SELECT EXISTS (SELECT 1 FROM scheduled_notifications WHERE claimed_at > :since)
+                    OR EXISTS (SELECT 1 FROM notification_deliveries WHERE claimed_at > :since)
                 SQL,
+            ['since' => $since],
+            ['since' => Types::DATETIME_IMMUTABLE],
         ));
-
-        return null === $last ? null : new DateTimeImmutable($last, new DateTimeZone('UTC'));
     }
 
     /** @return array{int, int} sent and failed, finished in the last hour */
