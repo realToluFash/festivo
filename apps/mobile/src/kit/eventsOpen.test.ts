@@ -7,6 +7,7 @@ const gala: OrganisationEvent = {
   id: 'evt_gala',
   organisationId: 'org_a',
   name: 'Gala',
+  type: 'wedding',
   status: 'draft',
   startsAt: '2026-11-14T16:00',
   endsAt: '2026-11-14T23:00',
