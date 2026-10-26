@@ -1,36 +1,93 @@
 import type { OrganisationEvent } from '@soirely/api-client';
-import { eventsInOrder, formatEventDate, formatEventRange } from '@soirely/domain';
+import {
+  type EventPhase,
+  calledOff,
+  eventsInOrder,
+  formatEventDate,
+  formatEventRange,
+  shownPhase,
+} from '@soirely/domain';
+import { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
-import { STATUS_WORD } from '../kit/makeLive.ts';
+import { PHASE_WORD } from '../kit/makeLive.ts';
+import { useLoadedAt, useServerNow } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { SecondaryButton } from './Buttons.tsx';
 import { EventCover } from './EventCover.tsx';
+import { EndRow } from './EndEvent.tsx';
 import { DraftRow } from './MakeLive.tsx';
 import { Notice } from './Notice.tsx';
+import { readOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
 
-/** A word, never colour alone (WCAG 2.2 §1.4.1); a Live event's has a green dot beside it (sc-3584). */
-function EventState({ status }: { status: OrganisationEvent['status'] }) {
+/** The phase the page shows: the server's, flipped by the corrected clock at the start and the end (sc-3585). */
+function useShownPhase(event: OrganisationEvent, now: Date): EventPhase {
+  return shownPhase(event, useLoadedAt(event), now);
+}
+
+/** A word and a shape, never colour alone (WCAG 2.2 §1.4.1); the pill grows with its word. */
+function EventState({ phase }: { phase: EventPhase }) {
   const { t } = useTranslation();
-  const live = status === 'live';
+  const live = phase === 'live';
 
   return (
-    <View style={[styles.state, live && styles.stateLive]}>
-      {live && <View style={styles.dot} />}
+    <View style={[styles.state, live && styles.stateLive]} testID={`events.phase.${phase}`}>
+      <PhaseShape phase={phase} />
       <Text
         size={tokens.typeSmall.size}
         weight="semibold"
         style={live ? styles.stateWordLive : styles.stateWord}
       >
-        {t(STATUS_WORD[status])}
+        {t(PHASE_WORD[phase])}
       </Text>
     </View>
   );
+}
+
+/** Draft an empty circle, Live a green dot, Happening now a half-filled circle, Paused two bars, Finished a tick. */
+function PhaseShape({ phase }: { phase: EventPhase }) {
+  const hidden = { accessibilityElementsHidden: true, importantForAccessibility: 'no' } as const;
+
+  switch (phase) {
+    case 'draft':
+      return <View style={styles.ring} {...hidden} />;
+    case 'live':
+      return <View style={styles.dot} {...hidden} />;
+    case 'happening_now':
+      return (
+        <View style={[styles.ring, styles.ringNow]} {...hidden}>
+          <View style={styles.halfNow} />
+        </View>
+      );
+    case 'paused':
+      return (
+        <View style={styles.bars} {...hidden}>
+          <View style={styles.bar} />
+          <View style={styles.bar} />
+        </View>
+      );
+    case 'finished':
+      return (
+        <Text
+          size={tokens.typeSmall.size}
+          weight="bold"
+          style={styles.stateWord}
+          accessible={false}
+          {...hidden}
+        >
+          ✓
+        </Text>
+      );
+  }
+}
+
+function RowState({ event, now }: { event: OrganisationEvent; now: Date }) {
+  return <EventState phase={useShownPhase(event, now)} />;
 }
 
 function EventType({ event, size }: { event: OrganisationEvent; size: number }) {
@@ -53,6 +110,7 @@ export function EventList({
   onOpen: (id: string) => void;
 }) {
   const locale = dateLocale();
+  const now = useServerNow();
 
   return (
     <View style={styles.rows}>
@@ -80,7 +138,7 @@ export function EventList({
               <Text size={tokens.typeSmall.size} muted>
                 {date}
               </Text>
-              <EventState status={event.status} />
+              <RowState event={event} now={now} />
             </View>
             <Text
               size={tokens.typeTitleDialog.size}
@@ -142,6 +200,17 @@ export function EventPage({
   onChange: (event: OrganisationEvent) => void;
 }) {
   const { t } = useTranslation();
+  const now = useServerNow();
+  const phase = useShownPhase(event, now);
+  const said = useRef({ id: event.id, phase });
+
+  // A change of phase on an open page is said politely, never on arrival (WCAG 2.2 §4.1.3).
+  useEffect(() => {
+    if (said.current.id === event.id && said.current.phase !== phase) {
+      readOut(t(PHASE_WORD[phase]));
+    }
+    said.current = { id: event.id, phase };
+  }, [event.id, phase, t]);
 
   return (
     <View style={cardFrame(kind)} testID="events.page">
@@ -150,9 +219,26 @@ export function EventPage({
         <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
           {event.name}
         </Text>
-        <EventState status={event.status} />
+        <EventState phase={phase} />
       </View>
-      <DraftRow kind={kind} event={event} manages={manages} onChange={onChange} />
+      {calledOff(event) && event.concludedAt != null && (
+        <Notice
+          tone="quiet"
+          mark={tokens.marks.info.glyph}
+          body={t('eventEnd.calledOffNotice', {
+            date: formatEventDate(event.concludedAt, event.timeZone, dateLocale()),
+          })}
+        />
+      )}
+      <DraftRow kind={kind} event={event} manages={manages} now={now} onChange={onChange} />
+      <EndRow
+        kind={kind}
+        event={event}
+        phase={phase}
+        manages={manages}
+        now={now}
+        onChange={onChange}
+      />
       <EventType event={event} size={tokens.typeBody.size} />
       <Text size={tokens.typeBody.size}>
         {t('eventsScreen.when', {
@@ -209,27 +295,39 @@ const styles = StyleSheet.create({
   rowCover: { width: 96 },
   rowText: { flex: 1, minWidth: 0, gap: 3 },
   pageHead: { gap: tokens.spaceXs },
+  stateWord: { color: tokens.colorInkSecondary },
+  stateLive: {
+    borderColor: tokens.colorAccentTintBorder,
+    backgroundColor: tokens.colorAccentTint,
+  },
+  stateWordLive: { color: tokens.colorAccentText },
   state: {
     alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceXs,
     paddingHorizontal: tokens.spaceSm,
     paddingVertical: tokens.spaceXxs,
     borderRadius: tokens.radiusField,
     borderWidth: 1,
     borderColor: tokens.colorBorder,
   },
-  stateWord: { color: tokens.colorInkSecondary },
-  stateLive: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceXs,
-    borderColor: tokens.colorAccentTintBorder,
-    backgroundColor: tokens.colorAccentTint,
-  },
-  stateWordLive: { color: tokens.colorAccentText },
   dot: {
     width: 8,
     height: 8,
     borderRadius: tokens.radiusPill,
     backgroundColor: tokens.colorAccent,
   },
+  ring: {
+    width: 10,
+    height: 10,
+    borderRadius: tokens.radiusPill,
+    borderWidth: 1.5,
+    borderColor: tokens.colorMarkEmpty,
+    overflow: 'hidden',
+  },
+  ringNow: { borderColor: tokens.colorAttention },
+  halfNow: { width: '50%', height: '100%', backgroundColor: tokens.colorAttention },
+  bars: { flexDirection: 'row', gap: 2 },
+  bar: { width: 3, height: 10, borderRadius: 1, backgroundColor: tokens.colorAttention },
 });

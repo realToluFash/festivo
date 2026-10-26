@@ -1433,6 +1433,7 @@
     "notFound": "Cet événement n’est pas disponible",
     "backToEvents": "Retour aux événements",
     "live": "Publié",
+    "happeningNow": "Happening now",
     "paused": "En pause",
     "finished": "Terminé"
   },
@@ -1458,5 +1459,20 @@
     "planLimit_many": "Non publié. Votre forfait {{plan}} permet d’avoir {{count}} d’événements publiés ou en pause à la fois.",
     "planLimitStays": "Cet événement reste en brouillon. Terminez ou annulez un autre événement, ou changez de forfait.",
     "close": "Fermer"
+  },
+  "eventEnd": {
+    "callOff": "Call off",
+    "endNow": "End now",
+    "callOffTitle": "Call off {{name}}?",
+    "callOffBody": "It won't go ahead. Guests following their link will be told.",
+    "endTitle": "End {{name}} now?",
+    "endBody": "It will be over for everybody.",
+    "final": "You can't undo this.",
+    "keepItOn": "Keep it on",
+    "failed": "Not ended. Try again in a moment.",
+    "notEnded": "Not ended.",
+    "alreadyOver": "This event is already over.",
+    "calledOffNotice": "Called off on {{date}}, before it started. Guests following their link are told it won't go ahead.",
+    "close": "Close"
   }
 }
