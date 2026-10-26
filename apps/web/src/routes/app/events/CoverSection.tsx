@@ -1,4 +1,3 @@
-import { ApiError } from '@soirely/api-client';
 import type { EventType } from '@soirely/domain';
 import {
   type ChangeEvent,
@@ -22,9 +21,11 @@ import {
   coverDimensionsRefusal,
   coverFileRefusal,
   coverTypeOf,
+  discardCoverUpload,
   draggedPosition,
   imageSize,
   positionPart,
+  refusalOf,
 } from './coverPhoto.ts';
 
 /** What Use this photo saves: a new photo when `upload` is set, and always the position and description. */
@@ -127,6 +128,7 @@ export function CoverSection({
           />
           <button
             ref={uploadButton}
+            id="cover-upload"
             type="button"
             className="button cover-upload"
             aria-describedby={refusal == null ? 'cover-accepted' : 'cover-refusal cover-accepted'}
@@ -233,6 +235,7 @@ function CoverDialog({
   useEffect(() => {
     if (file == null) return;
     let current = true;
+    let uploaded: string | null = null;
 
     api
       .signEventCoverUpload(organisationId, {
@@ -242,7 +245,9 @@ function CoverDialog({
       })
       .then(async (signed) => {
         await api.uploadTo(signed, file);
+        uploaded = signed.key;
         if (current) setUpload({ kind: 'ready', key: signed.key });
+        else discardCoverUpload(organisationId, signed.key);
       })
       .catch((error: unknown) => {
         if (current) setUpload({ kind: 'failed', message: refusalOf(error, t) });
@@ -250,6 +255,7 @@ function CoverDialog({
 
     return () => {
       current = false;
+      if (uploaded != null && !kept.current) discardCoverUpload(organisationId, uploaded);
     };
   }, [file, organisationId, t]);
 
@@ -427,7 +433,7 @@ function CoverDialog({
             </p>
           </div>
 
-          {saved != null && file == null && (
+          {saved != null && (
             <div>
               <button
                 type="button"
@@ -472,15 +478,4 @@ function CoverDialog({
       </div>
     </>
   );
-}
-
-/** A refusal the API explained (a 422 on the photo or the description), otherwise the upload simply failed. */
-function refusalOf(error: unknown, t: (key: string) => string): string {
-  if (error instanceof ApiError && error.status === 422) {
-    const fields = error.fieldErrors();
-
-    return fields.file ?? fields.description ?? fields.uploadKey ?? t('eventCover.uploadFailed');
-  }
-
-  return t('eventCover.uploadFailed');
 }

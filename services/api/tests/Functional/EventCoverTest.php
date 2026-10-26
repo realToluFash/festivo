@@ -14,6 +14,8 @@ use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
+use App\Enum\UploadPurpose;
+use App\Storage\ObjectStore;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
@@ -130,6 +132,41 @@ final class EventCoverTest extends ApiTestCase
     }
 
     #[Test]
+    public function anUploadLargerThanItsSignatureDeclaredIsRefusedAndDeleted(): void
+    {
+        $key = $this->upload(self::photo(1600, 900) . Str\repeat("\0", 15 * 1024 * 1024), 'image/jpeg', declaredSize: 1000);
+
+        $this->as($this->owner, 'PUT', $this->coverPath(), ['uploadKey' => $key, 'position' => 50]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertStringContainsString('15 MB', $this->violations()['file'] ?? '');
+        self::assertNull(self::service(ObjectStore::class)->uploadSize(UploadPurpose::EventCover, $key));
+    }
+
+    #[Test]
+    public function aCancelledUploadIsDeleted(): void
+    {
+        $key = $this->upload(self::photo(1600, 900, withGps: true), 'image/jpeg');
+
+        $this->as($this->owner, 'DELETE', $this->path('event-cover-uploads'), ['uploadKey' => $key]);
+
+        self::assertSame(204, $this->statusCode());
+        self::assertNull(self::service(ObjectStore::class)->uploadSize(UploadPurpose::EventCover, $key));
+    }
+
+    #[Test]
+    public function anotherOrganisationsUploadIsNotDiscarded(): void
+    {
+        $key = $this->upload(self::photo(1600, 900), 'image/jpeg');
+        $theirs = Str\replace($key, $this->organisation->getId()->toRfc4122(), '0199f0aa-1111-7000-8000-000000000001');
+
+        $this->as($this->owner, 'DELETE', $this->path('event-cover-uploads'), ['uploadKey' => $theirs]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertArrayHasKey('uploadKey', $this->violations());
+    }
+
+    #[Test]
     public function aPhotoSmallerThan1200By675IsRefusedAndLeavesThePreviousCover(): void
     {
         $this->as($this->owner, 'PUT', $this->coverPath(), ['uploadKey' => $this->upload(self::photo(1600, 900), 'image/jpeg'), 'position' => 20]);
@@ -242,6 +279,9 @@ final class EventCoverTest extends ApiTestCase
         $this->as($reader, 'DELETE', $this->coverPath());
         self::assertSame(403, $this->statusCode());
 
+        $this->as($reader, 'DELETE', $this->path('event-cover-uploads'), ['uploadKey' => $this->upload(self::photo(1600, 900), 'image/jpeg')]);
+        self::assertSame(403, $this->statusCode());
+
         $coordinator = $this->member('coordinator@ire.events', SeededRole::Coordinator);
         $this->as($coordinator, 'PUT', $this->coverPath(), ['uploadKey' => $this->upload(self::photo(1600, 900), 'image/jpeg'), 'position' => 50]);
         self::assertSame(200, $this->statusCode());
@@ -285,9 +325,9 @@ final class EventCoverTest extends ApiTestCase
         self::assertSame(50, $listed[0]['cover']['position'] ?? null);
     }
 
-    private function upload(string $bytes, string $contentType): string
+    private function upload(string $bytes, string $contentType, ?int $declaredSize = null): string
     {
-        $body = $this->as($this->owner, 'POST', $this->path('event-cover-uploads'), ['contentType' => $contentType, 'size' => Str\Byte\length($bytes), 'filename' => 'photo']);
+        $body = $this->as($this->owner, 'POST', $this->path('event-cover-uploads'), ['contentType' => $contentType, 'size' => $declaredSize ?? Str\Byte\length($bytes), 'filename' => 'photo']);
         self::assertSame(201, $this->statusCode());
         $upload = Type\shape(['url' => Type\string(), 'key' => Type\string()], true)->coerce($body['upload'] ?? null);
 
@@ -297,7 +337,7 @@ final class EventCoverTest extends ApiTestCase
             \CURLOPT_POSTFIELDS => $bytes,
             \CURLOPT_HTTPHEADER => ['Content-Type: ' . $contentType],
             \CURLOPT_RETURNTRANSFER => true,
-            \CURLOPT_TIMEOUT => 10,
+            \CURLOPT_TIMEOUT => 30,
         ]);
         \curl_exec($handle);
         self::assertSame(200, \curl_getinfo($handle, \CURLINFO_HTTP_CODE));

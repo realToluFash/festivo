@@ -1517,6 +1517,14 @@ export class ApiClient {
     if (!response.ok) throw new Error(`The store refused the upload with ${response.status}.`);
   }
 
+  /** A photo uploaded and then not used, deleted so its original, metadata and all, is not kept. */
+  async discardEventCoverUpload(organisationId: string, uploadKey: string): Promise<void> {
+    await this.request(`/api/orgs/${encodeURIComponent(organisationId)}/event-cover-uploads`, {
+      method: 'DELETE',
+      body: { uploadKey },
+    });
+  }
+
   /** Refused `validation_failed` on `file` (the photo itself), `uploadKey`, `position` or `description`. */
   async setEventCover(eventId: string, change: CoverChange): Promise<OrganisationEvent> {
     return this.organisationEvent(

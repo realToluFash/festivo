@@ -1,3 +1,7 @@
+import { ApiError } from '@soirely/api-client';
+
+import { api } from '../../../api.ts';
+
 /** What a cover photo must be (sc-3590); the API refuses the same with a 422 on `file`. */
 export const COVER_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
 export const COVER_MAX_BYTES = 15 * 1024 * 1024;
@@ -66,4 +70,20 @@ export function imageSize(file: Blob): Promise<{ width: number; height: number }
     };
     image.src = url;
   });
+}
+
+/** The photo chosen and not used goes, so its original is not kept with its GPS; a closed tab's is expired by the store. */
+export function discardCoverUpload(organisationId: string, key: string): void {
+  void api.discardEventCoverUpload(organisationId, key).catch(() => undefined);
+}
+
+/** A refusal the API explained (a 422 on the photo or the description), otherwise the upload simply failed. */
+export function refusalOf(error: unknown, t: (key: string) => string): string {
+  if (error instanceof ApiError && error.status === 422) {
+    const fields = error.fieldErrors();
+
+    return fields.file ?? fields.description ?? fields.uploadKey ?? t('eventCover.uploadFailed');
+  }
+
+  return t('eventCover.uploadFailed');
 }

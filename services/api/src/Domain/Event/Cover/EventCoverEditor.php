@@ -123,6 +123,16 @@ final readonly class EventCoverEditor
         $this->unpublish($cover->getPhotoKey());
     }
 
+    /** A photo chosen and then cancelled, so the original, with its metadata, is not kept. */
+    public function discard(Organisation $organisation, string $uploadKey): void
+    {
+        if (!$this->ours($organisation, $uploadKey)) {
+            throw ApiException::validation([$this->violation('uploadKey', 'validation.cover_upload_missing')]);
+        }
+
+        $this->objectStore->deleteUpload(UploadPurpose::EventCover, $uploadKey);
+    }
+
     public static function sizeKey(string $photoKey, string $size): string
     {
         return Str\format('%s/%s.webp', $photoKey, $size);
@@ -130,20 +140,18 @@ final readonly class EventCoverEditor
 
     private function publish(Event $event, string $uploadKey): string
     {
-        $organisation = $event->getOrganisation()->getId()->toRfc4122();
-        $ours = Regex\matches($uploadKey, '#^' . UploadPurpose::EventCover->value . '/' . $organisation . '/\d{4}/\d{2}/[0-9a-f-]{36}(\.[a-z0-9]{1,8})?$#');
-        $bytes = $ours ? $this->objectStore->readUpload(UploadPurpose::EventCover, $uploadKey) : null;
+        $size = $this->ours($event->getOrganisation(), $uploadKey) ? $this->objectStore->uploadSize(UploadPurpose::EventCover, $uploadKey) : null;
 
-        if (null === $bytes) {
+        if (null === $size) {
             throw ApiException::validation([$this->violation('uploadKey', 'validation.cover_upload_missing')]);
         }
 
         try {
-            if (Str\Byte\length($bytes) > UploadPurpose::EventCover->maxBytes()) {
+            if ($size > UploadPurpose::EventCover->maxBytes()) {
                 throw CoverPhotoRefused::size();
             }
 
-            $sizes = $this->coverPhotoProcessor->process($bytes);
+            $sizes = $this->coverPhotoProcessor->process($this->objectStore->readUpload(UploadPurpose::EventCover, $uploadKey));
         } catch (CoverPhotoRefused $refused) {
             $this->objectStore->deleteUpload(UploadPurpose::EventCover, $uploadKey);
 
@@ -159,6 +167,11 @@ final readonly class EventCoverEditor
         $this->objectStore->deleteUpload(UploadPurpose::EventCover, $uploadKey);
 
         return $photoKey;
+    }
+
+    private function ours(Organisation $organisation, string $uploadKey): bool
+    {
+        return Regex\matches($uploadKey, '#^' . UploadPurpose::EventCover->value . '/' . $organisation->getId()->toRfc4122() . '/\d{4}/\d{2}/[0-9a-f-]{36}(\.[a-z0-9]{1,8})?$#');
     }
 
     private function unpublish(string $photoKey): void

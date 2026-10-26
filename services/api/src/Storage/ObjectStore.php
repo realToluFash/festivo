@@ -80,8 +80,8 @@ final readonly class ObjectStore
         return $this->s3->objectExists(['Bucket' => $bucket, 'Key' => $key])->isSuccess();
     }
 
-    /** What a signed upload put there, or null when nothing was. */
-    public function readUpload(UploadPurpose $purpose, string $key): ?string
+    /** A signed upload carries no length, so what arrived is measured before anything reads it. Null when nothing did. */
+    public function uploadSize(UploadPurpose $purpose, string $key): ?int
     {
         $bucket = $this->bucketFor($purpose);
 
@@ -89,7 +89,12 @@ final readonly class ObjectStore
             return null;
         }
 
-        return $this->s3->getObject(['Bucket' => $bucket, 'Key' => $key])->getBody()->getContentAsString();
+        return (int) $this->s3->headObject(['Bucket' => $bucket, 'Key' => $key])->getContentLength();
+    }
+
+    public function readUpload(UploadPurpose $purpose, string $key): string
+    {
+        return $this->s3->getObject(['Bucket' => $this->bucketFor($purpose), 'Key' => $key])->getBody()->getContentAsString();
     }
 
     public function deleteUpload(UploadPurpose $purpose, string $key): void

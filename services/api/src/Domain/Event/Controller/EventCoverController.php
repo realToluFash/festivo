@@ -53,6 +53,17 @@ final readonly class EventCoverController
         );
     }
 
+    #[Route('/api/orgs/{organisationId}/event-cover-uploads', name: 'event_cover_uploads_discard', methods: ['DELETE'])]
+    #[InOrganisation(Permission::EventsManage)]
+    public function discardUpload(Request $request, string $organisationId): Response
+    {
+        $body = Input::body($request, Type\shape(['uploadKey' => Type\string()]));
+        $organisation = $this->organisationRepository->find($organisationId) ?? throw ApiException::notFound('access.not_found');
+        $this->eventCoverEditor->discard($organisation, $body['uploadKey']);
+
+        return new Response(status: Response::HTTP_NO_CONTENT);
+    }
+
     /** `uploadKey` is a new photo; left out, the saved photo keeps its file and takes the position and description. */
     #[Route('/api/events/{eventId}/cover', name: 'event_cover_update', methods: ['PUT'])]
     #[InEvent(Permission::EventsManage)]

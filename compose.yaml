@@ -219,6 +219,13 @@ services:
           --public-access-block-configuration \
           BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
 
+        # A cover photo's original carries its EXIF and GPS until the API
+        # re-encodes and deletes it. One a closed tab never confirmed or
+        # cancelled is deleted after a day (sc-3590).
+        aws --endpoint-url $$E s3api put-bucket-lifecycle-configuration \
+          --bucket $${BUCKET_PRIVATE} --lifecycle-configuration \
+          '{"Rules":[{"ID":"event-cover-uploads","Status":"Enabled","Filter":{"Prefix":"event_cover/"},"Expiration":{"Days":1}}]}'
+
         # The public bucket is public on purpose: an invitation page is read by
         # a guest with no account and no credentials.
         aws --endpoint-url $$E s3api put-bucket-policy --bucket $${BUCKET_PUBLIC} --policy \
