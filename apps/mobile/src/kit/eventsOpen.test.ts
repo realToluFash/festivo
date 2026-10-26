@@ -14,7 +14,6 @@ const gala: OrganisationEvent = {
   timeZone: 'Europe/London',
   dayCount: 1,
   currency: 'GBP',
-  venue: null,
   createdAt: '2026-10-01T09:00:00Z',
 };
 
