@@ -9,6 +9,7 @@ import os
 import pathlib
 import re
 import shutil
+import socket
 import subprocess
 import sys
 
@@ -42,6 +43,10 @@ def has_xcode():
 
 class ConfigError(RuntimeError):
     pass
+
+
+def machine_name(config):
+    return config.get("machine") or socket.gethostname()
 
 
 def config_dir():
@@ -237,7 +242,7 @@ def check(config, known=None, logged_in=account):
     if "ops" not in listed:
         # A refusal, not an error: an older file must not stop the self-update that fixes it.
         refused["ops"] = (f"not listed in {path()}: every machine runs ops, for its own disk, "
-                          "Docker, stacks and manager (ops@<machine>)")
+                          f"Docker, stacks and manager (ops@{machine_name(config)})")
     defaults = config.get("defaults") or {}
     if not config.get("claudeConfigDir"):
         errors.append(f"no claudeConfigDir in {path()}: the Claude config folder the workers "

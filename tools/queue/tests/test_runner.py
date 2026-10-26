@@ -469,11 +469,22 @@ class Run(unittest.TestCase):
         del self.config["roles"]["ops"]
         store.record(self.db, [work("ops"), work("dev2")], ON_ZERO)
         self.run_once(ON_ONE)
-        self.assertTrue(any(s.startswith("error: ops: not listed in") for s in self.said))
+        self.assertTrue(any(s.startswith("error: ops: not listed in") and s.endswith("(ops@here)")
+                            for s in self.said), self.said)
         self.assertEqual([r for r, _, _ in self.platform.launched], ["dev2"])
         runner.set_started(self.db, ["ops"], False)
         self.run_once(ON_ONE + 3 * MINUTE)
-        self.assertTrue(any(s.startswith("refused: ops: not listed in") for s in self.said))
+        self.assertTrue(any(s.startswith("refused: ops: not listed in")
+                            and s.endswith("(ops@here)") for s in self.said), self.said)
+
+    def test_an_unnamed_machine_names_its_host_in_the_ops_refusal(self):
+        del self.config["roles"]["ops"]
+        del self.config["machine"]
+        store.record(self.db, [work("ops"), work("dev2")], ON_ZERO)
+        with mock.patch("socket.gethostname", return_value="tolu-linux"):
+            self.run_once(ON_ONE)
+        self.assertTrue(any(s.startswith("error: ops: not listed in")
+                            and s.endswith("(ops@tolu-linux)") for s in self.said), self.said)
 
     def test_machine_work_is_never_claimed(self):
         store.record(self.db, [self.machine_work()], ON_ZERO)
