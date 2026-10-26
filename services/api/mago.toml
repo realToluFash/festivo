@@ -152,6 +152,7 @@ shared = ["App\\Entity\\**", "App\\Enum\\**", "App\\Http\\**"]
 domain_user = ["App\\Domain\\User\\**"]
 domain_organisation = ["App\\Domain\\Organisation\\**"]
 domain_event = ["App\\Domain\\Event\\**"]
+domain_messaging = ["App\\Domain\\Messaging\\**"]
 
 # Capabilities. Each is its own layer so an edge between two of them has to be
 # declared below rather than appearing by accident.
@@ -259,7 +260,8 @@ permit = [
 # Events check their zone and currency as an organisation's are checked (Regions,
 # AccountTimeZone), and each create goes to the audit trail (sc-1486). A venue's
 # address is picked through the address lookup (sc-3589). Its deletion uses the
-# shared window and typed name (sc-3592).
+# shared window and typed name (sc-3592). A new date, time or zone re-schedules
+# what the one clock counts from it (sc-104).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Event\\"
 permit = [
@@ -273,7 +275,22 @@ permit = [
     "@layer:audit",
     "@layer:storage",
     "@layer:address",
+    "@layer:domain_messaging",
     "@layer:deletion",
+]
+
+# Messaging is the one machine every scope tells people through (sc-104). It reads members as the
+# organisation scope keeps them, through the access layer's grants, and a person's language as the
+# user scope chooses it (AccountLanguage).
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\Messaging\\"
+permit = [
+    "@layer:native",
+    "@layer:external",
+    "@layer:shared",
+    "@layer:domain_messaging",
+    "@layer:domain_user",
+    "@layer:repository",
 ]
 
 # ── Integrations ────────────────────────────────────────────────────────────────
