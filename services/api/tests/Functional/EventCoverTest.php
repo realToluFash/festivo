@@ -23,6 +23,7 @@ use Imagick;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Encoding\Base64;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;
@@ -94,6 +95,58 @@ final class EventCoverTest extends ApiTestCase
             self::assertStringNotContainsString('Exif', $stored);
             self::assertStringNotContainsString('GPS', $stored);
         }
+    }
+
+    /** A browser that cannot show a HEIC is sent this instead (sc-13861); nothing is stored, so nothing is left to delete. */
+    #[Test]
+    public function aPreviewIsTheUploadAsAWebPCarriedInTheAnswerWithoutItsGpsOrExif(): void
+    {
+        $key = $this->upload(self::photo(2400, 1600, withGps: true), 'image/jpeg');
+
+        $body = $this->as($this->owner, 'POST', $this->path('event-cover-uploads/preview'), ['uploadKey' => $key]);
+
+        self::assertSame(200, $this->statusCode());
+        $preview = Type\string()->coerce($body['preview'] ?? null);
+        self::assertStringStartsWith('data:image/webp;base64,', $preview);
+        $bytes = Base64\decode(Str\strip_prefix($preview, 'data:image/webp;base64,'));
+        $image = self::read($bytes);
+        self::assertSame('WEBP', $image->getImageFormat());
+        self::assertSame(1280, $image->getImageWidth());
+        self::assertSame([], $image->getImageProfiles('*', false), 'The preview kept a metadata profile');
+        self::assertSame([], $image->getImageProperties('exif:*'), 'The preview kept EXIF');
+        self::assertStringNotContainsString('GPS', $bytes);
+        self::assertNotNull(self::service(ObjectStore::class)->uploadSize(UploadPurpose::EventCover, $key), 'The upload went before Use this photo could save it');
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function refusedPreviews(): iterable
+    {
+        yield 'smaller than 1200 × 675' => [self::photo(1600, 674), '1200 × 675'];
+        yield 'not a photo' => ['<?php echo 1;', 'JPEG, PNG, WebP or HEIC'];
+    }
+
+    #[Test]
+    #[DataProvider('refusedPreviews')]
+    public function aPreviewOfASmallOrUnreadablePhotoIsRefusedWithTheSavesLineAndDeletesIt(string $bytes, string $line): void
+    {
+        $key = $this->upload($bytes, 'image/heic');
+
+        $this->as($this->owner, 'POST', $this->path('event-cover-uploads/preview'), ['uploadKey' => $key]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertStringContainsString($line, $this->violations()['file'] ?? '');
+        self::assertNull(self::service(ObjectStore::class)->uploadSize(UploadPurpose::EventCover, $key));
+    }
+
+    #[Test]
+    public function anotherOrganisationsUploadIsNotPreviewed(): void
+    {
+        $theirs = Str\replace($this->upload(self::photo(1600, 900), 'image/jpeg'), $this->organisation->getId()->toRfc4122(), '0199f0aa-1111-7000-8000-000000000001');
+
+        $this->as($this->owner, 'POST', $this->path('event-cover-uploads/preview'), ['uploadKey' => $theirs]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertArrayHasKey('uploadKey', $this->violations());
     }
 
     #[Test]
@@ -280,6 +333,9 @@ final class EventCoverTest extends ApiTestCase
         self::assertSame(403, $this->statusCode());
 
         $this->as($reader, 'DELETE', $this->path('event-cover-uploads'), ['uploadKey' => $this->upload(self::photo(1600, 900), 'image/jpeg')]);
+        self::assertSame(403, $this->statusCode());
+
+        $this->as($reader, 'POST', $this->path('event-cover-uploads/preview'), ['uploadKey' => $this->upload(self::photo(1600, 900), 'image/jpeg')]);
         self::assertSame(403, $this->statusCode());
 
         $coordinator = $this->member('coordinator@ire.events', SeededRole::Coordinator);

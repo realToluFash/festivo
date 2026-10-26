@@ -36,7 +36,8 @@ export type CoverUse = {
   description: string | null;
 };
 
-type Opened = { file: File | null; from: 'cover' | 'upload' };
+/** `shows` is whether this browser can show the file itself; a HEIC outside Safari cannot, so the server's copy stands in. */
+type Opened = { file: File | null; shows: boolean; from: 'cover' | 'upload' };
 
 const ACCEPT = 'image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif';
 const FULL_SCREEN = '(width <= 40rem)';
@@ -89,11 +90,13 @@ export function CoverSection({
     event.target.value = '';
     if (file == null) return;
 
-    const refused = coverFileRefusal(file) ?? coverDimensionsRefusal(await imageSize(file));
+    const refused = coverFileRefusal(file);
+    const size = refused == null ? await imageSize(file) : null;
+    const tooSmall = refused ?? coverDimensionsRefusal(size);
 
-    setRefusal(refused);
+    setRefusal(tooSmall);
     setRemoved(false);
-    if (refused == null) setOpened({ file, from: 'upload' });
+    if (tooSmall == null) setOpened({ file, shows: size != null, from: 'upload' });
   }
 
   const close = useCallback(
@@ -119,7 +122,7 @@ export function CoverSection({
             aria-labelledby="cover-change"
             onClick={() => {
               setRemoved(false);
-              setOpened({ file: null, from: 'cover' });
+              setOpened({ file: null, shows: true, from: 'cover' });
             }}
           >
             <EventCoverImage photo={photo} type={type} sizes="(width < 43.75rem) 100vw, 27.5rem" />
@@ -168,6 +171,7 @@ export function CoverSection({
       {opened != null && (
         <CoverDialog
           file={opened.file}
+          shows={opened.shows}
           saved={photo}
           type={type}
           organisationId={organisationId}
@@ -230,6 +234,7 @@ type Upload =
 /** Modal, as the APG dialog: focus starts on the slider, Tab wraps, Escape and Close are Cancel, and only Use this photo saves. */
 function CoverDialog({
   file,
+  shows,
   saved,
   type,
   organisationId,
@@ -238,6 +243,7 @@ function CoverDialog({
   onClose,
 }: {
   file: File | null;
+  shows: boolean;
   saved: CoverPhoto | null;
   type: EventType | '';
   organisationId: string;
@@ -246,7 +252,9 @@ function CoverDialog({
   onClose: (focus: 'opener' | 'cover' | 'upload', removed?: boolean) => void;
 }) {
   const { t } = useTranslation();
-  const [preview] = useState(() => (file == null ? null : URL.createObjectURL(file)));
+  const [local] = useState(() => (file != null && shows ? URL.createObjectURL(file) : null));
+  const [converted, setConverted] = useState<string | null>(null);
+  const preview = local ?? converted;
   const [upload, setUpload] = useState<Upload>(
     file == null ? { kind: 'saved' } : { kind: 'uploading' },
   );
@@ -270,9 +278,9 @@ function CoverDialog({
 
   useEffect(
     () => () => {
-      if (preview != null && !kept.current) URL.revokeObjectURL(preview);
+      if (local != null && !kept.current) URL.revokeObjectURL(local);
     },
-    [preview],
+    [local],
   );
 
   useEffect(() => {
@@ -289,8 +297,14 @@ function CoverDialog({
       .then(async (signed) => {
         await api.uploadTo(signed, file);
         uploaded = signed.key;
-        if (current) setUpload({ kind: 'ready', key: signed.key });
-        else discardCoverUpload(organisationId, signed.key);
+        if (!current) return discardCoverUpload(organisationId, signed.key);
+
+        if (!shows) {
+          const copy = await api.previewEventCoverUpload(organisationId, signed.key);
+          if (!current) return;
+          setConverted(copy);
+        }
+        setUpload({ kind: 'ready', key: signed.key });
       })
       .catch((error: unknown) => {
         if (current) setUpload({ kind: 'failed', message: refusalOf(error, t) });
@@ -300,9 +314,14 @@ function CoverDialog({
       current = false;
       if (uploaded != null && !kept.current) discardCoverUpload(organisationId, uploaded);
     };
-  }, [file, organisationId, t]);
+  }, [file, shows, organisationId, t]);
 
   const cancel = useCallback(() => onClose('opener'), [onClose]);
+
+  /** A new photo the frame could not show is never saved unseen (sc-13861). */
+  const unseen = useCallback(() => {
+    if (file != null) setUpload({ kind: 'failed', message: t('eventCover.uploadFailed') });
+  }, [file, t]);
 
   useDialogKeys(dialog, cancel, pending);
 
@@ -420,7 +439,12 @@ function CoverDialog({
             onPointerUp={() => (drag.current = null)}
             onPointerCancel={() => (drag.current = null)}
           >
-            <EventCoverImage photo={shown} type={type} sizes="(width <= 40rem) 100vw, 45rem" />
+            <EventCoverImage
+              photo={shown}
+              type={type}
+              sizes="(width <= 40rem) 100vw, 45rem"
+              onFail={unseen}
+            />
             {upload.kind === 'uploading' && (
               <p className="cover-frame-state" role="status">
                 {t('eventCover.uploading')}

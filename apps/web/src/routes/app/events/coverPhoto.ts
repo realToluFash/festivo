@@ -31,7 +31,7 @@ export function coverFileRefusal(file: {
   return null;
 }
 
-/** Null when it is large enough, or when the browser cannot read its size (HEIC outside Safari); the API checks it again. */
+/** Null when it is large enough, or when the browser cannot read its size (HEIC outside Safari): the server's preview checks it then. */
 export function coverDimensionsRefusal(
   size: { width: number; height: number } | null,
 ): CoverRefusal | null {

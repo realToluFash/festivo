@@ -34,6 +34,34 @@ final readonly class CoverPhotoProcessor
      */
     public function process(string $bytes): array
     {
+        $image = $this->read($bytes);
+        $sizes = [];
+        foreach (self::SIZES as $size => $width) {
+            $sizes[$size] = self::webp($image, $width);
+        }
+
+        $image->clear();
+
+        return $sizes;
+    }
+
+    /**
+     * The medium size, for a browser that cannot show the original (a HEIC outside Safari) before it is saved (sc-13861).
+     *
+     * @throws CoverPhotoRefused
+     */
+    public function preview(string $bytes): string
+    {
+        $image = $this->read($bytes);
+        $webp = self::webp($image, self::SIZES['medium']);
+        $image->clear();
+
+        return $webp;
+    }
+
+    /** @throws CoverPhotoRefused */
+    private function read(string $bytes): Imagick
+    {
         if (!Regex\matches($bytes, self::SIGNATURE)) {
             throw CoverPhotoRefused::type();
         }
@@ -66,21 +94,21 @@ final readonly class CoverPhotoProcessor
         $image->stripImage();
         $image->setImageColorspace(Imagick::COLORSPACE_SRGB);
 
-        $sizes = [];
-        foreach (self::SIZES as $size => $width) {
-            $copy = clone $image;
-            if ($copy->getImageWidth() > $width) {
-                $copy->resizeImage($width, 0, Imagick::FILTER_LANCZOS, 1);
-            }
-            $copy->setImageFormat('WEBP');
-            $copy->setImageCompressionQuality(82);
-            $copy->stripImage();
-            $sizes[$size] = $copy->getImageBlob();
-            $copy->clear();
+        return $image;
+    }
+
+    private static function webp(Imagick $image, int $width): string
+    {
+        $copy = clone $image;
+        if ($copy->getImageWidth() > $width) {
+            $copy->resizeImage($width, 0, Imagick::FILTER_LANCZOS, 1);
         }
+        $copy->setImageFormat('WEBP');
+        $copy->setImageCompressionQuality(82);
+        $copy->stripImage();
+        $webp = $copy->getImageBlob();
+        $copy->clear();
 
-        $image->clear();
-
-        return $sizes;
+        return $webp;
     }
 }
