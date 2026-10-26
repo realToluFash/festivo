@@ -1074,6 +1074,7 @@
     "roleSave": "Atribuir a função {{role}}",
     "roleChanged": "{{name}} tem agora a função {{role}}. Aplica-se assim que voltar a usar a Soirely; nenhuma sessão é encerrada.",
     "ownRole": "Não pode alterar a sua própria função. Outra pessoa com a função Proprietário pode fazê-lo, ou pode passar a função Proprietário a alguém em Geral.",
+    "ownRoleOwnerCan": "You cannot change your own role. An owner can.",
     "goToGeneral": "Ir para Geral ›",
     "onlyOwner": "{{name}} é a única pessoa com a função Proprietário. Uma organização tem sempre uma, por isso essa função não pode mudar e esta pessoa não pode ser removida até que outra tenha também a função Proprietário.",
     "askOwner": "Só quem tem a função Proprietário a pode atribuir a outra pessoa. Peça a {{name}}.",
