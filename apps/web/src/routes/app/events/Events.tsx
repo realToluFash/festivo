@@ -8,6 +8,7 @@ import { api } from '../../../api.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
+import { EventCoverImage } from './EventCoverImage.tsx';
 import { typeLabel } from './eventTypes.ts';
 
 type Load =
@@ -121,6 +122,12 @@ function EventsOf({
       {load.events.map((event) => (
         <li key={event.id}>
           <Link className="events-row" to={`/app/events/${encodeURIComponent(event.id)}`}>
+            <EventCoverImage
+              photo={event.cover}
+              type={event.type}
+              sizes="6rem"
+              className="events-row-cover"
+            />
             <span className="events-row-title">
               <span className="events-row-name">{event.name}</span>
               <span className="muted">{typeLabel(event.type, t)}</span>

@@ -20,6 +20,8 @@ import { focusWhereSent, offField } from '../../../offField.ts';
 import { can, useSession } from '../../../session.ts';
 import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
 import { Forbidden } from '../Forbidden.tsx';
+import { CoverSection } from './CoverSection.tsx';
+import type { CoverPhoto } from './EventCoverImage.tsx';
 import { Choice, FieldError, Moment } from './EventFields.tsx';
 import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
 import { typeChoices } from './eventTypes.ts';
@@ -53,6 +55,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
     CURRENCY_CODES.includes(organisation.currency) ? organisation.currency : '',
   );
   const [errors, setErrors] = useState<Errors>({});
+  const [cover, setCover] = useState<{ uploadKey: string; photo: CoverPhoto } | null>(null);
   const [unsent, setUnsent] = useState(0);
   const [status, setStatus] = useState<'editing' | 'creating' | 'failed'>('editing');
   const focusNext = useRef<(() => void) | null>(null);
@@ -113,6 +116,19 @@ function EventForm({ organisation }: { organisation: Membership }) {
         timeZone,
         currency,
       });
+
+      if (cover != null) {
+        const { uploadKey, photo } = cover;
+
+        // The event exists either way; a cover that fails here is set again from Edit details.
+        await api
+          .setEventCover(created.id, {
+            uploadKey,
+            position: photo.position,
+            description: photo.description,
+          })
+          .catch(() => null);
+      }
 
       void navigate(`/app/events/${encodeURIComponent(created.id)}`);
     } catch (error) {
@@ -188,6 +204,23 @@ function EventForm({ organisation }: { organisation: Membership }) {
             onChange={(value) => edit('type', { type: isEventType(value) ? value : '' })}
           />
         </section>
+
+        <CoverSection
+          type={draft.type}
+          photo={cover?.photo ?? null}
+          organisationId={organisation.id}
+          onUse={async ({ upload, position, description }) => {
+            setCover((previous) => {
+              const uploadKey = upload?.key ?? previous?.uploadKey;
+              const sizes = upload?.preview.sizes ?? previous?.photo.sizes;
+
+              return uploadKey == null || sizes == null
+                ? previous
+                : { uploadKey, photo: { sizes, position, description } };
+            });
+          }}
+          onRemove={async () => setCover(null)}
+        />
 
         <section className="card" aria-labelledby="event-when">
           <h2 id="event-when">{t('eventForm.whenHeading')}</h2>

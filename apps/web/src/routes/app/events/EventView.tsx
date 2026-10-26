@@ -12,6 +12,7 @@ import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { type EditOutcome } from './EditEvent.tsx';
+import { EventCoverImage } from './EventCoverImage.tsx';
 import { typeLabel } from './eventTypes.ts';
 
 type Load =
@@ -165,6 +166,12 @@ function EventPage({
 
   return (
     <section className="card event-page-card" aria-labelledby="event-title">
+      <EventCoverImage
+        photo={event.cover}
+        type={event.type}
+        sizes="(width <= 40rem) 100vw, 45rem"
+        className="event-page-cover"
+      />
       <div className="event-page-head">
         <h1 id="event-title" ref={heading} tabIndex={-1}>
           {event.name}

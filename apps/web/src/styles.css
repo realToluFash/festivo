@@ -3328,6 +3328,326 @@ button.members-row {
   gap: var(--spaceMd);
 }
 
+/* The event's cover (sc-3590): 16:9 reserved before it loads, the photo or its type's default pattern. */
+.cover {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cover-default {
+  --coverA: var(--colorAccentTint);
+  --coverB: var(--colorAccentTintBorder);
+
+  background-color: var(--coverA);
+  background-image:
+    radial-gradient(circle at 20% 30%, var(--coverB) 0 18%, transparent 19%),
+    radial-gradient(circle at 80% 70%, var(--coverB) 0 24%, transparent 25%);
+}
+
+.cover-default-wedding {
+  background-image:
+    radial-gradient(circle at 50% 120%, transparent 38%, var(--coverB) 39% 41%, transparent 42%),
+    radial-gradient(circle at 50% 120%, transparent 52%, var(--coverB) 53% 55%, transparent 56%);
+}
+
+.cover-default-birthday {
+  --coverA: var(--colorAttentionTint);
+  --coverB: var(--colorAttentionBorder);
+
+  background-image: radial-gradient(circle, var(--coverB) 0 12%, transparent 13%);
+  background-size: 18% 32%;
+}
+
+.cover-default-anniversary {
+  --coverA: var(--colorHeader);
+  --coverB: var(--colorHeaderBorder);
+
+  background-image:
+    radial-gradient(circle at 42% 50%, transparent 20%, var(--coverB) 21% 24%, transparent 25%),
+    radial-gradient(circle at 58% 50%, transparent 20%, var(--coverB) 21% 24%, transparent 25%);
+}
+
+.cover-default-engagement {
+  --coverA: var(--colorBrokenTint);
+  --coverB: var(--colorAttentionBorder);
+
+  background-image: radial-gradient(
+    circle at 50% 50%,
+    transparent 22%,
+    var(--coverB) 23% 27%,
+    transparent 28%
+  );
+}
+
+.cover-default-baby-shower {
+  --coverA: var(--colorHeader);
+  --coverB: var(--colorCard);
+
+  background-image: radial-gradient(circle, var(--coverB) 0 8%, transparent 9%);
+  background-size: 12% 21%;
+}
+
+.cover-default-graduation {
+  --coverA: var(--colorDark);
+  --coverB: var(--colorDarkInset);
+
+  background-image:
+    linear-gradient(45deg, var(--coverB) 25%, transparent 25% 75%, var(--coverB) 75%),
+    linear-gradient(45deg, var(--coverB) 25%, transparent 25% 75%, var(--coverB) 75%);
+  background-position:
+    0 0,
+    2rem 2rem;
+  background-size: 4rem 4rem;
+}
+
+.cover-default-memorial {
+  --coverA: var(--colorNeutralFill);
+  --coverB: var(--colorControlBorder);
+
+  background-image: linear-gradient(
+    180deg,
+    transparent 60%,
+    var(--coverB) 60% 61%,
+    transparent 61%
+  );
+}
+
+.cover-default-religious {
+  --coverA: var(--colorAttentionWash);
+  --coverB: var(--colorAttentionBorder);
+
+  background-image: repeating-conic-gradient(
+    from 0deg at 50% 100%,
+    var(--coverB) 0 4deg,
+    transparent 4deg 16deg
+  );
+}
+
+.cover-default-cultural {
+  --coverA: var(--colorAttentionTint);
+  --coverB: var(--colorAccentTintBorder);
+
+  background-image:
+    repeating-linear-gradient(90deg, var(--coverB) 0 1.5rem, transparent 1.5rem 3rem),
+    repeating-linear-gradient(0deg, var(--coverB) 0 0.5rem, transparent 0.5rem 2rem);
+}
+
+.cover-default-party {
+  --coverA: var(--colorBrokenTint);
+  --coverB: var(--colorAttentionBorder);
+
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--coverB) 0 0.75rem,
+    transparent 0.75rem 2.5rem
+  );
+}
+
+.cover-default-gala {
+  --coverA: var(--colorDark);
+  --coverB: var(--colorAttentionOnDark);
+
+  background-image: radial-gradient(circle, var(--coverB) 0 1.5%, transparent 2%);
+  background-size: 9% 16%;
+}
+
+.cover-default-conference {
+  --coverA: var(--colorHeader);
+  --coverB: var(--colorHeaderTrack);
+
+  background-image:
+    linear-gradient(var(--coverB) 0.125rem, transparent 0.125rem),
+    linear-gradient(90deg, var(--coverB) 0.125rem, transparent 0.125rem);
+  background-size: 2rem 2rem;
+}
+
+.cover-default-corporate {
+  --coverA: var(--colorInset);
+  --coverB: var(--colorBorder);
+
+  background-image:
+    linear-gradient(90deg, var(--coverB) 0 40%, transparent 40%),
+    linear-gradient(0deg, var(--coverB) 0 30%, transparent 30%);
+}
+
+.cover-default-other {
+  background-image:
+    radial-gradient(circle at 20% 30%, var(--coverB) 0 18%, transparent 19%),
+    radial-gradient(circle at 80% 70%, var(--coverB) 0 24%, transparent 25%);
+}
+
+.cover-field {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXl);
+  align-items: flex-start;
+}
+
+.cover-field-image {
+  flex: 0 1 30rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.cover-field-side {
+  display: flex;
+  flex: 1 1 14rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+}
+
+.cover-field-side .field-help {
+  margin: 0;
+}
+
+.cover-control {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radiusInset);
+  background: none;
+  cursor: pointer;
+}
+
+.cover-control:focus-visible {
+  outline: 3px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
+.cover-control:focus-visible::after {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radiusInset);
+  box-shadow: inset 0 0 0 3px var(--colorCard);
+  content: '';
+}
+
+.cover-control:hover img {
+  filter: brightness(0.8);
+}
+
+.cover-pill {
+  position: absolute;
+  right: var(--spaceLg);
+  bottom: var(--spaceLg);
+  padding: var(--spaceXs) var(--spaceLg);
+  border-radius: var(--radiusPill);
+  background: color-mix(in srgb, var(--colorInk) 72%, transparent);
+  color: var(--colorInkOnDark);
+  font: var(--typePill);
+}
+
+.cover-control:hover .cover-pill,
+.cover-control:focus-visible .cover-pill {
+  background: var(--colorInk);
+}
+
+.cover-removed {
+  margin: 0;
+  color: var(--colorAccentText);
+}
+
+.cover-dialog {
+  width: 36rem;
+}
+
+.cover-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+}
+
+.cover-frame {
+  position: relative;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.cover-frame:active {
+  cursor: grabbing;
+}
+
+.cover-frame-state {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  background: color-mix(in srgb, var(--colorCard) 70%, transparent);
+}
+
+.cover-slider {
+  width: 100%;
+  min-height: var(--sizeHit);
+  accent-color: var(--colorAccent);
+}
+
+.cover-slider-marks {
+  display: flex;
+  justify-content: space-between;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+.cover-remove {
+  min-height: var(--sizeHit);
+  color: var(--colorBrokenText);
+}
+
+.event-page-cover {
+  margin-bottom: var(--spaceXl);
+}
+
+.events-row-cover {
+  flex: 0 0 6rem;
+  border-radius: var(--radiusSmall);
+}
+
+@media (width <= 40rem) {
+  .cover-dialog {
+    inset: 0;
+    width: 100%;
+    max-height: none;
+    height: 100%;
+    padding: 0;
+    overflow: hidden;
+    border-radius: 0;
+    gap: 0;
+  }
+
+  .cover-dialog .dialog-heading {
+    padding: var(--spaceXl) var(--space6xl) var(--spaceXl) var(--spaceXl);
+  }
+
+  .cover-dialog-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 var(--spaceXl) var(--spaceXl);
+  }
+
+  .cover-dialog-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    padding: var(--spaceLg) var(--spaceXl);
+    border-top: var(--borderDivider);
+    background: var(--colorCard);
+  }
+}
+
 .event-page-head {
   display: flex;
   flex-wrap: wrap;
