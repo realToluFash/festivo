@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { dateLocale } from '../i18n/index.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { SecondaryButton } from './Buttons.tsx';
+import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { EventCover } from './EventCover.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
@@ -90,7 +90,14 @@ export function EventList({
   );
 }
 
-export function NoEvents({ kind, creates }: { kind: LayoutKind; creates: boolean }) {
+export function NoEvents({
+  kind,
+  onCreate,
+}: {
+  kind: LayoutKind;
+  /** Absent for a role without Create events, which reads where events will come from. */
+  onCreate?: (() => void) | undefined;
+}) {
   const { t } = useTranslation();
 
   return (
@@ -99,8 +106,15 @@ export function NoEvents({ kind, creates }: { kind: LayoutKind; creates: boolean
         {t('eventsScreen.noneTitle')}
       </Text>
       <Text size={tokens.typeBody.size} muted>
-        {creates ? t('eventsScreen.noneCreateOnWeb') : t('eventsScreen.noneWillShow')}
+        {onCreate == null ? t('eventsScreen.noneWillShow') : t('eventsScreen.noneCreate')}
       </Text>
+      {onCreate != null && (
+        <PrimaryButton
+          label={t('eventsScreen.newEvent')}
+          onPress={onCreate}
+          testID="events.none.new"
+        />
+      )}
     </View>
   );
 }
@@ -122,7 +136,16 @@ export function EventsFailed({ onRetry, testID }: { onRetry: () => void; testID:
 }
 
 /** The event's areas go under its times, each added by the story that builds it: none yet (sc-1454 adds Check-in). */
-export function EventPage({ kind, event }: { kind: LayoutKind; event: OrganisationEvent }) {
+export function EventPage({
+  kind,
+  event,
+  onEdit,
+}: {
+  kind: LayoutKind;
+  event: OrganisationEvent;
+  /** Absent for a role without events.manage (sc-3595). */
+  onEdit?: (() => void) | undefined;
+}) {
   const { t } = useTranslation();
 
   return (
@@ -141,6 +164,9 @@ export function EventPage({ kind, event }: { kind: LayoutKind; event: Organisati
           timeZone: event.timeZone,
         })}
       </Text>
+      {onEdit != null && (
+        <SecondaryButton label={t('eventEdit.open')} onPress={onEdit} testID="events.page.edit" />
+      )}
     </View>
   );
 }

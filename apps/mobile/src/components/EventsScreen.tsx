@@ -1,12 +1,13 @@
 import type { Membership, OrganisationEvent } from '@soirely/api-client';
 import { roleHolds } from '@soirely/domain';
-import { Redirect, useFocusEffect } from 'expo-router';
+import { Redirect, router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, RefreshControl, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
+import { takeSaved } from '../kit/eventSaved.ts';
 import {
   type Opened,
   type Selection,
@@ -18,9 +19,11 @@ import { useLayout } from '../layout/useLayout.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AppFrame } from './AppFrame.tsx';
+import { PrimaryButton } from './Buttons.tsx';
 import { EventList, EventNotFound, EventPage, EventsFailed, NoEvents } from './Events.tsx';
 import { type ListAndPageSpacing, ListAndPage } from './ListAndPage.tsx';
 import { Notice } from './Notice.tsx';
+import { ReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
 
@@ -38,6 +41,9 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
   const { account, organisation } = useSignedIn();
   const organisationId = organisation?.id;
   const reads = organisation != null && roleHolds(organisation, 'events.read');
+  const creates = organisation != null && roleHolds(organisation, 'events.create');
+  const manages = organisation != null && roleHolds(organisation, 'events.manage');
+  const [savedEvent, setSavedEvent] = useState<string | null>(null);
   const phone = kind === 'phone';
   const landscape = kind === 'tabletLandscape';
 
@@ -63,7 +69,12 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     setAttempt((n) => n + 1);
   }, []);
 
-  useFocusEffect(reload);
+  useFocusEffect(
+    useCallback(() => {
+      setSavedEvent(takeSaved());
+      reload();
+    }, [reload]),
+  );
 
   useEffect(() => {
     const listener = AppState.addEventListener('change', (state) => {
@@ -103,11 +114,20 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     return <Redirect href={DESTINATION_HREF.home} />;
   }
 
+  const onEdit = manages
+    ? () => open != null && router.push(`/events/${encodeURIComponent(open)}/edit`)
+    : undefined;
+  const shown = listed ?? (opened.kind === 'loaded' ? opened.event : null);
   const page =
-    open == null ? null : listed != null ? (
-      <EventPage kind={kind} event={listed} />
-    ) : opened.kind === 'loaded' ? (
-      <EventPage kind={kind} event={opened.event} />
+    open == null ? null : shown != null ? (
+      <View style={styles.stack}>
+        {savedEvent === open && (
+          <ReadOut words={t('eventEdit.saved')}>
+            <Notice tone="done" mark={tokens.marks.done.glyph} body={t('eventEdit.saved')} />
+          </ReadOut>
+        )}
+        <EventPage kind={kind} event={shown} onEdit={onEdit} />
+      </View>
     ) : opened.kind === 'notFound' ? (
       <EventNotFound onBack={() => select(null)} />
     ) : opened.kind === 'failed' ? (
@@ -116,7 +136,8 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
       <Waiting words={t('eventsScreen.loadingEvent')} />
     );
   const inFront = page != null;
-  const pageName = listed?.name ?? (opened.kind === 'loaded' ? opened.event.name : null);
+  const pageName = shown?.name ?? null;
+  const newEvent = () => router.push('/events/new');
 
   const heading = !phone && (
     <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
@@ -141,12 +162,18 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
         </Text>
       )}
       {load.events.length === 0 ? (
-        <NoEvents
-          kind={kind}
-          creates={organisation != null && roleHolds(organisation, 'events.create')}
-        />
+        <NoEvents kind={kind} onCreate={creates ? newEvent : undefined} />
       ) : (
-        <EventList events={load.events} open={open} onOpen={select} />
+        <>
+          {creates && (
+            <PrimaryButton
+              label={t('eventsScreen.newEvent')}
+              onPress={newEvent}
+              testID="events.new"
+            />
+          )}
+          <EventList events={load.events} open={open} onOpen={select} />
+        </>
       )}
     </View>
   );
