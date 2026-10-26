@@ -5,15 +5,12 @@ import {
   type EventDraft,
   eventNameLength,
   eventNameOf,
-  eventProblems,
+  eventFormProblems,
   isEventType,
   filledEndDate,
   localDateTime,
-  VENUE_ADDRESS_MAXIMUM,
-  VENUE_NAME_MAXIMUM,
   type VenueDraft,
   venueDraftOf,
-  venueProblems,
   venueSent,
 } from '@soirely/domain';
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
@@ -30,7 +27,14 @@ import { CoverSection } from './CoverSection.tsx';
 import { discardCoverUpload, refusalOf } from './coverPhoto.ts';
 import type { CoverPhoto } from './EventCoverImage.tsx';
 import { Choice, FieldError, Moment } from './EventFields.tsx';
-import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
+import {
+  type Errors,
+  FIELDS,
+  type Field,
+  describedBy,
+  inputFor,
+  problemWords,
+} from './eventFieldOrder.ts';
 import { typeChoices } from './eventTypes.ts';
 import { skippedLine } from './skippedLine.ts';
 import { VenueSection } from './VenueSection.tsx';
@@ -116,13 +120,8 @@ function EventForm({ organisation }: { organisation: Membership }) {
     if (busy) return;
 
     const found: Errors = {};
-    for (const { field, problem } of eventProblems(draft, timeZone))
-      found[field] ??= t(`eventForm.${problem}`, { most: EVENT_NAME_MAXIMUM });
-    for (const { field, problem } of venueProblems(venue))
-      found[field] ??= t(`eventForm.${problem}`, {
-        most: field === 'venueName' ? VENUE_NAME_MAXIMUM : VENUE_ADDRESS_MAXIMUM,
-      });
-    if (currency === '') found.currency = t('orgGeneral.currencyBlank');
+    for (const { field, problem } of eventFormProblems({ draft, venue, timeZone, currency }))
+      found[field] = problemWords(field, problem, t);
 
     const unsentFields = Object.keys(found).length;
     const { type } = draft;

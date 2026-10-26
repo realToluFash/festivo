@@ -1,19 +1,33 @@
-import { type EventDraft, type EventField, type VenueField } from '@soirely/domain';
+import {
+  EVENT_FORM_FIELDS,
+  EVENT_NAME_MAXIMUM,
+  type EventDraft,
+  type EventFormField,
+  VENUE_ADDRESS_MAXIMUM,
+  VENUE_NAME_MAXIMUM,
+  eventFormProblems,
+} from '@soirely/domain';
+import { type TFunction } from 'i18next';
 
-export type Field = EventField | VenueField | 'timeZone' | 'currency';
+export type Field = EventFormField;
 export type Errors = Partial<Record<Field, string | undefined>>;
 
-/** In the order the form shows them, so the first refused is the one focus goes to. */
-export const FIELDS: readonly Field[] = [
-  'name',
-  'type',
-  'startsAt',
-  'endsAt',
-  'venueName',
-  'venueAddress',
-  'timeZone',
-  'currency',
-];
+export const FIELDS = EVENT_FORM_FIELDS;
+
+type Problem = ReturnType<typeof eventFormProblems>[number]['problem'];
+
+export function problemWords(field: Field, problem: Problem, t: TFunction): string {
+  if (problem === 'currencyBlank') return t('orgGeneral.currencyBlank');
+
+  return t(`eventForm.${problem}`, {
+    most:
+      field === 'venueName'
+        ? VENUE_NAME_MAXIMUM
+        : field === 'venueAddress'
+          ? VENUE_ADDRESS_MAXIMUM
+          : EVENT_NAME_MAXIMUM,
+  });
+}
 
 /** The input focus goes to: the empty half of a start or an end, or the end's date when it is too early. */
 export function inputFor(field: Field, draft: EventDraft): string {
