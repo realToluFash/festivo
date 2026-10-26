@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test, vi } from 'vitest';
+import { createServerClock } from '@soirely/domain';
 
 import {
   ApiClient,
@@ -2218,6 +2219,8 @@ describe('events (sc-1486)', () => {
     cover: null,
     venue: null,
     madeLiveAt: null,
+    phase: 'draft',
+    concludedAt: null,
     createdAt: '2026-10-21T09:00:00+00:00',
   };
 
@@ -2330,6 +2333,60 @@ describe('events (sc-1486)', () => {
 
     expect(await api.makeLive(EVENT.id)).toEqual({ event: live, tag: '"3"' });
     expect(sent).toEqual([{ line: `POST /api/events/${EVENT.id}/make-live`, body: null }]);
+  });
+
+  test('ending it posts nothing and answers the finished event with its tag', async () => {
+    const ended = {
+      ...EVENT,
+      status: 'ended',
+      phase: 'finished',
+      concludedAt: '2026-11-13T10:00:00+01:00',
+    };
+    const sent: { line: string; body: unknown }[] = [];
+    const api = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (url, init) => {
+        sent.push({
+          line: `${init?.method ?? 'GET'} ${new URL(String(url)).pathname}`,
+          body: init?.body ?? null,
+        });
+
+        return new Response(JSON.stringify({ event: ended }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ETag: '"4"' },
+        });
+      },
+    });
+
+    expect(await api.endEvent(EVENT.id)).toEqual({ event: ended, tag: '"4"' });
+    expect(sent).toEqual([{ line: `POST /api/events/${EVENT.id}/end`, body: null }]);
+  });
+
+  test.each([
+    ['a phase nobody declared', { phase: 'over' }],
+    ['no phase', { phase: undefined }],
+    ['a concludedAt that is not a string or null', { concludedAt: 1 }],
+  ])('an event with %s is an error', async (_, change) => {
+    await expect(
+      client(() => json({ event: { ...EVENT, ...change } })).api.event('e1'),
+    ).rejects.toThrow(/events controller/);
+  });
+
+  test("every response's Date header corrects the clock", async () => {
+    const clock = createServerClock(() => Date.parse('2026-11-14T15:10:00Z'));
+    const api = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      clock,
+      fetch: async () =>
+        new Response(JSON.stringify({ event: EVENT }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', Date: 'Sat, 14 Nov 2026 15:00:00 GMT' },
+        }),
+    });
+
+    await api.event('e1').catch(() => null);
+
+    expect(clock.now().toISOString()).toBe('2026-11-14T15:00:00.000Z');
   });
 
   test('an event with a madeLiveAt that is not a string or null is an error', async () => {
@@ -2488,6 +2545,8 @@ describe("an event's venue (sc-3589)", () => {
     currency: 'NGN',
     cover: null,
     madeLiveAt: null,
+    phase: 'draft',
+    concludedAt: null,
     createdAt: '2026-10-26T09:00:00+00:00',
   };
 
