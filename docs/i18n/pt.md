@@ -41,6 +41,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. O tipo de evento** (`web:eventForm.type*`, `web:eventTypes.*`,
+  `messages:validation.event_type_required`, sc-3588 via sc-13205). "Tipo", "Escolha o tipo de
+  evento", e a recusa, igual no ecrã e na API, "Escolha que tipo de evento é.". Birthday é
+  "Aniversário", por isso anniversary é "Aniversário de casamento": dois "Aniversário" na mesma
+  lista não se distinguem. "Chá de bebé" (PT-PT, com acento agudo), "Cerimónia de graduação"
+  (nunca "Formatura", que é do Brasil), "Homenagem póstuma" para memorial, "Gala ou evento
+  solidário", "Evento empresarial".
+
 - **25 Oct 2026. A count of a round million, `_many`** (every web and app count family,
   sc-8529, now that the key-parity guard allows it, PR #324). At 1 000 000 and every exact
   million, i18next picks `_many`. It is `_other` with "de" between the count and the noun it
