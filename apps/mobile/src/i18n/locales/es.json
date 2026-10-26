@@ -1233,6 +1233,7 @@
     "subtitle_other": "{{organisation}} · {{count}} con acceso",
     "subtitle_many": "{{organisation}} · {{count}} con acceso",
     "ownRole": "No puede cambiar su propio rol. Puede hacerlo otro Propietario, o usted puede ceder el rol Propietario a otra persona en Organización.",
+    "ownRoleOwnerCan": "You cannot change your own role. An owner can.",
     "goToOrganisation": "Ir a Organización ›",
     "fromTheWeb": "Para invitar a alguien, use Soirely en la web.",
     "pickSomebody": "Elija a alguien de la lista para ver aquí sus datos.",
@@ -1241,8 +1242,8 @@
     "suspendedBody": "Esta persona no puede usar {{organisation}}. Se conservan su rol, sus eventos y su historial.",
     "restoreAccess": "Restablecer el acceso",
     "seatsInUse_one": "La única plaza de equipo del plan de esta organización está ocupada, así que no ha cambiado nada.",
-    "seatsInUse_other": "Están ocupadas las {{count}} plazas de equipo del plan de esta organización, así que no ha cambiado nada.",
-    "seatsInUse_many": "Están ocupadas las {{count}} de plazas de equipo del plan de esta organización, así que no ha cambiado nada.",
+    "seatsInUse_other": "Están ocupadas las {{count, number}} plazas de equipo del plan de esta organización, así que no ha cambiado nada.",
+    "seatsInUse_many": "Están ocupadas las {{count, number}} de plazas de equipo del plan de esta organización, así que no ha cambiado nada.",
     "suspendedBecause": {
       "address_gone": "{{name}} ya no tiene su dirección de {{domain}} en la cuenta.",
       "domain_closed": "{{organisation}} ya no permite unirse a través de {{domain}}.",
@@ -1417,19 +1418,19 @@
     "other": "Otro"
   },
   "eventsScreen": {
-    "title": "Events",
-    "loading": "Loading events…",
-    "refreshing": "Refreshing…",
-    "draft": "Draft",
-    "failedLoad": "Your events did not load. Check your connection and try again.",
-    "retry": "Try again",
-    "noneTitle": "No events yet",
-    "noneCreateOnWeb": "Create events in Soirely on the web, and they will show here.",
-    "noneWillShow": "Events your organisation creates will show here.",
-    "choose": "Choose an event",
-    "loadingEvent": "Loading the event…",
+    "title": "Eventos",
+    "loading": "Cargando eventos…",
+    "refreshing": "Actualizando…",
+    "draft": "Borrador",
+    "failedLoad": "No se han podido cargar sus eventos. Compruebe su conexión y vuelva a intentarlo.",
+    "retry": "Inténtelo de nuevo",
+    "noneTitle": "Todavía no hay eventos",
+    "noneCreateOnWeb": "Cree eventos en Soirely desde la web y aparecerán aquí.",
+    "noneWillShow": "Aquí aparecerán los eventos que cree su organización.",
+    "choose": "Elija un evento",
+    "loadingEvent": "Cargando el evento…",
     "when": "{{range}} · {{timeZone}}",
-    "notFound": "This event is not available",
-    "backToEvents": "Back to Events"
+    "notFound": "Este evento no está disponible",
+    "backToEvents": "Volver a Eventos"
   }
 }

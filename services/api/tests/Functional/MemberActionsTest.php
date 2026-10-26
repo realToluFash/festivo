@@ -357,7 +357,7 @@ final class MemberActionsTest extends ApiTestCase
 
         $this->as($this->owner, 'POST', $this->path('/members/' . $this->membershipOf($chidi) . '/suspend'));
         self::assertSame(204, $this->statusCode());
-        self::assertSame(['Your access to Ìrè Events is suspended'], $this->subjectsTo('chidi@ire.events'));
+        self::assertSame(['Access suspended: Ìrè Events'], $this->subjectsTo('chidi@ire.events'));
 
         $refused = $this->bearing($token, 'GET', $this->path('/permissions'));
         self::assertSame(404, $this->statusCode(), Json\encode($refused));
@@ -366,7 +366,7 @@ final class MemberActionsTest extends ApiTestCase
 
         $this->as($this->owner, 'POST', $this->path('/members/' . $this->membershipOf($chidi) . '/restore'));
         self::assertSame(204, $this->statusCode());
-        self::assertSame(['Your access to Ìrè Events is back'], $this->subjectsTo('chidi@ire.events'));
+        self::assertSame(['Access restored: Ìrè Events'], $this->subjectsTo('chidi@ire.events'));
         self::assertStringNotContainsString('Folake', $this->bodyTo('chidi@ire.events'), 'it does not say who restored them');
         self::assertStringContainsString('as Coordinator, the role you had', $this->bodyTo('chidi@ire.events'));
 

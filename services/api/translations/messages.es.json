@@ -56,8 +56,8 @@
     "validation.event_start_required": "Elija cuándo empieza el evento.",
     "validation.event_time_invalid": "Indique una fecha y una hora sin zona horaria.",
     "validation.event_type_required": "Elija qué tipo de evento es.",
-    "validation.event_venue_address_too_long": "Shorten the address to {count} characters or fewer.",
-    "validation.event_venue_name_too_long": "Shorten the venue name to {count} characters or fewer.",
+    "validation.event_venue_address_too_long": "Acorte la dirección a {count} caracteres como máximo.",
+    "validation.event_venue_name_too_long": "Acorte el nombre del lugar a {count} caracteres como máximo.",
     "validation.locale_invalid": "Elija English, Español, Français o Português.",
     "validation.name_required": "Introduzca su nombre.",
     "validation.organisation_name_required": "Indique el nombre de la organización.",
@@ -205,5 +205,12 @@
     "assistant.too_many_tools": "Se pueden ofrecer como máximo {most} herramientas; esta petición ofrece {count}.",
     "assistant.resource_context_too_long": "El contexto del recurso puede tener como máximo {most} caracteres; este tiene {count}. Envíe lo que se ve en la pantalla, no el registro completo.",
     "assistant.role_unknown": "Rol de mensaje desconocido: \"{role}\". Roles conocidos: user, assistant, tool_call, tool_result.",
-    "sign_in.idle_timeout": "{organisation} cierra la sesión tras {days} días sin uso. Vuelva a iniciar sesión para seguir."
+    "sign_in.idle_timeout": "{organisation} cierra la sesión tras {days} días sin uso. Vuelva a iniciar sesión para seguir.",
+    "validation.cover_type": "Ese archivo no es una foto que se pueda usar. Elija un JPEG, PNG, WebP o HEIC.",
+    "validation.cover_size": "Esa foto supera los 15 MB. Elija una más ligera.",
+    "validation.cover_dimensions": "Esa foto mide menos de 1200 × 675 píxeles, así que se vería borrosa. Elija una más grande.",
+    "validation.cover_description_too_long": "Acorte la descripción a {count} caracteres como máximo.",
+    "validation.cover_position_invalid": "Elija una posición entre 0, la parte superior de la foto, y 100, la inferior.",
+    "validation.cover_photo_required": "Elija una foto para la portada.",
+    "validation.cover_upload_missing": "No se ha podido subir la foto. Vuelva a intentarlo."
 }

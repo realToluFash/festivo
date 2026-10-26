@@ -56,8 +56,8 @@
     "validation.event_start_required": "Escolha quando começa o evento.",
     "validation.event_time_invalid": "Indique uma data e uma hora sem fuso horário.",
     "validation.event_type_required": "Escolha que tipo de evento é.",
-    "validation.event_venue_address_too_long": "Shorten the address to {count} characters or fewer.",
-    "validation.event_venue_name_too_long": "Shorten the venue name to {count} characters or fewer.",
+    "validation.event_venue_address_too_long": "Encurte a morada para um máximo de {count} caracteres.",
+    "validation.event_venue_name_too_long": "Encurte o nome do local para um máximo de {count} caracteres.",
     "validation.locale_invalid": "Escolha English, Español, Français ou Português.",
     "validation.name_required": "Introduza o seu nome.",
     "validation.organisation_name_required": "Indique o nome da organização.",
@@ -205,5 +205,12 @@
     "assistant.too_many_tools": "Podem ser oferecidas, no máximo, {most} ferramentas; este pedido oferece {count}.",
     "assistant.resource_context_too_long": "O contexto do recurso pode ter, no máximo, {most} caracteres; este tem {count}. Envie o que está no ecrã, não o registo completo.",
     "assistant.role_unknown": "Função de mensagem desconhecida: \"{role}\". Funções conhecidas: user, assistant, tool_call, tool_result.",
-    "sign_in.idle_timeout": "{organisation} encerra a sessão após {days} dias sem utilização. Inicie sessão novamente para prosseguir."
+    "sign_in.idle_timeout": "{organisation} encerra a sessão após {days} dias sem utilização. Inicie sessão novamente para prosseguir.",
+    "validation.cover_type": "Esse ficheiro não é uma fotografia que se possa usar. Escolha um JPEG, PNG, WebP ou HEIC.",
+    "validation.cover_size": "Essa fotografia tem mais de 15 MB. Escolha uma mais leve.",
+    "validation.cover_dimensions": "Essa fotografia tem menos de 1200 × 675 píxeis, por isso ficaria desfocada. Escolha uma maior.",
+    "validation.cover_description_too_long": "Encurte a descrição para um máximo de {count} caracteres.",
+    "validation.cover_position_invalid": "Escolha uma posição entre 0, a parte de cima da fotografia, e 100, a parte de baixo.",
+    "validation.cover_photo_required": "Escolha uma fotografia para a capa.",
+    "validation.cover_upload_missing": "Não foi possível carregar a fotografia. Tente novamente."
 }

@@ -62,6 +62,26 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. An event's venue, and the app's event list** (`web:eventForm.venue*`,
+  `web:eventPage.venue*`, `addVenue`, `openInMaps`, `messages:validation.event_venue_*`,
+  `mobile:eventsScreen.*`, sc-3589 and sc-1593 via sc-13205). Settled as built, except two lines
+  that wait on [dev], because `Events.test.tsx` matches their English: `venueLookupDown` should
+  read "Suggestions are not available right now. …", no contraction, as it reports a failure;
+  `venueZoneOffer` should read "The venue is in {{zone}}. Use that time zone?", since "Use it?"
+  leaves the reader to work out what "it" is. es, fr and pt are written to the settled meaning
+  already. A venue is "Venue" in every label; its address is "Address". The two length limits
+  say the same sentence on the web and from the API, the house "Shorten the … to {{most}}
+  characters or fewer.".
+- **26 Oct 2026. An event's cover** (sc-13587, `web:eventCover.*`, `messages:validation.cover_*`).
+  The section is "Cover" and the dialog "Cover photo"; the person's own image is "photo"
+  throughout, and "image" only in "Describe the image", the screen reader's word. The API's
+  description limit now reads as the web's, "Shorten the description to {count} characters or
+  fewer.", replacing "… characters at most." The refusals read "That file is not a photo we can
+  use. Choose a JPEG, PNG, WebP or HEIC." and "The photo did not upload. Try again." (web and API
+  alike), and the created line "The event is saved without its photo. {{reason}}", with no comma:
+  no contractions in an error, as the house rule has it (changed in the catalogues and
+  `Events.test.tsx` by [dev] in #634, sc-3590). Every
+  locale's created line must read with any refusal after it as `{{reason}}`.
 - **26 Oct 2026. An event's type** (`web:eventForm.type`, `typePlaceholder`, `typeMissing`,
   `web:eventTypes.*`, `messages:validation.event_type_required`, sc-3588 via sc-13205). The
   field is "Type", its prompt "Choose what kind of event", and the refusal, on screen and from

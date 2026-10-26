@@ -41,6 +41,19 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. O local do evento e a lista de eventos na app** (`web:eventForm.venue*`,
+  `web:eventPage.venue*`, `addVenue`, `openInMaps`, `messages:validation.event_venue_*`,
+  `mobile:eventsScreen.*`, sc-3589 and sc-1593 via sc-13205). Venue is "Local" ("Nome do
+  local", "Local a confirmar", "Adicionar o local"), never "recinto" or "espaço"; its address is
+  "Morada", the postal word, not "Endereço". "Open in maps" is "Ver no mapa". The zone offer asks
+  "Pretende usá-lo?", impersonal and formal. The app's empty list says "na versão web da
+  Soirely", feminine, as everywhere.
+- **26 Oct 2026. A capa de um evento** (sc-13587, `web:eventCover.*`,
+  `messages:validation.cover_*`). «Capa» para a secção e «Fotografia de capa» para o diálogo;
+  «fotografia», nunca «foto», em toda a secção, e «imagem» só em «Descreva a imagem», a palavra
+  do leitor de ecrã. «Carregar» para upload, com o gerúndio de PT-PT «A carregar…»; «píxeis», não
+  «pixels». A linha do evento criado, «O evento foi guardado sem a fotografia. {{reason}}», lê-se
+  com qualquer das recusas a seguir.
 - **26 Oct 2026. O tipo de evento** (`web:eventForm.type*`, `web:eventTypes.*`,
   `messages:validation.event_type_required`, sc-3588 via sc-13205). "Tipo", "Escolha o tipo de
   evento", e a recusa, igual no ecrã e na API, "Escolha que tipo de evento é.". Birthday é

@@ -2,6 +2,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   symlinkSync,
@@ -786,18 +787,9 @@ describe('the flows a batch runs', () => {
       ]),
     );
     const source = join(root, 'apps/mobile/.maestro');
-    const checks = [
-      'home',
-      'settings',
-      'account',
-      'security',
-      'organisation',
-      'members',
-      'roles',
-      'sign-in-rules',
-      'switcher',
-      'create-organisation',
-    ];
+    const checks = readdirSync(join(source, 'checks'))
+      .filter((file) => file.endsWith('.yaml'))
+      .map((file) => file.slice(0, -'.yaml'.length));
     const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
     try {
       composeBatch(source, target, {
@@ -813,6 +805,9 @@ describe('the flows a batch runs', () => {
       );
       expect(readFileSync(join(target, '_checks/security.es.yaml'), 'utf8')).toContain(
         "'Seguridad'",
+      );
+      expect(readFileSync(join(target, '_checks/sign-in-rules.fr.yaml'), 'utf8')).toContain(
+        "'Règles de connexion|Règles de connexion de .*'",
       );
       expect(readFileSync(join(target, 'batch/session.yaml'), 'utf8')).not.toContain('{{t:');
       expect(readFileSync(join(target, 'batch/reopen.yaml'), 'utf8')).not.toContain('{{t:');
