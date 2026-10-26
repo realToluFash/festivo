@@ -2213,6 +2213,7 @@ describe('events (sc-1486)', () => {
     timeZone: 'Africa/Lagos',
     dayCount: 2,
     currency: 'NGN',
+    cover: null,
     venue: null,
     createdAt: '2026-10-21T09:00:00+00:00',
   };
@@ -2454,6 +2455,7 @@ describe("an event's venue (sc-3589)", () => {
     timeZone: 'Africa/Lagos',
     dayCount: 2,
     currency: 'NGN',
+    cover: null,
     createdAt: '2026-10-26T09:00:00+00:00',
   };
 

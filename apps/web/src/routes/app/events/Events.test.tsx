@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { EVENT_TYPES } from '@soirely/domain';
 
@@ -29,6 +29,7 @@ function event(overrides: Record<string, unknown> = {}) {
     timeZone: 'Africa/Lagos',
     dayCount: 2,
     currency: 'NGN',
+    cover: null,
     venue: null,
     createdAt: '2026-10-21T09:00:00+00:00',
     ...overrides,
@@ -276,6 +277,7 @@ describe('New event', () => {
     expect(fields).toEqual([
       'event-name',
       'event-type',
+      'cover-file',
       'event-start-date',
       'event-start-time',
       'event-end-date',
@@ -1390,7 +1392,13 @@ describe("An event's venue (sc-3589)", () => {
     await screen.findByRole('heading', { level: 1, name: 'New event' });
 
     const headings = screen.getAllByRole('heading', { level: 2 }).map((one) => one.textContent);
-    expect(headings).toEqual(['About the event', 'When', 'Venue', 'Time zone and currency']);
+    expect(headings).toEqual([
+      'About the event',
+      'Cover',
+      'When',
+      'Venue',
+      'Time zone and currency',
+    ]);
     expect(screen.getByLabelText(/Venue name/u)).toBeDefined();
     expect(address().getAttribute('aria-expanded')).toBe('false');
     expect(document.getElementById('event-venue-address-hint')?.textContent).toBe(
@@ -1627,3 +1635,430 @@ const TYPED = {
   latitude: null,
   longitude: null,
 };
+
+describe('The cover (sc-3590)', () => {
+  const PHOTO = {
+    position: 30,
+    description: 'Adaeze and Tunde under the arch',
+    sizes: [
+      { width: 640, url: 'http://store.test/c/small.webp' },
+      { width: 1280, url: 'http://store.test/c/medium.webp' },
+      { width: 1920, url: 'http://store.test/c/large.webp' },
+    ],
+  };
+  let nextImage: { width: number; height: number } | null = { width: 2400, height: 1600 };
+
+  function serving(cover: unknown, answers: Record<string, Answer> = {}) {
+    const sent: { line: string; body: unknown }[] = [];
+    let held = event({ cover });
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
+      sent.push({ line, body });
+
+      const answer = await answers[line]?.(body);
+      if (answer != null) return answer;
+      if (line === 'POST /api/orgs/org_1/event-cover-uploads')
+        return json(
+          {
+            upload: {
+              url: 'http://store.test/upload/1',
+              key: 'event_cover/org_1/2026/10/one.jpg',
+              content_type: 'image/jpeg',
+            },
+          },
+          201,
+        );
+      if (line === 'PUT /upload/1') return new Response(null, { status: 200 });
+      if (line === 'PUT /api/events/ev_1/cover') {
+        const { position, description } = body as { position: number; description: string | null };
+        held = event({ cover: { ...PHOTO, position, description } });
+      }
+      if (line === 'DELETE /api/events/ev_1/cover') held = event({ cover: null });
+
+      return new Response(JSON.stringify({ event: held }), { headers: { ETag: '"1"' } });
+    });
+
+    return sent;
+  }
+
+  function file(name = 'arch.jpg', type = 'image/jpeg', size = 1000): File {
+    const chosen = new File(['x'], name, { type });
+    Object.defineProperty(chosen, 'size', { value: size });
+
+    return chosen;
+  }
+
+  function choose(chosen: File): void {
+    fireEvent.change(document.getElementById('cover-file')!, { target: { files: [chosen] } });
+  }
+
+  async function editing(): Promise<void> {
+    at('/app/events/ev_1/edit');
+    await screen.findByRole('heading', { level: 1, name: 'Edit details' });
+  }
+
+  beforeEach(() => {
+    nextImage = { width: 2400, height: 1600 };
+    URL.createObjectURL = () => 'blob:chosen';
+    URL.revokeObjectURL = () => undefined;
+    vi.stubGlobal(
+      'Image',
+      class {
+        naturalWidth = 0;
+        naturalHeight = 0;
+        onload: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        set src(_: string) {
+          queueMicrotask(() => {
+            if (nextImage == null) return this.onerror?.();
+            this.naturalWidth = nextImage.width;
+            this.naturalHeight = nextImage.height;
+            this.onload?.();
+          });
+        }
+      },
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("shows the type's default in New event, the general default before a type is chosen", async () => {
+    signedIn();
+    answering({});
+    at('/app/events/new');
+    await screen.findByRole('heading', { level: 1, name: 'New event' });
+
+    expect(screen.getByTestId('cover-default').className).toContain('cover-default-other');
+
+    fireEvent.change(document.getElementById('event-type')!, { target: { value: 'baby_shower' } });
+
+    expect(screen.getByTestId('cover-default').className).toContain('cover-default-baby-shower');
+    expect(screen.queryByRole('button', { name: /Change photo/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Upload a photo' })).toBeDefined();
+  });
+
+  it.each([
+    [
+      'a GIF',
+      'a.gif',
+      'image/gif',
+      1000,
+      "That file isn't a photo we can use. Choose a JPEG, PNG, WebP or HEIC.",
+    ],
+    [
+      'over 15 MB',
+      'a.jpg',
+      'image/jpeg',
+      15 * 1024 * 1024 + 1,
+      'That photo is over 15 MB. Choose a smaller one.',
+    ],
+  ])(
+    'refuses %s before it uploads, saying which and what is accepted',
+    async (_, name, type, size, line) => {
+      signedIn();
+      const sent = serving(null);
+      await editing();
+      const chosen = file(name, type, size);
+
+      choose(chosen);
+
+      expect(await screen.findByText(line)).toBeDefined();
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(sent.filter(({ line: sentLine }) => sentLine.includes('cover'))).toEqual([]);
+    },
+  );
+
+  it('refuses a photo smaller than 1200 × 675 before it uploads', async () => {
+    signedIn();
+    const sent = serving(null);
+    await editing();
+    nextImage = { width: 1199, height: 900 };
+
+    choose(file());
+
+    expect(
+      await screen.findByText(
+        'That photo is smaller than 1200 × 675 pixels, so it would look blurred. Choose a larger one.',
+      ),
+    ).toBeDefined();
+    expect(sent.filter(({ line }) => line.includes('cover'))).toEqual([]);
+  });
+
+  it('uploads a chosen photo in the dialog, and Use this photo saves it, its position and its description', async () => {
+    signedIn();
+    const sent = serving(null);
+    await editing();
+
+    choose(file());
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    const slider = within(dialog).getByLabelText('Photo position');
+
+    expect(document.activeElement).toBe(slider);
+    expect(within(dialog).queryByRole('button', { name: 'Remove photo' })).toBeNull();
+    await waitFor(() => expect(sent.map(({ line }) => line)).toContain('PUT /upload/1'));
+
+    fireEvent.change(slider, { target: { value: '80' } });
+    expect(slider.getAttribute('aria-valuetext')).toBe('Showing the bottom of the photo');
+    fireEvent.change(within(dialog).getByLabelText(/Describe the image/), {
+      target: { value: ' The arch ' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
+
+    const cover = await screen.findByRole('button', { name: 'Change photo' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(sent.find(({ line }) => line === 'PUT /api/events/ev_1/cover')?.body).toEqual({
+      uploadKey: 'event_cover/org_1/2026/10/one.jpg',
+      position: 80,
+      description: 'The arch',
+    });
+    expect(within(cover).getByRole('img').getAttribute('alt')).toBe('The arch');
+    await waitFor(() => expect(document.activeElement).toBe(cover));
+  });
+
+  it('Cancel and Escape save nothing from the visit and keep the previous cover, and focus goes back to the cover', async () => {
+    signedIn();
+    const sent = serving(PHOTO);
+    await editing();
+    const cover = screen.getByRole('button', { name: 'Change photo' });
+
+    for (const leave of ['Cancel', 'Escape']) {
+      fireEvent.click(cover);
+      const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+      fireEvent.change(within(dialog).getByLabelText('Photo position'), {
+        target: { value: '90' },
+      });
+      fireEvent.change(within(dialog).getByLabelText(/Describe the image/), {
+        target: { value: 'Something else' },
+      });
+
+      if (leave === 'Cancel')
+        fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+      else fireEvent.keyDown(document, { key: 'Escape' });
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      const img = within(screen.getByRole('button', { name: 'Change photo' })).getByRole('img');
+      expect(img.getAttribute('alt')).toBe(PHOTO.description);
+      expect(img.style.objectPosition).toBe('50% 30%');
+      await waitFor(() => expect(document.activeElement).toBe(cover));
+    }
+
+    expect(sent.filter(({ line }) => line.includes('/cover'))).toEqual([]);
+  });
+
+  it('a new photo chosen and then cancelled is discarded, and the previous cover stays', async () => {
+    signedIn();
+    const sent = serving(PHOTO);
+    await editing();
+
+    choose(file());
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    await waitFor(() => expect(sent.map(({ line }) => line)).toContain('PUT /upload/1'));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(
+      sent.find(({ line }) => line === 'DELETE /api/orgs/org_1/event-cover-uploads')?.body,
+    ).toEqual({ uploadKey: 'event_cover/org_1/2026/10/one.jpg' });
+    expect(
+      within(screen.getByRole('button', { name: 'Change photo' }))
+        .getByRole('img')
+        .getAttribute('src'),
+    ).toBe(PHOTO.sizes[0]!.url);
+    expect(sent.filter(({ line }) => line.startsWith('PUT /api/events'))).toEqual([]);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Upload a photo' })),
+    );
+  });
+
+  it('a photo still uploading when the dialog closes is discarded once it arrives', async () => {
+    signedIn();
+    let arrive = (): void => undefined;
+    const sent = serving(PHOTO, {
+      'PUT /upload/1': () =>
+        new Promise<Response>((resolve) => {
+          arrive = () => resolve(new Response(null, { status: 200 }));
+        }),
+    });
+    await editing();
+
+    choose(file());
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    await waitFor(() => expect(sent.map(({ line }) => line)).toContain('PUT /upload/1'));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(dialog.isConnected).toBe(false);
+    arrive();
+
+    await waitFor(() =>
+      expect(
+        sent.find(({ line }) => line === 'DELETE /api/orgs/org_1/event-cover-uploads')?.body,
+      ).toEqual({ uploadKey: 'event_cover/org_1/2026/10/one.jpg' }),
+    );
+  });
+
+  it('Remove photo is there when a saved photo is being replaced through Upload a photo', async () => {
+    signedIn();
+    serving(PHOTO);
+    await editing();
+
+    choose(file());
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+
+    expect(within(dialog).getByRole('button', { name: 'Remove photo' })).toBeDefined();
+  });
+
+  it('Remove photo brings back the default, says so, and focus goes to Upload a photo', async () => {
+    signedIn();
+    const sent = serving(PHOTO);
+    await editing();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change photo' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove photo' }));
+
+    expect(await screen.findByText('Photo removed. The default cover is back.')).toBeDefined();
+    expect(screen.queryByText(/The default cover for this type of event/)).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByTestId('cover-default').className).toContain('cover-default-wedding');
+    expect(sent.map(({ line }) => line)).toContain('DELETE /api/events/ev_1/cover');
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Upload a photo' }));
+  });
+
+  it('an upload that fails says so and keeps the previous cover', async () => {
+    signedIn();
+    const sent = serving(PHOTO, { 'PUT /upload/1': () => new Response(null, { status: 500 }) });
+    await editing();
+
+    choose(file());
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+
+    expect(await within(dialog).findByText("The photo didn't upload. Try again.")).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByRole('button', { name: 'Change photo' })).toBeDefined();
+    expect(sent.filter(({ line }) => line.startsWith('PUT /api/events'))).toEqual([]);
+  });
+
+  it('refuses a description over 250 characters and saves nothing', async () => {
+    signedIn();
+    const sent = serving(PHOTO);
+    await editing();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change photo' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    fireEvent.change(within(dialog).getByLabelText(/Describe the image/), {
+      target: { value: 'a'.repeat(251) },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
+
+    expect(
+      within(dialog).getByText('Shorten the description to 250 characters or fewer.'),
+    ).toBeDefined();
+    expect(sent.filter(({ line }) => line.includes('/cover'))).toEqual([]);
+  });
+
+  it('shows the photo on the event page and in the list, decorative when it has no description', async () => {
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () =>
+        json({ event: event({ cover: { ...PHOTO, description: null } }) }),
+      'GET /api/orgs/org_1/events': () =>
+        json({ events: [event({ cover: PHOTO }), event({ id: 'ev_2', type: 'gala' })] }),
+    });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    const page = document.querySelector('.event-page-cover img')!;
+    expect(page.getAttribute('alt')).toBe('');
+    expect(page.getAttribute('srcset')).toContain('http://store.test/c/large.webp 1920w');
+    cleanup();
+
+    at('/app/events');
+    const rows = await screen.findAllByRole('listitem');
+
+    expect(within(rows[0]!).getByRole('img').getAttribute('alt')).toBe(PHOTO.description);
+    expect(rows[1]!.querySelector('.cover-default-gala')).not.toBeNull();
+  });
+
+  it('a new event sends its staged photo once it is created', async () => {
+    signedIn();
+    const sent = serving(null, {
+      'POST /api/orgs/org_1/events': () => json({ event: event() }, 201),
+    });
+    at('/app/events/new');
+    await screen.findByRole('heading', { level: 1, name: 'New event' });
+
+    choose(file());
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    await waitFor(() => expect(sent.map(({ line }) => line)).toContain('PUT /upload/1'));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
+    await screen.findByRole('button', { name: 'Change photo' });
+
+    fireEvent.change(document.getElementById('event-name')!, { target: { value: 'Owambe' } });
+    fireEvent.change(document.getElementById('event-type')!, { target: { value: 'wedding' } });
+    for (const [id, value] of [
+      ['event-start-date', '2026-11-14'],
+      ['event-start-time', '16:00'],
+      ['event-end-time', '23:00'],
+    ] as const)
+      fireEvent.change(document.getElementById(id)!, { target: { value } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+
+    await waitFor(() =>
+      expect(sent.find(({ line }) => line === 'PUT /api/events/ev_1/cover')?.body).toEqual({
+        uploadKey: 'event_cover/org_1/2026/10/one.jpg',
+        position: 50,
+        description: null,
+      }),
+    );
+  });
+
+  it('a new event whose staged photo is refused says so on its page', async () => {
+    signedIn();
+    const sent = serving(null, {
+      'POST /api/orgs/org_1/events': () => json({ event: event() }, 201),
+      'PUT /api/events/ev_1/cover': () =>
+        problem(422, 'validation_failed', {
+          violations: [
+            {
+              propertyPath: 'file',
+              message:
+                'That photo is smaller than 1200 × 675 pixels, so it would look blurred. Choose a larger one.',
+              code: 'validation_failed',
+            },
+          ],
+        }),
+    });
+    at('/app/events/new');
+    await screen.findByRole('heading', { level: 1, name: 'New event' });
+
+    choose(file());
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    await waitFor(() => expect(sent.map(({ line }) => line)).toContain('PUT /upload/1'));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
+    await screen.findByRole('button', { name: 'Change photo' });
+
+    fireEvent.change(document.getElementById('event-name')!, { target: { value: 'Owambe' } });
+    fireEvent.change(document.getElementById('event-type')!, { target: { value: 'wedding' } });
+    for (const [id, value] of [
+      ['event-start-date', '2026-11-14'],
+      ['event-start-time', '16:00'],
+      ['event-end-time', '23:00'],
+    ] as const)
+      fireEvent.change(document.getElementById(id)!, { target: { value } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+
+    expect(
+      await screen.findByText(
+        'The event is saved, without its photo. That photo is smaller than 1200 × 675 pixels, so it would look blurred. Choose a larger one.',
+      ),
+    ).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: 'Adaeze and Tunde' })).toBeDefined();
+  });
+});
