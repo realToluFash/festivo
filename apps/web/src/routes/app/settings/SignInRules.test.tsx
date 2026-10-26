@@ -389,6 +389,7 @@ describe('Settings > Sign-in rules, for any other member', () => {
       changedAt: '2026-10-15T17:40:00+00:00',
       changes: [
         {
+          entry: 'entry_1',
           at: '2026-10-15T17:40:00+00:00',
           by: { name: 'Folake Adeyemi', role: OWNER },
           rule: 'inactivityTimeoutDays',
@@ -406,6 +407,51 @@ describe('Settings > Sign-in rules, for any other member', () => {
     expect(await screen.findAllByText('Sign-ins end after 30 days without use')).toHaveLength(2);
     expect(screen.getByText('was: Sign-ins last until you sign out')).toBeDefined();
     expect(screen.queryByRole('button', { name: /Save rules|Rules are saved/ })).toBeNull();
+  });
+});
+
+describe('two changes to one rule saved in the same second (sc-13954)', () => {
+  it('both show, newest first, each once, with no duplicate-key warning', async () => {
+    const errors = vi.spyOn(console, 'error');
+    const by = { name: 'Folake Adeyemi', role: OWNER };
+    signedIn(membership({ role: COORDINATOR, permissions: ['events.read'] }));
+    answering({
+      ...PAGE,
+      changedAt: '2026-10-26T14:27:46+00:00',
+      changes: [
+        {
+          entry: 'entry_2',
+          at: '2026-10-26T14:27:46+00:00',
+          by,
+          rule: 'inactivityTimeoutDays',
+          now: null,
+          was: 7,
+        },
+        {
+          entry: 'entry_1',
+          at: '2026-10-26T14:27:46+00:00',
+          by,
+          rule: 'inactivityTimeoutDays',
+          now: 7,
+          was: 30,
+        },
+      ],
+      passwordOnly: undefined,
+    });
+    open();
+
+    const list = await screen.findByRole('list');
+    const rows = within(list).getAllByRole('listitem');
+
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringContaining(
+        'Sign-ins last until you sign outwas: Sign-ins end after 7 days without use',
+      ),
+      expect.stringContaining(
+        'Sign-ins end after 7 days without usewas: Sign-ins end after 30 days without use',
+      ),
+    ]);
+    expect(errors.mock.calls.flat().join(' ')).not.toContain('same key');
   });
 });
 

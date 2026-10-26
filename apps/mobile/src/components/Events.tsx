@@ -4,22 +4,30 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
+import { STATUS_WORD } from '../kit/makeLive.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { EventCover } from './EventCover.tsx';
+import { DraftRow } from './MakeLive.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
 
-/** A word, never colour alone (WCAG 2.2 §1.4.1). Draft is the only state an event has yet (sc-1486). */
-function EventState() {
+/** A word, never colour alone (WCAG 2.2 §1.4.1); a Live event's has a green dot beside it (sc-3584). */
+function EventState({ status }: { status: OrganisationEvent['status'] }) {
   const { t } = useTranslation();
+  const live = status === 'live';
 
   return (
-    <View style={styles.state}>
-      <Text size={tokens.typeSmall.size} weight="semibold" style={styles.stateWord}>
-        {t('eventsScreen.draft')}
+    <View style={[styles.state, live && styles.stateLive]}>
+      {live && <View style={styles.dot} />}
+      <Text
+        size={tokens.typeSmall.size}
+        weight="semibold"
+        style={live ? styles.stateWordLive : styles.stateWord}
+      >
+        {t(STATUS_WORD[status])}
       </Text>
     </View>
   );
@@ -72,7 +80,7 @@ export function EventList({
               <Text size={tokens.typeSmall.size} muted>
                 {date}
               </Text>
-              <EventState />
+              <EventState status={event.status} />
             </View>
             <Text
               size={tokens.typeTitleDialog.size}
@@ -135,14 +143,18 @@ export function EventsFailed({ onRetry, testID }: { onRetry: () => void; testID:
   );
 }
 
-/** The event's areas go under its times, each added by the story that builds it: none yet (sc-1454 adds Check-in). */
+/** The event's areas go under its times, each added by the story that builds it: none yet (sc-1454 adds Check-in). A Draft's row says what it blocks. */
 export function EventPage({
   kind,
   event,
+  manages,
+  onChange,
   onEdit,
 }: {
   kind: LayoutKind;
   event: OrganisationEvent;
+  manages: boolean;
+  onChange: (event: OrganisationEvent) => void;
   /** Absent for a role without events.manage (sc-3595). */
   onEdit?: (() => void) | undefined;
 }) {
@@ -155,8 +167,9 @@ export function EventPage({
         <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
           {event.name}
         </Text>
-        <EventState />
+        <EventState status={event.status} />
       </View>
+      <DraftRow kind={kind} event={event} manages={manages} onChange={onChange} />
       <EventType event={event} size={tokens.typeBody.size} />
       <Text size={tokens.typeBody.size}>
         {t('eventsScreen.when', {
@@ -225,4 +238,18 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorBorder,
   },
   stateWord: { color: tokens.colorInkSecondary },
+  stateLive: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceXs,
+    borderColor: tokens.colorAccentTintBorder,
+    backgroundColor: tokens.colorAccentTint,
+  },
+  stateWordLive: { color: tokens.colorAccentText },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: tokens.radiusPill,
+    backgroundColor: tokens.colorAccent,
+  },
 });

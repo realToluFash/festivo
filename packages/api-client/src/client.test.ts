@@ -810,6 +810,7 @@ describe('a browser never holds the refresh token', () => {
       inactivityChoices: [7, 30],
       changes: [
         {
+          entry: 'entry_1',
           at: '2026-10-19T10:00:00+00:00',
           by: { name: 'Adaeze Okafor', role: { id: 'role_1', seededAs: 'owner', name: null } },
           rule: 'providerOnly',
@@ -845,6 +846,7 @@ describe('a browser never holds the refresh token', () => {
     const read = await client.signInRules('org_1');
     await client.updateSignInRules('org_1', { providerOnly: true });
 
+    expect(read.changes[0]?.entry).toBe('entry_1');
     expect(read.changes[0]?.by.name).toBe('Adaeze Okafor');
     expect(read.passwordOnly?.[0]?.name).toBe('Bola Ade');
     expect(read.ownTwoFactor).toBe(true);
@@ -2215,6 +2217,7 @@ describe('events (sc-1486)', () => {
     currency: 'NGN',
     cover: null,
     venue: null,
+    madeLiveAt: null,
     createdAt: '2026-10-21T09:00:00+00:00',
   };
 
@@ -2269,7 +2272,7 @@ describe('events (sc-1486)', () => {
 
   test('an event in a shape it does not know, or a status it does not know, is an error', async () => {
     await expect(
-      client(() => json({ events: [{ ...EVENT, status: 'live' }] })).api.events('org_1'),
+      client(() => json({ events: [{ ...EVENT, status: 'published' }] })).api.events('org_1'),
     ).rejects.toThrow(/events controller/);
     await expect(
       client(() => json({ event: { ...EVENT, timeZone: undefined } })).api.event('e1'),
@@ -2305,6 +2308,34 @@ describe('events (sc-1486)', () => {
       tag: '"2"',
     });
     expect(headers).toEqual([null, '"2"']);
+  });
+
+  test('making it live posts nothing and answers the live event with its tag', async () => {
+    const live = { ...EVENT, status: 'live', madeLiveAt: '2026-10-26T15:00:00+00:00' };
+    const sent: { line: string; body: unknown }[] = [];
+    const api = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (url, init) => {
+        sent.push({
+          line: `${init?.method ?? 'GET'} ${new URL(String(url)).pathname}`,
+          body: init?.body ?? null,
+        });
+
+        return new Response(JSON.stringify({ event: live }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ETag: '"3"' },
+        });
+      },
+    });
+
+    expect(await api.makeLive(EVENT.id)).toEqual({ event: live, tag: '"3"' });
+    expect(sent).toEqual([{ line: `POST /api/events/${EVENT.id}/make-live`, body: null }]);
+  });
+
+  test('an event with a madeLiveAt that is not a string or null is an error', async () => {
+    await expect(
+      client(() => json({ event: { ...EVENT, madeLiveAt: 1 } })).api.event('e1'),
+    ).rejects.toThrow(/events controller/);
   });
 
   test('an event answered without its ETag is an error, as an edit could not be saved', async () => {
@@ -2456,6 +2487,7 @@ describe("an event's venue (sc-3589)", () => {
     dayCount: 2,
     currency: 'NGN',
     cover: null,
+    madeLiveAt: null,
     createdAt: '2026-10-26T09:00:00+00:00',
   };
 

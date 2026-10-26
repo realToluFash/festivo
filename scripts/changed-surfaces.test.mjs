@@ -81,6 +81,7 @@ describe('shared root configuration runs everything', () => {
     ['the lockfile, because a resolution change breaks untouched surfaces', 'package-lock.json'],
     ['the eslint config', 'eslint.config.mjs'],
     ['the compose stack', 'compose.yaml'],
+    ['what each event state allows', 'event-states.json'],
     ['a script', 'scripts/test-db.mjs'],
     ['the workflow itself', '.github/workflows/pull-request.yml'],
   ])('%s', (_name, path) => {

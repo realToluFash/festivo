@@ -10,6 +10,7 @@ import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { EventCoverImage } from './EventCoverImage.tsx';
 import { typeLabel } from './eventTypes.ts';
+import { StatusPill } from './MakeLive.tsx';
 
 type Load =
   { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; events: OrganisationEvent[] };
@@ -132,7 +133,7 @@ function EventsOf({
               <span className="events-row-name">{event.name}</span>
               <span className="muted">{typeLabel(event.type, t)}</span>
             </span>
-            <span className="pill-quiet">{t('events.draft')}</span>
+            <StatusPill status={event.status} />
             <span className="muted events-row-date">
               {formatEventDate(event.startsAt, event.timeZone, dateLocale())}
             </span>

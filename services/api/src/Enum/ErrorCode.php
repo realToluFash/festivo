@@ -31,6 +31,9 @@ enum ErrorCode: string
     case PreconditionFailed = 'precondition_failed';
     case PreconditionRequired = 'precondition_required';
     case EventCurrencyInUse = 'event_currency_in_use';
+    case EventStateInvalid = 'event_state_invalid';
+    case EventConcluded = 'event_concluded';
+    case PlanLimit = 'plan_limit';
 
     case AlreadyAMember = 'already_a_member';
     case EmailTaken = 'email_taken';
@@ -124,7 +127,8 @@ enum ErrorCode: string
             self::UnsupportedMediaType => 415,
             self::PreconditionFailed => 412,
             self::PreconditionRequired => 428,
-            self::EventCurrencyInUse => 409,
+            self::EventCurrencyInUse, self::EventStateInvalid, self::EventConcluded => 409,
+            self::PlanLimit => 403,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid, self::SessionTimedOut => 401,
             self::Forbidden, self::PermissionRequired, self::GrantNotHeld, self::AccountUnverified, self::ProfileIncomplete, self::TwoFactorRequired, self::ProofRequired => 403,
             self::OAuthOnly, self::OAuthOnlyUnlinked, self::OrganisationTwoFactorRequired, self::OrganisationTwoFactorOverdue, self::OwnerRequired => 403,

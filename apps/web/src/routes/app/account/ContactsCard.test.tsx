@@ -148,7 +148,7 @@ describe('email addresses and phone numbers', () => {
   it('says what making an address primary changes, then asks the person to prove it is them', async () => {
     const sent = answering({
       'GET /api/auth/me': () => json(ME),
-      'GET /api/orgs': () => json({ organisations: [] }),
+      'GET /api/orgs': () => json({ organisations: [MEMBERSHIP] }),
       'POST /api/auth/proof': () =>
         json({ proof: 'p-1', expiresAt: new Date(Date.now() + 300_000).toISOString() }),
       'PATCH /api/auth/emails/e2/primary': () =>
@@ -188,7 +188,7 @@ describe('email addresses and phone numbers', () => {
     holdProof({ proof: 'held', expiresAt: new Date(Date.now() + 300_000).toISOString() });
     const sent = answering({
       'GET /api/auth/me': () => json(ME),
-      'GET /api/orgs': () => json({ organisations: [] }),
+      'GET /api/orgs': () => json({ organisations: [MEMBERSHIP] }),
       'PATCH /api/auth/emails/e2/primary': () =>
         json({ id: 'e2', address: 'folake.adeyemi@gmail.com', verified: true, primary: true }),
     });
@@ -223,7 +223,7 @@ describe('email addresses and phone numbers', () => {
           hasPassword: false,
           providers: [{ provider: 'google', email: 'folake@gmail.com' }],
         }),
-      'GET /api/orgs': () => json({ organisations: [] }),
+      'GET /api/orgs': () => json({ organisations: [MEMBERSHIP] }),
       'POST /api/auth/proof': () =>
         json({ proof: 'p-g', expiresAt: new Date(Date.now() + 300_000).toISOString() }),
       'PATCH /api/auth/emails/e2/primary': () =>
@@ -261,7 +261,7 @@ describe('email addresses and phone numbers', () => {
           hasPassword: false,
           providers: [{ provider: 'google', email: 'folake@gmail.com' }],
         }),
-      'GET /api/orgs': () => json({ organisations: [] }),
+      'GET /api/orgs': () => json({ organisations: [MEMBERSHIP] }),
       'POST /api/auth/proof': () =>
         json({ proof: 'p-g', expiresAt: new Date(Date.now() + 300_000).toISOString() }),
       'PATCH /api/auth/emails/e2/primary': () =>
@@ -294,7 +294,7 @@ describe('email addresses and phone numbers', () => {
     sessionStorage.setItem('soirely.provider.returned', returned);
     answering({
       'GET /api/auth/me': () => json(ME),
-      'GET /api/orgs': () => json({ organisations: [] }),
+      'GET /api/orgs': () => json({ organisations: [MEMBERSHIP] }),
     });
 
     open();
@@ -428,7 +428,7 @@ describe('focus after a step on the cards closes', () => {
   it('goes back to Make primary after Keep, and after Cancel on Confirm it’s you', async () => {
     answering({
       'GET /api/auth/me': () => json(ME),
-      'GET /api/orgs': () => json({ organisations: [] }),
+      'GET /api/orgs': () => json({ organisations: [MEMBERSHIP] }),
     });
     open();
 
@@ -940,7 +940,7 @@ describe('a confirmation while its request runs (sc-12546)', () => {
     const request = holding();
     const sent = answering({
       'GET /api/auth/me': () => json(ME),
-      'GET /api/orgs': () => json({ organisations: [] }),
+      'GET /api/orgs': () => json({ organisations: [MEMBERSHIP] }),
       'POST /api/auth/proof': () =>
         json({ proof: 'p-1', expiresAt: new Date(Date.now() + 300_000).toISOString() }),
       'PATCH /api/auth/emails/e2/primary': request.answer,

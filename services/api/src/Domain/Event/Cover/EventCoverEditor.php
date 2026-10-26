@@ -12,15 +12,19 @@ use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
+use App\Enum\EventAction;
+use App\Enum\EventPhase;
 use App\Enum\UploadPurpose;
 use App\Http\Exception\ApiException;
 use App\Repository\EventCoverRepository;
 use App\Storage\Model\SignedUpload;
 use App\Storage\ObjectStore;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Encoding\Base64;
 use Psl\Regex;
 use Psl\Str;
 use Psl\Vec;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -37,6 +41,7 @@ final readonly class EventCoverEditor
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
         private TranslatorInterface $translator,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -57,6 +62,7 @@ final readonly class EventCoverEditor
     /** A new photo when `uploadKey` names one, otherwise the saved photo with a new position and description. */
     public function set(Event $event, User $by, ?string $uploadKey, int $position, ?string $description): EventCover
     {
+        $this->allowEdit($event);
         $description = self::description($description);
         $violations = [];
 
@@ -110,6 +116,7 @@ final readonly class EventCoverEditor
     /** The event's type's default is back; the stored photo is deleted. Nothing to remove is not an error. */
     public function remove(Event $event, User $by): void
     {
+        $this->allowEdit($event);
         $cover = $this->eventCoverRepository->findOneForEvent($event);
 
         if (null === $cover) {
@@ -133,6 +140,14 @@ final readonly class EventCoverEditor
         $this->objectStore->deleteUpload(UploadPurpose::EventCover, $uploadKey);
     }
 
+    /** Answered rather than stored, so there is no copy of the photo to keep private, delete or expire (sc-13861). */
+    public function preview(Organisation $organisation, string $uploadKey): string
+    {
+        $webp = $this->readUpload($organisation, $uploadKey, $this->coverPhotoProcessor->preview(...));
+
+        return 'data:image/webp;base64,' . Base64\encode($webp);
+    }
+
     public static function sizeKey(string $photoKey, string $size): string
     {
         return Str\format('%s/%s.webp', $photoKey, $size);
@@ -140,7 +155,28 @@ final readonly class EventCoverEditor
 
     private function publish(Event $event, string $uploadKey): string
     {
-        $size = $this->ours($event->getOrganisation(), $uploadKey) ? $this->objectStore->uploadSize(UploadPurpose::EventCover, $uploadKey) : null;
+        $sizes = $this->readUpload($event->getOrganisation(), $uploadKey, $this->coverPhotoProcessor->process(...));
+        $photoKey = Str\format('event_cover/%s/%s', $event->getId()->toRfc4122(), Uuid::v7()->toRfc4122());
+
+        foreach ($sizes as $size => $webp) {
+            $this->objectStore->publish(self::sizeKey($photoKey, $size), $webp, 'image/webp');
+        }
+
+        $this->objectStore->deleteUpload(UploadPurpose::EventCover, $uploadKey);
+
+        return $photoKey;
+    }
+
+    /**
+     * @template T
+     *
+     * @param callable(string): T $read
+     *
+     * @return T
+     */
+    private function readUpload(Organisation $organisation, string $uploadKey, callable $read): mixed
+    {
+        $size = $this->ours($organisation, $uploadKey) ? $this->objectStore->uploadSize(UploadPurpose::EventCover, $uploadKey) : null;
 
         if (null === $size) {
             throw ApiException::validation([$this->violation('uploadKey', 'validation.cover_upload_missing')]);
@@ -151,22 +187,22 @@ final readonly class EventCoverEditor
                 throw CoverPhotoRefused::size();
             }
 
-            $sizes = $this->coverPhotoProcessor->process($this->objectStore->readUpload(UploadPurpose::EventCover, $uploadKey));
+            return $read($this->objectStore->readUpload(UploadPurpose::EventCover, $uploadKey));
         } catch (CoverPhotoRefused $refused) {
             $this->objectStore->deleteUpload(UploadPurpose::EventCover, $uploadKey);
 
             throw $this->refusal($refused);
         }
+    }
 
-        $photoKey = Str\format('event_cover/%s/%s', $event->getId()->toRfc4122(), Uuid::v7()->toRfc4122());
+    /** The cover is an `edit` field, refused as a rename is in a phase that allows no `edit`. */
+    private function allowEdit(Event $event): void
+    {
+        $phase = EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $this->clock->now());
 
-        foreach ($sizes as $size => $webp) {
-            $this->objectStore->publish(self::sizeKey($photoKey, $size), $webp, 'image/webp');
+        if (!$phase->allows(EventAction::Edit)) {
+            throw new ApiException(ErrorCode::EventStateInvalid, $this->translator->trans('event.state_invalid'), members: ['phase' => $phase->value]);
         }
-
-        $this->objectStore->deleteUpload(UploadPurpose::EventCover, $uploadKey);
-
-        return $photoKey;
     }
 
     private function ours(Organisation $organisation, string $uploadKey): bool

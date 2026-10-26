@@ -56,6 +56,8 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
   });
   const load = held.in === organisationId ? held.load : LOADING;
   const [attempt, setAttempt] = useState(0);
+  // An event changed on its page, until the next load reads it from the server too.
+  const [changed, setChanged] = useState<OrganisationEvent | null>(null);
 
   const [selected, setSelected] = useState<Selection>({ in: organisationId, id: linked });
   const current = selectionIn(selected, organisationId);
@@ -65,6 +67,7 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
 
   // The rows stay in place while they reload; a failed load gives way to loading.
   const reload = useCallback(() => {
+    setChanged(null);
     setHeld((before) => ({
       in: before.in,
       load: before.load.kind === 'loaded' ? { ...before.load, refreshing: true } : LOADING,
@@ -108,6 +111,21 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     load.kind === 'loaded' && open != null
       ? (load.events.find((event) => event.id === open) ?? null)
       : null;
+  const latest = (event: OrganisationEvent) => (changed?.id === event.id ? changed : event);
+  const onChange = (event: OrganisationEvent) => {
+    setChanged(event);
+    setHeld((before) =>
+      before.load.kind === 'loaded'
+        ? {
+            in: before.in,
+            load: {
+              ...before.load,
+              events: before.load.events.map((each) => (each.id === event.id ? event : each)),
+            },
+          }
+        : before,
+    );
+  };
   const opened = useOpened(
     open != null && listed == null && (load.kind !== 'loading' || !reads) ? open : null,
     account != null,
@@ -121,7 +139,8 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
   const onEdit = manages
     ? () => open != null && router.push(`/events/${encodeURIComponent(open)}/edit`)
     : undefined;
-  const shown = listed ?? (opened.kind === 'loaded' ? opened.event : null);
+  const found = listed ?? (opened.kind === 'loaded' ? opened.event : null);
+  const shown = found == null ? null : latest(found);
   const page =
     open == null ? null : shown != null ? (
       <View style={styles.stack}>
@@ -130,7 +149,13 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
             <Notice tone="done" mark={tokens.marks.done.glyph} body={t('eventEdit.saved')} />
           </ReadOut>
         )}
-        <EventPage kind={kind} event={shown} onEdit={onEdit} />
+        <EventPage
+          kind={kind}
+          event={shown}
+          manages={manages}
+          onChange={onChange}
+          onEdit={onEdit}
+        />
         {coverRefused?.eventId === open && (
           <View style={styles.stack}>
             <Notice

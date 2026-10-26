@@ -1323,10 +1323,11 @@ span {
   outline-offset: -2px;
 }
 
-.auth-back {
+.back-link {
   display: inline-flex;
   align-items: center;
   align-self: flex-start;
+  gap: var(--spaceXs);
   text-decoration: none;
 }
 
@@ -2399,6 +2400,14 @@ span {
 
 .no-organisation-main {
   padding: var(--space6xl) var(--spaceXl);
+}
+
+.no-organisation-account {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  max-width: calc(47.5rem + 2 * var(--space5xl));
+  margin: 0 auto;
 }
 
 .no-organisation {
@@ -3913,6 +3922,38 @@ button.members-row {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--spaceSm) var(--spaceMd);
+}
+
+/* ── Make live (sc-3584) ──────────────────────────────────────────────────── */
+
+.pill-live {
+  gap: var(--spaceXs);
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
+}
+
+.pill-live::before {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--colorAccent);
+  content: '';
+}
+
+.event-draft-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceMd);
+  padding: var(--spaceMd) var(--spaceLg);
+  border: var(--borderInset);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.event-draft-line {
+  flex: 1 1 12rem;
+  margin: 0;
 }
 
 /* ── An event's venue (sc-3589) ───────────────────────────────────────────── */

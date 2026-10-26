@@ -33,7 +33,10 @@
     "firstRunStepDefaults": "Vérifiez son fuseau horaire et sa devise.",
     "firstRunStepOpen": "Ouvrez-le depuis cette liste pour poursuivre l’organisation.",
     "firstRunCreate": "Créer un événement",
-    "firstRunAskOwner": "Les événements créés par votre organisation s’afficheront ici. Pour en créer un, adressez-vous à une personne ayant le rôle Propriétaire."
+    "firstRunAskOwner": "Les événements créés par votre organisation s’afficheront ici. Pour en créer un, adressez-vous à une personne ayant le rôle Propriétaire.",
+    "live": "Live",
+    "paused": "Paused",
+    "finished": "Finished"
   },
   "eventForm": {
     "title": "Nouvel événement",
@@ -111,6 +114,29 @@
     "venueToBeConfirmed": "Lieu à confirmer",
     "addVenue": "Ajouter le lieu",
     "openInMaps": "Voir sur une carte"
+  },
+  "eventLive": {
+    "guestsBlocked": "Guests can't be invited until this event is live.",
+    "makeLive": "Make live",
+    "endPassed": "This event's end has passed, so it can't be made live. Change its dates first.",
+    "changeDates": "Change dates",
+    "confirmTitle": "Make {{name}} live?",
+    "confirmGuests": "Guests can be invited, and they can see it.",
+    "confirmFinal": "It can't go back to being a draft.",
+    "notYet": "Not yet",
+    "madeLive": "✓ Live",
+    "failed": "Not made live. Try again in a moment.",
+    "changedElsewhere": "Somebody else changed this event while you had it open.",
+    "nowState_draft": "It's still a draft. The page shows what it is now.",
+    "nowState_live": "It's live now. The page shows what it is now.",
+    "nowState_paused": "It's paused now. The page shows what it is now.",
+    "nowState_finished": "It's finished now. The page shows what it is now.",
+    "notMadeLive": "Not made live.",
+    "planLimit_one": "Not made live. Your {{plan}} plan allows {{count}} event to be live or paused at a time.",
+    "planLimit_other": "Not made live. Your {{plan}} plan allows {{count}} events to be live or paused at a time.",
+    "planLimit_many": "Not made live. Your {{plan}} plan allows {{count}} events to be live or paused at a time.",
+    "planLimitStays": "This event stays a draft. Finish or call off another event, or change plan.",
+    "close": "Close"
   },
   "eventEdit": {
     "open": "Modifier les informations",
@@ -495,7 +521,8 @@
     "nameTooLong_many": "Ce nom compte {{count}} de caractères. Raccourcissez-le à {{most}} caractères maximum.",
     "derived": "La devise suit le pays, le fuseau horaire est celui de cet appareil et l’adresse de contact est votre adresse e-mail principale, {{email}}. Vous pourrez les modifier dans Paramètres > Général.",
     "signedInAs": "Connecté en tant que {{email}}.",
-    "account": "Votre compte"
+    "account": "Votre compte",
+    "wayBack": "Rejoindre ou créer une organisation"
   },
   "orgGeneral": {
     "title": "Général",
