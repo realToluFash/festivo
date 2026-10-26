@@ -18,7 +18,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { homedir } from 'node:os';
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, dirname, extname, join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
@@ -225,9 +225,46 @@ export function releaseApk(root, sha) {
   return join(root, '.qa/release', `soirely-${sha.slice(0, 12)}.apk`);
 }
 
-export function staleApks(names, apk) {
-  return names.filter((name) => /^soirely-[0-9a-f]{12}\.apk$/.test(name) && name !== basename(apk));
+export function releaseApp(root, sha) {
+  return join(root, '.qa/release', `soirely-${sha.slice(0, 12)}.app`);
 }
+
+// A Mac keeps an APK and an app side by side: each build replaces only its own kind.
+export function staleBuilds(names, build) {
+  const kind = extname(build);
+  return names.filter(
+    (name) =>
+      /^soirely-[0-9a-f]{12}\.(apk|app)$/.test(name) &&
+      extname(name) === kind &&
+      name !== basename(build),
+  );
+}
+
+// On a Mac the simulator, as maestro does, unless --android asks for the emulator.
+export function releasePlatform(args, platform = process.platform) {
+  return platform === 'darwin' && !args.includes('--android') ? 'ios' : 'android';
+}
+
+export function simulatorArch(arch = process.arch) {
+  return arch === 'arm64' ? 'arm64' : 'x86_64';
+}
+
+export function iosBundle(appConfig) {
+  const id = /ios:\s*\{[^}]*bundleIdentifier:\s*'([^']+)'/.exec(appConfig)?.[1];
+  if (!id) throw new Error('no ios.bundleIdentifier in apps/mobile/app.config.ts');
+  return id;
+}
+
+export function xcodeWorkspace(names) {
+  const found = names.filter((name) => name.endsWith('.xcworkspace'));
+  if (found.length !== 1) {
+    throw new Error(`expected one .xcworkspace in ios/, found ${found.length}`);
+  }
+  return found[0];
+}
+
+// A simulator shares the Mac's network, so offline is the stack the app reaches, stopped.
+export const APP_SERVICES = ['api', 'mercure', 'storage', 'oidc'];
 
 export function defaultNetwork(dump) {
   const network = /^Active default network: (\S+)/m.exec(dump)?.[1];
@@ -636,10 +673,14 @@ async function ios(args) {
   const { open, shut } = simulatorFor(args);
   const other = simulatorId(CONFIG.simulators[shut].name);
   if (other) run('xcrun', ['simctl', 'shutdown', other], { optional: true });
+  // An offline release launch stopped these; a release build owns soirely:// while installed.
+  composeServices(root, 'start');
+  const id = iosBundle(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
   const devices = [open].map((key) => {
     const udid = simulatorId(CONFIG.simulators[key].name);
     if (!udid) throw new Error(`no ${CONFIG.simulators[key].name} simulator — run setup`);
     run('xcrun', ['simctl', 'boot', udid], { optional: true });
+    run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true });
     if (!ensureExpoGo(udid)) {
       throw new Error(
         `Expo Go is on no booted simulator to copy from. Install it once with \`npx expo start --ios\` on any simulator, then rerun.`,
@@ -929,7 +970,7 @@ function buildRelease(tools, root, apk) {
   mkdirSync(dirname(apk), { recursive: true });
   copyFileSync(join(mobile, 'android/app/build/outputs/apk/release/app-release.apk'), apk);
   rmSync(join(mobile, 'android'), { recursive: true, force: true });
-  for (const name of staleApks(readdirSync(dirname(apk)), apk)) rmSync(join(dirname(apk), name));
+  for (const name of staleBuilds(readdirSync(dirname(apk)), apk)) rmSync(join(dirname(apk), name));
 }
 
 function airplaneMode(tools, on) {
@@ -970,12 +1011,7 @@ function recordLaunch(tools) {
   });
 }
 
-async function release(args) {
-  const tools = androidTools();
-  if (!existsSync(tools.emulator)) {
-    throw new Error(`no Android emulator in ${tools.sdk}: set ANDROID_HOME`);
-  }
-  const root = qaWorktree();
+function releaseCommit(root) {
   assertQaStack(root);
   if (git(['status', '--porcelain', '--untracked-files=no'], root) !== '') {
     throw new Error(`${root} has uncommitted changes: a release build names one commit`);
@@ -986,11 +1022,25 @@ async function release(args) {
     spawnSync('git', ['merge-base', '--is-ancestor', sha, 'origin/main'], {
       cwd: root,
     }).status === 0;
+  step(`A release build of ${sha.slice(0, 12)} (${subject})`);
+  if (!onMain) console.log('  not on origin/main: this is a branch build');
+  return sha;
+}
+
+function release(args) {
+  return releasePlatform(args) === 'ios' ? releaseIos(args) : releaseAndroid(args);
+}
+
+async function releaseAndroid(args) {
+  const tools = androidTools();
+  if (!existsSync(tools.emulator)) {
+    throw new Error(`no Android emulator in ${tools.sdk}: set ANDROID_HOME`);
+  }
+  const root = qaWorktree();
+  const sha = releaseCommit(root);
   const { open } = emulatorFor(args);
   const offline = args.includes('--offline');
 
-  step(`A release build of ${sha.slice(0, 12)} (${subject})`);
-  if (!onMain) console.log('  not on origin/main: this is a branch build');
   const apk = releaseApk(root, sha);
   if (existsSync(apk) && !args.includes('--rebuild')) {
     console.log(`  already built: ${apk}`);
@@ -1029,6 +1079,130 @@ async function release(args) {
       ` (${emulatorSerial()}), ${offline ? 'offline: no default network, no stack' : 'online'}.` +
       `\n${existsSync(video) ? `Its first 15 seconds: ${video}` : 'The launch was not recorded.'}` +
       `\nThe next \`android\` removes it and turns airplane mode off.`,
+  );
+}
+
+// The same bundle as on Android, and Release, so the JS and fonts are inside and Metro is not asked.
+function buildIosRelease(root, app) {
+  if (capture('pod', ['--version']) === null) {
+    throw new Error('no CocoaPods on this Mac: brew install cocoapods');
+  }
+  const mobile = join(root, 'apps/mobile');
+  const env = { ...CONFIG.app, EXPO_PUBLIC_ENVIRONMENT: 'qa', CI: '1' };
+
+  const pkg = join(mobile, 'package.json');
+  const scripts = readFileSync(pkg, 'utf8');
+  try {
+    run('npx', ['expo', 'prebuild', '--platform', 'ios', '--no-install', '--clean'], {
+      cwd: mobile,
+      env,
+    });
+  } finally {
+    writeFileSync(pkg, scripts);
+  }
+  const ios = join(mobile, 'ios');
+  run('pod', ['install'], { cwd: ios, env });
+  const workspace = xcodeWorkspace(readdirSync(ios));
+  const scheme = basename(workspace, '.xcworkspace');
+  // A release build refuses http, and a QA stack serves nothing else.
+  run('plutil', [
+    '-replace',
+    'NSAppTransportSecurity',
+    '-json',
+    '{"NSAllowsArbitraryLoads":true}',
+    join(ios, scheme, 'Info.plist'),
+  ]);
+
+  const derived = join(ios, 'build');
+  run(
+    'xcodebuild',
+    [
+      '-workspace',
+      workspace,
+      '-scheme',
+      scheme,
+      '-configuration',
+      'Release',
+      '-sdk',
+      'iphonesimulator',
+      '-destination',
+      'generic/platform=iOS Simulator',
+      '-derivedDataPath',
+      derived,
+      `ARCHS=${simulatorArch()}`,
+      'CODE_SIGNING_ALLOWED=NO',
+      'build',
+    ],
+    { cwd: ios, env: { ...env, NODE_ENV: 'production' } },
+  );
+
+  mkdirSync(dirname(app), { recursive: true });
+  rmSync(app, { recursive: true, force: true });
+  cpSync(join(derived, 'Build/Products/Release-iphonesimulator', `${scheme}.app`), app, {
+    recursive: true,
+  });
+  rmSync(ios, { recursive: true, force: true });
+  for (const name of staleBuilds(readdirSync(dirname(app)), app)) {
+    rmSync(join(dirname(app), name), { recursive: true, force: true });
+  }
+}
+
+function composeServices(root, verb) {
+  run('docker', ['compose', verb, ...APP_SERVICES], { cwd: root });
+}
+
+function recordSimulator(udid, video) {
+  rmSync(video, { force: true });
+  const recorder = spawn('xcrun', ['simctl', 'io', udid, 'recordVideo', '--force', video], {
+    stdio: 'ignore',
+  });
+  const stopped = new Promise((done) => {
+    recorder.on('error', () => done());
+    recorder.on('exit', () => done());
+  });
+  return async () => {
+    await pause(15000);
+    recorder.kill('SIGINT');
+    await stopped;
+  };
+}
+
+async function releaseIos(args) {
+  const root = qaWorktree();
+  const sha = releaseCommit(root);
+  const { open, shut } = simulatorFor(args);
+  const offline = args.includes('--offline');
+
+  const app = releaseApp(root, sha);
+  if (existsSync(app) && !args.includes('--rebuild')) {
+    console.log(`  already built: ${app}`);
+  } else {
+    buildIosRelease(root, app);
+  }
+
+  step(`The ${open}`);
+  const other = simulatorId(CONFIG.simulators[shut].name);
+  if (other) run('xcrun', ['simctl', 'shutdown', other], { optional: true });
+  const udid = simulatorId(CONFIG.simulators[open].name);
+  if (!udid) throw new Error(`no ${CONFIG.simulators[open].name} simulator — run setup`);
+  run('xcrun', ['simctl', 'boot', udid], { optional: true });
+  run('open', ['-a', 'Simulator'], { optional: true });
+  // A fresh install every time, so the launch below is the app's first, with no cache.
+  const id = iosBundle(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
+  run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true });
+  run('xcrun', ['simctl', 'install', udid, app]);
+  composeServices(root, offline ? 'stop' : 'start');
+
+  const video = join(root, '.qa/release', `launch-${sha.slice(0, 12)}.mp4`);
+  const recorded = recordSimulator(udid, video);
+  await pause(1000);
+  run('xcrun', ['simctl', 'launch', udid, id]);
+  await recorded();
+  console.log(
+    `\nSoirely ${sha.slice(0, 12)}, a release build, on its first launch on the ${open}` +
+      `, ${offline ? `offline: ${APP_SERVICES.join(', ')} stopped` : 'online'}.` +
+      `\n${existsSync(video) ? `Its first 15 seconds: ${video}` : 'The launch was not recorded.'}` +
+      `\nThe next \`ios\` removes it and starts the stack again.`,
   );
 }
 

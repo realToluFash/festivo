@@ -44,8 +44,14 @@ import {
   QA_OVERRIDES,
   QA_PORTS,
   qaConfig,
+  APP_SERVICES,
+  iosBundle,
   releaseApk,
-  staleApks,
+  releaseApp,
+  releasePlatform,
+  simulatorArch,
+  staleBuilds,
+  xcodeWorkspace,
   renderQaEnv,
   reversedPorts,
   simulatorFor,
@@ -268,7 +274,7 @@ describe('a release build', () => {
   it('leaves only the APK of the commit just built', () => {
     const apk = releaseApk('/qa', 'c8646738ce1413ea1e718dce85ff4973f0f9b22c');
     expect(
-      staleApks(
+      staleBuilds(
         [
           'soirely-c8646738ce14.apk',
           'soirely-0123456789ab.apk',
@@ -278,6 +284,49 @@ describe('a release build', () => {
         apk,
       ),
     ).toEqual(['soirely-0123456789ab.apk']);
+  });
+
+  it('keeps the app beside the APK, and replaces only an older app', () => {
+    const app = releaseApp('/qa', 'c8646738ce1413ea1e718dce85ff4973f0f9b22c');
+    expect(app).toBe('/qa/.qa/release/soirely-c8646738ce14.app');
+    expect(
+      staleBuilds(
+        ['soirely-c8646738ce14.app', 'soirely-0123456789ab.app', 'soirely-0123456789ab.apk'],
+        app,
+      ),
+    ).toEqual(['soirely-0123456789ab.app']);
+  });
+
+  it('is for the simulator on a Mac, unless --android asks for the emulator', () => {
+    expect(releasePlatform([], 'darwin')).toBe('ios');
+    expect(releasePlatform(['--ipad', '--offline'], 'darwin')).toBe('ios');
+    expect(releasePlatform(['--android'], 'darwin')).toBe('android');
+    expect(releasePlatform(['--ipad'], 'linux')).toBe('android');
+  });
+
+  it("builds for the Mac's own simulator architecture", () => {
+    expect(simulatorArch('arm64')).toBe('arm64');
+    expect(simulatorArch('x64')).toBe('x86_64');
+  });
+
+  it('installs the bundle the app config names', () => {
+    const config = readFileSync(new URL('../apps/mobile/app.config.ts', import.meta.url), 'utf8');
+    expect(iosBundle(config)).toBe('com.soirely.app');
+    expect(() => iosBundle('ios: { supportsTablet: true }')).toThrow(/bundleIdentifier/);
+  });
+
+  it('builds the one workspace prebuild made', () => {
+    expect(xcodeWorkspace(['Podfile', 'Soirely.xcodeproj', 'Soirely.xcworkspace'])).toBe(
+      'Soirely.xcworkspace',
+    );
+    expect(() => xcodeWorkspace(['Soirely.xcodeproj'])).toThrow(/found 0/);
+  });
+
+  it('takes offline as every service the app reaches, stopped', () => {
+    const compose = readFileSync(new URL('../compose.yaml', import.meta.url), 'utf8');
+    for (const service of APP_SERVICES) {
+      expect(compose).toMatch(new RegExp(`^  ${service}:$`, 'm'));
+    }
   });
 
   it('launches offline only once the emulator has no default network', () => {
