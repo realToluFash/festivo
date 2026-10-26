@@ -3233,9 +3233,14 @@ button.members-row {
   text-decoration: none;
 }
 
-.events-row-name {
+.events-row-title {
+  display: flex;
   flex: 0 1 auto;
+  flex-direction: column;
   min-width: 0;
+}
+
+.events-row-name {
   font: var(--typeRowTitle);
   overflow-wrap: anywhere;
 }

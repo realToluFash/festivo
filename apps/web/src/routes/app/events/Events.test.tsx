@@ -6,6 +6,7 @@ import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { breaksAnywhere } from '../../../test-wrapping.ts';
 import { routes } from '../../index.tsx';
+import { EVENT_TYPES } from '@soirely/domain';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -21,6 +22,7 @@ function event(overrides: Record<string, unknown> = {}) {
     id: 'ev_1',
     organisationId: 'org_1',
     name: 'Adaeze and Tunde',
+    type: 'wedding',
     status: 'draft',
     startsAt: '2026-11-14T16:00:00+01:00',
     endsAt: '2026-11-15T02:00:00+01:00',
@@ -107,6 +109,7 @@ describe('Events', () => {
             event({
               id: 'ev_2',
               name: 'Board dinner',
+              type: 'corporate',
               startsAt: '2026-12-01T19:00:00+00:00',
               endsAt: '2026-12-01T23:00:00+00:00',
               timeZone: 'Europe/London',
@@ -119,8 +122,8 @@ describe('Events', () => {
     const rows = await screen.findAllByRole('listitem');
 
     expect(rows.map((row) => spaced(row.textContent))).toEqual([
-      'Adaeze and TundeDraftSat, Nov 14, 2026',
-      'Board dinnerDraftTue, Dec 1, 2026',
+      'Adaeze and TundeWeddingDraftSat, Nov 14, 2026',
+      'Board dinnerCorporate eventDraftTue, Dec 1, 2026',
     ]);
     expect(within(rows[0]!).getByRole('link').getAttribute('href')).toBe('/app/events/ev_1');
     expect(screen.getByRole('link', { name: 'New event' }).getAttribute('href')).toBe(
@@ -271,6 +274,7 @@ describe('New event', () => {
 
     expect(fields).toEqual([
       'event-name',
+      'event-type',
       'event-start-date',
       'event-start-time',
       'event-end-date',
@@ -285,6 +289,32 @@ describe('New event', () => {
     ).toBeDefined();
   });
 
+  it('starts Type on nothing chosen, then offers the fourteen in order, Other last (sc-3588)', async () => {
+    signedIn();
+    answering({});
+    await form();
+
+    const type = screen.getByLabelText<HTMLSelectElement>('Type');
+    expect(type.value).toBe('');
+    expect(type.selectedOptions[0]?.textContent).toBe('Choose what kind of event');
+    expect([...type.options].slice(1).map((option) => option.textContent)).toEqual([
+      'Wedding',
+      'Birthday',
+      'Anniversary',
+      'Engagement',
+      'Baby shower',
+      'Graduation',
+      'Memorial',
+      'Religious celebration',
+      'Cultural celebration',
+      'Party',
+      'Gala or fundraiser',
+      'Conference',
+      'Corporate event',
+      'Other',
+    ]);
+  });
+
   it('counts the name as it is typed', async () => {
     signedIn();
     answering({});
@@ -292,6 +322,7 @@ describe('New event', () => {
 
     expect(screen.getByText('0 of 120 characters')).toBeDefined();
     fill('event-name', '  Ìrè gala ');
+    fill('event-type', 'party');
     expect(screen.getByText('8 of 120 characters')).toBeDefined();
   });
 
@@ -326,6 +357,7 @@ describe('New event', () => {
     await form();
 
     fill('event-name', '   ');
+    fill('event-type', 'party');
     fill('event-start-date', '2026-11-14');
     fill('event-start-time', '16:00');
     fill('event-end-time', '23:00');
@@ -350,12 +382,14 @@ describe('New event', () => {
     fill('event-name', 'Gala');
     create();
 
-    const start = document.getElementById('event-start-date')!;
-    await waitFor(() => expect(document.activeElement).toBe(start));
+    const type = document.getElementById('event-type')!;
+    await waitFor(() => expect(document.activeElement).toBe(type));
+    expect(type.getAttribute('aria-invalid')).toBe('true');
+    expect(errorUnder('event-type')).toContain('Choose what kind of event it is.');
     expect(errorUnder('event-start-date')).toContain('Choose when the event starts.');
     expect(errorUnder('event-end-date')).toContain('Choose when the event ends.');
     expect(screen.getByRole('status').textContent).toBe(
-      '2 fields need fixing, so nothing was sent.',
+      '3 fields need fixing, so nothing was sent.',
     );
     expect(sent.filter(({ line }) => line.startsWith('POST'))).toEqual([]);
   });
@@ -373,6 +407,7 @@ describe('New event', () => {
     expect([...currency.options].map((option) => option.value)).not.toContain('SLL');
 
     fill('event-name', 'Gala');
+    fill('event-type', 'party');
     fill('event-start-date', '2026-11-14');
     fill('event-start-time', '16:00');
     fill('event-end-time', '23:00');
@@ -395,6 +430,7 @@ describe('New event', () => {
     await form();
 
     fill('event-name', 'Gala');
+    fill('event-type', 'party');
     fill('event-start-date', '2026-11-14');
     fill('event-start-time', '16:00');
     fill('event-end-time', '15:30');
@@ -412,6 +448,7 @@ describe('New event', () => {
     await waitFor(() =>
       expect(sent.find(({ line }) => line.startsWith('POST'))?.body).toEqual({
         name: 'Gala',
+        type: 'party',
         startsAt: '2026-11-14T16:00',
         endsAt: '2026-11-14T16:00',
         timeZone: 'Africa/Lagos',
@@ -429,6 +466,7 @@ describe('New event', () => {
     await form();
 
     fill('event-name', '  Adaeze and Tunde ');
+    fill('event-type', 'party');
     fill('event-start-date', '2026-11-14');
     fill('event-start-time', '16:00');
     fill('event-end-date', '2026-11-15');
@@ -444,6 +482,7 @@ describe('New event', () => {
       line: 'POST /api/orgs/org_1/events',
       body: {
         name: 'Adaeze and Tunde',
+        type: 'party',
         startsAt: '2026-11-14T16:00',
         endsAt: '2026-11-15T02:00',
         timeZone: 'Europe/London',
@@ -474,6 +513,7 @@ describe('New event', () => {
     await form();
 
     fill('event-name', 'Gala');
+    fill('event-type', 'party');
     fill('event-start-date', '2026-11-14');
     fill('event-start-time', '16:00');
     fill('event-end-time', '18:00');
@@ -498,6 +538,7 @@ describe('New event', () => {
     await form();
 
     fill('event-name', 'Gala');
+    fill('event-type', 'party');
     fill('event-start-date', '2026-11-14');
     fill('event-start-time', '16:00');
     fill('event-end-time', '18:00');
@@ -651,6 +692,7 @@ describe('A time the clocks skip, in New event (sc-10638)', () => {
     await form();
 
     fill('event-name', 'Gala');
+    fill('event-type', 'party');
     fill('event-start-date', '2027-03-28');
     fill('event-start-time', '02:30');
     fill('event-end-time', '05:00');
@@ -670,6 +712,7 @@ describe('A time the clocks skip, in New event (sc-10638)', () => {
     await form();
 
     fill('event-name', 'Gala');
+    fill('event-type', 'party');
     fill('event-start-date', '2027-03-28');
     fill('event-start-time', '02:30');
     fill('event-end-time', '03:15');
@@ -695,6 +738,7 @@ describe("An event's page", () => {
     const card = heading.closest('section')!;
 
     expect(within(card).getByText('Draft')).toBeDefined();
+    expect(heading.parentElement?.nextElementSibling?.textContent).toBe('Wedding');
     expect(spaced(within(card).getByText(/Africa\/Lagos/).textContent)).toBe(
       'Sat, Nov 14, 2026, 16:00 – Sun, Nov 15, 2026, 02:00 · Africa/Lagos',
     );
@@ -869,6 +913,7 @@ describe("Editing an event's details (sc-3587)", () => {
 
     expect([
       value('Event name'),
+      value('Type'),
       (document.getElementById('event-start-date') as HTMLInputElement).value,
       (document.getElementById('event-start-time') as HTMLInputElement).value,
       (document.getElementById('event-end-date') as HTMLInputElement).value,
@@ -877,6 +922,7 @@ describe("Editing an event's details (sc-3587)", () => {
       value('Currency'),
     ]).toEqual([
       'Adaeze and Tunde',
+      'wedding',
       '2026-11-14',
       '16:00',
       '2026-11-15',
@@ -889,6 +935,34 @@ describe("Editing an event's details (sc-3587)", () => {
         'Changing the zone keeps the times as typed. Sat 16:00 stays 16:00 in the new zone.',
       ),
     ).toBeDefined();
+  });
+
+  it('offers the fourteen types and no way back to none, and sends a new one (sc-3588)', async () => {
+    signedIn();
+    const { sent } = serving();
+    await editing();
+
+    const type = screen.getByLabelText<HTMLSelectElement>('Type');
+    expect([...type.options].map((option) => option.value)).toEqual([...EVENT_TYPES]);
+
+    fireEvent.change(type, { target: { value: 'anniversary' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() =>
+      expect(sent.find(({ line }) => line === 'PATCH /api/events/ev_1')?.body).toEqual({
+        type: 'anniversary',
+      }),
+    );
+  });
+
+  it('opens an event from before types on Other', async () => {
+    signedIn();
+    serving({ 'GET /api/events/ev_1': () => tagged({ event: event({ type: 'other' }) }, '"1"') });
+    await editing();
+
+    expect(screen.getByLabelText<HTMLSelectElement>('Type').selectedOptions[0]?.textContent).toBe(
+      'Other',
+    );
   });
 
   it('sends nothing when nothing changed, and the page says so', async () => {

@@ -12,6 +12,7 @@ import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { type EditOutcome } from './EditEvent.tsx';
+import { typeLabel } from './eventTypes.ts';
 
 type Load =
   | { kind: 'loading' }
@@ -170,6 +171,7 @@ function EventPage({
         </h1>
         <span className="pill-quiet">{t('events.draft')}</span>
       </div>
+      <p className="muted">{typeLabel(event.type, t)}</p>
       <p>
         {t('eventPage.when', {
           range: formatEventRange(event.startsAt, event.endsAt, event.timeZone, dateLocale()),

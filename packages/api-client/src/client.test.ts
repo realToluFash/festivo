@@ -2326,6 +2326,7 @@ describe('events (sc-1486)', () => {
     await api
       .createEvent('org_1', {
         name: 'X',
+        type: 'party',
         startsAt: '2026-11-14T16:00',
         endsAt: '2026-11-14T15:00',
         timeZone: 'Africa/Lagos',
