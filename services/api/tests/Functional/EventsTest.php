@@ -827,7 +827,7 @@ final class EventsTest extends ApiTestCase
     /**
      * @param array<string, mixed> $body
      *
-     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, venue: mixed, createdAt: string}
+     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: null, venue: mixed, createdAt: string}
      */
     private function event(array $body): array
     {
@@ -842,6 +842,7 @@ final class EventsTest extends ApiTestCase
             'timeZone' => Type\string(),
             'dayCount' => Type\int(),
             'currency' => Type\string(),
+            'cover' => Type\null(),
             'venue' => Type\mixed(),
             'createdAt' => Type\string(),
         ])->assert($body['event'] ?? null);
