@@ -1084,6 +1084,22 @@ describe('a language change with the name error showing', () => {
     expect(sent.some((request) => request.method === 'POST')).toBe(false);
   });
 
+  it('keeps a renamed role’s name and levels while its error changes language', async () => {
+    const sent = answering();
+    await roles();
+    pick(/^Door team/);
+    fireEvent.click(level('Billing', 'Read'));
+    fireEvent.change(screen.getByLabelText('Role name'), { target: { value: 'Coordinator' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save Door team' }));
+    expect(screen.getByText('A role with that name already exists.')).toBeDefined();
+
+    await speaking('pt');
+    expect(screen.getByText('Já existe uma função com esse nome.')).toBeDefined();
+    expect((screen.getByLabelText('Nome da função') as HTMLInputElement).value).toBe('Coordinator');
+    expect(level('Faturação', 'Ver').getAttribute('aria-pressed')).toBe('true');
+    expect(sent.some((request) => request.method === 'PATCH')).toBe(false);
+  });
+
   it('says the API’s taken refusal in the screen’s words, also when it lands after the change', async () => {
     let refuse: (answer: Response) => void = () => undefined;
     answering();
