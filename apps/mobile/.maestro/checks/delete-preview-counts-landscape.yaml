@@ -1,0 +1,25 @@
+# The delete dialog's counts in landscape, then back to portrait. sc-7715.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible: '{{t:settings.organisation}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'ownership.delete'
+    timeout: 60000
+- takeScreenshot: card-landscape
+- tapOn:
+    id: 'ownership.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'ownership.delete.name'
+    timeout: 15000
+- extendedWaitUntil:
+    notVisible: '{{t:ownership.deleteLoading}}'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: delete-landscape
+- setOrientation: PORTRAIT
