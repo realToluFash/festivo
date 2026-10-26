@@ -54,6 +54,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. Publier un brouillon, et les états d’un événement** (sc-13956, sc-3584,
+  `eventLive.*` web et app, `events.*`, `eventsScreen.*`, `messages:event.*`,
+  `event.plan_limit`). "Make live" est « Publier », comme la permission « Créer, publier,
+  suspendre et clore des événements ». Les états s’accordent avec « événement » :
+  « Brouillon », « Publié », « En pause », « Terminé ». « En pause » plutôt que « Suspendu »,
+  qui désigne déjà un accès suspendu. Un refus commence par « Non publié. », comme
+  « Non enregistré. » ; le collègue est « quelqu’un d’autre ». La limite du forfait est la même
+  phrase à l’écran et dans l’API, « Votre forfait {{plan}} permet d’avoir {{count}} événement
+  publié ou en pause à la fois », « d’événements » au `many` ; `one` couvre 0. « Call off » est
+  « annuler ».
 - **26 Oct 2026. Le lieu de l’événement et la liste des événements dans l’app**
   (`web:eventForm.venue*`, `web:eventPage.venue*`, `addVenue`, `openInMaps`,
   `messages:validation.event_venue_*`, `mobile:eventsScreen.*`, sc-3589 and sc-1593 via

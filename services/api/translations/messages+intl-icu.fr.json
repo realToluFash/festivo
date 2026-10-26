@@ -1,5 +1,5 @@
 {
-    "event.plan_limit": "{limit, plural, one {Not made live. Your {plan} plan allows # event to be live or paused at a time.} other {Not made live. Your {plan} plan allows # events to be live or paused at a time.}}",
+    "event.plan_limit": "{limit, plural, one {Non publié. Votre forfait {plan} permet d’avoir # événement publié ou en pause à la fois.} many {Non publié. Votre forfait {plan} permet d’avoir # d’événements publiés ou en pause à la fois.} other {Non publié. Votre forfait {plan} permet d’avoir # événements publiés ou en pause à la fois.}}",
     "members.seats_in_use": "{count, plural, one {La seule place d’équipe du forfait de cette organisation est occupée, rien n’a donc changé.} other {Les # places d’équipe du forfait de cette organisation sont toutes occupées, rien n’a donc changé.}}",
     "limits.tries": "Trop de tentatives. Réessayez {hour, plural, other {à {time}}}.",
     "limits.wrong_codes": "Trop de codes incorrects. Réessayez {hour, plural, other {à {time}}}.",

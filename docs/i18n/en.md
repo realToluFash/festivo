@@ -62,6 +62,18 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. Making a draft event live, and the event states** (sc-13956, sc-3584,
+  `eventLive.*` web and app, `events.live|paused|finished`, `eventsScreen.*`,
+  `messages:event.state_invalid`, `event.concluded`, `messages+intl-icu:event.plan_limit`).
+  Settled as sc-3584 wrote it; `Events.test.tsx` pins most of it. An event is "Draft", "Live",
+  "Paused" or "Finished"; the act is "Make live", and a refusal starts "Not made live.", as a
+  refused save starts "Not saved.". A colleague is "somebody else". The plan limit is one
+  sentence on screen and from the API, with the limit as a plural. One line waits on [dev]:
+  `endPassed` should read "… so it cannot be made live. …", as `messages:event.concluded` does,
+  since a refusal takes no contraction, but the test matches "can't". The role permission
+  `rolesScreen…events` still says "publish … conclude", the older words; es, fr and pt already
+  write making live as publishing (_publicar_, _publier_), so the states read _Publicado_,
+  _Publié_, and the permission and the button agree in those three.
 - **26 Oct 2026. The Google-or-Apple refusal's title** (sc-13612, `errors:oauth_only_unlinked`).
   One 403 code answers an Owner requiring Google or Apple before linking their own and a member
   stranded read-only, so its title states the shared fact, "No Google or Apple account is
