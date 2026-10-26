@@ -411,8 +411,7 @@ export function composeServices(cwd) {
   return JSON.parse(result.stdout).services;
 }
 
-// An older commit's compose.yaml may not name the worker, and compose leaves its container
-// running, connected to the database the checkout drops.
+// An older compose.yaml may lack the worker; compose leaves it running against the dropped database.
 export const REBUILD = ['compose', 'up', '-d', '--build', '--remove-orphans'];
 
 export function testerOf(worktree) {
