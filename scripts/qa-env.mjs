@@ -371,7 +371,8 @@ export function branchForStory(id, remoteBranches) {
 }
 
 // The api container mounts services/api, so its compiled container outlives a checkout
-// and can name a service the new commit removed.
+// and can name a service the new commit removed. Cleared again once the new vendor is in: a
+// worker restarting meanwhile compiles one against the old vendor, dropping what it cannot load.
 export function clearApiCache(root) {
   rmSync(join(root, 'services/api/var/cache'), { recursive: true, force: true });
 }
@@ -626,6 +627,7 @@ function checkout(args) {
     run('node', ['scripts/php-tool.mjs', 'composer', 'install'], { cwd: root });
   }
   writeFileSync(statePath, JSON.stringify({ npmLock, composerLock, head, label }, null, 2));
+  clearApiCache(root);
 
   step('The stack, rebuilt from this commit');
   run('docker', REBUILD, { cwd: root });
