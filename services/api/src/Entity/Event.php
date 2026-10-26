@@ -61,6 +61,9 @@ class Event
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $endedAt = null;
 
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $madeLiveAt = null;
+
     #[ORM\Column(
         type: Types::DATETIME_IMMUTABLE,
         nullable: true,
@@ -161,6 +164,12 @@ class Event
         return $this->timeZone;
     }
 
+    /** UTC; null while it is a Draft (sc-3584). */
+    public function getMadeLiveAt(): ?DateTimeImmutable
+    {
+        return $this->madeLiveAt;
+    }
+
     /** When it was ended early, before its own end (sc-3585). */
     public function getEndedAt(): ?DateTimeImmutable
     {
@@ -232,6 +241,13 @@ class Event
     public function getVersion(): int
     {
         return $this->version;
+    }
+
+    /** Only EventLifecycle calls this, once /event-states.json's transition and its guards allow it. */
+    public function makeLive(DateTimeImmutable $at): void
+    {
+        $this->status = EventStatus::Live;
+        $this->madeLiveAt = $at->setTimezone(new DateTimeZone('UTC'));
     }
 
     public function setName(string $name): void

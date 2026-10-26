@@ -6,6 +6,7 @@ namespace App\Domain\Event\Controller;
 
 use App\Domain\Event\EventCreator;
 use App\Domain\Event\EventEditor;
+use App\Domain\Event\EventLifecycle;
 use App\Domain\Event\Http\EventSerialiser;
 use App\Entity\Event;
 use App\Entity\Organisation;
@@ -35,6 +36,7 @@ final readonly class EventsController
         private EventCreator $eventCreator,
         private EventEditor $eventEditor,
         private EventSerialiser $eventSerialiser,
+        private EventLifecycle $eventLifecycle,
     ) {
     }
 
@@ -99,6 +101,14 @@ final readonly class EventsController
         ]));
 
         return $this->tagged($this->eventEditor->edit($event, $request->headers->get('If-Match'), $this->user(), $body));
+    }
+
+    /** Refused 409 `event_state_invalid` unless it is a Draft, 409 `event_concluded` once its end has passed, and 403 `plan_limit` (sc-3584). */
+    #[Route('/api/events/{eventId}/make-live', name: 'events_make_live', methods: ['POST'])]
+    #[InEvent(Permission::EventsManage)]
+    public function makeLive(string $eventId): JsonResponse
+    {
+        return $this->tagged($this->eventLifecycle->makeLive($this->event($eventId), $this->user()));
     }
 
     /**
