@@ -64,6 +64,10 @@ services:
     # class, and nothing above it learns which one is in use.
     App\Address\Interfaces\AddressProviderInterface: '@App\Integrations\Nominatim\NominatimProvider'
 
+    App\Address\AddressLookup:
+        arguments:
+            $cache: '@cache.address'
+
     # One adapter behind the port. Have I Been Pwned is the only corpus worth
     # querying and swapping it is this line plus a class.
     App\Domain\User\Interfaces\BreachedPasswordCheckerInterface: '@App\Integrations\Hibp\HibpBreachedPasswordChecker'
@@ -217,6 +221,10 @@ when@test:
         App\Tests\Double\ScriptedEventAmounts:
             public: true
             autoconfigure: true
+
+        App\Tests\Double\ScriptedAddressProvider:
+            public: true
+        App\Address\Interfaces\AddressProviderInterface: '@App\Tests\Double\ScriptedAddressProvider'
 
         # No test reaches Have I Been Pwned. The stand-in's list is what makes
         # "this password is in a breach" assertable at all: the real corpus is

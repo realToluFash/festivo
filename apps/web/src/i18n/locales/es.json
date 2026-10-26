@@ -63,7 +63,22 @@
     "problems_one": "{{count}} campo necesita corrección, así que no se ha enviado nada.",
     "problems_other": "{{count}} campos necesitan corrección, así que no se ha enviado nada.",
     "problems_many": "{{count}} de campos necesitan corrección, así que no se ha enviado nada.",
-    "notCreated": "No se ha creado el evento ni se ha guardado nada. Vuelva a intentarlo."
+    "notCreated": "No se ha creado el evento ni se ha guardado nada. Vuelva a intentarlo.",
+    "venueHeading": "Venue",
+    "venueName": "Venue name",
+    "optional": "Optional",
+    "venueAddress": "Address",
+    "venueAddressHint": "Type at least 3 characters to see suggestions. You can also type any address.",
+    "venueSuggestions": "Address suggestions",
+    "venueSuggestionsFound_one": "{{count}} suggestion. Use the up and down arrows to choose it.",
+    "venueSuggestionsFound_other": "{{count}} suggestions. Use the up and down arrows to choose one.",
+    "venueLookupDown": "Suggestions aren't available right now. Type the address in full and it will be saved as you typed it.",
+    "venueZoneOffer": "This venue is in {{zone}}. Use it?",
+    "venueZoneUse": "Use {{zone}}",
+    "venueZoneKeep": "Keep {{zone}}",
+    "venueZoneSet": "Time zone set to {{zone}}.",
+    "venueNameTooLong": "Shorten the venue name to {{most}} characters or fewer.",
+    "venueAddressTooLong": "Shorten the address to {{most}} characters or fewer."
   },
   "eventTypes": {
     "wedding": "Boda",
@@ -88,7 +103,11 @@
     "failed": "No se ha podido cargar el evento. Vuelva a intentarlo en un momento.",
     "notFound": "Este evento no está disponible",
     "guestsComing": "La lista de invitados de este evento llegará pronto.",
-    "backToEvent": "Evento"
+    "backToEvent": "Evento",
+    "venue": "Venue",
+    "venueToBeConfirmed": "Venue to be confirmed",
+    "addVenue": "Add the venue",
+    "openInMaps": "Open in maps"
   },
   "eventEdit": {
     "open": "Editar detalles",
