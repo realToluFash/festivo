@@ -2308,6 +2308,40 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
     expect(sent.filter(({ line }) => line.startsWith('PUT /api/events'))).toEqual([]);
   });
 
+  it('while a HEIC uploads the frame holds the default, not the saved cover, and nothing can be positioned', async () => {
+    signedIn();
+    let release: (() => void) | null = null;
+    serving(PHOTO, {
+      [PREVIEW]: () =>
+        new Promise((resolve) => {
+          release = () => resolve(json({ preview: COPY }));
+        }),
+    });
+    await editing();
+
+    chooseHeic();
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    await waitFor(() => expect(release).not.toBeNull());
+
+    expect(within(dialog).getByText('Uploading…')).toBeDefined();
+    expect(dialog.querySelector('.cover-frame img')).toBeNull();
+    expect(dialog.querySelector('.cover-frame .cover-default-wedding')).not.toBeNull();
+    const slider = within(dialog).getByLabelText('Photo position');
+    expect(slider.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.change(slider, { target: { value: '80' } });
+    expect((slider as HTMLInputElement).value).toBe('50');
+    expect(within(dialog).queryByRole('alert')).toBeNull();
+
+    release!();
+
+    await waitFor(() =>
+      expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(COPY),
+    );
+    expect(within(dialog).queryByText('Uploading…')).toBeNull();
+    expect(within(dialog).queryByRole('alert')).toBeNull();
+    expect(slider.getAttribute('aria-disabled')).toBe('false');
+  });
+
   it("a saved photo that fails to load shows the type's default, which a screen reader skips", async () => {
     signedIn();
     answering({

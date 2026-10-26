@@ -320,17 +320,20 @@ function CoverDialog({
 
   /** A new photo the frame could not show is never saved unseen (sc-13861). */
   const unseen = useCallback(() => {
-    if (file != null) setUpload({ kind: 'failed', message: t('eventCover.uploadFailed') });
-  }, [file, t]);
+    if (file != null && preview != null)
+      setUpload({ kind: 'failed', message: t('eventCover.uploadFailed') });
+  }, [file, preview, t]);
 
   useDialogKeys(dialog, cancel, pending);
 
   const shown: CoverPhoto | null =
-    preview == null
+    file == null
       ? saved == null
         ? null
         : { ...saved, position }
-      : { sizes: [{ width: 0, url: preview }], position, description: null };
+      : preview == null
+        ? null
+        : { sizes: [{ width: 0, url: preview }], position, description: null };
   const ready = upload.kind === 'saved' || upload.kind === 'ready';
   const count = [...description].length;
 
@@ -473,7 +476,9 @@ function CoverDialog({
               value={position}
               aria-valuetext={t(`eventCover.showing_${positionPart(position)}`)}
               aria-disabled={shown == null}
-              onChange={(event) => setPosition(Number(event.target.value))}
+              onChange={(event) => {
+                if (shown != null) setPosition(Number(event.target.value));
+              }}
             />
             <div className="cover-slider-marks" aria-hidden="true">
               <span>{t('eventCover.top')}</span>
