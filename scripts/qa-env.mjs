@@ -230,7 +230,6 @@ export function releaseApp(root, sha) {
 }
 
 // A Mac keeps an APK and an app side by side: each build replaces only its own kind.
-// By platform, so a Mac that launches both keeps both videos of the one commit.
 export function launchVideo(root, sha, platform) {
   return join(root, '.qa/release', `launch-${sha.slice(0, 12)}.${platform}.mp4`);
 }
@@ -905,7 +904,6 @@ async function android(args) {
   const root = qaWorktree();
   assertQaStack(root);
   const { open } = emulatorFor(args);
-  // An offline iOS release launch on this Mac stopped these.
   startAppServices(root);
 
   step(`The ${open}`);
