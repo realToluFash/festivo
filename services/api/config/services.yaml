@@ -64,6 +64,10 @@ services:
     # class, and nothing above it learns which one is in use.
     App\Address\Interfaces\AddressProviderInterface: '@App\Integrations\Nominatim\NominatimProvider'
 
+    App\Address\AddressLookup:
+        arguments:
+            $cache: '@cache.address'
+
     # One adapter behind the port. Have I Been Pwned is the only corpus worth
     # querying and swapping it is this line plus a class.
     App\Domain\User\Interfaces\BreachedPasswordCheckerInterface: '@App\Integrations\Hibp\HibpBreachedPasswordChecker'
