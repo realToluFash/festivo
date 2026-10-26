@@ -39,6 +39,7 @@ somewhere else is a variable rather than a rebuild.
 | --------------------- | -------- | ------------------------------------------------------------------ |
 | `SOIRELY_API_URL`     | yes      | Where the API is **from the browser**, not from inside the network |
 | `SOIRELY_MERCURE_URL` | no       | Where Mercure is, from the browser                                 |
+| `SOIRELY_STORAGE_URL` | no       | The object store's public origin, which serves uploaded images     |
 | `SOIRELY_ENVIRONMENT` | no       | A name, so a support conversation can establish which deployment   |
 
 A missing `SOIRELY_API_URL` stops the container. That is deliberate: a default

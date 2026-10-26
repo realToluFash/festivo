@@ -136,8 +136,9 @@ Two things to know before changing it:
   `fonts.googleapis.com`, the font files it names from `fonts.gstatic.com`. Self-hosting
   Instrument Sans and JetBrains Mono would remove both sources and is the better end
   state.
-- Images are `'self' data:` only. The first avatar served from object storage will be
-  blocked, loudly, with the origin named in the console — add it to `img-src` then.
+- Images are `'self' data:` and the object store's public origin, which the container
+  takes from `SOIRELY_STORAGE_URL` (compose passes `STORAGE_PUBLIC_ENDPOINT`). A store
+  moved behind another host, a CDN say, is a change to that variable.
 
 `Strict-Transport-Security` is deliberately absent. TLS terminates upstream, so it belongs
 on the terminator where its `max-age` sits beside the certificate it depends on.
