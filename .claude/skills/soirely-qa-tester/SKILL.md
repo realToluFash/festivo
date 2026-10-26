@@ -213,6 +213,11 @@ The harness is `.qa/bin/qa-env.mjs`, not `scripts/`, on purpose: `checkout` move
 to the commit under test, which may predate the harness. `checkout` starts the database from
 nothing every time (`--keep-data` to only migrate); every account in it is yours.
 
+The copy follows `main` by itself: each start of your run replaces it with `main`'s harness
+once CI has passed that commit, and says so in the run's opening lines. When the start says it
+kept the old copy, test with the commands the copy has, name in your report any command it
+lacked, and never copy `main`'s harness in ahead of CI.
+
 From inside the worktree, `docker compose …` and `just psql` reach the QA stack on their
 own, because its `.env` names the project. `docker compose stop api` for the offline case stops **your**
 API, and nobody else's.
@@ -287,6 +292,7 @@ With no MCP, fall back to a script — `npx playwright` with a `page.goto`,
 
 ```sh
 node .qa/bin/qa-env.mjs ios [--ipad]                     # the bundler, in Expo Go, on the QA phone (or iPad); shuts the other
+node .qa/bin/qa-env.mjs release [--offline] [--ipad]     # a release build of the commit on the simulator, on its first launch
 node .qa/bin/qa-env.mjs maestro sign-in EMAIL=… PASSWORD=…        # one flow, on the phone
 node .qa/bin/qa-env.mjs maestro sign-in --ipad EMAIL=… PASSWORD=… # on the tablet
 node .qa/bin/qa-env.mjs hierarchy [--ipad | --android]           # what is on screen, for writing a flow
@@ -294,8 +300,14 @@ node .qa/bin/qa-env.mjs hierarchy [--ipad | --android]           # what is on sc
 
 Never a bare `maestro --device …` on iOS. Maestro's iOS driver answers on one port, so a
 run by hand drives whichever tester's simulator started it first; `qa-env.mjs` gives each
-tester a port of their own. A `.qa/bin/qa-env.mjs` copied before that change still shares one
-port, and has no `hierarchy`: refresh it as below before your next iOS flow.
+tester a port of their own.
+
+On the Mac `release` builds for the simulator (`release --android` for the emulator), with
+Xcode and CocoaPods, and takes the better part of an hour the first time. A simulator shares
+the Mac's network, so `--offline` stops the stack the app reaches (api, mercure, storage, oidc)
+rather than the network: the app's offline state, never iOS's own no-network screens. It records
+the first 15 seconds under `.qa/release`, as on Android; judge a splash bullet on that video.
+The next `ios` removes the build and starts the stack again.
 
 `ios` keeps running — start it in the background, and restart it after a `checkout`, or it
 serves the previous commit. Never `just qa-ios` or `just qa-mobile`: those drive the
@@ -322,11 +334,11 @@ removes it. The emulator has no window, so `release` records the launch's first 
 prints where: judge a splash bullet on that video, frame by frame, never on a screenshot taken
 afterwards. With `--offline` it launches only once the emulator reports no network, and stops
 with an error otherwise. If your worktree says `unknown command` for any command this skill
-names (`release`, `hierarchy`, …), its `.qa/bin` copy predates it. Refresh that copy alone, which leaves your branch and data as they are:
-`cd ~/Projects/soirely-qa<n> && git fetch origin main && git show origin/main:scripts/qa-env.mjs > .qa/bin/qa-env.mjs`.
-It brings the `android` that removes a release build and turns airplane mode off; an old
-`android` does neither, and the release build then takes a provider's sign-in redirect. Never
-run `setup` part way through a pass for this: it checks out main and rebuilds the database.
+names (`release`, `hierarchy`, …), its `.qa/bin` copy predates it, and the start said why it
+kept it: name the missing command in your report. An old `android` neither removes a release
+build nor turns airplane mode off, and the release build then takes a provider's sign-in
+redirect. Never run `setup` part way through a pass for this: it checks out main and rebuilds
+the database.
 To switch to the tablet, stop it, then run `android --tablet`. Stop the emulator when you
 finish, because it holds several GB of memory on a host every other role shares. The app uses
 the same `127.0.0.1` URLs as on a simulator, and a flow runs unchanged. A screenshot outside a

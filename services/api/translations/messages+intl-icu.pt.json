@@ -1,4 +1,5 @@
 {
+    "event.plan_limit": "{limit, plural, one {Não foi publicado. O seu plano {plan} permite ter # evento publicado ou em pausa de cada vez.} many {Não foi publicado. O seu plano {plan} permite ter # de eventos publicados ou em pausa de cada vez.} other {Não foi publicado. O seu plano {plan} permite ter # eventos publicados ou em pausa de cada vez.}}",
     "members.seats_in_use": "{count, plural, one {O único lugar de equipa do plano desta organização está ocupado, por isso nada mudou.} other {Os # lugares de equipa do plano desta organização estão todos ocupados, por isso nada mudou.}}",
     "limits.tries": "Demasiadas tentativas. Tente novamente {hour, plural, =1 {à {time}} other {às {time}}}.",
     "limits.wrong_codes": "Demasiados códigos errados. Tente novamente {hour, plural, =1 {à {time}} other {às {time}}}.",

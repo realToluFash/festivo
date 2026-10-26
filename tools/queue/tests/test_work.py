@@ -904,3 +904,75 @@ class Stranded(unittest.TestCase):
         self.assertNotEqual(items[0]["fingerprint"], tomorrow[0]["fingerprint"])
         self.assertEqual(work.stranded_items([story(1)], [self.open_pr(7, 1)], self.NOW), [])
         self.assertIn("stranded", kinds(work.derive([], prs, now=self.NOW)))
+
+
+def blocks(subject, object_):
+    return {"verb": "blocks", "subject": subject, "object": object_}
+
+
+class HeldByBlockers(unittest.TestCase):
+    def held(self, *links, state="Ready For Dev", labels=()):
+        return dict(story(1, state, labels=labels), links=list(links))
+
+    def blocker(self, state, id_=7, **extra):
+        return dict(story(id_, state), links=[blocks(id_, 1)], **extra)
+
+    def offered(self, stories, role="dev"):
+        return [i["story_id"] for i in work.queue_items(stories) if role in i["roles"]]
+
+    def test_a_blocker_not_yet_merged_holds_the_story_from_every_developer(self):
+        for state in ("To Do", "Ready For Dev", "In Progress", "In Review",
+                      "Passed Code Review", "Waiting On Owner"):
+            stories = [self.held(blocks(7, 1)), self.blocker(state)]
+            for role in roles.DEVS:
+                self.assertNotIn(1, self.offered(stories, role), (state, role))
+                self.assertNotIn(1, [s["id"] for s in work.queued(role, stories)])
+
+    def test_an_ops_story_is_held_from_ops_too(self):
+        stories = [self.held(blocks(7, 1), labels=["ops"]), self.blocker("In Review")]
+        self.assertNotIn(1, self.offered(stories, "ops"))
+
+    def test_a_blocker_from_ready_for_qa_on_has_merged(self):
+        for state in work.MERGED:
+            stories = [self.held(blocks(7, 1)), self.blocker(state, done=state == "Done")]
+            self.assertIn(1, self.offered(stories), state)
+
+    def test_an_archived_blocker_holds_nothing(self):
+        stories = [self.held(blocks(7, 1)), self.blocker("To Do", archived=True, done=True)]
+        self.assertIn(1, self.offered(stories))
+
+    def test_a_blocker_the_sync_has_not_stored_holds_it(self):
+        self.assertEqual(work.holding(self.held(blocks(7, 1)), []),
+                         [{"id": 7, "state": "unknown"}])
+
+    def test_only_a_blocks_link_with_the_story_as_object_holds_it(self):
+        links = [blocks(1, 8), {"verb": "relates to", "subject": 7, "object": 1},
+                 {"verb": "duplicates", "subject": 7, "object": 1}]
+        self.assertIn(1, self.offered([self.held(*links), self.blocker("To Do")]))
+
+    def test_a_translation_ticket_s_link_holds_nothing(self):
+        ticket = dict(self.blocker("To Do"), labels=["translation"])
+        self.assertIn(1, self.offered([self.held(blocks(7, 1)), ticket]))
+
+    def test_a_claimed_story_is_never_held(self):
+        for state in ("In Progress", "Failed QA", "Failed Code Review"):
+            stories = [self.held(blocks(7, 1), state=state, labels=["dev1"]),
+                       self.blocker("To Do")]
+            self.assertIn(1, self.offered(stories), state)
+
+    def test_the_last_blocker_merging_offers_the_story_as_new_work(self):
+        ready = self.held(blocks(7, 1))
+        before = [i["fingerprint"] for i in work.queue_items([dict(ready, links=[])])]
+        after = [i["fingerprint"] for i in work.queue_items([ready, self.blocker("Ready For QA")])
+                 if i["story_id"] == 1 and "dev" in i["roles"]]
+        self.assertEqual(len(after), 1)
+        self.assertNotIn(after[0], before)
+
+    def test_a_held_story_wakes_nobody_to_pick(self):
+        stories = [self.held(blocks(7, 1)), self.blocker("In Review")]
+        picks = [i for i in work.heartbeat_items(stories, {}, set(), 10_000)
+                 if i["roles"] == ["dev"]]
+        self.assertEqual(picks, [])
+
+    def test_a_story_with_no_blocker_is_offered_as_before(self):
+        self.assertIn(1, self.offered([self.held()]))

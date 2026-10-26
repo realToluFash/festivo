@@ -56,7 +56,8 @@ def untaken(db, role, stories):
 
 def developer(p, db, stories):
     epics = store.get_meta(db, "epics")
-    mine = untaken(db, p.role, W.queued(p.role, stories, epics))
+    # Done stories too, so a blocker that is Done is seen to have merged.
+    mine = untaken(db, p.role, W.queued(p.role, store.stories(db), epics))
     order = {state: i for i, state in enumerate(R.BUILD_QUEUE)}
     # Rework longest-waiting first; the rest epic by epic, as `work.epic_order` ranks them.
     rework = ("Failed Code Review", "Failed QA")
@@ -128,8 +129,12 @@ def product_manager(p, db, stories):
                     and "translation" not in s["labels"]])
     p.add(f"To Do ({len(todo)}), next 10: give each its AC, then move it to Needs Design, "
           "or to Ready For Dev when it needs no new screens:")
+    every = store.stories(db)
     for story in todo[:10]:
         flags = [] if any(T.is_ac(h) for h in section_names(story)) else ["no AC"]
+        holders = W.holding(story, every)
+        if holders:
+            flags.append(W.held_by(holders))
         p.add(line(story, ", ".join(flags)))
     outstanding = qa_outstanding(stories)
     if outstanding:

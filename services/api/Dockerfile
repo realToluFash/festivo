@@ -9,9 +9,11 @@ FROM dunglas/frankenphp:1.13.0-php8.4.26 AS base
 # the extension without naming what wanted it.
 RUN install-php-extensions \
     bcmath \
+    imagick \
     pdo_pgsql \
     intl \
     opcache \
+    pcntl \
     redis \
     zip
 

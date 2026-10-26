@@ -61,6 +61,7 @@ export function Text({
 }
 
 const styles = StyleSheet.create({
-  base: { color: tokens.colorInk },
+  // Yoga leaves a child at its full width unless told to shrink, so a text beside another in a row would run off the screen rather than wrap.
+  base: { flexShrink: 1, color: tokens.colorInk },
   muted: { color: tokens.colorInkSecondary },
 });

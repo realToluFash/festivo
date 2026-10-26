@@ -51,12 +51,21 @@ sent something else. Every test passed and the screen was empty.
   attempts at a bug to one of these: the database stored `rectangular`, the renderer
   branched on `rect`, and a cast sat between them saying it was fine.
 
+**A rule both clients run lives once, in `packages/domain`.** When the second client gets a
+screen the first already has, the validation, the wording choices, the timing of a lookup
+and what a pick keeps belong in `packages/domain`, and both clients call it; only the
+rendering stays in each app. Domain does not depend on `@soirely/api-client`, so it types
+what it reads structurally (`ownerClaims.ts`, `venueLookup.ts`), and the rule's tests move
+with it. Two copies drift without failing anything, because each client's tests only check
+its own.
+
 ## Checklist before opening the PR
 
 - [ ] The contract is written down somewhere a reviewer will see it
 - [ ] Server tests cover the endpoint, including who is refused
 - [ ] Client tests assert against the real response shape, not a hand-written fixture
 - [ ] No cast bridging a wire type to a client type without a test behind it
+- [ ] No rule written in both clients that could live once in `packages/domain`
 - [ ] Any new user-facing string is in all four locales — see `locale-parity`
 - [ ] A migration, if there is one, states what happens to rows that predate it
 - [ ] Anything that changes on screen for one user, and should for another, publishes on a

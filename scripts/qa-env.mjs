@@ -18,7 +18,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { homedir } from 'node:os';
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, dirname, extname, join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
@@ -225,9 +225,50 @@ export function releaseApk(root, sha) {
   return join(root, '.qa/release', `soirely-${sha.slice(0, 12)}.apk`);
 }
 
-export function staleApks(names, apk) {
-  return names.filter((name) => /^soirely-[0-9a-f]{12}\.apk$/.test(name) && name !== basename(apk));
+export function releaseApp(root, sha) {
+  return join(root, '.qa/release', `soirely-${sha.slice(0, 12)}.app`);
 }
+
+export function launchVideo(root, sha, platform) {
+  return join(root, '.qa/release', `launch-${sha.slice(0, 12)}.${platform}.mp4`);
+}
+
+// A Mac keeps an APK and an app side by side: each build replaces only its own kind.
+export function staleBuilds(names, build) {
+  const kind = extname(build);
+  return names.filter(
+    (name) =>
+      /^soirely-[0-9a-f]{12}\.(apk|app)$/.test(name) &&
+      extname(name) === kind &&
+      name !== basename(build),
+  );
+}
+
+// On a Mac the simulator, as maestro does, unless --android asks for the emulator.
+export function releasePlatform(args, platform = process.platform) {
+  return platform === 'darwin' && !args.includes('--android') ? 'ios' : 'android';
+}
+
+export function simulatorArch(arch = process.arch) {
+  return arch === 'arm64' ? 'arm64' : 'x86_64';
+}
+
+export function iosBundle(appConfig) {
+  const id = /ios:\s*\{[^}]*bundleIdentifier:\s*'([^']+)'/.exec(appConfig)?.[1];
+  if (!id) throw new Error('no ios.bundleIdentifier in apps/mobile/app.config.ts');
+  return id;
+}
+
+export function xcodeWorkspace(names) {
+  const found = names.filter((name) => name.endsWith('.xcworkspace'));
+  if (found.length !== 1) {
+    throw new Error(`expected one .xcworkspace in ios/, found ${found.length}`);
+  }
+  return found[0];
+}
+
+// A simulator shares the Mac's network, so offline is the stack the app reaches, stopped.
+export const APP_SERVICES = ['api', 'mercure', 'storage', 'oidc'];
 
 export function defaultNetwork(dump) {
   const network = /^Active default network: (\S+)/m.exec(dump)?.[1];
@@ -339,6 +380,39 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 
 // QA runs the copy in .qa/bin, gitignored, so checking out an old commit keeps the harness.
 const INSTALLED = basename(HERE) === 'bin' && basename(dirname(HERE)) === '.qa';
+
+const AFTER_MIGRATIONS = 'soirely.after-migrations';
+
+const lasting = (service) => service.restart !== 'no';
+const afterMigrating = (service) => service.labels?.[AFTER_MIGRATIONS] === 'true';
+
+/** --wait fails when a one-shot init container exits 0, and on a service waiting for migrations. */
+export function servicesToWait(services) {
+  return Object.entries(services ?? {})
+    .filter(([, service]) => lasting(service) && !afterMigrating(service))
+    .map(([name]) => name);
+}
+
+export function servicesAfterMigrations(services) {
+  return Object.entries(services ?? {})
+    .filter(([, service]) => lasting(service) && afterMigrating(service))
+    .map(([name]) => name);
+}
+
+export function composeServices(cwd) {
+  const result = spawnSync('docker', ['compose', 'config', '--format', 'json'], {
+    cwd,
+    encoding: 'utf8',
+  });
+  if (result.status !== 0) {
+    throw new Error(`docker compose config failed: ${result.stderr}`);
+  }
+  return JSON.parse(result.stdout).services;
+}
+
+// An older commit's compose.yaml may not name the worker, and compose leaves its container
+// running, connected to the database the checkout drops.
+export const REBUILD = ['compose', 'up', '-d', '--build', '--remove-orphans'];
 
 export function testerOf(worktree) {
   const match = /^soirely-qa(\d*)$/.exec(basename(worktree));
@@ -554,33 +628,46 @@ function checkout(args) {
   writeFileSync(statePath, JSON.stringify({ npmLock, composerLock, head, label }, null, 2));
 
   step('The stack, rebuilt from this commit');
-  run('docker', ['compose', 'up', '-d', '--build'], { cwd: root });
-  // Waits on the lasting services only: --wait fails when a one-shot init container exits 0.
-  const services = JSON.parse(
-    capture('docker', ['compose', 'config', '--format', 'json'], { cwd: root }) ?? '{}',
-  ).services;
-  const lasting = Object.entries(services ?? {})
-    .filter(([, service]) => service.restart !== 'no')
-    .map(([name]) => name);
-  run('docker', ['compose', 'up', '-d', '--wait', '--no-recreate', ...lasting], { cwd: root });
+  run('docker', REBUILD, { cwd: root });
+  run(
+    'docker',
+    ['compose', 'up', '-d', '--wait', '--no-recreate', ...servicesToWait(composeServices(root))],
+    { cwd: root },
+  );
 
   const console_ = ['compose', 'exec', '-T', 'api', 'php', 'bin/console'];
   run('docker', [...console_, 'lexik:jwt:generate-keypair', '--skip-if-exists'], { cwd: root });
 
   step(keepData ? 'The database, migrated' : 'The database, from nothing');
-  // From nothing: an edited unreleased migration leaves a migrated database wrong.
-  if (!keepData) {
-    run('docker', [...console_, 'doctrine:database:drop', '--if-exists', '--force'], { cwd: root });
-    run('docker', [...console_, 'doctrine:database:create'], { cwd: root });
+  const afterMigrations = servicesAfterMigrations(composeServices(root));
+  for (const args of databaseCommands(console_, afterMigrations, keepData)) {
+    run('docker', args, { cwd: root });
   }
-  run('docker', [...console_, 'doctrine:migrations:migrate', '-n', '--allow-no-migration'], {
-    cwd: root,
-  });
 
   status();
   console.log(
     '\nA bundler already running is serving the previous checkout. Restart `ios` or `android`.',
   );
+}
+
+// With no names, compose stop and up act on the whole stack, so an old commit with no
+// worker skips both.
+export function databaseCommands(console_, afterMigrations, keepData) {
+  const waiting = afterMigrations.length > 0;
+  return [
+    // From nothing: an edited unreleased migration leaves a migrated database wrong.
+    ...(keepData
+      ? []
+      : [
+          // Postgres refuses to drop a database the worker is still connected to.
+          ...(waiting ? [['compose', 'stop', ...afterMigrations]] : []),
+          [...console_, 'doctrine:database:drop', '--if-exists', '--force'],
+          [...console_, 'doctrine:database:create'],
+        ]),
+    [...console_, 'doctrine:migrations:migrate', '-n', '--allow-no-migration'],
+    // Recreated, so a health check failed while waiting for the schema does not end --wait at once.
+    ...(waiting ? [['compose', 'up', '-d', '--wait', '--force-recreate', ...afterMigrations]] : []),
+  ];
 }
 
 function status() {
@@ -636,10 +723,14 @@ async function ios(args) {
   const { open, shut } = simulatorFor(args);
   const other = simulatorId(CONFIG.simulators[shut].name);
   if (other) run('xcrun', ['simctl', 'shutdown', other], { optional: true });
+  // An offline release launch stopped these; a release build owns soirely:// while installed.
+  startAppServices(root);
+  const id = iosBundle(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
   const devices = [open].map((key) => {
     const udid = simulatorId(CONFIG.simulators[key].name);
     if (!udid) throw new Error(`no ${CONFIG.simulators[key].name} simulator — run setup`);
     run('xcrun', ['simctl', 'boot', udid], { optional: true });
+    run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true });
     if (!ensureExpoGo(udid)) {
       throw new Error(
         `Expo Go is on no booted simulator to copy from. Install it once with \`npx expo start --ios\` on any simulator, then rerun.`,
@@ -859,6 +950,7 @@ async function android(args) {
   const root = qaWorktree();
   assertQaStack(root);
   const { open } = emulatorFor(args);
+  startAppServices(root);
 
   step(`The ${open}`);
   await bootEmulator(tools, CONFIG.emulators[open].name);
@@ -929,7 +1021,7 @@ function buildRelease(tools, root, apk) {
   mkdirSync(dirname(apk), { recursive: true });
   copyFileSync(join(mobile, 'android/app/build/outputs/apk/release/app-release.apk'), apk);
   rmSync(join(mobile, 'android'), { recursive: true, force: true });
-  for (const name of staleApks(readdirSync(dirname(apk)), apk)) rmSync(join(dirname(apk), name));
+  for (const name of staleBuilds(readdirSync(dirname(apk)), apk)) rmSync(join(dirname(apk), name));
 }
 
 function airplaneMode(tools, on) {
@@ -970,12 +1062,7 @@ function recordLaunch(tools) {
   });
 }
 
-async function release(args) {
-  const tools = androidTools();
-  if (!existsSync(tools.emulator)) {
-    throw new Error(`no Android emulator in ${tools.sdk}: set ANDROID_HOME`);
-  }
-  const root = qaWorktree();
+function releaseCommit(root) {
   assertQaStack(root);
   if (git(['status', '--porcelain', '--untracked-files=no'], root) !== '') {
     throw new Error(`${root} has uncommitted changes: a release build names one commit`);
@@ -986,12 +1073,27 @@ async function release(args) {
     spawnSync('git', ['merge-base', '--is-ancestor', sha, 'origin/main'], {
       cwd: root,
     }).status === 0;
+  step(`A release build of ${sha.slice(0, 12)} (${subject})`);
+  if (!onMain) console.log('  not on origin/main: this is a branch build');
+  return sha;
+}
+
+function release(args) {
+  return releasePlatform(args) === 'ios' ? releaseIos(args) : releaseAndroid(args);
+}
+
+async function releaseAndroid(args) {
+  const tools = androidTools();
+  if (!existsSync(tools.emulator)) {
+    throw new Error(`no Android emulator in ${tools.sdk}: set ANDROID_HOME`);
+  }
+  const root = qaWorktree();
+  const sha = releaseCommit(root);
   const { open } = emulatorFor(args);
   const offline = args.includes('--offline');
 
-  step(`A release build of ${sha.slice(0, 12)} (${subject})`);
-  if (!onMain) console.log('  not on origin/main: this is a branch build');
   const apk = releaseApk(root, sha);
+  startAppServices(root);
   if (existsSync(apk) && !args.includes('--rebuild')) {
     console.log(`  already built: ${apk}`);
   } else {
@@ -1020,7 +1122,7 @@ async function release(args) {
   await pause(1000);
   adbOut(tools, ['shell', 'am', 'start', '-n', `${id}/.MainActivity`]);
   await recording;
-  const video = join(root, '.qa/release', `launch-${sha.slice(0, 12)}.mp4`);
+  const video = launchVideo(root, sha, 'android');
   rmSync(video, { force: true });
   adbOut(tools, ['pull', LAUNCH_RECORDING, video]);
   adbOut(tools, ['shell', 'rm', '-f', LAUNCH_RECORDING]);
@@ -1029,6 +1131,141 @@ async function release(args) {
       ` (${emulatorSerial()}), ${offline ? 'offline: no default network, no stack' : 'online'}.` +
       `\n${existsSync(video) ? `Its first 15 seconds: ${video}` : 'The launch was not recorded.'}` +
       `\nThe next \`android\` removes it and turns airplane mode off.`,
+  );
+}
+
+// The same bundle as on Android, and Release, so the JS and fonts are inside and Metro is not asked.
+function buildIosRelease(root, app) {
+  if (capture('pod', ['--version']) === null) {
+    throw new Error('no CocoaPods on this Mac: brew install cocoapods');
+  }
+  const mobile = join(root, 'apps/mobile');
+  const env = { ...CONFIG.app, EXPO_PUBLIC_ENVIRONMENT: 'qa', CI: '1' };
+
+  const pkg = join(mobile, 'package.json');
+  const scripts = readFileSync(pkg, 'utf8');
+  try {
+    run('npx', ['expo', 'prebuild', '--platform', 'ios', '--no-install', '--clean'], {
+      cwd: mobile,
+      env,
+    });
+  } finally {
+    writeFileSync(pkg, scripts);
+  }
+  const ios = join(mobile, 'ios');
+  run('pod', ['install'], { cwd: ios, env });
+  const workspace = xcodeWorkspace(readdirSync(ios));
+  const scheme = basename(workspace, '.xcworkspace');
+  // A release build refuses http, and a QA stack serves nothing else.
+  run('plutil', [
+    '-replace',
+    'NSAppTransportSecurity',
+    '-json',
+    '{"NSAllowsArbitraryLoads":true}',
+    join(ios, scheme, 'Info.plist'),
+  ]);
+
+  const derived = join(ios, 'build');
+  run(
+    'xcodebuild',
+    [
+      '-workspace',
+      workspace,
+      '-scheme',
+      scheme,
+      '-configuration',
+      'Release',
+      '-sdk',
+      'iphonesimulator',
+      '-destination',
+      'generic/platform=iOS Simulator',
+      '-derivedDataPath',
+      derived,
+      `ARCHS=${simulatorArch()}`,
+      'CODE_SIGNING_ALLOWED=NO',
+      'build',
+    ],
+    { cwd: ios, env: { ...env, NODE_ENV: 'production' } },
+  );
+
+  mkdirSync(dirname(app), { recursive: true });
+  rmSync(app, { recursive: true, force: true });
+  cpSync(join(derived, 'Build/Products/Release-iphonesimulator', `${scheme}.app`), app, {
+    recursive: true,
+  });
+  rmSync(ios, { recursive: true, force: true });
+  for (const name of staleBuilds(readdirSync(dirname(app)), app)) {
+    rmSync(join(dirname(app), name), { recursive: true, force: true });
+  }
+}
+
+function stopAppServices(root) {
+  run('docker', ['compose', 'stop', ...APP_SERVICES], { cwd: root });
+}
+
+// Makes what a `down` removed, where `start` fails on a stack with no containers.
+function startAppServices(root) {
+  run('docker', ['compose', 'up', '-d', '--wait', '--no-recreate', ...APP_SERVICES], {
+    cwd: root,
+  });
+}
+
+function recordSimulator(udid, video) {
+  rmSync(video, { force: true });
+  const recorder = spawn('xcrun', ['simctl', 'io', udid, 'recordVideo', '--force', video], {
+    stdio: 'ignore',
+  });
+  const stopped = new Promise((done) => {
+    recorder.on('error', () => done());
+    recorder.on('exit', () => done());
+  });
+  return async () => {
+    await pause(15000);
+    recorder.kill('SIGINT');
+    await stopped;
+  };
+}
+
+async function releaseIos(args) {
+  const root = qaWorktree();
+  const sha = releaseCommit(root);
+  const { open, shut } = simulatorFor(args);
+  const offline = args.includes('--offline');
+
+  const app = releaseApp(root, sha);
+  if (existsSync(app) && !args.includes('--rebuild')) {
+    console.log(`  already built: ${app}`);
+  } else {
+    buildIosRelease(root, app);
+  }
+
+  step(`The ${open}`);
+  const other = simulatorId(CONFIG.simulators[shut].name);
+  if (other) run('xcrun', ['simctl', 'shutdown', other], { optional: true });
+  const udid = simulatorId(CONFIG.simulators[open].name);
+  if (!udid) throw new Error(`no ${CONFIG.simulators[open].name} simulator — run setup`);
+  run('xcrun', ['simctl', 'boot', udid], { optional: true });
+  run('open', ['-a', 'Simulator'], { optional: true });
+  // A fresh install every time, so the launch below is the app's first, with no cache.
+  const id = iosBundle(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
+  run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true });
+  run('xcrun', ['simctl', 'install', udid, app]);
+  if (offline) stopAppServices(root);
+  else startAppServices(root);
+
+  const video = launchVideo(root, sha, 'ios');
+  const recorded = recordSimulator(udid, video);
+  await pause(1000);
+  run('xcrun', ['simctl', 'launch', udid, id]);
+  await recorded();
+  console.log(
+    `\nSoirely ${sha.slice(0, 12)}, a release build, on its first launch on the ${open}` +
+      `, ${offline ? `offline: ${APP_SERVICES.join(', ')} stopped` : 'online'}.` +
+      `\n${existsSync(video) ? `Its first 15 seconds: ${video}` : 'The launch was not recorded.'}` +
+      `\nThe next \`ios\` removes it and starts the stack again.` +
+      (offline
+        ? `\nWeb and android see the stack stopped too, until \`ios\`, \`android\` or \`release\` without --offline starts it.`
+        : ''),
   );
 }
 

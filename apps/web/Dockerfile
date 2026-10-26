@@ -15,7 +15,7 @@ WORKDIR /repo
 
 # The workspace root's manifests first, so a source change does not reinstall.
 COPY package.json package-lock.json ./
-COPY locales.json ./
+COPY locales.json event-states.json ./
 COPY packages/domain/package.json packages/domain/
 COPY packages/api-client/package.json packages/api-client/
 COPY apps/web/package.json apps/web/

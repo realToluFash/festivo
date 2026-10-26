@@ -570,6 +570,28 @@ describe('a screen is a composition of the kit', () => {
   });
 });
 
+describe('a mark or a pill grows with the text inside it (sc-13281)', () => {
+  it('in every style in the app, which sizes it only through useMarkSide or minHeight', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      fixedAroundText(text).map((line) => `${path}:${line}`),
+    );
+
+    expect(
+      offenders,
+      'Use useMarkSide(side) from src/components/markSide.ts, or minHeight.',
+    ).toEqual([]);
+  });
+
+  it('notices a mark or a pill of a fixed size', () => {
+    expect(
+      fixedAroundText('  mark: {\n    width: tokens.sizeMark,\n    height: tokens.sizeMark,'),
+    ).toEqual([2, 3]);
+    expect(fixedAroundText('  pill: { height: tokens.sizePill, borderRadius: 11 },')).toEqual([1]);
+    expect(fixedAroundText('  pill: { minHeight: tokens.sizePill },')).toEqual([]);
+    expect(fixedAroundText('<Svg width={tokens.sizeMark} height={tokens.sizeMark} />')).toEqual([]);
+  });
+});
+
 describe('a way back that names an outcome is off while its request runs (sc-12511)', () => {
   it('in Ownership and leaving, on Keep ownership, Stay and Keep ‹organisation›', () => {
     const text = readFileSync(join('src', 'components', 'OwnershipCard.tsx'), 'utf8');
@@ -641,6 +663,13 @@ function escapesAnswered(text: string): number {
         (propValue(markup, 'collapsable') === '{false}' ||
           /\baccessibilityViewIsModal(?!=\{false\})\b/u.test(markup)),
     ).length;
+}
+
+/** A width or height fixed at the side of a mark or a pill, which the glyph or word inside outgrows. */
+function fixedAroundText(text: string): number[] {
+  return [...text.matchAll(/(?<![\w])(?:width|height): tokens\.size(?:Mark|Pill)\b/gu)].map(
+    (match) => text.slice(0, match.index).split('\n').length,
+  );
 }
 
 function caretSet(markup: string): boolean {

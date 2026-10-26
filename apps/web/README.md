@@ -35,11 +35,12 @@ the first render, and the container writes that file from its environment at
 start-up. So one built image works in every environment, and pointing it
 somewhere else is a variable rather than a rebuild.
 
-| Variable              | Required | What it is                                                         |
-| --------------------- | -------- | ------------------------------------------------------------------ |
-| `SOIRELY_API_URL`     | yes      | Where the API is **from the browser**, not from inside the network |
-| `SOIRELY_MERCURE_URL` | no       | Where Mercure is, from the browser                                 |
-| `SOIRELY_ENVIRONMENT` | no       | A name, so a support conversation can establish which deployment   |
+| Variable              | Required | What it is                                                                          |
+| --------------------- | -------- | ----------------------------------------------------------------------------------- |
+| `SOIRELY_API_URL`     | yes      | Where the API is **from the browser**, not from inside the network                  |
+| `SOIRELY_MERCURE_URL` | no       | Where Mercure is, from the browser                                                  |
+| `SOIRELY_STORAGE_URL` | no       | The object store's public origin, which receives uploads and serves uploaded images |
+| `SOIRELY_ENVIRONMENT` | no       | A name, so a support conversation can establish which deployment                    |
 
 A missing `SOIRELY_API_URL` stops the container. That is deliberate: a default
 would be a browser quietly talking to the wrong host, which looks like an
@@ -67,8 +68,8 @@ The container also writes `/etc/nginx/soirely-security-headers.conf` at
 start-up, which `nginx.conf` includes in the server block **and in every
 location** — a location that adds a header of its own discards everything
 inherited, so the cache rules would otherwise serve the bundle with no policy.
-It is generated rather than committed because `connect-src` has to name the API
-and Mercure origins. nginx refuses to start if it is missing.
+It is generated rather than committed because the policy has to name the API,
+Mercure and object store origins. nginx refuses to start if it is missing.
 
 **`npm run dev` serves no policy at all**, because there is no nginx in front of
 Vite. So anything the policy forbids works locally and fails in a deployed

@@ -1,9 +1,10 @@
 import { ApiError, type TimeZoneOption } from '@soirely/api-client';
 import { exactZone, formerName, matchingZones, zoneLabel } from '@soirely/domain';
-import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
+import { useComboboxKeys } from '../../../comboboxKeys.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { useStepFocus } from '../../../stepFocus.ts';
@@ -125,7 +126,6 @@ function Choosing({
   const { t } = useTranslation();
   const [typed, setTyped] = useState('');
   const [pickedId, setPickedId] = useState<string | null>(null);
-  const [active, setActive] = useState(-1);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const input = useRef<HTMLInputElement>(null);
@@ -148,31 +148,21 @@ function Choosing({
       : t('timeZone.countryWas', { country: zone.country, name: was });
   };
   const noneMatch = typed.trim() !== '' && !showingPicked && matches.length === 0;
+  const { active, setActive, onKeyDown } = useComboboxKeys({
+    count: matches.length,
+    onPick: (index) => {
+      const chosen = matches[index];
+      if (chosen != null) pick(chosen);
+    },
+    onEnter: () => void save(),
+    onEscape: onCancel,
+  });
 
   function pick(zone: TimeZoneOption): void {
     setPickedId(zone.id);
     setTyped(zoneLabel(zone));
     setActive(-1);
     setError(null);
-  }
-
-  function onKey(event: KeyboardEvent<HTMLInputElement>): void {
-    if (saving) return;
-
-    if (event.key === 'ArrowDown' && matches.length > 0) {
-      event.preventDefault();
-      setActive((index) => Math.min(index + 1, matches.length - 1));
-    } else if (event.key === 'ArrowUp' && matches.length > 0) {
-      event.preventDefault();
-      setActive((index) => Math.max(index - 1, 0));
-    } else if (event.key === 'Enter') {
-      event.preventDefault();
-      const chosen = matches[active];
-      if (chosen != null) pick(chosen);
-      else void save();
-    } else if (event.key === 'Escape') {
-      onCancel();
-    }
   }
 
   async function save(): Promise<void> {
@@ -239,7 +229,7 @@ function Choosing({
             setActive(-1);
             setError(null);
           }}
-          onKeyDown={onKey}
+          onKeyDown={saving ? undefined : onKeyDown}
         />
 
         {matches.length > 0 && (

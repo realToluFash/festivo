@@ -116,6 +116,7 @@ final class CrossOriginTest extends ApiTestCase
         self::assertStringContainsString('retry-after', $exposed);
         self::assertStringContainsString('link', $exposed);
         self::assertStringContainsString('etag', $exposed);
+        self::assertStringContainsString('date', $exposed);
     }
 
     #[Test]

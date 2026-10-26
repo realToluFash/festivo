@@ -192,7 +192,8 @@ function Chevron() {
 
 const styles = StyleSheet.create({
   field: {
-    height: tokens.sizeHitPhonePrimary,
+    minHeight: tokens.sizeHitPhonePrimary,
+    paddingVertical: tokens.spaceSm,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceSm,
@@ -213,7 +214,8 @@ const styles = StyleSheet.create({
   close: { minHeight: tokens.sizeHit, justifyContent: 'center', paddingHorizontal: tokens.spaceSm },
   accentText: { color: tokens.colorAccentText },
   search: {
-    height: tokens.sizeHitPhonePrimary,
+    minHeight: tokens.sizeHitPhonePrimary,
+    paddingVertical: tokens.spaceSm,
     paddingHorizontal: tokens.spaceLg,
     borderWidth: 1,
     borderColor: tokens.colorControlBorder,

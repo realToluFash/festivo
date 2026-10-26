@@ -4,7 +4,7 @@ import {
   type OrganisationDeletion,
   type OrganisationMember,
 } from '@soirely/api-client';
-import { roleName } from '@soirely/domain';
+import { roleName, typedNameMatches } from '@soirely/domain';
 import { type FormEvent, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
@@ -481,7 +481,7 @@ function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: ()
   const [busy, setBusy] = useState(false);
   const [mismatch, setMismatch] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
-  const matches = typed.trim() === organisation.name;
+  const matches = typedNameMatches(typed, organisation.name);
   const heading = useRef<HTMLHeadingElement>(null);
 
   useLayoutEffect(() => focusStep(heading.current), []);
@@ -592,7 +592,7 @@ function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: ()
           aria-describedby={mismatch != null ? 'delete-confirm-error' : 'delete-confirm-note'}
           onChange={(event) => {
             setTyped(event.target.value);
-            if (event.target.value.trim() === organisation.name) setMismatch(null);
+            if (typedNameMatches(event.target.value, organisation.name)) setMismatch(null);
           }}
         />
         {mismatch != null && <FieldError id="delete-confirm-error" message={mismatch} />}

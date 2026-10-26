@@ -5,9 +5,11 @@ import { useTranslation } from 'react-i18next';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { LanguageChoice } from './LanguageChoice.tsx';
+import { useMarkSide } from './markSide.ts';
 import { useReadOut } from './ReadOut.tsx';
 import { Screen, useFocusOnAnswer } from './Screen.tsx';
 import { Text, type TextHandle } from './Text.tsx';
+import { Title } from './Title.tsx';
 
 const CARD_WIDTH = 520;
 const FORM_COLUMN_WIDTH = 600;
@@ -34,6 +36,7 @@ export function AuthHeading({
   introAnswer?: unknown;
 }) {
   const { kind } = useLayout();
+  const doneMarkSide = useMarkSide(tokens.sizeHitPhoneHero);
   const { shown, read } = useFocusOnAnswer<TextHandle>(answer);
   const { read: introRead } = useFocusOnAnswer<TextHandle>(introAnswer);
   const size = kind === 'phone' ? tokens.typeTitlePhone.size : tokens.typeTitlePage.size;
@@ -46,7 +49,7 @@ export function AuthHeading({
     <>
       {done && (
         <View
-          style={styles.doneMark}
+          style={[styles.doneMark, doneMarkSide]}
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
@@ -61,9 +64,9 @@ export function AuthHeading({
         </View>
       )}
       <View ref={shown} style={styles.heading}>
-        <Text ref={read} size={size} weight="bold" style={styles.title} accessibilityRole="header">
+        <Title ref={read} size={size} style={styles.title} accessibilityRole="header">
           {title}
-        </Text>
+        </Title>
         {showIntro && (
           <Text ref={introRead} size={tokens.typeBodyPhone.size} style={styles.secondary}>
             {intro}
@@ -93,9 +96,9 @@ export function AuthFrame({
 
   const brand = (
     <View style={styles.brandRow}>
-      <Text size={tokens.typeTitleDialog.size} weight="bold" style={styles.brand}>
+      <Title size={tokens.typeTitleDialog.size} style={styles.brand}>
         {t('app.name')}
-      </Text>
+      </Title>
     </View>
   );
 
@@ -150,11 +153,9 @@ const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   onAccent: { color: tokens.colorInkOnDark },
   doneMark: {
-    width: tokens.sizeHitPhoneHero,
-    height: tokens.sizeHitPhoneHero,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: tokens.sizeHitPhoneHero / 2,
+    borderRadius: tokens.radiusPill,
     backgroundColor: tokens.colorAccent,
   },
   spacer: { flex: 1 },

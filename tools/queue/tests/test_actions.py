@@ -70,7 +70,9 @@ def slim(raw):
             "labels": sorted(label["name"] for label in raw["labels"]),
             "comments": [{"id": c["id"], "parent": c["parent_id"], "at": c["created_at"],
                           "text": c["text"]} for c in raw["comments"]],
-            "description": raw["description"], "tasks": [], "links": [],
+            "description": raw["description"], "tasks": [],
+            "links": [{"verb": x["verb"], "subject": x["subject_id"], "object": x["object_id"]}
+                      for x in raw.get("story_links", [])],
             "done": STATES[str(raw["workflow_state_id"])] == "Done" or bool(raw.get("archived")),
             "archived": bool(raw.get("archived")),
             "position": 1, "updated_at": raw["moved_at"], "type": "feature"}
@@ -344,6 +346,57 @@ class LanguageTags(Base):
         with self.assertRaisesRegex(actions.Refused, "no role de"):
             actions.comment(self.as_("pm"), args(story="sc-1", to="de", reply_to=None,
                                                  untagged=False, files=None, text="x"))
+
+
+class HeldByBlockers(Base):
+    def setUp(self):
+        super().setUp()
+        self.fake.add(1, "Ready For Dev", ["backend"])
+        self.fake.add(7, "Ready For Dev")
+        self.fake.add(8, "In Review")
+        self.fake.relate(7, 1, "blocks")
+        self.fake.relate(8, 1, "blocks")
+
+    def test_a_developer_s_claim_names_each_blocker_and_its_state(self):
+        with self.assertRaisesRegex(actions.Refused,
+                                    r"held by sc-7 \(Ready For Dev\), sc-8 \(In Review\)"):
+            actions.claim(self.as_("dev3"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "Ready For Dev")
+        self.assertEqual(self.labels(1), {"backend"})
+        self.assertEqual(self.fake.comments, [])
+
+    def test_the_claim_goes_through_once_every_blocker_has_merged(self):
+        self.fake.update(7, workflow_state_id=IDS["Done"])
+        self.fake.update(8, workflow_state_id=IDS["Failed QA"])
+        actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_a_rework_claim_fetches_no_blocker(self):
+        self.fake.update(1, workflow_state_id=IDS["Failed QA"],
+                         labels=[{"name": "backend"}, {"name": "dev2"}])
+        del self.fake.raw[7]
+        actions.claim(self.as_("dev2"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_the_product_manager_s_move_still_moves_and_says_what_holds_it(self):
+        self.fake.update(1, workflow_state_id=IDS["To Do"])
+        said = actions.move(self.as_("pm"), args(story="sc-1", state="Ready For Dev"))
+        self.assertEqual(self.state(1), "Ready For Dev")
+        self.assertIn("held by sc-7 (Ready For Dev), sc-8 (In Review)", said)
+
+    def wakes_for_1(self):
+        return [w for w in self.queue_wakes("dev") if w.startswith("sc-1 ")]
+
+    def test_a_held_story_wakes_no_developer_until_its_last_blocker_merges(self):
+        for story_id in (1, 7, 8):
+            self.as_("pm").story(story_id)
+        self.assertEqual(self.wakes_for_1(), [])
+        self.fake.update(7, workflow_state_id=IDS["Ready For QA"])
+        self.as_("pm").story(7)
+        self.assertEqual(self.wakes_for_1(), [])
+        self.fake.update(8, workflow_state_id=IDS["Ready For QA"])
+        self.as_("pm").story(8)
+        self.assertEqual(self.wakes_for_1(), ["sc-1 moved to Ready For Dev"])
 
 
 class PmMoves(Base):

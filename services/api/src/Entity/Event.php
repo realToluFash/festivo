@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Doctrine\Interfaces\SoftDeletableInterface;
+use App\Doctrine\Traits\SoftDeletable;
 use App\Doctrine\Traits\Timestampable;
 use App\Enum\EventStatus;
 use App\Enum\EventType;
@@ -20,8 +22,10 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'events')]
 #[ORM\Index(name: 'idx_event_organisation_starts', columns: ['organisation_id', 'starts_at_utc'])]
 #[ORM\Index(name: 'idx_event_organisation_closes', columns: ['organisation_id', 'closes_at'])]
-class Event
+#[ORM\Index(name: 'idx_event_deleted', columns: ['deleted_at'])]
+class Event implements SoftDeletableInterface
 {
+    use SoftDeletable;
     use Timestampable;
 
     public const int NAME_MAXIMUM = 120;
@@ -61,6 +65,9 @@ class Event
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $endedAt = null;
 
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $madeLiveAt = null;
+
     #[ORM\Column(
         type: Types::DATETIME_IMMUTABLE,
         nullable: true,
@@ -73,6 +80,36 @@ class Event
 
     #[ORM\Column(type: Types::STRING, length: 3)]
     private string $currency;
+
+    #[ORM\Column(type: Types::STRING, length: 120, nullable: true)]
+    private ?string $venueName = null;
+
+    #[ORM\Column(type: Types::STRING, length: 300, nullable: true)]
+    private ?string $venueAddress = null;
+
+    #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
+    private ?string $venueLine1 = null;
+
+    #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
+    private ?string $venueLine2 = null;
+
+    #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
+    private ?string $venueCity = null;
+
+    #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
+    private ?string $venueRegion = null;
+
+    #[ORM\Column(type: Types::STRING, length: 32, nullable: true)]
+    private ?string $venuePostalCode = null;
+
+    #[ORM\Column(type: Types::STRING, length: 2, nullable: true)]
+    private ?string $venueCountryCode = null;
+
+    #[ORM\Column(type: Types::FLOAT, nullable: true)]
+    private ?float $venueLatitude = null;
+
+    #[ORM\Column(type: Types::FLOAT, nullable: true)]
+    private ?float $venueLongitude = null;
 
     /** Moved by Doctrine on every update; the resource's ETag (sc-3587). */
     #[ORM\Version]
@@ -131,6 +168,12 @@ class Event
         return $this->timeZone;
     }
 
+    /** UTC; null while it is a Draft (sc-3584). */
+    public function getMadeLiveAt(): ?DateTimeImmutable
+    {
+        return $this->madeLiveAt;
+    }
+
     /** When it was ended early, before its own end (sc-3585). */
     public function getEndedAt(): ?DateTimeImmutable
     {
@@ -148,9 +191,74 @@ class Event
         return $this->currency;
     }
 
+    /** The venue is written whole, by setVenue(); a column on its own means nothing (sc-3589). */
+    public function getVenueName(): ?string
+    {
+        return $this->venueName;
+    }
+
+    public function getVenueAddress(): ?string
+    {
+        return $this->venueAddress;
+    }
+
+    public function getVenueLine1(): ?string
+    {
+        return $this->venueLine1;
+    }
+
+    public function getVenueLine2(): ?string
+    {
+        return $this->venueLine2;
+    }
+
+    public function getVenueCity(): ?string
+    {
+        return $this->venueCity;
+    }
+
+    public function getVenueRegion(): ?string
+    {
+        return $this->venueRegion;
+    }
+
+    public function getVenuePostalCode(): ?string
+    {
+        return $this->venuePostalCode;
+    }
+
+    public function getVenueCountryCode(): ?string
+    {
+        return $this->venueCountryCode;
+    }
+
+    public function getVenueLatitude(): ?float
+    {
+        return $this->venueLatitude;
+    }
+
+    public function getVenueLongitude(): ?float
+    {
+        return $this->venueLongitude;
+    }
+
     public function getVersion(): int
     {
         return $this->version;
+    }
+
+    /** Only EventLifecycle calls this, once /event-states.json's transition and its guards allow it. */
+    public function makeLive(DateTimeImmutable $at): void
+    {
+        $this->status = EventStatus::Live;
+        $this->madeLiveAt = $at->setTimezone(new DateTimeZone('UTC'));
+    }
+
+    /** Only EventLifecycle calls this: before the start it calls the event off, after it ends it early (sc-3585). */
+    public function end(DateTimeImmutable $at): void
+    {
+        $this->status = EventStatus::Ended;
+        $this->endedAt = $at->setTimezone(new DateTimeZone('UTC'));
     }
 
     public function setName(string $name): void
@@ -166,6 +274,30 @@ class Event
     public function setCurrency(string $currency): void
     {
         $this->currency = $currency;
+    }
+
+    public function setVenue(
+        ?string $name,
+        ?string $address,
+        ?string $line1 = null,
+        ?string $line2 = null,
+        ?string $city = null,
+        ?string $region = null,
+        ?string $postalCode = null,
+        ?string $countryCode = null,
+        ?float $latitude = null,
+        ?float $longitude = null,
+    ): void {
+        $this->venueName = $name;
+        $this->venueAddress = $address;
+        $this->venueLine1 = $line1;
+        $this->venueLine2 = $line2;
+        $this->venueCity = $city;
+        $this->venueRegion = $region;
+        $this->venuePostalCode = $postalCode;
+        $this->venueCountryCode = $countryCode;
+        $this->venueLatitude = $latitude;
+        $this->venueLongitude = $longitude;
     }
 
     /** Both in the start's zone. The UTC columns are derived here and in rederiveUtc(), and written nowhere else. */

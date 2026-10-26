@@ -1,17 +1,23 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
-import { formatEventRange } from '@soirely/domain';
-import { type RefObject, useContext, useEffect, useRef, useState } from 'react';
+import { type EventPhase, formatEventRange, shownPhase } from '@soirely/domain';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
-import { Arriving } from '../../../pageArrival.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
+import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { type EditOutcome } from './EditEvent.tsx';
+import { DeleteEvent } from './DeleteEvent.tsx';
+import { CalledOffNotice, EndButton } from './EndEvent.tsx';
+import { EventCoverImage } from './EventCoverImage.tsx';
+import { PHASE_WORD } from './eventWords.ts';
+import { DraftRow, StatusPill } from './MakeLive.tsx';
+import { OutcomeLine } from './OutcomeLine.tsx';
 import { typeLabel } from './eventTypes.ts';
 
 type Load =
@@ -133,7 +139,11 @@ function EventOf({
 
       {load.kind === 'loaded' &&
         (page === 'event' ? (
-          <EventPage event={load.event} heading={heading} />
+          <EventPage
+            event={load.event}
+            heading={heading}
+            onChange={(event) => setLoad({ kind: 'loaded', event })}
+          />
         ) : (
           <GuestsComing event={load.event} heading={heading} />
         ))}
@@ -144,18 +154,27 @@ function EventOf({
 function EventPage({
   event,
   heading,
+  onChange,
 }: {
   event: OrganisationEvent;
   heading: RefObject<HTMLHeadingElement | null>;
+  onChange: (event: OrganisationEvent) => void;
 }) {
   const { t } = useTranslation();
   const session = useSession();
   const location = useLocation();
   const navigate = useNavigate();
   const [outcome] = useState(() => editOutcome(location.state));
+  const [coverRefused] = useState(() => coverRefusal(location.state));
+  const coverLine = useRef<HTMLParagraphElement>(null);
+  const [madeLive, setMadeLive] = useState(false);
+  const [ended, setEnded] = useState(false);
+  const now = useServerNow();
+  const loadedAt = useLoadedAt(event);
+  const phase = shownPhase(event, loadedAt, now);
 
   useEffect(() => {
-    if (editOutcome(location.state) == null) return;
+    if (editOutcome(location.state) == null && coverRefusal(location.state) == null) return;
 
     void navigate(
       { pathname: location.pathname, search: location.search, hash: location.hash },
@@ -165,11 +184,18 @@ function EventPage({
 
   return (
     <section className="card event-page-card" aria-labelledby="event-title">
+      <EventCoverImage
+        photo={event.cover}
+        type={event.type}
+        sizes="(width <= 40rem) 100vw, 45rem"
+        className="event-page-cover"
+      />
       <div className="event-page-head">
         <h1 id="event-title" ref={heading} tabIndex={-1}>
           {event.name}
         </h1>
-        <span className="pill-quiet">{t('events.draft')}</span>
+        <StatusPill phase={phase} />
+        <PhaseChange key={loadedAt.getTime()} phase={phase} />
       </div>
       <p className="muted">{typeLabel(event.type, t)}</p>
       <p>
@@ -178,6 +204,28 @@ function EventPage({
           timeZone: event.timeZone,
         })}
       </p>
+      <CalledOffNotice event={event} />
+      <DraftRow
+        event={event}
+        now={now}
+        manages={can(session, 'events.manage')}
+        heading={heading}
+        onChange={onChange}
+        onMadeLive={() => setMadeLive(true)}
+      />
+      {madeLive && <OutcomeLine words={t('eventLive.madeLive')} />}
+      {ended && <OutcomeLine words={t(PHASE_WORD.finished)} />}
+      <Venue event={event} manages={can(session, 'events.manage')} />
+      {coverRefused != null && (
+        <ArrivalNotice
+          role="alert"
+          line={t('eventCover.createdWithout', { reason: coverRefused })}
+          lineRef={coverLine}
+          focusable={false}
+          retry={t('eventEdit.open')}
+          onRetry={() => void navigate(`/app/events/${encodeURIComponent(event.id)}/edit#cover`)}
+        />
+      )}
       {outcome != null && (
         <OutcomeLine
           words={outcome === 'saved' ? t('eventEdit.saved') : t('eventEdit.nothingChanged')}
@@ -189,38 +237,86 @@ function EventPage({
             {t('eventEdit.open')}
           </Link>
         )}
+        {can(session, 'events.manage') && (
+          <EndButton
+            event={event}
+            phase={phase}
+            now={now}
+            heading={heading}
+            onChange={onChange}
+            onEnded={() => setEnded(true)}
+          />
+        )}
         <Link className="button" to={`/app/events/${encodeURIComponent(event.id)}/guests`}>
           {t('eventPage.guests')}
         </Link>
       </div>
+      {can(session, 'events.create') && <DeleteEvent event={event} />}
     </section>
   );
 }
 
-/** Where the page begins after Save changes; once the person has moved focus, it is announced instead (sc-11370). */
-function OutcomeLine({ words }: { words: string }) {
-  const arriving = useContext(Arriving);
-  const [taking] = useState(arriving);
-  const [announced, setAnnounced] = useState('');
+/** With coordinates, the address opens OpenStreetMap there; with no venue, somebody who manages events can go and add it (sc-3589). */
+function Venue({ event, manages }: { event: OrganisationEvent; manages: boolean }) {
+  const { t } = useTranslation();
+  const venue = event.venue;
+  const address = venue?.address ?? null;
+  const { latitude, longitude } = address ?? { latitude: null, longitude: null };
 
-  useEffect(() => {
-    if (taking) return;
+  if (venue == null) {
+    return (
+      <div className="event-page-venue" role="group" aria-label={t('eventPage.venue')}>
+        <p>{t('eventPage.venueToBeConfirmed')}</p>
+        {manages && (
+          <Link
+            className="link-button event-page-venue-link"
+            to={`/app/events/${encodeURIComponent(event.id)}/edit#venue`}
+          >
+            {t('eventPage.addVenue')}
+          </Link>
+        )}
+      </div>
+    );
+  }
 
-    // Set after the region is in the page, so a screen reader hears the change rather than missing a region born full.
-    const id = window.setTimeout(() => setAnnounced(words), 0);
+  return (
+    <div className="event-page-venue" role="group" aria-label={t('eventPage.venue')}>
+      {venue.name != null && <p className="event-page-venue-name">{venue.name}</p>}
+      {address != null && <p>{address.formatted}</p>}
+      {latitude != null && longitude != null && (
+        <a
+          className="link-button event-page-venue-link"
+          href={`https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {t('eventPage.openInMaps')}
+        </a>
+      )}
+    </div>
+  );
+}
 
-    return () => window.clearTimeout(id);
-  }, [taking, words]);
+/** WCAG 2.2 §4.1.3: a phase the clock changes on an open page is said politely; one the server sends is not. */
+function PhaseChange({ phase }: { phase: EventPhase }) {
+  const { t } = useTranslation();
+  const [opened] = useState(phase);
 
-  return taking ? (
-    <p className="event-page-outcome" tabIndex={-1} data-page-focus="">
-      {words}
-    </p>
-  ) : (
-    <p className={announced === '' ? 'visually-hidden' : 'event-page-outcome'} role="status">
-      {announced}
+  return (
+    <p className="visually-hidden" aria-live="polite">
+      {phase === opened ? '' : t(PHASE_WORD[phase])}
     </p>
   );
+}
+
+/** Set by New event when the event was created and its staged cover was refused or failed to save. */
+function coverRefusal(state: unknown): string | null {
+  const refused =
+    typeof state === 'object' && state != null && 'coverRefused' in state
+      ? state.coverRefused
+      : null;
+
+  return typeof refused === 'string' ? refused : null;
 }
 
 function editOutcome(state: unknown): EditOutcome | null {

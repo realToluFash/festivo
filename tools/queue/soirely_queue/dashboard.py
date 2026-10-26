@@ -73,6 +73,9 @@ def snapshot(db, platform, now, home, load=machine.load):
             view["warnings"].append(late)
         on = runner.started(db)
         agreed = store.get_meta(db, "shared_view") or {}
+        unreachable = store.get_meta(db, "shared_unreachable")
+        if unreachable:
+            view["warnings"].append(f"could not reach the shared leases ({unreachable})")
         if agreed.get("paused"):
             view["warnings"].append(f"paused everywhere by {agreed['paused'].get('machine')}: "
                                     "sq resume --everywhere")

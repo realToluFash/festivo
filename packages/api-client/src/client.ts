@@ -5,7 +5,16 @@
  * are decided once here. Written per client, each would grow its own error path
  * and most of those would never be exercised.
  */
-import { type EventType, isEventType } from '@soirely/domain';
+import {
+  type EventPhase,
+  type EventState,
+  type EventType,
+  EVENT_PHASES,
+  EVENT_STATES,
+  isEventType,
+  type ServerClock,
+  serverClock,
+} from '@soirely/domain';
 
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
 
@@ -278,7 +287,8 @@ export interface RolesCatalogue {
   areas: { area: string; permissions: string[] }[];
 }
 
-export type EventStatus = 'draft';
+/** Stored, as /event-states.json declares them; what the clock makes of it is its phase (sc-3584). */
+export type EventStatus = EventState;
 
 /** `startsAt` and `endsAt` carry the offset in force at that moment in `timeZone` (sc-1486). */
 export interface OrganisationEvent {
@@ -293,7 +303,61 @@ export interface OrganisationEvent {
   /** The calendar dates in `timeZone` the event touches, at least 1; an end at 00:00 does not touch the new date (sc-98). */
   dayCount: number;
   currency: string;
+  cover: EventCover | null;
+  /** Null until a venue is added: the page says "Venue to be confirmed" (sc-3589). */
+  venue: EventVenue | null;
+  /** Null while it is a Draft. */
+  madeLiveAt: string | null;
+  /** The server's, as the page shows it on load; a client works one out only to flip it at a boundary (sc-3585). */
+  phase: EventPhase;
+  /** The end, or when it was ended or called off; null until it is Finished. */
+  concludedAt: string | null;
   createdAt: string;
+}
+
+/** The organiser's photo, re-encoded as WebP at each width. `position` is how far down the photo the 16:9 frame sits, 0 to 100. */
+export interface EventCover {
+  position: number;
+  description: string | null;
+  sizes: { width: number; url: string }[];
+}
+
+/** Where the browser PUTs the photo, with `contentType` as its Content-Type; `key` then names it to setEventCover. */
+export interface CoverUpload {
+  url: string;
+  key: string;
+  contentType: string;
+}
+
+export interface CoverChange {
+  uploadKey?: string;
+  position: number;
+  description: string | null;
+}
+
+export interface EventVenue {
+  name: string | null;
+  address: VenueAddress | null;
+}
+
+/** A typed address carries `formatted` alone; a picked one its parts and coordinates too, where the lookup knew them. */
+export interface VenueAddress {
+  formatted: string;
+  line1: string | null;
+  line2: string | null;
+  city: string | null;
+  region: string | null;
+  postalCode: string | null;
+  countryCode: string | null;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+/** Both blank removes the venue. `addressId` is the suggestion the address was picked from; without it the address is saved as typed. */
+export interface VenueInput {
+  name: string | null;
+  address: string | null;
+  addressId?: string | null;
 }
 
 /** `startsAt` and `endsAt` are local to `timeZone`, with no offset: "2026-11-14T16:00". */
@@ -304,6 +368,18 @@ export interface NewEvent {
   endsAt: string;
   timeZone: string;
   currency: string;
+  venue?: VenueInput | null;
+}
+
+/** One of the address lookup's suggestions (sc-53): the place's name, and the rest of its line. */
+export interface AddressSuggestion {
+  id: string;
+  text: string;
+  secondaryText: string | null;
+}
+
+export interface PickedAddress extends VenueAddress {
+  timeZone: string | null;
 }
 
 /** What an edit sends: any of the fields, those left out keep their value (sc-3587). */
@@ -397,6 +473,8 @@ export interface OrganisationSignInRules {
 export type SignInRulesChanges = Partial<Omit<OrganisationSignInRules, 'changedAt'>>;
 
 export interface SignInRuleChange {
+  /** The saved change it came from; one save that changes two rules gives two rows with the same entry. */
+  entry: string;
   at: string;
   by: { name: string; role: MemberRole | null };
   rule: (typeof RULES)[number];
@@ -523,6 +601,13 @@ export interface OrganisationDeletion {
   restoreCloses: string;
 }
 
+/** What an event's delete asks for: its name typed unless it is a Draft, and until when support can restore it (sc-3592). */
+export interface EventDeletion {
+  needsName: boolean;
+  restoreClosesAt: string;
+  restoreCloses: string;
+}
+
 /** The two codes the onboarding gate refuses with; each names the screen that passes it. */
 export type Gate = 'account_unverified' | 'profile_incomplete';
 
@@ -573,6 +658,8 @@ export interface ClientOptions {
   /** Called when the API refuses a request because the account is behind an onboarding gate. */
   onGate?: (gate: Gate) => void;
   fetch?: typeof fetch;
+  /** Fed every response's `Date` header; the shared one unless a test gives its own (sc-3585). */
+  clock?: ServerClock;
 }
 
 export interface RequestOptions {
@@ -1367,6 +1454,38 @@ export class ApiClient {
     );
   }
 
+  /** Empty under three characters, with nothing asked. Refused 503 when the lookup is down. */
+  async addressSuggestions(query: string): Promise<AddressSuggestion[]> {
+    if (query.trim().length < 3) return [];
+
+    const body = await this.get<{ data?: unknown }>(
+      `/api/addresses/suggest?${new URLSearchParams({ q: query.trim() }).toString()}`,
+    );
+    const suggestions = Array.isArray(body?.data) ? body.data.map(asAddressSuggestion) : null;
+
+    if (suggestions == null || suggestions.some((suggestion) => suggestion == null)) {
+      throw new Error(
+        'The API answered GET /api/addresses/suggest in a shape this client does not know. Check the address controller in services/api.',
+      );
+    }
+
+    return suggestions as AddressSuggestion[];
+  }
+
+  /** Refused 404 for an id the lookup no longer knows, 503 when it is down. */
+  async address(id: string): Promise<PickedAddress> {
+    const body = await this.get<{ data?: unknown }>(`/api/addresses/${encodeURIComponent(id)}`);
+    const address = asPickedAddress(body?.data);
+
+    if (address == null) {
+      throw new Error(
+        'The API answered GET /api/addresses/{id} in a shape this client does not know. Check the address controller in services/api.',
+      );
+    }
+
+    return address;
+  }
+
   /** Refused `not_found` alike for an event that does not exist and one in another organisation. */
   async event(eventId: string): Promise<OrganisationEvent> {
     return this.organisationEvent(
@@ -1392,6 +1511,126 @@ export class ApiClient {
         headers: { 'If-Match': tag },
       }),
     );
+  }
+
+  /** Refused `validation_failed` on `file` for a type or a size the cover does not take (sc-3590). */
+  async signEventCoverUpload(
+    organisationId: string,
+    file: { contentType: string; size: number; filename: string },
+  ): Promise<CoverUpload> {
+    const body = await this.post<{ upload?: unknown }>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/event-cover-uploads`,
+      file,
+    );
+    const { url, key, content_type: contentType } = (body?.upload ?? {}) as Record<string, unknown>;
+
+    if (typeof url !== 'string' || typeof key !== 'string' || typeof contentType !== 'string') {
+      throw new Error(
+        'The API answered a cover upload in a shape this client does not know. Check the event cover controller in services/api.',
+      );
+    }
+
+    return { url, key, contentType };
+  }
+
+  async uploadTo(upload: CoverUpload, file: Blob): Promise<void> {
+    const doFetch = this.options.fetch ?? fetch;
+    const response = await doFetch(upload.url, {
+      method: 'PUT',
+      body: file,
+      headers: { 'Content-Type': upload.contentType },
+    });
+
+    if (!response.ok) throw new Error(`The store refused the upload with ${response.status}.`);
+  }
+
+  /** For a browser that cannot show the original (sc-13861); refused on `file` as setEventCover refuses it. */
+  async previewEventCoverUpload(organisationId: string, uploadKey: string): Promise<string> {
+    const body = await this.post<{ preview?: unknown }>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/event-cover-uploads/preview`,
+      { uploadKey },
+    );
+
+    if (typeof body?.preview !== 'string' || !body.preview.startsWith('data:image/')) {
+      throw new Error(
+        'The API answered a cover preview in a shape this client does not know. Check the event cover controller in services/api.',
+      );
+    }
+
+    return body.preview;
+  }
+
+  /** A photo uploaded and then not used, deleted so its original, metadata and all, is not kept. */
+  async discardEventCoverUpload(organisationId: string, uploadKey: string): Promise<void> {
+    await this.request(`/api/orgs/${encodeURIComponent(organisationId)}/event-cover-uploads`, {
+      method: 'DELETE',
+      body: { uploadKey },
+    });
+  }
+
+  /** Refused `validation_failed` on `file` (the photo itself), `uploadKey`, `position` or `description`. */
+  async setEventCover(eventId: string, change: CoverChange): Promise<OrganisationEvent> {
+    return this.organisationEvent(
+      await this.put<{ event?: unknown }>(
+        `/api/events/${encodeURIComponent(eventId)}/cover`,
+        change,
+      ),
+    );
+  }
+
+  async removeEventCover(eventId: string): Promise<OrganisationEvent> {
+    return this.organisationEvent(
+      await this.delete<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}/cover`),
+    );
+  }
+
+  /** Refused 409 `event_state_invalid` once it is not a Draft, 409 `event_concluded` once its end has passed, and 403 `plan_limit` with `plan` and `limit`. */
+  async makeLive(eventId: string): Promise<TaggedEvent> {
+    return this.tagged(
+      await this.exchange<{ event?: unknown }>(
+        `/api/events/${encodeURIComponent(eventId)}/make-live`,
+        { method: 'POST' },
+      ),
+    );
+  }
+
+  /** Calls it off before its start, ends it after: refused 409 `event_state_invalid` unless Live or Paused, and 409 `event_concluded` once its end has passed. */
+  async endEvent(eventId: string): Promise<TaggedEvent> {
+    return this.tagged(
+      await this.exchange<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}/end`, {
+        method: 'POST',
+      }),
+    );
+  }
+
+  async eventDeletion(eventId: string): Promise<EventDeletion> {
+    const body = await this.get<Record<string, unknown>>(
+      `/api/events/${encodeURIComponent(eventId)}/deletion`,
+    );
+
+    if (
+      typeof body.needsName !== 'boolean' ||
+      typeof body.restoreClosesAt !== 'string' ||
+      typeof body.restoreCloses !== 'string'
+    ) {
+      throw new Error(
+        'The API answered an event deletion in a shape this client does not know. Check EventDeletionController in services/api.',
+      );
+    }
+
+    return {
+      needsName: body.needsName,
+      restoreClosesAt: body.restoreClosesAt,
+      restoreCloses: body.restoreCloses,
+    };
+  }
+
+  /** `name` is needed unless it is a Draft: refused with a violation on `name`, code `event_name_mismatch`, unless it matches. */
+  async deleteEvent(eventId: string, name?: string): Promise<void> {
+    await this.request<unknown>(`/api/events/${encodeURIComponent(eventId)}`, {
+      method: 'DELETE',
+      body: { name: name ?? null },
+    });
   }
 
   private tagged({
@@ -1951,7 +2190,11 @@ export class ApiClient {
     if (init.signal !== undefined) request.signal = init.signal;
 
     try {
-      return await doFetch(this.url(path, init.query), request);
+      const response = await doFetch(this.url(path, init.query), request);
+
+      (this.options.clock ?? serverClock).observe(response.headers.get('Date'));
+
+      return response;
     } catch (error) {
       if (init.signal?.aborted === true) throw error;
 
@@ -2342,7 +2585,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   if (typeof raw !== 'object' || raw == null) return null;
 
   const candidate = raw as Record<string, unknown>;
-  const status = oneOf(candidate.status, EVENT_STATUSES);
+  const status = oneOf(candidate.status, EVENT_STATES);
   const type = isEventType(candidate.type) ? candidate.type : null;
   const fields = [
     'id',
@@ -2356,10 +2599,20 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   ] as const;
 
   const dayCount = candidate.dayCount;
+  const cover = candidate.cover === null ? null : asEventCover(candidate.cover);
+  const venue = candidate.venue === null ? null : asEventVenue(candidate.venue);
+  const madeLiveAt = candidate.madeLiveAt;
+  const phase = oneOf(candidate.phase, EVENT_PHASES);
+  const concludedAt = candidate.concludedAt;
 
   if (
     status == null ||
+    phase == null ||
+    !isStringOrNull(concludedAt) ||
+    !isStringOrNull(madeLiveAt) ||
     type == null ||
+    cover === undefined ||
+    venue === undefined ||
     fields.some((field) => typeof candidate[field] !== 'string') ||
     typeof dayCount !== 'number' ||
     !Number.isInteger(dayCount) ||
@@ -2378,11 +2631,119 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     timeZone: candidate.timeZone as string,
     dayCount,
     currency: candidate.currency as string,
+    cover,
+    venue,
+    madeLiveAt,
+    phase,
+    concludedAt,
     createdAt: candidate.createdAt as string,
   };
 }
 
-const EVENT_STATUSES: readonly EventStatus[] = ['draft'];
+function asEventCover(raw: unknown): EventCover | undefined {
+  if (typeof raw !== 'object' || raw == null) return undefined;
+
+  const { position, description, sizes } = raw as Record<string, unknown>;
+  const parsed = Array.isArray(sizes)
+    ? sizes.map((size: unknown) => {
+        const { width, url } = (size ?? {}) as Record<string, unknown>;
+
+        return typeof width === 'number' && typeof url === 'string' ? { width, url } : null;
+      })
+    : null;
+
+  if (
+    typeof position !== 'number' ||
+    (description !== null && typeof description !== 'string') ||
+    parsed == null ||
+    parsed.length === 0 ||
+    parsed.some((size) => size == null)
+  )
+    return undefined;
+
+  return { position, description, sizes: parsed as EventCover['sizes'] };
+}
+
+/** Undefined when the shape is not one this client knows. */
+function asEventVenue(raw: unknown): EventVenue | undefined {
+  if (typeof raw !== 'object' || raw == null) return undefined;
+
+  const candidate = raw as Record<string, unknown>;
+  const address = candidate.address === null ? null : asVenueAddress(candidate.address, 'camel');
+
+  if (!isStringOrNull(candidate.name) || address === undefined) return undefined;
+
+  return { name: candidate.name as string | null, address };
+}
+
+/** The event resource names the parts in camelCase; the address lookup, older, in snake_case. */
+function asVenueAddress(raw: unknown, naming: 'camel' | 'snake'): VenueAddress | undefined {
+  if (typeof raw !== 'object' || raw == null) return undefined;
+
+  const candidate = raw as Record<string, unknown>;
+  const postalCode = candidate[naming === 'camel' ? 'postalCode' : 'postal_code'];
+  const countryCode = candidate[naming === 'camel' ? 'countryCode' : 'country_code'];
+  const texts = [
+    candidate.line1,
+    candidate.line2,
+    candidate.city,
+    candidate.region,
+    postalCode,
+    countryCode,
+  ];
+  const coordinates = [candidate.latitude, candidate.longitude];
+
+  if (
+    typeof candidate.formatted !== 'string' ||
+    !texts.every(isStringOrNull) ||
+    !coordinates.every((value) => value === null || typeof value === 'number')
+  )
+    return undefined;
+
+  return {
+    formatted: candidate.formatted,
+    line1: candidate.line1 as string | null,
+    line2: candidate.line2 as string | null,
+    city: candidate.city as string | null,
+    region: candidate.region as string | null,
+    postalCode: postalCode as string | null,
+    countryCode: countryCode as string | null,
+    latitude: candidate.latitude as number | null,
+    longitude: candidate.longitude as number | null,
+  };
+}
+
+function asPickedAddress(raw: unknown): PickedAddress | null {
+  const address = asVenueAddress(raw, 'snake');
+  const timeZone = (raw as Record<string, unknown> | null)?.time_zone;
+
+  if (address == null || !isStringOrNull(timeZone)) return null;
+
+  return { ...address, timeZone: timeZone as string | null };
+}
+
+function asAddressSuggestion(raw: unknown): AddressSuggestion | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const candidate = raw as Record<string, unknown>;
+
+  if (
+    typeof candidate.id !== 'string' ||
+    typeof candidate.text !== 'string' ||
+    !isStringOrNull(candidate.secondary_text)
+  )
+    return null;
+
+  return {
+    id: candidate.id,
+    text: candidate.text,
+    secondaryText: candidate.secondary_text as string | null,
+  };
+}
+
+function isStringOrNull(value: unknown): value is string | null {
+  return value === null || typeof value === 'string';
+}
 
 function asOrganisation(raw: unknown): Organisation | null {
   if (typeof raw !== 'object' || raw == null) return null;
@@ -2796,10 +3157,18 @@ function asSignInRuleChange(raw: unknown): SignInRuleChange | null {
   const was = asRuleValue(change.was);
   const rule = RULES.find((one) => one === change.rule);
 
-  if (typeof change.at !== 'string' || typeof by.name !== 'string' || rule == null) return null;
+  if (typeof change.entry !== 'string' || typeof change.at !== 'string') return null;
+  if (typeof by.name !== 'string' || rule == null) return null;
   if (now === undefined || was === undefined) return null;
 
-  return { at: change.at, by: { name: by.name, role: asMemberRole(by.role) }, rule, now, was };
+  return {
+    entry: change.entry,
+    at: change.at,
+    by: { name: by.name, role: asMemberRole(by.role) },
+    rule,
+    now,
+    was,
+  };
 }
 
 function asSignInRulesPage(raw: unknown): SignInRulesPage | null {

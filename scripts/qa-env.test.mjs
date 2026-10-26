@@ -2,6 +2,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   symlinkSync,
@@ -18,9 +19,11 @@ import {
   batchFlow,
   checkId,
   codeStep,
+  databaseCommands,
   composeBatch,
   localise,
   parseBatch,
+  REBUILD,
   rerunHints,
   STEP_MS,
   totp,
@@ -43,8 +46,15 @@ import {
   QA_OVERRIDES,
   QA_PORTS,
   qaConfig,
+  APP_SERVICES,
+  launchVideo,
+  iosBundle,
   releaseApk,
-  staleApks,
+  releaseApp,
+  releasePlatform,
+  simulatorArch,
+  staleBuilds,
+  xcodeWorkspace,
   renderQaEnv,
   reversedPorts,
   simulatorFor,
@@ -267,7 +277,7 @@ describe('a release build', () => {
   it('leaves only the APK of the commit just built', () => {
     const apk = releaseApk('/qa', 'c8646738ce1413ea1e718dce85ff4973f0f9b22c');
     expect(
-      staleApks(
+      staleBuilds(
         [
           'soirely-c8646738ce14.apk',
           'soirely-0123456789ab.apk',
@@ -277,6 +287,55 @@ describe('a release build', () => {
         apk,
       ),
     ).toEqual(['soirely-0123456789ab.apk']);
+  });
+
+  it('names the launch video by platform, so both launches of a commit are kept', () => {
+    const sha = 'c8646738ce1413ea1e718dce85ff4973f0f9b22c';
+    expect(launchVideo('/qa', sha, 'ios')).toBe('/qa/.qa/release/launch-c8646738ce14.ios.mp4');
+    expect(launchVideo('/qa', sha, 'android')).not.toBe(launchVideo('/qa', sha, 'ios'));
+  });
+
+  it('keeps the app beside the APK, and replaces only an older app', () => {
+    const app = releaseApp('/qa', 'c8646738ce1413ea1e718dce85ff4973f0f9b22c');
+    expect(app).toBe('/qa/.qa/release/soirely-c8646738ce14.app');
+    expect(
+      staleBuilds(
+        ['soirely-c8646738ce14.app', 'soirely-0123456789ab.app', 'soirely-0123456789ab.apk'],
+        app,
+      ),
+    ).toEqual(['soirely-0123456789ab.app']);
+  });
+
+  it('is for the simulator on a Mac, unless --android asks for the emulator', () => {
+    expect(releasePlatform([], 'darwin')).toBe('ios');
+    expect(releasePlatform(['--ipad', '--offline'], 'darwin')).toBe('ios');
+    expect(releasePlatform(['--android'], 'darwin')).toBe('android');
+    expect(releasePlatform(['--ipad'], 'linux')).toBe('android');
+  });
+
+  it("builds for the Mac's own simulator architecture", () => {
+    expect(simulatorArch('arm64')).toBe('arm64');
+    expect(simulatorArch('x64')).toBe('x86_64');
+  });
+
+  it('installs the bundle the app config names', () => {
+    const config = readFileSync(new URL('../apps/mobile/app.config.ts', import.meta.url), 'utf8');
+    expect(iosBundle(config)).toBe('com.soirely.app');
+    expect(() => iosBundle('ios: { supportsTablet: true }')).toThrow(/bundleIdentifier/);
+  });
+
+  it('builds the one workspace prebuild made', () => {
+    expect(xcodeWorkspace(['Podfile', 'Soirely.xcodeproj', 'Soirely.xcworkspace'])).toBe(
+      'Soirely.xcworkspace',
+    );
+    expect(() => xcodeWorkspace(['Soirely.xcodeproj'])).toThrow(/found 0/);
+  });
+
+  it('takes offline as every service the app reaches, stopped', () => {
+    const compose = readFileSync(new URL('../compose.yaml', import.meta.url), 'utf8');
+    for (const service of APP_SERVICES) {
+      expect(compose).toMatch(new RegExp(`^  ${service}:$`, 'm'));
+    }
   });
 
   it('launches offline only once the emulator has no default network', () => {
@@ -786,18 +845,9 @@ describe('the flows a batch runs', () => {
       ]),
     );
     const source = join(root, 'apps/mobile/.maestro');
-    const checks = [
-      'home',
-      'settings',
-      'account',
-      'security',
-      'organisation',
-      'members',
-      'roles',
-      'sign-in-rules',
-      'switcher',
-      'create-organisation',
-    ];
+    const checks = readdirSync(join(source, 'checks'))
+      .filter((file) => file.endsWith('.yaml'))
+      .map((file) => file.slice(0, -'.yaml'.length));
     const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
     try {
       composeBatch(source, target, {
@@ -814,11 +864,59 @@ describe('the flows a batch runs', () => {
       expect(readFileSync(join(target, '_checks/security.es.yaml'), 'utf8')).toContain(
         "'Seguridad'",
       );
+      expect(readFileSync(join(target, '_checks/sign-in-rules.fr.yaml'), 'utf8')).toContain(
+        "'Règles de connexion|Règles de connexion de .*'",
+      );
       expect(readFileSync(join(target, 'batch/session.yaml'), 'utf8')).not.toContain('{{t:');
       expect(readFileSync(join(target, 'batch/reopen.yaml'), 'utf8')).not.toContain('{{t:');
       expect(readFileSync(join(target, 'sign-in.yaml'), 'utf8')).toContain('stopApp: true');
     } finally {
       rmSync(target, { recursive: true, force: true });
     }
+  });
+});
+
+describe('the harness in .qa/bin', () => {
+  it('imports nothing from beside itself, so a copy refreshed alone runs', () => {
+    const source = readFileSync(join(import.meta.dirname, 'qa-env.mjs'), 'utf8');
+    expect([...source.matchAll(/from '\.{1,2}\/[^']+'/g)]).toEqual([]);
+  });
+
+  it('runs from a copy alone in a folder', () => {
+    const bin = mkdtempSync(join(tmpdir(), 'qa-bin-'));
+    writeFileSync(join(bin, 'qa-env.mjs'), readFileSync(join(import.meta.dirname, 'qa-env.mjs')));
+    return expect(import(join(bin, 'qa-env.mjs'))).resolves.toHaveProperty('databaseCommands');
+  });
+
+  it('removes a worker the checked-out compose.yaml no longer names', () => {
+    expect(REBUILD).toContain('--remove-orphans');
+  });
+});
+
+describe('the database, from a checkout', () => {
+  const console_ = ['console'];
+  const verbs = (commands) => commands.map((args) => args.slice(0, 2).join(' '));
+
+  it('stops the worker before the drop and recreates it after migrating', () => {
+    expect(verbs(databaseCommands(console_, ['notification-worker'], false))).toEqual([
+      'compose stop',
+      'console doctrine:database:drop',
+      'console doctrine:database:create',
+      'console doctrine:migrations:migrate',
+      'compose up',
+    ]);
+  });
+
+  it('keeps the data, and still recreates the worker after migrating', () => {
+    expect(verbs(databaseCommands(console_, ['notification-worker'], true))).toEqual([
+      'console doctrine:migrations:migrate',
+      'compose up',
+    ]);
+  });
+
+  it('touches no service on a commit with nothing waiting for migrations', () => {
+    const commands = databaseCommands(console_, [], false);
+    expect(commands.filter(([first]) => first === 'compose')).toEqual([]);
+    expect(commands).toHaveLength(3);
   });
 });

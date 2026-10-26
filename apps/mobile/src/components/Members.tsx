@@ -16,6 +16,7 @@ import {
   memberRowLine,
   memberStanding,
   memberStatusWord,
+  ownRoleLine,
   roleName,
 } from '@soirely/domain';
 import { type Ref, type RefObject, useState } from 'react';
@@ -33,7 +34,8 @@ import {
   withTurnedDown,
 } from '../kit/membersAfterWrite.ts';
 import { refusalFor, refusalTitle } from '../kit/refusal.ts';
-import { type LayoutKind } from '../layout/useLayout.ts';
+import { breakableEmail } from '../layout/textSize.ts';
+import { type LayoutKind, useAccessibilitySizes } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
@@ -42,6 +44,7 @@ import { FieldError } from './Field.tsx';
 import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
 import { OwnerClaimBanner } from './OwnerClaimBanner.tsx';
+import { GlyphMark, type Mark } from './StatusMark.tsx';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import {
   type StepClosed,
@@ -68,7 +71,9 @@ export function activeCount(list: MembersList): number {
   return list.members.filter((member) => member.status === 'active').length;
 }
 
-const FORMER_MARK = {
+const MEMBER_MARK = 18;
+
+const FORMER_MARK: Mark = {
   glyph: tokens.marks.broken.glyph,
   fill: tokens.colorCard,
   ring: tokens.colorInkSecondary,
@@ -90,18 +95,7 @@ function MemberState({ member }: { member: OrganisationMember }) {
 
   return (
     <View style={styles.state}>
-      <View style={[styles.mark, { backgroundColor: mark.fill, borderColor: mark.ring }]}>
-        <Text
-          size={tokens.typeMeta.size}
-          weight="bold"
-          style={{ color: mark.ink }}
-          accessibilityElementsHidden
-          importantForAccessibility="no"
-          accessible={false}
-        >
-          {mark.glyph}
-        </Text>
-      </View>
+      <GlyphMark mark={mark} side={MEMBER_MARK} />
       <Text size={tokens.typeSmall.size} weight="semibold" style={word}>
         {memberStatusWord(t, member)}
       </Text>
@@ -111,6 +105,9 @@ function MemberState({ member }: { member: OrganisationMember }) {
 
 function Avatar({ name, large = false }: { name: string; large?: boolean }) {
   const size = large ? AVATAR_LARGE : AVATAR;
+  const giveWay = useAccessibilitySizes() && !large;
+  // It repeats the name beside it, and at the accessibility sizes takes the width the name needs (sc-13496).
+  if (giveWay) return null;
 
   return (
     <View
@@ -275,7 +272,9 @@ export function MemberList({
                     {member.user.name}
                   </Text>
                   {member.user.email != null && (
-                    <Text size={tokens.typeBody.size}>{member.user.email}</Text>
+                    <Text size={tokens.typeBody.size} accessibilityLabel={member.user.email}>
+                      {breakableEmail(member.user.email)}
+                    </Text>
                   )}
                   <RequestLines organisation={organisation} member={member} />
                 </View>
@@ -381,7 +380,11 @@ function MemberRow({
         <Text size={tokens.typeRowTitle.size} weight="semibold">
           {member.user.name}
         </Text>
-        {member.user.email != null && <Text size={tokens.typeBody.size}>{member.user.email}</Text>}
+        {member.user.email != null && (
+          <Text size={tokens.typeBody.size} accessibilityLabel={member.user.email}>
+            {breakableEmail(member.user.email)}
+          </Text>
+        )}
         <Text size={tokens.typeSmall.size} muted>
           {memberRowLine(t, member, organisation.name, (at) => formatDay(at, dateLocale()))}
         </Text>
@@ -505,8 +508,8 @@ export function MemberPage({
             <MemberState member={member} />
           </View>
           {member.user.email != null && (
-            <Text size={tokens.typeBody.size} muted>
-              {member.user.email}
+            <Text size={tokens.typeBody.size} muted accessibilityLabel={member.user.email}>
+              {breakableEmail(member.user.email)}
             </Text>
           )}
         </View>
@@ -827,6 +830,34 @@ function JoinRequestAnswer({
   );
 }
 
+function OwnRole({
+  standing,
+  onGoToOrganisation,
+}: {
+  standing: 'self' | 'selfOwner';
+  onGoToOrganisation: () => void;
+}) {
+  const { t } = useTranslation();
+  const line = ownRoleLine(standing);
+
+  return (
+    <>
+      <Text size={tokens.typeBodyPhone.size} muted>
+        {t(`membersScreen.${line.key}`)}
+      </Text>
+      {line.handsOn && (
+        <View style={styles.start}>
+          <QuietButton
+            label={t('membersScreen.goToOrganisation')}
+            onPress={onGoToOrganisation}
+            testID="members.goToOrganisation"
+          />
+        </View>
+      )}
+    </>
+  );
+}
+
 function FixedRole({
   standing,
   member,
@@ -848,19 +879,8 @@ function FixedRole({
       <Text size={tokens.typeTitleSection.size} weight="semibold">
         {role}
       </Text>
-      {standing === 'self' && (
-        <>
-          <Text size={tokens.typeBodyPhone.size} muted>
-            {t('membersScreen.ownRole')}
-          </Text>
-          <View style={styles.start}>
-            <QuietButton
-              label={t('membersScreen.goToOrganisation')}
-              onPress={onGoToOrganisation}
-              testID="members.goToOrganisation"
-            />
-          </View>
-        </>
+      {(standing === 'self' || standing === 'selfOwner') && (
+        <OwnRole standing={standing} onGoToOrganisation={onGoToOrganisation} />
       )}
       {standing === 'onlyOwner' && (
         <>
@@ -1230,12 +1250,13 @@ const styles = StyleSheet.create({
   start: { alignSelf: 'flex-start' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceXs },
   chip: {
-    height: tokens.sizeHit,
+    minHeight: tokens.sizeHit,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceXs,
     paddingHorizontal: 14,
-    borderRadius: tokens.sizeHit / 2,
+    paddingVertical: tokens.spaceXxs,
+    borderRadius: tokens.radiusPill,
     borderWidth: 1,
     borderColor: tokens.colorControlBorder,
     backgroundColor: tokens.colorCard,
@@ -1286,14 +1307,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.spaceXs,
     marginTop: tokens.spaceHair,
-  },
-  mark: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   wordActive: { color: tokens.colorAccentText },
   wordQuiet: { color: tokens.colorInkSecondary },

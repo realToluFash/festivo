@@ -5,26 +5,37 @@ declare(strict_types=1);
 namespace App\Domain\Event;
 
 use App\Audit\Auditor;
+use App\Domain\Messaging\NotificationScheduler;
 use App\Entity\Event;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
+use App\Enum\EventAction;
+use App\Enum\EventPhase;
 use App\Http\EntityTag;
 use App\Http\Exception\ApiException;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Iter;
 use Psl\Str;
+use Psl\Vec;
+use Psr\Clock\ClockInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 final readonly class EventEditor
 {
     public const string UPDATED = 'event.updated';
+
+    private const array SCHEDULE = ['startsAt', 'endsAt', 'timeZone'];
 
     public function __construct(
         private EventRules $eventRules,
         private EventAmounts $eventAmounts,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
+        private ClockInterface $clock,
+        private TranslatorInterface $translator,
+        private NotificationScheduler $notificationScheduler,
     ) {
     }
 
@@ -33,7 +44,7 @@ final readonly class EventEditor
      *
      * A type sent as null is refused like a missing one on create: an event, once typed, stays typed (sc-3588).
      *
-     * @param array{name?: string, type?: ?string, startsAt?: string, endsAt?: string, timeZone?: string, currency?: string} $fields
+     * @param array{name?: string, type?: ?string, startsAt?: string, endsAt?: string, timeZone?: string, currency?: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null} $fields
      */
     public function edit(Event $event, ?string $ifMatch, User $by, array $fields): Event
     {
@@ -49,6 +60,7 @@ final readonly class EventEditor
             }
 
             $before = self::recorded($event);
+            $phase = EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $this->clock->now());
             $checked = $this->eventRules->check([
                 'name' => $fields['name'] ?? $event->getName(),
                 'type' => Iter\contains_key($fields, 'type') ? $fields['type'] : $event->getType()->value,
@@ -56,7 +68,8 @@ final readonly class EventEditor
                 'endsAt' => $fields['endsAt'] ?? $event->getEndsAt()->format('Y-m-d\TH:i:s'),
                 'timeZone' => $fields['timeZone'] ?? $event->getTimeZone(),
                 'currency' => $fields['currency'] ?? $event->getCurrency(),
-            ], $event->getCurrency());
+                ...Iter\contains_key($fields, 'venue') ? ['venue' => $fields['venue']] : [],
+            ], $event->getCurrency(), EventVenue::of($event));
 
             if ($checked['currency'] !== $event->getCurrency() && $this->eventAmounts->anyRecordedFor($event)) {
                 throw new ApiException(ErrorCode::EventCurrencyInUse, 'event.currency_in_use');
@@ -66,13 +79,19 @@ final readonly class EventEditor
             $event->setType($checked['type']);
             $event->setCurrency($checked['currency']);
 
+            if (Iter\contains_key($checked, 'venue')) {
+                EventVenue::write($event, $checked['venue']);
+            }
+
             $schedule = [$checked['startsAt']->format(\DATE_ATOM), $checked['endsAt']->format(\DATE_ATOM), $checked['startsAt']->getTimezone()->getName()];
 
             if ($schedule !== [$before['startsAt'], $before['endsAt'], $before['timeZone']]) {
                 $event->setTimes($checked['startsAt'], $checked['endsAt']);
+                $this->notificationScheduler->rescheduleForEvent($event);
             }
 
             $changes = Auditor::diff($before, self::recorded($event));
+            $this->allow($phase, $changes);
 
             if ([] !== $changes) {
                 $this->auditor->record(self::UPDATED, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), $changes);
@@ -83,7 +102,25 @@ final readonly class EventEditor
         });
     }
 
-    /** @return array{name: string, type: string, startsAt: string, endsAt: string, timeZone: string, currency: string} */
+    /**
+     * What the audit log keeps of a venue: its name, its line, and where it is when that is known.
+     *
+     * @return array{venueName: ?string, venueAddress: ?string, venueCountryCode: ?string, venueCoordinates: ?array{float, float}}
+     */
+    public static function venueRecorded(Event $event): array
+    {
+        $venue = EventVenue::of($event);
+        $address = $venue?->address;
+
+        return [
+            'venueName' => $venue?->name,
+            'venueAddress' => $address?->formatted,
+            'venueCountryCode' => $address?->countryCode,
+            'venueCoordinates' => null === $address?->latitude || null === $address->longitude ? null : [$address->latitude, $address->longitude],
+        ];
+    }
+
+    /** @return array<string, mixed> */
     private static function recorded(Event $event): array
     {
         return [
@@ -93,6 +130,38 @@ final readonly class EventEditor
             'endsAt' => $event->getEndsAt()->format(\DATE_ATOM),
             'timeZone' => $event->getTimeZone(),
             'currency' => $event->getCurrency(),
+            ...self::venueRecorded($event),
         ];
+    }
+
+    /**
+     * A change to the start, end or zone needs `edit_schedule`, and to anything else `edit`: a save of both needs both.
+     *
+     * @param list<string> $changed
+     *
+     * @return list<EventAction>
+     */
+    public static function actionsFor(array $changed): array
+    {
+        $schedule = Vec\filter($changed, static fn (string $field): bool => Iter\contains(self::SCHEDULE, $field));
+
+        return [
+            ...[] === $schedule ? [] : [EventAction::EditSchedule],
+            ...Iter\count($schedule) === Iter\count($changed) ? [] : [EventAction::Edit],
+        ];
+    }
+
+    /** @param array<string, mixed> $changes */
+    private function allow(EventPhase $phase, array $changes): void
+    {
+        foreach (self::actionsFor(Vec\keys($changes)) as $action) {
+            if (EventPhase::Finished === $phase && EventAction::EditSchedule === $action) {
+                throw new ApiException(ErrorCode::EventConcluded, $this->translator->trans('event.schedule_concluded'));
+            }
+
+            if (!$phase->allows($action)) {
+                throw new ApiException(ErrorCode::EventStateInvalid, $this->translator->trans('event.state_invalid'), members: ['phase' => $phase->value]);
+            }
+        }
     }
 }

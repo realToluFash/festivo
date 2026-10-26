@@ -5,25 +5,32 @@ import {
   type EventDraft,
   eventNameLength,
   eventNameOf,
-  eventProblems,
+  eventFormErrors,
+  skippedLine,
   isEventType,
   filledEndDate,
   localDateTime,
+  type VenueDraft,
+  venueDraftOf,
+  venueSent,
 } from '@soirely/domain';
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { currentLocale } from '../../../i18n/index.ts';
+import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
 import { can, useSession } from '../../../session.ts';
 import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
 import { Forbidden } from '../Forbidden.tsx';
+import { CoverSection } from './CoverSection.tsx';
+import { discardCoverUpload, refusalOf } from './coverPhoto.ts';
+import type { CoverPhoto } from './EventCoverImage.tsx';
 import { Choice, FieldError, Moment } from './EventFields.tsx';
 import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
 import { typeChoices } from './eventTypes.ts';
-import { skippedLine } from './skippedLine.ts';
+import { VenueSection } from './VenueSection.tsx';
 
 export function NewEvent() {
   const session = useSession();
@@ -48,16 +55,22 @@ function EventForm({ organisation }: { organisation: Membership }) {
     endTime: '',
   });
   const [endChosen, setEndChosen] = useState(false);
+  const [venue, setVenue] = useState<VenueDraft>(() => venueDraftOf(null));
   const [timeZone, setTimeZone] = useState(organisation.timezone);
   const [currency, setCurrency] = useState(
     CURRENCY_CODES.includes(organisation.currency) ? organisation.currency : '',
   );
   const [errors, setErrors] = useState<Errors>({});
+  const [cover, setCover] = useState<{ uploadKey: string; photo: CoverPhoto } | null>(null);
+  const staged = useRef<string | null>(null);
   const [unsent, setUnsent] = useState(0);
   const [status, setStatus] = useState<'editing' | 'creating' | 'failed'>('editing');
   const focusNext = useRef<(() => void) | null>(null);
   const currencies = useMemo(() => currencyChoices('', currency, locale, t), [currency, locale, t]);
-  const zones = useMemo(() => timeZoneChoices(organisation.timezone), [organisation.timezone]);
+  const zones = useMemo(
+    () => timeZoneChoices(organisation.timezone, timeZone),
+    [organisation.timezone, timeZone],
+  );
   const types = useMemo(() => typeChoices(draft.type, t), [draft.type, t]);
   const busy = status === 'creating';
 
@@ -65,6 +78,20 @@ function EventForm({ organisation }: { organisation: Membership }) {
     focusNext.current?.();
     focusNext.current = null;
   }, [errors]);
+
+  useEffect(
+    () => () => {
+      if (staged.current != null) discardCoverUpload(organisation.id, staged.current);
+    },
+    [organisation.id],
+  );
+
+  function stage(next: { uploadKey: string; photo: CoverPhoto } | null): void {
+    if (staged.current != null && staged.current !== next?.uploadKey)
+      discardCoverUpload(organisation.id, staged.current);
+    staged.current = next?.uploadKey ?? null;
+    setCover(next);
+  }
 
   function edit(field: Field, changes: Partial<EventDraft>): void {
     setDraft((previous) => ({ ...previous, ...changes }));
@@ -85,10 +112,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
     event.preventDefault();
     if (busy) return;
 
-    const found: Errors = {};
-    for (const { field, problem } of eventProblems(draft, timeZone))
-      found[field] ??= t(`eventForm.${problem}`, { most: EVENT_NAME_MAXIMUM });
-    if (currency === '') found.currency = t('orgGeneral.currencyBlank');
+    const found: Errors = eventFormErrors({ draft, venue, timeZone, currency }, t);
 
     const unsentFields = Object.keys(found).length;
     const { type } = draft;
@@ -104,6 +128,8 @@ function EventForm({ organisation }: { organisation: Membership }) {
     setStatus('creating');
     const land = focusWhereSent();
 
+    const sentVenue = venueSent(venue);
+
     try {
       const created = await api.createEvent(organisation.id, {
         name: eventNameOf(draft.name),
@@ -112,9 +138,32 @@ function EventForm({ organisation }: { organisation: Membership }) {
         endsAt: localDateTime(draft.endDate, draft.endTime) ?? '',
         timeZone,
         currency,
+        ...(sentVenue == null ? {} : { venue: sentVenue }),
       });
 
-      void navigate(`/app/events/${encodeURIComponent(created.id)}`);
+      let coverRefused: string | null = null;
+
+      if (cover != null) {
+        const { uploadKey, photo } = cover;
+        staged.current = null;
+
+        // The event exists either way, so a refused or failed cover is said on its page rather than here.
+        coverRefused = await api
+          .setEventCover(created.id, {
+            uploadKey,
+            position: photo.position,
+            description: photo.description,
+          })
+          .then(
+            () => null,
+            (error: unknown) => refusalOf(error, t),
+          );
+      }
+
+      void navigate(
+        `/app/events/${encodeURIComponent(created.id)}`,
+        coverRefused == null ? undefined : { state: { coverRefused } },
+      );
     } catch (error) {
       const refused = error instanceof ApiError && error.status === 422 ? error.fieldErrors() : {};
       const found: Errors = {};
@@ -131,7 +180,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
   }
 
   const nameLength = eventNameLength(draft.name);
-  const startSkipped = skippedLine(draft.startDate, draft.startTime, timeZone, t);
+  const startSkipped = skippedLine(draft.startDate, draft.startTime, timeZone, dateLocale(), t);
 
   return (
     <div className="event-form-page">
@@ -189,6 +238,20 @@ function EventForm({ organisation }: { organisation: Membership }) {
           />
         </section>
 
+        <CoverSection
+          type={draft.type}
+          photo={cover?.photo ?? null}
+          organisationId={organisation.id}
+          onUse={async ({ upload, position, description }) => {
+            const uploadKey = upload?.key ?? cover?.uploadKey;
+            const sizes = upload?.preview.sizes ?? cover?.photo.sizes;
+
+            if (uploadKey != null && sizes != null)
+              stage({ uploadKey, photo: { sizes, position, description } });
+          }}
+          onRemove={async () => stage(null)}
+        />
+
         <section className="card" aria-labelledby="event-when">
           <h2 id="event-when">{t('eventForm.whenHeading')}</h2>
           <Moment
@@ -210,7 +273,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
           <Moment
             id="event-end"
             legend={t('eventForm.ends')}
-            skipped={skippedLine(draft.endDate, draft.endTime, timeZone, t)}
+            skipped={skippedLine(draft.endDate, draft.endTime, timeZone, dateLocale(), t)}
             hint={t('eventForm.endsHint')}
             date={draft.endDate}
             time={draft.endTime}
@@ -223,6 +286,25 @@ function EventForm({ organisation }: { organisation: Membership }) {
             onTime={(endTime) => edit('endsAt', { endTime })}
           />
         </section>
+
+        <VenueSection
+          venue={venue}
+          errors={errors}
+          busy={busy}
+          timeZone={timeZone}
+          onVenue={(change) => {
+            setVenue((previous) => ({ ...previous, ...change }));
+            setErrors((previous) => ({
+              ...previous,
+              ...('name' in change ? { venueName: undefined } : {}),
+              ...('address' in change ? { venueAddress: undefined } : {}),
+            }));
+          }}
+          onUseZone={(zone) => {
+            setTimeZone(zone);
+            setErrors((previous) => ({ ...previous, timeZone: undefined }));
+          }}
+        />
 
         <section className="card" aria-labelledby="event-defaults">
           <h2 id="event-defaults">{t('eventForm.zoneHeading')}</h2>

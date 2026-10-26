@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import i18next from 'i18next';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -1026,5 +1027,117 @@ describe('where focus goes once a click on Roles is answered (sc-11369)', () => 
 
       expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Roles' }));
     });
+  });
+});
+
+describe('a language change with the name error showing', () => {
+  afterEach(async () => {
+    await i18next.changeLanguage('en');
+  });
+
+  async function speaking(locale: string): Promise<void> {
+    await act(async () => {
+      await i18next.changeLanguage(locale);
+    });
+  }
+
+  function refused(code: string, message: string): Response {
+    return new Response(
+      JSON.stringify({
+        type: 'https://soirely.com/errors/validation_failed',
+        title: 'No.',
+        status: 422,
+        violations: [{ propertyPath: 'name', message, code }],
+      }),
+      { status: 422 },
+    );
+  }
+
+  it('says the screen’s own check in the new language, and back', async () => {
+    const sent = answering();
+    await roles();
+    fireEvent.click(screen.getByRole('button', { name: 'New role' }));
+    fireEvent.click(level('Events', 'Read'));
+    fireEvent.click(screen.getByRole('button', { name: 'Create role' }));
+    const outside = screen.getByRole('heading', { level: 1, name: 'Roles' });
+    outside.focus();
+
+    await speaking('pt');
+    expect(screen.getByText('Dê um nome à função.')).toBeDefined();
+    expect(document.activeElement).toBe(outside);
+    await speaking('en');
+    expect(screen.getByText('Give the role a name.')).toBeDefined();
+
+    fireEvent.change(screen.getByLabelText('Role name'), { target: { value: 'x'.repeat(41) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create role' }));
+    await speaking('pt');
+    expect(screen.getByText('Encurte o nome para um máximo de 40 caracteres.')).toBeDefined();
+    await speaking('en');
+
+    fireEvent.change(screen.getByLabelText('Role name'), { target: { value: 'Proprietário' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create role' }));
+    await speaking('pt');
+    expect(screen.getByText('Já existe uma função com esse nome.')).toBeDefined();
+    expect((screen.getByLabelText('Nome da função') as HTMLInputElement).value).toBe(
+      'Proprietário',
+    );
+    expect(sent.some((request) => request.method === 'POST')).toBe(false);
+  });
+
+  it('keeps a renamed role’s name and levels while its error changes language', async () => {
+    const sent = answering();
+    await roles();
+    pick(/^Door team/);
+    fireEvent.click(level('Billing', 'Read'));
+    fireEvent.change(screen.getByLabelText('Role name'), { target: { value: 'Coordinator' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save Door team' }));
+    expect(screen.getByText('A role with that name already exists.')).toBeDefined();
+
+    await speaking('pt');
+    expect(screen.getByText('Já existe uma função com esse nome.')).toBeDefined();
+    expect((screen.getByLabelText('Nome da função') as HTMLInputElement).value).toBe('Coordinator');
+    expect(level('Faturação', 'Ver').getAttribute('aria-pressed')).toBe('true');
+    expect(sent.some((request) => request.method === 'PATCH')).toBe(false);
+  });
+
+  it('says the API’s taken refusal in the screen’s words, also when it lands after the change', async () => {
+    let refuse: (answer: Response) => void = () => undefined;
+    answering();
+    const listing = vi.mocked(globalThis.fetch).getMockImplementation()!;
+    vi.mocked(globalThis.fetch).mockImplementation((input, init) =>
+      init?.method === 'POST'
+        ? new Promise<Response>((resolve) => {
+            refuse = resolve;
+          })
+        : listing(input, init),
+    );
+    await roles();
+    fireEvent.click(screen.getByRole('button', { name: 'New role' }));
+    fireEvent.change(screen.getByLabelText('Role name'), { target: { value: 'Caterers' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create role' }));
+    await screen.findByRole('button', { name: 'Saving…' });
+
+    await speaking('pt');
+    await act(async () => {
+      refuse(refused('role_name_taken', 'A role with that name already exists.'));
+    });
+
+    await screen.findByText('Já existe uma função com esse nome.');
+    await speaking('en');
+    expect(screen.getByText('A role with that name already exists.')).toBeDefined();
+  });
+
+  it('keeps the API’s words for a refusal it has no sentence for', async () => {
+    answering((method) =>
+      method === 'POST' ? refused('validation_failed', 'Not this name.') : null,
+    );
+    await roles();
+    fireEvent.click(screen.getByRole('button', { name: 'New role' }));
+    fireEvent.change(screen.getByLabelText('Role name'), { target: { value: 'Caterers' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create role' }));
+    await screen.findByText('Not this name.');
+
+    await speaking('pt');
+    expect(screen.getByText('Not this name.')).toBeDefined();
   });
 });

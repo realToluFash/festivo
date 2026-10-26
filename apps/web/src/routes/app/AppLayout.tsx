@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router';
+import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router';
 
 import { followSavedLanguage } from '../../accountLanguage.ts';
 import { CreateOrganisation } from '../../components/CreateOrganisation.tsx';
@@ -28,6 +28,9 @@ import { useDomainOffer } from '../../joinOffers.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
 import { heldRegistration } from '../../pendingRegistration.ts';
 import { useTwoFactorStanding } from '../../twoFactorStanding.ts';
+import { useDialogKeys } from '../../dialogFocus.ts';
+
+const PHONE = '(width <= 40rem)';
 
 /**
  * The signed-in shell, built for a desk.
@@ -35,7 +38,8 @@ import { useTwoFactorStanding } from '../../twoFactorStanding.ts';
  * Planning an event is desktop work — four hundred guests, a seating plan, a
  * budget — so this is a real sidebar and a content area that uses the width,
  * not a phone layout stretched across a monitor. It collapses honestly below
- * the tablet breakpoint rather than pretending to be an app.
+ * the tablet breakpoint rather than pretending to be an app, and at a phone's
+ * width the sidebar is one bar, its links behind Menu (sc-13413).
  *
  * The error boundary wraps the OUTLET, not the shell: a screen that throws
  * should leave the navigation and the organisation switcher usable, because
@@ -92,6 +96,20 @@ function Shell() {
   const [switchedNotice, arriveAtSwitched] = useStepFocus<HTMLDivElement>();
   const [creating, setCreating] = useState(false);
   const [choosing, setChoosing] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const sidebarLinks = useRef<HTMLDivElement>(null);
+  const widenedOpen = useRef(false);
+  const returnFromMenu = useCallback((opener: HTMLElement | null) => {
+    const current = widenedOpen.current
+      ? sidebarLinks.current?.querySelector('[aria-current="page"]')
+      : null;
+
+    widenedOpen.current = false;
+    // Menu is hidden once the sidebar is back, so focus goes to where the person was in it.
+    (current instanceof HTMLElement ? current : opener)?.focus();
+  }, []);
+  const menuId = useId();
   const organisation = session.organisation;
   const waiting = useWaitingInvitations();
   const closeCreate = useCallback(() => setCreating(false), []);
@@ -103,6 +121,22 @@ function Shell() {
   useLayoutEffect(() => {
     void followSavedLanguage();
   }, []);
+
+  // Wider than a phone the links are in the sidebar again, so a menu left open has nothing to add.
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const phone = window.matchMedia(PHONE);
+    const widened = (): void => {
+      if (phone.matches) return;
+      widenedOpen.current = true;
+      closeMenu();
+    };
+
+    phone.addEventListener('change', widened);
+
+    return () => phone.removeEventListener('change', widened);
+  }, [menuOpen, closeMenu]);
 
   function switchInto(next: { id: string; name: string }): void {
     setSwitched({ id: next.id, name: next.name, at: pathname });
@@ -129,8 +163,8 @@ function Shell() {
 
   const atAccount = pathname.startsWith('/app/account');
 
-  // Every product page would open this page again, so it stands alone: only what works without an organisation.
-  if (organisation == null && session.pausedIn == null && !atAccount) {
+  // Every product page would open this page again, so it stands alone: only what works without an organisation, the account pages under the same header.
+  if (organisation == null && session.pausedIn == null) {
     return (
       <div className="no-organisation-page">
         <a className="skip-link" href="#content">
@@ -140,27 +174,45 @@ function Shell() {
           <span className="brand">{t('app.name')}</span>
           <LanguagePicker automatic={false} />
         </header>
-        <main id="content" className="no-organisation-main">
-          <LinkedNotice />
-          <ErrorBoundary>
-            <NoOrganisation
-              waiting={waiting}
-              onOpen={(id) => {
-                const joined = session.organisations.find((membership) => membership.id === id);
+        {atAccount ? (
+          <main id="content" className="shell-content no-organisation-account">
+            <LinkedNotice />
+            <Link className="link-button back-link" to="/app">
+              <span aria-hidden="true">←</span>
+              <span>{t('noOrganisation.wayBack')}</span>
+            </Link>
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
+          </main>
+        ) : (
+          <main id="content" className="no-organisation-main">
+            <LinkedNotice />
+            <ErrorBoundary>
+              <NoOrganisation
+                waiting={waiting}
+                onOpen={(id) => {
+                  const joined = session.organisations.find((membership) => membership.id === id);
 
-                switchOrganisation(id);
-                if (joined == null) return;
-                setSwitched({ id, name: joined.name, at: pathname, takesFocus: true });
-                arriveAtSwitched();
-              }}
-              onStarted={(started) => {
-                switchOrganisation(started.id);
-                setSwitched({ id: started.id, name: started.name, at: pathname, takesFocus: true });
-                arriveAtSwitched();
-              }}
-            />
-          </ErrorBoundary>
-        </main>
+                  switchOrganisation(id);
+                  if (joined == null) return;
+                  setSwitched({ id, name: joined.name, at: pathname, takesFocus: true });
+                  arriveAtSwitched();
+                }}
+                onStarted={(started) => {
+                  switchOrganisation(started.id);
+                  setSwitched({
+                    id: started.id,
+                    name: started.name,
+                    at: pathname,
+                    takesFocus: true,
+                  });
+                  arriveAtSwitched();
+                }}
+              />
+            </ErrorBoundary>
+          </main>
+        )}
       </div>
     );
   }
@@ -188,20 +240,19 @@ function Shell() {
           />
         )}
 
-        <nav className="shell-nav">
-          <NavLink to="/app" end>
-            {t('nav.dashboard')}
-          </NavLink>
-          <NavLink to="/app/events">{t('nav.events')}</NavLink>
-          <NavLink to="/app/guests">{t('nav.guests')}</NavLink>
-          <NavLink to="/app/settings">{t('nav.settings')}</NavLink>
-          <NavLink to="/app/account">{t('nav.account')}</NavLink>
-        </nav>
+        <button
+          type="button"
+          className="shell-menu-button"
+          aria-haspopup="dialog"
+          aria-expanded={menuOpen}
+          aria-controls={menuOpen ? menuId : undefined}
+          onClick={() => setMenuOpen(true)}
+        >
+          {t('nav.menu')}
+        </button>
 
-        <div className="shell-account">
-          <span>{session.name}</span>
-          <span className="muted">{session.email}</span>
-          <LanguagePicker automatic={false} />
+        <div ref={sidebarLinks} className="shell-links">
+          <ShellLinks />
         </div>
       </aside>
 
@@ -247,6 +298,8 @@ function Shell() {
         </ErrorBoundary>
       </main>
 
+      {menuOpen && <ShellMenu id={menuId} onClose={closeMenu} returnFocus={returnFromMenu} />}
+
       {creating && (
         <CreateOrganisation
           email={session.email}
@@ -259,6 +312,98 @@ function Shell() {
         />
       )}
     </div>
+  );
+}
+
+/** The sidebar's links, the account and its language: in the sidebar on a desk, in the menu on a phone. */
+function ShellLinks({ onFollow }: { onFollow?: () => void }) {
+  const { t } = useTranslation();
+  const session = useSession();
+
+  return (
+    <>
+      <nav className="shell-nav">
+        <NavLink to="/app" end onClick={onFollow}>
+          {t('nav.dashboard')}
+        </NavLink>
+        <NavLink to="/app/events" onClick={onFollow}>
+          {t('nav.events')}
+        </NavLink>
+        <NavLink to="/app/guests" onClick={onFollow}>
+          {t('nav.guests')}
+        </NavLink>
+        <NavLink to="/app/settings" onClick={onFollow}>
+          {t('nav.settings')}
+        </NavLink>
+        <NavLink to="/app/account" onClick={onFollow}>
+          {t('nav.account')}
+        </NavLink>
+      </nav>
+
+      <div className="shell-account">
+        <span>{session.name}</span>
+        <span className="muted">{session.email}</span>
+        <LanguagePicker automatic={false} />
+      </div>
+    </>
+  );
+}
+
+/** `AppShell-Phone`'s sheet: a modal dialog, so focus goes back to Menu when it closes. */
+function ShellMenu({
+  id,
+  onClose,
+  returnFocus,
+}: {
+  id: string;
+  onClose: () => void;
+  returnFocus: (opener: HTMLElement | null) => void;
+}) {
+  const { t } = useTranslation();
+  const dialog = useRef<HTMLDivElement>(null);
+  const close = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const opener = document.activeElement;
+
+    close.current?.focus();
+
+    return () => returnFocus(opener instanceof HTMLElement ? opener : null);
+  }, [returnFocus]);
+
+  useDialogKeys(dialog, onClose, false);
+
+  return (
+    <>
+      <button
+        type="button"
+        className="dialog-scrim"
+        tabIndex={-1}
+        aria-label={t('nav.closeMenu')}
+        onClick={onClose}
+      />
+      <div
+        ref={dialog}
+        id={id}
+        className="shell-menu"
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('nav.menu')}
+        tabIndex={-1}
+      >
+        <button
+          ref={close}
+          type="button"
+          className="dialog-close"
+          aria-label={t('nav.closeMenu')}
+          onClick={onClose}
+        >
+          ✕
+        </button>
+        <div className="brand">{t('app.name')}</div>
+        <ShellLinks onFollow={onClose} />
+      </div>
+    </>
   );
 }
 

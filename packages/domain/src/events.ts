@@ -167,6 +167,107 @@ export function draftOf(event: {
   };
 }
 
+/** A Finished event's schedule is locked, so what was typed into it before the end passed is put back (sc-3585). */
+export function scheduleKept<T extends { draft: EventDraft; timeZone: string }>(
+  typed: T,
+  saved: { draft: EventDraft; timeZone: string },
+): T {
+  const { startDate, startTime, endDate, endTime } = saved.draft;
+
+  return {
+    ...typed,
+    draft: { ...typed.draft, startDate, startTime, endDate, endTime },
+    timeZone: saved.timeZone,
+  };
+}
+
+/** The API's venue limits, counted in characters after trimming (sc-3589). */
+export const VENUE_NAME_MAXIMUM = 120;
+export const VENUE_ADDRESS_MAXIMUM = 300;
+
+/** `addressId` is the suggestion the address was picked from, and is cleared by typing in it. */
+export interface VenueDraft {
+  name: string;
+  address: string;
+  addressId: string | null;
+}
+
+export interface SavedVenue {
+  name: string | null;
+  address: { formatted: string } | null;
+}
+
+/** What the API takes: both blank is null, which removes the venue. */
+export interface VenueSent {
+  name: string | null;
+  address: string | null;
+  addressId?: string | null;
+}
+
+export type VenueField = 'venueName' | 'venueAddress';
+
+export type VenueProblem = 'venueNameTooLong' | 'venueAddressTooLong';
+
+export function venueDraftOf(venue: SavedVenue | null): VenueDraft {
+  return { name: venue?.name ?? '', address: venue?.address?.formatted ?? '', addressId: null };
+}
+
+export function venueProblems(draft: VenueDraft): { field: VenueField; problem: VenueProblem }[] {
+  const problems: { field: VenueField; problem: VenueProblem }[] = [];
+
+  if (Array.from(draft.name.trim()).length > VENUE_NAME_MAXIMUM)
+    problems.push({ field: 'venueName', problem: 'venueNameTooLong' });
+  if (Array.from(draft.address.trim()).length > VENUE_ADDRESS_MAXIMUM)
+    problems.push({ field: 'venueAddress', problem: 'venueAddressTooLong' });
+
+  return problems;
+}
+
+export function venueSent(draft: VenueDraft): VenueSent | null {
+  const name = draft.name.trim();
+  const address = draft.address.trim();
+
+  if (name === '' && address === '') return null;
+
+  return {
+    name: name === '' ? null : name,
+    address: address === '' ? null : address,
+    ...(draft.addressId == null || address === '' ? {} : { addressId: draft.addressId }),
+  };
+}
+
+export type EventFormField = EventField | VenueField | 'timeZone' | 'currency';
+
+/** In the order both clients' forms show them, so the first refused is the one focus goes to. */
+export const EVENT_FORM_FIELDS: readonly EventFormField[] = [
+  'name',
+  'type',
+  'startsAt',
+  'endsAt',
+  'venueName',
+  'venueAddress',
+  'timeZone',
+  'currency',
+];
+
+/** Every check the event form makes before it sends anything, the first problem per field only. */
+export function eventFormProblems(typed: {
+  draft: EventDraft;
+  venue: VenueDraft;
+  timeZone: string;
+  currency: string;
+}): { field: EventFormField; problem: EventProblem | VenueProblem | 'currencyBlank' }[] {
+  const found = [
+    ...eventProblems(typed.draft, typed.timeZone),
+    ...venueProblems(typed.venue),
+    ...(typed.currency === ''
+      ? [{ field: 'currency' as const, problem: 'currencyBlank' as const }]
+      : []),
+  ];
+
+  return EVENT_FORM_FIELDS.flatMap((field) => found.find((one) => one.field === field) ?? []);
+}
+
 export interface EventDetails {
   name: string;
   type: EventType;
@@ -178,11 +279,13 @@ export interface EventDetails {
 
 /** Only what differs from the saved event, in the API's terms; empty when nothing changed, and then nothing is sent (sc-3587). */
 export function eventChanges(
-  saved: EventDetails,
-  typed: { draft: EventDraft; timeZone: string; currency: string },
-): Partial<EventDetails> {
+  saved: EventDetails & { venue: SavedVenue | null },
+  typed: { draft: EventDraft; timeZone: string; currency: string; venue: VenueDraft },
+): Partial<EventDetails & { venue: VenueSent | null }> {
   const was = { ...draftOf(saved), timeZone: saved.timeZone, currency: saved.currency };
-  const changes: Partial<EventDetails> = {};
+  const changes: Partial<EventDetails & { venue: VenueSent | null }> = {};
+  const venue = venueSent(typed.venue);
+  const savedVenue = venueSent(venueDraftOf(saved.venue));
   const startsAt = localDateTime(typed.draft.startDate, typed.draft.startTime) ?? '';
   const endsAt = localDateTime(typed.draft.endDate, typed.draft.endTime) ?? '';
 
@@ -192,6 +295,24 @@ export function eventChanges(
   if (endsAt !== localDateTime(was.endDate, was.endTime)) changes.endsAt = endsAt;
   if (typed.timeZone !== was.timeZone) changes.timeZone = typed.timeZone;
   if (typed.currency !== was.currency) changes.currency = typed.currency;
+  if (
+    venue?.addressId != null ||
+    venue?.name !== savedVenue?.name ||
+    venue?.address !== savedVenue?.address
+  )
+    changes.venue = venue;
 
   return changes;
+}
+
+/** Soonest start first, the same start by name in the reader's collation (CLDR), as both clients list them (sc-1593). */
+export function eventsInOrder<T extends { name: string; startsAt: string }>(
+  events: readonly T[],
+  locale: string,
+): T[] {
+  const collator = new Intl.Collator(locale);
+
+  return [...events].sort(
+    (a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt) || collator.compare(a.name, b.name),
+  );
 }

@@ -255,12 +255,23 @@ def ops_only(c, story):
                       f"sc-{story['id']} is not")
 
 
+def holding_now(c, story):
+    """The blockers holding the story, each as Shortcut has it now."""
+    if story["state"] not in W.HOLDABLE:
+        return []
+    return W.holding(story, {b: c.story(b) for b in W.blockers(story)})
+
+
 def move(c, a):
     guard(c, "move")
     story = c.story(a.story)
     ops_only(c, story)
     state = set_state(c, story, a.state, check=c.role != "pm")
-    c.refresh(story["id"])
+    moved = c.refresh(story["id"])
+    holders = holding_now(c, moved) if state == "Ready For Dev" else []
+    if holders:
+        return (f"sc-{story['id']} is now {state}, {W.held_by(holders)}: no developer is "
+                "offered it until they merge")
     return f"sc-{story['id']} is now {state}"
 
 
@@ -333,6 +344,10 @@ def claim(c, a):
             raise Refused(f"sc-{story['id']} is in epic {held['name']}, which is "
                           f"{held.get('state_name') or held.get('state')}: its stories wait "
                           "until the owner moves it to In Progress")
+        holders = holding_now(c, story)
+        if holders:
+            raise Refused(f"sc-{story['id']} is {W.held_by(holders)}: it is offered once "
+                          "they merge, at Ready For QA or later. Nothing claimed: pick another")
         holder = store.take_story(c.db, story, c.role)
         if holder != c.role:
             raise Refused(f"{holder} claimed sc-{story['id']} first: pick another")
@@ -596,6 +611,7 @@ def relate(c, a):
         return f"already linked: sc-{subject} {a.verb} sc-{other}"
     c.shortcut.relate(subject, other, a.verb)
     c.refresh(subject)
+    c.refresh(other)
     return f"sc-{subject} {a.verb} sc-{other}"
 
 
@@ -772,7 +788,7 @@ ASK_PARTS = ("Machine", "Rule", "For", "Without it")
 def this_machine():
     from . import machine
     try:
-        return machine.load().get("machine") or socket.gethostname()
+        return machine.machine_name(machine.load())
     except machine.ConfigError:
         return socket.gethostname()
 

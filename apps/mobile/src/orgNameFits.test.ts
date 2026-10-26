@@ -35,13 +35,14 @@ function textsShowing(expression: string): string[] {
 }
 
 describe('a 100-character organisation name in the frame (sc-486)', () => {
-  it('shows on one line, cut with an ellipsis, in the pill, the rail and every switcher row', () => {
+  it('shows on one line, or two at the accessibility sizes, cut with an ellipsis, in the pill, the rail and every switcher row (sc-13496)', () => {
     const texts = textsShowing('organisation.name');
 
     expect(texts).toHaveLength(2);
-    for (const attributes of texts) expect(attributes).toMatch(/numberOfLines=\{1\}/u);
-    expect(FRAME).toMatch(/muted numberOfLines=\{1\}>\s*\{t\('switcher\.yourRole'/u);
-    expect(FRAME).toMatch(/muted numberOfLines=\{1\}>\s*\{t\('frame\.organisation'\)\}/u);
+    for (const attributes of texts) expect(attributes).toMatch(/numberOfLines=\{lines\}/u);
+    expect(FRAME.match(/const lines = useNameLines\(\);/gu)).toHaveLength(3);
+    expect(FRAME).toMatch(/muted numberOfLines=\{large \? 0 : 1\}>\s*\{t\('switcher\.yourRole'/u);
+    expect(FRAME).toMatch(/muted numberOfLines=\{lines\}>\s*\{t\('frame\.organisation'\)\}/u);
   });
 
   it.each([

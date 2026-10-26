@@ -39,6 +39,7 @@ import {
   useFocusOnAnswer,
 } from './Screen.tsx';
 import { Text, type TextHandle } from './Text.tsx';
+import { useMarkSide } from './markSide.ts';
 
 type Kind = 'email' | 'phone';
 
@@ -126,6 +127,7 @@ function ContactsCard({
   confirming?: { via: 'password' | Provider | null; twoFactorOn: boolean };
   onChanged: () => Promise<void>;
 }) {
+  const markSide = useMarkSide(tokens.sizeMark);
   const { t } = useTranslation();
   const rows = listedContacts(all);
   const left = contactsLeft(all);
@@ -265,7 +267,7 @@ function ContactsCard({
                 </Text>
                 <View style={styles.state}>
                   <View
-                    style={row.verified ? styles.markOn : styles.markOff}
+                    style={[row.verified ? styles.markOn : styles.markOff, markSide]}
                     accessibilityElementsHidden
                     importantForAccessibility="no-hide-descendants"
                   >
@@ -623,23 +625,19 @@ const styles = StyleSheet.create({
   detail: { flex: 1, minWidth: 160, gap: tokens.spaceXxs },
   state: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceXs },
   markOn: {
-    width: tokens.sizeMark,
-    height: tokens.sizeMark,
-    borderRadius: tokens.sizeMark / 2,
+    borderRadius: tokens.radiusPill,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: tokens.marks.done.fill,
   },
   markOff: {
-    width: tokens.sizeMark,
-    height: tokens.sizeMark,
-    borderRadius: tokens.sizeMark / 2,
+    borderRadius: tokens.radiusPill,
     borderWidth: 1.5,
     borderColor: tokens.marks.notStarted.ring,
   },
   markInk: { color: tokens.marks.done.ink },
   pill: {
-    height: tokens.sizePill,
+    minHeight: tokens.sizePill,
     justifyContent: 'center',
     paddingHorizontal: tokens.spaceMd,
     borderRadius: tokens.radiusPill,
