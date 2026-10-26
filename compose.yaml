@@ -72,10 +72,11 @@ services:
     restart: unless-stopped
 
   api:
-    build:
+    build: &api-build
       context: ./services/api
       target: dev
-    environment:
+    # Shared with the notification worker by anchor, so the two cannot drift.
+    environment: &api-environment
       APP_ENV: ${APP_ENV:-dev}
       LOCALES_FILE: /locales.json
       EVENT_STATES_FILE: /event-states.json
@@ -137,7 +138,7 @@ services:
       ASSISTANT_MAX_TOKENS: ${ASSISTANT_MAX_TOKENS:-16000}
       # FrankenPHP serves plain HTTP here; TLS terminates upstream in deployment.
       SERVER_NAME: ':80'
-    volumes:
+    volumes: &api-volumes
       # The whole directory, vendor included. An anonymous volume over /app/vendor
       # looks tidier and is a trap: Docker reuses the existing volume rather than
       # taking the rebuilt image's, so a newly required package is missing inside
@@ -160,7 +161,41 @@ services:
         condition: service_healthy
       mercure:
         condition: service_healthy
-      # S3, locally.
+
+  # Sends the notifications that are due (sc-104). It waits for the schema
+  # rather than crash-looping on a database not yet migrated, so the stack
+  # scripts wait on it only after migrating, by its label.
+  notification-worker:
+    build: *api-build
+    environment: *api-environment
+    volumes: *api-volumes
+    command:
+      - sh
+      - -c
+      - >-
+        trap 'exit 0' TERM INT;
+        rm -f /app/var/notifications-worker.heartbeat;
+        until php bin/console doctrine:migrations:up-to-date --quiet; do sleep 2; done;
+        exec php bin/console app:notifications:work --time-limit=3600 --memory-limit=128
+    labels:
+      soirely.after-migrations: 'true'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # The worker touches its heartbeat on every poll, about once a second.
+      test:
+        - CMD-SHELL
+        - >-
+          test $$(( $$(date +%s) - $$(stat -c %Y /app/var/notifications-worker.heartbeat) )) -lt 30
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 10s
+    restart: unless-stopped
+
+  # S3, locally.
   #
   # LocalStack rather than MinIO: MinIO's images are no longer pullable from
   # Docker Hub, and an unavailable base image is a stack that cannot be brought
