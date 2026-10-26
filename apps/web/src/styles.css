@@ -159,6 +159,15 @@ span {
   font: var(--typeSmall);
 }
 
+.shell-menu-button {
+  display: none;
+}
+
+/* The wrapper exists for the phone's bar to hide; on a desk its children stay the sidebar's flex items. */
+.shell-links {
+  display: contents;
+}
+
 /* The width is used rather than reserved: a 1200px content column on a 2560px
    monitor is the layout this product exists to avoid. */
 .shell-content {
@@ -226,8 +235,15 @@ span {
   background: var(--colorCard);
   color: var(--colorInk);
   font: var(--typeButton);
+  max-width: 100%;
   text-decoration: none;
   cursor: pointer;
+}
+
+.button-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .button:hover {
@@ -357,6 +373,82 @@ span {
   .public-header {
     padding: var(--spaceXl);
   }
+}
+
+/* ── A phone: one bar, its links behind Menu (sc-13413) ───────────────────── */
+
+@media (width <= 40rem) {
+  .shell-sidebar {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spaceMd);
+    padding: var(--spaceSm) var(--spaceLg);
+  }
+
+  .shell-sidebar .brand,
+  .shell-links {
+    display: none;
+  }
+
+  /* An account in no organisation has no switcher, so the bar says whose it is instead. */
+  .shell-sidebar:not(:has(.org-switcher)) .brand {
+    display: block;
+    flex: 1;
+  }
+
+  .shell-sidebar .org-switcher {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .shell-menu-button {
+    display: block;
+    flex: none;
+    min-height: var(--sizeHit);
+    padding: 0 var(--spaceLg);
+    border: var(--borderControl);
+    border-radius: var(--radiusField);
+    background: var(--colorCard);
+    color: var(--colorInk);
+    font: var(--typeButton);
+    cursor: pointer;
+  }
+}
+
+.shell-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space3xl);
+  box-sizing: border-box;
+  overflow-y: auto;
+  padding: var(--spaceLg) var(--spaceLg) var(--spaceXxl);
+  background: var(--colorCard);
+}
+
+.shell-menu .brand {
+  display: flex;
+  align-items: center;
+  min-height: var(--sizeHit);
+}
+
+.shell-menu .shell-nav {
+  flex-direction: column;
+}
+
+.shell-menu .shell-nav a {
+  min-height: var(--sizeHitPhonePrimary);
+  font-size: 16px;
+}
+
+.shell-menu:focus {
+  outline: none;
+}
+
+.shell-menu .shell-account {
+  margin-top: 0;
 }
 
 /* ── Sign in ──────────────────────────────────────────────────────────────── */
@@ -2196,16 +2288,6 @@ span {
   min-width: 0;
 }
 
-.roles-actions .button {
-  max-width: 100%;
-}
-
-.roles-button-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .roles-panels {
   display: flex;
   flex-wrap: wrap;
@@ -2315,8 +2397,13 @@ span {
   background: var(--colorAccentTint);
 }
 
+.no-organisation-main {
+  padding: var(--space6xl) var(--spaceXl);
+}
+
 .no-organisation {
-  max-width: 40rem;
+  max-width: 35rem;
+  margin: 0 auto;
 }
 
 .no-organisation h1,
@@ -3398,4 +3485,61 @@ button.members-row {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--spaceSm) var(--spaceMd);
+}
+
+/* ── An event's venue (sc-3589) ───────────────────────────────────────────── */
+
+.venue-suggestions {
+  max-width: none;
+  margin-top: var(--spaceXs);
+}
+
+.venue-suggestions .tz-option {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  padding-block: var(--spaceXs);
+}
+
+.venue-suggestions .tz-option .muted {
+  margin-left: 0;
+  text-align: left;
+}
+
+.venue-lookup-down {
+  padding: var(--spaceMd) var(--spaceLg);
+  font: var(--typeSmall);
+}
+
+.venue-lookup-down p {
+  margin: 0;
+}
+
+.mark-half {
+  background: linear-gradient(90deg, var(--colorAttentionText) 50%, transparent 50%);
+}
+
+.venue-zone-offer {
+  margin-top: var(--spaceLg);
+}
+
+.event-page-venue {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.event-page-venue p {
+  margin: 0;
+}
+
+.event-page-venue-name {
+  font: var(--typeRowTitle);
+}
+
+.event-page-venue-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
 }

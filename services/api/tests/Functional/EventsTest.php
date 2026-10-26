@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Address\Model\Address;
 use App\Domain\Event\EventCreator;
 use App\Domain\Event\EventEditor;
 use App\Domain\Organisation\OrganisationFounder;
@@ -18,6 +19,7 @@ use App\Enum\EventType;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
+use App\Tests\Double\ScriptedAddressProvider;
 use App\Tests\Double\ScriptedEventAmounts;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
@@ -27,6 +29,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Dict;
 use Psl\Json;
+use Psl\SecureRandom;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
@@ -576,6 +579,207 @@ final class EventsTest extends ApiTestCase
         self::assertNull(self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => EventEditor::UPDATED]));
     }
 
+    #[Test]
+    public function aPickedAddressIsSavedWithItsPartsAsTheClientsReadIt(): void
+    {
+        $id = $this->pick();
+
+        $body = $this->as($this->owner, 'POST', $this->path('events'), [
+            ...self::valid(),
+            'venue' => ['name' => '  The Civic Centre  ', 'address' => 'Ozumba Mbadiwe', 'addressId' => $id],
+        ]);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        self::assertSame(self::picked(), $this->event($body)['venue']);
+        self::assertSame(self::picked(), $this->event($this->as($this->owner, 'GET', '/api/events/' . $this->event($body)['id']))['venue']);
+    }
+
+    #[Test]
+    public function aTypedAddressIsSavedAsTyped(): void
+    {
+        $body = $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'venue' => ['address' => ' 12 Bode Thomas Street, Surulere ']]);
+
+        self::assertSame(201, $this->statusCode());
+        self::assertSame(['name' => null, 'address' => self::typed('12 Bode Thomas Street, Surulere')], $this->event($body)['venue']);
+    }
+
+    #[Test]
+    public function anAddressTheLookupNeverResolvedIsSavedAsTypedWithoutAskingTheProvider(): void
+    {
+        $id = $this->publishPicked();
+
+        $body = $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'venue' => ['name' => null, 'address' => 'Ozumba Mbadiwe Avenue', 'addressId' => $id]]);
+
+        self::assertSame(201, $this->statusCode());
+        self::assertSame(['name' => null, 'address' => self::typed('Ozumba Mbadiwe Avenue')], $this->event($body)['venue']);
+    }
+
+    #[Test]
+    public function anEventWithNoVenueServesNull(): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+
+        self::assertNull($this->event($this->as($this->owner, 'GET', '/api/events/' . $id))['venue']);
+    }
+
+    /** @return iterable<string, array{array<string, string>, string, string}> */
+    public static function venueRefusals(): iterable
+    {
+        yield 'a venue name past 120' => [['name' => Str\repeat('a', 121)], 'venueName', 'Shorten the venue name to 120 characters or fewer.'];
+        yield 'an address past 300' => [['address' => Str\repeat('a', 301)], 'venueAddress', 'Shorten the address to 300 characters or fewer.'];
+    }
+
+    /** @param array<string, string> $venue */
+    #[Test]
+    #[DataProvider('venueRefusals')]
+    public function aVenueTooLongIsRefusedOnCreateAndOnEdit(array $venue, string $field, string $message): void
+    {
+        $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'venue' => $venue]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame([$field => $message], $this->violations());
+
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+        $this->edit($id, ['venue' => $venue], $this->tagOf($id));
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame([$field => $message], $this->violations());
+    }
+
+    #[Test]
+    public function aVenueNameOf120AfterTrimmingIsAccepted(): void
+    {
+        $body = $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'venue' => ['name' => '  ' . Str\repeat('a', 120) . '  ']]);
+
+        self::assertSame(201, $this->statusCode());
+        self::assertSame(['name' => Str\repeat('a', 120), 'address' => null], $this->event($body)['venue']);
+    }
+
+    /** @return iterable<string, array{array<string, string>|null}> */
+    public static function clearings(): iterable
+    {
+        yield 'both fields blank' => [['name' => '  ', 'address' => '']];
+        yield 'null' => [null];
+    }
+
+    /** @param array<string, string>|null $venue */
+    #[Test]
+    #[DataProvider('clearings')]
+    public function clearingBothFieldsRemovesTheVenue(?array $venue): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+        $this->edit($id, ['venue' => ['name' => 'The Civic Centre', 'address' => 'Victoria Island']], $this->tagOf($id));
+
+        $this->edit($id, ['venue' => $venue], $this->tagOf($id));
+
+        self::assertSame(200, $this->statusCode());
+        self::assertNull($this->event($this->last())['venue']);
+    }
+
+    #[Test]
+    public function anAddressSentBackUnchangedKeepsItsParts(): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+        $this->edit($id, ['venue' => ['address' => 'Ozumba', 'addressId' => $this->pick()]], $this->tagOf($id));
+
+        $this->edit($id, ['venue' => ['name' => 'The Civic Centre', 'address' => self::picked()['address']['formatted']]], $this->tagOf($id));
+
+        self::assertSame(200, $this->statusCode());
+        self::assertSame(self::picked(), $this->event($this->last())['venue']);
+
+        $this->edit($id, ['venue' => ['name' => 'The Civic Centre', 'address' => 'Victoria Island']], $this->tagOf($id));
+        self::assertSame(['name' => 'The Civic Centre', 'address' => self::typed('Victoria Island')], $this->event($this->last())['venue']);
+    }
+
+    #[Test]
+    public function anEditLeavingTheVenueOutKeepsIt(): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+        $this->edit($id, ['venue' => ['name' => 'The Civic Centre']], $this->tagOf($id));
+
+        $this->edit($id, ['name' => 'Renamed'], $this->tagOf($id));
+
+        self::assertSame(['name' => 'The Civic Centre', 'address' => null], $this->event($this->last())['venue']);
+    }
+
+    #[Test]
+    public function aVenueIsAuditedAsPartOfTheEventsEdit(): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+
+        $this->edit($id, ['venue' => ['name' => 'The Civic Centre', 'address' => 'Ozumba', 'addressId' => $this->pick()]], $this->tagOf($id));
+
+        $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => EventEditor::UPDATED, 'subjectType' => 'Event']);
+        self::assertInstanceOf(AuditEntry::class, $entry);
+        self::assertSame([
+            'venueName' => [null, 'The Civic Centre'],
+            'venueAddress' => [null, 'Ozumba Mbadiwe Avenue, Victoria Island, Lagos, Nigeria'],
+            'venueCountryCode' => [null, 'NG'],
+            'venueCoordinates' => [null, [6.4316, 3.4246]],
+        ], $entry->getChanges());
+    }
+
+    #[Test]
+    public function aVenueOnANewEventIsInItsCreateEntry(): void
+    {
+        $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'venue' => ['address' => 'Victoria Island']]);
+
+        $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => EventCreator::CREATED, 'subjectType' => 'Event']);
+        self::assertInstanceOf(AuditEntry::class, $entry);
+        self::assertSame([null, 'Victoria Island'], $entry->getChanges()['venueAddress'] ?? null);
+        self::assertArrayNotHasKey('venueName', $entry->getChanges());
+    }
+
+    /**
+     * The venue the clients' tests read too (packages/api-client), so the two sides cannot drift.
+     *
+     * @return array{name: string, address: array{formatted: string, ...}, ...}
+     */
+    private static function picked(): array
+    {
+        return Type\shape([
+            'name' => Type\string(),
+            'address' => Type\shape(['formatted' => Type\string()], true),
+        ], true)->coerce(Json\decode((string) \file_get_contents(__DIR__ . '/../Fixtures/Venue/picked-venue.json')));
+    }
+
+    /** @return array<string, string|null> */
+    private static function typed(string $formatted): array
+    {
+        return ['formatted' => $formatted, 'line1' => null, 'line2' => null, 'city' => null, 'region' => null, 'postalCode' => null, 'countryCode' => null, 'latitude' => null, 'longitude' => null];
+    }
+
+    /** Picked as the clients pick it: the save reads the address their lookup resolved. */
+    private function pick(): string
+    {
+        $id = $this->publishPicked();
+        $this->as($this->owner, 'GET', '/api/addresses/' . $id);
+        self::assertSame(200, $this->statusCode());
+
+        return $id;
+    }
+
+    /** A fresh id each time: the lookup's cache outlives a test. */
+    private function publishPicked(): string
+    {
+        $address = Type\shape([
+            'formatted' => Type\string(),
+            'line1' => Type\string(),
+            'line2' => Type\string(),
+            'city' => Type\string(),
+            'region' => Type\string(),
+            'postalCode' => Type\string(),
+            'countryCode' => Type\string(),
+            'latitude' => Type\float(),
+            'longitude' => Type\float(),
+        ])->coerce(self::picked()['address']);
+        $id = 'node:' . SecureRandom\int(1, \PHP_INT_MAX);
+
+        self::service(ScriptedAddressProvider::class)->publish($id, new Address(...$address));
+
+        return $id;
+    }
+
     /** @return array{name: string, type: string, startsAt: string, endsAt: string, timeZone: string, currency: string} */
     private static function valid(): array
     {
@@ -603,7 +807,7 @@ final class EventsTest extends ApiTestCase
     }
 
     /**
-     * @param array<string, ?string> $body
+     * @param array<string, mixed> $body
      *
      * @return array<string, mixed>
      */
@@ -623,7 +827,7 @@ final class EventsTest extends ApiTestCase
     /**
      * @param array<string, mixed> $body
      *
-     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, createdAt: string}
+     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, venue: mixed, createdAt: string}
      */
     private function event(array $body): array
     {
@@ -638,6 +842,7 @@ final class EventsTest extends ApiTestCase
             'timeZone' => Type\string(),
             'dayCount' => Type\int(),
             'currency' => Type\string(),
+            'venue' => Type\mixed(),
             'createdAt' => Type\string(),
         ])->assert($body['event'] ?? null);
     }

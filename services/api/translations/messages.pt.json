@@ -56,6 +56,8 @@
     "validation.event_start_required": "Escolha quando começa o evento.",
     "validation.event_time_invalid": "Indique uma data e uma hora sem fuso horário.",
     "validation.event_type_required": "Escolha que tipo de evento é.",
+    "validation.event_venue_address_too_long": "Shorten the address to {count} characters or fewer.",
+    "validation.event_venue_name_too_long": "Shorten the venue name to {count} characters or fewer.",
     "validation.locale_invalid": "Escolha English, Español, Français ou Português.",
     "validation.name_required": "Introduza o seu nome.",
     "validation.organisation_name_required": "Indique o nome da organização.",

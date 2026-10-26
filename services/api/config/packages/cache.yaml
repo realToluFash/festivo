@@ -24,6 +24,11 @@ framework:
             cache.rate_limiter:
                 adapter: cache.adapter.redis
                 provider: Redis
+            # The pick and the save can reach different containers, and the save
+            # reads only what the pick cached.
+            cache.address:
+                adapter: cache.adapter.redis
+                provider: Redis
 
 when@test:
     framework:
@@ -43,4 +48,9 @@ when@test:
                 # AssistantTest.
                 cache.rate_limiter:
                     adapter: cache.adapter.array
+                    provider: ~
+                # On the filesystem, so a pick survives the kernel reboot
+                # between a test's requests, as it does between containers.
+                cache.address:
+                    adapter: cache.adapter.filesystem
                     provider: ~

@@ -7,6 +7,11 @@ import {
   eventNameLength,
   eventProblems,
   isEventType,
+  VENUE_ADDRESS_MAXIMUM,
+  VENUE_NAME_MAXIMUM,
+  type VenueDraft,
+  venueDraftOf,
+  venueProblems,
 } from '@soirely/domain';
 import {
   type FormEvent,
@@ -18,7 +23,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useBlocker, useNavigate, useParams } from 'react-router';
+import { Link, useBlocker, useLocation, useNavigate, useParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { useDialogKeys } from '../../../dialogFocus.ts';
@@ -35,6 +40,7 @@ import { Choice, FieldError, Moment } from './EventFields.tsx';
 import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
 import { typeChoices } from './eventTypes.ts';
 import { skippedLine } from './skippedLine.ts';
+import { VenueSection } from './VenueSection.tsx';
 
 /** What the event page announces once the form has closed (sc-3587). */
 export type EditOutcome = 'saved' | 'unchanged';
@@ -43,7 +49,7 @@ type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'notFound' } | Ta
 
 type Status = 'editing' | 'saving' | 'failed' | 'latestFailed' | 'changedElsewhere';
 
-type Typed = { draft: EventDraft; timeZone: string; currency: string };
+type Typed = { draft: EventDraft; timeZone: string; currency: string; venue: VenueDraft };
 
 export function EditEvent() {
   const session = useSession();
@@ -147,7 +153,12 @@ function EditOf({ organisationId, eventId }: { organisationId: string; eventId: 
 }
 
 function typedOf({ event }: TaggedEvent): Typed {
-  return { draft: draftOf(event), timeZone: event.timeZone, currency: event.currency };
+  return {
+    draft: draftOf(event),
+    timeZone: event.timeZone,
+    currency: event.currency,
+    venue: venueDraftOf(event.venue),
+  };
 }
 
 function DetailsForm({
@@ -165,6 +176,7 @@ function DetailsForm({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const locale = currentLocale();
   const saved = opened.event;
   const [typed, setTyped] = useState<Typed>(() => typedOf(opened));
@@ -178,7 +190,7 @@ function DetailsForm({
   const saving = useRef(false);
   const [notSaved, arriveAtNotSaved] = useStepFocus<HTMLParagraphElement>();
   const [saveButton, arriveAtSave] = useStepFocus<HTMLButtonElement>();
-  const { draft, timeZone, currency } = typed;
+  const { draft, timeZone, currency, venue } = typed;
   const changes = useMemo(() => eventChanges(saved, typed), [saved, typed]);
 
   usePageTitle(pageTitle(t, [t('eventEdit.title'), saved.name]));
@@ -188,15 +200,21 @@ function DetailsForm({
     () => currencyChoices(saved.currency, currency, locale, t),
     [saved.currency, currency, locale, t],
   );
-  const zones = useMemo(() => timeZoneChoices(saved.timeZone), [saved.timeZone]);
+  const zones = useMemo(
+    () => timeZoneChoices(saved.timeZone, timeZone),
+    [saved.timeZone, timeZone],
+  );
   const types = useMemo(() => typeChoices(draft.type, t), [draft.type, t]);
   const blocker = useBlocker(
     useCallback(() => saving.current || (dirty && !closing.current), [dirty]),
   );
 
+  const [toVenue] = useState(() => location.hash === '#venue');
+
   useEffect(() => {
     if (reread) document.getElementById('event-name')?.focus();
-  }, [reread]);
+    else if (toVenue) document.getElementById('event-venue-name')?.focus();
+  }, [reread, toVenue]);
 
   useEffect(() => {
     if (!dirty) return;
@@ -244,6 +262,10 @@ function DetailsForm({
     const found: Errors = {};
     for (const { field, problem } of eventProblems(draft, timeZone))
       found[field] ??= t(`eventForm.${problem}`, { most: EVENT_NAME_MAXIMUM });
+    for (const { field, problem } of venueProblems(venue))
+      found[field] ??= t(`eventForm.${problem}`, {
+        most: field === 'venueName' ? VENUE_NAME_MAXIMUM : VENUE_ADDRESS_MAXIMUM,
+      });
     if (currency === '') found.currency = t('orgGeneral.currencyBlank');
 
     const unsentFields = Object.keys(found).length;
@@ -403,6 +425,24 @@ function DetailsForm({
             onTime={(endTime) => edit('endsAt', { endTime })}
           />
         </section>
+
+        <VenueSection
+          venue={venue}
+          errors={errors}
+          busy={busy}
+          timeZone={timeZone}
+          onVenue={(change) => {
+            setTyped((previous) => ({ ...previous, venue: { ...previous.venue, ...change } }));
+            setErrors((previous) => ({
+              ...previous,
+              ...('name' in change ? { venueName: undefined } : {}),
+              ...('address' in change ? { venueAddress: undefined } : {}),
+            }));
+          }}
+          onUseZone={(zone) => {
+            choose('timeZone', zone);
+          }}
+        />
 
         <section className="card" aria-labelledby="event-defaults">
           <h2 id="event-defaults">{t('eventForm.zoneHeading')}</h2>

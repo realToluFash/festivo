@@ -1,6 +1,6 @@
-import { type EventDraft, type EventField } from '@soirely/domain';
+import { type EventDraft, type EventField, type VenueField } from '@soirely/domain';
 
-export type Field = EventField | 'timeZone' | 'currency';
+export type Field = EventField | VenueField | 'timeZone' | 'currency';
 export type Errors = Partial<Record<Field, string | undefined>>;
 
 /** In the order the form shows them, so the first refused is the one focus goes to. */
@@ -9,6 +9,8 @@ export const FIELDS: readonly Field[] = [
   'type',
   'startsAt',
   'endsAt',
+  'venueName',
+  'venueAddress',
   'timeZone',
   'currency',
 ];
@@ -19,6 +21,8 @@ export function inputFor(field: Field, draft: EventDraft): string {
   if (field === 'type') return 'event-type';
   if (field === 'timeZone') return 'event-time-zone';
   if (field === 'currency') return 'event-currency';
+  if (field === 'venueName') return 'event-venue-name';
+  if (field === 'venueAddress') return 'event-venue-address';
 
   const [prefix, date, time] =
     field === 'startsAt'
