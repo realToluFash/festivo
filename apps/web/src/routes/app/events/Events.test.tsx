@@ -1921,6 +1921,7 @@ describe('The cover (sc-3590)', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Remove photo' }));
 
     expect(await screen.findByText('Photo removed. The default cover is back.')).toBeDefined();
+    expect(screen.queryByText(/The default cover for this type of event/)).toBeNull();
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.getByTestId('cover-default').className).toContain('cover-default-wedding');
     expect(sent.map(({ line }) => line)).toContain('DELETE /api/events/ev_1/cover');

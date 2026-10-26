@@ -6,6 +6,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -38,6 +39,20 @@ export type CoverUse = {
 type Opened = { file: File | null; from: 'cover' | 'upload' };
 
 const ACCEPT = 'image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif';
+const FULL_SCREEN = '(width <= 40rem)';
+
+/** Below 640 px the dialog fills the screen and Remove photo moves from the footer into the body. */
+function useFullScreen(): boolean {
+  return useSyncExternalStore(
+    (changed) => {
+      const query = window.matchMedia(FULL_SCREEN);
+      query.addEventListener('change', changed);
+
+      return () => query.removeEventListener('change', changed);
+    },
+    () => window.matchMedia(FULL_SCREEN).matches,
+  );
+}
 
 /** The form's Cover section (sc-3590): the cover at 16:9, Upload a photo, and the Cover photo dialog. */
 export function CoverSection({
@@ -107,15 +122,19 @@ export function CoverSection({
               setOpened({ file: null, from: 'cover' });
             }}
           >
-            <EventCoverImage photo={photo} type={type} sizes="(width <= 40rem) 100vw, 30rem" />
+            <EventCoverImage photo={photo} type={type} sizes="(width < 43.75rem) 100vw, 27.5rem" />
             <span className="cover-pill" id="cover-change">
-              <span aria-hidden="true">✎ </span>
+              <PencilIcon />
               {t('eventCover.change')}
             </span>
           </button>
         )}
         <div className="cover-field-side">
-          {photo == null && <p className="field-help">{t('eventCover.defaultLine')}</p>}
+          {removed ? (
+            <RemovedLine words={t('eventCover.removed')} />
+          ) : (
+            photo == null && <p className="field-help">{t('eventCover.defaultLine')}</p>
+          )}
           <input
             ref={fileInput}
             id="cover-file"
@@ -143,7 +162,6 @@ export function CoverSection({
           <p className="field-help" id="cover-accepted">
             {t('eventCover.accepted')}
           </p>
-          {removed && <RemovedLine words={t('eventCover.removed')} />}
         </div>
       </div>
 
@@ -174,8 +192,32 @@ function RemovedLine({ words }: { words: string }) {
 
   return (
     <p className="cover-removed" role="status">
+      {said !== '' && <CheckIcon />}
       {said}
     </p>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <path d="M11 2.5 13.5 5 5.5 13H3v-2.5z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      viewBox="0 0 18 18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden="true"
+    >
+      <circle cx="9" cy="9" r="7.5" />
+      <path d="m5.75 9.25 2.25 2.25 4.25-4.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -219,6 +261,7 @@ function CoverDialog({
   const slider = useRef<HTMLInputElement>(null);
   const describe = useRef<HTMLTextAreaElement>(null);
   const kept = useRef(false);
+  const fullScreen = useFullScreen();
   const drag = useRef<{ y: number; start: number } | null>(null);
 
   useEffect(() => {
@@ -318,6 +361,17 @@ function CoverDialog({
     }
   }
 
+  const removeButton = (
+    <button
+      type="button"
+      className="button cover-remove"
+      {...offButton(pending)}
+      onClick={() => void remove()}
+    >
+      {t('eventCover.remove')}
+    </button>
+  );
+
   function startDrag(event: PointerEvent<HTMLDivElement>): void {
     if (shown == null) return;
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -345,18 +399,18 @@ function CoverDialog({
         aria-labelledby="cover-dialog-title"
         tabIndex={-1}
       >
-        <div className="dialog-heading">
+        <div className="cover-dialog-header">
           <h2 id="cover-dialog-title">{t('eventCover.dialogTitle')}</h2>
+          <button
+            type="button"
+            className="cover-dialog-close"
+            aria-label={t('eventCover.close')}
+            {...offButton(pending, { dim: false })}
+            onClick={cancel}
+          >
+            <span aria-hidden="true">✕</span>
+          </button>
         </div>
-        <button
-          type="button"
-          className="dialog-close"
-          aria-label={t('eventCover.close')}
-          {...offButton(pending, { dim: false })}
-          onClick={cancel}
-        >
-          <span aria-hidden="true">✕</span>
-        </button>
 
         <div className="cover-dialog-body">
           <div
@@ -366,7 +420,7 @@ function CoverDialog({
             onPointerUp={() => (drag.current = null)}
             onPointerCancel={() => (drag.current = null)}
           >
-            <EventCoverImage photo={shown} type={type} sizes="(width <= 40rem) 100vw, 36rem" />
+            <EventCoverImage photo={shown} type={type} sizes="(width <= 40rem) 100vw, 45rem" />
             {upload.kind === 'uploading' && (
               <p className="cover-frame-state" role="status">
                 {t('eventCover.uploading')}
@@ -405,7 +459,8 @@ function CoverDialog({
 
           <div className="field">
             <label htmlFor="cover-description">
-              {t('eventCover.describe')} <span className="muted">{t('eventCover.optional')}</span>
+              {t('eventCover.describe')}
+              <span className="cover-optional">{t('eventCover.optional')}</span>
             </label>
             <textarea
               ref={describe}
@@ -433,18 +488,7 @@ function CoverDialog({
             </p>
           </div>
 
-          {saved != null && (
-            <div>
-              <button
-                type="button"
-                className="link-button cover-remove"
-                {...offButton(pending)}
-                onClick={() => void remove()}
-              >
-                {t('eventCover.remove')}
-              </button>
-            </div>
-          )}
+          {saved != null && fullScreen && <div className="cover-remove-below">{removeButton}</div>}
 
           {failure != null && (
             <div className="notice notice-broken" role="alert">
@@ -457,23 +501,26 @@ function CoverDialog({
         </div>
 
         <div className="dialog-actions cover-dialog-actions">
-          <button
-            type="button"
-            className="button"
-            {...offButton(pending, { dim: false })}
-            onClick={cancel}
-          >
-            {t('eventCover.cancel')}
-          </button>
-          <button
-            type="button"
-            className="button button-primary"
-            {...offButton(!ready || pending)}
-            aria-busy={pending}
-            onClick={() => void use()}
-          >
-            {pending ? t('eventCover.saving') : t('eventCover.use')}
-          </button>
+          {saved != null && !fullScreen && removeButton}
+          <div className="cover-dialog-confirm">
+            <button
+              type="button"
+              className="button"
+              {...offButton(pending, { dim: false })}
+              onClick={cancel}
+            >
+              {t('eventCover.cancel')}
+            </button>
+            <button
+              type="button"
+              className="button button-primary"
+              {...offButton(!ready || pending)}
+              aria-busy={pending}
+              onClick={() => void use()}
+            >
+              {pending ? t('eventCover.saving') : t('eventCover.use')}
+            </button>
+          </div>
         </div>
       </div>
     </>
