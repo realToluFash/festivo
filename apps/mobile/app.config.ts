@@ -1,5 +1,6 @@
 import type { ExpoConfig } from 'expo/config';
 
+// Not src/theme/tokens.ts: Expo loads this file with Node's require, and Node 20 cannot strip that file's TypeScript.
 import { tokens } from '../../docs/design/tokens.mjs';
 
 /**
