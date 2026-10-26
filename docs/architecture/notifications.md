@@ -148,6 +148,6 @@ The local stack runs no scheduler, so run it by hand there. sc-1612 routes the l
 An event is soft-deleted (sc-3592) and purged 30 days later; its rows go with it under the
 foreign key's cascade. The worker reads the event past the soft-delete filter, so a
 deletion notice can still go after the delete. An event whose organisation is deleted
-counts as deleted. Events have no `deleted_at` yet: whichever of sc-104 and sc-3592 merges
-second makes `NotificationWorker::eventState()` read it, with a test. A deleted organisation's members are no longer an audience, so a notice
-to them must be resolved before the organisation goes.
+counts as deleted too. A deleted event's due rows are cancelled, all but its deletion
+notice. A deleted organisation's members are no longer an audience, so a notice to them
+must be resolved before the organisation goes.
