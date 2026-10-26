@@ -15,13 +15,32 @@ const OVERRIDE = `
   }
 `;
 
+/** The activity's configChanges with fontScale among them, so Android hands the change to the app instead of recreating it. */
+export function withFontScaleHandled(configChanges: string | undefined): string {
+  const changes = (configChanges ?? '').split('|').filter(Boolean);
+
+  return (changes.includes('fontScale') ? changes : [...changes, 'fontScale']).join('|');
+}
+
+/** MainActivity.kt, passing a configuration change on to JavaScript at once. */
+export function withFontScaleForwarded(source: string): string {
+  if (source.includes('override fun onConfigurationChanged')) {
+    throw new Error(
+      'MainActivity already handles configuration changes; merge the font-scale forward into it.',
+    );
+  }
+  const missing = IMPORTS.filter((line) => !source.includes(line));
+
+  return source
+    .replace(/^package .+$/m, (line) => [line, ...missing].join('\n'))
+    .replace(/\n}\s*$/, `\n${OVERRIDE}}\n`);
+}
+
 /** Android keeps the open screen through a font-size change, as iOS does, rather than starting the app over. */
 export const withFontScaleKept: ConfigPlugin = (config) => {
   config = withAndroidManifest(config, (manifest) => {
     const activity = AndroidConfig.Manifest.getMainActivityOrThrow(manifest.modResults);
-    const changes = (activity.$['android:configChanges'] ?? '').split('|').filter(Boolean);
-    if (!changes.includes('fontScale')) changes.push('fontScale');
-    activity.$['android:configChanges'] = changes.join('|');
+    activity.$['android:configChanges'] = withFontScaleHandled(activity.$['android:configChanges']);
 
     return manifest;
   });
@@ -30,13 +49,7 @@ export const withFontScaleKept: ConfigPlugin = (config) => {
     if (activity.modResults.language !== 'kt') {
       throw new Error('withFontScaleKept expects a Kotlin MainActivity.');
     }
-    let source = activity.modResults.contents;
-    if (source.includes('override fun onConfigurationChanged')) return activity;
-
-    const missing = IMPORTS.filter((line) => !source.includes(line));
-    source = source.replace(/^package .+$/m, (line) => [line, ...missing].join('\n'));
-    source = source.replace(/\n}\s*$/, `\n${OVERRIDE}}\n`);
-    activity.modResults.contents = source;
+    activity.modResults.contents = withFontScaleForwarded(activity.modResults.contents);
 
     return activity;
   });
