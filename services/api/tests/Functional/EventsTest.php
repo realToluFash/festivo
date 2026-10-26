@@ -519,7 +519,7 @@ final class EventsTest extends ApiTestCase
     #[Test]
     public function aPickedAddressIsSavedWithItsPartsAsTheClientsReadIt(): void
     {
-        $id = $this->publishPicked();
+        $id = $this->pick();
 
         $body = $this->as($this->owner, 'POST', $this->path('events'), [
             ...self::valid(),
@@ -541,10 +541,9 @@ final class EventsTest extends ApiTestCase
     }
 
     #[Test]
-    public function anAddressPickedWhileTheLookupIsDownIsSavedAsTypedWithNoError(): void
+    public function anAddressTheLookupNeverResolvedIsSavedAsTypedWithoutAskingTheProvider(): void
     {
         $id = $this->publishPicked();
-        self::service(ScriptedAddressProvider::class)->takeDown();
 
         $body = $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'venue' => ['name' => null, 'address' => 'Ozumba Mbadiwe Avenue', 'addressId' => $id]]);
 
@@ -618,7 +617,7 @@ final class EventsTest extends ApiTestCase
     public function anAddressSentBackUnchangedKeepsItsParts(): void
     {
         $id = $this->create('Owambe', '2026-11-14T16:00');
-        $this->edit($id, ['venue' => ['address' => 'Ozumba', 'addressId' => $this->publishPicked()]], $this->tagOf($id));
+        $this->edit($id, ['venue' => ['address' => 'Ozumba', 'addressId' => $this->pick()]], $this->tagOf($id));
 
         $this->edit($id, ['venue' => ['name' => 'The Civic Centre', 'address' => self::picked()['address']['formatted']]], $this->tagOf($id));
 
@@ -645,7 +644,7 @@ final class EventsTest extends ApiTestCase
     {
         $id = $this->create('Owambe', '2026-11-14T16:00');
 
-        $this->edit($id, ['venue' => ['name' => 'The Civic Centre', 'address' => 'Ozumba', 'addressId' => $this->publishPicked()]], $this->tagOf($id));
+        $this->edit($id, ['venue' => ['name' => 'The Civic Centre', 'address' => 'Ozumba', 'addressId' => $this->pick()]], $this->tagOf($id));
 
         $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => EventEditor::UPDATED, 'subjectType' => 'Event']);
         self::assertInstanceOf(AuditEntry::class, $entry);
@@ -685,6 +684,16 @@ final class EventsTest extends ApiTestCase
     private static function typed(string $formatted): array
     {
         return ['formatted' => $formatted, 'line1' => null, 'line2' => null, 'city' => null, 'region' => null, 'postalCode' => null, 'countryCode' => null, 'latitude' => null, 'longitude' => null];
+    }
+
+    /** Picked as the clients pick it: the save reads the address their lookup resolved. */
+    private function pick(): string
+    {
+        $id = $this->publishPicked();
+        $this->as($this->owner, 'GET', '/api/addresses/' . $id);
+        self::assertSame(200, $this->statusCode());
+
+        return $id;
     }
 
     /** A fresh id each time: the lookup's cache outlives a test. */

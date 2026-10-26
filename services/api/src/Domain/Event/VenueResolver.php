@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\Event;
 
 use App\Address\AddressLookup;
-use App\Address\Exception\AddressNotFound;
-use App\Address\Exception\ProviderUnavailable;
 use App\Address\Model\Address;
 use App\Domain\Event\Model\Venue;
 use Psl\Str;
@@ -20,7 +18,7 @@ final readonly class VenueResolver
     }
 
     /**
-     * An address that cannot be resolved is kept as typed; one sent back unchanged keeps the parts it was saved with.
+     * A picked address is the one the client's lookup resolved; one the lookup no longer holds is kept as typed; one sent back unchanged keeps the parts it was saved with.
      *
      * @param array{name?: ?string, address?: ?string, addressId?: ?string}|null $typed
      */
@@ -42,11 +40,7 @@ final readonly class VenueResolver
     private function address(string $typed, ?string $id, ?Address $held): Address
     {
         if (null !== $id && '' !== $id) {
-            try {
-                return $this->addressLookup->resolve($id);
-            } catch (AddressNotFound|ProviderUnavailable) {
-                return new Address($typed);
-            }
+            return $this->addressLookup->resolved($id) ?? new Address($typed);
         }
 
         return null !== $held && $held->formatted === $typed ? $held : new Address($typed);

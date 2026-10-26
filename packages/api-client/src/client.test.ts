@@ -2497,51 +2497,38 @@ describe("an event's venue (sc-3589)", () => {
     await expect(client(json({ event })).api.event('e1')).rejects.toThrow(/events controller/);
   });
 
-  test('asks for suggestions from three characters, and reads them', async () => {
-    const sent: string[] = [];
-    const { api } = client(
-      json({
-        success: true,
-        data: [
-          { id: 'node:1', text: 'The Civic Centre', secondary_text: 'Victoria Island, Lagos' },
-        ],
-      }),
-      sent,
-    );
+  const answers = JSON.parse(
+    readFileSync(
+      new URL('../../../services/api/tests/Fixtures/Address/lookup-answers.json', import.meta.url),
+      'utf8',
+    ),
+  ) as { suggest: unknown; resolve: unknown };
 
-    expect(await api.addressSuggestions('Ci')).toEqual([]);
-    expect(await api.addressSuggestions(' Civic ')).toEqual([
-      { id: 'node:1', text: 'The Civic Centre', secondaryText: 'Victoria Island, Lagos' },
+  test('asks for suggestions from three characters, and reads them as the API serves them', async () => {
+    const sent: string[] = [];
+    const { api } = client(json({ success: true, data: answers.suggest }), sent);
+
+    expect(await api.addressSuggestions('Oz')).toEqual([]);
+    expect(await api.addressSuggestions(' Ozumba ')).toEqual([
+      {
+        id: 'node:3589',
+        text: 'Ozumba Mbadiwe Avenue',
+        secondaryText: 'Victoria Island, Lagos, Nigeria',
+      },
     ]);
-    expect(sent).toEqual(['GET /api/addresses/suggest?q=Civic']);
+    expect(sent).toEqual(['GET /api/addresses/suggest?q=Ozumba']);
   });
 
-  test('reads a picked address with its time zone', async () => {
-    const { api, sent } = client(
-      json({
-        success: true,
-        data: {
-          formatted: 'Rua Augusta, Lisboa, Portugal',
-          line1: 'Rua Augusta',
-          line2: null,
-          city: 'Lisboa',
-          region: null,
-          postal_code: '1100-048',
-          country_code: 'PT',
-          latitude: 38.71,
-          longitude: -9.137,
-          time_zone: 'Europe/Lisbon',
-        },
-      }),
-    );
+  test('reads a picked address with its time zone as the API serves it', async () => {
+    const { api, sent } = client(json({ success: true, data: answers.resolve }));
 
-    const address = await api.address('way:12');
+    const address = await api.address('node:3589');
 
     expect(address).toMatchObject({
-      postalCode: '1100-048',
-      countryCode: 'PT',
-      timeZone: 'Europe/Lisbon',
+      postalCode: '101241',
+      countryCode: 'NG',
+      timeZone: 'Africa/Lagos',
     });
-    expect(sent).toEqual(['GET /api/addresses/way%3A12']);
+    expect(sent).toEqual(['GET /api/addresses/node%3A3589']);
   });
 });

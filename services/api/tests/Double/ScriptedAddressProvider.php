@@ -37,7 +37,8 @@ final class ScriptedAddressProvider implements AddressProviderInterface
 
         foreach ($this->addresses as $id => $address) {
             if (Str\contains_ci($address->formatted, $query)) {
-                $found[] = new Suggestion($id, $address->formatted);
+                $parts = Str\split($address->formatted, ', ', 2);
+                $found[] = new Suggestion($id, $parts[0], $parts[1] ?? null);
             }
         }
 
