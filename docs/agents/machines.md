@@ -408,3 +408,8 @@ runs, so it costs no tokens.
 - `sq` itself is reinstalled from `main` when `tools/queue` changes, and only once CI is
   green on that commit. A broken `sq` reaching `main` would otherwise stop every role on
   every machine at once. See [Starting the manager](#starting-the-manager).
+- A tester's harness, `.qa/bin/qa-env.mjs` in its checkout, follows `main` the same way: at
+  each start it is replaced with `origin/main:scripts/qa-env.mjs` once CI is green on that
+  commit, never with the checked-out commit's, and the worker is told in one line. A copy
+  that is already `main`'s, or missing, is left alone; one that cannot be replaced is kept,
+  and the line says why.
