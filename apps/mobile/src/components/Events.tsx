@@ -24,6 +24,16 @@ function EventState() {
   );
 }
 
+function EventType({ event, size }: { event: OrganisationEvent; size: number }) {
+  const { t } = useTranslation();
+
+  return (
+    <Text size={size} muted>
+      {t(`eventTypes.${event.type}`)}
+    </Text>
+  );
+}
+
 export function EventList({
   events,
   open,
@@ -54,6 +64,7 @@ export function EventList({
               <Text size={tokens.typeRowTitle.size} weight="semibold">
                 {event.name}
               </Text>
+              <EventType event={event} size={tokens.typeSmall.size} />
               <Text size={tokens.typeSmall.size} muted>
                 {date}
               </Text>
@@ -118,6 +129,7 @@ export function EventPage({ kind, event }: { kind: LayoutKind; event: Organisati
         </Text>
         <EventState />
       </View>
+      <EventType event={event} size={tokens.typeBody.size} />
       <Text size={tokens.typeBody.size}>
         {t('eventsScreen.when', {
           range: formatEventRange(event.startsAt, event.endsAt, event.timeZone, dateLocale()),

@@ -1367,6 +1367,22 @@
     "withdrawEnded": "This claim has already ended.",
     "withdrawNotClaimant": "Only the person who started this claim can withdraw it."
   },
+  "eventTypes": {
+    "wedding": "Wedding",
+    "birthday": "Birthday",
+    "anniversary": "Anniversary",
+    "engagement": "Engagement",
+    "baby_shower": "Baby shower",
+    "graduation": "Graduation",
+    "memorial": "Memorial",
+    "religious": "Religious celebration",
+    "cultural": "Cultural celebration",
+    "party": "Party",
+    "gala": "Gala or fundraiser",
+    "conference": "Conference",
+    "corporate": "Corporate event",
+    "other": "Other"
+  },
   "eventsScreen": {
     "title": "Events",
     "loading": "Loading events…",

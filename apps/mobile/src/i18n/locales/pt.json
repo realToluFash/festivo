@@ -1400,6 +1400,22 @@
     "withdrawEnded": "Este pedido já terminou.",
     "withdrawNotClaimant": "Só a pessoa que fez este pedido pode retirá-lo."
   },
+  "eventTypes": {
+    "wedding": "Casamento",
+    "birthday": "Aniversário",
+    "anniversary": "Aniversário de casamento",
+    "engagement": "Noivado",
+    "baby_shower": "Chá de bebé",
+    "graduation": "Cerimónia de graduação",
+    "memorial": "Homenagem póstuma",
+    "religious": "Celebração religiosa",
+    "cultural": "Celebração cultural",
+    "party": "Festa",
+    "gala": "Gala ou evento solidário",
+    "conference": "Conferência",
+    "corporate": "Evento empresarial",
+    "other": "Outro"
+  },
   "eventsScreen": {
     "title": "Events",
     "loading": "Loading events…",

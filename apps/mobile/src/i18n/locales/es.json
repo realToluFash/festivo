@@ -1400,6 +1400,22 @@
     "withdrawEnded": "Esta solicitud ya ha terminado.",
     "withdrawNotClaimant": "Solo la persona que inició esta solicitud puede retirarla."
   },
+  "eventTypes": {
+    "wedding": "Boda",
+    "birthday": "Cumpleaños",
+    "anniversary": "Aniversario",
+    "engagement": "Pedida de mano",
+    "baby_shower": "Baby shower",
+    "graduation": "Graduación",
+    "memorial": "Homenaje póstumo",
+    "religious": "Celebración religiosa",
+    "cultural": "Celebración cultural",
+    "party": "Fiesta",
+    "gala": "Gala o evento benéfico",
+    "conference": "Congreso",
+    "corporate": "Evento de empresa",
+    "other": "Otro"
+  },
   "eventsScreen": {
     "title": "Events",
     "loading": "Loading events…",
