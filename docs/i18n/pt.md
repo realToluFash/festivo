@@ -41,6 +41,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. O formulário de evento na app** (sc-14367 para sc-3595,
+  `eventsScreen.newEvent|noneCreate`, `eventForm.searchType|timesIn|pickerDone|created|leaveBody`,
+  `eventForm.venueSuggestionsBelow_*`). O botão que confirma um seletor de data ou hora é "OK",
+  como no iOS, nunca "Concluído" nem "Terminado", que é o estado de um evento. O título da folha
+  é "Horas no fuso horário {{zone}}", como em `clocksSkip`. A pesquisa segue a regra "Pesquisar"
+  mais o nome no plural: "Pesquisar tipos de evento".
 - **26 Oct 2026. A decorrer, terminar ou cancelar um evento** (sc-14189 para sc-3585,
   `events.happeningNow`, `eventsScreen.happeningNow`, `eventEnd.*` web e app,
   `eventEdit.schedule*`, `messages:event.already_over|schedule_concluded`). "A decorrer" na

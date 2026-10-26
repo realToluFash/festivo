@@ -49,6 +49,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. El formulario de evento en la app** (sc-14367 para sc-3595,
+  `eventsScreen.newEvent|noneCreate`, `eventForm.searchType|timesIn|pickerDone|created|leaveBody`,
+  `eventForm.venueSuggestionsBelow_*`). El botón que confirma un selector de fecha u hora es
+  «Listo», nunca «Hecho», que es un calco, ni «Finalizado», que es el estado de un evento. El
+  título de la hoja es «Horas en {{zone}}». La búsqueda sigue la regla «Buscar» y el sustantivo
+  en plural: «Buscar tipos de evento».
 - **26 Oct 2026. En curso, finalizar o cancelar un evento** (sc-14189 para sc-3585,
   `events.happeningNow`, `eventsScreen.happeningNow`, `eventEnd.*` web y app,
   `eventEdit.schedule*`, `messages:event.already_over|schedule_concluded`). «En curso» en la
