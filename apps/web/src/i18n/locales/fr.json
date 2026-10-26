@@ -173,7 +173,7 @@
     "leave": "Quitter sans enregistrer",
     "saved": "Modifications enregistrées",
     "nothingChanged": "Rien n’a changé, donc rien n’a été envoyé.",
-    "scheduleConcluded": "This event is over, so its start, end and time zone can't be changed."
+    "scheduleConcluded": "This event is over, so its start, end and time zone cannot be changed."
   },
   "eventCover": {
     "heading": "Image de couverture",
