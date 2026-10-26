@@ -1,9 +1,12 @@
 import io
+import json
+import pathlib
+import tempfile
 import unittest
 from contextlib import redirect_stdout
 from unittest import mock
 
-from soirely_queue import cli, shared, store
+from soirely_queue import cli, permissions, shared, store
 
 from .fakes import FakeRefs
 
@@ -206,6 +209,41 @@ class PauseEverywhere(unittest.TestCase):
         store.set_meta(self.db, "shared_view", {"paused": {"machine": "tolu-linux"}})
         self.assertEqual(self.sq("resume"), "resumed; every machine is still paused by "
                                             "tolu-linux: sq resume --everywhere")
+
+
+class PermissionsPending(unittest.TestCase):
+    def setUp(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.home = pathlib.Path(folder.name) / "roles"
+        (self.home / "sq").mkdir(parents=True)
+        for patch in (mock.patch("soirely_queue.cli.open_db",
+                                 return_value=store.connect(":memory:")),
+                      mock.patch("soirely_queue.cli.this_platform"),
+                      mock.patch("soirely_queue.cli.home", return_value=self.home),
+                      mock.patch("soirely_queue.machine.load_env"),
+                      mock.patch.dict("os.environ", {"SOIRELY_WORKER": "",
+                                                     "SOIRELY_CONFIG": folder.name})):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def sq(self):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            cli.main(["agents", "permissions"])
+        return out.getvalue().strip().splitlines()
+
+    def test_permissions_alone_lists_what_main_grants_and_this_machine_has_not_applied(self):
+        self.assertEqual(self.sq(), ["this machine has applied everything main grants"])
+        (self.home / "sq" / "permissions.json").write_text(json.dumps({"rules": [
+            {"rule": "Bash(maestro test:*)", "roles": ["qa", "qa2"], "ask": 5124}]}))
+        self.assertEqual(self.sq(), ["main grants what this machine has not applied; run "
+                                     "just agents permissions apply:",
+                                     "+ Bash(maestro test:*) for qa, qa2"])
+        permissions.applied_path().write_text(json.dumps({"rules": [
+            {"rule": "Bash(xcrun simctl boot:*)", "roles": ["all"], "ask": 5123}]}))
+        self.assertEqual(self.sq()[1:], ["+ Bash(maestro test:*) for qa, qa2",
+                                         "- Bash(xcrun simctl boot:*) for all"])
 
 
 class Brief(unittest.TestCase):

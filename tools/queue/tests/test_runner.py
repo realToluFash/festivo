@@ -473,8 +473,16 @@ class Run(unittest.TestCase):
 
     def test_a_claim_lost_to_another_machine_gives_the_item_back(self):
         store.record(self.db, [dict(work("lead"), story_id=7)], ON_ZERO)
-        with mock.patch("soirely_queue.shared.claim_item", return_value=False):
-            self.run_once()
+        create = self.remote.create
+
+        def taken_first_on_another_machine(ref, message):
+            if ref.startswith("refs/soirely/claims/"):
+                create(ref, shared.record("claim", role="lead", machine="tolu-mac",
+                                          at=ON_ZERO))
+            return create(ref, message)
+
+        self.remote.create = taken_first_on_another_machine
+        self.run_once()
         self.assertEqual(self.platform.launched, [])
         self.assertIsNone(store.held_by(self.db, "lead", ON_ZERO))
         self.assertIn("lead: sc-7 was just taken on another machine", self.said)
@@ -581,6 +589,26 @@ class Worker(unittest.TestCase):
         with mock.patch("soirely_queue.permissions.applied", return_value=[]):
             _, calls = self.work_with({"result": "ok"})
         self.assertNotIn("--allowedTools", calls[0][0])
+
+    def test_neither_apply_nor_a_worker_writes_a_claude_settings_file(self):
+        from soirely_queue import permissions
+        login(self.root / "claude")
+        (self.root / "claude" / "settings.json").write_text('{"permissions": {}}')
+        (self.root / "soirely-ops" / ".claude").mkdir()
+        (self.root / "soirely-ops" / ".claude" / "settings.json").write_text('{"env": {}}')
+
+        def settings():
+            return {path: path.read_bytes() for path in self.root.rglob("settings*.json")}
+
+        before = settings()
+        rules = {"rules": [{"rule": "Bash(docker system df:*)", "roles": ["ops"], "ask": 1}]}
+        with mock.patch.dict("os.environ", {"SOIRELY_WORKER": "",
+                                            "SOIRELY_CONFIG": str(self.root / "config")}):
+            self.assertEqual(permissions.apply(self.home, lambda _: None, lambda _: "yes", True,
+                                               show=lambda: ("a" * 40, json.dumps(rules))), 0)
+            _, calls = self.work_with({"result": "ok"})
+        self.assertIn("Bash(docker system df:*)", calls[0][0])
+        self.assertEqual(settings(), before)
 
     def test_the_run_is_recorded_with_its_cost(self):
         entry, calls = self.work_with({"total_cost_usd": 0.42, "num_turns": 9,

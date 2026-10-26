@@ -1,5 +1,6 @@
 """`sq web`: the snapshot it serves, and the page and JSON it answers with."""
 
+import io
 import json
 import pathlib
 import tempfile
@@ -7,6 +8,7 @@ import threading
 import time
 import unittest
 import urllib.request
+from contextlib import redirect_stdout
 from unittest import mock
 
 from soirely_queue import dashboard, runlog, runner, store
@@ -117,6 +119,16 @@ class Snapshot(unittest.TestCase):
         self.assertIn("paused everywhere by tolu-mac: sq resume --everywhere", view["warnings"])
         self.assertIn("dev2 is listed here and on tolu-mac, and neither marks it standby; only "
                       "one runs it", view["warnings"])
+
+    def test_status_says_which_machine_runs_a_role_and_when_it_was_seen(self):
+        from soirely_queue import cli
+        store.set_meta(self.db, "shared_view", {"elsewhere": {"dev2": ["tolu-mac", 40]}})
+        runner.set_started(self.db, ["ops", "dev2"], True)
+        view, out = self.snap(), io.StringIO()
+        with mock.patch.object(cli.dashboard, "snapshot", return_value=view), \
+                mock.patch.object(cli, "home", return_value=self.home), redirect_stdout(out):
+            cli.status(self.db, self.platform, NOW)
+        self.assertIn("  dev2  on tolu-mac, seen 40s ago", out.getvalue())
 
     def test_rules_main_grants_and_this_machine_has_not_applied_are_a_warning(self):
         with mock.patch("soirely_queue.permissions.pending", return_value=["+ a", "- b"]):

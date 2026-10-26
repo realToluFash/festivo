@@ -76,7 +76,8 @@ class Permissions(unittest.TestCase):
                       self.said)
         self.assertIn("  + Bash(xcrun simctl boot:*)  for qa, qa2", self.said)
         self.assertEqual(permissions.applied_path().stat().st_mode & 0o777, 0o600)
-        self.assertEqual(self.apply(answer="no"), 0)
+        self.assertEqual(permissions.apply(self.home, self.said.append, asked.append, True,
+                                           show=lambda: ("a" * 40, json.dumps(RULES))), 0)
         self.assertEqual(len(asked), 1)
         self.assertIn(f"this machine already has every rule main grants at {'a' * 7}",
                       self.said[-1])
