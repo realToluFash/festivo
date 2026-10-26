@@ -100,7 +100,11 @@ export function ListPicker({
       >
         {/* A full-screen modal takes the app's view out of the window, so the app's insets stop turning with it. */}
         <SafeAreaProvider>
-          <View style={styles.fill} onAccessibilityEscape={() => setOpen(false)}>
+          <View
+            style={styles.fill}
+            collapsable={false}
+            onAccessibilityEscape={() => setOpen(false)}
+          >
             <Screen
               style={styles.page}
               contentStyle={beside ? { ...styles.sheet, ...styles.sheetBeside } : styles.sheet}

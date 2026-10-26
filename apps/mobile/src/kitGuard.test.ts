@@ -240,14 +240,26 @@ describe("every dialog closes by VoiceOver's escape (sc-11063)", () => {
       .filter(({ text }) => escapesAnswered(text) < modalsOpened(text))
       .map(({ path }) => path);
 
-    expect(offenders, "Pass onAccessibilityEscape the dialog's own close.").toEqual([]);
+    expect(
+      offenders,
+      "Pass onAccessibilityEscape the dialog's own close, on a View with collapsable={false} or accessibilityViewIsModal.",
+    ).toEqual([]);
   });
 
   it('notices a Modal nothing escapes', () => {
     expect(modalsOpened('<Modal visible={open}>\n  <View />\n</Modal>')).toBe(1);
     expect(escapesAnswered('<Modal visible={open}>\n  <View />\n</Modal>')).toBe(0);
     expect(modalsOpened("import { Modal } from 'react-native';")).toBe(0);
-    expect(escapesAnswered('<View onAccessibilityEscape={onClose}>')).toBe(1);
+  });
+
+  // Fabric flattens a View that only lays out, and its escape goes with it.
+  it('notices an escape on a View that flattens away', () => {
+    expect(escapesAnswered('<View style={s} onAccessibilityEscape={() => close()}>')).toBe(0);
+    expect(escapesAnswered('<View collapsable={false} onAccessibilityEscape={onClose}>')).toBe(1);
+    expect(
+      escapesAnswered('<View\n  accessibilityViewIsModal\n  onAccessibilityEscape={onClose}\n>'),
+    ).toBe(1);
+    expect(escapesAnswered('<View collapsable onAccessibilityEscape={onClose}>')).toBe(0);
   });
 });
 
@@ -619,8 +631,16 @@ function modalsOpened(text: string): number {
   return [...text.matchAll(/(?<![\w.])<Modal\b/gu)].length;
 }
 
+/** How many tags answer the escape on a view that iOS keeps mounted. */
 function escapesAnswered(text: string): number {
-  return [...text.matchAll(/\bonAccessibilityEscape=\{/gu)].length;
+  return [...text.matchAll(/(?<![\w.])<[A-Z][\w.]*/gu)]
+    .map((match) => text.slice(match.index, tagEnd(text, match.index)))
+    .filter(
+      (markup) =>
+        /\bonAccessibilityEscape=\{/u.test(markup) &&
+        (propValue(markup, 'collapsable') === '{false}' ||
+          /\baccessibilityViewIsModal(?!=\{false\})\b/u.test(markup)),
+    ).length;
 }
 
 function caretSet(markup: string): boolean {
