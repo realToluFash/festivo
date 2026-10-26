@@ -30,8 +30,10 @@ setup:
 # ── The containers ───────────────────────────────────────────────────────────
 
 # Start everything and wait until each service can answer, not merely exist.
+# The notification worker answers once the database is migrated.
 up:
-    {{COMPOSE}} up -d --wait
+    {{COMPOSE}} up -d
+    {{COMPOSE}} up -d --wait --no-recreate $(node scripts/stack-services.mjs)
 
 # Stop everything. Volumes survive, so the databases do.
 down:
@@ -52,8 +54,8 @@ logs service="api":
 #
 # Rebuild the API image and restart it.
 rebuild-api:
-    {{COMPOSE}} build api
-    {{COMPOSE}} up -d api
+    {{COMPOSE}} build api notification-worker
+    {{COMPOSE}} up -d api notification-worker
 
 # A shell in the API container.
 shell:

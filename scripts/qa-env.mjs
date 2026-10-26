@@ -22,6 +22,7 @@ import { basename, dirname, extname, join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
+import { composeServices, servicesAfterMigrations, servicesToWait } from './stack-services.mjs';
 
 export const DEVELOPMENT_PORTS = {
   POSTGRES_PORT: 5432,
@@ -596,14 +597,11 @@ function checkout(args) {
 
   step('The stack, rebuilt from this commit');
   run('docker', ['compose', 'up', '-d', '--build'], { cwd: root });
-  // Waits on the lasting services only: --wait fails when a one-shot init container exits 0.
-  const services = JSON.parse(
-    capture('docker', ['compose', 'config', '--format', 'json'], { cwd: root }) ?? '{}',
-  ).services;
-  const lasting = Object.entries(services ?? {})
-    .filter(([, service]) => service.restart !== 'no')
-    .map(([name]) => name);
-  run('docker', ['compose', 'up', '-d', '--wait', '--no-recreate', ...lasting], { cwd: root });
+  run(
+    'docker',
+    ['compose', 'up', '-d', '--wait', '--no-recreate', ...servicesToWait(composeServices(root))],
+    { cwd: root },
+  );
 
   const console_ = ['compose', 'exec', '-T', 'api', 'php', 'bin/console'];
   run('docker', [...console_, 'lexik:jwt:generate-keypair', '--skip-if-exists'], { cwd: root });
@@ -617,6 +615,11 @@ function checkout(args) {
   run('docker', [...console_, 'doctrine:migrations:migrate', '-n', '--allow-no-migration'], {
     cwd: root,
   });
+  run(
+    'docker',
+    ['compose', 'up', '-d', '--wait', ...servicesAfterMigrations(composeServices(root))],
+    { cwd: root },
+  );
 
   status();
   console.log(
