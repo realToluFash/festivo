@@ -567,16 +567,16 @@ final class EventsTest extends ApiTestCase
         self::assertCount(1, self::em()->getRepository(AuditEntry::class)->findBy(['action' => EventLifecycle::MADE_LIVE]));
     }
 
-    /** @return iterable<string, array{string}> */
+    /** @return iterable<string, array{string, string}> */
     public static function notDrafts(): iterable
     {
-        yield 'paused' => ['paused'];
-        yield 'ended' => ['ended'];
+        yield 'paused' => ['paused', 'paused'];
+        yield 'ended' => ['ended', 'finished'];
     }
 
     #[Test]
     #[DataProvider('notDrafts')]
-    public function onlyADraftIsMadeLive(string $status): void
+    public function onlyADraftIsMadeLive(string $status, string $phase): void
     {
         $id = $this->create('Owambe', self::AHEAD);
         self::service(Connection::class)->executeStatement('UPDATE events SET status = :status WHERE id = :id', ['status' => $status, 'id' => $id]);
@@ -584,7 +584,7 @@ final class EventsTest extends ApiTestCase
         $this->as($this->owner, 'POST', '/api/events/' . $id . '/make-live');
 
         self::assertSame(409, $this->statusCode());
-        self::assertSame(ErrorCode::EventStateInvalid->type(), $this->last()['type'] ?? null);
+        self::assertSame([ErrorCode::EventStateInvalid->type(), $phase], [$this->last()['type'] ?? null, $this->last()['phase'] ?? null]);
         self::assertSame($status, $this->event($this->as($this->owner, 'GET', '/api/events/' . $id))['status']);
     }
 

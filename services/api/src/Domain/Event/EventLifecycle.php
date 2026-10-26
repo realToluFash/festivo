@@ -13,6 +13,7 @@ use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Enum\EventAction;
 use App\Enum\EventGuard;
+use App\Enum\EventPhase;
 use App\Http\Exception\ApiException;
 use DateTimeImmutable;
 use Doctrine\DBAL\LockMode;
@@ -39,9 +40,9 @@ final readonly class EventLifecycle
         return $this->entityManager->wrapInTransaction(function () use ($event, $by): Event {
             $this->entityManager->refresh($event, LockMode::PESSIMISTIC_WRITE);
             $before = $event->getStatus();
-            $transition = EventTransition::of($before, EventAction::MakeLive)
-                ?? throw new ApiException(ErrorCode::EventStateInvalid, $this->translator->trans('event.state_invalid'), members: ['status' => $before->value]);
             $now = $this->clock->now();
+            $transition = EventTransition::of($before, EventAction::MakeLive)
+                ?? throw new ApiException(ErrorCode::EventStateInvalid, $this->translator->trans('event.state_invalid'), members: ['phase' => EventPhase::of($before, $event->getStartsAt(), $event->getEndsAt(), $now)->value]);
 
             foreach ($transition->guards as $guard) {
                 $this->check($guard, $event, $now);
