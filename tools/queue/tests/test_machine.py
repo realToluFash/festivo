@@ -99,6 +99,14 @@ class Checked(unittest.TestCase):
         self.assertEqual(errors, [])
         self.assertTrue(refused["ops"].startswith("not listed in"))
 
+    def test_the_ops_refusal_ends_with_the_machine_or_the_host_name(self):
+        named = machine.check(config(self.root, machine="tolu-mac", roles={"lead": {}}))[1]
+        self.assertEqual(named["ops"], f"not listed in {machine.path()}: every machine runs ops, "
+                         "for its own disk, Docker, stacks and manager (ops@tolu-mac)")
+        with mock.patch("socket.gethostname", return_value="tolu-linux"):
+            unnamed = machine.check(config(self.root, machine=None, roles={"lead": {}}))[1]
+        self.assertTrue(unnamed["ops"].endswith("(ops@tolu-linux)"), unnamed["ops"])
+
     def test_a_missing_checkout_is_refused_by_its_path(self):
         refused = machine.check(config(self.root, roles={"lead": {}}))[1]
         self.assertEqual(refused["lead"], f"no checkout at {self.root / 'soirely-lead'}")

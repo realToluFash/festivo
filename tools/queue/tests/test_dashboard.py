@@ -154,10 +154,8 @@ class Snapshot(unittest.TestCase):
                      "other machines",
                      "  tolu-mac  seen 40s ago   dev2, ops"):
             self.assertIn(line, lines)
-        # sc-13674 fixes the rest of the line and tests it.
-        refusal = (f"  ops   refused: not listed in {cli.machine.path()}: every machine runs "
-                   "ops, for its own disk, Docker, stacks and manager")
-        self.assertTrue(any(line.startswith(refusal) for line in lines), lines)
+        self.assertIn(f"  ops   refused: not listed in {cli.machine.path()}: every machine runs "
+                      "ops, for its own disk, Docker, stacks and manager (ops@here)", lines)
 
     def test_rules_main_grants_and_this_machine_has_not_applied_are_a_warning(self):
         with mock.patch("soirely_queue.permissions.pending", return_value=["+ a", "- b"]):

@@ -762,7 +762,7 @@ ASK_PARTS = ("Machine", "Rule", "For", "Without it")
 def this_machine():
     from . import machine
     try:
-        return machine.load().get("machine") or socket.gethostname()
+        return machine.machine_name(machine.load())
     except machine.ConfigError:
         return socket.gethostname()
 
