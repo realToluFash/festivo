@@ -1233,6 +1233,7 @@
     "subtitle_other": "{{organisation}} · {{count}} con acceso",
     "subtitle_many": "{{organisation}} · {{count}} con acceso",
     "ownRole": "No puede cambiar su propio rol. Puede hacerlo otro Propietario, o usted puede ceder el rol Propietario a otra persona en Organización.",
+    "ownRoleOwnerCan": "You cannot change your own role. An owner can.",
     "goToOrganisation": "Ir a Organización ›",
     "fromTheWeb": "Para invitar a alguien, use Soirely en la web.",
     "pickSomebody": "Elija a alguien de la lista para ver aquí sus datos.",

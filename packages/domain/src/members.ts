@@ -65,12 +65,23 @@ export function historyLine(step: HistoryStep, member: string): { key: string; n
 /** What a member's page offers: sc-68's rules, read from the list the screen loaded, and checked again by the API. */
 export type MemberStanding =
   | 'self'
+  | 'selfOwner'
   | 'onlyOwner'
   | 'suspendedOnlyOwner'
   | 'ownerOnly'
   | 'beyondGrant'
   | 'readOnly'
   | 'manageable';
+
+/** sc-13631: on your own page, only an owner is pointed on to hand ownership over. */
+export function ownRoleLine(standing: 'self' | 'selfOwner'): {
+  key: 'ownRole' | 'ownRoleOwnerCan';
+  handsOn: boolean;
+} {
+  return standing === 'selfOwner'
+    ? { key: 'ownRole', handsOn: true }
+    : { key: 'ownRoleOwnerCan', handsOn: false };
+}
 
 interface StandingMember {
   self: boolean;
@@ -89,7 +100,7 @@ export function memberStanding(
     (one) => one.status === 'active' && one.role.seededAs === 'owner',
   ).length;
 
-  if (member.self) return 'self';
+  if (member.self) return owner ? 'selfOwner' : 'self';
   if (member.status === 'left_or_removed') return 'readOnly';
   if (owner && member.status === 'active' && activeOwners === 1) return 'onlyOwner';
   if (!caller.manages) return 'readOnly';

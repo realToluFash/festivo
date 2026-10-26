@@ -1056,6 +1056,7 @@
     "roleSave": "Change their role to {{role}}",
     "roleChanged": "{{name}} is now {{role}}. Takes effect on their next request; nobody is signed out.",
     "ownRole": "You cannot change your own role. Another owner can, or you can hand ownership to somebody in General.",
+    "ownRoleOwnerCan": "You cannot change your own role. An owner can.",
     "goToGeneral": "Go to General ›",
     "onlyOwner": "{{name}} is the only owner. An organisation always has one, so their role cannot change and they cannot be removed until somebody else is an owner too.",
     "askOwner": "Only an owner can make somebody else an owner. Ask {{name}}.",
