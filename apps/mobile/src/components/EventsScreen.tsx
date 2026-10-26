@@ -47,6 +47,8 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
   });
   const load = held.in === organisationId ? held.load : LOADING;
   const [attempt, setAttempt] = useState(0);
+  // An event changed on its page, until the next load reads it from the server too.
+  const [changed, setChanged] = useState<OrganisationEvent | null>(null);
 
   const [selected, setSelected] = useState<Selection>({ in: organisationId, id: linked });
   const current = selectionIn(selected, organisationId);
@@ -56,6 +58,7 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
 
   // The rows stay in place while they reload; a failed load gives way to loading.
   const reload = useCallback(() => {
+    setChanged(null);
     setHeld((before) => ({
       in: before.in,
       load: before.load.kind === 'loaded' ? { ...before.load, refreshing: true } : LOADING,
@@ -93,6 +96,22 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     load.kind === 'loaded' && open != null
       ? (load.events.find((event) => event.id === open) ?? null)
       : null;
+  const manages = organisation != null && roleHolds(organisation, 'events.manage');
+  const latest = (event: OrganisationEvent) => (changed?.id === event.id ? changed : event);
+  const onChange = (event: OrganisationEvent) => {
+    setChanged(event);
+    setHeld((before) =>
+      before.load.kind === 'loaded'
+        ? {
+            in: before.in,
+            load: {
+              ...before.load,
+              events: before.load.events.map((each) => (each.id === event.id ? event : each)),
+            },
+          }
+        : before,
+    );
+  };
   const opened = useOpened(
     open != null && listed == null && (load.kind !== 'loading' || !reads) ? open : null,
     account != null,
@@ -105,9 +124,9 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
 
   const page =
     open == null ? null : listed != null ? (
-      <EventPage kind={kind} event={listed} />
+      <EventPage kind={kind} event={latest(listed)} manages={manages} onChange={onChange} />
     ) : opened.kind === 'loaded' ? (
-      <EventPage kind={kind} event={opened.event} />
+      <EventPage kind={kind} event={latest(opened.event)} manages={manages} onChange={onChange} />
     ) : opened.kind === 'notFound' ? (
       <EventNotFound onBack={() => select(null)} />
     ) : opened.kind === 'failed' ? (
