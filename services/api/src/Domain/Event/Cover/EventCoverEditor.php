@@ -210,7 +210,7 @@ final readonly class EventCoverEditor
         return Regex\matches($uploadKey, '#^' . UploadPurpose::EventCover->value . '/' . $organisation->getId()->toRfc4122() . '/\d{4}/\d{2}/[0-9a-f-]{36}(\.[a-z0-9]{1,8})?$#');
     }
 
-    private function unpublish(string $photoKey): void
+    public function unpublish(string $photoKey): void
     {
         foreach (Vec\keys(CoverPhotoProcessor::SIZES) as $size) {
             $this->objectStore->unpublish(self::sizeKey($photoKey, $size));

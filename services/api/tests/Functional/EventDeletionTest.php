@@ -6,6 +6,8 @@ namespace App\Tests\Functional;
 
 use App\Deletion\Pruner;
 use App\Deletion\Restorer;
+use App\Domain\Event\Cover\CoverPhotoProcessor;
+use App\Domain\Event\Cover\EventCoverEditor;
 use App\Domain\Event\Deletion\EventDeleter;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
@@ -18,6 +20,7 @@ use App\Enum\DeletedKind;
 use App\Enum\ErrorCode;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
+use App\Storage\ObjectStore;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
@@ -254,6 +257,22 @@ final class EventDeletionTest extends ApiTestCase
     }
 
     #[Test]
+    public function aPurgedEventsCoverPhotoIsUnpublishedAndAKeptOnesStays(): void
+    {
+        $id = $this->draft(self::NAME);
+        $photo = $this->withCover($id);
+        $keptPhoto = $this->withCover($this->draft('Kept'));
+        $this->as($this->owner, 'DELETE', '/api/events/' . $id);
+
+        self::mockTime(new DateTimeImmutable('2026-11-16T13:20:00+00:00'));
+        self::em()->clear();
+        self::assertSame(1, self::service(Pruner::class)->prune());
+
+        self::assertSame([false, false, false], $this->published($photo));
+        self::assertSame([true, true, true], $this->published($keptPhoto));
+    }
+
+    #[Test]
     public function anEventInADeletedOrganisationIsRestoredOnlyOnceTheOrganisationIs(): void
     {
         $id = $this->draft(self::NAME);
@@ -289,7 +308,7 @@ final class EventDeletionTest extends ApiTestCase
     public function anOrganisationsPurgeTakesItsEventsDeletedOrNot(): void
     {
         $id = $this->draft(self::NAME);
-        $this->draft('Kept');
+        $photo = $this->withCover($this->draft('Kept'));
         self::mockTime(new DateTimeImmutable('2026-10-18T13:20:00+00:00'));
         $this->as($this->owner, 'DELETE', '/api/events/' . $id);
         self::mockTime(new DateTimeImmutable(self::DELETED_AT));
@@ -299,6 +318,7 @@ final class EventDeletionTest extends ApiTestCase
         self::em()->clear();
         self::assertSame(1, self::service(Pruner::class)->prune());
         self::assertSame(0, $this->eventRows());
+        self::assertSame([false, false, false], $this->published($photo));
     }
 
     private function draft(string $name): string
@@ -307,6 +327,28 @@ final class EventDeletionTest extends ApiTestCase
         self::assertSame(201, $this->statusCode(), Json\encode($body));
 
         return Type\shape(['id' => Type\string()], true)->coerce($body['event'] ?? null)['id'];
+    }
+
+    private function withCover(string $id): string
+    {
+        $photoKey = 'event_cover/' . $id . '/' . Uuid::v7()->toRfc4122();
+        foreach (Vec\keys(CoverPhotoProcessor::SIZES) as $size) {
+            self::service(ObjectStore::class)->publish(EventCoverEditor::sizeKey($photoKey, $size), 'webp', 'image/webp');
+        }
+        self::em()->getConnection()->executeStatement(
+            'INSERT INTO event_covers (event_id, photo_key, position, created_at, updated_at) VALUES (:id, :photo, 50, NOW(), NOW())',
+            ['id' => $id, 'photo' => $photoKey],
+        );
+
+        return $photoKey;
+    }
+
+    /** @return list<bool> */
+    private function published(string $photoKey): array
+    {
+        $bucket = Type\string()->coerce($_SERVER['STORAGE_BUCKET_PUBLIC'] ?? null);
+
+        return Vec\map(Vec\keys(CoverPhotoProcessor::SIZES), static fn (string $size): bool => self::service(ObjectStore::class)->exists($bucket, EventCoverEditor::sizeKey($photoKey, $size)));
     }
 
     private function live(string $name): string
