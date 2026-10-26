@@ -177,6 +177,9 @@ def comment(c, a):
     if to and story.get("archived"):
         raise Refused(f"sc-{story['id']} is archived, so a comment there wakes nobody: ask on "
                       "the story that replaced it, or an open one")
+    files = getattr(a, "files", None) or []
+    if files:
+        c.shortcut.upload(story["id"], files)
     posted = post(c, story, to, a.text, parent)
     if a.reply_to:
         store.mark_handled(c.db, c.role, [a.reply_to])
@@ -186,7 +189,8 @@ def comment(c, a):
                                   else R.FORMER.get(t, t) for t in to}))
         return (f"posted #{posted['id']} on sc-{story['id']}, which is Done: it wakes "
                 f"{woken}. New work goes on an open story or a new one")
-    return f"posted #{posted['id']} on sc-{story['id']}"
+    return (f"posted #{posted['id']} on sc-{story['id']}"
+            f"{f' with {len(files)} files' if files else ''}")
 
 
 def note(c, a):

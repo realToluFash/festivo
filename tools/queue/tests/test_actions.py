@@ -22,6 +22,7 @@ class FakeShortcut:
     def __init__(self):
         self.raw = {}
         self.comments = []
+        self.uploads = []
 
     def add(self, story_id, state, labels=()):
         self.raw[story_id] = {"id": story_id, "name": f"story {story_id}",
@@ -59,7 +60,7 @@ class FakeShortcut:
         return made
 
     def upload(self, story_id, paths):
-        pass
+        self.uploads.append((story_id, list(paths)))
 
 
 def slim(raw):
@@ -601,6 +602,15 @@ class Replies(Base):
         with self.assertRaisesRegex(actions.Refused, "--untagged posts no tag"):
             self.reply(True, "Read.", to="pm")
         self.assertEqual(len(self.fake.raw[1]["comments"]), 1)
+
+    def test_a_reply_carries_its_screenshots_onto_a_passed_story(self):
+        self.fake.update(1, workflow_state_id=IDS["Passsed QA"])
+        said = actions.comment(self.as_("dev2"), args(story="sc-1", to=None, untagged=False,
+                                                      reply_to=self.asked["id"],
+                                                      files=["a.png", "b.png"], text="Rerun."))
+        self.assertEqual(self.fake.uploads, [(1, ["a.png", "b.png"])])
+        self.assertTrue(said.endswith("with 2 files"))
+        self.assertEqual(self.fake.raw[1]["comments"][-1]["parent_id"], self.asked["id"])
 
 
 class Unblocked(Base):
