@@ -41,6 +41,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. O local do evento e a lista de eventos na app** (`web:eventForm.venue*`,
+  `web:eventPage.venue*`, `addVenue`, `openInMaps`, `messages:validation.event_venue_*`,
+  `mobile:eventsScreen.*`, sc-3589 and sc-1593 via sc-13205). Venue is "Local" ("Nome do
+  local", "Local a confirmar", "Adicionar o local"), never "recinto" or "espaço"; its address is
+  "Morada", the postal word, not "Endereço". "Open in maps" is "Ver no mapa". The zone offer asks
+  "Pretende usá-lo?", impersonal and formal. The app's empty list says "na versão web da
+  Soirely", feminine, as everywhere.
+
 - **26 Oct 2026. O tipo de evento** (`web:eventForm.type*`, `web:eventTypes.*`,
   `messages:validation.event_type_required`, sc-3588 via sc-13205). "Tipo", "Escolha o tipo de
   evento", e a recusa, igual no ecrã e na API, "Escolha que tipo de evento é.". Birthday é
