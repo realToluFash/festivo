@@ -170,7 +170,13 @@ final readonly class EventCoverEditor
 
     private function refusal(CoverPhotoRefused $refused): ApiException
     {
-        return ApiException::validation([$this->violation('file', 'validation.cover_' . $refused->reason)]);
+        $key = match ($refused->reason) {
+            'type' => 'validation.cover_type',
+            'size' => 'validation.cover_size',
+            'dimensions' => 'validation.cover_dimensions',
+        };
+
+        return ApiException::validation([$this->violation('file', $key)]);
     }
 
     private static function description(?string $description): ?string
