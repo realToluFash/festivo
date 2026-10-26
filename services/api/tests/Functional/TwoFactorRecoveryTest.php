@@ -709,7 +709,7 @@ final class TwoFactorRecoveryTest extends ApiTestCase
 
         self::em()->flush();
 
-        foreach (self::em()->getRepository(RefreshToken::class)->findBy(['user' => $this->person]) as $token) {
+        foreach (self::em()->getRepository(RefreshToken::class)->findBy(['user' => $this->person], ['id' => 'ASC']) as $token) {
             $ids[] = $token->getId()->toRfc4122();
         }
 
@@ -721,7 +721,7 @@ final class TwoFactorRecoveryTest extends ApiTestCase
     {
         self::em()->clear();
 
-        $sessions = self::em()->getRepository(RefreshToken::class)->findBy(['user' => $this->person]);
+        $sessions = self::em()->getRepository(RefreshToken::class)->findBy(['user' => $this->person], ['id' => 'ASC']);
         $ended = Vec\filter($sessions, static fn (RefreshToken $session): bool => null !== $session->getRevokedAt());
 
         return Vec\map($ended, static fn (RefreshToken $session): string => $session->getId()->toRfc4122());
