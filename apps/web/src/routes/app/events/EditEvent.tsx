@@ -4,6 +4,7 @@ import {
   type EventDraft,
   draftOf,
   eventChanges,
+  scheduleKept,
   shownPhase,
   eventNameLength,
   eventFormErrors,
@@ -179,7 +180,7 @@ function DetailsForm({
   const location = useLocation();
   const locale = currentLocale();
   const saved = opened.event;
-  const [typed, setTyped] = useState<Typed>(() => typedOf(opened));
+  const [entered, setTyped] = useState<Typed>(() => typedOf(opened));
   const [cover, setCover] = useState(saved.cover);
   const [errors, setErrors] = useState<Errors>({});
   const [unsent, setUnsent] = useState(0);
@@ -191,11 +192,15 @@ function DetailsForm({
   const saving = useRef(false);
   const [notSaved, arriveAtNotSaved] = useStepFocus<HTMLParagraphElement>();
   const [saveButton, arriveAtSave] = useStepFocus<HTMLButtonElement>();
-  const { draft, timeZone, currency, venue } = typed;
-  const changes = useMemo(() => eventChanges(saved, typed), [saved, typed]);
   const now = useServerNow();
   const loadedAt = useLoadedAt(saved);
   const over = shownPhase(saved, loadedAt, now) === 'finished';
+  const typed = useMemo(
+    () => (over ? scheduleKept(entered, typedOf(opened)) : entered),
+    [over, entered, opened],
+  );
+  const { draft, timeZone, currency, venue } = typed;
+  const changes = useMemo(() => eventChanges(saved, typed), [saved, typed]);
   const lockedBy = over ? 'event-schedule-over' : undefined;
 
   usePageTitle(pageTitle(t, [t('eventEdit.title'), saved.name]));

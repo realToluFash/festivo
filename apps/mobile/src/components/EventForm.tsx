@@ -18,6 +18,7 @@ import {
   formatWallClock,
   formatWallDay,
   isEventType,
+  scheduleKept,
   shownPhase,
   skippedLine,
   timezoneLabel,
@@ -90,7 +91,7 @@ export function EventForm({
   const [from] = useState<EventTyped>(() =>
     opened == null ? blankEvent(organisation) : typedOf(opened.event),
   );
-  const [typed, setTyped] = useState(from);
+  const [entered, setTyped] = useState(from);
   const [endChosen, setEndChosen] = useState(editing);
   const [errors, setErrors] = useState<EventErrors>({});
   const [unsent, setUnsent] = useState<{ count: number } | null>(null);
@@ -99,13 +100,17 @@ export function EventForm({
   const [fetchingLatest, setFetchingLatest] = useState(false);
   const leaving = useRef(false);
   const leaveAction = useRef<(() => void) | null>(null);
-  const { draft, venue, timeZone, currency } = typed;
   const [cover, setCover] = useState<EventCoverPhoto | null>(opened?.event.cover ?? null);
   const staged = useRef<string | null>(null);
   const busy = status === 'sending';
   const now = useServerNow();
   const loadedAt = useLoadedAt(opened?.event ?? from);
   const over = opened != null && shownPhase(opened.event, loadedAt, now) === 'finished';
+  const typed = useMemo(
+    () => (over ? scheduleKept(entered, from) : entered),
+    [over, entered, from],
+  );
+  const { draft, venue, timeZone, currency } = typed;
   const dirty = isDirty(typed, from) || (!editing && cover != null);
 
   const nameInput = useRef<TextInput>(null);

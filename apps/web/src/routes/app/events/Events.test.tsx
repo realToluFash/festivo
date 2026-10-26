@@ -2037,6 +2037,31 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     expect((document.getElementById('event-time-zone') as HTMLSelectElement).disabled).toBe(true);
     expect((document.getElementById('event-name') as HTMLInputElement).readOnly).toBe(false);
   });
+
+  it('puts back a schedule typed into when the end passes, and still saves the name', async () => {
+    clockAt('2030-11-15T00:59:55Z');
+    signedIn();
+    const sent = answering({ 'GET /api/events/ev_1': () => tagged({ event: live() }) });
+    at('/app/events/ev_1/edit');
+    await screen.findByRole('heading', { level: 1, name: 'Edit details' });
+    const endTime = document.getElementById('event-end-time') as HTMLInputElement;
+
+    fireEvent.change(endTime, { target: { value: '03:00' } });
+    vi.setSystemTime(new Date('2030-11-15T01:00:01Z'));
+    await act(() => vi.advanceTimersByTimeAsync(15_000));
+
+    expect(endTime.readOnly).toBe(true);
+    expect(endTime.value).toBe('02:00');
+    fireEvent.change(document.getElementById('event-name') as HTMLInputElement, {
+      target: { value: 'Adaeze and Tunde, after' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() =>
+      expect(sent.find(({ line }) => line === 'PATCH /api/events/ev_1')?.body).toEqual({
+        name: 'Adaeze and Tunde, after',
+      }),
+    );
+  });
 });
 
 const TYPED = {
