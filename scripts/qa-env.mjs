@@ -381,7 +381,6 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 // QA runs the copy in .qa/bin, gitignored, so checking out an old commit keeps the harness.
 const INSTALLED = basename(HERE) === 'bin' && basename(dirname(HERE)) === '.qa';
 
-// The copy in .qa/bin is this one file, so it imports nothing from beside itself.
 const AFTER_MIGRATIONS = 'soirely.after-migrations';
 
 const lasting = (service) => service.restart !== 'no';
@@ -411,7 +410,8 @@ export function composeServices(cwd) {
   return JSON.parse(result.stdout).services;
 }
 
-// An older compose.yaml may lack the worker; compose leaves it running against the dropped database.
+// An older commit's compose.yaml may not name the worker, and compose leaves its container
+// running, connected to the database the checkout drops.
 export const REBUILD = ['compose', 'up', '-d', '--build', '--remove-orphans'];
 
 export function testerOf(worktree) {
