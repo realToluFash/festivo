@@ -68,8 +68,8 @@ The container also writes `/etc/nginx/soirely-security-headers.conf` at
 start-up, which `nginx.conf` includes in the server block **and in every
 location** — a location that adds a header of its own discards everything
 inherited, so the cache rules would otherwise serve the bundle with no policy.
-It is generated rather than committed because `connect-src` has to name the API
-and Mercure origins. nginx refuses to start if it is missing.
+It is generated rather than committed because the policy has to name the API,
+Mercure and object store origins. nginx refuses to start if it is missing.
 
 **`npm run dev` serves no policy at all**, because there is no nginx in front of
 Vite. So anything the policy forbids works locally and fails in a deployed
