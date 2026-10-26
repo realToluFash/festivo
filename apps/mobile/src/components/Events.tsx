@@ -17,6 +17,7 @@ import { useLoadedAt, useServerNow } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
+import { DeleteEventSection } from './DeleteEvent.tsx';
 import { EventCover } from './EventCover.tsx';
 import { EndRow } from './EndEvent.tsx';
 import { DraftRow } from './MakeLive.tsx';
@@ -208,6 +209,7 @@ export function EventPage({
   manages,
   onChange,
   onEdit,
+  onDeleted,
 }: {
   kind: LayoutKind;
   event: OrganisationEvent;
@@ -215,6 +217,8 @@ export function EventPage({
   onChange: (event: OrganisationEvent) => void;
   /** Absent for a role without events.manage (sc-3595). */
   onEdit?: (() => void) | undefined;
+  /** Absent for a role without events.create (sc-3592). */
+  onDeleted?: ((event: OrganisationEvent) => void) | undefined;
 }) {
   const { t } = useTranslation();
   const now = useServerNow();
@@ -266,6 +270,7 @@ export function EventPage({
       {onEdit != null && (
         <SecondaryButton label={t('eventEdit.open')} onPress={onEdit} testID="events.page.edit" />
       )}
+      {onDeleted != null && <DeleteEventSection kind={kind} event={event} onDeleted={onDeleted} />}
     </View>
   );
 }

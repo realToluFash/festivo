@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Doctrine\Interfaces\SoftDeletableInterface;
+use App\Doctrine\Traits\SoftDeletable;
 use App\Doctrine\Traits\Timestampable;
 use App\Enum\EventStatus;
 use App\Enum\EventType;
@@ -20,8 +22,10 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'events')]
 #[ORM\Index(name: 'idx_event_organisation_starts', columns: ['organisation_id', 'starts_at_utc'])]
 #[ORM\Index(name: 'idx_event_organisation_closes', columns: ['organisation_id', 'closes_at'])]
-class Event
+#[ORM\Index(name: 'idx_event_deleted', columns: ['deleted_at'])]
+class Event implements SoftDeletableInterface
 {
+    use SoftDeletable;
     use Timestampable;
 
     public const int NAME_MAXIMUM = 120;
