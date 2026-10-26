@@ -31,7 +31,7 @@ nothing else can be scheduled, and scheduling an unregistered name throws.
   `NotificationRegistryTest` fails otherwise. Today only email has one; in-app and push come
   with sc-3980.
 - **`eventRule()`** says how the type treats a paused, finished or deleted event
-  (`NotificationEventRule`, epic 36 §9). Only `DeletionNotice` goes after a delete, and
+  (`NotificationEventRule`, epic 36 §9). Only `DeletionNotice` goes while an event is deleted, and
   `AfterConclusion` goes after an event that took place, never one called off.
 - **`tooLateAt()`** is the moment after which the row is recorded **Not sent: too late**.
   It is computed once, when the row is scheduled, and stored.
@@ -125,6 +125,8 @@ between is handled as they are then.
   SMTP takes none, so it is the email's `Message-ID`.
 - **Paused events** hold automatic rows (`held = 'paused'`) and recheck them every minute;
   they go on resume unless too late.
+- **Deleted events** hold their rows (`held = 'deleted'`) until a restore; see
+  [Deleted events](#deleted-events).
 - **It exits** after `--time-limit` or `--memory-limit`, on SIGTERM (finishing the row in
   hand), and when the database connection or the entity manager goes. Its container's
   restart is the reconnect. `--once` handles what is due and exits.
@@ -135,7 +137,7 @@ between is handled as they are then.
 
 `app:notifications:check` runs every minute outside the worker and writes a `critical` log
 line on each of three symptoms. A row is waiting once it is due and nothing holds it: not a
-pause, not a retry's backoff, not a claim in progress.
+pause or a delete, not a retry's backoff, not a claim in progress.
 
 - **Stopped**: a row has waited more than 5 minutes and nothing was claimed in the last 5.
 - **Behind**: the oldest waiting row has waited more than 30 minutes.
@@ -148,6 +150,11 @@ The local stack runs no scheduler, so run it by hand there. sc-1612 routes the l
 An event is soft-deleted (sc-3592) and purged 30 days later; its rows go with it under the
 foreign key's cascade. The worker reads the event past the soft-delete filter, so a
 deletion notice can still go after the delete. An event whose organisation is deleted
-counts as deleted too. A deleted event's due rows are cancelled, all but its deletion
-notice. A deleted organisation's members are no longer an audience, so a notice to them
-must be resolved before the organisation goes.
+counts as deleted too. Its deletion notice still goes. Every other row it would still take
+if it were not deleted waits for a restore (`held = 'deleted'`), rechecked every minute; a
+row it would not take anyway, such as an automatic row once the event has finished, is
+cancelled. A due row is held before fan-out, because a deleted organisation's members are
+no longer an audience and a deleted event's guests are read through a live event, so a
+fan-out would reach nobody. A held row past its too-late moment is recorded **Not sent:
+too late**. Once the event or its organisation is restored, the held rows go within a
+minute, each to its audience as it resolves then.
