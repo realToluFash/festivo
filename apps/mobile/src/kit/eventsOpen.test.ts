@@ -1,7 +1,7 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { openedOf, selectionIn } from './eventsOpen.ts';
+import { openedOf, openedWithoutAsking, selectionIn } from './eventsOpen.ts';
 
 const gala: OrganisationEvent = {
   id: 'evt_gala',
@@ -61,5 +61,19 @@ describe('an event read on its own', () => {
   it('failed, to be tried again, on anything else', () => {
     expect(openedOf({ error: answered(500) }, 'org_a')).toEqual({ kind: 'failed' });
     expect(openedOf({ error: new TypeError('offline') }, 'org_a')).toEqual({ kind: 'failed' });
+  });
+});
+
+describe('the event open, before asking the API', () => {
+  it('waits for the organisation to load rather than showing not found', () => {
+    expect(openedWithoutAsking(null)).toEqual({ kind: 'loading' });
+  });
+
+  it('shows not found to a role that cannot read events', () => {
+    expect(openedWithoutAsking({ permissions: ['members.read'] })).toEqual({ kind: 'notFound' });
+  });
+
+  it('asks the API for a role that reads events', () => {
+    expect(openedWithoutAsking({ permissions: ['events.read'] })).toBeNull();
   });
 });

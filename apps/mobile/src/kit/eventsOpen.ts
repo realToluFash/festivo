@@ -1,4 +1,5 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
+import { roleHolds } from '@soirely/domain';
 
 /** The event open, and the organisation it was opened in: undefined while the account was still loading. */
 export interface Selection {
@@ -36,4 +37,13 @@ export function openedOf(
     (answer.error.status === 404 || answer.error.status === 403)
     ? { kind: 'notFound' }
     : { kind: 'failed' };
+}
+
+/** Settled without asking the API: loading until the organisation has loaded, then not found for a role that cannot read events, as the API would answer. */
+export function openedWithoutAsking(
+  organisation: { permissions: readonly string[] } | null,
+): Opened | null {
+  if (organisation == null) return { kind: 'loading' };
+
+  return roleHolds(organisation, 'events.read') ? null : { kind: 'notFound' };
 }

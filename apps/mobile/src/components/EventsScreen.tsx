@@ -1,4 +1,4 @@
-import type { OrganisationEvent } from '@soirely/api-client';
+import type { Membership, OrganisationEvent } from '@soirely/api-client';
 import { roleHolds } from '@soirely/domain';
 import { Redirect, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
@@ -7,7 +7,13 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
-import { type Opened, type Selection, openedOf, selectionIn } from '../kit/eventsOpen.ts';
+import {
+  type Opened,
+  type Selection,
+  openedOf,
+  openedWithoutAsking,
+  selectionIn,
+} from '../kit/eventsOpen.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -89,8 +95,7 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
       : null;
   const opened = useOpened(
     open != null && listed == null && (load.kind !== 'loading' || !reads) ? open : null,
-    organisationId,
-    reads,
+    organisation,
   );
 
   if (organisation != null && !reads && open == null) {
@@ -170,6 +175,7 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
           ))
         }
         pageInFront={inFront}
+        pageKey={open ?? ''}
         pageBelowUpright
         back={{
           label: t('eventsScreen.title'),
@@ -194,12 +200,14 @@ function Waiting({ words }: { words: string }) {
   );
 }
 
-/** An event opened by a link is read on its own, since the list may not hold it. A role that cannot read events is shown not found, as the API would answer, without asking it. */
+/** An event opened by a link is read on its own, since the list may not hold it. */
 function useOpened(
   eventId: string | null,
-  organisationId: string | undefined,
-  reads: boolean,
+  organisation: Membership | null,
 ): Opened & { retry: () => void } {
+  const organisationId = organisation?.id;
+  const settled = openedWithoutAsking(organisation);
+  const asks = settled == null;
   const [held, setHeld] = useState<{ for: string | null; opened: Opened }>({
     for: null,
     opened: { kind: 'loading' },
@@ -212,7 +220,7 @@ function useOpened(
   }, []);
 
   useEffect(() => {
-    if (eventId == null || organisationId == null || !reads) return;
+    if (eventId == null || organisationId == null || !asks) return;
     let live = true;
 
     api.event(eventId).then(
@@ -224,9 +232,9 @@ function useOpened(
     return () => {
       live = false;
     };
-  }, [eventId, organisationId, reads, key, attempt]);
+  }, [eventId, organisationId, asks, key, attempt]);
 
-  if (!reads) return { kind: 'notFound', retry };
+  if (settled != null) return { ...settled, retry };
 
   return { ...(held.for === key ? held.opened : { kind: 'loading' }), retry };
 }
