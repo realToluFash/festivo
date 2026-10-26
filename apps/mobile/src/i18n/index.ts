@@ -25,10 +25,6 @@ import { getLocales } from 'expo-localization';
 /* eslint-disable import/no-named-as-default-member */
 import i18next from 'i18next';
 import { initReactI18next, useTranslation } from 'react-i18next';
-// Plural rules for the runtime, which Hermes does not ship with a full ICU.
-// Without it `_one`/`_other` silently resolves to the key path on device while
-// working perfectly in a browser.
-import 'intl-pluralrules';
 
 import en from './locales/en.json';
 import es from './locales/es.json';
