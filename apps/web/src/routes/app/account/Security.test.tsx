@@ -1188,7 +1188,7 @@ describe('adding a password to a Google account', () => {
           ],
           phoneNumbers: [],
         }),
-      'GET /api/orgs': () => json({ organisations: [] }),
+      'GET /api/orgs': () => json({ organisations: [MEMBERSHIP] }),
     });
 
     openSecurity();
@@ -1499,7 +1499,7 @@ describe('where focus carries on (sc-11369)', () => {
         'POST /api/auth/password/set/code': () => json({ stepUp: 'the-step-up' }),
         'POST /api/auth/password/set': () => new Response(null, { status: 204 }),
         'GET /api/auth/me': () => json(ME),
-        'GET /api/orgs': () => json({ organisations: [] }),
+        'GET /api/orgs': () => json({ organisations: [MEMBERSHIP] }),
       });
       openSecurity();
 
