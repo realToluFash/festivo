@@ -49,6 +49,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. Publicar un borrador y los estados del evento** (sc-13956, sc-3584,
+  `eventLive.*` web y app, `events.*`, `eventsScreen.*`, `messages:event.*`,
+  `event.plan_limit`). "Make live" es «Publicar», como ya dice el permiso «Crear, publicar,
+  pausar y concluir eventos». Los estados concuerdan con «evento»: «Borrador», «Publicado»,
+  «En pausa», «Finalizado». Una negativa empieza «No se ha publicado.», como «No se ha
+  guardado.»; el colega es «otra persona». El límite del plan dice «Su plan {{plan}} permite
+  tener {{count}} evento publicado o en pausa a la vez», con «de eventos» en `many`, y es la
+  misma frase en pantalla y en la API. «Call off» es «cancelar».
 - **26 Oct 2026. El lugar del evento y la lista de eventos en la app** (`web:eventForm.venue*`,
   `web:eventPage.venue*`, `addVenue`, `openInMaps`, `messages:validation.event_venue_*`,
   `mobile:eventsScreen.*`, sc-3589 y sc-1593 via sc-13205). Venue es «Lugar» («Nombre del
