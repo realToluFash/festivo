@@ -460,6 +460,8 @@ export interface OrganisationSignInRules {
 export type SignInRulesChanges = Partial<Omit<OrganisationSignInRules, 'changedAt'>>;
 
 export interface SignInRuleChange {
+  /** The saved change it came from; one save that changes two rules gives two rows with the same entry. */
+  entry: string;
   at: string;
   by: { name: string; role: MemberRole | null };
   rule: (typeof RULES)[number];
@@ -1518,6 +1520,22 @@ export class ApiClient {
     });
 
     if (!response.ok) throw new Error(`The store refused the upload with ${response.status}.`);
+  }
+
+  /** For a browser that cannot show the original (sc-13861); refused on `file` as setEventCover refuses it. */
+  async previewEventCoverUpload(organisationId: string, uploadKey: string): Promise<string> {
+    const body = await this.post<{ preview?: unknown }>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/event-cover-uploads/preview`,
+      { uploadKey },
+    );
+
+    if (typeof body?.preview !== 'string' || !body.preview.startsWith('data:image/')) {
+      throw new Error(
+        'The API answered a cover preview in a shape this client does not know. Check the event cover controller in services/api.',
+      );
+    }
+
+    return body.preview;
   }
 
   /** A photo uploaded and then not used, deleted so its original, metadata and all, is not kept. */
@@ -3068,10 +3086,18 @@ function asSignInRuleChange(raw: unknown): SignInRuleChange | null {
   const was = asRuleValue(change.was);
   const rule = RULES.find((one) => one === change.rule);
 
-  if (typeof change.at !== 'string' || typeof by.name !== 'string' || rule == null) return null;
+  if (typeof change.entry !== 'string' || typeof change.at !== 'string') return null;
+  if (typeof by.name !== 'string' || rule == null) return null;
   if (now === undefined || was === undefined) return null;
 
-  return { at: change.at, by: { name: by.name, role: asMemberRole(by.role) }, rule, now, was };
+  return {
+    entry: change.entry,
+    at: change.at,
+    by: { name: by.name, role: asMemberRole(by.role) },
+    rule,
+    now,
+    was,
+  };
 }
 
 function asSignInRulesPage(raw: unknown): SignInRulesPage | null {

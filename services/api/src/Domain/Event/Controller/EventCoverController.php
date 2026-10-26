@@ -64,6 +64,17 @@ final readonly class EventCoverController
         return new Response(status: Response::HTTP_NO_CONTENT);
     }
 
+    /** The photo uploaded and not yet saved, re-encoded, for a browser that cannot show the original (sc-13861). */
+    #[Route('/api/orgs/{organisationId}/event-cover-uploads/preview', name: 'event_cover_uploads_preview', methods: ['POST'])]
+    #[InOrganisation(Permission::EventsManage)]
+    public function preview(Request $request, string $organisationId): JsonResponse
+    {
+        $body = Input::body($request, Type\shape(['uploadKey' => Type\string()]));
+        $organisation = $this->organisationRepository->find($organisationId) ?? throw ApiException::notFound('access.not_found');
+
+        return new JsonResponse(['preview' => $this->eventCoverEditor->preview($organisation, $body['uploadKey'])]);
+    }
+
     /** `uploadKey` is a new photo; left out, the saved photo keeps its file and takes the position and description. */
     #[Route('/api/events/{eventId}/cover', name: 'event_cover_update', methods: ['PUT'])]
     #[InEvent(Permission::EventsManage)]

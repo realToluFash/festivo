@@ -35,7 +35,7 @@
 export const tokens = {
   // ── Colour · text and surfaces ─────────────────────────────────────────────
   colorInk: '#15171C', // primary text; also the dark surface (banners, toasts, speaker phone, support bar)
-  colorInkSecondary: '#6B7280', // secondary text, 4.5:1 on white. The most-used colour in the product (1,026 uses)
+  colorInkSecondary: '#5F6673', // secondary text, 4.5:1 on every light surface (lowest: colorHeaderTrack 4.55). The most-used colour in the product (1,026 uses)
   colorInkTertiary: '#9CA3AF', // decoration, placeholders, disabled text, the "Not coming" dot. Fails 4.5:1: never for information
   colorInkOnDark: '#FFFFFF',
   colorInkOnDarkSecondary: '#D1D5DB', // secondary text on dark surfaces (room screen, speaker phone, support bar, landing banner)

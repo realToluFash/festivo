@@ -4,7 +4,7 @@ import { type ReactNode, useState } from 'react';
 import { Image, PixelRatio, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Defs, Path, Pattern, Rect } from 'react-native-svg';
 
-import { coverPlacement, coverSource } from '../kit/eventCover.ts';
+import { coverPlacement, coverShown, coverSource, defaultFor } from '../kit/eventCover.ts';
 import { tokens } from '../theme/tokens.ts';
 
 const W = 320;
@@ -24,15 +24,17 @@ export function EventCover({
 }) {
   const [frame, setFrame] = useState<{ width: number; height: number } | null>(null);
   const [photo, setPhoto] = useState<{ width: number; height: number } | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
   const source =
     cover == null || frame == null
       ? null
       : coverSource(cover.sizes, PixelRatio.getPixelSizeForLayoutSize(frame.width));
+  const shown = coverShown(cover, source, failed);
   const placed =
     cover == null || frame == null || photo == null
       ? null
       : coverPlacement(frame, photo, cover.position);
-  const described = cover?.description ?? null;
+  const described = shown.description;
 
   return (
     <View
@@ -45,7 +47,7 @@ export function EventCover({
       accessibilityElementsHidden={described == null}
       testID={testID}
     >
-      {cover == null ? (
+      {cover == null || !shown.photo ? (
         <DefaultCover type={type} />
       ) : (
         source != null && (
@@ -54,6 +56,7 @@ export function EventCover({
             style={placed == null ? StyleSheet.absoluteFill : [styles.photo, placed]}
             resizeMode="cover"
             onLoad={({ nativeEvent }) => setPhoto(nativeEvent.source)}
+            onError={() => setFailed(source)}
           />
         )
       )}
@@ -62,7 +65,8 @@ export function EventCover({
 }
 
 function DefaultCover({ type }: { type: EventType }) {
-  const { background, shapes } = PATTERNS[type];
+  const known = defaultFor(type);
+  const { background, shapes } = PATTERNS[known];
 
   return (
     <Svg
@@ -70,7 +74,7 @@ function DefaultCover({ type }: { type: EventType }) {
       height="100%"
       viewBox={`0 0 ${W} ${H}`}
       preserveAspectRatio="xMidYMid slice"
-      testID={`cover-default-${type}`}
+      testID={`cover-default-${known}`}
     >
       <Rect width={W} height={H} fill={background} />
       {shapes}

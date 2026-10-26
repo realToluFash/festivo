@@ -136,7 +136,7 @@ Two things to know before changing it:
   `fonts.googleapis.com`, the font files it names from `fonts.gstatic.com`. Self-hosting
   Instrument Sans and JetBrains Mono would remove both sources and is the better end
   state.
-- Images are `'self' data:` and the object store's public origin, which the container
+- Images are `'self' data: blob:` and the object store's public origin, which the container
   takes from `SOIRELY_STORAGE_URL` (compose passes `STORAGE_PUBLIC_ENDPOINT`). A store
   moved behind another host, a CDN say, is a change to that variable.
 

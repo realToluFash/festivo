@@ -80,7 +80,7 @@ fi
 
 # Uploaded images (event covers, avatars) are served from the object store's
 # public origin, which is never 'self'.
-IMG="'self' data:"
+IMG="'self' data: blob:"
 STORAGE_ORIGIN="$(origin_of "${SOIRELY_STORAGE_URL:-}")"
 if [ -n "$STORAGE_ORIGIN" ]; then
     IMG="$IMG $STORAGE_ORIGIN"
