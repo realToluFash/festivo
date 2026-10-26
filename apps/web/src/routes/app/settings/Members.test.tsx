@@ -757,6 +757,18 @@ describe('inviting somebody', () => {
     expect(removed.hasAttribute('aria-describedby')).toBe(false);
   });
 
+  it('gives Remove from ‹organisation› its full label as title and name, cut to one line (sc-13483)', async () => {
+    signedIn();
+    answering({ ...READS, 'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)) });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    const remove = screen.getByRole('button', { name: 'Remove from Ìrè Events' });
+
+    expect(remove.getAttribute('title')).toBe('Remove from Ìrè Events');
+    expect(remove.querySelector('.button-label')?.textContent).toBe('Remove from Ìrè Events');
+  });
+
   it('keeps focus on Remove ‹name› while it runs and once it fails with no connection (sc-11487)', async () => {
     signedIn();
     answering({ ...READS, 'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)) });
@@ -1327,7 +1339,7 @@ describe('inviting somebody', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /^Folake Adeyemi/ }));
 
-    expect(screen.getByText(/You can't change your own role/)).toBeDefined();
+    expect(screen.getByText(/You cannot change your own role/)).toBeDefined();
     expect(screen.queryByRole('radio')).toBeNull();
     expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull();
   });
@@ -1462,7 +1474,7 @@ describe('suspending and restoring a member', () => {
 
     expect(
       screen.getByText(
-        "Owners can't be suspended. To suspend Kemi Lawal, change their role first.",
+        'Owners cannot be suspended. To suspend Kemi Lawal, change their role first.',
       ),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Suspend' })).toBeNull();
@@ -1556,7 +1568,7 @@ describe('suspending and restoring a member', () => {
         ),
       ).toBeDefined();
       expect(screen.getByText(way)).toBeDefined();
-      expect(screen.getByText("Suspended members don't take a seat.")).toBeDefined();
+      expect(screen.getByText('Suspended members do not take a seat.')).toBeDefined();
       expect(screen.getByRole('button', { name: 'Open Members ›' })).toBeDefined();
       expect(screen.queryByRole('link', { name: 'Change the plan ›' })).toBeNull();
       expect(
@@ -1589,7 +1601,7 @@ describe('suspending and restoring a member', () => {
 
     expect(
       await screen.findByText(
-        "Someone else changed the access for Bisi Adeyemi while this page was open, so your change wasn't made. This is how it stands now.",
+        'Someone else changed the access for Bisi Adeyemi while this page was open, so your change was not made. This is how it stands now.',
       ),
     ).toBeDefined();
     expect(await screen.findByRole('button', { name: 'Restore access' })).toBeDefined();
@@ -1648,7 +1660,7 @@ describe('suspending and restoring a member', () => {
 
     expect(
       await screen.findByText(
-        "Someone else changed the access for Bisi Adeyemi while this page was open, so your change wasn't made. This is how it stands now.",
+        'Someone else changed the access for Bisi Adeyemi while this page was open, so your change was not made. This is how it stands now.',
       ),
     ).toBeDefined();
     expect(await screen.findByRole('button', { name: 'Restore access' })).toBeDefined();

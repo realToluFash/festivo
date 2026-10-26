@@ -415,6 +415,104 @@ class Run(unittest.TestCase):
         self.run_once(ON_ONE, dry_run=True)
         self.assertEqual(self.remote.refs, {})
 
+    def test_one_machine_alone_takes_every_lease_and_wakes_as_before(self):
+        store.record(self.db, [work("ops"), work("dev2"), work("lead")], ON_ZERO)
+        self.run_once()
+        self.run_once(ON_ONE)
+        self.assertEqual(sorted(r for r, _, _ in self.platform.launched), ["dev2", "lead", "ops"])
+        for role in ("ops", "dev2", "lead"):
+            self.assertEqual(self.remote.data(shared.role_ref(role))["machine"], "here")
+        self.assertFalse([s for s in self.said if "running on" in s or "held back" in s
+                          or "standby" in s])
+
+    def test_every_minute_writes_a_heartbeat_paused_or_not(self):
+        self.config["roles"]["lead"] = {"standby": True}
+        self.run_once()
+        beat = self.remote.data(shared.machine_ref("here"))
+        self.assertEqual((beat["at"], beat["started"], beat["standby"]),
+                         (ON_ZERO, ["dev2", "lead", "ops"], ["lead"]))
+        self.assertEqual(beat["listed"], ["dev2", "lead", "ops"])
+        store.set_meta(self.db, "paused", "now")
+        self.run_once(ON_ZERO + 3 * MINUTE)
+        self.assertEqual(self.remote.data(shared.machine_ref("here"))["at"], ON_ZERO + 3 * MINUTE)
+
+    def test_a_minute_that_stops_before_github_writes_no_heartbeat(self):
+        with mock.patch.dict("os.environ", {"SHORTCUT_API_TOKEN": ""}):
+            self.run_once()
+        self.config.update(claudeVersion="2.1.300", onVersionDrift="stop")
+        self.run_once(ON_ZERO + 3 * MINUTE)
+        self.config.pop("claudeVersion")
+        self.config["roles"]["qa9"] = {}
+        self.run_once(ON_ZERO + 6 * MINUTE)
+        self.assertEqual(self.remote.refs, {})
+
+    def test_a_role_this_machine_refuses_gives_its_lease_back(self):
+        self.run_once()
+        self.assertIn(shared.role_ref("lead"), self.remote.refs)
+        (self.root / "soirely-lead").rmdir()
+        self.run_once(ON_ZERO + 3 * MINUTE)
+        self.assertNotIn(shared.role_ref("lead"), self.remote.refs)
+        self.assertIn(shared.role_ref("ops"), self.remote.refs)
+
+    def test_a_machine_without_ops_listed_refuses_only_ops(self):
+        del self.config["roles"]["ops"]
+        store.record(self.db, [work("ops"), work("dev2")], ON_ZERO)
+        self.run_once(ON_ONE)
+        self.assertTrue(any(s.startswith("error: ops: not listed in") for s in self.said))
+        self.assertEqual([r for r, _, _ in self.platform.launched], ["dev2"])
+        runner.set_started(self.db, ["ops"], False)
+        self.run_once(ON_ONE + 3 * MINUTE)
+        self.assertTrue(any(s.startswith("refused: ops: not listed in") for s in self.said))
+
+    def test_machine_work_is_never_claimed(self):
+        store.record(self.db, [self.machine_work()], ON_ZERO)
+        self.run_once()
+        self.assertEqual([r for r, _, _ in self.platform.launched], ["ops"])
+        self.assertFalse([ref for ref in self.remote.refs
+                          if ref.startswith("refs/soirely/claims/")])
+
+    def test_a_claim_lost_to_another_machine_gives_the_item_back(self):
+        store.record(self.db, [dict(work("lead"), story_id=7)], ON_ZERO)
+        create = self.remote.create
+
+        def taken_first_on_another_machine(ref, message):
+            if ref.startswith("refs/soirely/claims/"):
+                create(ref, shared.record("claim", role="lead", machine="tolu-mac",
+                                          at=ON_ZERO))
+            return create(ref, message)
+
+        self.remote.create = taken_first_on_another_machine
+        self.run_once()
+        self.assertEqual(self.platform.launched, [])
+        self.assertIsNone(store.held_by(self.db, "lead", ON_ZERO))
+        self.assertIn("lead: sc-7 was just taken on another machine", self.said)
+
+    def test_every_hold_but_the_disk_stops_this_machines_own_ops_work(self):
+        holds = {
+            "budget": lambda: (self.config.update(dailyBudgetUsd=5),
+                               runlog.append(self.home, "lead",
+                                             {"at": runner.time.time(), "cost_usd": 6.5})),
+            "pause": lambda: store.set_meta(self.db, "paused", "now"),
+            "everywhere": lambda: shared.pause_everywhere(self.remote, "tolu-mac", ON_ZERO),
+            "drift": lambda: self.config.update(claudeVersion="2.1.300", onVersionDrift="stop"),
+        }
+        for name, hold in holds.items():
+            with self.subTest(name):
+                self.setUp()
+                hold()
+                store.record(self.db, [self.machine_work()], ON_ZERO)
+                self.run_once()
+                self.assertEqual(self.platform.launched, [])
+
+    def test_a_pause_everywhere_keeps_every_heartbeat_and_lease(self):
+        self.run_once()
+        shared.pause_everywhere(self.remote, "tolu-mac", ON_ZERO)
+        self.run_once(ON_ZERO + 10 * MINUTE)
+        self.assertEqual(self.remote.data(shared.machine_ref("here"))["at"], ON_ZERO + 10 * MINUTE)
+        self.assertEqual(self.remote.data(shared.role_ref("dev2"))["machine"], "here")
+        self.assertIn("paused everywhere by tolu-mac: sq resume --everywhere starts every "
+                      "machine again", self.said)
+
 class Command(unittest.TestCase):
     VALUES = {"model": "claude-opus-5-5", "effort": "medium"}
 
@@ -472,6 +570,45 @@ class Worker(unittest.TestCase):
                               load=lambda: config(self.root),
                               prepare=lambda *_: ("c" * 40, None), now=ON_ZERO)
         return entry, calls
+
+    def test_a_worker_starts_with_its_roles_applied_rules_and_the_denied_list(self):
+        applied = [{"rule": "Bash(docker system df:*)", "roles": ["ops"]},
+                   {"rule": "Bash(maestro test:*)", "roles": ["qa"]},
+                   {"rule": "Bash(just prune-build-cache)", "roles": ["all"]}]
+        with mock.patch("soirely_queue.permissions.applied", return_value=applied):
+            _, calls = self.work_with({"result": "ok"})
+        argv = calls[0][0]
+        granted = argv[argv.index("--allowedTools") + 1:argv.index("--disallowedTools")]
+        self.assertEqual(granted, ["Bash(docker system df:*)", "Bash(just prune-build-cache)"])
+        denied = argv[argv.index("--disallowedTools") + 1:]
+        for rule in ("Bash(just agents:*)", "Bash(systemctl --user:*)", "Bash(launchctl:*)"):
+            self.assertIn(rule, denied)
+        self.assertIn(f"Edit(/{self.root / 'claude'}/**)", denied)
+
+    def test_a_worker_with_nothing_applied_gets_no_allowed_tools(self):
+        with mock.patch("soirely_queue.permissions.applied", return_value=[]):
+            _, calls = self.work_with({"result": "ok"})
+        self.assertNotIn("--allowedTools", calls[0][0])
+
+    def test_neither_apply_nor_a_worker_writes_a_claude_settings_file(self):
+        from soirely_queue import permissions
+        login(self.root / "claude")
+        (self.root / "claude" / "settings.json").write_text('{"permissions": {}}')
+        (self.root / "soirely-ops" / ".claude").mkdir()
+        (self.root / "soirely-ops" / ".claude" / "settings.json").write_text('{"env": {}}')
+
+        def settings():
+            return {path: path.read_bytes() for path in self.root.rglob("settings*.json")}
+
+        before = settings()
+        rules = {"rules": [{"rule": "Bash(docker system df:*)", "roles": ["ops"], "ask": 1}]}
+        with mock.patch.dict("os.environ", {"SOIRELY_WORKER": "",
+                                            "SOIRELY_CONFIG": str(self.root / "config")}):
+            self.assertEqual(permissions.apply(self.home, lambda _: None, lambda _: "yes", True,
+                                               show=lambda: ("a" * 40, json.dumps(rules))), 0)
+            _, calls = self.work_with({"result": "ok"})
+        self.assertIn("Bash(docker system df:*)", calls[0][0])
+        self.assertEqual(settings(), before)
 
     def test_the_run_is_recorded_with_its_cost(self):
         entry, calls = self.work_with({"total_cost_usd": 0.42, "num_turns": 9,

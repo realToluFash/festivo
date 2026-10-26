@@ -17,6 +17,7 @@ use App\Tests\Fixtures\OpenIdConnect\TestSigningKeys;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestWith;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;
@@ -94,6 +95,34 @@ final class GoogleSignInTest extends ApiTestCase
 
         $this->assertRefused();
         self::assertSame(0, self::service(ProviderIdentityRepository::class)->count([]));
+    }
+
+    /** sc-13266: an empty `email` is no address, whatever `email_verified` says. */
+    #[Test]
+    #[TestWith([''])]
+    #[TestWith(['   '])]
+    public function aBlankAddressOnAFirstSignInIsRefusedAsUnverified(string $blank): void
+    {
+        $body = $this->signIn($this->token(['sub' => 'g-blank', 'email' => $blank]));
+
+        $this->assertRefused();
+        self::assertSame('That sign-in did not come with a verified address.', $body['detail'] ?? null);
+        self::assertSame(0, self::service(UserRepository::class)->count([]), 'no account created');
+        self::assertSame(0, self::service(ProviderIdentityRepository::class)->count([]));
+    }
+
+    #[Test]
+    #[TestWith([''])]
+    #[TestWith(['   '])]
+    public function aBlankAddressOnALaterSignInKeepsTheOneOnRecord(string $blank): void
+    {
+        $first = $this->signIn($this->token(['sub' => 'g-kept', 'email' => 'qa@example.com']));
+        $second = $this->signIn($this->token(['sub' => 'g-kept', 'email' => $blank]));
+
+        self::assertSame(200, $this->statusCode(), Json\encode($second));
+        self::assertSame($this->accountId($first), $this->accountId($second));
+        $identity = self::service(ProviderIdentityRepository::class)->findOneBySubject(IdentityProvider::Google, 'g-kept');
+        self::assertSame('qa@example.com', $identity?->getEmail());
     }
 
     /** Linking to an address nobody proved would keep the password of whoever typed it there. */

@@ -205,5 +205,12 @@
     "assistant.too_many_tools": "Au plus {most} outils peuvent être proposés ; cette requête en propose {count}.",
     "assistant.resource_context_too_long": "Le contexte de la ressource peut compter au plus {most} caractères ; celui-ci en compte {count}. Envoyez ce qui est à l’écran, pas la fiche entière.",
     "assistant.role_unknown": "Rôle de message inconnu : \"{role}\". Rôles connus : user, assistant, tool_call, tool_result.",
-    "sign_in.idle_timeout": "{organisation} ferme les sessions après {days} jours d’inactivité. Reconnectez-vous pour poursuivre."
+    "sign_in.idle_timeout": "{organisation} ferme les sessions après {days} jours d’inactivité. Reconnectez-vous pour poursuivre.",
+    "validation.cover_type": "Ce fichier n’est pas une photo utilisable. Choisissez un fichier JPEG, PNG, WebP ou HEIC.",
+    "validation.cover_size": "Cette photo dépasse 15 Mo. Choisissez-en une plus légère.",
+    "validation.cover_dimensions": "Cette photo fait moins de 1200 × 675 pixels et paraîtrait floue. Choisissez-en une plus grande.",
+    "validation.cover_description_too_long": "Raccourcissez la description à {count} caractères maximum.",
+    "validation.cover_position_invalid": "Choisissez une position entre 0, le haut de la photo, et 100, le bas.",
+    "validation.cover_photo_required": "Choisissez une photo de couverture.",
+    "validation.cover_upload_missing": "La photo n’a pas pu être importée. Réessayez."
 }

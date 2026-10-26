@@ -36,6 +36,7 @@ import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoice
 import { Forbidden } from '../Forbidden.tsx';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
+import { CoverSection } from './CoverSection.tsx';
 import { Choice, FieldError, Moment } from './EventFields.tsx';
 import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
 import { typeChoices } from './eventTypes.ts';
@@ -180,6 +181,7 @@ function DetailsForm({
   const locale = currentLocale();
   const saved = opened.event;
   const [typed, setTyped] = useState<Typed>(() => typedOf(opened));
+  const [cover, setCover] = useState(saved.cover);
   const [errors, setErrors] = useState<Errors>({});
   const [unsent, setUnsent] = useState(0);
   const [status, setStatus] = useState<Status>('editing');
@@ -210,11 +212,13 @@ function DetailsForm({
   );
 
   const [toVenue] = useState(() => location.hash === '#venue');
+  const [toCover] = useState(() => location.hash === '#cover');
 
   useEffect(() => {
     if (reread) document.getElementById('event-name')?.focus();
     else if (toVenue) document.getElementById('event-venue-name')?.focus();
-  }, [reread, toVenue]);
+    else if (toCover) document.getElementById('cover-upload')?.focus();
+  }, [reread, toVenue, toCover]);
 
   useEffect(() => {
     if (!dirty) return;
@@ -398,6 +402,21 @@ function DetailsForm({
             onChange={(value) => edit('type', { type: isEventType(value) ? value : '' })}
           />
         </section>
+
+        <CoverSection
+          type={draft.type}
+          photo={cover}
+          organisationId={saved.organisationId}
+          onUse={async ({ upload, position, description }) => {
+            const updated = await api.setEventCover(saved.id, {
+              ...(upload == null ? {} : { uploadKey: upload.key }),
+              position,
+              description,
+            });
+            setCover(updated.cover);
+          }}
+          onRemove={async () => setCover((await api.removeEventCover(saved.id)).cover)}
+        />
 
         <section className="card" aria-labelledby="event-when">
           <h2 id="event-when">{t('eventForm.whenHeading')}</h2>

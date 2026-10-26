@@ -1241,8 +1241,8 @@
     "suspendedBody": "Cette personne ne peut plus utiliser {{organisation}}. Son rôle, ses événements et son historique sont conservés.",
     "restoreAccess": "Rétablir l’accès",
     "seatsInUse_one": "La seule place d’équipe du forfait de cette organisation est occupée, rien n’a donc changé.",
-    "seatsInUse_other": "Les {{count}} places d’équipe du forfait de cette organisation sont toutes occupées, rien n’a donc changé.",
-    "seatsInUse_many": "Les {{count}} de places d’équipe du forfait de cette organisation sont toutes occupées, rien n’a donc changé.",
+    "seatsInUse_other": "Les {{count, number}} places d’équipe du forfait de cette organisation sont toutes occupées, rien n’a donc changé.",
+    "seatsInUse_many": "Les {{count, number}} de places d’équipe du forfait de cette organisation sont toutes occupées, rien n’a donc changé.",
     "suspendedBecause": {
       "address_gone": "{{name}} n’a plus d’adresse {{domain}} sur son compte.",
       "domain_closed": "{{organisation}} n’accepte plus les adhésions via {{domain}}.",
