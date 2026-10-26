@@ -41,6 +41,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. A decorrer, terminar ou cancelar um evento** (sc-14189 para sc-3585,
+  `events.happeningNow`, `eventsScreen.happeningNow`, `eventEnd.*` web e app,
+  `eventEdit.schedule*`, `messages:event.already_over|schedule_concluded`). "A decorrer" na
+  pílula, a forma pt-PT, nunca "Acontecendo agora". "End now" é "Terminar agora", como o estado
+  "Terminado"; "Call off" é "Cancelar o evento", com o nome, porque um "Cancelar" sozinho lê-se
+  como o botão que fecha o diálogo. A saída é "Manter o evento" nos dois diálogos. Uma recusa
+  começa "Não foi terminado.". Os convidados são "os convidados que abrirem a sua ligação". A
+  data do aviso leva "no dia {{date}}", pela regra do dia da semana. `scheduleLocked` e
+  `scheduleConcluded` são a mesma frase: o português não tem a contração que as distingue.
 - **26 Oct 2026. Publicar um rascunho e os estados de um evento** (sc-13956, sc-3584,
   `eventLive.*` web e app, `events.*`, `eventsScreen.*`, `messages:event.*`,
   `event.plan_limit`). "Make live" é "Publicar", como a permissão "Criar, publicar, pausar e

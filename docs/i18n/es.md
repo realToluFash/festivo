@@ -49,6 +49,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. En curso, finalizar o cancelar un evento** (sc-14189 para sc-3585,
+  `events.happeningNow`, `eventsScreen.happeningNow`, `eventEnd.*` web y app,
+  `eventEdit.schedule*`, `messages:event.already_over|schedule_concluded`). «En curso» en la
+  píldora. "End now" es «Finalizar ahora», como el estado «Finalizado»; "Call off" es
+  «Cancelar el evento», con el sustantivo, porque un «Cancelar» solo se lee como el botón que
+  cierra el diálogo. La salida es «Mantenerlo» en los dos diálogos, nunca «Cancelar». Una
+  negativa empieza «No se ha finalizado.». Los invitados son «los invitados que abran su
+  enlace». La fecha lleva «el {{date}}», como «desde el {{date}}». `scheduleLocked` y
+  `scheduleConcluded` son la misma frase: el español no tiene la contracción que las distingue.
 - **26 Oct 2026. Publicar un borrador y los estados del evento** (sc-13956, sc-3584,
   `eventLive.*` web y app, `events.*`, `eventsScreen.*`, `messages:event.*`,
   `event.plan_limit`). "Make live" es «Publicar», como ya dice el permiso «Crear, publicar,

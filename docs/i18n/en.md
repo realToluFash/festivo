@@ -62,6 +62,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. Happening now, ending or calling off an event** (sc-14189 for sc-3585,
+  `web:events.happeningNow`, `mobile:eventsScreen.happeningNow`, `eventEnd.*` web and app,
+  `eventEdit.scheduleLocked|scheduleConcluded`, `messages:event.already_over|schedule_concluded`).
+  Settled as sc-3585 wrote it. Before the start the act is "Call off" (it won't go ahead); from
+  the start it is "End now"; afterwards the event is "Finished", as sc-3584 settled. A refusal
+  starts "Not ended.", as "Not made live." does. The confirmation's way out is "Keep it on", for
+  both acts, never "Cancel", which in es, fr and pt is the same word as calling off. The read-only
+  help line (`scheduleLocked`) explains, so it keeps "can't"; the refusal of a save that changes
+  the dates anyway (`scheduleConcluded`) and the API's say "cannot". es, fr and pt write the two
+  as one sentence. Guests are "Guests following their link", the people who open the invitation.
 - **26 Oct 2026. Making a draft event live, and the event states** (sc-13956, sc-3584,
   `eventLive.*` web and app, `events.live|paused|finished`, `eventsScreen.*`,
   `messages:event.state_invalid`, `event.concluded`, `messages+intl-icu:event.plan_limit`).

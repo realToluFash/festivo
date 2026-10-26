@@ -1434,7 +1434,7 @@
     "newEvent": "New event",
     "noneCreate": "Create your first event to start planning.",
     "live": "Publicado",
-    "happeningNow": "Happening now",
+    "happeningNow": "A decorrer",
     "paused": "Em pausa",
     "finished": "Terminado"
   },
@@ -1502,8 +1502,8 @@
     "leaveTitle": "Sair sem guardar?",
     "leave": "Sair sem guardar",
     "saved": "Alterações guardadas",
-    "scheduleConcluded": "This event is over, so its start, end and time zone cannot be changed.",
-    "scheduleLocked": "This event is over, so its start, end and time zone can't be changed."
+    "scheduleConcluded": "Este evento terminou, por isso o início, o fim e o fuso horário já não podem ser alterados.",
+    "scheduleLocked": "Este evento terminou, por isso o início, o fim e o fuso horário já não podem ser alterados."
   },
   "eventCover": {
     "heading": "Capa",
@@ -1560,18 +1560,18 @@
     "close": "Fechar"
   },
   "eventEnd": {
-    "callOff": "Call off",
-    "endNow": "End now",
-    "callOffTitle": "Call off {{name}}?",
-    "callOffBody": "It won't go ahead. Guests following their link will be told.",
-    "endTitle": "End {{name}} now?",
-    "endBody": "It will be over for everybody.",
-    "final": "You can't undo this.",
-    "keepItOn": "Keep it on",
-    "failed": "Not ended. Try again in a moment.",
-    "notEnded": "Not ended.",
-    "alreadyOver": "This event is already over.",
-    "calledOffNotice": "Called off on {{date}}, before it started. Guests following their link are told it won't go ahead.",
-    "close": "Close"
+    "callOff": "Cancelar o evento",
+    "endNow": "Terminar agora",
+    "callOffTitle": "Cancelar {{name}}?",
+    "callOffBody": "O evento não se vai realizar. Os convidados que abrirem a sua ligação serão avisados.",
+    "endTitle": "Terminar {{name}} agora?",
+    "endBody": "O evento vai terminar para todos.",
+    "final": "Esta ação não pode ser anulada.",
+    "keepItOn": "Manter o evento",
+    "failed": "Não foi terminado. Tente novamente daqui a pouco.",
+    "notEnded": "Não foi terminado.",
+    "alreadyOver": "Este evento já terminou.",
+    "calledOffNotice": "Cancelado no dia {{date}}, antes de começar. Os convidados que abrem a sua ligação são informados de que não se vai realizar.",
+    "close": "Fechar"
   }
 }
