@@ -49,10 +49,11 @@ export function General() {
   const refused = refusedIn === organisation.id;
 
   return (
-    <div className="settings">
+    <div className="settings settings-general">
       <SettingsSections />
       <div className="settings-heading">
         <h1>{t('orgGeneral.title')}</h1>
+        <p className="settings-organisation">{organisation.name}</p>
         <p>{t('orgGeneral.intro')}</p>
       </div>
 
@@ -267,7 +268,7 @@ function Editable({
         />
       </div>
 
-      <div>
+      <div className="settings-save">
         <button className="button button-primary" type="submit" aria-busy={busy}>
           {busy ? t('orgGeneral.saving') : t('orgGeneral.save')}
         </button>

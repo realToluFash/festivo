@@ -1923,6 +1923,71 @@ span {
   max-width: 85rem;
 }
 
+/* The name under the heading is OrgGeneral-Phone's; the desktop boards leave it to the switcher. */
+.settings-organisation {
+  display: none;
+}
+
+/* ── Settings > General at phone width (OrgGeneral-Phone-v2, sc-13348) ────── */
+
+@media (width <= 40rem) {
+  .settings-general {
+    gap: var(--spaceXxl);
+  }
+
+  .settings-general .settings-heading h1 {
+    font: var(--typeTitlePhone);
+    letter-spacing: var(--typeTitlePhoneTracking);
+  }
+
+  .settings-general .settings-heading .settings-organisation {
+    display: block;
+    color: var(--colorInk);
+    font: var(--typeRowTitle);
+    overflow-wrap: anywhere;
+  }
+
+  .settings-general .settings-fields {
+    flex-flow: column nowrap;
+  }
+
+  .settings-general .settings-fields .field {
+    flex: none;
+  }
+
+  .settings-general .input,
+  .settings-general .settings-save .button {
+    min-height: var(--sizeHitPhonePrimary);
+  }
+
+  /* 16px is the smallest size iOS Safari will not zoom into on focus. */
+  .settings-general .input {
+    font-size: 1rem;
+  }
+
+  .settings-general .settings-save .button {
+    width: 100%;
+    font-size: 1rem;
+  }
+
+  .settings-general .settings-read-only div {
+    flex-direction: column;
+  }
+
+  .settings-general .settings-read-only dt {
+    flex: none;
+  }
+
+  .settings-general .settings-read-only dd {
+    overflow-wrap: anywhere;
+  }
+
+  .settings-general .ownership-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 /* Roles-Desktop: the list beside the role, wrapping to one column, with flex as the app needs. */
 .roles {
   display: flex;
