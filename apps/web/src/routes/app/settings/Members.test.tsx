@@ -1339,7 +1339,7 @@ describe('inviting somebody', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /^Folake Adeyemi/ }));
 
-    expect(screen.getByText(/You can't change your own role. Another owner can/)).toBeDefined();
+    expect(screen.getByText(/You cannot change your own role. Another owner can/)).toBeDefined();
     expect(screen.getByRole('link', { name: /Go to General/ }).getAttribute('href')).toBe(
       '/app/settings',
     );
