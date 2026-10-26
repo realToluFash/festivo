@@ -54,6 +54,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. La couverture d’un événement** (sc-13587, `web:eventCover.*`,
+  `messages:validation.cover_*`). La section s’appelle « Image de couverture », jamais
+  « Couverture » seul, qui se lit comme une assurance ou une zone desservie ; le dialogue,
+  « Photo de couverture ». « Importer une photo », pas « Téléverser », qui sonne québécois ;
+  « Retirer la photo », comme le glossaire. Les tailles s’écrivent en Mo, « 15 Mo ». La ligne de
+  l’événement créé, « L’événement a été enregistré sans sa photo. {{reason}} », se lit avec
+  n’importe quel refus à la suite.
 - **26 Oct 2026. Le type d’événement** (`web:eventForm.type*`, `web:eventTypes.*`,
   `messages:validation.event_type_required`, sc-3588 via sc-13205). « Type », « Choisissez le
   type d’événement », et le refus, identique à l’écran et dans l’API, « Choisissez de quel type
