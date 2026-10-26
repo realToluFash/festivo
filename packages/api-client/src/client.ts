@@ -460,6 +460,8 @@ export interface OrganisationSignInRules {
 export type SignInRulesChanges = Partial<Omit<OrganisationSignInRules, 'changedAt'>>;
 
 export interface SignInRuleChange {
+  /** The saved change it came from; one save that changes two rules gives two rows with the same entry. */
+  entry: string;
   at: string;
   by: { name: string; role: MemberRole | null };
   rule: (typeof RULES)[number];
@@ -3068,10 +3070,18 @@ function asSignInRuleChange(raw: unknown): SignInRuleChange | null {
   const was = asRuleValue(change.was);
   const rule = RULES.find((one) => one === change.rule);
 
-  if (typeof change.at !== 'string' || typeof by.name !== 'string' || rule == null) return null;
+  if (typeof change.entry !== 'string' || typeof change.at !== 'string') return null;
+  if (typeof by.name !== 'string' || rule == null) return null;
   if (now === undefined || was === undefined) return null;
 
-  return { at: change.at, by: { name: by.name, role: asMemberRole(by.role) }, rule, now, was };
+  return {
+    entry: change.entry,
+    at: change.at,
+    by: { name: by.name, role: asMemberRole(by.role) },
+    rule,
+    now,
+    was,
+  };
 }
 
 function asSignInRulesPage(raw: unknown): SignInRulesPage | null {

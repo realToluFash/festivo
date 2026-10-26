@@ -412,6 +412,27 @@ final class SignInRulesTest extends ApiTestCase
     }
 
     #[Test]
+    public function twoChangesToOneRuleAreTwoRowsNewestFirstEachNamingTheSaveItCameFrom(): void
+    {
+        $this->set(['inactivityTimeoutDays' => 7]);
+        $body = $this->set(['inactivityTimeoutDays' => null]);
+
+        $changes = Type\vec(Type\shape(['entry' => Type\string(), 'rule' => Type\string(), 'now' => Type\mixed(), 'was' => Type\mixed()], true))->coerce($body['changes']);
+        self::assertSame([[null, 7], [7, null]], Vec\map($changes, static fn (array $change): array => [$change['now'], $change['was']]));
+        self::assertNotSame($changes[0]['entry'], $changes[1]['entry']);
+    }
+
+    #[Test]
+    public function oneSaveThatChangesTwoRulesGivesTwoRowsFromOneEntry(): void
+    {
+        $body = $this->set(['providerOnly' => true, 'inactivityTimeoutDays' => 30]);
+
+        $changes = Type\vec(Type\shape(['entry' => Type\string()], true))->coerce($body['changes']);
+        $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => 'sign_in_rules.changed']);
+        self::assertSame([$entry?->getId()->toRfc4122(), $entry?->getId()->toRfc4122()], Vec\map($changes, static fn (array $change): string => $change['entry']));
+    }
+
+    #[Test]
     public function savingTheRulesAsTheyAreRecordsAndSendsNothing(): void
     {
         $this->set(['providerOnly' => false, 'inactivityTimeoutDays' => null]);

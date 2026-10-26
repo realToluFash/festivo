@@ -192,7 +192,7 @@ function Changes({ kind, changes }: { kind: LayoutKind; changes: SignInRuleChang
         </Text>
       ) : (
         changes.map((change) => (
-          <View key={`${change.at}-${change.rule}`} style={styles.row}>
+          <View key={`${change.entry}-${change.rule}`} style={styles.row}>
             <Text size={tokens.typeLabel.size} muted>
               {t('signInRules.changeWhen', {
                 day: formatDay(change.at, locale),

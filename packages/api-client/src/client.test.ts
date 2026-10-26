@@ -810,6 +810,7 @@ describe('a browser never holds the refresh token', () => {
       inactivityChoices: [7, 30],
       changes: [
         {
+          entry: 'entry_1',
           at: '2026-10-19T10:00:00+00:00',
           by: { name: 'Adaeze Okafor', role: { id: 'role_1', seededAs: 'owner', name: null } },
           rule: 'providerOnly',
@@ -845,6 +846,7 @@ describe('a browser never holds the refresh token', () => {
     const read = await client.signInRules('org_1');
     await client.updateSignInRules('org_1', { providerOnly: true });
 
+    expect(read.changes[0]?.entry).toBe('entry_1');
     expect(read.changes[0]?.by.name).toBe('Adaeze Okafor');
     expect(read.passwordOnly?.[0]?.name).toBe('Bola Ade');
     expect(read.ownTwoFactor).toBe(true);

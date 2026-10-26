@@ -139,7 +139,7 @@ final readonly class SignInRulesController
         ];
     }
 
-    /** @return list<array<string, mixed>> one per rule changed, newest first, with what it was */
+    /** @return list<array<string, mixed>> one per rule changed, newest first, with what it was and the entry it was saved in */
     private function changes(Organisation $organisation): array
     {
         $entries = $this->auditEntryRepository->findLatest(SignInRulesEditor::SUBJECT, $organisation->getId(), SignInRulesEditor::CHANGED, self::CHANGES_SHOWN);
@@ -148,6 +148,7 @@ final readonly class SignInRulesController
         foreach ($entries as $entry) {
             foreach ($entry->getChanges() as $rule => [$was, $now]) {
                 $changes[] = [
+                    'entry' => $entry->getId()->toRfc4122(),
                     'at' => $entry->getOccurredAt()->format(DateTimeInterface::ATOM),
                     'by' => $this->by($entry, $organisation),
                     'rule' => $rule,
