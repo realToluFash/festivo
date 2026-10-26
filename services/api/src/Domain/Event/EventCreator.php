@@ -22,7 +22,7 @@ final readonly class EventCreator
     ) {
     }
 
-    /** @param array{name: ?string, type: ?string, startsAt: ?string, endsAt: ?string, timeZone: ?string, currency: ?string} $fields zone and currency default to the organisation's */
+    /** @param array{name: ?string, type: ?string, startsAt: ?string, endsAt: ?string, timeZone: ?string, currency: ?string, venue: array{name?: ?string, address?: ?string, addressId?: ?string}|null} $fields zone and currency default to the organisation's */
     public function create(Organisation $organisation, User $by, array $fields): Event
     {
         $checked = $this->eventRules->check([
@@ -32,9 +32,11 @@ final readonly class EventCreator
             'endsAt' => $fields['endsAt'],
             'timeZone' => $fields['timeZone'] ?? $organisation->getTimezone(),
             'currency' => $fields['currency'] ?? $organisation->getCurrency(),
+            'venue' => $fields['venue'],
         ]);
 
         $event = new Event($organisation, $checked['name'], $checked['type'], $checked['startsAt'], $checked['endsAt'], $checked['currency']);
+        EventVenue::write($event, $checked['venue'] ?? null);
         $this->entityManager->persist($event);
 
         $this->auditor->record(self::CREATED, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), [
@@ -45,6 +47,7 @@ final readonly class EventCreator
             'endsAt' => [null, $event->getEndsAt()->format(\DATE_ATOM)],
             'timeZone' => [null, $event->getTimeZone()],
             'currency' => [null, $event->getCurrency()],
+            ...Auditor::diff([], EventEditor::venueRecorded($event)),
         ]);
 
         $this->entityManager->flush();

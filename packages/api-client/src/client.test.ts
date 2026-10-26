@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, test, vi } from 'vitest';
 
 import {
@@ -2213,6 +2214,7 @@ describe('events (sc-1486)', () => {
     dayCount: 2,
     currency: 'NGN',
     cover: null,
+    venue: null,
     createdAt: '2026-10-21T09:00:00+00:00',
   };
 
@@ -2431,5 +2433,114 @@ describe('claiming an organisation with no active owner (sc-6640)', () => {
         'org_1',
       ),
     ).toEqual({ ownerClaim: banner, told: false });
+  });
+});
+
+describe("an event's venue (sc-3589)", () => {
+  const picked: unknown = JSON.parse(
+    readFileSync(
+      new URL('../../../services/api/tests/Fixtures/Venue/picked-venue.json', import.meta.url),
+      'utf8',
+    ),
+  );
+
+  const event = {
+    id: 'e1',
+    organisationId: 'o1',
+    name: 'Owambe',
+    type: 'wedding',
+    status: 'draft',
+    startsAt: '2026-11-14T16:00:00+01:00',
+    endsAt: '2026-11-15T02:00:00+01:00',
+    timeZone: 'Africa/Lagos',
+    dayCount: 2,
+    currency: 'NGN',
+    cover: null,
+    createdAt: '2026-10-26T09:00:00+00:00',
+  };
+
+  function client(response: Response, sent: string[] = []) {
+    return {
+      api: new ApiClient({
+        baseUrl: () => 'http://api.test',
+        tokens: store('live', null),
+        fetch: async (url, init) => {
+          const target = new URL(String(url));
+          sent.push(`${init?.method ?? 'GET'} ${target.pathname}${target.search}`);
+
+          return response;
+        },
+      }),
+      sent,
+    };
+  }
+
+  test('reads the venue the API serves for a picked address', async () => {
+    const read = await client(json({ event: { ...event, venue: picked } })).api.event('e1');
+
+    expect(read.venue).toEqual(picked);
+  });
+
+  test('reads no venue, and a typed one', async () => {
+    const typed = {
+      name: null,
+      address: {
+        formatted: '12 Bode Thomas Street',
+        line1: null,
+        line2: null,
+        city: null,
+        region: null,
+        postalCode: null,
+        countryCode: null,
+        latitude: null,
+        longitude: null,
+      },
+    };
+
+    expect((await client(json({ event: { ...event, venue: null } })).api.event('e1')).venue).toBe(
+      null,
+    );
+    expect(
+      (await client(json({ event: { ...event, venue: typed } })).api.event('e1')).venue,
+    ).toEqual(typed);
+  });
+
+  test('refuses an event with no venue field, naming where to look', async () => {
+    await expect(client(json({ event })).api.event('e1')).rejects.toThrow(/events controller/);
+  });
+
+  const answers = JSON.parse(
+    readFileSync(
+      new URL('../../../services/api/tests/Fixtures/Address/lookup-answers.json', import.meta.url),
+      'utf8',
+    ),
+  ) as { suggest: unknown; resolve: unknown };
+
+  test('asks for suggestions from three characters, and reads them as the API serves them', async () => {
+    const sent: string[] = [];
+    const { api } = client(json({ success: true, data: answers.suggest }), sent);
+
+    expect(await api.addressSuggestions('Oz')).toEqual([]);
+    expect(await api.addressSuggestions(' Ozumba ')).toEqual([
+      {
+        id: 'node:3589',
+        text: 'Ozumba Mbadiwe Avenue',
+        secondaryText: 'Victoria Island, Lagos, Nigeria',
+      },
+    ]);
+    expect(sent).toEqual(['GET /api/addresses/suggest?q=Ozumba']);
+  });
+
+  test('reads a picked address with its time zone as the API serves it', async () => {
+    const { api, sent } = client(json({ success: true, data: answers.resolve }));
+
+    const address = await api.address('node:3589');
+
+    expect(address).toMatchObject({
+      postalCode: '101241',
+      countryCode: 'NG',
+      timeZone: 'Africa/Lagos',
+    });
+    expect(sent).toEqual(['GET /api/addresses/node%3A3589']);
   });
 });

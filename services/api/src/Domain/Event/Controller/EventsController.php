@@ -59,6 +59,7 @@ final readonly class EventsController
             'endsAt' => Type\optional(Type\nullable(Type\string())),
             'timeZone' => Type\optional(Type\nullable(Type\string())),
             'currency' => Type\optional(Type\nullable(Type\string())),
+            'venue' => Type\optional(self::venue()),
         ]));
 
         $event = $this->eventCreator->create($this->organisation($organisationId), $this->user(), [
@@ -68,6 +69,7 @@ final readonly class EventsController
             'endsAt' => $body['endsAt'] ?? null,
             'timeZone' => $body['timeZone'] ?? null,
             'currency' => $body['currency'] ?? null,
+            'venue' => $body['venue'] ?? null,
         ]);
 
         return new JsonResponse(['event' => $this->eventSerialiser->event($event)], Response::HTTP_CREATED);
@@ -80,7 +82,7 @@ final readonly class EventsController
         return $this->tagged($this->event($eventId));
     }
 
-    /** Any of the six fields; those left out keep their value. Needs If-Match with the ETag it read (sc-3587). */
+    /** Any of the seven fields; those left out keep their value, and a `venue` of null removes it. Needs If-Match with the ETag it read (sc-3587). */
     #[Route('/api/events/{eventId}', name: 'events_update', methods: ['PATCH'])]
     #[InEvent(Permission::EventsManage)]
     public function update(Request $request, string $eventId): JsonResponse
@@ -93,9 +95,24 @@ final readonly class EventsController
             'endsAt' => Type\optional(Type\string()),
             'timeZone' => Type\optional(Type\string()),
             'currency' => Type\optional(Type\string()),
+            'venue' => Type\optional(self::venue()),
         ]));
 
         return $this->tagged($this->eventEditor->edit($event, $request->headers->get('If-Match'), $this->user(), $body));
+    }
+
+    /**
+     * `addressId` is the suggestion the address was picked from (sc-53); without it the address is kept as typed.
+     *
+     * @return Type\TypeInterface<array{name?: ?string, address?: ?string, addressId?: ?string}|null>
+     */
+    private static function venue(): Type\TypeInterface
+    {
+        return Type\nullable(Type\shape([
+            'name' => Type\optional(Type\nullable(Type\string())),
+            'address' => Type\optional(Type\nullable(Type\string())),
+            'addressId' => Type\optional(Type\nullable(Type\string())),
+        ]));
     }
 
     private function tagged(Event $event): JsonResponse

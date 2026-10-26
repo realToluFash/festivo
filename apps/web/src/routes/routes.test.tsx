@@ -1,12 +1,34 @@
+import { type Account } from '@soirely/api-client';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { followAccount } from '../accountLanguage.ts';
+import { setLanguage } from '../i18n/index.ts';
 import { __setSessionState, type Session } from '../session.ts';
 import { routes } from './index.tsx';
 import { membership } from '../test-memberships.ts';
 
 const MEMBERSHIP = membership({ id: 'org_1', name: 'Okonkwo Events' });
+
+const ADA_ACCOUNT: Account = {
+  id: 'acc_1',
+  name: 'Ada Okonkwo',
+  businessName: null,
+  countryCode: null,
+  organisationCountry: null,
+  locale: null,
+  timezone: null,
+  verified: true,
+  complete: true,
+  needsOrganisation: false,
+  hasPassword: true,
+  twoFactorSetupPrompt: false,
+  waitingFor: null,
+  providers: [],
+  emailAddresses: [],
+  phoneNumbers: [],
+};
 
 const ADA: Session = {
   name: 'Ada Okonkwo',
@@ -37,8 +59,10 @@ function at(path: string) {
   return render(<RouterProvider router={router} />);
 }
 
-afterEach(() => {
+afterEach(async () => {
   vi.restoreAllMocks();
+  await followAccount(ADA_ACCOUNT);
+  await setLanguage(null);
 });
 
 describe('the public tree', () => {
@@ -77,7 +101,25 @@ describe('the application tree', () => {
     expect(screen.getByText('Signed in as Ada Okonkwo')).toBeDefined();
   });
 
-  it('shows an account in no organisation where it stands, and keeps the navigation', () => {
+  it('opens in the account language, with no Automatic, after Automatic was picked outside (sc-9797)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
+    await followAccount({ ...ADA_ACCOUNT, locale: 'es' });
+    await setLanguage(null);
+
+    at('/app');
+
+    const picker = screen.getByRole<HTMLSelectElement>('combobox', { name: 'Idioma' });
+    expect(picker.value).toBe('es');
+    expect([...picker.options].map((option) => option.textContent)).toEqual([
+      'English',
+      'Español',
+      'Français',
+      'Português',
+    ]);
+    expect(screen.getByRole('link', { name: 'Eventos' })).toBeDefined();
+  });
+
+  it('shows an account in no organisation where it stands, with no product page to open', () => {
     __setSessionState({
       status: 'signedIn',
       session: { ...ADA, organisation: null, organisations: [] },
@@ -86,7 +128,7 @@ describe('the application tree', () => {
     at('/app/settings');
 
     expect(screen.getByRole('heading', { name: 'You are not in an organisation' })).toBeDefined();
-    expect(screen.getByRole('link', { name: 'Dashboard' })).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Dashboard' })).toBeNull();
   });
 
   it('sends somebody with no session to sign in, saying nothing about being signed out', async () => {

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router';
 
+import { followSavedLanguage } from '../../accountLanguage.ts';
 import { CreateOrganisation } from '../../components/CreateOrganisation.tsx';
 import { ErrorBoundary } from '../../components/ErrorBoundary.tsx';
 import { LanguagePicker } from '../../components/LanguagePicker.tsx';
@@ -98,6 +99,11 @@ function Shell() {
   const overdue = useTwoFactorStanding(organisation) === 'overdue';
   const switchTo = switchOf(location.state);
 
+  // Before the first paint, so the first signed-in screen is already in the account's language.
+  useLayoutEffect(() => {
+    void followSavedLanguage();
+  }, []);
+
   function switchInto(next: { id: string; name: string }): void {
     setSwitched({ id: next.id, name: next.name, at: pathname });
     void navigate(
@@ -120,6 +126,44 @@ function Shell() {
       { replace: true, state: null },
     );
   }, [switchTo, organisation?.id, session.pausedIn, location, navigate]);
+
+  const atAccount = pathname.startsWith('/app/account');
+
+  // Every product page would open this page again, so it stands alone: only what works without an organisation.
+  if (organisation == null && session.pausedIn == null && !atAccount) {
+    return (
+      <div className="no-organisation-page">
+        <a className="skip-link" href="#content">
+          {t('app.skipToContent')}
+        </a>
+        <header className="public-header">
+          <span className="brand">{t('app.name')}</span>
+          <LanguagePicker automatic={false} />
+        </header>
+        <main id="content" className="no-organisation-main">
+          <LinkedNotice />
+          <ErrorBoundary>
+            <NoOrganisation
+              waiting={waiting}
+              onOpen={(id) => {
+                const joined = session.organisations.find((membership) => membership.id === id);
+
+                switchOrganisation(id);
+                if (joined == null) return;
+                setSwitched({ id, name: joined.name, at: pathname, takesFocus: true });
+                arriveAtSwitched();
+              }}
+              onStarted={(started) => {
+                switchOrganisation(started.id);
+                setSwitched({ id: started.id, name: started.name, at: pathname, takesFocus: true });
+                arriveAtSwitched();
+              }}
+            />
+          </ErrorBoundary>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="shell">
@@ -157,7 +201,7 @@ function Shell() {
         <div className="shell-account">
           <span>{session.name}</span>
           <span className="muted">{session.email}</span>
-          <LanguagePicker />
+          <LanguagePicker automatic={false} />
         </div>
       </aside>
 
@@ -184,7 +228,7 @@ function Shell() {
         )}
 
         <ErrorBoundary>
-          {session.pausedIn != null && !pathname.startsWith('/app/account') ? (
+          {session.pausedIn != null && !atAccount ? (
             <AccessPaused
               paused={session.pausedIn}
               others={session.organisations}
@@ -195,24 +239,7 @@ function Shell() {
               }}
               onChoose={() => setChoosing((times) => times + 1)}
             />
-          ) : organisation == null && !pathname.startsWith('/app/account') ? (
-            <NoOrganisation
-              waiting={waiting}
-              onOpen={(id) => {
-                const joined = session.organisations.find((membership) => membership.id === id);
-
-                switchOrganisation(id);
-                if (joined == null) return;
-                setSwitched({ id, name: joined.name, at: pathname, takesFocus: true });
-                arriveAtSwitched();
-              }}
-              onStarted={(started) => {
-                switchOrganisation(started.id);
-                setSwitched({ id: started.id, name: started.name, at: pathname, takesFocus: true });
-                arriveAtSwitched();
-              }}
-            />
-          ) : organisation != null && overdue && !pathname.startsWith('/app/account') ? (
+          ) : organisation != null && overdue && !atAccount ? (
             <TwoFactorOverdue organisation={organisation} />
           ) : (
             <Outlet />

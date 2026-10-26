@@ -30,6 +30,7 @@ function event(overrides: Record<string, unknown> = {}) {
     dayCount: 2,
     currency: 'NGN',
     cover: null,
+    venue: null,
     createdAt: '2026-10-21T09:00:00+00:00',
     ...overrides,
   };
@@ -281,6 +282,8 @@ describe('New event', () => {
       'event-start-time',
       'event-end-date',
       'event-end-time',
+      'event-venue-name',
+      'event-venue-address',
       'event-time-zone',
       'event-currency',
     ]);
@@ -1324,6 +1327,314 @@ describe("Editing an event's details (sc-3587)", () => {
     expect(sent.filter(({ line }) => line.includes('/api/events/'))).toEqual([]);
   });
 });
+
+describe("An event's venue (sc-3589)", () => {
+  const CIVIC = {
+    id: 'node:7',
+    text: 'The Civic Centre',
+    secondaryText: 'Ozumba Mbadiwe Avenue, Lagos, Nigeria',
+  };
+
+  function resolved(timeZone: string | null) {
+    return {
+      formatted: 'The Civic Centre, Ozumba Mbadiwe Avenue, Lagos, Nigeria',
+      line1: 'Ozumba Mbadiwe Avenue',
+      line2: null,
+      city: 'Lagos',
+      region: null,
+      postal_code: null,
+      country_code: timeZone === 'Europe/Lisbon' ? 'PT' : 'NG',
+      latitude: 6.4316,
+      longitude: 3.4246,
+      time_zone: timeZone,
+    };
+  }
+
+  /** Every request with its body, and the event's resource answered with an ETag. */
+  function serving(answers: Record<string, Answer>, served = event()) {
+    const sent: { line: string; body: unknown }[] = [];
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = new URL(String(input));
+      const line = `${init?.method ?? 'GET'} ${url.pathname}`;
+      const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
+      sent.push({ line: `${line}${url.search}`, body });
+
+      const answer = await answers[line]?.(body);
+      if (answer != null) return answer;
+
+      return new Response(JSON.stringify({ event: served }), {
+        status: 200,
+        headers: { ETag: '"1"' },
+      });
+    });
+
+    return sent;
+  }
+
+  function address(): HTMLInputElement {
+    return screen.getByRole('combobox', { name: 'Address' });
+  }
+
+  async function editing(): Promise<void> {
+    at('/app/events/ev_1/edit');
+    await screen.findByRole('heading', { level: 1, name: 'Edit details' });
+  }
+
+  function patched(sent: { line: string; body: unknown }[]): unknown {
+    return sent.find(({ line }) => line === 'PATCH /api/events/ev_1')?.body;
+  }
+
+  it('sits after Ends, with its hint, in both forms', async () => {
+    signedIn();
+    serving({});
+    at('/app/events/new');
+    await screen.findByRole('heading', { level: 1, name: 'New event' });
+
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((one) => one.textContent);
+    expect(headings).toEqual([
+      'About the event',
+      'Cover',
+      'When',
+      'Venue',
+      'Time zone and currency',
+    ]);
+    expect(screen.getByLabelText(/Venue name/u)).toBeDefined();
+    expect(address().getAttribute('aria-expanded')).toBe('false');
+    expect(document.getElementById('event-venue-address-hint')?.textContent).toBe(
+      'Type at least 3 characters to see suggestions. You can also type any address.',
+    );
+
+    cleanup();
+    await editing();
+    expect(screen.getByRole('heading', { level: 2, name: 'Venue' })).toBeDefined();
+  });
+
+  it('suggests from three characters, picks by keyboard, and sends the suggestion it came from', async () => {
+    signedIn();
+    const sent = serving({
+      'GET /api/addresses/suggest': () =>
+        json({ success: true, data: [{ ...CIVIC, secondary_text: CIVIC.secondaryText }] }),
+      'GET /api/addresses/node%3A7': () => json({ success: true, data: resolved('Africa/Lagos') }),
+    });
+    await editing();
+
+    fireEvent.change(address(), { target: { value: 'Ci' } });
+    fireEvent.change(address(), { target: { value: 'Civic' } });
+    const option = await screen.findByRole('option', { name: /The Civic Centre/u });
+
+    expect(sent.filter(({ line }) => line.startsWith('GET /api/addresses/suggest'))).toEqual([
+      { line: 'GET /api/addresses/suggest?q=Civic', body: null },
+    ]);
+    expect(address().getAttribute('aria-expanded')).toBe('true');
+    fireEvent.keyDown(address(), { key: 'ArrowDown' });
+    expect(address().getAttribute('aria-activedescendant')).toBe(option.id);
+    fireEvent.keyDown(address(), { key: 'Enter' });
+
+    await waitFor(() =>
+      expect(address().value).toBe('The Civic Centre, Ozumba Mbadiwe Avenue, Lagos, Nigeria'),
+    );
+    expect(screen.queryByRole('option', { name: /The Civic Centre/u })).toBeNull();
+    expect(screen.queryByText(/This venue is in/u)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(patched(sent)).toBeDefined());
+    expect(patched(sent)).toEqual({
+      venue: {
+        name: null,
+        address: 'The Civic Centre, Ozumba Mbadiwe Avenue, Lagos, Nigeria',
+        addressId: 'node:7',
+      },
+    });
+  });
+
+  it('saves a typed address as typed, with a name', async () => {
+    signedIn();
+    const sent = serving({ 'GET /api/addresses/suggest': () => json({ success: true, data: [] }) });
+    await editing();
+
+    fireEvent.change(screen.getByLabelText(/Venue name/u), { target: { value: ' Hall 2 ' } });
+    fireEvent.change(address(), { target: { value: '12 Bode Thomas Street' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => expect(patched(sent)).toBeDefined());
+    expect(patched(sent)).toEqual({ venue: { name: 'Hall 2', address: '12 Bode Thomas Street' } });
+    expect(screen.queryByText(/Suggestions aren't available/u)).toBeNull();
+  });
+
+  it('says suggestions are unavailable only when the lookup failed, and still saves the address', async () => {
+    signedIn();
+    const sent = serving({
+      'GET /api/addresses/suggest': () => problem(503, 'service_unavailable'),
+    });
+    await editing();
+
+    fireEvent.change(address(), { target: { value: '12 Bode Thomas Street' } });
+
+    expect(
+      await screen.findByText(
+        "Suggestions aren't available right now. Type the address in full and it will be saved as you typed it.",
+      ),
+    ).toBeDefined();
+    expect(address().getAttribute('aria-describedby')).toContain('event-venue-lookup-down');
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => expect(patched(sent)).toBeDefined());
+    expect(patched(sent)).toEqual({ venue: { name: null, address: '12 Bode Thomas Street' } });
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  describe("the address's time zone", () => {
+    async function picked(): Promise<{ line: string; body: unknown }[]> {
+      signedIn();
+      const sent = serving({
+        'GET /api/addresses/suggest': () =>
+          json({ success: true, data: [{ ...CIVIC, secondary_text: null }] }),
+        'GET /api/addresses/node%3A7': () =>
+          json({ success: true, data: resolved('Europe/Lisbon') }),
+      });
+      await editing();
+
+      fireEvent.change(address(), { target: { value: 'Civic' } });
+      fireEvent.click(await screen.findByRole('option', { name: /The Civic Centre/u }));
+      await screen.findByText('This venue is in Europe/Lisbon. Use it?');
+
+      return sent;
+    }
+
+    it('changes the zone when accepted, keeping the times as typed', async () => {
+      const sent = await picked();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Use Europe/Lisbon' }));
+
+      expect((screen.getByLabelText('Time zone') as HTMLSelectElement).value).toBe('Europe/Lisbon');
+      expect(screen.queryByText(/This venue is in/u)).toBeNull();
+      expect(screen.getByText('Time zone set to Europe/Lisbon.')).toBeDefined();
+      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+      await waitFor(() => expect(patched(sent)).toBeDefined());
+      expect(patched(sent)).toMatchObject({ timeZone: 'Europe/Lisbon' });
+      expect(patched(sent)).not.toHaveProperty('startsAt');
+      expect(patched(sent)).not.toHaveProperty('endsAt');
+    });
+
+    it('keeps the zone when declined', async () => {
+      const sent = await picked();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Keep Africa/Lagos' }));
+
+      expect((screen.getByLabelText('Time zone') as HTMLSelectElement).value).toBe('Africa/Lagos');
+      expect(screen.queryByText(/This venue is in/u)).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+      await waitFor(() => expect(patched(sent)).toBeDefined());
+      expect(patched(sent)).not.toHaveProperty('timeZone');
+    });
+  });
+
+  it('removes the venue when both fields are cleared', async () => {
+    signedIn();
+    const sent = serving(
+      {},
+      event({
+        venue: { name: 'The Civic Centre', address: { ...TYPED, formatted: 'Victoria Island' } },
+      }),
+    );
+    await editing();
+
+    expect(address().value).toBe('Victoria Island');
+    fireEvent.change(screen.getByLabelText(/Venue name/u), { target: { value: '' } });
+    fireEvent.change(address(), { target: { value: ' ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => expect(patched(sent)).toBeDefined());
+    expect(patched(sent)).toEqual({ venue: null });
+  });
+
+  it('refuses a venue name past 120 characters beside it, and sends nothing', async () => {
+    signedIn();
+    const sent = serving({});
+    await editing();
+
+    fireEvent.change(screen.getByLabelText(/Venue name/u), { target: { value: 'a'.repeat(121) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(
+      await screen.findByText('Shorten the venue name to 120 characters or fewer.'),
+    ).toBeDefined();
+    await waitFor(() => expect(document.activeElement?.id).toBe('event-venue-name'));
+    expect(patched(sent)).toBeUndefined();
+  });
+
+  it('shows the venue on the page, the address opening OpenStreetMap at its coordinates', async () => {
+    signedIn();
+    serving(
+      {},
+      event({
+        venue: {
+          name: 'The Civic Centre',
+          address: {
+            ...TYPED,
+            formatted: 'Ozumba Mbadiwe Avenue, Lagos',
+            latitude: 6.4316,
+            longitude: 3.4246,
+          },
+        },
+      }),
+    );
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    const venue = screen.getByRole('group', { name: 'Venue' });
+    expect(within(venue).getByText('The Civic Centre')).toBeDefined();
+    expect(within(venue).getByText('Ozumba Mbadiwe Avenue, Lagos')).toBeDefined();
+    expect(within(venue).getByRole('link', { name: 'Open in maps' }).getAttribute('href')).toBe(
+      'https://www.openstreetmap.org/?mlat=6.4316&mlon=3.4246#map=17/6.4316/3.4246',
+    );
+    expect(screen.queryByText('Venue to be confirmed')).toBeNull();
+  });
+
+  it('shows a typed address with no maps link', async () => {
+    signedIn();
+    serving(
+      {},
+      event({ venue: { name: null, address: { ...TYPED, formatted: '12 Bode Thomas Street' } } }),
+    );
+    at('/app/events/ev_1');
+
+    expect(await screen.findByText('12 Bode Thomas Street')).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Open in maps' })).toBeNull();
+  });
+
+  it('says Venue to be confirmed, with Add the venue only for events.manage, opening the Venue section', async () => {
+    signedIn();
+    serving({});
+    at('/app/events/ev_1');
+    expect(await screen.findByText('Venue to be confirmed')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Add the venue' }));
+    await screen.findByRole('heading', { level: 1, name: 'Edit details' });
+    await waitFor(() => expect(document.activeElement?.id).toBe('event-venue-name'));
+
+    cleanup();
+    signedIn(READER);
+    at('/app/events/ev_1');
+    expect(await screen.findByText('Venue to be confirmed')).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Add the venue' })).toBeNull();
+  });
+});
+
+const TYPED = {
+  formatted: '',
+  line1: null,
+  line2: null,
+  city: null,
+  region: null,
+  postalCode: null,
+  countryCode: null,
+  latitude: null,
+  longitude: null,
+};
 
 describe('The cover (sc-3590)', () => {
   const PHOTO = {

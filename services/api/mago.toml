@@ -248,7 +248,8 @@ permit = [
 ]
 
 # Events check their zone and currency as an organisation's are checked (Regions,
-# AccountTimeZone), and each create goes to the audit trail (sc-1486).
+# AccountTimeZone), and each create goes to the audit trail (sc-1486). A venue's
+# address is picked through the address lookup (sc-3589).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Event\\"
 permit = [
@@ -261,6 +262,7 @@ permit = [
     "@layer:repository",
     "@layer:audit",
     "@layer:storage",
+    "@layer:address",
 ]
 
 # ── Integrations ────────────────────────────────────────────────────────────────

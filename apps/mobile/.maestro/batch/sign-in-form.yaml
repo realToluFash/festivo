@@ -19,17 +19,14 @@ appId: host.exp.Exponent
 - inputText: ${PASSWORD}
 - tapOn:
     id: 'signIn.submit'
-# iOS offers to save the password, over the top of whatever follows, in the device's language.
-- runFlow:
-    when:
-      visible: 'Not Now|Ahora no|Pas maintenant|Agora não'
-    commands:
-      - tapOn: 'Not Now|Ahora no|Pas maintenant|Agora não'
+- runFlow: save-password.yaml
 - runFlow:
     when:
       visible:
         id: 'twoFactor.code'
-    file: ../sign-in-two-factor.yaml
+    commands:
+      - runFlow: ../sign-in-two-factor.yaml
+      - runFlow: save-password.yaml
 - scrollUntilVisible:
     element:
       text: '{{t:any:settings.signedInAs|email}}'
