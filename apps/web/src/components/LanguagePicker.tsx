@@ -14,8 +14,11 @@ import { useSessionState } from '../session.ts';
  *
  * Each language is listed in ITS OWN language. A reader looking for Português
  * is not helped by a list that says "Portuguese".
+ *
+ * The signed-in app's has no Automatic: a choice there is saved to the account,
+ * and the browser's language cannot be (sc-9797).
  */
-export function LanguagePicker() {
+export function LanguagePicker({ automatic = true }: { automatic?: boolean }) {
   const { t } = useTranslation();
   const stored = storedLanguage();
   const signedIn = useSessionState().status === 'signedIn';
@@ -24,15 +27,17 @@ export function LanguagePicker() {
     <label className="language-picker">
       <span className="visually-hidden">{t('language.label')}</span>
       <select
-        value={stored ?? ''}
+        value={stored ?? (automatic ? '' : currentLocale())}
         onChange={(e) =>
           void chooseLanguage(e.target.value === '' ? null : e.target.value, signedIn)
         }
         aria-label={t('language.label')}
       >
-        <option value="" title={t('language.automaticHint')}>
-          {t('language.automatic')} ({currentLocale()})
-        </option>
+        {automatic && (
+          <option value="" title={t('language.automaticHint')}>
+            {t('language.automatic')} ({currentLocale()})
+          </option>
+        )}
         {LOCALES.map((locale) => (
           <option key={locale.code} value={locale.code}>
             {locale.nativeName}
