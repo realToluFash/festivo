@@ -1,26 +1,14 @@
 # With the API paused: the tap on SAVE leaves CANCEL off, and a tap on it closes nothing.
+# The last tap is a second, busy tap on SAVE; cancel-after shows it gave one answer.
 # Run between pausing and unpausing the api, then cancel-after. sc-12545.
 #
 #   node .qa/bin/qa-env.mjs maestro cancel-held SAVE=… CANCEL=… NAME=…
 appId: host.exp.Exponent
 ---
 - runFlow:
-    when:
-      notVisible:
-        id: ${SAVE}
-    commands:
-      - scrollUntilVisible:
-          element:
-            id: ${SAVE}
-          direction: UP
-          timeout: 15000
-          optional: true
-- scrollUntilVisible:
-    element:
-      id: ${SAVE}
-    centerElement: true
-- tapOn:
-    id: ${SAVE}
+    file: scroll-tap.yaml
+    env:
+      ID: ${SAVE}
 - extendedWaitUntil:
     visible:
       id: ${CANCEL}

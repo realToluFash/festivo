@@ -4,22 +4,9 @@
 appId: host.exp.Exponent
 ---
 - runFlow:
-    when:
-      notVisible:
-        id: ${SAVE}
-    commands:
-      - scrollUntilVisible:
-          element:
-            id: ${SAVE}
-          direction: UP
-          timeout: 15000
-          optional: true
-- scrollUntilVisible:
-    element:
-      id: ${SAVE}
-    centerElement: true
-- tapOn:
-    id: ${SAVE}
+    file: scroll-tap.yaml
+    env:
+      ID: ${SAVE}
 - extendedWaitUntil:
     visible: ${TEXT}
     timeout: 5000

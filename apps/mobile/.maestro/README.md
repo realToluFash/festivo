@@ -32,6 +32,10 @@ without relaunching Expo Go or signing in. Each ends with one screenshot.
 | `open-switcher`            | Your organisations               | `mobile-switcher`            |
 | `open-create-organisation` | the Create an organisation sheet | `mobile-create-organisation` |
 
+Two flows tap one control by `testID`, passed as `ID`: `scroll-tap` scrolls to it from above
+or below, for a step inside another flow; `ownership-tap` takes a screenshot of what follows
+and turns off the retry, for a button whose request is held.
+
 A flow a tester writes is posted to `[ops]` on the story they were testing, and ops commits
 it here.
 
