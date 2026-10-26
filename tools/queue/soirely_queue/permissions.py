@@ -20,6 +20,7 @@ RULE = re.compile(r"^([A-Za-z]+)(?:\((.+)\))?$")
 # Tools a rule must narrow: bare, or with only wildcards, each grants the whole tool.
 NARROW = {"Bash", "Edit", "Write", "MultiEdit", "NotebookEdit", "WebFetch"}
 WILDCARD = re.compile(r"^[\s*:/~.]*$")
+WHOLE_TLD = re.compile(r"^\*+\.?[^.]+$")
 
 
 class Invalid(RuntimeError):
@@ -45,8 +46,14 @@ def parse(text, where):
         if not match:
             raise Invalid(f"{where}: {rule!r} is not a permission rule such as "
                                    "Bash(xcrun simctl boot:*)")
-        if match.group(1) in NARROW and WILDCARD.match(match.group(2) or ""):
-            raise Invalid(f"{where}: {rule} grants every {match.group(1)} call; name the "
+        tool, scope = match.group(1), match.group(2) or ""
+        if tool == "WebFetch":
+            scope = scope.removeprefix("domain:")
+            if WILDCARD.match(scope) or WHOLE_TLD.match(scope):
+                raise Invalid(f"{where}: {rule} grants every WebFetch call to a whole "
+                              f"domain; name the host, such as WebFetch(domain:docs.example.com)")
+        elif tool in NARROW and WILDCARD.match(scope):
+            raise Invalid(f"{where}: {rule} grants every {tool} call; name the "
                           f"command or path, such as Bash(xcrun simctl boot:*)")
         if not isinstance(names, list) or not names or any(
                 n != "all" and n not in roles.ROLES for n in names):
