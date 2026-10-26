@@ -505,6 +505,9 @@ on a pass and keeping every other label. A story you claimed always leaves `In Q
 whichever way the pass went. Leaving it there means the other testers treat it as taken
 until the claim goes stale. It refuses a story you have not claimed.
 
+A follow-up pass on a story already passed is not a report: post it with
+`sq qaN comment sc-N --to pm --files …`, which uploads the screenshots the same way.
+
 Then **tag what needs another role** — one `sq qa comment sc-55 --to <role>` per Outstanding
 item that someone else has to decide or fix: `[pm]` for an undecided behaviour, `[ux]` for a
 missing state on an artboard, `[dev]` for a question about the build. See `role-comments`.

@@ -22,6 +22,7 @@ class FakeShortcut:
     def __init__(self):
         self.raw = {}
         self.comments = []
+        self.uploads = []
 
     def add(self, story_id, state, labels=()):
         self.raw[story_id] = {"id": story_id, "name": f"story {story_id}",
@@ -59,7 +60,7 @@ class FakeShortcut:
         return made
 
     def upload(self, story_id, paths):
-        pass
+        self.uploads.append((story_id, list(paths)))
 
 
 def slim(raw):
@@ -333,7 +334,7 @@ class LanguageTags(Base):
     def test_a_language_tag_heads_the_comment_and_reaches_the_linguist(self):
         self.fake.add(1, "To Do", ["translation"])
         actions.comment(self.as_("pm"), args(story="sc-1", to="en", reply_to=None,
-                                             untagged=False, text="Word this, please."))
+                                             untagged=False, files=None, text="Word this, please."))
         posted = self.fake.raw[1]["comments"][-1]
         self.assertTrue(posted["text"].startswith("[en] (from pm)\n"))
         cli.refresh_work(self.db, 10_000_000)
@@ -344,7 +345,7 @@ class LanguageTags(Base):
         self.fake.add(1, "To Do")
         with self.assertRaisesRegex(actions.Refused, "no role de"):
             actions.comment(self.as_("pm"), args(story="sc-1", to="de", reply_to=None,
-                                                 untagged=False, text="x"))
+                                                 untagged=False, files=None, text="x"))
 
 
 class HeldByBlockers(Base):
@@ -631,7 +632,7 @@ class Replies(Base):
 
     def reply(self, untagged, text, to=None):
         actions.comment(self.as_("dev2"), args(story="sc-1", to=to, reply_to=self.asked["id"],
-                                               untagged=untagged, text=text))
+                                               untagged=untagged, files=None, text=text))
         return self.fake.raw[1]["comments"][-1]
 
     def inbox(self):
@@ -654,6 +655,26 @@ class Replies(Base):
         with self.assertRaisesRegex(actions.Refused, "--untagged posts no tag"):
             self.reply(True, "Read.", to="pm")
         self.assertEqual(len(self.fake.raw[1]["comments"]), 1)
+
+    def test_a_reply_carries_its_screenshots_onto_a_passed_story(self):
+        self.fake.update(1, workflow_state_id=IDS["Passsed QA"])
+        said = actions.comment(self.as_("dev2"), args(story="sc-1", to=None, untagged=False,
+                                                      reply_to=self.asked["id"],
+                                                      files=["a.png", "b.png"], text="Rerun."))
+        self.assertEqual(self.fake.uploads, [(1, ["a.png", "b.png"])])
+        self.assertTrue(said.endswith("with 2 files"))
+        self.assertEqual(self.fake.raw[1]["comments"][-1]["parent_id"], self.asked["id"])
+
+    def test_a_plain_comment_uploads_nothing(self):
+        said = actions.comment(self.as_("dev2"), args(story="sc-1", to="pm", untagged=False,
+                                                      reply_to=None, files=None, text="Done."))
+        self.assertEqual(self.fake.uploads, [])
+        self.assertRegex(said, r"^posted #\d+ on sc-1$")
+
+    def test_one_screenshot_is_one_file(self):
+        said = actions.comment(self.as_("dev2"), args(story="sc-1", to="pm", untagged=False,
+                                                      reply_to=None, files=["a.png"], text="See."))
+        self.assertTrue(said.endswith("with 1 file"))
 
 
 class Unblocked(Base):
@@ -1444,18 +1465,26 @@ class FinishedStories(Base):
     def test_a_comment_on_a_done_story_says_who_it_wakes(self):
         self.fake.add(1, "Done", ["dev3"])
         said = actions.comment(self.as_("l10n"), args(story="sc-1", to="dev", untagged=False,
-                                                     reply_to=None, text="Fix the test."))
+                                                     reply_to=None, files=None, text="Fix the test."))
         self.assertIn("which is Done: it wakes dev3", said)
         self.assertIn("new one", said)
+
+    def test_a_comment_on_a_done_story_says_its_files_went_up(self):
+        self.fake.add(1, "Done", ["dev3"])
+        said = actions.comment(self.as_("qa3"), args(story="sc-1", to="dev", untagged=False,
+                                                     reply_to=None, files=["a.png", "b.png"],
+                                                     text="Still broken."))
+        self.assertEqual(self.fake.uploads, [(1, ["a.png", "b.png"])])
+        self.assertIn("on sc-1 with 2 files, which is Done: it wakes dev3", said)
 
     def test_a_tagged_comment_on_an_archived_story_is_refused(self):
         self.fake.add(1, "Done", ["dev3"])
         self.fake.raw[1]["archived"] = True
         with self.assertRaisesRegex(actions.Refused, "archived, so a comment there wakes nobody"):
             actions.comment(self.as_("l10n"), args(story="sc-1", to="dev3", untagged=False,
-                                                  reply_to=None, text="Still there?"))
+                                                  reply_to=None, files=None, text="Still there?"))
         actions.comment(self.as_("ops"), args(story="sc-1", to=None, untagged=True,
-                                             reply_to=None, text="Closed PR #498."))
+                                             reply_to=None, files=None, text="Closed PR #498."))
         self.assertEqual(len(self.fake.comments), 1)
 
     def test_a_pr_on_an_archived_story_is_its_builders_to_close(self):
