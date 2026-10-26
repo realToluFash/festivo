@@ -370,7 +370,6 @@ final class EventsTest extends ApiTestCase
         self::assertSame($read, $this->tag());
     }
 
-    /** London's clocks go forward on 29 March 2026, Paris's the same night: both times stay as typed, each at its own offset. */
     #[Test]
     public function anEditChangesTheType(): void
     {
@@ -397,6 +396,7 @@ final class EventsTest extends ApiTestCase
         self::assertSame($read, $this->tag());
     }
 
+    /** London's clocks go forward on 29 March 2026, Paris's the same night: both times stay as typed, each at its own offset. */
     #[Test]
     public function aNewZoneKeepsTheTimesAsTypedAcrossAChangeOfClocks(): void
     {
