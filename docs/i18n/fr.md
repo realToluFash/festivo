@@ -159,9 +159,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   which also covers owners. The email facts read « Date de suspension » and « Date de
   rétablissement ». `ownerNoSuspend` and `members.suspend_owner` open on the same sentence.
 - **24 Oct 2026. The claim that lapsed** (`emails:ownerClaim.lapsed.*`, sc-9219). "Lapse" is
-  « expirer », as the web. The subject is « {claimant} ne deviendra pas propriétaire de
-  l’organisation {organisation}. La demande a expiré », as the started email: « propriétaire »
-  with no article agrees with nobody, and « la demande faite par » ran past a phone inbox. Each reason ends « la propriété n’a donc pas été
+  « expirer », as the web. The subject leads with the outcome, « Demande expirée : {organisation} »
+  (U+00A0 before the colon), as sc-14100: the whole sentence ran to 620px in a 272px inbox row
+  (QA, 26 Oct). The heading keeps « {claimant} ne deviendra pas propriétaire de l’organisation
+  {organisation}. La demande a expiré »: « propriétaire » with no article agrees with nobody. Each reason ends « la propriété n’a donc pas été
   transférée »; the date « Expirée le {deadline} », as « Retirée le ».
 - **24 Oct 2026. The rest of a role's holders** (`rolesScreen.moreHolders_*`, web and app,
   sc-9068). « et {{count}} autre », « et {{count}} autres », after the five names: « autre »
