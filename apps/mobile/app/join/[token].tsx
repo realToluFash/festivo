@@ -22,6 +22,7 @@ import { holdLink } from '../../src/heldLink.ts';
 import { dateLocale } from '../../src/i18n/index.ts';
 import { useFormChecks } from '../../src/kit/formChecks.ts';
 import { tokens } from '../../src/theme/tokens.ts';
+import { unreachableFrom } from '../../src/unreachable.ts';
 
 /** An invitation's token is 64 hex characters; the app answers invitations in the product, not by link. */
 const REQUEST_LINK_TOKEN = /^[0-9a-f]{32}$/i;
@@ -47,7 +48,7 @@ export default function RequestToJoin() {
       const me = await meAtLaunch();
 
       if ('error' in me && me.error instanceof ApiUnreachableError) {
-        if (live) router.replace('/unreachable');
+        if (live) router.replace(unreachableFrom(token));
         return;
       }
 
@@ -57,7 +58,7 @@ export default function RequestToJoin() {
       } catch (error) {
         if (!live) return;
         if (error instanceof ApiError && error.is('request_link_dead')) setView({ kind: 'dead' });
-        else router.replace('/unreachable');
+        else router.replace(unreachableFrom(token));
       }
     })();
 
