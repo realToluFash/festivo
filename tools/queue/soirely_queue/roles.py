@@ -161,6 +161,22 @@ def author(text):
 BUILDERS = DEVS + ("l10n", "ops")
 TESTERS = ("qa", "qa2", "qa3")
 LINGUISTS = ("l10n",)
+
+NEEDS_IOS = "needs ios"
+IOS_NAME = re.compile(r"\s*(?:On an? (?:real )?(?:iPhone|iPad)\b|On iOS\b|iOS:)", re.IGNORECASE)
+
+
+def needs_ios(story):
+    return (NEEDS_IOS in set(story.get("labels") or [])
+            or bool(IOS_NAME.match(story.get("name") or "")))
+
+
+def can_test(role, story, has_ios):
+    """A tester on a machine with no iOS simulator never takes a story that needs one.
+    `has_ios` asks the machine, and is called only for such a story."""
+    return role not in TESTERS or not needs_ios(story) or has_ios()
+
+
 EVERYONE = tuple(ROLES)
 
 # What each role may write, from the "must not" sections of the skills. A command not

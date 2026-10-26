@@ -148,6 +148,12 @@ they are where AC fails:
   (375×667pt) and its languages: English and the longest, not all four. An SE named for
   the whole story is a second full pass in every language, and the tester's run outlasts
   its time limit.
+- **Label `needs ios` a story that only an iOS simulator can verify**: a bullet on VoiceOver,
+  on an iPad layout, or on "the iOS simulator and the Android emulator". The tester on
+  tolu-linux has no Xcode and is not offered it (`sq pm label sc-N --add "needs ios"`).
+  Add it at grooming, or when you read the AC of a story already in Ready For QA. A story
+  that takes either platform ("an iPhone 17 Pro or, on a host without Xcode, an Android
+  phone") gets no label.
 - **Close with a regression bullet** naming what must keep working untouched.
 - **Never invent a field name or a label.** Search the codebase for the real one. If it does
   not exist, that is a question, not a guess.

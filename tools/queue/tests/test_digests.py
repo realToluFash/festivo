@@ -40,6 +40,19 @@ class Developers(unittest.TestCase):
                          "sc-9")
 
 
+class Testers(unittest.TestCase):
+    def test_a_stuck_story_that_needs_ios_is_not_listed_without_xcode(self):
+        stuck = [dict(ready(1), state="In QA", labels=["needs ios"], comments=[]),
+                 dict(ready(2), state="In QA", comments=[])]
+        p = Digest("qa2")
+        with mock.patch.object(digests, "untaken", side_effect=lambda db, role, s: s), \
+                mock.patch.object(digests.machine, "has_xcode", return_value=False):
+            digests.tester(p, None, stuck)
+        listed = [line for line in p.lines if "story " in line]
+        self.assertEqual(len(listed), 1)
+        self.assertIn("story 2", listed[0])
+
+
 def ticket(id_, state, moved_at="t1"):
     return dict(ready(id_), state=state, labels=["translation"], moved_at=moved_at, tasks=[],
                 links=[])

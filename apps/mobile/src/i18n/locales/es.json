@@ -194,6 +194,7 @@
   "session": {
     "unreachableTitle": "No se puede conectar con Soirely",
     "unreachableBody": "Su sesión sigue abierta. Soirely no responde, así que todavía no se puede cargar nada. Compruebe su conexión y vuelva a intentarlo.",
+    "unreachableBodySignedOut": "Soirely no responde, así que todavía no se puede cargar nada. Compruebe su conexión y vuelva a intentarlo.",
     "retrying": "Intentándolo de nuevo…"
   },
   "countryPicker": {
@@ -938,8 +939,8 @@
     "count_many": "{{count}} de invitaciones",
     "from": "Invitación de {{inviter}} · {{role}}",
     "fromNobody": "Invitación · {{role}}",
-    "until": "Funciona hasta el {{date}}",
-    "untilSentTo": "Funciona hasta el {{date}} · Enviada a {{email}}",
+    "until": "Válida hasta el {{date}}",
+    "untilSentTo": "Válida hasta el {{date}} · Enviada a {{email}}",
     "accept": "Aceptar y unirse",
     "acceptLabel": "Aceptar y unirse a {{organisation}}",
     "decline": "Rechazar",

@@ -100,70 +100,76 @@ export function ListPicker({
       >
         {/* A full-screen modal takes the app's view out of the window, so the app's insets stop turning with it. */}
         <SafeAreaProvider>
-          <Screen
-            style={styles.page}
-            contentStyle={beside ? { ...styles.sheet, ...styles.sheetBeside } : styles.sheet}
-            scroll={false}
+          <View
+            style={styles.fill}
+            collapsable={false}
+            onAccessibilityEscape={() => setOpen(false)}
           >
-            <View style={styles.sheetHeading}>
-              <Text
-                size={tokens.typeTitleDialog.size}
-                weight="bold"
-                accessibilityRole="header"
-                style={beside ? styles.titleBeside : undefined}
-              >
-                {label}
-              </Text>
-              {beside && searchField}
-              <Pressable
-                style={styles.close}
-                onPress={() => setOpen(false)}
-                accessibilityRole="button"
-                testID={`${testID}.close`}
-              >
-                <Text size={tokens.typeButton.size} weight="semibold" style={styles.accentText}>
-                  {t('countryPicker.close')}
-                </Text>
-              </Pressable>
-            </View>
-            {!beside && searchField}
-            <FlatList
-              data={shown}
-              keyExtractor={(choice) => choice.code}
-              keyboardShouldPersistTaps="handled"
-              // The modal is its own window, so on iOS only the list's own inset lifts its last row above the keys.
-              automaticallyAdjustKeyboardInsets={LIFT.adjustScrollInsets}
-              renderItem={({ item }) => (
-                <Pressable
-                  style={[styles.option, item.code === value && styles.optionChosen]}
-                  onPress={() => {
-                    onChange(item.code);
-                    setSearch('');
-                    setOpen(false);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: item.code === value }}
-                  testID={`${testID}.${item.code}`}
+            <Screen
+              style={styles.page}
+              contentStyle={beside ? { ...styles.sheet, ...styles.sheetBeside } : styles.sheet}
+              scroll={false}
+            >
+              <View style={styles.sheetHeading}>
+                <Text
+                  size={tokens.typeTitleDialog.size}
+                  weight="bold"
+                  accessibilityRole="header"
+                  style={beside ? styles.titleBeside : undefined}
                 >
-                  <Text size={CONTROL_TEXT_SIZE} style={styles.optionName}>
-                    {item.name}
+                  {label}
+                </Text>
+                {beside && searchField}
+                <Pressable
+                  style={styles.close}
+                  onPress={() => setOpen(false)}
+                  accessibilityRole="button"
+                  testID={`${testID}.close`}
+                >
+                  <Text size={tokens.typeButton.size} weight="semibold" style={styles.accentText}>
+                    {t('countryPicker.close')}
                   </Text>
-                  {item.code === value && (
-                    <Text
-                      size={tokens.typeButton.size}
-                      weight="semibold"
-                      style={styles.accentText}
-                      accessible={false}
-                      accessibilityElementsHidden
-                      importantForAccessibility="no-hide-descendants"
-                    >
-                      ✓
-                    </Text>
-                  )}
                 </Pressable>
-              )}
-            />
-          </Screen>
+              </View>
+              {!beside && searchField}
+              <FlatList
+                data={shown}
+                keyExtractor={(choice) => choice.code}
+                keyboardShouldPersistTaps="handled"
+                // The modal is its own window, so on iOS only the list's own inset lifts its last row above the keys.
+                automaticallyAdjustKeyboardInsets={LIFT.adjustScrollInsets}
+                renderItem={({ item }) => (
+                  <Pressable
+                    style={[styles.option, item.code === value && styles.optionChosen]}
+                    onPress={() => {
+                      onChange(item.code);
+                      setSearch('');
+                      setOpen(false);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: item.code === value }}
+                    testID={`${testID}.${item.code}`}
+                  >
+                    <Text size={CONTROL_TEXT_SIZE} style={styles.optionName}>
+                      {item.name}
+                    </Text>
+                    {item.code === value && (
+                      <Text
+                        size={tokens.typeButton.size}
+                        weight="semibold"
+                        style={styles.accentText}
+                        accessible={false}
+                        accessibilityElementsHidden
+                        importantForAccessibility="no-hide-descendants"
+                      >
+                        ✓
+                      </Text>
+                    )}
+                  </Pressable>
+                )}
+              />
+            </Screen>
+          </View>
         </SafeAreaProvider>
       </Modal>
     </>
@@ -198,6 +204,7 @@ const styles = StyleSheet.create({
   },
   value: { flex: 1, color: tokens.colorInk },
   placeholder: { flex: 1, color: tokens.colorInkTertiary },
+  fill: { flex: 1 },
   page: { backgroundColor: tokens.colorPage },
   sheet: { flex: 1, gap: tokens.spaceLg, padding: tokens.space3xl },
   sheetBeside: { paddingVertical: tokens.spaceLg, gap: tokens.spaceSm },

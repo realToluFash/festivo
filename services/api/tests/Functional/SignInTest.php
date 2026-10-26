@@ -212,7 +212,7 @@ final class SignInTest extends ApiTestCase
     /** sc-11329: the minute `Date` plus `Retry-After` reaches, in UTC and saying so, whatever zone the account or the device is in. */
     #[Test]
     #[DataProvider('theFourLanguages')]
-    public function theLockedSignInNamesItsMinuteInUtc(string $locale, string $sentence): void
+    public function theLockedSignInNamesItsMinuteInUtc(string $locale, string $sentence, string $atOne): void
     {
         $this->account('locked@example.com')->setTimezone('Africa/Lagos');
         self::em()->flush();
@@ -232,17 +232,17 @@ final class SignInTest extends ApiTestCase
         $reached = $date->getTimestamp() + (int) $response->headers->get('Retry-After');
         $minute = new DateTimeImmutable('@' . (string) (Math\div($reached + 59, 60) * 60))->format('H:i');
         $body = Json\typed((string) $response->getContent(), Type\dict(Type\string(), Type\mixed()));
-        self::assertSame(Str\format($sentence, $minute), $body['detail'] ?? null);
+        self::assertSame(Str\format(Str\starts_with($minute, '01:') ? $atOne : $sentence, $minute), $body['detail'] ?? null);
         self::assertArrayNotHasKey('retryAt', $body);
     }
 
-    /** @return iterable<string, array{string, string}> */
+    /** @return iterable<string, array{string, string, string}> the sentence, and the one Spanish and Portuguese use within the hour of 01:00 */
     public static function theFourLanguages(): iterable
     {
-        yield 'en' => ['en', 'Too many sign-in attempts. Try again at %s UTC.'];
-        yield 'es' => ['es', 'Demasiados intentos de inicio de sesión. Inténtelo de nuevo a las %s UTC.'];
-        yield 'fr' => ['fr', 'Trop de tentatives de connexion. Réessayez à %s UTC.'];
-        yield 'pt' => ['pt', 'Demasiadas tentativas de início de sessão. Tente novamente às %s UTC.'];
+        yield 'en' => ['en', 'Too many sign-in attempts. Try again at %s UTC.', 'Too many sign-in attempts. Try again at %s UTC.'];
+        yield 'es' => ['es', 'Demasiados intentos de inicio de sesión. Inténtelo de nuevo a las %s UTC.', 'Demasiados intentos de inicio de sesión. Inténtelo de nuevo a la %s UTC.'];
+        yield 'fr' => ['fr', 'Trop de tentatives de connexion. Réessayez à %s UTC.', 'Trop de tentatives de connexion. Réessayez à %s UTC.'];
+        yield 'pt' => ['pt', 'Demasiadas tentativas de início de sessão. Tente novamente às %s UTC.', 'Demasiadas tentativas de início de sessão. Tente novamente à %s UTC.'];
     }
 
     #[Test]

@@ -6,6 +6,7 @@ import {
   eventNameLength,
   eventNameOf,
   eventProblems,
+  isEventType,
   filledEndDate,
   localDateTime,
 } from '@soirely/domain';
@@ -21,6 +22,7 @@ import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoice
 import { Forbidden } from '../Forbidden.tsx';
 import { Choice, FieldError, Moment } from './EventFields.tsx';
 import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
+import { typeChoices } from './eventTypes.ts';
 import { skippedLine } from './skippedLine.ts';
 
 export function NewEvent() {
@@ -39,6 +41,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
   const locale = currentLocale();
   const [draft, setDraft] = useState<EventDraft>({
     name: '',
+    type: '',
     startDate: '',
     startTime: '',
     endDate: '',
@@ -55,6 +58,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
   const focusNext = useRef<(() => void) | null>(null);
   const currencies = useMemo(() => currencyChoices('', currency, locale, t), [currency, locale, t]);
   const zones = useMemo(() => timeZoneChoices(organisation.timezone), [organisation.timezone]);
+  const types = useMemo(() => typeChoices(draft.type, t), [draft.type, t]);
   const busy = status === 'creating';
 
   useEffect(() => {
@@ -87,8 +91,9 @@ function EventForm({ organisation }: { organisation: Membership }) {
     if (currency === '') found.currency = t('orgGeneral.currencyBlank');
 
     const unsentFields = Object.keys(found).length;
+    const { type } = draft;
 
-    if (unsentFields > 0) {
+    if (unsentFields > 0 || type === '') {
       setUnsent(unsentFields);
       setStatus('editing');
       refuse(found);
@@ -102,6 +107,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
     try {
       const created = await api.createEvent(organisation.id, {
         name: eventNameOf(draft.name),
+        type,
         startsAt: localDateTime(draft.startDate, draft.startTime) ?? '',
         endsAt: localDateTime(draft.endDate, draft.endTime) ?? '',
         timeZone,
@@ -172,6 +178,15 @@ function EventForm({ organisation }: { organisation: Membership }) {
               {t('eventForm.nameCount', { count: nameLength, most: EVENT_NAME_MAXIMUM })}
             </p>
           </div>
+          <Choice
+            id="event-type"
+            label={t('eventForm.type')}
+            value={draft.type}
+            error={errors.type}
+            busy={busy}
+            options={types}
+            onChange={(value) => edit('type', { type: isEventType(value) ? value : '' })}
+          />
         </section>
 
         <section className="card" aria-labelledby="event-when">

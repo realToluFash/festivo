@@ -40,6 +40,8 @@
     "zoneHeading": "Fuseau horaire et devise",
     "name": "Nom de l’événement",
     "nameCount": "Caractères : {{count}} sur {{most}}",
+    "type": "Type",
+    "typePlaceholder": "Choisissez le type d’événement",
     "starts": "Début",
     "ends": "Fin",
     "date": "Date",
@@ -54,6 +56,7 @@
     "creating": "Création…",
     "nameBlank": "Donnez un nom à l’événement.",
     "nameTooLong": "Raccourcissez le nom à {{most}} caractères maximum.",
+    "typeMissing": "Choisissez de quel type d’événement il s’agit.",
     "startMissing": "Choisissez quand l’événement commence.",
     "endMissing": "Choisissez quand l’événement se termine.",
     "endBeforeStart": "L’événement se termine avant de commencer. Choisissez une fin plus tardive.",
@@ -61,6 +64,22 @@
     "problems_other": "{{count}} champs sont à corriger, donc rien n’a été envoyé.",
     "problems_many": "{{count}} de champs sont à corriger, donc rien n’a été envoyé.",
     "notCreated": "L’événement n’a pas été créé et rien n’a été enregistré. Réessayez."
+  },
+  "eventTypes": {
+    "wedding": "Mariage",
+    "birthday": "Anniversaire",
+    "anniversary": "Anniversaire de mariage",
+    "engagement": "Fiançailles",
+    "baby_shower": "Baby shower",
+    "graduation": "Remise de diplômes",
+    "memorial": "Cérémonie d’hommage",
+    "religious": "Célébration religieuse",
+    "cultural": "Célébration culturelle",
+    "party": "Fête",
+    "gala": "Gala ou soirée caritative",
+    "conference": "Conférence",
+    "corporate": "Événement d’entreprise",
+    "other": "Autre"
   },
   "eventPage": {
     "when": "{{range}} · {{timeZone}}",
@@ -911,7 +930,7 @@
     },
     "how": {
       "invitation": "Invitation",
-      "invitationFrom": "Invitation de {{inviter}}",
+      "invitationFrom": "Invitation envoyée par {{inviter}}",
       "self_created": "A créé {{organisation}}",
       "join_code": "Code pour rejoindre",
       "domain": "Adresse e-mail professionnelle",
@@ -930,7 +949,7 @@
     "invitations": "Invitations",
     "invitationsNote": "Personne ne rejoint l’organisation avant d’avoir accepté l’invitation.",
     "noInvitations": "Aucune invitation n’a été envoyée.",
-    "invitedAs": "{{role}} · invitation de {{inviter}}",
+    "invitedAs": "{{role}} · invitation envoyée par {{inviter}}",
     "dates": {
       "pending": "Envoyée le {{sent}} · expire le {{ended}}",
       "expired": "Envoyée le {{sent}} · expirée le {{ended}}",
@@ -1266,7 +1285,7 @@
     "declinedTitle": "Invitation refusée",
     "notFoundTitle": "Invitation introuvable",
     "notFoundBody": "Le lien est peut-être mal saisi, ou une invitation plus récente l’a remplacé. Consultez le dernier e-mail reçu, ou demandez à la personne à l’origine de l’invitation de vous la renvoyer.",
-    "orgLine": "Invitation de {{inviter}} · {{role}}",
+    "orgLine": "Invitation envoyée par {{inviter}} · {{role}}",
     "orgDeleted": "Supprimée",
     "invited": "{{inviter}} a invité {{email}} à rejoindre l’organisation avec le rôle {{role}}.",
     "worksUntil": "Jusqu’au {{date}}, cette invitation reste valable.",
@@ -1286,7 +1305,7 @@
     "signedInUntil": "Connexion avec {{email}} · jusqu’au {{date}}, cette invitation reste valable.",
     "accept": "Accepter et rejoindre",
     "decline": "Refuser",
-    "declineNote": "Si vous refusez, {{inviter}} en sera informé. Rien d’autre ne change.",
+    "declineNote": "Si vous refusez, {{inviter}} le saura. Rien d’autre ne change.",
     "answerFailedTitle": "Votre réponse ne nous est pas parvenue",
     "joined": "Vous avez rejoint {{organisation}} avec le rôle {{role}}.",
     "open": "Ouvrir {{organisation}}",
@@ -1319,7 +1338,7 @@
       "invitation_not_yours": {
         "title": "Cette invitation est destinée à une autre personne",
         "word": "Connexion avec un autre compte",
-        "body": "Cette invitation est destinée à {{email}}. Vous êtes connecté avec {{signedInAs}}."
+        "body": "Cette invitation est destinée à {{email}}. Vous utilisez le compte {{signedInAs}}."
       },
       "organisation_deleted": {
         "title": "Cette organisation n’existe plus",
@@ -1333,7 +1352,7 @@
     "count_one": "{{count}} invitation",
     "count_other": "{{count}} invitations",
     "count_many": "{{count}} d’invitations",
-    "from": "Invitation de {{inviter}} · {{role}}",
+    "from": "Invitation envoyée par {{inviter}} · {{role}}",
     "fromNobody": "Invitation · {{role}}",
     "until": "Valable jusqu’au {{date}}",
     "untilSentTo": "Valable jusqu’au {{date}} · Envoyée à {{email}}",
@@ -1341,7 +1360,7 @@
     "acceptLabel": "Accepter et rejoindre {{organisation}}",
     "decline": "Refuser",
     "declineLabel": "Refuser l’invitation à rejoindre {{organisation}}",
-    "declineNote": "Si vous refusez, {{inviter}} en sera informé. Rien d’autre ne change.",
+    "declineNote": "Si vous refusez, {{inviter}} le saura. Rien d’autre ne change.",
     "declineNoteNobody": "Si vous refusez, rien d’autre ne change.",
     "joined": "Vous avez rejoint {{organisation}} avec le rôle {{role}}.",
     "open": "Ouvrir {{organisation}}",
@@ -1369,7 +1388,7 @@
       },
       "invitation_not_yours": {
         "word": "Connexion avec un autre compte",
-        "body": "Cette invitation est destinée à {{email}}. Vous êtes connecté avec {{signedInAs}}."
+        "body": "Cette invitation est destinée à {{email}}. Vous utilisez le compte {{signedInAs}}."
       },
       "organisation_deleted": {
         "word": "Organisation supprimée",
@@ -1537,7 +1556,7 @@
     "deleteWarningTitle": "Tout son contenu disparaît",
     "deleteLoading": "Calcul de son contenu…",
     "deleteCounts": "{{events}}, {{guests}} et {{members}} seront supprimés avec elle.",
-    "deleteWindow": "Elle est supprimée pour tout le monde dès maintenant. Le support Soirely peut la restaurer jusqu’au {{deadline}} ; ensuite, elle disparaît définitivement.",
+    "deleteWindow": "Elle est supprimée pour tout le monde dès maintenant. L’assistance Soirely peut la restaurer jusqu’au {{deadline}} ; ensuite, elle disparaît définitivement.",
     "events_one": "{{count, number}} événement",
     "events_other": "{{count, number}} événements",
     "events_many": "{{count, number}} d’événements",

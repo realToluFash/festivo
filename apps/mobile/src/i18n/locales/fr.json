@@ -194,6 +194,7 @@
   "session": {
     "unreachableTitle": "Impossible de joindre Soirely",
     "unreachableBody": "Votre session est toujours ouverte. Soirely ne répond pas, donc rien ne peut encore se charger. Vérifiez votre connexion, puis réessayez.",
+    "unreachableBodySignedOut": "Soirely ne répond pas, donc rien ne peut encore se charger. Vérifiez votre connexion, puis réessayez.",
     "retrying": "Nouvelle tentative…"
   },
   "countryPicker": {
@@ -936,7 +937,7 @@
     "count_one": "{{count}} invitation",
     "count_other": "{{count}} invitations",
     "count_many": "{{count}} d’invitations",
-    "from": "Invitation de {{inviter}} · {{role}}",
+    "from": "Invitation envoyée par {{inviter}} · {{role}}",
     "fromNobody": "Invitation · {{role}}",
     "until": "Valable jusqu’au {{date}}",
     "untilSentTo": "Valable jusqu’au {{date}} · Envoyée à {{email}}",
@@ -944,7 +945,7 @@
     "acceptLabel": "Accepter et rejoindre {{organisation}}",
     "decline": "Refuser",
     "declineLabel": "Refuser l’invitation à rejoindre {{organisation}}",
-    "declineNote": "Si vous refusez, {{inviter}} en sera informé. Rien d’autre ne change.",
+    "declineNote": "Si vous refusez, {{inviter}} le saura. Rien d’autre ne change.",
     "declineNoteNobody": "Si vous refusez, rien d’autre ne change.",
     "joined": "Vous avez rejoint {{organisation}} avec le rôle {{role}}.",
     "open": "Ouvrir {{organisation}}",
@@ -972,7 +973,7 @@
       },
       "invitation_not_yours": {
         "word": "Connexion avec un autre compte",
-        "body": "Cette invitation est destinée à {{email}}. Vous êtes connecté avec {{signedInAs}}."
+        "body": "Cette invitation est destinée à {{email}}. Vous utilisez le compte {{signedInAs}}."
       },
       "organisation_deleted": {
         "word": "Organisation supprimée",
@@ -1073,7 +1074,7 @@
     "deleteWarningTitle": "Tout son contenu disparaît",
     "deleteLoading": "Calcul de son contenu…",
     "deleteCounts": "{{events}}, {{guests}} et {{members}} seront supprimés avec elle.",
-    "deleteWindow": "Elle est supprimée pour tout le monde dès maintenant. Le support Soirely peut la restaurer jusqu’au {{deadline}} ; ensuite, elle disparaît définitivement.",
+    "deleteWindow": "Elle est supprimée pour tout le monde dès maintenant. L’assistance Soirely peut la restaurer jusqu’au {{deadline}} ; ensuite, elle disparaît définitivement.",
     "events_one": "{{count, number}} événement",
     "events_other": "{{count, number}} événements",
     "events_many": "{{count, number}} d’événements",
@@ -1161,7 +1162,7 @@
     },
     "how": {
       "invitation": "Invitation",
-      "invitationFrom": "Invitation de {{inviter}}",
+      "invitationFrom": "Invitation envoyée par {{inviter}}",
       "self_created": "A créé {{organisation}}",
       "join_code": "Code pour rejoindre",
       "domain": "Adresse e-mail professionnelle",

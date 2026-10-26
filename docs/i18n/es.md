@@ -49,6 +49,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. El tipo de evento** (`web:eventForm.type*`, `web:eventTypes.*`,
+  `messages:validation.event_type_required`, sc-3588 via sc-13205). «Tipo», «Elija el tipo de
+  evento», y el rechazo, igual en pantalla y en la API, «Elija qué tipo de evento es.». Las
+  etiquetas: «Pedida de mano» para engagement (lo que se celebra en España, no «Compromiso»);
+  «Congreso» para conference (una «conferencia» es una charla); «Homenaje póstumo» para
+  memorial; «Gala o evento benéfico»; «Evento de empresa». «Baby shower» se queda en inglés, como
+  se dice en España (está en `same-as-english.json`).
+
 - **25 Oct 2026. A count of a round million, `_many`** (every web and app count family,
   sc-8529, now that the key-parity guard allows it, PR #324). At 1 000 000 and every exact
   million, i18next picks `_many`. It is `_other` with «de» between the count and the noun it
@@ -63,7 +71,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `messages:invitations.*`, sc-2922). The web twins of the app's Members keys are the app's
   words. An invitation is feminine and its states agree with it: «Pendiente», «Caducada»,
   «Retirada» (revoked and withdrawn alike), «Rechazada», «Aceptada», «Eliminada»; "Revoke" is
-  «Retirar». "Works until" is «Funciona hasta el {{date}}», never «válida hasta». An invited
+  «Retirar». "Works until" is «Válida hasta el {{date}}» (as a sentence, «Esta invitación es válida hasta el {{date}}»), never «funciona hasta», which reads as a machine working (QA, 26 Oct). Who sent it is «invitación enviada por {{inviter}}», and the reader as sender is «usted», «enviada por usted». An invited
   person is «con invitación» in the subtitle and the chip, so no count agrees with anyone. The
   history lines name what was acted on, as «Solicitud rechazada por {{by}}»: «Invitación
   enviada por», «Solicitud aprobada por», «Acceso suspendido / restablecido / retirado por»;
