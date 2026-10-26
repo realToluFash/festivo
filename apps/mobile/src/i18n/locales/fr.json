@@ -1471,7 +1471,16 @@
     "timesIn": "Times in {{zone}}",
     "pickerDone": "Done",
     "created": "Created. Opening the event.",
-    "leaveBody": "What you typed for this event will be lost."
+    "leaveBody": "What you typed for this event will be lost.",
+    "venueLookupDown": "Les suggestions ne sont pas disponibles pour le moment. Saisissez l’adresse complète : elle sera enregistrée telle que vous l’avez saisie.",
+    "venueAddressHint": "Saisissez au moins 3 caractères pour voir des suggestions. Vous pouvez aussi saisir n’importe quelle adresse.",
+    "venueZoneOffer": "Le lieu se trouve dans le fuseau {{zone}}. Voulez-vous utiliser ce fuseau horaire ?",
+    "venueZoneUse": "Utiliser {{zone}}",
+    "venueZoneKeep": "Conserver {{zone}}",
+    "venueZoneSet": "Fuseau horaire défini sur {{zone}}.",
+    "venueSuggestionsBelow_one": "{{count}} suggestion below the address.",
+    "venueSuggestionsBelow_other": "{{count}} suggestions below the address.",
+    "venueSuggestionsBelow_many": "{{count}} suggestions below the address."
   },
   "eventEdit": {
     "open": "Modifier les informations",

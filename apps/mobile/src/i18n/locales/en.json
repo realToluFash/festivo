@@ -1437,7 +1437,15 @@
     "timesIn": "Times in {{zone}}",
     "pickerDone": "Done",
     "created": "Created. Opening the event.",
-    "leaveBody": "What you typed for this event will be lost."
+    "leaveBody": "What you typed for this event will be lost.",
+    "venueLookupDown": "Suggestions aren't available right now. Type the address in full and it will be saved as you typed it.",
+    "venueAddressHint": "Type at least 3 characters to see suggestions. You can also type any address.",
+    "venueZoneOffer": "This venue is in {{zone}}. Use it?",
+    "venueZoneUse": "Use {{zone}}",
+    "venueZoneKeep": "Keep {{zone}}",
+    "venueZoneSet": "Time zone set to {{zone}}.",
+    "venueSuggestionsBelow_one": "{{count}} suggestion below the address.",
+    "venueSuggestionsBelow_other": "{{count}} suggestions below the address."
   },
   "eventEdit": {
     "open": "Edit details",

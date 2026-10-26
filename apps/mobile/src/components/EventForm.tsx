@@ -4,6 +4,7 @@ import {
   EVENT_TYPES,
   type EventDraft,
   type EventFormField,
+  type VenueDraft,
   currencyChoices,
   eventChanges,
   eventFormErrors,
@@ -19,7 +20,7 @@ import {
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useNavigation } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
-import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -50,6 +51,7 @@ import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { Sheet } from './Sheet.tsx';
 import { Text } from './Text.tsx';
+import { VenueFields } from './VenueFields.tsx';
 
 type Status = 'editing' | 'sending' | 'failed' | 'changedElsewhere' | 'created';
 
@@ -169,6 +171,18 @@ export function EventForm({
     setErrors((previous) => ({ ...previous, [field]: undefined }));
     if (status === 'failed') setStatus('editing');
   }
+
+  const changeVenue = useCallback((next: Partial<VenueDraft>): void => {
+    setTyped((previous) => ({ ...previous, venue: { ...previous.venue, ...next } }));
+    setErrors((previous) => {
+      const left = { ...previous };
+      if ('name' in next) delete left.venueName;
+      if ('address' in next) delete left.venueAddress;
+
+      return left;
+    });
+    setStatus((previous) => (previous === 'failed' ? 'editing' : previous));
+  }, []);
 
   function changeDraft(field: EventFormField, next: Partial<EventDraft>): void {
     change(field, { draft: { ...draft, ...next } });
@@ -352,42 +366,16 @@ export function EventForm({
           }}
         />
 
-        <Field
-          label={t('eventForm.venueName')}
-          pill={t('eventForm.optional')}
-          error={errors.venueName}
-        >
-          <TextField
-            ref={venueNameInput}
-            value={venue.name}
-            onChangeText={(name) => change('venueName', { venue: { ...venue, name } })}
-            wrong={errors.venueName != null}
-            submitting={busy}
-            returnKeyType="next"
-            onSubmitEditing={() => venueAddressInput.current?.focus()}
-            accessibilityLabel={t('eventForm.venueName')}
-            testID="eventForm.venueName"
-          />
-        </Field>
-
-        <Field
-          label={t('eventForm.venueAddress')}
-          pill={t('eventForm.optional')}
-          error={errors.venueAddress}
-        >
-          <TextField
-            ref={venueAddressInput}
-            value={venue.address}
-            onChangeText={(address) =>
-              change('venueAddress', { venue: { ...venue, address, addressId: null } })
-            }
-            wrong={errors.venueAddress != null}
-            submitting={busy}
-            returnKeyType="done"
-            accessibilityLabel={t('eventForm.venueAddress')}
-            testID="eventForm.venueAddress"
-          />
-        </Field>
+        <VenueFields
+          venue={venue}
+          errors={errors}
+          busy={busy}
+          timeZone={timeZone}
+          nameInput={venueNameInput}
+          addressInput={venueAddressInput}
+          onVenue={changeVenue}
+          onUseZone={(zone) => change('timeZone', { timeZone: zone })}
+        />
 
         <Field label={t('eventForm.timeZone')} error={errors.timeZone}>
           <ListPicker
