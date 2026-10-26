@@ -20,10 +20,10 @@ import {
   checkId,
   codeStep,
   databaseCommands,
-  HARNESS,
   composeBatch,
   localise,
   parseBatch,
+  REBUILD,
   rerunHints,
   STEP_MS,
   totp,
@@ -877,18 +877,19 @@ describe('the flows a batch runs', () => {
 });
 
 describe('the harness in .qa/bin', () => {
-  it('carries every file qa-env.mjs imports from beside itself', () => {
+  it('imports nothing from beside itself, so a copy refreshed alone runs', () => {
     const source = readFileSync(join(import.meta.dirname, 'qa-env.mjs'), 'utf8');
-    const local = [...source.matchAll(/from '\.\/([^']+)'/g)].map(([, file]) => file);
-    expect(HARNESS).toEqual(expect.arrayContaining(['qa-env.mjs', ...local]));
+    expect([...source.matchAll(/from '\.{1,2}\/[^']+'/g)]).toEqual([]);
   });
 
   it('runs from a copy alone in a folder', () => {
     const bin = mkdtempSync(join(tmpdir(), 'qa-bin-'));
-    for (const file of HARNESS) {
-      writeFileSync(join(bin, file), readFileSync(join(import.meta.dirname, file)));
-    }
-    return expect(import(join(bin, 'qa-env.mjs'))).resolves.toHaveProperty('HARNESS');
+    writeFileSync(join(bin, 'qa-env.mjs'), readFileSync(join(import.meta.dirname, 'qa-env.mjs')));
+    return expect(import(join(bin, 'qa-env.mjs'))).resolves.toHaveProperty('databaseCommands');
+  });
+
+  it('removes a worker the checked-out compose.yaml no longer names', () => {
+    expect(REBUILD).toContain('--remove-orphans');
   });
 });
 

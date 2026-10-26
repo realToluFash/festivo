@@ -22,7 +22,6 @@ import { basename, dirname, extname, join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
-import { composeServices, servicesAfterMigrations, servicesToWait } from './stack-services.mjs';
 
 export const DEVELOPMENT_PORTS = {
   POSTGRES_PORT: 5432,
@@ -382,8 +381,39 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 // QA runs the copy in .qa/bin, gitignored, so checking out an old commit keeps the harness.
 const INSTALLED = basename(HERE) === 'bin' && basename(dirname(HERE)) === '.qa';
 
-// Every file qa-env.mjs imports from beside itself, so the copy runs on its own.
-export const HARNESS = ['qa-env.mjs', 'stack-services.mjs'];
+// The copy in .qa/bin is this one file, so it imports nothing from beside itself.
+const AFTER_MIGRATIONS = 'soirely.after-migrations';
+
+const lasting = (service) => service.restart !== 'no';
+const afterMigrating = (service) => service.labels?.[AFTER_MIGRATIONS] === 'true';
+
+/** --wait fails when a one-shot init container exits 0, and on a service waiting for migrations. */
+export function servicesToWait(services) {
+  return Object.entries(services ?? {})
+    .filter(([, service]) => lasting(service) && !afterMigrating(service))
+    .map(([name]) => name);
+}
+
+export function servicesAfterMigrations(services) {
+  return Object.entries(services ?? {})
+    .filter(([, service]) => lasting(service) && afterMigrating(service))
+    .map(([name]) => name);
+}
+
+export function composeServices(cwd) {
+  const result = spawnSync('docker', ['compose', 'config', '--format', 'json'], {
+    cwd,
+    encoding: 'utf8',
+  });
+  if (result.status !== 0) {
+    throw new Error(`docker compose config failed: ${result.stderr}`);
+  }
+  return JSON.parse(result.stdout).services;
+}
+
+// An older commit's compose.yaml may not name the worker, and compose leaves its container
+// running, connected to the database the checkout drops.
+export const REBUILD = ['compose', 'up', '-d', '--build', '--remove-orphans'];
 
 export function testerOf(worktree) {
   const match = /^soirely-qa(\d*)$/.exec(basename(worktree));
@@ -458,7 +488,7 @@ function setup() {
 
   step('The harness, into .qa/bin');
   mkdirSync(join(root, '.qa/bin'), { recursive: true });
-  for (const file of HARNESS) copyFileSync(join(HERE, file), join(root, '.qa/bin', file));
+  copyFileSync(fileURLToPath(import.meta.url), join(root, '.qa/bin/qa-env.mjs'));
 
   const settings = join(main, '.claude/settings.local.json');
   if (existsSync(settings) && !existsSync(join(root, '.claude/settings.local.json'))) {
@@ -599,7 +629,7 @@ function checkout(args) {
   writeFileSync(statePath, JSON.stringify({ npmLock, composerLock, head, label }, null, 2));
 
   step('The stack, rebuilt from this commit');
-  run('docker', ['compose', 'up', '-d', '--build'], { cwd: root });
+  run('docker', REBUILD, { cwd: root });
   run(
     'docker',
     ['compose', 'up', '-d', '--wait', '--no-recreate', ...servicesToWait(composeServices(root))],

@@ -32,7 +32,7 @@ setup:
 # Start everything and wait until each service can answer, not merely exist.
 # The notification worker answers once the database is migrated.
 up:
-    {{COMPOSE}} up -d
+    {{COMPOSE}} up -d --remove-orphans
     services="$(node scripts/stack-services.mjs)" && {{COMPOSE}} up -d --wait --no-recreate $services
 
 # Stop everything. Volumes survive, so the databases do.

@@ -4,8 +4,13 @@ import { spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { renderQaEnv, stackConfig } from './qa-env.mjs';
-import { composeServices, servicesAfterMigrations, servicesToWait } from './stack-services.mjs';
+import {
+  composeServices,
+  renderQaEnv,
+  servicesAfterMigrations,
+  servicesToWait,
+  stackConfig,
+} from './qa-env.mjs';
 
 // Developer 1 is the main checkout on the development ports. QA holds +10000 to +30000.
 // Only five whole steps fit under 65536, so the rest take half steps: no two development

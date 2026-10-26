@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { servicesAfterMigrations, servicesToWait } from './stack-services.mjs';
+import { servicesAfterMigrations, servicesToWait } from './qa-env.mjs';
 
 const services = {
   postgres: { restart: 'unless-stopped' },
