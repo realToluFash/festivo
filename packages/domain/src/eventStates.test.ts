@@ -6,7 +6,6 @@ import {
   EVENT_STATES,
   type EventState,
   allowedActions,
-  editActions,
   eventAllows,
   eventPhase,
   eventTransition,
@@ -94,26 +93,6 @@ describe('eventTransition', () => {
 
   it.each(['live', 'paused', 'ended'] as const)('has no make_live from %s', (state) => {
     expect(eventTransition(state, 'make_live')).toBeNull();
-  });
-});
-
-describe('editActions', () => {
-  it.each([
-    [['name'], ['edit']],
-    [['venueName', 'currency'], ['edit']],
-    [['startsAt'], ['edit_schedule']],
-    [['endsAt', 'timeZone'], ['edit_schedule']],
-    [
-      ['name', 'startsAt'],
-      ['edit_schedule', 'edit'],
-    ],
-    [[], []],
-  ])('a change to %j needs %j', (changed, needed) => {
-    expect(editActions(changed)).toEqual(needed);
-  });
-
-  it('names only declared actions', () => {
-    expect(EVENT_ACTIONS).toEqual(expect.arrayContaining(editActions(['name', 'endsAt'])));
   });
 });
 

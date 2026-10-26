@@ -82,15 +82,3 @@ export function makeLiveRow(
     makeLive: !endPassed && eventAllows(phase, 'make_live'),
   };
 }
-
-const SCHEDULE = ['startsAt', 'endsAt', 'timeZone'];
-
-/** A change to the start, end or zone needs `edit_schedule`, and to anything else `edit`: a save of both needs both. */
-export function editActions(changed: readonly string[]): EventAction[] {
-  const schedule = changed.filter((field) => SCHEDULE.includes(field));
-
-  return [
-    ...(schedule.length > 0 ? ['edit_schedule'] : []),
-    ...(schedule.length < changed.length ? ['edit'] : []),
-  ];
-}
