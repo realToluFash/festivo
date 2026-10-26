@@ -12,7 +12,7 @@ use DateTimeZone;
 
 final class EventSerialiser
 {
-    /** @return array{id: string, organisationId: string, name: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, venue: ?array{name: ?string, address: ?array{formatted: string, line1: ?string, line2: ?string, city: ?string, region: ?string, postalCode: ?string, countryCode: ?string, latitude: ?float, longitude: ?float}}, createdAt: string} */
+    /** @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, venue: ?array{name: ?string, address: ?array{formatted: string, line1: ?string, line2: ?string, city: ?string, region: ?string, postalCode: ?string, countryCode: ?string, latitude: ?float, longitude: ?float}}, createdAt: string} */
     public static function event(Event $event): array
     {
         $venue = EventVenue::of($event);
@@ -21,6 +21,7 @@ final class EventSerialiser
             'id' => $event->getId()->toRfc4122(),
             'organisationId' => $event->getOrganisation()->getId()->toRfc4122(),
             'name' => $event->getName(),
+            'type' => $event->getType()->value,
             'status' => $event->getStatus()->value,
             'startsAt' => $event->getStartsAt()->format(\DATE_ATOM),
             'endsAt' => $event->getEndsAt()->format(\DATE_ATOM),

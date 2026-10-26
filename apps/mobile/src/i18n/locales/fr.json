@@ -194,6 +194,7 @@
   "session": {
     "unreachableTitle": "Impossible de joindre Soirely",
     "unreachableBody": "Votre session est toujours ouverte. Soirely ne répond pas, donc rien ne peut encore se charger. Vérifiez votre connexion, puis réessayez.",
+    "unreachableBodySignedOut": "Soirely ne répond pas, donc rien ne peut encore se charger. Vérifiez votre connexion, puis réessayez.",
     "retrying": "Nouvelle tentative…"
   },
   "countryPicker": {
@@ -1072,7 +1073,7 @@
     "deleteWarningTitle": "Tout son contenu disparaît",
     "deleteLoading": "Calcul de son contenu…",
     "deleteCounts": "{{events}}, {{guests}} et {{members}} seront supprimés avec elle.",
-    "deleteWindow": "Elle est supprimée pour tout le monde dès maintenant. Le support Soirely peut la restaurer jusqu’au {{deadline}} ; ensuite, elle disparaît définitivement.",
+    "deleteWindow": "Elle est supprimée pour tout le monde dès maintenant. L’assistance Soirely peut la restaurer jusqu’au {{deadline}} ; ensuite, elle disparaît définitivement.",
     "events_one": "{{count, number}} événement",
     "events_other": "{{count, number}} événements",
     "events_many": "{{count, number}} d’événements",

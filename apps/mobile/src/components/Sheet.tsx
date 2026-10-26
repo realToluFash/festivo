@@ -31,7 +31,7 @@ import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFo
 
 type SheetProps = {
   open: boolean;
-  /** System back; the sheet's own buttons close it themselves. */
+  /** System back and VoiceOver's escape; the sheet's own buttons close it themselves. */
   onClose: () => void;
   /** Given, a tap on the scrim closes the sheet, and a screen reader names it so. */
   scrimLabel?: string;
@@ -158,6 +158,7 @@ function SheetFrame({ open, onClose, scrimLabel, opener, testID, children }: She
               { paddingBottom: padding.frameBottom },
             ]}
             accessibilityViewIsModal
+            onAccessibilityEscape={onClose}
             testID={testID}
           >
             {children}
@@ -181,8 +182,8 @@ function useKeyboardTop(): number | null {
   return top;
 }
 
-/** Hands screen reader focus back to `opener` once a sheet that was open has slid away (WCAG 2.4.3). */
-function useFocusBack(open: boolean, opener: RefObject<ScreenReaderTarget | null>): void {
+/** Hands screen reader focus back to `opener` once a sheet or dialog that was open has gone (WCAG 2.4.3). */
+export function useFocusBack(open: boolean, opener: RefObject<ScreenReaderTarget | null>): void {
   const wasOpen = useRef(open);
 
   useEffect(() => {

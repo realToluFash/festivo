@@ -47,6 +47,15 @@ export function currentSessionId(): string | null {
   return sessionId;
 }
 
+/** A session this device holds; one it cannot read back counts as none. */
+export async function holdsSession(): Promise<boolean> {
+  if (accessToken != null) return true;
+
+  const kept = await tokens.refresh();
+
+  return kept != null && kept !== '';
+}
+
 /** No keystore on web, and a device can refuse one: memory for the launch rather than a failure. */
 async function usable(): Promise<boolean> {
   try {

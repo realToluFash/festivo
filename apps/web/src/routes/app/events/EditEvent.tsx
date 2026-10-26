@@ -6,6 +6,7 @@ import {
   eventChanges,
   eventNameLength,
   eventProblems,
+  isEventType,
   VENUE_ADDRESS_MAXIMUM,
   VENUE_NAME_MAXIMUM,
   type VenueDraft,
@@ -37,6 +38,7 @@ import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { Choice, FieldError, Moment } from './EventFields.tsx';
 import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
+import { typeChoices } from './eventTypes.ts';
 import { skippedLine } from './skippedLine.ts';
 import { VenueSection } from './VenueSection.tsx';
 
@@ -202,6 +204,7 @@ function DetailsForm({
     () => timeZoneChoices(saved.timeZone, timeZone),
     [saved.timeZone, timeZone],
   );
+  const types = useMemo(() => typeChoices(draft.type, t), [draft.type, t]);
   const blocker = useBlocker(
     useCallback(() => saving.current || (dirty && !closing.current), [dirty]),
   );
@@ -385,6 +388,15 @@ function DetailsForm({
               {t('eventForm.nameCount', { count: nameLength, most: EVENT_NAME_MAXIMUM })}
             </p>
           </div>
+          <Choice
+            id="event-type"
+            label={t('eventForm.type')}
+            value={draft.type}
+            error={errors.type}
+            busy={busy}
+            options={types}
+            onChange={(value) => edit('type', { type: isEventType(value) ? value : '' })}
+          />
         </section>
 
         <section className="card" aria-labelledby="event-when">

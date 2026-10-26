@@ -31,7 +31,9 @@ final readonly class EventEditor
     /**
      * A field left out keeps its value. Start and end are wall-clock times, so a new zone alone keeps them as typed.
      *
-     * @param array{name?: string, startsAt?: string, endsAt?: string, timeZone?: string, currency?: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null} $fields
+     * A type sent as null is refused like a missing one on create: an event, once typed, stays typed (sc-3588).
+     *
+     * @param array{name?: string, type?: ?string, startsAt?: string, endsAt?: string, timeZone?: string, currency?: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null} $fields
      */
     public function edit(Event $event, ?string $ifMatch, User $by, array $fields): Event
     {
@@ -49,6 +51,7 @@ final readonly class EventEditor
             $before = self::recorded($event);
             $checked = $this->eventRules->check([
                 'name' => $fields['name'] ?? $event->getName(),
+                'type' => Iter\contains_key($fields, 'type') ? $fields['type'] : $event->getType()->value,
                 'startsAt' => $fields['startsAt'] ?? $event->getStartsAt()->format('Y-m-d\TH:i:s'),
                 'endsAt' => $fields['endsAt'] ?? $event->getEndsAt()->format('Y-m-d\TH:i:s'),
                 'timeZone' => $fields['timeZone'] ?? $event->getTimeZone(),
@@ -61,6 +64,7 @@ final readonly class EventEditor
             }
 
             $event->setName($checked['name']);
+            $event->setType($checked['type']);
             $event->setCurrency($checked['currency']);
 
             if (Iter\contains_key($checked, 'venue')) {
@@ -107,6 +111,7 @@ final readonly class EventEditor
     {
         return [
             'name' => $event->getName(),
+            'type' => $event->getType()->value,
             'startsAt' => $event->getStartsAt()->format(\DATE_ATOM),
             'endsAt' => $event->getEndsAt()->format(\DATE_ATOM),
             'timeZone' => $event->getTimeZone(),

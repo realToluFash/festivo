@@ -15,6 +15,7 @@ use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\ErrorCode;
+use App\Enum\EventType;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
@@ -58,6 +59,7 @@ final class EventsTest extends ApiTestCase
     {
         $body = $this->as($this->owner, 'POST', $this->path('events'), [
             'name' => '  Adé at 40  ',
+            'type' => 'birthday',
             'startsAt' => '2026-11-14T16:00',
             'endsAt' => '2026-11-15T02:00',
             'timeZone' => 'Africa/Lagos',
@@ -67,6 +69,7 @@ final class EventsTest extends ApiTestCase
         self::assertSame(201, $this->statusCode());
         $event = $this->event($body);
         self::assertSame('Adé at 40', $event['name']);
+        self::assertSame('birthday', $event['type']);
         self::assertSame('draft', $event['status']);
         self::assertSame('2026-11-14T16:00:00+01:00', $event['startsAt']);
         self::assertSame('2026-11-15T02:00:00+01:00', $event['endsAt']);
@@ -83,6 +86,7 @@ final class EventsTest extends ApiTestCase
     {
         $event = $this->event($this->as($this->owner, 'POST', $this->path('events'), [
             'name' => 'Owambe',
+            'type' => 'party',
             'startsAt' => '2026-11-14T16:00',
             'endsAt' => '2026-11-14T16:00',
         ]));
@@ -95,6 +99,8 @@ final class EventsTest extends ApiTestCase
     public static function refusals(): iterable
     {
         yield 'a blank name' => [['name' => '   '], 'name', 'Give the event a name.'];
+        yield 'a type outside the list' => [['type' => 'burial'], 'type', 'Choose what kind of event it is.'];
+        yield 'a type by its label' => [['type' => 'Wedding'], 'type', 'Choose what kind of event it is.'];
         yield 'a name past 120' => [['name' => Str\repeat('a', 121)], 'name', 'Shorten the name to 120 characters or fewer.'];
         yield 'no start' => [['startsAt' => ''], 'startsAt', 'Choose when the event starts.'];
         yield 'no end' => [['endsAt' => ''], 'endsAt', 'Choose when the event ends.'];
@@ -124,7 +130,38 @@ final class EventsTest extends ApiTestCase
         $this->as($this->owner, 'POST', $this->path('events'), ['name' => '', 'startsAt' => null, 'endsAt' => null]);
 
         self::assertSame(422, $this->statusCode());
-        self::assertSame(['name', 'startsAt', 'endsAt'], Vec\keys($this->violations()));
+        self::assertSame(['name', 'type', 'startsAt', 'endsAt'], Vec\keys($this->violations()));
+    }
+
+    /** @return iterable<string, array{array<string, ?string>}> */
+    public static function untyped(): iterable
+    {
+        yield 'type left out' => [[]];
+        yield 'type null' => [['type' => null]];
+        yield 'type blank' => [['type' => '']];
+    }
+
+    /** @param array<string, ?string> $type */
+    #[Test]
+    #[DataProvider('untyped')]
+    public function aNewEventWithNoTypeIsRefusedUnderTheField(array $type): void
+    {
+        $body = Dict\filter_keys(self::valid(), static fn (string $field): bool => 'type' !== $field);
+        $this->as($this->owner, 'POST', $this->path('events'), [...$body, ...$type]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame(['type' => 'Choose what kind of event it is.'], $this->violations());
+        self::assertSame([], $this->listed());
+    }
+
+    #[Test]
+    public function everyTypeOnTheListIsTaken(): void
+    {
+        foreach (EventType::cases() as $type) {
+            $event = $this->event($this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'type' => $type->value]));
+
+            self::assertSame($type->value, $event['type']);
+        }
     }
 
     #[Test]
@@ -333,6 +370,32 @@ final class EventsTest extends ApiTestCase
         self::assertSame(422, $this->statusCode());
         self::assertSame([$field => $message], $this->violations());
         self::assertSame($before, $this->event($this->as($this->owner, 'GET', '/api/events/' . $id)));
+        self::assertSame($read, $this->tag());
+    }
+
+    #[Test]
+    public function anEditChangesTheType(): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+
+        $edited = $this->event($this->edit($id, ['type' => 'anniversary'], $this->tagOf($id)));
+
+        self::assertSame(200, $this->statusCode());
+        self::assertSame('anniversary', $edited['type']);
+        self::assertSame('anniversary', $this->event($this->as($this->owner, 'GET', '/api/events/' . $id))['type']);
+    }
+
+    #[Test]
+    public function anEditCannotTakeTheTypeAway(): void
+    {
+        $id = $this->create('Owambe', '2026-11-14T16:00');
+        $read = $this->tagOf($id);
+
+        $this->edit($id, ['type' => null], $read);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame(['type' => 'Choose what kind of event it is.'], $this->violations());
+        self::assertSame('wedding', $this->event($this->as($this->owner, 'GET', '/api/events/' . $id))['type']);
         self::assertSame($read, $this->tag());
     }
 
@@ -717,10 +780,10 @@ final class EventsTest extends ApiTestCase
         return $id;
     }
 
-    /** @return array{name: string, startsAt: string, endsAt: string, timeZone: string, currency: string} */
+    /** @return array{name: string, type: string, startsAt: string, endsAt: string, timeZone: string, currency: string} */
     private static function valid(): array
     {
-        return ['name' => 'Owambe', 'startsAt' => '2026-11-14T16:00', 'endsAt' => '2026-11-15T02:00', 'timeZone' => 'Africa/Lagos', 'currency' => 'NGN'];
+        return ['name' => 'Owambe', 'type' => 'wedding', 'startsAt' => '2026-11-14T16:00', 'endsAt' => '2026-11-15T02:00', 'timeZone' => 'Africa/Lagos', 'currency' => 'NGN'];
     }
 
     private function create(string $name, string $startsAt, string $timeZone = 'Africa/Lagos'): string
@@ -764,7 +827,7 @@ final class EventsTest extends ApiTestCase
     /**
      * @param array<string, mixed> $body
      *
-     * @return array{id: string, organisationId: string, name: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, venue: mixed, createdAt: string}
+     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, venue: mixed, createdAt: string}
      */
     private function event(array $body): array
     {
@@ -772,6 +835,7 @@ final class EventsTest extends ApiTestCase
             'id' => Type\string(),
             'organisationId' => Type\string(),
             'name' => Type\string(),
+            'type' => Type\string(),
             'status' => Type\string(),
             'startsAt' => Type\string(),
             'endsAt' => Type\string(),

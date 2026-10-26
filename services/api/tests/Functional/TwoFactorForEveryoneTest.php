@@ -95,13 +95,43 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
         ));
         $mails = $this->mails();
         self::assertSame(['bisi@ire.events'], Vec\map($mails, static fn (Email $mail): string => $mail->getTo()[0]->getAddress()));
-        self::assertSame('Ìrè Events requires two-factor', $mails[0]->getSubject());
         $deadline = Type\shape(['at' => Type\string(), 'written' => Type\string()], true)->coerce($body['twoFactorDeadline'] ?? null);
-        self::assertStringContainsString('Ìrè Events requires two-factor from ' . $deadline['written'], (string) $mails[0]->getTextBody());
+        self::assertSame('Ìrè Events requires two-factor from ' . $deadline['written'], $mails[0]->getSubject());
         self::assertSame(
             new Clock()->now()->modify('+7 days')->format('Y-m-d H:i'),
             new DateTimeImmutable($deadline['at'])->setTimezone(new Clock()->now()->getTimezone())->format('Y-m-d H:i'),
         );
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function lagosAndLondon(): iterable
+    {
+        yield 'a member in Lagos' => ['Africa/Lagos', 'Saturday 31 Oct at 14:20 WAT'];
+        yield 'a member in London' => ['Europe/London', 'Saturday 31 Oct at 13:20 GMT'];
+    }
+
+    #[Test]
+    #[DataProvider('lagosAndLondon')]
+    public function theDueEmailGivesTheDeadlineInTheMembersZoneEverywhereItAppears(string $zone, string $written): void
+    {
+        self::mockTime('2026-10-24 13:20:00 UTC');
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Coordinator);
+        $this->zone($bisi, $zone);
+        $this->turnOnTwoFactor($this->owner);
+
+        $this->set(['everyoneNeedsTwoFactor' => true]);
+
+        $mails = $this->mails();
+        self::assertCount(1, $mails);
+        self::assertSame('Ìrè Events requires two-factor from ' . $written, $mails[0]->getSubject());
+        $paragraphs = Str\split((string) $mails[0]->getTextBody(), "\n\n");
+        self::assertSame([
+            "Ìrè Events now requires two-factor for everyone in it. You have until {$written} to turn it on. After that, you can't open anything in Ìrè Events until it's on. Your other organisations and your access to single events are not affected.",
+            "Two-factor asks for a code from an authenticator app when you sign in, so a stolen password isn't enough on its own. You turn it on once, and it covers every organisation that requires it.",
+            "Organisation: Ìrè Events\nRequired from: {$written}\nYour account: bisi@ire.events",
+        ], Vec\take($paragraphs, 3));
+        self::assertMatchesRegularExpression('~^Turn on two-factor: https?://\S+/app/account/security$~', $paragraphs[3] ?? '');
+        self::assertSame(['--', "You're getting this because you're a member of Ìrè Events."], Vec\slice($paragraphs, 4));
     }
 
     #[Test]
@@ -466,7 +496,7 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
     {
         return Vec\map(Vec\filter(
             self::getMailerMessages(),
-            static fn (object $message): bool => $message instanceof Email && Str\ends_with((string) $message->getSubject(), 'requires two-factor'),
+            static fn (object $message): bool => $message instanceof Email && Str\contains((string) $message->getSubject(), ' requires two-factor from '),
         ), static fn (object $message): Email => Type\instance_of(Email::class)->coerce($message));
     }
 

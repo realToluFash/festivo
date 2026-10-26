@@ -55,6 +55,7 @@
     "validation.event_name_too_long": "Encurte o nome para um máximo de {count} caracteres.",
     "validation.event_start_required": "Escolha quando começa o evento.",
     "validation.event_time_invalid": "Indique uma data e uma hora sem fuso horário.",
+    "validation.event_type_required": "Choose what kind of event it is.",
     "validation.event_venue_address_too_long": "Shorten the address to {count} characters or fewer.",
     "validation.event_venue_name_too_long": "Shorten the venue name to {count} characters or fewer.",
     "validation.locale_invalid": "Escolha English, Español, Français ou Português.",

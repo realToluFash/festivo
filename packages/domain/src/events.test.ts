@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import {
+  EVENT_TYPES,
   type EventDraft,
   draftOf,
   type VenueDraft,
@@ -10,6 +11,7 @@ import {
   eventNameLength,
   eventProblems,
   filledEndDate,
+  isEventType,
   venueDraftOf,
   venueProblems,
   venueSent,
@@ -19,6 +21,7 @@ import {
 
 const DRAFT: EventDraft = {
   name: 'Adaeze and Tunde',
+  type: 'wedding',
   startDate: '2026-11-14',
   startTime: '16:00',
   endDate: '2026-11-15',
@@ -60,12 +63,19 @@ describe('the new event form', () => {
     expect(eventProblems({ ...DRAFT, endDate: '2026-11-14', endTime: '16:00' }, '')).toEqual([]);
   });
 
+  it('refuses a new event with no type chosen (sc-3588)', () => {
+    expect(eventProblems({ ...DRAFT, type: '' }, '')).toEqual([
+      { field: 'type', problem: 'typeMissing' },
+    ]);
+  });
+
   it('lists every problem at once, in the order of the fields', () => {
     expect(
-      eventProblems({ name: '', startDate: '', startTime: '', endDate: '', endTime: '' }, '').map(
-        ({ field }) => field,
-      ),
-    ).toEqual(['name', 'startsAt', 'endsAt']);
+      eventProblems(
+        { name: '', type: '', startDate: '', startTime: '', endDate: '', endTime: '' },
+        '',
+      ).map(({ field }) => field),
+    ).toEqual(['name', 'type', 'startsAt', 'endsAt']);
   });
 });
 
@@ -80,6 +90,7 @@ describe('the end date', () => {
 describe('editing an event (sc-3587)', () => {
   const saved = {
     name: 'Owambe',
+    type: 'birthday' as const,
     startsAt: '2026-03-28T19:00:00+00:00',
     endsAt: '2026-03-29T19:00:00+01:00',
     timeZone: 'Europe/London',
@@ -91,6 +102,7 @@ describe('editing an event (sc-3587)', () => {
   it('opens with the wall-clock times as saved, whatever their offsets', () => {
     expect(draftOf(saved)).toEqual({
       name: 'Owambe',
+      type: 'birthday',
       startDate: '2026-03-28',
       startTime: '19:00',
       endDate: '2026-03-29',
@@ -123,12 +135,42 @@ describe('editing an event (sc-3587)', () => {
         venue,
       }),
     ).toEqual({ name: 'Owambe at night', endsAt: '2026-03-29T23:30', currency: 'EUR' });
+    expect(
+      eventChanges(saved, {
+        draft: { ...draftOf(saved), type: 'party' },
+        timeZone: 'Europe/London',
+        currency: 'GBP',
+        venue,
+      }),
+    ).toEqual({ type: 'party' });
+  });
+});
+
+describe('the type of an event (sc-3588)', () => {
+  it("is the API's EventType, case for case and in its order", () => {
+    const source = readFileSync(
+      new URL('../../../services/api/src/Enum/EventType.php', import.meta.url),
+      'utf8',
+    );
+
+    expect(Array.from(source.matchAll(/case \w+ = '([a-z_]+)';/g), ([, value]) => value)).toEqual([
+      ...EVENT_TYPES,
+    ]);
+  });
+
+  it('knows only the fourteen', () => {
+    expect(EVENT_TYPES).toHaveLength(14);
+    expect(EVENT_TYPES.at(-1)).toBe('other');
+    expect(isEventType('memorial')).toBe(true);
+    expect(isEventType('burial')).toBe(false);
+    expect(isEventType('Wedding')).toBe(false);
   });
 });
 
 describe("an event's venue (sc-3589)", () => {
   const saved = {
     name: 'Owambe',
+    type: 'wedding' as const,
     startsAt: '2026-11-14T16:00:00+01:00',
     endsAt: '2026-11-14T23:00:00+01:00',
     timeZone: 'Africa/Lagos',

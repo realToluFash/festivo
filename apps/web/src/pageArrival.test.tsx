@@ -253,6 +253,7 @@ describe('the pages Soirely has, signed in', () => {
     id: 'ev_1',
     organisationId: 'org_1',
     name: 'Adaeze and Tunde',
+    type: 'wedding',
     status: 'draft',
     startsAt: '2026-11-14T16:00:00+01:00',
     endsAt: '2026-11-15T02:00:00+01:00',

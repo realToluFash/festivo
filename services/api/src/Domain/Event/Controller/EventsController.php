@@ -54,6 +54,7 @@ final readonly class EventsController
     {
         $body = Input::body($request, Type\shape([
             'name' => Type\optional(Type\nullable(Type\string())),
+            'type' => Type\optional(Type\nullable(Type\string())),
             'startsAt' => Type\optional(Type\nullable(Type\string())),
             'endsAt' => Type\optional(Type\nullable(Type\string())),
             'timeZone' => Type\optional(Type\nullable(Type\string())),
@@ -63,6 +64,7 @@ final readonly class EventsController
 
         $event = $this->eventCreator->create($this->organisation($organisationId), $this->user(), [
             'name' => $body['name'] ?? null,
+            'type' => $body['type'] ?? null,
             'startsAt' => $body['startsAt'] ?? null,
             'endsAt' => $body['endsAt'] ?? null,
             'timeZone' => $body['timeZone'] ?? null,
@@ -80,7 +82,7 @@ final readonly class EventsController
         return self::tagged($this->event($eventId));
     }
 
-    /** Any of the six fields; those left out keep their value, and a `venue` of null removes it. Needs If-Match with the ETag it read (sc-3587). */
+    /** Any of the seven fields; those left out keep their value, and a `venue` of null removes it. Needs If-Match with the ETag it read (sc-3587). */
     #[Route('/api/events/{eventId}', name: 'events_update', methods: ['PATCH'])]
     #[InEvent(Permission::EventsManage)]
     public function update(Request $request, string $eventId): JsonResponse
@@ -88,6 +90,7 @@ final readonly class EventsController
         $event = $this->event($eventId);
         $body = Input::body($request, Type\shape([
             'name' => Type\optional(Type\string()),
+            'type' => Type\optional(Type\nullable(Type\string())),
             'startsAt' => Type\optional(Type\string()),
             'endsAt' => Type\optional(Type\string()),
             'timeZone' => Type\optional(Type\string()),
