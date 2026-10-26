@@ -17,6 +17,7 @@ services:
         bind:
             string $appEnv: '%kernel.environment%'
             string $mailFrom: '%env(MAIL_FROM)%'
+            string $mercureSubscriberKey: '%env(MERCURE_SUBSCRIBER_KEY)%'
 
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name

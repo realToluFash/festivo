@@ -162,6 +162,7 @@ doctrine = ["App\\Doctrine\\**"]
 health = ["App\\Health\\**"]
 locale = ["App\\Locale\\**"]
 storage = ["App\\Storage\\**"]
+realtime = ["App\\Realtime\\**"]
 translation = ["App\\Translation\\**"]
 repository = ["App\\Repository\\**"]
 
@@ -194,6 +195,10 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:health", 
 [[guard.perimeter.rules]]
 namespace = "App\\Locale\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:locale"]
+
+[[guard.perimeter.rules]]
+namespace = "App\\Realtime\\"
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:realtime"]
 
 [[guard.perimeter.rules]]
 namespace = "App\\Storage\\"
