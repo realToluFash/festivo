@@ -75,7 +75,9 @@ $scheduler->cancel("payment-reminder:{$payment->getId()}");
   per key.
 - **A window is not collapsing.** "Changes within 10 minutes send one email" is one row
   under one key, due at the window's end, which each change schedules again.
-- **Cancelling a key** removes its pending rows and every delivery of them not yet sent.
+- **Cancelling a key** removes its pending rows and every delivery of them not yet sent,
+  except a call already under way: it is recorded Sent if the provider accepts it, and
+  otherwise deleted with the rest, never retried or held for a resume.
 - **The source id** is the thing that caused the notification. A retry or a doubled trigger
   with the same source id sends once; a second, deliberate send needs a new one.
 
