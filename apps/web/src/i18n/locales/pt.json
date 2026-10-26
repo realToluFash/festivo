@@ -496,7 +496,7 @@
     "derived": "A moeda segue o país, o fuso horário vem deste dispositivo e o endereço de contacto é o seu endereço de e-mail principal, {{email}}. Pode alterar estes dados em Definições > Geral.",
     "signedInAs": "Sessão iniciada como {{email}}.",
     "account": "A sua conta",
-    "wayBack": "Join or start an organisation"
+    "wayBack": "Aderir a uma organização ou criar uma"
   },
   "orgGeneral": {
     "title": "Geral",

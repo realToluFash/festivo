@@ -496,7 +496,7 @@
     "derived": "La devise suit le pays, le fuseau horaire est celui de cet appareil et l’adresse de contact est votre adresse e-mail principale, {{email}}. Vous pourrez les modifier dans Paramètres > Général.",
     "signedInAs": "Connecté en tant que {{email}}.",
     "account": "Votre compte",
-    "wayBack": "Join or start an organisation"
+    "wayBack": "Rejoindre ou créer une organisation"
   },
   "orgGeneral": {
     "title": "Général",
