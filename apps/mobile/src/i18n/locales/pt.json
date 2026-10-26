@@ -1175,7 +1175,7 @@
       "left": "saiu a {{date}}",
       "removed": "acesso retirado a {{date}}"
     },
-    "you": "a sua conta",
+    "you": "si",
     "youAs": "A sua função: {{role}}",
     "roleTitle": "Função",
     "roleTakesEffect": "Aplica-se assim que essa pessoa voltar a usar a Soirely; nenhuma sessão é encerrada.",
