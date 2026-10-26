@@ -55,6 +55,8 @@
     "validation.event_name_too_long": "Raccourcissez le nom à {count} caractères maximum.",
     "validation.event_start_required": "Choisissez quand l’événement commence.",
     "validation.event_time_invalid": "Saisissez une date et une heure sans fuseau horaire.",
+    "validation.event_venue_address_too_long": "Shorten the address to {count} characters or fewer.",
+    "validation.event_venue_name_too_long": "Shorten the venue name to {count} characters or fewer.",
     "validation.locale_invalid": "Choisissez English, Español, Français ou Português.",
     "validation.name_required": "Veuillez saisir votre nom.",
     "validation.organisation_name_required": "Indiquez le nom de l’organisation.",

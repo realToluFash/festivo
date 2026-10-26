@@ -218,6 +218,10 @@ when@test:
             public: true
             autoconfigure: true
 
+        App\Tests\Double\ScriptedAddressProvider:
+            public: true
+        App\Address\Interfaces\AddressProviderInterface: '@App\Tests\Double\ScriptedAddressProvider'
+
         # No test reaches Have I Been Pwned. The stand-in's list is what makes
         # "this password is in a breach" assertable at all: the real corpus is
         # somebody else's data and could answer differently tomorrow.

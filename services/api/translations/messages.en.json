@@ -55,6 +55,8 @@
     "validation.event_name_too_long": "Shorten the name to {count} characters or fewer.",
     "validation.event_start_required": "Choose when the event starts.",
     "validation.event_time_invalid": "Enter a date and a time with no time zone offset.",
+    "validation.event_venue_address_too_long": "Shorten the address to {count} characters or fewer.",
+    "validation.event_venue_name_too_long": "Shorten the venue name to {count} characters or fewer.",
     "validation.locale_invalid": "Choose English, Español, Français or Português.",
     "validation.name_required": "Enter your name.",
     "validation.organisation_name_required": "Enter the organisation's name.",

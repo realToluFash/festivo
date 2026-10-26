@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Event;
 
+use App\Domain\Event\Model\Venue;
 use App\Domain\Organisation\Regions;
 use App\Domain\User\TimeZone\AccountTimeZone;
 use App\Entity\Event;
@@ -11,6 +12,7 @@ use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use DateTimeImmutable;
 use DateTimeZone;
+use Psl\Iter;
 use Psl\Regex;
 use Psl\Str;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -21,16 +23,20 @@ final readonly class EventRules
 
     public function __construct(
         private TranslatorInterface $translator,
+        private VenueResolver $venueResolver,
     ) {
     }
 
     /**
-     * @param array{name: ?string, startsAt: ?string, endsAt: ?string, timeZone: string, currency: string} $fields
-     * @param ?string                                                                                      $held   the event's currency on an edit, which may stay although no longer offered
+     * The venue is checked only when `venue` is in the fields, and is in what this returns only then.
      *
-     * @return array{name: string, startsAt: DateTimeImmutable, endsAt: DateTimeImmutable, currency: string}
+     * @param array{name: ?string, startsAt: ?string, endsAt: ?string, timeZone: string, currency: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null} $fields
+     * @param ?string                                                                                                                                                                  $held      the event's currency on an edit, which may stay although no longer offered
+     * @param ?Venue                                                                                                                                                                   $heldVenue the event's venue on an edit, whose address keeps its parts when sent back unchanged
+     *
+     * @return array{name: string, startsAt: DateTimeImmutable, endsAt: DateTimeImmutable, currency: string, venue?: ?Venue}
      */
-    public function check(array $fields, ?string $held = null): array
+    public function check(array $fields, ?string $held = null, ?Venue $heldVenue = null): array
     {
         $name = Str\trim($fields['name'] ?? '');
         $currency = Str\uppercase(Str\trim($fields['currency']));
@@ -54,6 +60,16 @@ final readonly class EventRules
             $violations[] = $this->violation('currency', 'validation.currency_invalid');
         }
 
+        $venue = Iter\contains_key($fields, 'venue') ? $this->venueResolver->resolve($fields['venue'], $heldVenue) : null;
+
+        if (null !== $venue?->name && Str\length($venue->name) > Venue::NAME_MAXIMUM) {
+            $violations[] = $this->violation('venueName', 'validation.event_venue_name_too_long', ['{count}' => (string) Venue::NAME_MAXIMUM]);
+        }
+
+        if (null !== $venue?->address && Str\length($venue->address->formatted) > Venue::ADDRESS_MAXIMUM) {
+            $violations[] = $this->violation('venueAddress', 'validation.event_venue_address_too_long', ['{count}' => (string) Venue::ADDRESS_MAXIMUM]);
+        }
+
         if (null !== $zone && null !== $startsAt && null !== $endsAt) {
             $startsAt = LocalTimeResolver::resolve($startsAt, new DateTimeZone($zone));
             $endsAt = LocalTimeResolver::resolve($endsAt, new DateTimeZone($zone));
@@ -67,7 +83,9 @@ final readonly class EventRules
             throw ApiException::validation($violations);
         }
 
-        return ['name' => $name, 'startsAt' => $startsAt, 'endsAt' => $endsAt, 'currency' => $currency];
+        $checked = ['name' => $name, 'startsAt' => $startsAt, 'endsAt' => $endsAt, 'currency' => $currency];
+
+        return Iter\contains_key($fields, 'venue') ? [...$checked, 'venue' => $venue] : $checked;
     }
 
     /**
