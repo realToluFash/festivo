@@ -16,6 +16,7 @@ import {
   memberRowLine,
   memberStanding,
   memberStatusWord,
+  ownRoleLine,
   roleName,
 } from '@soirely/domain';
 import { type Ref, type RefObject, useState } from 'react';
@@ -819,6 +820,34 @@ function JoinRequestAnswer({
   );
 }
 
+function OwnRole({
+  standing,
+  onGoToOrganisation,
+}: {
+  standing: 'self' | 'selfOwner';
+  onGoToOrganisation: () => void;
+}) {
+  const { t } = useTranslation();
+  const line = ownRoleLine(standing);
+
+  return (
+    <>
+      <Text size={tokens.typeBodyPhone.size} muted>
+        {t(`membersScreen.${line.key}`)}
+      </Text>
+      {line.handsOn && (
+        <View style={styles.start}>
+          <QuietButton
+            label={t('membersScreen.goToOrganisation')}
+            onPress={onGoToOrganisation}
+            testID="members.goToOrganisation"
+          />
+        </View>
+      )}
+    </>
+  );
+}
+
 function FixedRole({
   standing,
   member,
@@ -840,24 +869,8 @@ function FixedRole({
       <Text size={tokens.typeTitleSection.size} weight="semibold">
         {role}
       </Text>
-      {standing === 'self' && (
-        <Text size={tokens.typeBodyPhone.size} muted>
-          {t('membersScreen.ownRoleOwnerCan')}
-        </Text>
-      )}
-      {standing === 'selfOwner' && (
-        <>
-          <Text size={tokens.typeBodyPhone.size} muted>
-            {t('membersScreen.ownRole')}
-          </Text>
-          <View style={styles.start}>
-            <QuietButton
-              label={t('membersScreen.goToOrganisation')}
-              onPress={onGoToOrganisation}
-              testID="members.goToOrganisation"
-            />
-          </View>
-        </>
+      {(standing === 'self' || standing === 'selfOwner') && (
+        <OwnRole standing={standing} onGoToOrganisation={onGoToOrganisation} />
       )}
       {standing === 'onlyOwner' && (
         <>

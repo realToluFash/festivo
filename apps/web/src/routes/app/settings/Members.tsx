@@ -21,6 +21,7 @@ import {
   memberRowLine,
   memberStanding,
   memberStatusWord,
+  ownRoleLine,
   roleName,
   withheldRoles,
 } from '@soirely/domain';
@@ -676,6 +677,7 @@ function MemberDetail({
   });
   const waiting = member.status === 'pending_approval';
   const noRole = memberHeldNoRole(member);
+  const ownRole = ownRoleLine(standing === 'selfOwner' ? 'selfOwner' : 'self');
   const onlyOwner = standing === 'suspendedOnlyOwner';
   const acts = (standing === 'manageable' || onlyOwner) && !waiting;
   const refusal = useRef<HTMLDivElement>(null);
@@ -860,15 +862,11 @@ function MemberDetail({
         ) : member.self ? (
           <>
             <p className="members-row-name">{roleName(t, member.role)}</p>
-            {standing === 'selfOwner' ? (
-              <>
-                <p className="muted">{t('membersScreen.ownRole')}</p>
-                <Link className="link-button" to="/app/settings">
-                  {t('membersScreen.goToGeneral')}
-                </Link>
-              </>
-            ) : (
-              <p className="muted">{t('membersScreen.ownRoleOwnerCan')}</p>
+            <p className="muted">{t(`membersScreen.${ownRole.key}`)}</p>
+            {ownRole.handsOn && (
+              <Link className="link-button" to="/app/settings">
+                {t('membersScreen.goToGeneral')}
+              </Link>
             )}
           </>
         ) : standing === 'onlyOwner' ? (

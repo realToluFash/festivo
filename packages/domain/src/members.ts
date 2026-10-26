@@ -73,6 +73,16 @@ export type MemberStanding =
   | 'readOnly'
   | 'manageable';
 
+/** sc-13631: on your own page, only an owner is pointed on to hand ownership over. */
+export function ownRoleLine(standing: 'self' | 'selfOwner'): {
+  key: 'ownRole' | 'ownRoleOwnerCan';
+  handsOn: boolean;
+} {
+  return standing === 'selfOwner'
+    ? { key: 'ownRole', handsOn: true }
+    : { key: 'ownRoleOwnerCan', handsOn: false };
+}
+
 interface StandingMember {
   self: boolean;
   status: MemberState;
