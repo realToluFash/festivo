@@ -10,6 +10,7 @@ import {
   eventChanges,
   eventNameLength,
   eventProblems,
+  eventsInOrder,
   filledEndDate,
   isEventType,
   venueDraftOf,
@@ -301,5 +302,36 @@ describe('a time the clocks skip (sc-10638)', () => {
 
     expect(eventProblems(draft, PARIS)).toEqual([{ field: 'endsAt', problem: 'endBeforeStart' }]);
     expect(eventProblems(draft, 'Africa/Lagos')).toEqual([]);
+  });
+});
+
+describe('the order events are listed in (sc-1593)', () => {
+  const at = (name: string, startsAt: string) => ({ name, startsAt });
+
+  it('puts the soonest start first, whatever the offset it is written with', () => {
+    const lagos = at('Lagos', '2026-11-14T16:00:00+01:00');
+    const london = at('London', '2026-11-14T15:30:00+00:00');
+
+    expect(eventsInOrder([london, lagos], 'en').map((e) => e.name)).toEqual(['Lagos', 'London']);
+  });
+
+  it("sorts the same start by name in the reader's collation, not by code point", () => {
+    const start = '2026-11-14T16:00:00+01:00';
+    const names = ['Zebra', 'école', 'Ball', 'apéro'].map((name) => at(name, start));
+
+    expect(eventsInOrder(names, 'fr').map((e) => e.name)).toEqual([
+      'apéro',
+      'Ball',
+      'école',
+      'Zebra',
+    ]);
+  });
+
+  it('leaves the list it was given as it was', () => {
+    const given = [at('B', '2026-11-15T10:00:00Z'), at('A', '2026-11-14T10:00:00Z')];
+
+    eventsInOrder(given, 'en');
+
+    expect(given.map((e) => e.name)).toEqual(['B', 'A']);
   });
 });

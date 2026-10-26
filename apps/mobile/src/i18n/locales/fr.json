@@ -664,6 +664,7 @@
   },
   "frame": {
     "home": "Accueil",
+    "events": "Événements",
     "settings": "Paramètres",
     "organisation": "Organisation"
   },
@@ -1398,5 +1399,37 @@
     "youWithdrewTold": "Vous avez retiré votre demande. Toutes les personnes qui en avaient été informées reçoivent un e-mail.",
     "withdrawEnded": "Cette demande a déjà pris fin.",
     "withdrawNotClaimant": "Seule la personne qui a fait cette demande peut la retirer."
+  },
+  "eventTypes": {
+    "wedding": "Mariage",
+    "birthday": "Anniversaire",
+    "anniversary": "Anniversaire de mariage",
+    "engagement": "Fiançailles",
+    "baby_shower": "Baby shower",
+    "graduation": "Remise de diplômes",
+    "memorial": "Cérémonie d’hommage",
+    "religious": "Célébration religieuse",
+    "cultural": "Célébration culturelle",
+    "party": "Fête",
+    "gala": "Gala ou soirée caritative",
+    "conference": "Conférence",
+    "corporate": "Événement d’entreprise",
+    "other": "Autre"
+  },
+  "eventsScreen": {
+    "title": "Events",
+    "loading": "Loading events…",
+    "refreshing": "Refreshing…",
+    "draft": "Draft",
+    "failedLoad": "Your events did not load. Check your connection and try again.",
+    "retry": "Try again",
+    "noneTitle": "No events yet",
+    "noneCreateOnWeb": "Create events in Soirely on the web, and they will show here.",
+    "noneWillShow": "Events your organisation creates will show here.",
+    "choose": "Choose an event",
+    "loadingEvent": "Loading the event…",
+    "when": "{{range}} · {{timeZone}}",
+    "notFound": "This event is not available",
+    "backToEvents": "Back to Events"
   }
 }
