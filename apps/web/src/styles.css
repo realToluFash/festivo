@@ -2250,8 +2250,13 @@ span {
   background: var(--colorAccentTint);
 }
 
+.no-organisation-main {
+  padding: var(--space6xl) var(--spaceXl);
+}
+
 .no-organisation {
-  max-width: 40rem;
+  max-width: 35rem;
+  margin: 0 auto;
 }
 
 .no-organisation h1,

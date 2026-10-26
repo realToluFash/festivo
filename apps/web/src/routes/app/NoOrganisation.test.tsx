@@ -50,14 +50,41 @@ function answering(answers: Record<string, () => Response | Promise<Response>>) 
   return sent;
 }
 
-function app() {
-  return render(
-    <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/app'] })} />,
-  );
+function app(path = '/app') {
+  return render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
 }
+
+const PRODUCT_LINKS = ['Dashboard', 'Events', 'Guests', 'Settings'];
 
 afterEach(() => {
   vi.restoreAllMocks();
+});
+
+describe('the page an account in no organisation stands on (sc-13339)', () => {
+  it.each(['/app', '/app/events', '/app/guests', '/app/settings'])(
+    'offers no product page at %s, only the account and the language',
+    async (path) => {
+      inNone();
+      answering({ 'GET /api/invitations': () => json({ invitations: [] }) });
+      app(path);
+
+      await screen.findByRole('heading', { level: 1, name: 'You are not in an organisation' });
+      for (const name of PRODUCT_LINKS) expect(screen.queryByRole('link', { name })).toBeNull();
+      expect(screen.getByLabelText('Language')).toBeDefined();
+      expect(screen.getByRole('link', { name: 'Your account' }).getAttribute('href')).toBe(
+        '/app/account/security',
+      );
+    },
+  );
+
+  it('keeps the account pages and their sidebar, so Dashboard leads back here', async () => {
+    inNone();
+    answering({ 'GET /api/invitations': () => json({ invitations: [] }) });
+    app('/app/account');
+
+    for (const name of PRODUCT_LINKS) await screen.findByRole('link', { name });
+    expect(screen.queryByRole('heading', { name: 'You are not in an organisation' })).toBeNull();
+  });
 });
 
 describe('No organisation', () => {
@@ -363,6 +390,7 @@ describe('where focus goes on No organisation (sc-11369)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Start organisation' }));
 
     await screen.findByRole('heading', { level: 1, name: 'Dashboard' });
+    for (const name of PRODUCT_LINKS) expect(screen.getByRole('link', { name })).toBeDefined();
     expect(document.activeElement).toBe(nowWorkingIn('Okoro Weddings'));
     expect(nowWorkingIn('Okoro Weddings')?.getAttribute('role')).toBeNull();
   });
@@ -402,6 +430,7 @@ describe('where focus goes on No organisation (sc-11369)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open Adunni Weddings' }));
 
     await screen.findByRole('heading', { level: 1, name: 'Dashboard' });
+    for (const name of PRODUCT_LINKS) expect(screen.getByRole('link', { name })).toBeDefined();
     expect(document.activeElement).toBe(nowWorkingIn('Adunni Weddings'));
   });
 

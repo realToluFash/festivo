@@ -121,6 +121,44 @@ function Shell() {
     );
   }, [switchTo, organisation?.id, session.pausedIn, location, navigate]);
 
+  const atAccount = pathname.startsWith('/app/account');
+
+  // Every product page would open this page again, so it stands alone: only what works without an organisation.
+  if (organisation == null && session.pausedIn == null && !atAccount) {
+    return (
+      <div className="no-organisation-page">
+        <a className="skip-link" href="#content">
+          {t('app.skipToContent')}
+        </a>
+        <header className="public-header">
+          <span className="brand">{t('app.name')}</span>
+          <LanguagePicker />
+        </header>
+        <main id="content" className="no-organisation-main">
+          <LinkedNotice />
+          <ErrorBoundary>
+            <NoOrganisation
+              waiting={waiting}
+              onOpen={(id) => {
+                const joined = session.organisations.find((membership) => membership.id === id);
+
+                switchOrganisation(id);
+                if (joined == null) return;
+                setSwitched({ id, name: joined.name, at: pathname, takesFocus: true });
+                arriveAtSwitched();
+              }}
+              onStarted={(started) => {
+                switchOrganisation(started.id);
+                setSwitched({ id: started.id, name: started.name, at: pathname, takesFocus: true });
+                arriveAtSwitched();
+              }}
+            />
+          </ErrorBoundary>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="shell">
       <a className="skip-link" href="#content">
@@ -184,7 +222,7 @@ function Shell() {
         )}
 
         <ErrorBoundary>
-          {session.pausedIn != null && !pathname.startsWith('/app/account') ? (
+          {session.pausedIn != null && !atAccount ? (
             <AccessPaused
               paused={session.pausedIn}
               others={session.organisations}
@@ -195,24 +233,7 @@ function Shell() {
               }}
               onChoose={() => setChoosing((times) => times + 1)}
             />
-          ) : organisation == null && !pathname.startsWith('/app/account') ? (
-            <NoOrganisation
-              waiting={waiting}
-              onOpen={(id) => {
-                const joined = session.organisations.find((membership) => membership.id === id);
-
-                switchOrganisation(id);
-                if (joined == null) return;
-                setSwitched({ id, name: joined.name, at: pathname, takesFocus: true });
-                arriveAtSwitched();
-              }}
-              onStarted={(started) => {
-                switchOrganisation(started.id);
-                setSwitched({ id: started.id, name: started.name, at: pathname, takesFocus: true });
-                arriveAtSwitched();
-              }}
-            />
-          ) : organisation != null && overdue && !pathname.startsWith('/app/account') ? (
+          ) : organisation != null && overdue && !atAccount ? (
             <TwoFactorOverdue organisation={organisation} />
           ) : (
             <Outlet />

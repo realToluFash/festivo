@@ -77,7 +77,7 @@ describe('the application tree', () => {
     expect(screen.getByText('Signed in as Ada Okonkwo')).toBeDefined();
   });
 
-  it('shows an account in no organisation where it stands, and keeps the navigation', () => {
+  it('shows an account in no organisation where it stands, with no product page to open', () => {
     __setSessionState({
       status: 'signedIn',
       session: { ...ADA, organisation: null, organisations: [] },
@@ -86,7 +86,7 @@ describe('the application tree', () => {
     at('/app/settings');
 
     expect(screen.getByRole('heading', { name: 'You are not in an organisation' })).toBeDefined();
-    expect(screen.getByRole('link', { name: 'Dashboard' })).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Dashboard' })).toBeNull();
   });
 
   it('sends somebody with no session to sign in, saying nothing about being signed out', async () => {
