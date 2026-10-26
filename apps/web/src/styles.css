@@ -226,8 +226,15 @@ span {
   background: var(--colorCard);
   color: var(--colorInk);
   font: var(--typeButton);
+  max-width: 100%;
   text-decoration: none;
   cursor: pointer;
+}
+
+.button-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .button:hover {
@@ -2129,16 +2136,6 @@ span {
   flex-wrap: wrap;
   gap: var(--spaceSm);
   min-width: 0;
-}
-
-.roles-actions .button {
-  max-width: 100%;
-}
-
-.roles-button-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .roles-panels {
