@@ -304,7 +304,7 @@ function CoverDialog({
           if (!current) return;
           setConverted(copy);
         }
-        setUpload({ kind: 'ready', key: signed.key });
+        setUpload((now) => (now.kind === 'failed' ? now : { kind: 'ready', key: signed.key }));
       })
       .catch((error: unknown) => {
         if (current) setUpload({ kind: 'failed', message: refusalOf(error, t) });

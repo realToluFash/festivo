@@ -2472,6 +2472,67 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
     expect(sent.filter(({ line }) => line.startsWith('PUT /api/events'))).toEqual([]);
   });
 
+  it('a JPEG the frame cannot show before its upload finishes stays unsaved once the upload does', async () => {
+    signedIn();
+    vi.stubGlobal(
+      'Image',
+      class {
+        naturalWidth = 2400;
+        naturalHeight = 1600;
+        onload: (() => void) | null = null;
+        set src(_: string) {
+          queueMicrotask(() => this.onload?.());
+        }
+      },
+    );
+    let release: (() => void) | null = null;
+    const sent = serving(PHOTO, {
+      'PUT /upload/1': () =>
+        new Promise((resolve) => {
+          release = () => resolve(new Response(null, { status: 200 }));
+        }),
+    });
+    await editing();
+
+    fireEvent.change(document.getElementById('cover-file')!, {
+      target: { files: [new File(['x'], 'arch.jpg', { type: 'image/jpeg' })] },
+    });
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    await waitFor(() => expect(release).not.toBeNull());
+    fireEvent.error(dialog.querySelector('.cover-frame img')!);
+    expect(await within(dialog).findByText('The photo did not upload. Try again.')).toBeDefined();
+
+    release!();
+    await waitFor(() =>
+      expect(sent.filter(({ line }) => line === 'PUT /upload/1')).toHaveLength(1),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(within(dialog).getByText('The photo did not upload. Try again.')).toBeDefined();
+    const use = within(dialog).getByRole('button', { name: 'Use this photo' });
+    expect(use.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(use);
+    expect(sent.filter(({ line }) => line.startsWith('PUT /api/events'))).toEqual([]);
+  });
+
+  it('a file named .jpg that is not a readable photo is refused while Cover photo is open', async () => {
+    signedIn();
+    const line = 'That file is not a photo we can use. Choose a JPEG, PNG, WebP or HEIC.';
+    const sent = serving(PHOTO, { [PREVIEW]: refusedWith(line) });
+    await editing();
+
+    fireEvent.change(document.getElementById('cover-file')!, {
+      target: { files: [new File(['x'], 'arch.jpg', { type: 'image/jpeg' })] },
+    });
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+
+    expect(await within(dialog).findByText(line)).toBeDefined();
+    const use = within(dialog).getByRole('button', { name: 'Use this photo' });
+    expect(use.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(use);
+    expect(sent.filter(({ line: sentLine }) => sentLine.startsWith('PUT /api/events'))).toEqual([]);
+  });
+
   it('while a HEIC uploads the frame holds the default, not the saved cover, and nothing can be positioned', async () => {
     signedIn();
     let release: (() => void) | null = null;
