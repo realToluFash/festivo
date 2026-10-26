@@ -93,10 +93,15 @@ between is handled as they are then.
 
 ## The worker
 
-- **One row per claim, most urgent first.** The claim orders by priority, then due time,
-  with `FOR UPDATE SKIP LOCKED`, and commits a lease before any provider is called. A row is
-  urgent when its type is, or when it is an in-app item. A batch claim would keep an urgent
-  row waiting behind the batch.
+- **One row per claim, most urgent first.** The worker claims an urgent row first, and
+  otherwise the oldest due, whatever the type's priority, with `FOR UPDATE SKIP LOCKED`; it
+  commits a lease before any provider is called. A row is urgent when its type is, or when
+  it is an in-app item. A batch claim would keep an urgent row waiting behind the batch.
+- **One bad row never stops the worker.** A type's check, an audience or a resolver that
+  throws records that row Failed with the exception's class, and the worker claims the next.
+- **A cancel wins over a fan-out in progress.** Each chunk locks its scheduled row and is
+  written only while that row is still pending; a cancel locks the row before it deletes
+  the pending deliveries, so it either stops the chunk or removes what it wrote.
 - **A large send goes out as one row per recipient**, never as one provider call for many.
   The fan-out writes deliveries in chunks of 250 and claims again between chunks, so an
   urgent row is never stuck behind a 1,500-guest send.
