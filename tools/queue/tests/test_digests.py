@@ -22,6 +22,7 @@ class Developers(unittest.TestCase):
     def pick(self, role, stories):
         p = Digest(role)
         with mock.patch.object(digests, "untaken", side_effect=lambda db, role, s: s), \
+                mock.patch.object(digests.store, "stories", return_value=stories), \
                 mock.patch.object(digests.store, "get_meta", return_value=None):
             digests.developer(p, None, stories)
         return p.lines[-1].split()[-1]
@@ -38,6 +39,35 @@ class Developers(unittest.TestCase):
         own = dict(ready(9), labels=["dev4"])
         self.assertEqual(self.pick("dev4", [ready(n) for n in range(1, 6)] + [own]),
                          "sc-9")
+
+
+def blocks(subject, object_):
+    return {"verb": "blocks", "subject": subject, "object": object_}
+
+
+class HeldByBlockers(unittest.TestCase):
+    pick = Developers.pick
+
+    def test_a_developer_s_next_skips_a_story_whose_blocker_has_not_merged(self):
+        held = dict(ready(1), links=[blocks(7, 1)])
+        blocker = dict(ready(7), state="In Review")
+        self.assertEqual(self.pick("dev", [held, ready(2), blocker]), "sc-2")
+
+    def test_a_blocker_that_is_done_holds_nothing(self):
+        held = dict(ready(1), links=[blocks(7, 1)])
+        blocker = dict(ready(7), state="Done", done=True)
+        self.assertEqual(self.pick("dev", [held, ready(2), blocker]), "sc-1")
+
+    def test_the_product_manager_s_to_do_list_says_what_holds_a_story(self):
+        todo = dict(ready(1), state="To Do", description="# AC\n- x", comments=[],
+                    links=[blocks(7, 1), blocks(8, 1)])
+        every = [todo, dict(ready(7), state="Ready For Dev"), dict(ready(8), state="To Do")]
+        p = Digest("pm")
+        with mock.patch.object(digests.store, "stories", return_value=every), \
+                mock.patch.object(digests.store, "get_meta", return_value=None):
+            digests.product_manager(p, None, [todo])
+        self.assertIn("held by sc-7 (Ready For Dev), sc-8 (To Do)",
+                      [line for line in p.lines if "sc-1 " in line][0])
 
 
 class Testers(unittest.TestCase):

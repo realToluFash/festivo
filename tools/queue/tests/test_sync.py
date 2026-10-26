@@ -109,3 +109,32 @@ class PullRequestStories(unittest.TestCase):
         self.assertTrue(store.story(db, 10)["archived"])
         sync.pr_stories(db, Shortcut(), NOW + 2 * sync.FULL_EVERY_SECONDS)
         self.assertEqual(asked, [10, 10])
+
+
+class Blockers(unittest.TestCase):
+    """A story's blockers are fetched whatever state they are in, so each is judged by it."""
+
+    def test_a_blocker_no_search_found_is_fetched_and_one_still_holding_again_in_full(self):
+        db, asked, archived = store.connect(":memory:"), [], []
+
+        class Shortcut(FakeShortcut):
+            def story(self, story_id):
+                asked.append(story_id)
+                if story_id == 404:
+                    raise sync.ShortcutError("Shortcut 404 on GET /api/v3/stories/404: gone")
+                return {"id": story_id, "name": "blocker", "workflow_state_id": 1,
+                        "archived": bool(archived)}
+
+        links = [{"verb": "blocks", "subject": b, "object": 1} for b in (7, 404)]
+        store.put_story(db, {"id": 1, "state": "Ready For Dev", "done": False, "labels": [],
+                             "links": links, "updated_at": "t0"})
+        sync.sync_blockers(db, Shortcut(), {"1": "In Review"}, {})
+        sync.sync_blockers(db, Shortcut(), {"1": "In Review"}, {})
+        self.assertEqual(asked, [7, 404])
+        self.assertEqual(store.story(db, 7)["state"], "In Review")
+        archived.append(True)
+        sync.sync_blockers(db, Shortcut(), {"1": "In Review"}, {}, full=True)
+        self.assertEqual(asked, [7, 404, 7])
+        self.assertTrue(store.story(db, 7)["archived"])
+        sync.sync_blockers(db, Shortcut(), {"1": "In Review"}, {}, full=True)
+        self.assertEqual(asked, [7, 404, 7])
