@@ -23,12 +23,14 @@ export function EndButton({
   now,
   heading,
   onChange,
+  onEnded,
 }: {
   event: OrganisationEvent;
   phase: EventPhase;
   now: Date;
   heading: RefObject<HTMLHeadingElement | null>;
   onChange: (event: OrganisationEvent) => void;
+  onEnded: () => void;
 }) {
   const { t } = useTranslation();
   const [asking, setAsking] = useState<Asking | null>(null);
@@ -58,6 +60,7 @@ export function EndButton({
       ({ event: ended }) => {
         setAsking(null);
         onChange(ended);
+        onEnded();
         window.setTimeout(() => heading.current?.focus(), 0);
       },
       (error: unknown) => {

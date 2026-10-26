@@ -1950,6 +1950,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(screen.getByText('Finished', { selector: '.pill-quiet' })).toBeDefined();
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Finished'));
     expect(screen.getByText(/^Called off on .*Oct 13, 2030, before it started\./)).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Call off' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'End now' })).toBeNull();
@@ -1977,6 +1978,10 @@ describe('The phase, End now and Call off (sc-3585)', () => {
 
     await waitFor(() =>
       expect(screen.getByText('Finished', { selector: '.pill-quiet' })).toBeDefined(),
+    );
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Finished'));
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 1, name: 'Adaeze and Tunde' }),
     );
     expect(screen.queryByText(/Called off on/)).toBeNull();
   });

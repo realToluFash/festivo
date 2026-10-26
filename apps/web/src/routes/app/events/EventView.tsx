@@ -167,6 +167,7 @@ function EventPage({
   const [coverRefused] = useState(() => coverRefusal(location.state));
   const coverLine = useRef<HTMLParagraphElement>(null);
   const [madeLive, setMadeLive] = useState(false);
+  const [ended, setEnded] = useState(false);
   const now = useServerNow();
   const loadedAt = useLoadedAt(event);
   const phase = shownPhase(event, loadedAt, now);
@@ -212,6 +213,7 @@ function EventPage({
         onMadeLive={() => setMadeLive(true)}
       />
       {madeLive && <OutcomeLine words={t('eventLive.madeLive')} />}
+      {ended && <OutcomeLine words={t(PHASE_WORD.finished)} />}
       <Venue event={event} manages={can(session, 'events.manage')} />
       {coverRefused != null && (
         <ArrivalNotice
@@ -235,7 +237,14 @@ function EventPage({
           </Link>
         )}
         {can(session, 'events.manage') && (
-          <EndButton event={event} phase={phase} now={now} heading={heading} onChange={onChange} />
+          <EndButton
+            event={event}
+            phase={phase}
+            now={now}
+            heading={heading}
+            onChange={onChange}
+            onEnded={() => setEnded(true)}
+          />
         )}
         <Link className="button" to={`/app/events/${encodeURIComponent(event.id)}/guests`}>
           {t('eventPage.guests')}
