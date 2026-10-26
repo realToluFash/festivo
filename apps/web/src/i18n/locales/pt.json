@@ -1314,7 +1314,7 @@
     "removeMove_many": "{{count}} de pessoas têm esta função. Passá-las para:",
     "replacementLegend": "Função de substituição",
     "removeNoReplacement": "Escolha a função de substituição.",
-    "removeAfter": "Passam a ser {{role}} no próximo pedido. Ninguém termina a sessão.",
+    "removeAfter": "A função {{role}} aplica-se ao voltar a usar a Soirely. Ninguém termina a sessão.",
     "removeConfirm": "Reatribuir e remover {{role}}",
     "removeConfirmEmpty": "Remover {{role}}",
     "keep": "Manter {{role}}",

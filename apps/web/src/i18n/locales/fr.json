@@ -1314,7 +1314,7 @@
     "removeMove_many": "{{count}} de personnes ont ce rôle. Les passer à :",
     "replacementLegend": "Rôle de remplacement",
     "removeNoReplacement": "Choisissez le rôle de remplacement.",
-    "removeAfter": "Elles deviennent {{role}} à leur prochaine requête. Personne n’est déconnecté.",
+    "removeAfter": "Le rôle {{role}} s’applique dès la prochaine utilisation de Soirely. Personne n’est déconnecté.",
     "removeConfirm": "Réattribuer et supprimer {{role}}",
     "removeConfirmEmpty": "Supprimer {{role}}",
     "keep": "Garder {{role}}",

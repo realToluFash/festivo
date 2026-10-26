@@ -480,6 +480,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   or many, because the button and the refusal get no {{count}}: "Reatribuir e remover {{role}}",
   and "Escolha a função de substituição", the legend's own noun. Not "Passá-las…" or "estas
   pessoas" after "1 pessoa tem esta função" (sc-13017).
+  The line under the chosen role, `rolesScreen.removeAfter`, takes the role as subject and an
+  infinitive: "A função {{role}} aplica-se ao voltar a usar a Soirely", not "Passam a ser…" (sc-14755).
 - **26 Oct 2026. The beyond-grant line names access** (`membersScreen.beyondGrant`, sc-13089). "… por isso não pode alterar-lhe a função nem o acesso": the enclitic "lhe" points at the member, so "o acesso" is never read as the reader's.
 - **26 Oct 2026. A security email's subject opens on the feature, then its state**
   (`emails:twoFactor.on.subject`, `twoFactor.off.subject`, sc-14100): "Autenticação de dois
