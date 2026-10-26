@@ -22,7 +22,8 @@ export function VenueSection({
   busy: boolean;
   timeZone: string;
   onVenue: (change: Partial<VenueDraft>) => void;
-  onUseZone: (zone: string) => void;
+  /** Left out where the zone can't change, and then nothing is offered. */
+  onUseZone?: (zone: string) => void;
 }) {
   const { t } = useTranslation();
   const [seen, setSeen] = useState(NOTHING_SEEN);
@@ -48,7 +49,10 @@ export function VenueSection({
     },
     onEscape: () => lookup.dismiss(),
   });
-  const offer = seen.offered != null && seen.offered.zone !== timeZone ? seen.offered : null;
+  const offer =
+    seen.offered != null && seen.offered.zone !== timeZone && onUseZone != null
+      ? seen.offered
+      : null;
   const announced =
     zoneSet != null
       ? t('eventForm.venueZoneSet', { zone: zoneSet })
@@ -163,7 +167,7 @@ export function VenueSection({
                   className="button button-primary"
                   disabled={busy}
                   onClick={() => {
-                    onUseZone(offer.zone);
+                    onUseZone?.(offer.zone);
                     lookup.answered();
                     document.getElementById('event-venue-address')?.focus();
                     setZoneSet(offer.zone);

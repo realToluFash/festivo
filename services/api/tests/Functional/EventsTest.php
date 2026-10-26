@@ -689,6 +689,180 @@ final class EventsTest extends ApiTestCase
         self::assertSame('live', $this->event($this->last())['status']);
     }
 
+    #[Test]
+    public function theResourceSaysItsPhaseAndWhenItFinished(): void
+    {
+        $draft = $this->event($this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'startsAt' => '2020-11-14T16:00', 'endsAt' => '2020-11-15T02:00']));
+        self::assertSame(['draft', null], [$draft['phase'], $draft['concludedAt']]);
+
+        $over = $this->live('2020-11-14T16:00', '2020-11-15T02:00');
+        self::assertSame(['finished', '2020-11-15T02:00:00+01:00'], [$over['phase'], $over['concludedAt']]);
+
+        $now = $this->live('2020-11-14T16:00', '2030-11-15T02:00');
+        self::assertSame(['happening_now', null], [$now['phase'], $now['concludedAt']]);
+
+        $ahead = $this->live(self::AHEAD, '2030-11-15T02:00');
+        self::assertSame(['live', 'live', null], [$ahead['status'], $ahead['phase'], $ahead['concludedAt']]);
+    }
+
+    #[Test]
+    public function anEventCalledOffBeforeItsStartIsFinishedThen(): void
+    {
+        $event = $this->live(self::AHEAD, '2030-11-15T02:00');
+
+        $ended = $this->event($this->as($this->owner, 'POST', '/api/events/' . $event['id'] . '/end'));
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(['ended', 'finished'], [$ended['status'], $ended['phase']]);
+        self::assertNotNull($ended['concludedAt']);
+        self::assertSame('+01:00', new DateTimeImmutable($ended['concludedAt'])->format('P'));
+        self::assertEqualsWithDelta(new DateTimeImmutable()->getTimestamp(), new DateTimeImmutable($ended['concludedAt'])->getTimestamp(), 5);
+        self::assertNotSame('', $this->tag());
+        self::assertSame($ended, $this->event($this->as($this->owner, 'GET', '/api/events/' . $event['id'])));
+
+        $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => EventLifecycle::ENDED, 'subjectType' => 'Event']);
+        self::assertInstanceOf(AuditEntry::class, $entry);
+        self::assertSame($this->owner->getId()->toRfc4122(), $entry->getActorId()?->toRfc4122());
+        self::assertSame(['status' => ['live', 'ended']], $entry->getChanges());
+    }
+
+    #[Test]
+    public function anEventEndedWhileItIsHappeningIsFinishedThenAndClosesThen(): void
+    {
+        $event = $this->live('2020-11-14T16:00', '2030-11-15T02:00');
+
+        $ended = $this->event($this->as($this->owner, 'POST', '/api/events/' . $event['id'] . '/end'));
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(['ended', 'finished'], [$ended['status'], $ended['phase']]);
+        self::assertEqualsWithDelta(new DateTimeImmutable()->getTimestamp(), new DateTimeImmutable((string) $ended['concludedAt'])->getTimestamp(), 5);
+        $closes = self::service(Connection::class)->fetchOne('SELECT closes_at FROM events WHERE id = :id', ['id' => $event['id']]);
+        self::assertEqualsWithDelta(new DateTimeImmutable((string) $ended['concludedAt'])->getTimestamp(), new DateTimeImmutable(Type\string()->coerce($closes) . 'Z')->getTimestamp(), 1);
+    }
+
+    #[Test]
+    public function aPausedEventIsEnded(): void
+    {
+        $event = $this->live(self::AHEAD, '2030-11-15T02:00');
+        self::service(Connection::class)->executeStatement("UPDATE events SET status = 'paused' WHERE id = :id", ['id' => $event['id']]);
+
+        $this->as($this->owner, 'POST', '/api/events/' . $event['id'] . '/end');
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame('ended', $this->event($this->last())['status']);
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function notLive(): iterable
+    {
+        yield 'a draft' => ['draft', 'draft'];
+        yield 'an ended event' => ['ended', 'finished'];
+    }
+
+    #[Test]
+    #[DataProvider('notLive')]
+    public function onlyALiveOrPausedEventIsEnded(string $status, string $phase): void
+    {
+        $id = $this->create('Owambe', self::AHEAD);
+        self::service(Connection::class)->executeStatement('UPDATE events SET status = :status WHERE id = :id', ['status' => $status, 'id' => $id]);
+
+        $this->as($this->owner, 'POST', '/api/events/' . $id . '/end');
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame([ErrorCode::EventStateInvalid->type(), $phase], [$this->last()['type'] ?? null, $this->last()['phase'] ?? null]);
+        $kept = $this->event($this->as($this->owner, 'GET', '/api/events/' . $id));
+        self::assertSame($status, $kept['status']);
+        self::assertNull(self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => EventLifecycle::ENDED]));
+    }
+
+    #[Test]
+    public function anEventPastItsEndIsNotEndedAgain(): void
+    {
+        $event = $this->live('2020-11-14T16:00', '2020-11-15T02:00');
+
+        $this->as($this->owner, 'POST', '/api/events/' . $event['id'] . '/end');
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(ErrorCode::EventConcluded->type(), $this->last()['type'] ?? null);
+        self::assertSame('This event is already over, so it cannot be ended.', $this->last()['detail'] ?? null);
+        $kept = $this->event($this->as($this->owner, 'GET', '/api/events/' . $event['id']));
+        self::assertSame(['live', 'finished', '2020-11-15T02:00:00+01:00'], [$kept['status'], $kept['phase'], $kept['concludedAt']]);
+    }
+
+    #[Test]
+    #[DataProvider('editors')]
+    public function onlyEventsManageEnds(SeededRole $seeded, bool $manages): void
+    {
+        $event = $this->live(self::AHEAD, '2030-11-15T02:00');
+        $member = $this->member('member@ire.events', $seeded);
+
+        $this->as($member, 'POST', '/api/events/' . $event['id'] . '/end');
+
+        self::assertSame($manages ? 200 : 403, $this->statusCode());
+    }
+
+    #[Test]
+    public function anotherOrganisationsEventIsNotEnded(): void
+    {
+        $event = $this->live(self::AHEAD, '2030-11-15T02:00');
+        $stranger = $this->account('stranger@elsewhere.events');
+        self::service(OrganisationFounder::class)->found($stranger, 'Elsewhere', 'NG', 'Africa/Lagos');
+        self::em()->flush();
+
+        $this->as($stranger, 'POST', '/api/events/' . $event['id'] . '/end');
+
+        self::assertSame(404, $this->statusCode());
+        self::assertSame('live', $this->event($this->as($this->owner, 'GET', '/api/events/' . $event['id']))['status']);
+    }
+
+    /** @return iterable<string, array{array<string, string>}> */
+    public static function scheduleChanges(): iterable
+    {
+        yield 'the start' => [['startsAt' => '2020-11-14T17:00']];
+        yield 'the end' => [['endsAt' => '2020-11-15T03:00']];
+        yield 'the zone' => [['timeZone' => 'Europe/London']];
+        yield 'the end and the name' => [['endsAt' => '2020-11-15T03:00', 'name' => 'Renamed']];
+    }
+
+    /** @param array<string, string> $change */
+    #[Test]
+    #[DataProvider('scheduleChanges')]
+    public function aFinishedEventsScheduleDoesNotChange(array $change): void
+    {
+        $event = $this->live('2020-11-14T16:00', '2020-11-15T02:00');
+
+        $this->edit($event['id'], $change, $this->tagOf($event['id']));
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(ErrorCode::EventConcluded->type(), $this->last()['type'] ?? null);
+        self::assertSame('This event is over, so its start, end and time zone cannot be changed.', $this->last()['detail'] ?? null);
+        self::assertSame($event, $this->event($this->as($this->owner, 'GET', '/api/events/' . $event['id'])));
+        self::assertCount(1, self::em()->getRepository(AuditEntry::class)->findBy(['action' => EventEditor::UPDATED]), 'only the move into the past was recorded');
+    }
+
+    #[Test]
+    public function aFinishedEventIsRenamedWithItsScheduleSentUnchanged(): void
+    {
+        $event = $this->live('2020-11-14T16:00', '2020-11-15T02:00');
+
+        $this->edit($event['id'], ['name' => 'Renamed', 'startsAt' => '2020-11-14T16:00', 'endsAt' => '2020-11-15T02:00', 'timeZone' => 'Africa/Lagos'], $this->tagOf($event['id']));
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(['Renamed', 'finished'], [$this->event($this->last())['name'], $this->event($this->last())['phase']]);
+    }
+
+    #[Test]
+    public function aFinishedEventIsRenamed(): void
+    {
+        $event = $this->live('2020-11-14T16:00', '2020-11-15T02:00');
+        self::service(Connection::class)->executeStatement("UPDATE events SET status = 'ended', ended_at = '2020-11-14 18:00:00' WHERE id = :id", ['id' => $event['id']]);
+
+        $this->edit($event['id'], ['name' => 'Renamed'], $this->tagOf($event['id']));
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(['Renamed', '2020-11-14T19:00:00+01:00'], [$this->event($this->last())['name'], $this->event($this->last())['concludedAt']]);
+    }
+
     /** @return iterable<string, array{SeededRole, bool}> */
     public static function editors(): iterable
     {
@@ -972,6 +1146,23 @@ final class EventsTest extends ApiTestCase
         return $this->event($body)['id'];
     }
 
+    /**
+     * Made live while its end is ahead, then moved to `$startsAt` and `$endsAt` in the database, as time would.
+     *
+     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: null, venue: mixed, madeLiveAt: ?string, phase: string, concludedAt: ?string, createdAt: string}
+     */
+    private function live(string $startsAt, string $endsAt): array
+    {
+        $id = $this->event($this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'startsAt' => self::AHEAD, 'endsAt' => self::AHEAD]))['id'];
+        $this->as($this->owner, 'POST', '/api/events/' . $id . '/make-live');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->edit($id, ['startsAt' => $startsAt, 'endsAt' => $endsAt], $this->tagOf($id));
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::em()->clear();
+
+        return $this->event($this->as($this->owner, 'GET', '/api/events/' . $id));
+    }
+
     private function tagOf(string $id): string
     {
         $this->as($this->owner, 'GET', '/api/events/' . $id);
@@ -1005,7 +1196,7 @@ final class EventsTest extends ApiTestCase
     /**
      * @param array<string, mixed> $body
      *
-     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: null, venue: mixed, madeLiveAt: ?string, createdAt: string}
+     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: null, venue: mixed, madeLiveAt: ?string, phase: string, concludedAt: ?string, createdAt: string}
      */
     private function event(array $body): array
     {
@@ -1023,6 +1214,8 @@ final class EventsTest extends ApiTestCase
             'cover' => Type\null(),
             'venue' => Type\mixed(),
             'madeLiveAt' => Type\nullable(Type\string()),
+            'phase' => Type\string(),
+            'concludedAt' => Type\nullable(Type\string()),
             'createdAt' => Type\string(),
         ])->assert($body['event'] ?? null);
     }

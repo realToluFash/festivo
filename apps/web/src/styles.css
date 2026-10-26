@@ -3926,18 +3926,55 @@ button.members-row {
 
 /* ── Make live (sc-3584) ──────────────────────────────────────────────────── */
 
-.pill-live {
+/* Each phase has a shape of its own beside its word (sc-3585): Draft a ring, Live a dot, Happening now a half-filled ring, Paused two bars, Finished a tick. */
+.pill-phase {
   gap: var(--spaceXs);
+}
+
+.pill-phase::before {
+  flex: none;
+  box-sizing: border-box;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  content: '';
+}
+
+.pill-draft::before {
+  border: var(--borderMark) var(--colorInkSecondary);
+}
+
+.pill-live {
   background: var(--colorAccentTint);
   color: var(--colorAccentText);
 }
 
 .pill-live::before {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
   background: var(--colorAccent);
-  content: '';
+}
+
+.pill-happening-now,
+.pill-paused {
+  background: var(--colorAttentionTint);
+  color: var(--colorAttentionText);
+}
+
+.pill-happening-now::before {
+  border: var(--borderMark) var(--colorAttentionText);
+  background: linear-gradient(90deg, var(--colorAttentionText) 50%, transparent 50%);
+}
+
+.pill-paused::before {
+  border-left: 0.1875rem solid var(--colorAttentionText);
+  border-right: 0.1875rem solid var(--colorAttentionText);
+  border-radius: 0;
+}
+
+.pill-finished::before {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  content: '✓';
 }
 
 .event-draft-row {
@@ -3953,6 +3990,12 @@ button.members-row {
 
 .event-draft-line {
   flex: 1 1 12rem;
+  margin: 0;
+}
+
+/* ── End now and Call off (sc-3585) ───────────────────────────────────────── */
+
+.event-called-off p {
   margin: 0;
 }
 

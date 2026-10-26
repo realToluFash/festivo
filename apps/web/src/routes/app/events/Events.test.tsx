@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { EVENT_TYPES } from '@soirely/domain';
+import { EVENT_TYPES, serverClock } from '@soirely/domain';
 
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
@@ -32,6 +32,8 @@ function event(overrides: Record<string, unknown> = {}) {
     cover: null,
     venue: null,
     madeLiveAt: null,
+    phase: 'draft',
+    concludedAt: null,
     createdAt: '2026-10-21T09:00:00+00:00',
     ...overrides,
   };
@@ -1632,6 +1634,7 @@ describe('Make live (sc-3584)', () => {
     return event({
       ...AHEAD,
       status: 'live',
+      phase: 'live',
       madeLiveAt: '2026-10-26T15:00:00+00:00',
       ...overrides,
     });
@@ -1785,6 +1788,284 @@ describe('Make live (sc-3584)', () => {
 
     const [row] = await screen.findAllByRole('listitem');
     expect(within(row!).getByText('Live')).toBeDefined();
+  });
+});
+
+describe('The phase, End now and Call off (sc-3585)', () => {
+  const AHEAD = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+  const HAPPENING = { startsAt: '2020-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+
+  function live(overrides: Record<string, unknown> = {}) {
+    return event({ ...AHEAD, status: 'live', phase: 'live', ...overrides });
+  }
+
+  function tagged(body: unknown, headers: Record<string, string> = {}): Response {
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { ETag: '"2"', ...headers },
+    });
+  }
+
+  async function onThePage(served: unknown, answers: Record<string, Answer> = {}) {
+    const sent = answering({ 'GET /api/events/ev_1': () => json({ event: served }), ...answers });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    return sent;
+  }
+
+  function clockAt(device: string): void {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date', 'setInterval', 'clearInterval'] });
+    vi.setSystemTime(new Date(device));
+  }
+
+  async function servedWithDate(served: unknown, date: string): Promise<void> {
+    answering({ 'GET /api/events/ev_1': () => tagged({ event: served }, { Date: date }) });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+    await act(() => vi.advanceTimersByTimeAsync(15_000));
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+    serverClock.observe(new Date().toUTCString());
+  });
+
+  it.each([
+    ['happening_now', 'Happening now'],
+    ['paused', 'Paused'],
+    ['finished', 'Finished'],
+  ])('shows the server phase %s as %s in the list', async (phase, word) => {
+    signedIn();
+    answering({ 'GET /api/orgs/org_1/events': () => json({ events: [live({ phase })] }) });
+    at('/app/events');
+
+    const [row] = await screen.findAllByRole('listitem');
+    expect(within(row!).getByText(word)).toBeDefined();
+  });
+
+  it("shows the server's phase on load, whatever the device clock says", async () => {
+    signedIn();
+    await onThePage(live({ ...HAPPENING, phase: 'live' }));
+
+    expect(screen.getByText('Live', { selector: '.pill-quiet' })).toBeDefined();
+    expect(screen.queryByText('Happening now')).toBeNull();
+  });
+
+  it('turns Live to Happening now at the start without a reload, says so, and Call off becomes End now', async () => {
+    clockAt('2030-11-14T14:59:50Z');
+    signedIn();
+    const sent = await onThePage(live());
+    expect(screen.getByRole('button', { name: 'Call off' })).toBeDefined();
+
+    await act(() => vi.advanceTimersByTimeAsync(15_000));
+
+    expect(screen.getByText('Happening now', { selector: '.pill-quiet' })).toBeDefined();
+    expect(document.querySelector('p.visually-hidden[aria-live="polite"]')?.textContent).toBe(
+      'Happening now',
+    );
+    expect(screen.getByRole('button', { name: 'End now' })).toBeDefined();
+    expect(sent.filter(({ line }) => line === 'GET /api/events/ev_1')).toHaveLength(1);
+  });
+
+  it('reads the phase again at once when the tab comes back', async () => {
+    clockAt('2030-11-14T14:59:55Z');
+    signedIn();
+    await onThePage(live());
+
+    vi.setSystemTime(new Date('2030-11-14T15:00:01Z'));
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(screen.getByText('Happening now', { selector: '.pill-quiet' })).toBeDefined();
+  });
+
+  it('still shows Live five minutes before the start on a device ten minutes fast', async () => {
+    clockAt('2030-11-14T15:05:00Z');
+    signedIn();
+    await servedWithDate(live(), 'Thu, 14 Nov 2030 14:55:00 GMT');
+
+    expect(screen.getByText('Live', { selector: '.pill-quiet' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Call off' })).toBeDefined();
+  });
+
+  it("still offers Make live five minutes before a Draft's end on a device ten minutes fast", async () => {
+    clockAt('2030-11-15T01:05:00Z');
+    signedIn();
+    await servedWithDate(event(AHEAD), 'Fri, 15 Nov 2030 00:55:00 GMT');
+
+    expect(screen.getByRole('button', { name: 'Make live' })).toBeDefined();
+  });
+
+  it("says a Draft's end has passed five minutes after it on a device ten minutes slow", async () => {
+    clockAt('2030-11-15T00:55:00Z');
+    signedIn();
+    await servedWithDate(event(AHEAD), 'Fri, 15 Nov 2030 01:05:00 GMT');
+
+    expect(
+      screen.getByText(
+        "This event's end has passed, so it can't be made live. Change its dates first.",
+      ),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
+  });
+
+  it('asks before calling it off, and Keep it on changes nothing', async () => {
+    signedIn();
+    const sent = await onThePage(live());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Call off' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Call off Adaeze and Tunde?' });
+
+    expect(
+      within(dialog).getByText("It won't go ahead. Guests following their link will be told."),
+    ).toBeDefined();
+    expect(within(dialog).getByText("You can't undo this.")).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Keep it on' }));
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Call off' })),
+    );
+    expect(sent.map(({ line }) => line)).not.toContain('POST /api/events/ev_1/end');
+  });
+
+  it('calls it off: Finished, with the called-off notice, and no button left', async () => {
+    signedIn();
+    const sent = await onThePage(live(), {
+      'POST /api/events/ev_1/end': () =>
+        tagged({
+          event: live({
+            status: 'ended',
+            phase: 'finished',
+            concludedAt: '2030-10-13T10:00:00+01:00',
+          }),
+        }),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Call off' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Call off Adaeze and Tunde?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Call off' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByText('Finished', { selector: '.pill-quiet' })).toBeDefined();
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Finished'));
+    expect(screen.getByText(/^Called off on .*Oct 13, 2030, before it started\./)).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Call off' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'End now' })).toBeNull();
+    expect(sent.filter(({ line }) => line === 'POST /api/events/ev_1/end')).toHaveLength(1);
+  });
+
+  it('ends it early once it is happening', async () => {
+    signedIn();
+    await onThePage(live({ ...HAPPENING, phase: 'happening_now' }), {
+      'POST /api/events/ev_1/end': () =>
+        tagged({
+          event: live({
+            ...HAPPENING,
+            status: 'ended',
+            phase: 'finished',
+            concludedAt: '2026-10-26T18:00:00+01:00',
+          }),
+        }),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'End now' }));
+    const dialog = await screen.findByRole('dialog', { name: 'End Adaeze and Tunde now?' });
+    expect(within(dialog).getByText('It will be over for everybody.')).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'End now' }));
+
+    await waitFor(() =>
+      expect(screen.getByText('Finished', { selector: '.pill-quiet' })).toBeDefined(),
+    );
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Finished'));
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 1, name: 'Adaeze and Tunde' }),
+    );
+    expect(screen.queryByText(/Called off on/)).toBeNull();
+  });
+
+  it('says the event is already over when the API refuses it event_concluded', async () => {
+    signedIn();
+    let reads = 0;
+    await onThePage(live(), {
+      'GET /api/events/ev_1': () =>
+        json({ event: (reads += 1) === 1 ? live() : live({ phase: 'finished' }) }),
+      'POST /api/events/ev_1/end': () => problem(409, 'event_concluded'),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Call off' }));
+    fireEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Call off' }),
+    );
+
+    const refused = await screen.findByRole('alertdialog', { name: 'Not ended.' });
+    expect(within(refused).getByText('This event is already over.')).toBeDefined();
+    fireEvent.click(within(refused).getByRole('button', { name: 'Close' }));
+    expect(screen.getByText('Finished', { selector: '.pill-quiet' })).toBeDefined();
+  });
+
+  it.each([
+    ['without events.manage', READER, live()],
+    ['on a Draft', IRE, event(AHEAD)],
+    ['once it is Finished', IRE, live({ phase: 'finished' })],
+  ])('offers neither End now nor Call off %s', async (_, who, served) => {
+    signedIn(who);
+    await onThePage(served);
+
+    expect(screen.queryByRole('button', { name: 'Call off' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'End now' })).toBeNull();
+  });
+
+  it("shows a Finished event's start, end and time zone read-only on Edit details, saying why", async () => {
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () =>
+        tagged({
+          event: live({
+            startsAt: '2020-11-14T16:00:00+01:00',
+            endsAt: '2020-11-15T02:00:00+01:00',
+            phase: 'finished',
+          }),
+        }),
+    });
+    at('/app/events/ev_1/edit');
+    await screen.findByRole('heading', { level: 1, name: 'Edit details' });
+
+    expect(
+      screen.getByText("This event is over, so its start, end and time zone can't be changed."),
+    ).toBeDefined();
+    for (const id of ['event-start-date', 'event-start-time', 'event-end-date', 'event-end-time']) {
+      expect((document.getElementById(id) as HTMLInputElement).readOnly).toBe(true);
+    }
+    expect((document.getElementById('event-time-zone') as HTMLSelectElement).disabled).toBe(true);
+    expect((document.getElementById('event-name') as HTMLInputElement).readOnly).toBe(false);
+  });
+
+  it('puts back a schedule typed into when the end passes, and still saves the name', async () => {
+    clockAt('2030-11-15T00:59:55Z');
+    signedIn();
+    const sent = answering({ 'GET /api/events/ev_1': () => tagged({ event: live() }) });
+    at('/app/events/ev_1/edit');
+    await screen.findByRole('heading', { level: 1, name: 'Edit details' });
+    const endTime = document.getElementById('event-end-time') as HTMLInputElement;
+
+    fireEvent.change(endTime, { target: { value: '03:00' } });
+    vi.setSystemTime(new Date('2030-11-15T01:00:01Z'));
+    await act(() => vi.advanceTimersByTimeAsync(15_000));
+
+    expect(endTime.readOnly).toBe(true);
+    expect(endTime.value).toBe('02:00');
+    fireEvent.change(document.getElementById('event-name') as HTMLInputElement, {
+      target: { value: 'Adaeze and Tunde, after' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() =>
+      expect(sent.find(({ line }) => line === 'PATCH /api/events/ev_1')?.body).toEqual({
+        name: 'Adaeze and Tunde, after',
+      }),
+    );
   });
 });
 

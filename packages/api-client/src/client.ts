@@ -5,7 +5,16 @@
  * are decided once here. Written per client, each would grow its own error path
  * and most of those would never be exercised.
  */
-import { type EventState, type EventType, EVENT_STATES, isEventType } from '@soirely/domain';
+import {
+  type EventPhase,
+  type EventState,
+  type EventType,
+  EVENT_PHASES,
+  EVENT_STATES,
+  isEventType,
+  type ServerClock,
+  serverClock,
+} from '@soirely/domain';
 
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
 
@@ -299,6 +308,10 @@ export interface OrganisationEvent {
   venue: EventVenue | null;
   /** Null while it is a Draft. */
   madeLiveAt: string | null;
+  /** The server's, as the page shows it on load; a client works one out only to flip it at a boundary (sc-3585). */
+  phase: EventPhase;
+  /** The end, or when it was ended or called off; null until it is Finished. */
+  concludedAt: string | null;
   createdAt: string;
 }
 
@@ -638,6 +651,8 @@ export interface ClientOptions {
   /** Called when the API refuses a request because the account is behind an onboarding gate. */
   onGate?: (gate: Gate) => void;
   fetch?: typeof fetch;
+  /** Fed every response's `Date` header; the shared one unless a test gives its own (sc-3585). */
+  clock?: ServerClock;
 }
 
 export interface RequestOptions {
@@ -1572,6 +1587,15 @@ export class ApiClient {
     );
   }
 
+  /** Calls it off before its start, ends it after: refused 409 `event_state_invalid` unless Live or Paused, and 409 `event_concluded` once its end has passed. */
+  async endEvent(eventId: string): Promise<TaggedEvent> {
+    return this.tagged(
+      await this.exchange<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}/end`, {
+        method: 'POST',
+      }),
+    );
+  }
+
   private tagged({
     body,
     response,
@@ -2129,7 +2153,11 @@ export class ApiClient {
     if (init.signal !== undefined) request.signal = init.signal;
 
     try {
-      return await doFetch(this.url(path, init.query), request);
+      const response = await doFetch(this.url(path, init.query), request);
+
+      (this.options.clock ?? serverClock).observe(response.headers.get('Date'));
+
+      return response;
     } catch (error) {
       if (init.signal?.aborted === true) throw error;
 
@@ -2537,9 +2565,13 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   const cover = candidate.cover === null ? null : asEventCover(candidate.cover);
   const venue = candidate.venue === null ? null : asEventVenue(candidate.venue);
   const madeLiveAt = candidate.madeLiveAt;
+  const phase = oneOf(candidate.phase, EVENT_PHASES);
+  const concludedAt = candidate.concludedAt;
 
   if (
     status == null ||
+    phase == null ||
+    !isStringOrNull(concludedAt) ||
     !isStringOrNull(madeLiveAt) ||
     type == null ||
     cover === undefined ||
@@ -2565,6 +2597,8 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     cover,
     venue,
     madeLiveAt,
+    phase,
+    concludedAt,
     createdAt: candidate.createdAt as string,
   };
 }

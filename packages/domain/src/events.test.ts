@@ -18,6 +18,7 @@ import {
   venueProblems,
   venueSent,
   savedWallClock,
+  scheduleKept,
   skippedTime,
 } from './events.ts';
 
@@ -172,6 +173,18 @@ describe('editing an event (sc-3587)', () => {
         venue,
       }),
     ).toEqual({ type: 'party' });
+  });
+
+  it("puts a Finished event's schedule back as saved and keeps the rest as typed (sc-3585)", () => {
+    const typed = {
+      draft: { ...draftOf(saved), name: 'Owambe at night', endTime: '23:30' },
+      timeZone: 'Europe/Paris',
+      currency: 'EUR',
+      venue,
+    };
+    const kept = scheduleKept(typed, { draft: draftOf(saved), timeZone: saved.timeZone });
+
+    expect(eventChanges(saved, kept)).toEqual({ name: 'Owambe at night', currency: 'EUR' });
   });
 });
 

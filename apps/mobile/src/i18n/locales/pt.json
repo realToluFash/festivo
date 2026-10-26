@@ -1434,6 +1434,7 @@
     "newEvent": "New event",
     "noneCreate": "Create your first event to start planning.",
     "live": "Publicado",
+    "happeningNow": "Happening now",
     "paused": "Em pausa",
     "finished": "Terminado"
   },
@@ -1500,7 +1501,9 @@
     "keepEditing": "Continuar a editar",
     "leaveTitle": "Sair sem guardar?",
     "leave": "Sair sem guardar",
-    "saved": "Alterações guardadas"
+    "saved": "Alterações guardadas",
+    "scheduleConcluded": "This event is over, so its start, end and time zone cannot be changed.",
+    "scheduleLocked": "This event is over, so its start, end and time zone can't be changed."
   },
   "eventCover": {
     "heading": "Capa",
@@ -1555,5 +1558,20 @@
     "planLimit_many": "Não foi publicado. O seu plano {{plan}} permite ter {{count}} de eventos publicados ou em pausa de cada vez.",
     "planLimitStays": "Este evento continua em rascunho. Termine ou cancele outro evento, ou mude de plano.",
     "close": "Fechar"
+  },
+  "eventEnd": {
+    "callOff": "Call off",
+    "endNow": "End now",
+    "callOffTitle": "Call off {{name}}?",
+    "callOffBody": "It won't go ahead. Guests following their link will be told.",
+    "endTitle": "End {{name}} now?",
+    "endBody": "It will be over for everybody.",
+    "final": "You can't undo this.",
+    "keepItOn": "Keep it on",
+    "failed": "Not ended. Try again in a moment.",
+    "notEnded": "Not ended.",
+    "alreadyOver": "This event is already over.",
+    "calledOffNotice": "Called off on {{date}}, before it started. Guests following their link are told it won't go ahead.",
+    "close": "Close"
   }
 }

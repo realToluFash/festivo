@@ -1,12 +1,14 @@
 import { ApiError } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { draftRowOf, refusalOf } from './makeLive.ts';
+import { EVENT_PHASES } from '@soirely/domain';
+
+import { PHASE_WORD, draftRowOf, endRefusalOf, refusalOf } from './makeLive.ts';
 
 const STARTS = '2026-11-14T16:00:00+01:00';
 const ENDS = '2026-11-15T02:00:00+01:00';
-const BEFORE = Date.parse('2026-11-15T00:59:59Z');
-const AFTER = Date.parse('2026-11-15T01:00:00Z');
+const BEFORE = new Date('2026-11-15T00:59:59Z');
+const AFTER = new Date('2026-11-15T01:00:00Z');
 
 function problem(code: string, extra: Record<string, unknown> = {}): ApiError {
   return new ApiError({
@@ -68,6 +70,30 @@ describe('refusalOf', () => {
     'reads anything else as failed',
     (error) => {
       expect(refusalOf(error)).toEqual({ kind: 'failed' });
+    },
+  );
+});
+
+describe('PHASE_WORD', () => {
+  it('has a word for every declared phase, Happening now its own', () => {
+    expect(Object.keys(PHASE_WORD).sort()).toEqual([...EVENT_PHASES].sort());
+    expect(PHASE_WORD.happening_now).toBe('eventsScreen.happeningNow');
+  });
+});
+
+describe('endRefusalOf', () => {
+  it('reads a 409 event_state_invalid as changed elsewhere', () => {
+    expect(endRefusalOf(problem('event_state_invalid'))).toEqual({ kind: 'changed' });
+  });
+
+  it('reads a 409 event_concluded as already over', () => {
+    expect(endRefusalOf(problem('event_concluded'))).toEqual({ kind: 'concluded' });
+  });
+
+  it.each([new Error('offline'), problem('plan_limit', { status: 403 })])(
+    'reads anything else as failed',
+    (error) => {
+      expect(endRefusalOf(error)).toEqual({ kind: 'failed' });
     },
   );
 });

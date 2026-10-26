@@ -1434,6 +1434,7 @@
     "newEvent": "New event",
     "noneCreate": "Create your first event to start planning.",
     "live": "Publicado",
+    "happeningNow": "Happening now",
     "paused": "En pausa",
     "finished": "Finalizado"
   },
@@ -1500,7 +1501,9 @@
     "keepEditing": "Seguir editando",
     "leaveTitle": "¿Salir sin guardar?",
     "leave": "Salir sin guardar",
-    "saved": "Cambios guardados"
+    "saved": "Cambios guardados",
+    "scheduleConcluded": "This event is over, so its start, end and time zone cannot be changed.",
+    "scheduleLocked": "This event is over, so its start, end and time zone can't be changed."
   },
   "eventCover": {
     "heading": "Portada",
@@ -1555,5 +1558,20 @@
     "planLimit_many": "No se ha publicado. Su plan {{plan}} permite tener {{count}} de eventos publicados o en pausa a la vez.",
     "planLimitStays": "Este evento sigue como borrador. Finalice o cancele otro evento, o cambie de plan.",
     "close": "Cerrar"
+  },
+  "eventEnd": {
+    "callOff": "Call off",
+    "endNow": "End now",
+    "callOffTitle": "Call off {{name}}?",
+    "callOffBody": "It won't go ahead. Guests following their link will be told.",
+    "endTitle": "End {{name}} now?",
+    "endBody": "It will be over for everybody.",
+    "final": "You can't undo this.",
+    "keepItOn": "Keep it on",
+    "failed": "Not ended. Try again in a moment.",
+    "notEnded": "Not ended.",
+    "alreadyOver": "This event is already over.",
+    "calledOffNotice": "Called off on {{date}}, before it started. Guests following their link are told it won't go ahead.",
+    "close": "Close"
   }
 }
