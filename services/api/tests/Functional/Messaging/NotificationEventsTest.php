@@ -15,6 +15,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Type;
+use Psl\Vec;
 
 final class NotificationEventsTest extends MessagingTestCase
 {
@@ -115,16 +116,17 @@ final class NotificationEventsTest extends MessagingTestCase
     }
 
     #[Test]
-    public function nothingAutomaticGoesForAnEventThatIsDeleted(): void
+    public function onlyItsDeletionNoticeGoesForAnEventThatIsDeleted(): void
     {
         $event = $this->event();
         self::scheduler()->schedule('test.notice', 'gone', 'gone', Trigger::at(new DateTimeImmutable('-1 minute')), $this->members(), [], $event);
+        self::scheduler()->schedule('test.deletion', 'deleted', 'deleted', Trigger::at(new DateTimeImmutable('-1 minute')), $this->members(), [], $event);
         self::connection()->executeStatement('UPDATE events SET deleted_at = NOW() WHERE id = :id', ['id' => $event->getId()->toRfc4122()]);
 
         self::runUntilIdle();
 
-        self::assertSame([], self::sender()->sent);
-        self::assertSame('cancelled', self::scalar('SELECT status FROM scheduled_notifications'));
+        self::assertSame(['test.deletion'], Vec\map(self::sender()->sent, static fn (array $sent): string => $sent['notification']->subject));
+        self::assertSame('cancelled', self::scalar("SELECT status FROM scheduled_notifications WHERE type = 'test.notice'"));
     }
 
     #[Test]
