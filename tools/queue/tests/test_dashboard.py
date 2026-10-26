@@ -154,7 +154,7 @@ class Snapshot(unittest.TestCase):
                      "other machines",
                      "  tolu-mac  seen 40s ago   dev2, ops"):
             self.assertIn(line, lines)
-        # The rest of the line is sc-13674's bug, which its own test pins.
+        # sc-13674 fixes the rest of the line and tests it.
         refusal = (f"  ops   refused: not listed in {cli.machine.path()}: every machine runs "
                    "ops, for its own disk, Docker, stacks and manager")
         self.assertTrue(any(line.startswith(refusal) for line in lines), lines)
