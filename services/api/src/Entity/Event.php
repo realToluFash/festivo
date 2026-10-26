@@ -6,6 +6,7 @@ namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
 use App\Enum\EventStatus;
+use App\Enum\EventType;
 use Closure;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -35,6 +36,9 @@ class Event
 
     #[ORM\Column(type: Types::STRING, length: 120)]
     private string $name;
+
+    #[ORM\Column(type: Types::STRING, length: 20, enumType: EventType::class)]
+    private EventType $type;
 
     #[ORM\Column(type: Types::STRING, length: 20, enumType: EventStatus::class)]
     private EventStatus $status;
@@ -75,11 +79,12 @@ class Event
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
     private int $version = 1;
 
-    public function __construct(Organisation $organisation, string $name, DateTimeImmutable $startsAt, DateTimeImmutable $endsAt, string $currency)
+    public function __construct(Organisation $organisation, string $name, EventType $type, DateTimeImmutable $startsAt, DateTimeImmutable $endsAt, string $currency)
     {
         $this->id = Uuid::v7();
         $this->organisation = $organisation;
         $this->name = $name;
+        $this->type = $type;
         $this->status = EventStatus::Draft;
         $this->setTimes($startsAt, $endsAt);
         $this->currency = $currency;
@@ -98,6 +103,11 @@ class Event
     public function getName(): string
     {
         return $this->name;
+    }
+
+    public function getType(): EventType
+    {
+        return $this->type;
     }
 
     public function getStatus(): EventStatus
@@ -146,6 +156,11 @@ class Event
     public function setName(string $name): void
     {
         $this->name = $name;
+    }
+
+    public function setType(EventType $type): void
+    {
+        $this->type = $type;
     }
 
     public function setCurrency(string $currency): void

@@ -1460,13 +1460,13 @@ async function batch(args) {
   if (failed.length) {
     const failures = runs.filter(({ check, language }) => !passed.has(checkId(check, language)));
     console.log('Re-run each alone, cold:');
-    for (const hint of rerunHints(name, failures, { args, email, secret }))
+    for (const hint of rerunHints(name, failures, { args, email, secret, rest }))
       console.log(`  ${hint}`);
     process.exitCode = 1;
   }
 }
 
-export function rerunHints(name, failures, { args, email, secret }) {
+export function rerunHints(name, failures, { args, email, secret, rest = {} }) {
   const device = ['--ipad', '--android'].filter((flag) => args.includes(flag));
   return failures.map(({ check, language }) =>
     [
@@ -1479,6 +1479,11 @@ export function rerunHints(name, failures, { args, email, secret }) {
       `EMAIL=${email}`,
       'PASSWORD=…',
       ...(secret ? ['TOTP_SECRET=…'] : []),
+      ...Object.entries(rest).map(([key, value]) =>
+        /^[\w@%+=:,./-]*$/.test(value)
+          ? `${key}=${value}`
+          : `'${key}=${value.replaceAll("'", "'\\''")}'`,
+      ),
     ].join(' '),
   );
 }

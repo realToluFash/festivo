@@ -15,6 +15,7 @@ import { dropRegistration, heldRegistration } from '../src/pendingRegistration.t
 import { launchRoute } from '../src/resumeSignUp.ts';
 import { ruleRefusal, signInRoute } from '../src/kit/signInRules.ts';
 import { launchSignedIn } from '../src/signedIn.ts';
+import { unreachableFrom } from '../src/unreachable.ts';
 
 /**
  * Launch: the signed-in home once somebody is in (sc-722), else the health endpoint, rendered.
@@ -74,9 +75,9 @@ export default function Home() {
         return;
       }
 
-      // Still signed in, so the answer is not sign-in.
+      // Unreachable is not a sign-out (sc-55), so the answer is not sign-in.
       if (answer.error instanceof ApiUnreachableError) {
-        if (live) router.replace('/unreachable');
+        if (live) router.replace(unreachableFrom());
         return;
       }
 

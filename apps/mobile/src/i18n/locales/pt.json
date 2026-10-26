@@ -194,6 +194,7 @@
   "session": {
     "unreachableTitle": "Não é possível contactar a Soirely",
     "unreachableBody": "A sua sessão continua iniciada. A Soirely não está a responder, por isso ainda não é possível carregar nada. Verifique a ligação e tente novamente.",
+    "unreachableBodySignedOut": "A Soirely não está a responder, por isso ainda não é possível carregar nada. Verifique a ligação e tente novamente.",
     "retrying": "A tentar novamente…"
   },
   "countryPicker": {
@@ -1174,7 +1175,7 @@
       "left": "saiu a {{date}}",
       "removed": "acesso retirado a {{date}}"
     },
-    "you": "a sua conta",
+    "you": "si",
     "youAs": "A sua função: {{role}}",
     "roleTitle": "Função",
     "roleTakesEffect": "Aplica-se assim que essa pessoa voltar a usar a Soirely; nenhuma sessão é encerrada.",

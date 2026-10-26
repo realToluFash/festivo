@@ -110,7 +110,7 @@
     "newDevice.why": "Recibe este correo porque un dispositivo nuevo ha iniciado sesión en su cuenta de Soirely.",
     "invitation.subject": "{inviter} le invita a unirse a {organisation} en Soirely",
     "invitation.body": "{inviter} le ha invitado a unirse a {organisation} con el rol {role}. Abra el enlace de abajo para aceptar o rechazar la invitación.",
-    "invitation.expiry": "Esta invitación funciona hasta el {date}.",
+    "invitation.expiry": "Esta invitación es válida hasta el {date}.",
     "invitation.inProduct": "También puede aceptarla en Soirely, con la sesión iniciada como {email}.",
     "invitation.ignore": "Si no esperaba esta invitación, puede ignorar este correo. No ocurrirá nada a menos que la acepte.",
     "signInRules.changed.subject": "{organisation} ha cambiado sus normas de inicio de sesión",

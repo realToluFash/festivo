@@ -6,6 +6,7 @@ import {
   eventChanges,
   eventNameLength,
   eventProblems,
+  isEventType,
 } from '@soirely/domain';
 import {
   type FormEvent,
@@ -32,6 +33,7 @@ import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { Choice, FieldError, Moment } from './EventFields.tsx';
 import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
+import { typeChoices } from './eventTypes.ts';
 import { skippedLine } from './skippedLine.ts';
 
 /** What the event page announces once the form has closed (sc-3587). */
@@ -187,6 +189,7 @@ function DetailsForm({
     [saved.currency, currency, locale, t],
   );
   const zones = useMemo(() => timeZoneChoices(saved.timeZone), [saved.timeZone]);
+  const types = useMemo(() => typeChoices(draft.type, t), [draft.type, t]);
   const blocker = useBlocker(
     useCallback(() => saving.current || (dirty && !closing.current), [dirty]),
   );
@@ -363,6 +366,15 @@ function DetailsForm({
               {t('eventForm.nameCount', { count: nameLength, most: EVENT_NAME_MAXIMUM })}
             </p>
           </div>
+          <Choice
+            id="event-type"
+            label={t('eventForm.type')}
+            value={draft.type}
+            error={errors.type}
+            busy={busy}
+            options={types}
+            onChange={(value) => edit('type', { type: isEventType(value) ? value : '' })}
+          />
         </section>
 
         <section className="card" aria-labelledby="event-when">

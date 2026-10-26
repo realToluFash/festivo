@@ -62,6 +62,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. An event's type** (`web:eventForm.type`, `typePlaceholder`, `typeMissing`,
+  `web:eventTypes.*`, `messages:validation.event_type_required`, sc-3588 via sc-13205). The
+  field is "Type", its prompt "Choose what kind of event", and the refusal, on screen and from
+  the server alike, "Choose what kind of event it is.". The fourteen labels stand as built:
+  sentence case, a noun phrase, no article. "Anniversary" means a couple's (a firm's is
+  "Corporate event"), which is how es, fr and pt can tell it from "Birthday". "Gala or
+  fundraiser" keeps both words: a gala alone misses the charity dinner. Any new type keeps to
+  about 22 characters, the width of the narrow web select.
+
 - **25 Oct 2026. Settings > Members on the web, the invitation link and the invitation email
   (sc-67, sc-68, sc-11160, sc-2922, `web:membersScreen.*`, `web:join.*`, `invitations.*` web and
   app, `emails:invitation.*`, `messages:invitations.*`).** Settled as sc-67 wrote them. The web

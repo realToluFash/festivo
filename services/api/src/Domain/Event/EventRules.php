@@ -8,6 +8,7 @@ use App\Domain\Organisation\Regions;
 use App\Domain\User\TimeZone\AccountTimeZone;
 use App\Entity\Event;
 use App\Enum\ErrorCode;
+use App\Enum\EventType;
 use App\Http\Exception\ApiException;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -25,10 +26,10 @@ final readonly class EventRules
     }
 
     /**
-     * @param array{name: ?string, startsAt: ?string, endsAt: ?string, timeZone: string, currency: string} $fields
-     * @param ?string                                                                                      $held   the event's currency on an edit, which may stay although no longer offered
+     * @param array{name: ?string, type: ?string, startsAt: ?string, endsAt: ?string, timeZone: string, currency: string} $fields
+     * @param ?string                                                                                                     $held   the event's currency on an edit, which may stay although no longer offered
      *
-     * @return array{name: string, startsAt: DateTimeImmutable, endsAt: DateTimeImmutable, currency: string}
+     * @return array{name: string, type: EventType, startsAt: DateTimeImmutable, endsAt: DateTimeImmutable, currency: string}
      */
     public function check(array $fields, ?string $held = null): array
     {
@@ -41,6 +42,12 @@ final readonly class EventRules
             $violations[] = $this->violation('name', 'validation.event_name_required');
         } elseif (Str\length($name) > Event::NAME_MAXIMUM) {
             $violations[] = $this->violation('name', 'validation.event_name_too_long', ['{count}' => (string) Event::NAME_MAXIMUM]);
+        }
+
+        $type = EventType::tryFrom($fields['type'] ?? '');
+
+        if (null === $type) {
+            $violations[] = $this->violation('type', 'validation.event_type_required');
         }
 
         $startsAt = $this->wallClock($fields['startsAt'], 'startsAt', 'validation.event_start_required', $violations);
@@ -63,11 +70,11 @@ final readonly class EventRules
             }
         }
 
-        if ([] !== $violations || null === $startsAt || null === $endsAt) {
+        if ([] !== $violations || null === $type || null === $startsAt || null === $endsAt) {
             throw ApiException::validation($violations);
         }
 
-        return ['name' => $name, 'startsAt' => $startsAt, 'endsAt' => $endsAt, 'currency' => $currency];
+        return ['name' => $name, 'type' => $type, 'startsAt' => $startsAt, 'endsAt' => $endsAt, 'currency' => $currency];
     }
 
     /**
