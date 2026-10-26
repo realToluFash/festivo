@@ -2,14 +2,10 @@ import { ApiError, type NewEvent, type OrganisationEvent } from '@soirely/api-cl
 import {
   CURRENCY_CODES,
   EVENT_FORM_FIELDS,
-  EVENT_NAME_MAXIMUM,
   type EventDraft,
   type EventFormField,
-  VENUE_ADDRESS_MAXIMUM,
-  VENUE_NAME_MAXIMUM,
   type VenueDraft,
   draftOf,
-  eventFormProblems,
   eventNameOf,
   localDateTime,
   venueDraftOf,
@@ -43,26 +39,6 @@ export function typedOf(event: OrganisationEvent): EventTyped {
     timeZone: event.timeZone,
     currency: event.currency,
   };
-}
-
-/** The web's messages for the shared checks, so the two forms say the same thing. */
-export function eventFormErrors(typed: EventTyped, t: TFunction): EventErrors {
-  const errors: EventErrors = {};
-
-  for (const { field, problem } of eventFormProblems(typed))
-    errors[field] =
-      problem === 'currencyBlank'
-        ? t('orgGeneral.currencyBlank')
-        : t(`eventForm.${problem}`, {
-            most:
-              field === 'venueName'
-                ? VENUE_NAME_MAXIMUM
-                : field === 'venueAddress'
-                  ? VENUE_ADDRESS_MAXIMUM
-                  : EVENT_NAME_MAXIMUM,
-          });
-
-  return errors;
 }
 
 export function firstRefused(errors: EventErrors): EventFormField | null {

@@ -6,19 +6,19 @@ import {
   type EventFormField,
   currencyChoices,
   eventChanges,
+  eventFormErrors,
   eventNameLength,
   filledEndDate,
   formatWallClock,
   formatWallDay,
   isEventType,
-  skippedTime,
+  skippedLine,
   timezoneLabel,
   withCurrent,
 } from '@soirely/domain';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useNavigation } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
-import { type TFunction } from 'i18next';
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -29,7 +29,6 @@ import {
   type EventErrors,
   type EventTyped,
   blankEvent,
-  eventFormErrors,
   firstRefused,
   isDirty,
   newEventOf,
@@ -40,6 +39,7 @@ import {
   typedOf,
 } from '../kit/eventForm.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
+import { holdSwitches } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
@@ -131,6 +131,18 @@ export function EventForm({
     leaveAction.current = () => navigation.dispatch(data.action);
     setAsking('leave');
   });
+
+  // The frame's switcher would remount or unmount the form, so it asks as leaving does.
+  useEffect(
+    () =>
+      dirty
+        ? holdSwitches((go) => {
+            leaveAction.current = go;
+            setAsking('leave');
+          })
+        : undefined,
+    [dirty],
+  );
 
   const types = useMemo(
     () => EVENT_TYPES.map((type) => ({ code: type, name: t(`eventTypes.${type}`) })),
@@ -340,19 +352,6 @@ export function EventForm({
           }}
         />
 
-        <Field label={t('eventForm.timeZone')} error={errors.timeZone}>
-          <ListPicker
-            label={t('eventForm.timeZone')}
-            searchLabel={t('orgGeneral.searchTimezone')}
-            choices={zones}
-            value={timeZone}
-            onChange={(zone) => change('timeZone', { timeZone: zone })}
-            disabled={busy}
-            pickerRef={zonePicker}
-            testID="eventForm.timeZone"
-          />
-        </Field>
-
         <Field
           label={t('eventForm.venueName')}
           pill={t('eventForm.optional')}
@@ -387,6 +386,19 @@ export function EventForm({
             returnKeyType="done"
             accessibilityLabel={t('eventForm.venueAddress')}
             testID="eventForm.venueAddress"
+          />
+        </Field>
+
+        <Field label={t('eventForm.timeZone')} error={errors.timeZone}>
+          <ListPicker
+            label={t('eventForm.timeZone')}
+            searchLabel={t('orgGeneral.searchTimezone')}
+            choices={zones}
+            value={timeZone}
+            onChange={(zone) => change('timeZone', { timeZone: zone })}
+            disabled={busy}
+            pickerRef={zonePicker}
+            testID="eventForm.timeZone"
           />
         </Field>
 
@@ -649,31 +661,6 @@ function Moment({
       )}
     </View>
   );
-}
-
-/** The web's line for a time the clocks skip (sc-10638), in the same words. */
-function skippedLine(
-  date: string,
-  time: string,
-  timeZone: string,
-  locale: string,
-  t: TFunction,
-): string | null {
-  const skipped = skippedTime(date, time, timeZone);
-
-  if (skipped == null) return null;
-
-  const savedDate = skipped.savedAs.slice(0, 10);
-  const words = {
-    time: formatWallClock(time, locale),
-    day: formatWallDay(date, locale),
-    zone: timeZone,
-    savedAs: formatWallClock(skipped.savedAs, locale),
-  };
-
-  return savedDate === date
-    ? t('eventForm.clocksSkip', words)
-    : t('eventForm.clocksSkipNextDay', { ...words, savedDay: formatWallDay(savedDate, locale) });
 }
 
 /** Opened for editing, the event is read with its tag, as the web's form reads it (sc-3587). */

@@ -1,10 +1,10 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
+import { eventFormErrors } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
 import {
   blankEvent,
-  eventFormErrors,
   firstRefused,
   isDirty,
   newEventOf,
