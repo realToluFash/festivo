@@ -35,6 +35,7 @@
     "firstRunCreate": "Criar um evento",
     "firstRunAskOwner": "Os eventos criados pela sua organização aparecem aqui. Para criar um, fale com alguém com a função Proprietário.",
     "live": "Publicado",
+    "happeningNow": "Happening now",
     "paused": "Em pausa",
     "finished": "Terminado"
   },
@@ -138,6 +139,20 @@
     "planLimitStays": "Este evento continua em rascunho. Termine ou cancele outro evento, ou mude de plano.",
     "close": "Fechar"
   },
+  "eventEnd": {
+    "callOff": "Call off",
+    "endNow": "End now",
+    "callOffTitle": "Call off {{name}}?",
+    "callOffBody": "It won't go ahead. Guests following their link will be told.",
+    "endTitle": "End {{name}} now?",
+    "endBody": "It will be over for everybody.",
+    "final": "You can't undo this.",
+    "keepItOn": "Keep it on",
+    "failed": "Not ended. Try again in a moment.",
+    "notEnded": "Not ended.",
+    "alreadyOver": "This event is already over.",
+    "calledOffNotice": "Called off on {{date}}, before it started. Guests following their link are told it won't go ahead."
+  },
   "eventEdit": {
     "open": "Editar detalhes",
     "title": "Editar detalhes",
@@ -157,7 +172,8 @@
     "leaveBody": "As alterações feitas a este evento serão perdidas.",
     "leave": "Sair sem guardar",
     "saved": "Alterações guardadas",
-    "nothingChanged": "Nada foi alterado, por isso nada foi enviado."
+    "nothingChanged": "Nada foi alterado, por isso nada foi enviado.",
+    "scheduleConcluded": "This event is over, so its start, end and time zone can't be changed."
   },
   "eventCover": {
     "heading": "Capa",

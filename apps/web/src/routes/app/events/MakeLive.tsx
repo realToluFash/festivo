@@ -1,5 +1,5 @@
 import { ApiError, type EventStatus, type OrganisationEvent } from '@soirely/api-client';
-import { makeLiveRow } from '@soirely/domain';
+import { type EventPhase, makeLiveRow } from '@soirely/domain';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -7,28 +7,15 @@ import { Link } from 'react-router';
 import { api } from '../../../api.ts';
 import { useDialogKeys } from '../../../dialogFocus.ts';
 import { offButton } from '../../../offButton.ts';
+import { NOW_STATE, PHASE_WORD } from './eventWords.ts';
 
-const STATUS_WORD = {
-  draft: 'events.draft',
-  live: 'events.live',
-  paused: 'events.paused',
-  ended: 'events.finished',
-} as const satisfies Record<EventStatus, string>;
-
-const NOW_STATE = {
-  draft: 'eventLive.nowState_draft',
-  live: 'eventLive.nowState_live',
-  paused: 'eventLive.nowState_paused',
-  ended: 'eventLive.nowState_finished',
-} as const satisfies Record<EventStatus, string>;
-
-/** A word, never colour alone (WCAG 2.2 §1.4.1); a Live event's pill has a green dot beside it. */
-export function StatusPill({ status }: { status: EventStatus }) {
+/** A word and a shape of its own, never colour alone (WCAG 2.2 §1.4.1). */
+export function StatusPill({ phase }: { phase: EventPhase }) {
   const { t } = useTranslation();
 
   return (
-    <span className={status === 'live' ? 'pill-quiet pill-live' : 'pill-quiet'}>
-      {t(STATUS_WORD[status])}
+    <span className={`pill-quiet pill-phase pill-${phase.replace('_', '-')}`}>
+      {t(PHASE_WORD[phase])}
     </span>
   );
 }
@@ -42,12 +29,14 @@ type Asking =
 /** A Draft's line for the areas it blocks (Guests so far), with Make live beside it, as `/event-states.json` says. */
 export function DraftRow({
   event,
+  now,
   manages,
   heading,
   onChange,
   onMadeLive,
 }: {
   event: OrganisationEvent;
+  now: Date;
   manages: boolean;
   heading: RefObject<HTMLHeadingElement | null>;
   onChange: (event: OrganisationEvent) => void;
@@ -56,7 +45,6 @@ export function DraftRow({
   const { t } = useTranslation();
   const [asking, setAsking] = useState<Asking | null>(null);
   const makeLive = useRef<HTMLButtonElement>(null);
-  const [now] = useState(() => new Date());
   const row = makeLiveRow(event, now);
 
   const close = () => {
