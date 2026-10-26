@@ -1856,9 +1856,13 @@ describe('The cover (sc-3590)', () => {
 
     choose(file());
     const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    await waitFor(() => expect(sent.map(({ line }) => line)).toContain('PUT /upload/1'));
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(
+      sent.find(({ line }) => line === 'DELETE /api/orgs/org_1/event-cover-uploads')?.body,
+    ).toEqual({ uploadKey: 'event_cover/org_1/2026/10/one.jpg' });
     expect(
       within(screen.getByRole('button', { name: 'Change photo' }))
         .getByRole('img')
@@ -1868,6 +1872,43 @@ describe('The cover (sc-3590)', () => {
     await waitFor(() =>
       expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Upload a photo' })),
     );
+  });
+
+  it('a photo still uploading when the dialog closes is discarded once it arrives', async () => {
+    signedIn();
+    let arrive = (): void => undefined;
+    const sent = serving(PHOTO, {
+      'PUT /upload/1': () =>
+        new Promise<Response>((resolve) => {
+          arrive = () => resolve(new Response(null, { status: 200 }));
+        }),
+    });
+    await editing();
+
+    choose(file());
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    await waitFor(() => expect(sent.map(({ line }) => line)).toContain('PUT /upload/1'));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(dialog.isConnected).toBe(false);
+    arrive();
+
+    await waitFor(() =>
+      expect(
+        sent.find(({ line }) => line === 'DELETE /api/orgs/org_1/event-cover-uploads')?.body,
+      ).toEqual({ uploadKey: 'event_cover/org_1/2026/10/one.jpg' }),
+    );
+  });
+
+  it('Remove photo is there when a saved photo is being replaced through Upload a photo', async () => {
+    signedIn();
+    serving(PHOTO);
+    await editing();
+
+    choose(file());
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+
+    expect(within(dialog).getByRole('button', { name: 'Remove photo' })).toBeDefined();
   });
 
   it('Remove photo brings back the default, says so, and focus goes to Upload a photo', async () => {
@@ -1975,5 +2016,48 @@ describe('The cover (sc-3590)', () => {
         description: null,
       }),
     );
+  });
+
+  it('a new event whose staged photo is refused says so on its page', async () => {
+    signedIn();
+    const sent = serving(null, {
+      'POST /api/orgs/org_1/events': () => json({ event: event() }, 201),
+      'PUT /api/events/ev_1/cover': () =>
+        problem(422, 'validation_failed', {
+          violations: [
+            {
+              propertyPath: 'file',
+              message:
+                'That photo is smaller than 1200 × 675 pixels, so it would look blurred. Choose a larger one.',
+              code: 'validation_failed',
+            },
+          ],
+        }),
+    });
+    at('/app/events/new');
+    await screen.findByRole('heading', { level: 1, name: 'New event' });
+
+    choose(file());
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    await waitFor(() => expect(sent.map(({ line }) => line)).toContain('PUT /upload/1'));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
+    await screen.findByRole('button', { name: 'Change photo' });
+
+    fireEvent.change(document.getElementById('event-name')!, { target: { value: 'Owambe' } });
+    fireEvent.change(document.getElementById('event-type')!, { target: { value: 'wedding' } });
+    for (const [id, value] of [
+      ['event-start-date', '2026-11-14'],
+      ['event-start-time', '16:00'],
+      ['event-end-time', '23:00'],
+    ] as const)
+      fireEvent.change(document.getElementById(id)!, { target: { value } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+
+    expect(
+      await screen.findByText(
+        'The event is saved, without its photo. That photo is smaller than 1200 × 675 pixels, so it would look blurred. Choose a larger one.',
+      ),
+    ).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: 'Adaeze and Tunde' })).toBeDefined();
   });
 });

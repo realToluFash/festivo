@@ -154,9 +154,11 @@ function EventPage({
   const location = useLocation();
   const navigate = useNavigate();
   const [outcome] = useState(() => editOutcome(location.state));
+  const [coverRefused] = useState(() => coverRefusal(location.state));
+  const coverLine = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
-    if (editOutcome(location.state) == null) return;
+    if (editOutcome(location.state) == null && coverRefusal(location.state) == null) return;
 
     void navigate(
       { pathname: location.pathname, search: location.search, hash: location.hash },
@@ -186,6 +188,16 @@ function EventPage({
         })}
       </p>
       <Venue event={event} manages={can(session, 'events.manage')} />
+      {coverRefused != null && (
+        <ArrivalNotice
+          role="alert"
+          line={t('eventCover.createdWithout', { reason: coverRefused })}
+          lineRef={coverLine}
+          focusable={false}
+          retry={t('eventEdit.open')}
+          onRetry={() => void navigate(`/app/events/${encodeURIComponent(event.id)}/edit#cover`)}
+        />
+      )}
       {outcome != null && (
         <OutcomeLine
           words={outcome === 'saved' ? t('eventEdit.saved') : t('eventEdit.nothingChanged')}
@@ -270,6 +282,16 @@ function OutcomeLine({ words }: { words: string }) {
       {announced}
     </p>
   );
+}
+
+/** Set by New event when the event was created and its staged cover was refused or failed to save. */
+function coverRefusal(state: unknown): string | null {
+  const refused =
+    typeof state === 'object' && state != null && 'coverRefused' in state
+      ? state.coverRefused
+      : null;
+
+  return typeof refused === 'string' ? refused : null;
 }
 
 function editOutcome(state: unknown): EditOutcome | null {

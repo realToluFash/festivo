@@ -142,6 +142,7 @@
     "refused_size": "That photo is over 15 MB. Choose a smaller one.",
     "refused_dimensions": "That photo is smaller than 1200 × 675 pixels, so it would look blurred. Choose a larger one.",
     "uploadFailed": "The photo didn't upload. Try again.",
+    "createdWithout": "The event is saved, without its photo. {{reason}}",
     "removed": "Photo removed. The default cover is back.",
     "dialogTitle": "Cover photo",
     "close": "Close",

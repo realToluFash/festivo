@@ -212,11 +212,13 @@ function DetailsForm({
   );
 
   const [toVenue] = useState(() => location.hash === '#venue');
+  const [toCover] = useState(() => location.hash === '#cover');
 
   useEffect(() => {
     if (reread) document.getElementById('event-name')?.focus();
     else if (toVenue) document.getElementById('event-venue-name')?.focus();
-  }, [reread, toVenue]);
+    else if (toCover) document.getElementById('cover-upload')?.focus();
+  }, [reread, toVenue, toCover]);
 
   useEffect(() => {
     if (!dirty) return;

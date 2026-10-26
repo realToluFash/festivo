@@ -27,6 +27,7 @@ import { can, useSession } from '../../../session.ts';
 import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
 import { Forbidden } from '../Forbidden.tsx';
 import { CoverSection } from './CoverSection.tsx';
+import { discardCoverUpload, refusalOf } from './coverPhoto.ts';
 import type { CoverPhoto } from './EventCoverImage.tsx';
 import { Choice, FieldError, Moment } from './EventFields.tsx';
 import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
@@ -64,6 +65,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
   );
   const [errors, setErrors] = useState<Errors>({});
   const [cover, setCover] = useState<{ uploadKey: string; photo: CoverPhoto } | null>(null);
+  const staged = useRef<string | null>(null);
   const [unsent, setUnsent] = useState(0);
   const [status, setStatus] = useState<'editing' | 'creating' | 'failed'>('editing');
   const focusNext = useRef<(() => void) | null>(null);
@@ -79,6 +81,20 @@ function EventForm({ organisation }: { organisation: Membership }) {
     focusNext.current?.();
     focusNext.current = null;
   }, [errors]);
+
+  useEffect(
+    () => () => {
+      if (staged.current != null) discardCoverUpload(organisation.id, staged.current);
+    },
+    [organisation.id],
+  );
+
+  function stage(next: { uploadKey: string; photo: CoverPhoto } | null): void {
+    if (staged.current != null && staged.current !== next?.uploadKey)
+      discardCoverUpload(organisation.id, staged.current);
+    staged.current = next?.uploadKey ?? null;
+    setCover(next);
+  }
 
   function edit(field: Field, changes: Partial<EventDraft>): void {
     setDraft((previous) => ({ ...previous, ...changes }));
@@ -135,20 +151,29 @@ function EventForm({ organisation }: { organisation: Membership }) {
         ...(sentVenue == null ? {} : { venue: sentVenue }),
       });
 
+      let coverRefused: string | null = null;
+
       if (cover != null) {
         const { uploadKey, photo } = cover;
+        staged.current = null;
 
-        // The event exists either way; a cover that fails here is set again from Edit details.
-        await api
+        // The event exists either way, so a refused or failed cover is said on its page rather than here.
+        coverRefused = await api
           .setEventCover(created.id, {
             uploadKey,
             position: photo.position,
             description: photo.description,
           })
-          .catch(() => null);
+          .then(
+            () => null,
+            (error: unknown) => refusalOf(error, t),
+          );
       }
 
-      void navigate(`/app/events/${encodeURIComponent(created.id)}`);
+      void navigate(
+        `/app/events/${encodeURIComponent(created.id)}`,
+        coverRefused == null ? undefined : { state: { coverRefused } },
+      );
     } catch (error) {
       const refused = error instanceof ApiError && error.status === 422 ? error.fieldErrors() : {};
       const found: Errors = {};
@@ -228,16 +253,13 @@ function EventForm({ organisation }: { organisation: Membership }) {
           photo={cover?.photo ?? null}
           organisationId={organisation.id}
           onUse={async ({ upload, position, description }) => {
-            setCover((previous) => {
-              const uploadKey = upload?.key ?? previous?.uploadKey;
-              const sizes = upload?.preview.sizes ?? previous?.photo.sizes;
+            const uploadKey = upload?.key ?? cover?.uploadKey;
+            const sizes = upload?.preview.sizes ?? cover?.photo.sizes;
 
-              return uploadKey == null || sizes == null
-                ? previous
-                : { uploadKey, photo: { sizes, position, description } };
-            });
+            if (uploadKey != null && sizes != null)
+              stage({ uploadKey, photo: { sizes, position, description } });
           }}
-          onRemove={async () => setCover(null)}
+          onRemove={async () => stage(null)}
         />
 
         <section className="card" aria-labelledby="event-when">
