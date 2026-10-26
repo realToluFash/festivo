@@ -1,6 +1,7 @@
 """Brings a role's checkout up to the latest `main` before its worker starts. Plain git, no
 model: it costs nothing, and it never throws away work."""
 
+import pathlib
 import re
 import subprocess
 import time
@@ -46,6 +47,30 @@ def fetch(path, tries=3, sleep=time.sleep):
     raise Unprepared(f"git fetch failed {tries} times: {done.stderr.strip()}")
 
 
+SET_ASIDE = ".sq-untracked"
+
+
+def clear_way(path, target="origin/main"):
+    """An untracked file the target tracks stops git moving onto it. One holding the target's
+    content goes, since the move brings it back; any other is set aside, never deleted.
+    Returns where each set-aside file went."""
+    tracked = set(git(path, "ls-tree", "-r", "--name-only", target).stdout.splitlines())
+    untracked = git(path, "ls-files", "--others", "--exclude-standard", "-z").stdout.split("\0")
+    folder = pathlib.Path(SET_ASIDE, time.strftime("%Y-%m-%d-%H%M%S"))
+    moved = []
+    for name in (name for name in untracked if name in tracked):
+        file = path / name
+        theirs = subprocess.run(["git", "-C", str(path), "show", f"{target}:{name}"],
+                                capture_output=True, check=True).stdout
+        if file.read_bytes() == theirs:
+            file.unlink()
+            continue
+        (path / folder / name).parent.mkdir(parents=True, exist_ok=True)
+        file.rename(path / folder / name)
+        moved.append(f"{name} -> {folder / name}")
+    return moved
+
+
 def ensure(base, path):
     """A further worker's checkout: a worktree of the role's own, made the first time."""
     if path.exists():
@@ -68,15 +93,25 @@ def prepare(path, role, story=None, sleep=time.sleep):
     if action == "leave-dirty":
         return main, ("Your checkout has changes nobody committed, so it was not brought up to "
                       "main. Look at them first: they may be an earlier run's work.")
+    moved = clear_way(path) if action != "fetch-only" else []
+    note = None
     if action == "move-to-main":
-        git(path, "checkout", "--quiet", "--detach", "origin/main")
+        moved_on = git(path, "checkout", "--quiet", "--detach", "origin/main", check=False)
+        if moved_on.returncode:
+            note = (f"Your checkout could not be brought up to main, so it was left as it was. "
+                    f"Git said: {moved_on.stderr.strip()}")
     elif action == "fast-forward":
         if git(path, "merge", "--ff-only", "--quiet", "origin/main", check=False).returncode:
-            return main, "Your local main has commits origin/main does not; it was left alone."
+            note = "Your local main has commits origin/main does not; it was left alone."
     elif action == "merge-main":
         merged = git(path, "merge", "--no-edit", "--quiet", "origin/main", check=False)
         if merged.returncode:
             git(path, "merge", "--abort", check=False)
-            return main, (f"Merging origin/main into {branch} conflicts, so it was undone. "
-                          "Merge it and resolve the conflict before anything else.")
-    return main, None
+            note = (f"Merging origin/main into {branch} conflicts, so it was undone. "
+                    "Merge it and resolve the conflict before anything else.")
+    if moved:
+        note = "\n".join(filter(None, [note, (
+            "These untracked files differed from the copy main now has, so they were moved "
+            "aside and main's took their place. Compare them before you rely on either: "
+            + "; ".join(moved))]))
+    return main, note

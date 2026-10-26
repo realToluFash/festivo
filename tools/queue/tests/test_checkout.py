@@ -120,6 +120,43 @@ class Prepare(unittest.TestCase):
         self.assertEqual(git(self.role, "rev-parse", "HEAD"), main)
         self.assertTrue((self.role / "stray.yaml").exists())
 
+    def test_an_untracked_copy_of_a_file_main_now_tracks_gives_way_to_main(self):
+        flow = "checks/sign-in.yaml"
+        (self.origin / "checks").mkdir()
+        self.commit(self.origin, flow, "the flow")
+        (self.role / "checks").mkdir()
+        (self.role / flow).write_text("the flow")
+        main, note = checkout.prepare(self.role, "qa")
+        self.assertIsNone(note)
+        self.assertEqual(git(self.role, "rev-parse", "HEAD"), main)
+        self.assertFalse((self.role / checkout.SET_ASIDE).exists())
+
+    def test_an_untracked_file_main_tracks_with_other_content_is_set_aside_and_named(self):
+        flow = "checks/delete.yaml"
+        (self.origin / "checks").mkdir()
+        self.commit(self.origin, flow, "main's")
+        (self.role / "checks").mkdir()
+        (self.role / flow).write_text("the tester's")
+        main, note = checkout.prepare(self.role, "qa3")
+        self.assertEqual(git(self.role, "rev-parse", "HEAD"), main)
+        self.assertEqual((self.role / flow).read_text(), "main's")
+        kept = list((self.role / checkout.SET_ASIDE).glob(f"*/{flow}"))
+        self.assertEqual([path.read_text() for path in kept], ["the tester's"])
+        self.assertIn(f"{flow} -> {kept[0].relative_to(self.role)}", note)
+
+    def test_a_checkout_git_refuses_is_explained_rather_than_stopping_the_worker(self):
+        self.commit(self.origin, "b.txt", "two")
+        refused = subprocess.CompletedProcess([], 1, "", "fatal: something else")
+        real = checkout.git
+
+        def git_refusing_checkout(path, *args, check=True):
+            return refused if args[0] == "checkout" else real(path, *args, check=check)
+
+        with mock.patch.object(checkout, "git", side_effect=git_refusing_checkout):
+            main, note = checkout.prepare(self.role, "qa")
+        self.assertIn("Git said: fatal: something else", note)
+        self.assertNotEqual(git(self.role, "rev-parse", "HEAD"), main)
+
     def test_a_conflicting_merge_is_undone_and_explained(self):
         git(self.role, "checkout", "-q", "-b", "feature/sc-7/x")
         self.commit(self.role, "a.txt", "branch")
