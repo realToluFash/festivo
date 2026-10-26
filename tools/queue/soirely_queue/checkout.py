@@ -53,22 +53,25 @@ SET_ASIDE = ".sq-untracked"
 def clear_way(path, target="origin/main"):
     """An untracked file the target tracks stops git moving onto it. One holding the target's
     content goes, since the move brings it back; any other is set aside, never deleted.
-    Returns where each set-aside file went."""
-    tracked = set(git(path, "ls-tree", "-r", "--name-only", target).stdout.splitlines())
-    untracked = git(path, "ls-files", "--others", "--exclude-standard", "-z").stdout.split("\0")
+    Returns where each set-aside file went, and what stopped the clearing, or None."""
     folder = pathlib.Path(SET_ASIDE, time.strftime("%Y-%m-%d-%H%M%S"))
     moved = []
-    for name in (name for name in untracked if name in tracked):
-        file = path / name
-        theirs = subprocess.run(["git", "-C", str(path), "show", f"{target}:{name}"],
-                                capture_output=True, check=True).stdout
-        if file.read_bytes() == theirs:
-            file.unlink()
-            continue
-        (path / folder / name).parent.mkdir(parents=True, exist_ok=True)
-        file.rename(path / folder / name)
-        moved.append(f"{name} -> {folder / name}")
-    return moved
+    try:
+        tracked = set(git(path, "ls-tree", "-r", "-z", "--name-only", target).stdout.split("\0"))
+        untracked = git(path, "ls-files", "--others", "--exclude-standard", "-z").stdout
+        for name in (name for name in untracked.split("\0") if name and name in tracked):
+            file = path / name
+            theirs = subprocess.run(["git", "-C", str(path), "show", f"{target}:{name}"],
+                                    capture_output=True, check=True).stdout
+            if file.read_bytes() == theirs:
+                file.unlink()
+                continue
+            (path / folder / name).parent.mkdir(parents=True, exist_ok=True)
+            file.rename(path / folder / name)
+            moved.append(f"{name} -> {folder / name}")
+    except (OSError, subprocess.CalledProcessError) as error:
+        return moved, f"Clearing untracked files out of main's way stopped: {error}"
+    return moved, None
 
 
 def ensure(base, path):
@@ -93,7 +96,7 @@ def prepare(path, role, story=None, sleep=time.sleep):
     if action == "leave-dirty":
         return main, ("Your checkout has changes nobody committed, so it was not brought up to "
                       "main. Look at them first: they may be an earlier run's work.")
-    moved = clear_way(path) if action != "fetch-only" else []
+    moved, stopped = clear_way(path) if action != "fetch-only" else ([], None)
     note = None
     if action == "move-to-main":
         moved_on = git(path, "checkout", "--quiet", "--detach", "origin/main", check=False)
@@ -110,8 +113,10 @@ def prepare(path, role, story=None, sleep=time.sleep):
             note = (f"Merging origin/main into {branch} conflicts, so it was undone. "
                     "Merge it and resolve the conflict before anything else.")
     if moved:
+        outcome = ("so they were moved aside and main's took their place" if note is None
+                   else "so they were moved aside, and the checkout stayed where it was")
         note = "\n".join(filter(None, [note, (
-            "These untracked files differed from the copy main now has, so they were moved "
-            "aside and main's took their place. Compare them before you rely on either: "
-            + "; ".join(moved))]))
+            f"These untracked files differed from the copy main now has, {outcome}. Compare "
+            "them before you rely on either: " + "; ".join(moved))]))
+    note = "\n".join(filter(None, [note, stopped])) or None
     return main, note

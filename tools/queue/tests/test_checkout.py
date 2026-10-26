@@ -144,6 +144,31 @@ class Prepare(unittest.TestCase):
         self.assertEqual([path.read_text() for path in kept], ["the tester's"])
         self.assertIn(f"{flow} -> {kept[0].relative_to(self.role)}", note)
 
+    def test_an_untracked_copy_with_a_name_git_would_quote_still_gives_way(self):
+        self.commit(self.origin, "café.yaml", "the flow")
+        (self.role / "café.yaml").write_text("the flow")
+        main, note = checkout.prepare(self.role, "qa")
+        self.assertIsNone(note)
+        self.assertEqual(git(self.role, "rev-parse", "HEAD"), main)
+
+    def test_a_file_set_aside_before_a_merge_that_is_undone_is_not_said_to_be_replaced(self):
+        git(self.role, "checkout", "-q", "-b", "feature/sc-7/x")
+        self.commit(self.role, "a.txt", "branch")
+        self.commit(self.origin, "a.txt", "main")
+        self.commit(self.origin, "flow.yaml", "main's")
+        (self.role / "flow.yaml").write_text("the developer's")
+        _, note = checkout.prepare(self.role, "dev2", story("In Progress"))
+        self.assertIn("conflicts, so it was undone", note)
+        self.assertIn("the checkout stayed where it was", note)
+        self.assertNotIn("main's took their place", note)
+
+    def test_a_file_that_cannot_be_read_is_explained_rather_than_stopping_the_worker(self):
+        self.commit(self.origin, "flow.yaml", "main's")
+        (self.role / "flow.yaml").symlink_to(self.role / "nowhere")
+        _, note = checkout.prepare(self.role, "qa")
+        self.assertIn("Clearing untracked files out of main's way stopped", note)
+        self.assertIn("Git said:", note)
+
     def test_a_checkout_git_refuses_is_explained_rather_than_stopping_the_worker(self):
         self.commit(self.origin, "b.txt", "two")
         refused = subprocess.CompletedProcess([], 1, "", "fatal: something else")
