@@ -45,11 +45,13 @@ export function DraftRow({
   manages,
   heading,
   onChange,
+  onMadeLive,
 }: {
   event: OrganisationEvent;
   manages: boolean;
   heading: RefObject<HTMLHeadingElement | null>;
   onChange: (event: OrganisationEvent) => void;
+  onMadeLive: () => void;
 }) {
   const { t } = useTranslation();
   const [asking, setAsking] = useState<Asking | null>(null);
@@ -77,6 +79,7 @@ export function DraftRow({
       ({ event: live }) => {
         setAsking(null);
         onChange(live);
+        onMadeLive();
         window.setTimeout(() => heading.current?.focus(), 0);
       },
       (error: unknown) => {

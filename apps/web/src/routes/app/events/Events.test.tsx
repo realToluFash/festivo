@@ -1729,6 +1729,7 @@ describe('Make live (sc-3584)', () => {
     fireEvent.click(within(changed).getByRole('button', { name: 'Close' }));
     expect(screen.getByText('Live')).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
+    expect(screen.queryByRole('status')).toBeNull();
   });
 
   it("names the plan and its limit when the plan's limit is reached, and it stays a Draft", async () => {

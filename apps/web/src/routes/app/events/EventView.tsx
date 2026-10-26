@@ -199,10 +199,8 @@ function EventPage({
         event={event}
         manages={can(session, 'events.manage')}
         heading={heading}
-        onChange={(changed) => {
-          setMadeLive(event.status === 'draft' && changed.status === 'live');
-          onChange(changed);
-        }}
+        onChange={onChange}
+        onMadeLive={() => setMadeLive(true)}
       />
       {madeLive && <OutcomeLine words={t('eventLive.madeLive')} />}
       <Venue event={event} manages={can(session, 'events.manage')} />
