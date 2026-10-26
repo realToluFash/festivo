@@ -82,6 +82,11 @@ const config: ExpoConfig = {
     'expo-web-browser',
     'expo-apple-authentication',
     'expo-system-ui',
+    // The system's photo picker needs no library access, so nothing asks for it or for the camera.
+    [
+      'expo-image-picker',
+      { photosPermission: false, cameraPermission: false, microphonePermission: false },
+    ],
     [
       'expo-splash-screen',
       {

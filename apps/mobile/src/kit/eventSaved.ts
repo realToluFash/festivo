@@ -11,3 +11,17 @@ export function takeSaved(): string | null {
 
   return taken;
 }
+
+let coverRefused: { eventId: string; reason: string } | null = null;
+
+/** New event hands a cover the API refused to the new event's page, which says the event is saved without it. */
+export function markCoverRefused(eventId: string, reason: string): void {
+  coverRefused = { eventId, reason };
+}
+
+export function takeCoverRefused(): { eventId: string; reason: string } | null {
+  const taken = coverRefused;
+  coverRefused = null;
+
+  return taken;
+}

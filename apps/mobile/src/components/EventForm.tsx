@@ -1,4 +1,9 @@
-import { ApiError, type Membership, type TaggedEvent } from '@soirely/api-client';
+import {
+  ApiError,
+  type EventCover as EventCoverPhoto,
+  type Membership,
+  type TaggedEvent,
+} from '@soirely/api-client';
 import {
   EVENT_NAME_MAXIMUM,
   EVENT_TYPES,
@@ -39,11 +44,14 @@ import {
   sendOutcome,
   typedOf,
 } from '../kit/eventForm.ts';
+import { coverRefusalOf } from '../kit/coverUpload.ts';
+import { markCoverRefused } from '../kit/eventSaved.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { holdSwitches } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
+import { type CoverUse, CoverField, discardCoverUpload } from './CoverField.tsx';
 import { focusPicker } from './CountryPicker.tsx';
 import { CONTROL_TEXT_SIZE, Field, FieldError, TextField, focusChecked } from './Field.tsx';
 import { ListPicker } from './ListPicker.tsx';
@@ -92,8 +100,10 @@ export function EventForm({
   const leaving = useRef(false);
   const leaveAction = useRef<(() => void) | null>(null);
   const { draft, venue, timeZone, currency } = typed;
+  const [cover, setCover] = useState<EventCoverPhoto | null>(opened?.event.cover ?? null);
+  const staged = useRef<string | null>(null);
   const busy = status === 'sending';
-  const dirty = isDirty(typed, from);
+  const dirty = isDirty(typed, from) || (!editing && cover != null);
 
   const nameInput = useRef<TextInput>(null);
   const venueNameInput = useRef<TextInput>(null);
@@ -133,6 +143,46 @@ export function EventForm({
     leaveAction.current = () => navigation.dispatch(data.action);
     setAsking('leave');
   });
+
+  useEffect(
+    () => () => {
+      if (staged.current != null) discardCoverUpload(organisation.id, staged.current);
+    },
+    [organisation.id],
+  );
+
+  /** New event keeps the photo until the event exists; Edit details saves it at once, as the web's forms do. */
+  async function keepCover({ upload, position, description }: CoverUse): Promise<void> {
+    if (opened != null) {
+      const updated = await api.setEventCover(opened.event.id, {
+        ...(upload == null ? {} : { uploadKey: upload.key }),
+        position,
+        description,
+      });
+      setCover(updated.cover);
+      return;
+    }
+
+    if (upload != null && staged.current != null && staged.current !== upload.key)
+      discardCoverUpload(organisation.id, staged.current);
+    if (upload != null) staged.current = upload.key;
+    setCover((previous) => {
+      const sizes = upload?.preview.sizes ?? previous?.sizes;
+
+      return sizes == null ? null : { sizes, position, description };
+    });
+  }
+
+  async function removeCover(): Promise<void> {
+    if (opened != null) {
+      setCover((await api.removeEventCover(opened.event.id)).cover);
+      return;
+    }
+
+    if (staged.current != null) discardCoverUpload(organisation.id, staged.current);
+    staged.current = null;
+    setCover(null);
+  }
 
   // The frame's switcher would remount or unmount the form, so it asks as leaving does.
   useEffect(
@@ -221,6 +271,19 @@ export function EventForm({
         const body = newEventOf(typed);
         if (body == null) return;
         const created = await api.createEvent(organisation.id, body);
+        const uploadKey = staged.current;
+        staged.current = null;
+
+        // The event exists either way, so a refused or failed cover is said on its page rather than here.
+        if (uploadKey != null && cover != null)
+          await api
+            .setEventCover(created.id, {
+              uploadKey,
+              position: cover.position,
+              description: cover.description,
+            })
+            .catch((error: unknown) => markCoverRefused(created.id, coverRefusalOf(error, t)));
+
         setStatus('created');
         leaving.current = true;
         onCreated(created.id);
@@ -331,6 +394,15 @@ export function EventForm({
             testID="eventForm.type"
           />
         </Field>
+
+        <CoverField
+          type={draft.type}
+          cover={cover}
+          organisationId={organisation.id}
+          busy={busy}
+          onUse={keepCover}
+          onRemove={removeCover}
+        />
 
         <Moment
           label={t('eventForm.starts')}

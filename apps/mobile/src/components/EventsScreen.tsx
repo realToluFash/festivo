@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
-import { takeSaved } from '../kit/eventSaved.ts';
+import { takeCoverRefused, takeSaved } from '../kit/eventSaved.ts';
 import {
   type Opened,
   type Selection,
@@ -19,7 +19,7 @@ import { useLayout } from '../layout/useLayout.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AppFrame } from './AppFrame.tsx';
-import { PrimaryButton } from './Buttons.tsx';
+import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { EventList, EventNotFound, EventPage, EventsFailed, NoEvents } from './Events.tsx';
 import { type ListAndPageSpacing, ListAndPage } from './ListAndPage.tsx';
 import { Notice } from './Notice.tsx';
@@ -44,6 +44,9 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
   const creates = organisation != null && roleHolds(organisation, 'events.create');
   const manages = organisation != null && roleHolds(organisation, 'events.manage');
   const [savedEvent, setSavedEvent] = useState<string | null>(null);
+  const [coverRefused, setCoverRefused] = useState<{ eventId: string; reason: string } | null>(
+    null,
+  );
   const phone = kind === 'phone';
   const landscape = kind === 'tabletLandscape';
 
@@ -72,6 +75,7 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
   useFocusEffect(
     useCallback(() => {
       setSavedEvent(takeSaved());
+      setCoverRefused(takeCoverRefused());
       reload();
     }, [reload]),
   );
@@ -127,6 +131,23 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
           </ReadOut>
         )}
         <EventPage kind={kind} event={shown} onEdit={onEdit} />
+        {coverRefused?.eventId === open && (
+          <View style={styles.stack}>
+            <Notice
+              tone="broken"
+              mark={tokens.marks.broken.glyph}
+              body={t('eventCover.createdWithout', { reason: coverRefused.reason })}
+              announce
+            />
+            {onEdit != null && (
+              <SecondaryButton
+                label={t('eventEdit.open')}
+                onPress={onEdit}
+                testID="events.page.coverRefused.edit"
+              />
+            )}
+          </View>
+        )}
       </View>
     ) : opened.kind === 'notFound' ? (
       <EventNotFound onBack={() => select(null)} />
