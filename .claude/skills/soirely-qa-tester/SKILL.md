@@ -19,7 +19,7 @@ almost everything below follows from it.
 | `/soirely-qa-tester qa3` | tester 3 | `[qa3]`, `(from qa3)` | `~/Projects/soirely-qa3`, `soirely-qa3` | API 38080, web 35173  |
 
 Below, **N is your tester number**, and **`soirely-qa<n>` is your worktree and project**:
-`<n>` is empty for tester 1, and `2` or `3` otherwise. Your simulators are `Soirely QA<n> iPhone` and `Soirely QA<n> iPad`, and on a host without Xcode your emulators are `Soirely_QA<n>_Phone` and `Soirely_QA<n>_Tablet`.
+`<n>` is empty for tester 1, and `2` or `3` otherwise. Your simulators are `Soirely QA<n> iPhone` and `Soirely QA<n> iPad`, and your emulators are `Soirely_QA<n>_Phone` and `Soirely_QA<n>_Tablet`. The Mac has both; a host without Xcode (tolu-linux) has the emulators only.
 Examples show tester 1's ports; `node .qa/bin/qa-env.mjs status` prints yours. Never touch
 another tester's worktree, stack, simulators or browser.
 
@@ -301,8 +301,12 @@ port, and has no `hierarchy`: refresh it as below before your next iOS flow.
 serves the previous commit. Never `just qa-ios` or `just qa-mobile`: those drive the
 developer's bundler and whichever simulator happens to be booted.
 
-**On a host without Xcode, Android instead**, on your emulators `Soirely_QA<n>_Phone` and
-`Soirely_QA<n>_Tablet`:
+**Android**, on your emulators `Soirely_QA<n>_Phone` and `Soirely_QA<n>_Tablet`. On a host
+without Xcode it is the whole app pass. On the Mac it is the pass for every bullet whose AC
+names Android, alone or beside iOS, and an Android-only story is yours to take as much as
+qa2's. On the Mac keep one device of your own booted: shut the simulator
+(`xcrun simctl shutdown "Soirely QA<n> iPhone"`, and `iPad`) before `android`, and run
+`android --stop` before `ios`.
 
 ```sh
 node .qa/bin/qa-env.mjs android [--tablet]               # the bundler, in Expo Go, on the phone (or tablet); stops the other
@@ -326,8 +330,8 @@ run `setup` part way through a pass for this: it checks out main and rebuilds th
 To switch to the tablet, stop it, then run `android --tablet`. Stop the emulator when you
 finish, because it holds several GB of memory on a host every other role shares. The app uses
 the same `127.0.0.1` URLs as on a simulator, and a flow runs unchanged. A screenshot outside a
-flow is `~/Android/Sdk/platform-tools/adb -s <serial> exec-out screencap -p > .qa/<name>.png`. Your
-serial is `emulator-5572`, `emulator-5574` or `emulator-5576` for tester 1, 2 or 3. Use the
+flow is `<sdk>/platform-tools/adb -s <serial> exec-out screencap -p > .qa/<name>.png`, where
+`<sdk>` is `~/Library/Android/sdk` on the Mac and `~/Android/Sdk` on Linux. Your serial is `emulator-5572`, `emulator-5574` or `emulator-5576` for tester 1, 2 or 3. Use the
 SDK's `adb` and never a bare `adb`: another version knocks the emulator offline.
 
 **Run a mobile story's checks as batches**, one signed-in session per device, never one
