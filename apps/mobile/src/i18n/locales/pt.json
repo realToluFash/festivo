@@ -1575,20 +1575,20 @@
     "close": "Fechar"
   },
   "eventDelete": {
-    "open": "Delete event",
-    "note": "Removes the event and everything in it for your whole team. Guests following its link see that it isn't available.",
-    "title": "Delete {{event}}?",
-    "draftBody": "It's a draft with nobody on its guest list. It will be removed for your whole team.",
-    "removes": "This removes, for your whole team:",
-    "removesEvent": "the event, its details and its schedule",
-    "guests": "Guests following their link will see that it isn't available.",
-    "window": "If this was a mistake, support can restore it until {{deadline}}. After that it's gone for good.",
-    "type": "Type {{event}} to delete it",
-    "typeHint": "Type it exactly, capitals included. A straight or curly apostrophe both count.",
-    "mismatch": "Type {{event}} exactly as shown to delete it.",
-    "keep": "Keep it",
-    "delete": "Delete",
-    "failed": "That did not go through, so nothing was changed. Try again.",
-    "deleted": "{{event}} was deleted."
+    "open": "Eliminar o evento",
+    "note": "Elimina o evento e tudo o que contém para toda a equipa. Os convidados que abrirem a sua ligação veem que já não está disponível.",
+    "title": "Eliminar {{event}}?",
+    "draftBody": "É um rascunho sem ninguém na lista de convidados. Vai ser eliminado para toda a equipa.",
+    "removes": "Para toda a equipa, isto elimina:",
+    "removesEvent": "o evento, os seus detalhes e o programa",
+    "guests": "Os convidados que abrirem a sua ligação vão ver que já não está disponível.",
+    "window": "Se foi um engano, o apoio ao cliente da Soirely pode restaurá-lo até {{deadline}}. Depois disso, desaparece de vez.",
+    "type": "Escreva {{event}} para o eliminar",
+    "typeHint": "Tal como está escrito, incluindo as maiúsculas. Tanto o apóstrofo reto como o curvo são aceites.",
+    "mismatch": "Escreva {{event}} exatamente como aparece para o eliminar.",
+    "keep": "Manter o evento",
+    "delete": "Eliminar",
+    "failed": "Não foi possível concluir, por isso nada foi alterado. Tente novamente.",
+    "deleted": "O evento {{event}} foi eliminado."
   }
 }

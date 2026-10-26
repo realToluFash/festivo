@@ -41,6 +41,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. Eliminar um evento** (sc-14417 para sc-3592, `eventDelete.*` web e app,
+  `messages:event.delete_name_mismatch`). Como para uma organização: "Eliminar o evento", com
+  o artigo, como "Cancelar o evento"; o diálogo "Eliminar {{event}}?" e a saída "Manter o
+  evento", como em `eventEnd`. `mismatch` e a API são a mesma frase. "Support" é "o apoio ao
+  cliente da Soirely" e restaurar é "restaurá-lo", como `ownership.deleteWindow`; a data é "até
+  {{deadline}}". O aviso é "O evento {{event}} foi eliminado", com o particípio a concordar com
+  "evento", nunca com o nome. A equipa é "toda a equipa". O apóstrofo é "reto" ou "curvo".
+  `failed` repete `ownership.failed`.
 - **26 Oct 2026. O formulário de evento na app** (sc-14367 para sc-3595,
   `eventsScreen.newEvent|noneCreate`, `eventForm.searchType|timesIn|pickerDone|created|leaveBody`,
   `eventForm.venueSuggestionsBelow_*`). O botão que confirma um seletor de data ou hora é "OK",
