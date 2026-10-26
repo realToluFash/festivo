@@ -31,7 +31,8 @@ nothing else can be scheduled, and scheduling an unregistered name throws.
   `NotificationRegistryTest` fails otherwise. Today only email has one; in-app and push come
   with sc-3980.
 - **`eventRule()`** says how the type treats a paused, finished or deleted event
-  (`NotificationEventRule`, epic 36 §9). Only `DeletionNotice` goes after a delete.
+  (`NotificationEventRule`, epic 36 §9). Only `DeletionNotice` goes after a delete, and
+  `AfterConclusion` goes after an event that took place, never one called off.
 - **`tooLateAt()`** is the moment after which the row is recorded **Not sent: too late**.
   It is computed once, when the row is scheduled, and stored.
 - **`isStillDue()`** is asked at send time with the payload. False records the row
@@ -72,6 +73,8 @@ $scheduler->cancel("payment-reminder:{$payment->getId()}");
   schedule again with the same key.
 - **The same key again** replaces the pending row. There is never more than one pending row
   per key.
+- **A window is not collapsing.** "Changes within 10 minutes send one email" is one row
+  under one key, due at the window's end, which each change schedules again.
 - **Cancelling a key** removes its pending rows and every delivery of them not yet sent.
 - **The source id** is the thing that caused the notification. A retry or a doubled trigger
   with the same source id sends once; a second, deliberate send needs a new one.
@@ -85,8 +88,9 @@ between is handled as they are then.
   each with an optional `except`, the person who acted. The fan-out reads roles; each
   delivery then asks the member's grants again, as narrowed by sign-in rules, and cancels
   when they no longer hold it.
-- **Guests**: `Audience::guests($eventId, $conditions)` is accepted and stored. It is
-  resolved by sc-3957's resolver; until that exists such a row is recorded Failed.
+- **Guests**: `Audience::guests($eventId, $conditions)` is accepted and stored. sc-3942
+  adds its resolver with All guests and Choose guests, and sc-3957 adds the conditions to
+  it; until sc-3942 merges such a row is recorded Failed.
 - **Channels** come from `ChannelSelector`, the one place that applies a member's
   preferences (sc-3980's store; epic 36's product defaults until then). In-app always goes;
   push only rides along with another channel and is never the only way somebody hears.
@@ -142,6 +146,6 @@ The local stack runs no scheduler, so run it by hand there. sc-1612 routes the l
 An event is soft-deleted (sc-3592) and purged 30 days later; its rows go with it under the
 foreign key's cascade. The worker reads the event past the soft-delete filter, so a
 deletion notice can still go after the delete. An event whose organisation is deleted
-counts as deleted. Events have no `deleted_at` yet; sc-3592 adds it to
-`NotificationWorker::eventState()` when it adds the column. A deleted organisation's members are no longer an audience, so a notice
+counts as deleted. Events have no `deleted_at` yet: whichever of sc-104 and sc-3592 merges
+second makes `NotificationWorker::eventState()` read it, with a test. A deleted organisation's members are no longer an audience, so a notice
 to them must be resolved before the organisation goes.
