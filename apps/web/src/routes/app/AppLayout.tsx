@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router';
+import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router';
 
 import { followSavedLanguage } from '../../accountLanguage.ts';
 import { CreateOrganisation } from '../../components/CreateOrganisation.tsx';
@@ -163,8 +163,8 @@ function Shell() {
 
   const atAccount = pathname.startsWith('/app/account');
 
-  // Every product page would open this page again, so it stands alone: only what works without an organisation.
-  if (organisation == null && session.pausedIn == null && !atAccount) {
+  // Every product page would open this page again, so it stands alone: only what works without an organisation, the account pages under the same header.
+  if (organisation == null && session.pausedIn == null) {
     return (
       <div className="no-organisation-page">
         <a className="skip-link" href="#content">
@@ -174,27 +174,45 @@ function Shell() {
           <span className="brand">{t('app.name')}</span>
           <LanguagePicker automatic={false} />
         </header>
-        <main id="content" className="no-organisation-main">
-          <LinkedNotice />
-          <ErrorBoundary>
-            <NoOrganisation
-              waiting={waiting}
-              onOpen={(id) => {
-                const joined = session.organisations.find((membership) => membership.id === id);
+        {atAccount ? (
+          <main id="content" className="shell-content no-organisation-account">
+            <LinkedNotice />
+            <Link className="link-button back-link" to="/app">
+              <span aria-hidden="true">←</span>
+              <span>{t('noOrganisation.wayBack')}</span>
+            </Link>
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
+          </main>
+        ) : (
+          <main id="content" className="no-organisation-main">
+            <LinkedNotice />
+            <ErrorBoundary>
+              <NoOrganisation
+                waiting={waiting}
+                onOpen={(id) => {
+                  const joined = session.organisations.find((membership) => membership.id === id);
 
-                switchOrganisation(id);
-                if (joined == null) return;
-                setSwitched({ id, name: joined.name, at: pathname, takesFocus: true });
-                arriveAtSwitched();
-              }}
-              onStarted={(started) => {
-                switchOrganisation(started.id);
-                setSwitched({ id: started.id, name: started.name, at: pathname, takesFocus: true });
-                arriveAtSwitched();
-              }}
-            />
-          </ErrorBoundary>
-        </main>
+                  switchOrganisation(id);
+                  if (joined == null) return;
+                  setSwitched({ id, name: joined.name, at: pathname, takesFocus: true });
+                  arriveAtSwitched();
+                }}
+                onStarted={(started) => {
+                  switchOrganisation(started.id);
+                  setSwitched({
+                    id: started.id,
+                    name: started.name,
+                    at: pathname,
+                    takesFocus: true,
+                  });
+                  arriveAtSwitched();
+                }}
+              />
+            </ErrorBoundary>
+          </main>
+        )}
       </div>
     );
   }

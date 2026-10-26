@@ -495,7 +495,8 @@
     "nameTooLong_many": "Ce nom compte {{count}} de caractères. Raccourcissez-le à {{most}} caractères maximum.",
     "derived": "La devise suit le pays, le fuseau horaire est celui de cet appareil et l’adresse de contact est votre adresse e-mail principale, {{email}}. Vous pourrez les modifier dans Paramètres > Général.",
     "signedInAs": "Connecté en tant que {{email}}.",
-    "account": "Votre compte"
+    "account": "Votre compte",
+    "wayBack": "Join or start an organisation"
   },
   "orgGeneral": {
     "title": "Général",

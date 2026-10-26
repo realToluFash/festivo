@@ -72,7 +72,7 @@ function answering(answers: Record<string, () => Response>, twoFactorOn = false)
     const fallback: Record<string, () => Response> = {
       'GET /api/auth/sessions': () => json({ sessions: [] }),
       'GET /api/auth/two-factor': () => json({ on: twoFactorOn, recoveryCodesLeft: 10 }),
-      'GET /api/orgs': () => json({ organisations: [] }),
+      'GET /api/orgs': () => json({ organisations: [MEMBERSHIP] }),
     };
     const answer = answers[call] ?? fallback[call];
     if (answer == null) throw new Error(`Nothing stubbed for ${call}`);
