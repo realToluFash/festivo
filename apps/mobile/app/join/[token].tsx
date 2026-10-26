@@ -8,7 +8,7 @@ import {
 } from '@soirely/domain';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, type TextInput, View } from 'react-native';
+import { ActivityIndicator, Keyboard, StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api, meAtLaunch } from '../../src/api.ts';
@@ -29,7 +29,7 @@ const REQUEST_LINK_TOKEN = /^[0-9a-f]{32}$/i;
 
 type Shown =
   | { kind: 'loading' }
-  | { kind: 'dead' }
+  | { kind: 'dead'; answer?: object }
   | { kind: 'open'; preview: RequestLinkPreview; signedIn: boolean }
   | { kind: 'sent'; preview: RequestLinkPreview }
   | { kind: 'limited'; preview: RequestLinkPreview; until: Date | null };
@@ -79,18 +79,22 @@ export default function RequestToJoin() {
 
   return (
     <AuthFrame>
-      {view.kind === 'dead' ? <Dead /> : <Asking token={token} view={view} onChange={setView} />}
+      {view.kind === 'dead' ? (
+        <Dead answer={view.answer} />
+      ) : (
+        <Asking token={token} view={view} onChange={setView} />
+      )}
     </AuthFrame>
   );
 }
 
-/** Unknown, switched off and replaced alike, with no organisation named. */
-function Dead() {
+/** Unknown, switched off and replaced alike, with no organisation named; `answer` when Ask to join found it so. */
+function Dead({ answer }: { answer?: object | undefined }) {
   const { t } = useTranslation();
 
   return (
     <>
-      <AuthHeading title={t('requestToJoin.deadTitle')} />
+      <AuthHeading title={t('requestToJoin.deadTitle')} answer={answer} />
       <Notice tone="quiet" mark={tokens.marks.info.glyph} body={t('requestToJoin.deadBody')} />
       <SecondaryButton
         label={t('requestToJoin.goHome')}
@@ -246,6 +250,13 @@ function Ask({
   function settle(problem: unknown): void {
     if (!(problem instanceof ApiError)) {
       setFailed({});
+      return;
+    }
+
+    // Replaced, switched off or deleted since the screen opened: every try would be refused alike (sc-11741).
+    if (problem.is('request_link_dead')) {
+      Keyboard.dismiss();
+      onChange({ kind: 'dead', answer: {} });
       return;
     }
 
