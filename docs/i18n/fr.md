@@ -54,6 +54,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. Le formulaire d’événement dans l’app** (sc-14367 pour sc-3595,
+  `eventsScreen.newEvent|noneCreate`, `eventForm.searchType|timesIn|pickerDone|created|leaveBody`,
+  `eventForm.venueSuggestionsBelow_*`). Le bouton qui valide un sélecteur de date ou d’heure est
+  « OK », comme sur iOS, jamais « Terminé », qui est l’état d’un événement. Le titre de la feuille
+  est « Heures dans le fuseau {{zone}} », comme `clocksSkip`. « Type » et « Date » sont les mêmes
+  mots qu’en anglais (same-as-english.json). La recherche suit la règle « Rechercher un … » au
+  singulier : « Rechercher un type d’événement ».
 - **26 Oct 2026. En cours, terminer ou annuler un événement** (sc-14189 pour sc-3585,
   `events.happeningNow`, `eventsScreen.happeningNow`, `eventEnd.*` web et app,
   `eventEdit.schedule*`, `messages:event.already_over|schedule_concluded`). « En cours » dans
