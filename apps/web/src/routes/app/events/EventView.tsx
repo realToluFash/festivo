@@ -176,6 +176,7 @@ function EventPage({
           timeZone: event.timeZone,
         })}
       </p>
+      <Venue event={event} manages={can(session, 'events.manage')} />
       {outcome != null && (
         <OutcomeLine
           words={outcome === 'saved' ? t('eventEdit.saved') : t('eventEdit.nothingChanged')}
@@ -192,6 +193,47 @@ function EventPage({
         </Link>
       </div>
     </section>
+  );
+}
+
+/** With coordinates, the address opens OpenStreetMap there; with no venue, somebody who manages events can go and add it (sc-3589). */
+function Venue({ event, manages }: { event: OrganisationEvent; manages: boolean }) {
+  const { t } = useTranslation();
+  const venue = event.venue;
+  const address = venue?.address ?? null;
+  const { latitude, longitude } = address ?? { latitude: null, longitude: null };
+
+  if (venue == null) {
+    return (
+      <div className="event-page-venue" role="group" aria-label={t('eventPage.venue')}>
+        <p>{t('eventPage.venueToBeConfirmed')}</p>
+        {manages && (
+          <Link
+            className="link-button event-page-venue-link"
+            to={`/app/events/${encodeURIComponent(event.id)}/edit#venue`}
+          >
+            {t('eventPage.addVenue')}
+          </Link>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="event-page-venue" role="group" aria-label={t('eventPage.venue')}>
+      {venue.name != null && <p className="event-page-venue-name">{venue.name}</p>}
+      {address != null && <p>{address.formatted}</p>}
+      {latitude != null && longitude != null && (
+        <a
+          className="link-button event-page-venue-link"
+          href={`https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {t('eventPage.openInMaps')}
+        </a>
+      )}
+    </div>
   );
 }
 

@@ -58,7 +58,22 @@
     "endBeforeStart": "The end is before the start. Choose a later end.",
     "problems_one": "{{count}} field needs fixing, so nothing was sent.",
     "problems_other": "{{count}} fields need fixing, so nothing was sent.",
-    "notCreated": "Not created. Nothing was saved. Try again."
+    "notCreated": "Not created. Nothing was saved. Try again.",
+    "venueHeading": "Venue",
+    "venueName": "Venue name",
+    "optional": "Optional",
+    "venueAddress": "Address",
+    "venueAddressHint": "Type at least 3 characters to see suggestions. You can also type any address.",
+    "venueSuggestions": "Address suggestions",
+    "venueSuggestionsFound_one": "{{count}} suggestion. Use the up and down arrows to choose it.",
+    "venueSuggestionsFound_other": "{{count}} suggestions. Use the up and down arrows to choose one.",
+    "venueLookupDown": "Suggestions aren't available right now. Type the address in full and it will be saved as you typed it.",
+    "venueZoneOffer": "This venue is in {{zone}}. Use it?",
+    "venueZoneUse": "Use {{zone}}",
+    "venueZoneKeep": "Keep {{zone}}",
+    "venueZoneSet": "Time zone set to {{zone}}.",
+    "venueNameTooLong": "Shorten the venue name to {{most}} characters or fewer.",
+    "venueAddressTooLong": "Shorten the address to {{most}} characters or fewer."
   },
   "eventPage": {
     "when": "{{range}} · {{timeZone}}",
@@ -67,7 +82,11 @@
     "failed": "The event did not load. Try again in a moment.",
     "notFound": "This event is not available",
     "guestsComing": "The guest list for this event is coming.",
-    "backToEvent": "Event"
+    "backToEvent": "Event",
+    "venue": "Venue",
+    "venueToBeConfirmed": "Venue to be confirmed",
+    "addVenue": "Add the venue",
+    "openInMaps": "Open in maps"
   },
   "eventEdit": {
     "open": "Edit details",

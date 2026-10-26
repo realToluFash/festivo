@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, test, vi } from 'vitest';
 
 import {
@@ -2211,6 +2212,7 @@ describe('events (sc-1486)', () => {
     timeZone: 'Africa/Lagos',
     dayCount: 2,
     currency: 'NGN',
+    venue: null,
     createdAt: '2026-10-21T09:00:00+00:00',
   };
 
@@ -2421,5 +2423,125 @@ describe('claiming an organisation with no active owner (sc-6640)', () => {
         'org_1',
       ),
     ).toEqual({ ownerClaim: banner, told: false });
+  });
+});
+
+describe("an event's venue (sc-3589)", () => {
+  const picked: unknown = JSON.parse(
+    readFileSync(
+      new URL('../../../services/api/tests/Fixtures/Venue/picked-venue.json', import.meta.url),
+      'utf8',
+    ),
+  );
+
+  const event = {
+    id: 'e1',
+    organisationId: 'o1',
+    name: 'Owambe',
+    status: 'draft',
+    startsAt: '2026-11-14T16:00:00+01:00',
+    endsAt: '2026-11-15T02:00:00+01:00',
+    timeZone: 'Africa/Lagos',
+    dayCount: 2,
+    currency: 'NGN',
+    createdAt: '2026-10-26T09:00:00+00:00',
+  };
+
+  function client(response: Response, sent: string[] = []) {
+    return {
+      api: new ApiClient({
+        baseUrl: () => 'http://api.test',
+        tokens: store('live', null),
+        fetch: async (url, init) => {
+          const target = new URL(String(url));
+          sent.push(`${init?.method ?? 'GET'} ${target.pathname}${target.search}`);
+
+          return response;
+        },
+      }),
+      sent,
+    };
+  }
+
+  test('reads the venue the API serves for a picked address', async () => {
+    const read = await client(json({ event: { ...event, venue: picked } })).api.event('e1');
+
+    expect(read.venue).toEqual(picked);
+  });
+
+  test('reads no venue, and a typed one', async () => {
+    const typed = {
+      name: null,
+      address: {
+        formatted: '12 Bode Thomas Street',
+        line1: null,
+        line2: null,
+        city: null,
+        region: null,
+        postalCode: null,
+        countryCode: null,
+        latitude: null,
+        longitude: null,
+      },
+    };
+
+    expect((await client(json({ event: { ...event, venue: null } })).api.event('e1')).venue).toBe(
+      null,
+    );
+    expect(
+      (await client(json({ event: { ...event, venue: typed } })).api.event('e1')).venue,
+    ).toEqual(typed);
+  });
+
+  test('refuses an event with no venue field, naming where to look', async () => {
+    await expect(client(json({ event })).api.event('e1')).rejects.toThrow(/events controller/);
+  });
+
+  test('asks for suggestions from three characters, and reads them', async () => {
+    const sent: string[] = [];
+    const { api } = client(
+      json({
+        success: true,
+        data: [
+          { id: 'node:1', text: 'The Civic Centre', secondary_text: 'Victoria Island, Lagos' },
+        ],
+      }),
+      sent,
+    );
+
+    expect(await api.addressSuggestions('Ci')).toEqual([]);
+    expect(await api.addressSuggestions(' Civic ')).toEqual([
+      { id: 'node:1', text: 'The Civic Centre', secondaryText: 'Victoria Island, Lagos' },
+    ]);
+    expect(sent).toEqual(['GET /api/addresses/suggest?q=Civic']);
+  });
+
+  test('reads a picked address with its time zone', async () => {
+    const { api, sent } = client(
+      json({
+        success: true,
+        data: {
+          formatted: 'Rua Augusta, Lisboa, Portugal',
+          line1: 'Rua Augusta',
+          line2: null,
+          city: 'Lisboa',
+          region: null,
+          postal_code: '1100-048',
+          country_code: 'PT',
+          latitude: 38.71,
+          longitude: -9.137,
+          time_zone: 'Europe/Lisbon',
+        },
+      }),
+    );
+
+    const address = await api.address('way:12');
+
+    expect(address).toMatchObject({
+      postalCode: '1100-048',
+      countryCode: 'PT',
+      timeZone: 'Europe/Lisbon',
+    });
+    expect(sent).toEqual(['GET /api/addresses/way%3A12']);
   });
 });

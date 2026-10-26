@@ -3329,3 +3329,60 @@ button.members-row {
   align-items: center;
   gap: var(--spaceSm) var(--spaceMd);
 }
+
+/* ── An event's venue (sc-3589) ───────────────────────────────────────────── */
+
+.venue-suggestions {
+  max-width: none;
+  margin-top: var(--spaceXs);
+}
+
+.venue-suggestions .tz-option {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  padding-block: var(--spaceXs);
+}
+
+.venue-suggestions .tz-option .muted {
+  margin-left: 0;
+  text-align: left;
+}
+
+.venue-lookup-down {
+  padding: var(--spaceMd) var(--spaceLg);
+  font: var(--typeSmall);
+}
+
+.venue-lookup-down p {
+  margin: 0;
+}
+
+.mark-half {
+  background: linear-gradient(90deg, var(--colorAttentionText) 50%, transparent 50%);
+}
+
+.venue-zone-offer {
+  margin-top: var(--spaceLg);
+}
+
+.event-page-venue {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.event-page-venue p {
+  margin: 0;
+}
+
+.event-page-venue-name {
+  font: var(--typeRowTitle);
+}
+
+.event-page-venue-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}

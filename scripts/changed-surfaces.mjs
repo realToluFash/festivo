@@ -27,7 +27,7 @@ export const SURFACE_PATTERNS = {
   // The gateway replays the API's recorded pairs, and the domain's tests read the
   // API's own tables, so a change to either side runs the suite that compares them.
   packages:
-    /^(packages\/|tools\/agent-gateway\/|services\/api\/tests\/Fixtures\/(AgentGateway|LocalTime)\/|services\/api\/src\/(Domain\/Organisation\/Regions|Enum\/DomainRefusal)\.php$)/,
+    /^(packages\/|tools\/agent-gateway\/|services\/api\/tests\/Fixtures\/(AgentGateway|LocalTime|Venue)\/|services\/api\/src\/(Domain\/Organisation\/Regions|Enum\/DomainRefusal)\.php$)/,
   // Any catalogue anywhere, plus any client surface — a new screen can
   // introduce an untranslated literal without touching a locale file — plus
   // the lint itself, whose tests run only in that job.
