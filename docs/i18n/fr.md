@@ -54,6 +54,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. Le lieu de l’événement et la liste des événements dans l’app**
+  (`web:eventForm.venue*`, `web:eventPage.venue*`, `addVenue`, `openInMaps`,
+  `messages:validation.event_venue_*`, `mobile:eventsScreen.*`, sc-3589 and sc-1593 via
+  sc-13205). Venue is « Lieu » (« Nom du lieu », « Lieu à confirmer », « Ajouter le lieu »),
+  never « salle », which is only one kind of venue. "Open in maps" is « Voir sur une carte »,
+  since no French user says « ouvrir dans Plans » for every maps app. The zone offer says « dans
+  le fuseau {{zone}} », as the DST line does. "Type" for the event's type is the French word too,
+  so `web:eventForm.type` is in `same-as-english.json`, with the app's `eventTypes.baby_shower`.
+  The app's retry button is « Réessayer », as the web's.
 - **26 Oct 2026. La couverture d’un événement** (sc-13587, `web:eventCover.*`,
   `messages:validation.cover_*`). La section s’appelle « Image de couverture », jamais
   « Couverture » seul, qui se lit comme une assurance ou une zone desservie ; le dialogue,

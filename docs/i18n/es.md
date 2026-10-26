@@ -49,6 +49,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. El lugar del evento y la lista de eventos en la app** (`web:eventForm.venue*`,
+  `web:eventPage.venue*`, `addVenue`, `openInMaps`, `messages:validation.event_venue_*`,
+  `mobile:eventsScreen.*`, sc-3589 y sc-1593 via sc-13205). Venue es «Lugar» («Nombre del
+  lugar», «Lugar por confirmar», «Añadir el lugar»), no «recinto» ni «local», que suenan a
+  edificio o a bar. El límite de longitud dice lo mismo en pantalla y en la API, «Acorte el
+  nombre del lugar a {count} caracteres como máximo.». La oferta de zona horaria pregunta
+  «¿Quiere usar esa zona horaria?», con botones «Usar {{zone}}» / «Mantener {{zone}}». La app
+  repite las palabras de la web: «Cargando eventos…», «Borrador», «Este evento no está
+  disponible»; su botón de reintento es «Inténtelo de nuevo», como el resto de la app.
 - **26 Oct 2026. La portada de un evento** (sc-13587, `web:eventCover.*`,
   `messages:validation.cover_*`). «Portada» para la sección y «Foto de portada» para el diálogo,
   como en las redes que el anfitrión ya conoce; «foto» para la imagen propia, e «imagen» solo en
