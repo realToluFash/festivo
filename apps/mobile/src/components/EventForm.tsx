@@ -262,12 +262,13 @@ export function EventForm({
       return;
     }
 
+    const body = opened == null ? newEventOf(typed) : null;
+    if (opened == null && body == null) return;
+
     setStatus('sending');
 
     try {
-      if (opened == null) {
-        const body = newEventOf(typed);
-        if (body == null) return;
+      if (body != null) {
         const created = await api.createEvent(organisation.id, body);
         const uploadKey = staged.current;
         staged.current = null;
@@ -285,7 +286,7 @@ export function EventForm({
         setStatus('created');
         leaving.current = true;
         onCreated(created.id);
-      } else {
+      } else if (opened != null) {
         await api.updateEvent(opened.event.id, eventChanges(opened.event, typed), opened.tag);
         leaving.current = true;
         onSaved('saved');
