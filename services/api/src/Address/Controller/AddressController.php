@@ -1,0 +1,90 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Address\Controller;
+
+use App\Address\AddressLookup;
+use App\Address\AddressTimeZone;
+use App\Address\Exception\AddressNotFound;
+use App\Address\Exception\ProviderUnavailable;
+use App\Enum\ErrorCode;
+use App\Http\Access\Policy\Authenticated;
+use App\Http\Exception\ApiException;
+use App\Http\Input;
+use Psl\Type;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
+use Symfony\Component\Routing\Attribute\Route;
+use Throwable;
+
+#[Authenticated]
+final class AddressController
+{
+    public function __construct(
+        private readonly AddressLookup $addressLookup,
+        private readonly RateLimiterFactoryInterface $addressLookupLimiter,
+    ) {
+    }
+
+    #[Route('/api/addresses/suggest', name: 'address_suggest', methods: ['GET'])]
+    public function suggest(Request $request): JsonResponse
+    {
+        $this->limit($request);
+
+        $input = Input::query($request, Type\shape([
+            'q' => Type\optional(Type\string()),
+            'country' => Type\optional(Type\nullable(Type\string())),
+        ]));
+
+        try {
+            $suggestions = $this->addressLookup->suggest($input['q'] ?? '', $input['country'] ?? null);
+        } catch (ProviderUnavailable $e) {
+            throw $this->unavailable($e);
+        }
+
+        return new JsonResponse([
+            'success' => true,
+            'data' => \array_map(static fn ($s) => $s->toArray(), $suggestions),
+        ]);
+    }
+
+    #[Route('/api/addresses/{id}', name: 'address_resolve', methods: ['GET'], requirements: ['id' => '[^/]+'])]
+    public function resolve(string $id, Request $request): JsonResponse
+    {
+        $this->limit($request);
+
+        try {
+            $address = $this->addressLookup->resolve($id);
+        } catch (AddressNotFound $e) {
+            throw new ApiException(ErrorCode::NotFound, 'address.unknown', [], $e);
+        } catch (ProviderUnavailable $e) {
+            throw $this->unavailable($e);
+        }
+
+        return new JsonResponse(['success' => true, 'data' => [...$address->toArray(), 'time_zone' => AddressTimeZone::of($address)]]);
+    }
+
+    private function limit(Request $request): void
+    {
+        $limiter = $this->addressLookupLimiter->create($request->getClientIp() ?? 'anonymous');
+
+        if (!$limiter->consume()->isAccepted()) {
+            throw new ApiException(
+                ErrorCode::TooManyRequests,
+                'address.lookups_too_many',
+            );
+        }
+    }
+
+    private function unavailable(Throwable $previous): ApiException
+    {
+        return new ApiException(
+            ErrorCode::ServiceUnavailable,
+            'Address lookup is unavailable. You can still type the address yourself.',
+            [],
+            $previous,
+        );
+    }
+}

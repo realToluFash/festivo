@@ -1,0 +1,54 @@
+{
+  "$comment": "The single declaration of an event's lifecycle (sc-3584). `states` are stored; `phases` are worked out from the state and the clock, and say what the event allows. A transition with no row from the event's stored state is refused. Read by packages/domain for both clients, and mounted into the API, whose enums EventStatesSourceTest checks against this file in both directions. Paused gains the rest of its actions with sc-3586.",
+  "states": ["draft", "live", "paused", "ended"],
+  "actions": [
+    "edit",
+    "edit_schedule",
+    "delete",
+    "make_live",
+    "pause",
+    "end",
+    "invite",
+    "message",
+    "check_in",
+    "service"
+  ],
+  "guards": ["end_not_passed", "plan_limit"],
+  "transitions": [
+    {
+      "from": "draft",
+      "action": "make_live",
+      "to": "live",
+      "guards": ["end_not_passed", "plan_limit"]
+    },
+    { "from": "live", "action": "end", "to": "ended", "guards": ["end_not_passed"] },
+    { "from": "paused", "action": "end", "to": "ended", "guards": ["end_not_passed"] }
+  ],
+  "phases": {
+    "draft": ["edit", "edit_schedule", "delete", "make_live"],
+    "live": [
+      "edit",
+      "edit_schedule",
+      "pause",
+      "end",
+      "delete",
+      "invite",
+      "message",
+      "check_in",
+      "service"
+    ],
+    "happening_now": [
+      "edit",
+      "edit_schedule",
+      "pause",
+      "end",
+      "delete",
+      "invite",
+      "message",
+      "check_in",
+      "service"
+    ],
+    "paused": ["end"],
+    "finished": ["edit", "delete"]
+  }
+}

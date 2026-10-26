@@ -1,0 +1,12 @@
+# Settings, from Home's Open Settings. Shared: run it alone on a signed-in phone, or as a
+# step with `runFlow: open-settings.yaml`. It neither relaunches Expo Go nor signs in.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'home.openSettings'
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 30000
+- takeScreenshot: mobile-settings

@@ -1,0 +1,17 @@
+# Signs out from Settings and ends on the sign-in screen. Shared, as open-settings.yaml is.
+# batch/sign-out.yaml is the batch's: it also passes when nobody is signed in.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings
+- scrollUntilVisible:
+    element:
+      id: 'settings.signOut'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'settings.signOut'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 30000
+- takeScreenshot: mobile-signed-out
