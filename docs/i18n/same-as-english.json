@@ -13,6 +13,7 @@
     "web:eventTypes.baby_shower"
   ],
   "fr": [
+    "web:nav.menu",
     "mobile:app.name",
     "mobile:devices.everywhereCode",
     "mobile:frame.organisation",
@@ -54,6 +55,7 @@
     "web:eventTypes.baby_shower"
   ],
   "pt": [
+    "web:nav.menu",
     "web:app.name",
     "mobile:app.name",
     "mobile:home.title",
