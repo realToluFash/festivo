@@ -34,7 +34,7 @@ import {
   withTurnedDown,
 } from '../kit/membersAfterWrite.ts';
 import { refusalFor, refusalTitle } from '../kit/refusal.ts';
-import { type LayoutKind } from '../layout/useLayout.ts';
+import { type LayoutKind, useAccessibilitySizes } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
@@ -104,6 +104,9 @@ function MemberState({ member }: { member: OrganisationMember }) {
 
 function Avatar({ name, large = false }: { name: string; large?: boolean }) {
   const size = large ? AVATAR_LARGE : AVATAR;
+  const giveWay = useAccessibilitySizes() && !large;
+  // It repeats the name beside it, and at the accessibility sizes takes the width the name needs (sc-13496).
+  if (giveWay) return null;
 
   return (
     <View

@@ -9,6 +9,7 @@ import { useMarkSide } from './markSide.ts';
 import { useReadOut } from './ReadOut.tsx';
 import { Screen, useFocusOnAnswer } from './Screen.tsx';
 import { Text, type TextHandle } from './Text.tsx';
+import { Title } from './Title.tsx';
 
 const CARD_WIDTH = 520;
 const FORM_COLUMN_WIDTH = 600;
@@ -63,9 +64,9 @@ export function AuthHeading({
         </View>
       )}
       <View ref={shown} style={styles.heading}>
-        <Text ref={read} size={size} weight="bold" style={styles.title} accessibilityRole="header">
+        <Title ref={read} size={size} style={styles.title} accessibilityRole="header">
           {title}
-        </Text>
+        </Title>
         {showIntro && (
           <Text ref={introRead} size={tokens.typeBodyPhone.size} style={styles.secondary}>
             {intro}
@@ -95,9 +96,9 @@ export function AuthFrame({
 
   const brand = (
     <View style={styles.brandRow}>
-      <Text size={tokens.typeTitleDialog.size} weight="bold" style={styles.brand}>
+      <Title size={tokens.typeTitleDialog.size} style={styles.brand}>
         {t('app.name')}
-      </Text>
+      </Title>
     </View>
   );
 

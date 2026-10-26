@@ -10,7 +10,7 @@ import {
   type SettingsSection,
   settingsGroups,
 } from '../kit/appNav.ts';
-import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
+import { type LayoutKind, useLayout, useSideListWidth } from '../layout/useLayout.ts';
 import { signOutHere, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Text } from './Text.tsx';
@@ -38,6 +38,7 @@ export function SettingsSplit({
 export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsSection | null }) {
   const { t } = useTranslation();
   const { account, organisation } = useSignedIn();
+  const width = useSideListWidth(LIST_WIDTH);
   const phone = kind === 'phone';
   const line: Record<SettingsSection, string> = {
     account: t('settings.accountLine'),
@@ -136,7 +137,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
   }
 
   return (
-    <View style={styles.tabletList}>
+    <View style={[styles.tabletList, { width }]}>
       {groups.map(({ key, heading, rows }) => (
         <Fragment key={key}>
           {heading}
@@ -223,7 +224,6 @@ const styles = StyleSheet.create({
   },
   signOutDense: { height: tokens.sizeHit, borderRadius: tokens.sizeHit / 2 },
   tabletList: {
-    width: LIST_WIDTH,
     gap: tokens.spaceXs,
     paddingVertical: tokens.spaceXl,
     paddingHorizontal: tokens.spaceLg,

@@ -15,6 +15,7 @@ import { Footnote, PrimaryButton, QuietButton, SecondaryButton } from './Buttons
 import { InvitationRows } from './InvitationRows.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Text, type TextHandle } from './Text.tsx';
+import { Title } from './Title.tsx';
 
 /** `OrgSwitcher-*` Tweak `no_org_invitation`: an account in no organisation, with any invitation waiting for it, as the web's `NoOrganisation`. */
 export function NoOrganisation({
@@ -35,14 +36,9 @@ export function NoOrganisation({
 
   return (
     <View style={[cardFrame(kind), styles.card]} testID="noOrganisation">
-      <Text
-        ref={titleRef}
-        size={tokens.typeTitleDialog.size}
-        weight="bold"
-        accessibilityRole="header"
-      >
+      <Title ref={titleRef} size={tokens.typeTitleDialog.size} accessibilityRole="header">
         {t('noOrganisation.title')}
-      </Text>
+      </Title>
       <Text size={tokens.typeBodyPhone.size}>{t('noOrganisation.body')}</Text>
       {listed ? (
         <View style={styles.invitations}>

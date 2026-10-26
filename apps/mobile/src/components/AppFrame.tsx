@@ -12,7 +12,15 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
@@ -21,7 +29,13 @@ import { type WaitingInvitations, useWaitingInvitations } from '../invitations.t
 import { type DomainOffer, useDomainOffer } from '../joinOffers.ts';
 import { DESTINATION_HREF, type Destination, destinations } from '../kit/appNav.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
-import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
+import { railWidth } from '../layout/textSize.ts';
+import {
+  type LayoutKind,
+  useAccessibilitySizes,
+  useLayout,
+  useNameLines,
+} from '../layout/useLayout.ts';
 import { joinOrganisation, switchOrganisation, useSignedIn } from '../signedIn.ts';
 import { FrameSwitch, switchByTap, useFrameSwitch } from '../tappedSwitch.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -36,10 +50,9 @@ import { ReadOut, useReadOut } from './ReadOut.tsx';
 import { type StepClosed, stepClosed, useFocusBackToOpener, useFocusOnAnswer } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type TextHandle, Text } from './Text.tsx';
+import { Title } from './Title.tsx';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
-
-const RAIL_WIDTH = 220;
 
 type Opening = (opener: RefObject<View | null>) => void;
 
@@ -302,14 +315,15 @@ function FrameHeader({
   const insets = useSafeAreaInsets();
   const top = { paddingTop: insets.top + (kind === 'tabletLandscape' ? 0 : tokens.spaceXxs) };
   const { read } = useFocusOnAnswer<TextHandle>(switchAnswer, titleRef);
+  const large = useAccessibilitySizes();
 
   if (kind === 'tabletLandscape') {
     return (
-      <View style={[styles.header, styles.landscapeHeader, top]}>
-        <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header" ref={read}>
+      <View style={[styles.header, styles.landscapeHeader, large && styles.stacked, top]}>
+        <Title size={tokens.typeTitlePhone.size} accessibilityRole="header" ref={read}>
           {title}
-        </Text>
-        <View style={styles.fill} />
+        </Title>
+        {!large && <View style={styles.fill} />}
         <Text size={tokens.typeBody.size} muted>
           {email}
         </Text>
@@ -348,9 +362,9 @@ function FrameHeader({
             );
           })}
         </View>
-        <Text size={tokens.typeTitlePage.size} weight="bold" accessibilityRole="header" ref={read}>
+        <Title size={tokens.typeTitlePage.size} accessibilityRole="header" ref={read}>
           {title}
-        </Text>
+        </Title>
       </View>
     );
   }
@@ -375,14 +389,13 @@ function FrameHeader({
           </Text>
         </Pressable>
       )}
-      <Text
+      <Title
         size={back == null ? tokens.typeTitlePage.size : tokens.typeTitlePhone.size}
-        weight="bold"
         accessibilityRole="header"
         ref={read}
       >
         {title}
-      </Text>
+      </Title>
     </View>
   );
 }
@@ -414,7 +427,7 @@ function TabBar({ current }: { current: Destination }) {
             <Text
               size={tokens.typeMeta.size}
               weight={on ? 'bold' : 'medium'}
-              style={on ? styles.ink : styles.secondaryInk}
+              style={[styles.centred, on ? styles.ink : styles.secondaryInk]}
             >
               {t(`frame.${destination}`)}
             </Text>
@@ -441,6 +454,9 @@ function Rail({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { account } = useSignedIn();
+  const { fontScale } = useWindowDimensions();
+  const large = useAccessibilitySizes();
+  const lines = useNameLines();
   const item = (destination: Destination) => {
     const on = destination === current;
 
@@ -470,6 +486,7 @@ function Rail({
       style={[
         styles.rail,
         {
+          width: railWidth(fontScale),
           paddingTop: insets.top + tokens.spaceSm,
           paddingBottom: insets.bottom + tokens.space3xl,
           paddingLeft: insets.left + tokens.spaceMd,
@@ -477,9 +494,7 @@ function Rail({
       ]}
     >
       <View style={styles.brand}>
-        <Text size={tokens.typeTitleDialog.size} weight="bold">
-          {t('app.name')}
-        </Text>
+        <Title size={tokens.typeTitleDialog.size}>{t('app.name')}</Title>
       </View>
       {organisation != null && (
         <OrgPill
@@ -500,19 +515,21 @@ function Rail({
         {item('settings')}
         {account != null && (
           <View style={styles.person}>
-            <View
-              style={styles.avatar}
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants"
-            >
-              <Initials name={account.name} size={tokens.typeMeta.size} weight="semibold" />
-            </View>
+            {!large && (
+              <View
+                style={styles.avatar}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              >
+                <Initials name={account.name} size={tokens.typeMeta.size} weight="semibold" />
+              </View>
+            )}
             <View style={styles.shrink}>
-              <Text size={tokens.typeBody.size} weight="semibold" numberOfLines={1}>
+              <Text size={tokens.typeBody.size} weight="semibold" numberOfLines={lines}>
                 {account.name}
               </Text>
               {organisation != null && (
-                <Text size={tokens.typeMeta.size} muted numberOfLines={1}>
+                <Text size={tokens.typeMeta.size} muted numberOfLines={lines}>
                   {roleName(t, organisation.role)}
                 </Text>
               )}
@@ -538,6 +555,8 @@ function OrgPill({
   ref: Ref<View>;
 }) {
   const { t } = useTranslation();
+  const large = useAccessibilitySizes();
+  const lines = useNameLines();
   const role = roleName(t, organisation.role);
   const label =
     onSwitch == null
@@ -552,7 +571,7 @@ function OrgPill({
       style={[
         styles.org,
         railed ? styles.orgRailed : styles.orgPill,
-        waiting > 0 && styles.orgWaiting,
+        (waiting > 0 || large) && styles.orgWaiting,
       ]}
       onPress={onSwitch}
       disabled={onSwitch == null}
@@ -560,17 +579,17 @@ function OrgPill({
       accessibilityLabel={label}
       testID="frame.organisation"
     >
-      <Tile name={organisation.name} />
+      {!large && <Tile name={organisation.name} />}
       <View style={styles.shrink}>
         <Text
           size={railed ? tokens.typeBody.size : tokens.typeBodyPhone.size}
           weight="semibold"
-          numberOfLines={1}
+          numberOfLines={lines}
         >
           {organisation.name}
         </Text>
         {railed && (
-          <Text size={tokens.typeMeta.size} muted numberOfLines={1}>
+          <Text size={tokens.typeMeta.size} muted numberOfLines={lines}>
             {t('frame.organisation')}
           </Text>
         )}
@@ -628,6 +647,8 @@ function Switcher({
 }) {
   const { t } = useTranslation();
   const { width, height } = useLayout();
+  const large = useAccessibilitySizes();
+  const lines = useNameLines();
   const insets = useSafeAreaInsets();
   const invitationsHeading = useRef<TextHandle>(null);
   const remembered = useRef<TextHandle>(null);
@@ -677,9 +698,9 @@ function Switcher({
         />
         <View style={styles.sheetFrame}>
           <ScrollView contentContainerStyle={styles.sheet}>
-            <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
+            <Title size={tokens.typeTitleDialog.size} accessibilityRole="header">
               {t('switcher.heading')}
-            </Text>
+            </Title>
             {organisations.map((organisation) => {
               const isCurrent = organisation.id === current?.id;
 
@@ -695,20 +716,17 @@ function Switcher({
                   accessibilityState={{ selected: isCurrent }}
                   testID={`switcher.${organisation.id}`}
                 >
-                  <Tile name={organisation.name} />
+                  {!large && <Tile name={organisation.name} />}
                   <View style={[styles.fill, styles.shrink]}>
-                    <Text size={tokens.typeBodyPhone.size} weight="semibold" numberOfLines={1}>
+                    <Text size={tokens.typeBodyPhone.size} weight="semibold" numberOfLines={lines}>
                       {organisation.name}
                     </Text>
-                    <Text size={tokens.typeBody.size} muted numberOfLines={1}>
+                    <Text size={tokens.typeBody.size} muted numberOfLines={large ? 0 : 1}>
                       {t('switcher.yourRole', { role: roleName(t, organisation.role) })}
                     </Text>
+                    {isCurrent && large && <Current />}
                   </View>
-                  {isCurrent && (
-                    <Text size={tokens.typeBody.size} weight="semibold" style={styles.accent}>
-                      {t('switcher.current')}
-                    </Text>
-                  )}
+                  {isCurrent && !large && <Current />}
                 </Pressable>
               );
             })}
@@ -765,6 +783,16 @@ function Switcher({
         </View>
       </View>
     </Modal>
+  );
+}
+
+function Current() {
+  const { t } = useTranslation();
+
+  return (
+    <Text size={tokens.typeBody.size} weight="semibold" style={styles.accent}>
+      {t('switcher.current')}
+    </Text>
   );
 }
 
@@ -879,6 +907,7 @@ const styles = StyleSheet.create({
   ink: { color: tokens.colorInk },
   secondaryInk: { color: tokens.colorInkSecondary },
   accent: { color: tokens.colorAccentText },
+  centred: { textAlign: 'center' },
   broken: { color: tokens.colorBrokenText },
   offer: {
     gap: tokens.spaceSm,
@@ -926,6 +955,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.space5xl,
     paddingBottom: tokens.spaceLg,
   },
+  stacked: { flexDirection: 'column', alignItems: 'flex-start', gap: tokens.spaceXs },
   back: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
@@ -974,14 +1004,13 @@ const styles = StyleSheet.create({
   },
   tabMarkOn: { backgroundColor: tokens.colorInk },
   rail: {
-    width: RAIL_WIDTH,
     gap: tokens.spaceXxl,
     paddingRight: tokens.spaceMd,
     backgroundColor: tokens.colorCard,
     borderRightWidth: 1,
     borderRightColor: tokens.colorBorder,
   },
-  brand: { height: tokens.sizeHit, justifyContent: 'center', paddingHorizontal: tokens.spaceMd },
+  brand: { minHeight: tokens.sizeHit, justifyContent: 'center', paddingHorizontal: tokens.spaceMd },
   railGroup: { gap: tokens.spaceHair },
   railFoot: {
     paddingTop: tokens.spaceLg,
@@ -1029,7 +1058,7 @@ const styles = StyleSheet.create({
     borderRadius: tokens.sizeHit / 2,
   },
   orgRailed: {
-    height: tokens.sizeHitPhoneHero,
+    minHeight: tokens.sizeHitPhoneHero,
     paddingLeft: tokens.spaceXs,
     paddingRight: tokens.spaceMd,
     borderRadius: tokens.radiusField,

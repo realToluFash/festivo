@@ -7,7 +7,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { useLayout } from '../layout/useLayout.ts';
+import { useLayout, useSideListWidth } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { bodyEdges } from './bodyEdges.ts';
 import { QuietButton } from './Buttons.tsx';
@@ -56,6 +56,7 @@ export function ListAndPage({
   spacing,
 }: ListAndPageProps) {
   const { kind } = useLayout();
+  const listWidth = useSideListWidth(spacing.listWidth);
   const landscape = kind === 'tabletLandscape';
   const column = landscape
     ? spacing.column
@@ -94,7 +95,7 @@ export function ListAndPage({
       <View style={landscape ? [styles.split, { gap: spacing.between }] : styles.fill}>
         <View
           style={[
-            landscape ? { width: spacing.listWidth } : styles.fill,
+            landscape ? { width: listWidth } : styles.fill,
             !landscape && pageInFront && styles.behind,
           ]}
         >
