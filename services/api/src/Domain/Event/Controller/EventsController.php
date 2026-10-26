@@ -20,7 +20,6 @@ use App\Http\Input;
 use App\Repository\EventRepository;
 use App\Repository\OrganisationRepository;
 use Psl\Type;
-use Psl\Vec;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -35,6 +34,7 @@ final readonly class EventsController
         private EventRepository $eventRepository,
         private EventCreator $eventCreator,
         private EventEditor $eventEditor,
+        private EventSerialiser $eventSerialiser,
     ) {
     }
 
@@ -43,7 +43,7 @@ final readonly class EventsController
     public function list(string $organisationId): JsonResponse
     {
         return new JsonResponse([
-            'events' => Vec\map($this->eventRepository->findInOrganisation($this->organisation($organisationId)), EventSerialiser::event(...)),
+            'events' => $this->eventSerialiser->events($this->eventRepository->findInOrganisation($this->organisation($organisationId))),
         ]);
     }
 
@@ -70,14 +70,14 @@ final readonly class EventsController
             'currency' => $body['currency'] ?? null,
         ]);
 
-        return new JsonResponse(['event' => EventSerialiser::event($event)], Response::HTTP_CREATED);
+        return new JsonResponse(['event' => $this->eventSerialiser->event($event)], Response::HTTP_CREATED);
     }
 
     #[Route('/api/events/{eventId}', name: 'events_show', methods: ['GET'])]
     #[InEvent(Permission::EventsRead)]
     public function show(string $eventId): JsonResponse
     {
-        return self::tagged($this->event($eventId));
+        return $this->tagged($this->event($eventId));
     }
 
     /** Any of the six fields; those left out keep their value. Needs If-Match with the ETag it read (sc-3587). */
@@ -95,12 +95,12 @@ final readonly class EventsController
             'currency' => Type\optional(Type\string()),
         ]));
 
-        return self::tagged($this->eventEditor->edit($event, $request->headers->get('If-Match'), $this->user(), $body));
+        return $this->tagged($this->eventEditor->edit($event, $request->headers->get('If-Match'), $this->user(), $body));
     }
 
-    private static function tagged(Event $event): JsonResponse
+    private function tagged(Event $event): JsonResponse
     {
-        return new JsonResponse(['event' => EventSerialiser::event($event)], Response::HTTP_OK, ['ETag' => EntityTag::of($event->getVersion())]);
+        return new JsonResponse(['event' => $this->eventSerialiser->event($event)], Response::HTTP_OK, ['ETag' => EntityTag::of($event->getVersion())]);
     }
 
     private function event(string $id): Event

@@ -203,5 +203,12 @@
     "assistant.too_many_tools": "Podem ser oferecidas, no máximo, {most} ferramentas; este pedido oferece {count}.",
     "assistant.resource_context_too_long": "O contexto do recurso pode ter, no máximo, {most} caracteres; este tem {count}. Envie o que está no ecrã, não o registo completo.",
     "assistant.role_unknown": "Função de mensagem desconhecida: \"{role}\". Funções conhecidas: user, assistant, tool_call, tool_result.",
-    "sign_in.idle_timeout": "{organisation} encerra a sessão após {days} dias sem utilização. Inicie sessão novamente para prosseguir."
+    "sign_in.idle_timeout": "{organisation} encerra a sessão após {days} dias sem utilização. Inicie sessão novamente para prosseguir.",
+    "validation.cover_type": "That file isn't a photo we can use. Choose a JPEG, PNG, WebP or HEIC.",
+    "validation.cover_size": "That photo is over 15 MB. Choose a smaller one.",
+    "validation.cover_dimensions": "That photo is smaller than 1200 × 675 pixels, so it would look blurred. Choose a larger one.",
+    "validation.cover_description_too_long": "Shorten the description to {count} characters at most.",
+    "validation.cover_position_invalid": "Choose a position from 0, the top of the photo, to 100, the bottom.",
+    "validation.cover_photo_required": "Choose a photo for the cover.",
+    "validation.cover_upload_missing": "The photo didn't upload. Try again."
 }
