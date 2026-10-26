@@ -23,6 +23,7 @@ import { ConfirmItsYou } from './ConfirmItsYou.tsx';
 import { Notice } from './Notice.tsx';
 import { type StepClosed, stepClosed, useFocusBackToOpener } from './Screen.tsx';
 import { Text, type TextHandle } from './Text.tsx';
+import { useMarkSide } from './markSide.ts';
 
 type Act = { action: 'link' | 'unlink'; provider: Provider };
 
@@ -322,10 +323,11 @@ function Row({
 
 /** A word beside the mark, never the mark alone. */
 function State({ on, word, address }: { on: boolean; word: string; address?: string | null }) {
+  const markSide = useMarkSide(tokens.sizeMark);
   return (
     <View style={styles.state}>
       <View
-        style={on ? styles.markOn : styles.markOff}
+        style={[on ? styles.markOn : styles.markOff, markSide]}
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
@@ -555,17 +557,13 @@ const styles = StyleSheet.create({
   detail: { flex: 1, minWidth: 160, gap: tokens.spaceXxs },
   state: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceXs },
   markOn: {
-    width: tokens.sizeMark,
-    height: tokens.sizeMark,
-    borderRadius: tokens.sizeMark / 2,
+    borderRadius: tokens.radiusPill,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: tokens.marks.done.fill,
   },
   markOff: {
-    width: tokens.sizeMark,
-    height: tokens.sizeMark,
-    borderRadius: tokens.sizeMark / 2,
+    borderRadius: tokens.radiusPill,
     borderWidth: 1.5,
     borderColor: tokens.marks.notStarted.ring,
   },
