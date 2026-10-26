@@ -6,6 +6,7 @@ import type { FieldAction } from './Field.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { useFocusOnAnswer } from './Screen.tsx';
 import { Text } from './Text.tsx';
+import { useMarkSide } from './markSide.ts';
 
 export type NoticeTone = 'quiet' | 'attention' | 'broken' | 'done';
 
@@ -43,6 +44,7 @@ export function Notice({
   /** Its words as one item, without the action, for screen reader focus to be moved to. */
   wordsRef?: Ref<View> | undefined;
 }) {
+  const markSide = useMarkSide(tokens.sizePill);
   useReadOut(
     !takesFocus && (announce || answer !== undefined)
       ? [title, body, detail].filter((line) => line != null).join('\n')
@@ -82,7 +84,7 @@ export function Notice({
     <View ref={shown} style={[styles.notice, surface]}>
       {/* The words already say what the mark says (WCAG 2.2 SC 1.1.1). */}
       <View
-        style={[styles.mark, ring]}
+        style={[styles.mark, markSide, ring]}
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
@@ -158,11 +160,9 @@ const styles = StyleSheet.create({
   accent: { color: tokens.colorAccentText },
 
   mark: {
-    width: tokens.sizePill,
-    height: tokens.sizePill,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: tokens.sizePill / 2,
+    borderRadius: tokens.radiusPill,
     borderWidth: 1.5,
   },
   ringInfo: { borderColor: tokens.marks.info.ring },

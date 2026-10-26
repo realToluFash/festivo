@@ -4,9 +4,11 @@ import { useTranslation } from 'react-i18next';
 
 import { tokens } from '../theme/tokens.ts';
 import { Text } from './Text.tsx';
+import { useMarkSide } from './markSide.ts';
 
 /** The length rule, said before submit and marked as it is met, wherever a password is chosen. */
 export function PasswordRule({ met, testID }: { met: boolean; testID: string }) {
+  const markSide = useMarkSide(tokens.sizeMark);
   const { t } = useTranslation();
   const lengthMet = met;
 
@@ -17,7 +19,7 @@ export function PasswordRule({ met, testID }: { met: boolean; testID: string }) 
       </Text>
       <View style={styles.rule} testID={lengthMet ? `${testID}.ruleMet` : `${testID}.ruleNotYet`}>
         <View
-          style={[styles.ruleMark, lengthMet && styles.ruleMarkMet]}
+          style={[styles.ruleMark, markSide, lengthMet && styles.ruleMarkMet]}
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
@@ -72,11 +74,9 @@ const styles = StyleSheet.create({
     minHeight: tokens.space3xl,
   },
   ruleMark: {
-    width: tokens.sizeMark,
-    height: tokens.sizeMark,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: tokens.sizeMark / 2,
+    borderRadius: tokens.radiusPill,
     borderWidth: 1.5,
     borderColor: tokens.colorMarkEmpty,
     backgroundColor: tokens.colorCard,
