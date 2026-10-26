@@ -10,7 +10,8 @@
     "mobile:settings.roles",
     "mobile:settings.rolesBack",
     "mobile:rolesScreen.title",
-    "web:eventTypes.baby_shower"
+    "web:eventTypes.baby_shower",
+    "mobile:eventTypes.baby_shower"
   ],
   "fr": [
     "mobile:app.name",
@@ -51,7 +52,9 @@
     "web:invitations.heading",
     "web:membersScreen.how.invitation",
     "web:membersScreen.invitations",
-    "web:eventTypes.baby_shower"
+    "web:eventTypes.baby_shower",
+    "mobile:eventTypes.baby_shower",
+    "web:eventForm.type"
   ],
   "pt": [
     "web:app.name",
