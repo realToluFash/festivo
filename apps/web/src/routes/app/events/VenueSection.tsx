@@ -1,9 +1,10 @@
 import { type AddressSuggestion } from '@soirely/api-client';
 import { type VenueDraft } from '@soirely/domain';
-import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
+import { useComboboxKeys } from '../../../comboboxKeys.ts';
 import { offField } from '../../../offField.ts';
 import { FieldError } from './EventFields.tsx';
 import { type Errors, describedBy } from './eventFieldOrder.ts';
@@ -28,7 +29,6 @@ export function VenueSection({
 }) {
   const { t } = useTranslation();
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
-  const [active, setActive] = useState(-1);
   const [lookupDown, setLookupDown] = useState(false);
   const [offered, setOffered] = useState<{ zone: string; keep: string } | null>(null);
   const [announced, setAnnounced] = useState('');
@@ -38,6 +38,14 @@ export function VenueSection({
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
   const open = suggestions.length > 0;
+  const { active, setActive, onKeyDown } = useComboboxKeys({
+    count: suggestions.length,
+    onPick: (index) => {
+      const chosen = suggestions[index];
+      if (chosen != null) void pick(chosen);
+    },
+    onEscape: close,
+  });
   const offer = offered != null && offered.zone !== timeZone ? offered : null;
 
   function close(): void {
@@ -104,23 +112,6 @@ export function VenueSection({
     }
   }
 
-  function onKey(event: KeyboardEvent<HTMLInputElement>): void {
-    if (event.key === 'ArrowDown' && open) {
-      event.preventDefault();
-      setActive((index) => Math.min(index + 1, suggestions.length - 1));
-    } else if (event.key === 'ArrowUp' && open) {
-      event.preventDefault();
-      setActive((index) => Math.max(index - 1, 0));
-    } else if (event.key === 'Enter' && open && active >= 0) {
-      event.preventDefault();
-      const chosen = suggestions[active];
-      if (chosen != null) void pick(chosen);
-    } else if (event.key === 'Escape' && open) {
-      event.preventDefault();
-      close();
-    }
-  }
-
   return (
     <section className="card" id="venue" aria-labelledby="event-venue">
       <h2 id="event-venue">{t('eventForm.venueHeading')}</h2>
@@ -166,7 +157,7 @@ export function VenueSection({
             'event-venue-address-hint',
           )}
           onChange={(event) => type(event.target.value)}
-          onKeyDown={onKey}
+          onKeyDown={onKeyDown}
           onBlur={close}
         />
         <ul
