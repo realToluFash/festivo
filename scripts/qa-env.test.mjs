@@ -815,6 +815,7 @@ describe('the flows a batch runs', () => {
         "'Seguridad'",
       );
       expect(readFileSync(join(target, 'batch/session.yaml'), 'utf8')).not.toContain('{{t:');
+      expect(readFileSync(join(target, 'batch/reopen.yaml'), 'utf8')).not.toContain('{{t:');
       expect(readFileSync(join(target, 'sign-in.yaml'), 'utf8')).toContain('stopApp: true');
     } finally {
       rmSync(target, { recursive: true, force: true });

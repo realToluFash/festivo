@@ -9,17 +9,11 @@ appId: host.exp.Exponent
     visible: '{{t:any:settings.signedInAs}}|{{t:any:status.title}}|{{t:any:signIn.title}}'
     timeout: 60000
     optional: true
-# The reload before this can crash an Expo Go that has only just opened: open it again.
+# The reload before this can crash an Expo Go that has only just opened.
 - runFlow:
     when:
       notVisible: '{{t:any:settings.signedInAs}}|{{t:any:status.title}}|{{t:any:signIn.title}}'
-    commands:
-      - launchApp:
-          appId: host.exp.Exponent
-      - openLink: ${METRO_URL}/--/
-      - extendedWaitUntil:
-          visible: '{{t:any:settings.signedInAs}}|{{t:any:status.title}}|{{t:any:signIn.title}}'
-          timeout: 60000
+    file: reopen.yaml
 - runFlow:
     when:
       visible: '{{t:any:settings.signedInAs}}'
