@@ -54,6 +54,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. Le type d’événement** (`web:eventForm.type*`, `web:eventTypes.*`,
+  `messages:validation.event_type_required`, sc-3588 via sc-13205). « Type », « Choisissez le
+  type d’événement », et le refus, identique à l’écran et dans l’API, « Choisissez de quel type
+  d’événement il s’agit. ». Birthday est « Anniversaire », donc anniversary est « Anniversaire de
+  mariage » : deux « Anniversaire » dans la même liste ne se distinguent pas. « Remise de
+  diplômes », « Cérémonie d’hommage » pour memorial, « Gala ou soirée caritative », « Événement
+  d’entreprise ». « Baby shower » reste en anglais, l’usage en France (dans
+  `same-as-english.json`) ; « fête prénatale » est québécois.
+
 - **25 Oct 2026. A count of a round million, `_many`** (every web and app count family,
   sc-8529, now that the key-parity guard allows it, PR #324). At 1 000 000 and every exact
   million, i18next picks `_many`. It is `_other` with « de », or « d’ » before a vowel or a
