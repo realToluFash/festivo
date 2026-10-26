@@ -1466,7 +1466,8 @@
     "keepEditing": "Keep editing",
     "leaveTitle": "Leave without saving?",
     "leave": "Leave without saving",
-    "saved": "Saved"
+    "saved": "Saved",
+    "scheduleConcluded": "This event is over, so its start, end and time zone can't be changed."
   },
   "eventCover": {
     "heading": "Cover",

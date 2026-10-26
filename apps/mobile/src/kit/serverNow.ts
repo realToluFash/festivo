@@ -1,4 +1,3 @@
-import { type OrganisationEvent } from '@soirely/api-client';
 import { serverClock } from '@soirely/domain';
 import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
@@ -26,7 +25,7 @@ export function useServerNow(): Date {
 }
 
 /** When this copy of the event arrived, by the corrected clock: its phase is the server's until a boundary passes after it. */
-export function useLoadedAt(event: OrganisationEvent): Date {
+export function useLoadedAt(event: object): Date {
   const [held, setHeld] = useState(() => ({ event, at: serverClock.now() }));
 
   if (held.event === event) return held.at;

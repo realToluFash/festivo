@@ -1501,7 +1501,8 @@
     "keepEditing": "Continuar a editar",
     "leaveTitle": "Sair sem guardar?",
     "leave": "Sair sem guardar",
-    "saved": "Alterações guardadas"
+    "saved": "Alterações guardadas",
+    "scheduleConcluded": "This event is over, so its start, end and time zone can't be changed."
   },
   "eventCover": {
     "heading": "Capa",

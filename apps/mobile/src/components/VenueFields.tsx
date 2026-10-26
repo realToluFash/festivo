@@ -30,7 +30,8 @@ export function VenueFields({
   nameInput: RefObject<TextInput | null>;
   addressInput: RefObject<TextInput | null>;
   onVenue: (change: Partial<VenueDraft>) => void;
-  onUseZone: (zone: string) => void;
+  /** Left out where the zone can't change, and then nothing is offered. */
+  onUseZone?: (zone: string) => void;
 }) {
   const { t } = useTranslation();
   const [seen, setSeen] = useState(NOTHING_SEEN);
@@ -50,7 +51,10 @@ export function VenueFields({
   useEffect(() => () => lookup.stop(), [lookup]);
 
   const { suggestions, down } = seen;
-  const offer = seen.offered != null && seen.offered.zone !== timeZone ? seen.offered : null;
+  const offer =
+    seen.offered != null && seen.offered.zone !== timeZone && onUseZone != null
+      ? seen.offered
+      : null;
   const found =
     suggestions.length === 0
       ? null
@@ -140,7 +144,7 @@ export function VenueFields({
             <PrimaryButton
               label={t('eventForm.venueZoneUse', { zone: offer.zone })}
               onPress={() => {
-                onUseZone(offer.zone);
+                onUseZone?.(offer.zone);
                 lookup.answered();
                 readOut(t('eventForm.venueZoneSet', { zone: offer.zone }));
               }}

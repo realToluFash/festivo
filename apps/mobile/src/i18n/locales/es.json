@@ -1501,7 +1501,8 @@
     "keepEditing": "Seguir editando",
     "leaveTitle": "¿Salir sin guardar?",
     "leave": "Salir sin guardar",
-    "saved": "Cambios guardados"
+    "saved": "Cambios guardados",
+    "scheduleConcluded": "This event is over, so its start, end and time zone can't be changed."
   },
   "eventCover": {
     "heading": "Portada",
