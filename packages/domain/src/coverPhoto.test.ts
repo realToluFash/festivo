@@ -6,6 +6,7 @@ import {
   coverFileRefusal,
   coverTypeOf,
   draggedPosition,
+  coverRefusalWords,
   positionPart,
 } from './coverPhoto.ts';
 
@@ -54,5 +55,21 @@ describe('a cover photo (sc-3590)', () => {
     expect(draggedPosition(50, 50, 200)).toBe(25);
     expect(draggedPosition(10, 500, 200)).toBe(0);
     expect(draggedPosition(40, 50, 0)).toBe(40);
+  });
+});
+
+describe('coverRefusalWords', () => {
+  const t = (key: string) => key;
+
+  test("says the API's reason for the photo first, then the description's", () => {
+    expect(coverRefusalWords({ file: 'Too small.', description: 'Too long.' }, t)).toBe(
+      'Too small.',
+    );
+    expect(coverRefusalWords({ description: 'Too long.' }, t)).toBe('Too long.');
+  });
+
+  test('says the photo did not upload when the API gave no reason', () => {
+    expect(coverRefusalWords(null, t)).toBe('eventCover.uploadFailed');
+    expect(coverRefusalWords({}, t)).toBe('eventCover.uploadFailed');
   });
 });

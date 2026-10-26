@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 
-import { EventsScreen } from '../../src/components/EventsScreen.tsx';
+import { EventsScreen } from '../../../src/components/EventsScreen.tsx';
 
 /** A link to one event opens Events with it chosen; back leads to the list. */
 export default function LinkedEvent() {

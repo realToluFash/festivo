@@ -120,7 +120,7 @@ defeats every storage option and a policy is what stops the script running.
 
 `apps/web/nginx.conf` includes `/etc/nginx/soirely-security-headers.conf`, which the
 container's entrypoint writes at start-up. It is generated rather than committed because
-`connect-src` has to name the API and Mercure origins and those differ per deployment;
+`connect-src` has to name the API, Mercure and object store origins and those differ per deployment;
 nginx refuses to start if the file is missing, which is the right direction for that to
 fail in. The snippet is included in **every** `location` as well as the server block,
 because a location that adds a header of its own discards everything inherited.
@@ -136,8 +136,16 @@ Two things to know before changing it:
   `fonts.googleapis.com`, the font files it names from `fonts.gstatic.com`. Self-hosting
   Instrument Sans and JetBrains Mono would remove both sources and is the better end
   state.
-- Images are `'self' data:` only. The first avatar served from object storage will be
-  blocked, loudly, with the origin named in the console — add it to `img-src` then.
+- The object store's public origin is in `connect-src`, because the browser uploads a cover
+  or avatar with a `PUT` to it, and in `img-src` beside `'self' data: blob:`, because it
+  serves them. The container takes it from `SOIRELY_STORAGE_URL` (compose passes
+  `STORAGE_PUBLIC_ENDPOINT`). A store moved behind another host, a CDN say, is a change to
+  that variable.
+- The policy only lets the browser try that `PUT`; the store has to admit it too. Locally,
+  `storage-init` puts a CORS rule on the private bucket allowing `PUT` with `Content-Type`
+  from `CORS_WEB_ORIGIN` alone, never `*`. A deployed store needs the same rule on its
+  private bucket, for that deployment's web origin, or every cover upload fails its
+  preflight.
 
 `Strict-Transport-Security` is deliberately absent. TLS terminates upstream, so it belongs
 on the terminator where its `max-age` sits beside the certificate it depends on.

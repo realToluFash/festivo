@@ -152,12 +152,29 @@ export function rememberOrganisation(id: string): Promise<void> {
   return AsyncStorage.setItem(REMEMBERED, id).catch(() => {});
 }
 
-export function switchOrganisation(id: string): boolean {
+let switchHeld: ((go: () => void) => void) | null = null;
+
+/** A screen with unsaved work asks before the organisation changes under it, and calls `go` to switch anyway. */
+export function holdSwitches(ask: (go: () => void) => void): () => void {
+  switchHeld = ask;
+
+  return () => {
+    if (switchHeld === ask) switchHeld = null;
+  };
+}
+
+export function switchOrganisation(id: string, landed?: () => void): boolean {
   const organisation = state.organisations.find((membership) => membership.id === id);
   if (organisation == null) return false;
 
-  set({ ...state, organisation, pausedIn: null });
-  void AsyncStorage.setItem(REMEMBERED, id).catch(() => {});
+  const go = (): void => {
+    set({ ...state, organisation, pausedIn: null });
+    void AsyncStorage.setItem(REMEMBERED, id).catch(() => {});
+    landed?.();
+  };
+
+  if (switchHeld == null) go();
+  else switchHeld(go);
 
   return true;
 }

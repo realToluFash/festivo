@@ -16,7 +16,7 @@ import { PHASE_WORD } from '../kit/makeLive.ts';
 import { useLoadedAt, useServerNow } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { SecondaryButton } from './Buttons.tsx';
+import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { EventCover } from './EventCover.tsx';
 import { EndRow } from './EndEvent.tsx';
 import { DraftRow } from './MakeLive.tsx';
@@ -156,7 +156,14 @@ export function EventList({
   );
 }
 
-export function NoEvents({ kind, creates }: { kind: LayoutKind; creates: boolean }) {
+export function NoEvents({
+  kind,
+  onCreate,
+}: {
+  kind: LayoutKind;
+  /** Absent for a role without Create events, which reads where events will come from. */
+  onCreate?: (() => void) | undefined;
+}) {
   const { t } = useTranslation();
 
   return (
@@ -165,8 +172,15 @@ export function NoEvents({ kind, creates }: { kind: LayoutKind; creates: boolean
         {t('eventsScreen.noneTitle')}
       </Text>
       <Text size={tokens.typeBody.size} muted>
-        {creates ? t('eventsScreen.noneCreateOnWeb') : t('eventsScreen.noneWillShow')}
+        {onCreate == null ? t('eventsScreen.noneWillShow') : t('eventsScreen.noneCreate')}
       </Text>
+      {onCreate != null && (
+        <PrimaryButton
+          label={t('eventsScreen.newEvent')}
+          onPress={onCreate}
+          testID="events.none.new"
+        />
+      )}
     </View>
   );
 }
@@ -193,11 +207,14 @@ export function EventPage({
   event,
   manages,
   onChange,
+  onEdit,
 }: {
   kind: LayoutKind;
   event: OrganisationEvent;
   manages: boolean;
   onChange: (event: OrganisationEvent) => void;
+  /** Absent for a role without events.manage (sc-3595). */
+  onEdit?: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
   const now = useServerNow();
@@ -246,6 +263,9 @@ export function EventPage({
           timeZone: event.timeZone,
         })}
       </Text>
+      {onEdit != null && (
+        <SecondaryButton label={t('eventEdit.open')} onPress={onEdit} testID="events.page.edit" />
+      )}
     </View>
   );
 }
