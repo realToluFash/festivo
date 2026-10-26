@@ -35,6 +35,7 @@
     "firstRunCreate": "Créer un événement",
     "firstRunAskOwner": "Les événements créés par votre organisation s’afficheront ici. Pour en créer un, adressez-vous à une personne ayant le rôle Propriétaire.",
     "live": "Publié",
+    "happeningNow": "En cours",
     "paused": "En pause",
     "finished": "Terminé"
   },
@@ -138,6 +139,20 @@
     "planLimitStays": "Cet événement reste en brouillon. Terminez ou annulez un autre événement, ou changez de forfait.",
     "close": "Fermer"
   },
+  "eventEnd": {
+    "callOff": "Annuler l’événement",
+    "endNow": "Terminer maintenant",
+    "callOffTitle": "Annuler {{name}} ?",
+    "callOffBody": "L’événement n’aura pas lieu. Les invités qui ouvriront leur lien en seront informés.",
+    "endTitle": "Terminer {{name}} maintenant ?",
+    "endBody": "L’événement sera terminé pour tout le monde.",
+    "final": "Cette action est irréversible.",
+    "keepItOn": "Le maintenir",
+    "failed": "Non terminé. Réessayez dans un instant.",
+    "notEnded": "Non terminé.",
+    "alreadyOver": "Cet événement est déjà terminé.",
+    "calledOffNotice": "Annulé le {{date}}, avant son début. Les invités qui ouvrent leur lien voient qu’il n’aura pas lieu."
+  },
   "eventEdit": {
     "open": "Modifier les informations",
     "title": "Modifier les informations",
@@ -157,7 +172,9 @@
     "leaveBody": "Les modifications apportées à cet événement seront perdues.",
     "leave": "Quitter sans enregistrer",
     "saved": "Modifications enregistrées",
-    "nothingChanged": "Rien n’a changé, donc rien n’a été envoyé."
+    "nothingChanged": "Rien n’a changé, donc rien n’a été envoyé.",
+    "scheduleConcluded": "Cet événement est terminé, son début, sa fin et son fuseau horaire ne peuvent donc plus être modifiés.",
+    "scheduleLocked": "Cet événement est terminé, son début, sa fin et son fuseau horaire ne peuvent donc plus être modifiés."
   },
   "eventCover": {
     "heading": "Image de couverture",

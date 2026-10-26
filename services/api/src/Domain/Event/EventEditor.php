@@ -152,6 +152,10 @@ final readonly class EventEditor
     private function allow(EventPhase $phase, array $changes): void
     {
         foreach (self::actionsFor(Vec\keys($changes)) as $action) {
+            if (EventPhase::Finished === $phase && EventAction::EditSchedule === $action) {
+                throw new ApiException(ErrorCode::EventConcluded, $this->translator->trans('event.schedule_concluded'));
+            }
+
             if (!$phase->allows($action)) {
                 throw new ApiException(ErrorCode::EventStateInvalid, $this->translator->trans('event.state_invalid'), members: ['phase' => $phase->value]);
             }

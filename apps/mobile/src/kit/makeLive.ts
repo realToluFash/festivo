@@ -1,13 +1,14 @@
 import { ApiError, type EventStatus, type OrganisationEvent } from '@soirely/api-client';
-import { type MakeLiveRow, makeLiveRow } from '@soirely/domain';
+import { type EventPhase, type MakeLiveRow, makeLiveRow } from '@soirely/domain';
 
-/** The word each stored state shows, never its colour alone (WCAG 2.2 §1.4.1). */
-export const STATUS_WORD = {
+/** The word each phase shows, never the stored state and never its colour alone (WCAG 2.2 §1.4.1). */
+export const PHASE_WORD = {
   draft: 'eventsScreen.draft',
   live: 'eventsScreen.live',
+  happening_now: 'eventsScreen.happeningNow',
   paused: 'eventsScreen.paused',
-  ended: 'eventsScreen.finished',
-} as const satisfies Record<EventStatus, string>;
+  finished: 'eventsScreen.finished',
+} as const satisfies Record<EventPhase, string>;
 
 /** Each state's sentence whole, so a translation can agree it with the event. */
 export const NOW_STATE = {
@@ -22,13 +23,13 @@ export interface DraftRow {
   offersMakeLive: boolean;
 }
 
-/** The row `/event-states.json` gives the event (sc-3584); Make live only to someone who manages it. */
+/** The row `/event-states.json` gives the event (sc-3584); Make live only to someone who manages it. `now` is the corrected clock's. */
 export function draftRowOf(
   event: Pick<OrganisationEvent, 'status' | 'startsAt' | 'endsAt'>,
-  now: number,
+  now: Date,
   manages: boolean,
 ): DraftRow | null {
-  const row = makeLiveRow(event, new Date(now));
+  const row = makeLiveRow(event, now);
 
   return row == null ? null : { line: row.line, offersMakeLive: manages && row.makeLive };
 }
@@ -47,6 +48,16 @@ export function refusalOf(error: unknown): MakeLiveRefusal {
   if (error.is('plan_limit')) {
     return { kind: 'planLimit', plan: error.problem.plan ?? '', limit: error.problem.limit ?? 0 };
   }
+
+  return { kind: 'failed' };
+}
+
+export type EndRefusal = { kind: 'changed' } | { kind: 'concluded' } | { kind: 'failed' };
+
+/** End now's refusals (sc-3585): `changed` and `concluded` read the event again. */
+export function endRefusalOf(error: unknown): EndRefusal {
+  if (error instanceof ApiError && error.is('event_state_invalid')) return { kind: 'changed' };
+  if (error instanceof ApiError && error.is('event_concluded')) return { kind: 'concluded' };
 
   return { kind: 'failed' };
 }

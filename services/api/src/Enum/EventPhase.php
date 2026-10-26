@@ -7,7 +7,7 @@ namespace App\Enum;
 use DateTimeImmutable;
 use Psl\Iter;
 
-/** An event's state as the clock makes it, never stored: a Live event is Happening now from its start and Finished from its end. */
+/** An event's state as the clock makes it, never stored: a Live event is Happening now from its start, and a Live or Paused one Finished from its end. */
 enum EventPhase: string
 {
     case Draft = 'draft';
@@ -20,7 +20,7 @@ enum EventPhase: string
     {
         return match ($status) {
             EventStatus::Draft => self::Draft,
-            EventStatus::Paused => self::Paused,
+            EventStatus::Paused => $now >= $endsAt ? self::Finished : self::Paused,
             EventStatus::Ended => self::Finished,
             EventStatus::Live => match (true) {
                 $now >= $endsAt => self::Finished,
@@ -46,8 +46,8 @@ enum EventPhase: string
                 EventAction::CheckIn,
                 EventAction::Service,
             ],
-            self::Paused => [],
-            self::Finished => [EventAction::Edit, EventAction::EditSchedule, EventAction::Delete],
+            self::Paused => [EventAction::End],
+            self::Finished => [EventAction::Edit, EventAction::Delete],
         };
     }
 

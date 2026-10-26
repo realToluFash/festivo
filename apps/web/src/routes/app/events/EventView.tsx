@@ -1,5 +1,5 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
-import { formatEventRange } from '@soirely/domain';
+import { type EventPhase, formatEventRange, shownPhase } from '@soirely/domain';
 import { type RefObject, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
@@ -9,10 +9,13 @@ import { dateLocale } from '../../../i18n/index.ts';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import { Arriving } from '../../../pageArrival.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
+import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { type EditOutcome } from './EditEvent.tsx';
+import { CalledOffNotice, EndButton } from './EndEvent.tsx';
 import { EventCoverImage } from './EventCoverImage.tsx';
+import { PHASE_WORD } from './eventWords.ts';
 import { DraftRow, StatusPill } from './MakeLive.tsx';
 import { typeLabel } from './eventTypes.ts';
 
@@ -164,6 +167,10 @@ function EventPage({
   const [coverRefused] = useState(() => coverRefusal(location.state));
   const coverLine = useRef<HTMLParagraphElement>(null);
   const [madeLive, setMadeLive] = useState(false);
+  const [ended, setEnded] = useState(false);
+  const now = useServerNow();
+  const loadedAt = useLoadedAt(event);
+  const phase = shownPhase(event, loadedAt, now);
 
   useEffect(() => {
     if (editOutcome(location.state) == null && coverRefusal(location.state) == null) return;
@@ -186,7 +193,8 @@ function EventPage({
         <h1 id="event-title" ref={heading} tabIndex={-1}>
           {event.name}
         </h1>
-        <StatusPill status={event.status} />
+        <StatusPill phase={phase} />
+        <PhaseChange key={loadedAt.getTime()} phase={phase} />
       </div>
       <p className="muted">{typeLabel(event.type, t)}</p>
       <p>
@@ -195,14 +203,17 @@ function EventPage({
           timeZone: event.timeZone,
         })}
       </p>
+      <CalledOffNotice event={event} />
       <DraftRow
         event={event}
+        now={now}
         manages={can(session, 'events.manage')}
         heading={heading}
         onChange={onChange}
         onMadeLive={() => setMadeLive(true)}
       />
       {madeLive && <OutcomeLine words={t('eventLive.madeLive')} />}
+      {ended && <OutcomeLine words={t(PHASE_WORD.finished)} />}
       <Venue event={event} manages={can(session, 'events.manage')} />
       {coverRefused != null && (
         <ArrivalNotice
@@ -224,6 +235,16 @@ function EventPage({
           <Link className="button" to={`/app/events/${encodeURIComponent(event.id)}/edit`}>
             {t('eventEdit.open')}
           </Link>
+        )}
+        {can(session, 'events.manage') && (
+          <EndButton
+            event={event}
+            phase={phase}
+            now={now}
+            heading={heading}
+            onChange={onChange}
+            onEnded={() => setEnded(true)}
+          />
         )}
         <Link className="button" to={`/app/events/${encodeURIComponent(event.id)}/guests`}>
           {t('eventPage.guests')}
@@ -296,6 +317,18 @@ function OutcomeLine({ words }: { words: string }) {
   ) : (
     <p className={announced === '' ? 'visually-hidden' : 'event-page-outcome'} role="status">
       {announced}
+    </p>
+  );
+}
+
+/** WCAG 2.2 §4.1.3: a phase the clock changes on an open page is said politely; one the server sends is not. */
+function PhaseChange({ phase }: { phase: EventPhase }) {
+  const { t } = useTranslation();
+  const [opened] = useState(phase);
+
+  return (
+    <p className="visually-hidden" aria-live="polite">
+      {phase === opened ? '' : t(PHASE_WORD[phase])}
     </p>
   );
 }

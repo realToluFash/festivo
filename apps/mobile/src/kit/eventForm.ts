@@ -77,6 +77,8 @@ export function sendOutcome(error: unknown, t: TFunction): SendOutcome {
   if (error.status === 412) return { kind: 'changedElsewhere' };
   if (error.is('event_currency_in_use'))
     return { kind: 'refused', errors: { currency: t('eventEdit.currencyInUse') } };
+  if (error.is('event_concluded'))
+    return { kind: 'refused', errors: { startsAt: t('eventEdit.scheduleConcluded') } };
 
   if (error.status === 422) {
     const named = error.fieldErrors();

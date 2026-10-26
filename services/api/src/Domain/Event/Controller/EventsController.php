@@ -111,6 +111,14 @@ final readonly class EventsController
         return $this->tagged($this->eventLifecycle->makeLive($this->event($eventId), $this->user()));
     }
 
+    /** Calls the event off before its start and ends it early after: refused 409 `event_state_invalid` unless Live or Paused, and 409 `event_concluded` once its end has passed (sc-3585). */
+    #[Route('/api/events/{eventId}/end', name: 'events_end', methods: ['POST'])]
+    #[InEvent(Permission::EventsManage)]
+    public function end(string $eventId): JsonResponse
+    {
+        return $this->tagged($this->eventLifecycle->end($this->event($eventId), $this->user()));
+    }
+
     /**
      * `addressId` is the suggestion the address was picked from (sc-53); without it the address is kept as typed.
      *

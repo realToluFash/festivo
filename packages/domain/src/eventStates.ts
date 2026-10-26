@@ -17,7 +17,7 @@ export function isEventState(value: unknown): value is EventState {
   return (EVENT_STATES as readonly unknown[]).includes(value);
 }
 
-/** Live becomes Happening now at its start and Finished at its end; `startsAt` and `endsAt` carry their offsets. */
+/** Live becomes Happening now at its start, and Live or Paused becomes Finished at its end; `startsAt` and `endsAt` carry their offsets. */
 export function eventPhase(
   event: { status: EventState; startsAt: string; endsAt: string },
   now: Date,
@@ -26,7 +26,7 @@ export function eventPhase(
     case 'draft':
       return 'draft';
     case 'paused':
-      return 'paused';
+      return now.getTime() >= Date.parse(event.endsAt) ? 'finished' : 'paused';
     case 'ended':
       return 'finished';
     case 'live': {
@@ -81,4 +81,43 @@ export function makeLiveRow(
     line: endPassed ? 'endPassed' : 'guestsBlocked',
     makeLive: !endPassed && eventAllows(phase, 'make_live'),
   };
+}
+
+/** The server's phase as loaded, until the corrected clock passes the start or the end (sc-3585). */
+export function shownPhase(
+  event: { status: EventState; phase: EventPhase; startsAt: string; endsAt: string },
+  loadedAt: Date,
+  now: Date,
+): EventPhase {
+  const crossed = [event.startsAt, event.endsAt].some((boundary) => {
+    const at = Date.parse(boundary);
+
+    return at > loadedAt.getTime() && at <= now.getTime();
+  });
+
+  return crossed ? eventPhase(event, now) : event.phase;
+}
+
+/** One action, named for what its confirmation does: Call off before the start, End now from it; null where the phase does not allow `end`. */
+export function endLabel(
+  event: { startsAt: string },
+  phase: EventPhase,
+  now: Date,
+): 'callOff' | 'endNow' | null {
+  if (!eventAllows(phase, 'end')) return null;
+
+  return now.getTime() < Date.parse(event.startsAt) ? 'callOff' : 'endNow';
+}
+
+/** Ended before it started: its page says it was called off (sc-3585). */
+export function calledOff(event: {
+  status: EventState;
+  startsAt: string;
+  concludedAt: string | null;
+}): boolean {
+  return (
+    event.status === 'ended' &&
+    event.concludedAt != null &&
+    Date.parse(event.concludedAt) < Date.parse(event.startsAt)
+  );
 }

@@ -1,11 +1,12 @@
 import { type OrganisationEvent } from '@soirely/api-client';
-import { eventsInOrder, formatEventDate } from '@soirely/domain';
+import { eventsInOrder, formatEventDate, serverClock, shownPhase } from '@soirely/domain';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { dateLocale } from '../../../i18n/index.ts';
+import { useServerNow } from '../../../serverNow.ts';
 import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { EventCoverImage } from './EventCoverImage.tsx';
@@ -13,7 +14,9 @@ import { typeLabel } from './eventTypes.ts';
 import { StatusPill } from './MakeLive.tsx';
 
 type Load =
-  { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; events: OrganisationEvent[] };
+  | { kind: 'loading' }
+  | { kind: 'failed' }
+  | { kind: 'loaded'; events: OrganisationEvent[]; at: Date };
 
 export function Events() {
   const { t } = useTranslation();
@@ -63,12 +66,13 @@ function EventsOf({
   const firstRunTitle = useRef<HTMLHeadingElement>(null);
   const list = useRef<HTMLUListElement>(null);
   const land = useFocusOnceShown();
+  const now = useServerNow();
 
   useEffect(() => {
     let current = true;
 
     api.events(organisationId).then(
-      (events) => current && setLoad({ kind: 'loaded', events }),
+      (events) => current && setLoad({ kind: 'loaded', events, at: serverClock.now() }),
       () => current && setLoad({ kind: 'failed' }),
     );
 
@@ -133,7 +137,7 @@ function EventsOf({
               <span className="events-row-name">{event.name}</span>
               <span className="muted">{typeLabel(event.type, t)}</span>
             </span>
-            <StatusPill status={event.status} />
+            <StatusPill phase={shownPhase(event, load.at, now)} />
             <span className="muted events-row-date">
               {formatEventDate(event.startsAt, event.timeZone, dateLocale())}
             </span>

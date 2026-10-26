@@ -1434,6 +1434,7 @@
     "newEvent": "New event",
     "noneCreate": "Create your first event to start planning.",
     "live": "Publicado",
+    "happeningNow": "A decorrer",
     "paused": "Em pausa",
     "finished": "Terminado"
   },
@@ -1500,7 +1501,9 @@
     "keepEditing": "Continuar a editar",
     "leaveTitle": "Sair sem guardar?",
     "leave": "Sair sem guardar",
-    "saved": "Alterações guardadas"
+    "saved": "Alterações guardadas",
+    "scheduleConcluded": "Este evento terminou, por isso o início, o fim e o fuso horário já não podem ser alterados.",
+    "scheduleLocked": "Este evento terminou, por isso o início, o fim e o fuso horário já não podem ser alterados."
   },
   "eventCover": {
     "heading": "Capa",
@@ -1554,6 +1557,21 @@
     "planLimit_other": "Não foi publicado. O seu plano {{plan}} permite ter {{count}} eventos publicados ou em pausa de cada vez.",
     "planLimit_many": "Não foi publicado. O seu plano {{plan}} permite ter {{count}} de eventos publicados ou em pausa de cada vez.",
     "planLimitStays": "Este evento continua em rascunho. Termine ou cancele outro evento, ou mude de plano.",
+    "close": "Fechar"
+  },
+  "eventEnd": {
+    "callOff": "Cancelar o evento",
+    "endNow": "Terminar agora",
+    "callOffTitle": "Cancelar {{name}}?",
+    "callOffBody": "O evento não se vai realizar. Os convidados que abrirem a sua ligação serão avisados.",
+    "endTitle": "Terminar {{name}} agora?",
+    "endBody": "O evento vai terminar para todos.",
+    "final": "Esta ação não pode ser anulada.",
+    "keepItOn": "Manter o evento",
+    "failed": "Não foi terminado. Tente novamente daqui a pouco.",
+    "notEnded": "Não foi terminado.",
+    "alreadyOver": "Este evento já terminou.",
+    "calledOffNotice": "Cancelado no dia {{date}}, antes de começar. Os convidados que abrem a sua ligação são informados de que não se vai realizar.",
     "close": "Fechar"
   }
 }

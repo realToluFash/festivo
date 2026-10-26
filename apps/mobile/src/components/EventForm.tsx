@@ -18,6 +18,8 @@ import {
   formatWallClock,
   formatWallDay,
   isEventType,
+  scheduleKept,
+  shownPhase,
   skippedLine,
   timezoneLabel,
   withCurrent,
@@ -46,6 +48,7 @@ import {
 } from '../kit/eventForm.ts';
 import { coverRefusalOf } from '../kit/coverUpload.ts';
 import { markCoverRefused } from '../kit/eventSaved.ts';
+import { useLoadedAt, useServerNow } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { holdSwitches } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -88,7 +91,7 @@ export function EventForm({
   const [from] = useState<EventTyped>(() =>
     opened == null ? blankEvent(organisation) : typedOf(opened.event),
   );
-  const [typed, setTyped] = useState(from);
+  const [entered, setTyped] = useState(from);
   const [endChosen, setEndChosen] = useState(editing);
   const [errors, setErrors] = useState<EventErrors>({});
   const [unsent, setUnsent] = useState<{ count: number } | null>(null);
@@ -97,10 +100,17 @@ export function EventForm({
   const [fetchingLatest, setFetchingLatest] = useState(false);
   const leaving = useRef(false);
   const leaveAction = useRef<(() => void) | null>(null);
-  const { draft, venue, timeZone, currency } = typed;
   const [cover, setCover] = useState<EventCoverPhoto | null>(opened?.event.cover ?? null);
   const staged = useRef<string | null>(null);
   const busy = status === 'sending';
+  const now = useServerNow();
+  const loadedAt = useLoadedAt(opened?.event ?? from);
+  const over = opened != null && shownPhase(opened.event, loadedAt, now) === 'finished';
+  const typed = useMemo(
+    () => (over ? scheduleKept(entered, from) : entered),
+    [over, entered, from],
+  );
+  const { draft, venue, timeZone, currency } = typed;
   const dirty = isDirty(typed, from) || (!editing && cover != null);
 
   const nameInput = useRef<TextInput>(null);
@@ -403,13 +413,19 @@ export function EventForm({
           onRemove={removeCover}
         />
 
+        {over && (
+          <Text size={tokens.typeBody.size} muted testID="eventForm.scheduleOver">
+            {t('eventEdit.scheduleLocked')}
+          </Text>
+        )}
+
         <Moment
           label={t('eventForm.starts')}
           date={draft.startDate}
           time={draft.startTime}
           timeZone={timeZone}
           error={errors.startsAt}
-          disabled={busy}
+          disabled={busy || over}
           pickerRef={startPicker}
           testID="eventForm.start"
           onPick={(date, time) =>
@@ -428,7 +444,7 @@ export function EventForm({
           time={draft.endTime}
           timeZone={timeZone}
           error={errors.endsAt}
-          disabled={busy}
+          disabled={busy || over}
           pickerRef={endPicker}
           testID="eventForm.end"
           onPick={(date, time) => {
@@ -445,7 +461,7 @@ export function EventForm({
           nameInput={venueNameInput}
           addressInput={venueAddressInput}
           onVenue={changeVenue}
-          onUseZone={(zone) => change('timeZone', { timeZone: zone })}
+          {...(over ? {} : { onUseZone: (zone: string) => change('timeZone', { timeZone: zone }) })}
         />
 
         <Field label={t('eventForm.timeZone')} error={errors.timeZone}>
@@ -455,7 +471,7 @@ export function EventForm({
             choices={zones}
             value={timeZone}
             onChange={(zone) => change('timeZone', { timeZone: zone })}
-            disabled={busy}
+            disabled={busy || over}
             pickerRef={zonePicker}
             testID="eventForm.timeZone"
           />

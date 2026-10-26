@@ -17,6 +17,7 @@ import {
   roleName,
   roleNameOf,
   roleNameProblem,
+  type RoleNameProblem,
   sameGrant,
   settableLevels,
   shownHolders,
@@ -356,7 +357,16 @@ function Editing({
   const startingGrant = role?.permissions ?? [];
   const [grant, setGrant] = useState<string[]>(startingGrant);
   const [typed, setTyped] = useState(role?.name ?? '');
-  const [nameError, setNameError] = useState<string | null>(null);
+  // A problem the screen has words for is translated as it shows, so it follows a language change (sc-13151).
+  const [nameRefusal, setNameRefusal] = useState<
+    { problem: RoleNameProblem } | { words: string } | null
+  >(null);
+  const nameError =
+    nameRefusal == null
+      ? null
+      : 'problem' in nameRefusal
+        ? t(`rolesScreen.${nameRefusal.problem}`, { most: ROLE_NAME_MAXIMUM })
+        : nameRefusal.words;
   const [status, setStatus] = useState<'editing' | 'saving' | 'failed'>('editing');
   const title = role == null ? '' : roleName(t, role);
   // The API refuses a seeded role's label in every language (sc-2301), whatever the caller reads.
@@ -403,7 +413,7 @@ function Editing({
       );
 
       if (problem != null) {
-        setNameError(t(`rolesScreen.${problem}`, { most: ROLE_NAME_MAXIMUM }));
+        setNameRefusal({ problem });
         document.getElementById('role-name')?.focus();
         return;
       }
@@ -424,10 +434,17 @@ function Editing({
       setTyped(result.name ?? '');
       onSaved(result);
     } catch (error) {
-      const refusal = error instanceof ApiError ? error.fieldErrors().name : undefined;
+      const refusal =
+        error instanceof ApiError
+          ? error.problem.violations?.find((one) => one.propertyPath === 'name')
+          : undefined;
 
       if (naming && refusal != null) {
-        setNameError(refusal);
+        setNameRefusal(
+          refusal.code === 'role_name_taken'
+            ? { problem: 'nameTaken' }
+            : { words: refusal.message },
+        );
         setStatus('editing');
         document.getElementById('role-name')?.focus();
         return;
@@ -465,7 +482,7 @@ function Editing({
                 aria-describedby={nameError == null ? undefined : 'role-name-error'}
                 onChange={(event) => {
                   setTyped(event.target.value);
-                  setNameError(null);
+                  setNameRefusal(null);
                   onEdited();
                 }}
               />
@@ -621,7 +638,7 @@ function Editing({
                 onClick={() => {
                   setGrant(startingGrant);
                   setTyped(role.name ?? '');
-                  setNameError(null);
+                  setNameRefusal(null);
                   onDiscarded();
                 }}
               >

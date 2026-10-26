@@ -4,6 +4,8 @@ import {
   type EventDraft,
   draftOf,
   eventChanges,
+  scheduleKept,
+  shownPhase,
   eventNameLength,
   eventFormErrors,
   skippedLine,
@@ -34,6 +36,7 @@ import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoice
 import { Forbidden } from '../Forbidden.tsx';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
+import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { CoverSection } from './CoverSection.tsx';
 import { Choice, FieldError, Moment } from './EventFields.tsx';
 import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
@@ -177,7 +180,7 @@ function DetailsForm({
   const location = useLocation();
   const locale = currentLocale();
   const saved = opened.event;
-  const [typed, setTyped] = useState<Typed>(() => typedOf(opened));
+  const [entered, setTyped] = useState<Typed>(() => typedOf(opened));
   const [cover, setCover] = useState(saved.cover);
   const [errors, setErrors] = useState<Errors>({});
   const [unsent, setUnsent] = useState(0);
@@ -189,8 +192,16 @@ function DetailsForm({
   const saving = useRef(false);
   const [notSaved, arriveAtNotSaved] = useStepFocus<HTMLParagraphElement>();
   const [saveButton, arriveAtSave] = useStepFocus<HTMLButtonElement>();
+  const now = useServerNow();
+  const loadedAt = useLoadedAt(saved);
+  const over = shownPhase(saved, loadedAt, now) === 'finished';
+  const typed = useMemo(
+    () => (over ? scheduleKept(entered, typedOf(opened)) : entered),
+    [over, entered, opened],
+  );
   const { draft, timeZone, currency, venue } = typed;
   const changes = useMemo(() => eventChanges(saved, typed), [saved, typed]);
+  const lockedBy = over ? 'event-schedule-over' : undefined;
 
   usePageTitle(pageTitle(t, [t('eventEdit.title'), saved.name]));
   const dirty = Object.keys(changes).length > 0;
@@ -291,6 +302,12 @@ function DetailsForm({
 
       if (error instanceof ApiError && error.status === 412) {
         setStatus('changedElsewhere');
+        return;
+      }
+
+      if (error instanceof ApiError && error.is('event_concluded')) {
+        setStatus('editing');
+        refuse({ startsAt: t('eventEdit.scheduleConcluded') }, land);
         return;
       }
 
@@ -410,9 +427,15 @@ function DetailsForm({
 
         <section className="card" aria-labelledby="event-when">
           <h2 id="event-when">{t('eventForm.whenHeading')}</h2>
+          {over && (
+            <p className="field-help" id="event-schedule-over">
+              {t('eventEdit.scheduleLocked')}
+            </p>
+          )}
           <Moment
             id="event-start"
             legend={t('eventForm.starts')}
+            lockedBy={lockedBy}
             skipped={startSkipped}
             date={draft.startDate}
             time={draft.startTime}
@@ -424,6 +447,7 @@ function DetailsForm({
           <Moment
             id="event-end"
             legend={t('eventForm.ends')}
+            lockedBy={lockedBy}
             skipped={skippedLine(draft.endDate, draft.endTime, timeZone, dateLocale(), t)}
             hint={t('eventForm.endsHint')}
             date={draft.endDate}
@@ -448,9 +472,7 @@ function DetailsForm({
               ...('address' in change ? { venueAddress: undefined } : {}),
             }));
           }}
-          onUseZone={(zone) => {
-            choose('timeZone', zone);
-          }}
+          {...(over ? {} : { onUseZone: (zone: string) => choose('timeZone', zone) })}
         />
 
         <section className="card" aria-labelledby="event-defaults">
@@ -459,7 +481,8 @@ function DetailsForm({
             <Choice
               id="event-time-zone"
               label={t('eventForm.timeZone')}
-              hint={zoneHint}
+              hint={over ? undefined : zoneHint}
+              lockedBy={lockedBy}
               value={timeZone}
               error={errors.timeZone}
               busy={busy}

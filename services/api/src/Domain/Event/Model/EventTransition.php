@@ -26,6 +26,8 @@ final readonly class EventTransition
     {
         return [
             new self(EventStatus::Draft, EventAction::MakeLive, EventStatus::Live, [EventGuard::EndNotPassed, EventGuard::PlanLimit]),
+            new self(EventStatus::Live, EventAction::End, EventStatus::Ended, [EventGuard::EndNotPassed]),
+            new self(EventStatus::Paused, EventAction::End, EventStatus::Ended, [EventGuard::EndNotPassed]),
         ];
     }
 

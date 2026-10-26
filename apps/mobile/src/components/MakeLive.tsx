@@ -22,16 +22,17 @@ export function DraftRow({
   kind,
   event,
   manages,
+  now,
   onChange,
 }: {
   kind: LayoutKind;
   event: OrganisationEvent;
   manages: boolean;
+  now: Date;
   onChange: (event: OrganisationEvent) => void;
 }) {
   const { t } = useTranslation();
   const [asking, setAsking] = useState<Asking | null>(null);
-  const [now] = useState(Date.now);
   const makeLive = useRef<View>(null);
   const row = draftRowOf(event, now, manages);
 

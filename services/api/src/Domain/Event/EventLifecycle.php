@@ -15,6 +15,7 @@ use App\Enum\EventAction;
 use App\Enum\EventGuard;
 use App\Enum\EventPhase;
 use App\Http\Exception\ApiException;
+use Closure;
 use DateTimeImmutable;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
@@ -25,6 +26,8 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 final readonly class EventLifecycle
 {
     public const string MADE_LIVE = 'event.made_live';
+
+    public const string ENDED = 'event.ended';
 
     public function __construct(
         private EntityManagerInterface $entityManager,
@@ -37,19 +40,31 @@ final readonly class EventLifecycle
 
     public function makeLive(Event $event, User $by): Event
     {
-        return $this->entityManager->wrapInTransaction(function () use ($event, $by): Event {
+        return $this->move($event, EventAction::MakeLive, self::MADE_LIVE, $by, static fn (Event $event, DateTimeImmutable $now) => $event->makeLive($now));
+    }
+
+    /** Before the start this calls the event off, and after it ends it early: one action, refused once the end has passed (sc-3585). */
+    public function end(Event $event, User $by): Event
+    {
+        return $this->move($event, EventAction::End, self::ENDED, $by, static fn (Event $event, DateTimeImmutable $now) => $event->end($now));
+    }
+
+    /** @param Closure(Event, DateTimeImmutable): void $apply */
+    private function move(Event $event, EventAction $action, string $audited, User $by, Closure $apply): Event
+    {
+        return $this->entityManager->wrapInTransaction(function () use ($event, $action, $audited, $by, $apply): Event {
             $this->entityManager->refresh($event, LockMode::PESSIMISTIC_WRITE);
             $before = $event->getStatus();
             $now = $this->clock->now();
-            $transition = EventTransition::of($before, EventAction::MakeLive)
+            $transition = EventTransition::of($before, $action)
                 ?? throw new ApiException(ErrorCode::EventStateInvalid, $this->translator->trans('event.state_invalid'), members: ['phase' => EventPhase::of($before, $event->getStartsAt(), $event->getEndsAt(), $now)->value]);
 
             foreach ($transition->guards as $guard) {
-                $this->check($guard, $event, $now);
+                $this->check($guard, $action, $event, $now);
             }
 
-            $event->makeLive($now);
-            $this->auditor->record(self::MADE_LIVE, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), [
+            $apply($event, $now);
+            $this->auditor->record($audited, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), [
                 'status' => [$before->value, $transition->to->value],
             ]);
             $this->entityManager->flush();
@@ -58,12 +73,12 @@ final readonly class EventLifecycle
         });
     }
 
-    private function check(EventGuard $guard, Event $event, DateTimeImmutable $now): void
+    private function check(EventGuard $guard, EventAction $action, Event $event, DateTimeImmutable $now): void
     {
         match ($guard) {
             EventGuard::EndNotPassed => $now < $event->getEndsAt()
                 ? null
-                : throw new ApiException(ErrorCode::EventConcluded, $this->translator->trans('event.concluded')),
+                : throw new ApiException(ErrorCode::EventConcluded, $this->translator->trans(EventAction::End === $action ? 'event.already_over' : 'event.concluded')),
             EventGuard::PlanLimit => null === ($limit = $this->activeEventsLimit->reachedBy($event->getOrganisation()))
                 ? null
                 : throw new ApiException(

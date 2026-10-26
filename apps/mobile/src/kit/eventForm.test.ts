@@ -32,6 +32,8 @@ const gala: OrganisationEvent = {
   currency: 'NGN',
   cover: null,
   madeLiveAt: null,
+  phase: 'draft',
+  concludedAt: null,
   createdAt: '2026-10-01T09:00:00Z',
 };
 
@@ -93,6 +95,13 @@ describe('the app event form against the shared rules (sc-3595)', () => {
 });
 
 describe('a create or save the API refuses', () => {
+  it("puts a Finished event's schedule refusal on the start (sc-3585)", () => {
+    expect(sendOutcome(refusal(409, 'event_concluded'), t)).toEqual({
+      kind: 'refused',
+      errors: { startsAt: 'eventEdit.scheduleConcluded' },
+    });
+  });
+
   it('is changed elsewhere on 412', () => {
     expect(sendOutcome(refusal(412, 'precondition_failed'), t)).toEqual({
       kind: 'changedElsewhere',

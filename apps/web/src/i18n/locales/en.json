@@ -34,6 +34,7 @@
     "firstRunCreate": "Create an event",
     "firstRunAskOwner": "Events your organisation creates will show here. Ask an owner if you need to create one.",
     "live": "Live",
+    "happeningNow": "Happening now",
     "paused": "Paused",
     "finished": "Finished"
   },
@@ -134,6 +135,20 @@
     "planLimitStays": "This event stays a draft. Finish or call off another event, or change plan.",
     "close": "Close"
   },
+  "eventEnd": {
+    "callOff": "Call off",
+    "endNow": "End now",
+    "callOffTitle": "Call off {{name}}?",
+    "callOffBody": "It won't go ahead. Guests following their link will be told.",
+    "endTitle": "End {{name}} now?",
+    "endBody": "It will be over for everybody.",
+    "final": "You can't undo this.",
+    "keepItOn": "Keep it on",
+    "failed": "Not ended. Try again in a moment.",
+    "notEnded": "Not ended.",
+    "alreadyOver": "This event is already over.",
+    "calledOffNotice": "Called off on {{date}}, before it started. Guests following their link are told it won't go ahead."
+  },
   "eventEdit": {
     "open": "Edit details",
     "title": "Edit details",
@@ -153,7 +168,9 @@
     "leaveBody": "Your changes to this event will be lost.",
     "leave": "Leave without saving",
     "saved": "Saved",
-    "nothingChanged": "Nothing changed, so nothing was sent."
+    "nothingChanged": "Nothing changed, so nothing was sent.",
+    "scheduleConcluded": "This event is over, so its start, end and time zone cannot be changed.",
+    "scheduleLocked": "This event is over, so its start, end and time zone can't be changed."
   },
   "eventCover": {
     "heading": "Cover",

@@ -167,6 +167,20 @@ export function draftOf(event: {
   };
 }
 
+/** A Finished event's schedule is locked, so what was typed into it before the end passed is put back (sc-3585). */
+export function scheduleKept<T extends { draft: EventDraft; timeZone: string }>(
+  typed: T,
+  saved: { draft: EventDraft; timeZone: string },
+): T {
+  const { startDate, startTime, endDate, endTime } = saved.draft;
+
+  return {
+    ...typed,
+    draft: { ...typed.draft, startDate, startTime, endDate, endTime },
+    timeZone: saved.timeZone,
+  };
+}
+
 /** The API's venue limits, counted in characters after trimming (sc-3589). */
 export const VENUE_NAME_MAXIMUM = 120;
 export const VENUE_ADDRESS_MAXIMUM = 300;

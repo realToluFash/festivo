@@ -250,6 +250,13 @@ class Event
         $this->madeLiveAt = $at->setTimezone(new DateTimeZone('UTC'));
     }
 
+    /** Only EventLifecycle calls this: before the start it calls the event off, after it ends it early (sc-3585). */
+    public function end(DateTimeImmutable $at): void
+    {
+        $this->status = EventStatus::Ended;
+        $this->endedAt = $at->setTimezone(new DateTimeZone('UTC'));
+    }
+
     public function setName(string $name): void
     {
         $this->name = $name;

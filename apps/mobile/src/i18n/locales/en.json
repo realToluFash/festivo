@@ -1401,6 +1401,7 @@
     "newEvent": "New event",
     "noneCreate": "Create your first event to start planning.",
     "live": "Live",
+    "happeningNow": "Happening now",
     "paused": "Paused",
     "finished": "Finished"
   },
@@ -1465,7 +1466,9 @@
     "keepEditing": "Keep editing",
     "leaveTitle": "Leave without saving?",
     "leave": "Leave without saving",
-    "saved": "Saved"
+    "saved": "Saved",
+    "scheduleConcluded": "This event is over, so its start, end and time zone cannot be changed.",
+    "scheduleLocked": "This event is over, so its start, end and time zone can't be changed."
   },
   "eventCover": {
     "heading": "Cover",
@@ -1518,6 +1521,21 @@
     "planLimit_one": "Not made live. Your {{plan}} plan allows {{count}} event to be live or paused at a time.",
     "planLimit_other": "Not made live. Your {{plan}} plan allows {{count}} events to be live or paused at a time.",
     "planLimitStays": "This event stays a draft. Finish or call off another event, or change plan.",
+    "close": "Close"
+  },
+  "eventEnd": {
+    "callOff": "Call off",
+    "endNow": "End now",
+    "callOffTitle": "Call off {{name}}?",
+    "callOffBody": "It won't go ahead. Guests following their link will be told.",
+    "endTitle": "End {{name}} now?",
+    "endBody": "It will be over for everybody.",
+    "final": "You can't undo this.",
+    "keepItOn": "Keep it on",
+    "failed": "Not ended. Try again in a moment.",
+    "notEnded": "Not ended.",
+    "alreadyOver": "This event is already over.",
+    "calledOffNotice": "Called off on {{date}}, before it started. Guests following their link are told it won't go ahead.",
     "close": "Close"
   }
 }
