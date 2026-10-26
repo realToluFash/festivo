@@ -5,7 +5,7 @@
  * are decided once here. Written per client, each would grow its own error path
  * and most of those would never be exercised.
  */
-import { type EventType, isEventType } from '@soirely/domain';
+import { type EventState, type EventType, EVENT_STATES, isEventType } from '@soirely/domain';
 
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
 
@@ -278,7 +278,8 @@ export interface RolesCatalogue {
   areas: { area: string; permissions: string[] }[];
 }
 
-export type EventStatus = 'draft';
+/** Stored, as /event-states.json declares them; what the clock makes of it is its phase (sc-3584). */
+export type EventStatus = EventState;
 
 /** `startsAt` and `endsAt` carry the offset in force at that moment in `timeZone` (sc-1486). */
 export interface OrganisationEvent {
@@ -296,6 +297,8 @@ export interface OrganisationEvent {
   cover: EventCover | null;
   /** Null until a venue is added: the page says "Venue to be confirmed" (sc-3589). */
   venue: EventVenue | null;
+  /** Null while it is a Draft. */
+  madeLiveAt: string | null;
   createdAt: string;
 }
 
@@ -1557,6 +1560,16 @@ export class ApiClient {
     );
   }
 
+  /** Refused 409 `event_state_invalid` once it is not a Draft, 409 `event_concluded` once its end has passed, and 403 `plan_limit` with `plan` and `limit`. */
+  async makeLive(eventId: string): Promise<TaggedEvent> {
+    return this.tagged(
+      await this.exchange<{ event?: unknown }>(
+        `/api/events/${encodeURIComponent(eventId)}/make-live`,
+        { method: 'POST' },
+      ),
+    );
+  }
+
   private tagged({
     body,
     response,
@@ -2505,7 +2518,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   if (typeof raw !== 'object' || raw == null) return null;
 
   const candidate = raw as Record<string, unknown>;
-  const status = oneOf(candidate.status, EVENT_STATUSES);
+  const status = oneOf(candidate.status, EVENT_STATES);
   const type = isEventType(candidate.type) ? candidate.type : null;
   const fields = [
     'id',
@@ -2521,9 +2534,11 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   const dayCount = candidate.dayCount;
   const cover = candidate.cover === null ? null : asEventCover(candidate.cover);
   const venue = candidate.venue === null ? null : asEventVenue(candidate.venue);
+  const madeLiveAt = candidate.madeLiveAt;
 
   if (
     status == null ||
+    !isStringOrNull(madeLiveAt) ||
     type == null ||
     cover === undefined ||
     venue === undefined ||
@@ -2547,6 +2562,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     currency: candidate.currency as string,
     cover,
     venue,
+    madeLiveAt,
     createdAt: candidate.createdAt as string,
   };
 }
@@ -2655,8 +2671,6 @@ function asAddressSuggestion(raw: unknown): AddressSuggestion | null {
 function isStringOrNull(value: unknown): value is string | null {
   return value === null || typeof value === 'string';
 }
-
-const EVENT_STATUSES: readonly EventStatus[] = ['draft'];
 
 function asOrganisation(raw: unknown): Organisation | null {
   if (typeof raw !== 'object' || raw == null) return null;

@@ -134,6 +134,8 @@
     "event.version_required": "Send the version you are changing, as If-Match.",
     "event.changed_since": "Somebody else changed this event since you opened it.",
     "event.currency_in_use": "The currency cannot change once amounts are recorded against this event.",
+    "event.state_invalid": "This event cannot do that in the state it is in now.",
+    "event.concluded": "This event's end has passed, so it cannot be made live. Change its dates first.",
     "code.mismatch": "That code does not match.",
     "code.expired": "That code has expired.",
     "code.exhausted": "That code no longer works.",

@@ -12,6 +12,8 @@ use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
+use App\Enum\EventAction;
+use App\Enum\EventPhase;
 use App\Enum\UploadPurpose;
 use App\Http\Exception\ApiException;
 use App\Repository\EventCoverRepository;
@@ -22,6 +24,7 @@ use Psl\Encoding\Base64;
 use Psl\Regex;
 use Psl\Str;
 use Psl\Vec;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -38,6 +41,7 @@ final readonly class EventCoverEditor
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
         private TranslatorInterface $translator,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -58,6 +62,7 @@ final readonly class EventCoverEditor
     /** A new photo when `uploadKey` names one, otherwise the saved photo with a new position and description. */
     public function set(Event $event, User $by, ?string $uploadKey, int $position, ?string $description): EventCover
     {
+        $this->allowEdit($event);
         $description = self::description($description);
         $violations = [];
 
@@ -111,6 +116,7 @@ final readonly class EventCoverEditor
     /** The event's type's default is back; the stored photo is deleted. Nothing to remove is not an error. */
     public function remove(Event $event, User $by): void
     {
+        $this->allowEdit($event);
         $cover = $this->eventCoverRepository->findOneForEvent($event);
 
         if (null === $cover) {
@@ -186,6 +192,16 @@ final readonly class EventCoverEditor
             $this->objectStore->deleteUpload(UploadPurpose::EventCover, $uploadKey);
 
             throw $this->refusal($refused);
+        }
+    }
+
+    /** The cover is an `edit` field, refused as a rename is in a phase that allows no `edit`. */
+    private function allowEdit(Event $event): void
+    {
+        $phase = EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $this->clock->now());
+
+        if (!$phase->allows(EventAction::Edit)) {
+            throw new ApiException(ErrorCode::EventStateInvalid, $this->translator->trans('event.state_invalid'), members: ['phase' => $phase->value]);
         }
     }
 
