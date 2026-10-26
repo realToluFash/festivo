@@ -67,7 +67,7 @@
     "organisation_deleted": "This organisation no longer exists, so the invitation cannot be accepted.",
     "provider_kept_by_rule": "Your organisation signs in with Google or Apple only, so your last one stays linked.",
     "oauth_only": "This organisation signs in with Google or Apple only.",
-    "oauth_only_unlinked": "Read-only until you link Google or Apple.",
+    "oauth_only_unlinked": "No Google or Apple account is linked.",
     "organisation_two_factor_required": "This organisation asks for two-factor first.",
     "organisation_two_factor_overdue": "This organisation requires two-factor.",
     "two_factor_kept_by_rule": "Your organisation requires two-factor, so you cannot turn it off.",
