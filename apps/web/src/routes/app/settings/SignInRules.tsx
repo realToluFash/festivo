@@ -660,7 +660,7 @@ function Changes({ changes }: { changes: SignInRuleChange[] }) {
       ) : (
         <ol className="sign-in-rules-changes">
           {changes.map((change) => (
-            <li key={`${change.at}-${change.rule}`}>
+            <li key={`${change.entry}-${change.rule}`}>
               <p className="muted">
                 {t('signInRules.changeWhen', {
                   day: formatDay(change.at, locale),
