@@ -332,7 +332,7 @@ final class OwnerClaimTest extends ApiTestCase
 
         self::assertSame(1, self::service(OwnerClaimHandler::class)->settleDue());
 
-        $mails = $this->mailsTitled('Bisi did not become the owner of Ìrè Events. The claim lapsed');
+        $mails = $this->mailsTitled('Claim lapsed: Ìrè Events');
         self::assertEqualsCanonicalizing(['bisi@ire.events', 'kemi@ire.events', 'folake@okafor.family'], Vec\map($mails, self::to(...)));
         self::assertEqualsCanonicalizing($started, Vec\map($mails, self::to(...)), 'exactly where the start went');
         $passesAt = $this->claim($claim)->getPassesAt() ?? self::fail('no passing instant');
@@ -362,7 +362,7 @@ final class OwnerClaimTest extends ApiTestCase
 
         self::service(OwnerClaimHandler::class)->settleDue();
 
-        $mails = $this->mailsTitled('Bisi did not become the owner of Ìrè Events');
+        $mails = $this->mailsTitled('Claim lapsed: Ìrè Events');
         self::assertEqualsCanonicalizing(['bisi@ire.events', 'folake@okafor.family'], Vec\map($mails, self::to(...)));
 
         foreach ($mails as $mail) {
@@ -402,10 +402,10 @@ final class OwnerClaimTest extends ApiTestCase
 
         self::service(OwnerClaimHandler::class)->settleDue();
 
-        $mails = $this->mailsTitled('bisi@ire.events did not become the owner of Ìrè Events');
+        $mails = $this->mailsTitled('Claim lapsed: Ìrè Events');
         self::assertCount(2, $mails);
         self::assertStringContainsString(
-            "bisi@ire.events is no longer an Administrator of Ìrè Events, so ownership did not pass.\n\nClaimant: bisi@ire.events\n\nDomain:",
+            "bisi@ire.events did not become the owner of Ìrè Events. The claim lapsed.\n\nbisi@ire.events is no longer an Administrator of Ìrè Events, so ownership did not pass.\n\nClaimant: bisi@ire.events\n\nDomain:",
             (string) $mails[0]->getTextBody(),
         );
     }
@@ -420,7 +420,7 @@ final class OwnerClaimTest extends ApiTestCase
         self::assertSame(1, self::service(OwnerClaimHandler::class)->settleDue());
 
         self::assertSame(OwnerClaimOutcome::Unfound, $this->claim($claim)->getOutcome());
-        self::assertCount(0, $this->mailsTitled('The claim lapsed'));
+        self::assertCount(0, $this->mailsTitled('Claim lapsed'));
     }
 
     #[Test]
