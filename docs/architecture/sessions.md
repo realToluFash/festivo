@@ -120,7 +120,7 @@ defeats every storage option and a policy is what stops the script running.
 
 `apps/web/nginx.conf` includes `/etc/nginx/soirely-security-headers.conf`, which the
 container's entrypoint writes at start-up. It is generated rather than committed because
-`connect-src` has to name the API and Mercure origins and those differ per deployment;
+`connect-src` has to name the API, Mercure and object store origins and those differ per deployment;
 nginx refuses to start if the file is missing, which is the right direction for that to
 fail in. The snippet is included in **every** `location` as well as the server block,
 because a location that adds a header of its own discards everything inherited.
@@ -136,9 +136,11 @@ Two things to know before changing it:
   `fonts.googleapis.com`, the font files it names from `fonts.gstatic.com`. Self-hosting
   Instrument Sans and JetBrains Mono would remove both sources and is the better end
   state.
-- Images are `'self' data: blob:` and the object store's public origin, which the container
-  takes from `SOIRELY_STORAGE_URL` (compose passes `STORAGE_PUBLIC_ENDPOINT`). A store
-  moved behind another host, a CDN say, is a change to that variable.
+- The object store's public origin is in `connect-src`, because the browser uploads a cover
+  or avatar with a `PUT` to it, and in `img-src` beside `'self' data: blob:`, because it
+  serves them. The container takes it from `SOIRELY_STORAGE_URL` (compose passes
+  `STORAGE_PUBLIC_ENDPOINT`). A store moved behind another host, a CDN say, is a change to
+  that variable.
 
 `Strict-Transport-Security` is deliberately absent. TLS terminates upstream, so it belongs
 on the terminator where its `max-age` sits beside the certificate it depends on.

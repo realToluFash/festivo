@@ -78,14 +78,15 @@ if [ -n "$MERCURE_ORIGIN" ]; then
     CONNECT="$CONNECT $MERCURE_ORIGIN"
 fi
 
-# Uploaded images (event covers, avatars) are served from the object store's
-# public origin, which is never 'self'.
+# Uploaded images (event covers, avatars) are sent to and served from the
+# object store's public origin, which is never 'self': the browser PUTs to it
+# and loads images from it.
 IMG="'self' data: blob:"
 STORAGE_ORIGIN="$(origin_of "${SOIRELY_STORAGE_URL:-}")"
 if [ -n "$STORAGE_ORIGIN" ]; then
+    CONNECT="$CONNECT $STORAGE_ORIGIN"
     IMG="$IMG $STORAGE_ORIGIN"
 fi
-
 
 HEADERS=/etc/nginx/soirely-security-headers.conf
 
