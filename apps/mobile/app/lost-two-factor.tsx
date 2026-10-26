@@ -43,6 +43,7 @@ import {
   wrongRecoveryCodes,
 } from '../src/kit/recovery.ts';
 import { tokens } from '../src/theme/tokens.ts';
+import { useMarkSide } from '../src/components/markSide.ts';
 
 type Shown = RecoveryShown;
 
@@ -263,6 +264,7 @@ function Start({
   sending: boolean;
   onSend: () => void;
 }) {
+  const markSide = useMarkSide(tokens.sizeMark);
   const { t } = useTranslation();
   const steps = [
     opening.phone == null
@@ -297,7 +299,7 @@ function Start({
         {steps.map((step, index) => (
           <View key={step} style={styles.step}>
             <View
-              style={styles.stepMark}
+              style={[styles.stepMark, markSide]}
               accessibilityElementsHidden
               importantForAccessibility="no-hide-descendants"
             >
@@ -889,9 +891,7 @@ const styles = StyleSheet.create({
   steps: { gap: tokens.spaceMd },
   step: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceMd },
   stepMark: {
-    width: tokens.sizeMark,
-    height: tokens.sizeMark,
-    borderRadius: tokens.sizeMark / 2,
+    borderRadius: tokens.radiusPill,
     borderWidth: 1.5,
     borderColor: tokens.colorMarkEmpty,
     alignItems: 'center',

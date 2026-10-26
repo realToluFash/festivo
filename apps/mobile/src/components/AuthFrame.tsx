@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { LanguageChoice } from './LanguageChoice.tsx';
+import { useMarkSide } from './markSide.ts';
 import { useReadOut } from './ReadOut.tsx';
 import { Screen, useFocusOnAnswer } from './Screen.tsx';
 import { Text, type TextHandle } from './Text.tsx';
@@ -34,6 +35,7 @@ export function AuthHeading({
   introAnswer?: unknown;
 }) {
   const { kind } = useLayout();
+  const doneMarkSide = useMarkSide(tokens.sizeHitPhoneHero);
   const { shown, read } = useFocusOnAnswer<TextHandle>(answer);
   const { read: introRead } = useFocusOnAnswer<TextHandle>(introAnswer);
   const size = kind === 'phone' ? tokens.typeTitlePhone.size : tokens.typeTitlePage.size;
@@ -46,7 +48,7 @@ export function AuthHeading({
     <>
       {done && (
         <View
-          style={styles.doneMark}
+          style={[styles.doneMark, doneMarkSide]}
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
@@ -150,11 +152,9 @@ const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   onAccent: { color: tokens.colorInkOnDark },
   doneMark: {
-    width: tokens.sizeHitPhoneHero,
-    height: tokens.sizeHitPhoneHero,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: tokens.sizeHitPhoneHero / 2,
+    borderRadius: tokens.radiusPill,
     backgroundColor: tokens.colorAccent,
   },
   spacer: { flex: 1 },

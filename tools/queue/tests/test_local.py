@@ -52,6 +52,14 @@ class Checks(unittest.TestCase):
         self.found(now=DAY * 11, free=4.0)
         self.assertFalse(today & {i["fingerprint"] for i in self.items()})
 
+    def test_urgent_findings_come_before_the_sweep_and_go_once_cleared(self):
+        self.found(free=4.0, cache=40.0)
+        self.assertIn("just prune-build-cache", self.items()[1]["reason"])
+        self.assertIn("daily sweep", self.items()[-1]["reason"])
+        self.assertLess(self.items()[0]["priority"], self.items()[-1]["priority"])
+        self.found(now=DAY * 10 + 60, free=100.0)
+        self.assertFalse([i for i in self.items() if "GB free" in i["reason"]])
+
     def test_sizes_read_as_docker_prints_them(self):
         self.assertEqual(local.gigabytes("12.5GB"), 12.5)
         self.assertEqual(local.gigabytes("800MB"), 0.8)

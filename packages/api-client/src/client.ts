@@ -293,9 +293,30 @@ export interface OrganisationEvent {
   /** The calendar dates in `timeZone` the event touches, at least 1; an end at 00:00 does not touch the new date (sc-98). */
   dayCount: number;
   currency: string;
+  cover: EventCover | null;
   /** Null until a venue is added: the page says "Venue to be confirmed" (sc-3589). */
   venue: EventVenue | null;
   createdAt: string;
+}
+
+/** The organiser's photo, re-encoded as WebP at each width. `position` is how far down the photo the 16:9 frame sits, 0 to 100. */
+export interface EventCover {
+  position: number;
+  description: string | null;
+  sizes: { width: number; url: string }[];
+}
+
+/** Where the browser PUTs the photo, with `contentType` as its Content-Type; `key` then names it to setEventCover. */
+export interface CoverUpload {
+  url: string;
+  key: string;
+  contentType: string;
+}
+
+export interface CoverChange {
+  uploadKey?: string;
+  position: number;
+  description: string | null;
 }
 
 export interface EventVenue {
@@ -1465,6 +1486,61 @@ export class ApiClient {
     );
   }
 
+  /** Refused `validation_failed` on `file` for a type or a size the cover does not take (sc-3590). */
+  async signEventCoverUpload(
+    organisationId: string,
+    file: { contentType: string; size: number; filename: string },
+  ): Promise<CoverUpload> {
+    const body = await this.post<{ upload?: unknown }>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/event-cover-uploads`,
+      file,
+    );
+    const { url, key, content_type: contentType } = (body?.upload ?? {}) as Record<string, unknown>;
+
+    if (typeof url !== 'string' || typeof key !== 'string' || typeof contentType !== 'string') {
+      throw new Error(
+        'The API answered a cover upload in a shape this client does not know. Check the event cover controller in services/api.',
+      );
+    }
+
+    return { url, key, contentType };
+  }
+
+  async uploadTo(upload: CoverUpload, file: Blob): Promise<void> {
+    const doFetch = this.options.fetch ?? fetch;
+    const response = await doFetch(upload.url, {
+      method: 'PUT',
+      body: file,
+      headers: { 'Content-Type': upload.contentType },
+    });
+
+    if (!response.ok) throw new Error(`The store refused the upload with ${response.status}.`);
+  }
+
+  /** A photo uploaded and then not used, deleted so its original, metadata and all, is not kept. */
+  async discardEventCoverUpload(organisationId: string, uploadKey: string): Promise<void> {
+    await this.request(`/api/orgs/${encodeURIComponent(organisationId)}/event-cover-uploads`, {
+      method: 'DELETE',
+      body: { uploadKey },
+    });
+  }
+
+  /** Refused `validation_failed` on `file` (the photo itself), `uploadKey`, `position` or `description`. */
+  async setEventCover(eventId: string, change: CoverChange): Promise<OrganisationEvent> {
+    return this.organisationEvent(
+      await this.put<{ event?: unknown }>(
+        `/api/events/${encodeURIComponent(eventId)}/cover`,
+        change,
+      ),
+    );
+  }
+
+  async removeEventCover(eventId: string): Promise<OrganisationEvent> {
+    return this.organisationEvent(
+      await this.delete<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}/cover`),
+    );
+  }
+
   private tagged({
     body,
     response,
@@ -2427,11 +2503,13 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   ] as const;
 
   const dayCount = candidate.dayCount;
+  const cover = candidate.cover === null ? null : asEventCover(candidate.cover);
   const venue = candidate.venue === null ? null : asEventVenue(candidate.venue);
 
   if (
     status == null ||
     type == null ||
+    cover === undefined ||
     venue === undefined ||
     fields.some((field) => typeof candidate[field] !== 'string') ||
     typeof dayCount !== 'number' ||
@@ -2451,9 +2529,34 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     timeZone: candidate.timeZone as string,
     dayCount,
     currency: candidate.currency as string,
+    cover,
     venue,
     createdAt: candidate.createdAt as string,
   };
+}
+
+function asEventCover(raw: unknown): EventCover | undefined {
+  if (typeof raw !== 'object' || raw == null) return undefined;
+
+  const { position, description, sizes } = raw as Record<string, unknown>;
+  const parsed = Array.isArray(sizes)
+    ? sizes.map((size: unknown) => {
+        const { width, url } = (size ?? {}) as Record<string, unknown>;
+
+        return typeof width === 'number' && typeof url === 'string' ? { width, url } : null;
+      })
+    : null;
+
+  if (
+    typeof position !== 'number' ||
+    (description !== null && typeof description !== 'string') ||
+    parsed == null ||
+    parsed.length === 0 ||
+    parsed.some((size) => size == null)
+  )
+    return undefined;
+
+  return { position, description, sizes: parsed as EventCover['sizes'] };
 }
 
 /** Undefined when the shape is not one this client knows. */

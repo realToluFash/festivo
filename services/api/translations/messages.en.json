@@ -205,5 +205,12 @@
     "assistant.too_many_tools": "At most {most} tools may be offered; this request offers {count}.",
     "assistant.resource_context_too_long": "The resource context may be at most {most} characters; this one is {count}. Send what is on the screen, not the whole record.",
     "assistant.role_unknown": "Unknown message role \"{role}\". Known roles: user, assistant, tool_call, tool_result.",
-    "sign_in.idle_timeout": "{organisation} signs people out after {days} days without use. Sign in again to carry on."
+    "sign_in.idle_timeout": "{organisation} signs people out after {days} days without use. Sign in again to carry on.",
+    "validation.cover_type": "That file isn't a photo we can use. Choose a JPEG, PNG, WebP or HEIC.",
+    "validation.cover_size": "That photo is over 15 MB. Choose a smaller one.",
+    "validation.cover_dimensions": "That photo is smaller than 1200 × 675 pixels, so it would look blurred. Choose a larger one.",
+    "validation.cover_description_too_long": "Shorten the description to {count} characters or fewer.",
+    "validation.cover_position_invalid": "Choose a position from 0, the top of the photo, to 100, the bottom.",
+    "validation.cover_photo_required": "Choose a photo for the cover.",
+    "validation.cover_upload_missing": "The photo didn't upload. Try again."
 }

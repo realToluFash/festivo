@@ -70,6 +70,15 @@ class Leases(unittest.TestCase):
         _, mine, _ = self.mac.minute(NOW + 70)
         self.assertEqual(mine, {"dev"})
 
+    def test_a_stopped_role_is_given_back_while_its_worker_finishes_and_keeps_its_claim(self):
+        linux = Machine(self.remote, "tolu-linux", busy={"dev"})
+        view, _, _ = linux.minute()
+        shared.claim_item(self.remote, view, "dev", "sc-5", "dev")
+        linux.minute(NOW + 60, started={"ops"}, holding={("dev", "sc-5")})
+        self.assertNotIn(shared.role_ref("dev"), self.remote.refs)
+        self.assertEqual(self.remote.data(shared.claim_ref("dev", "sc-5"))["machine"],
+                         "tolu-linux")
+
     def test_a_standby_machine_hands_a_role_back_once_its_worker_is_done(self):
         standby = Machine(self.remote, "tolu-mac", standby=("dev",), busy={"dev"})
         _, mine, _ = standby.minute()

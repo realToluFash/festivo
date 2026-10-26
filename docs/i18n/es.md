@@ -49,6 +49,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. La portada de un evento** (sc-13587, `web:eventCover.*`,
+  `messages:validation.cover_*`). «Portada» para la sección y «Foto de portada» para el diálogo,
+  como en las redes que el anfitrión ya conoce; «foto» para la imagen propia, e «imagen» solo en
+  «Describa la imagen», que es lo que oye el lector de pantalla. Subir es «Subir una foto»;
+  quitar, «Quitar la foto», no «Eliminar», porque el archivo no se borra de ningún sitio del
+  usuario. Fuera de límite, «más ligera» para el tamaño en MB y «más grande» para los píxeles.
+  La línea del evento creado, «El evento se ha guardado sin su foto. {{reason}}», se lee con
+  cualquiera de las negativas detrás.
 - **26 Oct 2026. El tipo de evento** (`web:eventForm.type*`, `web:eventTypes.*`,
   `messages:validation.event_type_required`, sc-3588 via sc-13205). «Tipo», «Elija el tipo de
   evento», y el rechazo, igual en pantalla y en la API, «Elija qué tipo de evento es.». Las
