@@ -382,6 +382,23 @@ class Queue(unittest.TestCase):
         items = work.queue_items([story(state="Ready For QA")])
         self.assertEqual([sorted(i["roles"]) for i in items], [["qa", "qa2", "qa3"]])
 
+    def test_a_story_that_needs_ios_is_no_tester_s_without_xcode(self):
+        labelled = story(1, state="Ready For QA", labels=["needs ios"])
+        named = {**story(2, state="Ready For QA"), "name": "On an iPhone and an iPad, it reads"}
+        self.assertEqual(work.queue_items([labelled, named], ios=False), [])
+        items = work.queue_items([labelled, named], ios=True)
+        self.assertEqual([sorted(i["roles"]) for i in items], [["qa", "qa2", "qa3"]] * 2)
+
+    def test_a_story_naming_an_iphone_later_is_still_offered_without_xcode(self):
+        later = {**story(state="Ready For QA"), "name": "Cancel is off on an iPhone and Android"}
+        items = work.queue_items([later], ios=False)
+        self.assertEqual([i["story_id"] for i in items], [1])
+
+    def test_needs_ios_holds_back_only_the_testers(self):
+        ready = story(state="Ready For Dev", labels=["needs ios"])
+        items = work.queue_items([ready], ios=False)
+        self.assertEqual([i["roles"] for i in items], [["dev", "dev2", "dev3", "dev4"]])
+
     def test_a_translation_ticket_is_only_the_linguists(self):
         for state in ("To Do", "Ready For Dev", "In Progress", "Failed QA"):
             items = work.queue_items([story(state=state, labels=["translation"])])
