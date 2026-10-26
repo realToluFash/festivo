@@ -5,11 +5,11 @@ import { describe, expect, it } from 'vitest';
 
 import { landingFor } from '../landing.ts';
 import {
-  DESTINATIONS,
   DESTINATION_HREF,
   INTERIM_HREF,
   SECTION_HREF,
   destinationOf,
+  destinations,
   settingsGroups,
 } from './appNav.ts';
 
@@ -32,19 +32,30 @@ describe('sign-in lands on the signed-in home', () => {
 });
 
 describe('the frame shows only what is built', () => {
-  it('has Home and Settings and nothing else', () => {
-    expect(DESTINATIONS).toEqual(['home', 'settings']);
+  it('has Home, Events and Settings, in that order, for a role that can read events', () => {
+    expect(destinations({ permissions: ['events.read'] })).toEqual(['home', 'events', 'settings']);
   });
 
-  it('marks Settings for every page under it', () => {
+  it('leaves Events out for a role whose Events level is Nothing, and with no organisation (sc-1593)', () => {
+    expect(destinations({ permissions: ['members.read'] })).toEqual(['home', 'settings']);
+    expect(destinations(null)).toEqual(['home', 'settings']);
+  });
+
+  it('marks Settings and Events for every page under each', () => {
     expect(destinationOf('/')).toBe('home');
     expect(destinationOf('/settings')).toBe('settings');
     expect(destinationOf('/settings/security')).toBe('settings');
     expect(destinationOf('/settingsx')).toBe('home');
+    expect(destinationOf('/events')).toBe('events');
+    expect(destinationOf('/events/evt_gala')).toBe('events');
   });
 
   it('opens a route that exists for each destination and section', () => {
     expect(DESTINATION_HREF.settings).toBe('/settings');
+    for (const href of [DESTINATION_HREF.events, DESTINATION_HREF.settings]) {
+      expect(() => source(join(APP, href, 'index.tsx')), href).not.toThrow();
+    }
+    expect(() => source(join(APP, 'events', '[id].tsx'))).not.toThrow();
     for (const href of Object.values(SECTION_HREF)) {
       expect(() => source(join(APP, `${href}.tsx`)), href).not.toThrow();
     }

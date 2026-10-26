@@ -293,7 +293,34 @@ export interface OrganisationEvent {
   /** The calendar dates in `timeZone` the event touches, at least 1; an end at 00:00 does not touch the new date (sc-98). */
   dayCount: number;
   currency: string;
+  /** Null until a venue is added: the page says "Venue to be confirmed" (sc-3589). */
+  venue: EventVenue | null;
   createdAt: string;
+}
+
+export interface EventVenue {
+  name: string | null;
+  address: VenueAddress | null;
+}
+
+/** A typed address carries `formatted` alone; a picked one its parts and coordinates too, where the lookup knew them. */
+export interface VenueAddress {
+  formatted: string;
+  line1: string | null;
+  line2: string | null;
+  city: string | null;
+  region: string | null;
+  postalCode: string | null;
+  countryCode: string | null;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+/** Both blank removes the venue. `addressId` is the suggestion the address was picked from; without it the address is saved as typed. */
+export interface VenueInput {
+  name: string | null;
+  address: string | null;
+  addressId?: string | null;
 }
 
 /** `startsAt` and `endsAt` are local to `timeZone`, with no offset: "2026-11-14T16:00". */
@@ -304,6 +331,18 @@ export interface NewEvent {
   endsAt: string;
   timeZone: string;
   currency: string;
+  venue?: VenueInput | null;
+}
+
+/** One of the address lookup's suggestions (sc-53): the place's name, and the rest of its line. */
+export interface AddressSuggestion {
+  id: string;
+  text: string;
+  secondaryText: string | null;
+}
+
+export interface PickedAddress extends VenueAddress {
+  timeZone: string | null;
 }
 
 /** What an edit sends: any of the fields, those left out keep their value (sc-3587). */
@@ -1367,6 +1406,38 @@ export class ApiClient {
     );
   }
 
+  /** Empty under three characters, with nothing asked. Refused 503 when the lookup is down. */
+  async addressSuggestions(query: string): Promise<AddressSuggestion[]> {
+    if (query.trim().length < 3) return [];
+
+    const body = await this.get<{ data?: unknown }>(
+      `/api/addresses/suggest?${new URLSearchParams({ q: query.trim() }).toString()}`,
+    );
+    const suggestions = Array.isArray(body?.data) ? body.data.map(asAddressSuggestion) : null;
+
+    if (suggestions == null || suggestions.some((suggestion) => suggestion == null)) {
+      throw new Error(
+        'The API answered GET /api/addresses/suggest in a shape this client does not know. Check the address controller in services/api.',
+      );
+    }
+
+    return suggestions as AddressSuggestion[];
+  }
+
+  /** Refused 404 for an id the lookup no longer knows, 503 when it is down. */
+  async address(id: string): Promise<PickedAddress> {
+    const body = await this.get<{ data?: unknown }>(`/api/addresses/${encodeURIComponent(id)}`);
+    const address = asPickedAddress(body?.data);
+
+    if (address == null) {
+      throw new Error(
+        'The API answered GET /api/addresses/{id} in a shape this client does not know. Check the address controller in services/api.',
+      );
+    }
+
+    return address;
+  }
+
   /** Refused `not_found` alike for an event that does not exist and one in another organisation. */
   async event(eventId: string): Promise<OrganisationEvent> {
     return this.organisationEvent(
@@ -2356,10 +2427,12 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   ] as const;
 
   const dayCount = candidate.dayCount;
+  const venue = candidate.venue === null ? null : asEventVenue(candidate.venue);
 
   if (
     status == null ||
     type == null ||
+    venue === undefined ||
     fields.some((field) => typeof candidate[field] !== 'string') ||
     typeof dayCount !== 'number' ||
     !Number.isInteger(dayCount) ||
@@ -2378,8 +2451,90 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     timeZone: candidate.timeZone as string,
     dayCount,
     currency: candidate.currency as string,
+    venue,
     createdAt: candidate.createdAt as string,
   };
+}
+
+/** Undefined when the shape is not one this client knows. */
+function asEventVenue(raw: unknown): EventVenue | undefined {
+  if (typeof raw !== 'object' || raw == null) return undefined;
+
+  const candidate = raw as Record<string, unknown>;
+  const address = candidate.address === null ? null : asVenueAddress(candidate.address, 'camel');
+
+  if (!isStringOrNull(candidate.name) || address === undefined) return undefined;
+
+  return { name: candidate.name as string | null, address };
+}
+
+/** The event resource names the parts in camelCase; the address lookup, older, in snake_case. */
+function asVenueAddress(raw: unknown, naming: 'camel' | 'snake'): VenueAddress | undefined {
+  if (typeof raw !== 'object' || raw == null) return undefined;
+
+  const candidate = raw as Record<string, unknown>;
+  const postalCode = candidate[naming === 'camel' ? 'postalCode' : 'postal_code'];
+  const countryCode = candidate[naming === 'camel' ? 'countryCode' : 'country_code'];
+  const texts = [
+    candidate.line1,
+    candidate.line2,
+    candidate.city,
+    candidate.region,
+    postalCode,
+    countryCode,
+  ];
+  const coordinates = [candidate.latitude, candidate.longitude];
+
+  if (
+    typeof candidate.formatted !== 'string' ||
+    !texts.every(isStringOrNull) ||
+    !coordinates.every((value) => value === null || typeof value === 'number')
+  )
+    return undefined;
+
+  return {
+    formatted: candidate.formatted,
+    line1: candidate.line1 as string | null,
+    line2: candidate.line2 as string | null,
+    city: candidate.city as string | null,
+    region: candidate.region as string | null,
+    postalCode: postalCode as string | null,
+    countryCode: countryCode as string | null,
+    latitude: candidate.latitude as number | null,
+    longitude: candidate.longitude as number | null,
+  };
+}
+
+function asPickedAddress(raw: unknown): PickedAddress | null {
+  const address = asVenueAddress(raw, 'snake');
+  const timeZone = (raw as Record<string, unknown> | null)?.time_zone;
+
+  if (address == null || !isStringOrNull(timeZone)) return null;
+
+  return { ...address, timeZone: timeZone as string | null };
+}
+
+function asAddressSuggestion(raw: unknown): AddressSuggestion | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const candidate = raw as Record<string, unknown>;
+
+  if (
+    typeof candidate.id !== 'string' ||
+    typeof candidate.text !== 'string' ||
+    !isStringOrNull(candidate.secondary_text)
+  )
+    return null;
+
+  return {
+    id: candidate.id,
+    text: candidate.text,
+    secondaryText: candidate.secondary_text as string | null,
+  };
+}
+
+function isStringOrNull(value: unknown): value is string | null {
+  return value === null || typeof value === 'string';
 }
 
 const EVENT_STATUSES: readonly EventStatus[] = ['draft'];

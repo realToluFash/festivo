@@ -24,6 +24,7 @@ use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use OTPHP\TOTP;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestWith;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
@@ -106,6 +107,22 @@ final class SignInMethodsTest extends ApiTestCase
         $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => 'provider.linked']);
         self::assertNotNull($entry, 'the audit trail records it');
         self::assertTrue($this->user->getId()->equals($entry->getSubjectId()));
+    }
+
+    /** sc-13266: an empty `email` is no address, so it is neither stored, answered nor emailed. */
+    #[Test]
+    #[TestWith([''])]
+    #[TestWith(['   '])]
+    public function aBlankAddressLinksAsNoAddress(string $blank): void
+    {
+        $body = $this->link(IdentityProvider::Google, 'g-blank', $blank, $this->provedByPassword());
+
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        self::assertSame(['provider' => 'google', 'email' => null], $body);
+        $mails = $this->mails();
+        self::assertNotSame([], $mails);
+        self::assertStringNotContainsString('Google account:', (string) $mails[0]->getTextBody());
+        self::assertSame([['provider' => 'google', 'email' => null]], $this->call('GET', '/api/auth/me')['providers']);
     }
 
     #[Test]
@@ -378,6 +395,21 @@ final class SignInMethodsTest extends ApiTestCase
 
         self::assertSame(ErrorCode::TwoFactorRequired->type(), $body['type']);
         self::assertArrayNotHasKey('providerEmail', $body, 'nothing filled in from the account');
+    }
+
+    #[Test]
+    #[TestWith([''])]
+    #[TestWith(['   '])]
+    public function aBlankAddressGoogleMarksVerifiedSaysNone(string $blank): void
+    {
+        $user = $this->providerOnly([IdentityProvider::Google]);
+        $this->twoFactorFor($user);
+
+        $body = $this->call('POST', '/api/auth/proof', ['provider' => 'google', 'providerSignIn' => ['idToken' => $this->googleToken('g-kemi', $blank)]]);
+
+        self::assertSame(ErrorCode::TwoFactorRequired->type(), $body['type']);
+        self::assertIsString($body['pendingProof'] ?? null);
+        self::assertArrayNotHasKey('providerEmail', $body);
     }
 
     #[Test]

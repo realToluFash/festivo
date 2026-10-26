@@ -1053,8 +1053,11 @@ function MemberDetail({
                 aria-busy={removal === 'removing'}
                 {...offButton(removal === 'removing')}
                 onClick={() => (onlyOwner ? void remove() : confirmRemoving())}
+                title={t('membersScreen.removeButton', { organisation: organisation.name })}
               >
-                {t('membersScreen.removeButton', { organisation: organisation.name })}
+                <span className="button-label">
+                  {t('membersScreen.removeButton', { organisation: organisation.name })}
+                </span>
               </button>
             </>
           ) : (

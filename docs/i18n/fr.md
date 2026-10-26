@@ -253,6 +253,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   passé ». "Single-event access" is « vos accès à des événements précis ». The card and the
   server's refusal say the same sentence, with U+00A0 before the colon in both.
 
+- **26 Oct 2026. Two-factor for everyone, the artboard's lines** (sc-13182,
+  `signInRules.everyoneOn`, `everyoneOff`, `everyoneWithoutBody_*`, `everyoneStillWithout_*`,
+  `emails:signInRules.twoFactorDue.*`). A banner is « un bandeau ». Their deadline is « sa
+  date limite », and the email's facts label it « Date limite », since « Obligatoire à partir
+  du » cannot stand before a colon. "Turn it on once" is « Vous ne l’activez qu’une fois ».
+
 - **21 Oct 2026. Company domain joining** (`domainJoining.*`, `companyDomains.*`,
   `messages:domain_joining.*`, sc-4434). The act is « demander à rejoindre », the wait
   « En attente d'approbation », as the Members state. The approver is « une personne de

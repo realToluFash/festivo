@@ -33,7 +33,7 @@ final readonly class EventEditor
      *
      * A type sent as null is refused like a missing one on create: an event, once typed, stays typed (sc-3588).
      *
-     * @param array{name?: string, type?: ?string, startsAt?: string, endsAt?: string, timeZone?: string, currency?: string} $fields
+     * @param array{name?: string, type?: ?string, startsAt?: string, endsAt?: string, timeZone?: string, currency?: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null} $fields
      */
     public function edit(Event $event, ?string $ifMatch, User $by, array $fields): Event
     {
@@ -56,7 +56,8 @@ final readonly class EventEditor
                 'endsAt' => $fields['endsAt'] ?? $event->getEndsAt()->format('Y-m-d\TH:i:s'),
                 'timeZone' => $fields['timeZone'] ?? $event->getTimeZone(),
                 'currency' => $fields['currency'] ?? $event->getCurrency(),
-            ], $event->getCurrency());
+                ...Iter\contains_key($fields, 'venue') ? ['venue' => $fields['venue']] : [],
+            ], $event->getCurrency(), EventVenue::of($event));
 
             if ($checked['currency'] !== $event->getCurrency() && $this->eventAmounts->anyRecordedFor($event)) {
                 throw new ApiException(ErrorCode::EventCurrencyInUse, 'event.currency_in_use');
@@ -65,6 +66,10 @@ final readonly class EventEditor
             $event->setName($checked['name']);
             $event->setType($checked['type']);
             $event->setCurrency($checked['currency']);
+
+            if (Iter\contains_key($checked, 'venue')) {
+                EventVenue::write($event, $checked['venue']);
+            }
 
             $schedule = [$checked['startsAt']->format(\DATE_ATOM), $checked['endsAt']->format(\DATE_ATOM), $checked['startsAt']->getTimezone()->getName()];
 
@@ -83,7 +88,25 @@ final readonly class EventEditor
         });
     }
 
-    /** @return array{name: string, type: string, startsAt: string, endsAt: string, timeZone: string, currency: string} */
+    /**
+     * What the audit log keeps of a venue: its name, its line, and where it is when that is known.
+     *
+     * @return array{venueName: ?string, venueAddress: ?string, venueCountryCode: ?string, venueCoordinates: ?array{float, float}}
+     */
+    public static function venueRecorded(Event $event): array
+    {
+        $venue = EventVenue::of($event);
+        $address = $venue?->address;
+
+        return [
+            'venueName' => $venue?->name,
+            'venueAddress' => $address?->formatted,
+            'venueCountryCode' => $address?->countryCode,
+            'venueCoordinates' => null === $address?->latitude || null === $address->longitude ? null : [$address->latitude, $address->longitude],
+        ];
+    }
+
+    /** @return array<string, mixed> */
     private static function recorded(Event $event): array
     {
         return [
@@ -93,6 +116,7 @@ final readonly class EventEditor
             'endsAt' => $event->getEndsAt()->format(\DATE_ATOM),
             'timeZone' => $event->getTimeZone(),
             'currency' => $event->getCurrency(),
+            ...self::venueRecorded($event),
         ];
     }
 }
