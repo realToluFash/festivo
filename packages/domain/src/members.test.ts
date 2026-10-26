@@ -125,7 +125,15 @@ describe("what a member's page offers", () => {
   const anOwner = { owns: true, manages: true, withholds: [] };
 
   it('offers nothing on your own page', () => {
-    expect(memberStanding(you, [owner, you], anOwner)).toBe('self');
+    expect(memberStanding(you, [owner, you], admin)).toBe('self');
+    expect(memberStanding(member('members desk', 'active', true), [owner], admin)).toBe('self');
+  });
+
+  it("tells an owner's own page from anybody else's", () => {
+    const yourself = member('owner', 'active', true);
+
+    expect(memberStanding(yourself, [owner, yourself], anOwner)).toBe('selfOwner');
+    expect(memberStanding(yourself, [yourself], anOwner)).toBe('selfOwner');
   });
 
   it('keeps the only active owner as they are, whoever looks', () => {

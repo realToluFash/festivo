@@ -841,6 +841,11 @@ function FixedRole({
         {role}
       </Text>
       {standing === 'self' && (
+        <Text size={tokens.typeBodyPhone.size} muted>
+          {t('membersScreen.ownRoleOwnerCan')}
+        </Text>
+      )}
+      {standing === 'selfOwner' && (
         <>
           <Text size={tokens.typeBodyPhone.size} muted>
             {t('membersScreen.ownRole')}

@@ -860,10 +860,16 @@ function MemberDetail({
         ) : member.self ? (
           <>
             <p className="members-row-name">{roleName(t, member.role)}</p>
-            <p className="muted">{t('membersScreen.ownRole')}</p>
-            <Link className="link-button" to="/app/settings">
-              {t('membersScreen.goToGeneral')}
-            </Link>
+            {standing === 'selfOwner' ? (
+              <>
+                <p className="muted">{t('membersScreen.ownRole')}</p>
+                <Link className="link-button" to="/app/settings">
+                  {t('membersScreen.goToGeneral')}
+                </Link>
+              </>
+            ) : (
+              <p className="muted">{t('membersScreen.ownRoleOwnerCan')}</p>
+            )}
           </>
         ) : standing === 'onlyOwner' ? (
           <>

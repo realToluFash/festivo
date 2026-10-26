@@ -1339,7 +1339,46 @@ describe('inviting somebody', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /^Folake Adeyemi/ }));
 
-    expect(screen.getByText(/You can't change your own role/)).toBeDefined();
+    expect(screen.getByText(/You can't change your own role. Another owner can/)).toBeDefined();
+    expect(screen.getByRole('link', { name: /Go to General/ }).getAttribute('href')).toBe(
+      '/app/settings',
+    );
+    expect(screen.queryByRole('radio')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull();
+  });
+
+  it('tells an administrator on their own row that an owner can change it, and offers nothing', async () => {
+    signedIn(
+      membership({
+        id: 'org_1',
+        name: 'Ìrè Events',
+        role: { id: 'role_2', seededAs: 'administrator', name: null },
+        permissions: OWNER_PERMISSIONS.filter((one) => !one.startsWith('billing')),
+      }),
+    );
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () =>
+        json({
+          ...LIST,
+          members: [
+            member({ self: false }),
+            member({
+              id: 'm_bisi',
+              user: { ...BISI, email: 'bisi@ire.events' },
+              role: { id: 'role_2', seededAs: 'administrator', name: null },
+              self: true,
+            }),
+          ],
+        }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Bisi Adeyemi/ }));
+
+    expect(screen.getByText('You cannot change your own role. An owner can.')).toBeDefined();
+    expect(screen.queryByText(/Another owner can/)).toBeNull();
+    expect(screen.queryByRole('link', { name: /Go to General/ })).toBeNull();
     expect(screen.queryByRole('radio')).toBeNull();
     expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull();
   });

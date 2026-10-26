@@ -1201,6 +1201,7 @@
     "subtitle_one": "{{organisation}} · {{count}} active",
     "subtitle_other": "{{organisation}} · {{count}} active",
     "ownRole": "You cannot change your own role. Another owner can, or you can hand ownership to somebody in Organisation.",
+    "ownRoleOwnerCan": "You cannot change your own role. An owner can.",
     "goToOrganisation": "Go to Organisation ›",
     "fromTheWeb": "To invite somebody, use Soirely on the web.",
     "pickSomebody": "Choose somebody in the list to see them here.",

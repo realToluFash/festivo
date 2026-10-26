@@ -65,6 +65,7 @@ export function historyLine(step: HistoryStep, member: string): { key: string; n
 /** What a member's page offers: sc-68's rules, read from the list the screen loaded, and checked again by the API. */
 export type MemberStanding =
   | 'self'
+  | 'selfOwner'
   | 'onlyOwner'
   | 'suspendedOnlyOwner'
   | 'ownerOnly'
@@ -89,7 +90,7 @@ export function memberStanding(
     (one) => one.status === 'active' && one.role.seededAs === 'owner',
   ).length;
 
-  if (member.self) return 'self';
+  if (member.self) return owner ? 'selfOwner' : 'self';
   if (member.status === 'left_or_removed') return 'readOnly';
   if (owner && member.status === 'active' && activeOwners === 1) return 'onlyOwner';
   if (!caller.manages) return 'readOnly';
