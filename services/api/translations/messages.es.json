@@ -136,6 +136,8 @@
     "event.currency_in_use": "La moneda no puede cambiar una vez que hay importes registrados en este evento.",
     "event.state_invalid": "El estado actual de este evento no lo permite.",
     "event.concluded": "Este evento ya ha terminado, así que no se puede publicar. Cambie antes sus fechas.",
+    "event.already_over": "This event is already over, so it cannot be ended.",
+    "event.schedule_concluded": "This event is over, so its start, end and time zone cannot be changed.",
     "code.mismatch": "Ese código no coincide.",
     "code.expired": "Ese código ha caducado.",
     "code.exhausted": "Ese código ya no sirve.",

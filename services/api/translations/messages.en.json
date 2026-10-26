@@ -136,6 +136,8 @@
     "event.currency_in_use": "The currency cannot change once amounts are recorded against this event.",
     "event.state_invalid": "This event cannot do that in the state it is in now.",
     "event.concluded": "This event's end has passed, so it cannot be made live. Change its dates first.",
+    "event.already_over": "This event is already over, so it cannot be ended.",
+    "event.schedule_concluded": "This event is over, so its start, end and time zone cannot be changed.",
     "code.mismatch": "That code does not match.",
     "code.expired": "That code has expired.",
     "code.exhausted": "That code no longer works.",
