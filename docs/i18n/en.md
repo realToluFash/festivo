@@ -216,6 +216,13 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `errors:two_factor_kept_by_rule`. es, fr and pt are written to the settled meaning already.
   A deadline is "from {{deadline}}" and "until {{deadline}}", the server's `time.dateAt`. The
   emails keep straight apostrophes, as every other line in `emails.en.json`.
+- **26 Oct 2026. Two-factor for everyone, the artboard's lines (sc-13182, sc-13026,
+  `signInRules.everyoneOn`, `everyoneOff`, `everyoneWithoutBody_*`, `everyoneStillWithout_*`,
+  `emails:signInRules.twoFactorDue.*`).** Settled as sc-13026 wrote them. The web lines keep
+  their contractions: they explain, they do not refuse. Somebody without two-factor "sees a
+  banner" until their deadline; other locales name it as their banner word, not "notice".
+  "Required from" in the email's facts is the deadline's label; a locale whose "from" will not
+  stand before a colon may say "Deadline", as the body already says "You have until".
 - **21 Oct 2026. Company domain joining (sc-561, sc-4434, `domainJoining.*`,
   `companyDomains.*`, `messages:domain_joining.*`).** Settled as sc-561 wrote it. The act is
   "ask to join", the button "Ask to join", and "Somebody there approves you before you see
