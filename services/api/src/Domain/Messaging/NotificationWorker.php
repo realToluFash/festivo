@@ -316,7 +316,10 @@ final class NotificationWorker
         try {
             $providerId = $sender->send(Uuid::fromString($id), $recipient, $type->render($channel, $recipient, $payloads));
         } catch (Unreachable $unreachable) {
-            $this->finishDelivery($id, NotificationDeliveryStatus::Failed, $unreachable->getMessage(), attempted: true);
+            if (!$this->forgetIfCancelled($id)) {
+                $this->finishDelivery($id, NotificationDeliveryStatus::Failed, $unreachable->getMessage(), attempted: true);
+            }
+
             $this->release($collapsed);
 
             return;
@@ -346,6 +349,11 @@ final class NotificationWorker
     private function check(NotificationTypeInterface $type, array $row, DateTimeImmutable $now): EventVerdict
     {
         $id = Type\string()->coerce($row['id']);
+
+        if ($this->forgetIfCancelled($id)) {
+            return EventVerdict::Cancel;
+        }
+
         $sendBy = self::moment($row['send_by']);
 
         if (null !== $sendBy && $sendBy < $now) {
@@ -445,6 +453,10 @@ final class NotificationWorker
 
     private function failed(string $id, int $attempts, Throwable $failure): void
     {
+        if ($this->forgetIfCancelled($id)) {
+            return;
+        }
+
         $reason = Str\format('%s: %s', $failure::class, $failure->getMessage());
 
         if ($attempts >= Backoff::ATTEMPTS) {
@@ -470,8 +482,25 @@ final class NotificationWorker
     private function release(array $rows): void
     {
         foreach ($rows as $row) {
-            $this->connection->executeStatement('UPDATE notification_deliveries SET claimed_until = NULL WHERE id = :id', ['id' => $row['id']]);
+            if (!$this->forgetIfCancelled(Type\string()->coerce($row['id']))) {
+                $this->connection->executeStatement('UPDATE notification_deliveries SET claimed_until = NULL WHERE id = :id', ['id' => $row['id']]);
+            }
         }
+    }
+
+    /** A cancel leaves the call under way to finish (sc-104, "a cancel during a send"): any attempt that does not end Sent goes with the rest. */
+    private function forgetIfCancelled(string $id): bool
+    {
+        return 0 < $this->connection->executeStatement(
+            <<<'SQL'
+                DELETE FROM notification_deliveries
+                WHERE id = :id
+                  AND scheduled_notification_id IN (
+                      SELECT id FROM scheduled_notifications WHERE status = :cancelled AND outcome = :byKey
+                  )
+                SQL,
+            ['id' => $id, 'cancelled' => ScheduledNotificationStatus::Cancelled->value, 'byKey' => NotificationScheduler::CANCELLED_BY_KEY],
+        );
     }
 
     private function finishDelivery(string $id, NotificationDeliveryStatus $status, ?string $reason, bool $attempted = false, ?string $providerId = null): void

@@ -26,6 +26,8 @@ use Symfony\Component\Uid\Uuid;
 /** Writes through the caller's open transaction, so a change and the notification it causes commit together. */
 final readonly class NotificationScheduler
 {
+    public const string CANCELLED_BY_KEY = 'cancelled by key';
+
     public function __construct(
         private Connection $connection,
         private NotificationRegistry $notificationRegistry,
@@ -109,19 +111,39 @@ final readonly class NotificationScheduler
         return Iter\count($rows);
     }
 
-    /** The scheduled row is updated first: its lock makes a fan-out in progress finish its chunk before these deliveries are deleted. A delivery a worker holds is left for it to record, so its key still stands. */
+    /** The scheduled row is updated first: its lock makes a fan-out in progress finish its chunk before these deliveries are deleted. A delivery a worker holds is left to it: recorded Sent if its call goes, deleted if not. */
     private function remove(string $cancellationKey): int
     {
         $scheduled = (int) $this->connection->executeStatement(
             <<<'SQL'
                 UPDATE scheduled_notifications
-                SET status = :cancelled, outcome = 'cancelled by key', finished_at = :now, claimed_until = NULL
+                SET status = :cancelled, outcome = :outcome, finished_at = :now, claimed_until = NULL
                 WHERE cancellation_key = :key AND status = :pending
                 SQL,
             [
                 'key' => $cancellationKey,
                 'pending' => ScheduledNotificationStatus::Pending->value,
                 'cancelled' => ScheduledNotificationStatus::Cancelled->value,
+                'outcome' => self::CANCELLED_BY_KEY,
+                'now' => $this->clock->now(),
+            ],
+            ['now' => Types::DATETIME_IMMUTABLE],
+        );
+
+        $this->connection->executeStatement(
+            <<<'SQL'
+                UPDATE scheduled_notifications s
+                SET status = :cancelled, outcome = :outcome, finished_at = :now
+                WHERE s.cancellation_key = :key
+                  AND s.status = :fannedOut
+                  AND EXISTS (SELECT 1 FROM notification_deliveries d WHERE d.scheduled_notification_id = s.id AND d.status = :deliveryPending)
+                SQL,
+            [
+                'key' => $cancellationKey,
+                'fannedOut' => ScheduledNotificationStatus::FannedOut->value,
+                'deliveryPending' => NotificationDeliveryStatus::Pending->value,
+                'cancelled' => ScheduledNotificationStatus::Cancelled->value,
+                'outcome' => self::CANCELLED_BY_KEY,
                 'now' => $this->clock->now(),
             ],
             ['now' => Types::DATETIME_IMMUTABLE],

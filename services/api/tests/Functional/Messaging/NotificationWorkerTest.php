@@ -269,6 +269,37 @@ final class NotificationWorkerTest extends MessagingTestCase
     }
 
     #[Test]
+    public function aDeliveryCancelledWhileItsSendFailsIsDeletedAndNotTriedAgain(): void
+    {
+        self::sender()->failuresLeft = 1;
+        self::scheduler()->schedule('test.interrupted', 'reminder:4', 'r4', Trigger::at(new DateTimeImmutable('-1 minute')), $this->budgetHolders());
+        self::worker()->step();
+        self::service(Meanwhile::class)->happens = static fn (): int => self::scheduler()->cancel('reminder:4');
+
+        self::runUntilIdle();
+        self::connection()->executeStatement("UPDATE notification_deliveries SET next_attempt_at = NOW() - INTERVAL '2 seconds'");
+        self::runUntilIdle();
+
+        self::assertSame(1, self::sender()->calls);
+        self::assertSame(0, self::rowCount('SELECT COUNT(*) FROM notification_deliveries'));
+    }
+
+    #[Test]
+    public function aDeliveryCancelledWhileItsWorkerHasStoppedIsDeletedOnceItsClaimExpires(): void
+    {
+        self::scheduler()->schedule('test.notice', 'stopped', 'stopped', Trigger::at(new DateTimeImmutable('-1 minute')), $this->budgetHolders());
+        self::worker()->step();
+        self::connection()->executeStatement("UPDATE notification_deliveries SET claimed_at = NOW(), claimed_until = NOW() + INTERVAL '1 minute'");
+        self::scheduler()->cancel('stopped');
+
+        self::connection()->executeStatement("UPDATE notification_deliveries SET claimed_until = NOW() - INTERVAL '2 seconds'");
+        self::runUntilIdle();
+
+        self::assertSame(0, self::sender()->calls);
+        self::assertSame(0, self::rowCount('SELECT COUNT(*) FROM notification_deliveries'));
+    }
+
+    #[Test]
     public function aRowWhoseCheckThrowsIsRecordedFailedAndTheNextOneStillGoes(): void
     {
         self::scheduler()->schedule('test.notice', 'broken', 'broken', Trigger::at(new DateTimeImmutable('-2 minutes')), $this->budgetHolders(), ['stillDue' => 'not a yes or no']);
