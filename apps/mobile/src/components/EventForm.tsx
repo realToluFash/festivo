@@ -65,7 +65,6 @@ type Status = 'editing' | 'sending' | 'failed' | 'changedElsewhere' | 'created';
 
 type Asking = 'leave' | 'latest' | null;
 
-/** `App event form` (sc-3595): the web's New event and Edit details, field for field, in one scrolling form. */
 export function EventForm({
   kind,
   organisation,
@@ -76,7 +75,6 @@ export function EventForm({
 }: {
   kind: LayoutKind;
   organisation: Membership;
-  /** The event as read with its tag, to edit; absent, a new event. */
   opened?: TaggedEvent | undefined;
   onCreated: (eventId: string) => void;
   onSaved: (outcome: 'saved' | 'unchanged') => void;
