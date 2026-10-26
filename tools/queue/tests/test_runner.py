@@ -673,6 +673,37 @@ class Worker(unittest.TestCase):
             runner.worker_ended(self.home, self.platform, "ops", 1, now=ON_ZERO)
         self.assertFalse(folder.exists())
 
+    def started(self, name):
+        (self.root / f"soirely-{name}").mkdir(exist_ok=True)
+        store.record(self.db, [work(name)], ON_ZERO)
+        item_id = store.waiting(self.db, name)[0]["id"]
+        prompts, asked = [], []
+
+        def claude(argv, input, cwd, env, finished):
+            prompts.append(input)
+            return 0, json.dumps({"type": "result", "result": "ok"}), "", None
+
+        def refresh(db, path, main):
+            asked.append((path.name, main))
+            return "Your QA harness (.qa/bin/qa-env.mjs) was updated to main at ccccccc."
+
+        runner.worker(self.db, self.home, self.platform, name, item_id, run_claude=claude,
+                      load=lambda: config(self.root, roles={name: {}}),
+                      prepare=lambda *_: ("c" * 40, "Your checkout has changes."),
+                      refresh_harness=refresh, now=ON_ZERO)
+        return prompts[0], asked
+
+    def test_a_testers_start_refreshes_its_harness_and_says_so(self):
+        prompt, asked = self.started("qa2")
+        self.assertEqual(asked, [("soirely-qa2", "c" * 40)])
+        self.assertIn("Your checkout has changes.\nYour QA harness (.qa/bin/qa-env.mjs) was "
+                      "updated to main at ccccccc.", prompt)
+
+    def test_no_other_roles_start_touches_a_harness(self):
+        prompt, asked = self.started("dev2")
+        self.assertEqual(asked, [])
+        self.assertNotIn("QA harness", prompt)
+
     def test_a_checkout_that_cannot_fetch_is_reported_and_runs_no_model(self):
         def unprepared(*_):
             raise checkout.Unprepared("git fetch failed 3 times: cannot lock ref")
