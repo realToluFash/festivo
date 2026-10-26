@@ -8,4 +8,5 @@ namespace App\Enum;
 enum NotificationHold: string
 {
     case Paused = 'paused';
+    case Deleted = 'deleted';
 }

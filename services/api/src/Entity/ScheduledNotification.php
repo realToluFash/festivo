@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\NotificationHold;
 use App\Enum\NotificationPriority;
 use App\Enum\ScheduledNotificationStatus;
 use DateTimeImmutable;
@@ -64,6 +65,9 @@ class ScheduledNotification
 
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $fannedOutAfter = null;
+
+    #[ORM\Column(type: Types::STRING, length: 20, nullable: true, enumType: NotificationHold::class)]
+    private ?NotificationHold $held = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $claimedAt = null;
@@ -157,6 +161,11 @@ class ScheduledNotification
     public function getFannedOutAfter(): ?string
     {
         return $this->fannedOutAfter;
+    }
+
+    public function getHeld(): ?NotificationHold
+    {
+        return $this->held;
     }
 
     public function getClaimedAt(): ?DateTimeImmutable

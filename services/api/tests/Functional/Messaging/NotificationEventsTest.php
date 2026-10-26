@@ -9,6 +9,7 @@ use App\Domain\Event\EventTimesRecomputer;
 use App\Domain\Messaging\Model\Audience;
 use App\Domain\Messaging\Model\EventAnchor;
 use App\Domain\Messaging\Model\Trigger;
+use App\Entity\Event;
 use App\Enum\Permission;
 use App\Http\EntityTag;
 use DateTimeImmutable;
@@ -103,30 +104,99 @@ final class NotificationEventsTest extends MessagingTestCase
     }
 
     #[Test]
-    public function nothingAutomaticGoesForAnEventWhoseOrganisationIsDeleted(): void
+    public function aDeletedEventsRowWaitsWhileItsDeletionNoticeGoes(): void
     {
         $event = $this->event();
-        self::scheduler()->schedule('test.notice', 'gone', 'gone', Trigger::at(new DateTimeImmutable('-1 minute')), $this->members(), [], $event);
-        self::connection()->executeStatement('UPDATE organisations SET deleted_at = NOW() WHERE id = :id', ['id' => $this->organisation->getId()->toRfc4122()]);
-
-        self::runUntilIdle();
-
-        self::assertSame([], self::sender()->sent);
-        self::assertSame('cancelled', self::scalar('SELECT status FROM scheduled_notifications'));
-    }
-
-    #[Test]
-    public function onlyItsDeletionNoticeGoesForAnEventThatIsDeleted(): void
-    {
-        $event = $this->event();
-        self::scheduler()->schedule('test.notice', 'gone', 'gone', Trigger::at(new DateTimeImmutable('-1 minute')), $this->members(), [], $event);
+        self::scheduler()->schedule('test.notice', 'held', 'held', Trigger::at(new DateTimeImmutable('-1 minute')), $this->members(), [], $event);
         self::scheduler()->schedule('test.deletion', 'deleted', 'deleted', Trigger::at(new DateTimeImmutable('-1 minute')), $this->members(), [], $event);
-        self::connection()->executeStatement('UPDATE events SET deleted_at = NOW() WHERE id = :id', ['id' => $event->getId()->toRfc4122()]);
+        $this->deleteEvent($event);
 
         self::runUntilIdle();
 
         self::assertSame(['test.deletion'], Vec\map(self::sender()->sent, static fn (array $sent): string => $sent['notification']->subject));
-        self::assertSame('cancelled', self::scalar("SELECT status FROM scheduled_notifications WHERE type = 'test.notice'"));
+        self::assertSame(['pending', 'deleted'], self::connection()->fetchNumeric("SELECT status, held FROM scheduled_notifications WHERE type = 'test.notice'"));
+        self::assertSame(0, self::rowCount("SELECT COUNT(*) FROM notification_deliveries WHERE type = 'test.notice'"));
+    }
+
+    #[Test]
+    public function aDeletedEventsHeldRowIsSentOnceItIsRestored(): void
+    {
+        $event = $this->event();
+        self::scheduler()->schedule('test.notice', 'held', 'held', Trigger::at(new DateTimeImmutable('-1 minute')), $this->members(), [], $event);
+        $this->deleteEvent($event);
+        self::runUntilIdle();
+
+        self::connection()->executeStatement('UPDATE events SET deleted_at = NULL WHERE id = :id', ['id' => $event->getId()->toRfc4122()]);
+        self::aMinutePasses();
+        self::runUntilIdle();
+
+        self::assertSame(['OWNER'], self::sentTo());
+        self::assertSame(['fanned_out', null], self::connection()->fetchNumeric('SELECT status, held FROM scheduled_notifications'));
+    }
+
+    #[Test]
+    public function aHeldRowRestoredPastItsTypesLimitIsRecordedTooLate(): void
+    {
+        $event = $this->event();
+        self::scheduler()->schedule('test.timely', 'held', 'held', Trigger::at(new DateTimeImmutable('-1 minute')), $this->members(), [], $event);
+        $this->deleteEvent($event);
+        self::runUntilIdle();
+
+        self::connection()->executeStatement("UPDATE scheduled_notifications SET send_by = NOW() - INTERVAL '2 seconds'");
+        self::connection()->executeStatement('UPDATE events SET deleted_at = NULL WHERE id = :id', ['id' => $event->getId()->toRfc4122()]);
+        self::aMinutePasses();
+        self::runUntilIdle();
+
+        self::assertSame([], self::sender()->sent);
+        self::assertSame(['too_late', null], self::connection()->fetchNumeric('SELECT status, held FROM scheduled_notifications'));
+    }
+
+    #[Test]
+    public function aRowForAnOrganisationsMembersGoesOnceTheOrganisationIsRestored(): void
+    {
+        $event = $this->event();
+        $organisation = ['id' => $this->organisation->getId()->toRfc4122()];
+        self::scheduler()->schedule('test.notice', 'members', 'members', Trigger::at(new DateTimeImmutable('-1 minute')), $this->members(), [], $event);
+        self::connection()->executeStatement('UPDATE organisations SET deleted_at = NOW() WHERE id = :id', $organisation);
+        self::runUntilIdle();
+        self::assertSame([], self::sender()->sent);
+
+        self::connection()->executeStatement('UPDATE organisations SET deleted_at = NULL WHERE id = :id', $organisation);
+        self::aMinutePasses();
+        self::runUntilIdle();
+
+        self::assertSame(['OWNER'], self::sentTo());
+    }
+
+    #[Test]
+    public function aFinishedEventsAutomaticRowIsCancelledNotHeldOnceItIsDeleted(): void
+    {
+        $event = $this->event('-2 days');
+        self::connection()->executeStatement("UPDATE events SET status = 'ended' WHERE id = :id", ['id' => $event->getId()->toRfc4122()]);
+        self::scheduler()->schedule('test.notice', 'late', 'late', Trigger::at(new DateTimeImmutable('-1 minute')), $this->members(), [], $event);
+        $this->deleteEvent($event);
+
+        self::runUntilIdle();
+
+        self::assertSame(['cancelled', null], self::connection()->fetchNumeric('SELECT status, held FROM scheduled_notifications'));
+    }
+
+    #[Test]
+    public function aDeliveryWaitingWhenItsEventIsDeletedIsHeldForTheRestore(): void
+    {
+        $event = $this->event();
+        self::scheduler()->schedule('test.notice', 'fanned', 'fanned', Trigger::at(new DateTimeImmutable('-1 minute')), $this->members(), [], $event);
+        self::worker()->step();
+        $this->deleteEvent($event);
+
+        self::runUntilIdle();
+        self::assertSame(['pending', 'deleted'], self::connection()->fetchNumeric('SELECT status, held FROM notification_deliveries'));
+
+        self::connection()->executeStatement('UPDATE events SET deleted_at = NULL WHERE id = :id', ['id' => $event->getId()->toRfc4122()]);
+        self::aMinutePasses();
+        self::runUntilIdle();
+
+        self::assertSame(['OWNER'], self::sentTo());
     }
 
     #[Test]
@@ -140,6 +210,18 @@ final class NotificationEventsTest extends MessagingTestCase
 
         self::assertSame(0, self::rowCount('SELECT COUNT(*) FROM scheduled_notifications'));
         self::assertSame(0, self::rowCount('SELECT COUNT(*) FROM notification_deliveries'));
+    }
+
+    private function deleteEvent(Event $event): void
+    {
+        self::connection()->executeStatement('UPDATE events SET deleted_at = NOW() WHERE id = :id', ['id' => $event->getId()->toRfc4122()]);
+    }
+
+    /** The worker's hold recheck, without waiting for it. */
+    private static function aMinutePasses(): void
+    {
+        self::connection()->executeStatement("UPDATE scheduled_notifications SET claimed_until = NOW() - INTERVAL '2 seconds' WHERE claimed_until IS NOT NULL");
+        self::connection()->executeStatement("UPDATE notification_deliveries SET next_attempt_at = NOW() - INTERVAL '2 seconds' WHERE held IS NOT NULL");
     }
 
     private function members(): Audience

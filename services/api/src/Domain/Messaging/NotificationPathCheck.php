@@ -88,6 +88,7 @@ final readonly class NotificationPathCheck
                     SELECT due_at AS since
                     FROM scheduled_notifications
                     WHERE status = :scheduledPending
+                      AND held IS NULL
                       AND due_at <= :now
                       AND (claimed_until IS NULL OR claimed_until < :now)
                     UNION ALL

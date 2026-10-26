@@ -11,7 +11,7 @@ use App\Enum\NotificationEventRule;
 use DateInterval;
 use DateTimeImmutable;
 
-/** Whether a type may go for an event as it is now (sc-104, epic 36 §9). An event that is deleted, or whose organisation is, arrives here deleted. */
+/** Whether a type may go for an event as it is now (sc-104, epic 36 §9). An event that is deleted, or whose organisation is, arrives here deleted, and holds what it would still take for a restore. */
 final readonly class EventGate
 {
     public const string HOST_MESSAGES_AFTER_END = 'P30D';
@@ -22,10 +22,17 @@ final readonly class EventGate
             return NotificationEventRule::DeletionNotice === $rule ? EventVerdict::Send : EventVerdict::Cancel;
         }
 
-        if ($event->deleted) {
-            return NotificationEventRule::DeletionNotice === $rule ? EventVerdict::Send : EventVerdict::Cancel;
+        if (NotificationEventRule::DeletionNotice === $rule) {
+            return EventVerdict::Send;
         }
 
+        $verdict = self::undeleted($rule, $event, $now);
+
+        return $event->deleted && EventVerdict::Cancel !== $verdict ? EventVerdict::Hold : $verdict;
+    }
+
+    private static function undeleted(NotificationEventRule $rule, EventState $event, DateTimeImmutable $now): EventVerdict
+    {
         return match (EventPhase::of($event->status, $event->startsAt, $event->endsAt, $now)) {
             EventPhase::Draft, EventPhase::Live, EventPhase::HappeningNow => EventVerdict::Send,
             EventPhase::Paused => match ($rule) {

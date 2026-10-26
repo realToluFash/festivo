@@ -117,7 +117,7 @@ final readonly class NotificationScheduler
         $scheduled = (int) $this->connection->executeStatement(
             <<<'SQL'
                 UPDATE scheduled_notifications
-                SET status = :cancelled, outcome = :outcome, finished_at = :now, claimed_until = NULL
+                SET status = :cancelled, outcome = :outcome, held = NULL, finished_at = :now, claimed_until = NULL
                 WHERE cancellation_key = :key AND status = :pending
                 SQL,
             [

@@ -136,9 +136,17 @@ final class NotificationWorker
         }
 
         $eventId = Type\nullable(Type\string())->coerce($row['event_id']);
+        $event = null === $eventId ? null : $this->eventState($eventId);
+        $verdict = null === $eventId ? EventVerdict::Send : EventGate::verdict($type->eventRule(), $event, $now);
 
-        if (null !== $eventId && EventVerdict::Cancel === EventGate::verdict($type->eventRule(), $this->eventState($eventId), $now)) {
+        if (EventVerdict::Cancel === $verdict) {
             $this->finishScheduled($id, ScheduledNotificationStatus::Cancelled, 'the event no longer takes it');
+
+            return;
+        }
+
+        if (EventVerdict::Hold === $verdict && true === $event?->deleted) {
+            $this->holdScheduled($id, $now);
 
             return;
         }
@@ -172,11 +180,26 @@ final class NotificationWorker
                 $this->finishScheduled($id, ScheduledNotificationStatus::FannedOut, null);
             } else {
                 $this->connection->executeStatement(
-                    'UPDATE scheduled_notifications SET fanned_out_after = :after, claimed_until = NULL WHERE id = :id',
+                    'UPDATE scheduled_notifications SET fanned_out_after = :after, held = NULL, claimed_until = NULL WHERE id = :id',
                     ['after' => Iter\last($recipients)?->toRfc4122(), 'id' => $id],
                 );
             }
         });
+    }
+
+    /** Before fan-out, because a deleted event's audience resolves to nobody (sc-104, "a deleted event's rows wait for a restore"). Its lease is its recheck. */
+    private function holdScheduled(string $id, DateTimeImmutable $now): void
+    {
+        $this->connection->executeStatement(
+            'UPDATE scheduled_notifications SET held = :held, claimed_until = :recheck WHERE id = :id AND status = :pending',
+            [
+                'held' => NotificationHold::Deleted->value,
+                'recheck' => $now->add(new DateInterval(self::HOLD_RECHECK)),
+                'id' => $id,
+                'pending' => ScheduledNotificationStatus::Pending->value,
+            ],
+            ['recheck' => Types::DATETIME_IMMUTABLE],
+        );
     }
 
     /** Cancelled or replaced since the claim: the scheduler's update waits on this lock, or this sees what it wrote. */
@@ -363,12 +386,13 @@ final class NotificationWorker
         }
 
         $eventId = Type\nullable(Type\string())->coerce($row['event_id']);
-        $verdict = null === $eventId ? EventVerdict::Send : EventGate::verdict($type->eventRule(), $this->eventState($eventId), $now);
+        $event = null === $eventId ? null : $this->eventState($eventId);
+        $verdict = null === $eventId ? EventVerdict::Send : EventGate::verdict($type->eventRule(), $event, $now);
 
         if (EventVerdict::Hold === $verdict) {
             $this->connection->executeStatement(
                 'UPDATE notification_deliveries SET held = :held, next_attempt_at = :recheck, claimed_until = NULL WHERE id = :id',
-                ['held' => NotificationHold::Paused->value, 'recheck' => $now->add(new DateInterval(self::HOLD_RECHECK)), 'id' => $id],
+                ['held' => (true === $event?->deleted ? NotificationHold::Deleted : NotificationHold::Paused)->value, 'recheck' => $now->add(new DateInterval(self::HOLD_RECHECK)), 'id' => $id],
                 ['recheck' => Types::DATETIME_IMMUTABLE],
             );
 
@@ -534,7 +558,7 @@ final class NotificationWorker
         $this->connection->executeStatement(
             <<<'SQL'
                 UPDATE scheduled_notifications
-                SET status = :status, outcome = :outcome, finished_at = :now, claimed_until = NULL
+                SET status = :status, outcome = :outcome, held = NULL, finished_at = :now, claimed_until = NULL
                 WHERE id = :id AND status = :pending
                 SQL,
             ['status' => $status->value, 'outcome' => $outcome, 'now' => $this->clock->now(), 'id' => $id, 'pending' => ScheduledNotificationStatus::Pending->value],

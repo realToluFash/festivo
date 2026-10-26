@@ -74,6 +74,15 @@ final class NotificationPathCheckTest extends MessagingTestCase
     }
 
     #[Test]
+    public function aScheduledRowHeldForADeletedEventIsNotWaiting(): void
+    {
+        $this->due('-6 minutes');
+        self::connection()->executeStatement("UPDATE scheduled_notifications SET held = 'deleted', claimed_until = NOW() - INTERVAL '1 minute', claimed_at = NOW() - INTERVAL '10 minutes'");
+
+        self::assertSame([], $this->check());
+    }
+
+    #[Test]
     public function overFivePercentOfAnHoursSendsFailedIsFailing(): void
     {
         $this->finished(18, 'sent');

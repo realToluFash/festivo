@@ -31,6 +31,7 @@ final class Version20261026190000 extends AbstractMigration
                 priority          SMALLINT NOT NULL,
                 status            VARCHAR(20) NOT NULL,
                 fanned_out_after  VARCHAR(255) DEFAULT NULL,
+                held              VARCHAR(20) DEFAULT NULL,
                 claimed_at        TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL,
                 claimed_until     TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL,
                 outcome           TEXT DEFAULT NULL,
