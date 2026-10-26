@@ -42,6 +42,7 @@ import { FieldError } from './Field.tsx';
 import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
 import { OwnerClaimBanner } from './OwnerClaimBanner.tsx';
+import { GlyphMark, type Mark } from './StatusMark.tsx';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import {
   type StepClosed,
@@ -68,7 +69,9 @@ export function activeCount(list: MembersList): number {
   return list.members.filter((member) => member.status === 'active').length;
 }
 
-const FORMER_MARK = {
+const MEMBER_MARK = 18;
+
+const FORMER_MARK: Mark = {
   glyph: tokens.marks.broken.glyph,
   fill: tokens.colorCard,
   ring: tokens.colorInkSecondary,
@@ -90,18 +93,7 @@ function MemberState({ member }: { member: OrganisationMember }) {
 
   return (
     <View style={styles.state}>
-      <View style={[styles.mark, { backgroundColor: mark.fill, borderColor: mark.ring }]}>
-        <Text
-          size={tokens.typeMeta.size}
-          weight="bold"
-          style={{ color: mark.ink }}
-          accessibilityElementsHidden
-          importantForAccessibility="no"
-          accessible={false}
-        >
-          {mark.glyph}
-        </Text>
-      </View>
+      <GlyphMark mark={mark} side={MEMBER_MARK} />
       <Text size={tokens.typeSmall.size} weight="semibold" style={word}>
         {memberStatusWord(t, member)}
       </Text>
@@ -1230,12 +1222,13 @@ const styles = StyleSheet.create({
   start: { alignSelf: 'flex-start' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceXs },
   chip: {
-    height: tokens.sizeHit,
+    minHeight: tokens.sizeHit,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceXs,
     paddingHorizontal: 14,
-    borderRadius: tokens.sizeHit / 2,
+    paddingVertical: tokens.spaceXxs,
+    borderRadius: tokens.radiusPill,
     borderWidth: 1,
     borderColor: tokens.colorControlBorder,
     backgroundColor: tokens.colorCard,
@@ -1286,14 +1279,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.spaceXs,
     marginTop: tokens.spaceHair,
-  },
-  mark: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   wordActive: { color: tokens.colorAccentText },
   wordQuiet: { color: tokens.colorInkSecondary },

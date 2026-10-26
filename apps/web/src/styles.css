@@ -2617,8 +2617,8 @@ span {
 }
 
 .account-section[aria-current='page'] {
-  background: var(--colorInset);
-  color: var(--colorInk);
+  background: var(--colorDark);
+  color: var(--colorInkOnDark);
 }
 
 .tz-current {
