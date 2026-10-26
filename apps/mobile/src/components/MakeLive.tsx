@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { type MakeLiveRefusal, STATUS_WORD, draftRowOf, refusalOf } from '../kit/makeLive.ts';
+import { type MakeLiveRefusal, NOW_STATE, draftRowOf, refusalOf } from '../kit/makeLive.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
@@ -128,10 +128,7 @@ function Asked({
           ],
         ]
       : asking.kind === 'changed'
-        ? [
-            t('eventLive.changedElsewhere'),
-            [t('eventLive.nowState', { state: t(STATUS_WORD[status]) })],
-          ]
+        ? [t('eventLive.changedElsewhere'), [t(NOW_STATE[status])]]
         : asking.kind === 'concluded'
           ? [t('eventLive.notMadeLive'), [t('eventLive.endPassed')]]
           : [

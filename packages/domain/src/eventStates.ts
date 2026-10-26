@@ -58,3 +58,39 @@ export function eventTransition(
 
   return row == null ? null : { to: row.to as EventState, guards: row.guards };
 }
+
+export interface MakeLiveRow {
+  line: 'guestsBlocked' | 'endPassed';
+  makeLive: boolean;
+}
+
+/** A Draft's one line for the areas it blocks, while the table still leads it to Live; past `end_not_passed` it says so instead. */
+export function makeLiveRow(
+  event: { status: EventState; startsAt: string; endsAt: string },
+  now: Date,
+): MakeLiveRow | null {
+  const phase = eventPhase(event, now);
+  const transition = eventTransition(event.status, 'make_live');
+
+  if (transition == null || eventAllows(phase, 'invite')) return null;
+
+  const endPassed =
+    transition.guards.includes('end_not_passed') && now.getTime() >= Date.parse(event.endsAt);
+
+  return {
+    line: endPassed ? 'endPassed' : 'guestsBlocked',
+    makeLive: !endPassed && eventAllows(phase, 'make_live'),
+  };
+}
+
+const SCHEDULE = ['startsAt', 'endsAt', 'timeZone'];
+
+/** A change to the start, end or zone needs `edit_schedule`, and to anything else `edit`: a save of both needs both. */
+export function editActions(changed: readonly string[]): EventAction[] {
+  const schedule = changed.filter((field) => SCHEDULE.includes(field));
+
+  return [
+    ...(schedule.length > 0 ? ['edit_schedule'] : []),
+    ...(schedule.length < changed.length ? ['edit'] : []),
+  ];
+}

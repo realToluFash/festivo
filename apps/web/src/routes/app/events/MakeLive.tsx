@@ -1,4 +1,5 @@
 import { ApiError, type EventStatus, type OrganisationEvent } from '@soirely/api-client';
+import { makeLiveRow } from '@soirely/domain';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -12,6 +13,13 @@ const STATUS_WORD = {
   live: 'events.live',
   paused: 'events.paused',
   ended: 'events.finished',
+} as const satisfies Record<EventStatus, string>;
+
+const NOW_STATE = {
+  draft: 'eventLive.nowState_draft',
+  live: 'eventLive.nowState_live',
+  paused: 'eventLive.nowState_paused',
+  ended: 'eventLive.nowState_finished',
 } as const satisfies Record<EventStatus, string>;
 
 /** A word, never colour alone (WCAG 2.2 §1.4.1); a Live event's pill has a green dot beside it. */
@@ -31,7 +39,7 @@ type Asking =
   | { kind: 'concluded' }
   | { kind: 'planLimit'; plan: string; limit: number };
 
-/** A Draft's line for the areas it blocks (Guests so far), with Make live beside it. */
+/** A Draft's line for the areas it blocks (Guests so far), with Make live beside it, as `/event-states.json` says. */
 export function DraftRow({
   event,
   manages,
@@ -46,8 +54,8 @@ export function DraftRow({
   const { t } = useTranslation();
   const [asking, setAsking] = useState<Asking | null>(null);
   const makeLive = useRef<HTMLButtonElement>(null);
-  const [now] = useState(Date.now);
-  const concluded = now >= Date.parse(event.endsAt);
+  const [now] = useState(() => new Date());
+  const row = makeLiveRow(event, now);
 
   const close = () => {
     setAsking(null);
@@ -91,18 +99,12 @@ export function DraftRow({
 
   return (
     <>
-      {event.status === 'draft' && (
+      {row != null && (
         <div className="event-draft-row">
           <span className="mark mark-off" aria-hidden="true" />
-          <p className="event-draft-line">
-            {concluded ? t('eventLive.endPassed') : t('eventLive.guestsBlocked')}
-          </p>
+          <p className="event-draft-line">{t(`eventLive.${row.line}`)}</p>
           {manages &&
-            (concluded ? (
-              <Link className="button" to={`/app/events/${encodeURIComponent(event.id)}/edit`}>
-                {t('eventLive.changeDates')}
-              </Link>
-            ) : (
+            (row.makeLive ? (
               <button
                 ref={makeLive}
                 type="button"
@@ -111,6 +113,10 @@ export function DraftRow({
               >
                 {t('eventLive.makeLive')}
               </button>
+            ) : (
+              <Link className="button" to={`/app/events/${encodeURIComponent(event.id)}/edit`}>
+                {t('eventLive.changeDates')}
+              </Link>
             ))}
         </div>
       )}
@@ -152,10 +158,7 @@ function MakeLiveDialog({
           ],
         ]
       : asking.kind === 'changed'
-        ? [
-            t('eventLive.changedElsewhere'),
-            [t('eventLive.nowState', { state: t(STATUS_WORD[asking.status]) })],
-          ]
+        ? [t('eventLive.changedElsewhere'), [t(NOW_STATE[asking.status])]]
         : asking.kind === 'concluded'
           ? [t('eventLive.notMadeLive'), [t('eventLive.endPassed')]]
           : [

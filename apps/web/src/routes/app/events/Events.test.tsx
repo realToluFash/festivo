@@ -1724,7 +1724,7 @@ describe('Make live (sc-3584)', () => {
       name: 'Somebody else changed this event while you had it open.',
     });
     expect(
-      within(changed).getByText("It's Live now. The page shows what it is now."),
+      within(changed).getByText("It's live now. The page shows what it is now."),
     ).toBeDefined();
     fireEvent.click(within(changed).getByRole('button', { name: 'Close' }));
     expect(screen.getByText('Live')).toBeDefined();

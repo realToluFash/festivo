@@ -6,9 +6,11 @@ import {
   EVENT_STATES,
   type EventState,
   allowedActions,
+  editActions,
   eventAllows,
   eventPhase,
   eventTransition,
+  makeLiveRow,
 } from './eventStates.ts';
 
 const TYPED: Record<EventState, true> = { draft: true, live: true, paused: true, ended: true };
@@ -77,13 +79,6 @@ describe('eventAllows', () => {
     expect(allowedActions('paused')).toEqual([]);
   });
 
-  it('checks edit and edit_schedule apart', () => {
-    expect(EVENT_ACTIONS).toContain('edit');
-    expect(EVENT_ACTIONS).toContain('edit_schedule');
-    expect(eventAllows('paused', 'edit')).toBe(false);
-    expect(eventAllows('paused', 'edit_schedule')).toBe(false);
-  });
-
   it('refuses an action nobody declared', () => {
     expect(eventAllows('live', 'publish')).toBe(false);
   });
@@ -99,5 +94,54 @@ describe('eventTransition', () => {
 
   it.each(['live', 'paused', 'ended'] as const)('has no make_live from %s', (state) => {
     expect(eventTransition(state, 'make_live')).toBeNull();
+  });
+});
+
+describe('editActions', () => {
+  it.each([
+    [['name'], ['edit']],
+    [['venueName', 'currency'], ['edit']],
+    [['startsAt'], ['edit_schedule']],
+    [['endsAt', 'timeZone'], ['edit_schedule']],
+    [
+      ['name', 'startsAt'],
+      ['edit_schedule', 'edit'],
+    ],
+    [[], []],
+  ])('a change to %j needs %j', (changed, needed) => {
+    expect(editActions(changed)).toEqual(needed);
+  });
+
+  it('names only declared actions', () => {
+    expect(EVENT_ACTIONS).toEqual(expect.arrayContaining(editActions(['name', 'endsAt'])));
+  });
+});
+
+describe('makeLiveRow', () => {
+  const event = { startsAt: '2026-11-14T16:00:00+01:00', endsAt: '2026-11-15T02:00:00+01:00' };
+  const before = new Date('2026-11-14T14:59:59Z');
+  const after = new Date('2026-11-15T01:00:00Z');
+
+  it('says what a draft blocks, with Make live', () => {
+    expect(makeLiveRow({ ...event, status: 'draft' }, before)).toEqual({
+      line: 'guestsBlocked',
+      makeLive: true,
+    });
+  });
+
+  it('says a draft past its end cannot go live', () => {
+    expect(makeLiveRow({ ...event, status: 'draft' }, after)).toEqual({
+      line: 'endPassed',
+      makeLive: false,
+    });
+  });
+
+  it.each([
+    ['live', before],
+    ['live', after],
+    ['paused', before],
+    ['ended', before],
+  ] as const)('shows nothing for %s at %s', (status, now) => {
+    expect(makeLiveRow({ ...event, status }, now)).toBeNull();
   });
 });

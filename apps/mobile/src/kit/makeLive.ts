@@ -1,4 +1,5 @@
 import { ApiError, type EventStatus, type OrganisationEvent } from '@soirely/api-client';
+import { type MakeLiveRow, makeLiveRow } from '@soirely/domain';
 
 /** The word each stored state shows, never its colour alone (WCAG 2.2 §1.4.1). */
 export const STATUS_WORD = {
@@ -8,22 +9,28 @@ export const STATUS_WORD = {
   ended: 'eventsScreen.finished',
 } as const satisfies Record<EventStatus, string>;
 
+/** Each state's sentence whole, so a translation can agree it with the event. */
+export const NOW_STATE = {
+  draft: 'eventLive.nowState_draft',
+  live: 'eventLive.nowState_live',
+  paused: 'eventLive.nowState_paused',
+  ended: 'eventLive.nowState_finished',
+} as const satisfies Record<EventStatus, string>;
+
 export interface DraftRow {
-  line: 'guestsBlocked' | 'endPassed';
+  line: MakeLiveRow['line'];
   offersMakeLive: boolean;
 }
 
-/** A Draft's one line for the areas it blocks (sc-3584); one whose end has passed says so instead, with no Make live. */
+/** The row `/event-states.json` gives the event (sc-3584); Make live only to someone who manages it. */
 export function draftRowOf(
-  event: Pick<OrganisationEvent, 'status' | 'endsAt'>,
+  event: Pick<OrganisationEvent, 'status' | 'startsAt' | 'endsAt'>,
   now: number,
   manages: boolean,
 ): DraftRow | null {
-  if (event.status !== 'draft') return null;
+  const row = makeLiveRow(event, new Date(now));
 
-  const concluded = now >= Date.parse(event.endsAt);
-
-  return { line: concluded ? 'endPassed' : 'guestsBlocked', offersMakeLive: manages && !concluded };
+  return row == null ? null : { line: row.line, offersMakeLive: manages && row.makeLive };
 }
 
 export type MakeLiveRefusal =
