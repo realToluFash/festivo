@@ -11,7 +11,7 @@ use App\Enum\NotificationEventRule;
 use DateInterval;
 use DateTimeImmutable;
 
-/** Whether a type may go for an event as it is now (sc-104, epic 36 §9). An event whose organisation is deleted arrives here deleted. */
+/** Whether a type may go for an event as it is now (sc-104, epic 36 §9). An event that is deleted, or whose organisation is, arrives here deleted. */
 final readonly class EventGate
 {
     public const string HOST_MESSAGES_AFTER_END = 'P30D';

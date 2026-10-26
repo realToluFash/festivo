@@ -563,7 +563,7 @@ final class NotificationWorker
     {
         $row = $this->connection->fetchAssociative(
             <<<'SQL'
-                SELECT e.status, e.starts_at_utc, e.ends_at_utc, e.ended_at, o.deleted_at IS NOT NULL AS deleted
+                SELECT e.status, e.starts_at_utc, e.ends_at_utc, e.ended_at, (e.deleted_at IS NOT NULL OR o.deleted_at IS NOT NULL) AS deleted
                 FROM events e
                 JOIN organisations o ON o.id = e.organisation_id
                 WHERE e.id = :id

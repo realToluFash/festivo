@@ -115,6 +115,19 @@ final class NotificationEventsTest extends MessagingTestCase
     }
 
     #[Test]
+    public function nothingAutomaticGoesForAnEventThatIsDeleted(): void
+    {
+        $event = $this->event();
+        self::scheduler()->schedule('test.notice', 'gone', 'gone', Trigger::at(new DateTimeImmutable('-1 minute')), $this->members(), [], $event);
+        self::connection()->executeStatement('UPDATE events SET deleted_at = NOW() WHERE id = :id', ['id' => $event->getId()->toRfc4122()]);
+
+        self::runUntilIdle();
+
+        self::assertSame([], self::sender()->sent);
+        self::assertSame('cancelled', self::scalar('SELECT status FROM scheduled_notifications'));
+    }
+
+    #[Test]
     public function anEventsRowsGoWithItWhenItIsPurged(): void
     {
         $event = $this->event();
