@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Address\Controller;
 
 use App\Address\AddressLookup;
+use App\Address\AddressTimeZone;
 use App\Address\Exception\AddressNotFound;
 use App\Address\Exception\ProviderUnavailable;
 use App\Enum\ErrorCode;
@@ -62,7 +63,7 @@ final class AddressController
             throw $this->unavailable($e);
         }
 
-        return new JsonResponse(['success' => true, 'data' => $address->toArray()]);
+        return new JsonResponse(['success' => true, 'data' => [...$address->toArray(), 'time_zone' => AddressTimeZone::of($address)]]);
     }
 
     private function limit(Request $request): void

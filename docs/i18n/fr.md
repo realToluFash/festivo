@@ -88,7 +88,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   l’origine de l’invitation », so nothing agrees with the reader. The subtitle names its
   counts after a colon, « avec accès : {{active}} · invitations : {{invited}} », so nothing
   agrees with a count. History lines name what was acted on, « Invitation envoyée par »,
-  « Demande approuvée par », « Accès suspendu / rétabli / retiré par ». « Invitation »,
+  « Demande approuvée par », « Accès suspendu / rétabli / retiré par ». Who sent an invitation is « Invitation envoyée par {{inviter}} », never « Invitation de », which needs « d’ » before a vowel-initial name (QA, 26 Oct); the reader as sender is « envoyée par vous ». Nothing agrees with the reader: « {{inviter}} le saura », « Vous utilisez le compte {{signedInAs}} ». « Invitation »,
   « Invitations » and « {{count}} invitation(s) » are the French words, in
   `same-as-english.json`.
 - **25 Oct 2026. Deleting an organisation** (`errors:owner_required`,
@@ -252,6 +252,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   « personne ». The overdue screen's body says why, « … et le délai pour l'activer est
   passé ». "Single-event access" is « vos accès à des événements précis ». The card and the
   server's refusal say the same sentence, with U+00A0 before the colon in both.
+
+- **26 Oct 2026. Two-factor for everyone, the artboard's lines** (sc-13182,
+  `signInRules.everyoneOn`, `everyoneOff`, `everyoneWithoutBody_*`, `everyoneStillWithout_*`,
+  `emails:signInRules.twoFactorDue.*`). A banner is « un bandeau ». Their deadline is « sa
+  date limite », and the email's facts label it « Date limite », since « Obligatoire à partir
+  du » cannot stand before a colon. "Turn it on once" is « Vous ne l’activez qu’une fois ».
 
 - **21 Oct 2026. Company domain joining** (`domainJoining.*`, `companyDomains.*`,
   `messages:domain_joining.*`, sc-4434). The act is « demander à rejoindre », the wait

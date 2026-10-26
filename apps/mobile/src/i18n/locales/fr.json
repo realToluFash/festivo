@@ -664,6 +664,7 @@
   },
   "frame": {
     "home": "Accueil",
+    "events": "Événements",
     "settings": "Paramètres",
     "organisation": "Organisation"
   },
@@ -936,7 +937,7 @@
     "count_one": "{{count}} invitation",
     "count_other": "{{count}} invitations",
     "count_many": "{{count}} d’invitations",
-    "from": "Invitation de {{inviter}} · {{role}}",
+    "from": "Invitation envoyée par {{inviter}} · {{role}}",
     "fromNobody": "Invitation · {{role}}",
     "until": "Valable jusqu’au {{date}}",
     "untilSentTo": "Valable jusqu’au {{date}} · Envoyée à {{email}}",
@@ -944,7 +945,7 @@
     "acceptLabel": "Accepter et rejoindre {{organisation}}",
     "decline": "Refuser",
     "declineLabel": "Refuser l’invitation à rejoindre {{organisation}}",
-    "declineNote": "Si vous refusez, {{inviter}} en sera informé. Rien d’autre ne change.",
+    "declineNote": "Si vous refusez, {{inviter}} le saura. Rien d’autre ne change.",
     "declineNoteNobody": "Si vous refusez, rien d’autre ne change.",
     "joined": "Vous avez rejoint {{organisation}} avec le rôle {{role}}.",
     "open": "Ouvrir {{organisation}}",
@@ -972,7 +973,7 @@
       },
       "invitation_not_yours": {
         "word": "Connexion avec un autre compte",
-        "body": "Cette invitation est destinée à {{email}}. Vous êtes connecté avec {{signedInAs}}."
+        "body": "Cette invitation est destinée à {{email}}. Vous utilisez le compte {{signedInAs}}."
       },
       "organisation_deleted": {
         "word": "Organisation supprimée",
@@ -1161,7 +1162,7 @@
     },
     "how": {
       "invitation": "Invitation",
-      "invitationFrom": "Invitation de {{inviter}}",
+      "invitationFrom": "Invitation envoyée par {{inviter}}",
       "self_created": "A créé {{organisation}}",
       "join_code": "Code pour rejoindre",
       "domain": "Adresse e-mail professionnelle",
@@ -1398,5 +1399,37 @@
     "youWithdrewTold": "Vous avez retiré votre demande. Toutes les personnes qui en avaient été informées reçoivent un e-mail.",
     "withdrawEnded": "Cette demande a déjà pris fin.",
     "withdrawNotClaimant": "Seule la personne qui a fait cette demande peut la retirer."
+  },
+  "eventTypes": {
+    "wedding": "Mariage",
+    "birthday": "Anniversaire",
+    "anniversary": "Anniversaire de mariage",
+    "engagement": "Fiançailles",
+    "baby_shower": "Baby shower",
+    "graduation": "Remise de diplômes",
+    "memorial": "Cérémonie d’hommage",
+    "religious": "Célébration religieuse",
+    "cultural": "Célébration culturelle",
+    "party": "Fête",
+    "gala": "Gala ou soirée caritative",
+    "conference": "Conférence",
+    "corporate": "Événement d’entreprise",
+    "other": "Autre"
+  },
+  "eventsScreen": {
+    "title": "Events",
+    "loading": "Loading events…",
+    "refreshing": "Refreshing…",
+    "draft": "Draft",
+    "failedLoad": "Your events did not load. Check your connection and try again.",
+    "retry": "Try again",
+    "noneTitle": "No events yet",
+    "noneCreateOnWeb": "Create events in Soirely on the web, and they will show here.",
+    "noneWillShow": "Events your organisation creates will show here.",
+    "choose": "Choose an event",
+    "loadingEvent": "Loading the event…",
+    "when": "{{range}} · {{timeZone}}",
+    "notFound": "This event is not available",
+    "backToEvents": "Back to Events"
   }
 }

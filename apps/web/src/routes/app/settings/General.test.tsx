@@ -81,6 +81,16 @@ describe('Settings > General', () => {
     expect(languageField().value).toBe('en');
   });
 
+  it('names the organisation under the heading, before the intro, for the phone screen', () => {
+    settings();
+
+    const heading = screen.getByRole('heading', { level: 1, name: 'General' }).parentElement;
+    const lines = [...(heading?.querySelectorAll('p') ?? [])].map((line) => line.textContent);
+
+    expect(lines[0]).toBe('Ìrè Events');
+    expect(lines).toHaveLength(2);
+  });
+
   it('offers exactly the four languages, each also in its own words, after the defaults note', () => {
     settings();
 

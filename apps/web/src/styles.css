@@ -159,6 +159,15 @@ span {
   font: var(--typeSmall);
 }
 
+.shell-menu-button {
+  display: none;
+}
+
+/* The wrapper exists for the phone's bar to hide; on a desk its children stay the sidebar's flex items. */
+.shell-links {
+  display: contents;
+}
+
 /* The width is used rather than reserved: a 1200px content column on a 2560px
    monitor is the layout this product exists to avoid. */
 .shell-content {
@@ -364,6 +373,82 @@ span {
   .public-header {
     padding: var(--spaceXl);
   }
+}
+
+/* ── A phone: one bar, its links behind Menu (sc-13413) ───────────────────── */
+
+@media (width <= 40rem) {
+  .shell-sidebar {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spaceMd);
+    padding: var(--spaceSm) var(--spaceLg);
+  }
+
+  .shell-sidebar .brand,
+  .shell-links {
+    display: none;
+  }
+
+  /* An account in no organisation has no switcher, so the bar says whose it is instead. */
+  .shell-sidebar:not(:has(.org-switcher)) .brand {
+    display: block;
+    flex: 1;
+  }
+
+  .shell-sidebar .org-switcher {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .shell-menu-button {
+    display: block;
+    flex: none;
+    min-height: var(--sizeHit);
+    padding: 0 var(--spaceLg);
+    border: var(--borderControl);
+    border-radius: var(--radiusField);
+    background: var(--colorCard);
+    color: var(--colorInk);
+    font: var(--typeButton);
+    cursor: pointer;
+  }
+}
+
+.shell-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space3xl);
+  box-sizing: border-box;
+  overflow-y: auto;
+  padding: var(--spaceLg) var(--spaceLg) var(--spaceXxl);
+  background: var(--colorCard);
+}
+
+.shell-menu .brand {
+  display: flex;
+  align-items: center;
+  min-height: var(--sizeHit);
+}
+
+.shell-menu .shell-nav {
+  flex-direction: column;
+}
+
+.shell-menu .shell-nav a {
+  min-height: var(--sizeHitPhonePrimary);
+  font-size: 16px;
+}
+
+.shell-menu:focus {
+  outline: none;
+}
+
+.shell-menu .shell-account {
+  margin-top: 0;
 }
 
 /* ── Sign in ──────────────────────────────────────────────────────────────── */
@@ -1930,6 +2015,71 @@ span {
   max-width: 85rem;
 }
 
+/* The name under the heading is OrgGeneral-Phone's; the desktop boards leave it to the switcher. */
+.settings-organisation {
+  display: none;
+}
+
+/* ── Settings > General at phone width (OrgGeneral-Phone-v2, sc-13348) ────── */
+
+@media (width <= 40rem) {
+  .settings-general {
+    gap: var(--spaceXxl);
+  }
+
+  .settings-general .settings-heading h1 {
+    font: var(--typeTitlePhone);
+    letter-spacing: var(--typeTitlePhoneTracking);
+  }
+
+  .settings-general .settings-heading .settings-organisation {
+    display: block;
+    color: var(--colorInk);
+    font: var(--typeRowTitle);
+    overflow-wrap: anywhere;
+  }
+
+  .settings-general .settings-fields {
+    flex-flow: column nowrap;
+  }
+
+  .settings-general .settings-fields .field {
+    flex: none;
+  }
+
+  .settings-general .input,
+  .settings-general .settings-save .button {
+    min-height: var(--sizeHitPhonePrimary);
+  }
+
+  /* 16px is the smallest size iOS Safari will not zoom into on focus. */
+  .settings-general .input {
+    font-size: 1rem;
+  }
+
+  .settings-general .settings-save .button {
+    width: 100%;
+    font-size: 1rem;
+  }
+
+  .settings-general .settings-read-only div {
+    flex-direction: column;
+  }
+
+  .settings-general .settings-read-only dt {
+    flex: none;
+  }
+
+  .settings-general .settings-read-only dd {
+    overflow-wrap: anywhere;
+  }
+
+  .settings-general .ownership-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 /* Roles-Desktop: the list beside the role, wrapping to one column, with flex as the app needs. */
 .roles {
   display: flex;
@@ -2247,8 +2397,13 @@ span {
   background: var(--colorAccentTint);
 }
 
+.no-organisation-main {
+  padding: var(--space6xl) var(--spaceXl);
+}
+
 .no-organisation {
-  max-width: 40rem;
+  max-width: 35rem;
+  margin: 0 auto;
 }
 
 .no-organisation h1,
@@ -3330,4 +3485,61 @@ button.members-row {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--spaceSm) var(--spaceMd);
+}
+
+/* ── An event's venue (sc-3589) ───────────────────────────────────────────── */
+
+.venue-suggestions {
+  max-width: none;
+  margin-top: var(--spaceXs);
+}
+
+.venue-suggestions .tz-option {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  padding-block: var(--spaceXs);
+}
+
+.venue-suggestions .tz-option .muted {
+  margin-left: 0;
+  text-align: left;
+}
+
+.venue-lookup-down {
+  padding: var(--spaceMd) var(--spaceLg);
+  font: var(--typeSmall);
+}
+
+.venue-lookup-down p {
+  margin: 0;
+}
+
+.mark-half {
+  background: linear-gradient(90deg, var(--colorAttentionText) 50%, transparent 50%);
+}
+
+.venue-zone-offer {
+  margin-top: var(--spaceLg);
+}
+
+.event-page-venue {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.event-page-venue p {
+  margin: 0;
+}
+
+.event-page-venue-name {
+  font: var(--typeRowTitle);
+}
+
+.event-page-venue-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
 }

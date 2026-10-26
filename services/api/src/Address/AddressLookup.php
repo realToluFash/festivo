@@ -56,6 +56,19 @@ final readonly class AddressLookup
         );
     }
 
+    /** The address a lookup already resolved, without asking the provider: a save never waits on it or spends its budget. */
+    public function resolved(string $id): ?Address
+    {
+        return $this->cache->get(
+            $this->key('resolve', $id),
+            static function (ItemInterface $item, bool &$save): ?Address {
+                $save = false;
+
+                return null;
+            },
+        );
+    }
+
     private function key(string $kind, string ...$parts): string
     {
         return \sprintf('address.%s.%s', $kind, \hash('xxh128', \implode('|', $parts)));

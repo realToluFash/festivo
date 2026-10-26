@@ -664,6 +664,7 @@
   },
   "frame": {
     "home": "Inicio",
+    "events": "Eventos",
     "settings": "Configuración",
     "organisation": "Organización"
   },
@@ -938,8 +939,8 @@
     "count_many": "{{count}} de invitaciones",
     "from": "Invitación de {{inviter}} · {{role}}",
     "fromNobody": "Invitación · {{role}}",
-    "until": "Funciona hasta el {{date}}",
-    "untilSentTo": "Funciona hasta el {{date}} · Enviada a {{email}}",
+    "until": "Válida hasta el {{date}}",
+    "untilSentTo": "Válida hasta el {{date}} · Enviada a {{email}}",
     "accept": "Aceptar y unirse",
     "acceptLabel": "Aceptar y unirse a {{organisation}}",
     "decline": "Rechazar",
@@ -1398,5 +1399,37 @@
     "youWithdrewTold": "Ha retirado su solicitud. Se avisa por correo electrónico a todas las personas a las que se informó.",
     "withdrawEnded": "Esta solicitud ya ha terminado.",
     "withdrawNotClaimant": "Solo la persona que inició esta solicitud puede retirarla."
+  },
+  "eventTypes": {
+    "wedding": "Boda",
+    "birthday": "Cumpleaños",
+    "anniversary": "Aniversario",
+    "engagement": "Pedida de mano",
+    "baby_shower": "Baby shower",
+    "graduation": "Graduación",
+    "memorial": "Homenaje póstumo",
+    "religious": "Celebración religiosa",
+    "cultural": "Celebración cultural",
+    "party": "Fiesta",
+    "gala": "Gala o evento benéfico",
+    "conference": "Congreso",
+    "corporate": "Evento de empresa",
+    "other": "Otro"
+  },
+  "eventsScreen": {
+    "title": "Events",
+    "loading": "Loading events…",
+    "refreshing": "Refreshing…",
+    "draft": "Draft",
+    "failedLoad": "Your events did not load. Check your connection and try again.",
+    "retry": "Try again",
+    "noneTitle": "No events yet",
+    "noneCreateOnWeb": "Create events in Soirely on the web, and they will show here.",
+    "noneWillShow": "Events your organisation creates will show here.",
+    "choose": "Choose an event",
+    "loadingEvent": "Loading the event…",
+    "when": "{{range}} · {{timeZone}}",
+    "notFound": "This event is not available",
+    "backToEvents": "Back to Events"
   }
 }

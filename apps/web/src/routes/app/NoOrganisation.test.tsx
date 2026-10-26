@@ -1,7 +1,10 @@
+import { type Account } from '@soirely/api-client';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { followAccount } from '../../accountLanguage.ts';
+import { setLanguage } from '../../i18n/index.ts';
 import { __setSessionState } from '../../session.ts';
 import { membership } from '../../test-memberships.ts';
 import { routes } from '../index.tsx';
@@ -50,14 +53,89 @@ function answering(answers: Record<string, () => Response | Promise<Response>>) 
   return sent;
 }
 
-function app() {
-  return render(
-    <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/app'] })} />,
-  );
+function app(path = '/app') {
+  return render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
 }
 
-afterEach(() => {
+const CHIDI_ACCOUNT: Account = {
+  id: 'acc_1',
+  name: 'Chidi Okoro',
+  businessName: null,
+  countryCode: null,
+  organisationCountry: null,
+  locale: null,
+  timezone: null,
+  verified: true,
+  complete: true,
+  needsOrganisation: false,
+  hasPassword: true,
+  twoFactorSetupPrompt: false,
+  waitingFor: null,
+  providers: [],
+  emailAddresses: [],
+  phoneNumbers: [],
+};
+
+const PRODUCT_LINKS = ['Dashboard', 'Events', 'Guests', 'Settings'];
+
+afterEach(async () => {
   vi.restoreAllMocks();
+  await followAccount(CHIDI_ACCOUNT);
+  await setLanguage(null);
+});
+
+describe('the page an account in no organisation stands on (sc-13339)', () => {
+  it.each(['/app', '/app/events', '/app/guests', '/app/settings'])(
+    'offers no product page at %s, only the account and the language',
+    async (path) => {
+      inNone();
+      answering({ 'GET /api/invitations': () => json({ invitations: [] }) });
+      app(path);
+
+      await screen.findByRole('heading', { level: 1, name: 'You are not in an organisation' });
+      for (const name of PRODUCT_LINKS) expect(screen.queryByRole('link', { name })).toBeNull();
+      expect(screen.getByLabelText('Language')).toBeDefined();
+      expect(screen.getByRole('link', { name: 'Your account' }).getAttribute('href')).toBe(
+        '/app/account/security',
+      );
+    },
+  );
+
+  it('keeps the account pages and their sidebar, so Dashboard leads back here', async () => {
+    inNone();
+    answering({ 'GET /api/invitations': () => json({ invitations: [] }) });
+    app('/app/account');
+
+    for (const name of PRODUCT_LINKS) await screen.findByRole('link', { name });
+    expect(screen.queryByRole('heading', { name: 'You are not in an organisation' })).toBeNull();
+  });
+
+  it('offers the four languages with no Automatic, and redraws in the one picked, saving it (sc-9797)', async () => {
+    inNone();
+    const sent = answering({
+      'GET /api/invitations': () => json({ invitations: [] }),
+      'PUT /api/auth/locale': () => new Response(null, { status: 204 }),
+    });
+    app();
+
+    await screen.findByRole('heading', { level: 1, name: 'You are not in an organisation' });
+    const picker = screen.getByRole<HTMLSelectElement>('combobox', { name: 'Language' });
+    expect([...picker.options].map((option) => option.textContent)).toEqual([
+      'English',
+      'Español',
+      'Français',
+      'Português',
+    ]);
+
+    fireEvent.change(picker, { target: { value: 'es' } });
+
+    await screen.findByRole('heading', { level: 1, name: 'No pertenece a ninguna organización' });
+    await waitFor(() =>
+      expect(sent.find((one) => one.line === 'PUT /api/auth/locale')?.body).toEqual({
+        locale: 'es',
+      }),
+    );
+  });
 });
 
 describe('No organisation', () => {
@@ -363,6 +441,7 @@ describe('where focus goes on No organisation (sc-11369)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Start organisation' }));
 
     await screen.findByRole('heading', { level: 1, name: 'Dashboard' });
+    for (const name of PRODUCT_LINKS) expect(screen.getByRole('link', { name })).toBeDefined();
     expect(document.activeElement).toBe(nowWorkingIn('Okoro Weddings'));
     expect(nowWorkingIn('Okoro Weddings')?.getAttribute('role')).toBeNull();
   });
@@ -402,6 +481,7 @@ describe('where focus goes on No organisation (sc-11369)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open Adunni Weddings' }));
 
     await screen.findByRole('heading', { level: 1, name: 'Dashboard' });
+    for (const name of PRODUCT_LINKS) expect(screen.getByRole('link', { name })).toBeDefined();
     expect(document.activeElement).toBe(nowWorkingIn('Adunni Weddings'));
   });
 

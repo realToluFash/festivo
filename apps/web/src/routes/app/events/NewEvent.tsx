@@ -9,6 +9,12 @@ import {
   isEventType,
   filledEndDate,
   localDateTime,
+  VENUE_ADDRESS_MAXIMUM,
+  VENUE_NAME_MAXIMUM,
+  type VenueDraft,
+  venueDraftOf,
+  venueProblems,
+  venueSent,
 } from '@soirely/domain';
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +30,7 @@ import { Choice, FieldError, Moment } from './EventFields.tsx';
 import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
 import { typeChoices } from './eventTypes.ts';
 import { skippedLine } from './skippedLine.ts';
+import { VenueSection } from './VenueSection.tsx';
 
 export function NewEvent() {
   const session = useSession();
@@ -48,6 +55,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
     endTime: '',
   });
   const [endChosen, setEndChosen] = useState(false);
+  const [venue, setVenue] = useState<VenueDraft>(() => venueDraftOf(null));
   const [timeZone, setTimeZone] = useState(organisation.timezone);
   const [currency, setCurrency] = useState(
     CURRENCY_CODES.includes(organisation.currency) ? organisation.currency : '',
@@ -57,7 +65,10 @@ function EventForm({ organisation }: { organisation: Membership }) {
   const [status, setStatus] = useState<'editing' | 'creating' | 'failed'>('editing');
   const focusNext = useRef<(() => void) | null>(null);
   const currencies = useMemo(() => currencyChoices('', currency, locale, t), [currency, locale, t]);
-  const zones = useMemo(() => timeZoneChoices(organisation.timezone), [organisation.timezone]);
+  const zones = useMemo(
+    () => timeZoneChoices(organisation.timezone, timeZone),
+    [organisation.timezone, timeZone],
+  );
   const types = useMemo(() => typeChoices(draft.type, t), [draft.type, t]);
   const busy = status === 'creating';
 
@@ -88,6 +99,10 @@ function EventForm({ organisation }: { organisation: Membership }) {
     const found: Errors = {};
     for (const { field, problem } of eventProblems(draft, timeZone))
       found[field] ??= t(`eventForm.${problem}`, { most: EVENT_NAME_MAXIMUM });
+    for (const { field, problem } of venueProblems(venue))
+      found[field] ??= t(`eventForm.${problem}`, {
+        most: field === 'venueName' ? VENUE_NAME_MAXIMUM : VENUE_ADDRESS_MAXIMUM,
+      });
     if (currency === '') found.currency = t('orgGeneral.currencyBlank');
 
     const unsentFields = Object.keys(found).length;
@@ -104,6 +119,8 @@ function EventForm({ organisation }: { organisation: Membership }) {
     setStatus('creating');
     const land = focusWhereSent();
 
+    const sentVenue = venueSent(venue);
+
     try {
       const created = await api.createEvent(organisation.id, {
         name: eventNameOf(draft.name),
@@ -112,6 +129,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
         endsAt: localDateTime(draft.endDate, draft.endTime) ?? '',
         timeZone,
         currency,
+        ...(sentVenue == null ? {} : { venue: sentVenue }),
       });
 
       void navigate(`/app/events/${encodeURIComponent(created.id)}`);
@@ -223,6 +241,25 @@ function EventForm({ organisation }: { organisation: Membership }) {
             onTime={(endTime) => edit('endsAt', { endTime })}
           />
         </section>
+
+        <VenueSection
+          venue={venue}
+          errors={errors}
+          busy={busy}
+          timeZone={timeZone}
+          onVenue={(change) => {
+            setVenue((previous) => ({ ...previous, ...change }));
+            setErrors((previous) => ({
+              ...previous,
+              ...('name' in change ? { venueName: undefined } : {}),
+              ...('address' in change ? { venueAddress: undefined } : {}),
+            }));
+          }}
+          onUseZone={(zone) => {
+            setTimeZone(zone);
+            setErrors((previous) => ({ ...previous, timeZone: undefined }));
+          }}
+        />
 
         <section className="card" aria-labelledby="event-defaults">
           <h2 id="event-defaults">{t('eventForm.zoneHeading')}</h2>
