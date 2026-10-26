@@ -60,10 +60,20 @@ final readonly class Restorer
         try {
             $found = $this->entityManager->find($kind->entity(), $id)
                 ?? throw new RuntimeException(Str\format('There is no such %s, or it has been purged.', $kind->value));
+
+            if (!$found instanceof SoftDeletableInterface) {
+                throw new LogicException(Str\format('%s is not soft-deletable.', $kind->entity()));
+            }
+
+            $container = $kind->container($found);
+
+            if ($container instanceof SoftDeletableInterface && $container->isDeleted()) {
+                throw new RuntimeException(Str\format('Its %1$s is deleted. Restore the %1$s first; nothing has changed.', $kind->containerKind()?->value ?? ''));
+            }
         } finally {
             $filters->enable('soft_delete');
         }
 
-        return $found instanceof SoftDeletableInterface ? $found : throw new LogicException(Str\format('%s is not soft-deletable.', $kind->entity()));
+        return $found;
     }
 }

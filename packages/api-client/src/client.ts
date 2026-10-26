@@ -601,6 +601,13 @@ export interface OrganisationDeletion {
   restoreCloses: string;
 }
 
+/** What an event's delete asks for: its name typed unless it is a Draft, and until when support can restore it (sc-3592). */
+export interface EventDeletion {
+  needsName: boolean;
+  restoreClosesAt: string;
+  restoreCloses: string;
+}
+
 /** The two codes the onboarding gate refuses with; each names the screen that passes it. */
 export type Gate = 'account_unverified' | 'profile_incomplete';
 
@@ -1594,6 +1601,36 @@ export class ApiClient {
         method: 'POST',
       }),
     );
+  }
+
+  async eventDeletion(eventId: string): Promise<EventDeletion> {
+    const body = await this.get<Record<string, unknown>>(
+      `/api/events/${encodeURIComponent(eventId)}/deletion`,
+    );
+
+    if (
+      typeof body.needsName !== 'boolean' ||
+      typeof body.restoreClosesAt !== 'string' ||
+      typeof body.restoreCloses !== 'string'
+    ) {
+      throw new Error(
+        'The API answered an event deletion in a shape this client does not know. Check EventDeletionController in services/api.',
+      );
+    }
+
+    return {
+      needsName: body.needsName,
+      restoreClosesAt: body.restoreClosesAt,
+      restoreCloses: body.restoreCloses,
+    };
+  }
+
+  /** `name` is needed unless it is a Draft: refused with a violation on `name`, code `event_name_mismatch`, unless it matches. */
+  async deleteEvent(eventId: string, name?: string): Promise<void> {
+    await this.request<unknown>(`/api/events/${encodeURIComponent(eventId)}`, {
+      method: 'DELETE',
+      body: { name: name ?? null },
+    });
   }
 
   private tagged({

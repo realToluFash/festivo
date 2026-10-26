@@ -12,6 +12,8 @@ interface SoftDeletableInterface
 {
     public function getId(): Uuid;
 
+    public function isDeleted(): bool;
+
     public function getDeletedAt(): ?DateTimeImmutable;
 
     public function setDeletedAt(?DateTimeImmutable $deletedAt): void;

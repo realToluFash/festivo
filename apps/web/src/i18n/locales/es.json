@@ -153,6 +153,22 @@
     "alreadyOver": "Este evento ya ha terminado.",
     "calledOffNotice": "Cancelado el {{date}}, antes de empezar. Los invitados que abren su enlace ven que no se celebrará."
   },
+  "eventDelete": {
+    "open": "Delete event",
+    "note": "Removes the event and everything in it for your whole team. Guests following its link see that it isn't available.",
+    "title": "Delete {{event}}?",
+    "draftBody": "It's a draft with nobody on its guest list. It will be removed for your whole team.",
+    "removes": "This removes, for your whole team:",
+    "removesEvent": "the event, its details and its schedule",
+    "guests": "Guests following their link will see that it isn't available.",
+    "window": "If this was a mistake, support can restore it until {{deadline}}. After that it's gone for good.",
+    "type": "Type {{event}} to delete it",
+    "typeHint": "Type it exactly, capitals included. A straight or curly apostrophe both count.",
+    "mismatch": "Type {{event}} exactly as shown to delete it.",
+    "keep": "Keep it",
+    "delete": "Delete",
+    "deleted": "{{event}} was deleted."
+  },
   "eventEdit": {
     "open": "Editar detalles",
     "title": "Editar detalles",
