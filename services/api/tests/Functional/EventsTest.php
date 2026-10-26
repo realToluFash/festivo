@@ -602,18 +602,26 @@ final class EventsTest extends ApiTestCase
         self::assertSame(['draft', null], [$kept['status'], $kept['madeLiveAt']]);
     }
 
+    /** @return iterable<string, array{int, string}> */
+    public static function planLimits(): iterable
+    {
+        yield 'three' => [3, 'Not made live. Your Free plan allows 3 events to be live or paused at a time.'];
+        yield 'one' => [1, 'Not made live. Your Free plan allows 1 event to be live or paused at a time.'];
+    }
+
     #[Test]
-    public function overThePlansLimitItStaysADraftAndSaysWhichLimit(): void
+    #[DataProvider('planLimits')]
+    public function overThePlansLimitItStaysADraftAndSaysWhichLimit(int $limit, string $detail): void
     {
         $id = $this->create('Owambe', self::AHEAD);
-        self::service(ScriptedActiveEventsLimit::class)->reach('Free', 3);
+        self::service(ScriptedActiveEventsLimit::class)->reach('Free', $limit);
 
         $this->as($this->owner, 'POST', '/api/events/' . $id . '/make-live');
 
         self::assertSame(403, $this->statusCode());
         self::assertSame(ErrorCode::PlanLimit->type(), $this->last()['type'] ?? null);
-        self::assertSame(['Free', 3], [$this->last()['plan'] ?? null, $this->last()['limit'] ?? null]);
-        self::assertSame('Not made live. Your Free plan allows 3 events to be live or paused at a time.', $this->last()['detail'] ?? null);
+        self::assertSame(['Free', $limit], [$this->last()['plan'] ?? null, $this->last()['limit'] ?? null]);
+        self::assertSame($detail, $this->last()['detail'] ?? null);
         self::assertSame('draft', $this->event($this->as($this->owner, 'GET', '/api/events/' . $id))['status']);
         self::assertNull(self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => EventLifecycle::MADE_LIVE]));
     }

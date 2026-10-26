@@ -1,4 +1,5 @@
 {
+    "event.plan_limit": "{limit, plural, one {Not made live. Your {plan} plan allows # event to be live or paused at a time.} other {Not made live. Your {plan} plan allows # events to be live or paused at a time.}}",
     "members.seats_in_use": "{count, plural, one {La única plaza de equipo del plan de esta organización está ocupada, así que no ha cambiado nada.} other {Están ocupadas las # plazas de equipo del plan de esta organización, así que no ha cambiado nada.}}",
     "limits.tries": "Demasiados intentos. Inténtelo de nuevo {hour, plural, =1 {a la {time}} other {a las {time}}}.",
     "limits.wrong_codes": "Demasiados códigos incorrectos. Inténtelo de nuevo {hour, plural, =1 {a la {time}} other {a las {time}}}.",

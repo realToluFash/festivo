@@ -67,7 +67,7 @@ final readonly class EventLifecycle
                 ? null
                 : throw new ApiException(
                     ErrorCode::PlanLimit,
-                    $this->translator->trans('event.plan_limit', ['{plan}' => $limit->plan, '{limit}' => (string) $limit->limit]),
+                    $this->translator->trans('event.plan_limit', ['plan' => $limit->plan, 'limit' => $limit->limit]),
                     members: ['plan' => $limit->plan, 'limit' => $limit->limit],
                 ),
         };

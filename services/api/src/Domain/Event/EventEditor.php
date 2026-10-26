@@ -15,9 +15,9 @@ use App\Http\EntityTag;
 use App\Http\Exception\ApiException;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
-use Psl\Dict;
 use Psl\Iter;
 use Psl\Str;
+use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -134,17 +134,24 @@ final readonly class EventEditor
     /**
      * A change to the start, end or zone needs `edit_schedule`, and to anything else `edit`: a save of both needs both.
      *
-     * @param array<string, mixed> $changes
+     * @param list<string> $changed
+     *
+     * @return list<EventAction>
      */
+    public static function actionsFor(array $changed): array
+    {
+        $schedule = Vec\filter($changed, static fn (string $field): bool => Iter\contains(self::SCHEDULE, $field));
+
+        return [
+            ...[] === $schedule ? [] : [EventAction::EditSchedule],
+            ...Iter\count($schedule) === Iter\count($changed) ? [] : [EventAction::Edit],
+        ];
+    }
+
+    /** @param array<string, mixed> $changes */
     private function allow(EventPhase $phase, array $changes): void
     {
-        $schedule = Dict\select_keys($changes, self::SCHEDULE);
-        $needed = [
-            ...[] === $schedule ? [] : [EventAction::EditSchedule],
-            ...Iter\count($schedule) === Iter\count($changes) ? [] : [EventAction::Edit],
-        ];
-
-        foreach ($needed as $action) {
+        foreach (self::actionsFor(Vec\keys($changes)) as $action) {
             if (!$phase->allows($action)) {
                 throw new ApiException(ErrorCode::EventStateInvalid, $this->translator->trans('event.state_invalid'), members: ['phase' => $phase->value]);
             }
