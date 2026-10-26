@@ -456,3 +456,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   and "Escolha a função de substituição", the legend's own noun. Not "Passá-las…" or "estas
   pessoas" after "1 pessoa tem esta função" (sc-13017).
 - **26 Oct 2026. The beyond-grant line names access** (`membersScreen.beyondGrant`, sc-13089). "… por isso não pode alterar-lhe a função nem o acesso": the enclitic "lhe" points at the member, so "o acesso" is never read as the reader's.
+- **26 Oct 2026. A security email's subject opens on the feature, then its state**
+  (`emails:twoFactor.on.subject`, `twoFactor.off.subject`, sc-14100): "Autenticação de dois
+  fatores ativada" / "desativada", a pair that differs only in its last word. "A autenticação
+  de dois fatores foi desativada" ran past one line of a 360dp inbox row.
