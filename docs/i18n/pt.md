@@ -41,6 +41,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. Publicar um rascunho e os estados de um evento** (sc-13956, sc-3584,
+  `eventLive.*` web e app, `events.*`, `eventsScreen.*`, `messages:event.*`,
+  `event.plan_limit`). "Make live" é "Publicar", como a permissão "Criar, publicar, pausar e
+  concluir eventos". Os estados concordam com "evento": "Rascunho", "Publicado", "Em pausa",
+  "Terminado". Uma recusa começa "Não foi publicado.", como "Não foi guardado."; o colega é
+  "outra pessoa". O limite do plano é a mesma frase no ecrã e na API, "O seu plano {{plan}}
+  permite ter {{count}} evento publicado ou em pausa de cada vez", com "de eventos" em `many`;
+  0 é `other` em pt-PT. "Call off" é "cancelar". "Depois de este evento ser publicado", sem
+  contrair a preposição antes do sujeito do infinitivo.
 - **26 Oct 2026. O local do evento e a lista de eventos na app** (`web:eventForm.venue*`,
   `web:eventPage.venue*`, `addVenue`, `openInMaps`, `messages:validation.event_venue_*`,
   `mobile:eventsScreen.*`, sc-3589 and sc-1593 via sc-13205). Venue is "Local" ("Nome do
