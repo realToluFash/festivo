@@ -1522,6 +1522,22 @@ export class ApiClient {
     if (!response.ok) throw new Error(`The store refused the upload with ${response.status}.`);
   }
 
+  /** For a browser that cannot show the original (sc-13861); refused on `file` as setEventCover refuses it. */
+  async previewEventCoverUpload(organisationId: string, uploadKey: string): Promise<string> {
+    const body = await this.post<{ preview?: unknown }>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/event-cover-uploads/preview`,
+      { uploadKey },
+    );
+
+    if (typeof body?.preview !== 'string' || !body.preview.startsWith('data:image/')) {
+      throw new Error(
+        'The API answered a cover preview in a shape this client does not know. Check the event cover controller in services/api.',
+      );
+    }
+
+    return body.preview;
+  }
+
   /** A photo uploaded and then not used, deleted so its original, metadata and all, is not kept. */
   async discardEventCoverUpload(organisationId: string, uploadKey: string): Promise<void> {
     await this.request(`/api/orgs/${encodeURIComponent(organisationId)}/event-cover-uploads`, {

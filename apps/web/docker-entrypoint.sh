@@ -93,7 +93,7 @@ HEADERS=/etc/nginx/soirely-security-headers.conf
 # so it belongs on the terminator, where the max-age commitment is visible next
 # to the certificate it depends on.
 cat > "$HEADERS" <<CONF
-add_header Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src ${CONNECT}; manifest-src 'self'; worker-src 'self'" always;
+add_header Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src ${CONNECT}; manifest-src 'self'; worker-src 'self'" always;
 add_header X-Content-Type-Options "nosniff" always;
 add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 add_header X-Frame-Options "DENY" always;

@@ -5,6 +5,7 @@ vendor/
 # builds
 dist/
 build/
+*.tsbuildinfo
 .expo/
 ios/
 android/
