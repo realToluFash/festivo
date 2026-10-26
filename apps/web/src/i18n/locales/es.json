@@ -496,7 +496,7 @@
     "derived": "La moneda depende del país, la zona horaria se toma de este dispositivo y la dirección de contacto es su correo electrónico principal, {{email}}. Puede cambiarlas en Configuración > General.",
     "signedInAs": "Sesión iniciada como {{email}}.",
     "account": "Su cuenta",
-    "wayBack": "Join or start an organisation"
+    "wayBack": "Unirse a una organización o crear una"
   },
   "orgGeneral": {
     "title": "General",
