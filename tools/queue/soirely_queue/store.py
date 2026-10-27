@@ -64,8 +64,9 @@ create table if not exists moves (
 LEASE_MINUTES = 90
 
 
-def connect(path):
-    db = sqlite3.connect(path, timeout=30, isolation_level=None)
+def connect(path, threads=False):
+    """`threads`: the caller passes the connection between threads, one at a time."""
+    db = sqlite3.connect(path, timeout=30, isolation_level=None, check_same_thread=not threads)
     db.row_factory = sqlite3.Row
     db.execute("pragma journal_mode = wal")
     db.executescript(SCHEMA)

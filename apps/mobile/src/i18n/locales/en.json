@@ -1051,6 +1051,8 @@
     "deleteTitle": "Delete {{organisation}}?",
     "deleteWarningTitle": "Everything in it goes",
     "deleteLoading": "Counting what it holds…",
+    "deleteUncounted": "We could not count what it holds. Deleting it still deletes every event, guest and member in it, for everybody, now. Soirely support can restore it for 30 days.",
+    "deleteRetry": "Try again",
     "deleteCounts": "{{events}}, {{guests}} and {{members}} are deleted with it.",
     "deleteWindow": "This deletes it for everybody now. Soirely support can restore it until {{deadline}}; after that it is gone for good.",
     "events_one": "{{count, number}} event",

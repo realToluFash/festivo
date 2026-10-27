@@ -595,6 +595,31 @@
       a.session:hover {
         text-decoration: underline;
       }
+      .machine-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 16px 24px 0;
+      }
+      .machine-nav a {
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-2);
+        background: var(--surface-2);
+        text-decoration: none;
+      }
+      .machine-nav a[aria-current='page'] {
+        color: var(--text);
+        background: var(--accent-soft);
+      }
+      #overview.waiting .kpis,
+      #overview.waiting section {
+        display: none;
+      }
       .back {
         font-size: 13px;
         font-weight: 600;
@@ -708,6 +733,9 @@
         .wrap {
           padding: 20px 16px 40px;
         }
+        .machine-nav {
+          padding: 16px 16px 0;
+        }
         .roles {
           grid-template-columns: 1fr;
         }
@@ -722,6 +750,7 @@
     </style>
   </head>
   <body>
+    <nav class="machine-nav" id="machine-nav" aria-label="Machines" hidden></nav>
     <div class="wrap" id="session-view" hidden></div>
     <div class="wrap" id="overview">
       <header>
@@ -738,7 +767,10 @@
         <div class="draws" id="draws"></div>
       </section>
       <section>
-        <h2>Roles on this machine <span class="count" id="roles-count"></span></h2>
+        <h2>
+          <span id="roles-title">Roles on this machine</span>
+          <span class="count" id="roles-count"></span>
+        </h2>
         <div class="roles" id="roles"></div>
       </section>
       <section>
@@ -797,6 +829,15 @@
       let data = null,
         fetchedAt = 0,
         failing = false;
+      // The machine shown, null for this one; the others are read through this one's server.
+      let machine = null,
+        peerNames = [],
+        localName = null,
+        peerError = null;
+      const base = () => (machine ? `m/${encodeURIComponent(machine)}/` : '');
+      const machineHash = (name) => (name ? `machine=${encodeURIComponent(name)}` : '');
+      const sessionHref = (id) =>
+        '#' + [machineHash(machine), `session=${encodeURIComponent(id)}`].filter(Boolean).join('&');
 
       const esc = (s) =>
         String(s ?? '').replace(
@@ -832,7 +873,10 @@
         document.getElementById('machine').textContent = d.machine || 'No machine configured';
         document.title = `${d.machine || 'Soirely'} · agents`;
         const bits = [];
-        if (failing) bits.push(`<span class="pill critical">sq web is not answering</span>`);
+        if (failing)
+          bits.push(
+            `<span class="pill critical">${machine ? esc(machine) : 'sq web'} is not answering</span>`,
+          );
         bits.push(
           d.manager
             ? `<span class="pill good live">Manager running</span>`
@@ -846,6 +890,9 @@
         bits.push(`<span id="updated">updated ${ago(Date.now() / 1000 - fetchedAt)}</span>`);
         document.getElementById('meta').innerHTML = bits.join('<span class="sep">|</span>');
         document.getElementById('alerts').innerHTML =
+          (peerError
+            ? `<div class="alert critical"><b>${esc(machine)}</b><span>${esc(peerError)}</span></div>`
+            : '') +
           d.errors
             .map((e) => `<div class="alert critical"><b>Error</b><span>${esc(e)}</span></div>`)
             .join('') +
@@ -909,7 +956,7 @@
       <ul class="holding">${r.sessions
         .map(
           (s) =>
-            `<li><a class="session" href="#session=${esc(s.session)}">${esc(s.worker)}: watch it work</a> <span class="more">started ${since(s.at)}</span></li>`,
+            `<li><a class="session" href="${esc(sessionHref(s.session))}">${esc(s.worker)}: watch it work</a> <span class="more">started ${since(s.at)}</span></li>`,
         )
         .join('')}</ul></div>`);
         if (r.holding.length)
@@ -988,7 +1035,15 @@
           d.machines
             .map((m) => {
               const live = m.seen < 300;
-              return `<tr><td class="role-chip">${esc(m.name)}</td>
+              const href = peerNames.includes(m.name)
+                ? '#' + machineHash(m.name)
+                : m.name === localName
+                  ? '#'
+                  : null;
+              const name = href
+                ? `<a class="session" href="${esc(href)}" title="Show this machine's roles">${esc(m.name)}</a>`
+                : esc(m.name);
+              return `<tr><td class="role-chip">${name}</td>
         <td><span class="pill ${live ? 'good' : ''}">${live ? 'Online' : 'Offline'}</span></td>
         <td class="when">${ago(m.seen)}</td>
         <td><div class="tags">${m.started.map((r) => `<span class="tag">${esc(r)}</span>`).join('') || '<span class="tag">no role</span>'}</div></td></tr>`;
@@ -1014,7 +1069,7 @@
             d.recent
               .map(
                 (r) => `<tr><td class="when" title="${esc(clock(r.at))}">${since(r.at)}</td>
-        <td class="role-chip">${r.session ? `<a class="session" href="#session=${esc(r.session)}" title="Open this run's session">${esc(r.worker || r.role)}</a>` : esc(r.worker || r.role)}</td><td class="when">${esc(r.account || '')}</td><td class="num">${duration(r.seconds)}</td>
+        <td class="role-chip">${r.session ? `<a class="session" href="${esc(sessionHref(r.session))}" title="Open this run's session">${esc(r.worker || r.role)}</a>` : esc(r.worker || r.role)}</td><td class="when">${esc(r.account || '')}</td><td class="num">${duration(r.seconds)}</td>
         <td class="num">${money(r.cost)}</td>
         <td class="report ${r.failed ? 'fail' : ''}" title="${esc(r.report)}">${esc(r.report || 'No report')}</td></tr>`,
               )
@@ -1140,12 +1195,12 @@
       }
 
       function sessionPage(d) {
-        const back = `<a class="back" href="#">← All roles</a>`;
+        const back = `<a class="back" href="#${esc(machineHash(machine))}">← All roles</a>`;
         if (!d)
           return `${back}<header><div><div class="eyebrow">Session</div><h1>Loading…</h1></div></header>`;
         if (d.notFound)
           return `${back}<header><div><div class="eyebrow">Session</div><h1>No such session</h1></div></header>
-      <div class="empty">No worker on this machine recorded session ${esc(sessionId)}.</div>`;
+      <div class="empty">No worker on ${machine ? esc(machine) : 'this machine'} recorded session ${esc(sessionId)}.</div>`;
         const end = d.ended;
         const failed = end && (end.stopped || (end.exit != null && String(end.exit) !== '0'));
         const took = end
@@ -1154,7 +1209,9 @@
             ? Math.floor(Date.now() / 1000 - d.at)
             : null;
         const pills = [
-          sessionFailing ? `<span class="pill critical">sq web is not answering</span>` : '',
+          sessionFailing
+            ? `<span class="pill critical">${machine ? esc(machine) : 'sq web'} is not answering</span>`
+            : '',
           d.live
             ? `<span class="pill good live">Running</span>`
             : end
@@ -1235,7 +1292,7 @@
         if (!sessionId) return;
         const asked = sessionId;
         try {
-          const response = await fetch('session.json?id=' + asked, { cache: 'no-store' });
+          const response = await fetch(base() + 'session.json?id=' + asked, { cache: 'no-store' });
           if (response.status !== 404 && !response.ok) throw new Error(response.status);
           const found = response.status === 404 ? { notFound: true } : await response.json();
           if (asked !== sessionId) return;
@@ -1248,8 +1305,21 @@
       }
 
       function route() {
-        const match = location.hash.match(/^#session=([0-9a-f-]{36})$/);
-        const next = match ? match[1] : null;
+        const asked = new URLSearchParams(location.hash.slice(1));
+        const shown = asked.get('machine') || null;
+        const match = (asked.get('session') || '').match(/^[0-9a-f-]{36}$/);
+        const next = match ? match[0] : null;
+        if (shown !== machine) {
+          machine = shown;
+          data = null;
+          peerError = null;
+          failing = false;
+          sessionId = null;
+          document.getElementById('machine').textContent = machine || localName || 'Loading…';
+          document.getElementById('overview').classList.add('waiting');
+          renderNav();
+          refresh();
+        }
         if (next !== sessionId) {
           sessionId = next;
           session = null;
@@ -1277,8 +1347,34 @@
       );
       window.addEventListener('hashchange', route);
 
+      function renderNav() {
+        const nav = document.getElementById('machine-nav');
+        nav.hidden = !peerNames.length;
+        nav.innerHTML = [null, ...peerNames]
+          .map(
+            (name) =>
+              `<a href="#${esc(machineHash(name))}"${name === machine ? ' aria-current="page"' : ''}>${esc(name || localName || 'This machine')}</a>`,
+          )
+          .join('');
+      }
+
       function render() {
-        if (!data || sessionId) return;
+        renderNav();
+        if (sessionId) return;
+        if (!data) {
+          if (!machine || !(failing || peerError)) return;
+          document.getElementById('machine').textContent = machine;
+          document.getElementById('meta').innerHTML =
+            `<span class="pill critical">${esc(machine)} is not answering</span>`;
+          document.getElementById('alerts').innerHTML = peerError
+            ? `<div class="alert critical"><b>${esc(machine)}</b><span>${esc(peerError)}</span></div>`
+            : '';
+          return;
+        }
+        document.getElementById('overview').classList.remove('waiting');
+        document.getElementById('roles-title').textContent = machine
+          ? `Roles on ${machine}`
+          : 'Roles on this machine';
         drawings(data);
         header(data);
         kpis(data);
@@ -1294,16 +1390,41 @@
       }
 
       async function refresh() {
+        const asked = machine;
         try {
-          const response = await fetch('status.json', { cache: 'no-store' });
-          if (!response.ok) throw new Error(response.status);
-          data = await response.json();
+          const response = await fetch(base() + 'status.json', { cache: 'no-store' });
+          if (!response.ok) {
+            const said = await response.json().catch(() => ({}));
+            throw new Error(said.error || `it answered ${response.status}`);
+          }
+          const found = await response.json();
+          if (asked !== machine) return;
+          data = found;
           fetchedAt = Date.now() / 1000;
           failing = false;
+          peerError = null;
+          if (!machine) learnPeers(found);
         } catch (error) {
+          if (asked !== machine) return;
           failing = true;
+          peerError = machine ? error.message : null;
         }
         render();
+      }
+
+      function learnPeers(d) {
+        peerNames = d.peers || [];
+        localName = d.machine;
+      }
+
+      async function findPeers() {
+        try {
+          const response = await fetch('status.json', { cache: 'no-store' });
+          if (response.ok) learnPeers(await response.json());
+        } catch (error) {
+          return;
+        }
+        renderNav();
       }
 
       const tip = document.getElementById('tip');
@@ -1321,7 +1442,8 @@
       });
 
       route();
-      refresh();
+      if (machine) findPeers();
+      else refresh();
       setInterval(refresh, 5000);
       setInterval(() => {
         if (sessionId && (!session || session.live)) refreshSession();

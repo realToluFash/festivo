@@ -836,13 +836,15 @@ class Worker(unittest.TestCase):
         with mock.patch.dict("os.environ", {"SERVICE_RESULT": "timeout"}):
             entry = runner.worker_ended(self.home, self.platform, "ops", 1,
                                         now=ON_ZERO + 60, db=self.db)
-        self.assertEqual((entry["session"], entry["at"], entry["ended"]),
-                         (SESSION, ON_ZERO, ON_ZERO + 60))
+        self.assertEqual((entry["session"], entry["at"], entry["duration_ms"]),
+                         (SESSION, ON_ZERO, 60000))
+        self.assertNotIn("ended", entry)
         sessions.begin(self.db, "ops", {"item": 2, "session": "next"})
         shown = sessions.view(self.db, self.home, self.platform, SESSION,
                               load=lambda: config(self.root))
-        self.assertEqual((shown["transcript"], shown["model"], shown["ended"]["stopped"]),
-                         (str(path), "claude-opus-5-5", "timeout"))
+        self.assertEqual((shown["transcript"], shown["model"], shown["ended"]["stopped"],
+                          shown["ended"]["seconds"]),
+                         (str(path), "claude-opus-5-5", "timeout", 60))
         self.assertIn(f"claude --resume {SESSION}", shown["resume"])
 
     def test_a_session_left_from_an_earlier_item_is_not_named(self):
