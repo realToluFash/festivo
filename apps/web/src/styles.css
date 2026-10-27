@@ -1763,6 +1763,10 @@ span {
   align-self: flex-start;
 }
 
+.no-organisation-footnote {
+  justify-content: space-between;
+}
+
 .no-organisation .no-organisation-heading {
   margin-top: var(--spaceXs);
   font: var(--typeLabel);
