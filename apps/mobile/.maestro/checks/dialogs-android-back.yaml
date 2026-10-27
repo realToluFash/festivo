@@ -1,5 +1,6 @@
+# Android only: back has no meaning on the iOS simulator.
 # Android back closes the Country list alone, then Create an organisation; and closes a Settings > Organisation list with the field unchanged.
-appId: host.exp.exponent
+appId: host.exp.Exponent
 ---
 - runFlow: ../open-create-organisation.yaml
 - tapOn:

@@ -1,4 +1,5 @@
 # Withdraw your claim?: Keep my claim and the close button each leave the claim open, then Withdraw withdraws it.
+# Needs a signed-in account with an open ownership claim of its own; nothing in the batch makes one. WITHDRAW=true uses the claim up, so make a new one before the next run.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/members

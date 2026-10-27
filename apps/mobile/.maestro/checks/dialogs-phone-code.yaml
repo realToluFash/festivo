@@ -1,4 +1,4 @@
-# Change your mobile number: the Code list closes by Done with the field unchanged, and an option sets it.
+# Change your mobile number: the Code list closes by Done with the field unchanged, and an option sets it. Needs an account whose number is not +33.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/phone
@@ -6,6 +6,7 @@ appId: host.exp.Exponent
     visible:
       id: 'phone.country'
     timeout: 30000
+- assertNotVisible: '.*\+33.*'
 - takeScreenshot: phone-before
 - tapOn:
     id: 'phone.country'
@@ -15,7 +16,7 @@ appId: host.exp.Exponent
     timeout: 10000
 - tapOn:
     id: 'phone.country.search'
-- inputText: 'Franc'
+- inputText: 'Fran'
 - takeScreenshot: phone-code-list
 - tapOn:
     id: 'phone.country.close'
@@ -23,13 +24,14 @@ appId: host.exp.Exponent
     notVisible:
       id: 'phone.country.search'
     timeout: 10000
+- assertNotVisible: '.*\+33.*'
 - takeScreenshot: phone-after-done
 - tapOn:
     id: 'phone.country'
 - tapOn:
     id: 'phone.country.search'
 - eraseText: 30
-- inputText: 'Franc'
+- inputText: 'Fran'
 - tapOn:
     id: 'phone.country.FR'
 - extendedWaitUntil:
