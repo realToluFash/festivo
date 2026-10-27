@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { followPluralLocales, formattingLocale, languageChoices, pluralLocale } from './locales.ts';
+import {
+  followNumberLocales,
+  followPluralLocales,
+  formattingLocale,
+  languageChoices,
+  pluralLocale,
+} from './locales.ts';
 
 describe('languageChoices', () => {
   it("names each supported language in the reader's language, then once more in its own", () => {
@@ -48,6 +54,37 @@ describe('followPluralLocales', () => {
     resolver.getRule('es');
 
     expect(asked).toEqual(['pt-PT', 'es']);
+  });
+});
+
+describe('followNumberLocales', () => {
+  const written = (lng: string, value: number): string => {
+    let number: ((value: unknown, lng: string | undefined, options: object) => string) | null =
+      null;
+    followNumberLocales({
+      add(_name, format) {
+        number = format;
+      },
+    });
+
+    return number!(value, lng, {});
+  };
+
+  it.each([
+    ['en', '1,000', '10,000', '1,000,000'],
+    ['es', '1000', '10.000', '1.000.000'],
+    ['fr', '1\u202f000', '10\u202f000', '1\u202f000\u202f000'],
+    ['pt', '1000', '10\u00a0000', '1\u00a0000\u00a0000'],
+  ])('writes %s numbers the way CLDR writes them', (lng, thousand, tenThousand, million) => {
+    expect([written(lng, 1000), written(lng, 10000), written(lng, 1000000)]).toEqual([
+      thousand,
+      tenThousand,
+      million,
+    ]);
+  });
+
+  it('writes a number under 1000 as it always read', () => {
+    expect(written('fr', 999)).toBe('999');
   });
 });
 

@@ -15,6 +15,7 @@
 import {
   DEFAULT_LOCALE,
   LOCALE_CODES,
+  followNumberLocales,
   followPluralLocales,
   followValueStops,
   formattingLocale,
@@ -58,6 +59,7 @@ export async function initI18n(): Promise<void> {
       interpolation: { escapeValue: false },
     });
   followPluralLocales(i18next.services.pluralResolver);
+  followNumberLocales(i18next.services.formatter!);
   followValueStops(i18next.services.interpolator);
 
   applyDirection(currentLocale());
