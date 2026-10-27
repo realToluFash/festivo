@@ -2427,6 +2427,7 @@ export class ApiClient {
       );
     }
 
+    this.session += 1;
     await this.options.tokens?.save(tokens);
 
     return { tokens, account, linked: body.linked === true };

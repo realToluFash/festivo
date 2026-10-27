@@ -376,7 +376,45 @@ describe('a refresh answered after the session changed hands (sc-16226)', () => 
     expect(onSignedOut).not.toHaveBeenCalled();
   });
 
-  function wired(refreshTokenIn: 'body' | 'cookie' = 'body'): {
+  test('an answer whose body is still being read when the account changes does not save', async () => {
+    const { client, tokens, onSignedOut, asked, answer } = held();
+    let reading!: () => void;
+    const read = new Promise<void>((resolve) => (reading = resolve));
+    let release!: (body: string) => void;
+    const body = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          reading();
+          return new Promise<void>((resolve) => {
+            release = (text) => {
+              controller.enqueue(new TextEncoder().encode(text));
+              controller.close();
+              resolve();
+            };
+          });
+        },
+      },
+      { highWaterMark: 0 },
+    );
+
+    const earlier = client.get('/api/events').catch(() => undefined);
+    await asked;
+    answer(new Response(body, { status: 200 }));
+    await read;
+    await tokens.clear();
+    await client.signIn('grace@example.com', 'a decent passphrase');
+    release(JSON.stringify({ accessToken: 'ada-fresh', refreshToken: 'ada-next' }));
+    await earlier;
+
+    expect(tokens.access()).toBe('grace');
+    expect(tokens.refresh()).toBe('grace-refresh');
+    expect(onSignedOut).not.toHaveBeenCalled();
+  });
+
+  function wired(
+    refreshTokenIn: 'body' | 'cookie' = 'body',
+    holdSignIn = false,
+  ): {
     client: ApiClient;
     tokens: TokenStore & { saved: unknown };
     onSignedOut: ReturnType<typeof vi.fn>;
@@ -416,7 +454,7 @@ describe('a refresh answered after the session changed hands (sc-16226)', () => 
       fetch: async (input) => {
         const path = new URL(String(input)).pathname;
         if (path === '/api/auth/refresh') refreshes += 1;
-        if (path === '/api/auth/login') {
+        if (path === '/api/auth/login' && !holdSignIn) {
           return issued({ accessToken: 'grace', refreshToken: 'grace-refresh', account: ACCOUNT });
         }
         slot(path).ask();
@@ -482,6 +520,32 @@ describe('a refresh answered after the session changed hands (sc-16226)', () => 
     expect(refreshes()).toBe(0);
     expect(onSignedOut).not.toHaveBeenCalled();
   });
+
+  test.each(['body', 'cookie'] as const)(
+    'a refresh started while the sign-in is on the wire and refused after it lands keeps the new session (%s)',
+    async (refreshTokenIn) => {
+      const { client, tokens, onSignedOut, refreshes, asked, answer } = wired(refreshTokenIn, true);
+
+      const signingIn = client.signIn('grace@example.com', 'a decent passphrase');
+      await asked('/api/auth/login');
+      const earlier = client.get('/api/events');
+      await asked('/api/events');
+      answer('/api/events', problem(401, 'unauthenticated'));
+      await asked('/api/auth/refresh');
+      answer(
+        '/api/auth/login',
+        issued({ accessToken: 'grace', refreshToken: 'grace-refresh', account: ACCOUNT }),
+      );
+      await signingIn;
+      answer('/api/auth/refresh', problem(401, 'invalid_refresh_token'));
+      const rejected = await earlier.catch((error: unknown) => error);
+
+      expect(rejected).toBeInstanceOf(ApiError);
+      expect(refreshes()).toBe(1);
+      expect(tokens.access()).toBe('grace');
+      expect(onSignedOut).not.toHaveBeenCalled();
+    },
+  );
 
   test("a request of the earlier account answered 401 after the switch is not retried with the new account's token", async () => {
     const { client, tokens, onSignedOut, refreshes, asked, answer } = wired();
