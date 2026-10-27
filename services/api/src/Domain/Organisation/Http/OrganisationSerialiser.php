@@ -50,6 +50,7 @@ final readonly class OrganisationSerialiser
             // sc-69: what waits on two-factor, and whether only reading is open until Google or Apple is linked.
             'withheldUntilTwoFactor' => Vec\map($grants->withheld(), $name),
             'readOnlyUntilLinked' => $grants->isReadOnly(),
+            'withheldUntilLinked' => Vec\map($grants->withheldUntilLinked(), $name),
             // sc-609: the deadline for two-factor of everyone, while this member has none.
             'twoFactorDue' => $twoFactorDue,
             'signInRules' => [

@@ -51,6 +51,7 @@ const organisation = {
   permissions: ['organisation.manage'],
   withheldUntilTwoFactor: [],
   readOnlyUntilLinked: false,
+  withheldUntilLinked: [],
   twoFactorDue: null,
   signInRules: {
     providerOnly: false,

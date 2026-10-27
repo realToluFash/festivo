@@ -53,6 +53,7 @@ final readonly class RolesController
             ),
             'withheldUntilTwoFactor' => Vec\map($grants->withheld(), static fn (Permission $permission): string => $permission->value),
             'readOnlyUntilLinked' => $grants->isReadOnly(),
+            'withheldUntilLinked' => Vec\map($grants->withheldUntilLinked(), static fn (Permission $permission): string => $permission->value),
         ]);
     }
 

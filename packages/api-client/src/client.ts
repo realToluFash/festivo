@@ -422,6 +422,8 @@ export interface Membership extends Organisation {
   withheldUntilTwoFactor: string[];
   /** Under a Google-or-Apple-only rule with no provider linked: may read, not change (sc-69). */
   readOnlyUntilLinked: boolean;
+  /** The changes the role holds that the read-only rule keeps back, empty unless `readOnlyUntilLinked` (sc-16265). */
+  withheldUntilLinked: string[];
   /** While this organisation requires two-factor of everyone and this account has none (sc-609). */
   twoFactorDue: TwoFactorDue | null;
   signInRules: OrganisationSignInRules;
@@ -3128,6 +3130,7 @@ function asMembership(raw: unknown): Membership | null {
       : [],
     withheldUntilTwoFactor: stringList(candidate.withheldUntilTwoFactor) ?? [],
     readOnlyUntilLinked: candidate.readOnlyUntilLinked === true,
+    withheldUntilLinked: stringList(candidate.withheldUntilLinked) ?? [],
     twoFactorDue: asTwoFactorDue(candidate.twoFactorDue),
     signInRules: asOrganisationSignInRules(candidate.signInRules) ?? {
       providerOnly: false,

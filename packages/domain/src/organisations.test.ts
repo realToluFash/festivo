@@ -8,6 +8,7 @@ import {
   organisationChanges,
   newOrganisationProblem,
   organisationProblem,
+  keptBackBy,
   roleHolds,
   roleName,
   withCurrent,
@@ -179,5 +180,26 @@ describe('newOrganisationProblem', () => {
   it('asks for a country when the device named none', () => {
     expect(newOrganisationProblem('countryCode', '')).toEqual({ kind: 'countryBlank' });
     expect(newOrganisationProblem('countryCode', 'NG')).toBeNull();
+  });
+});
+
+describe('keptBackBy', () => {
+  const clear = { withheldUntilLinked: [], withheldUntilTwoFactor: [] };
+
+  it('names no rule when the role is the reason', () => {
+    expect(keptBackBy(clear, 'organisation.manage')).toEqual([]);
+    expect(
+      keptBackBy({ ...clear, withheldUntilLinked: ['events.manage'] }, 'organisation.manage'),
+    ).toEqual([]);
+  });
+
+  it('names each rule keeping it back, Google or Apple first', () => {
+    const both = {
+      withheldUntilLinked: ['organisation.manage'],
+      withheldUntilTwoFactor: ['members.manage', 'organisation.manage'],
+    };
+
+    expect(keptBackBy(both, 'organisation.manage')).toEqual(['linking', 'twoFactor']);
+    expect(keptBackBy(both, 'members.manage')).toEqual(['twoFactor']);
   });
 });

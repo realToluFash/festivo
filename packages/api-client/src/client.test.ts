@@ -783,6 +783,7 @@ describe('a browser never holds the refresh token', () => {
               permissions: ['events.read'],
               withheldUntilTwoFactor: ['members.manage'],
               readOnlyUntilLinked: true,
+              withheldUntilLinked: ['events.manage', 'organisation.manage'],
               signInRules: {
                 providerOnly: true,
                 inactivityTimeoutDays: 7,
@@ -798,6 +799,7 @@ describe('a browser never holds the refresh token', () => {
 
     expect(organisations[0]?.withheldUntilTwoFactor).toEqual(['members.manage']);
     expect(organisations[0]?.readOnlyUntilLinked).toBe(true);
+    expect(organisations[0]?.withheldUntilLinked).toEqual(['events.manage', 'organisation.manage']);
     expect(organisations[0]?.signInRules.inactivityTimeoutDays).toBe(7);
   });
 

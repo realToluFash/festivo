@@ -2036,6 +2036,10 @@ span {
   margin: 0;
 }
 
+.settings-read-only-rule .notice-action:last-child {
+  margin-bottom: 0;
+}
+
 .settings-wide {
   max-width: 85rem;
 }

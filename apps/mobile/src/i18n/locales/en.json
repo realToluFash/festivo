@@ -901,6 +901,8 @@
     "contactBlank": "Enter a contact email address.",
     "contactInvalid": "That does not look like an email address. Check it has an @ and a domain.",
     "readOnly": "Your role, {{role}}, can see these but not change them. Owners can.",
+    "readOnlyUntilLinked": "{{organisation}} signs in with Google or Apple only. Until you link one, you can see these but not change them.",
+    "readOnlyUntilTwoFactor": "{{organisation}} asks people who can manage members, roles, billing or security to use two-factor. Until you turn it on, you can see these but not change them.",
     "failed": "Saving did not work. Nothing was changed. Try again in a moment.",
     "searchCurrency": "Search currencies",
     "searchTimezone": "Search time zones",
@@ -908,6 +910,7 @@
     "languageHint": "Invitation emails to people without a Soirely account are written in this language. People who already have an account get theirs in their own language.",
     "savedLanguage": "Saved. Invitation emails to people without a Soirely account go out in {{language}} from now on. Invitations already sent are not sent again.",
     "refused": "Nothing was saved. Your role does not include the permission this needs.",
+    "refusedByRule": "Nothing was saved.",
     "searchLanguage": "Search languages"
   },
   "invitations": {

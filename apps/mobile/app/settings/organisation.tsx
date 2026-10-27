@@ -24,9 +24,11 @@ export default function Organisation() {
   const { kind } = useLayout();
   const { organisation } = useSignedIn();
   const phone = kind === 'phone';
-  const [refusedIn, setRefusedIn] = useState<string | null>(null);
-  const refused = organisation != null && refusedIn === organisation.id;
-  const notAllowed = t('orgGeneral.refused');
+  const [refusedIn, setRefusedIn] = useState<{ id: string; byRule: boolean } | null>(null);
+  const refused = organisation != null && refusedIn?.id === organisation.id;
+  const notAllowed = t(
+    refusedIn?.byRule === true ? 'orgGeneral.refusedByRule' : 'orgGeneral.refused',
+  );
 
   return (
     <AppFrame
@@ -66,8 +68,8 @@ export default function Organisation() {
                   key={organisation.id}
                   organisation={organisation}
                   kind={kind}
-                  onForbidden={() => {
-                    setRefusedIn(organisation.id);
+                  onForbidden={(byRule) => {
+                    setRefusedIn({ id: organisation.id, byRule });
                     void rereadOrganisation(organisation.id);
                   }}
                 />

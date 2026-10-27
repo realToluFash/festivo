@@ -5,6 +5,7 @@ import {
   type OrganisationField,
   countryChoices,
   heldCurrencyLabel,
+  keptBackBy,
   languageChoices,
   organisationChanges,
   organisationProblem,
@@ -15,6 +16,7 @@ import { type FormEvent, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { CompanyDomainsCard } from './CompanyDomainsCard.tsx';
@@ -37,16 +39,18 @@ type Status =
   | { kind: 'saved'; language: string | null }
   | { kind: 'failed' };
 
+type Refusal = 'refused' | 'refusedByRule';
+
 export function General() {
   const { t } = useTranslation();
   const session = useSession();
   const organisation = session.organisation;
-  const [refusedIn, setRefusedIn] = useState<string | null>(null);
+  const [refusedIn, setRefusedIn] = useState<{ id: string; refusal: Refusal } | null>(null);
   const [refusal, arriveAtRefusal] = useStepFocus<HTMLDivElement>();
 
   if (organisation == null) return null;
 
-  const refused = refusedIn === organisation.id;
+  const refused = refusedIn?.id === organisation.id ? refusedIn.refusal : null;
 
   return (
     <div className="settings settings-general">
@@ -59,23 +63,23 @@ export function General() {
 
       <RecoveryRequestsCard />
 
-      {refused && (
+      {refused != null && (
         <div className="notice notice-broken" ref={refusal} tabIndex={-1}>
           <span className="mark mark-broken" aria-hidden="true">
             ✕
           </span>
-          <p>{t('orgGeneral.refused')}</p>
+          <p>{t(`orgGeneral.${refused}`)}</p>
         </div>
       )}
 
       <section className="card settings-card" aria-labelledby="organisation-title">
         <h2 id="organisation-title">{t('orgGeneral.section')}</h2>
-        {can(session, 'organisation.manage') && !refused ? (
+        {can(session, 'organisation.manage') && refused == null ? (
           <Editable
             key={organisation.id}
             organisation={organisation}
-            onRefused={() => {
-              setRefusedIn(organisation.id);
+            onRefused={(why) => {
+              setRefusedIn({ id: organisation.id, refusal: why });
               arriveAtRefusal();
             }}
           />
@@ -102,7 +106,7 @@ function Editable({
   onRefused,
 }: {
   organisation: Membership;
-  onRefused: () => void;
+  onRefused: (why: Refusal) => void;
 }) {
   const { t } = useTranslation();
   const locale = currentLocale();
@@ -159,8 +163,12 @@ function Editable({
         language: saved.locale === organisation.locale ? null : saved.locale,
       });
     } catch (error) {
-      if (error instanceof ApiError && error.is('permission_required')) {
-        onRefused();
+      const byRule =
+        error instanceof ApiError &&
+        (error.is('oauth_only_unlinked') || error.is('organisation_two_factor_required'));
+
+      if (byRule || (error instanceof ApiError && error.is('permission_required'))) {
+        onRefused(byRule ? 'refusedByRule' : 'refused');
         void rereadOrganisation(organisation.id);
         return;
       }
@@ -320,9 +328,40 @@ function ReadOnly({ organisation }: { organisation: Membership }) {
           <dd data-testid="organisation-locale">{languageName(t, organisation.locale)}</dd>
         </div>
       </dl>
-      <p className="muted">{t('orgGeneral.readOnly', { role: roleName(t, organisation.role) })}</p>
+      <WhyReadOnly organisation={organisation} />
     </>
   );
+}
+
+/** The role when it is what stops the change, otherwise each sign-in rule that does (sc-16265). */
+function WhyReadOnly({ organisation }: { organisation: Membership }) {
+  const { t } = useTranslation();
+  const rules = keptBackBy(organisation, 'organisation.manage');
+
+  if (rules.length === 0)
+    return (
+      <p className="muted">{t('orgGeneral.readOnly', { role: roleName(t, organisation.role) })}</p>
+    );
+
+  return rules.map((rule) => (
+    <div key={rule} className="settings-read-only-rule">
+      <p className="muted">
+        {t(
+          rule === 'linking'
+            ? 'orgGeneral.readOnlyUntilLinked'
+            : 'orgGeneral.readOnlyUntilTwoFactor',
+          {
+            organisation: organisation.name,
+          },
+        )}
+      </p>
+      <p className="notice-action">
+        <Link className="link-button" to="/app/account/security">
+          {t(rule === 'linking' ? 'signInRules.unlinkedLink' : 'signInRules.gateTurnOn')}
+        </Link>
+      </p>
+    </div>
+  ));
 }
 
 /** In the reader's language alone, as a row names it. */

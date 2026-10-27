@@ -133,6 +133,29 @@ final class SignInRulesTest extends ApiTestCase
         self::assertTrue($standing['readOnlyUntilLinked']);
     }
 
+    /** sc-16265: a client says the rule, not the role, only for a change the role itself holds. */
+    #[Test]
+    public function anUnlinkedMemberIsToldWhichOfTheirRolesChangesWaitOnLinking(): void
+    {
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
+        $permissions = '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/permissions';
+        self::assertSame([], $this->as($bisi, 'GET', $permissions)['withheldUntilLinked'] ?? null);
+        $this->set(['providerOnly' => true]);
+
+        $changes = static fn (SeededRole $seeded): array => Vec\map(
+            Vec\filter($seeded->defaults(), static fn (Permission $permission): bool => $permission->isChange()),
+            static fn (Permission $permission): string => $permission->value,
+        );
+        self::assertSame($changes(SeededRole::Administrator), $this->as($bisi, 'GET', $permissions)['withheldUntilLinked'] ?? null);
+        self::assertContains('organisation.manage', $this->standingOf($bisi)['withheldUntilLinked']);
+        self::assertSame($changes(SeededRole::Coordinator), $this->standingOf($chidi)['withheldUntilLinked']);
+        self::assertNotContains('organisation.manage', $this->standingOf($chidi)['withheldUntilLinked']);
+
+        $this->linkProvider($bisi, 'g-bisi');
+        self::assertSame([], $this->standingOf($bisi)['withheldUntilLinked']);
+    }
+
     #[Test]
     public function linkingAProviderLiftsReadOnlyOnTheNextRequest(): void
     {
@@ -814,17 +837,18 @@ final class SignInRulesTest extends ApiTestCase
         return self::em()->find(User::class, $user->getId()) ?? self::fail('no user');
     }
 
-    /** @return array{readOnlyUntilLinked: bool, withheldUntilTwoFactor: list<string>} in this test's organisation */
+    /** @return array{readOnlyUntilLinked: bool, withheldUntilTwoFactor: list<string>, withheldUntilLinked: list<string>} in this test's organisation */
     private function standingOf(User $user): array
     {
         $organisations = Type\vec(Type\shape([
             'id' => Type\string(),
             'readOnlyUntilLinked' => Type\bool(),
             'withheldUntilTwoFactor' => Type\vec(Type\string()),
+            'withheldUntilLinked' => Type\vec(Type\string()),
         ], true))->coerce($this->as($user, 'GET', '/api/orgs')['organisations']);
         $mine = Iter\first(Vec\filter($organisations, fn (array $organisation): bool => $organisation['id'] === $this->organisation->getId()->toRfc4122())) ?? self::fail('not a member');
 
-        return ['readOnlyUntilLinked' => $mine['readOnlyUntilLinked'], 'withheldUntilTwoFactor' => $mine['withheldUntilTwoFactor']];
+        return ['readOnlyUntilLinked' => $mine['readOnlyUntilLinked'], 'withheldUntilTwoFactor' => $mine['withheldUntilTwoFactor'], 'withheldUntilLinked' => $mine['withheldUntilLinked']];
     }
 
     /** @return array<string, mixed> */
