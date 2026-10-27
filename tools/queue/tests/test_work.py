@@ -856,6 +856,13 @@ class FollowUps(unittest.TestCase):
             self.assertIn("not reviewed yet", items[0]["reason"])
             self.assertEqual(work.review_items([self.on(state)], [pr(checks="pending")]), [])
 
+    def test_a_linguists_own_pr_never_waits_on_the_lead(self):
+        for state in self.STATES:
+            ticket = dict(story(state=state, labels=["translation"]), done=state == "Done")
+            own = dict(pr(), branch="l10n/sc-1")
+            self.assertEqual(work.review_items([ticket], [own]), [], state)
+            self.assertEqual(kinds(work.review_items([ticket], [pr()])), ["review"], state)
+
     def test_a_pass_at_the_head_wakes_its_builder_to_merge(self):
         passed = pr(lead=[verdict("pass", HEAD[:7])])
         for state in self.STATES:

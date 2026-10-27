@@ -687,17 +687,17 @@ def review(c, a):
     if story and story["state"] in W.REVIEWED and not W.side_pr(story, pr):
         set_state(c, story, "Passed Code Review" if a.verdict == "pass" else "Failed Code Review")
     # A follow-up's story, or a linguist's ticket, keeps its state: a push alone wakes the lead.
-    done = story and W.follow_up(story)
+    follow_up = story and W.follow_up(story)
     if story and a.verdict == "pass":
         # A developer's change on a linguist's ticket is not the ticket ready for QA.
-        if not W.side_pr(story, pr) and not done:
+        if not W.side_pr(story, pr) and not follow_up:
             post(c, story, ["qa"], f"PR #{a.pr} passed review at {head[:7]}: {pr['url']}\n\n"
                                    f"{a.qa or 'Nothing beyond the AC to look at hard.'}")
     elif story:
         post(c, story, [R.developer_of(story["labels"])],
              f"Review of PR #{a.pr} at {head[:7]}: {blocking} blocking. {url}\n"
              + ("Answer each finding in its thread, fix and push; the lead is woken by the push."
-                if done or W.side_pr(story, pr) else
+                if follow_up or W.side_pr(story, pr) else
                 "Answer each finding in its thread, fix, push, and hand it back to In Review."))
     stale = resync(c)
     if story:

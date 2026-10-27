@@ -299,7 +299,8 @@ def review_items(stories, prs):
             continue
         open_prs = by_story.get(story["id"], [])
         if story["state"] not in REVIEWED:
-            open_prs = [pr for pr in open_prs if side_pr(story, pr) or follow_up(story)]
+            open_prs = [pr for pr in open_prs
+                        if side_pr(story, pr) or follow_up(story) and not linguists(story)]
             if not open_prs:
                 continue
         merged = any(pr["story_id"] == story["id"] and pr["state"] == "merged" for pr in prs)
