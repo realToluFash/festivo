@@ -8,15 +8,16 @@ const token = json(login.body).accessToken;
 const read = http.get(`${API_URL}/api/events/${EVENT_ID}`, {
   headers: { Authorization: `Bearer ${token}` },
 });
-const tag =
-  (read.headers && (read.headers.etag || read.headers.ETag || read.headers.Etag)) || '"1"';
-const changed = http.request(`${API_URL}/api/events/${EVENT_ID}`, {
-  method: 'PATCH',
-  headers: {
-    Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json',
-    'If-Match': tag,
-  },
-  body: JSON.stringify({ name: ELSEWHERE_NAME }),
-});
-output.changed = changed.status;
+const tag = read.headers && (read.headers.etag || read.headers.ETag || read.headers.Etag);
+const changed =
+  tag &&
+  http.request(`${API_URL}/api/events/${EVENT_ID}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'If-Match': tag,
+    },
+    body: JSON.stringify({ name: ELSEWHERE_NAME }),
+  });
+output.changed = changed ? changed.status : `no ETag on GET (${read.status})`;

@@ -24,7 +24,7 @@ appId: host.exp.Exponent
 - inputText: ' mine'
 - hideKeyboard
 - tapOn:
-    text: 'Cancel'
+    text: '{{t:eventEdit.cancel}}'
     index: 0
 - extendedWaitUntil:
     visible:
@@ -37,6 +37,7 @@ appId: host.exp.Exponent
 - takeScreenshot: kept
 - runScript:
     file: ../scripts/change-event-elsewhere.js
+- assertTrue: ${output.changed == 200}
 - scrollUntilVisible:
     element:
       id: 'eventForm.send'
