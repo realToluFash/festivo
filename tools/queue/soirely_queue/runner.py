@@ -313,11 +313,12 @@ def prompt(rows, role, main, note):
     return "\n".join(lines + ["", brief(rows, role), MILESTONES.format(role=role)])
 
 
-def settled(db, ids):
-    """Every item of the run is done, or handed back to run by itself."""
+def settled(db, ids, name):
+    """Every item of the run is done, or handed back to run by itself, whether it waits in
+    the queue or another worker has claimed it since."""
     for work_id in ids:
         row = store.item(db, work_id)
-        if not row or not (row["status"] == "done" or (row["status"] == "open" and row["solo"])):
+        if not row or not (row["status"] == "done" or (row["solo"] and row["worker"] != name)):
             return False
     return True
 
@@ -515,7 +516,7 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
     try:
         ids = [r["id"] for r in batch] if row else [item_id]
         code, stdout, stderr, ended = run_claude(
-            argv, prompt(batch, role, main, note), cwd, env, lambda: settled(db, ids))
+            argv, prompt(batch, role, main, note), cwd, env, lambda: settled(db, ids, name))
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
         if cwd != path:

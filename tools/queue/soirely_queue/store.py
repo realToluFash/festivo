@@ -184,13 +184,11 @@ def record(db, items, now=None):
 
 
 def held_by(db, role, now=None, worker=None):
-    """The item the role holds; with `worker`, the one that worker holds. A worker is named
-    for its role, or `pm-2` and on for a role that runs more than one."""
-    now = now or time.time()
-    return db.execute("select * from work where status = 'claimed' and claimed_by = ? "
-                      "and lease_until >= ? and coalesce(worker, claimed_by) = "
-                      "coalesce(?, worker, claimed_by) order by id",
-                      (role, now, worker)).fetchone()
+    """The item the role holds; with `worker`, the one that worker holds, the top of its
+    batch. A worker is named for its role, or `pm-2` and on for a role that runs more than
+    one."""
+    rows = held(db, role, now, worker)
+    return rows[0] if rows else None
 
 
 def held(db, role, now=None, worker=None):

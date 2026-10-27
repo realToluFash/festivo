@@ -172,6 +172,7 @@ class Batches(unittest.TestCase):
         top = store.claim(self.db, "qa", NOW, worker="qa", batch=3)
         self.assertEqual(top["id"], 3)
         self.assertEqual(self.ids(), [3, 1, 2])
+        self.assertEqual(store.held_by(self.db, "qa", NOW, "qa")["id"], 3)
         self.assertEqual([row["status"] for row in store.waiting(self.db, "qa")], ["open"])
 
     def test_other_work_is_never_batched_nor_joins_a_batch(self):

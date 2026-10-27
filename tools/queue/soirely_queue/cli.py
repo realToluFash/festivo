@@ -161,7 +161,7 @@ def cmd_tick(s, a):
     now = time.time()
     synced(s.db, now)
     if this_worker():
-        return own_item(s, now, lambda row: print("busy"))
+        return own_item(s, now, lambda rows: print("busy"))
     if store.held_by(s.db, s.role, now):
         return print("busy")
     row = store.claim(s.db, s.role, now)
@@ -174,11 +174,11 @@ def cmd_next(s, a):
     now = time.time()
     synced(s.db, now)
     if this_worker():
-        return own_item(s, now, lambda row: render(s, row))
+        return own_item(s, now, lambda rows: render(s, rows))
     row = store.held_by(s.db, s.role, now) or store.claim(s.db, s.role, now)
     if not row:
         return print("idle")
-    render(s, row)
+    render(s, [row])
 
 
 def own_item(s, now, show):
@@ -187,13 +187,13 @@ def own_item(s, now, show):
     rows = store.held(s.db, s.role, now, this_worker())
     if not rows:
         return print(f"{this_worker()}'s item is finished: end this run")
+    show(rows)
+
+
+def render(s, rows):
+    s.printer.run = f"work:{rows[0]['id']}"
     for row in rows:
-        show(row)
-
-
-def render(s, row):
-    s.printer.run = f"work:{row['id']}"
-    payloads.render(s.printer, s.db, row, s.cache)
+        payloads.render(s.printer, s.db, row, s.cache)
     s.done()
 
 

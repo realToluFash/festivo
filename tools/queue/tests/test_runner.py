@@ -740,7 +740,7 @@ class Worker(unittest.TestCase):
         store.release(self.db, 1)
         store.claim(self.db, "ops", ON_ZERO, worker="ops", batch=3)
         first, second, third = [row["id"] for row in store.held(self.db, "ops", ON_ZERO, "ops")]
-        answers, prompts = [], []
+        answers, prompts, taken = [], [], []
 
         def claude(argv, input, cwd, env, finished):
             prompts.append(input)
@@ -748,6 +748,8 @@ class Worker(unittest.TestCase):
             answers.append(finished())
             store.hand_back(self.db, third)
             answers.append(finished())
+            store.claim(self.db, "ops", ON_ZERO, worker="ops-2", workers=2)
+            taken.append(store.item(self.db, third)["worker"])
             store.finish(self.db, second, "no reply needed")
             answers.append(finished())
             return 0, json.dumps({"type": "result", "total_cost_usd": 0.6, "result": "ok"}), \
@@ -757,6 +759,7 @@ class Worker(unittest.TestCase):
                               load=lambda: config(self.root),
                               prepare=lambda *_: ("c" * 40, None), now=ON_ZERO)
         self.assertEqual(answers, [False, False, True])
+        self.assertEqual(taken, ["ops-2"])
         self.assertIn("Your work is 3 comment items, in queue order:", prompts[0])
         self.assertEqual((entry["item"], entry["items"]), (1, [first, second, third]))
         self.assertEqual([e["cost_usd"] for e in runlog.entries(self.home, "ops")], [0.6])

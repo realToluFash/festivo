@@ -6,7 +6,7 @@ import unittest
 from contextlib import redirect_stdout
 from unittest import mock
 
-from soirely_queue import cli, permissions, shared, store
+from soirely_queue import cli, ledger, permissions, shared, store
 
 from .fakes import FakeRefs
 
@@ -60,7 +60,8 @@ class InsideAWorker(unittest.TestCase):
         out = io.StringIO()
         with redirect_stdout(out), mock.patch.dict("os.environ", {"SOIRELY_WORKER": "pm"}), \
                 mock.patch("soirely_queue.cli.synced"), \
-                mock.patch("soirely_queue.cli.render", lambda s, row: print(row["id"])), \
+                mock.patch("soirely_queue.cli.render",
+                           lambda s, rows: print(*(row["id"] for row in rows))), \
                 mock.patch("time.time", return_value=1000):
             command(self.session, mock.Mock())
         return out.getvalue().strip()
@@ -78,9 +79,19 @@ class InsideAWorker(unittest.TestCase):
         self.assertEqual(self.run_command(cli.cmd_tick), "busy")
 
 
-    def test_next_prints_every_item_of_a_batch_and_release_gives_them_all_back(self):
-        store.claim(self.db, "pm", 1000, worker="pm", batch=2)
-        self.assertEqual(self.run_command(cli.cmd_next).splitlines(), ["1", "2"])
+    def test_next_prints_each_item_of_a_batch_once_and_release_gives_them_all_back(self):
+        store.claim(self.db, "pm", 1000, worker="pm", batch=3)
+        session = cli.Session.__new__(cli.Session)
+        session.role, session.db, session.cache = "pm", self.db, None
+        session.printer = ledger.Printer(self.db, "pm", now=1000)
+        out = io.StringIO()
+        with redirect_stdout(out), mock.patch.dict("os.environ", {"SOIRELY_WORKER": "pm"}), \
+                mock.patch("soirely_queue.cli.synced"), \
+                mock.patch("soirely_queue.payloads.render",
+                           lambda p, db, row, cache: p.add(f"item {row['id']}")), \
+                mock.patch("time.time", return_value=1000):
+            cli.cmd_next(session, mock.Mock())
+        self.assertEqual(out.getvalue().splitlines(), ["item 1", "item 2"])
         self.run_command(cli.cmd_release)
         self.assertEqual(store.held(self.db, "pm", 1000, "pm"), [])
 
@@ -108,7 +119,7 @@ class InsideAWorker(unittest.TestCase):
         self.assertEqual(store.item(self.db, 1)["status"], "claimed")
 
 
-class Brief(unittest.TestCase):
+class BatchBrief(unittest.TestCase):
     def test_a_batch_lists_each_item_with_its_comments_and_how_to_hand_one_back(self):
         rows = [{"id": 4, "pool": "qa", "kind": "inbox", "reason": "[qa] on sc-1",
                  "comments": "17122,17136"},
@@ -289,7 +300,7 @@ class PermissionsPending(unittest.TestCase):
                                          "- Bash(xcrun simctl boot:*) for all"])
 
 
-class BatchBrief(unittest.TestCase):
+class Brief(unittest.TestCase):
     def test_machine_work_opens_by_keeping_ops_to_this_machine(self):
         row = {"id": 4, "pool": "ops@tolu-mac", "kind": "machine", "reason": "the daily sweep"}
         self.assertTrue(cli.brief([row], "ops").startswith(
