@@ -576,7 +576,7 @@ class Worker(unittest.TestCase):
     def tearDown(self):
         self.folder.cleanup()
 
-    def work_with(self, result, code=0, *later, ended=None, seen=None):
+    def work_with(self, result, code=0, *later, ended=None, seen=None, roles=None):
         calls = []
         self.answers = []
 
@@ -592,7 +592,7 @@ class Worker(unittest.TestCase):
             return code, "".join(json.dumps(event) + "\n" for event in stream), "", ended
 
         entry = runner.worker(self.db, self.home, self.platform, "ops", 1, run_claude=claude,
-                              load=lambda: config(self.root),
+                              load=lambda: config(self.root, **({"roles": roles} if roles else {})),
                               prepare=lambda *_: ("c" * 40, None), now=ON_ZERO)
         return entry, calls
 
@@ -634,6 +634,20 @@ class Worker(unittest.TestCase):
             _, calls = self.work_with({"result": "ok"})
         self.assertIn("Bash(docker system df:*)", calls[0][0])
         self.assertEqual(settings(), before)
+
+    def test_a_comment_run_takes_the_inbox_effort_and_other_work_the_roles(self):
+        def effort(kind, **ops):
+            self.db.execute("update work set kind = ?, status = 'claimed' where id = 1", (kind,))
+            entry, calls = self.work_with({"total_cost_usd": 0.1, "result": "ok"},
+                                          roles={"ops": ops})
+            argv = calls[0][0]
+            self.assertEqual(entry["effort"], argv[argv.index("--effort") + 1])
+            return entry["effort"]
+
+        self.assertEqual(effort("inbox", effort="xhigh"), "medium")
+        self.assertEqual(effort("story", effort="xhigh"), "xhigh")
+        self.assertEqual(effort("inbox", effort="xhigh", inboxEffort="high"), "high")
+        self.assertEqual(effort("sweep", effort="xhigh", inboxEffort="high"), "xhigh")
 
     def test_the_run_is_recorded_with_its_cost(self):
         entry, calls = self.work_with({"total_cost_usd": 0.42, "num_turns": 9,

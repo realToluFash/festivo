@@ -58,6 +58,23 @@ class Checked(unittest.TestCase):
         self.assertIn("claude-opus-5-5", refused["ops"])
         self.assertIn("dev2", ready)
 
+    def test_comment_runs_take_medium_unless_a_role_or_the_defaults_say_otherwise(self):
+        ready = machine.check(config(self.root, roles={"ops": {"effort": "xhigh"}}))[2]
+        self.assertEqual(ready["ops"]["inboxEffort"], "medium")
+        set_by_default = config(self.root, roles={"ops": {}, "dev2": {"inboxEffort": "low"}})
+        set_by_default["defaults"]["inboxEffort"] = "high"
+        ready = machine.check(set_by_default)[2]
+        self.assertEqual((ready["ops"]["inboxEffort"], ready["dev2"]["inboxEffort"]),
+                         ("high", "low"))
+        self.assertEqual(machine.effort_for({"effort": "xhigh", "inboxEffort": "medium"},
+                                            "inbox"), "medium")
+        self.assertEqual(machine.effort_for({"effort": "xhigh", "inboxEffort": "medium"},
+                                            "story"), "xhigh")
+
+    def test_an_inbox_effort_the_model_does_not_take_is_refused(self):
+        refused = machine.check(config(self.root, roles={"ops": {"inboxEffort": "lots"}}))[1]
+        self.assertIn("inboxEffort 'lots' is not one claude-opus-5-5 takes", refused["ops"])
+
     def test_an_effort_the_model_does_not_take_is_refused(self):
         changed = config(self.root, roles={"ops": {"effort": "extreme"}})
         refused = machine.check(changed)[1]

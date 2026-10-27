@@ -434,8 +434,9 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
     run. `name` is the role, or `pm-2` and on for a further worker of it."""
     role = machine.worker_role(name)
     config = load()
-    values = machine.settings(config, role)
     row = store.item(db, item_id)
+    values = machine.settings(config, role)
+    values = dict(values, effort=machine.effort_for(values, row["kind"] if row else None))
     story = store.story(db, row["story_id"]) if row and row["story_id"] else None
     entry = {"at": now or time.time(), "item": item_id, "role": role,
              "model": values["model"], "effort": values["effort"],
