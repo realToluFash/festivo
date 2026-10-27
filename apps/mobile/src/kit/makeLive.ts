@@ -61,3 +61,12 @@ export function endRefusalOf(error: unknown): EndRefusal {
 
   return { kind: 'failed' };
 }
+
+export type PauseRefusal = { kind: 'changed' } | { kind: 'failed' };
+
+/** Pause's and Resume's refusals (sc-3586): only `changed`, which reads the event again; past the end the phase is Finished, so neither meets `event_concluded`. */
+export function pauseRefusalOf(error: unknown): PauseRefusal {
+  if (error instanceof ApiError && error.is('event_state_invalid')) return { kind: 'changed' };
+
+  return { kind: 'failed' };
+}

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { EVENT_PHASES } from '@soirely/domain';
 
-import { PHASE_WORD, draftRowOf, endRefusalOf, refusalOf } from './makeLive.ts';
+import { PHASE_WORD, draftRowOf, endRefusalOf, pauseRefusalOf, refusalOf } from './makeLive.ts';
 
 const STARTS = '2026-11-14T16:00:00+01:00';
 const ENDS = '2026-11-15T02:00:00+01:00';
@@ -96,4 +96,18 @@ describe('endRefusalOf', () => {
       expect(endRefusalOf(error)).toEqual({ kind: 'failed' });
     },
   );
+});
+
+describe('pauseRefusalOf', () => {
+  it('reads a 409 event_state_invalid as changed elsewhere', () => {
+    expect(pauseRefusalOf(problem('event_state_invalid'))).toEqual({ kind: 'changed' });
+  });
+
+  it.each([
+    new Error('offline'),
+    problem('event_concluded'),
+    problem('internal_error', { status: 500 }),
+  ])('reads anything else as failed', (error) => {
+    expect(pauseRefusalOf(error)).toEqual({ kind: 'failed' });
+  });
 });
