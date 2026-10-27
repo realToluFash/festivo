@@ -441,6 +441,7 @@ function TabBar({ current }: { current: Destination }) {
               const { width } = event.nativeEvent.layout;
               setMeasured((current) => ({ ...current, [`${fontScale}|${word}`]: width }));
             }}
+            accessible={false}
           >
             {word}
           </Text>
