@@ -1,7 +1,7 @@
 # sc-11741: after the refused taps, the new link opens Ask to join with Message, and Ask to join there sends the request. Pass API, TOKEN and ORG.
 appId: host.exp.Exponent
 ---
-- evalScript: "${output.link = json(http.request(API + '/api/orgs/' + ORG + '/request-link', {method: 'PUT', headers: {Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json', Origin: 'http://127.0.0.1:25173'}, body: '{}'}).body).url.split('/join/')[1]}"
+- evalScript: "${output.link = json(http.request(API + '/api/orgs/' + ORG + '/request-link', {method: 'PUT', headers: {Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json'}, body: '{}'}).body).url.split('/join/')[1]}"
 - openLink: ${METRO_URL}/--/join/${output.link}
 - extendedWaitUntil:
     visible:

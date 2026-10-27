@@ -1,13 +1,13 @@
 # sc-11741: Ask to join opened, the link replaced elsewhere, no message, then Ask to join: the dead-link screen. Pass API, TOKEN and ORG.
 appId: host.exp.Exponent
 ---
-- evalScript: "${output.link = json(http.request(API + '/api/orgs/' + ORG + '/request-link', {method: 'PUT', headers: {Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json', Origin: 'http://127.0.0.1:25173'}, body: '{}'}).body).url.split('/join/')[1]}"
+- evalScript: "${output.link = json(http.request(API + '/api/orgs/' + ORG + '/request-link', {method: 'PUT', headers: {Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json'}, body: '{}'}).body).url.split('/join/')[1]}"
 - openLink: ${METRO_URL}/--/join/${output.link}
 - extendedWaitUntil:
     visible:
       id: 'requestToJoin.ask'
     timeout: 30000
-- evalScript: "${output.replaced = http.post(API + '/api/orgs/' + ORG + '/request-link/replace', {headers: {Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json', Origin: 'http://127.0.0.1:25173'}, body: '{}'}).status}"
+- evalScript: "${output.replaced = http.post(API + '/api/orgs/' + ORG + '/request-link/replace', {headers: {Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json'}, body: '{}'}).status}"
 - assertTrue: ${output.replaced == 200}
 - tapOn:
     id: 'requestToJoin.ask'
@@ -23,4 +23,6 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'requestToJoin.ask'
     optional: true
+- assertVisible:
+    id: 'requestToJoin.home'
 - takeScreenshot: dead-second-tap

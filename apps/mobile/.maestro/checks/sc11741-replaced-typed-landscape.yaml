@@ -2,7 +2,7 @@
 appId: host.exp.Exponent
 ---
 - setOrientation: LANDSCAPE_LEFT
-- evalScript: "${output.link = json(http.request(API + '/api/orgs/' + ORG + '/request-link', {method: 'PUT', headers: {Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json', Origin: 'http://127.0.0.1:25173'}, body: '{}'}).body).url.split('/join/')[1]}"
+- evalScript: "${output.link = json(http.request(API + '/api/orgs/' + ORG + '/request-link', {method: 'PUT', headers: {Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json'}, body: '{}'}).body).url.split('/join/')[1]}"
 - openLink: ${METRO_URL}/--/join/${output.link}
 - extendedWaitUntil:
     visible:
@@ -13,7 +13,7 @@ appId: host.exp.Exponent
     id: 'requestToJoin.message'
 - inputText: 'Hello, I run the Lagos office.'
 - takeScreenshot: typed-keyboard-up
-- evalScript: "${output.replaced = http.post(API + '/api/orgs/' + ORG + '/request-link/replace', {headers: {Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json', Origin: 'http://127.0.0.1:25173'}, body: '{}'}).status}"
+- evalScript: "${output.replaced = http.post(API + '/api/orgs/' + ORG + '/request-link/replace', {headers: {Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json'}, body: '{}'}).status}"
 - assertTrue: ${output.replaced == 200}
 - tapOn:
     id: 'requestToJoin.ask'
