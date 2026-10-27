@@ -33,4 +33,6 @@ appId: host.exp.Exponent
       - swipe:
           start: 75%, 70%
           end: 75%, 30%
+- assertVisible:
+    id: 'roles.discard'
 - takeScreenshot: role-spare-unsaved
