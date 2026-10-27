@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import i18next from 'i18next';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -317,6 +318,24 @@ describe('Settings > Members', () => {
 
     expect(await screen.findByText('Sent Saturday, Oct 10 · revoked Sunday, Oct 11')).toBeDefined();
     expect(sent.map((one) => one.line)).toContain('DELETE /api/orgs/org_1/invitations/inv_1');
+  });
+
+  it('says an invitation you sent in its own sentence, not with you in the inviter slot', async () => {
+    const you = i18next.t('membersScreen.you');
+    i18next.addResource('en', 'translation', 'membersScreen.you', 'SENTINEL');
+    signedIn();
+    answering(READS);
+    open();
+
+    try {
+      const yours = (await screen.findByText('amaka@ire.events')).parentElement!;
+      const bisis = screen.getByText('yusuf.b@gmail.com').parentElement!;
+      expect(within(yours).getByText('Coordinator · invited by you')).toBeDefined();
+      expect(within(yours).queryByText(/SENTINEL/)).toBeNull();
+      expect(within(bisis).getByText('Coordinator · invited by Bisi Adeyemi')).toBeDefined();
+    } finally {
+      i18next.addResource('en', 'translation', 'membersScreen.you', you);
+    }
   });
 
   it('tells how somebody got here, naming who moved them', async () => {
