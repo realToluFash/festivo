@@ -153,6 +153,19 @@
     "alreadyOver": "Este evento já terminou.",
     "calledOffNotice": "Cancelado no dia {{date}}, antes de começar. Os convidados que abrem a sua ligação são informados de que não se vai realizar."
   },
+  "eventPause": {
+    "pause": "Pause",
+    "title": "Pause {{name}}?",
+    "body": "Guests can't reply or change anything until you resume it.",
+    "nothingLost": "Nothing is lost. Check-in and service keep working.",
+    "keepItLive": "Keep it live",
+    "failed": "Not paused. Try again in a moment.",
+    "paused": "{{name}} is paused.",
+    "notice": "Paused. Guests can't reply or change anything until you resume it. Check-in and service still work.",
+    "resume": "Resume",
+    "resumeFailed": "Not resumed. Try again in a moment.",
+    "resumed": "{{name}} is live again."
+  },
   "eventDelete": {
     "open": "Eliminar o evento",
     "note": "Elimina o evento e tudo o que contém para toda a equipa. Os convidados que abrirem a sua ligação veem que já não está disponível.",

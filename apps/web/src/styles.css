@@ -3974,6 +3974,15 @@ button.members-row {
   border-radius: 0;
 }
 
+.mark-paused::before {
+  box-sizing: border-box;
+  width: 0.625rem;
+  height: 0.75rem;
+  border-left: 0.1875rem solid var(--colorAttentionText);
+  border-right: 0.1875rem solid var(--colorAttentionText);
+  content: '';
+}
+
 .pill-finished::before {
   width: auto;
   height: auto;

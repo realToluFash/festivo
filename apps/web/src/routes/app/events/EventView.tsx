@@ -17,6 +17,7 @@ import { CalledOffNotice, EndButton } from './EndEvent.tsx';
 import { EventCoverImage } from './EventCoverImage.tsx';
 import { PHASE_WORD } from './eventWords.ts';
 import { DraftRow, StatusPill } from './MakeLive.tsx';
+import { PauseButton, PausedRow } from './PauseEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { typeLabel } from './eventTypes.ts';
 
@@ -169,6 +170,7 @@ function EventPage({
   const coverLine = useRef<HTMLParagraphElement>(null);
   const [madeLive, setMadeLive] = useState(false);
   const [ended, setEnded] = useState(false);
+  const [moved, setMoved] = useState<'paused' | 'resumed' | null>(null);
   const now = useServerNow();
   const loadedAt = useLoadedAt(event);
   const phase = shownPhase(event, loadedAt, now);
@@ -215,6 +217,16 @@ function EventPage({
       />
       {madeLive && <OutcomeLine words={t('eventLive.madeLive')} />}
       {ended && <OutcomeLine words={t(PHASE_WORD.finished)} />}
+      <PausedRow
+        event={event}
+        phase={phase}
+        manages={can(session, 'events.manage')}
+        onChange={onChange}
+        onResumed={() => setMoved('resumed')}
+      />
+      {moved != null && (
+        <OutcomeLine key={moved} words={t(`eventPause.${moved}`, { name: event.name })} />
+      )}
       <Venue event={event} manages={can(session, 'events.manage')} />
       {coverRefused != null && (
         <ArrivalNotice
@@ -236,6 +248,15 @@ function EventPage({
           <Link className="button" to={`/app/events/${encodeURIComponent(event.id)}/edit`}>
             {t('eventEdit.open')}
           </Link>
+        )}
+        {can(session, 'events.manage') && (
+          <PauseButton
+            event={event}
+            phase={phase}
+            heading={heading}
+            onChange={onChange}
+            onPaused={() => setMoved('paused')}
+          />
         )}
         {can(session, 'events.manage') && (
           <EndButton
