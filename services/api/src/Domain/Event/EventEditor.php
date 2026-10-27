@@ -98,7 +98,12 @@ final readonly class EventEditor
 
             if ($schedule !== [$before['startsAt'], $before['endsAt'], $before['timeZone']]) {
                 $event->setTimes($checked['startsAt'], $checked['endsAt']);
-                $this->notificationScheduler->rescheduleForEvent($event);
+
+                if ($schedule[2] === $before['timeZone']) {
+                    $this->notificationScheduler->rescheduleForEvent($event);
+                } else {
+                    $this->notificationScheduler->rescheduleForNewZone($event);
+                }
             }
 
             $changes = Auditor::diff($before, self::recorded($event));

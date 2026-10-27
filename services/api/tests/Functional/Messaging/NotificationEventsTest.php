@@ -19,6 +19,7 @@ use App\Http\EntityTag;
 use App\Tests\Double\RecordingLogger;
 use DateTimeImmutable;
 use DateTimeZone;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Type;
 use Psl\Vec;
@@ -30,9 +31,8 @@ final class NotificationEventsTest extends MessagingTestCase
     public function aNewEventDateMovesWhatCountsFromTheEventAndNothingElse(): void
     {
         $event = $this->event('+10 days');
-        $paymentDue = new DateTimeImmutable('+20 days');
         self::scheduler()->schedule('test.notice', 'day-before', 'day-before', Trigger::relativeToEvent(EventAnchor::EventStart, '-P1D', '10:00'), $this->members(), [], $event);
-        self::scheduler()->schedule('test.notice', 'payment', 'payment', Trigger::relativeTo($paymentDue, '-P3D'), $this->members(), [], $event);
+        self::scheduler()->schedule('test.notice', 'payment', 'payment', Trigger::relativeTo('2026-11-20', '-P3D', '10:00'), $this->members(), [], $event);
         $before = $this->dueAt('day-before');
         $payment = $this->dueAt('payment');
 
@@ -63,10 +63,47 @@ final class NotificationEventsTest extends MessagingTestCase
     }
 
     #[Test]
+    #[DataProvider('newZones')]
+    public function aNewZoneReadsACallersDayOnTheNewClock(string $zone, string $due): void
+    {
+        $event = $this->event('+10 days');
+        self::scheduler()->schedule('test.timely', 'payment', 'payment', Trigger::relativeTo('2026-11-20', '-P3D', '10:00'), $this->members(), [], $event);
+        self::assertSame('2026-11-17 09:00', $this->dueAt('payment')->format('Y-m-d H:i'));
+
+        self::service(EventEditor::class)->edit($event, EntityTag::of($event->getVersion()), $this->owner, ['timeZone' => $zone]);
+
+        self::assertSame($due, $this->dueAt('payment')->format('Y-m-d H:i'));
+        self::assertSame('2026-11-17 10:00', $this->dueAt('payment')->setTimezone(new DateTimeZone($zone))->format('Y-m-d H:i'));
+        self::assertSame(3600, $this->sendBy('payment')->getTimestamp() - $this->dueAt('payment')->getTimestamp());
+        self::assertSame(1, self::rowCount("SELECT COUNT(*) FROM scheduled_notifications WHERE status = 'pending'"));
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function newZones(): iterable
+    {
+        yield 'east of Lagos' => ['Asia/Tokyo', '2026-11-17 01:00'];
+        yield 'west, where Lagos midnight is still the day before' => ['America/Los_Angeles', '2026-11-17 18:00'];
+    }
+
+    #[Test]
+    public function aNewZoneLeavesAnExactMomentAndARowWithNoEventWhereTheyWere(): void
+    {
+        $event = $this->event('+10 days');
+        self::scheduler()->schedule('test.notice', 'moment', 'moment', Trigger::at(new DateTimeImmutable('2026-11-17 09:00', new DateTimeZone('UTC'))), $this->members(), [], $event);
+        self::scheduler()->schedule('test.notice', 'no-event', 'no-event', Trigger::relativeTo('2026-11-20', '-P3D', '10:00'), $this->members());
+
+        self::service(EventEditor::class)->edit($event, EntityTag::of($event->getVersion()), $this->owner, ['timeZone' => 'Asia/Tokyo']);
+
+        self::assertSame('2026-11-17 09:00', $this->dueAt('moment')->format('Y-m-d H:i'));
+        self::assertSame('2026-11-17 10:00', $this->dueAt('no-event')->format('Y-m-d H:i'));
+    }
+
+    #[Test]
     public function recomputingAnEventsTimesMovesWhatCountsFromIt(): void
     {
         $event = $this->event('+10 days');
         self::scheduler()->schedule('test.notice', 'day-before', 'day-before', Trigger::relativeToEvent(EventAnchor::EventStart, '-P1D', '10:00'), $this->members(), [], $event);
+        self::scheduler()->schedule('test.notice', 'payment', 'payment', Trigger::relativeTo('2026-11-20', '-P3D', '10:00'), $this->members(), [], $event);
         $id = ['id' => $event->getId()->toRfc4122()];
         self::connection()->executeStatement("UPDATE events SET starts_at_utc = starts_at_utc - INTERVAL '3 hours', ends_at_utc = ends_at_utc - INTERVAL '3 hours' WHERE id = :id", $id);
         self::connection()->executeStatement("UPDATE scheduled_notifications SET due_at = due_at - INTERVAL '3 hours' WHERE event_id = :id", $id);
@@ -75,7 +112,8 @@ final class NotificationEventsTest extends MessagingTestCase
         self::assertSame(1, self::service(EventTimesRecomputer::class)->recompute());
 
         self::assertSame('10:00', $this->dueAt('day-before')->setTimezone(new DateTimeZone('Africa/Lagos'))->format('H:i'));
-        self::assertSame(1, self::rowCount("SELECT COUNT(*) FROM scheduled_notifications WHERE status = 'pending'"));
+        self::assertSame('2026-11-17 09:00', $this->dueAt('payment')->format('Y-m-d H:i'));
+        self::assertSame(2, self::rowCount("SELECT COUNT(*) FROM scheduled_notifications WHERE status = 'pending'"));
     }
 
     #[Test]
@@ -356,6 +394,14 @@ final class NotificationEventsTest extends MessagingTestCase
     private function members(): Audience
     {
         return Audience::membersWithPermission($this->organisation->getId(), Permission::BillingManage);
+    }
+
+    private function sendBy(string $key): DateTimeImmutable
+    {
+        return new DateTimeImmutable(
+            Type\string()->coerce(self::scalar("SELECT send_by FROM scheduled_notifications WHERE cancellation_key = :key AND status = 'pending'", ['key' => $key])),
+            new DateTimeZone('UTC'),
+        );
     }
 
     private function dueAt(string $key): DateTimeImmutable

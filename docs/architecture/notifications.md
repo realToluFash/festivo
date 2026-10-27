@@ -52,7 +52,7 @@ $scheduler->schedule(
     'payment.reminder',                         // the registered type
     "payment-reminder:{$payment->getId()}",     // the cancellation key
     "payment:{$payment->getId()}:due",          // the source id, part of the idempotency key
-    Trigger::relativeTo($payment->getDueAt(), '-P3D', '10:00'),
+    Trigger::relativeTo($payment->getDueDate()->format('Y-m-d'), '-P3D', '10:00'),
     Audience::membersWithPermission($organisationId, Permission::BudgetManage),
     ['paymentId' => $payment->getId()->toRfc4122()],
     $event,
@@ -64,13 +64,16 @@ $scheduler->cancel("payment-reminder:{$payment->getId()}");
 - **Call it inside the change's own transaction.** The scheduler writes through the open
   connection, so the change and its row commit together or not at all. Nothing is ever sent
   inside a request: an immediate notification is a row due now.
-- **A trigger** counts from a date the caller supplies (`Trigger::at`, `Trigger::relativeTo`)
-  or from the event's start or end (`Trigger::relativeToEvent`). Offsets are ISO 8601
-  durations; days and the time of day count on the event's clock (sc-98), and the due time
-  is stored in UTC.
+- **A trigger** counts from an exact moment (`Trigger::at`), from a calendar day the caller
+  supplies (`Trigger::relativeTo('2026-11-20', '-P3D', '10:00')`), or from the event's start
+  or end (`Trigger::relativeToEvent`). Offsets are ISO 8601 durations; days and the time of
+  day count on the event's clock (sc-98), and the due time is stored in UTC. A day is never
+  a moment: it is the same day on any clock.
 - **An event's new date, time or zone** re-schedules every pending row that counts from the
-  event (`EventEditor`, `EventTimesRecomputer`). A caller's own date is the caller's to move:
-  schedule again with the same key.
+  event (`EventEditor`, `EventTimesRecomputer`). A new zone, or new rules for the zone after
+  a tzdata update, also re-schedules a row from a caller's day, with its same day, offset and time of day on the new clock (sc-17127); a new
+  date or time leaves it, and an exact moment follows no change. A caller's own date is
+  still the caller's to move: schedule again with the same key.
 - **The same key again** replaces the pending row. There is never more than one pending row
   per key.
 - **A window is not collapsing.** "Changes within 10 minutes send one email" is one row
