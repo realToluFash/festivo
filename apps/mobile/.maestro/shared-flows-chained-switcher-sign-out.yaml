@@ -1,0 +1,5 @@
+# The shared flows as steps of one flow: the switcher, then signing out.
+appId: host.exp.Exponent
+---
+- runFlow: open-switcher.yaml
+- runFlow: sign-out.yaml
