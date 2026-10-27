@@ -1,10 +1,30 @@
 import { useState } from 'react';
-import { useWindowDimensions } from 'react-native';
+import { type TextLayoutEvent, useWindowDimensions } from 'react-native';
 
 import { fitWords, settleWords, titleSize } from '../layout/textSize.ts';
 import { Text, type TextProps } from './Text.tsx';
 
 type WholeWordsProps = TextProps & { size: number; children: string };
+
+/** One size for several texts, stepping down from `start` while any of them breaks a word, never below `size` (sc-13496). */
+export function useWholeWords(size: number, start: number, texts: readonly string[]) {
+  const text = texts.join('\n');
+  const [state, setState] = useState(() => fitWords(null, start, text));
+  const fit = fitWords(state, start, text);
+  if (fit !== state) setState(fit);
+
+  return {
+    maxFontSizeMultiplier: fit.drawn / size,
+    onTextLayout: (event: TextLayoutEvent) => {
+      const lines = event.nativeEvent.lines.map((line) => line.text);
+      setState((current) =>
+        current.key === fit.key && current.drawn === fit.drawn
+          ? settleWords(current, size, lines)
+          : current,
+      );
+    },
+  };
+}
 
 /** Steps down from `start` rather than break a word, never below `size` (sc-13496). */
 export function WholeWords({
@@ -14,23 +34,16 @@ export function WholeWords({
   onTextLayout,
   ...rest
 }: WholeWordsProps & { start: number }) {
-  const [state, setState] = useState(() => fitWords(null, start, children));
-  const fit = fitWords(state, start, children);
-  if (fit !== state) setState(fit);
+  const words = useWholeWords(size, start, [children]);
 
   return (
     <Text
       {...rest}
       size={size}
-      maxFontSizeMultiplier={fit.drawn / size}
+      maxFontSizeMultiplier={words.maxFontSizeMultiplier}
       onTextLayout={(event) => {
         onTextLayout?.(event);
-        const next = settleWords(
-          fit,
-          size,
-          event.nativeEvent.lines.map((line) => line.text),
-        );
-        if (next !== fit) setState(next);
+        words.onTextLayout(event);
       }}
     >
       {children}
