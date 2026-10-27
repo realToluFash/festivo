@@ -1,4 +1,4 @@
-import { type OrganisationEvent } from '@soirely/api-client';
+import { type EventStatus, type OrganisationEvent } from '@soirely/api-client';
 import { type EventPhase, eventAllows } from '@soirely/domain';
 import { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -85,7 +85,7 @@ export function PauseButton({
   );
 }
 
-/** `Event View` (tweak: Paused): the amber line, and Resume, which asks nothing; past the end the phase is Finished and neither shows. */
+/** `Event View` (tweak: Paused): the amber line, and Resume, which asks nothing; past the end the phase is Finished and neither shows. A refusal reloads the event, which may then be past Paused: the row stays to say so. */
 export function PausedRow({
   event,
   phase,
@@ -99,11 +99,14 @@ export function PausedRow({
 }) {
   const { t } = useTranslation();
   const [state, setState] = useState<'idle' | 'pending' | 'failed'>('idle');
+  const [changedTo, setChangedTo] = useState<EventStatus | null>(null);
+  const changed = changedTo === event.status;
 
-  if (phase !== 'paused') return null;
+  if (phase !== 'paused' && !changed) return null;
 
   const resume = () => {
     setState('pending');
+    setChangedTo(null);
     api.resumeEvent(event.id).then(
       ({ event: resumed }) => {
         setState('idle');
@@ -118,6 +121,7 @@ export function PausedRow({
         api.event(event.id).then(
           (latest) => {
             setState('idle');
+            setChangedTo(latest.status);
             onChange(latest);
           },
           () => setState('failed'),
@@ -131,8 +135,15 @@ export function PausedRow({
       <Notice
         tone="attention"
         mark={PAUSE_BARS}
-        body={t('eventPause.notice')}
-        detail={state === 'failed' ? t('eventPause.resumeFailed') : null}
+        body={changed ? t('eventLive.changedElsewhere') : t('eventPause.notice')}
+        detail={
+          changed
+            ? t(NOW_STATE[event.status])
+            : state === 'failed'
+              ? t('eventPause.resumeFailed')
+              : null
+        }
+        answer={changed ? changedTo : undefined}
       />
       {manages && eventAllows(phase, 'resume') && (
         <PrimaryButton
