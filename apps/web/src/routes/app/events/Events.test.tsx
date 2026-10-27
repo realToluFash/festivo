@@ -3677,6 +3677,51 @@ describe('Cover photo chooses its own photo, and a refused one never reaches the
     ).toBeNull();
   });
 
+  it('a refusal from the server keeps the position and description given the saved photo in this visit, as one before upload does', async () => {
+    signedIn();
+    serving(PHOTO);
+    await editing();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change photo' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    fireEvent.change(within(dialog).getByLabelText('Photo position'), { target: { value: '70' } });
+    fireEvent.change(within(dialog).getByLabelText(/Describe the image/), {
+      target: { value: 'The terrace at dusk' },
+    });
+
+    pickInDialog(jpeg('damaged.jpg'));
+
+    expect(await within(dialog).findByText(DAMAGED)).toBeDefined();
+    expect(frameSource(dialog)).toBe(PHOTO.sizes[0]!.url);
+    expect((within(dialog).getByLabelText('Photo position') as HTMLInputElement).value).toBe('70');
+    expect((within(dialog).getByLabelText(/Describe the image/) as HTMLTextAreaElement).value).toBe(
+      'The terrace at dusk',
+    );
+  });
+
+  it('announces a refusal in the dialog, and two the same in a row leave focus where the organiser takes it next', async () => {
+    signedIn();
+    serving(PHOTO);
+    await editing();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change photo' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    const picker = within(dialog).getByRole('button', { name: 'Choose another photo' });
+    pickInDialog(jpeg('a.gif', 'image/gif'));
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert.id).toBe('cover-dialog-refusal');
+    await waitFor(() => expect(document.activeElement).toBe(picker));
+
+    pickInDialog(jpeg('b.gif', 'image/gif'));
+    await waitFor(() => expect(document.activeElement).toBe(picker));
+    const describe = within(dialog).getByLabelText(/Describe the image/);
+    describe.focus();
+    fireEvent.change(describe, { target: { value: 'T' } });
+    fireEvent.change(within(dialog).getByLabelText('Photo position'), { target: { value: '31' } });
+
+    expect(document.activeElement).toBe(describe);
+  });
+
   it("refuses a wrong type from the dialog's picker before it uploads, under the picker, and the dialog stays open", async () => {
     signedIn();
     const sent = serving(PHOTO);

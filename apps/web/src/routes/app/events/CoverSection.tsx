@@ -19,9 +19,9 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
+import { FieldError } from '../../../components/FieldError.tsx';
 import { useDialogKeys } from '../../../dialogFocus.ts';
 import { offButton } from '../../../offButton.ts';
-import { FieldError } from './EventFields.tsx';
 import { type CoverPhoto, EventCoverImage } from './EventCoverImage.tsx';
 import { checkCoverPick, discardCoverUpload, refusalOf } from './coverPhoto.ts';
 
@@ -152,10 +152,9 @@ export function CoverSection({
           >
             {t('eventCover.upload')}
           </button>
-          <FieldError
-            id="cover-refusal"
-            message={refusal == null ? undefined : t(`eventCover.refused_${refusal}`)}
-          />
+          {refusal != null && (
+            <FieldError id="cover-refusal" message={t(`eventCover.refused_${refusal}`)} quiet />
+          )}
           <p className="field-help" id="cover-accepted">
             {t('eventCover.accepted')}
           </p>
@@ -363,11 +362,11 @@ function CoverDialog({
     const checked = await checkCoverPick(next);
     if (checked.refusal != null) {
       setRefusal(t(`eventCover.refused_${checked.refusal}`));
-      focusNext.current = 'picker';
+      picker.current?.focus();
       return;
     }
 
-    if (trying == null) before.current = chosen == null ? savedFrame : { position, description };
+    if (trying == null) before.current = { position, description };
     setTrying(newTrying(next, checked.shows));
     setRefusal(null);
     setPosition(COVER_MIDDLE);
@@ -539,7 +538,7 @@ function CoverDialog({
               onChange={(event) => void pick(event)}
             />
             {shown !== 'choose' && pickerButton}
-            <FieldError id="cover-dialog-refusal" message={refusal ?? undefined} />
+            {refusal != null && <FieldError id="cover-dialog-refusal" message={refusal} />}
           </div>
 
           {shown !== 'choose' && (
@@ -589,7 +588,9 @@ function CoverDialog({
                     setDescriptionError(undefined);
                   }}
                 />
-                <FieldError id="cover-description-error" message={descriptionError} />
+                {descriptionError != null && (
+                  <FieldError id="cover-description-error" message={descriptionError} quiet />
+                )}
                 <p className="field-help" id="cover-description-hint">
                   {t('eventCover.describeHint')}
                 </p>
