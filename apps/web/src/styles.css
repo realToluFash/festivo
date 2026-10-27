@@ -4302,3 +4302,55 @@ button.members-row {
   border-top: var(--borderCard);
   font: var(--typeButton);
 }
+
+.notification-settings-blocked {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  margin: 0 0 var(--spaceXl);
+  overflow-wrap: anywhere;
+}
+
+.notification-settings-grid {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.notification-settings-grid th,
+.notification-settings-grid td {
+  padding: var(--spaceLg) var(--spaceSm);
+  border-top: var(--borderCard);
+  text-align: left;
+  vertical-align: top;
+}
+
+.notification-settings-grid thead th,
+.notification-settings-grid thead td {
+  border-top: 0;
+  font: var(--typeLabel);
+  color: var(--colorInkSecondary);
+}
+
+.notification-settings-grid tbody th {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  font-weight: inherit;
+  overflow-wrap: anywhere;
+}
+
+.notification-settings-name {
+  font: var(--typeRowTitle);
+}
+
+.notification-settings-note {
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
+}
+
+.notification-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  min-height: var(--sizeHit);
+}

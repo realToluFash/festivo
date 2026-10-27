@@ -13,6 +13,7 @@ export function AccountSections() {
       sections={[
         { to: '/app/account', label: t('account.sectionAccount'), end: true },
         { to: '/app/account/security', label: t('account.sectionSecurity') },
+        { to: '/app/account/notifications', label: t('account.sectionNotifications') },
       ]}
     />
   );
