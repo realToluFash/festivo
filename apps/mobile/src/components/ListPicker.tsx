@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { currentLocale } from '../i18n/index.ts';
+import { fieldName } from '../kit/fields.ts';
 import { searchBesideTitle } from '../kit/keyboard.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { useLayout } from '../layout/useLayout.ts';
@@ -73,7 +74,7 @@ export function ListPicker({
       selectionColor={tokens.colorInk}
       autoCorrect={false}
       spellCheck={false}
-      accessibilityLabel={searchLabel}
+      {...fieldName(Platform.OS, searchLabel, { placeholder: searchLabel })}
       testID={`${testID}.search`}
     />
   );
