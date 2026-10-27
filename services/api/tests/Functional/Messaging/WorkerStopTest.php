@@ -9,6 +9,8 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psl\Async;
 use Psl\DateTime\Duration;
+use Psl\SecureRandom;
+use Psl\Str;
 
 final class WorkerStopTest extends TestCase
 {
@@ -19,32 +21,48 @@ final class WorkerStopTest extends TestCase
         self::assertTrue(\extension_loaded('pcntl'), 'The api image has no pcntl, so SIGTERM cannot be caught.');
 
         $root = \dirname(__DIR__, 3);
-        $heartbeat = $root . '/var/notifications-worker.heartbeat';
-        \touch($heartbeat, \time() - 600);
-        $worker = \proc_open(['php', 'bin/console', WorkNotificationsCommand::NAME, '--poll=1'], [1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pipes, $root, [...\getenv(), 'APP_ENV' => 'test']);
+        // The stack's notification-worker beats on the default file, which would say this worker is polling before it is.
+        $heartbeat = $root . '/var/notifications-worker-' . SecureRandom\string(12) . '.heartbeat';
+        $worker = \proc_open(['php', 'bin/console', WorkNotificationsCommand::NAME, '--poll=1', '--heartbeat=' . $heartbeat], [1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pipes, $root, [...\getenv(), 'APP_ENV' => 'test']);
         self::assertNotFalse($worker);
         $deadline = \microtime(true) + 30;
 
         do {
             Async\sleep(Duration::milliseconds(200));
             \clearstatcache();
-        } while (\microtime(true) < $deadline && \proc_get_status($worker)['running'] && (int) \filemtime($heartbeat) < \time() - 5);
+        } while (\microtime(true) < $deadline && \proc_get_status($worker)['running'] && !\file_exists($heartbeat));
 
+        $polling = \file_exists($heartbeat);
         self::assertTrue(\proc_get_status($worker)['running'], 'The worker exited before it was stopped.');
+
+        if (!$polling) {
+            \proc_terminate($worker, \SIGKILL);
+            \proc_close($worker);
+            self::fail('The worker had not begun polling within 30 seconds, so it was not stopped.');
+        }
 
         \proc_terminate($worker, \SIGTERM);
         $stopped = \microtime(true);
 
-        $exitCode = null;
+        $status = \proc_get_status($worker);
 
-        while (null === $exitCode && \microtime(true) - $stopped < 15) {
+        while ($status['running'] && \microtime(true) - $stopped < 15) {
             Async\sleep(Duration::milliseconds(100));
             $status = \proc_get_status($worker);
-            $exitCode = $status['running'] ? null : $status['exitcode'];
         }
 
-        self::assertLessThan(10.0, \microtime(true) - $stopped);
-        self::assertSame(0, $exitCode);
+        $elapsed = \microtime(true) - $stopped;
+
+        if ($status['running']) {
+            \proc_terminate($worker, \SIGKILL);
+        }
+
         \proc_close($worker);
+        \unlink($heartbeat);
+        $reported = Str\format('proc_get_status reported running %s, exitcode %d, signaled %s, termsig %d.', \var_export($status['running'], true), $status['exitcode'], \var_export($status['signaled'], true), $status['termsig']);
+
+        self::assertLessThan(10.0, $elapsed, $reported);
+        self::assertFalse($status['signaled'], $reported);
+        self::assertSame(0, $status['exitcode'], $reported);
     }
 }
