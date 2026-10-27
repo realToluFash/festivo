@@ -1,0 +1,29 @@
+# Signed in with Google only, two-factor on: Security > Link Apple > Continue with Google, leaving the app at the provider. sc-13266.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- waitForAnimationToEnd:
+    timeout: 5000
+- runFlow:
+    when:
+      visible:
+        id: 'ways.cancel'
+    commands:
+      - tapOn:
+          id: 'ways.cancel'
+- scrollUntilVisible:
+    element:
+      id: 'ways.apple.link'
+    direction: UP
+    timeout: 30000
+    centerElement: true
+- tapOn:
+    id: 'ways.apple.link'
+- extendedWaitUntil:
+    visible:
+      id: 'ways.continue'
+    timeout: 10000
+- tapOn:
+    id: 'ways.continue'
+- waitForAnimationToEnd:
+    timeout: 5000
