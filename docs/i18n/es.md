@@ -491,3 +491,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   «Calendario completo», its panel «Próximas fechas». The owner pill «You» is «A su cargo»,
   because a bare «Usted» reads as a form field. Distances follow the date: «hoy», «dentro de
   3 días», «hace 2 días». The API titles put the verb first: «Empieza {name}», «Termina {name}».
+- **27 Oct 2026. Las pestañas de Eventos y sus estados vacíos** (sc-15981 para sc-3594,
+  `events.*`, `eventsScreen.*`). Las pestañas son «Próximos», «Borradores» y «Pasados», en
+  masculino con «eventos». "Make live" sigue siendo «publicar»; "Called off on" es «Cancelado el
+  {{date}}». "Next up" es «Lo próximo», como `timeline.nextUp`. El botón mientras carga dice
+  «Cargando más…», no «Mostrando más…». `moreFailed` repite la segunda frase del fallo de carga
+  de su propia pantalla, como en inglés.
