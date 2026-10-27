@@ -388,8 +388,8 @@ services:
     # The image is distroless: no shell, no wget, no curl. It does carry a JDK,
     # and Java runs a single source file directly, so the check is a few lines
     # of Java mounted with the config. Each run starts a JVM and compiles the
-    # file, so it runs often only while starting: every 10 s it held the Docker
-    # VM at full load across six stacks.
+    # file, about a second of CPU, so it runs often only while starting; a short
+    # interval across several stacks saturates the Docker VM.
     healthcheck:
       test:
         [
