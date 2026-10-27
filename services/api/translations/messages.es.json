@@ -205,6 +205,6 @@
     "validation.cover_photo_required": "Elija una foto para la portada.",
     "validation.cover_upload_missing": "No se ha podido subir la foto. Vuelva a intentarlo.",
     "event.delete_name_mismatch": "Escriba {name} exactamente como aparece para eliminarlo.",
-    "timeline.event_starts": "{name} starts",
-    "timeline.event_ends": "{name} ends"
+    "timeline.event_starts": "Empieza {name}",
+    "timeline.event_ends": "Termina {name}"
 }
