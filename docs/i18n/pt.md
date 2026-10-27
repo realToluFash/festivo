@@ -513,3 +513,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   since "Você" is Brazilian. Distances follow the date: "hoje", "daqui a 3 dias", "há 2 dias".
   The API titles keep the name as subject, "{name} começa", "{name} termina", so no article
   has to agree with it.
+- **27 Oct 2026. Os separadores de Eventos e os seus estados vazios** (sc-15981 para sc-3594,
+  `events.*`, `eventsScreen.*`). Os separadores são "Próximos", "Rascunhos" e "Anteriores".
+  "Make live" continua a ser "publicar"; "Called off on" é "Cancelado a {{date}}", com "a" antes
+  da data, à maneira pt-PT. "Next up" é "A seguir", como `timeline.nextUp`. O botão enquanto
+  carrega diz "A carregar mais…". A contagem anunciada concorda o verbo: "Foi mostrado mais 1 …",
+  "Foram mostrados mais …", com "de eventos" em `many`; 0 é `other`. `moreFailed` repete a
+  segunda frase da falha de carregamento do seu ecrã, como em inglês.
