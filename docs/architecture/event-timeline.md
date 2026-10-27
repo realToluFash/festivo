@@ -69,6 +69,10 @@ the end, "{name} ends", only when `EventDayCount` says the event touches more th
 `startsAt` does (sc-1486), so an event crossing a change of clocks has two offsets. It needs
 **events.read**; another organisation's event is a 404, as every event route is.
 
+`GET /api/orgs/<id>/events` carries the same `milestones` on every event it lists, read for
+the same reader, so Events Home's **Next up** is the timeline's without one request per card
+(sc-3594).
+
 ## Next up
 
 `nextUp(milestones, now)` in `packages/domain` is the earliest milestone at or after `now`.

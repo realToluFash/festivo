@@ -4,7 +4,6 @@ import {
   formatEventMoment,
   type MarkedMilestone,
   markedMilestones,
-  milestoneDistance,
   type MilestoneOwner,
   namesZone,
 } from '@soirely/domain';
@@ -20,6 +19,7 @@ import { QuietButton, SecondaryButton } from './Buttons.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
+import { distanceWords } from '../kit/eventsHome.ts';
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; timeline: EventTimeline };
 
@@ -285,26 +285,6 @@ function Pill({ tone, shape, word }: { tone: PillTone; shape: string | null; wor
       </Text>
     </View>
   );
-}
-
-function distanceWords(
-  at: string,
-  timeZone: string,
-  now: Date,
-  t: ReturnType<typeof useTranslation>['t'],
-): string {
-  const distance = milestoneDistance(at, timeZone, now);
-
-  switch (distance.kind) {
-    case 'now':
-      return t('timeline.now');
-    case 'today':
-      return t('timeline.today');
-    case 'inDays':
-      return t('timeline.inDays', { count: distance.count });
-    case 'daysAgo':
-      return t('timeline.daysAgo', { count: distance.count });
-  }
 }
 
 const styles = StyleSheet.create({

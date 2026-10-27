@@ -12,6 +12,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 
 import { api } from './api.ts';
 import { currentLocale } from './i18n/index.ts';
+import { forgetEventsTab } from './kit/eventsHome.ts';
 import { tokens } from './tokens.ts';
 
 const REMEMBERED = 'soirely.organisation';
@@ -168,6 +169,7 @@ export function switchOrganisation(id: string, landed?: () => void): boolean {
   if (organisation == null) return false;
 
   const go = (): void => {
+    forgetEventsTab();
     set({ ...state, organisation, pausedIn: null });
     void AsyncStorage.setItem(REMEMBERED, id).catch(() => {});
     landed?.();
