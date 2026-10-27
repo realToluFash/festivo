@@ -3405,3 +3405,196 @@ describe('Make live with no hosts (sc-6713)', () => {
     ).toBeDefined();
   });
 });
+
+describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
+  function milestone(at: string, title: string, owner = 'event') {
+    return { at, title, note: null, owner, area: 'events', action: null };
+  }
+
+  const MADRID = {
+    timeZone: 'Europe/Madrid',
+    milestones: [
+      milestone('2026-10-10T12:00:00+02:00', 'Save the date sent', 'automatic'),
+      milestone('2026-10-17T18:00:00+02:00', 'Boda starts'),
+      milestone('2026-10-18T09:00:00+02:00', 'Brunch', 'automatic'),
+      milestone('2026-10-19T12:00:00+02:00', 'Balance due', 'you'),
+      milestone('2026-10-20T12:00:00+02:00', 'Thank-you notes sent', 'automatic'),
+      milestone('2026-10-26T02:00:00+01:00', 'Boda ends'),
+    ],
+  };
+
+  function clockAt(device: string): void {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+    vi.setSystemTime(new Date(device));
+    serverClock.observe(new Date(device).toUTCString());
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+    serverClock.observe(new Date().toUTCString());
+  });
+
+  async function comingUp(): Promise<HTMLElement> {
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    return screen.getByRole('region', { name: 'Coming up' });
+  }
+
+  function rows(within_: HTMLElement): string[] {
+    return within(within_)
+      .getAllByRole('listitem')
+      .map((row) => spaced(row.textContent));
+  }
+
+  it('shows the next four with how far away each is and its owner as a word', async () => {
+    clockAt('2026-10-11T08:00:00Z');
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () => json(MADRID),
+    });
+    at('/app/events/ev_1');
+
+    const panel = await comingUp();
+
+    await waitFor(() => expect(within(panel).getAllByRole('listitem')).toHaveLength(4));
+    expect(rows(panel)).toEqual([
+      'Sat, Oct 17, 18:00 (Europe/Madrid) · in 6 daysBoda startsEventNext up',
+      'Sun, Oct 18, 09:00 (Europe/Madrid) · in 7 daysBrunchAutomatic',
+      'Mon, Oct 19, 12:00 (Europe/Madrid) · in 8 daysBalance dueYou',
+      'Tue, Oct 20, 12:00 (Europe/Madrid) · in 9 daysThank-you notes sentAutomatic',
+    ]);
+    expect(within(panel).getByRole('link', { name: 'Full schedule' }).getAttribute('href')).toBe(
+      '/app/events/ev_1/schedule',
+    );
+  });
+
+  it('says nothing is coming up once everything has passed, and still links the schedule', async () => {
+    clockAt('2026-11-01T08:00:00Z');
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () =>
+        json({ ...MADRID, milestones: MADRID.milestones.filter((one) => one.owner !== 'you') }),
+    });
+    at('/app/events/ev_1');
+
+    const panel = await comingUp();
+
+    expect(
+      await within(panel).findByText(
+        "Nothing coming up. Everything on this event's schedule has passed.",
+      ),
+    ).toBeDefined();
+    expect(within(panel).queryByRole('listitem')).toBeNull();
+    expect(within(panel).getByRole('link', { name: 'Full schedule' })).toBeDefined();
+  });
+
+  it('shows no rows and no Full schedule link while it fails, until Try again loads it', async () => {
+    clockAt('2026-10-11T08:00:00Z');
+    signedIn();
+    let calls = 0;
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () =>
+        ++calls === 1 ? problem(500, 'internal_error') : json(MADRID),
+    });
+    at('/app/events/ev_1');
+
+    const panel = await comingUp();
+
+    expect(await within(panel).findByText("The schedule didn't load.")).toBeDefined();
+    expect(within(panel).queryByRole('listitem')).toBeNull();
+    expect(within(panel).queryByRole('link', { name: 'Full schedule' })).toBeNull();
+
+    fireEvent.click(within(panel).getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(within(panel).getAllByRole('listitem')).toHaveLength(4));
+    expect(within(panel).getByRole('link', { name: 'Full schedule' })).toBeDefined();
+    expect(within(panel).queryByText("The schedule didn't load.")).toBeNull();
+  });
+
+  it('lists every milestone in Full schedule under its zone, Passed and Next up as words', async () => {
+    clockAt('2026-10-11T08:00:00Z');
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () => json(MADRID),
+    });
+    at('/app/events/ev_1/schedule');
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Full schedule' });
+    const page = heading.closest('section')!;
+
+    expect(
+      await within(page).findByText(
+        "Every date on this event, earliest first. Times are in Europe/Madrid, the event's time zone.",
+      ),
+    ).toBeDefined();
+    expect(rows(page)).toEqual([
+      'Sat, Oct 10, 12:00 (Europe/Madrid)Save the date sentAutomatic✓ Passed',
+      'Sat, Oct 17, 18:00 (Europe/Madrid)Boda startsEventNext up',
+      'Sun, Oct 18, 09:00 (Europe/Madrid)BrunchAutomatic',
+      'Mon, Oct 19, 12:00 (Europe/Madrid)Balance dueYou',
+      'Tue, Oct 20, 12:00 (Europe/Madrid)Thank-you notes sentAutomatic',
+      'Mon, Oct 26, 02:00 (Europe/Madrid)Boda endsEvent',
+    ]);
+    expect(within(page).getByText('Something you need to do')).toBeDefined();
+  });
+
+  it('marks an overdue You milestone Overdue and keeps it Next up', async () => {
+    clockAt('2026-10-21T08:00:00Z');
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () => json(MADRID),
+    });
+    at('/app/events/ev_1/schedule');
+
+    const page = (await screen.findByRole('heading', { level: 1, name: 'Full schedule' })).closest(
+      'section',
+    )!;
+
+    await waitFor(() => expect(within(page).getAllByRole('listitem')).toHaveLength(6));
+    expect(rows(page)[3]).toBe('Mon, Oct 19, 12:00 (Europe/Madrid)Balance dueYou⚠ OverdueNext up');
+    expect(rows(page)[4]).toBe(
+      'Tue, Oct 20, 12:00 (Europe/Madrid)Thank-you notes sentAutomatic✓ Passed',
+    );
+  });
+
+  it('marks nothing Next up in Full schedule once the event is over', async () => {
+    clockAt('2026-11-01T08:00:00Z');
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () =>
+        json({ ...MADRID, milestones: MADRID.milestones.filter((one) => one.owner !== 'you') }),
+    });
+    at('/app/events/ev_1/schedule');
+
+    const page = (await screen.findByRole('heading', { level: 1, name: 'Full schedule' })).closest(
+      'section',
+    )!;
+
+    await waitFor(() => expect(within(page).getAllByRole('listitem')).toHaveLength(5));
+    expect(within(page).queryByText('Next up')).toBeNull();
+    expect(within(page).getAllByText('Passed')).toHaveLength(5);
+  });
+
+  it('shows Try again in Full schedule when it fails, with no rows', async () => {
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () => problem(500, 'internal_error'),
+    });
+    at('/app/events/ev_1/schedule');
+
+    const page = (await screen.findByRole('heading', { level: 1, name: 'Full schedule' })).closest(
+      'section',
+    )!;
+
+    expect(await within(page).findByText("The schedule didn't load.")).toBeDefined();
+    expect(within(page).getByRole('button', { name: 'Try again' })).toBeDefined();
+    expect(within(page).queryByRole('listitem')).toBeNull();
+  });
+});
