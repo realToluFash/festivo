@@ -1360,7 +1360,7 @@ function hierarchy(args) {
   if (!ok) process.exitCode = 1;
 }
 
-function maestro(args) {
+async function maestro(args) {
   const root = qaWorktree();
   const onAndroid = args.includes('--android');
   const [flow, ...vars] = args.filter((a) => !a.startsWith('--'));
@@ -1380,7 +1380,7 @@ function maestro(args) {
   }
   const file = join(flows, `${flow}.yaml`);
 
-  const ok = run(
+  const ok = await runAsync(
     maestroBin() ?? 'maestro',
     [
       ...maestroTarget(device, onAndroid, CONFIG.driverPort),
@@ -1390,7 +1390,7 @@ function maestro(args) {
       ...env.flatMap((e) => ['-e', e]),
       file,
     ],
-    { cwd: root, optional: true, env: onAndroid ? androidTools().env : {} },
+    { cwd: root, env: onAndroid ? androidTools().env : {}, timeoutMs: runBudgetMs(1) },
   );
   spawnSync('sh', ['-c', `find "${out}" -mindepth 2 -name '*.png' -exec cp {} "${out}/" \\;`]);
   console.log(`\nEvidence in ${out}`);
@@ -1778,9 +1778,10 @@ async function batch(args) {
     ...rest,
   };
   const test = async (flow, runs) => {
+    const from = begun.length;
     heard.at = Date.now();
     const stall = { ms: STALL_MS, heard };
-    const ok = await runAsync(
+    await runAsync(
       maestroBin() ?? 'maestro',
       [
         ...maestroTarget(device, onAndroid, CONFIG.driverPort),
@@ -1792,9 +1793,14 @@ async function batch(args) {
       ],
       { cwd: root, env: onAndroid ? androidTools().env : {}, timeoutMs: runBudgetMs(runs), stall },
     );
-    const current = begun.at(-1);
-    if (stall.stalled && current && !passed.has(current)) crashed.push(current);
-    return ok;
+    const after = afterRun(batchRuns(checks, languages), {
+      begun,
+      from,
+      passed,
+      stalled: stall.stalled,
+    });
+    if (after.crashed) crashed.push(after.crashed);
+    return after;
   };
 
   const started = Date.now();
@@ -1810,13 +1816,9 @@ async function batch(args) {
     } else {
       if (named)
         await api('/api/auth/locale', { method: 'PUT', token, body: { locale: languages[0] } });
-      await test(join(flows, '_batch.yaml'), checks.length * languages.length);
+      let { rest } = await test(join(flows, '_batch.yaml'), checks.length * languages.length);
       // After a driver crash the checks it never reached run in a fresh Maestro.
-      for (let attempt = 1; crashed.length === attempt; attempt++) {
-        const rest = batchRuns(checks, languages).filter(
-          ({ check, language }) => !begun.includes(checkId(check, language)),
-        );
-        if (!rest.length) break;
+      for (let attempt = 1; rest.length && attempt <= MAX_RESUMES; attempt++) {
         const flow = join(flows, `_rest.${attempt}.yaml`);
         const written = batchFlow({ runs: rest });
         writeFileSync(flow, onAndroid ? forAndroid(written) : written);
@@ -1826,7 +1828,7 @@ async function batch(args) {
             token,
             body: { locale: rest[0].language },
           });
-        await test(flow, rest.length);
+        ({ rest } = await test(flow, rest.length));
       }
     }
   } finally {
@@ -1854,6 +1856,16 @@ async function batch(args) {
       console.log(`  ${hint}`);
     process.exitCode = 1;
   }
+}
+
+export const MAX_RESUMES = 3;
+
+// A run that stalls blames the last check it began itself, and is resumed only past that check.
+export function afterRun(runs, { begun, from, passed, stalled }) {
+  const current = begun.slice(from).at(-1);
+  if (!stalled || !current || passed.has(current)) return { crashed: null, rest: [] };
+  const rest = runs.filter(({ check, language }) => !begun.includes(checkId(check, language)));
+  return { crashed: current, rest };
 }
 
 export function batchSummary(ids, { passed, begun, crashed }) {

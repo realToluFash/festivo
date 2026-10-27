@@ -18,6 +18,7 @@ import {
   batchCheck,
   batchFlow,
   batchRuns,
+  afterRun,
   batchSummary,
   checkId,
   codeStep,
@@ -46,6 +47,7 @@ import {
   expoSdkMajor,
   forAndroid,
   linkIntent,
+  MAX_RESUMES,
   maestroTarget,
   parseTarget,
   passwordAutoFillFiles,
@@ -900,6 +902,51 @@ describe('the list a batch ends with', () => {
       '✗ roles: not run',
       '✓ members',
     ]);
+  });
+});
+
+describe('what a stalled Maestro run leaves to resume', () => {
+  const runs = ['home', 'settings', 'roles', 'members'].map((check) => ({
+    check,
+    language: 'any',
+  }));
+
+  it('blames the check the driver died in and resumes past it', () => {
+    expect(
+      afterRun(runs, {
+        begun: ['home', 'settings'],
+        from: 0,
+        passed: new Set(['home']),
+        stalled: true,
+      }),
+    ).toEqual({ crashed: 'settings', rest: runs.slice(2) });
+  });
+
+  it('stops when a resumed run reaches no new check, blaming nobody', () => {
+    expect(
+      afterRun(runs.slice(2), {
+        begun: ['home', 'settings'],
+        from: 2,
+        passed: new Set(['home']),
+        stalled: true,
+      }),
+    ).toEqual({ crashed: null, rest: [] });
+  });
+
+  it('resumes nothing after a run that ended without stalling', () => {
+    expect(
+      afterRun(runs, {
+        begun: ['home', 'settings'],
+        from: 0,
+        passed: new Set(['home']),
+        stalled: false,
+      }),
+    ).toEqual({ crashed: null, rest: [] });
+  });
+
+  it('caps the resumes', () => {
+    expect(MAX_RESUMES).toBeGreaterThan(0);
+    expect(MAX_RESUMES).toBeLessThan(10);
   });
 });
 
