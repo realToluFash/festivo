@@ -19,7 +19,7 @@ import { QuietButton, SecondaryButton } from './Buttons.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
-import { distanceWords } from '../kit/eventsHome.ts';
+import { distanceWords } from '../kit/distanceWords.ts';
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; timeline: EventTimeline };
 
@@ -236,7 +236,7 @@ function MilestoneRow({
   return (
     <View style={[styles.row, !first && styles.rowDivider]} testID="timeline.row">
       <Text size={tokens.typeSmall.size} muted style={passed && styles.passed}>
-        {distance ? `${when} · ${distanceWords(milestone.at, timeZone, now, t)}` : when}
+        {distance ? `${when} · ${distanceWords(t, milestone.at, timeZone, now)}` : when}
       </Text>
       <Text size={tokens.typeRowTitle.size} weight="semibold" style={passed && styles.passed}>
         {milestone.title}

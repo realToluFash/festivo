@@ -1,5 +1,12 @@
 import type { ListedEvent, Membership, OrganisationEvent } from '@soirely/api-client';
-import { roleHolds, serverClock, withPastPage } from '@soirely/domain';
+import {
+  type EventsTab,
+  rememberEventsTab,
+  rememberedEventsTab,
+  roleHolds,
+  serverClock,
+  withPastPage,
+} from '@soirely/domain';
 import { Redirect, router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, RefreshControl, StyleSheet, View } from 'react-native';
@@ -8,7 +15,6 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { offersDelete } from '../kit/eventDelete.ts';
-import { type Tab, rememberTab, rememberedTab } from '../kit/eventsHome.ts';
 import { takeCoverRefused, takeSaved } from '../kit/eventSaved.ts';
 import {
   type Opened,
@@ -130,14 +136,14 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     };
   }, [organisationId, reads, attempt]);
 
-  const [tab, setTab] = useState<{ in: string | undefined; tab: Tab }>(() => ({
+  const [tab, setTab] = useState<{ in: string | undefined; tab: EventsTab }>(() => ({
     in: organisationId,
-    tab: organisationId == null ? 'upcoming' : rememberedTab(organisationId),
+    tab: organisationId == null ? 'upcoming' : rememberedEventsTab(organisationId),
   }));
   if (tab.in !== organisationId) {
     setTab({
       in: organisationId,
-      tab: organisationId == null ? 'upcoming' : rememberedTab(organisationId),
+      tab: organisationId == null ? 'upcoming' : rememberedEventsTab(organisationId),
     });
   }
   const [more, setMore] = useState<'idle' | 'loading' | 'failed'>('idle');
@@ -308,7 +314,7 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
             load={load}
             tab={tab.tab}
             onTab={(next) => {
-              if (organisationId != null) rememberTab(organisationId, next);
+              if (organisationId != null) rememberEventsTab(organisationId, next);
               setTab({ in: organisationId, tab: next });
             }}
             open={open}

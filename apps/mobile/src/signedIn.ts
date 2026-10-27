@@ -5,14 +5,18 @@ import type {
   Membership,
   PausedOrganisation,
 } from '@soirely/api-client';
-import { type InvitationOutcome, chooseOrganisation, choosePaused } from '@soirely/domain';
+import {
+  type InvitationOutcome,
+  chooseOrganisation,
+  choosePaused,
+  forgetEventsTab,
+} from '@soirely/domain';
 import { router } from 'expo-router';
 import i18next from 'i18next';
 import { useEffect, useSyncExternalStore } from 'react';
 
 import { api } from './api.ts';
 import { currentLocale } from './i18n/index.ts';
-import { forgetEventsTab } from './kit/eventsHome.ts';
 import { tokens } from './tokens.ts';
 
 const REMEMBERED = 'soirely.organisation';

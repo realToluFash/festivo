@@ -11,14 +11,13 @@ import {
   awaiting,
   primaryEmailAddress,
 } from '@soirely/api-client';
-import { chooseOrganisation, choosePaused, roleHolds } from '@soirely/domain';
+import { chooseOrganisation, choosePaused, forgetEventsTab, roleHolds } from '@soirely/domain';
 import i18next from 'i18next';
 import { useSyncExternalStore } from 'react';
 
 import { followAccount } from './accountLanguage.ts';
 import { GATED, SIGNED_OUT, api } from './api.ts';
 import { currentLocale } from './i18n/index.ts';
-import { forgetEventsTab } from './routes/app/events/eventsTab.ts';
 
 export interface Session {
   name: string;

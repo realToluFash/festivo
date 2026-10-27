@@ -34,7 +34,7 @@ const {
   switchOrganisation,
   useSignedIn,
 } = await import('./signedIn.ts');
-const { rememberTab, rememberedTab } = await import('./kit/eventsHome.ts');
+const { rememberEventsTab, rememberedEventsTab } = await import('@soirely/domain');
 const { useWaitingInvitations } = await import('./invitations.ts');
 const { default: i18next } = await import('i18next');
 
@@ -191,12 +191,12 @@ describe('Switch organisation (sc-3594)', () => {
   });
 
   it('opens Events on Upcoming in the organisation switched back to', () => {
-    rememberTab('org_1', 'past');
+    rememberEventsTab('org_1', 'past');
 
     switchOrganisation('org_2');
     switchOrganisation('org_1');
 
-    expect(rememberedTab('org_1')).toBe('upcoming');
+    expect(rememberedEventsTab('org_1')).toBe('upcoming');
   });
 });
 

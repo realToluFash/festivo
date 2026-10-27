@@ -1,13 +1,12 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { EVENT_TYPES, serverClock } from '@soirely/domain';
+import { EVENT_TYPES, forgetEventsTab, serverClock } from '@soirely/domain';
 
 import { __setSessionState, type Session, switchOrganisation } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { breaksAnywhere } from '../../../test-wrapping.ts';
 import { routes } from '../../index.tsx';
-import { forgetEventsTab } from './eventsTab.ts';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 

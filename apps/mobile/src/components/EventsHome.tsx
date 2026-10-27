@@ -1,10 +1,17 @@
 import type { ListedEvent } from '@soirely/api-client';
-import { type EventPhase, eventsHome, nextUp, shownPhase } from '@soirely/domain';
+import {
+  EVENTS_TABS,
+  type EventPhase,
+  type EventsTab,
+  eventsHome,
+  nextUp,
+  shownPhase,
+} from '@soirely/domain';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
-import { TABS, type Tab, cardDate } from '../kit/eventsHome.ts';
+import { cardDateWords } from '../kit/eventsHome.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -16,13 +23,13 @@ import { ReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
 
-const TAB_WORD: Record<Tab, string> = {
+const TAB_WORD: Record<EventsTab, string> = {
   upcoming: 'eventsScreen.tabUpcoming',
   drafts: 'eventsScreen.tabDrafts',
   past: 'eventsScreen.tabPast',
 };
 
-const EMPTY: Record<Tab, { title: string; line: string }> = {
+const EMPTY: Record<EventsTab, { title: string; line: string }> = {
   upcoming: { title: 'eventsScreen.emptyUpcomingTitle', line: 'eventsScreen.emptyUpcoming' },
   drafts: { title: 'eventsScreen.emptyDraftsTitle', line: 'eventsScreen.emptyDrafts' },
   past: { title: 'eventsScreen.emptyPastTitle', line: 'eventsScreen.emptyPast' },
@@ -50,8 +57,8 @@ export function EventsHome({
 }: {
   kind: LayoutKind;
   load: HomeLoad;
-  tab: Tab;
-  onTab: (tab: Tab) => void;
+  tab: EventsTab;
+  onTab: (tab: EventsTab) => void;
   open: string | null;
   onOpen: (id: string) => void;
   more: 'idle' | 'loading' | 'failed';
@@ -61,7 +68,7 @@ export function EventsHome({
   const { t } = useTranslation();
   const now = useServerNow();
   const grouped = eventsHome(load, now, dateLocale());
-  const counts: Record<Tab, number> = {
+  const counts: Record<EventsTab, number> = {
     upcoming: grouped.upcoming.length,
     drafts: grouped.drafts.length,
     past: grouped.pastCount,
@@ -90,7 +97,7 @@ export function EventsHome({
         </View>
       )}
       <View style={styles.tabs} accessibilityRole="tablist">
-        {TABS.map((one) => {
+        {EVENTS_TABS.map((one) => {
           const selected = one === tab;
 
           return (
@@ -206,7 +213,7 @@ function Card({
           </Text>
         )}
         <Text size={tokens.typeSmall.size} muted>
-          {cardDate(event, phase, now, dateLocale(), t)}
+          {cardDateWords(event, phase, now, dateLocale(), t)}
         </Text>
       </View>
     </Pressable>

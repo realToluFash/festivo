@@ -1,11 +1,15 @@
 import { type ListedEvent } from '@soirely/api-client';
 import {
-  calledOff,
+  EVENTS_TABS,
+  type EventsTab,
+  cardDate,
   eventsHome,
   formatEventClock,
   formatEventShortDay,
   formatEventWeekday,
   nextUp,
+  rememberEventsTab,
+  rememberedEventsTab,
   serverClock,
   shownPhase,
   withPastPage,
@@ -31,17 +35,16 @@ import { typeLabel } from './eventTypes.ts';
 import { StatusPill } from './MakeLive.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { distanceWords } from './distanceWords.ts';
-import { TABS, type Tab, rememberTab, rememberedTab } from './eventsTab.ts';
 
 const PAST_PAGE = 10;
 
-const TAB_WORD: Record<Tab, string> = {
+const TAB_WORD: Record<EventsTab, string> = {
   upcoming: 'events.tabUpcoming',
   drafts: 'events.tabDrafts',
   past: 'events.tabPast',
 };
 
-const EMPTY: Record<Tab, { title: string; line: string }> = {
+const EMPTY: Record<EventsTab, { title: string; line: string }> = {
   upcoming: { title: 'events.emptyUpcomingTitle', line: 'events.emptyUpcoming' },
   drafts: { title: 'events.emptyDraftsTitle', line: 'events.emptyDrafts' },
   past: { title: 'events.emptyPastTitle', line: 'events.emptyPast' },
@@ -118,7 +121,7 @@ function EventsOf({
   const [attempt, setAttempt] = useState(0);
   const [more, setMore] = useState<'idle' | 'loading' | 'failed'>('idle');
   const [shown, setShown] = useState('');
-  const [tab, setTab] = useState<Tab>(() => rememberedTab(organisationId));
+  const [tab, setTab] = useState<EventsTab>(() => rememberedEventsTab(organisationId));
   const failedLine = useRef<HTMLParagraphElement>(null);
   const firstRunTitle = useRef<HTMLHeadingElement>(null);
   const home = useRef<HTMLDivElement>(null);
@@ -242,7 +245,7 @@ function EventsOf({
           past: grouped.pastCount,
         }}
         onChoose={(next) => {
-          rememberTab(organisationId, next);
+          rememberEventsTab(organisationId, next);
           setTab(next);
         }}
       >
@@ -287,26 +290,26 @@ function Tabs({
   onChoose,
   children,
 }: {
-  tab: Tab;
-  counts: Record<Tab, number>;
-  onChoose: (tab: Tab) => void;
+  tab: EventsTab;
+  counts: Record<EventsTab, number>;
+  onChoose: (tab: EventsTab) => void;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
-  const buttons = useRef<Partial<Record<Tab, HTMLButtonElement | null>>>({});
+  const buttons = useRef<Partial<Record<EventsTab, HTMLButtonElement | null>>>({});
 
-  const choose = (next: Tab, focus = false) => {
+  const choose = (next: EventsTab, focus = false) => {
     onChoose(next);
     if (focus) buttons.current[next]?.focus();
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    const at = TABS.indexOf(tab);
+    const at = EVENTS_TABS.indexOf(tab);
     const to = {
-      ArrowRight: TABS[(at + 1) % TABS.length],
-      ArrowLeft: TABS[(at + TABS.length - 1) % TABS.length],
-      Home: TABS[0],
-      End: TABS[TABS.length - 1],
+      ArrowRight: EVENTS_TABS[(at + 1) % EVENTS_TABS.length],
+      ArrowLeft: EVENTS_TABS[(at + EVENTS_TABS.length - 1) % EVENTS_TABS.length],
+      Home: EVENTS_TABS[0],
+      End: EVENTS_TABS[EVENTS_TABS.length - 1],
     }[event.key];
 
     if (to == null) return;
@@ -318,7 +321,7 @@ function Tabs({
   return (
     <div className="events-tabs">
       <div role="tablist" className="events-tab-list" aria-label={t('events.title')}>
-        {TABS.map((one) => (
+        {EVENTS_TABS.map((one) => (
           <button
             key={one}
             ref={(button) => {
@@ -351,7 +354,7 @@ function Tabs({
   );
 }
 
-function EmptyTab({ tab }: { tab: Tab }) {
+function EmptyTab({ tab }: { tab: EventsTab }) {
   const { t } = useTranslation();
 
   return (
@@ -428,23 +431,24 @@ function CardDate({
   const { t } = useTranslation();
   const locale = dateLocale();
 
-  if (phase === 'happening_now') {
-    return t('events.startedToday', {
-      time: formatEventClock(event.startsAt, event.timeZone, locale),
-      timeZone: event.timeZone,
-    });
-  }
+  const date = cardDate(event, phase);
 
-  if (phase === 'finished' && calledOff(event) && event.concludedAt != null) {
-    return t('events.calledOffOn', {
-      date: formatEventShortDay(event.concludedAt, event.timeZone, locale),
-    });
+  switch (date.kind) {
+    case 'startedToday':
+      return t('events.startedToday', {
+        time: formatEventClock(date.startsAt, event.timeZone, locale),
+        timeZone: event.timeZone,
+      });
+    case 'calledOffOn':
+      return t('events.calledOffOn', {
+        date: formatEventShortDay(date.concludedAt, event.timeZone, locale),
+      });
+    case 'dateAway':
+      return t('events.dateAway', {
+        date: formatEventWeekday(date.startsAt, event.timeZone, locale),
+        distance: distanceWords(t, date.startsAt, event.timeZone, now),
+      });
   }
-
-  return t('events.dateAway', {
-    date: formatEventWeekday(event.startsAt, event.timeZone, locale),
-    distance: distanceWords(t, event.startsAt, event.timeZone, now),
-  });
 }
 
 function FirstRun({

@@ -1,4 +1,4 @@
-import { type EventPhase, type EventState, shownPhase } from './eventStates.ts';
+import { type EventPhase, type EventState, calledOff, shownPhase } from './eventStates.ts';
 
 export interface HomeEvent {
   id: string;
@@ -61,6 +61,46 @@ export function withPastPage<
     pastPages * perPage >= page.total ? Math.min(loaded.pastTotal, past.length) : loaded.pastTotal;
 
   return { load: { ...loaded, past, pastPages, pastTotal }, added: added.length };
+}
+
+export const EVENTS_TABS = ['upcoming', 'drafts', 'past'] as const;
+
+export type EventsTab = (typeof EVENTS_TABS)[number];
+
+let chosen: { organisationId: string; tab: EventsTab } | null = null;
+
+/** Kept while the person moves around the app and back; another organisation opens on Upcoming (sc-3594). */
+export function rememberedEventsTab(organisationId: string): EventsTab {
+  return chosen?.organisationId === organisationId ? chosen.tab : 'upcoming';
+}
+
+export function rememberEventsTab(organisationId: string, tab: EventsTab): void {
+  chosen = { organisationId, tab };
+}
+
+export function forgetEventsTab(): void {
+  chosen = null;
+}
+
+export type CardDate =
+  | { kind: 'startedToday'; startsAt: string }
+  | { kind: 'calledOffOn'; concludedAt: string }
+  | { kind: 'dateAway'; startsAt: string };
+
+/** "Today · started 09:00", "Called off on Sep 30", or "Saturday, Nov 14 · in 32 days". */
+export function cardDate(
+  event: { status: EventState; startsAt: string; concludedAt: string | null },
+  phase: EventPhase,
+): CardDate {
+  if (phase === 'happening_now') {
+    return { kind: 'startedToday', startsAt: event.startsAt };
+  }
+
+  if (phase === 'finished' && calledOff(event) && event.concludedAt != null) {
+    return { kind: 'calledOffOn', concludedAt: event.concludedAt };
+  }
+
+  return { kind: 'dateAway', startsAt: event.startsAt };
 }
 
 /** When it was ended or called off, or its end, for one the clock has finished since it was loaded. */

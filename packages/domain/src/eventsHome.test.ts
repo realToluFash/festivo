@@ -1,6 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
-import { type HomeEvent, eventsHome, withPastPage } from './eventsHome.ts';
+import {
+  type HomeEvent,
+  cardDate,
+  eventsHome,
+  forgetEventsTab,
+  rememberEventsTab,
+  rememberedEventsTab,
+  withPastPage,
+} from './eventsHome.ts';
 
 const LOADED = new Date('2026-11-01T12:00:00Z');
 
@@ -189,5 +197,55 @@ describe('withPastPage', () => {
     const read = withPastPage(loaded, { events: past(4, 20), total: 24 }, 10);
 
     expect(read.load.pastTotal).toBe(24);
+  });
+});
+
+describe('the tab chosen', () => {
+  afterEach(() => forgetEventsTab());
+
+  it('opens on Upcoming, keeps the one chosen, and opens another organisation on Upcoming', () => {
+    expect(rememberedEventsTab('org_1')).toBe('upcoming');
+
+    rememberEventsTab('org_1', 'past');
+
+    expect(rememberedEventsTab('org_1')).toBe('past');
+    expect(rememberedEventsTab('org_2')).toBe('upcoming');
+  });
+
+  it('opens on Upcoming once forgotten', () => {
+    rememberEventsTab('org_1', 'drafts');
+    forgetEventsTab();
+
+    expect(rememberedEventsTab('org_1')).toBe('upcoming');
+  });
+});
+
+describe('cardDate', () => {
+  const live = event('Gala');
+
+  it('reads the start with its distance while it is ahead', () => {
+    expect(cardDate(live, 'live')).toEqual({ kind: 'dateAway', startsAt: live.startsAt });
+  });
+
+  it('reads when it started while it is happening', () => {
+    expect(cardDate(live, 'happening_now')).toEqual({
+      kind: 'startedToday',
+      startsAt: live.startsAt,
+    });
+  });
+
+  it('reads when it was called off', () => {
+    const calledOff = event('Gala', { status: 'ended', concludedAt: '2026-09-30T10:00:00+02:00' });
+
+    expect(cardDate(calledOff, 'finished')).toEqual({
+      kind: 'calledOffOn',
+      concludedAt: '2026-09-30T10:00:00+02:00',
+    });
+  });
+
+  it('reads the start of one that ended after it began', () => {
+    const ended = event('Gala', { status: 'ended', concludedAt: '2026-11-14T23:00:00+01:00' });
+
+    expect(cardDate(ended, 'finished')).toEqual({ kind: 'dateAway', startsAt: ended.startsAt });
   });
 });
