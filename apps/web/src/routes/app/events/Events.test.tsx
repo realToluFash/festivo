@@ -3435,7 +3435,7 @@ describe('Make live with no hosts (sc-6713)', () => {
   });
 });
 
-describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
+describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
   function milestone(at: string, title: string, owner = 'event') {
     return { at, title, note: null, owner, area: 'events', action: null };
   }
@@ -3493,12 +3493,12 @@ describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
       'Mon, Oct 19, 12:00 (Europe/Madrid) · in 8 daysBalance dueYou',
       'Tue, Oct 20, 12:00 (Europe/Madrid) · in 9 daysThank-you notes sentAutomatic',
     ]);
-    expect(within(panel).getByRole('link', { name: 'Full schedule' }).getAttribute('href')).toBe(
-      '/app/events/ev_1/schedule',
+    expect(within(panel).getByRole('link', { name: 'All dates' }).getAttribute('href')).toBe(
+      '/app/events/ev_1/dates',
     );
   });
 
-  it('says nothing is coming up once everything has passed, and still links the schedule', async () => {
+  it('says nothing is coming up once everything has passed, and still links All dates', async () => {
     clockAt('2026-11-01T08:00:00Z');
     signedIn();
     answering({
@@ -3511,15 +3511,13 @@ describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
     const panel = await comingUp();
 
     expect(
-      await within(panel).findByText(
-        "Nothing coming up. Everything on this event's schedule has passed.",
-      ),
+      await within(panel).findByText('Nothing coming up. Every date on this event has passed.'),
     ).toBeDefined();
     expect(within(panel).queryByRole('listitem')).toBeNull();
-    expect(within(panel).getByRole('link', { name: 'Full schedule' })).toBeDefined();
+    expect(within(panel).getByRole('link', { name: 'All dates' })).toBeDefined();
   });
 
-  it('shows no rows and no Full schedule link while it fails, until Try again loads it', async () => {
+  it('shows no rows and no All dates link while it fails, until Try again loads it', async () => {
     clockAt('2026-10-11T08:00:00Z');
     signedIn();
     let calls = 0;
@@ -3532,27 +3530,27 @@ describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
 
     const panel = await comingUp();
 
-    expect(await within(panel).findByText('The schedule did not load.')).toBeDefined();
+    expect(await within(panel).findByText('The dates did not load.')).toBeDefined();
     expect(within(panel).queryByRole('listitem')).toBeNull();
-    expect(within(panel).queryByRole('link', { name: 'Full schedule' })).toBeNull();
+    expect(within(panel).queryByRole('link', { name: 'All dates' })).toBeNull();
 
     fireEvent.click(within(panel).getByRole('button', { name: 'Try again' }));
 
     await waitFor(() => expect(within(panel).getAllByRole('listitem')).toHaveLength(4));
-    expect(within(panel).getByRole('link', { name: 'Full schedule' })).toBeDefined();
-    expect(within(panel).queryByText('The schedule did not load.')).toBeNull();
+    expect(within(panel).getByRole('link', { name: 'All dates' })).toBeDefined();
+    expect(within(panel).queryByText('The dates did not load.')).toBeNull();
   });
 
-  it('lists every milestone in Full schedule under its zone, named once, Passed and Next up as words', async () => {
+  it('lists every milestone in All dates under its zone, named once, Passed and Next up as words', async () => {
     clockAt('2026-10-11T08:00:00Z');
     signedIn();
     answering({
       'GET /api/events/ev_1': () => json({ event: event() }),
       'GET /api/events/ev_1/timeline': () => json(MADRID),
     });
-    at('/app/events/ev_1/schedule');
+    at('/app/events/ev_1/dates');
 
-    const heading = await screen.findByRole('heading', { level: 1, name: 'Full schedule' });
+    const heading = await screen.findByRole('heading', { level: 1, name: 'All dates' });
     const page = heading.closest('section')!;
 
     expect(
@@ -3571,6 +3569,30 @@ describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
     expect(within(page).getByText('Something you need to do')).toBeDefined();
   });
 
+  it('says Loading the dates… in All dates until the dates arrive', async () => {
+    clockAt('2026-10-11T08:00:00Z');
+    signedIn();
+    let arrive = (): void => undefined;
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () =>
+        new Promise<Response>((resolve) => {
+          arrive = () => resolve(json(MADRID));
+        }),
+    });
+    at('/app/events/ev_1/dates');
+
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
+      'section',
+    )!;
+
+    expect(await within(page).findByText('Loading the dates…')).toBeDefined();
+    arrive();
+
+    await waitFor(() => expect(within(page).getAllByRole('listitem')).toHaveLength(6));
+    expect(within(page).queryByText('Loading the dates…')).toBeNull();
+  });
+
   it('marks an overdue You milestone Overdue and keeps it Next up', async () => {
     clockAt('2026-10-21T08:00:00Z');
     signedIn();
@@ -3578,9 +3600,9 @@ describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
       'GET /api/events/ev_1': () => json({ event: event() }),
       'GET /api/events/ev_1/timeline': () => json(MADRID),
     });
-    at('/app/events/ev_1/schedule');
+    at('/app/events/ev_1/dates');
 
-    const page = (await screen.findByRole('heading', { level: 1, name: 'Full schedule' })).closest(
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
       'section',
     )!;
 
@@ -3589,7 +3611,7 @@ describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
     expect(rows(page)[4]).toBe('Tue, Oct 20, 12:00Thank-you notes sentAutomatic✓ Passed');
   });
 
-  it('marks nothing Next up in Full schedule once the event is over', async () => {
+  it('marks nothing Next up in All dates once the event is over', async () => {
     clockAt('2026-11-01T08:00:00Z');
     signedIn();
     answering({
@@ -3597,9 +3619,9 @@ describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
       'GET /api/events/ev_1/timeline': () =>
         json({ ...MADRID, milestones: MADRID.milestones.filter((one) => one.owner !== 'you') }),
     });
-    at('/app/events/ev_1/schedule');
+    at('/app/events/ev_1/dates');
 
-    const page = (await screen.findByRole('heading', { level: 1, name: 'Full schedule' })).closest(
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
       'section',
     )!;
 
@@ -3608,19 +3630,19 @@ describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
     expect(within(page).getAllByText('Passed')).toHaveLength(5);
   });
 
-  it('shows Try again in Full schedule when it fails, with no rows', async () => {
+  it('shows Try again in All dates when it fails, with no rows', async () => {
     signedIn();
     answering({
       'GET /api/events/ev_1': () => json({ event: event() }),
       'GET /api/events/ev_1/timeline': () => problem(500, 'internal_error'),
     });
-    at('/app/events/ev_1/schedule');
+    at('/app/events/ev_1/dates');
 
-    const page = (await screen.findByRole('heading', { level: 1, name: 'Full schedule' })).closest(
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
       'section',
     )!;
 
-    expect(await within(page).findByText('The schedule did not load.')).toBeDefined();
+    expect(await within(page).findByText('The dates did not load.')).toBeDefined();
     expect(within(page).getByRole('button', { name: 'Try again' })).toBeDefined();
     expect(within(page).queryByRole('listitem')).toBeNull();
   });

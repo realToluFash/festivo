@@ -292,7 +292,7 @@ export function EventPage({
         kind={kind}
         eventId={event.id}
         now={now}
-        onFullSchedule={() => router.push(`/events/${encodeURIComponent(event.id)}/schedule`)}
+        onAllDates={() => router.push(`/events/${encodeURIComponent(event.id)}/dates`)}
       />
     </View>
   );

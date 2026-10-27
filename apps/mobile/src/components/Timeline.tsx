@@ -75,12 +75,12 @@ export function ComingUp({
   kind,
   eventId,
   now,
-  onFullSchedule,
+  onAllDates,
 }: {
   kind: LayoutKind;
   eventId: string;
   now: Date;
-  onFullSchedule: () => void;
+  onAllDates: () => void;
 }) {
   const { t } = useTranslation();
   const { load, retried, retry } = useTimeline(eventId);
@@ -94,15 +94,15 @@ export function ComingUp({
         </Text>
         {load.kind === 'loaded' && (
           <QuietButton
-            label={t('timeline.fullSchedule')}
-            onPress={onFullSchedule}
-            testID="timeline.fullSchedule"
+            label={t('timeline.allDates')}
+            onPress={onAllDates}
+            testID="timeline.allDates"
           />
         )}
       </View>
       <View style={kind === 'phone' ? styles.rowsPhone : styles.rows}>
         {load.kind === 'failed' && (
-          <ScheduleFailed announced={retried} onRetry={retry} testID="timeline.comingUp.retry" />
+          <DatesFailed announced={retried} onRetry={retry} testID="timeline.comingUp.retry" />
         )}
         {load.kind === 'loaded' && shown.length === 0 && (
           <View style={styles.inset} testID="timeline.finished">
@@ -131,27 +131,19 @@ export function ComingUp({
 }
 
 /** Every milestone, earliest first, under the line naming the event's zone. */
-export function FullSchedule({
-  kind,
-  eventId,
-  now,
-}: {
-  kind: LayoutKind;
-  eventId: string;
-  now: Date;
-}) {
+export function AllDates({ kind, eventId, now }: { kind: LayoutKind; eventId: string; now: Date }) {
   const { t } = useTranslation();
   const { load, retried, retry } = useTimeline(eventId);
 
   return (
-    <View style={cardFrame(kind)} testID="timeline.fullSchedule.page">
+    <View style={cardFrame(kind)} testID="timeline.allDates.page">
       {load.kind === 'loading' && (
         <Text size={tokens.typeBodyPhone.size} muted>
           {t('timeline.loading')}
         </Text>
       )}
       {load.kind === 'failed' && (
-        <ScheduleFailed announced={retried} onRetry={retry} testID="timeline.fullSchedule.retry" />
+        <DatesFailed announced={retried} onRetry={retry} testID="timeline.allDates.retry" />
       )}
       {load.kind === 'loaded' && (
         <>
@@ -187,7 +179,7 @@ export function FullSchedule({
 }
 
 /** Said aloud only when a retry fails: on arrival the page's own heading comes first. */
-function ScheduleFailed({
+function DatesFailed({
   announced,
   onRetry,
   testID,

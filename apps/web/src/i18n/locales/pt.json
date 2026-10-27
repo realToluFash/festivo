@@ -1931,7 +1931,7 @@
   },
   "timeline": {
     "comingUp": "Próximas datas",
-    "fullSchedule": "Calendário completo",
+    "allDates": "Calendário completo",
     "loading": "A carregar o calendário…",
     "intro": "Todas as datas deste evento, por ordem cronológica. As horas estão no fuso horário {{timeZone}}, o do evento.",
     "finished": "Já não há nada pela frente. Todas as datas deste evento já passaram.",

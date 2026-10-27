@@ -1,7 +1,7 @@
 # Event timeline
 
 An event has one timeline: a dated list of milestones that every area adds to through one
-contract (sc-3624, epic 29). Event View's **Coming up** and **Full schedule**, the **Next
+contract (sc-3624, epic 29). Event View's **Coming up** and **All dates**, the **Next
 up** line on Events Home and the organisation's **Calendar** all read it. No screen works out
 a milestone for itself, so the three can never disagree about what is next.
 
