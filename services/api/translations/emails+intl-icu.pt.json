@@ -1,5 +1,10 @@
 {
-    "signInRules.rule.inactivity": "Quem passar {days, plural, =0 {# dias} one {# dia} other {# dias}} sem utilizar a Soirely terá de iniciar sessão novamente.",
-    "joinRequest.waiting.body": "{count, plural, =0 {# pessoas aguardam resposta ao pedido de adesão a {organisation}:} one {# pessoa aguarda resposta ao pedido de adesão a {organisation}:} many {# de pessoas aguardam resposta ao pedido de adesão a {organisation}:} other {# pessoas aguardam resposta ao pedido de adesão a {organisation}:}}",
-    "time.dateAt": "{date} {hour, plural, =1 {à {time}} other {às {time}}} {zone}"
+    "signInRules.rule.inactivity": "Quem passar {days, plural, =0 {{days, number, ::group-auto} dias} one {{days, number, ::group-auto} dia} other {{days, number, ::group-auto} dias}} sem utilizar a Soirely terá de iniciar sessão novamente.",
+    "joinRequest.waiting.body": "{count, plural, =0 {{count, number, ::group-auto} pessoas aguardam resposta ao pedido de adesão a {organisation}:} one {{count, number, ::group-auto} pessoa aguarda resposta ao pedido de adesão a {organisation}:} many {{count, number, ::group-auto} de pessoas aguardam resposta ao pedido de adesão a {organisation}:} other {{count, number, ::group-auto} pessoas aguardam resposta ao pedido de adesão a {organisation}:}}",
+    "time.dateAt": "{date} {hour, plural, =1 {à {time}} other {às {time}}} {zone}",
+    "verification.expiry": "Funciona durante {minutes, number, ::group-auto} minutos e apenas uma vez.",
+    "verification.text": "O seu código Soirely é {code}. É válido durante {minutes, number, ::group-auto} minutos.",
+    "recovery.link.expiry": "Funciona durante {minutes, number, ::group-auto} minutos, e só uma vez.",
+    "password.code.expiry": "É válido durante {minutes, number, ::group-auto} minutos.",
+    "twoFactorRecovery.code.expiry": "Funciona durante {minutes, number, ::group-auto} minutos."
 }

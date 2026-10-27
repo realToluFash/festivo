@@ -12,6 +12,7 @@ enum EventAction: string
     case Delete = 'delete';
     case MakeLive = 'make_live';
     case Pause = 'pause';
+    case Resume = 'resume';
     case End = 'end';
     case Invite = 'invite';
     case Message = 'message';

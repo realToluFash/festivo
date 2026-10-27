@@ -1,5 +1,5 @@
 {
-  "$comment": "The single declaration of which languages this product speaks. Read by the API, by apps/web and by apps/mobile. Everything else that names a locale is checked against this file by a test — see docs/architecture/localisation.md. `plurals` names the region whose plural rule the copy follows, when it is not the bare language's: the Portuguese copy is European, and the bare `pt` rule is Brazil's, which makes 0 singular.",
+  "$comment": "The single declaration of which languages this product speaks. Read by the API, by apps/web and by apps/mobile. Everything else that names a locale is checked against this file by a test — see docs/architecture/localisation.md. `plurals` names the region whose plural rule and number format the copy follows, when it is not the bare language's: the Portuguese copy is European, and the bare `pt` rule is Brazil's, which makes 0 singular and writes a million «1.000.000».",
   "default": "en",
   "supported": [
     { "code": "en", "name": "English", "nativeName": "English", "dir": "ltr" },

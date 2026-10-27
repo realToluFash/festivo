@@ -11,7 +11,10 @@ import {
   type EventType,
   EVENT_PHASES,
   EVENT_STATES,
+  type EventTimeline,
   isEventType,
+  type Milestone,
+  MILESTONE_OWNERS,
   type ServerClock,
   serverClock,
 } from '@soirely/domain';
@@ -306,8 +309,12 @@ export interface OrganisationEvent {
   cover: EventCover | null;
   /** Null until a venue is added: the page says "Venue to be confirmed" (sc-3589). */
   venue: EventVenue | null;
+  /** The names guests read, in order; none until somebody adds one, and Make live waits for one (sc-6713). */
+  hosts: string[];
   /** Null while it is a Draft. */
   madeLiveAt: string | null;
+  /** Null unless its phase is Paused (sc-3586). */
+  pausedAt: string | null;
   /** The server's, as the page shows it on load; a client works one out only to flip it at a boundary (sc-3585). */
   phase: EventPhase;
   /** The end, or when it was ended or called off; null until it is Finished. */
@@ -382,8 +389,8 @@ export interface PickedAddress extends VenueAddress {
   timeZone: string | null;
 }
 
-/** What an edit sends: any of the fields, those left out keep their value (sc-3587). */
-export type EventChanges = Partial<NewEvent>;
+/** What an edit sends: any of the fields, those left out keep their value (sc-3587); `hosts` is the whole list (sc-6713). */
+export type EventChanges = Partial<NewEvent> & { hosts?: string[] };
 
 /** An event with its `ETag`, which an edit sends back as `If-Match`. */
 export interface TaggedEvent {
@@ -1493,6 +1500,21 @@ export class ApiClient {
     );
   }
 
+  /** Earliest first, only the areas the reader's role reads (sc-3624); refused `not_found` as event is. */
+  async eventTimeline(eventId: string): Promise<EventTimeline> {
+    const timeline = asEventTimeline(
+      await this.get<unknown>(`/api/events/${encodeURIComponent(eventId)}/timeline`),
+    );
+
+    if (timeline == null) {
+      throw new Error(
+        'The API answered an event timeline in a shape this client does not know. Check EventTimelineController in services/api.',
+      );
+    }
+
+    return timeline;
+  }
+
   /** The event as an edit form opens it, with the tag the save sends back. */
   async taggedEvent(eventId: string): Promise<TaggedEvent> {
     return this.tagged(
@@ -1600,6 +1622,27 @@ export class ApiClient {
       await this.exchange<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}/end`, {
         method: 'POST',
       }),
+    );
+  }
+
+  /** Refused 409 `event_state_invalid` unless it is Live and not Finished (sc-3586). */
+  async pauseEvent(eventId: string): Promise<TaggedEvent> {
+    return this.tagged(
+      await this.exchange<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}/pause`, {
+        method: 'POST',
+      }),
+    );
+  }
+
+  /** Refused 409 `event_state_invalid` unless it is Paused and not Finished; never by the plan's limit. */
+  async resumeEvent(eventId: string): Promise<TaggedEvent> {
+    return this.tagged(
+      await this.exchange<{ event?: unknown }>(
+        `/api/events/${encodeURIComponent(eventId)}/resume`,
+        {
+          method: 'POST',
+        },
+      ),
     );
   }
 
@@ -2581,6 +2624,49 @@ function asRolesCatalogue(raw: unknown): RolesCatalogue | null {
   };
 }
 
+function asEventTimeline(raw: unknown): EventTimeline | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const { timeZone, milestones } = raw as Record<string, unknown>;
+
+  if (typeof timeZone !== 'string' || !Array.isArray(milestones)) return null;
+
+  const read = milestones.map(asMilestone);
+
+  return read.every((one) => one != null) ? { timeZone, milestones: read } : null;
+}
+
+function asMilestone(raw: unknown): Milestone | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const { at, title, note, owner, area, action } = raw as Record<string, unknown>;
+  const known = oneOf(owner, MILESTONE_OWNERS);
+  const link =
+    action === null
+      ? null
+      : typeof action === 'object' &&
+          action != null &&
+          'label' in action &&
+          'link' in action &&
+          typeof action.label === 'string' &&
+          typeof action.link === 'string'
+        ? { label: action.label, link: action.link }
+        : undefined;
+
+  if (
+    typeof at !== 'string' ||
+    typeof title !== 'string' ||
+    !isStringOrNull(note) ||
+    typeof area !== 'string' ||
+    known == null ||
+    link === undefined
+  ) {
+    return null;
+  }
+
+  return { at, title, note, owner: known, area, action: link };
+}
+
 function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   if (typeof raw !== 'object' || raw == null) return null;
 
@@ -2601,7 +2687,9 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   const dayCount = candidate.dayCount;
   const cover = candidate.cover === null ? null : asEventCover(candidate.cover);
   const venue = candidate.venue === null ? null : asEventVenue(candidate.venue);
+  const hosts = candidate.hosts;
   const madeLiveAt = candidate.madeLiveAt;
+  const pausedAt = candidate.pausedAt;
   const phase = oneOf(candidate.phase, EVENT_PHASES);
   const concludedAt = candidate.concludedAt;
 
@@ -2610,9 +2698,12 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     phase == null ||
     !isStringOrNull(concludedAt) ||
     !isStringOrNull(madeLiveAt) ||
+    !isStringOrNull(pausedAt) ||
     type == null ||
     cover === undefined ||
     venue === undefined ||
+    !Array.isArray(hosts) ||
+    hosts.some((host) => typeof host !== 'string') ||
     fields.some((field) => typeof candidate[field] !== 'string') ||
     typeof dayCount !== 'number' ||
     !Number.isInteger(dayCount) ||
@@ -2633,7 +2724,9 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     currency: candidate.currency as string,
     cover,
     venue,
+    hosts: hosts as string[],
     madeLiveAt,
+    pausedAt,
     phase,
     concludedAt,
     createdAt: candidate.createdAt as string,

@@ -54,6 +54,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **27 Oct 2026. Les hôtes d’un événement** (sc-15427 pour sc-6713, `web:eventHosts.*`,
+  `eventLive.needsHost*|addHosts` web et app, `messages:validation.event_host*`,
+  `messages:event.host_required|last_host`). Host est « hôte », comme `errors:event_host_required` ;
+  le mot ne prête pas à confusion, puisque les guests sont toujours « invités ». La section est
+  « Hôtes », chaque ligne « Hôte {{position}} ». "Add who is hosting" est « Indiquer les hôtes ».
+  Un hôte est un nom tel que les invités le lisent, parfois un couple sur une ligne, donc rien ne
+  s’accorde avec {{name}} : « {{name}} figure déjà parmi les hôtes », « … ne figure plus parmi
+  les hôtes », « {{name}} : position {{position}} sur {{count}} ». Retirer est « Retirer », comme
+  le glossaire. La limite est la même phrase à l’écran et dans l’API. Le dernier hôte s’explique
+  du côté des invités : « Les invités peuvent voir cet événement, il lui faut donc … ».
 - **26 Oct 2026. Supprimer un événement** (sc-14417 pour sc-3592, `eventDelete.*` web et app,
   `messages:event.delete_name_mismatch`). Comme pour une organisation : « Supprimer
   l’événement », la fenêtre « Supprimer {{event}} ? », la sortie « Le conserver ».
@@ -81,6 +91,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   donc plus possible d’y mettre fin », pour ne pas répéter « terminé ». `scheduleLocked` et
   `scheduleConcluded` sont la même phrase : le français n’a pas la contraction qui les
   distingue.
+- **27 Oct 2026. Mettre en pause et reprendre un événement** (sc-15439 pour sc-3586,
+  `eventPause.*` web et app). « Mettre en pause », comme l’état « En pause » ; « Reprendre » ;
+  la sortie est « Le laisser publié ». Les refus : « Non mis en pause. », « Non repris. ». Le
+  blocage dure « jusqu’à la reprise », sans verbe à accorder. "Check-in" est « l’accueil des
+  invités ». Le résultat s’accorde avec « événement », jamais avec le nom : « L’événement
+  {{name}} est de nouveau publié ».
 - **26 Oct 2026. Publier un brouillon, et les états d’un événement** (sc-13956, sc-3584,
   `eventLive.*` web et app, `events.*`, `eventsScreen.*`, `messages:event.*`,
   `event.plan_limit`). "Make live" est « Publier », comme la permission « Créer, publier,
@@ -518,6 +534,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   The line under the chosen role, `rolesScreen.removeAfter`, takes the role as subject :
   « Le rôle {{role}} s’applique dès la prochaine utilisation de Soirely », not « Elles deviennent… » (sc-14755).
 - **26 Oct 2026. The beyond-grant line names access** (`membersScreen.beyondGrant`, sc-13089). « … vous ne pouvez donc modifier ni son rôle ni son accès » : after « cette personne », « son accès » is hers; it rules out restoring on the suspension cards.
+- **27 Oct 2026. An event's dates are « le calendrier », never « le programme »** (`timeline.*`,
+  sc-15756). « Programme » is the organiser's Schedule (epic 33); the list of an event's dates
+  is « Calendrier complet », its panel « Prochaines dates ». Distances follow the date :
+  « aujourd’hui », « dans 3 jours », « il y a 2 jours ». The API titles keep the name as
+  subject, « {name} commence », « {name} se termine », so no « de » has to elide before it.
 - **27 Oct 2026. The two-factor-due subject opens on the feature and the deadline**
   (`emails:signInRules.twoFactorDue.subject`, sc-15219) : « Double authentification avant le
   {deadline} : {organisation} », the organisation last so a 390 px inbox shows the date

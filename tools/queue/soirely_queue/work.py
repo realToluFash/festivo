@@ -126,6 +126,12 @@ def finished(story):
     return bool(story.get("done")) and not story.get("archived")
 
 
+def follow_up(story):
+    """Past QA's hand-over, or Done: an open pull request on it is a follow-up, reviewed and
+    merged while the story keeps its state."""
+    return finished(story) or story["state"] in R.FOLLOWING_UP and not story.get("archived")
+
+
 def inbox_items(stories, handled=frozenset()):
     """A comment on a Done story wakes as on any other, if it came after the story was done:
     what was left open before then was settled by finishing it."""
@@ -228,11 +234,14 @@ def epic_order(epics):
     return key
 
 
-def queue_items(stories, moves=None, now=None, epics=None, ios=None):
+def queue_items(stories, moves=None, now=None, epics=None, ios=None, released=None,
+                unlinked=None):
     """A story entering a role's queue is work once, unless the role moved it there itself.
     One sitting there waits for a pick. A failed story back in Ready For QA is offered only
     to the tester who failed it, until its retest window closes."""
     moves = moves or {}
+    released = released or {}
+    unlinked = unlinked or {}
     merged = {}
     build_order = {s["id"]: i for i, s in enumerate(sorted(stories, key=epic_order(epics)))}
     for role, config in R.ROLES.items():
@@ -243,8 +252,12 @@ def queue_items(stories, moves=None, now=None, epics=None, ios=None):
             fingerprint = f"{pool}:story:sc-{story['id']}:{story['state']}:{story['moved_at']}"
             # Offered once its last blocker merges, as new work, though it was offered before
             # the link was made.
-            if builds(role) and story["state"] in HOLDABLE and blockers(story):
-                fingerprint += ":after:" + ",".join(f"sc-{b}" for b in blockers(story))
+            after = sorted({*blockers(story), *unlinked.get(str(story["id"]), [])})
+            if builds(role) and story["state"] in HOLDABLE and after:
+                fingerprint += ":after:" + ",".join(f"sc-{b}" for b in after)
+            # Or once the link that last held it is removed, though merged blockers stay linked.
+            if builds(role) and story["state"] in HOLDABLE and str(story["id"]) in released:
+                fingerprint += f":released:{released[str(story['id'])]}"
             if role in R.TESTERS and story["state"] == "Ready For QA":
                 first = retester(story, now)
                 if first and first != role:
@@ -293,7 +306,8 @@ def review_items(stories, prs):
             continue
         open_prs = by_story.get(story["id"], [])
         if story["state"] not in REVIEWED:
-            open_prs = [pr for pr in open_prs if side_pr(story, pr) or finished(story)]
+            open_prs = [pr for pr in open_prs
+                        if side_pr(story, pr) or follow_up(story) and not linguists(story)]
             if not open_prs:
                 continue
         merged = any(pr["story_id"] == story["id"] and pr["state"] == "merged" for pr in prs)
@@ -303,12 +317,12 @@ def review_items(stories, prs):
                                f"sc-{story['id']} is In Review with no open pull request",
                                REVIEW, story))
         for pr in open_prs:
-            # On a Done story the lead cannot send red checks back; the builder is woken.
-            if pr["checks"] == "pending" or pr["checks"] == "red" and finished(story):
+            # On a follow-up the lead cannot send red checks back; the builder is woken.
+            if pr["checks"] == "pending" or pr["checks"] == "red" and follow_up(story):
                 continue
             verdict = latest_verdict(pr)
             sha = pr["head_sha"]
-            returned = verdict and verdict["verdict"] == "back" and not story["done"] \
+            returned = verdict and verdict["verdict"] == "back" and not follow_up(story) \
                 and (story["moved_at"] or "") > verdict["at"]
             if covers(verdict, sha, pr.get("carried")) and not returned:
                 continue
@@ -381,7 +395,7 @@ def developer_items(stories, prs):
         story = by_id.get(pr["story_id"])
         if not story:
             continue
-        side, follow = side_pr(story, pr), finished(story)
+        side, follow = side_pr(story, pr), follow_up(story)
         own = linguists(story) and not side
         role = builder(story, pr)
         sha = pr["head_sha"][:7]
@@ -624,12 +638,12 @@ def finishing_first(items, stories):
 
 def derive(stories, prs, main_run=None, last_runs=None, busy_roles=(), now=0,
            handled=frozenset(), moves=None, checks=None, epics=None, translated=None,
-           raised=(), last_sweeps=None):
+           raised=(), last_sweeps=None, released=None, unlinked=None):
     return finishing_first(
         inbox_items(stories, handled) + developer_items(stories, prs)
         + unblocked_items(stories, prs, translated, raised)
         + review_items(stories, prs) + held_items(stories)
-        + queue_items(stories, moves, now, epics)
+        + queue_items(stories, moves, now, epics, released=released, unlinked=unlinked)
         + main_items(main_run)
         + heartbeat_items(stories, last_runs or {}, set(busy_roles), now, epics, last_sweeps)
         + machine_items(checks) + stranded_items(stories, prs, now), stories)

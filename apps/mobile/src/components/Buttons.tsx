@@ -29,8 +29,9 @@ export function PrimaryButton({
     <Pressable
       ref={ref}
       style={[styles.primary, busy && styles.primaryBusy, off && styles.primaryOff]}
-      onPress={onPress}
-      disabled={inactive}
+      onPress={busy ? undefined : onPress}
+      // A disabled button lets a tap through to the scroll view under it, which drops the keys mid-request.
+      disabled={off}
       // Android names an unlabelled busy view "busy" alone, and keeps that name once it is idle.
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityRole="button"

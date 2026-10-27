@@ -53,7 +53,7 @@ export function formattingLocale(shown: LocaleCode, deviceTag: string | null | u
   }
 }
 
-/** The tag whose plural rule a locale's copy follows: `pt` is written for Portugal, where 0 is plural. */
+/** The tag a locale's copy is written for, whose plural rule and numbers it follows: `pt` is Portugal's, where 0 is plural and a million is «1 000 000». */
 export function pluralLocale(locale: LocaleCode): string {
   return LOCALES.find((l) => l.code === locale)?.plurals ?? locale;
 }
@@ -66,6 +66,22 @@ interface PluralResolver {
 export function followPluralLocales(resolver: PluralResolver): void {
   const rule = resolver.getRule.bind(resolver);
   resolver.getRule = (code, options) => rule(pluralLocale(code), options);
+}
+
+interface Formatter {
+  addCached(
+    name: string,
+    format: (lng: string | undefined, options: object) => (value: unknown) => string,
+  ): void;
+}
+
+/** i18next writes `{{count, number}}` in the bare language, so each client routes it through pluralLocale too (sc-15361). */
+export function followNumberLocales(formatter: Formatter): void {
+  formatter.addCached('number', (lng, options) => {
+    const format = new Intl.NumberFormat(pluralLocale(narrowLocale(lng)), options);
+
+    return (value) => format.format(value as number);
+  });
 }
 
 function language(locale: string): string {

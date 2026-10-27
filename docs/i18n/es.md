@@ -49,6 +49,17 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **27 Oct 2026. Los anfitriones de un evento** (sc-15427 para sc-6713, `web:eventHosts.*`,
+  `eventLive.needsHost*|addHosts` web y app, `messages:validation.event_host*`,
+  `messages:event.host_required|last_host`). Host es «anfitrión», como ya decía
+  `errors:event_host_required`; la sección es «Anfitriones» y cada fila «Anfitrión {{position}}».
+  "Add who is hosting" es «Indicar los anfitriones» («Indique los anfitriones antes de invitar a
+  nadie»). Un anfitrión es un nombre tal como lo leen los invitados, a veces una pareja en una
+  fila, así que ninguna frase concuerda con {{name}}: «{{name}} ya figura entre los
+  anfitriones», «… ya no figura entre los anfitriones», «{{name}}: posición {{position}} de
+  {{count}}». Quitar es «Quitar», como una foto o una dirección. El límite es la misma frase en
+  pantalla y en la API, «Un evento puede tener {{most}} anfitriones como máximo.». El último
+  anfitrión se explica desde el invitado: «Los invitados pueden ver este evento, así que …».
 - **26 Oct 2026. Eliminar un evento** (sc-14417 para sc-3592, `eventDelete.*` web y app,
   `messages:event.delete_name_mismatch`). Sigue a eliminar una organización: «Eliminar el
   evento», con el artículo, como «Cancelar el evento»; el diálogo «¿Eliminar {{event}}?» y la
@@ -73,6 +84,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   negativa empieza «No se ha finalizado.». Los invitados son «los invitados que abran su
   enlace». La fecha lleva «el {{date}}», como «desde el {{date}}». `scheduleLocked` y
   `scheduleConcluded` son la misma frase: el español no tiene la contracción que las distingue.
+- **27 Oct 2026. Pausar y reanudar un evento** (sc-15439 para sc-3586, `eventPause.*` web y
+  app). «Pausar», como el permiso; «Reanudar»; la salida es «Mantenerlo publicado». Las
+  negativas, «No se ha pausado.» y «No se ha reanudado.». "Check-in" es «el registro de
+  llegada» de los invitados, nunca «la recepción», que es la fiesta. El resultado concuerda con
+  «evento», nunca con el nombre: «El evento {{name}} vuelve a estar publicado».
 - **26 Oct 2026. Publicar un borrador y los estados del evento** (sc-13956, sc-3584,
   `eventLive.*` web y app, `events.*`, `eventsScreen.*`, `messages:event.*`,
   `event.plan_limit`). "Make live" es «Publicar», como ya dice el permiso «Crear, publicar,
@@ -464,6 +480,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   (`emails:twoFactor.on.subject`, `twoFactor.off.subject`, sc-14100): «Verificación en dos pasos
   activada» / «desactivada», a pair that differs only in its last word. «Se ha desactivado la
   verificación en dos pasos» ran past one line of a 360dp inbox row and hid the state.
+- **27 Oct 2026. An event's dates are «el calendario», never «el programa»** (`timeline.*`,
+  sc-15756). «Programa» is the organiser's Schedule (epic 33); the list of an event's dates is
+  «Calendario completo», its panel «Próximas fechas». The owner pill «You» is «A su cargo»,
+  because a bare «Usted» reads as a form field. Distances follow the date: «hoy», «dentro de
+  3 días», «hace 2 días». The API titles put the verb first: «Empieza {name}», «Termina {name}».
 - **27 Oct 2026. The two-factor-due subject opens on the feature and the deadline**
   (`emails:signInRules.twoFactorDue.subject`, sc-15219): «Verificación en dos pasos antes del
   {deadline}: {organisation}». «antes del» reads with the weekday that `{deadline}` opens on;

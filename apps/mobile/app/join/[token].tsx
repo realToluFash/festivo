@@ -322,7 +322,7 @@ function Ask({
         error={error}
         help={t('requestToJoin.messageHelp', {
           count: REQUEST_MESSAGE_MAXIMUM,
-          used: Array.from(message.trim()).length,
+          length: Array.from(message.trim()).length,
         })}
       >
         <TextField

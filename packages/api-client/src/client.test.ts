@@ -2248,7 +2248,9 @@ describe('events (sc-1486)', () => {
     currency: 'NGN',
     cover: null,
     venue: null,
+    hosts: ['Funmi Adeyemi', 'Tayo Adeyemi'],
     madeLiveAt: null,
+    pausedAt: null,
     phase: 'draft',
     concludedAt: null,
     createdAt: '2026-10-21T09:00:00+00:00',
@@ -2301,6 +2303,49 @@ describe('events (sc-1486)', () => {
       { line: 'POST /api/orgs/org_1/events', body },
       { line: `GET /api/events/${EVENT.id}`, body: null },
     ]);
+  });
+
+  test('an event’s timeline is read as served, and a shape it does not know is an error', async () => {
+    const timeline = {
+      timeZone: 'Europe/Madrid',
+      milestones: [
+        {
+          at: '2026-10-24T18:00:00+02:00',
+          title: 'Boda starts',
+          note: null,
+          owner: 'event',
+          area: 'events',
+          action: null,
+        },
+        {
+          at: '2026-10-26T02:00:00+01:00',
+          title: 'Balance due',
+          note: 'The venue’s second half',
+          owner: 'you',
+          area: 'budget',
+          action: { label: 'Open the budget', link: '/app/events/e1/budget' },
+        },
+      ],
+    };
+    const { api, sent } = client(() => json(timeline));
+
+    expect(await api.eventTimeline('e1')).toEqual(timeline);
+    expect(sent).toEqual([{ line: 'GET /api/events/e1/timeline', body: null }]);
+
+    const [first] = timeline.milestones;
+    await expect(
+      client(() =>
+        json({ ...timeline, milestones: [{ ...first, owner: 'host' }] }),
+      ).api.eventTimeline('e1'),
+    ).rejects.toThrow(/EventTimelineController/);
+    await expect(
+      client(() =>
+        json({ ...timeline, milestones: [{ ...first, action: { label: 'Open' } }] }),
+      ).api.eventTimeline('e1'),
+    ).rejects.toThrow(/EventTimelineController/);
+    await expect(client(() => json({ milestones: [] })).api.eventTimeline('e1')).rejects.toThrow(
+      /EventTimelineController/,
+    );
   });
 
   test('an event in a shape it does not know, or a status it does not know, is an error', async () => {
@@ -2418,6 +2463,55 @@ describe('events (sc-1486)', () => {
 
     expect(clock.now().toISOString()).toBe('2026-11-14T15:00:00.000Z');
   });
+
+  test.each([
+    ['pauseEvent', 'pause', 'paused'],
+    ['resumeEvent', 'resume', 'live'],
+  ] as const)('%s posts to /%s and answers the tagged event', async (method, path, status) => {
+    const moved = {
+      ...EVENT,
+      status,
+      phase: status,
+      pausedAt: status === 'paused' ? '2026-10-27T09:00:00+00:00' : null,
+    };
+    const sent: string[] = [];
+    const api = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (url, init) => {
+        sent.push(`${init?.method ?? 'GET'} ${new URL(String(url)).pathname}`);
+
+        return new Response(JSON.stringify({ event: moved }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ETag: '"5"' },
+        });
+      },
+    });
+
+    expect(await api[method](EVENT.id)).toEqual({ event: moved, tag: '"5"' });
+    expect(sent).toEqual([`POST /api/events/${EVENT.id}/${path}`]);
+  });
+
+  test('an event with a pausedAt that is not a string or null is an error', async () => {
+    await expect(
+      client(() => json({ event: { ...EVENT, pausedAt: 1 } })).api.event('e1'),
+    ).rejects.toThrow(/events controller/);
+  });
+
+  test('an event keeps its hosts in their order (sc-6713)', async () => {
+    expect((await client(() => json({ event: EVENT })).api.event('e1')).hosts).toEqual([
+      'Funmi Adeyemi',
+      'Tayo Adeyemi',
+    ]);
+  });
+
+  test.each([[undefined], [null], ['Funmi'], [['Funmi', 1]]])(
+    'an event whose hosts are %j is an error (sc-6713)',
+    async (hosts) => {
+      await expect(
+        client(() => json({ event: { ...EVENT, hosts } })).api.event('e1'),
+      ).rejects.toThrow(/events controller/);
+    },
+  );
 
   test('an event with a madeLiveAt that is not a string or null is an error', async () => {
     await expect(
@@ -2574,7 +2668,9 @@ describe("an event's venue (sc-3589)", () => {
     dayCount: 2,
     currency: 'NGN',
     cover: null,
+    hosts: [],
     madeLiveAt: null,
+    pausedAt: null,
     phase: 'draft',
     concludedAt: null,
     createdAt: '2026-10-26T09:00:00+00:00',

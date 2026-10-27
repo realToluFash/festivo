@@ -49,7 +49,9 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Place (a track)                      | Settled 19 Oct 2026: where an item happens. "Track" stays internal; never "venue", "room" or "stage".                                                                                                                                                        |
 | Show to guests, Fixed time           | Settled 19 Oct 2026: the schedule item form's switches.                                                                                                                                                                                                      |
 | Your cues, You're on, You're up next | Settled 19 Oct 2026 (sc-3896): "Your cues, {{name}}" with the full name; "You're on" only while the cue runs, "You're up next" before.                                                                                                                       |
-| Coming up                            | Settled 19 Oct 2026: the room screen's heading (sc-3897) only. "Times as of {{time}}" when offline, time from Intl.                                                                                                                                          |
+| Coming up                            | Settled 19 Oct 2026: the room screen's heading (sc-3897). "Times as of {{time}}" when offline, time from Intl. Widened 27 Oct 2026 (sc-15756) to Event View's panel of an event's next dates.                                                                |
+| Full schedule (an event's dates)     | 27 Oct 2026 (sc-15756): the screen listing every date on an event (sc-3624). Not the Schedule above: es, fr and pt name it as a calendar of dates, never their word for Schedule. Rename asked of [dev2], pinned by web tests.                               |
+| Passed, Next up, Overdue             | 27 Oct 2026 (sc-15756): a date's standing on Full schedule. Owners: "Event", "You", "Automatic".                                                                                                                                                             |
 | The day, Programme                   | Settled 19 Oct 2026 (sc-3899): the guest page heading, "The day" for one day, "Programme" when items span several days.                                                                                                                                      |
 | That's everything                    | Settled 19 Oct 2026: the end of the run of show, then "Finished {{count}} min behind plan.", "… ahead of plan." or "Finished on plan.", three whole keys. Replaced "That's the whole night".                                                                 |
 
@@ -62,6 +64,24 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **27 Oct 2026. Pausing and resuming an event** (sc-15439 for sc-3586, `eventPause.*` web and
+  app). Settled as sc-3586 wrote it. The act is "Pause", the way back "Resume", the way out of
+  the confirmation "Keep it live", never "Cancel". A refusal starts "Not paused." or "Not
+  resumed.", as "Not ended." does. The explanation "Guests can't reply …" keeps its contraction,
+  as `scheduleLocked` does: it explains, it does not refuse. "Check-in" is guests arriving at
+  the door, "service" the food and drink on the night; es, fr and pt name the door, never a
+  hotel or airport check-in.
+- **27 Oct 2026. An event's hosts** (sc-15427 for sc-6713, `web:eventHosts.*`,
+  `eventLive.needsHost*|addHosts` web and app, `messages:validation.event_host*`,
+  `messages:event.host_required|last_host`, `errors:event_host_required`). Settled as sc-6713
+  wrote it, except the last-host lines (#15501): the rule holds for any event that has been made
+  live, Live, Paused or Finished alike, so they say why from the guest's side, "Guests can see
+  this event, so …", never "A live event …". The refusals take "cannot". One line waits on [dev2]:
+  `eventHosts.lastHost` should read "Guests can see this event, so it needs at least one host.
+  You can still change this name.", but `Events.test.tsx` matches the old line; es, fr and pt
+  already say the settled one. A host is a name as guests read it, perhaps a couple on one row
+  ("Chief and Mrs Adeyemi"), so es, fr and pt keep a name out of any agreement: "removed",
+  "moved" and "already a host" are written around the name.
 - **26 Oct 2026. Deleting an event** (sc-14417 for sc-3592, `eventDelete.*` web and app,
   `messages:event.delete_name_mismatch`). Settled as sc-3592 wrote it; `DeleteEvent.test.tsx`
   pins it. The act is "Delete event", the dialog "Delete {{event}}?", the way out "Keep it". It

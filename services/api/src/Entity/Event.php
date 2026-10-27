@@ -30,6 +30,10 @@ class Event implements SoftDeletableInterface
 
     public const int NAME_MAXIMUM = 120;
 
+    public const int HOST_NAME_MAXIMUM = 60;
+
+    public const int HOSTS_MAXIMUM = 6;
+
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
     private Uuid $id;
@@ -67,6 +71,9 @@ class Event implements SoftDeletableInterface
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $madeLiveAt = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $pausedAt = null;
 
     #[ORM\Column(
         type: Types::DATETIME_IMMUTABLE,
@@ -110,6 +117,10 @@ class Event implements SoftDeletableInterface
 
     #[ORM\Column(type: Types::FLOAT, nullable: true)]
     private ?float $venueLongitude = null;
+
+    /** @var list<string> the hosts' names as guests read them, in order (sc-6713) */
+    #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
+    private array $hosts = [];
 
     /** Moved by Doctrine on every update; the resource's ETag (sc-3587). */
     #[ORM\Version]
@@ -172,6 +183,12 @@ class Event implements SoftDeletableInterface
     public function getMadeLiveAt(): ?DateTimeImmutable
     {
         return $this->madeLiveAt;
+    }
+
+    /** UTC; null unless it is Paused (sc-3586). */
+    public function getPausedAt(): ?DateTimeImmutable
+    {
+        return $this->pausedAt;
     }
 
     /** When it was ended early, before its own end (sc-3585). */
@@ -259,11 +276,38 @@ class Event implements SoftDeletableInterface
     {
         $this->status = EventStatus::Ended;
         $this->endedAt = $at->setTimezone(new DateTimeZone('UTC'));
+        $this->pausedAt = null;
+    }
+
+    /** Only EventLifecycle calls this: guests can do nothing until it resumes, and nothing is lost (sc-3586). */
+    public function pause(DateTimeImmutable $at): void
+    {
+        $this->status = EventStatus::Paused;
+        $this->pausedAt = $at->setTimezone(new DateTimeZone('UTC'));
+    }
+
+    /** Only EventLifecycle calls this. */
+    public function resume(): void
+    {
+        $this->status = EventStatus::Live;
+        $this->pausedAt = null;
     }
 
     public function setName(string $name): void
     {
         $this->name = $name;
+    }
+
+    /** @return list<string> */
+    public function getHosts(): array
+    {
+        return $this->hosts;
+    }
+
+    /** @param list<string> $hosts */
+    public function setHosts(array $hosts): void
+    {
+        $this->hosts = $hosts;
     }
 
     public function setType(EventType $type): void

@@ -615,6 +615,17 @@ describe('a way back that names an outcome is off while its request runs (sc-125
     expect(propValue(pressable, 'disabled')).toBe('{off}');
     expect(propValue(pressable, 'accessibilityState')).toBe('{{ disabled: off }}');
   });
+
+  it('where PrimaryButton busy still takes the tap, so the keys stay up, and does nothing with it', () => {
+    const text = readFileSync(join('src', 'components', 'Buttons.tsx'), 'utf8');
+    const body = text.slice(text.indexOf('export function PrimaryButton('));
+    const start = body.indexOf('<Pressable');
+    const pressable = body.slice(start, tagEnd(body, start));
+
+    expect(propValue(pressable, 'disabled')).toBe('{off}');
+    expect(propValue(pressable, 'onPress')).toBe('{busy ? undefined : onPress}');
+    expect(propValue(pressable, 'accessibilityState')).toBe('{{ disabled: inactive, busy }}');
+  });
 });
 
 interface Source {

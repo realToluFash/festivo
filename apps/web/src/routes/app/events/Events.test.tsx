@@ -31,7 +31,9 @@ function event(overrides: Record<string, unknown> = {}) {
     currency: 'NGN',
     cover: null,
     venue: null,
+    hosts: ['Funmi Adeyemi'],
     madeLiveAt: null,
+    pausedAt: null,
     phase: 'draft',
     concludedAt: null,
     createdAt: '2026-10-21T09:00:00+00:00',
@@ -1772,7 +1774,7 @@ describe('Make live (sc-3584)', () => {
 
     expect(
       screen.getByText(
-        "This event's end has passed, so it can't be made live. Change its dates first.",
+        "This event's end has passed, so it cannot be made live. Change its dates first.",
       ),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
@@ -1905,7 +1907,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
 
     expect(
       screen.getByText(
-        "This event's end has passed, so it can't be made live. Change its dates first.",
+        "This event's end has passed, so it cannot be made live. Change its dates first.",
       ),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
@@ -2066,6 +2068,196 @@ describe('The phase, End now and Call off (sc-3585)', () => {
         name: 'Adaeze and Tunde, after',
       }),
     );
+  });
+});
+
+describe('Pause and Resume (sc-3586)', () => {
+  const AHEAD = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+
+  function live(overrides: Record<string, unknown> = {}) {
+    return event({ ...AHEAD, status: 'live', phase: 'live', ...overrides });
+  }
+
+  function paused(overrides: Record<string, unknown> = {}) {
+    return live({
+      status: 'paused',
+      phase: 'paused',
+      pausedAt: '2026-10-27T09:00:00+00:00',
+      ...overrides,
+    });
+  }
+
+  function tagged(body: unknown): Response {
+    return new Response(JSON.stringify(body), { status: 200, headers: { ETag: '"2"' } });
+  }
+
+  async function onThePage(served: unknown, answers: Record<string, Answer> = {}) {
+    const sent = answering({ 'GET /api/events/ev_1': () => json({ event: served }), ...answers });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    return sent;
+  }
+
+  it.each([
+    ['live', live()],
+    ['happening now', live({ phase: 'happening_now' })],
+  ])('asks before pausing an event %s, and Keep it live changes nothing', async (_, served) => {
+    signedIn();
+    const sent = await onThePage(served);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Pause Adaeze and Tunde?' });
+    expect(
+      within(dialog).getByText("Guests can't reply or change anything until you resume it."),
+    ).toBeDefined();
+    expect(
+      within(dialog).getByText('Nothing is lost. Check-in and service keep working.'),
+    ).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Keep it live' }));
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(sent.some(({ line }) => line.startsWith('POST'))).toBe(false);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Pause' })),
+    );
+  });
+
+  it('pauses it: the pill reads Paused, the line and Resume show, and it is announced', async () => {
+    signedIn();
+    const sent = await onThePage(live(), {
+      'POST /api/events/ev_1/pause': () => tagged({ event: paused() }),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+    fireEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Pause' }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText('Paused', { selector: '.pill-quiet' })).toBeDefined(),
+    );
+    expect(sent.filter(({ line }) => line === 'POST /api/events/ev_1/pause')).toHaveLength(1);
+    expect(
+      screen.getByText(
+        "Paused. Guests can't reply or change anything until you resume it. Check-in and service still work.",
+      ),
+    ).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Resume' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
+    await waitFor(() =>
+      expect(screen.getByRole('status').textContent).toBe('Adaeze and Tunde is paused.'),
+    );
+  });
+
+  it('resumes without asking, and the phase follows the clock', async () => {
+    signedIn();
+    const sent = await onThePage(paused(), {
+      'POST /api/events/ev_1/resume': () =>
+        tagged({ event: live({ phase: 'happening_now', pausedAt: null }) }),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
+
+    await waitFor(() =>
+      expect(screen.getByText('Happening now', { selector: '.pill-quiet' })).toBeDefined(),
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(sent.filter(({ line }) => line === 'POST /api/events/ev_1/resume')).toHaveLength(1);
+    expect(screen.queryByText(/^Paused\. Guests/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeDefined();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 })),
+    );
+  });
+
+  it.each([
+    [
+      'somebody else changed it when the resume is refused and it is live now',
+      () => live(),
+      'Somebody else changed this event while you had it open.',
+      "It's live now. The page shows what it is now.",
+    ],
+    [
+      'it is already over when the resume is refused because its end has passed',
+      () => paused({ phase: 'finished', pausedAt: null }),
+      'This event is already over.',
+      "It's finished now. The page shows what it is now.",
+    ],
+  ])('says %s', async (_, reloaded, said, now) => {
+    signedIn();
+    let reads = 0;
+    await onThePage(paused(), {
+      'GET /api/events/ev_1': () => json({ event: (reads += 1) === 1 ? paused() : reloaded() }),
+      'POST /api/events/ev_1/resume': () => problem(409, 'event_state_invalid'),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
+
+    const refused = await screen.findByRole('alert');
+    expect(within(refused).getByText(said)).toBeDefined();
+    expect(within(refused).getByText(now)).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Resume' })).toBeNull();
+  });
+
+  it('says somebody else changed it when the pause is refused event_state_invalid', async () => {
+    signedIn();
+    let reads = 0;
+    await onThePage(live(), {
+      'GET /api/events/ev_1': () => json({ event: (reads += 1) === 1 ? live() : paused() }),
+      'POST /api/events/ev_1/pause': () => problem(409, 'event_state_invalid'),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+    fireEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Pause' }),
+    );
+
+    const refused = await screen.findByRole('alertdialog', {
+      name: 'Somebody else changed this event while you had it open.',
+    });
+    expect(
+      within(refused).getByText("It's paused now. The page shows what it is now."),
+    ).toBeDefined();
+  });
+
+  it('keeps Resume and says so when the resume fails', async () => {
+    signedIn();
+    await onThePage(paused(), { 'POST /api/events/ev_1/resume': () => problem(500, 'internal') });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
+
+    expect(await screen.findByText('Not resumed. Try again in a moment.')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Resume' })).toBeDefined();
+  });
+
+  it.each([
+    ['without events.manage', READER, live()],
+    ['on a Draft', IRE, event(AHEAD)],
+    ['once it is Finished', IRE, live({ phase: 'finished' })],
+    ['while it is Paused', IRE, paused()],
+  ])('offers no Pause %s', async (_, who, served) => {
+    signedIn(who);
+    await onThePage(served);
+
+    expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
+  });
+
+  it('shows the paused line without Resume to somebody without events.manage', async () => {
+    signedIn(READER);
+    await onThePage(paused());
+
+    expect(screen.getByText(/^Paused\. Guests/)).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Resume' })).toBeNull();
+  });
+
+  it('shows a pause run past its end as Finished, with no Resume', async () => {
+    signedIn();
+    await onThePage(paused({ phase: 'finished', pausedAt: null }));
+
+    expect(screen.getByText('Finished', { selector: '.pill-quiet' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Resume' })).toBeNull();
+    expect(screen.queryByText(/^Paused\. Guests/)).toBeNull();
   });
 });
 
@@ -2893,5 +3085,514 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
 
     expect(dialog.querySelector('.cover-frame .cover-default-wedding')).not.toBeNull();
     expect(within(dialog).queryByText('The photo did not upload. Try again.')).toBeNull();
+  });
+});
+
+describe('Hosted by, in Edit details (sc-6713)', () => {
+  type Sent = { line: string; body: unknown; ifMatch: string | null };
+
+  /** The event as the API holds it, and every request sent; a PATCH is applied as the API would. */
+  function serving(held: Record<string, unknown>, answers: Record<string, Answer> = {}) {
+    const sent: Sent[] = [];
+    let current = event(held);
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
+      sent.push({ line, body, ifMatch: new Headers(init?.headers).get('If-Match') });
+
+      const answer = await answers[line]?.(body);
+      if (answer != null) return answer;
+
+      if (line === 'PATCH /api/events/ev_1') current = { ...current, ...(body as object) };
+
+      return new Response(JSON.stringify({ event: current }), {
+        status: 200,
+        headers: { ETag: '"4"' },
+      });
+    });
+
+    return sent;
+  }
+
+  async function editing(hash = ''): Promise<void> {
+    at(`/app/events/ev_1/edit${hash}`);
+    await screen.findByRole('heading', { level: 1, name: 'Edit details' });
+  }
+
+  function hostSection(): HTMLElement {
+    return screen.getByRole('region', { name: 'Hosted by' });
+  }
+
+  function names(): string[] {
+    return within(hostSection())
+      .queryAllByRole('textbox')
+      .map((field) => (field as HTMLTextAreaElement).value);
+  }
+
+  function patched(sent: Sent[]): Sent | undefined {
+    return sent.find(({ line }) => line === 'PATCH /api/events/ev_1');
+  }
+
+  it('lists the hosts in their order, each labelled by its position, after About the event', async () => {
+    signedIn();
+    serving({ hosts: ['Funmi Adeyemi', 'Tayo Adeyemi'] });
+    await editing();
+
+    expect(names()).toEqual(['Funmi Adeyemi', 'Tayo Adeyemi']);
+    expect(screen.getByLabelText<HTMLTextAreaElement>('Host 2').value).toBe('Tayo Adeyemi');
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((one) => one.textContent);
+    expect(headings.indexOf('Hosted by')).toBe(headings.indexOf('About the event') + 1);
+  });
+
+  it('says a draft with no hosts has none yet, and adds an empty row with focus in it', async () => {
+    signedIn();
+    serving({ hosts: [] });
+    await editing();
+
+    expect(
+      within(hostSection()).getByText(
+        'No hosts yet. The event can be made live once it has at least one.',
+      ),
+    ).toBeDefined();
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Add a host' }));
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Host 1')));
+    expect(within(hostSection()).getByRole('button', { name: 'Remove Host 1' })).toBeDefined();
+  });
+
+  it('sends the names as typed and trimmed, in their order, with the tag it read', async () => {
+    signedIn();
+    const sent = serving({ hosts: [] });
+    await editing();
+
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Add a host' }));
+    fireEvent.change(screen.getByLabelText('Host 1'), { target: { value: ' Funmi Adeyemi ' } });
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Add a host' }));
+    fireEvent.change(screen.getByLabelText('Host 2'), {
+      target: { value: 'The Okafor\nfamily' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() =>
+      expect(patched(sent)).toEqual({
+        line: 'PATCH /api/events/ev_1',
+        body: { hosts: ['Funmi Adeyemi', 'The Okafor family'] },
+        ifMatch: '"4"',
+      }),
+    );
+  });
+
+  it('moves a host, keeping focus on the arrow pressed or the other once it reaches the end, and announces it', async () => {
+    signedIn();
+    const sent = serving({ hosts: ['Funmi Adeyemi', 'Tayo Adeyemi', 'Ade Bello'] });
+    await editing();
+
+    expect(
+      within(hostSection()).queryByRole('button', { name: 'Move Funmi Adeyemi up' }),
+    ).toBeNull();
+    expect(within(hostSection()).queryByRole('button', { name: 'Move Ade Bello down' })).toBeNull();
+
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Move Ade Bello up' }));
+    expect(names()).toEqual(['Funmi Adeyemi', 'Ade Bello', 'Tayo Adeyemi']);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(hostSection()).getByRole('button', { name: 'Move Ade Bello up' }),
+      ),
+    );
+    expect(document.querySelector('.event-form [role="status"]')?.textContent).toBe(
+      'Ade Bello moved to 2 of 3',
+    );
+
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Move Ade Bello up' }));
+    expect(names()).toEqual(['Ade Bello', 'Funmi Adeyemi', 'Tayo Adeyemi']);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(hostSection()).getByRole('button', { name: 'Move Ade Bello down' }),
+      ),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() =>
+      expect(patched(sent)?.body).toEqual({
+        hosts: ['Ade Bello', 'Funmi Adeyemi', 'Tayo Adeyemi'],
+      }),
+    );
+  });
+
+  it("removes a host, announcing it and moving focus to the next row's name, else Add a host", async () => {
+    signedIn();
+    serving({ hosts: ['Funmi Adeyemi', 'Tayo Adeyemi'] });
+    await editing();
+
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Remove Funmi Adeyemi' }));
+    expect(names()).toEqual(['Tayo Adeyemi']);
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Host 1')));
+    expect(document.querySelector('.event-form [role="status"]')?.textContent).toBe(
+      'Funmi Adeyemi removed',
+    );
+
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Remove Tayo Adeyemi' }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(hostSection()).getByRole('button', { name: 'Add a host' }),
+      ),
+    );
+  });
+
+  it('offers no Add a host at six, and says six is the most', async () => {
+    signedIn();
+    serving({ hosts: ['A', 'B', 'C', 'D', 'E', 'F'] });
+    await editing();
+
+    expect(within(hostSection()).queryByRole('button', { name: 'Add a host' })).toBeNull();
+    expect(within(hostSection()).getByText('6 is the most hosts an event can have.')).toBeDefined();
+  });
+
+  it("keeps a live event's last host, saying why under its name", async () => {
+    signedIn();
+    serving({ status: 'live', phase: 'live', hosts: ['Funmi Adeyemi'] });
+    await editing();
+
+    expect(within(hostSection()).queryByRole('button', { name: /^Remove/ })).toBeNull();
+    const field = screen.getByLabelText('Host 1');
+    const help = document.getElementById(
+      field.getAttribute('aria-describedby') ?? 'none',
+    )?.textContent;
+    expect(help).toBe(
+      'Guests can see this event, so it needs at least one host. You can still change this name.',
+    );
+  });
+
+  it('lets a live event with no saved host remove a row it added', async () => {
+    signedIn();
+    serving({ status: 'live', phase: 'live', hosts: [] });
+    await editing();
+
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Add a host' }));
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Host 1')));
+    expect(within(hostSection()).getByRole('button', { name: 'Remove Host 1' })).toBeDefined();
+  });
+
+  it('refuses a blank, a too-long and a repeated name at once, focusing the first in page order', async () => {
+    signedIn();
+    const sent = serving({ hosts: [] });
+    await editing();
+
+    for (const name of ['Funmi Adeyemi', ' ', 'x'.repeat(66), 'FUNMI adeyemi']) {
+      fireEvent.click(within(hostSection()).getByRole('button', { name: 'Add a host' }));
+      const fields = within(hostSection()).getAllByRole('textbox');
+      fireEvent.change(fields[fields.length - 1]!, { target: { value: name } });
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Host 2')));
+    expect(within(hostSection()).getByText('Enter a name or remove this host.')).toBeDefined();
+    expect(
+      within(hostSection()).getByText(
+        "A host's name can be at most 60 characters. This one has 66.",
+      ),
+    ).toBeDefined();
+    expect(within(hostSection()).getByText('Funmi Adeyemi is already a host.')).toBeDefined();
+    expect(patched(sent)).toBeUndefined();
+  });
+
+  it("puts the event name's refusal ahead of a host's for focus", async () => {
+    signedIn();
+    serving({ hosts: [' '] });
+    await editing();
+
+    fireEvent.change(screen.getByLabelText('Event name'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Event name')));
+    expect(within(hostSection()).getByText('Enter a name or remove this host.')).toBeDefined();
+  });
+
+  it("shows the server's refusal under the host it names", async () => {
+    signedIn();
+    serving(
+      { hosts: ['Funmi Adeyemi'] },
+      {
+        'PATCH /api/events/ev_1': () =>
+          problem(422, 'validation_failed', {
+            violations: [
+              { propertyPath: 'hosts[1]', message: 'Tayo is already a host.', code: 'x' },
+            ],
+          }),
+      },
+    );
+    await editing();
+
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Add a host' }));
+    fireEvent.change(screen.getByLabelText('Host 2'), { target: { value: 'Tayo' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Host 2')));
+    expect(within(hostSection()).getByText('Tayo is already a host.')).toBeDefined();
+  });
+
+  it('arrives from Make live at Add a host when there are none', async () => {
+    signedIn();
+    serving({ hosts: [] });
+    await editing('#hosts');
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(hostSection()).getByRole('button', { name: 'Add a host' }),
+      ),
+    );
+  });
+
+  it("arrives from Make live at the first host's name", async () => {
+    signedIn();
+    serving({ hosts: ['Funmi Adeyemi'] });
+    await editing('#hosts');
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Host 1')));
+  });
+});
+
+describe('Make live with no hosts (sc-6713)', () => {
+  const AHEAD = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+
+  it('opens refused, sends nothing, and links to Hosted by', async () => {
+    signedIn();
+    const sent = answering({
+      'GET /api/events/ev_1': () => json({ event: event({ ...AHEAD, hosts: [] }) }),
+    });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Make live' }));
+
+    const refused = await screen.findByRole('alertdialog', {
+      name: 'Add who is hosting before guests are invited.',
+    });
+    expect(
+      within(refused).getByText(
+        "Guests see the hosts' names on their invitation. This event stays a draft until it has at least one host.",
+      ),
+    ).toBeDefined();
+    expect(
+      within(refused).getByRole('link', { name: 'Add who is hosting' }).getAttribute('href'),
+    ).toBe('/app/events/ev_1/edit#hosts');
+    expect(sent.map(({ line }) => line)).not.toContain('POST /api/events/ev_1/make-live');
+  });
+
+  it('says the same when the API refuses it after the dialog opened', async () => {
+    signedIn();
+    let reads = 0;
+    answering({
+      'GET /api/events/ev_1': () =>
+        json({
+          event: event({ ...AHEAD, hosts: (reads += 1) === 1 ? ['Funmi Adeyemi'] : [] }),
+        }),
+      'POST /api/events/ev_1/make-live': () => problem(409, 'event_host_required'),
+    });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+    fireEvent.click(screen.getByRole('button', { name: 'Make live' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Make Adaeze and Tunde live?' });
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Make live' }));
+
+    expect(
+      await screen.findByRole('alertdialog', {
+        name: 'Add who is hosting before guests are invited.',
+      }),
+    ).toBeDefined();
+  });
+});
+
+describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
+  function milestone(at: string, title: string, owner = 'event') {
+    return { at, title, note: null, owner, area: 'events', action: null };
+  }
+
+  const MADRID = {
+    timeZone: 'Europe/Madrid',
+    milestones: [
+      milestone('2026-10-10T12:00:00+02:00', 'Save the date sent', 'automatic'),
+      milestone('2026-10-17T18:00:00+02:00', 'Boda starts'),
+      milestone('2026-10-18T09:00:00+02:00', 'Brunch', 'automatic'),
+      milestone('2026-10-19T12:00:00+02:00', 'Balance due', 'you'),
+      milestone('2026-10-20T12:00:00+02:00', 'Thank-you notes sent', 'automatic'),
+      milestone('2026-10-26T02:00:00+01:00', 'Boda ends'),
+    ],
+  };
+
+  function clockAt(device: string): void {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+    vi.setSystemTime(new Date(device));
+    serverClock.observe(new Date(device).toUTCString());
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+    serverClock.observe(new Date().toUTCString());
+  });
+
+  async function comingUp(): Promise<HTMLElement> {
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    return screen.getByRole('region', { name: 'Coming up' });
+  }
+
+  function rows(within_: HTMLElement): string[] {
+    return within(within_)
+      .getAllByRole('listitem')
+      .map((row) => spaced(row.textContent));
+  }
+
+  it('shows the next four with how far away each is and its owner as a word', async () => {
+    clockAt('2026-10-11T08:00:00Z');
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () => json(MADRID),
+    });
+    at('/app/events/ev_1');
+
+    const panel = await comingUp();
+
+    await waitFor(() => expect(within(panel).getAllByRole('listitem')).toHaveLength(4));
+    expect(rows(panel)).toEqual([
+      'Sat, Oct 17, 18:00 (Europe/Madrid) · in 6 daysBoda startsEventNext up',
+      'Sun, Oct 18, 09:00 (Europe/Madrid) · in 7 daysBrunchAutomatic',
+      'Mon, Oct 19, 12:00 (Europe/Madrid) · in 8 daysBalance dueYou',
+      'Tue, Oct 20, 12:00 (Europe/Madrid) · in 9 daysThank-you notes sentAutomatic',
+    ]);
+    expect(within(panel).getByRole('link', { name: 'Full schedule' }).getAttribute('href')).toBe(
+      '/app/events/ev_1/schedule',
+    );
+  });
+
+  it('says nothing is coming up once everything has passed, and still links the schedule', async () => {
+    clockAt('2026-11-01T08:00:00Z');
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () =>
+        json({ ...MADRID, milestones: MADRID.milestones.filter((one) => one.owner !== 'you') }),
+    });
+    at('/app/events/ev_1');
+
+    const panel = await comingUp();
+
+    expect(
+      await within(panel).findByText(
+        "Nothing coming up. Everything on this event's schedule has passed.",
+      ),
+    ).toBeDefined();
+    expect(within(panel).queryByRole('listitem')).toBeNull();
+    expect(within(panel).getByRole('link', { name: 'Full schedule' })).toBeDefined();
+  });
+
+  it('shows no rows and no Full schedule link while it fails, until Try again loads it', async () => {
+    clockAt('2026-10-11T08:00:00Z');
+    signedIn();
+    let calls = 0;
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () =>
+        ++calls === 1 ? problem(500, 'internal_error') : json(MADRID),
+    });
+    at('/app/events/ev_1');
+
+    const panel = await comingUp();
+
+    expect(await within(panel).findByText("The schedule didn't load.")).toBeDefined();
+    expect(within(panel).queryByRole('listitem')).toBeNull();
+    expect(within(panel).queryByRole('link', { name: 'Full schedule' })).toBeNull();
+
+    fireEvent.click(within(panel).getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(within(panel).getAllByRole('listitem')).toHaveLength(4));
+    expect(within(panel).getByRole('link', { name: 'Full schedule' })).toBeDefined();
+    expect(within(panel).queryByText("The schedule didn't load.")).toBeNull();
+  });
+
+  it('lists every milestone in Full schedule under its zone, named once, Passed and Next up as words', async () => {
+    clockAt('2026-10-11T08:00:00Z');
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () => json(MADRID),
+    });
+    at('/app/events/ev_1/schedule');
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Full schedule' });
+    const page = heading.closest('section')!;
+
+    expect(
+      await within(page).findByText(
+        "Every date on this event, earliest first. Times are in Europe/Madrid, the event's time zone.",
+      ),
+    ).toBeDefined();
+    expect(rows(page)).toEqual([
+      'Sat, Oct 10, 12:00Save the date sentAutomatic✓ Passed',
+      'Sat, Oct 17, 18:00Boda startsEventNext up',
+      'Sun, Oct 18, 09:00BrunchAutomatic',
+      'Mon, Oct 19, 12:00Balance dueYou',
+      'Tue, Oct 20, 12:00Thank-you notes sentAutomatic',
+      'Mon, Oct 26, 02:00Boda endsEvent',
+    ]);
+    expect(within(page).getByText('Something you need to do')).toBeDefined();
+  });
+
+  it('marks an overdue You milestone Overdue and keeps it Next up', async () => {
+    clockAt('2026-10-21T08:00:00Z');
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () => json(MADRID),
+    });
+    at('/app/events/ev_1/schedule');
+
+    const page = (await screen.findByRole('heading', { level: 1, name: 'Full schedule' })).closest(
+      'section',
+    )!;
+
+    await waitFor(() => expect(within(page).getAllByRole('listitem')).toHaveLength(6));
+    expect(rows(page)[3]).toBe('Mon, Oct 19, 12:00Balance dueYou⚠ OverdueNext up');
+    expect(rows(page)[4]).toBe('Tue, Oct 20, 12:00Thank-you notes sentAutomatic✓ Passed');
+  });
+
+  it('marks nothing Next up in Full schedule once the event is over', async () => {
+    clockAt('2026-11-01T08:00:00Z');
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () =>
+        json({ ...MADRID, milestones: MADRID.milestones.filter((one) => one.owner !== 'you') }),
+    });
+    at('/app/events/ev_1/schedule');
+
+    const page = (await screen.findByRole('heading', { level: 1, name: 'Full schedule' })).closest(
+      'section',
+    )!;
+
+    await waitFor(() => expect(within(page).getAllByRole('listitem')).toHaveLength(5));
+    expect(within(page).queryByText('Next up')).toBeNull();
+    expect(within(page).getAllByText('Passed')).toHaveLength(5);
+  });
+
+  it('shows Try again in Full schedule when it fails, with no rows', async () => {
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () => problem(500, 'internal_error'),
+    });
+    at('/app/events/ev_1/schedule');
+
+    const page = (await screen.findByRole('heading', { level: 1, name: 'Full schedule' })).closest(
+      'section',
+    )!;
+
+    expect(await within(page).findByText("The schedule didn't load.")).toBeDefined();
+    expect(within(page).getByRole('button', { name: 'Try again' })).toBeDefined();
+    expect(within(page).queryByRole('listitem')).toBeNull();
   });
 });

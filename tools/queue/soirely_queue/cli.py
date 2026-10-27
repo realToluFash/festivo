@@ -59,7 +59,8 @@ def refresh_work(db, now):
                         store.get_meta(db, "machine_checks"), store.get_meta(db, "epics"),
                         store.worked_on(db, "l10n"),
                         [row for row in store.waiting(db, "l10n") if row["kind"] == "unblocked"],
-                        last_sweeps)
+                        last_sweeps, store.get_meta(db, "released"),
+                        store.get_meta(db, "unlinked"))
     store.record(db, items, now)
     return items
 
@@ -477,7 +478,11 @@ DETAILS = {
             "exact piece of text with --replace OLD --with NEW. --replace takes several "
             "targets, refuses unless OLD appears exactly once in every one of them, and then "
             "changes all or none; --dry says which would change.",
-    "relate": "Link two stories. A link that already exists answers \"already linked\".",
+    "relate": "Link two stories. A link that already exists answers \"already linked\". "
+              "--remove deletes the link as it was made, subject and object in order; a "
+              "relates to link is removed from either end. With no such link it changes "
+              "nothing and answers \"not linked\", naming the link the other way round if "
+              "that is the one there.",
     "permission-ask": "Ask for a command your permission rules refused. It posts on sc-4992 "
                       "in the owner's format, and refuses a rule already asked, with the "
                       "answer if there is one. Never wait for the answer: only the owner "
@@ -546,7 +551,9 @@ WRITES = [
     ("relate", actions.relate, "link two stories",
      lambda p: (p.add_argument("story"), p.add_argument("other"),
                 p.add_argument("--verb", default="relates to",
-                               choices=["relates to", "blocks", "duplicates"]))),
+                               choices=["relates to", "blocks", "duplicates"]),
+                p.add_argument("--remove", action="store_true",
+                               help="delete the link instead of adding it"))),
     ("archive", actions.archive, "archive a story", lambda p: p.add_argument("story")),
     ("to-draw", actions.to_draw, "list a story you cannot draw here, with the prompt that "
      "draws it", lambda p: (p.add_argument("story"), body(p))),

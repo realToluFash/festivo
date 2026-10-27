@@ -251,6 +251,14 @@ span {
   overflow-wrap: anywhere;
 }
 
+/* The button's own box is a flex container, which never shows an ellipsis for its text. */
+.button-label-cut {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .button:hover {
   background: var(--colorInset);
 }
@@ -383,6 +391,11 @@ span {
 /* ── A phone: one bar, its links behind Menu (sc-13413) ───────────────────── */
 
 @media (width <= 40rem) {
+  /* One column under a 100vh minimum would share the spare height with the bar. */
+  .shell {
+    grid-template-rows: auto 1fr;
+  }
+
   .shell-sidebar {
     flex-direction: row;
     align-items: center;
@@ -407,17 +420,25 @@ span {
   }
 
   .shell-menu-button {
-    display: block;
+    display: flex;
     flex: none;
+    align-items: center;
+    gap: var(--spaceXs);
     min-height: var(--sizeHit);
     padding: 0 var(--spaceLg);
     border: var(--borderControl);
-    border-radius: var(--radiusField);
+    border-radius: var(--radiusPill);
+    white-space: nowrap;
     background: var(--colorCard);
     color: var(--colorInk);
     font: var(--typeButton);
     cursor: pointer;
   }
+}
+
+.shell-menu-button svg {
+  width: 16px;
+  height: 16px;
 }
 
 .shell-menu {
@@ -1689,13 +1710,6 @@ span {
 .invitation-row-next {
   font: var(--typeSmall);
   color: var(--colorInk);
-}
-
-.invitation-row-open {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .profile-invitations {
@@ -3440,6 +3454,80 @@ button.members-row {
   min-width: 0;
 }
 
+.event-hosts-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.event-hosts-head p,
+.event-hosts-none {
+  margin: 0;
+}
+
+.event-hosts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  container-type: inline-size;
+}
+
+.event-host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  min-width: 0;
+}
+
+.event-host-line {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+}
+
+.event-host-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-block: var(--spaceSm);
+  resize: none;
+  overflow-wrap: anywhere;
+  field-sizing: content;
+}
+
+.event-host-controls {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.event-host-arrow,
+.event-host-gap {
+  width: var(--sizeHit);
+  padding: 0;
+}
+
+.event-host-gap {
+  height: var(--sizeHit);
+}
+
+.event-hosts-add {
+  align-self: flex-start;
+}
+
+@container (width < 440px) {
+  .event-host-line {
+    flex-wrap: wrap;
+  }
+
+  .event-host-name {
+    flex-basis: 100%;
+  }
+}
+
 .event-moment {
   display: flex;
   flex-direction: column;
@@ -3978,6 +4066,15 @@ button.members-row {
   border-radius: 0;
 }
 
+.mark-paused::before {
+  box-sizing: border-box;
+  width: 0.625rem;
+  height: 0.75rem;
+  border-left: 0.1875rem solid var(--colorAttentionText);
+  border-right: 0.1875rem solid var(--colorAttentionText);
+  content: '';
+}
+
 .pill-finished::before {
   width: auto;
   height: auto;
@@ -4102,4 +4199,193 @@ button.members-row {
   display: inline-flex;
   align-items: center;
   text-decoration: none;
+}
+
+/* ── An event's timeline: Coming up and Full schedule (sc-3624) ─────────────── */
+
+.coming-up-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spaceSm) var(--spaceMd);
+}
+
+/* Held at the height of the event's own two milestones, so the panels below do not move between states. */
+.coming-up-rows {
+  display: flex;
+  flex-direction: column;
+  min-height: 140px;
+}
+
+.timeline-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timeline-row {
+  display: grid;
+  grid-template-areas:
+    'when marks'
+    'title title'
+    'note note'
+    'action action';
+  grid-template-columns: 1fr auto;
+  gap: var(--spaceXxs) var(--spaceMd);
+  padding-block: var(--spaceMd);
+  border-bottom: 1px solid var(--colorBorder);
+}
+
+.timeline-row:last-child {
+  border-bottom: 0;
+}
+
+.timeline-row p {
+  margin: 0;
+}
+
+.timeline-when {
+  grid-area: when;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+.timeline-title {
+  grid-area: title;
+  font: var(--typeRowTitle);
+}
+
+.timeline-note {
+  grid-area: note;
+  font: var(--typeSmall);
+}
+
+.timeline-row > .link-button {
+  grid-area: action;
+  justify-self: start;
+}
+
+.timeline-marks {
+  display: flex;
+  flex-wrap: wrap;
+  grid-area: marks;
+  justify-content: flex-end;
+  gap: var(--spaceXs);
+}
+
+.timeline-row-passed .timeline-when,
+.timeline-row-passed .timeline-title,
+.timeline-row-passed .timeline-note {
+  color: var(--colorInkTertiary);
+}
+
+.timeline-owner {
+  gap: var(--spaceXxs);
+}
+
+.timeline-owner::before {
+  content: '▦' / '';
+}
+
+.timeline-owner-you {
+  background: var(--colorAttentionTint);
+  color: var(--colorAttentionText);
+}
+
+.timeline-owner-you::before {
+  content: '●' / '';
+}
+
+.timeline-owner-automatic::before {
+  content: '→' / '';
+}
+
+.timeline-next-up {
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
+}
+
+.timeline-overdue {
+  background: var(--colorBrokenTint);
+  color: var(--colorBrokenText);
+}
+
+.timeline-inset {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceMd);
+  margin: 0;
+  padding: var(--spaceLg);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+}
+
+.timeline-inset p {
+  flex: 1;
+  margin: 0;
+}
+
+.timeline-finished-mark,
+.timeline-failed-mark {
+  margin-right: var(--spaceSm);
+}
+
+.timeline-failed-mark {
+  color: var(--colorBroken);
+}
+
+.timeline-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm) var(--spaceXl);
+  margin: var(--spaceLg) 0 0;
+}
+
+.timeline-key div {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.timeline-key dd {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+@media (width <= 40rem) {
+  .coming-up-rows {
+    min-height: 178px;
+  }
+
+  .timeline-failed .button {
+    width: 100%;
+  }
+}
+
+/* At 320 the pills leave the date line for their own, so the longer fr and pt words wrap rather than cut. */
+@media (width <= 22.5rem) {
+  .coming-up-rows {
+    min-height: 236px;
+  }
+
+  .timeline-row {
+    grid-template-areas:
+      'when'
+      'title'
+      'marks'
+      'note'
+      'action';
+    grid-template-columns: 1fr;
+  }
+
+  .timeline-marks {
+    justify-content: flex-start;
+  }
 }

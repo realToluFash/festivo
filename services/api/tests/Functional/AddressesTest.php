@@ -52,6 +52,20 @@ final class AddressesTest extends ApiTestCase
     }
 
     #[Test]
+    public function twoPlacesThatReadTheSameAreSuggestedOnce(): void
+    {
+        $provider = self::service(ScriptedAddressProvider::class);
+        $provider->publish('way:1', new Address('Praça do Comércio, Lisboa, Portugal'));
+        $provider->publish('way:2', new Address('Praça do Comércio, Lisboa, Portugal'));
+        $provider->publish('way:3', new Address('Praça do Comércio, Coimbra, Portugal'));
+
+        self::assertSame([
+            ['id' => 'way:1', 'text' => 'Praça do Comércio', 'secondary_text' => 'Lisboa, Portugal'],
+            ['id' => 'way:3', 'text' => 'Praça do Comércio', 'secondary_text' => 'Coimbra, Portugal'],
+        ], $this->data('/api/addresses/suggest?q=Comércio'));
+    }
+
+    #[Test]
     public function aPickedAddressServesItsPartsAndItsTimeZone(): void
     {
         self::assertSame(self::answers()['resolve'], $this->data('/api/addresses/node:3589'));

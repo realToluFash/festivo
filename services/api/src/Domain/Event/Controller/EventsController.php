@@ -84,7 +84,7 @@ final readonly class EventsController
         return $this->tagged($this->event($eventId));
     }
 
-    /** Any of the seven fields; those left out keep their value, and a `venue` of null removes it. Needs If-Match with the ETag it read (sc-3587). */
+    /** Any of the eight fields; those left out keep their value, a `venue` of null removes it, and `hosts` is the whole list (sc-6713). Needs If-Match with the ETag it read (sc-3587). */
     #[Route('/api/events/{eventId}', name: 'events_update', methods: ['PATCH'])]
     #[InEvent(Permission::EventsManage)]
     public function update(Request $request, string $eventId): JsonResponse
@@ -98,12 +98,13 @@ final readonly class EventsController
             'timeZone' => Type\optional(Type\string()),
             'currency' => Type\optional(Type\string()),
             'venue' => Type\optional(self::venue()),
+            'hosts' => Type\optional(Type\vec(Type\string())),
         ]));
 
         return $this->tagged($this->eventEditor->edit($event, $request->headers->get('If-Match'), $this->user(), $body));
     }
 
-    /** Refused 409 `event_state_invalid` unless it is a Draft, 409 `event_concluded` once its end has passed, and 403 `plan_limit` (sc-3584). */
+    /** Refused 409 `event_state_invalid` unless it is a Draft, 409 `event_concluded` once its end has passed, 409 `event_host_required` with no host (sc-6713), and 403 `plan_limit` (sc-3584). */
     #[Route('/api/events/{eventId}/make-live', name: 'events_make_live', methods: ['POST'])]
     #[InEvent(Permission::EventsManage)]
     public function makeLive(string $eventId): JsonResponse
@@ -117,6 +118,22 @@ final readonly class EventsController
     public function end(string $eventId): JsonResponse
     {
         return $this->tagged($this->eventLifecycle->end($this->event($eventId), $this->user()));
+    }
+
+    /** Refused 409 `event_state_invalid` unless it is Live and not yet Finished (sc-3586). */
+    #[Route('/api/events/{eventId}/pause', name: 'events_pause', methods: ['POST'])]
+    #[InEvent(Permission::EventsManage)]
+    public function pause(string $eventId): JsonResponse
+    {
+        return $this->tagged($this->eventLifecycle->pause($this->event($eventId), $this->user()));
+    }
+
+    /** Refused 409 `event_state_invalid` unless it is Paused and not yet Finished; never by the plan's limit (sc-3586). */
+    #[Route('/api/events/{eventId}/resume', name: 'events_resume', methods: ['POST'])]
+    #[InEvent(Permission::EventsManage)]
+    public function resume(string $eventId): JsonResponse
+    {
+        return $this->tagged($this->eventLifecycle->resume($this->event($eventId), $this->user()));
     }
 
     /**

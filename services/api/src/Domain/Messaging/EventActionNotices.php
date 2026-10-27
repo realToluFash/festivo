@@ -18,7 +18,7 @@ final readonly class EventActionNotices
             EventAction::EditSchedule => new ActionNotices(Notice::awaiting('sc-4330'), Notice::awaiting('sc-13214'), Notice::awaiting('sc-4333')),
             EventAction::Delete => new ActionNotices(Notice::none(), Notice::awaiting('sc-13214'), Notice::none()),
             EventAction::MakeLive => new ActionNotices(Notice::none(), Notice::awaiting('sc-13214'), Notice::none()),
-            EventAction::Pause => new ActionNotices(Notice::awaiting('sc-4330'), Notice::awaiting('sc-13214'), Notice::none()),
+            EventAction::Pause, EventAction::Resume => new ActionNotices(Notice::awaiting('sc-4330'), Notice::awaiting('sc-13214'), Notice::none()),
             EventAction::End => new ActionNotices(Notice::awaiting('sc-4330'), Notice::awaiting('sc-13214'), Notice::awaiting('sc-4333')),
             EventAction::Invite => new ActionNotices(Notice::awaiting('sc-3971'), Notice::none(), Notice::none()),
             EventAction::Message => new ActionNotices(Notice::awaiting('sc-3942'), Notice::none(), Notice::none()),

@@ -23,6 +23,7 @@
     "event_currency_in_use": "The currency cannot change once amounts are recorded against this event.",
     "event_state_invalid": "The event's state does not allow this.",
     "event_concluded": "The event's end has passed.",
+    "event_host_required": "The event needs at least one host.",
     "plan_limit": "The plan's limit has been reached.",
     "unauthenticated": "Please sign in to continue.",
     "invalid_credentials": "That email and password do not match.",

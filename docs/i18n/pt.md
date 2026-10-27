@@ -41,6 +41,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **27 Oct 2026. Os anfitriões de um evento** (sc-15427 para sc-6713, `web:eventHosts.*`,
+  `eventLive.needsHost*|addHosts` web e app, `messages:validation.event_host*`,
+  `messages:event.host_required|last_host`). Host é "anfitrião", como `errors:event_host_required`;
+  a secção é "Anfitriões" e cada linha "Anfitrião {{position}}". "Add who is hosting" é "Indicar
+  os anfitriões". Um anfitrião é um nome tal como os convidados o leem, por vezes um casal numa
+  linha, por isso nada concorda com {{name}}: "{{name}} já consta da lista de anfitriões", "… já
+  não consta da lista de anfitriões", "{{name}}: posição {{position}} de {{count}}". Remover é
+  "Remover", como em Conta. O limite é a mesma frase no ecrã e na API. O último anfitrião
+  explica-se do lado dos convidados: "Os convidados podem ver este evento, por isso …".
 - **26 Oct 2026. Eliminar um evento** (sc-14417 para sc-3592, `eventDelete.*` web e app,
   `messages:event.delete_name_mismatch`). Como para uma organização: "Eliminar o evento", com
   o artigo, como "Cancelar o evento"; o diálogo "Eliminar {{event}}?" e a saída "Manter o
@@ -64,6 +73,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   começa "Não foi terminado.". Os convidados são "os convidados que abrirem a sua ligação". A
   data do aviso leva "no dia {{date}}", pela regra do dia da semana. `scheduleLocked` e
   `scheduleConcluded` são a mesma frase: o português não tem a contração que as distingue.
+- **27 Oct 2026. Pausar e retomar um evento** (sc-15439 para sc-3586, `eventPause.*` web e
+  app). "Pausar", como a permissão; "Retomar"; a saída é "Manter publicado". As recusas: "Não
+  foi pausado.", "Não foi retomado.". "Check-in" é "o registo de entradas" dos convidados,
+  nunca "a receção", que é a festa. O resultado concorda com "evento", nunca com o nome: "O
+  evento {{name}} voltou a estar publicado".
 - **26 Oct 2026. Publicar um rascunho e os estados de um evento** (sc-13956, sc-3584,
   `eventLive.*` web e app, `events.*`, `eventsScreen.*`, `messages:event.*`,
   `event.plan_limit`). "Make live" é "Publicar", como a permissão "Criar, publicar, pausar e
@@ -487,6 +501,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   (`emails:twoFactor.on.subject`, `twoFactor.off.subject`, sc-14100): "Autenticação de dois
   fatores ativada" / "desativada", a pair that differs only in its last word. "A autenticação
   de dois fatores foi desativada" ran past one line of a 360dp inbox row.
+- **27 Oct 2026. An event's dates are "o calendário", never "o programa"** (`timeline.*`,
+  sc-15756). "Programa" is the organiser's Schedule (epic 33); the list of an event's dates is
+  "Calendário completo", its panel "Próximas datas". The owner pill "You" is "A seu cargo",
+  since "Você" is Brazilian. Distances follow the date: "hoje", "daqui a 3 dias", "há 2 dias".
+  The API titles keep the name as subject, "{name} começa", "{name} termina", so no article
+  has to agree with it.
 - **27 Oct 2026. The two-factor-due subject opens on the feature and the deadline**
   (`emails:signInRules.twoFactorDue.subject`, sc-15219): "Autenticação de dois fatores até
   {deadline}: {organisation}". "até" needs no article before the weekday `{deadline}` opens

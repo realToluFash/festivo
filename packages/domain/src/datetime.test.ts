@@ -5,6 +5,7 @@ import {
   formatCountdown,
   formatDay,
   formatEventDate,
+  formatEventMoment,
   formatEventRange,
   formatTimeOfDay,
   formatWallClock,
@@ -165,6 +166,30 @@ describe("an event's start and end", () => {
     expect(range).toMatch(/dim\. 15 nov\. 2026, 02:00$/);
   });
 
+  it('is written where Intl has no formatRange, as on Hermes', () => {
+    const formatRange = Object.getOwnPropertyDescriptor(
+      Intl.DateTimeFormat.prototype,
+      'formatRange',
+    );
+    Reflect.deleteProperty(Intl.DateTimeFormat.prototype, 'formatRange');
+
+    try {
+      expect(
+        spaced(
+          formatEventRange(
+            '2026-11-14T16:00:00+01:00',
+            '2026-11-14T23:00:00+01:00',
+            'Africa/Lagos',
+            'en',
+          ),
+        ),
+      ).toBe('Sat, Nov 14, 2026, 16:00 – 23:00');
+    } finally {
+      if (formatRange != null)
+        Object.defineProperty(Intl.DateTimeFormat.prototype, 'formatRange', formatRange);
+    }
+  });
+
   it('takes the date from the zone, not from the instant in UTC', () => {
     expect(formatEventDate('2026-11-14T23:30:00-05:00', 'America/New_York', 'en')).toBe(
       'Sat, Nov 14, 2026',
@@ -192,5 +217,20 @@ describe('a wall-clock day and time, as the event page writes them', () => {
     expect(formatWallDay('2027-03-', 'en')).toBe('');
     expect(formatWallClock('', 'en')).toBe('');
     expect(formatWallClock('2027-03-28T03:30:00+02:00', 'en')).toBe('');
+  });
+});
+
+describe('a milestone’s moment, in the event’s zone', () => {
+  it('carries its own offset across a change of clocks', () => {
+    expect(formatEventMoment('2026-10-24T18:00:00+02:00', 'Europe/Madrid', 'en')).toBe(
+      'Sat, Oct 24, 18:00',
+    );
+    expect(formatEventMoment('2026-10-26T02:00:00+01:00', 'Europe/Madrid', 'en')).toBe(
+      'Mon, Oct 26, 02:00',
+    );
+  });
+
+  it('is written in the reader’s language', () => {
+    expect(formatEventMoment('2026-10-24T18:00:00+02:00', 'Europe/Madrid', 'fr')).toMatch(/sam/);
   });
 });

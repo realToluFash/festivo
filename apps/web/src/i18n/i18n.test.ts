@@ -57,6 +57,33 @@ describe('resolution', () => {
   });
 });
 
+describe('a number in a sentence (sc-15361)', () => {
+  afterEach(async () => {
+    await setLanguage(null);
+  });
+
+  it.each([
+    ['en', '1,000 people', '10,000 people', '1,000,000 events'],
+    ['es', '1000 personas', '10.000 personas', '1.000.000 de eventos'],
+    ['fr', '1\u202f000 personnes', '10\u202f000 personnes', '1\u202f000\u202f000 d’événements'],
+    ['pt', '1000 pessoas', '10\u00a0000 pessoas', '1\u00a0000\u00a0000 de eventos'],
+  ])('is written the way %s writes numbers', async (locale, thousand, tenThousand, million) => {
+    await setLanguage(locale);
+
+    expect([
+      i18next.t('rolesScreen.holders', { count: 1000 }),
+      i18next.t('rolesScreen.holders', { count: 10_000 }),
+      i18next.t('ownership.events', { count: 1_000_000 }),
+    ]).toEqual([thousand, tenThousand, million]);
+  });
+
+  it('reads as before under 1000', async () => {
+    await setLanguage('fr');
+
+    expect(i18next.t('rolesScreen.holders', { count: 999 })).toBe('999 personnes');
+  });
+});
+
 describe('the locale dates are written in', () => {
   afterEach(async () => {
     vi.restoreAllMocks();
