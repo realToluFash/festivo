@@ -1,0 +1,22 @@
+# sc-11741: Ask to join opened, the organisation deleted by its owner elsewhere, then Ask to join: the dead-link screen naming no organisation. Pass API, DEL_TOKEN (its owner's bearer), DEL_ORG and DEL_NAME.
+appId: host.exp.Exponent
+---
+- evalScript: "${output.link = json(http.request(API + '/api/orgs/' + DEL_ORG + '/request-link', {method: 'PUT', headers: {Authorization: 'Bearer ' + DEL_TOKEN, 'Content-Type': 'application/json', Origin: 'http://127.0.0.1:25173'}, body: '{}'}).body).url.split('/join/')[1]}"
+- openLink: ${METRO_URL}/--/join/${output.link}
+- extendedWaitUntil:
+    visible:
+      id: 'requestToJoin.ask'
+    timeout: 30000
+- takeScreenshot: open
+- evalScript: "${output.deleted = http.request(API + '/api/orgs/' + DEL_ORG, {method: 'DELETE', headers: {Authorization: 'Bearer ' + DEL_TOKEN, 'Content-Type': 'application/json', Origin: 'http://127.0.0.1:25173'}, body: JSON.stringify({name: DEL_NAME})}).status}"
+- assertTrue: ${output.deleted == 200}
+- tapOn:
+    id: 'requestToJoin.ask'
+- extendedWaitUntil:
+    visible:
+      id: 'requestToJoin.home'
+    timeout: 15000
+- assertNotVisible:
+    id: 'requestToJoin.ask'
+- assertNotVisible: '.*${DEL_NAME}.*'
+- takeScreenshot: dead-after-tap

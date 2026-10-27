@@ -1,0 +1,13 @@
+# sc-11741: leave Ask to join open on a working link with a message typed, for a flow run after the API is stopped. Pass API, TOKEN and ORG.
+appId: host.exp.Exponent
+---
+- evalScript: "${output.link = json(http.request(API + '/api/orgs/' + ORG + '/request-link', {method: 'PUT', headers: {Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json', Origin: 'http://127.0.0.1:25173'}, body: '{}'}).body).url.split('/join/')[1]}"
+- openLink: ${METRO_URL}/--/join/${output.link}
+- extendedWaitUntil:
+    visible:
+      id: 'requestToJoin.ask'
+    timeout: 30000
+- tapOn:
+    id: 'requestToJoin.message'
+- inputText: 'Kept while offline'
+- hideKeyboard
