@@ -130,6 +130,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   « Retirer la photo », comme le glossaire. Les tailles s’écrivent en Mo, « 15 Mo ». La ligne de
   l’événement créé, « L’événement a été enregistré sans sa photo. {{reason}} », se lit avec
   n’importe quel refus à la suite.
+  Après un refus, les boutons du dialogue sont « Choisir une autre photo » et, cadre vide,
+  « Choisir une photo » (sc-16573) : à l’infinitif, comme « Importer une photo » et « Utiliser
+  cette photo », tandis que le refus lui-même s’adresse à l’impératif, « Choisissez-en une plus
+  grande ».
 - **26 Oct 2026. Le type d’événement** (`web:eventForm.type*`, `web:eventTypes.*`,
   `messages:validation.event_type_required`, sc-3588 via sc-13205). « Type », « Choisissez le
   type d’événement », et le refus, identique à l’écran et dans l’API, « Choisissez de quel type

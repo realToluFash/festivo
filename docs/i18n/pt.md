@@ -106,6 +106,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   do leitor de ecrã. «Carregar» para upload, com o gerúndio de PT-PT «A carregar…»; «píxeis», não
   «pixels». A linha do evento criado, «O evento foi guardado sem a fotografia. {{reason}}», lê-se
   com qualquer das recusas a seguir.
+  Depois de uma recusa, os botões do diálogo são «Escolher outra fotografia» e, com a moldura
+  vazia, «Escolher uma fotografia» (sc-16573): no infinitivo, como «Carregar uma fotografia» e
+  «Usar esta fotografia», enquanto a recusa pede no imperativo, «Escolha uma maior».
 - **26 Oct 2026. O tipo de evento** (`web:eventForm.type*`, `web:eventTypes.*`,
   `messages:validation.event_type_required`, sc-3588 via sc-13205). "Tipo", "Escolha o tipo de
   evento", e a recusa, igual no ecrã e na API, "Escolha que tipo de evento é.". Birthday é
