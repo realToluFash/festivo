@@ -1,0 +1,23 @@
+# sc-13631: an owner's own page (${SELF_ID}) keeps membersScreen.ownRole and Go to Organisation, which opens Organisation.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible: '{{t:membersScreen.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: members.row.${SELF_ID}
+    timeout: 20000
+- tapOn:
+    id: members.row.${SELF_ID}
+- scrollUntilVisible:
+    element: '{{t:membersScreen.ownRole}}'
+    timeout: 20000
+- assertNotVisible:
+    id: members.remove
+- takeScreenshot: member-own-role-owner
+- tapOn:
+    id: members.goToOrganisation
+- waitForAnimationToEnd
+- takeScreenshot: member-own-role-owner-go
