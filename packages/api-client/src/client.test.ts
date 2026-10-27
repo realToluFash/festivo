@@ -1309,6 +1309,79 @@ describe('requests to join (sc-562)', () => {
   });
 });
 
+describe('the bell (sc-3980)', () => {
+  function answering(body: unknown) {
+    const sent: { url: string; method: string; body: unknown }[] = [];
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (input, init) => {
+        sent.push({
+          url: String(input),
+          method: init?.method ?? 'GET',
+          body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
+        });
+
+        return new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      },
+    });
+
+    return { client, sent };
+  }
+
+  const item = {
+    id: 'n1',
+    category: 'event_changes',
+    title: 'Ada Obi changed the event',
+    lines: ['The start time is now 19:00 (was 18:00).'],
+    eventId: 'e1',
+    eventName: 'Ada & Tomi',
+    eventAvailable: true,
+    muted: false,
+    place: '/app/events/e1',
+    read: false,
+    createdAt: '2026-10-27T14:05:00+00:00',
+  };
+
+  test('reads the feed and leaves out an item it cannot read', async () => {
+    const { client, sent } = answering({
+      items: [item, { id: 'n2', category: 'unknown', title: 'x', createdAt: 'y' }],
+      unreadCount: 1,
+      next: 'n1',
+    });
+
+    expect(await client.notifications('n0')).toEqual({ items: [item], unreadCount: 1, next: 'n1' });
+    expect(sent[0]?.url).toBe('http://api.test/api/notifications?after=n0');
+  });
+
+  test('one switch is sent as category, channel and on', async () => {
+    const { client, sent } = answering({
+      categories: [
+        {
+          category: 'money',
+          push: { on: false, switchable: true },
+          email: { on: true, switchable: true },
+        },
+      ],
+    });
+
+    expect(await client.setNotificationSetting('money', 'push', false)).toEqual([
+      {
+        category: 'money',
+        push: { on: false, switchable: true },
+        email: { on: true, switchable: true },
+      },
+    ]);
+    expect(sent[0]).toEqual({
+      url: 'http://api.test/api/auth/notification-settings',
+      method: 'PUT',
+      body: { category: 'money', channel: 'push', on: false },
+    });
+  });
+});
+
 describe('the health endpoint', () => {
   function client(response: Response) {
     return new ApiClient({ baseUrl: () => 'http://api.test', fetch: async () => response });

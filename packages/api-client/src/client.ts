@@ -94,6 +94,41 @@ export interface RecoveryOpening {
 }
 
 /** One request on an owner's card: never a code, only what was proved and when. */
+export type NotificationCategory =
+  'guest_replies' | 'messages' | 'event_day' | 'event_changes' | 'money' | 'account_security';
+
+/** One bell item (sc-3980): `lines` are drawn one per row, as sent; `muted` and `eventAvailable` are the server's. */
+export interface NotificationItem {
+  id: string;
+  category: NotificationCategory;
+  title: string;
+  lines: string[];
+  eventId: string | null;
+  eventName: string | null;
+  eventAvailable: boolean;
+  muted: boolean;
+  place: string | null;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface NotificationFeed {
+  items: NotificationItem[];
+  unreadCount: number;
+  next: string | null;
+}
+
+export interface NotificationSetting {
+  category: NotificationCategory;
+  push: { on: boolean; switchable: boolean };
+  email: { on: boolean; switchable: boolean };
+}
+
+export interface RealtimeSubscription {
+  token: string;
+  expiresAt: string;
+}
+
 export interface RecoveryRequest {
   id: string;
   name: string;
@@ -1051,6 +1086,87 @@ export class ApiClient {
 
   async turnDownRecovery(id: string): Promise<void> {
     await this.post<unknown>(`/api/auth/recovery-requests/${encodeURIComponent(id)}/turn-down`);
+  }
+
+  async notifications(after?: string): Promise<NotificationFeed> {
+    const body = await this.get<Record<string, unknown>>(
+      after == null
+        ? '/api/notifications'
+        : `/api/notifications?after=${encodeURIComponent(after)}`,
+    );
+
+    return {
+      items: notificationItems(body.items),
+      unreadCount: typeof body.unreadCount === 'number' ? body.unreadCount : 0,
+      next: optionalString(body.next),
+    };
+  }
+
+  async readNotification(
+    id: string,
+  ): Promise<{ item: NotificationItem | null; unreadCount: number }> {
+    const body = await this.post<Record<string, unknown>>(
+      `/api/notifications/${encodeURIComponent(id)}/read`,
+    );
+
+    return {
+      item: asNotificationItem(body.item),
+      unreadCount: typeof body.unreadCount === 'number' ? body.unreadCount : 0,
+    };
+  }
+
+  async readAllNotifications(): Promise<number> {
+    const body = await this.post<{ unreadCount?: unknown }>('/api/notifications/read-all');
+
+    return typeof body.unreadCount === 'number' ? body.unreadCount : 0;
+  }
+
+  async notificationSettings(): Promise<NotificationSetting[]> {
+    return notificationSettingsOf(
+      await this.get<{ categories?: unknown }>('/api/auth/notification-settings'),
+    );
+  }
+
+  async setNotificationSetting(
+    category: NotificationCategory,
+    channel: 'push' | 'email',
+    on: boolean,
+  ): Promise<NotificationSetting[]> {
+    return notificationSettingsOf(
+      await this.put<{ categories?: unknown }>('/api/auth/notification-settings', {
+        category,
+        channel,
+        on,
+      }),
+    );
+  }
+
+  async eventMuted(eventId: string): Promise<boolean> {
+    const body = await this.get<{ muted?: unknown }>(
+      `/api/events/${encodeURIComponent(eventId)}/mute`,
+    );
+
+    return body.muted === true;
+  }
+
+  async muteEvent(eventId: string, muted: boolean): Promise<boolean> {
+    const body = await this.put<{ muted?: unknown }>(
+      `/api/events/${encodeURIComponent(eventId)}/mute`,
+      { muted },
+    );
+
+    return body.muted === true;
+  }
+
+  async realtimeSubscription(): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      '/api/realtime/subscriptions',
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
   }
 
   async dismissTwoFactorPrompt(): Promise<void> {
@@ -3406,6 +3522,74 @@ function asRoute(route: unknown): PhoneCodeRoute | null {
     route === 'sms_only'
     ? route
     : null;
+}
+
+const NOTIFICATION_CATEGORIES: readonly NotificationCategory[] = [
+  'guest_replies',
+  'messages',
+  'event_day',
+  'event_changes',
+  'money',
+  'account_security',
+];
+
+function notificationCategory(raw: unknown): NotificationCategory | null {
+  return NOTIFICATION_CATEGORIES.find((category) => category === raw) ?? null;
+}
+
+export function asNotificationItem(raw: unknown): NotificationItem | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const candidate = raw as Record<string, unknown>;
+  const category = notificationCategory(candidate.category);
+
+  if (
+    typeof candidate.id !== 'string' ||
+    typeof candidate.title !== 'string' ||
+    typeof candidate.createdAt !== 'string' ||
+    category == null
+  ) {
+    return null;
+  }
+
+  return {
+    id: candidate.id,
+    category,
+    title: candidate.title,
+    lines: strings(candidate.lines),
+    eventId: optionalString(candidate.eventId),
+    eventName: optionalString(candidate.eventName),
+    eventAvailable: candidate.eventAvailable === true,
+    muted: candidate.muted === true,
+    place: optionalString(candidate.place),
+    read: candidate.read === true,
+    createdAt: candidate.createdAt,
+  };
+}
+
+function notificationItems(raw: unknown): NotificationItem[] {
+  return Array.isArray(raw) ? raw.map(asNotificationItem).filter((item) => item != null) : [];
+}
+
+function notificationSettingsOf(body: { categories?: unknown }): NotificationSetting[] {
+  if (!Array.isArray(body.categories)) return [];
+
+  return body.categories.flatMap((raw: unknown): NotificationSetting[] => {
+    if (typeof raw !== 'object' || raw == null) return [];
+
+    const candidate = raw as Record<string, unknown>;
+    const category = notificationCategory(candidate.category);
+
+    return category == null
+      ? []
+      : [{ category, push: settingCell(candidate.push), email: settingCell(candidate.email) }];
+  });
+}
+
+function settingCell(raw: unknown): { on: boolean; switchable: boolean } {
+  const cell = typeof raw === 'object' && raw != null ? (raw as Record<string, unknown>) : {};
+
+  return { on: cell.on === true, switchable: cell.switchable === true };
 }
 
 function strings(raw: unknown): string[] {
