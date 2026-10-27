@@ -310,5 +310,6 @@ does it: it moves the story to `Ready For QA` and tells `[qa]` the merge commit,
 tests what landed (`--text` adds anything QA should know). For a pull request that merged
 some other way at a head the pass covers, `sq dev to-qa sc-N` does the same. Nobody else
 makes this move: a passed story you merge and leave in `Passed Code Review` is a story
-nobody tests.
+nobody tests. A story labelled **translation** is the exception: it stays where the
+linguist put it, and sq refuses `to-qa` on it as it refuses the move.
 Never move it before the merge, and never mark it Done.
