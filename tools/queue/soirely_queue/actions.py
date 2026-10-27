@@ -255,6 +255,14 @@ def ops_only(c, story):
                       f"sc-{story['id']} is not")
 
 
+def linguists_own(c, story, state):
+    if c.role in R.DEVS and W.linguists(story) \
+            and c.state_id(state)[1] in ("In Review", "Ready For QA"):
+        raise Refused(f"sc-{story['id']} is a translation ticket, the linguist's to move. A "
+                      "pull request on it goes to the lead and is merged with the ticket left "
+                      "where it stands")
+
+
 def holding_now(c, story):
     """The blockers holding the story, each as Shortcut has it now."""
     if story["state"] not in W.HOLDABLE:
@@ -266,6 +274,7 @@ def move(c, a):
     guard(c, "move")
     story = c.story(a.story)
     ops_only(c, story)
+    linguists_own(c, story, a.state)
     state = set_state(c, story, a.state, check=c.role != "pm")
     moved = c.refresh(story["id"])
     holders = holding_now(c, moved) if state == "Ready For Dev" else []

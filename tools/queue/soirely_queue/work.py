@@ -581,7 +581,7 @@ def waits_on(story, pr):
         and (story["moved_at"] or "") > verdict["at"] if verdict else False
     if covered and verdict["verdict"] == "back" and not returned:
         return role, f"{role} to fix the findings and push"
-    if story["state"] in ("In Progress", "Failed Code Review"):
+    if story["state"] in ("In Progress", "Failed Code Review") and not side_pr(story, pr):
         return role, f"{role} to move sc-{story['id']} to In Review"
     return "lead", "lead to review it"
 

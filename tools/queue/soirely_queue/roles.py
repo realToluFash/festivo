@@ -228,8 +228,10 @@ MOVES = {
     "ux": {"Ready For Dev": ("Needs Design",), WAITING: ("Needs Design",)},
     "qa": {"In QA": ("Ready For QA", "In QA"), "Passsed QA": ("In QA",),
            "Failed QA": ("In QA",)},
-    "l10n": {"In Progress": ("To Do", "Ready For Dev", "Failed QA", "Failed Code Review"),
-             "Ready For QA": ("In Progress",)},
+    # From review too: a developer's pull request on the ticket can leave it there.
+    "l10n": {"In Progress": ("To Do", "Ready For Dev", "Failed QA", "Failed Code Review",
+                             *MERGING),
+             "Ready For QA": ("In Progress", *MERGING)},
     # Only on a story labelled ops. Ready For QA and Done come with the merge.
     "ops": {"In Progress": ("Backlog", "To Do", "Ready For Dev", "Failed QA",
                             "Failed Code Review", "In Review"),

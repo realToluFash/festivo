@@ -865,6 +865,15 @@ class Stranded(unittest.TestCase):
         self.assertEqual(found[402][:2], ("dev", "dev to move sc-2 to In Review"))
         self.assertIn("archived", found[403][1])
 
+    def test_a_side_pr_on_a_translation_ticket_waits_on_the_lead_in_any_state(self):
+        side = self.open_pr(7, 1, updated="2026-10-20T10:00:00Z")
+        for state in ("In Progress", "Failed Code Review", "In Review", "Passed Code Review",
+                      "Ready For QA"):
+            ticket = story(1, state, labels=["translation", "dev1"])
+            self.assertEqual(work.waits_on(ticket, side), ("lead", "lead to review it"))
+        both = story(1, "In Progress", labels=["translation", "ops"])
+        self.assertEqual(work.waits_on(both, side), ("ops", "ops to move sc-1 to In Review"))
+
     def test_a_passed_pr_waits_on_its_builder_to_merge_or_bring_main_in(self):
         passed = self.open_pr(7, 1, updated="2026-10-20T10:00:00Z",
                               lead=[verdict("pass", HEAD[:7])])
