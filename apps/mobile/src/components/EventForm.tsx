@@ -467,7 +467,8 @@ export function EventForm({
           time={draft.startTime}
           timeZone={timeZone}
           error={errors.startsAt}
-          disabled={busy || over}
+          disabled={busy}
+          readOnly={over}
           pickerRef={startPicker}
           testID="eventForm.start"
           onPick={(date, time) =>
@@ -486,7 +487,8 @@ export function EventForm({
           time={draft.endTime}
           timeZone={timeZone}
           error={errors.endsAt}
-          disabled={busy || over}
+          disabled={busy}
+          readOnly={over}
           pickerRef={endPicker}
           testID="eventForm.end"
           onPick={(date, time) => {
@@ -513,7 +515,8 @@ export function EventForm({
             choices={zones}
             value={timeZone}
             onChange={(zone) => change('timeZone', { timeZone: zone })}
-            disabled={busy || over}
+            disabled={busy}
+            readOnly={over}
             pickerRef={zonePicker}
             testID="eventForm.timeZone"
           />
@@ -632,6 +635,7 @@ function Moment({
   timeZone,
   error,
   disabled,
+  readOnly,
   pickerRef,
   testID,
   onPick,
@@ -643,6 +647,7 @@ function Moment({
   timeZone: string;
   error: string | undefined;
   disabled: boolean;
+  readOnly: boolean;
   pickerRef: RefObject<View | null>;
   testID: string;
   onPick: (date: string, time: string) => void;
@@ -698,10 +703,15 @@ function Moment({
           <Field label={t('eventForm.date')}>
             <Pressable
               ref={pickerRef}
-              style={[styles.pick, error != null && styles.pickWrong]}
+              style={[
+                styles.pick,
+                readOnly && styles.pickReadOnly,
+                error != null && styles.pickWrong,
+              ]}
               onPress={() => open('date')}
-              disabled={disabled}
-              accessibilityRole="button"
+              disabled={disabled || readOnly}
+              accessibilityRole={readOnly ? undefined : 'button'}
+              accessibilityState={{ disabled: disabled || readOnly }}
               accessibilityLabel={t('eventForm.date')}
               accessibilityValue={{
                 text: [label, date === '' ? null : dayWords, timeZone]
@@ -718,10 +728,15 @@ function Moment({
         </View>
         <Field label={t('eventForm.time')}>
           <Pressable
-            style={[styles.pick, error != null && styles.pickWrong]}
+            style={[
+              styles.pick,
+              readOnly && styles.pickReadOnly,
+              error != null && styles.pickWrong,
+            ]}
             onPress={() => open('time')}
-            disabled={disabled}
-            accessibilityRole="button"
+            disabled={disabled || readOnly}
+            accessibilityRole={readOnly ? undefined : 'button'}
+            accessibilityState={{ disabled: disabled || readOnly }}
             accessibilityLabel={t('eventForm.time')}
             accessibilityValue={{
               text: [label, time === '' ? null : timeWords, timeZone]
@@ -820,6 +835,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   pickDate: { flex: 1 },
+  pickReadOnly: { backgroundColor: tokens.colorNeutralFill },
   pickWrong: { borderColor: tokens.colorBroken },
   placeholder: { color: tokens.colorInkTertiary },
 });
