@@ -1,8 +1,0 @@
-# Taps Current password while the keys are up in New password. sc-13408.
-appId: host.exp.Exponent
----
-- tapOn:
-    id: 'password.current'
-- waitForAnimationToEnd:
-    timeout: 2000
-- takeScreenshot: mobile-13408-tap-current
