@@ -205,6 +205,41 @@ class Snapshot(unittest.TestCase):
         with mock.patch("shutil.which", return_value="/nvm/v22/bin/node"):
             self.assertFalse([w for w in self.snap()["warnings"] if "no node" in w])
 
+    def node(self, version):
+        node = pathlib.Path(self.root) / "bin" / version / "node"
+        node.parent.mkdir(parents=True)
+        node.write_text(f"#!/bin/sh\necho v{version}\n")
+        node.chmod(0o755)
+        return str(node)
+
+    def nvmrc(self, version):
+        main = pathlib.Path(self.root) / "festivo"
+        main.mkdir(exist_ok=True)
+        (main / ".nvmrc").write_text(version + "\n")
+
+    def node_warnings(self, node):
+        self.platform.search_path = lambda: "/nowhere"
+        with mock.patch("shutil.which", return_value=node):
+            return [w for w in self.snap()["warnings"] if "node" in w]
+
+    def test_a_worker_node_older_than_the_nvmrc_is_named_with_both_versions(self):
+        self.nvmrc("22.18")
+        self.assertEqual(self.node_warnings(self.node("20.19.0")),
+                         ["workers run node 20.19.0, older than the 22.18 that .nvmrc asks for: "
+                          "nvm install 22.18 && nvm alias default 22.18"])
+        self.assertEqual(self.node_warnings(None),
+                         ["workers have no node: install nvm with a default alias "
+                          "(nvm alias default 22.18), or node on the PATH"])
+
+    def test_a_node_at_or_above_the_nvmrc_or_no_nvmrc_gives_no_version_warning(self):
+        old = self.node("20.19.0")
+        self.assertEqual(self.node_warnings(old), [])
+        self.nvmrc("22.18")
+        self.assertEqual(self.node_warnings(self.node("22.18.0")), [])
+        self.assertEqual(self.node_warnings(self.node("24.1.0")), [])
+        self.nvmrc("lts/jod")
+        self.assertEqual(self.node_warnings(old), [])
+
     def test_the_other_machines_page_names_are_listed_and_a_missing_token_is_a_warning(self):
         self.settings["peers"] = {"tolu-linux": "http://10.0.0.5:8765"}
         with mock.patch.dict("os.environ", {remote.TOKEN: ""}):

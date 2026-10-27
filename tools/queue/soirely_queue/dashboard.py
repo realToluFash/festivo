@@ -77,9 +77,14 @@ def snapshot(db, platform, now, home, load=machine.load):
         if late:
             view["warnings"].append(late)
         search = getattr(platform, "search_path", None)
-        if search and not shutil.which("node", path=search()):
+        node = search and shutil.which("node", path=search())
+        if search and not node:
+            wanted = machine.wanted_node(config) or "22"
             view["warnings"].append("workers have no node: install nvm with a default alias "
-                                    "(nvm alias default 22), or node on the PATH")
+                                    f"(nvm alias default {wanted}), or node on the PATH")
+        behind = node and machine.node_behind(config, node)
+        if behind:
+            view["warnings"].append(behind)
         on = runner.started(db)
         agreed = store.get_meta(db, "shared_view") or {}
         unreachable = store.get_meta(db, "shared_unreachable")
