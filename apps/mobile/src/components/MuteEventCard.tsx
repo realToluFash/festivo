@@ -1,12 +1,16 @@
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
+import { SECTION_HREF } from '../kit/appNav.ts';
 import { type MuteState, readMute, saveMute } from '../kit/eventMute.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
+import { Footnote } from './Buttons.tsx';
 import { Notice } from './Notice.tsx';
+import { OnOffSwitch } from './OnOffSwitch.tsx';
 import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
 
@@ -52,27 +56,15 @@ export function MuteEventCard({ kind, eventId }: { kind: LayoutKind; eventId: st
         <Text size={tokens.typeBodyPhone.size} style={styles.label}>
           {t('eventMute.switch')}
         </Text>
-        <Pressable
-          accessibilityRole="switch"
-          accessibilityLabel={t('eventMute.switch')}
-          accessibilityState={{ checked: muted, disabled: !loaded || busy, busy }}
-          disabled={!loaded || busy}
-          onPress={() => change(!muted)}
-          hitSlop={tokens.spaceSm}
-          style={[styles.switch, muted && styles.switchOn]}
+        <OnOffSwitch
+          on={loaded ? muted : null}
+          words={{ on: t('eventMute.on'), off: t('eventMute.off') }}
+          label={t('eventMute.switch')}
+          disabled={!loaded}
+          busy={busy}
+          onChange={change}
           testID="events.mute.switch"
-        >
-          <View style={[styles.dot, muted ? styles.dotOn : styles.dotOff]} />
-          {loaded && (
-            <Text
-              size={tokens.typeButton.size}
-              weight="semibold"
-              style={muted ? styles.inkOn : styles.inkOff}
-            >
-              {muted ? t('eventMute.on') : t('eventMute.off')}
-            </Text>
-          )}
-        </Pressable>
+        />
       </View>
       {mute.status === 'failed' && (
         <Notice
@@ -98,6 +90,12 @@ export function MuteEventCard({ kind, eventId }: { kind: LayoutKind; eventId: st
           answer={tap}
         />
       )}
+      <Footnote
+        action={t('eventMute.settings')}
+        role="link"
+        onPress={() => router.push(SECTION_HREF.notifications)}
+        testID="events.mute.settings"
+      />
     </View>
   );
 }
@@ -105,20 +103,4 @@ export function MuteEventCard({ kind, eventId }: { kind: LayoutKind; eventId: st
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   label: { flex: 1 },
-  switch: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceXs,
-    minHeight: tokens.sizeHit,
-    paddingHorizontal: tokens.spaceLg,
-    borderRadius: tokens.radiusPill,
-    borderWidth: 1,
-    borderColor: tokens.colorInsetBorder,
-  },
-  switchOn: { backgroundColor: tokens.colorAccentTint },
-  dot: { width: 10, height: 10, borderRadius: 5 },
-  dotOn: { backgroundColor: tokens.colorAccent },
-  dotOff: { borderWidth: 1.5, borderColor: tokens.colorMarkEmpty },
-  inkOn: { color: tokens.colorAccentText },
-  inkOff: { color: tokens.colorInkSecondary },
 });

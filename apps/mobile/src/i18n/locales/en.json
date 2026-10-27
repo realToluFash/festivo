@@ -661,6 +661,8 @@
     "accountLine": "Your name, email addresses and phone numbers",
     "security": "Security",
     "securityLine": "Password, ways to sign in, two-factor, signed-in devices",
+    "notifications": "Notifications",
+    "notificationsLine": "Push and email, for each kind of notification",
     "organisationHeading": "Organisation",
     "organisation": "Organisation",
     "organisationLine": "{{name}} · name, contact address, currency, time zone",
@@ -1563,6 +1565,37 @@
     "off": "Off",
     "notLoaded": "Couldn't load whether this event is muted.",
     "tryAgain": "Try again",
-    "notSaved": "Couldn't save. Try again."
+    "notSaved": "Couldn't save. Try again.",
+    "settings": "Notification settings"
+  },
+  "notificationSettings": {
+    "title": "Notification settings",
+    "push": "Push",
+    "email": "Email",
+    "on": "On",
+    "off": "Off",
+    "switchName": "{{category}} {{channel}}",
+    "saved": "Saved.",
+    "pushNotSaved": "Couldn't save the push switch. Try again.",
+    "emailNotSaved": "Couldn't save the email switch. Try again.",
+    "couldNotLoad": "Couldn't load your notification settings.",
+    "tryAgain": "Try again",
+    "quietHours": "Between {{start}} and {{end}} your time, only Event day pushes come through.",
+    "category": {
+      "guest_replies": "Guest replies",
+      "messages": "Messages",
+      "event_day": "Event day",
+      "event_changes": "Event changes",
+      "money": "Money",
+      "account_security": "Account & security"
+    },
+    "note": {
+      "guest_replies": "Guests' replies and changes, the needs they add, and their questions.",
+      "messages": "A send that didn't reach everyone, was held for credits or was cancelled, and credits running low.",
+      "event_day": "Your shift or call time changed, or the event changed in its last 24 hours.",
+      "event_changes": "When someone else changes whether, when or where an event you are on takes place.",
+      "money": "Payments due, usage at {{low}} and {{high}}, failed payments and invoices.",
+      "account_security": "Sign-ins, your password, two-factor, ownership and access. Email can't be switched off."
+    }
   }
 }

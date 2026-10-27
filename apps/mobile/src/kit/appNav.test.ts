@@ -88,7 +88,7 @@ describe('"Sign out" on the Settings list', () => {
 describe('the Settings list', () => {
   it('has Organisation, Members and Sign-in rules rows below Security, under their own heading', () => {
     expect(settingsGroups({ permissions: ['members.read'] })).toEqual([
-      { heading: 'yourAccount', sections: ['account', 'security'] },
+      { heading: 'yourAccount', sections: ['account', 'security', 'notifications'] },
       { heading: 'organisationHeading', sections: ['organisation', 'members', 'signInRules'] },
     ]);
   });
@@ -109,7 +109,7 @@ describe('the Settings list', () => {
 
   it('leaves the Organisation rows out while the account is in no organisation', () => {
     expect(settingsGroups(null)).toEqual([
-      { heading: 'yourAccount', sections: ['account', 'security'] },
+      { heading: 'yourAccount', sections: ['account', 'security', 'notifications'] },
     ]);
   });
 

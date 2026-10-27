@@ -44,6 +44,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
   const line: Record<SettingsSection, string> = {
     account: t('settings.accountLine'),
     security: t('settings.securityLine'),
+    notifications: t('settings.notificationsLine'),
     organisation: t('settings.organisationLine', { name: organisation?.name ?? '' }),
     members: t('settings.membersLine', { name: organisation?.name ?? '' }),
     roles: t('settings.rolesLine', { name: organisation?.name ?? '' }),
