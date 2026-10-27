@@ -7,6 +7,7 @@ import {
   type MilestoneOwner,
   namesZone,
 } from '@soirely/domain';
+import { type EventStatus, type OrganisationEvent } from '@soirely/api-client';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -39,7 +40,11 @@ const OWNER_SHAPE: Record<MilestoneOwner, string> = { event: '▦', you: '●', 
 
 const HIDDEN = { accessibilityElementsHidden: true, importantForAccessibility: 'no' } as const;
 
-function useTimeline(eventId: string): { load: Load; retried: boolean; retry: () => void } {
+/** Read again when the event's status moves, so a Call off or End now shows its dates without a reload. */
+function useTimeline(
+  eventId: string,
+  status?: EventStatus,
+): { load: Load; retried: boolean; retry: () => void } {
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
 
@@ -54,7 +59,7 @@ function useTimeline(eventId: string): { load: Load; retried: boolean; retry: ()
     return () => {
       live = false;
     };
-  }, [eventId, attempt]);
+  }, [eventId, status, attempt]);
 
   return {
     load,
@@ -73,17 +78,17 @@ function readerZone(): string {
 /** The event page's panel: the next four, or why there are none, in rows held at one height. */
 export function ComingUp({
   kind,
-  eventId,
+  event,
   now,
   onAllDates,
 }: {
   kind: LayoutKind;
-  eventId: string;
+  event: OrganisationEvent;
   now: Date;
   onAllDates: () => void;
 }) {
   const { t } = useTranslation();
-  const { load, retried, retry } = useTimeline(eventId);
+  const { load, retried, retry } = useTimeline(event.id, event.status);
   const shown = load.kind === 'loaded' ? comingUp(load.timeline.milestones, now) : [];
 
   return (

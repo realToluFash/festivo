@@ -20,6 +20,7 @@ use App\Tests\ApiTestCase;
 use App\Tests\Double\ScriptedMilestones;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
+use Doctrine\DBAL\Connection;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
@@ -133,6 +134,63 @@ final class EventTimelineTest extends ApiTestCase
         self::assertSame([$none['code'] ?? null, $none['detail'] ?? null], [$theirs['code'] ?? null, $theirs['detail'] ?? null]);
     }
 
+    #[Test]
+    public function aCalledOffEventHasOneMilestoneWhenItWasCalledOff(): void
+    {
+        $id = $this->create('Owambe', '2030-11-14T16:00', '2030-11-16T02:00', 'Africa/Lagos');
+        $this->end($id, '2030-11-01 09:30:00');
+
+        self::assertSame([
+            ['at' => '2030-11-01T10:30:00+01:00', 'title' => 'Owambe called off', 'note' => null, 'owner' => 'event', 'area' => 'events', 'action' => null],
+        ], $this->timeline($this->owner, $id)['milestones']);
+    }
+
+    #[Test]
+    public function aManyDayEventEndedAfterItsStartEndsWhenItWasEnded(): void
+    {
+        $id = $this->create('Owambe', '2030-11-14T16:00', '2030-11-16T02:00', 'Africa/Lagos');
+        $this->end($id, '2030-11-15 08:00:00');
+
+        self::assertSame([
+            ['2030-11-14T16:00:00+01:00', 'Owambe starts'],
+            ['2030-11-15T09:00:00+01:00', 'Owambe ends'],
+        ], $this->dated($this->owner, $id));
+    }
+
+    #[Test]
+    public function aOneDayEventEndedAfterItsStartHasItsStartAlone(): void
+    {
+        $id = $this->create('Adé at 40', '2030-11-14T16:00', '2030-11-14T23:00', 'Africa/Lagos');
+        $this->end($id, '2030-11-14 18:00:00');
+
+        self::assertSame([['2030-11-14T16:00:00+01:00', 'Adé at 40 starts']], $this->dated($this->owner, $id));
+    }
+
+    #[Test]
+    public function anEventPastItsEndKeepsItsPlannedDates(): void
+    {
+        $id = $this->create('Owambe', '2020-11-14T16:00', '2020-11-16T02:00', 'Africa/Lagos');
+        self::service(Connection::class)->executeStatement("UPDATE events SET status = 'live', made_live_at = '2020-11-01 09:00:00' WHERE id = :id", ['id' => $id]);
+
+        self::assertSame([
+            ['2020-11-14T16:00:00+01:00', 'Owambe starts'],
+            ['2020-11-16T02:00:00+01:00', 'Owambe ends'],
+        ], $this->dated($this->owner, $id));
+    }
+
+    #[Test]
+    public function theEventsListCarriesACalledOffEventsTimeline(): void
+    {
+        $id = $this->create('Owambe', '2030-11-14T16:00', '2030-11-16T02:00', 'Africa/Lagos');
+        $this->end($id, '2030-11-01 09:30:00');
+
+        $listed = $this->as($this->owner, '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/events?finished=true');
+        $events = Type\vec(Type\shape(['id' => Type\string(), 'milestones' => Type\mixed()], true))->coerce($listed['events'] ?? null);
+
+        self::assertSame([$id], Vec\map($events, static fn (array $event): string => $event['id']));
+        self::assertSame($this->timeline($this->owner, $id)['milestones'], $events[0]['milestones']);
+    }
+
     private function create(string $name, string $startsAt, string $endsAt, string $timeZone): string
     {
         $body = $this->request($this->owner, 'POST', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/events', ['name' => $name, 'type' => 'party', 'startsAt' => $startsAt, 'endsAt' => $endsAt, 'timeZone' => $timeZone, 'currency' => 'NGN']);
@@ -144,6 +202,19 @@ final class EventTimelineTest extends ApiTestCase
     private function add(string $eventId, string $at, string $title, PermissionArea $area, MilestoneOwner $owner, ?MilestoneAction $action = null): void
     {
         self::service(ScriptedMilestones::class)->add($eventId, new Milestone(new DateTimeImmutable($at), $title, null, $owner, $area, $action));
+    }
+
+    /** Ended at `$at` UTC, as End now or Call off leaves it (sc-3585), without waiting for the clock. */
+    private function end(string $eventId, string $at): void
+    {
+        self::service(Connection::class)->executeStatement("UPDATE events SET status = 'ended', made_live_at = '2030-10-01 09:00:00', ended_at = :at WHERE id = :id", ['at' => $at, 'id' => $eventId]);
+        self::em()->clear();
+    }
+
+    /** @return list<array{string, string}> */
+    private function dated(User $user, string $eventId): array
+    {
+        return Vec\map($this->timeline($user, $eventId)['milestones'], static fn (array $milestone): array => [$milestone['at'], $milestone['title']]);
     }
 
     /** @return list<string> */

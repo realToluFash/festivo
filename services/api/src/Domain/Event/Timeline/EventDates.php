@@ -10,10 +10,11 @@ use App\Domain\Event\Timeline\Model\Milestone;
 use App\Entity\Event;
 use App\Enum\MilestoneOwner;
 use App\Enum\PermissionArea;
+use DateTimeImmutable;
 use DateTimeZone;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/** The event's own start, and its end when it runs over more than one day. */
+/** The event's own dates as they happened: its start, its end when it runs over more than one day, or the moment it was called off (sc-16709). */
 final readonly class EventDates implements MilestoneSourceInterface
 {
     public function __construct(
@@ -23,13 +24,24 @@ final readonly class EventDates implements MilestoneSourceInterface
 
     public function milestones(Event $event): array
     {
-        $name = ['{name}' => $event->getName()];
-        $milestones = [new Milestone($event->getStartsAt(), $this->translator->trans('timeline.event_starts', $name), null, MilestoneOwner::Event, PermissionArea::Events)];
+        $zone = new DateTimeZone($event->getTimeZone());
+        $endedAt = $event->getEndedAt()?->setTimezone($zone);
 
-        if (EventDayCount::of($event->getStartsAt(), $event->getEndsAt(), new DateTimeZone($event->getTimeZone())) > 1) {
-            $milestones[] = new Milestone($event->getEndsAt(), $this->translator->trans('timeline.event_ends', $name), null, MilestoneOwner::Event, PermissionArea::Events);
+        if (null !== $endedAt && $endedAt < $event->getStartsAt()) {
+            return [$this->milestone($event, $endedAt, 'timeline.event_called_off')];
+        }
+
+        $milestones = [$this->milestone($event, $event->getStartsAt(), 'timeline.event_starts')];
+
+        if (EventDayCount::of($event->getStartsAt(), $event->getEndsAt(), $zone) > 1) {
+            $milestones[] = $this->milestone($event, $endedAt ?? $event->getEndsAt(), 'timeline.event_ends');
         }
 
         return $milestones;
+    }
+
+    private function milestone(Event $event, DateTimeImmutable $at, string $title): Milestone
+    {
+        return new Milestone($at, $this->translator->trans($title, ['{name}' => $event->getName()]), null, MilestoneOwner::Event, PermissionArea::Events);
     }
 }

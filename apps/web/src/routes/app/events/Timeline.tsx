@@ -31,8 +31,9 @@ const OWNER_KEY: Record<MilestoneOwner, string> = {
   automatic: 'timeline.key_automatic',
 };
 
+/** Read again when the event's status moves, so a Call off or End now shows its dates without a reload. */
 function useTimeline(
-  eventId: string,
+  { id: eventId, status }: OrganisationEvent,
   heading: RefObject<HTMLHeadingElement | null>,
 ): { load: Load; retried: boolean; retry: () => void } {
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
@@ -50,7 +51,7 @@ function useTimeline(
     return () => {
       current = false;
     };
-  }, [eventId, attempt]);
+  }, [eventId, status, attempt]);
 
   return {
     load,
@@ -71,7 +72,7 @@ function readerZone(): string {
 export function ComingUp({ event, now }: { event: OrganisationEvent; now: Date }) {
   const { t } = useTranslation();
   const heading = useRef<HTMLHeadingElement>(null);
-  const { load, retried, retry } = useTimeline(event.id, heading);
+  const { load, retried, retry } = useTimeline(event, heading);
   const shown = load.kind === 'loaded' ? comingUp(load.timeline.milestones, now) : [];
 
   return (
@@ -125,7 +126,7 @@ export function AllDates({
   heading: RefObject<HTMLHeadingElement | null>;
 }) {
   const { t } = useTranslation();
-  const { load, retried, retry } = useTimeline(event.id, heading);
+  const { load, retried, retry } = useTimeline(event, heading);
 
   return (
     <>

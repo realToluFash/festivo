@@ -14,7 +14,7 @@ The code is `App\Domain\Event\Timeline`, served at `GET /api/events/<id>/timelin
 | `MilestoneSourceInterface` | one area's milestones for one event, read on every request                          |
 | `Milestone`                | a date-time, a title, an optional note, an owner, the area, an optional action      |
 | `EventTimeline`            | merges every source, drops the areas the reader cannot see, sorts earliest first    |
-| `EventDates`               | the first source: the event's own start, and its end when it runs over one day      |
+| `EventDates`               | the first source: the event's own dates, as they happened                           |
 | `nextUp()`                 | `packages/domain`: the one rule for which milestone is **Next up**, on every client |
 
 ## Adding an area's milestones
@@ -46,6 +46,22 @@ and the timeline, the route and the clients do not change.
 
 `EventDates` is the worked example: the start is always there, titled "{name} starts", and
 the end, "{name} ends", only when `EventDayCount` says the event touches more than one date.
+
+## Once an event is Ended
+
+The event's own milestones say what happened to it, not only what was planned (sc-16709):
+
+- **Called off**, ended before its start: one milestone, "{name} called off", at the moment
+  it was called off. Its start and end never happen, so neither is listed. Its page still
+  shows the planned dates.
+- **Ended early**, after its start: its start as planned, and its end, when it has one, at
+  the moment it ended. That moment is the event's `concludedAt` (sc-3585).
+- An event that ran its course, or a Live or Paused one past its end, keeps its planned dates.
+
+So every date of the event's own has passed once it is Ended, and nothing of its own is
+**Next up**. **Every other area decides in its own story** what its milestones do once the
+event is Ended: a payment due after the event may still be owed, while meal picks closing
+after a call-off are not. A source that says nothing keeps returning its dates as before.
 
 ## What the route serves
 
