@@ -5,6 +5,7 @@ import {
   formatCountdown,
   formatDay,
   formatEventDate,
+  formatEventDayAndClock,
   formatEventMoment,
   durationWords,
   formatEventRange,
@@ -233,6 +234,14 @@ describe('a milestone’s moment, in the event’s zone', () => {
 
   it('is written in the reader’s language', () => {
     expect(formatEventMoment('2026-10-24T18:00:00+02:00', 'Europe/Madrid', 'fr')).toMatch(/sam/);
+  });
+});
+
+describe('the end of a copy, in the event’s zone (sc-3593)', () => {
+  it('names its year', () => {
+    expect(formatEventDayAndClock('2027-01-01T08:00:00+01:00', 'Europe/Madrid', 'en')).toBe(
+      'Fri, Jan 1, 2027, 08:00',
+    );
   });
 });
 

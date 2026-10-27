@@ -3,7 +3,7 @@ import {
   clockMinutes,
   copiedEnd,
   durationWords,
-  formatEventMoment,
+  formatEventDayAndClock,
   localDateTime,
   skippedLine,
 } from '@soirely/domain';
@@ -182,7 +182,7 @@ function DuplicateDialog({ event, onClose }: { event: OrganisationEvent; onClose
               end == null
                 ? t('eventDuplicate.endsUnchosen', { duration, timeZone: event.timeZone })
                 : t('eventDuplicate.ends', {
-                    end: formatEventMoment(end, event.timeZone, locale),
+                    end: formatEventDayAndClock(end, event.timeZone, locale),
                     duration,
                     timeZone: event.timeZone,
                   })

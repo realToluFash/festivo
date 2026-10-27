@@ -160,7 +160,7 @@ describe('Duplicate an event (sc-3593)', () => {
 
     expect(
       within(dialog).getByText(
-        'It ends Sun, May 16, 02:00, 10 hours later, like the original. Times in Africa/Lagos.',
+        'It ends Sun, May 16, 2027, 02:00, 10 hours later, like the original. Times in Africa/Lagos.',
       ),
     ).toBeDefined();
   });
@@ -190,7 +190,7 @@ describe('Duplicate an event (sc-3593)', () => {
 
     expect(
       within(dialog).getByText(
-        'It ends Sun, Jul 18, 08:00, 12 hours later, like the original. Times in Europe/Madrid.',
+        'It ends Sun, Jul 18, 2027, 08:00, 12 hours later, like the original. Times in Europe/Madrid.',
       ),
     ).toBeDefined();
   });

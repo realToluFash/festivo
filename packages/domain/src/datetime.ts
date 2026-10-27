@@ -119,6 +119,19 @@ export function formatEventMoment(moment: string | Date, timeZone: string, local
   }).format(date);
 }
 
+/** A milestone's moment with its year, for a moment that may fall in another year than today. */
+export function formatEventDayAndClock(
+  moment: string | Date,
+  timeZone: string,
+  locale: string,
+): string {
+  const date = asDate(moment);
+
+  if (date == null) return '';
+
+  return new Intl.DateTimeFormat(locale, { ...EVENT_DAY, ...EVENT_CLOCK, timeZone }).format(date);
+}
+
 /** Whole hours and the minutes left, each in the reader's words; a client joins the two through its catalogue. */
 export function durationWords(
   minutes: number,
