@@ -12,7 +12,8 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'frame.settings'
 - extendedWaitUntil:
-    visible: '{{t:settings.title}}'
+    visible:
+      id: 'settings.account'
     timeout: 15000
 - waitForAnimationToEnd:
     timeout: 5000
