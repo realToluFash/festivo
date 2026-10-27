@@ -217,3 +217,62 @@ class Workspace(unittest.TestCase):
             answers = iter([str(wanted), "y", "y"])
             machine.ask_workspace({"roles": {}}, lambda _: next(answers), lambda _: None)
             self.assertTrue(wanted.is_dir())
+
+
+class WorkerTools(unittest.TestCase):
+    """The folders a worker's PATH gets from the files on disk, with no shell profile read."""
+
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.addCleanup(self.folder.cleanup)
+        self.nvm = pathlib.Path(self.folder.name) / "nvm"
+        environ = mock.patch.dict("os.environ", {"NVM_DIR": str(self.nvm),
+                                                 "HOME": self.folder.name})
+        environ.start()
+        self.addCleanup(environ.stop)
+
+    def install(self, *versions):
+        for version in versions:
+            node = self.nvm / "versions" / "node" / version / "bin" / "node"
+            node.parent.mkdir(parents=True)
+            node.write_text("")
+
+    def alias(self, name, value):
+        path = self.nvm / "alias" / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(value + "\n")
+
+    def found(self):
+        found = machine.nvm_node()
+        return found.parent.name if found else None
+
+    def test_a_major_alias_takes_the_newest_installed_of_that_major(self):
+        self.install("v20.20.0", "v22.18.0", "v22.23.4", "v22.9.0")
+        self.alias("default", "22")
+        self.assertEqual(self.found(), "v22.23.4")
+
+    def test_an_exact_version_and_an_alias_of_an_alias_are_followed(self):
+        self.install("v20.20.0", "v22.18.0")
+        self.alias("default", "v22.18.0")
+        self.assertEqual(self.found(), "v22.18.0")
+        self.alias("default", "lts/jod")
+        self.alias("lts/jod", "v20.20.0")
+        self.assertEqual(self.found(), "v20.20.0")
+        self.alias("default", "node")
+        self.assertEqual(self.found(), "v22.18.0")
+
+    def test_no_nvm_no_alias_or_an_alias_naming_nothing_installed_finds_none(self):
+        self.assertIsNone(machine.nvm_node())
+        self.install("v20.20.0")
+        self.assertIsNone(machine.nvm_node())
+        self.alias("default", "22")
+        self.assertIsNone(machine.nvm_node())
+
+    def test_node_comes_first_and_maestro_is_added_only_when_it_is_there(self):
+        self.install("v22.18.0")
+        self.alias("default", "22")
+        node = str(self.nvm / "versions" / "node" / "v22.18.0" / "bin")
+        self.assertEqual(machine.tool_folders(), [node])
+        maestro = pathlib.Path(self.folder.name) / ".maestro" / "bin"
+        maestro.mkdir(parents=True)
+        self.assertEqual(machine.tool_folders(), [node, str(maestro)])

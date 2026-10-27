@@ -108,6 +108,41 @@ def expand(value):
     return pathlib.Path(value).expanduser() if value else None
 
 
+def nvm_node():
+    """The bin folder of nvm's `default` node, or None. Read from nvm's files, since neither
+    the manager nor launchd ever sources nvm, so its PATH holds no node to go by."""
+    folder = pathlib.Path(os.environ.get("NVM_DIR") or "~/.nvm").expanduser()
+    try:
+        installed = [found.name for found in (folder / "versions" / "node").iterdir()
+                     if (found / "bin" / "node").exists()]
+    except OSError:
+        return None
+    wanted = "default"
+    # An alias may name another (default -> lts/jod -> v22.x), as nvm's own lookup follows.
+    for _ in range(5):
+        alias = folder / "alias" / wanted
+        if not alias.is_file():
+            break
+        wanted = alias.read_text().strip()
+    if wanted == "default" or not wanted:
+        return None
+    wanted = "" if wanted in ("node", "stable") else wanted.lstrip("v")
+    matching = [name for name in installed if not wanted or name.lstrip("v") == wanted
+                or name.lstrip("v").startswith(wanted + ".")]
+    if not matching:
+        return None
+    newest = max(matching, key=lambda name: tuple(
+        int(part) if part.isdigit() else 0 for part in name.lstrip("v").split(".")))
+    return folder / "versions" / "node" / newest / "bin"
+
+
+def tool_folders():
+    """What a worker's PATH carries ahead of the tools found by name: nvm's default node,
+    first so that no other node shadows it, and Maestro, which only a shell profile adds."""
+    found = [nvm_node(), pathlib.Path("~/.maestro/bin").expanduser()]
+    return [str(folder) for folder in found if folder and folder.is_dir()]
+
+
 def workspace(config):
     return expand(config.get("workspace"))
 

@@ -6,6 +6,7 @@ import datetime
 import http.server
 import json
 import pathlib
+import shutil
 import threading
 import time
 import urllib.parse
@@ -75,6 +76,10 @@ def snapshot(db, platform, now, home, load=machine.load):
         late = runner.drift(config, (store.get_meta(db, "claude_version") or {}).get("version"))
         if late:
             view["warnings"].append(late)
+        search = getattr(platform, "search_path", None)
+        if search and not shutil.which("node", path=search()):
+            view["warnings"].append("workers have no node: install nvm with a default alias "
+                                    "(nvm alias default 22), or node on the PATH")
         on = runner.started(db)
         agreed = store.get_meta(db, "shared_view") or {}
         unreachable = store.get_meta(db, "shared_unreachable")

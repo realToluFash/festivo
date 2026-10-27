@@ -15,7 +15,7 @@ import signal
 import subprocess
 import time
 
-from . import remote
+from . import machine, remote
 
 LABEL = "com.soirely.routine"
 WEB_LABEL = "com.soirely.web"
@@ -47,8 +47,8 @@ def search_path():
     neither Homebrew's tools nor a version manager's node."""
     found = [str(pathlib.Path(shutil.which(tool)).parent)
              for tool in ("claude", "gh", "git", "docker", "python3") if shutil.which(tool)]
-    return ":".join(dict.fromkeys(found + ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin",
-                                           "/bin", "/usr/sbin", "/sbin"]))
+    return ":".join(dict.fromkeys(machine.tool_folders() + found + [
+        "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"]))
 
 
 def stable_python(python):
@@ -157,6 +157,7 @@ def supervise(command, runtime_seconds, memory_bytes, cwd=None, env=None, poll=P
 
 class Mac:
     name = "launchd"
+    search_path = staticmethod(search_path)
 
     def __init__(self, home):
         self.home = pathlib.Path(home)

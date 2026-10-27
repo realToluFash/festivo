@@ -197,6 +197,14 @@ class Snapshot(unittest.TestCase):
         self.assertEqual(roles["dev2"]["sessions"], [])
         self.assertEqual(view["recent"][0]["session"], session)
 
+    def test_a_machine_whose_workers_have_no_node_says_so_once(self):
+        self.platform.search_path = lambda: "/nowhere"
+        with mock.patch("shutil.which", return_value=None):
+            warned = [w for w in self.snap()["warnings"] if "no node" in w]
+        self.assertEqual(len(warned), 1)
+        with mock.patch("shutil.which", return_value="/nvm/v22/bin/node"):
+            self.assertFalse([w for w in self.snap()["warnings"] if "no node" in w])
+
     def test_the_other_machines_page_names_are_listed_and_a_missing_token_is_a_warning(self):
         self.settings["peers"] = {"tolu-linux": "http://10.0.0.5:8765"}
         with mock.patch.dict("os.environ", {remote.TOKEN: ""}):

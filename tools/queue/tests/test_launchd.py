@@ -45,6 +45,20 @@ class Agent(unittest.TestCase):
                 self.assertEqual(launchd.stable_python("/elsewhere/python3"),
                                  "/elsewhere/python3")
 
+    def test_workers_find_nvms_node_ahead_of_every_other_and_the_usual_tools_after(self):
+        brew = "/opt/homebrew/bin"
+        with mock.patch.object(machine, "tool_folders", return_value=["/nvm/v22/bin", "/m/bin"]), \
+                mock.patch("shutil.which", side_effect=lambda tool, **_: f"{brew}/{tool}"):
+            found = launchd.search_path().split(":")
+        self.assertEqual(found[:3], ["/nvm/v22/bin", "/m/bin", "/opt/homebrew/bin"])
+        self.assertEqual(found.count("/opt/homebrew/bin"), 1)
+
+    def test_with_no_node_to_add_the_path_is_as_before(self):
+        with mock.patch.object(machine, "tool_folders", return_value=[]), \
+                mock.patch("shutil.which", return_value=None):
+            self.assertEqual(launchd.search_path(), "/opt/homebrew/bin:/usr/local/bin:/usr/bin:"
+                                                    "/bin:/usr/sbin:/sbin")
+
     def test_sizes_read_as_systemd_reads_them(self):
         self.assertEqual(launchd.size_bytes("3G"), 3 * 1024 ** 3)
         self.assertEqual(launchd.size_bytes("512M"), 512 * 1024 ** 2)
