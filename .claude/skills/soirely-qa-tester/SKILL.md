@@ -195,6 +195,11 @@ directory does not move, so you point every action at the worktree:
   commit under test. The main checkout may be on another branch entirely.
 - **Write nothing in `~/Projects/soirely`.** It is somebody else's working tree. That
   includes `.qa/` and new flows.
+- **`.qa/` is scratch.** The machine's daily sweep deletes an entry in it once nothing in it
+  has changed for 3 days (14 for one under a megabyte), keeping only the harness, anything
+  named `untracked-before-main-*`, and entries whose name carries the number of a story
+  still In QA under your claim, so name a story's folder after it (`sc<N>`). A report's
+  evidence lives on Shortcut: attach it there, never point at a path in `.qa/`.
 
 Before anything else, check that the worktree exists:
 `test -f ~/Projects/soirely-qa<n>/.qa/bin/qa-env.mjs`. If it doesn't, run `just qa-env setup --tester <N>`

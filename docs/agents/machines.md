@@ -299,12 +299,18 @@ date. Ops never applies permissions: only the owner does (below). So ops is spli
 in `sq status` and the journal, and the other roles and the self-update carry on. Each minute, with no model, `sq run` checks the machine and files what it finds as
 ops work of its own kind, `machine`, in the queue `ops@<machine>`:
 
-| Check                                                   | Becomes                                          |
-| ------------------------------------------------------- | ------------------------------------------------ |
-| free disk under `minFreeGb`                             | urgent: free space so workers can start          |
-| Docker's build cache over 20 GB (read every 30 minutes) | urgent: `just prune-build-cache`                 |
-| once a day                                              | the sweep: disk, Docker, the stacks, the manager |
+| Check                                                   | Becomes                                                                                                  |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| free disk under `minFreeGb`                             | urgent: free space so workers can start                                                                  |
+| Docker's build cache over 20 GB (read every 30 minutes) | urgent: `just prune-build-cache`                                                                         |
+| once a day                                              | the sweep: disk, Docker, the stacks, the manager                                                         |
+| free disk under twice `minFreeGb`                       | not urgent: the five largest workspace folders, the simulators and `~/.android/avd`, measured once a day |
 
+- **Testers' `.qa/` is cleared once a day, with no model.** In each `soirely-qa<n>` here,
+  an entry nothing has changed in for 3 days goes (14 days under a megabyte). Kept: the
+  harness (`bin`, `state.json`, dot entries), `untracked-before-main-*`, and an entry whose
+  name carries the number of a story still In QA under that tester. The journal says what
+  each sweep freed and where.
 - **This machine's ops takes its machine work whoever holds the ops lease.** A machine
   without the lease runs ops for `ops@<machine>` items only.
 - **A full disk holds every other role, but not this.** The disk guard is the one hold
