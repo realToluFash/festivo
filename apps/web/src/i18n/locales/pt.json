@@ -1884,7 +1884,10 @@
     "arrivedAt": "New notification: {{title}} · {{event}}",
     "whereWhen": "{{event}} · {{when}}",
     "atTime": "at {{time}}",
-    "settings": "Notification settings"
+    "settings": "Notification settings",
+    "more": "More for {{title}}, {{event}}",
+    "muteEvent": "Mute this event",
+    "muteNotSaved": "Couldn't save. Try again."
   },
   "notificationSettings": {
     "title": "Notification settings",

@@ -1,4 +1,4 @@
-import type { NotificationItem } from '@soirely/api-client';
+import type { NotificationCategory, NotificationItem } from '@soirely/api-client';
 import type { TFunction } from 'i18next';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -7,6 +7,13 @@ import { Link, useNavigate } from 'react-router';
 import { api } from '../api.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { useLiveNotifications } from '../liveNotifications.ts';
+
+const MUTABLE: ReadonlySet<NotificationCategory> = new Set([
+  'guest_replies',
+  'messages',
+  'event_changes',
+  'money',
+]);
 
 type Feed =
   | { status: 'loading' }
@@ -67,7 +74,12 @@ export function NotificationsBell({ userId }: { userId: string }) {
 
     const close = (event: MouseEvent | KeyboardEvent): void => {
       if (event instanceof KeyboardEvent) {
-        if (event.key !== 'Escape') return;
+        if (
+          event.key !== 'Escape' ||
+          document.activeElement?.closest('.notification-mute') != null
+        ) {
+          return;
+        }
         setOpen(false);
         button.current?.focus();
         return;
@@ -117,6 +129,21 @@ export function NotificationsBell({ userId }: { userId: string }) {
       setOpen(false);
       await navigate(item.place);
     }
+  }
+
+  function mutedEvent(eventId: string, muted: boolean): void {
+    setFeed((current) =>
+      current.status === 'loaded'
+        ? {
+            ...current,
+            items: current.items.map((shown) =>
+              shown.eventId === eventId && MUTABLE.has(shown.category)
+                ? { ...shown, muted }
+                : shown,
+            ),
+          }
+        : current,
+    );
   }
 
   async function readAll(): Promise<void> {
@@ -204,7 +231,7 @@ export function NotificationsBell({ userId }: { userId: string }) {
           {feed.status === 'loaded' && feed.items.length > 0 && (
             <ul className="notifications-list">
               {feed.items.map((item) => (
-                <li key={item.id}>
+                <li key={item.id} className="notification-row">
                   <button
                     type="button"
                     className={item.read ? 'notification-item' : 'notification-item unread'}
@@ -241,6 +268,13 @@ export function NotificationsBell({ userId }: { userId: string }) {
                       </span>
                     )}
                   </button>
+                  {item.eventId != null && item.eventAvailable && item.eventName != null && (
+                    <MuteMenu
+                      eventId={item.eventId}
+                      label={t('notifications.more', { title: item.title, event: item.eventName })}
+                      onMuted={(muted) => mutedEvent(item.eventId ?? '', muted)}
+                    />
+                  )}
                   {gone.has(item.id) && (
                     <p className="notification-gone" role="status">
                       {t('notifications.eventGone')}
@@ -293,5 +327,103 @@ function BellMark({ slashed = false }: { slashed?: boolean }) {
       <path d="M10 20.5a2 2 0 0 0 4 0" />
       {slashed && <path d="M4 4l16 16" />}
     </svg>
+  );
+}
+
+/** The item's More: the same Mute this event switch as the event's own page, per person. */
+function MuteMenu({
+  eventId,
+  label,
+  onMuted,
+}: {
+  eventId: string;
+  label: string;
+  onMuted: (muted: boolean) => void;
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [muted, setMuted] = useState<boolean | null>(null);
+  const [failed, setFailed] = useState(false);
+  const more = useRef<HTMLButtonElement>(null);
+  const dialog = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    let current = true;
+    dialog.current?.focus();
+    api.eventMuted(eventId).then(
+      (answer) => {
+        if (current) setMuted(answer);
+      },
+      () => {
+        if (current) setFailed(true);
+      },
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [open, eventId]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const close = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape' || !dialog.current?.contains(document.activeElement)) return;
+      setOpen(false);
+      more.current?.focus();
+    };
+
+    document.addEventListener('keydown', close);
+
+    return () => document.removeEventListener('keydown', close);
+  }, [open]);
+
+  async function change(next: boolean): Promise<void> {
+    setFailed(false);
+    setMuted(next);
+    try {
+      onMuted(await api.muteEvent(eventId, next));
+    } catch {
+      setMuted(!next);
+      setFailed(true);
+    }
+  }
+
+  return (
+    <>
+      <button
+        ref={more}
+        type="button"
+        className="notification-more"
+        aria-label={label}
+        aria-expanded={open}
+        onClick={() => setOpen((shown) => !shown)}
+      >
+        <span aria-hidden="true">⋯</span>
+      </button>
+      {open && (
+        <div
+          ref={dialog}
+          className="notification-mute"
+          role="dialog"
+          aria-label={label}
+          tabIndex={-1}
+        >
+          <label className="notification-switch">
+            <input
+              type="checkbox"
+              role="switch"
+              checked={muted === true}
+              disabled={muted == null}
+              onChange={(event) => void change(event.currentTarget.checked)}
+            />
+            <span>{t('notifications.muteEvent')}</span>
+          </label>
+          {failed && <p className="field-error">{t('notifications.muteNotSaved')}</p>}
+        </div>
+      )}
+    </>
   );
 }

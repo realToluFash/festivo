@@ -117,7 +117,7 @@ describe('the bell (sc-3980)', () => {
     const router = bell();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
-    fireEvent.click(await screen.findByRole('button', { name: /Ada Obi changed the event/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Ada Obi changed the event/ }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/app/events/e1'));
     expect(sent).toContain('POST /api/notifications/n1/read');
@@ -133,7 +133,7 @@ describe('the bell (sc-3980)', () => {
     const router = bell();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
-    fireEvent.click(await screen.findByRole('button', { name: /Ada Obi changed the event/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Ada Obi changed the event/ }));
 
     expect((await screen.findByRole('status')).textContent).toBe(
       'This event is no longer available.',
@@ -158,5 +158,46 @@ describe('the bell (sc-3980)', () => {
     expect(document.activeElement).toBe(markAll);
     expect(sent).toContain('POST /api/notifications/read-all');
     expect(screen.getByRole('button', { name: 'Notifications' })).toBeTruthy();
+  });
+  it('More mutes the event, marks its items Muted, and Escape goes back to More', async () => {
+    const sent = answering({
+      'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
+      'GET /api/events/e1/mute': () => json({ muted: false }),
+      'PUT /api/events/e1/mute': () => json({ muted: true }),
+    });
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    const more = await screen.findByRole('button', {
+      name: 'More for Ada Obi changed the event, Ada & Tomi',
+    });
+    fireEvent.click(more);
+
+    const mute = await screen.findByRole('switch', { name: 'Mute this event' });
+    await waitFor(() => expect((mute as HTMLInputElement).disabled).toBe(false));
+    fireEvent.click(mute);
+
+    expect(await screen.findByText('Muted')).toBeTruthy();
+    expect(sent).toContain('PUT /api/events/e1/mute');
+
+    mute.focus();
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    await waitFor(() => expect(document.activeElement).toBe(more));
+    expect(screen.queryByRole('switch', { name: 'Mute this event' })).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Notifications' })).toBeTruthy();
+  });
+
+  it('an item whose event is gone has no More', async () => {
+    answering({
+      'GET /api/notifications': () =>
+        json({ items: [item({ eventAvailable: false })], unreadCount: 1, next: null }),
+    });
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    await screen.findByRole('button', { name: /^Ada Obi changed the event/ });
+
+    expect(screen.queryByRole('button', { name: /^More for/ })).toBeNull();
   });
 });

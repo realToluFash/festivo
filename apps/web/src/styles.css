@@ -4354,3 +4354,33 @@ button.members-row {
   gap: var(--spaceXs);
   min-height: var(--sizeHit);
 }
+
+.notification-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+}
+
+.notification-row > :not(.notification-item, .notification-more) {
+  grid-column: 1 / -1;
+}
+
+.notification-more {
+  width: var(--sizeHit);
+  height: var(--sizeHit);
+  margin: var(--spaceSm) var(--spaceSm) 0 0;
+  border: 0;
+  border-radius: var(--radiusNav);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  cursor: pointer;
+}
+
+.notification-more:hover {
+  background: var(--colorInset);
+}
+
+.notification-mute {
+  padding: var(--spaceSm) var(--spaceXl) var(--spaceLg);
+  background: var(--colorInset);
+}
