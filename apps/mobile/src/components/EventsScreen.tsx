@@ -8,7 +8,7 @@ import {
   withPastPage,
 } from '@soirely/domain';
 import { Redirect, router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { type RefCallback, useCallback, useEffect, useState } from 'react';
 import { AppState, RefreshControl, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -33,6 +33,7 @@ import { EventsHome, type HomeLoad } from './EventsHome.tsx';
 import { type ListAndPageSpacing, ListAndPage, useListAndPageKind } from './ListAndPage.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
+import { FocusBack, type StepClosed, stepClosed } from './Screen.tsx';
 import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
 
@@ -74,10 +75,13 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
   const current = selectionIn(selected, organisationId);
   if (current !== selected) setSelected(current);
   const open = current.id;
-  const select = (id: string | null) => {
+  const [closed, setClosed] = useState<StepClosed | undefined>(undefined);
+  const select = (id: string | null, back?: StepClosed) => {
     if (id != null) setDeleted(null);
     setSelected({ in: organisationId, id });
+    setClosed(back);
   };
+  const toList = () => select(null, open == null ? undefined : stepClosed(`row.${open}`));
 
   // The rows stay in place while they reload; a failed load gives way to loading.
   const reload = useCallback(() => {
@@ -257,7 +261,7 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
         )}
       </View>
     ) : opened.kind === 'notFound' ? (
-      <EventNotFound onBack={() => select(null)} />
+      <EventNotFound onBack={toList} />
     ) : opened.kind === 'failed' ? (
       <EventsFailed onRetry={opened.retry} testID="events.page.retry" />
     ) : (
@@ -273,75 +277,73 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     </Text>
   );
 
-  const list = !reads ? null : load.kind === 'loading' ? (
-    <Waiting words={t('eventsScreen.loading')} />
-  ) : load.kind === 'failed' ? (
-    <EventsFailed onRetry={reload} testID="events.retry" />
-  ) : (
-    <View style={styles.stack}>
-      {deleted != null && (
-        <ReadOut words={t('eventDelete.deleted', { event: deleted })}>
-          <Notice
-            tone="done"
-            mark={tokens.marks.done.glyph}
-            body={t('eventDelete.deleted', { event: deleted })}
-          />
-        </ReadOut>
-      )}
-      {load.refreshing && (
-        <Text
-          size={tokens.typeSmall.size}
-          muted
-          accessibilityRole="text"
-          testID="events.refreshing"
-        >
-          {t('eventsScreen.refreshing')}
-        </Text>
-      )}
-      {load.unfinished.length === 0 && load.pastTotal === 0 ? (
-        <NoEvents kind={kind} onCreate={creates ? newEvent : undefined} />
-      ) : (
-        <>
-          {creates && (
-            <PrimaryButton
-              label={t('eventsScreen.newEvent')}
-              onPress={newEvent}
-              testID="events.new"
+  const list = (opener: (key: string) => RefCallback<View>) =>
+    !reads ? null : load.kind === 'loading' ? (
+      <Waiting words={t('eventsScreen.loading')} />
+    ) : load.kind === 'failed' ? (
+      <EventsFailed onRetry={reload} testID="events.retry" />
+    ) : (
+      <View style={styles.stack}>
+        {deleted != null && (
+          <ReadOut words={t('eventDelete.deleted', { event: deleted })}>
+            <Notice
+              tone="done"
+              mark={tokens.marks.done.glyph}
+              body={t('eventDelete.deleted', { event: deleted })}
             />
-          )}
-          <EventsHome
-            kind={kind}
-            load={load}
-            tab={tab.tab}
-            onTab={(next) => {
-              if (organisationId != null) rememberEventsTab(organisationId, next);
-              setTab({ in: organisationId, tab: next });
-            }}
-            open={open}
-            onOpen={select}
-            more={more}
-            shown={moreShown}
-            onShowMore={showMore}
-          />
-        </>
-      )}
-    </View>
-  );
+          </ReadOut>
+        )}
+        {load.refreshing && (
+          <Text
+            size={tokens.typeSmall.size}
+            muted
+            accessibilityRole="text"
+            testID="events.refreshing"
+          >
+            {t('eventsScreen.refreshing')}
+          </Text>
+        )}
+        {load.unfinished.length === 0 && load.pastTotal === 0 ? (
+          <NoEvents kind={kind} onCreate={creates ? newEvent : undefined} />
+        ) : (
+          <>
+            {creates && (
+              <PrimaryButton
+                label={t('eventsScreen.newEvent')}
+                onPress={newEvent}
+                testID="events.new"
+              />
+            )}
+            <EventsHome
+              kind={kind}
+              load={load}
+              tab={tab.tab}
+              onTab={(next) => {
+                if (organisationId != null) rememberEventsTab(organisationId, next);
+                setTab({ in: organisationId, tab: next });
+              }}
+              open={open}
+              onOpen={select}
+              opener={opener}
+              more={more}
+              shown={moreShown}
+              onShowMore={showMore}
+            />
+          </>
+        )}
+      </View>
+    );
 
   return (
     <AppFrame
       current="events"
       title={phone && inFront ? (pageName ?? t('eventsScreen.title')) : t('eventsScreen.title')}
-      back={
-        phone && inFront
-          ? { label: t('eventsScreen.title'), onPress: () => select(null) }
-          : undefined
-      }
+      back={phone && inFront ? { label: t('eventsScreen.title'), onPress: toList } : undefined}
     >
       <ListAndPage
         kind={kind}
         heading={heading}
-        list={list}
+        list={<FocusBack closed={closed}>{list}</FocusBack>}
         listRefresh={
           reads && load.kind === 'loaded' ? (
             <RefreshControl refreshing={load.refreshing} onRefresh={reload} />
@@ -355,10 +357,9 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
         }
         pageInFront={inFront}
         pageKey={open ?? ''}
-        pageBelowUpright
         back={{
-          label: t('eventsScreen.title'),
-          onPress: () => select(null),
+          label: t('eventsScreen.back'),
+          onPress: toList,
           testID: 'events.back',
         }}
         spacing={SPACING}

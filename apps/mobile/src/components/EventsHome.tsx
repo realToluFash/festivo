@@ -7,6 +7,7 @@ import {
   nextUp,
   shownPhase,
 } from '@soirely/domain';
+import { type Ref } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -51,6 +52,7 @@ export function EventsHome({
   onTab,
   open,
   onOpen,
+  opener,
   more,
   shown,
   onShowMore,
@@ -61,6 +63,7 @@ export function EventsHome({
   onTab: (tab: EventsTab) => void;
   open: string | null;
   onOpen: (id: string) => void;
+  opener?: ((key: string) => Ref<View>) | undefined;
   more: 'idle' | 'loading' | 'failed';
   shown: string | null;
   onShowMore: () => void;
@@ -91,6 +94,7 @@ export function EventsHome({
                 now={now}
                 selected={event.id === open}
                 onOpen={onOpen}
+                opener={opener?.(`row.${event.id}`)}
               />
             </View>
           ))}
@@ -144,6 +148,7 @@ export function EventsHome({
                 now={now}
                 selected={event.id === open}
                 onOpen={onOpen}
+                opener={opener?.(`row.${event.id}`)}
               />
             </View>
           ))}
@@ -176,12 +181,14 @@ function Card({
   now,
   selected,
   onOpen,
+  opener,
 }: {
   event: ListedEvent;
   phase: EventPhase;
   now: Date;
   selected: boolean;
   onOpen: (id: string) => void;
+  opener?: Ref<View> | undefined;
 }) {
   const { t } = useTranslation();
   const next = nextUp(event.milestones, now);
@@ -190,6 +197,7 @@ function Card({
 
   return (
     <Pressable
+      ref={opener}
       style={[styles.row, selected && styles.rowOpen]}
       onPress={() => onOpen(event.id)}
       accessibilityRole="button"

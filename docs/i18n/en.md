@@ -614,3 +614,10 @@ startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the sa
   `moreFailed` keep their second sentence different on purpose: each repeats its own screen's
   load failure, web "Try again in a moment." as `events.failed`, the app "Check your connection
   and try again." as `eventsScreen.failedLoad`. es, fr and pt follow the same split.
+- **27 Oct 2026. The details page names the sign-in rule, not the role** (sc-16443 for
+  sc-16265, `orgGeneral.readOnlyUntilLinked|readOnlyUntilTwoFactor|refusedByRule`, web and
+  app). Kept as sc-16265 wrote it. Each line opens with the rule in the banner's words
+  (`signInRules.unlinkedBody`, `gateBody`, without "now", since the page states the rule rather
+  than announcing it) and ends with the role line's "you can see these but not change them", so
+  the page reads the same whichever reason holds it back. A save the rule refuses says only
+  "Nothing was saved.": the line under the details already says why.
