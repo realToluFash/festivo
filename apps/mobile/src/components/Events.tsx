@@ -21,6 +21,7 @@ import { DeleteEventSection } from './DeleteEvent.tsx';
 import { EventCover } from './EventCover.tsx';
 import { EndRow } from './EndEvent.tsx';
 import { DraftRow } from './MakeLive.tsx';
+import { PauseButton, PausedRow } from './PauseEvent.tsx';
 import { Notice } from './Notice.tsx';
 import { readOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
@@ -252,14 +253,24 @@ export function EventPage({
         />
       )}
       <DraftRow kind={kind} event={event} manages={manages} now={now} onChange={onChange} />
-      <EndRow
-        kind={kind}
-        event={event}
-        phase={phase}
-        manages={manages}
-        now={now}
-        onChange={onChange}
-      />
+      <PausedRow event={event} phase={phase} manages={manages} onChange={onChange} />
+      <View style={styles.lifecycle}>
+        <PauseButton
+          kind={kind}
+          event={event}
+          phase={phase}
+          manages={manages}
+          onChange={onChange}
+        />
+        <EndRow
+          kind={kind}
+          event={event}
+          phase={phase}
+          manages={manages}
+          now={now}
+          onChange={onChange}
+        />
+      </View>
       <EventType event={event} size={tokens.typeBody.size} />
       <Text size={tokens.typeBody.size}>
         {t('eventsScreen.when', {
@@ -353,6 +364,7 @@ const styles = StyleSheet.create({
   },
   ringNow: { borderColor: tokens.colorAttention },
   halfNow: { width: '50%', height: '100%', backgroundColor: tokens.colorAttention },
+  lifecycle: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceMd },
   bars: { flexDirection: 'row', gap: 2 },
   bar: { width: 3, height: 10, borderRadius: 1, backgroundColor: tokens.colorAttention },
 });

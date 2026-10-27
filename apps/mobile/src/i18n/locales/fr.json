@@ -1574,6 +1574,18 @@
     "calledOffNotice": "Annulé le {{date}}, avant son début. Les invités qui ouvrent leur lien voient qu’il n’aura pas lieu.",
     "close": "Fermer"
   },
+  "eventPause": {
+    "pause": "Pause",
+    "title": "Pause {{name}}?",
+    "body": "Guests can't reply or change anything until you resume it.",
+    "nothingLost": "Nothing is lost. Check-in and service keep working.",
+    "keepItLive": "Keep it live",
+    "failed": "Not paused. Try again in a moment.",
+    "notPaused": "Not paused.",
+    "notice": "Paused. Guests can't reply or change anything until you resume it. Check-in and service still work.",
+    "resume": "Resume",
+    "resumeFailed": "Not resumed. Try again in a moment."
+  },
   "eventDelete": {
     "open": "Supprimer l’événement",
     "note": "Supprime l’événement et tout son contenu pour toute votre équipe. Les invités qui ouvrent leur lien voient qu’il n’est plus disponible.",
