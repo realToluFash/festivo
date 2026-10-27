@@ -272,7 +272,8 @@ function Changing({
             wrong={nextError != null}
             submitting={saving}
             autoComplete="new-password"
-            textContentType="newPassword"
+            // The same type as Current password: iOS rebuilds the keys when focus crosses from newPassword to password.
+            textContentType="password"
             onChangeText={(text) => {
               next.current = text;
               setLengthMet(meetsPasswordLength(text));
