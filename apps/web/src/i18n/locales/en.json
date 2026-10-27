@@ -1044,6 +1044,7 @@
     "invitationsNote": "Nobody has an account here until they accept.",
     "noInvitations": "No invitations have been sent.",
     "invitedAs": "{{role}} · invited by {{inviter}}",
+    "invitedAsByYou": "{{role}} · invited by you",
     "dates": {
       "pending": "Sent {{sent}} · expires {{ended}}",
       "expired": "Sent {{sent}} · expired {{ended}}",

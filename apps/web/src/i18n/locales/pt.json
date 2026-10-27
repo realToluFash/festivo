@@ -1063,6 +1063,7 @@
     "invitationsNote": "Ninguém entra na organização sem aceitar o convite.",
     "noInvitations": "Ainda não foi enviado nenhum convite.",
     "invitedAs": "{{role}} · convite enviado por {{inviter}}",
+    "invitedAsByYou": "{{role}} · invited by you",
     "dates": {
       "pending": "Enviado no dia {{sent}} · expira no dia {{ended}}",
       "expired": "Enviado no dia {{sent}} · expirou no dia {{ended}}",

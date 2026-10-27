@@ -545,6 +545,7 @@ function InvitationRow({
   const again = useRef<HTMLButtonElement>(null);
   const land = useFocusOnceShown();
   const day = (at: string | null) => (at == null ? '' : formatDay(at, dateLocale()));
+  const role = invitation.role == null ? '' : roleName(t, invitation.role);
   const ended: Record<string, string | null> = {
     pending: invitation.expiresAt,
     expired: invitation.expiresAt,
@@ -571,13 +572,9 @@ function InvitationRow({
     <div className="members-invitation">
       <span className="members-row-name">{invitation.email}</span>
       <span className="muted">
-        {t('membersScreen.invitedAs', {
-          role: invitation.role == null ? '' : roleName(t, invitation.role),
-          inviter:
-            invitation.invitedBy?.id === caller
-              ? t('membersScreen.you')
-              : (invitation.invitedBy?.name ?? ''),
-        })}
+        {invitation.invitedBy?.id === caller
+          ? t('membersScreen.invitedAsByYou', { role })
+          : t('membersScreen.invitedAs', { role, inviter: invitation.invitedBy?.name ?? '' })}
       </span>
       <span className="muted">
         {t(`membersScreen.dates.${invitation.status}`, {
