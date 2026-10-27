@@ -1,11 +1,10 @@
 import { ApiError, type EventStatus, type OrganisationEvent } from '@soirely/api-client';
-import { type EventPhase, eventAllows } from '@soirely/domain';
+import { type EventPhase, changedWords, eventAllows } from '@soirely/domain';
 import { type RefObject, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { offButton } from '../../../offButton.ts';
-import { CHANGED_WORDS } from './eventWords.ts';
 import { LifecycleDialog } from './LifecycleDialog.tsx';
 import { useLifecycleAction } from './useLifecycleAction.ts';
 
@@ -116,7 +115,7 @@ export function PausedRow({
       <div className="notice-body">
         {changed ? (
           <div role="alert">
-            {CHANGED_WORDS[event.phase].map((line) => (
+            {changedWords(event).map((line) => (
               <p key={line}>{t(line)}</p>
             ))}
           </div>

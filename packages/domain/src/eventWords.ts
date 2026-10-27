@@ -1,4 +1,5 @@
 import { formatWallClock, formatWallDay } from './datetime.ts';
+import { type EventPhase, type EventState, calledOff } from './eventStates.ts';
 import {
   EVENT_NAME_MAXIMUM,
   type EventDraft,
@@ -62,4 +63,25 @@ export function skippedLine(
   return savedDate === date
     ? t('eventForm.clocksSkip', words)
     : t('eventForm.clocksSkipNextDay', { ...words, savedDay: formatWallDay(savedDate, locale) });
+}
+
+const NOW_STATE = {
+  draft: 'eventLive.nowState_draft',
+  live: 'eventLive.nowState_live',
+  happening_now: 'eventLive.nowState_live',
+  paused: 'eventLive.nowState_paused',
+  finished: 'eventLive.nowState_finished',
+} as const satisfies Record<EventPhase, string>;
+
+/** A refused lifecycle move's two lines, from the reloaded event: past its end the clock moved it, so it says so; calling off is always a colleague's act. */
+export function changedWords(event: {
+  status: EventState;
+  phase: EventPhase;
+  startsAt: string;
+  concludedAt: string | null;
+}): readonly [string, string] {
+  if (calledOff(event)) return ['eventLive.changedElsewhere', 'eventLive.nowState_calledOff'];
+  if (event.phase === 'finished') return ['eventEnd.alreadyOver', NOW_STATE.finished];
+
+  return ['eventLive.changedElsewhere', NOW_STATE[event.phase]];
 }

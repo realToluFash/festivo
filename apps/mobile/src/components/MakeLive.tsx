@@ -1,4 +1,5 @@
 import { type OrganisationEvent } from '@soirely/api-client';
+import { changedWords } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -7,7 +8,6 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import {
   type MakeLiveRefusal,
-  CHANGED_WORDS,
   addHostsHref,
   draftRowOf,
   makeLiveOpens,
@@ -60,7 +60,7 @@ export function DraftRow({
           ],
         ]
       : asking.kind === 'changed'
-        ? [t(CHANGED_WORDS[event.phase][0]), [t(CHANGED_WORDS[event.phase][1])]]
+        ? [t(changedWords(event)[0]), [t(changedWords(event)[1])]]
         : asking.kind === 'concluded'
           ? [t('eventLive.notMadeLive'), [t('eventLive.endPassed')]]
           : asking.kind === 'needsHost'

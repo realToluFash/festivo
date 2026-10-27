@@ -2495,6 +2495,18 @@ describe('Pause and Resume (sc-3586)', () => {
       'This event is already over.',
       "It's finished now. The page shows what it is now.",
     ],
+    [
+      'somebody else changed it when the resume is refused and it was called off (sc-17382)',
+      () =>
+        paused({
+          status: 'ended',
+          phase: 'finished',
+          pausedAt: null,
+          concludedAt: '2026-10-28T09:00:00+00:00',
+        }),
+      'Somebody else changed this event while you had it open.',
+      "It's called off now. The page shows what it is now.",
+    ],
   ])('says %s', async (_, reloaded, said, now) => {
     signedIn();
     let reads = 0;
@@ -2530,6 +2542,35 @@ describe('Pause and Resume (sc-3586)', () => {
     expect(
       within(refused).getByText("It's paused now. The page shows what it is now."),
     ).toBeDefined();
+  });
+
+  it('says it was called off, not that it is over, when the pause is refused on a called-off event (sc-17382)', async () => {
+    signedIn();
+    const calledOff = live({
+      status: 'ended',
+      phase: 'finished',
+      concludedAt: '2026-10-28T09:00:00+00:00',
+    });
+    let reads = 0;
+    await onThePage(live(), {
+      'GET /api/events/ev_1': () => json({ event: (reads += 1) === 1 ? live() : calledOff }),
+      'POST /api/events/ev_1/pause': () => problem(409, 'event_state_invalid'),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+    fireEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Pause' }),
+    );
+
+    const refused = await screen.findByRole('alertdialog', {
+      name: 'Somebody else changed this event while you had it open.',
+    });
+    expect(
+      within(refused).getByText("It's called off now. The page shows what it is now."),
+    ).toBeDefined();
+    expect(
+      within(refused).queryByText("It's finished now. The page shows what it is now."),
+    ).toBeNull();
   });
 
   it('keeps Resume and says so when the resume fails', async () => {
