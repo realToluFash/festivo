@@ -1,13 +1,13 @@
-import { ApiError, type EventStatus, type OrganisationEvent } from '@soirely/api-client';
+import { type OrganisationEvent } from '@soirely/api-client';
 import { type EventPhase, makeLiveRow } from '@soirely/domain';
-import { type RefObject, useEffect, useRef, useState } from 'react';
+import { type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { useDialogKeys } from '../../../dialogFocus.ts';
-import { offButton } from '../../../offButton.ts';
-import { NOW_STATE, PHASE_WORD } from './eventWords.ts';
+import { PHASE_WORD } from './eventWords.ts';
+import { LifecycleDialog } from './LifecycleDialog.tsx';
+import { useLifecycleAction } from './useLifecycleAction.ts';
 
 /** A word and a shape of its own, never colour alone (WCAG 2.2 §1.4.1). */
 export function StatusPill({ phase }: { phase: EventPhase }) {
@@ -19,12 +19,6 @@ export function StatusPill({ phase }: { phase: EventPhase }) {
     </span>
   );
 }
-
-type Asking =
-  | { kind: 'confirm'; pending: boolean; failed: boolean }
-  | { kind: 'changed'; status: EventStatus }
-  | { kind: 'concluded' }
-  | { kind: 'planLimit'; plan: string; limit: number };
 
 /** A Draft's line for the areas it blocks (Guests so far), with Make live beside it, as `/event-states.json` says. */
 export function DraftRow({
@@ -43,50 +37,32 @@ export function DraftRow({
   onMadeLive: () => void;
 }) {
   const { t } = useTranslation();
-  const [asking, setAsking] = useState<Asking | null>(null);
-  const makeLive = useRef<HTMLButtonElement>(null);
   const row = makeLiveRow(event, now);
-
-  const close = () => {
-    setAsking(null);
-    window.setTimeout(() => (makeLive.current ?? heading.current)?.focus(), 0);
-  };
-
-  const reload = (then: (latest: OrganisationEvent) => Asking) =>
-    api.event(event.id).then(
-      (latest) => {
-        onChange(latest);
-        setAsking(then(latest));
-      },
-      () => setAsking({ kind: 'confirm', pending: false, failed: true }),
-    );
-
-  const go = () => {
-    setAsking({ kind: 'confirm', pending: true, failed: false });
-    api.makeLive(event.id).then(
-      ({ event: live }) => {
-        setAsking(null);
-        onChange(live);
-        onMadeLive();
-        window.setTimeout(() => heading.current?.focus(), 0);
-      },
-      (error: unknown) => {
-        if (error instanceof ApiError && error.is('event_state_invalid')) {
-          void reload((latest) => ({ kind: 'changed', status: latest.status }));
-        } else if (error instanceof ApiError && error.is('event_concluded')) {
-          void reload(() => ({ kind: 'concluded' }));
-        } else if (error instanceof ApiError && error.is('plan_limit')) {
-          setAsking({
-            kind: 'planLimit',
-            plan: error.problem.plan ?? '',
-            limit: error.problem.limit ?? 0,
-          });
-        } else {
-          setAsking({ kind: 'confirm', pending: false, failed: true });
-        }
-      },
-    );
-  };
+  const { asking, opener, ask, go, close } = useLifecycleAction<object>({
+    event,
+    heading,
+    onChange,
+    onDone: onMadeLive,
+    refusalOf: (error) =>
+      error.is('event_concluded')
+        ? {
+            reload: true,
+            then: () => ({ title: t('eventLive.notMadeLive'), lines: [t('eventLive.endPassed')] }),
+          }
+        : error.is('plan_limit')
+          ? {
+              reload: false,
+              then: () => ({
+                title: t('eventLive.planLimit', {
+                  plan: error.problem.plan ?? '',
+                  limit: error.problem.limit ?? 0,
+                  count: error.problem.limit ?? 0,
+                }),
+                lines: [t('eventLive.planLimitStays')],
+              }),
+            }
+          : null,
+  });
 
   return (
     <>
@@ -97,10 +73,10 @@ export function DraftRow({
           {manages &&
             (row.makeLive ? (
               <button
-                ref={makeLive}
+                ref={opener}
                 type="button"
                 className="button button-primary"
-                onClick={() => setAsking({ kind: 'confirm', pending: false, failed: false })}
+                onClick={() => ask({})}
               >
                 {t('eventLive.makeLive')}
               </button>
@@ -112,103 +88,19 @@ export function DraftRow({
         </div>
       )}
       {asking != null && (
-        <MakeLiveDialog name={event.name} asking={asking} onGo={go} onClose={close} />
+        <LifecycleDialog
+          id="make-live"
+          asking={asking}
+          title={t('eventLive.confirmTitle', { name: event.name })}
+          lines={[t('eventLive.confirmGuests'), t('eventLive.confirmFinal')]}
+          failed={t('eventLive.failed')}
+          keep={t('eventLive.notYet')}
+          confirm={t('eventLive.makeLive')}
+          tone="primary"
+          onGo={() => go({}, () => api.makeLive(event.id))}
+          onClose={close}
+        />
       )}
-    </>
-  );
-}
-
-/** The phone's bottom sheet on narrow screens; the first line wraps rather than truncates. */
-function MakeLiveDialog({
-  name,
-  asking,
-  onGo,
-  onClose,
-}: {
-  name: string;
-  asking: Asking;
-  onGo: () => void;
-  onClose: () => void;
-}) {
-  const { t } = useTranslation();
-  const dialog = useRef<HTMLDivElement>(null);
-  const first = useRef<HTMLButtonElement>(null);
-  const pending = asking.kind === 'confirm' && asking.pending;
-
-  useEffect(() => first.current?.focus(), [asking.kind]);
-  useDialogKeys(dialog, onClose, pending);
-
-  const [title, lines] =
-    asking.kind === 'confirm'
-      ? [
-          t('eventLive.confirmTitle', { name }),
-          [
-            t('eventLive.confirmGuests'),
-            t('eventLive.confirmFinal'),
-            ...(asking.failed ? [t('eventLive.failed')] : []),
-          ],
-        ]
-      : asking.kind === 'changed'
-        ? [t('eventLive.changedElsewhere'), [t(NOW_STATE[asking.status])]]
-        : asking.kind === 'concluded'
-          ? [t('eventLive.notMadeLive'), [t('eventLive.endPassed')]]
-          : [
-              t('eventLive.planLimit', {
-                plan: asking.plan,
-                limit: asking.limit,
-                count: asking.limit,
-              }),
-              [t('eventLive.planLimitStays')],
-            ];
-
-  return (
-    <>
-      <div className="dialog-scrim" aria-hidden="true" />
-      <div
-        ref={dialog}
-        className="dialog event-live-dialog"
-        role={asking.kind === 'confirm' ? 'dialog' : 'alertdialog'}
-        aria-modal="true"
-        aria-labelledby="make-live-title"
-        aria-describedby="make-live-body"
-      >
-        <div className="dialog-heading">
-          <h2 id="make-live-title">{title}</h2>
-          <div id="make-live-body">
-            {lines.map((line) => (
-              <p key={line}>{line}</p>
-            ))}
-          </div>
-        </div>
-        <div className="dialog-actions">
-          {asking.kind === 'confirm' ? (
-            <>
-              <button
-                ref={first}
-                type="button"
-                className="button"
-                {...offButton(pending, { dim: false })}
-                onClick={onClose}
-              >
-                {t('eventLive.notYet')}
-              </button>
-              <button
-                type="button"
-                className="button button-primary"
-                {...offButton(pending, { dim: false })}
-                aria-busy={pending}
-                onClick={onGo}
-              >
-                {t('eventLive.makeLive')}
-              </button>
-            </>
-          ) : (
-            <button ref={first} type="button" className="button button-primary" onClick={onClose}>
-              {t('eventLive.close')}
-            </button>
-          )}
-        </div>
-      </div>
     </>
   );
 }

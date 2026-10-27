@@ -1,15 +1,12 @@
-import { ApiError, type EventStatus, type OrganisationEvent } from '@soirely/api-client';
+import { ApiError, type OrganisationEvent } from '@soirely/api-client';
 import { type EventPhase, eventAllows } from '@soirely/domain';
-import { type RefObject, useEffect, useRef, useState } from 'react';
+import { type RefObject, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
-import { useDialogKeys } from '../../../dialogFocus.ts';
 import { offButton } from '../../../offButton.ts';
-import { NOW_STATE } from './eventWords.ts';
-
-type Asking =
-  { kind: 'confirm'; pending: boolean; failed: boolean } | { kind: 'changed'; status: EventStatus };
+import { LifecycleDialog } from './LifecycleDialog.tsx';
+import { useLifecycleAction } from './useLifecycleAction.ts';
 
 /** `Lifecycle` (tweak: Pause): a secondary button beside Call off or End now, so it is never where a stray tap lands first. */
 export function PauseButton({
@@ -26,139 +23,34 @@ export function PauseButton({
   onPaused: () => void;
 }) {
   const { t } = useTranslation();
-  const [asking, setAsking] = useState<Asking | null>(null);
-  const opener = useRef<HTMLButtonElement>(null);
-
-  const close = () => {
-    setAsking(null);
-    window.setTimeout(() => (opener.current ?? heading.current)?.focus(), 0);
-  };
-
-  const go = () => {
-    setAsking({ kind: 'confirm', pending: true, failed: false });
-    api.pauseEvent(event.id).then(
-      ({ event: paused }) => {
-        setAsking(null);
-        onChange(paused);
-        onPaused();
-        window.setTimeout(() => heading.current?.focus(), 0);
-      },
-      (error: unknown) => {
-        if (!(error instanceof ApiError && error.is('event_state_invalid'))) {
-          setAsking({ kind: 'confirm', pending: false, failed: true });
-
-          return;
-        }
-
-        void api.event(event.id).then(
-          (latest) => {
-            onChange(latest);
-            setAsking({ kind: 'changed', status: latest.status });
-          },
-          () => setAsking({ kind: 'confirm', pending: false, failed: true }),
-        );
-      },
-    );
-  };
+  const { asking, opener, ask, go, close } = useLifecycleAction<object>({
+    event,
+    heading,
+    onChange,
+    onDone: onPaused,
+  });
 
   return (
     <>
       {eventAllows(phase, 'pause') && (
-        <button
-          ref={opener}
-          type="button"
-          className="button"
-          onClick={() => setAsking({ kind: 'confirm', pending: false, failed: false })}
-        >
+        <button ref={opener} type="button" className="button" onClick={() => ask({})}>
           {t('eventPause.pause')}
         </button>
       )}
       {asking != null && (
-        <PauseDialog name={event.name} asking={asking} onGo={go} onClose={close} />
+        <LifecycleDialog
+          id="pause-event"
+          asking={asking}
+          title={t('eventPause.title', { name: event.name })}
+          lines={[t('eventPause.body'), t('eventPause.nothingLost')]}
+          failed={t('eventPause.failed')}
+          keep={t('eventPause.keepItLive')}
+          confirm={t('eventPause.pause')}
+          tone="primary"
+          onGo={() => go({}, () => api.pauseEvent(event.id))}
+          onClose={close}
+        />
       )}
-    </>
-  );
-}
-
-function PauseDialog({
-  name,
-  asking,
-  onGo,
-  onClose,
-}: {
-  name: string;
-  asking: Asking;
-  onGo: () => void;
-  onClose: () => void;
-}) {
-  const { t } = useTranslation();
-  const dialog = useRef<HTMLDivElement>(null);
-  const first = useRef<HTMLButtonElement>(null);
-  const pending = asking.kind === 'confirm' && asking.pending;
-
-  useEffect(() => first.current?.focus(), [asking.kind]);
-  useDialogKeys(dialog, onClose, pending);
-
-  const [title, lines] =
-    asking.kind === 'confirm'
-      ? [
-          t('eventPause.title', { name }),
-          [
-            t('eventPause.body'),
-            t('eventPause.nothingLost'),
-            ...(asking.failed ? [t('eventPause.failed')] : []),
-          ],
-        ]
-      : [t('eventLive.changedElsewhere'), [t(NOW_STATE[asking.status])]];
-
-  return (
-    <>
-      <div className="dialog-scrim" aria-hidden="true" />
-      <div
-        ref={dialog}
-        className="dialog event-live-dialog"
-        role={asking.kind === 'confirm' ? 'dialog' : 'alertdialog'}
-        aria-modal="true"
-        aria-labelledby="pause-event-title"
-        aria-describedby="pause-event-body"
-      >
-        <div className="dialog-heading">
-          <h2 id="pause-event-title">{title}</h2>
-          <div id="pause-event-body">
-            {lines.map((line) => (
-              <p key={line}>{line}</p>
-            ))}
-          </div>
-        </div>
-        <div className="dialog-actions">
-          {asking.kind === 'confirm' ? (
-            <>
-              <button
-                ref={first}
-                type="button"
-                className="button"
-                {...offButton(pending, { dim: false })}
-                onClick={onClose}
-              >
-                {t('eventPause.keepItLive')}
-              </button>
-              <button
-                type="button"
-                className="button button-primary"
-                {...offButton(pending, { dim: false })}
-                aria-busy={pending}
-                onClick={onGo}
-              >
-                {t('eventPause.pause')}
-              </button>
-            </>
-          ) : (
-            <button ref={first} type="button" className="button button-primary" onClick={onClose}>
-              {t('eventLive.close')}
-            </button>
-          )}
-        </div>
-      </div>
     </>
   );
 }
