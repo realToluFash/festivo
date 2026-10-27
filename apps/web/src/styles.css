@@ -251,6 +251,14 @@ span {
   overflow-wrap: anywhere;
 }
 
+/* The button's own box is a flex container, which never shows an ellipsis for its text. */
+.button-label-cut {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .button:hover {
   background: var(--colorInset);
 }
@@ -1689,13 +1697,6 @@ span {
 .invitation-row-next {
   font: var(--typeSmall);
   color: var(--colorInk);
-}
-
-.invitation-row-open {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .profile-invitations {

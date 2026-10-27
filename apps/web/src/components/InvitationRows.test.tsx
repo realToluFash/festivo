@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import type { Membership } from '@soirely/api-client';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -142,10 +145,24 @@ describe('an invitation in the organisation switcher', () => {
     );
     expect(screen.queryByText('1 invitation')).toBeNull();
 
-    fireEvent.click(within(row).getByRole('button', { name: 'Open Adunni Weddings' }));
+    const open = within(row).getByRole('button', { name: 'Open Adunni Weddings' });
+    expect(open.querySelector('.button-label-cut')?.textContent).toBe('Open Adunni Weddings');
+    expect(open.getAttribute('title')).toBe('Open Adunni Weddings');
+
+    fireEvent.click(open);
 
     expect(screen.getByText('Now working in Adunni Weddings.')).toBeDefined();
     expect(window.localStorage.getItem('soirely.organisation')).toBe('org_7');
+  });
+
+  it('cuts a long name in Open with an ellipsis, keeping Open in view (sc-15414)', () => {
+    const styles = readFileSync(join(import.meta.dirname, '../styles.css'), 'utf8');
+    const cut = /(?:^|\n)\.button-label-cut \{([^}]*)\}/u.exec(styles)?.[1] ?? '';
+
+    expect(cut).toMatch(/min-width: 0;/u);
+    expect(cut).toMatch(/overflow: hidden;/u);
+    expect(cut).toMatch(/text-overflow: ellipsis;/u);
+    expect(cut).toMatch(/white-space: nowrap;/u);
   });
 
   it('says which refusal met a press when the invitation went stale after the list loaded', async () => {
