@@ -26,14 +26,14 @@ appId: host.exp.Exponent
 - pressKey: Enter
 - waitForAnimationToEnd
 - takeScreenshot: mismatch-keyboard
-- assertVisible: '.*exactly as shown to delete it.*'
+- assertVisible: '{{t:eventDelete.mismatch}}'
 - eraseText: 80
 - inputText: ${RIGHT}
 - takeScreenshot: right-typed
 - tapOn:
     id: 'events.deleteGo'
 - extendedWaitUntil:
-    visible: '.*was deleted.*'
+    visible: '{{t:eventDelete.deleted}}'
     timeout: 15000
 - takeScreenshot: deleted
 - setOrientation: PORTRAIT
