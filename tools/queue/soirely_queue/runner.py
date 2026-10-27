@@ -12,9 +12,10 @@ import subprocess
 import sys
 import threading
 import time
+import uuid
 
 from . import (checkout, drawing, harness, local, machine, permissions, review, roles, runlog,
-               shared, store, sync, update)
+               sessions, shared, store, sync, update)
 
 VERSION_EVERY_SECONDS = 10 * 60
 # `claude -p` stays up while a background shell it started still runs, so a run whose item
@@ -286,9 +287,11 @@ def prompt(row, role, main, note):
     return "\n".join(lines + ["", brief(row, role), MILESTONES.format(role=role)])
 
 
-def command(values, config_dir, allowed=(), denied=()):
+def command(values, config_dir, allowed=(), denied=(), session=None):
     argv = ["claude", "-p", "--model", values["model"], "--effort", values["effort"],
             "--permission-mode", "auto", "--output-format", "stream-json", "--verbose"]
+    if session:
+        argv += ["--session-id", session]
     if values.get("maxBudgetUsd"):
         argv += ["--max-budget-usd", str(values["maxBudgetUsd"])]
     if allowed:
@@ -461,14 +464,20 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
     entry["main"] = main
     folder = machine.claude_dir(config, role)
     entry["account"] = machine.account(folder)
+    given = prompt(row, role, main, note)
+    entry.update(session=str(uuid.uuid4()), story=row["story_id"] if row else None,
+                 story_name=(story or {}).get("name"), reason=row["reason"] if row else None,
+                 pr=row["pr"] if row else None, checkout=str(cwd), config_dir=str(folder),
+                 max_runtime_minutes=machine.minutes(values["maxRuntime"]), prompt=given)
     argv, env = command(values, folder, permissions.for_role(permissions.applied(), role),
-                        permissions.denied(home / "sq" / "sq", folder))
+                        permissions.denied(home / "sq" / "sq", folder), entry["session"])
     scratch = run_dir(home, name, item_id)
     scratch.mkdir(parents=True, exist_ok=True)
     env["SQ_RUN_DIR"] = str(scratch)
+    sessions.start(home, name, entry)
     try:
         code, stdout, stderr, ended = run_claude(
-            argv, prompt(row, role, main, note), cwd, env,
+            argv, given, cwd, env,
             lambda: (store.item(db, item_id) or {"status": None})["status"] == "done")
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
@@ -484,6 +493,7 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
     if ended is not None:
         entry["ended"] = ended
     runlog.append(home, role, entry)
+    sessions.end(home, name)
     waits = runlog.waits_on_owner(entry["report"])
     if waits:
         store.set_meta(db, f"owner:{role}", {"at": entry["at"], "lines": waits, "worker": name})
@@ -504,6 +514,8 @@ def worker_ended(home, platform, name, item_id, now=None, load=machine.load):
             review.remove(machine.checkout(load(), role, name))
         except (machine.ConfigError, OSError) as error:
             platform.notify(f"Soirely: {name}'s review worktree is still there", str(error))
+    record = sessions.live(home, name)
+    sessions.end(home, name)
     if any(e.get("item") == item_id for e in runlog.entries(home, role)[-20:]):
         return None
     reason = os.environ.get("SERVICE_RESULT", "unknown")
@@ -512,6 +524,9 @@ def worker_ended(home, platform, name, item_id, now=None, load=machine.load):
     entry = {"at": now or time.time(), "item": item_id, "role": role,
              "exit": status, "stopped": reason,
              "report": f"the worker ended without a report: {said}"}
+    if record and record.get("item") == item_id:
+        entry = dict(record, **{key: value for key, value in entry.items() if key != "at"},
+                     duration_ms=int(((now or time.time()) - record["at"]) * 1000))
     if name != role:
         entry["worker"] = name
     runlog.append(home, role, entry)

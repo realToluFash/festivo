@@ -7,6 +7,7 @@ import tempfile
 import threading
 import time
 import unittest
+import urllib.error
 import urllib.request
 from contextlib import redirect_stdout
 from unittest import mock
@@ -180,6 +181,18 @@ class Snapshot(unittest.TestCase):
         self.assertIn("permissions: main grants 2 change(s) this machine has not applied: "
                       "just agents permissions apply", warnings)
 
+    def test_a_running_worker_and_a_recorded_run_open_their_session(self):
+        from soirely_queue import sessions
+        self.platform.active.add("ops")
+        sessions.start(self.home, "ops", {"session": "s-live", "config_dir": "c"})
+        runlog.append(self.home, "ops", {"at": NOW, "role": "ops", "exit": 0,
+                                         "session": "s-done", "config_dir": "c"})
+        runlog.append(self.home, "ops", {"at": NOW - 9, "role": "ops", "exit": 0})
+        view = self.snap()
+        ops = next(r for r in view["roles"] if r["role"] == "ops")
+        self.assertEqual(ops["sessions"], [{"worker": "ops", "session": "s-live"}])
+        self.assertEqual([r["session"] for r in view["recent"]], ["s-done", None])
+
     def test_a_failed_run_is_marked(self):
         runlog.append(self.home, "ops", {"at": NOW, "role": "ops", "exit": "1",
                                          "stopped": "exit-code", "report": "ended"})
@@ -213,3 +226,18 @@ class Serve(unittest.TestCase):
         with urllib.request.urlopen(url) as answer:
             self.assertIn("<title>Soirely agents</title>", answer.read().decode())
         self.assertEqual(len(reads), 1)
+
+    def test_a_session_is_served_and_one_not_recorded_here_is_not_found(self):
+        said, ready = [], threading.Event()
+        thread = threading.Thread(
+            target=dashboard.serve, daemon=True, args=(lambda now: {}, 0),
+            kwargs={"open_page": False, "say": lambda line: said.append(line) or ready.set(),
+                    "session": lambda found, now: {"session": found} if found == "s-1" else None})
+        thread.start()
+        self.assertTrue(ready.wait(5))
+        url = said[0].split()[2]
+        with urllib.request.urlopen(url + "session/s-1.json") as answer:
+            self.assertEqual(json.load(answer), {"session": "s-1"})
+        with self.assertRaises(urllib.error.HTTPError) as missing:
+            urllib.request.urlopen(url + "session/s-2.json")
+        self.assertEqual(missing.exception.code, 404)

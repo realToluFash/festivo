@@ -13,7 +13,8 @@ import sys
 import time
 
 from . import (actions, agents, dashboard, digests, github, launchd, machine, payloads,
-               permissions, roles, runlog, runner, shared, store, sync, systemd, update, work)
+               permissions, roles, runlog, runner, sessions, shared, store, sync, systemd,
+               update, work)
 from . import text as T
 from . import views as V
 from .ledger import Printer
@@ -780,7 +781,9 @@ def admin(argv):
         status(db, platform, time.time())
     elif a.command == "web":
         dashboard.serve(lambda now: dashboard.snapshot(db, platform, now, home()), a.port,
-                        open_page=not a.no_open)
+                        open_page=not a.no_open,
+                        session=lambda found, now: sessions.view(db, home(), platform, found,
+                                                                 now))
     elif a.command == "run":
         try:
             runner.run(db, home(), platform, sq_path, sys.executable, dry_run=a.dry_run)

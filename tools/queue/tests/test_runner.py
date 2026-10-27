@@ -807,6 +807,42 @@ class Worker(unittest.TestCase):
         self.assertEqual(entry["report"], "the worker ended without a report: timeout")
         self.assertIsNone(runner.worker_ended(self.home, self.platform, "ops", 1))
 
+    def test_a_run_starts_claude_on_a_session_it_records_while_running_and_after(self):
+        from soirely_queue import sessions
+        seen = []
+
+        def claude(argv, input, cwd, env, finished):
+            seen.append((argv[argv.index("--session-id") + 1], sessions.live(self.home, "ops")))
+            return 0, json.dumps({"type": "result", "result": "ok"}), "", None
+
+        entry = runner.worker(self.db, self.home, self.platform, "ops", 1, run_claude=claude,
+                              load=lambda: config(self.root),
+                              prepare=lambda *_: ("c" * 40, None), now=ON_ZERO)
+        session, live = seen[0]
+        self.assertEqual(live["session"], session)
+        self.assertEqual(entry["session"], session)
+        for key, value in {"item": 1, "story": None, "reason": "[ops] on sc-1",
+                           "checkout": str(self.root / "soirely-ops"),
+                           "config_dir": str(self.root / "claude"), "model": "claude-opus-5-5",
+                           "effort": "medium", "at": ON_ZERO, "max_runtime_minutes": 90,
+                           "account": "owner@example.test"}.items():
+            self.assertEqual((key, live[key]), (key, value))
+            self.assertEqual((key, entry[key]), (key, value))
+        self.assertIn("origin/main at ccccccc", live["prompt"])
+        self.assertEqual(runlog.last(self.home, "ops")["prompt"], live["prompt"])
+        self.assertIsNone(sessions.live(self.home, "ops"))
+
+    def test_a_run_stopped_at_its_limit_keeps_its_session_in_the_record(self):
+        from soirely_queue import sessions
+        sessions.start(self.home, "ops", {"session": "s-1", "item": 1, "at": ON_ZERO - 60,
+                                          "prompt": "Run /soirely-ops", "config_dir": "c"})
+        with mock.patch.dict("os.environ", {"SERVICE_RESULT": "timeout"}):
+            entry = runner.worker_ended(self.home, self.platform, "ops", 1, now=ON_ZERO)
+        self.assertEqual((entry["session"], entry["prompt"], entry["at"], entry["duration_ms"]),
+                         ("s-1", "Run /soirely-ops", ON_ZERO - 60, 60000))
+        self.assertEqual(entry["report"], "the worker ended without a report: timeout")
+        self.assertIsNone(sessions.live(self.home, "ops"))
+
 
 FAKE_CLAUDE = textwrap.dedent("""
     import json, subprocess, sys, time

@@ -585,6 +585,63 @@
       footer code {
         font-size: 12px;
       }
+      a.session-link {
+        color: var(--accent);
+        font-weight: 600;
+        text-decoration: none;
+      }
+      a.session-link:hover {
+        text-decoration: underline;
+      }
+      .facts {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        gap: 6px 16px;
+        font-size: 13px;
+      }
+      .facts dt {
+        color: var(--text-3);
+      }
+      .facts dd {
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
+      .steps {
+        display: grid;
+        gap: 10px;
+      }
+      .step {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 13px;
+        min-width: 0;
+      }
+      .step.error {
+        border-color: var(--critical);
+      }
+      .step .when {
+        float: right;
+        margin-left: 12px;
+      }
+      .step pre,
+      .session-panel pre {
+        margin: 8px 0 0;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        font-size: 12px;
+        max-height: 480px;
+        overflow: auto;
+      }
+      .step summary {
+        cursor: pointer;
+        color: var(--text-2);
+      }
+      .step .kind {
+        font-weight: 600;
+        margin-right: 8px;
+      }
       @media (max-width: 960px) {
         .kpis {
           grid-template-columns: repeat(2, 1fr);
@@ -607,7 +664,8 @@
     </style>
   </head>
   <body>
-    <div class="wrap">
+    <div class="wrap" id="session" hidden></div>
+    <div class="wrap" id="board">
       <header>
         <div>
           <div class="eyebrow">Soirely agents</div>
@@ -800,6 +858,14 @@
           blocks.push(
             `<div class="block"><div class="k"><span>Working on</span><span>item ${r.held.id}</span></div><div class="v">${esc(r.held.reason)}</div></div>`,
           );
+        if ((r.sessions || []).length)
+          blocks.push(`<div class="block"><div class="k"><span>Session now</span></div>
+      <ul class="holding">${r.sessions
+        .map(
+          (s) =>
+            `<li><span class="worker">${esc(s.worker)}</span><a class="session-link" href="#session=${esc(s.session)}">Open session</a></li>`,
+        )
+        .join('')}</ul></div>`);
         if (r.last) {
           const l = r.last;
           const facts = [since(l.at), money(l.cost), duration(l.seconds)]
@@ -886,12 +952,13 @@
             )
             .join('');
         document.getElementById('recent').innerHTML = d.recent.length
-          ? `<tr><th>When</th><th>Role</th><th>Account</th><th class="num">Took</th><th class="num">Cost</th><th>Report</th></tr>` +
+          ? `<tr><th>When</th><th>Role</th><th>Account</th><th class="num">Took</th><th class="num">Cost</th><th>Session</th><th>Report</th></tr>` +
             d.recent
               .map(
                 (r) => `<tr><td class="when" title="${esc(clock(r.at))}">${since(r.at)}</td>
         <td class="role-chip">${esc(r.worker || r.role)}</td><td class="when">${esc(r.account || '')}</td><td class="num">${duration(r.seconds)}</td>
         <td class="num">${money(r.cost)}</td>
+        <td>${r.session ? `<a class="session-link" href="#session=${esc(r.session)}">Open</a>` : '<span class="when" title="Run before sq recorded sessions">none recorded</span>'}</td>
         <td class="report ${r.failed ? 'fail' : ''}" title="${esc(r.report)}">${esc(r.report || 'No report')}</td></tr>`,
               )
               .join('')
@@ -960,6 +1027,139 @@
         setTimeout(() => (button.textContent = 'Copy prompt'), 2000);
       });
 
+      const opened = new Set();
+      let session = null,
+        sessionState = null;
+
+      const sessionId = () => (location.hash.match(/^#session=([0-9a-f-]{36})$/) || [])[1];
+
+      function stepView(s, i) {
+        const at = s.at
+          ? `<span class="when">${esc(new Date(s.at).toLocaleTimeString())}</span>`
+          : '';
+        const more = (n) => (n ? `\n… ${n.toLocaleString()} more characters cut` : '');
+        const fold = (label, body, cls = '') =>
+          `<details data-step="${i}" ${opened.has(i) ? 'open' : ''}><summary class="${cls}">${label}</summary><pre>${esc(body)}</pre></details>`;
+        if (s.kind === 'text')
+          return `<div class="step">${at}<span class="kind">Agent</span><pre>${esc(s.text)}</pre></div>`;
+        if (s.kind === 'user')
+          return `<div class="step">${at}<span class="kind">Message</span><pre>${esc(s.text + more(s.cut))}</pre></div>`;
+        if (s.kind === 'context')
+          return `<div class="step">${at}${fold('<span class="kind">Context</span> loaded for the agent', s.text + more(s.cut))}</div>`;
+        if (s.kind === 'thinking')
+          return `<div class="step">${at}${fold('<span class="kind">Thinking</span>', s.text)}</div>`;
+        if (s.kind === 'result')
+          return `<div class="step ${s.error ? 'error' : ''}">${at}${fold(`<span class="kind">${s.error ? 'Error' : 'Output'}</span>`, s.output + more(s.cut))}</div>`;
+        const output =
+          s.output == null
+            ? `<div class="more">running…</div>`
+            : fold(
+                s.error ? '<span class="fail">Error output</span>' : 'Output',
+                s.output + more(s.cut),
+              );
+        return `<div class="step ${s.error ? 'error' : ''}">${at}<span class="kind">${esc(s.name)}</span>
+      <pre>${esc(s.input + more(s.input_cut))}</pre>${output}</div>`;
+      }
+
+      function renderSession() {
+        const box = document.getElementById('session');
+        if (sessionState === 'missing') {
+          box.innerHTML = `<header><div><div class="eyebrow"><a class="session-link" href="#">← Soirely agents</a></div>
+      <h1>No such session</h1></div></header><div class="empty">No worker on this machine recorded this session.</div>`;
+          return;
+        }
+        if (!session) {
+          box.innerHTML = `<h1>Loading…</h1>`;
+          return;
+        }
+        const s = session;
+        const bottom = innerHeight + scrollY >= document.body.scrollHeight - 40;
+        const limit = s.max_runtime_minutes ? ` of ${s.max_runtime_minutes}m` : '';
+        const tokens = s.tokens
+          ? `${(s.tokens.input_tokens + s.tokens.cache_read_input_tokens + s.tokens.cache_creation_input_tokens).toLocaleString()} in · ${s.tokens.output_tokens.toLocaleString()} out`
+          : '';
+        const facts = [
+          ['Worker', `${esc(s.worker)} (${esc(s.role)})`],
+          ['Started', `${esc(s.at ? clock(s.at) : '')} · ${duration(s.elapsed)}${limit}`],
+          ['Model', esc(model(s))],
+          ['Account', esc(s.account || 'not recorded')],
+          ['Item', `${esc(s.item.id)}: ${esc(s.item.reason || '')}`],
+          s.story && [
+            'Story',
+            `${s.story.url ? `<a class="session-link" href="${esc(s.story.url)}" target="_blank" rel="noopener">sc-${s.story.id}</a>` : 'sc-' + s.story.id} ${esc(s.story.name || '')}${s.story.state ? ` · ${esc(s.story.state)}` : ''}`,
+          ],
+          s.pr && [
+            'Pull request',
+            s.pr.url
+              ? `<a class="session-link" href="${esc(s.pr.url)}" target="_blank" rel="noopener">#${s.pr.number}</a> ${esc(s.pr.title || '')}`
+              : `#${s.pr.number}`,
+          ],
+          ['Checkout', `<code>${esc(s.checkout)}</code>`],
+          ['Main', `<code>${esc((s.main || '').slice(0, 12))}</code>`],
+          ['Tokens', tokens || 'none yet'],
+          !s.live && ['Cost', money(s.cost)],
+          ['Continue', `<code>${esc(s.resume)}</code>`],
+        ].filter(Boolean);
+        const steps =
+          s.transcript === 'missing'
+            ? `<div class="empty">This run's transcript is gone, or was never written: there is no session file for it in ${esc(s.config_dir)}.</div>`
+            : s.steps.length
+              ? s.steps.map(stepView).join('')
+              : `<div class="empty">No steps yet.</div>`;
+        box.innerHTML = `<header><div><div class="eyebrow"><a class="session-link" href="#">← Soirely agents</a></div>
+      <h1>${esc(s.worker)} · ${s.story ? 'sc-' + s.story.id : 'item ' + esc(s.item.id)}</h1></div>
+      <div class="meta">${s.live ? '<span class="pill good live">Live</span>' : `<span class="pill">Ended</span>`}<span>${esc(s.session)}</span></div></header>
+      <section><div class="panel session-panel"><dl class="facts">${facts.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl></div></section>
+      ${!s.live && s.report ? `<section><h2>Report</h2><div class="panel session-panel"><pre>${esc(s.report)}</pre></div></section>` : ''}
+      <section><h2>Prompt from sq</h2><div class="panel session-panel"><pre>${esc(s.prompt || 'Not recorded.')}</pre></div></section>
+      <section><h2>Steps <span class="count">${s.steps.length}</span></h2><div class="steps">${steps}</div></section>`;
+        if (s.live && bottom) scrollTo(0, document.body.scrollHeight);
+      }
+
+      async function loadSession() {
+        const id = sessionId();
+        if (!id) return;
+        try {
+          const response = await fetch(`session/${id}.json`, { cache: 'no-store' });
+          if (response.status === 404) {
+            session = null;
+            sessionState = 'missing';
+          } else if (response.ok) {
+            session = await response.json();
+            sessionState = null;
+          }
+        } catch (error) {
+          failing = true;
+        }
+        if (sessionId() === id) renderSession();
+      }
+
+      function route() {
+        const id = sessionId();
+        document.getElementById('session').hidden = !id;
+        document.getElementById('board').hidden = !!id;
+        if (id && (!session || session.session !== id)) {
+          session = null;
+          sessionState = null;
+          opened.clear();
+          renderSession();
+          scrollTo(0, 0);
+        }
+        if (id) loadSession();
+      }
+
+      document.addEventListener(
+        'toggle',
+        (event) => {
+          const step = event.target.dataset && event.target.dataset.step;
+          if (step == null) return;
+          if (event.target.open) opened.add(Number(step));
+          else opened.delete(Number(step));
+        },
+        true,
+      );
+      addEventListener('hashchange', route);
+
       function render() {
         if (!data) return;
         drawings(data);
@@ -1004,7 +1204,11 @@
       });
 
       refresh();
+      route();
       setInterval(refresh, 5000);
+      setInterval(() => {
+        if (sessionId() && session && session.live) loadSession();
+      }, 4000);
       setInterval(() => {
         const updated = document.getElementById('updated');
         if (updated && fetchedAt)
