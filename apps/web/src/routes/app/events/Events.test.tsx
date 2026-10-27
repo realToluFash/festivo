@@ -3677,6 +3677,66 @@ describe('Cover photo chooses its own photo, and a refused one never reaches the
     ).toBeNull();
   });
 
+  it('a photo the frame cannot show keeps the position and description given the saved photo in this visit, as a refusal from the server does', async () => {
+    signedIn();
+    serving(PHOTO);
+    await editing();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change photo' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    fireEvent.change(within(dialog).getByLabelText('Photo position'), { target: { value: '70' } });
+    fireEvent.change(within(dialog).getByLabelText(/Describe the image/), {
+      target: { value: 'The terrace at dusk' },
+    });
+
+    pickInDialog(jpeg('b.jpg'));
+    await waitFor(() => expect(frameSource(dialog)).toBe('blob:b.jpg'));
+    await waitFor(() => expect(within(dialog).queryByText('Uploading…')).toBeNull());
+    fireEvent.error(dialog.querySelector('.cover-frame img')!);
+
+    expect(await within(dialog).findByText('The photo did not upload. Try again.')).toBeDefined();
+    expect(frameSource(dialog)).toBe(PHOTO.sizes[0]!.url);
+    expect((within(dialog).getByLabelText('Photo position') as HTMLInputElement).value).toBe('70');
+    expect((within(dialog).getByLabelText(/Describe the image/) as HTMLTextAreaElement).value).toBe(
+      'The terrace at dusk',
+    );
+  });
+
+  it('a photo the frame cannot show gives back the one chosen earlier in this visit, and Use this photo saves that one', async () => {
+    signedIn();
+    const sent = serving(null);
+    await editing();
+
+    upload(jpeg('a.jpg'));
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    await waitFor(() => expect(within(dialog).queryByText('Uploading…')).toBeNull());
+    fireEvent.change(within(dialog).getByLabelText('Photo position'), { target: { value: '80' } });
+
+    pickInDialog(jpeg('b.jpg'));
+    await waitFor(() => expect(frameSource(dialog)).toBe('blob:b.jpg'));
+    await waitFor(() => expect(within(dialog).queryByText('Uploading…')).toBeNull());
+    fireEvent.error(dialog.querySelector('.cover-frame img')!);
+
+    expect(await within(dialog).findByText('The photo did not upload. Try again.')).toBeDefined();
+    expect(frameSource(dialog)).toBe('blob:a.jpg');
+    expect((within(dialog).getByLabelText('Photo position') as HTMLInputElement).value).toBe('80');
+    expect(
+      sent
+        .filter(({ line }) => line === 'DELETE /api/orgs/org_1/event-cover-uploads')
+        .map(({ body }) => body),
+    ).toEqual([{ uploadKey: 'event_cover/org_1/2026/10/b.jpg' }]);
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
+
+    await waitFor(() =>
+      expect(sent.find(({ line }) => line === 'PUT /api/events/ev_1/cover')?.body).toEqual({
+        uploadKey: 'event_cover/org_1/2026/10/a.jpg',
+        position: 80,
+        description: null,
+      }),
+    );
+  });
+
   it('a refusal from the server keeps the position and description given the saved photo in this visit, as one before upload does', async () => {
     signedIn();
     serving(PHOTO);

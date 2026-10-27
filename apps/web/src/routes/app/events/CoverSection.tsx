@@ -228,6 +228,9 @@ function newTrying(file: File, shows: boolean): Trying {
 /** A pick the server has read: `url` is the browser's own object URL when `local`, otherwise the server's copy. */
 type Chosen = { key: string; url: string; local: boolean };
 
+/** What the dialog held just before a pick, which a refusal of that pick gives back. */
+type Before = { position: number; description: string; chosen: Chosen | null };
+
 function pickPhoto(url: string, position: number): CoverPhoto {
   return { sizes: [{ width: 0, url }], position, description: null };
 }
@@ -272,9 +275,10 @@ function CoverDialog({
   const describe = useRef<HTMLTextAreaElement>(null);
   const picker = useRef<HTMLButtonElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  const before = useRef(savedFrame);
+  const before = useRef<Before>({ ...savedFrame, chosen: null });
   const focusNext = useRef<'slider' | 'picker' | null>('slider');
-  const kept = useRef(false);
+  const held = useRef(new Set<Chosen>());
+  const kept = useRef<Chosen | null>(null);
   const fullScreen = useFullScreen();
   const drag = useRef<{ y: number; start: number } | null>(null);
 
@@ -285,8 +289,18 @@ function CoverDialog({
     focusNext.current = null;
   });
 
+  const drop = useCallback(
+    (dropped: Chosen | null) => {
+      if (dropped == null || !held.current.delete(dropped)) return;
+      if (dropped.local) URL.revokeObjectURL(dropped.url);
+      discardCoverUpload(organisationId, dropped.key);
+    },
+    [organisationId],
+  );
+
   const refuse = useCallback((message: string) => {
     setTrying(null);
+    setChosen(before.current.chosen);
     setPosition(before.current.position);
     setDescription(before.current.description);
     setDescriptionError(undefined);
@@ -316,7 +330,9 @@ function CoverDialog({
         const copy = await api.previewEventCoverUpload(organisationId, signed.key);
         if (!current) return;
         promoted = true;
-        setChosen({ key: signed.key, url: url ?? copy, local: url != null });
+        const next = { key: signed.key, url: url ?? copy, local: url != null };
+        held.current.add(next);
+        setChosen(next);
         setTrying(null);
       })
       .catch((error: unknown) => {
@@ -333,11 +349,9 @@ function CoverDialog({
 
   useEffect(
     () => () => {
-      if (chosen == null || kept.current) return;
-      if (chosen.local) URL.revokeObjectURL(chosen.url);
-      discardCoverUpload(organisationId, chosen.key);
+      for (const each of [...held.current]) if (each !== kept.current) drop(each);
     },
-    [chosen, organisationId],
+    [drop],
   );
 
   const cancel = useCallback(() => onClose('opener'), [onClose]);
@@ -349,8 +363,8 @@ function CoverDialog({
     if (trying != null) return refuse(t('eventCover.uploadFailed'));
     if (chosen == null) return;
 
-    before.current = savedFrame;
-    setChosen(null);
+    if (before.current.chosen === chosen) before.current = { ...savedFrame, chosen: null };
+    drop(chosen);
     refuse(t('eventCover.uploadFailed'));
   }
 
@@ -366,7 +380,10 @@ function CoverDialog({
       return;
     }
 
-    if (trying == null) before.current = { position, description };
+    if (trying == null) {
+      if (before.current.chosen !== chosen) drop(before.current.chosen);
+      before.current = { position, description, chosen };
+    }
     setTrying(newTrying(next, checked.shows));
     setRefusal(null);
     setPosition(COVER_MIDDLE);
@@ -407,7 +424,7 @@ function CoverDialog({
         position,
         description: trimmed === '' ? null : trimmed,
       });
-      kept.current = true;
+      kept.current = chosen;
       onClose('cover');
     } catch (error) {
       setPending(false);
