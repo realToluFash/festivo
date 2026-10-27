@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   type StyleProp,
   StyleSheet,
@@ -27,14 +27,31 @@ export function useWholeWords(
 ) {
   const { width: windowWidth } = useWindowDimensions();
   const words = wordsIn(texts);
-  const key = `${start}|${windowWidth}|${texts.join('\n')}`;
+  const roomKey = `${start}|${windowWidth}`;
+  const seenKey = `${roomKey}|${texts.join('\n')}`;
   const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
   const [room, setRoom] = useState<{ key: string; width: number } | null>(null);
+  const [seen, setSeen] = useState<{ key: string; width: number } | null>(null);
   const widths = words.map((word) => measured[`${start}|${word}`]).filter((width) => width != null);
+  const natural = texts.map((text) => measured[`${start}|${text}`]);
+  // A text drawn at the start is as wide as its room only when it wrapped, so a narrower reading says nothing of the room.
+  const wrapped =
+    seen?.key === seenKey && natural.some((width) => width != null && width > seen.width + 0.5);
+  const slot = wrapped ? seen.width : room?.key === roomKey ? room.width : 0;
   const drawn =
-    room?.key === key && room.width > 0 && widths.length === words.length
-      ? fitWidest(size, start, Math.max(...widths), room.width)
+    slot > 0 && widths.length === words.length
+      ? fitWidest(size, start, Math.max(...widths), slot)
       : start;
+
+  useEffect(() => {
+    if (wrapped) keepRoom(seen.width);
+  });
+
+  function keepRoom(width: number) {
+    setRoom((current) =>
+      current?.key === roomKey && current.width === width ? current : { key: roomKey, width },
+    );
+  }
 
   const measure = (
     <View
@@ -43,7 +60,7 @@ export function useWholeWords(
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      {words.map((word) => (
+      {[...new Set([...words, ...texts])].map((word) => (
         <Text
           key={word}
           size={size}
@@ -66,9 +83,10 @@ export function useWholeWords(
     measure,
     drawnAtStart: drawn === start,
     maxFontSizeMultiplier: drawn / size,
-    /** The width the texts have, read once for each start, window width and text. */
-    room: (width: number) =>
-      setRoom((current) => (current?.key === key ? current : { key, width })),
+    /** The width each of the texts has, for this start and window width whatever the texts say. */
+    room: keepRoom,
+    /** The width a text drawn at the start was laid out at, its room if it wrapped. */
+    seen: (width: number) => setSeen({ key: seenKey, width }),
   };
 }
 
@@ -91,8 +109,7 @@ export function WholeWords({
         maxFontSizeMultiplier={words.maxFontSizeMultiplier}
         onLayout={(event) => {
           onLayout?.(event);
-          // Drawn at the start, a text is as wide as its room whenever a word of it would not fit.
-          if (words.drawnAtStart) words.room(event.nativeEvent.layout.width);
+          if (words.drawnAtStart) words.seen(event.nativeEvent.layout.width);
         }}
       >
         {children}
