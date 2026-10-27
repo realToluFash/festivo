@@ -1,0 +1,19 @@
+# sc-13023: the member page named by ${MANUAL_ID} carries membersScreen.beyondGrant, and no Restore beside it.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible: '{{t:membersScreen.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: members.row.${MANUAL_ID}
+    timeout: 20000
+- tapOn:
+    id: members.row.${MANUAL_ID}
+- scrollUntilVisible:
+    element: '{{t:membersScreen.beyondGrant}}'
+    timeout: 20000
+- assertNotVisible:
+    id: members.restore
+- takeScreenshot: member-beyond-grant-suspended
