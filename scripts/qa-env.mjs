@@ -775,7 +775,7 @@ function ensureExpoGo(udid) {
 }
 
 function installedIosRelease(root) {
-  return join(root, '.qa/release/installed-ios');
+  return join(root, '.qa/release/ios-release-on');
 }
 
 // A release build on the simulator not opened still owns soirely:// there. simctl
@@ -814,8 +814,9 @@ async function ios(args) {
     if (!udid) throw new Error(`no ${CONFIG.simulators[key].name} simulator — run setup`);
     withoutPasswordAutoFill(udid);
     run('xcrun', ['simctl', 'boot', udid], { optional: true });
-    run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true });
-    clearIosRelease(root, open);
+    if (run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true })) {
+      clearIosRelease(root, open);
+    }
     if (!ensureExpoGo(udid)) {
       throw new Error(
         `Expo Go is on no booted simulator to copy from. Install it once with \`npx expo start --ios\` on any simulator, then rerun.`,
