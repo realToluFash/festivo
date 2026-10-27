@@ -521,7 +521,9 @@ def worker_ended(home, platform, name, item_id, now=None, load=machine.load, db=
         entry["worker"] = name
     run = sessions.current(db, name) if db is not None else None
     if run and run.get("item") == item_id:
-        entry = {**run, **entry, "at": run.get("at", entry["at"]), "ended": entry["at"]}
+        stopped_at = entry["at"]
+        entry = {**run, **entry, "at": run.get("at", stopped_at)}
+        entry["duration_ms"] = int((stopped_at - entry["at"]) * 1000)
     runlog.append(home, role, entry)
     platform.notify(f"Soirely: {name}'s worker stopped", entry["report"])
     return entry
