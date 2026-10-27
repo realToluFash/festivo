@@ -43,6 +43,8 @@ import {
   linkIntent,
   maestroTarget,
   parseTarget,
+  passwordAutoFillFiles,
+  passwordAutoFillOff,
   playImage,
   QA_OVERRIDES,
   QA_PORTS,
@@ -317,6 +319,24 @@ describe('a release build', () => {
   it("builds for the Mac's own simulator architecture", () => {
     expect(simulatorArch('arm64')).toBe('arm64');
     expect(simulatorArch('x64')).toBe('x86_64');
+  });
+
+  it('turns password AutoFill off in every profile file the simulator reads', () => {
+    const files = passwordAutoFillFiles('/sims/ABC');
+    expect(files).toEqual([
+      '/sims/ABC/data/Library/UserConfigurationProfiles/UserSettings.plist',
+      '/sims/ABC/data/Library/UserConfigurationProfiles/EffectiveUserSettings.plist',
+      '/sims/ABC/data/Library/UserConfigurationProfiles/PublicInfo/PublicEffectiveUserSettings.plist',
+    ]);
+    const steps = passwordAutoFillOff(files[0]);
+    expect(steps.at(-1)).toEqual([
+      '-replace',
+      'restrictedBool.allowPasswordAutoFill.value',
+      '-bool',
+      'NO',
+      files[0],
+    ]);
+    expect(steps.every((step) => step.at(-1) === files[0])).toBe(true);
   });
 
   it('installs the bundle the app config names', () => {
