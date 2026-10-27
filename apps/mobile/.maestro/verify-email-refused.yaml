@@ -1,0 +1,27 @@
+# A wrong code, then a new one asked for, on the verification gate. sc-56.
+# The refusal is matched in English: the field shows it with no testID of its own.
+#
+#   node .qa/bin/qa-env.mjs maestro verify-email-refused EMAIL=… PASSWORD=…   an unverified account
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-unverified.yaml
+- takeScreenshot: mobile-verify-email
+- tapOn:
+    id: 'verifyEmail.code'
+- eraseText: 20
+- inputText: '000000'
+- takeScreenshot: mobile-verify-email-keyboard
+- tapOn:
+    id: 'verifyEmail.submit'
+- extendedWaitUntil:
+    visible: 'That code does not match.*'
+    timeout: 15000
+- takeScreenshot: mobile-verify-email-wrong
+- tapOn:
+    id: 'verifyEmail.resend'
+- extendedWaitUntil:
+    visible:
+      id: 'verifyEmail.resendSoon'
+    timeout: 15000
+- assertNotVisible: 'That code does not match.*'
+- takeScreenshot: mobile-verify-email-countdown

@@ -1,0 +1,23 @@
+# A session ended somewhere else lands on sign-in with the grey "You were signed
+# out" notice, and nothing saying why. sc-55. Run after `sign-in`, once the
+# session has been ended from another client (DELETE /api/auth/sessions/{id}).
+#
+# The relaunch is what makes it visible: the access token is in memory only, so
+# a fresh launch must refresh from the Keychain, and that refresh is refused.
+# The notice is matched in English: it has no testID.
+#
+#   node .qa/bin/qa-env.mjs maestro signed-out-elsewhere
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 60000
+- assertVisible: 'You were signed out'
+- assertVisible: 'Sign in again to carry on.'
+- waitForAnimationToEnd
+- takeScreenshot: mobile-signed-out-elsewhere
