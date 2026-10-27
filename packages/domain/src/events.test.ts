@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest';
 import {
   EVENT_TYPES,
   type EventDraft,
+  copiedEnd,
+  lengthInHours,
   draftOf,
   type VenueDraft,
   eventChanges,
@@ -20,6 +22,7 @@ import {
   savedWallClock,
   scheduleKept,
   skippedTime,
+  wallClockInstant,
 } from './events.ts';
 
 const DRAFT: EventDraft = {
@@ -374,5 +377,42 @@ describe('the order events are listed in (sc-1593)', () => {
     eventsInOrder(given, 'en');
 
     expect(given.map((e) => e.name)).toEqual(['B', 'A']);
+  });
+});
+
+describe('a copy of an event (sc-3593)', () => {
+  const lagos = { startsAt: '2026-11-14T16:00:00+01:00', endsAt: '2026-11-15T02:00:00+01:00' };
+
+  it('ends as long after its new start as the original did', () => {
+    expect(copiedEnd('2027-05-15', '16:00', 'Africa/Lagos', lagos)).toEqual(
+      new Date('2027-05-16T01:00:00Z'),
+    );
+    expect(lengthInHours(lagos)).toBe(10);
+  });
+
+  it('keeps the elapsed length across a change of clocks, as the API does', () => {
+    const overTheChange = {
+      startsAt: '2030-03-30T20:00:00+00:00',
+      endsAt: '2030-03-31T08:00:00+01:00',
+    };
+
+    expect(copiedEnd('2030-06-01', '20:00', 'Europe/London', overTheChange)).toEqual(
+      new Date('2030-06-02T06:00:00Z'),
+    );
+    expect(lengthInHours(overTheChange)).toBe(11);
+  });
+
+  it('has no end until the start has a date and a time', () => {
+    expect(copiedEnd('2027-05-15', '', 'Africa/Lagos', lagos)).toBeNull();
+    expect(copiedEnd('', '16:00', 'Africa/Lagos', lagos)).toBeNull();
+  });
+
+  it('reads a repeated time at its earlier offset and a skipped one later by the gap', () => {
+    expect(wallClockInstant('2030-10-27', '01:30', 'Europe/London')).toBe(
+      Date.parse('2030-10-27T00:30:00Z'),
+    );
+    expect(wallClockInstant('2030-03-31', '01:30', 'Europe/London')).toBe(
+      Date.parse('2030-03-31T01:30:00Z'),
+    );
   });
 });

@@ -107,6 +107,23 @@ export function formatEventDate(moment: string, timeZone: string, locale: string
   return new Intl.DateTimeFormat(locale, { ...EVENT_DAY, timeZone }).format(date);
 }
 
+export function formatEventMoment(moment: string | Date, timeZone: string, locale: string): string {
+  const date = asDate(moment);
+
+  if (date == null) return '';
+
+  return new Intl.DateTimeFormat(locale, { ...EVENT_DAY, ...EVENT_CLOCK, timeZone }).format(date);
+}
+
+export function formatHours(hours: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
+    style: 'unit',
+    unit: 'hour',
+    unitDisplay: 'long',
+    maximumFractionDigits: 2,
+  }).format(hours);
+}
+
 /** Not `formatRange`, which Hermes does not have: the app's event page crashed on it. */
 export function formatEventRange(
   startsAt: string,

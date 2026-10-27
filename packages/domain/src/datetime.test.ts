@@ -5,6 +5,8 @@ import {
   formatCountdown,
   formatDay,
   formatEventDate,
+  formatEventMoment,
+  formatHours,
   formatEventRange,
   formatTimeOfDay,
   formatWallClock,
@@ -216,5 +218,18 @@ describe('a wall-clock day and time, as the event page writes them', () => {
     expect(formatWallDay('2027-03-', 'en')).toBe('');
     expect(formatWallClock('', 'en')).toBe('');
     expect(formatWallClock('2027-03-28T03:30:00+02:00', 'en')).toBe('');
+  });
+});
+
+describe('the end of a copy, as its form works it out (sc-3593)', () => {
+  it('is a day and a clock in the event’s zone', () => {
+    expect(formatEventMoment('2027-05-16T01:00:00Z', 'Africa/Lagos', 'en')).toBe(
+      'Sun, May 16, 2027, 02:00',
+    );
+  });
+
+  it('is so many hours later, in the reader’s words', () => {
+    expect([formatHours(10, 'en'), formatHours(1, 'en')]).toEqual(['10 hours', '1 hour']);
+    expect(formatHours(1.5, 'fr')).toMatch(/^1,5\sheure$/u);
   });
 });

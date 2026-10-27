@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Event\Controller;
 
 use App\Domain\Event\EventCreator;
+use App\Domain\Event\EventDuplicator;
 use App\Domain\Event\EventEditor;
 use App\Domain\Event\EventLifecycle;
 use App\Domain\Event\Http\EventSerialiser;
@@ -37,6 +38,7 @@ final readonly class EventsController
         private EventEditor $eventEditor,
         private EventSerialiser $eventSerialiser,
         private EventLifecycle $eventLifecycle,
+        private EventDuplicator $eventDuplicator,
     ) {
     }
 
@@ -102,6 +104,20 @@ final readonly class EventsController
         ]));
 
         return $this->tagged($this->eventEditor->edit($event, $request->headers->get('If-Match'), $this->user(), $body));
+    }
+
+    /** A Draft from `startsAt`, local to the original's zone, in any phase (sc-3593). Needs Create events, since it creates one. */
+    #[Route('/api/events/{eventId}/duplicate', name: 'events_duplicate', methods: ['POST'])]
+    #[InEvent(Permission::EventsCreate)]
+    public function duplicate(Request $request, string $eventId): JsonResponse
+    {
+        $body = Input::body($request, Type\shape([
+            'startsAt' => Type\optional(Type\nullable(Type\string())),
+        ]));
+
+        $copy = $this->eventDuplicator->duplicate($this->event($eventId), $this->user(), $body['startsAt'] ?? null);
+
+        return new JsonResponse(['event' => $this->eventSerialiser->event($copy)], Response::HTTP_CREATED);
     }
 
     /** Refused 409 `event_state_invalid` unless it is a Draft, 409 `event_concluded` once its end has passed, 409 `event_host_required` with no host (sc-6713), and 403 `plan_limit` (sc-3584). */

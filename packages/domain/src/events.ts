@@ -112,6 +112,39 @@ export function skippedTime(
   return { savedAs: new Date(local - before + after).toISOString().slice(0, 16) };
 }
 
+/** The instant the API's LocalTimeResolver makes of a wall-clock time; a repeated time takes the earlier offset. */
+export function wallClockInstant(date: string, time: string, timeZone: string): number | null {
+  const typed = localDateTime(date, time);
+  const local = typed == null ? Number.NaN : Date.parse(`${typed}Z`);
+  const offsetAt = Number.isNaN(local) || timeZone === '' ? null : zoneOffsets(timeZone);
+
+  if (offsetAt == null) return null;
+
+  const before = offsetAt(local - DAY);
+  const after = offsetAt(local + DAY);
+  const held = [before, after].filter((offset) => offsetAt(local - offset) === offset);
+
+  return local - (held[0] ?? before);
+}
+
+/** As the API's EventDuplicator ends a copy: the original's elapsed length after the new start (sc-3593). */
+export function copiedEnd(
+  date: string,
+  time: string,
+  timeZone: string,
+  original: { startsAt: string; endsAt: string },
+): Date | null {
+  const start = wallClockInstant(date, time, timeZone);
+
+  return start == null
+    ? null
+    : new Date(start + Date.parse(original.endsAt) - Date.parse(original.startsAt));
+}
+
+export function lengthInHours(event: { startsAt: string; endsAt: string }): number {
+  return (Date.parse(event.endsAt) - Date.parse(event.startsAt)) / 3_600_000;
+}
+
 function zoneOffsets(timeZone: string): ((instant: number) => number) | null {
   let format: Intl.DateTimeFormat;
 

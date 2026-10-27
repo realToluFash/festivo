@@ -2305,6 +2305,15 @@ describe('events (sc-1486)', () => {
     ]);
   });
 
+  test('an event is duplicated from a start local to its zone (sc-3593)', async () => {
+    const { api, sent } = client(() => json({ event: { ...EVENT, id: 'e2' } }, 201));
+
+    expect(await api.duplicateEvent(EVENT.id, '2027-05-15T16:00')).toEqual({ ...EVENT, id: 'e2' });
+    expect(sent).toEqual([
+      { line: `POST /api/events/${EVENT.id}/duplicate`, body: { startsAt: '2027-05-15T16:00' } },
+    ]);
+  });
+
   test('an event in a shape it does not know, or a status it does not know, is an error', async () => {
     await expect(
       client(() => json({ events: [{ ...EVENT, status: 'published' }] })).api.events('org_1'),
