@@ -546,3 +546,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   is « Calendrier complet », its panel « Prochaines dates ». Distances follow the date :
   « aujourd’hui », « dans 3 jours », « il y a 2 jours ». The API titles keep the name as
   subject, « {name} commence », « {name} se termine », so no « de » has to elide before it.
+- **27 Oct 2026. Les onglets de l’accueil Événements et leurs états vides** (sc-15981 pour
+  sc-3594, `events.*`, `eventsScreen.*`). Les onglets sont « À venir », « Brouillons » et
+  « Passés ». « Make live » reste « publier » ; « Called off on » est « Annulé le {{date}} ».
+  « Next up » est « Prochaine étape », comme `timeline.nextUp`, et l’état vide des événements à
+  venir le reprend. Le décompte annoncé dit « supplémentaire(s) », « d’événements » au `many`.
+  `moreFailed` reprend la seconde phrase de l’échec de chargement de son écran, comme en anglais.
