@@ -17,6 +17,7 @@ use App\Enum\NotificationDeliveryStatus;
 use App\Enum\NotificationHold;
 use App\Enum\NotificationPriority;
 use App\Enum\ScheduledNotificationStatus;
+use App\Repository\EventMuteRepository;
 use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -52,6 +53,7 @@ final class NotificationWorker
         private readonly Connection $connection,
         private readonly NotificationRegistry $notificationRegistry,
         private readonly ChannelSelector $channelSelector,
+        private readonly EventMuteRepository $eventMuteRepository,
         private readonly ClockInterface $clock,
         private readonly LoggerInterface $logger,
         #[AutowireIterator(AudienceResolverInterface::TAG)]
@@ -216,9 +218,10 @@ final class NotificationWorker
     {
         $sourceId = Type\string()->coerce($this->connection->fetchOne('SELECT source_id FROM scheduled_notifications WHERE id = :id', ['id' => $scheduledId]));
         $now = $this->clock->now();
+        $muted = null === $eventId || NotificationAudienceKind::Member !== $kind ? [] : $this->eventMuteRepository->findMutedAmong($eventId, $recipients);
 
         foreach ($recipients as $recipient) {
-            foreach ($this->channelSelector->select($kind, $recipient, $type->category(), $type->channels()) as $channel) {
+            foreach ($this->channelSelector->select($kind, $recipient, $type->category(), $type->channels(), Iter\contains($muted, $recipient->toRfc4122())) as $channel) {
                 $urgent = NotificationPriority::Urgent === $type->priority() || NotificationChannel::InApp === $channel;
                 $this->connection->executeStatement(
                     <<<'SQL'
@@ -337,7 +340,7 @@ final class NotificationWorker
         $payloads = [self::dict($row['payload']), ...Vec\map($collapsed, static fn (array $sibling): array => self::dict($sibling['payload']))];
 
         try {
-            $providerId = $sender->send(Uuid::fromString($id), $recipient, $type->render($channel, $recipient, $payloads));
+            $providerId = $sender->send(Uuid::fromString($id), $recipient, $type->category(), $type->render($channel, $recipient, $payloads));
         } catch (Unreachable $unreachable) {
             if (!$this->forgetIfCancelled($id)) {
                 $this->finishDelivery($id, NotificationDeliveryStatus::Failed, $unreachable->getMessage(), attempted: true);

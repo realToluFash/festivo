@@ -6,6 +6,7 @@ namespace App\Domain\Messaging\Interfaces;
 
 use App\Domain\Messaging\Model\Recipient;
 use App\Domain\Messaging\Model\RenderedNotification;
+use App\Enum\NotificationCategory;
 use App\Enum\NotificationChannel;
 use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 use Symfony\Component\Uid\Uuid;
@@ -26,5 +27,5 @@ interface ChannelSenderInterface
      *
      * @throws Throwable whose message is recorded as the provider's reason
      */
-    public function send(Uuid $deliveryId, Recipient $recipient, RenderedNotification $notification): ?string;
+    public function send(Uuid $deliveryId, Recipient $recipient, NotificationCategory $category, RenderedNotification $notification): ?string;
 }

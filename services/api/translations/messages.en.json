@@ -217,5 +217,6 @@
     "validation.cover_position_invalid": "Choose a position from 0, the top of the photo, to 100, the bottom.",
     "validation.cover_photo_required": "Choose a photo for the cover.",
     "validation.cover_upload_missing": "The photo did not upload. Try again.",
-    "event.delete_name_mismatch": "Type {name} exactly as shown to delete it."
+    "event.delete_name_mismatch": "Type {name} exactly as shown to delete it.",
+    "notifications.not_switchable": "Account and security emails cannot be switched off."
 }

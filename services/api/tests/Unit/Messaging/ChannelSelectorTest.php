@@ -42,8 +42,21 @@ final class ChannelSelectorTest extends TestCase
     {
         self::assertSame(
             [NotificationChannel::Email],
-            new ChannelSelector(new ProductDefaultPreferences())->select(NotificationAudienceKind::Guest, Uuid::v7(), NotificationCategory::Messages, [NotificationChannel::Push, NotificationChannel::Email]),
+            new ChannelSelector(new ProductDefaultPreferences())->select(NotificationAudienceKind::Guest, Uuid::v7(), NotificationCategory::Messages, [NotificationChannel::Push, NotificationChannel::Email], false),
         );
+    }
+
+    #[Test]
+    public function aMutedEventReachesTheBellAlone(): void
+    {
+        self::assertSame([NotificationChannel::InApp], $this->select(NotificationCategory::EventChanges, self::ALL, muted: true));
+        self::assertSame([NotificationChannel::InApp], $this->select(NotificationCategory::Messages, self::ALL, muted: true));
+    }
+
+    #[Test]
+    public function aMutedEventsEventDayItemsStillPush(): void
+    {
+        self::assertSame([NotificationChannel::InApp, NotificationChannel::Push], $this->select(NotificationCategory::EventDay, self::ALL, muted: true));
     }
 
     /**
@@ -51,8 +64,8 @@ final class ChannelSelectorTest extends TestCase
      *
      * @return list<NotificationChannel>
      */
-    private function select(NotificationCategory $category, array $offered): array
+    private function select(NotificationCategory $category, array $offered, bool $muted = false): array
     {
-        return new ChannelSelector(new ProductDefaultPreferences())->select(NotificationAudienceKind::Member, Uuid::v7(), $category, $offered);
+        return new ChannelSelector(new ProductDefaultPreferences())->select(NotificationAudienceKind::Member, Uuid::v7(), $category, $offered, $muted);
     }
 }

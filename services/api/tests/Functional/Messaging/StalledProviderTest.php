@@ -9,6 +9,7 @@ use App\Domain\Messaging\Command\WorkNotificationsCommand;
 use App\Domain\Messaging\Model\Recipient;
 use App\Domain\Messaging\Model\RenderedNotification;
 use App\Enum\NotificationAudienceKind;
+use App\Enum\NotificationCategory;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Mailer\Exception\TransportException;
@@ -31,7 +32,7 @@ final class StalledProviderTest extends TestCase
         $started = \microtime(true);
 
         try {
-            $sender->send(Uuid::v7(), new Recipient(NotificationAudienceKind::Member, Uuid::v7(), 'Ada', 'en', 'ada@example.test'), new RenderedNotification('Code', '123456'));
+            $sender->send(Uuid::v7(), new Recipient(NotificationAudienceKind::Member, Uuid::v7(), 'Ada', 'en', 'ada@example.test'), NotificationCategory::AccountSecurity, new RenderedNotification('Code', '123456'));
             self::fail('A silent provider was taken for a sent message.');
         } catch (TransportException) {
             self::assertLessThan(5.0, \microtime(true) - $started);

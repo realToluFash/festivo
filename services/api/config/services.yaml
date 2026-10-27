@@ -205,8 +205,7 @@ services:
 
     App\Domain\Event\Interfaces\ActiveEventsLimitInterface: '@App\Domain\Event\UnlimitedActiveEvents'
 
-    # Epic 36's product defaults until sc-3980 stores each member's own; that story swaps this line.
-    App\Domain\Messaging\Interfaces\NotificationPreferencesInterface: '@App\Domain\Messaging\ProductDefaultPreferences'
+    App\Domain\Messaging\Interfaces\NotificationPreferencesInterface: '@App\Domain\Messaging\StoredNotificationPreferences'
 
 when@test:
     services:
@@ -215,6 +214,9 @@ when@test:
             public: true
             autoconfigure: true
         App\Domain\Messaging\Channel\EmailSender: '@App\Tests\Double\Messaging\RecordingEmailSender'
+        App\Tests\Double\Messaging\RecordingHub:
+            public: true
+        Symfony\Component\Mercure\HubInterface: '@App\Tests\Double\Messaging\RecordingHub'
         App\Tests\Double\Messaging\Meanwhile:
             public: true
         test.notification.notice:
@@ -257,6 +259,19 @@ when@test:
                 {
                     $name: 'test.host_message',
                     $eventRule: !php/enum App\Enum\NotificationEventRule::HostMessage,
+                }
+        test.notification.bell:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                {
+                    $name: 'test.bell',
+                    $channels:
+                        [
+                            !php/enum App\Enum\NotificationChannel::InApp,
+                            !php/enum App\Enum\NotificationChannel::Email,
+                        ],
+                    $category: !php/enum App\Enum\NotificationCategory::EventChanges,
                 }
         test.notification.guest:
             class: App\Tests\Double\Messaging\ScriptedNotificationType
