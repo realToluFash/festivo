@@ -303,11 +303,12 @@ export interface BroughtIntoView {
   read: RefObject<View | null>;
 }
 
-/** Brings `shown` wholly into sight once it mounts, unless it already is, then moves screen reader focus to `read`. */
-export function useBroughtIntoView(): BroughtIntoView {
+/** Brings `shown` wholly into sight once it mounts, unless it already is, then moves screen reader focus to `read` (`readRef` when given). */
+export function useBroughtIntoView(readRef?: RefObject<View | null>): BroughtIntoView {
   const scroll = useContext(ScreenScroll);
   const ref = useRef<View>(null);
-  const read = useRef<View>(null);
+  const ownRead = useRef<View>(null);
+  const read = readRef ?? ownRead;
 
   useEffect(
     () =>
@@ -317,7 +318,7 @@ export function useBroughtIntoView(): BroughtIntoView {
         () => read.current,
         true,
       ),
-    [scroll],
+    [scroll, read],
   );
 
   return { shown: ref, read };

@@ -1,9 +1,13 @@
 import { ApiError, type TaggedEvent } from '@soirely/api-client';
 import {
   EVENT_NAME_MAXIMUM,
-  HOST_NAME_MAXIMUM,
   type EventDraft,
-  hostProblems,
+  type HostErrors,
+  type HostRow,
+  firstRefusedOf,
+  hostErrorsOf,
+  hostRefusalsOf,
+  hostRequiredOf,
   hostsChanged,
   hostsSent,
   draftOf,
@@ -53,7 +57,7 @@ import {
   inputFor,
 } from './eventFieldOrder.ts';
 import { typeChoices } from './eventTypes.ts';
-import { type HostErrors, type HostRow, HostsSection } from './HostsSection.tsx';
+import { HostsSection } from './HostsSection.tsx';
 import { VenueSection } from './VenueSection.tsx';
 
 /** What the event page announces once the form has closed (sc-3587). */
@@ -70,8 +74,6 @@ type Typed = {
   venue: VenueDraft;
   hosts: HostRow[];
 };
-
-const HOST_PATH = /^hosts\[(\d+)\]$/;
 
 export function EditEvent() {
   const session = useSession();
@@ -292,39 +294,19 @@ function DetailsForm({
     setErrors((previous) => ({ ...previous, [field]: undefined }));
   }
 
-  function hostErrorsOf(rows: readonly HostRow[]): HostErrors {
-    const found: HostErrors = {};
-
-    hostProblems(rows.map((row) => row.name)).forEach((problem, index) => {
-      const row = rows[index];
-
-      if (problem == null || row == null) return;
-
-      found[row.key] =
-        problem.problem === 'hostBlank'
-          ? t('eventHosts.blank')
-          : problem.problem === 'hostTooLong'
-            ? t('eventHosts.tooLong', { most: HOST_NAME_MAXIMUM, length: problem.length })
-            : t('eventHosts.duplicate', { name: problem.name });
-    });
-
-    return found;
-  }
-
   /** Focus goes to the first refused in page order: the name and type, then the hosts top to bottom, then the rest. */
   function refuse(
     found: Errors,
     focus = (id: string) => document.getElementById(id)?.focus(),
     hostFound: HostErrors = {},
   ): void {
-    const first = FIELDS.find((field) => found[field] != null);
-    const host = hosts.find((row) => hostFound[row.key] != null);
+    const first = firstRefusedOf(found, hostFound, hosts);
     const id =
-      first != null && (first === 'name' || first === 'type' || host == null)
-        ? inputFor(first, draft)
-        : host == null
-          ? null
-          : hostInputId(host);
+      first == null
+        ? null
+        : 'field' in first
+          ? inputFor(first.field, draft)
+          : hostInputId({ key: first.host });
 
     focusNext.current = id == null ? null : () => focus(id);
     setErrors(found);
@@ -334,13 +316,13 @@ function DetailsForm({
   function editHosts(rows: HostRow[], touched: number | null): void {
     setTyped((previous) => ({ ...previous, hosts: rows }));
     if (touched != null) setHostErrors((previous) => ({ ...previous, [touched]: undefined }));
-    else if (hostsChecked) setHostErrors(hostErrorsOf(rows));
+    else if (hostsChecked) setHostErrors(hostErrorsOf(rows, t));
   }
 
   function leaveHost(row: HostRow): void {
     if (!hostsChecked) return;
 
-    setHostErrors((previous) => ({ ...previous, [row.key]: hostErrorsOf(hosts)[row.key] }));
+    setHostErrors((previous) => ({ ...previous, [row.key]: hostErrorsOf(hosts, t)[row.key] }));
   }
 
   function close(outcome: EditOutcome): void {
@@ -353,7 +335,7 @@ function DetailsForm({
     if (busy) return;
 
     const found: Errors = eventFormErrors(typed, t);
-    const hostFound = hostErrorsOf(hosts);
+    const hostFound = hostErrorsOf(hosts, t);
 
     const unsentFields = Object.keys(found).length + Object.keys(hostFound).length;
 
@@ -396,9 +378,13 @@ function DetailsForm({
         return;
       }
 
-      if (error instanceof ApiError && error.is('event_host_required') && hosts[0] != null) {
+      const hostRequired =
+        error instanceof ApiError && error.is('event_host_required')
+          ? hostRequiredOf(hosts, t)
+          : null;
+      if (hostRequired != null) {
         setStatus('editing');
-        refuse({}, land, { [hosts[0].key]: t('eventHosts.lastHostRefused') });
+        refuse({}, land, hostRequired);
         return;
       }
 
@@ -412,12 +398,7 @@ function DetailsForm({
       const fromServer: Errors = {};
       for (const field of FIELDS) if (refused[field] != null) fromServer[field] = refused[field];
 
-      const hostsFromServer: HostErrors = {};
-      for (const [path, message] of Object.entries(refused)) {
-        const index = path === 'hosts' ? hosts.length - 1 : Number(HOST_PATH.exec(path)?.[1]);
-        const row = hosts[index];
-        if (row != null) hostsFromServer[row.key] ??= message;
-      }
+      const hostsFromServer = hostRefusalsOf(refused, hosts);
 
       if (Object.keys(fromServer).length + Object.keys(hostsFromServer).length > 0) {
         setStatus('editing');
