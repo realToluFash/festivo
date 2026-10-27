@@ -1,0 +1,9 @@
+# sc-13205: an organisation with no events, for a role that can create them.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.none.new'
+    timeout: 30000
+- takeScreenshot: empty
