@@ -1,4 +1,5 @@
 import type { Membership } from '@soirely/api-client';
+import i18next from 'i18next';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
@@ -62,7 +63,8 @@ function backToTheTab(): void {
   });
 }
 
-afterEach(() => {
+afterEach(async () => {
+  await i18next.changeLanguage('en');
   vi.restoreAllMocks();
   window.localStorage.clear();
 });
@@ -105,6 +107,19 @@ describe('removed from their only organisation while signed in (sc-16229)', () =
     expect(
       await screen.findByRole('heading', { name: 'You are not in an organisation' }),
     ).toBeDefined();
+  });
+
+  it('does the same on a pick in Language, in the language picked', async () => {
+    signedInWith([IRE]);
+    at('/app/account');
+    nowIn([]);
+
+    await act(() => i18next.changeLanguage('fr'));
+
+    expect(
+      await screen.findByRole('link', { name: /Rejoindre ou créer une organisation/ }),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: /Ìrè Events/ })).toBeNull();
   });
 });
 
