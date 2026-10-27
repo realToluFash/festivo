@@ -1,7 +1,7 @@
 # Create an organisation, from the switcher's row. Shared, as open-settings.yaml is.
 appId: host.exp.Exponent
 ---
-- openLink: ${METRO_URL}/--/
+- runFlow: return-home.yaml
 - tapOn:
     id: 'home.switchOrganisation'
 - scrollUntilVisible:
