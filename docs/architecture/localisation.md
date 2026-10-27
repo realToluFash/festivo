@@ -93,6 +93,7 @@ places to forget, and no answer to "is this checked everywhere?".
 | No empty messages               | An empty message renders as nothing, which reads as a layout bug                                 |
 | Identical interpolation slots   | `{{count}}` in one locale and `{{total}}` in another leaves a hole in a sentence                 |
 | Complete plural families        | `_one` with no `_other` falls back for every number except one — the plural most readers see     |
+| No bare numbers                 | `{{count}}` writes «1000000 de personnes» where French writes « 1 000 000 de personnes »         |
 
 Each of those is proved to fail by a deliberately-broken fixture under
 `packages/i18n-lint/src/__fixtures__`. A guard nobody has watched fail is a guard nobody
@@ -142,6 +143,11 @@ with.
 
 - **Never concatenate a sentence.** `'Send to ' + n + ' guests?'` is English word order
   baked into code. One string, with slots.
+- **A number a person reads is formatted**: `{{count, number}}` on the clients,
+  `{count, number, ::group-auto}` in the API's ICU catalogues. Bare `{count}`, a plain
+  `{count, number}` and ICU's `#` all ignore CLDR's minimum grouping or skip formatting,
+  and the slots that count are listed in `NUMBER_SLOTS`. Portuguese numbers are pt-PT's,
+  like its plurals. A phone number, a code or a year names rather than counts: never grouped.
 - **Counts take plural families**, not a ternary at the call site. Plural rules are not
   "one versus everything else" in every language.
 - **A label in a module-level constant cannot be translated where it sits** — it is built
