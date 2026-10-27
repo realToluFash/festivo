@@ -41,6 +41,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **27 Oct 2026. Duplicar um evento** (sc-15883 para sc-3593, `web:eventDuplicate.*`). "Duplicar"
+  e "Criar rascunho"; o evento novo é "a cópia" até existir. O painel diz "O que é copiado" / "O
+  que não é copiado", porque um particípio sozinho teria de concordar com cada linha. Length é
+  "Duração". Uma recusa começa "Não foi criado.", como "Não foi publicado.". As horas e os
+  minutos juntam-se com "e" em `hoursAndMinutes` ("2 horas e 20 minutos"); a data leva "no dia
+  {{end}}", como `calledOffNotice`, e "Horas no fuso horário {{timeZone}}", como o formulário.
 - **27 Oct 2026. Os anfitriões de um evento** (sc-15427 para sc-6713, `web:eventHosts.*`,
   `eventLive.needsHost*|addHosts` web e app, `messages:validation.event_host*`,
   `messages:event.host_required|last_host`). Host é "anfitrião", como `errors:event_host_required`;
