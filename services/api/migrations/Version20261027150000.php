@@ -11,41 +11,28 @@ final class Version20261027150000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'A trigger keeps an exact moment apart from a caller\'s calendar day, which follows the event\'s zone (sc-17127).';
+        return 'A scheduled notification names its audience\'s organisation, and goes at that organisation\'s purge (sc-17126).';
     }
 
     public function up(Schema $schema): void
     {
-        // Trigger::at wrote a date anchor at PT0S with no time of day; any other date row was a caller's day.
+        $this->addSql('ALTER TABLE scheduled_notifications ADD organisation_id UUID DEFAULT NULL');
         $this->addSql(<<<'SQL'
-            UPDATE scheduled_notifications
-            SET    trigger = jsonb_build_object('anchor', 'moment', 'moment', trigger->>'date', 'day', NULL, 'offset', 'PT0S', 'timeOfDay', NULL)
-            WHERE  trigger->>'anchor' = 'date'
-              AND  trigger->>'offset' = 'PT0S'
-              AND  trigger->>'timeOfDay' IS NULL
+            UPDATE scheduled_notifications s
+            SET    organisation_id = CAST(s.audience->>'organisationId' AS UUID)
+            WHERE  s.audience->>'organisationId' IS NOT NULL
+              AND  EXISTS (SELECT 1 FROM organisations o WHERE o.id = CAST(s.audience->>'organisationId' AS UUID))
             SQL);
         $this->addSql(<<<'SQL'
-            UPDATE scheduled_notifications
-            SET    trigger = jsonb_build_object('anchor', 'date', 'moment', NULL, 'day', LEFT(trigger->>'date', 10), 'offset', trigger->>'offset', 'timeOfDay', trigger->>'timeOfDay')
-            WHERE  trigger->>'anchor' = 'date'
+            ALTER TABLE scheduled_notifications
+                ADD CONSTRAINT FK_SCHEDULED_NOTIFICATION_ORGANISATION
+                FOREIGN KEY (organisation_id) REFERENCES organisations (id) ON DELETE CASCADE NOT DEFERRABLE
             SQL);
-        $this->addSql(<<<'SQL'
-            UPDATE scheduled_notifications
-            SET    trigger = (trigger - 'date') || jsonb_build_object('moment', NULL, 'day', NULL)
-            WHERE  trigger->>'anchor' IN ('event_start', 'event_end')
-            SQL);
+        $this->addSql('CREATE INDEX idx_scheduled_notification_organisation ON scheduled_notifications (organisation_id)');
     }
 
     public function down(Schema $schema): void
     {
-        $this->addSql(<<<'SQL'
-            UPDATE scheduled_notifications
-            SET trigger = jsonb_build_object(
-                'anchor',    CASE WHEN trigger->>'anchor' = 'moment' THEN 'date' ELSE trigger->>'anchor' END,
-                'date',      COALESCE(trigger->>'moment', CASE WHEN trigger->>'day' IS NOT NULL THEN (trigger->>'day') || 'T00:00:00+00:00' END),
-                'offset',    trigger->>'offset',
-                'timeOfDay', trigger->>'timeOfDay'
-            )
-            SQL);
+        $this->addSql('ALTER TABLE scheduled_notifications DROP organisation_id');
     }
 }

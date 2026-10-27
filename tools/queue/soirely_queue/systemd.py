@@ -8,9 +8,10 @@ import pathlib
 import shutil
 import subprocess
 
-from . import machine
+from . import machine, remote
 
 TIMER = "soirely-routine"
+WEB = "soirely-web"
 SLICE = "soirely.slice"
 # What a notification needs to reach the desktop from a unit.
 DESKTOP = ("DBUS_SESSION_BUS_ADDRESS", "DISPLAY", "WAYLAND_DISPLAY")
@@ -30,7 +31,8 @@ def search_path():
     finds neither claude nor a version manager's node."""
     found = [str(pathlib.Path(shutil.which(tool)).parent)
              for tool in ("claude", "gh", "git", "docker", "python3") if shutil.which(tool)]
-    return ":".join(dict.fromkeys(found + ["/usr/local/bin", "/usr/bin", "/bin"]))
+    return ":".join(dict.fromkeys(machine.tool_folders() + found +
+                                  ["/usr/local/bin", "/usr/bin", "/bin"]))
 
 
 def units(sq, env_file, python="/usr/bin/python3", slice_memory=machine.SLICE_MEMORY):
@@ -70,6 +72,27 @@ def units(sq, env_file, python="/usr/bin/python3", slice_memory=machine.SLICE_ME
     }
 
 
+def web_unit(sq, env_file, python, listen):
+    """`sq web`, kept running so the other machines can read this one."""
+    host, port = listen
+    return "\n".join([
+        "[Unit]",
+        "Description=Soirely agents' page, for this machine and the others on its network",
+        "",
+        "[Service]",
+        "Type=simple",
+        f"EnvironmentFile=-{env_file}",
+        f"Environment=PATH={search_path()}",
+        f"ExecStart={python} {sq} web --no-open --listen {host} --port {port}",
+        "Restart=always",
+        "RestartSec=5",
+        "",
+        "[Install]",
+        "WantedBy=default.target",
+        "",
+    ])
+
+
 def systemctl(*args, check=True):
     return subprocess.run(["systemctl", "--user", *args], capture_output=True, text=True,
                           check=check)
@@ -77,6 +100,7 @@ def systemctl(*args, check=True):
 
 class Linux:
     name = "systemd"
+    search_path = staticmethod(search_path)
 
     def install(self, sq, env_file, python):
         """Writes the units when they differ, and says whether anything changed."""
@@ -94,6 +118,28 @@ class Linux:
                 changed = True
         if changed:
             systemctl("daemon-reload")
+        return self.install_web(sq, env_file, python, remote.web(remote.config())) or changed
+
+    def install_web(self, sq, env_file, python, listen):
+        """Keeps the web service running while agents.json has `web`, and takes it away once
+        it has not. Says whether anything changed."""
+        target = unit_dir() / f"{WEB}.service"
+        if not listen:
+            if not target.exists():
+                return False
+            systemctl("disable", "--now", f"{WEB}.service", check=False)
+            target.unlink()
+            systemctl("daemon-reload")
+            return True
+        text = web_unit(sq, env_file, python, listen)
+        changed = not target.exists() or target.read_text() != text
+        if changed:
+            target.write_text(text)
+            systemctl("daemon-reload")
+            systemctl("enable", f"{WEB}.service", check=False)
+            systemctl("restart", f"{WEB}.service", check=False)
+        elif systemctl("is-active", f"{WEB}.service", check=False).stdout.strip() != "active":
+            systemctl("start", f"{WEB}.service", check=False)
         return changed
 
     def enable(self):

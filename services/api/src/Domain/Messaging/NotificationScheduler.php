@@ -60,6 +60,7 @@ final readonly class NotificationScheduler
                 'cancellation_key' => $cancellationKey,
                 'source_id' => $sourceId,
                 'event_id' => $event?->getId()->toRfc4122(),
+                'organisation_id' => $audience->organisationId?->toRfc4122(),
                 'trigger' => Json\encode($trigger->toArray()),
                 'due_at' => $dueAt,
                 'send_by' => $definition->tooLateAt($dueAt, $times),

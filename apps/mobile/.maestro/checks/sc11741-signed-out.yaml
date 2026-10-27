@@ -1,0 +1,34 @@
+# sc-11741: signed out on Ask to join, the link replaced elsewhere, then Sign in: once signed in, the dead-link screen. Pass API, TOKEN, ORG, EMAIL and PASSWORD.
+# It signs the batch's session out: run it last in its batch, or alone with --cold.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- evalScript: "${output.link = json(http.request(API + '/api/orgs/' + ORG + '/request-link', {method: 'PUT', headers: {Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json'}, body: '{}'}).body).url.split('/join/')[1]}"
+- openLink: ${METRO_URL}/--/join/${output.link}
+- extendedWaitUntil:
+    visible:
+      id: 'requestToJoin.signIn'
+    timeout: 30000
+- takeScreenshot: signed-out-open
+- evalScript: "${output.replaced = http.post(API + '/api/orgs/' + ORG + '/request-link/replace', {headers: {Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json'}, body: '{}'}).status}"
+- assertTrue: ${output.replaced == 200}
+- tapOn:
+    id: 'requestToJoin.signIn'
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- eraseText: 120
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'signIn.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'requestToJoin.home'
+    timeout: 30000
+- assertNotVisible:
+    id: 'requestToJoin.ask'
+- takeScreenshot: signed-in-dead

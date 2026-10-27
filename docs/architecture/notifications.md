@@ -162,3 +162,14 @@ no longer an audience and a deleted event's guests are read through a live event
 fan-out would reach nobody. A held row past its too-late moment is recorded **Not sent:
 too late**. Once the event or its organisation is restored, the held rows go within a
 minute, each to its audience as it resolves then.
+
+An organisation's rows with no event, scheduled for its members, wait for its restore in
+the same way (sc-17126): while the organisation is deleted, a due row is held before
+fan-out and a delivery already written is held, and both go within a minute of
+`app:restore-organisation`. A row not yet due at the restore goes at its due time. Each row
+names its audience's organisation (`organisation_id`), so at the organisation's purge
+(`app:prune-deleted`) every row with no event goes with it, deliveries and all, whatever its
+state, as an event's rows go with the event. This hold does not read the type's event rule, so a
+deletion notice scheduled with no event would wait like any other row and go at the purge
+unsent; an organisation-level deletion notice sent through the scheduler needs its own
+exception here first.
