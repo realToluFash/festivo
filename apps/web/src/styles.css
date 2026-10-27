@@ -420,17 +420,25 @@ span {
   }
 
   .shell-menu-button {
-    display: block;
+    display: flex;
     flex: none;
+    align-items: center;
+    gap: var(--spaceXs);
     min-height: var(--sizeHit);
     padding: 0 var(--spaceLg);
     border: var(--borderControl);
-    border-radius: var(--radiusField);
+    border-radius: var(--radiusPill);
+    white-space: nowrap;
     background: var(--colorCard);
     color: var(--colorInk);
     font: var(--typeButton);
     cursor: pointer;
   }
+}
+
+.shell-menu-button svg {
+  width: 16px;
+  height: 16px;
 }
 
 .shell-menu {
