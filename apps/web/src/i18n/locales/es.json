@@ -1063,7 +1063,7 @@
     "invitationsNote": "Nadie entra en la organización hasta que acepta la invitación.",
     "noInvitations": "No se ha enviado ninguna invitación.",
     "invitedAs": "{{role}} · invitación enviada por {{inviter}}",
-    "invitedAsByYou": "{{role}} · invited by you",
+    "invitedAsByYou": "{{role}} · invitación enviada por usted",
     "dates": {
       "pending": "Enviada el {{sent}} · caduca el {{ended}}",
       "expired": "Enviada el {{sent}} · caducó el {{ended}}",

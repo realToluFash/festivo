@@ -116,7 +116,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   pode usar este convite." The email's `{date}` has a full month, so "válido até {date}."
   ends it. The subtitle names its counts after a colon, "com acesso: {{active}} · convites:
   {{invited}}". History lines name what was acted on, "Convite enviado por", "Pedido aprovado
-  por", "Acesso suspenso / reposto / retirado por". Who sent an invitation in a list is "convite enviado por {{inviter}}", and the reader as sender is "si", "convite enviado por si", never "de a sua conta" (QA, 26 Oct).
+  por", "Acesso suspenso / reposto / retirado por". Who sent an invitation in a list is "convite enviado por {{inviter}}", and the reader as sender is "si", "convite enviado por si" (`membersScreen.invitedAsByYou`), never "de a sua conta" (QA, 26 Oct). The row marker `membersScreen.you` stays "a sua conta", never "si" (QA #15272).
 - **25 Oct 2026. Deleting an organisation** (`errors:owner_required`,
   `messages:organisation.owner_required`, `delete_name_mismatch`, `emails:organisationDeleted.*`,
   sc-3215). The refusals name the role, "Só alguém com a função Proprietário…", as
