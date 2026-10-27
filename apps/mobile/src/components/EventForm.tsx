@@ -30,7 +30,15 @@ import {
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useNavigation } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
-import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Platform, Pressable, StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -64,6 +72,7 @@ import { HostsSection } from './HostsSection.tsx';
 import { ListPicker } from './ListPicker.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
+import { useBroughtIntoView } from './Screen.tsx';
 import { Sheet } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 import { VenueFields } from './VenueFields.tsx';
@@ -368,30 +377,34 @@ export function EventForm({
         </ReadOut>
       )}
       {status === 'failed' && (
-        <ReadOut words={failed} interrupts accessibilityRole="alert">
-          <Notice tone="broken" mark={tokens.marks.broken.glyph} body={failed} />
-        </ReadOut>
+        <InSight>
+          <ReadOut words={failed} interrupts accessibilityRole="alert">
+            <Notice tone="broken" mark={tokens.marks.broken.glyph} body={failed} />
+          </ReadOut>
+        </InSight>
       )}
       {status === 'changedElsewhere' && (
-        <ReadOut words={t('eventEdit.changedElsewhere')} interrupts accessibilityRole="alert">
-          <Notice
-            tone="broken"
-            mark={tokens.marks.broken.glyph}
-            body={t('eventEdit.changedElsewhere')}
-          />
-          <View style={styles.actions}>
-            <SecondaryButton
-              label={t('eventEdit.showLatest')}
-              onPress={() => setAsking('latest')}
-              testID="eventForm.showLatest"
+        <InSight>
+          <ReadOut words={t('eventEdit.changedElsewhere')} interrupts accessibilityRole="alert">
+            <Notice
+              tone="broken"
+              mark={tokens.marks.broken.glyph}
+              body={t('eventEdit.changedElsewhere')}
             />
-            <SecondaryButton
-              label={t('eventEdit.cancel')}
-              onPress={() => setStatus('editing')}
-              testID="eventForm.keepMine"
-            />
-          </View>
-        </ReadOut>
+            <View style={styles.actions}>
+              <SecondaryButton
+                label={t('eventEdit.showLatest')}
+                onPress={() => setAsking('latest')}
+                testID="eventForm.showLatest"
+              />
+              <SecondaryButton
+                label={t('eventEdit.cancel')}
+                onPress={() => setStatus('editing')}
+                testID="eventForm.keepMine"
+              />
+            </View>
+          </ReadOut>
+        </InSight>
       )}
       {problems != null && <ReadOut words={problems} answer={unsent} />}
 
@@ -582,6 +595,13 @@ export function EventForm({
       />
     </>
   );
+}
+
+/** The answer to a press at the foot of the form shows at its top, so it scrolls there; ReadOut already says it, so focus stays. */
+function InSight({ children }: { children: ReactNode }) {
+  const { shown } = useBroughtIntoView();
+
+  return <View ref={shown}>{children}</View>;
 }
 
 /** Keep editing is the safe answer, so it comes first and system back gives it. */
