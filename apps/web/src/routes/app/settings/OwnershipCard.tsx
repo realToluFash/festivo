@@ -115,7 +115,9 @@ export function OwnershipCard({ organisation }: { organisation: Membership }) {
               ref={leaveButton}
               onClick={() => setStep({ kind: 'leave' })}
             >
-              {t('ownership.leave', { organisation: organisation.name })}
+              <span className="button-label">
+                {t('ownership.leave', { organisation: organisation.name })}
+              </span>
             </button>
           </div>
           {owner && (
@@ -366,9 +368,11 @@ function Transfer({
 
       <div className="actions">
         <button className="button button-primary" type="submit" aria-busy={busy}>
-          {chosen == null
-            ? t('ownership.transfer')
-            : t('ownership.makeOwner', { name: chosen.user.name })}
+          <span className="button-label">
+            {chosen == null
+              ? t('ownership.transfer')
+              : t('ownership.makeOwner', { name: chosen.user.name })}
+          </span>
         </button>
         <button className="button" type="button" {...offButton(busy)} onClick={onCancel}>
           {t('ownership.keep')}
@@ -461,7 +465,9 @@ function Leave({
               {...offButton(busy)}
               onClick={() => void leave()}
             >
-              {t('ownership.leave', { organisation: organisation.name })}
+              <span className="button-label">
+                {t('ownership.leave', { organisation: organisation.name })}
+              </span>
             </button>
             <button type="button" className="button" {...offButton(busy)} onClick={onStay}>
               {t('ownership.stay')}
@@ -603,10 +609,14 @@ function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: ()
 
       <div className="actions">
         <button className="button button-danger" type="submit" aria-busy={busy}>
-          {t('ownership.deleteButton', { organisation: organisation.name })}
+          <span className="button-label">
+            {t('ownership.deleteButton', { organisation: organisation.name })}
+          </span>
         </button>
         <button className="button" type="button" {...offButton(busy)} onClick={onKeep}>
-          {t('ownership.deleteKeep', { organisation: organisation.name })}
+          <span className="button-label">
+            {t('ownership.deleteKeep', { organisation: organisation.name })}
+          </span>
         </button>
       </div>
     </form>
