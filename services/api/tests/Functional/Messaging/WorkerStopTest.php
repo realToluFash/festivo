@@ -11,6 +11,7 @@ use App\Enum\Permission;
 use App\Tests\Double\Messaging\RecordingEmailSender;
 use DAMA\DoctrineTestBundle\PHPUnit\SkipDatabaseRollback;
 use DateTimeImmutable;
+use Doctrine\DBAL\ArrayParameterType;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Async;
 use Psl\DateTime\Duration;
@@ -73,6 +74,7 @@ final class WorkerStopTest extends MessagingTestCase
         $heartbeat = $root . '/var/notifications-worker-' . $token . '.heartbeat';
         $gate = $root . '/var/notification-provider-' . $token;
         $members = Audience::membersWithPermission($this->organisation->getId(), Permission::BillingManage);
+        self::sweepKilledRuns();
         $scheduled = self::scheduler()->schedule('test.notice', 'stop-mid-send-' . $token, 'stop-mid-send-' . $token, Trigger::at(new DateTimeImmutable('-1 minute')), $members);
 
         try {
@@ -129,6 +131,20 @@ final class WorkerStopTest extends MessagingTestCase
             self::connection()->executeStatement('DELETE FROM organisations WHERE id = :id', ['id' => $this->organisation->getId()->toRfc4122()]);
             self::connection()->executeStatement('DELETE FROM users WHERE id = :id', ['id' => $this->owner->getId()->toRfc4122()]);
         }
+    }
+
+    /** A run killed before its `finally` leaves a due row that every later in-process worker test would claim and send. */
+    private static function sweepKilledRuns(): void
+    {
+        $organisations = Type\vec(Type\string())->coerce(self::connection()->fetchFirstColumn("SELECT audience->>'organisationId' FROM scheduled_notifications WHERE cancellation_key LIKE 'stop-mid-send-%'"));
+
+        foreach ($organisations as $organisation) {
+            $users = self::connection()->fetchFirstColumn('SELECT user_id FROM memberships WHERE organisation_id = :id', ['id' => $organisation]);
+            self::connection()->executeStatement('DELETE FROM organisations WHERE id = :id', ['id' => $organisation]);
+            self::connection()->executeStatement('DELETE FROM users WHERE id IN (:ids)', ['ids' => $users], ['ids' => ArrayParameterType::STRING]);
+        }
+
+        self::connection()->executeStatement("DELETE FROM scheduled_notifications WHERE cancellation_key LIKE 'stop-mid-send-%'");
     }
 
     /** @return non-empty-string */
