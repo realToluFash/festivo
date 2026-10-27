@@ -1,0 +1,38 @@
+# sc-3592: a Draft's Delete event, its plain confirmation, Keep it, then Delete back to Events.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.delete'
+    centerElement: true
+    timeout: 30000
+- takeScreenshot: section
+- tapOn:
+    id: 'events.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'events.deleteGo'
+    timeout: 15000
+- takeScreenshot: confirm
+- tapOn:
+    id: 'events.deleteKeep'
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'events.deleteGo'
+- tapOn:
+    id: 'events.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'events.deleteGo'
+    timeout: 15000
+- tapOn:
+    id: 'events.deleteGo'
+- extendedWaitUntil:
+    visible: '.*was deleted.*'
+    timeout: 15000
+- takeScreenshot: deleted

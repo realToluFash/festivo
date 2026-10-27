@@ -1,0 +1,39 @@
+# sc-3592, in landscape: a live event's Delete event: wrong case refused with the keyboard up, then the name with a curly apostrophe deletes it.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.delete'
+    centerElement: true
+    timeout: 30000
+- tapOn:
+    id: 'events.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'events.deleteName'
+    timeout: 15000
+- takeScreenshot: confirm
+- tapOn:
+    id: 'events.deleteName'
+- inputText: ${WRONG}
+- takeScreenshot: typed-keyboard
+- pressKey: Enter
+- waitForAnimationToEnd
+- takeScreenshot: mismatch-keyboard
+- assertVisible: '.*exactly as shown to delete it.*'
+- eraseText: 80
+- inputText: ${RIGHT}
+- takeScreenshot: right-typed
+- tapOn:
+    id: 'events.deleteGo'
+- extendedWaitUntil:
+    visible: '.*was deleted.*'
+    timeout: 15000
+- takeScreenshot: deleted
+- setOrientation: PORTRAIT
