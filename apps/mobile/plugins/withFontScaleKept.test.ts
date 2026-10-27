@@ -31,7 +31,7 @@ describe('withFontScaleForwarded', () => {
 
   it('imports what the override names, under the package line', () => {
     expect(forwarded).toMatch(
-      /^package com\.soirely\.app\nimport android\.content\.res\.Configuration\nimport com\.facebook\.react\.bridge\.LifecycleEventListener\n/,
+      /^package com\.soirely\.app\nimport android\.content\.ComponentCallbacks\nimport android\.content\.res\.Configuration\nimport com\.facebook\.react\.bridge\.LifecycleEventListener\nimport com\.facebook\.react\.uimanager\.DisplayMetricsHolder\nimport com\.facebook\.react\.uimanager\.PixelUtil\n/,
     );
   });
 
@@ -42,11 +42,52 @@ describe('withFontScaleForwarded', () => {
     expect(forwarded.trimEnd().endsWith('  }\n}')).toBe(true);
   });
 
+  it('measures text against the activity, whose font scale is already the new one', () => {
+    expect(forwarded).toMatch(
+      /super\.onConfigurationChanged\(newConfig\)\n\s+val measuredScale = PixelUtil\.toPixelFromSP\(1\.0\)\n\s+DisplayMetricsHolder\.initDisplayMetrics\(this\)\n/,
+    );
+  });
+
+  it('lays the root view out again when the measured scale moved', () => {
+    expect(forwarded).toMatch(
+      /if \(PixelUtil\.toPixelFromSP\(1\.0\) != measuredScale\) \{\n\s+reactDelegate\?\.reactRootView\?\.requestLayout\(\)/,
+    );
+  });
+
+  it("forwards once the application has the activity's current scale, and stops listening only then", () => {
+    expect(forwarded).toContain(
+      'if (application.resources.configuration.fontScale != resources.configuration.fontScale) {',
+    );
+    expect(forwarded).toContain(
+      'if (!forwardOnceApplicationCaughtUp() && fontScaleWait == null) {',
+    );
+    expect(forwarded).toMatch(
+      /override fun onConfigurationChanged\(applicationConfig: Configuration\) \{\n\s+forwardOnceApplicationCaughtUp\(\)\n\s+\}/,
+    );
+    expect(forwarded).toMatch(
+      /return false\n\s+\}\n\s+stopWaitingForApplication\(\)\n\s+forwardFontScale\(\)/,
+    );
+  });
+
+  it('stops listening when the activity is destroyed', () => {
+    expect(forwarded).toMatch(
+      /override fun onDestroy\(\) \{\n\s+stopWaitingForApplication\(\)\n\s+super\.onDestroy\(\)/,
+    );
+  });
+
   it('fails a debug build loudly when DeviceInfo stops listening for resume', () => {
     expect(forwarded).toContain('check(deviceInfo != null || !BuildConfig.DEBUG)');
   });
 
   it('refuses an activity that already handles configuration changes, rather than declaring it twice', () => {
     expect(() => withFontScaleForwarded(forwarded)).toThrow(/already handles/);
+  });
+
+  it('refuses an activity that already overrides onDestroy', () => {
+    const destroying = ACTIVITY.replace(
+      '\n}\n',
+      '\n  override fun onDestroy() {\n    super.onDestroy()\n  }\n}\n',
+    );
+    expect(() => withFontScaleForwarded(destroying)).toThrow(/already handles/);
   });
 });

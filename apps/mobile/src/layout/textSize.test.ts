@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
   breakableEmail,
   breaksAWord,
-  fitTitle,
+  fitWords,
   nameLines,
   railWidth,
-  settleTitle,
+  settleWords,
   sideListWidth,
   titleSize,
 } from './textSize.ts';
@@ -76,41 +76,48 @@ describe('breakableEmail', () => {
   });
 });
 
-describe('a title stepping down', () => {
+describe('a text stepping down rather than break a word', () => {
   const broken = ['Paramètres de l’organi', 'sation'];
   const whole = ['Paramètres de ', 'l’organisation'];
 
   it('starts at the step’s size', () => {
-    expect(fitTitle(null, 28, AX2, 'Paramètres').drawn).toBe(43);
+    expect(fitWords(null, titleSize(28, AX2), 'Paramètres').drawn).toBe(43);
   });
 
   it('drops a point while a word is broken, and settles once none is', () => {
-    const first = fitTitle(null, 28, AX2, 'Paramètres');
-    const second = settleTitle(first, 28, broken);
+    const first = fitWords(null, titleSize(28, AX2), 'Paramètres');
+    const second = settleWords(first, 28, broken);
     expect(second.drawn).toBe(42);
-    expect(settleTitle(second, 28, whole)).toBe(second);
+    expect(settleWords(second, 28, whole)).toBe(second);
   });
 
   it('stops at the default size', () => {
-    const atFloor = { key: fitTitle(null, 28, AX2, 'Paramètres').key, drawn: 28 };
-    expect(settleTitle(atFloor, 28, broken)).toBe(atFloor);
-    expect(settleTitle({ ...atFloor, drawn: 28.5 }, 28, broken).drawn).toBe(28);
+    const atFloor = { key: fitWords(null, titleSize(28, AX2), 'Paramètres').key, drawn: 28 };
+    expect(settleWords(atFloor, 28, broken)).toBe(atFloor);
+    expect(settleWords({ ...atFloor, drawn: 28.5 }, 28, broken).drawn).toBe(28);
   });
 
   it('starts again when the step changes', () => {
-    const stepped = { ...fitTitle(null, 28, AX2, 'Paramètres'), drawn: 41 };
-    const atDefault = fitTitle(stepped, 28, 1, 'Paramètres');
+    const stepped = { ...fitWords(null, titleSize(28, AX2), 'Paramètres'), drawn: 41 };
+    const atDefault = fitWords(stepped, titleSize(28, 1), 'Paramètres');
     expect(atDefault.drawn).toBe(28);
-    expect(fitTitle(atDefault, 28, AX2, 'Paramètres').drawn).toBe(43);
+    expect(fitWords(atDefault, titleSize(28, AX2), 'Paramètres').drawn).toBe(43);
   });
 
   it('starts again when the text changes', () => {
-    const stepped = { ...fitTitle(null, 28, AX2, 'Paramètres'), drawn: 41 };
-    expect(fitTitle(stepped, 28, AX2, 'Membres').drawn).toBe(43);
+    const stepped = { ...fitWords(null, titleSize(28, AX2), 'Paramètres'), drawn: 41 };
+    expect(fitWords(stepped, titleSize(28, AX2), 'Membres').drawn).toBe(43);
+  });
+
+  it('starts a bar label at the full scale and steps it down the same way', () => {
+    const label = fitWords(null, 12 * AX2, 'Configuración');
+    expect(label.drawn).toBeCloseTo(12 * AX2);
+    expect(settleWords(label, 12, ['Configura', 'ción']).drawn).toBeCloseTo(12 * AX2 - 1);
+    expect(settleWords({ ...label, drawn: 12 }, 12, ['Configura', 'ción']).drawn).toBe(12);
   });
 
   it('keeps its size while neither changes', () => {
-    const stepped = { ...fitTitle(null, 28, AX2, 'Paramètres'), drawn: 41 };
-    expect(fitTitle(stepped, 28, AX2, 'Paramètres')).toBe(stepped);
+    const stepped = { ...fitWords(null, titleSize(28, AX2), 'Paramètres'), drawn: 41 };
+    expect(fitWords(stepped, titleSize(28, AX2), 'Paramètres')).toBe(stepped);
   });
 });

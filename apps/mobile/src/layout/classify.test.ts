@@ -10,6 +10,7 @@ import {
   listAndPageKind,
   listFitsBeside,
   sectionWidth,
+  settingsListGivesWay,
 } from './classify.ts';
 
 /**
@@ -132,7 +133,28 @@ describe('a list beside its page', () => {
 
   it('widens the rail and the lists at the accessibility sizes', () => {
     expect(sectionWidth(side(1376, 2), 'settingsList')).toBe(1376 - 300 - Math.round(1076 * 0.4));
-    expect(listAndPageKind(side(1376, 2), 'settingsList', ROLES)).toBe('tabletPortrait');
+  });
+
+  it('gives a section’s own list the Settings list’s place on its side at the accessibility sizes', () => {
+    for (const list of [ROLES, MEMBERS]) {
+      expect(settingsListGivesWay(side(1376, 2), 'settingsList', list)).toBe(true);
+      expect(listAndPageKind(side(1376, 2), 'settingsList', list)).toBe('tabletLandscape');
+      expect(settingsListGivesWay(side(1180, 1.786), 'settingsList', list)).toBe(true);
+    }
+  });
+
+  it('keeps the Settings list where the three fit, below the accessibility sizes, and held upright', () => {
+    expect(settingsListGivesWay(side(1376), 'settingsList', MEMBERS)).toBe(false);
+    expect(settingsListGivesWay(side(1180), 'settingsList', MEMBERS)).toBe(false);
+    expect(
+      settingsListGivesWay({ width: 1032, height: 1376, fontScale: 2 }, 'settingsList', MEMBERS),
+    ).toBe(false);
+    expect(settingsListGivesWay(side(1376, 2), 'nothing', MEMBERS)).toBe(false);
+  });
+
+  it('shows one at a time where even the section’s own list leaves its page too little', () => {
+    expect(settingsListGivesWay(side(964, 2), 'settingsList', MEMBERS)).toBe(false);
+    expect(listAndPageKind(side(964, 2), 'settingsList', MEMBERS)).toBe('tabletPortrait');
   });
 
   it('leaves Events, with nothing beside it, its list beside the page from 1133', () => {
