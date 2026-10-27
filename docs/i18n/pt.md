@@ -41,6 +41,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **27 Oct 2026. Os anfitriões de um evento** (sc-15427 para sc-6713, `web:eventHosts.*`,
+  `eventLive.needsHost*|addHosts` web e app, `messages:validation.event_host*`,
+  `messages:event.host_required|last_host`). Host é "anfitrião", como `errors:event_host_required`;
+  a secção é "Anfitriões" e cada linha "Anfitrião {{position}}". "Add who is hosting" é "Indicar
+  os anfitriões". Um anfitrião é um nome tal como os convidados o leem, por vezes um casal numa
+  linha, por isso nada concorda com {{name}}: "{{name}} já consta da lista de anfitriões", "… já
+  não consta da lista de anfitriões", "{{name}}: posição {{position}} de {{count}}". Remover é
+  "Remover", como em Conta. O limite é a mesma frase no ecrã e na API. O último anfitrião
+  explica-se do lado dos convidados: "Os convidados podem ver este evento, por isso …".
 - **26 Oct 2026. Eliminar um evento** (sc-14417 para sc-3592, `eventDelete.*` web e app,
   `messages:event.delete_name_mismatch`). Como para uma organização: "Eliminar o evento", com
   o artigo, como "Cancelar o evento"; o diálogo "Eliminar {{event}}?" e a saída "Manter o
