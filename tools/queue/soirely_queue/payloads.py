@@ -171,11 +171,11 @@ def merge(p, pr, story, row):
     if p.role in R.LINGUISTS:
         merges = ("merges it once it changes only locale files; then move the ticket to Ready "
                   "For QA if everything it covers is merged, as your skill's section 5 says")
-    elif W.finished(story):
-        merges = f"merges at the passed sha; sc-{story['id']} stays Done"
-    elif W.side_pr(story, pr):
+    elif W.side_pr(story, pr) and not W.finished(story):
         merges = (f"merges at the passed sha; sc-{story['id']} is a translation ticket and "
                   "stays where the linguist put it, so the merge is still yours")
+    elif W.follow_up(story):
+        merges = f"merges at the passed sha; sc-{story['id']} stays {story['state']}"
     else:
         merges = ("checks every condition, merges at the passed sha, moves the story to Ready "
                   "For QA and tells QA")

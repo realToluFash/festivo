@@ -686,8 +686,8 @@ def review(c, a):
     # Only a story in review moves: a linguist's ticket, say, keeps its own state.
     if story and story["state"] in W.REVIEWED and not W.side_pr(story, pr):
         set_state(c, story, "Passed Code Review" if a.verdict == "pass" else "Failed Code Review")
-    # A Done story, or a linguist's ticket, keeps its state: a push alone wakes the lead.
-    done = story and W.finished(story)
+    # A follow-up's story, or a linguist's ticket, keeps its state: a push alone wakes the lead.
+    done = story and W.follow_up(story)
     if story and a.verdict == "pass":
         # A developer's change on a linguist's ticket is not the ticket ready for QA.
         if not W.side_pr(story, pr) and not done:
@@ -864,7 +864,7 @@ def merge(c, a):
         raise Refused(f"sc-{story['id']} is archived, so its PR merges nowhere: close it with "
                       f"`sq {c.role} pr-close {a.pr} --text \"<why>\"`")
     side = W.side_pr(story, pr)
-    follow_up = not side and (story["state"] in R.FOLLOWING_UP or W.finished(story))
+    follow_up = not side and W.follow_up(story)
     if story["state"] not in R.MERGING and not side and not follow_up:
         raise Refused(f"its story is {story['state']}, not Passed Code Review: move it to "
                       "In Review for the lead once its checks are green")

@@ -126,6 +126,12 @@ def finished(story):
     return bool(story.get("done")) and not story.get("archived")
 
 
+def follow_up(story):
+    """Past QA's hand-over, or Done: an open pull request on it is a follow-up, reviewed and
+    merged while the story keeps its state."""
+    return finished(story) or story["state"] in R.FOLLOWING_UP and not story.get("archived")
+
+
 def inbox_items(stories, handled=frozenset()):
     """A comment on a Done story wakes as on any other, if it came after the story was done:
     what was left open before then was settled by finishing it."""
@@ -293,7 +299,7 @@ def review_items(stories, prs):
             continue
         open_prs = by_story.get(story["id"], [])
         if story["state"] not in REVIEWED:
-            open_prs = [pr for pr in open_prs if side_pr(story, pr) or finished(story)]
+            open_prs = [pr for pr in open_prs if side_pr(story, pr) or follow_up(story)]
             if not open_prs:
                 continue
         merged = any(pr["story_id"] == story["id"] and pr["state"] == "merged" for pr in prs)
@@ -303,12 +309,12 @@ def review_items(stories, prs):
                                f"sc-{story['id']} is In Review with no open pull request",
                                REVIEW, story))
         for pr in open_prs:
-            # On a Done story the lead cannot send red checks back; the builder is woken.
-            if pr["checks"] == "pending" or pr["checks"] == "red" and finished(story):
+            # On a follow-up the lead cannot send red checks back; the builder is woken.
+            if pr["checks"] == "pending" or pr["checks"] == "red" and follow_up(story):
                 continue
             verdict = latest_verdict(pr)
             sha = pr["head_sha"]
-            returned = verdict and verdict["verdict"] == "back" and not story["done"] \
+            returned = verdict and verdict["verdict"] == "back" and not follow_up(story) \
                 and (story["moved_at"] or "") > verdict["at"]
             if covers(verdict, sha, pr.get("carried")) and not returned:
                 continue
@@ -381,7 +387,7 @@ def developer_items(stories, prs):
         story = by_id.get(pr["story_id"])
         if not story:
             continue
-        side, follow = side_pr(story, pr), finished(story)
+        side, follow = side_pr(story, pr), follow_up(story)
         own = linguists(story) and not side
         role = builder(story, pr)
         sha = pr["head_sha"][:7]
