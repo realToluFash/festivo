@@ -1314,7 +1314,7 @@
     "removeMove_many": "{{count}} de personas tienen este rol. Páselas a:",
     "replacementLegend": "Rol de sustitución",
     "removeNoReplacement": "Elija el rol de sustitución.",
-    "removeAfter": "Pasan a ser {{role}} en su próxima solicitud. No se cierra ninguna sesión.",
+    "removeAfter": "El rol {{role}} se aplica al volver a usar Soirely. No se cierra ninguna sesión.",
     "removeConfirm": "Reasignar y eliminar {{role}}",
     "removeConfirmEmpty": "Eliminar {{role}}",
     "keep": "Conservar {{role}}",

@@ -757,7 +757,7 @@ describe('inviting somebody', () => {
     expect(removed.hasAttribute('aria-describedby')).toBe(false);
   });
 
-  it('gives Remove from ‹organisation› its full label as title and name, cut to one line (sc-13483)', async () => {
+  it('names Remove from ‹organisation› by its whole label, shown rather than held in a title (sc-14816)', async () => {
     signedIn();
     answering({ ...READS, 'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)) });
     open();
@@ -765,7 +765,7 @@ describe('inviting somebody', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
     const remove = screen.getByRole('button', { name: 'Remove from Ìrè Events' });
 
-    expect(remove.getAttribute('title')).toBe('Remove from Ìrè Events');
+    expect(remove.hasAttribute('title')).toBe(false);
     expect(remove.querySelector('.button-label')?.textContent).toBe('Remove from Ìrè Events');
   });
 
