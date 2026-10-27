@@ -383,6 +383,61 @@ class Run(unittest.TestCase):
         self.assertIsNone(store.held_by(self.db, "lead", ON_ZERO))
         self.assertTrue(any(line.startswith("error: lead: could not claim") for line in self.said))
 
+    def test_a_role_with_an_inbox_batch_wakes_one_worker_for_its_comments(self):
+        self.config["roles"]["ops"] = {"inboxBatch": 3}
+        store.record(self.db, [dict(work("ops", f"inbox:{n}"), story_id=n) for n in (1, 2, 3, 4)],
+                     ON_ZERO)
+        self.run_once()
+        self.assertEqual([(r, i) for r, i, _ in self.platform.launched], [("ops", 1)])
+        self.assertEqual([row["id"] for row in store.held(self.db, "ops", ON_ZERO, "ops")],
+                         [1, 2, 3])
+        self.assertIn("ops: woke for 3 comments (items 1, 2, 3)", self.said)
+        self.assertEqual(self.remote.data(shared.claim_ref("ops", "sc-3"))["machine"], "here")
+
+    def test_a_batch_item_another_machine_just_took_is_left_out_of_it(self):
+        self.config["roles"]["ops"] = {"inboxBatch": 3}
+        store.record(self.db, [dict(work("ops", f"inbox:{n}"), story_id=n) for n in (1, 2)],
+                     ON_ZERO)
+        create = self.remote.create
+
+        def taken_first_on_another_machine(ref, message):
+            if ref == shared.claim_ref("ops", "sc-2"):
+                create(ref, shared.record("claim", role="ops", machine="tolu-mac", at=ON_ZERO))
+            return create(ref, message)
+
+        self.remote.create = taken_first_on_another_machine
+        self.run_once()
+        self.assertEqual([row["id"] for row in store.held(self.db, "ops", ON_ZERO, "ops")], [1])
+        self.assertEqual(store.item(self.db, 2)["status"], "open")
+        self.assertIn("ops: woke for [ops] on sc-1 (item 1)", self.said)
+
+    def test_every_item_of_a_batch_is_given_back_when_its_worker_died(self):
+        self.config["roles"]["ops"] = {"inboxBatch": 2}
+        store.record(self.db, [dict(work("ops", f"inbox:{n}"), story_id=n) for n in (1, 2)],
+                     ON_ZERO)
+        self.run_once()
+        self.run_once(ON_ZERO + 3 * MINUTE)
+        for item_id in (1, 2):
+            self.assertIn(f"ops: item {item_id} given back, its worker ended without "
+                          "finishing it", self.said)
+
+    def test_a_testers_comment_on_a_story_in_qa_runs_by_itself(self):
+        self.config["roles"]["qa"] = {"inboxBatch": 3}
+        (self.root / "soirely-qa").mkdir()
+        runner.set_started(self.db, ["qa"], True)
+        store.put_story(self.db, {"id": 1, "state": "In QA"})
+        store.put_story(self.db, {"id": 2, "state": "Ready For Dev"})
+        store.put_story(self.db, {"id": 3, "state": "Ready For QA"})
+        store.put_story(self.db, {"id": 4, "state": "Done"})
+        store.record(self.db, [dict(work("qa", f"inbox:{n}"), story_id=n) for n in (1, 2, 3, 4)],
+                     ON_ZERO)
+        self.run_once()
+        self.assertEqual([row["id"] for row in store.held(self.db, "qa", ON_ZERO, "qa")], [1])
+        store.finish(self.db, 1, now=ON_ZERO)
+        self.run_once(ON_ZERO + 3 * MINUTE)
+        self.assertEqual([row["id"] for row in
+                          store.held(self.db, "qa", ON_ZERO + 3 * MINUTE, "qa")], [2, 4])
+
     def test_work_with_no_story_is_claimed_by_its_kind(self):
         store.record(self.db, [dict(work("ops"), kind="main")], ON_ZERO)
         self.run_once()
@@ -678,6 +733,36 @@ class Worker(unittest.TestCase):
     def test_the_item_counts_as_finished_once_the_run_closes_it(self):
         self.work_with({"result": "Done."})
         self.assertEqual(self.answers, [False, True])
+
+    def test_a_batch_runs_once_and_ends_when_each_item_is_done_or_handed_back(self):
+        store.record(self.db, [work("ops")] + [dict(work("ops", f"inbox:{n}"), story_id=n)
+                                               for n in (2, 3)], ON_ZERO)
+        store.release(self.db, 1)
+        store.claim(self.db, "ops", ON_ZERO, worker="ops", batch=3)
+        first, second, third = [row["id"] for row in store.held(self.db, "ops", ON_ZERO, "ops")]
+        answers, prompts, taken = [], [], []
+
+        def claude(argv, input, cwd, env, finished):
+            prompts.append(input)
+            store.finish(self.db, first, "answered")
+            answers.append(finished())
+            store.hand_back(self.db, third)
+            answers.append(finished())
+            store.claim(self.db, "ops", ON_ZERO, worker="ops-2", workers=2)
+            taken.append(store.item(self.db, third)["worker"])
+            store.finish(self.db, second, "no reply needed")
+            answers.append(finished())
+            return 0, json.dumps({"type": "result", "total_cost_usd": 0.6, "result": "ok"}), \
+                "", None
+
+        entry = runner.worker(self.db, self.home, self.platform, "ops", 1, run_claude=claude,
+                              load=lambda: config(self.root),
+                              prepare=lambda *_: ("c" * 40, None), now=ON_ZERO)
+        self.assertEqual(answers, [False, False, True])
+        self.assertEqual(taken, ["ops-2"])
+        self.assertIn("Your work is 3 comment items, in queue order:", prompts[0])
+        self.assertEqual((entry["item"], entry["items"]), (1, [first, second, third]))
+        self.assertEqual([e["cost_usd"] for e in runlog.entries(self.home, "ops")], [0.6])
 
     def test_the_report_is_the_runs_own_answer_not_a_later_notice(self):
         # Both results as claude 2.1.310 wrote them, the second after a background sleep ended.

@@ -76,6 +76,20 @@ class Checked(unittest.TestCase):
         refused = machine.check(config(self.root, roles={"ops": {"inboxEffort": "lots"}}))[1]
         self.assertIn("inboxEffort 'lots' is not one claude-opus-5-5 takes", refused["ops"])
 
+    def test_inbox_batch_is_one_unless_set_and_a_roles_own_value_wins(self):
+        ready = machine.check(config(self.root))[2]
+        self.assertEqual(machine.inbox_batch(ready["ops"]), 1)
+        changed = config(self.root, roles={"ops": {"inboxBatch": None}, "dev2": {"inboxBatch": 2}})
+        changed["defaults"]["inboxBatch"] = 4
+        ready = machine.check(changed)[2]
+        self.assertEqual((machine.inbox_batch(ready["ops"]), machine.inbox_batch(ready["dev2"])),
+                         (4, 2))
+
+    def test_an_inbox_batch_that_is_not_a_whole_number_from_one_refuses_the_role(self):
+        for bad in (0, -2, 1.5, "3", True):
+            refused = machine.check(config(self.root, roles={"ops": {"inboxBatch": bad}}))[1]
+            self.assertIn(f"inboxBatch {bad!r} is not a whole number from 1", refused["ops"])
+
     def test_an_effort_the_model_does_not_take_is_refused(self):
         changed = config(self.root, roles={"ops": {"effort": "extreme"}})
         refused = machine.check(changed)[1]

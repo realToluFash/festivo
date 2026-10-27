@@ -18,8 +18,8 @@ from . import roles
 HERE = pathlib.Path(__file__).resolve().parent
 EXAMPLE = HERE.parent / "agents.example.json"
 MODELS = HERE.parent / "models.json"
-SETTINGS = ("model", "effort", "inboxEffort", "memoryMax", "maxRuntime", "maxBudgetUsd",
-            "wakeEvery", "workers")
+SETTINGS = ("model", "effort", "inboxEffort", "inboxBatch", "memoryMax", "maxRuntime",
+            "maxBudgetUsd", "wakeEvery", "workers")
 SIZE = re.compile(r"^\d+[KMG]$")
 RUNTIME = re.compile(r"^(\d+)(m|h)$")
 # Claude Code's own default folder, which keeps its account file beside it, not inside.
@@ -267,6 +267,11 @@ def effort_for(values, kind):
     return values.get("inboxEffort") or values["effort"]
 
 
+def inbox_batch(values):
+    """How many `inbox` items one run claims: `inboxBatch`, or one where it is unset."""
+    return values.get("inboxBatch") or 1
+
+
 def slice_memory(config):
     """`sliceMemoryMax`, or 16G when it is unset or not a size, which `check` reports."""
     value = config.get("sliceMemoryMax")
@@ -308,6 +313,9 @@ def setting_problems(values, known, where):
     if workers is not None and (isinstance(workers, bool) or not isinstance(workers, int)
                                 or workers < 1):
         problems.append(f"{where}: workers {workers!r} is not a whole number from 1")
+    batch = values.get("inboxBatch")
+    if batch is not None and (isinstance(batch, bool) or not isinstance(batch, int) or batch < 1):
+        problems.append(f"{where}: inboxBatch {batch!r} is not a whole number from 1")
     budget = values.get("maxBudgetUsd")
     if budget is not None and (isinstance(budget, bool) or not isinstance(budget, (int, float))
                                or budget <= 0):
