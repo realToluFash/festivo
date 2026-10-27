@@ -60,7 +60,7 @@ export function NewEventScreen() {
 }
 
 /** An event's page > Edit details, `App event form` state Edit details (sc-3595). */
-export function EditEventScreen({ eventId }: { eventId: string }) {
+export function EditEventScreen({ eventId, toHosts }: { eventId: string; toHosts: boolean }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
   const { organisation } = useSignedIn();
@@ -125,6 +125,7 @@ export function EditEventScreen({ eventId }: { eventId: string }) {
           kind={kind}
           organisation={organisation}
           opened={load}
+          toHosts={toHosts && reads === 0}
           onCreated={() => {}}
           onSaved={(outcome) => {
             if (outcome === 'saved') markSaved(eventId);

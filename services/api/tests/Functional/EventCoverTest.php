@@ -25,8 +25,12 @@ use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Encoding\Base64;
+use Psl\Encoding\Hex;
+use Psl\Hash;
 use Psl\Json;
+use Psl\SecureRandom;
 use Psl\Str;
+use Psl\Str\Byte;
 use Psl\Type;
 use Psl\Vec;
 
@@ -231,6 +235,59 @@ final class EventCoverTest extends ApiTestCase
         self::assertSame(422, $this->statusCode());
         self::assertStringContainsString('1200 × 675', $this->violations()['file'] ?? '');
         self::assertSame($before, $this->cover($this->as($this->owner, 'GET', '/api/events/' . $this->eventId)));
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function damagedJpegs(): iterable
+    {
+        $whole = self::photo(1600, 900);
+        $scan = (Byte\search($whole, "\xFF\xDA") ?? 0) + 14;
+
+        yield 'cut off after its header' => [Byte\slice($whole, 0, $scan + 6)];
+        yield 'cut off halfway' => [Byte\slice($whole, 0, Byte\length($whole) >> 1)];
+        yield 'a header and a noise body' => [Byte\slice($whole, 0, $scan) . self::noise(60_000)];
+        yield 'a header and a noise body that ends as a JPEG ends' => [Byte\slice($whole, 0, $scan) . self::noise(60_000) . "\xFF\xD9"];
+        yield 'a body holding a frame header that ends as a JPEG ends' => [Byte\slice($whole, 0, $scan) . Byte\replace(self::noise(60_000), "\xFF", "\x00") . "\xFF\xC0\x00\x02\xFF\xD9"];
+    }
+
+    /** The browser reads its size from the header and showed it as a grey box (qa2, #16039; Decided, 27 Oct). */
+    #[Test]
+    #[DataProvider('damagedJpegs')]
+    public function aJpegWhosePictureIsCutOffOrNotPictureDataIsRefusedAtThePreviewAndTheSave(string $bytes): void
+    {
+        $this->as($this->owner, 'PUT', $this->coverPath(), ['uploadKey' => $this->upload(self::photo(1600, 900), 'image/jpeg'), 'position' => 20]);
+        $before = $this->cover($this->last());
+
+        $this->as($this->owner, 'POST', $this->path('event-cover-uploads/preview'), ['uploadKey' => $this->upload($bytes, 'image/jpeg')]);
+        self::assertSame(422, $this->statusCode());
+        self::assertStringContainsString('JPEG, PNG, WebP or HEIC', $this->violations()['file'] ?? '');
+
+        $this->as($this->owner, 'PUT', $this->coverPath(), ['uploadKey' => $this->upload($bytes, 'image/jpeg'), 'position' => 50]);
+        self::assertSame(422, $this->statusCode());
+        self::assertStringContainsString('JPEG, PNG, WebP or HEIC', $this->violations()['file'] ?? '');
+        self::assertSame($before, $this->cover($this->as($this->owner, 'GET', '/api/events/' . $this->eventId)));
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function wholeJpegsAStrictReaderWarnsAbout(): iterable
+    {
+        $whole = self::photo(1600, 900);
+        $scan = Byte\search($whole, "\xFF\xDA") ?? 0;
+
+        yield 'padding between segments' => [Byte\slice($whole, 0, $scan) . "\0\0\0" . Byte\slice($whole, $scan)];
+        yield 'no end marker' => [Byte\strip_suffix($whole, "\xFF\xD9")];
+        yield 'bytes after the end' => [$whole . SecureRandom\bytes(512)];
+    }
+
+    #[Test]
+    #[DataProvider('wholeJpegsAStrictReaderWarnsAbout')]
+    public function aJpegWhoseWholePictureShowsIsTakenThoughAStrictReaderWarns(string $bytes): void
+    {
+        $this->as($this->owner, 'POST', $this->path('event-cover-uploads/preview'), ['uploadKey' => $this->upload($bytes, 'image/jpeg')]);
+        self::assertSame(200, $this->statusCode());
+
+        $this->as($this->owner, 'PUT', $this->coverPath(), ['uploadKey' => $this->upload($bytes, 'image/jpeg'), 'position' => 50]);
+        self::assertSame(200, $this->statusCode());
     }
 
     #[Test]
@@ -454,6 +511,23 @@ final class EventCoverTest extends ApiTestCase
         }
 
         return $image->getImageBlob();
+    }
+
+    /**
+     * Fixed bytes: a random body is now and then walked as whole, so the refusal would only hold most runs (lead, PR #727).
+     *
+     * @param non-negative-int $length
+     */
+    private static function noise(int $length): string
+    {
+        $block = 'sc-3590';
+        $noise = '';
+        while (Byte\length($noise) < $length) {
+            $block = Hex\decode(Hash\hash($block, Hash\Algorithm::Sha256));
+            $noise .= $block;
+        }
+
+        return Byte\slice($noise, 0, $length);
     }
 
     private static function read(string $bytes): Imagick

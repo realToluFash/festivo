@@ -4,7 +4,6 @@ import {
   formatEventMoment,
   type MarkedMilestone,
   markedMilestones,
-  milestoneDistance,
   type MilestoneOwner,
   namesZone,
 } from '@soirely/domain';
@@ -20,6 +19,7 @@ import { QuietButton, SecondaryButton } from './Buttons.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
+import { distanceWords } from '../kit/distanceWords.ts';
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; timeline: EventTimeline };
 
@@ -75,12 +75,12 @@ export function ComingUp({
   kind,
   eventId,
   now,
-  onFullSchedule,
+  onAllDates,
 }: {
   kind: LayoutKind;
   eventId: string;
   now: Date;
-  onFullSchedule: () => void;
+  onAllDates: () => void;
 }) {
   const { t } = useTranslation();
   const { load, retried, retry } = useTimeline(eventId);
@@ -94,15 +94,15 @@ export function ComingUp({
         </Text>
         {load.kind === 'loaded' && (
           <QuietButton
-            label={t('timeline.fullSchedule')}
-            onPress={onFullSchedule}
-            testID="timeline.fullSchedule"
+            label={t('timeline.allDates')}
+            onPress={onAllDates}
+            testID="timeline.allDates"
           />
         )}
       </View>
       <View style={kind === 'phone' ? styles.rowsPhone : styles.rows}>
         {load.kind === 'failed' && (
-          <ScheduleFailed announced={retried} onRetry={retry} testID="timeline.comingUp.retry" />
+          <DatesFailed announced={retried} onRetry={retry} testID="timeline.comingUp.retry" />
         )}
         {load.kind === 'loaded' && shown.length === 0 && (
           <View style={styles.inset} testID="timeline.finished">
@@ -131,27 +131,19 @@ export function ComingUp({
 }
 
 /** Every milestone, earliest first, under the line naming the event's zone. */
-export function FullSchedule({
-  kind,
-  eventId,
-  now,
-}: {
-  kind: LayoutKind;
-  eventId: string;
-  now: Date;
-}) {
+export function AllDates({ kind, eventId, now }: { kind: LayoutKind; eventId: string; now: Date }) {
   const { t } = useTranslation();
   const { load, retried, retry } = useTimeline(eventId);
 
   return (
-    <View style={cardFrame(kind)} testID="timeline.fullSchedule.page">
+    <View style={cardFrame(kind)} testID="timeline.allDates.page">
       {load.kind === 'loading' && (
         <Text size={tokens.typeBodyPhone.size} muted>
           {t('timeline.loading')}
         </Text>
       )}
       {load.kind === 'failed' && (
-        <ScheduleFailed announced={retried} onRetry={retry} testID="timeline.fullSchedule.retry" />
+        <DatesFailed announced={retried} onRetry={retry} testID="timeline.allDates.retry" />
       )}
       {load.kind === 'loaded' && (
         <>
@@ -187,7 +179,7 @@ export function FullSchedule({
 }
 
 /** Said aloud only when a retry fails: on arrival the page's own heading comes first. */
-function ScheduleFailed({
+function DatesFailed({
   announced,
   onRetry,
   testID,
@@ -236,7 +228,7 @@ function MilestoneRow({
   return (
     <View style={[styles.row, !first && styles.rowDivider]} testID="timeline.row">
       <Text size={tokens.typeSmall.size} muted style={passed && styles.passed}>
-        {distance ? `${when} · ${distanceWords(milestone.at, timeZone, now, t)}` : when}
+        {distance ? `${when} · ${distanceWords(t, milestone.at, timeZone, now)}` : when}
       </Text>
       <Text size={tokens.typeRowTitle.size} weight="semibold" style={passed && styles.passed}>
         {milestone.title}
@@ -285,26 +277,6 @@ function Pill({ tone, shape, word }: { tone: PillTone; shape: string | null; wor
       </Text>
     </View>
   );
-}
-
-function distanceWords(
-  at: string,
-  timeZone: string,
-  now: Date,
-  t: ReturnType<typeof useTranslation>['t'],
-): string {
-  const distance = milestoneDistance(at, timeZone, now);
-
-  switch (distance.kind) {
-    case 'now':
-      return t('timeline.now');
-    case 'today':
-      return t('timeline.today');
-    case 'inDays':
-      return t('timeline.inDays', { count: distance.count });
-    case 'daysAgo':
-      return t('timeline.daysAgo', { count: distance.count });
-  }
 }
 
 const styles = StyleSheet.create({

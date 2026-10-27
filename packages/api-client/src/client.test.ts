@@ -2275,15 +2275,47 @@ describe('events (sc-1486)', () => {
     };
   }
 
-  test("an organisation's events are listed in the order the API gives", async () => {
-    const later = { ...EVENT, id: 'e2', name: 'Later' };
-    const { api, sent } = client(() => json({ events: [EVENT, later] }));
+  test("a page of an organisation's events comes with its timeline and how many there are in all", async () => {
+    const starts = {
+      at: '2026-11-14T16:00:00+01:00',
+      title: 'Adaeze and Tunde starts',
+      note: null,
+      owner: 'event',
+      area: 'events',
+      action: null,
+    };
+    const later = { ...EVENT, id: 'e2', name: 'Later', milestones: [] };
+    const { api, sent } = client(() =>
+      json({ events: [{ ...EVENT, milestones: [starts] }, later], total: 12 }),
+    );
 
-    const events = await api.events('org_1');
+    const page = await api.events('org_1', { finished: true, page: 2, itemsPerPage: 10 });
 
-    expect(events.map(({ name }) => name)).toEqual(['Adaeze and Tunde', 'Later']);
-    expect(events[0]).toEqual(EVENT);
+    expect(page.events.map(({ name }) => name)).toEqual(['Adaeze and Tunde', 'Later']);
+    expect(page.events[0]).toEqual({ ...EVENT, milestones: [starts] });
+    expect(page.total).toBe(12);
     expect(sent[0]?.line).toBe('GET /api/orgs/org_1/events');
+  });
+
+  test('every page of the unfinished events is read, and no more', async () => {
+    const pages = [
+      { events: [{ ...EVENT, id: 'e1', milestones: [] }], total: 2 },
+      { events: [{ ...EVENT, id: 'e2', milestones: [] }], total: 2 },
+    ];
+    const urls: string[] = [];
+    const api = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('live', null),
+      refreshTokenIn: 'cookie',
+      fetch: async (url) => {
+        urls.push(new URL(String(url)).search);
+
+        return json(pages[urls.length - 1]);
+      },
+    });
+
+    expect((await api.unfinishedEvents('org_1')).map(({ id }) => id)).toEqual(['e1', 'e2']);
+    expect(urls).toEqual(['?finished=false&page=1', '?finished=false&page=2']);
   });
 
   test('an event is created with local times and its zone, and read by its id', async () => {
@@ -2302,6 +2334,15 @@ describe('events (sc-1486)', () => {
     expect(sent).toEqual([
       { line: 'POST /api/orgs/org_1/events', body },
       { line: `GET /api/events/${EVENT.id}`, body: null },
+    ]);
+  });
+
+  test('an event is duplicated from a start local to its zone (sc-3593)', async () => {
+    const { api, sent } = client(() => json({ event: { ...EVENT, id: 'e2' } }, 201));
+
+    expect(await api.duplicateEvent(EVENT.id, '2027-05-15T16:00')).toEqual({ ...EVENT, id: 'e2' });
+    expect(sent).toEqual([
+      { line: `POST /api/events/${EVENT.id}/duplicate`, body: { startsAt: '2027-05-15T16:00' } },
     ]);
   });
 
@@ -2350,7 +2391,9 @@ describe('events (sc-1486)', () => {
 
   test('an event in a shape it does not know, or a status it does not know, is an error', async () => {
     await expect(
-      client(() => json({ events: [{ ...EVENT, status: 'published' }] })).api.events('org_1'),
+      client(() =>
+        json({ events: [{ ...EVENT, status: 'published', milestones: [] }], total: 1 }),
+      ).api.events('org_1'),
     ).rejects.toThrow(/events controller/);
     await expect(
       client(() => json({ event: { ...EVENT, timeZone: undefined } })).api.event('e1'),

@@ -119,6 +119,37 @@ export function formatEventMoment(moment: string, timeZone: string, locale: stri
   }).format(date);
 }
 
+/** A moment with its weekday, date, year and clock, as the board draws an event's start and end. */
+export function formatEventDayAndClock(
+  moment: string | Date,
+  timeZone: string,
+  locale: string,
+): string {
+  const date = asDate(moment);
+
+  if (date == null) return '';
+
+  return new Intl.DateTimeFormat(locale, { ...EVENT_DAY, ...EVENT_CLOCK, timeZone }).format(date);
+}
+
+/** Whole hours and the minutes left, each in the reader's words; a client joins the two through its catalogue. */
+export function durationWords(
+  minutes: number,
+  locale: string,
+): { hours: string | null; minutes: string | null } {
+  const unit = (amount: number, name: 'hour' | 'minute'): string =>
+    new Intl.NumberFormat(locale, { style: 'unit', unit: name, unitDisplay: 'long' }).format(
+      amount,
+    );
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+
+  return {
+    hours: hours > 0 || rest === 0 ? unit(hours, 'hour') : null,
+    minutes: rest > 0 ? unit(rest, 'minute') : null,
+  };
+}
+
 /** Not `formatRange`, which Hermes does not have: the app's event page crashed on it. */
 export function formatEventRange(
   startsAt: string,
@@ -132,9 +163,41 @@ export function formatEventRange(
   if (start == null || end == null) return '';
 
   const day = new Intl.DateTimeFormat(locale, { ...EVENT_DAY, timeZone });
-  const dayAndClock = new Intl.DateTimeFormat(locale, { ...EVENT_DAY, ...EVENT_CLOCK, timeZone });
   const clock = new Intl.DateTimeFormat(locale, { ...EVENT_CLOCK, timeZone });
   const sameDay = day.format(start) === day.format(end);
 
-  return `${dayAndClock.format(start)} – ${(sameDay ? clock : dayAndClock).format(end)}`;
+  return `${formatEventDayAndClock(start, timeZone, locale)} – ${
+    sameDay ? clock.format(end) : formatEventDayAndClock(end, timeZone, locale)
+  }`;
+}
+
+/** An Events Home card's date, "Saturday, Nov 14", in the event's zone (sc-3594). */
+export function formatEventWeekday(moment: string, timeZone: string, locale: string): string {
+  const date = asDate(moment);
+
+  if (date == null) return '';
+
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+    timeZone,
+  }).format(date);
+}
+
+/** "Sep 30", for a day close enough that the year goes without saying. */
+export function formatEventShortDay(moment: string, timeZone: string, locale: string): string {
+  const date = asDate(moment);
+
+  if (date == null) return '';
+
+  return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', timeZone }).format(date);
+}
+
+export function formatEventClock(moment: string, timeZone: string, locale: string): string {
+  const date = asDate(moment);
+
+  if (date == null) return '';
+
+  return new Intl.DateTimeFormat(locale, { ...EVENT_CLOCK, timeZone }).format(date);
 }

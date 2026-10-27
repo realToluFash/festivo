@@ -1,7 +1,7 @@
 # Event timeline
 
 An event has one timeline: a dated list of milestones that every area adds to through one
-contract (sc-3624, epic 29). Event View's **Coming up** and **Full schedule**, the **Next
+contract (sc-3624, epic 29). Event View's **Coming up** and **All dates**, the **Next
 up** line on Events Home and the organisation's **Calendar** all read it. No screen works out
 a milestone for itself, so the three can never disagree about what is next.
 
@@ -68,6 +68,10 @@ the end, "{name} ends", only when `EventDayCount` says the event touches more th
 `at` carries the offset in force in the event's zone on that date, as the event's own
 `startsAt` does (sc-1486), so an event crossing a change of clocks has two offsets. It needs
 **events.read**; another organisation's event is a 404, as every event route is.
+
+`GET /api/orgs/<id>/events` carries the same `milestones` on every event it lists, read for
+the same reader, so Events Home's **Next up** is the timeline's without one request per card
+(sc-3594).
 
 ## Next up
 

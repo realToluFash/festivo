@@ -50,8 +50,8 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Show to guests, Fixed time           | Settled 19 Oct 2026: the schedule item form's switches.                                                                                                                                                                                                      |
 | Your cues, You're on, You're up next | Settled 19 Oct 2026 (sc-3896): "Your cues, {{name}}" with the full name; "You're on" only while the cue runs, "You're up next" before.                                                                                                                       |
 | Coming up                            | Settled 19 Oct 2026: the room screen's heading (sc-3897). "Times as of {{time}}" when offline, time from Intl. Widened 27 Oct 2026 (sc-15756) to Event View's panel of an event's next dates.                                                                |
-| Full schedule (an event's dates)     | 27 Oct 2026 (sc-15756): the screen listing every date on an event (sc-3624). Not the Schedule above: es, fr and pt name it as a calendar of dates, never their word for Schedule. Rename asked of [dev2], pinned by web tests.                               |
-| Passed, Next up, Overdue             | 27 Oct 2026 (sc-15756): a date's standing on Full schedule. Owners: "Event", "You", "Automatic".                                                                                                                                                             |
+| All dates (an event's dates)         | Settled 27 Oct 2026 (sc-3624 #16015): the screen of every date on an event, /app/events/<id>/dates. Replaced "Full schedule", which clashed with Schedule. "Loading the dates…", "The dates did not load." es, fr, pt: a calendar of dates, not Schedule.    |
+| Passed, Next up, Overdue             | 27 Oct 2026 (sc-15756): a date's standing on All dates. Owners: "Event", "You", "Automatic".                                                                                                                                                                 |
 | The day, Programme                   | Settled 19 Oct 2026 (sc-3899): the guest page heading, "The day" for one day, "Programme" when items span several days.                                                                                                                                      |
 | That's everything                    | Settled 19 Oct 2026: the end of the run of show, then "Finished {{count}} min behind plan.", "… ahead of plan." or "Finished on plan.", three whole keys. Replaced "That's the whole night".                                                                 |
 
@@ -64,6 +64,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **27 Oct 2026. Duplicating an event** (sc-15883 for sc-3593, `web:eventDuplicate.*`). Settled
+  as sc-3593 wrote it; `DuplicateEvent.test.tsx` pins it. The act is "Duplicate", the button that
+  confirms it "Create draft", and the new event is "the copy" until it exists, then "Draft". The
+  panel lists "Copied" and "Not copied"; the length is "Length", the event's duration. A refusal
+  starts "Not created.", as "Not made live." does. `{{duration}}` arrives in the reader's words
+  from Intl ("1 hour", "2 hours"), and `hoursAndMinutes` is where es, fr and pt put their "and".
 - **27 Oct 2026. Pausing and resuming an event** (sc-15439 for sc-3586, `eventPause.*` web and
   app). Settled as sc-3586 wrote it. The act is "Pause", the way back "Resume", the way out of
   the confirmation "Keep it live", never "Cancel". A refusal starts "Not paused." or "Not
@@ -604,3 +610,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   host connects the two. Won over "… from this organisation …", which every reason the host
   sees already implies and which overruns a phone row. Other skip reasons read as short
   phrases in the same row: "No email address", "Address is bouncing".
+- **27 Oct 2026. Events Home's tabs and empty states** (sc-15981 for sc-3594, `events.tab*|empty*|
+startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the same plus
+  `nextUp|showingMore`). Kept as sc-3594 wrote it. The tabs are **Upcoming**, **Drafts** and
+  **Past**; each empty state is a short title and one line saying what will show there. A
+  cancelled past event reads "Called off on {{date}}", the act sc-3585 named. The two
+  `moreFailed` keep their second sentence different on purpose: each repeats its own screen's
+  load failure, web "Try again in a moment." as `events.failed`, the app "Check your connection
+  and try again." as `eventsScreen.failedLoad`. es, fr and pt follow the same split.

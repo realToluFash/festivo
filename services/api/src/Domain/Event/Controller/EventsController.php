@@ -5,14 +5,17 @@ declare(strict_types=1);
 namespace App\Domain\Event\Controller;
 
 use App\Domain\Event\EventCreator;
+use App\Domain\Event\EventDuplicator;
 use App\Domain\Event\EventEditor;
 use App\Domain\Event\EventLifecycle;
 use App\Domain\Event\Http\EventSerialiser;
+use App\Domain\Event\Http\MilestoneSerialiser;
 use App\Entity\Event;
 use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\Permission;
+use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\Policy\InEvent;
 use App\Http\Access\Policy\InOrganisation;
 use App\Http\EntityTag;
@@ -20,7 +23,10 @@ use App\Http\Exception\ApiException;
 use App\Http\Input;
 use App\Repository\EventRepository;
 use App\Repository\OrganisationRepository;
+use Psl\Math;
 use Psl\Type;
+use Psl\Vec;
+use Psr\Clock\ClockInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -29,6 +35,10 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final readonly class EventsController
 {
+    private const int PER_PAGE = 50;
+
+    private const int MOST_PER_PAGE = 200;
+
     public function __construct(
         private Security $security,
         private OrganisationRepository $organisationRepository,
@@ -37,15 +47,36 @@ final readonly class EventsController
         private EventEditor $eventEditor,
         private EventSerialiser $eventSerialiser,
         private EventLifecycle $eventLifecycle,
+        private MembershipDirectoryInterface $membershipDirectory,
+        private MilestoneSerialiser $milestoneSerialiser,
+        private ClockInterface $clock,
+        private EventDuplicator $eventDuplicator,
     ) {
     }
 
+    /** A page of the unfinished, or with `finished=true` the Finished, each with its timeline's milestones (sc-3594). */
     #[Route('/api/orgs/{organisationId}/events', name: 'events_list', methods: ['GET'])]
     #[InOrganisation(Permission::EventsRead)]
-    public function list(string $organisationId): JsonResponse
+    public function list(Request $request, string $organisationId): JsonResponse
     {
+        $query = Input::query($request, Type\shape([
+            'finished' => Type\optional(Type\union(Type\literal_scalar('true'), Type\literal_scalar('false'))),
+            'page' => Type\optional(Type\positive_int()),
+            'itemsPerPage' => Type\optional(Type\positive_int()),
+        ]));
+        $organisation = $this->organisation($organisationId);
+        $grants = $this->membershipDirectory->grantsIn($this->user(), $organisation->getId()) ?? throw ApiException::notFound('access.not_found');
+        $finished = 'true' === ($query['finished'] ?? 'false');
+        $page = $query['page'] ?? 1;
+        $perPage = Math\minva($query['itemsPerPage'] ?? self::PER_PAGE, self::MOST_PER_PAGE);
+        $now = $this->clock->now();
+        $events = $this->eventRepository->findPageInOrganisation($organisation, $finished, $now, $page, $perPage);
+
         return new JsonResponse([
-            'events' => $this->eventSerialiser->events($this->eventRepository->findInOrganisation($this->organisation($organisationId))),
+            'events' => Vec\map(Vec\zip($events, $this->eventSerialiser->events($events)), fn (array $pair): array => [...$pair[1], 'milestones' => $this->milestoneSerialiser->milestones($pair[0], $grants)]),
+            'total' => $this->eventRepository->countPhaseInOrganisation($organisation, $finished, $now),
+            'page' => $page,
+            'itemsPerPage' => $perPage,
         ]);
     }
 
@@ -102,6 +133,20 @@ final readonly class EventsController
         ]));
 
         return $this->tagged($this->eventEditor->edit($event, $request->headers->get('If-Match'), $this->user(), $body));
+    }
+
+    /** A Draft from `startsAt`, local to the original's zone, in any phase (sc-3593). Needs Create events, since it creates one. */
+    #[Route('/api/events/{eventId}/duplicate', name: 'events_duplicate', methods: ['POST'])]
+    #[InEvent(Permission::EventsCreate)]
+    public function duplicate(Request $request, string $eventId): JsonResponse
+    {
+        $body = Input::body($request, Type\shape([
+            'startsAt' => Type\optional(Type\nullable(Type\string())),
+        ]));
+
+        $copy = $this->eventDuplicator->duplicate($this->event($eventId), $this->user(), $body['startsAt'] ?? null);
+
+        return new JsonResponse(['event' => $this->eventSerialiser->event($copy)], Response::HTTP_CREATED);
     }
 
     /** Refused 409 `event_state_invalid` unless it is a Draft, 409 `event_concluded` once its end has passed, 409 `event_host_required` with no host (sc-6713), and 403 `plan_limit` (sc-3584). */

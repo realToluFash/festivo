@@ -1,10 +1,18 @@
 import { type OrganisationEvent } from '@soirely/api-client';
+import { router } from 'expo-router';
 import { useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { type MakeLiveRefusal, CHANGED_WORDS, draftRowOf, refusalOf } from '../kit/makeLive.ts';
+import {
+  type MakeLiveRefusal,
+  CHANGED_WORDS,
+  addHostsHref,
+  draftRowOf,
+  makeLiveOpens,
+  refusalOf,
+} from '../kit/makeLive.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton } from './Buttons.tsx';
@@ -13,7 +21,7 @@ import { readOut } from './ReadOut.tsx';
 import { GlyphMark } from './StatusMark.tsx';
 import { Text } from './Text.tsx';
 
-/** `EventView-*` (tweak: Draft) and `Lifecycle-*` (sc-3584): the Draft's row, and Make live's confirmation. */
+/** `EventView-*` (tweak: Draft) and `Lifecycle-*` (sc-3584): the Draft's row, and Make live's confirmation; with no host it opens refused, with Add who is hosting (sc-15497). */
 export function DraftRow({
   kind,
   event,
@@ -29,7 +37,7 @@ export function DraftRow({
 }) {
   const { t } = useTranslation();
   const makeLive = useRef<View>(null);
-  const { asking, ask, go, close } = useLifecycleAction<object, MakeLiveRefusal>({
+  const { asking, ask, tell, go, close } = useLifecycleAction<object, MakeLiveRefusal>({
     event,
     onChange,
     onDone: () => readOut(t('eventLive.madeLive')),
@@ -74,7 +82,11 @@ export function DraftRow({
         <PrimaryButton
           ref={makeLive}
           label={t('eventLive.makeLive')}
-          onPress={() => ask({})}
+          onPress={() => {
+            const opens = makeLiveOpens(event);
+            if (opens.kind === 'needsHost') tell(opens);
+            else ask({});
+          }}
           testID="events.makeLive"
         />
       )}
@@ -92,6 +104,18 @@ export function DraftRow({
                 keep: t('eventLive.notYet'),
                 pending: asking.pending,
                 onGo: () => go({}, () => api.makeLive(event.id)),
+              }
+            : null
+        }
+        retold={asking?.kind === 'needsHost' ? asking : undefined}
+        onward={
+          asking?.kind === 'needsHost'
+            ? {
+                label: t('eventLive.addHosts'),
+                onPress: () => {
+                  close();
+                  router.push(addHostsHref(event.id));
+                },
               }
             : null
         }

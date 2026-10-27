@@ -3405,7 +3405,67 @@ button.members-row {
   border-top: var(--borderDivider);
 }
 
-.events-row {
+.events-home,
+.events-tabs,
+.events-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  min-width: 0;
+}
+
+.events-now-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Happening now is one large card, set apart by the amber of its pill's half-circle. */
+.events-card-now {
+  padding: var(--spaceLg);
+  border: var(--borderCard);
+  border-left: var(--spaceXs) solid var(--colorAttention);
+  border-radius: var(--radiusCardDesktop);
+  background: var(--colorCard);
+}
+
+.events-tab-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXs);
+  border-bottom: var(--borderDivider);
+}
+
+.events-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  min-height: var(--sizeHit);
+  padding-inline: var(--spaceMd);
+  border: 0;
+  border-bottom: var(--spaceXxs) solid transparent;
+  background: none;
+  color: var(--colorInkSecondary);
+  font: var(--typeButton);
+  cursor: pointer;
+}
+
+.events-tab[aria-selected='true'] {
+  border-bottom-color: var(--colorAccent);
+  color: var(--colorInk);
+}
+
+.events-tab-count {
+  padding-inline: var(--spaceXs);
+  border-radius: var(--radiusPill);
+  background: var(--colorInset);
+  font: var(--typePill);
+}
+
+.events-card {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -3413,24 +3473,73 @@ button.members-row {
   min-height: var(--sizeHit);
   padding-block: var(--spaceMd);
   color: var(--colorInk);
-  text-decoration: none;
 }
 
-.events-row-title {
+.events-card-body {
   display: flex;
-  flex: 0 1 auto;
+  flex: 1 1 12rem;
   flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXxs);
   min-width: 0;
 }
 
-.events-row-name {
+.events-card-name {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sizeHit);
+  color: var(--colorInk);
   font: var(--typeRowTitle);
   overflow-wrap: anywhere;
 }
 
-.events-row-date {
-  flex: 1 0 auto;
+.events-card-next-word {
+  font: var(--typeLabel);
+  letter-spacing: var(--typeLabelTracking);
+}
+
+.events-card-action {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sizeHit);
+}
+
+.events-card-date {
+  flex: 0 1 auto;
+  margin-left: auto;
   text-align: right;
+}
+
+.events-card-cover {
+  flex: 0 0 6rem;
+  border-radius: var(--radiusSmall);
+}
+
+.events-card-now .events-card-cover {
+  flex-basis: 12rem;
+}
+
+.events-empty h3 {
+  margin: 0;
+}
+
+.events-more {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+}
+
+@media (width <= 40rem) {
+  .events-card-date {
+    margin-left: 0;
+    text-align: left;
+  }
+
+  .events-card-cover,
+  .events-card-now .events-card-cover {
+    flex-basis: 100%;
+  }
 }
 
 .events-first-run-create,
@@ -3977,11 +4086,6 @@ button.members-row {
   margin-bottom: var(--spaceXl);
 }
 
-.events-row-cover {
-  flex: 0 0 6rem;
-  border-radius: var(--radiusSmall);
-}
-
 @media (width <= 40rem) {
   .cover-dialog {
     inset: 0;
@@ -4144,6 +4248,59 @@ button.members-row {
   }
 }
 
+/* ── Duplicate an event (sc-3593) ─────────────────────────────────────────── */
+
+.event-copy-lists {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--spaceLg);
+  padding: var(--spaceLg) var(--spaceXl);
+  border: var(--borderInset);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  font: var(--typeSmall);
+}
+
+.event-copy-lists h3 {
+  margin: 0 0 var(--spaceXs);
+  font: inherit;
+  font-weight: 600;
+}
+
+.event-copy-lists ul {
+  margin: 0;
+  padding-left: var(--spaceXl);
+  color: var(--colorInkSecondary);
+}
+
+.event-copy-created {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+}
+
+.event-copy-created:empty {
+  display: none;
+}
+
+.event-copy-created p {
+  margin: 0;
+}
+
+@media (width <= 40rem) {
+  .event-copy-dialog {
+    top: 0;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+  }
+
+  .event-copy-dialog .dialog-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+}
+
 /* ── An event's venue (sc-3589) ───────────────────────────────────────────── */
 
 .venue-suggestions {
@@ -4201,7 +4358,7 @@ button.members-row {
   text-decoration: none;
 }
 
-/* ── An event's timeline: Coming up and Full schedule (sc-3624) ─────────────── */
+/* ── An event's timeline: Coming up and All dates (sc-3624) ─────────────── */
 
 .coming-up-head {
   display: flex;

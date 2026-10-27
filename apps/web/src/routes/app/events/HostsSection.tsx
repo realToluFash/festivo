@@ -1,21 +1,21 @@
 import { type EventStatus } from '@soirely/api-client';
-import { HOSTS_MAXIMUM, hostNameOf, keepsLastHost } from '@soirely/domain';
+import {
+  HOSTS_MAXIMUM,
+  type HostErrors,
+  type HostFocus,
+  type HostRow,
+  type HostsChange,
+  hostCalled,
+  keepsLastHost,
+  movedHost,
+  removedHost,
+} from '@soirely/domain';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { offButton } from '../../../offButton.ts';
 import { FieldError } from './EventFields.tsx';
 import { ADD_HOST_ID, describedBy, hostInputId } from './eventFieldOrder.ts';
-
-/** `key` follows a row through a move, so its field and its message move with it. */
-export interface HostRow {
-  key: number;
-  name: string;
-}
-
-export type HostErrors = Partial<Record<number, string>>;
-
-type Control = 'name' | 'up' | 'down';
 
 /** Hosted by in Edit details (sc-6713): the names guests read, in order, each moved and removed in place. */
 export function HostsSection({
@@ -36,7 +36,7 @@ export function HostsSection({
   onSay: (line: string) => void;
 }) {
   const { t } = useTranslation();
-  const focusNext = useRef<{ key: number; control: Control } | 'add' | null>(null);
+  const focusNext = useRef<HostFocus | null>(null);
   const nextKey = useRef(Math.max(0, ...rows.map((row) => row.key)) + 1);
   const keepLast = keepsLastHost(saved, rows.length);
 
@@ -56,41 +56,12 @@ export function HostsSection({
     document.getElementById(id)?.focus();
   }, [rows]);
 
-  const named = (row: HostRow, index: number): string =>
-    hostNameOf(row.name) === ''
-      ? t('eventHosts.label', { position: index + 1 })
-      : hostNameOf(row.name);
+  function changed(change: HostsChange | null): void {
+    if (change == null) return;
 
-  function move(index: number, by: -1 | 1): void {
-    const row = rows[index];
-    const to = index + by;
-
-    if (row == null || to < 0 || to >= rows.length) return;
-
-    const moved = [...rows];
-    moved.splice(index, 1);
-    moved.splice(to, 0, row);
-
-    const pressed: Control = by < 0 ? 'up' : 'down';
-    const atEnd = to === 0 || to === rows.length - 1;
-    focusNext.current = {
-      key: row.key,
-      control: atEnd ? (pressed === 'up' ? 'down' : 'up') : pressed,
-    };
-    onRows(moved, null);
-    onSay(t('eventHosts.moved', { name: named(row, index), position: to + 1, count: rows.length }));
-  }
-
-  function remove(index: number): void {
-    const row = rows[index];
-
-    if (row == null) return;
-
-    const left = rows.filter((one) => one.key !== row.key);
-    const next = left[index];
-    focusNext.current = next == null ? 'add' : { key: next.key, control: 'name' };
-    onRows(left, null);
-    onSay(t('eventHosts.removed', { name: named(row, index) }));
+    focusNext.current = change.focus;
+    onRows(change.rows, null);
+    onSay(change.said);
   }
 
   function add(): void {
@@ -114,7 +85,7 @@ export function HostsSection({
           {rows.map((row, index) => {
             const id = hostInputId(row);
             const error = errors[row.key];
-            const name = named(row, index);
+            const name = hostCalled(row, index, t);
 
             return (
               <li key={row.key} className="event-host">
@@ -155,7 +126,7 @@ export function HostsSection({
                         className="button event-host-arrow"
                         aria-label={t('eventHosts.moveUp', { name })}
                         {...offButton(busy, { dim: false })}
-                        onClick={() => move(index, -1)}
+                        onClick={() => changed(movedHost(rows, index, -1, t))}
                       >
                         <span aria-hidden="true">↑</span>
                       </button>
@@ -169,7 +140,7 @@ export function HostsSection({
                         className="button event-host-arrow"
                         aria-label={t('eventHosts.moveDown', { name })}
                         {...offButton(busy, { dim: false })}
-                        onClick={() => move(index, 1)}
+                        onClick={() => changed(movedHost(rows, index, 1, t))}
                       >
                         <span aria-hidden="true">↓</span>
                       </button>
@@ -180,7 +151,7 @@ export function HostsSection({
                         className="button"
                         aria-label={t('eventHosts.removeNamed', { name })}
                         {...offButton(busy, { dim: false })}
-                        onClick={() => remove(index)}
+                        onClick={() => changed(removedHost(rows, index, t))}
                       >
                         {t('eventHosts.remove')}
                       </button>

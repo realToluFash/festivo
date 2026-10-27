@@ -49,6 +49,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **27 Oct 2026. Duplicar un evento** (sc-15883 para sc-3593, `web:eventDuplicate.*`). «Duplicar»
+  y «Crear borrador»; el evento nuevo es «la copia» hasta que existe. El panel dice «Lo que se
+  copia» / «Lo que no se copia», porque un participio solo tendría que concordar con cada fila.
+  Length es «Duración». Una negativa empieza «No se ha creado.», como «No se ha publicado.». Las
+  horas y los minutos se unen con «y» en `hoursAndMinutes` («2 horas y 20 minutos»); la fecha
+  lleva «el {{end}}», y las horas, «Horas en {{timeZone}}», como el formulario.
 - **27 Oct 2026. Los anfitriones de un evento** (sc-15427 para sc-6713, `web:eventHosts.*`,
   `eventLive.needsHost*|addHosts` web y app, `messages:validation.event_host*`,
   `messages:event.host_required|last_host`). Host es «anfitrión», como ya decía
@@ -485,6 +491,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   «Calendario completo», its panel «Próximas fechas». The owner pill «You» is «A su cargo»,
   because a bare «Usted» reads as a form field. Distances follow the date: «hoy», «dentro de
   3 días», «hace 2 días». The API titles put the verb first: «Empieza {name}», «Termina {name}».
+- **27 Oct 2026. Las pestañas de Eventos y sus estados vacíos** (sc-15981 para sc-3594,
+  `events.*`, `eventsScreen.*`). Las pestañas son «Próximos», «Borradores» y «Pasados», en
+  masculino con «eventos». "Make live" sigue siendo «publicar»; "Called off on" es «Cancelado el
+  {{date}}». "Next up" es «Lo próximo», como `timeline.nextUp`. El botón mientras carga dice
+  «Cargando más…», no «Mostrando más…». `moreFailed` repite la segunda frase del fallo de carga
+  de su propia pantalla, como en inglés.
 - **27 Oct 2026. The two-factor-due subject opens on the feature and the deadline**
   (`emails:signInRules.twoFactorDue.subject`, sc-15219): «Verificación en dos pasos antes del
   {deadline}: {organisation}». «antes del» reads with the weekday that `{deadline}` opens on;

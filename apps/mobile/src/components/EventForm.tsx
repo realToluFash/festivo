@@ -9,11 +9,14 @@ import {
   EVENT_TYPES,
   type EventDraft,
   type EventFormField,
+  type HostErrors,
+  type HostRow,
   type VenueDraft,
   currencyChoices,
-  eventChanges,
   eventFormErrors,
   eventNameLength,
+  firstRefusedOf,
+  hostErrorsOf,
   filledEndDate,
   formatWallClock,
   formatWallDay,
@@ -37,7 +40,7 @@ import {
   type EventErrors,
   type EventTyped,
   blankEvent,
-  firstRefused,
+  changesOf,
   isDirty,
   newEventOf,
   pickedDate,
@@ -57,6 +60,7 @@ import { cardFrame } from './cardFrame.ts';
 import { type CoverUse, CoverField, discardCoverUpload } from './CoverField.tsx';
 import { focusPicker } from './CountryPicker.tsx';
 import { CONTROL_TEXT_SIZE, Field, FieldError, TextField, focusChecked } from './Field.tsx';
+import { HostsSection } from './HostsSection.tsx';
 import { ListPicker } from './ListPicker.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
@@ -72,6 +76,7 @@ export function EventForm({
   kind,
   organisation,
   opened,
+  toHosts = false,
   onCreated,
   onSaved,
   onLatest,
@@ -79,6 +84,8 @@ export function EventForm({
   kind: LayoutKind;
   organisation: Membership;
   opened?: TaggedEvent | undefined;
+  /** Opened from Make live's Add who is hosting (sc-15497). */
+  toHosts?: boolean;
   onCreated: (eventId: string) => void;
   onSaved: (outcome: 'saved' | 'unchanged') => void;
   /** Show the latest: the event is read again and the form starts over from it. */
@@ -94,6 +101,9 @@ export function EventForm({
   const [entered, setTyped] = useState(from);
   const [endChosen, setEndChosen] = useState(editing);
   const [errors, setErrors] = useState<EventErrors>({});
+  const [hostErrors, setHostErrors] = useState<HostErrors>({});
+  const [hostsChecked, setHostsChecked] = useState(false);
+  const [focusHost, setFocusHost] = useState<{ key: number } | null>(null);
   const [unsent, setUnsent] = useState<{ count: number } | null>(null);
   const [status, setStatus] = useState<Status>('editing');
   const [asking, setAsking] = useState<Asking>(null);
@@ -110,7 +120,7 @@ export function EventForm({
     () => (over ? scheduleKept(entered, from) : entered),
     [over, entered, from],
   );
-  const { draft, venue, timeZone, currency } = typed;
+  const { draft, venue, timeZone, currency, hosts } = typed;
   const dirty = isDirty(typed, from) || (!editing && cover != null);
 
   const nameInput = useRef<TextInput>(null);
@@ -246,22 +256,40 @@ export function EventForm({
     change(field, { draft: { ...draft, ...next } });
   }
 
-  function refuse(found: EventErrors): void {
+  function refuse(found: EventErrors, hostFound: HostErrors = {}): void {
     setErrors(found);
-    const first = firstRefused(found);
-    setFocusOn(first == null ? null : { field: first });
+    setHostErrors(hostFound);
+    const first = firstRefusedOf(found, hostFound, hosts);
+    setFocusOn(first != null && 'field' in first ? { field: first.field } : null);
+    setFocusHost(first != null && 'host' in first ? { key: first.host } : null);
+  }
+
+  function editHosts(rows: HostRow[], touched: number | null): void {
+    setTyped((previous) => ({ ...previous, hosts: rows }));
+    if (touched != null) setHostErrors((previous) => ({ ...previous, [touched]: undefined }));
+    else if (hostsChecked) setHostErrors(hostErrorsOf(rows, t));
+    if (status === 'failed') setStatus('editing');
+  }
+
+  /** After the first Save, each host is checked again as its field is left. */
+  function leaveHost(row: HostRow): void {
+    if (!hostsChecked) return;
+    setHostErrors((previous) => ({ ...previous, [row.key]: hostErrorsOf(hosts, t)[row.key] }));
   }
 
   async function send(): Promise<void> {
     if (busy) return;
 
     const found = eventFormErrors(typed, t);
-    const count = Object.keys(found).length;
+    const hostFound = editing ? hostErrorsOf(hosts, t) : {};
+    const count = Object.keys(found).length + Object.keys(hostFound).length;
+
+    if (editing) setHostsChecked(true);
 
     if (count > 0) {
       setUnsent({ count });
       setStatus('editing');
-      refuse(found);
+      refuse(found, hostFound);
       return;
     }
 
@@ -297,16 +325,16 @@ export function EventForm({
         leaving.current = true;
         onCreated(created.id);
       } else if (opened != null) {
-        await api.updateEvent(opened.event.id, eventChanges(opened.event, typed), opened.tag);
+        await api.updateEvent(opened.event.id, changesOf(opened.event, typed), opened.tag);
         leaving.current = true;
         onSaved('saved');
       }
     } catch (error) {
-      const outcome = sendOutcome(error, t);
+      const outcome = sendOutcome(error, t, hosts);
 
       if (outcome.kind === 'refused') {
         setStatus('editing');
-        refuse(outcome.errors);
+        refuse(outcome.errors, outcome.hosts);
         return;
       }
 
@@ -403,6 +431,20 @@ export function EventForm({
             testID="eventForm.type"
           />
         </Field>
+
+        {opened != null && (
+          <HostsSection
+            kind={kind}
+            rows={hosts}
+            errors={hostErrors}
+            saved={opened.event}
+            busy={busy}
+            arrive={toHosts}
+            focusHost={focusHost}
+            onRows={editHosts}
+            onLeave={leaveHost}
+          />
+        )}
 
         <CoverField
           type={draft.type}

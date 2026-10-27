@@ -297,11 +297,10 @@ function CoverDialog({
         uploaded = signed.key;
         if (!current) return discardCoverUpload(organisationId, signed.key);
 
-        if (!shows) {
-          const copy = await api.previewEventCoverUpload(organisationId, signed.key);
-          if (!current) return;
-          setConverted(copy);
-        }
+        // The server reads every new photo whole, so a damaged JPEG the browser sized is refused here, not saved grey.
+        const copy = await api.previewEventCoverUpload(organisationId, signed.key);
+        if (!current) return;
+        if (!shows) setConverted(copy);
         setUpload((now) => (now.kind === 'failed' ? now : { kind: 'ready', key: signed.key }));
       })
       .catch((error: unknown) => {

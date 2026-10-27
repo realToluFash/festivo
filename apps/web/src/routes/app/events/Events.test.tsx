@@ -1,9 +1,9 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { EVENT_TYPES, serverClock } from '@soirely/domain';
+import { EVENT_TYPES, forgetEventsTab, serverClock } from '@soirely/domain';
 
-import { __setSessionState, type Session } from '../../../session.ts';
+import { __setSessionState, type Session, switchOrganisation } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { breaksAnywhere } from '../../../test-wrapping.ts';
 import { routes } from '../../index.tsx';
@@ -41,7 +41,7 @@ function event(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function signedIn(organisation = IRE): void {
+function signedIn(organisation = IRE, organisations = [organisation]): void {
   const session: Session = {
     name: 'Folake Adeyemi',
     email: 'folake@ire.events',
@@ -52,7 +52,7 @@ function signedIn(organisation = IRE): void {
     needsOrganisation: false,
     hasPassword: true,
     organisation,
-    organisations: [organisation],
+    organisations,
     organisationCountry: null,
     timezone: null,
     waitingFor: null,
@@ -61,7 +61,7 @@ function signedIn(organisation = IRE): void {
   __setSessionState({ status: 'signedIn', session });
 }
 
-type Answer = (body: unknown) => Response | Promise<Response>;
+type Answer = (body: unknown, url: URL) => Response | Promise<Response>;
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status });
@@ -78,14 +78,33 @@ function answering(answers: Record<string, Answer>) {
   const sent: { line: string; body: unknown }[] = [];
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-    const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+    const url = new URL(String(input));
+    const line = `${init?.method ?? 'GET'} ${url.pathname}`;
     const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
     sent.push({ line, body });
 
-    return (await answers[line]?.(body)) ?? json({});
+    return (await answers[line]?.(body, url)) ?? json({});
   });
 
   return sent;
+}
+
+/** The list's two requests: every unfinished event, and the Finished a page at a time of `pastTotal`. */
+function listed(
+  unfinished: Record<string, unknown>[],
+  past: Record<string, unknown>[] = [],
+  pastTotal = past.length,
+): Answer {
+  return (_body, url) => {
+    const page = Number(url.searchParams.get('page') ?? '1');
+    const perPage = Number(url.searchParams.get('itemsPerPage') ?? '50');
+    const finished = url.searchParams.get('finished') === 'true';
+    const events = (finished ? past : unfinished)
+      .slice((page - 1) * perPage, page * perPage)
+      .map((one) => ({ milestones: [], ...one }));
+
+    return json({ events, total: finished ? pastTotal : unfinished.length });
+  };
 }
 
 function at(path: string): void {
@@ -103,45 +122,48 @@ function spaced(text: string | null): string {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  forgetEventsTab();
 });
 
 describe('Events', () => {
-  it('lists each event with Draft and its start date, in the order the API gives', async () => {
+  it('lists each draft with Draft, its type, and its date with how far away it is', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-13T12:00:00Z'));
+    serverClock.observe(new Date().toUTCString());
     signedIn();
     answering({
-      'GET /api/orgs/org_1/events': () =>
-        json({
-          events: [
-            event(),
-            event({
-              id: 'ev_2',
-              name: 'Board dinner',
-              type: 'corporate',
-              startsAt: '2026-12-01T19:00:00+00:00',
-              endsAt: '2026-12-01T23:00:00+00:00',
-              timeZone: 'Europe/London',
-            }),
-          ],
+      'GET /api/orgs/org_1/events': listed([
+        event({
+          id: 'ev_2',
+          name: 'Board dinner',
+          type: 'corporate',
+          startsAt: '2026-12-01T19:00:00+00:00',
+          endsAt: '2026-12-01T23:00:00+00:00',
+          timeZone: 'Europe/London',
         }),
+        event(),
+      ]),
     });
     at('/app/events');
 
+    fireEvent.click(await screen.findByRole('tab', { name: 'Drafts 2' }));
     const rows = await screen.findAllByRole('listitem');
 
     expect(rows.map((row) => spaced(row.textContent))).toEqual([
-      'Adaeze and TundeWeddingDraftSat, Nov 14, 2026',
-      'Board dinnerCorporate eventDraftTue, Dec 1, 2026',
+      'DraftAdaeze and TundeWeddingSaturday, Nov 14 · in 32 days',
+      'DraftBoard dinnerCorporate eventTuesday, Dec 1 · in 49 days',
     ]);
     expect(within(rows[0]!).getByRole('link').getAttribute('href')).toBe('/app/events/ev_1');
     expect(screen.getByRole('link', { name: 'New event' }).getAttribute('href')).toBe(
       '/app/events/new',
     );
-    expect(screen.queryByRole('tab')).toBeNull();
+    vi.useRealTimers();
+    serverClock.observe(new Date().toUTCString());
   });
 
   it('shows the first-run card, with Create an event, to an organisation with no events', async () => {
     signedIn();
-    answering({ 'GET /api/orgs/org_1/events': () => json({ events: [] }) });
+    answering({ 'GET /api/orgs/org_1/events': listed([]) });
     at('/app/events');
 
     const card = (await screen.findByRole('heading', { name: 'Set up your first event' }))
@@ -156,7 +178,7 @@ describe('Events', () => {
 
   it('shows no button without Create events, and says who can create one', async () => {
     signedIn(READER);
-    answering({ 'GET /api/orgs/org_1/events': () => json({ events: [] }) });
+    answering({ 'GET /api/orgs/org_1/events': listed([]) });
     at('/app/events');
 
     await screen.findByRole('heading', { name: 'Set up your first event' });
@@ -174,8 +196,8 @@ describe('Events', () => {
     signedIn();
     let calls = 0;
     answering({
-      'GET /api/orgs/org_1/events': () =>
-        ++calls === 1 ? problem(500, 'internal_error') : json({ events: [event()] }),
+      'GET /api/orgs/org_1/events': (body, url) =>
+        ++calls <= 2 ? problem(500, 'internal_error') : listed([event()])(body, url),
     });
     at('/app/events');
 
@@ -185,6 +207,7 @@ describe('Events', () => {
     expect(screen.queryAllByRole('listitem')).toHaveLength(0);
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    fireEvent.click(await screen.findByRole('tab', { name: /Drafts/ }));
 
     expect(await screen.findByRole('link', { name: /Adaeze and Tunde/ })).toBeDefined();
     expect(screen.queryByRole('alert')).toBeNull();
@@ -199,8 +222,8 @@ describe('Events', () => {
       signedIn();
       let calls = 0;
       answering({
-        'GET /api/orgs/org_1/events': () =>
-          ++calls === 1 ? problem(500, 'internal_error') : json({ events }),
+        'GET /api/orgs/org_1/events': (body, url) =>
+          ++calls <= 2 ? problem(500, 'internal_error') : listed(events)(body, url),
       });
       at('/app/events');
 
@@ -230,11 +253,295 @@ describe('Events', () => {
   it("counts the organisation's events on the dashboard", async () => {
     signedIn();
     answering({
-      'GET /api/orgs/org_1/events': () => json({ events: [event(), event({ id: 'ev_2' })] }),
+      'GET /api/orgs/org_1/events': listed([event()], [event({ id: 'ev_2' })]),
     });
     at('/app');
 
     expect(await screen.findByText('2 events')).toBeDefined();
+  });
+});
+
+describe('Events Home (sc-3594)', () => {
+  const NOW = new Date('2026-11-01T12:00:00Z');
+
+  function live(name: string, overrides: Record<string, unknown> = {}) {
+    return event({ id: name, name, status: 'live', phase: 'live', ...overrides });
+  }
+
+  function starts(title: string, at: string) {
+    return { at, title, note: null, owner: 'event', area: 'events', action: null };
+  }
+
+  function finished(count: number) {
+    return Array.from({ length: count }, (_, index) =>
+      event({
+        id: `past_${index}`,
+        name: `Past ${String(index).padStart(2, '0')}`,
+        status: 'ended',
+        phase: 'finished',
+        startsAt: '2026-09-01T10:00:00+01:00',
+        endsAt: '2026-09-01T12:00:00+01:00',
+        concludedAt: new Date(
+          Date.parse('2026-10-30T10:00:00Z') - index * 86_400_000,
+        ).toISOString(),
+      }),
+    );
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date', 'setInterval', 'clearInterval'] });
+    vi.setSystemTime(NOW);
+    serverClock.observe(NOW.toUTCString());
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    serverClock.observe(new Date().toUTCString());
+  });
+
+  it('shows Happening now above the tabs, with its start and Next up, on every tab', async () => {
+    signedIn();
+    answering({
+      'GET /api/orgs/org_1/events': listed([
+        live('Tonight', {
+          phase: 'happening_now',
+          startsAt: '2026-11-01T09:00:00+01:00',
+          endsAt: '2026-11-03T02:00:00+01:00',
+          timeZone: 'Europe/Madrid',
+          milestones: [
+            starts('Tonight starts', '2026-11-01T09:00:00+01:00'),
+            starts('Tonight ends', '2026-11-03T02:00:00+01:00'),
+          ],
+        }),
+        live('Later', { milestones: [starts('Later starts', '2026-11-14T16:00:00+01:00')] }),
+      ]),
+    });
+    at('/app/events');
+
+    const now = (await screen.findByRole('heading', { name: 'Happening now' })).parentElement!;
+    expect(spaced(within(now).getByRole('listitem').textContent)).toBe(
+      'Happening nowTonightWeddingNext up Tonight endsToday · started 09:00 Europe/Madrid',
+    );
+
+    const upcoming = screen.getByRole('tabpanel');
+    expect(spaced(within(upcoming).getByRole('listitem').textContent)).toBe(
+      'LiveLaterWeddingNext up Later startsSaturday, Nov 14 · in 13 days',
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Past 0' }));
+    expect(screen.getByRole('heading', { name: 'Happening now' })).toBeDefined();
+  });
+
+  it('leaves Happening now out when nothing is, and Next up out with no milestone ahead', async () => {
+    signedIn();
+    answering({ 'GET /api/orgs/org_1/events': listed([live('Later')]) });
+    at('/app/events');
+
+    const [row] = await screen.findAllByRole('listitem');
+
+    expect(screen.queryByRole('heading', { name: 'Happening now' })).toBeNull();
+    expect(row!.textContent).not.toContain('Next up');
+  });
+
+  it('counts each tab, Upcoming with the Paused, and moves between them by arrow keys', async () => {
+    signedIn();
+    answering({
+      'GET /api/orgs/org_1/events': listed(
+        [
+          live('Later'),
+          live('Paused', {
+            status: 'paused',
+            phase: 'paused',
+            startsAt: '2026-11-10T16:00:00+01:00',
+          }),
+          event({ id: 'draft', name: 'Draft' }),
+        ],
+        finished(3),
+        3,
+      ),
+    });
+    at('/app/events');
+
+    const upcoming = await screen.findByRole('tab', { name: 'Upcoming 2' });
+    expect(upcoming.getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tab', { name: 'Drafts 1' }).getAttribute('tabindex')).toBe('-1');
+    expect(
+      within(screen.getByRole('tabpanel'))
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['Paused', 'Later']);
+
+    fireEvent.keyDown(upcoming, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Drafts 1' }));
+    expect(screen.getByRole('tab', { name: 'Drafts 1' }).getAttribute('aria-selected')).toBe(
+      'true',
+    );
+
+    fireEvent.keyDown(document.activeElement!, { key: 'End' });
+    expect(screen.getByRole('tab', { name: 'Past 3' }).getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(upcoming);
+  });
+
+  it.each([
+    [
+      'Upcoming',
+      'Nothing coming up',
+      'Events you make live show here, with the next thing each one needs.',
+    ],
+    [
+      'Drafts',
+      'No drafts',
+      'New events stay drafts, visible only to your team, until you make them live.',
+    ],
+    [
+      'Past',
+      'Nothing finished yet',
+      'Finished events stay here, so you can look back or start the next one from them.',
+    ],
+  ])('says %s is empty in its own words', async (tab, title, line) => {
+    signedIn();
+    answering({
+      'GET /api/orgs/org_1/events': listed(
+        tab === 'Upcoming' ? [event()] : [live('Later')],
+        tab === 'Past' ? [] : finished(1),
+      ),
+    });
+    at('/app/events');
+
+    fireEvent.click(await screen.findByRole('tab', { name: new RegExp(`^${tab}`) }));
+
+    expect(
+      within(screen.getByRole('tabpanel')).getByRole('heading', { name: title }),
+    ).toBeDefined();
+    expect(screen.getByText(line)).toBeDefined();
+  });
+
+  it('counts every Finished event from the first page, and Show more loads ten more until there are none', async () => {
+    signedIn();
+    const sent = answering({ 'GET /api/orgs/org_1/events': listed([], finished(12), 12) });
+    at('/app/events');
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Past 12' }));
+    expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(10);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+
+    await waitFor(() =>
+      expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(12),
+    );
+    expect(screen.getByRole('tab', { name: 'Past 12' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+    expect(document.querySelector('.events-panel [aria-live="polite"]')?.textContent).toBe(
+      '2 more finished events shown.',
+    );
+    expect(sent.filter(({ line }) => line === 'GET /api/orgs/org_1/events')).toHaveLength(3);
+  });
+
+  it('reaches every Finished event, counted once, when one finishes between the first page and Show more', async () => {
+    const tonight = live('Tonight', {
+      startsAt: '2026-11-01T09:00:00Z',
+      endsAt: '2026-11-01T12:00:30Z',
+    });
+    const past = finished(25);
+    const ended = { ...tonight, status: 'ended', phase: 'finished', concludedAt: tonight.endsAt };
+    let served: Record<string, unknown>[] = past;
+    signedIn();
+    answering({
+      'GET /api/orgs/org_1/events': (body, url) =>
+        listed([tonight], served, served.length)(body, url),
+    });
+    at('/app/events');
+    fireEvent.click(await screen.findByRole('tab', { name: 'Past 25' }));
+
+    served = [ended, ...past];
+    await act(() => vi.advanceTimersByTimeAsync(30_000));
+    expect(screen.getByRole('tab', { name: 'Past 26' })).toBeDefined();
+
+    const items = () => within(screen.getByRole('tabpanel')).getAllByRole('listitem');
+    fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+    await waitFor(() => expect(items()).toHaveLength(20));
+    fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+    await waitFor(() => expect(items()).toHaveLength(26));
+
+    expect(screen.getByRole('tab', { name: 'Past 26' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+  });
+
+  it('offers no Show more with ten or fewer, and says when a call-off happened', async () => {
+    signedIn();
+    answering({
+      'GET /api/orgs/org_1/events': listed(
+        [],
+        [
+          event({
+            name: 'Called off',
+            status: 'ended',
+            phase: 'finished',
+            startsAt: '2026-12-01T10:00:00+01:00',
+            concludedAt: '2026-09-30T10:00:00+01:00',
+          }),
+        ],
+      ),
+    });
+    at('/app/events');
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Past 1' }));
+
+    expect(spaced(screen.getByRole('listitem').textContent)).toContain('Called off on Sep 30');
+    expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+  });
+
+  it('moves an event to Happening now at its start and to Past at its end, with no reload', async () => {
+    signedIn();
+    const sent = answering({
+      'GET /api/orgs/org_1/events': listed([
+        live('Party', { startsAt: '2026-11-01T12:00:30Z', endsAt: '2026-11-01T12:01:00Z' }),
+      ]),
+    });
+    at('/app/events');
+    await screen.findByRole('tab', { name: 'Upcoming 1' });
+
+    await act(() => vi.advanceTimersByTimeAsync(30_000));
+    expect(screen.getByRole('heading', { name: 'Happening now' })).toBeDefined();
+    expect(screen.getByRole('tab', { name: 'Upcoming 0' })).toBeDefined();
+
+    await act(() => vi.advanceTimersByTimeAsync(30_000));
+    expect(screen.queryByRole('heading', { name: 'Happening now' })).toBeNull();
+    expect(screen.getByRole('tab', { name: 'Past 1' })).toBeDefined();
+    expect(sent.filter(({ line }) => line === 'GET /api/orgs/org_1/events')).toHaveLength(2);
+  });
+
+  it('keeps the tab chosen when the person comes back, and opens on Upcoming after Switch organisation', async () => {
+    const other = membership({ id: 'org_2', name: 'Other' });
+    signedIn(IRE, [IRE, other]);
+    answering({
+      'GET /api/orgs/org_1/events': listed([event()]),
+      'GET /api/orgs/org_2/events': listed([event({ organisationId: 'org_2' })]),
+    });
+    at('/app/events');
+    fireEvent.click(await screen.findByRole('tab', { name: 'Drafts 1' }));
+    cleanup();
+
+    at('/app/events');
+    expect(
+      (await screen.findByRole('tab', { name: 'Drafts 1' })).getAttribute('aria-selected'),
+    ).toBe('true');
+    cleanup();
+
+    switchOrganisation('org_2');
+    at('/app/events');
+    expect(
+      (await screen.findByRole('tab', { name: 'Upcoming 0' })).getAttribute('aria-selected'),
+    ).toBe('true');
+    cleanup();
+
+    switchOrganisation('org_1');
+    at('/app/events');
+    expect(
+      (await screen.findByRole('tab', { name: 'Upcoming 0' })).getAttribute('aria-selected'),
+    ).toBe('true');
   });
 });
 
@@ -875,7 +1182,7 @@ describe("Editing an event's details (sc-3587)", () => {
       const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
       sent.push({ line, body, ifMatch: new Headers(init?.headers).get('If-Match') });
 
-      const answer = await answers[line]?.(body);
+      const answer = await answers[line]?.(body, new URL(String(input)));
       if (answer != null) return answer;
 
       if (line === 'PATCH /api/events/ev_1') {
@@ -1365,7 +1672,7 @@ describe("An event's venue (sc-3589)", () => {
       const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
       sent.push({ line: `${line}${url.search}`, body });
 
-      const answer = await answers[line]?.(body);
+      const answer = await answers[line]?.(body, new URL(String(input)));
       if (answer != null) return answer;
 
       return new Response(JSON.stringify({ event: served }), {
@@ -1785,7 +2092,7 @@ describe('Make live (sc-3584)', () => {
 
   it('shows Live in the list', async () => {
     signedIn();
-    answering({ 'GET /api/orgs/org_1/events': () => json({ events: [live()] }) });
+    answering({ 'GET /api/orgs/org_1/events': listed([live()]) });
     at('/app/events');
 
     const [row] = await screen.findAllByRole('listitem');
@@ -1839,8 +2146,12 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     ['finished', 'Finished'],
   ])('shows the server phase %s as %s in the list', async (phase, word) => {
     signedIn();
-    answering({ 'GET /api/orgs/org_1/events': () => json({ events: [live({ phase })] }) });
+    answering({
+      'GET /api/orgs/org_1/events':
+        phase === 'finished' ? listed([], [live({ phase })]) : listed([live({ phase })]),
+    });
     at('/app/events');
+    if (phase === 'finished') fireEvent.click(await screen.findByRole('tab', { name: /Past/ }));
 
     const [row] = await screen.findAllByRole('listitem');
     expect(within(row!).getByText(word)).toBeDefined();
@@ -2294,7 +2605,7 @@ describe('The cover (sc-3590)', () => {
       const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
       sent.push({ line, body });
 
-      const answer = await answers[line]?.(body);
+      const answer = await answers[line]?.(body, new URL(String(input)));
       if (answer != null) return answer;
       if (line === 'POST /api/orgs/org_1/event-cover-uploads')
         return json(
@@ -2308,6 +2619,8 @@ describe('The cover (sc-3590)', () => {
           201,
         );
       if (line === 'PUT /upload/1') return new Response(null, { status: 200 });
+      if (line === 'POST /api/orgs/org_1/event-cover-uploads/preview')
+        return json({ preview: 'data:image/webp;base64,UklGRg==' });
       if (line === 'PUT /api/events/ev_1/cover') {
         const { position, description } = body as { position: number; description: string | null };
         held = event({ cover: { ...PHOTO, position, description } });
@@ -2605,8 +2918,10 @@ describe('The cover (sc-3590)', () => {
     answering({
       'GET /api/events/ev_1': () =>
         json({ event: event({ cover: { ...PHOTO, description: null } }) }),
-      'GET /api/orgs/org_1/events': () =>
-        json({ events: [event({ cover: PHOTO }), event({ id: 'ev_2', type: 'gala' })] }),
+      'GET /api/orgs/org_1/events': listed([
+        event({ cover: PHOTO }),
+        event({ id: 'ev_2', type: 'gala' }),
+      ]),
     });
     at('/app/events/ev_1');
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
@@ -2617,6 +2932,7 @@ describe('The cover (sc-3590)', () => {
     cleanup();
 
     at('/app/events');
+    fireEvent.click(await screen.findByRole('tab', { name: /Drafts/ }));
     const rows = await screen.findAllByRole('listitem');
 
     expect(within(rows[0]!).getByRole('img').getAttribute('alt')).toBe(PHOTO.description);
@@ -2728,7 +3044,7 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
       const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
       sent.push({ line, body });
 
-      const answer = await answers[line]?.(body);
+      const answer = await answers[line]?.(body, new URL(String(input)));
       if (answer != null) return answer;
       if (line === 'POST /api/orgs/org_1/event-cover-uploads')
         return json(
@@ -2814,8 +3130,7 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
     });
   });
 
-  it('a JPEG the browser shows is not sent for a copy', async () => {
-    signedIn();
+  function chooseShownJpeg(): void {
     vi.stubGlobal(
       'Image',
       class {
@@ -2827,17 +3142,45 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
         }
       },
     );
-    const sent = serving(null);
-    await editing();
-
     fireEvent.change(document.getElementById('cover-file')!, {
       target: { files: [new File(['x'], 'arch.jpg', { type: 'image/jpeg' })] },
     });
+  }
+
+  it("a JPEG the browser shows is read by the server too, and the frame keeps the browser's own", async () => {
+    signedIn();
+    const sent = serving(null);
+    await editing();
+
+    chooseShownJpeg();
     const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
 
-    await waitFor(() => expect(sent.map(({ line }) => line)).toContain('PUT /upload/1'));
+    await waitFor(() => expect(sent.map(({ line }) => line)).toContain(PREVIEW));
+    await waitFor(() => expect(within(dialog).queryByText('Uploading…')).toBeNull());
     expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe('blob:chosen');
-    expect(sent.map(({ line }) => line)).not.toContain(PREVIEW);
+    expect(
+      within(dialog).getByRole('button', { name: 'Use this photo' }).getAttribute('aria-disabled'),
+    ).not.toBe('true');
+  });
+
+  it('a damaged JPEG whose size the browser reads is refused while Cover photo is open, and nothing is saved (27 Oct)', async () => {
+    signedIn();
+    const line = 'That file is not a photo we can use. Choose a JPEG, PNG, WebP or HEIC.';
+    const sent = serving(PHOTO, { [PREVIEW]: refusedWith(line) });
+    await editing();
+
+    chooseShownJpeg();
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+
+    expect(await within(dialog).findByText(line)).toBeDefined();
+    const use = within(dialog).getByRole('button', { name: 'Use this photo' });
+    expect(use.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(use);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByRole('button', { name: 'Change photo' })).toBeDefined();
+    expect(sent.filter(({ line: sentLine }) => sentLine.startsWith('PUT /api/events'))).toEqual([]);
   });
 
   for (const [what, line] of [
@@ -3044,10 +3387,10 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
     signedIn();
     answering({
       'GET /api/events/ev_1': () => json({ event: event({ cover: PHOTO }) }),
-      'GET /api/orgs/org_1/events': () =>
-        json({
-          events: [event({ cover: PHOTO }), event({ id: 'ev_2', type: 'gala', cover: PHOTO })],
-        }),
+      'GET /api/orgs/org_1/events': listed([
+        event({ cover: PHOTO }),
+        event({ id: 'ev_2', type: 'gala', cover: PHOTO }),
+      ]),
     });
     at('/app/events/ev_1');
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
@@ -3061,6 +3404,7 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
     cleanup();
 
     at('/app/events');
+    fireEvent.click(await screen.findByRole('tab', { name: /Drafts/ }));
     const rows = await screen.findAllByRole('listitem');
     fireEvent.error(within(rows[1]!).getByRole('img'));
 
@@ -3101,7 +3445,7 @@ describe('Hosted by, in Edit details (sc-6713)', () => {
       const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
       sent.push({ line, body, ifMatch: new Headers(init?.headers).get('If-Match') });
 
-      const answer = await answers[line]?.(body);
+      const answer = await answers[line]?.(body, new URL(String(input)));
       if (answer != null) return answer;
 
       if (line === 'PATCH /api/events/ev_1') current = { ...current, ...(body as object) };
@@ -3406,7 +3750,7 @@ describe('Make live with no hosts (sc-6713)', () => {
   });
 });
 
-describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
+describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
   function milestone(at: string, title: string, owner = 'event') {
     return { at, title, note: null, owner, area: 'events', action: null };
   }
@@ -3464,12 +3808,12 @@ describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
       'Mon, Oct 19, 12:00 (Europe/Madrid) · in 8 daysBalance dueYou',
       'Tue, Oct 20, 12:00 (Europe/Madrid) · in 9 daysThank-you notes sentAutomatic',
     ]);
-    expect(within(panel).getByRole('link', { name: 'Full schedule' }).getAttribute('href')).toBe(
-      '/app/events/ev_1/schedule',
+    expect(within(panel).getByRole('link', { name: 'All dates' }).getAttribute('href')).toBe(
+      '/app/events/ev_1/dates',
     );
   });
 
-  it('says nothing is coming up once everything has passed, and still links the schedule', async () => {
+  it('says nothing is coming up once everything has passed, and still links All dates', async () => {
     clockAt('2026-11-01T08:00:00Z');
     signedIn();
     answering({
@@ -3482,15 +3826,13 @@ describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
     const panel = await comingUp();
 
     expect(
-      await within(panel).findByText(
-        "Nothing coming up. Everything on this event's schedule has passed.",
-      ),
+      await within(panel).findByText('Nothing coming up. Every date on this event has passed.'),
     ).toBeDefined();
     expect(within(panel).queryByRole('listitem')).toBeNull();
-    expect(within(panel).getByRole('link', { name: 'Full schedule' })).toBeDefined();
+    expect(within(panel).getByRole('link', { name: 'All dates' })).toBeDefined();
   });
 
-  it('shows no rows and no Full schedule link while it fails, until Try again loads it', async () => {
+  it('shows no rows and no All dates link while it fails, until Try again loads it', async () => {
     clockAt('2026-10-11T08:00:00Z');
     signedIn();
     let calls = 0;
@@ -3503,27 +3845,27 @@ describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
 
     const panel = await comingUp();
 
-    expect(await within(panel).findByText("The schedule didn't load.")).toBeDefined();
+    expect(await within(panel).findByText('The dates did not load.')).toBeDefined();
     expect(within(panel).queryByRole('listitem')).toBeNull();
-    expect(within(panel).queryByRole('link', { name: 'Full schedule' })).toBeNull();
+    expect(within(panel).queryByRole('link', { name: 'All dates' })).toBeNull();
 
     fireEvent.click(within(panel).getByRole('button', { name: 'Try again' }));
 
     await waitFor(() => expect(within(panel).getAllByRole('listitem')).toHaveLength(4));
-    expect(within(panel).getByRole('link', { name: 'Full schedule' })).toBeDefined();
-    expect(within(panel).queryByText("The schedule didn't load.")).toBeNull();
+    expect(within(panel).getByRole('link', { name: 'All dates' })).toBeDefined();
+    expect(within(panel).queryByText('The dates did not load.')).toBeNull();
   });
 
-  it('lists every milestone in Full schedule under its zone, named once, Passed and Next up as words', async () => {
+  it('lists every milestone in All dates under its zone, named once, Passed and Next up as words', async () => {
     clockAt('2026-10-11T08:00:00Z');
     signedIn();
     answering({
       'GET /api/events/ev_1': () => json({ event: event() }),
       'GET /api/events/ev_1/timeline': () => json(MADRID),
     });
-    at('/app/events/ev_1/schedule');
+    at('/app/events/ev_1/dates');
 
-    const heading = await screen.findByRole('heading', { level: 1, name: 'Full schedule' });
+    const heading = await screen.findByRole('heading', { level: 1, name: 'All dates' });
     const page = heading.closest('section')!;
 
     expect(
@@ -3542,6 +3884,30 @@ describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
     expect(within(page).getByText('Something you need to do')).toBeDefined();
   });
 
+  it('says Loading the dates… in All dates until the dates arrive', async () => {
+    clockAt('2026-10-11T08:00:00Z');
+    signedIn();
+    let arrive = (): void => undefined;
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () =>
+        new Promise<Response>((resolve) => {
+          arrive = () => resolve(json(MADRID));
+        }),
+    });
+    at('/app/events/ev_1/dates');
+
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
+      'section',
+    )!;
+
+    expect(await within(page).findByText('Loading the dates…')).toBeDefined();
+    arrive();
+
+    await waitFor(() => expect(within(page).getAllByRole('listitem')).toHaveLength(6));
+    expect(within(page).queryByText('Loading the dates…')).toBeNull();
+  });
+
   it('marks an overdue You milestone Overdue and keeps it Next up', async () => {
     clockAt('2026-10-21T08:00:00Z');
     signedIn();
@@ -3549,9 +3915,9 @@ describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
       'GET /api/events/ev_1': () => json({ event: event() }),
       'GET /api/events/ev_1/timeline': () => json(MADRID),
     });
-    at('/app/events/ev_1/schedule');
+    at('/app/events/ev_1/dates');
 
-    const page = (await screen.findByRole('heading', { level: 1, name: 'Full schedule' })).closest(
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
       'section',
     )!;
 
@@ -3560,7 +3926,7 @@ describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
     expect(rows(page)[4]).toBe('Tue, Oct 20, 12:00Thank-you notes sentAutomatic✓ Passed');
   });
 
-  it('marks nothing Next up in Full schedule once the event is over', async () => {
+  it('marks nothing Next up in All dates once the event is over', async () => {
     clockAt('2026-11-01T08:00:00Z');
     signedIn();
     answering({
@@ -3568,9 +3934,9 @@ describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
       'GET /api/events/ev_1/timeline': () =>
         json({ ...MADRID, milestones: MADRID.milestones.filter((one) => one.owner !== 'you') }),
     });
-    at('/app/events/ev_1/schedule');
+    at('/app/events/ev_1/dates');
 
-    const page = (await screen.findByRole('heading', { level: 1, name: 'Full schedule' })).closest(
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
       'section',
     )!;
 
@@ -3579,19 +3945,19 @@ describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
     expect(within(page).getAllByText('Passed')).toHaveLength(5);
   });
 
-  it('shows Try again in Full schedule when it fails, with no rows', async () => {
+  it('shows Try again in All dates when it fails, with no rows', async () => {
     signedIn();
     answering({
       'GET /api/events/ev_1': () => json({ event: event() }),
       'GET /api/events/ev_1/timeline': () => problem(500, 'internal_error'),
     });
-    at('/app/events/ev_1/schedule');
+    at('/app/events/ev_1/dates');
 
-    const page = (await screen.findByRole('heading', { level: 1, name: 'Full schedule' })).closest(
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
       'section',
     )!;
 
-    expect(await within(page).findByText("The schedule didn't load.")).toBeDefined();
+    expect(await within(page).findByText('The dates did not load.')).toBeDefined();
     expect(within(page).getByRole('button', { name: 'Try again' })).toBeDefined();
     expect(within(page).queryByRole('listitem')).toBeNull();
   });

@@ -130,6 +130,27 @@ final readonly class EventCoverEditor
         $this->unpublish($cover->getPhotoKey());
     }
 
+    /** Under a key of the copy's own, so a later change to either cover, or a purge of either event, never reaches the other (sc-3593). */
+    public function copy(Event $from, Event $to): ?EventCover
+    {
+        $cover = $this->eventCoverRepository->findOneForEvent($from);
+
+        if (null === $cover) {
+            return null;
+        }
+
+        $photoKey = self::photoKey($to);
+
+        foreach (Vec\keys(CoverPhotoProcessor::SIZES) as $size) {
+            $this->objectStore->copyPublished(self::sizeKey($cover->getPhotoKey(), $size), self::sizeKey($photoKey, $size));
+        }
+
+        $copy = new EventCover($to, $photoKey, $cover->getPosition(), $cover->getDescription());
+        $this->entityManager->persist($copy);
+
+        return $copy;
+    }
+
     /** A photo chosen and then cancelled, so the original, with its metadata, is not kept. */
     public function discard(Organisation $organisation, string $uploadKey): void
     {
@@ -163,7 +184,7 @@ final readonly class EventCoverEditor
     private function publish(Event $event, string $uploadKey): string
     {
         $sizes = $this->readUpload($event->getOrganisation(), $uploadKey, $this->coverPhotoProcessor->process(...));
-        $photoKey = Str\format('event_cover/%s/%s', $event->getId()->toRfc4122(), Uuid::v7()->toRfc4122());
+        $photoKey = self::photoKey($event);
 
         foreach ($sizes as $size => $webp) {
             $this->objectStore->publish(self::sizeKey($photoKey, $size), $webp, 'image/webp');
@@ -172,6 +193,11 @@ final readonly class EventCoverEditor
         $this->objectStore->deleteUpload(UploadPurpose::EventCover, $uploadKey);
 
         return $photoKey;
+    }
+
+    private static function photoKey(Event $event): string
+    {
+        return Str\format('event_cover/%s/%s', $event->getId()->toRfc4122(), Uuid::v7()->toRfc4122());
     }
 
     /**
@@ -236,7 +262,7 @@ final readonly class EventCoverEditor
     }
 
     /** @return array{photo: ?string, position: ?int, description: ?string} */
-    private static function recorded(?EventCover $cover): array
+    public static function recorded(?EventCover $cover): array
     {
         return [
             'photo' => $cover?->getPhotoKey(),

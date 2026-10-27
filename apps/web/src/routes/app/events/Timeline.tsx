@@ -5,7 +5,6 @@ import {
   formatEventMoment,
   type MarkedMilestone,
   markedMilestones,
-  milestoneDistance,
   type MilestoneOwner,
   namesZone,
 } from '@soirely/domain';
@@ -16,6 +15,7 @@ import { Link } from 'react-router';
 import { api } from '../../../api.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
+import { distanceWords } from './distanceWords.ts';
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; timeline: Timeline };
 
@@ -81,13 +81,13 @@ export function ComingUp({ event, now }: { event: OrganisationEvent; now: Date }
           {t('timeline.comingUp')}
         </h2>
         {load.kind === 'loaded' && (
-          <Link className="link-button" to={`/app/events/${encodeURIComponent(event.id)}/schedule`}>
-            {t('timeline.fullSchedule')}
+          <Link className="link-button" to={`/app/events/${encodeURIComponent(event.id)}/dates`}>
+            {t('timeline.allDates')}
           </Link>
         )}
       </div>
       <div className="coming-up-rows" aria-busy={load.kind === 'loading'}>
-        {load.kind === 'failed' && <ScheduleFailed announced={retried} onRetry={retry} />}
+        {load.kind === 'failed' && <DatesFailed announced={retried} onRetry={retry} />}
         {load.kind === 'loaded' && shown.length === 0 && (
           <p className="timeline-inset timeline-finished">
             <span className="timeline-finished-mark" aria-hidden="true">
@@ -115,7 +115,7 @@ export function ComingUp({ event, now }: { event: OrganisationEvent; now: Date }
 }
 
 /** Every milestone, earliest first, under the line naming the event's zone. */
-export function FullSchedule({
+export function AllDates({
   event,
   now,
   heading,
@@ -130,7 +130,7 @@ export function FullSchedule({
   return (
     <>
       {load.kind === 'loading' && <p className="muted">{t('timeline.loading')}</p>}
-      {load.kind === 'failed' && <ScheduleFailed announced={retried} onRetry={retry} />}
+      {load.kind === 'failed' && <DatesFailed announced={retried} onRetry={retry} />}
       {load.kind === 'loaded' && (
         <>
           <p className="muted">{t('timeline.intro', { timeZone: load.timeline.timeZone })}</p>
@@ -162,7 +162,7 @@ export function FullSchedule({
 }
 
 /** Said aloud only when a retry fails: on arrival the page's own heading comes first. */
-function ScheduleFailed({ announced, onRetry }: { announced: boolean; onRetry: () => void }) {
+function DatesFailed({ announced, onRetry }: { announced: boolean; onRetry: () => void }) {
   const { t } = useTranslation();
 
   return (
@@ -244,16 +244,6 @@ function OwnerPill({ owner }: { owner: MilestoneOwner }) {
 
 function Distance({ at, timeZone, now }: { at: string; timeZone: string; now: Date }) {
   const { t } = useTranslation();
-  const distance = milestoneDistance(at, timeZone, now);
 
-  switch (distance.kind) {
-    case 'now':
-      return t('timeline.now');
-    case 'today':
-      return t('timeline.today');
-    case 'inDays':
-      return t('timeline.inDays', { count: distance.count });
-    case 'daysAgo':
-      return t('timeline.daysAgo', { count: distance.count });
-  }
+  return distanceWords(t, at, timeZone, now);
 }

@@ -54,6 +54,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **27 Oct 2026. Dupliquer un événement** (sc-15883 pour sc-3593, `web:eventDuplicate.*`).
+  « Dupliquer » et « Créer le brouillon » ; le nouvel événement est « la copie » tant qu’il
+  n’existe pas. Le panneau dit « Ce qui est copié » / « Ce qui n’est pas copié », car un
+  participe seul devrait s’accorder avec chaque ligne. Length est « Durée ». Un refus commence
+  par « Non créé. », comme « Non publié. ». Les heures et les minutes se joignent par « et »
+  dans `hoursAndMinutes` (« 2 heures et 20 minutes ») ; la date prend « le {{end}} », et
+  « Heures dans le fuseau {{timeZone}} », comme le formulaire.
 - **27 Oct 2026. Les hôtes d’un événement** (sc-15427 pour sc-6713, `web:eventHosts.*`,
   `eventLive.needsHost*|addHosts` web et app, `messages:validation.event_host*`,
   `messages:event.host_required|last_host`). Host est « hôte », comme `errors:event_host_required` ;
@@ -539,6 +546,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   is « Calendrier complet », its panel « Prochaines dates ». Distances follow the date :
   « aujourd’hui », « dans 3 jours », « il y a 2 jours ». The API titles keep the name as
   subject, « {name} commence », « {name} se termine », so no « de » has to elide before it.
+- **27 Oct 2026. Les onglets de l’accueil Événements et leurs états vides** (sc-15981 pour
+  sc-3594, `events.*`, `eventsScreen.*`). Les onglets sont « À venir », « Brouillons » et
+  « Passés ». « Make live » reste « publier » ; « Called off on » est « Annulé le {{date}} ».
+  « Next up » est « Prochaine étape », comme `timeline.nextUp`, et l’état vide des événements à
+  venir le reprend. Le décompte annoncé dit « supplémentaire(s) », « d’événements » au `many`.
+  `moreFailed` reprend la seconde phrase de l’échec de chargement de son écran, comme en anglais.
 - **27 Oct 2026. The two-factor-due subject opens on the feature and the deadline**
   (`emails:signInRules.twoFactorDue.subject`, sc-15219) : « Double authentification avant le
   {deadline} : {organisation} », the organisation last so a 390 px inbox shows the date
