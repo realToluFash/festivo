@@ -1,3 +1,4 @@
+import { type Membership } from '@soirely/api-client';
 import { roleHolds } from '@soirely/domain';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -24,8 +25,12 @@ export default function Organisation() {
   const { kind } = useLayout();
   const { organisation } = useSignedIn();
   const phone = kind === 'phone';
-  const [refusedIn, setRefusedIn] = useState<{ id: string; byRule: boolean } | null>(null);
-  const refused = organisation != null && refusedIn?.id === organisation.id;
+  const [refusedIn, setRefusedIn] = useState<{ from: Membership; byRule: boolean } | null>(null);
+  // Until the reread lands the refused membership stands; after it, only a fresh one still without the permission does.
+  const refused =
+    organisation != null &&
+    refusedIn?.from.id === organisation.id &&
+    (refusedIn.from === organisation || !roleHolds(organisation, 'organisation.manage'));
   const notAllowed = t(
     refusedIn?.byRule === true ? 'orgGeneral.refusedByRule' : 'orgGeneral.refused',
   );
@@ -69,7 +74,7 @@ export default function Organisation() {
                   organisation={organisation}
                   kind={kind}
                   onForbidden={(byRule) => {
-                    setRefusedIn({ id: organisation.id, byRule });
+                    setRefusedIn({ from: organisation, byRule });
                     void rereadOrganisation(organisation.id);
                   }}
                 />
