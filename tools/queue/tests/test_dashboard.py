@@ -2,6 +2,7 @@
 
 import http.client
 import io
+import socket
 import json
 import pathlib
 import tempfile
@@ -327,4 +328,27 @@ class ServeElsewhere(unittest.TestCase):
                          (502, {"error": "it did not answer"}))
         self.assertEqual(asked, [("http://10.0.0.5:8765", "session.json?id=abc", SECRET)])
         self.assertEqual(self.get(said, "/m/other/status.json", bearer).status, 404)
+        said = self.start(peers=lambda: {"tolu mac": "http://10.0.0.6:8765"}, fetch=fetch)
+        self.assertEqual(self.get(said, "/m/tolu%20mac/status.json", bearer).status, 502)
+        self.assertEqual(asked[-1][0], "http://10.0.0.6:8765")
+
+    def test_a_slow_peer_or_an_idle_connection_holds_up_no_one_else(self):
+        answering = threading.Event()
+
+        def fetch(base, path, secret):
+            answering.wait(5)
+            return 200, b"{}"
+
+        said = self.start(peers=lambda: {"slow": "http://10.0.0.5:8765"}, fetch=fetch)
+        port = int(said[0].split()[2].rsplit(":", 1)[1].strip("/"))
+        idle = socket.create_connection(("127.0.0.1", port))
+        self.addCleanup(idle.close)
+        bearer = {"Authorization": f"Bearer {SECRET}"}
+        slow = threading.Thread(target=self.get, args=(said, "/m/slow/status.json", bearer))
+        slow.start()
+        started = time.monotonic()
+        self.assertEqual(self.get(said, "/status.json", bearer).status, 200)
+        self.assertLess(time.monotonic() - started, 2)
+        answering.set()
+        slow.join(5)
         self.assertEqual(self.get(said, "/m/tolu-linux/../status.json", bearer).status, 404)

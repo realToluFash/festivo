@@ -87,7 +87,9 @@ def allowed(client, headers, query, secret):
     jar = http.cookies.SimpleCookie(headers.get("Cookie") or "")
     if COOKIE in jar:
         given.append(jar[COOKIE].value)
-    asked = (urllib.parse.parse_qs(query).get("token") or [None])[0]
+    # Read as typed: parse_qs would turn a base64 token's `+` into a space.
+    asked = next((urllib.parse.unquote(value) for key, _, value in
+                  (part.partition("=") for part in query.split("&")) if key == "token"), None)
     if asked and hmac.compare_digest(asked.encode(), secret.encode()):
         return True, asked
     return any(hmac.compare_digest(g.encode(), secret.encode()) for g in given), None

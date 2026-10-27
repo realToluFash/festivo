@@ -29,6 +29,13 @@ class Allowed(unittest.TestCase):
                          (True, SECRET))
         self.assertEqual(remote.allowed("192.168.1.9", {}, "token=wrong", SECRET), (False, None))
 
+    def test_a_base64_token_in_the_address_is_read_as_typed_or_as_encoded(self):
+        secret = "ab+cd/" + "x" * 40
+        self.assertEqual(remote.allowed("192.168.1.9", {}, f"token={secret}", secret),
+                         (True, secret))
+        self.assertEqual(remote.allowed("192.168.1.9", {}, "token=ab%2Bcd%2F" + "x" * 40,
+                                        secret), (True, secret))
+
     def test_a_short_token_lets_nobody_else_in(self):
         self.assertEqual(remote.allowed("192.168.1.9", {"Authorization": "Bearer short"},
                                         "", "short"), (False, None))
@@ -61,6 +68,7 @@ class Fetch(unittest.TestCase):
             self.assertEqual(remote.fetch("http://10.0.0.5:8765", "status.json", SECRET),
                              (200, b"{}"))
         request = urlopen.call_args.args[0]
+        self.assertEqual(urlopen.call_args.kwargs["timeout"], remote.PEER_SECONDS)
         self.assertEqual(request.full_url, "http://10.0.0.5:8765/status.json")
         self.assertEqual(request.get_header("Authorization"), f"Bearer {SECRET}")
 

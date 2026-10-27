@@ -6,6 +6,7 @@ import datetime
 import http.server
 import json
 import pathlib
+import threading
 import time
 import urllib.parse
 import webbrowser
@@ -156,14 +157,19 @@ def serve(read, port, open_page=True, say=print, session=lambda session_id: None
     """Serves the page, `/status.json` and `/session.json?id=` until interrupted, and the same
     for each peer under `/m/<name>/`, read through `fetch`. `read` returns a snapshot,
     `session` one session's view or None, and `peers` the names and addresses of the other
-    machines. Loopback needs no token; anyone else does. One request at a time, since the
-    queue's connection belongs to this thread."""
+    machines. Loopback needs no token; anyone else does. Each request has a thread of its own,
+    so a peer that is slow to answer, or a connection left idle, holds only itself; the queue
+    is read by one request at a time."""
     if not remote.loopback(host) and not remote.usable(secret):
         say(f"error: sq web will not listen on {host} without {remote.TOKEN} of at least "
             f"{remote.TOKEN_MIN} characters in the env file")
         return
 
+    reading = threading.Lock()
+
     class Page(http.server.BaseHTTPRequestHandler):
+        timeout = 10
+
         def do_GET(self):
             path, _, query = self.path.partition("?")
             ok, cookie = remote.allowed(self.client_address[0], self.headers, query, secret)
@@ -179,14 +185,16 @@ def serve(read, port, open_page=True, say=print, session=lambda session_id: None
             status, kind = 200, "application/json"
             if path.startswith("/m/"):
                 name, _, rest = path[len("/m/"):].partition("/")
-                base = peers().get(name)
+                base = peers().get(urllib.parse.unquote(name))
                 if not base or rest not in ("status.json", "session.json"):
                     return self.send_error(404)
                 status, body = fetch(base, rest + (f"?{query}" if query else ""), secret)
             elif path == "/status.json":
-                body = json.dumps(read(time.time())).encode()
+                with reading:
+                    body = json.dumps(read(time.time())).encode()
             elif path == "/session.json":
-                found = session((urllib.parse.parse_qs(query).get("id") or [""])[0])
+                with reading:
+                    found = session((urllib.parse.parse_qs(query).get("id") or [""])[0])
                 if found is None:
                     return self.send_error(404)
                 body = json.dumps(found).encode()
@@ -205,7 +213,7 @@ def serve(read, port, open_page=True, say=print, session=lambda session_id: None
         def log_message(self, *_):
             pass
 
-    server = http.server.HTTPServer((host, port), Page)
+    server = http.server.ThreadingHTTPServer((host, port), Page)
     url = f"http://127.0.0.1:{server.server_port}/"
     elsewhere = "" if remote.loopback(host) else f", and on {host} with the token"
     say(f"sq web: {url} (ctrl-c stops it){elsewhere}")

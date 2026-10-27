@@ -41,8 +41,8 @@ def home():
     return path
 
 
-def open_db():
-    return store.connect(str(home() / "queue.db"))
+def open_db(threads=False):
+    return store.connect(str(home() / "queue.db"), threads=threads)
 
 
 def refresh_work(db, now):
@@ -782,6 +782,7 @@ def admin(argv):
     if a.command == "status":
         status(db, platform, time.time())
     elif a.command == "web":
+        db = open_db(threads=True)
         host, port = remote.web(remote.config()) or (remote.LOOPBACK, remote.DEFAULT_PORT)
         dashboard.serve(lambda now: dashboard.snapshot(db, platform, now, home()),
                         a.port or port, open_page=not a.no_open,

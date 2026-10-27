@@ -329,11 +329,11 @@ network rather than through GitHub, since the shared references are public and a
 transcript is not. Each machine serves its own page; the one you open reads the others
 through its own server, so the browser holds one token and talks to one address.
 
-| Where                                        | What                                                                                |
-| -------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `SQ_WEB_TOKEN` in `~/.config/soirely/env`    | the same value on every machine, at least 32 characters (`openssl rand -base64 33`) |
-| `"web": {"listen": "0.0.0.0", "port": 8765}` | this machine's page is kept running (a launchd agent, or `soirely-web.service`)     |
-| `"peers": {"tolu-linux": "http://IP:8765"}`  | the machines this page reads, each named in the switcher at the top                 |
+| Where                                        | What                                                                             |
+| -------------------------------------------- | -------------------------------------------------------------------------------- |
+| `SQ_WEB_TOKEN` in `~/.config/soirely/env`    | the same value on every machine, at least 32 characters (`openssl rand -hex 32`) |
+| `"web": {"listen": "0.0.0.0", "port": 8765}` | this machine's page is kept running (a launchd agent, or `soirely-web.service`)  |
+| `"peers": {"tolu-linux": "http://IP:8765"}`  | the machines this page reads, each named in the switcher at the top              |
 
 - **This machine needs no token; any other address does**, as `Authorization: Bearer`, or
   once as `?token=` in the address, which the page turns into an `HttpOnly` cookie and drops
@@ -341,6 +341,9 @@ through its own server, so the browser holds one token and talks to one address.
 - **`web` is applied by `sq run`**, so the page starts within a minute of the setting and
   stops once it is removed. With it set, the page owns that port: a hand-run `sq web` takes
   `--port`.
+- **A changed `SQ_WEB_TOKEN` takes effect once the page restarts**, since the agent and the
+  unit do not change with the env file: `launchctl kickstart -k gui/$(id -u)/com.soirely.web`
+  on a Mac, `systemctl --user restart soirely-web` on Linux.
 - **A peer that does not answer is named on the page**, with why, and never stops this
   machine's own view. A missing token or a peer address that is not `http(s)://` is a
   warning on `sq status`.
