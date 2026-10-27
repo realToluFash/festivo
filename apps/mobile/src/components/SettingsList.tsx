@@ -1,7 +1,7 @@
 import { primaryEmailAddress } from '@soirely/api-client';
 import { router } from 'expo-router';
 import { Fragment, type ReactNode } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -147,7 +147,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
   }
 
   return (
-    <View style={[styles.tabletList, { width }]}>
+    <ScrollView style={[styles.tabletList, { width }]} contentContainerStyle={styles.tabletLines}>
       {groups.map(({ key, heading, rows }) => (
         <Fragment key={key}>
           {heading}
@@ -156,7 +156,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
       ))}
       <View style={styles.fill} />
       {signOut}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -232,12 +232,18 @@ const styles = StyleSheet.create({
   },
   signOutDense: { minHeight: tokens.sizeHit, borderRadius: tokens.sizeHit / 2 },
   tabletList: {
-    gap: tokens.spaceXs,
-    paddingVertical: tokens.spaceXl,
-    paddingHorizontal: tokens.spaceLg,
+    flexGrow: 0,
+    flexShrink: 0,
     backgroundColor: tokens.colorCard,
     borderRightWidth: 1,
     borderRightColor: tokens.colorBorder,
+  },
+  // A short list still reaches the foot, so signing out sits at the bottom until the list outgrows the screen.
+  tabletLines: {
+    flexGrow: 1,
+    gap: tokens.spaceXs,
+    paddingVertical: tokens.spaceXl,
+    paddingHorizontal: tokens.spaceLg,
   },
   choose: {
     flex: 1,
