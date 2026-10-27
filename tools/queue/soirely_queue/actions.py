@@ -614,14 +614,30 @@ def relate(c, a):
     subject, other = story_number(a.story), story_number(a.other)
     pairs = {(subject, other)} if a.verb != "relates to" else {(subject, other),
                                                                 (other, subject)}
-    links = c.shortcut.story(subject).get("story_links", [])
-    if any(link.get("verb") == a.verb and (link.get("subject_id"), link.get("object_id"))
-           in pairs for link in links):
-        return f"already linked: sc-{subject} {a.verb} sc-{other}"
+    links = [link for link in c.shortcut.story(subject).get("story_links", [])
+             if link.get("verb") == a.verb]
+    found = [link for link in links
+             if (link.get("subject_id"), link.get("object_id")) in pairs]
+    inverse = any((link.get("subject_id"), link.get("object_id")) == (other, subject)
+                  for link in links)
+    asked = f"sc-{subject} {a.verb} sc-{other}"
+    if getattr(a, "remove", False):
+        if not found:
+            return f"not linked: {asked}" + (
+                f"; sc-{other} {a.verb} sc-{subject} is" if inverse else "")
+        for link in found:
+            c.shortcut.unrelate(link["id"])
+        c.refresh(subject)
+        c.refresh(other)
+        return f"removed: {asked}"
+    if found:
+        return f"already linked: {asked}"
+    if inverse:
+        raise Refused(f"sc-{other} {a.verb} sc-{subject} exists: remove it first with --remove")
     c.shortcut.relate(subject, other, a.verb)
     c.refresh(subject)
     c.refresh(other)
-    return f"sc-{subject} {a.verb} sc-{other}"
+    return asked
 
 
 def archive(c, a):

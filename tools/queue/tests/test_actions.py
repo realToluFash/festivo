@@ -46,11 +46,21 @@ class FakeShortcut:
 
     def relate(self, subject_id, object_id, verb="relates to"):
         links = self.raw[subject_id].setdefault("story_links", [])
-        if any(x == {"subject_id": subject_id, "object_id": object_id, "verb": verb}
+        if any({k: x[k] for k in ("subject_id", "object_id", "verb")}
+               == {"subject_id": subject_id, "object_id": object_id, "verb": verb}
                for x in links):
             raise RuntimeError("Shortcut 422 on POST /api/v3/story-links")
-        links.append({"subject_id": subject_id, "object_id": object_id, "verb": verb})
+        if any(x == {"subject_id": object_id, "object_id": subject_id, "verb": verb}
+               for x in self.raw.get(object_id, {}).get("story_links", [])):
+            raise RuntimeError("Shortcut 422: Cannot have an inverse duplicated story link.")
+        self.links = getattr(self, "links", 0) + 1
+        links.append({"id": self.links, "subject_id": subject_id, "object_id": object_id,
+                      "verb": verb})
         self.raw.setdefault(object_id, {}).setdefault("story_links", []).append(links[-1])
+
+    def unrelate(self, link_id):
+        for raw in self.raw.values():
+            raw["story_links"] = [x for x in raw.get("story_links", []) if x["id"] != link_id]
 
     def comment(self, story_id, text, parent_id=None):
         self.comments.append((story_id, text))
@@ -622,6 +632,70 @@ class Relating(Base):
         a = args(story="sc-1", other="sc-2", verb="relates to")
         self.assertEqual(actions.relate(self.as_("pm"), a),
                          "already linked: sc-1 relates to sc-2")
+
+
+class Unrelating(Base):
+    def setUp(self):
+        super().setUp()
+        self.fake.add(1, "Ready For Dev")
+        self.fake.add(2, "Ready For Dev")
+
+    def remove(self, story, other, verb="blocks", role="pm"):
+        return actions.relate(self.as_(role), args(story=story, other=other, verb=verb,
+                                                   remove=True))
+
+    def links(self, story_id):
+        return slim(self.fake.story(story_id))["links"]
+
+    def test_a_link_is_removed_from_both_stories(self):
+        self.fake.relate(1, 2, "blocks")
+        self.assertEqual(self.remove("sc-1", "sc-2"), "removed: sc-1 blocks sc-2")
+        self.assertEqual(self.links(1), [])
+        self.assertEqual(self.links(2), [])
+
+    def test_removing_the_last_blocker_lets_a_developer_claim_it(self):
+        self.fake.add(7, "Ready For Dev")
+        self.fake.relate(1, 2, "blocks")
+        self.fake.relate(7, 2, "blocks")
+        self.remove("sc-1", "sc-2")
+        with self.assertRaisesRegex(actions.Refused, r"held by sc-7 \(Ready For Dev\):"):
+            actions.claim(self.as_("dev"), args(story="sc-2"))
+        self.remove("sc-7", "sc-2")
+        actions.claim(self.as_("dev"), args(story="sc-2"))
+        self.assertEqual(self.state(2), "In Progress")
+
+    def test_no_such_link_changes_nothing(self):
+        self.assertEqual(self.remove("sc-1", "sc-2"), "not linked: sc-1 blocks sc-2")
+
+    def test_the_link_the_other_way_round_is_named_and_kept(self):
+        self.fake.relate(2, 1, "blocks")
+        self.assertEqual(self.remove("sc-1", "sc-2"),
+                         "not linked: sc-1 blocks sc-2; sc-2 blocks sc-1 is")
+        self.assertEqual(len(self.links(1)), 1)
+
+    def test_relates_to_is_removed_from_either_end(self):
+        self.fake.relate(2, 1, "relates to")
+        self.assertEqual(self.remove("sc-1", "sc-2", "relates to"),
+                         "removed: sc-1 relates to sc-2")
+        self.assertEqual(self.links(2), [])
+
+    def test_only_the_roles_that_relate_may_remove(self):
+        self.fake.relate(1, 2, "blocks")
+        for role in ("cd", "l10n"):
+            self.remove("sc-1", "sc-2", role=role)
+            self.fake.relate(1, 2, "blocks")
+        for role in ("dev", "ops", "lead", "qa"):
+            with self.assertRaises(actions.Refused):
+                self.remove("sc-1", "sc-2", role=role)
+        self.assertEqual(len(self.links(1)), 1)
+
+    def test_adding_the_inverse_of_a_link_is_refused_with_the_way_out(self):
+        self.fake.relate(1, 2, "blocks")
+        with self.assertRaisesRegex(actions.Refused,
+                                    r"^sc-1 blocks sc-2 exists: remove it first with --remove$"):
+            actions.relate(self.as_("pm"), args(story="sc-2", other="sc-1", verb="blocks",
+                                                remove=False))
+        self.assertEqual(len(self.links(1)), 1)
 
 
 class Drawing(Base):
