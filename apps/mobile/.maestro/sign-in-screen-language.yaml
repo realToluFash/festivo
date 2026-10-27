@@ -1,0 +1,15 @@
+# The signed-out app in LANGUAGE, by its chip on the sign-in screen (English, Español, Français,
+# Português), which keeps the device's last choice. Run before sign-in-any-language.yaml. sc-2939.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 60000
+- scrollUntilVisible:
+    element: '${LANGUAGE}'
+- tapOn: '${LANGUAGE}'
