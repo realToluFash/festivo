@@ -262,6 +262,7 @@ describe('the pages Soirely has, signed in', () => {
     currency: 'NGN',
     cover: null,
     venue: null,
+    hosts: ['Funmi Adeyemi'],
     madeLiveAt: null,
     phase: 'draft',
     concludedAt: null,

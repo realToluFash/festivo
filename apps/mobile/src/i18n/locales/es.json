@@ -1557,7 +1557,9 @@
     "planLimit_other": "No se ha publicado. Su plan {{plan}} permite tener {{count}} eventos publicados o en pausa a la vez.",
     "planLimit_many": "No se ha publicado. Su plan {{plan}} permite tener {{count}} de eventos publicados o en pausa a la vez.",
     "planLimitStays": "Este evento sigue como borrador. Finalice o cancele otro evento, o cambie de plan.",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "needsHostTitle": "Add who is hosting before guests are invited.",
+    "needsHostBody": "Guests see the hosts' names on their invitation. This event stays a draft until it has at least one host."
   },
   "eventEnd": {
     "callOff": "Cancelar el evento",
