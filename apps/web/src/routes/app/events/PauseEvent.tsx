@@ -101,7 +101,7 @@ export function PausedRow({
             setState('idle');
             setChangedTo(latest.status);
             onChange(latest);
-            window.setTimeout(() => (button.current ?? heading.current)?.focus(), 0);
+            window.setTimeout(() => heading.current?.focus(), 0);
           },
           () => setState('failed'),
         );

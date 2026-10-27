@@ -2507,7 +2507,7 @@ describe('Pause and Resume (sc-3586)', () => {
       'Somebody else changed this event while you had it open.',
       "It's called off now. The page shows what it is now.",
     ],
-  ])('says %s', async (_, reloaded, said, now) => {
+  ])('says %s, and focus is on the title', async (_, reloaded, said, now) => {
     signedIn();
     let reads = 0;
     await onThePage(paused(), {
@@ -2521,6 +2521,9 @@ describe('Pause and Resume (sc-3586)', () => {
     expect(within(refused).getByText(said)).toBeDefined();
     expect(within(refused).getByText(now)).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Resume' })).toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 })),
+    );
   });
 
   it('says somebody else changed it when the pause is refused event_state_invalid', async () => {
