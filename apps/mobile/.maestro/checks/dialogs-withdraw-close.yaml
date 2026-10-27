@@ -1,0 +1,63 @@
+# Withdraw your claim?: Keep my claim and the close button each leave the claim open, then Withdraw withdraws it.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: ownerClaim.banner
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: ownerClaim.withdraw
+    centerElement: true
+- tapOn:
+    id: ownerClaim.withdraw
+- extendedWaitUntil:
+    visible:
+      id: ownerClaim.withdrawConfirm
+    timeout: 5000
+- waitForAnimationToEnd
+- takeScreenshot: withdraw-confirm
+- tapOn:
+    id: ownerClaim.withdrawNo
+- extendedWaitUntil:
+    notVisible:
+      id: ownerClaim.withdrawConfirm
+    timeout: 5000
+- assertVisible:
+    id: ownerClaim.withdraw
+- tapOn:
+    id: ownerClaim.withdraw
+- extendedWaitUntil:
+    visible:
+      id: ownerClaim.withdrawConfirm
+    timeout: 5000
+- waitForAnimationToEnd
+- tapOn:
+    id: ownerClaim.withdrawClose
+- extendedWaitUntil:
+    notVisible:
+      id: ownerClaim.withdrawConfirm
+    timeout: 5000
+- assertVisible:
+    id: ownerClaim.withdraw
+- takeScreenshot: withdraw-kept
+- runFlow:
+    when:
+      true: ${WITHDRAW == 'true'}
+    commands:
+      - tapOn:
+          id: ownerClaim.withdraw
+      - extendedWaitUntil:
+          visible:
+            id: ownerClaim.withdrawConfirm
+          timeout: 5000
+      - tapOn:
+          id: ownerClaim.withdrawYes
+      - extendedWaitUntil:
+          notVisible:
+            id: ownerClaim.withdrawConfirm
+          timeout: 15000
+      - assertNotVisible:
+          id: ownerClaim.withdraw
+      - takeScreenshot: withdraw-done

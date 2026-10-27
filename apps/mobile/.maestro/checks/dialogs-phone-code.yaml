@@ -1,0 +1,40 @@
+# Change your mobile number: the Code list closes by Done with the field unchanged, and an option sets it.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/phone
+- extendedWaitUntil:
+    visible:
+      id: 'phone.country'
+    timeout: 30000
+- takeScreenshot: phone-before
+- tapOn:
+    id: 'phone.country'
+- extendedWaitUntil:
+    visible:
+      id: 'phone.country.search'
+    timeout: 10000
+- tapOn:
+    id: 'phone.country.search'
+- inputText: 'Franc'
+- takeScreenshot: phone-code-list
+- tapOn:
+    id: 'phone.country.close'
+- extendedWaitUntil:
+    notVisible:
+      id: 'phone.country.search'
+    timeout: 10000
+- takeScreenshot: phone-after-done
+- tapOn:
+    id: 'phone.country'
+- tapOn:
+    id: 'phone.country.search'
+- eraseText: 30
+- inputText: 'Franc'
+- tapOn:
+    id: 'phone.country.FR'
+- extendedWaitUntil:
+    notVisible:
+      id: 'phone.country.search'
+    timeout: 10000
+- assertVisible: '.*\+33.*'
+- takeScreenshot: phone-code-chosen
