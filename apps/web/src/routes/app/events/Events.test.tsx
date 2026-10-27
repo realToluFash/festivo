@@ -1907,7 +1907,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
 
     expect(
       screen.getByText(
-        "This event's end has passed, so it can't be made live. Change its dates first.",
+        "This event's end has passed, so it cannot be made live. Change its dates first.",
       ),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
@@ -3260,7 +3260,7 @@ describe('Hosted by, in Edit details (sc-6713)', () => {
       field.getAttribute('aria-describedby') ?? 'none',
     )?.textContent;
     expect(help).toBe(
-      "A live event needs at least one host, so this name can't be removed. You can still change it.",
+      'Guests can see this event, so it needs at least one host. You can still change this name.',
     );
   });
 
