@@ -419,6 +419,45 @@ class LinguistMoves(Base):
         actions.move(self.as_("l10n"), args(story="sc-1", state="In Progress"))
         self.assertEqual(self.state(1), "In Progress")
 
+    def test_the_linguist_moves_its_ticket_on_out_of_review(self):
+        for number, state in enumerate(("In Review", "Passed Code Review"), start=1):
+            self.fake.add(number, state, ["translation"])
+            actions.move(self.as_("l10n"), args(story=f"sc-{number}", state="Ready For QA"))
+            self.assertEqual(self.state(number), "Ready For QA")
+            self.fake.add(number + 2, state, ["translation"])
+            actions.move(self.as_("l10n"), args(story=f"sc-{number + 2}", state="In Progress"))
+            self.assertEqual(self.state(number + 2), "In Progress")
+
+    def test_no_developer_moves_a_translation_ticket_into_review_or_on_to_qa(self):
+        states = ("In Progress", "Failed Code Review", "In Review", "Passed Code Review")
+        for developer in roles.DEVS:
+            for number, state in enumerate(states, start=1):
+                self.fake.add(number, state, ["translation", "frontend"])
+                for target in ("In Review", "Ready For QA"):
+                    with self.assertRaisesRegex(actions.Refused, "the linguist's to move.*"
+                                                "merged with the ticket left where it stands"):
+                        actions.move(self.as_(developer), args(story=f"sc-{number}",
+                                                               state=target))
+                    self.assertEqual(self.state(number), state)
+                store.put_pr(self.db, {**pr("pass"), "story_id": number, "state": "merged",
+                                       "merge_sha": "m" * 40,
+                                       "branch": f"fix/sc-{number}/test-wording"})
+                with self.assertRaisesRegex(actions.Refused, "the linguist's to move"):
+                    actions.to_qa(self.as_(developer), args(story=f"sc-{number}", text=None))
+                self.assertEqual(self.state(number), state)
+                self.assertEqual(self.fake.raw[number]["labels"],
+                                 [{"name": "translation"}, {"name": "frontend"}])
+
+    def test_a_developer_still_moves_any_story_that_is_not_the_linguist_s(self):
+        self.fake.add(1, "In Progress", ["dev2"])
+        actions.move(self.as_("dev2"), args(story="sc-1", state="In Review"))
+        self.assertEqual(self.state(1), "In Review")
+        self.fake.add(2, "In Progress", ["translation", "ops", "dev3"])
+        actions.move(self.as_("dev3"), args(story="sc-2", state="In Review"))
+        self.assertEqual(self.state(2), "In Review")
+        actions.move(self.as_("dev3"), args(story="sc-2", state="Ready For QA"))
+        self.assertEqual(self.state(2), "Ready For QA")
+
     def test_the_linguist_may_rerun_its_checks(self):
         self.assertTrue(roles.may("l10n", "rerun"))
 
@@ -844,6 +883,22 @@ class Merging(Base):
         self.assertEqual(self.state(1), "Done")
         said = self.fake.comments[-1][1]
         self.assertIn("[dev2]", said)
+        self.assertIn("the lead is woken by the push", said)
+        self.assertNotIn("In Review", said)
+
+    def test_findings_on_a_developers_pr_on_a_translation_ticket_ask_only_for_a_push(self):
+        self.fake.add(1, "In Progress", ["translation", "dev2"])
+        store.put_pr(self.db, dict(pr(), branch="fix/sc-1/test-wording"))
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.post_review", return_value={}), \
+                mock.patch("soirely_queue.sync.sync_github"), \
+                mock.patch("soirely_queue.actions.findings",
+                           return_value=[{"path": "a", "line": 1, "blocking": True,
+                                          "body": "b"}]):
+            actions.review(self.as_("lead"), args(pr=9, verdict="back", findings="f",
+                                                  qa=None, text="summary"))
+        self.assertEqual(self.state(1), "In Progress")
+        said = self.fake.comments[-1][1]
         self.assertIn("the lead is woken by the push", said)
         self.assertNotIn("In Review", said)
 

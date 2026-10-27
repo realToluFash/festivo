@@ -255,6 +255,14 @@ def ops_only(c, story):
                       f"sc-{story['id']} is not")
 
 
+def linguists_own(c, story, state):
+    if c.role in R.DEVS and W.linguists(story) \
+            and c.state_id(state)[1] in ("In Review", "Ready For QA"):
+        raise Refused(f"sc-{story['id']} is a translation ticket, the linguist's to move. A "
+                      "pull request on it goes to the lead and is merged with the ticket left "
+                      "where it stands")
+
+
 def holding_now(c, story):
     """The blockers holding the story, each as Shortcut has it now."""
     if story["state"] not in W.HOLDABLE:
@@ -266,6 +274,7 @@ def move(c, a):
     guard(c, "move")
     story = c.story(a.story)
     ops_only(c, story)
+    linguists_own(c, story, a.state)
     state = set_state(c, story, a.state, check=c.role != "pm")
     moved = c.refresh(story["id"])
     holders = holding_now(c, moved) if state == "Ready For Dev" else []
@@ -677,7 +686,7 @@ def review(c, a):
     # Only a story in review moves: a linguist's ticket, say, keeps its own state.
     if story and story["state"] in W.REVIEWED and not W.side_pr(story, pr):
         set_state(c, story, "Passed Code Review" if a.verdict == "pass" else "Failed Code Review")
-    # A Done story stays Done: QA has nothing to take, and a push alone wakes the lead.
+    # A Done story, or a linguist's ticket, keeps its state: a push alone wakes the lead.
     done = story and W.finished(story)
     if story and a.verdict == "pass":
         # A developer's change on a linguist's ticket is not the ticket ready for QA.
@@ -688,7 +697,7 @@ def review(c, a):
         post(c, story, [R.developer_of(story["labels"])],
              f"Review of PR #{a.pr} at {head[:7]}: {blocking} blocking. {url}\n"
              + ("Answer each finding in its thread, fix and push; the lead is woken by the push."
-                if done else
+                if done or W.side_pr(story, pr) else
                 "Answer each finding in its thread, fix, push, and hand it back to In Review."))
     stale = resync(c)
     if story:
@@ -939,6 +948,7 @@ def pr_edit(c, a):
 def to_qa(c, a):
     guard(c, "to-qa")
     story = c.story(a.story)
+    linguists_own(c, story, "Ready For QA")
     merged = [pr for pr in store.prs_for_story(c.db, story["id"]) if pr["state"] == "merged"]
     if not merged:
         raise Refused(f"sc-{story['id']} has no merged pull request")
