@@ -1774,7 +1774,7 @@ describe('Make live (sc-3584)', () => {
 
     expect(
       screen.getByText(
-        "This event's end has passed, so it can't be made live. Change its dates first.",
+        "This event's end has passed, so it cannot be made live. Change its dates first.",
       ),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
