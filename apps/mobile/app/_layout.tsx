@@ -1,6 +1,6 @@
 import '../src/intl.ts';
 import { loadAsync } from 'expo-font';
-import { SplashScreen, Stack } from 'expo-router';
+import { DefaultTheme, SplashScreen, Stack, ThemeProvider } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -75,14 +75,18 @@ export default function RootLayout() {
       {/* No header: every screen is built on `Screen`, which owns its own
           insets. A native header plus a safe-area wrapper double-pads the top,
           and the result is a gap nobody can find the source of. */}
-      <WindowOrigin>
-        <Stack screenOptions={{ headerShown: false, contentStyle: styles.screen }} />
-      </WindowOrigin>
+      <ThemeProvider value={theme}>
+        <WindowOrigin>
+          <Stack screenOptions={{ headerShown: false }} />
+        </WindowOrigin>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }
 
-// The splash, these views and every screen's card share the page colour, so no navigator grey shows between them (sc-13257).
+// The splash, these views, the stack's container and every screen's card share the page colour, so no navigator grey shows between them (sc-13257).
+const theme = { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: tokens.colorPage } };
+
 const styles = StyleSheet.create({
   page: {
     flex: 1,
@@ -92,5 +96,4 @@ const styles = StyleSheet.create({
   },
   failed: { padding: 24 },
   root: { flex: 1, backgroundColor: tokens.colorPage },
-  screen: { backgroundColor: tokens.colorPage },
 });
