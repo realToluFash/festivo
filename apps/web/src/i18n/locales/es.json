@@ -138,9 +138,9 @@
     "planLimit_many": "No se ha publicado. Su plan {{plan}} permite tener {{count, number}} de eventos publicados o en pausa a la vez.",
     "planLimitStays": "Este evento sigue como borrador. Finalice o cancele otro evento, o cambie de plan.",
     "close": "Cerrar",
-    "needsHostTitle": "Add who is hosting before guests are invited.",
-    "needsHostBody": "Guests see the hosts' names on their invitation. This event stays a draft until it has at least one host.",
-    "addHosts": "Add who is hosting"
+    "needsHostTitle": "Indique los anfitriones antes de invitar a nadie.",
+    "needsHostBody": "Los invitados ven los nombres de los anfitriones en su invitación. Este evento seguirá siendo un borrador hasta que tenga al menos un anfitrión.",
+    "addHosts": "Indicar los anfitriones"
   },
   "eventEnd": {
     "callOff": "Cancelar el evento",
@@ -196,23 +196,23 @@
     "scheduleLocked": "Este evento ha terminado, así que ya no se pueden cambiar su inicio, su fin ni su zona horaria."
   },
   "eventHosts": {
-    "heading": "Hosted by",
-    "explainer": "Guests read these names on their invitation and their page, in this order. Write them the way you want guests to see them.",
-    "none": "No hosts yet. The event can be made live once it has at least one.",
-    "add": "Add a host",
-    "label": "Host {{position}}",
-    "moveUp": "Move {{name}} up",
-    "moveDown": "Move {{name}} down",
-    "remove": "Remove",
-    "removeNamed": "Remove {{name}}",
-    "most": "{{most, number}} is the most hosts an event can have.",
-    "lastHost": "A live event needs at least one host, so this name can't be removed. You can still change it.",
-    "lastHostRefused": "A live event needs at least one host. Add a name here before saving.",
-    "moved": "{{name}} moved to {{position}} of {{count, number}}",
-    "removed": "{{name}} removed",
-    "blank": "Enter a name or remove this host.",
-    "tooLong": "A host's name can be at most {{most, number}} characters. This one has {{length, number}}.",
-    "duplicate": "{{name}} is already a host."
+    "heading": "Anfitriones",
+    "explainer": "Los invitados leen estos nombres en su invitación y en su página, en este orden. Escríbalos tal como quiera que los vean.",
+    "none": "Aún no hay anfitriones. El evento podrá publicarse cuando tenga al menos uno.",
+    "add": "Añadir un anfitrión",
+    "label": "Anfitrión {{position}}",
+    "moveUp": "Subir a {{name}}",
+    "moveDown": "Bajar a {{name}}",
+    "remove": "Quitar",
+    "removeNamed": "Quitar a {{name}}",
+    "most": "Un evento puede tener {{most, number}} anfitriones como máximo.",
+    "lastHost": "Los invitados pueden ver este evento, así que necesita al menos un anfitrión. Aún puede cambiar este nombre.",
+    "lastHostRefused": "Los invitados pueden ver este evento, así que necesita al menos un anfitrión. Escriba un nombre aquí antes de guardar.",
+    "moved": "{{name}}: posición {{position}} de {{count, number}}",
+    "removed": "{{name}} ya no figura entre los anfitriones",
+    "blank": "Escriba un nombre o quite este anfitrión.",
+    "tooLong": "El nombre de un anfitrión puede tener {{most, number}} caracteres como máximo. Este tiene {{length, number}}.",
+    "duplicate": "{{name}} ya figura entre los anfitriones."
   },
   "eventCover": {
     "heading": "Portada",

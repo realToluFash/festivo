@@ -216,7 +216,7 @@ WAITING = "Waiting On Owner"
 # Where a story waits for its merge: In Review only for one passed before these states.
 MERGING = ("Passed Code Review", "In Review")
 # A follow-up pull request on a story whose main one already went to QA merges and leaves it.
-FOLLOWING_UP = ("Ready For QA", "In QA", "Failed QA")
+FOLLOWING_UP = ("Ready For QA", "In QA", "Failed QA", "Passsed QA")
 MOVES = {
     "dev": {"In Progress": ("Ready For Dev", "Failed QA", "Failed Code Review", "In Review"),
             "In Review": ("In Progress", "Failed Code Review", "Passed Code Review"),

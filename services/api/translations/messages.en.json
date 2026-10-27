@@ -127,7 +127,7 @@
     "event.state_invalid": "This event cannot do that in the state it is in now.",
     "event.concluded": "This event's end has passed, so it cannot be made live. Change its dates first.",
     "event.host_required": "Add who is hosting before guests are invited.",
-    "event.last_host": "An event that has been made live needs at least one host, so its last host cannot be removed.",
+    "event.last_host": "Guests can see this event, so its last host cannot be removed.",
     "event.already_over": "This event is already over, so it cannot be ended.",
     "event.schedule_concluded": "This event is over, so its start, end and time zone cannot be changed.",
     "code.mismatch": "That code does not match.",

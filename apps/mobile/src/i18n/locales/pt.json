@@ -1558,8 +1558,8 @@
     "planLimit_many": "Não foi publicado. O seu plano {{plan}} permite ter {{count, number}} de eventos publicados ou em pausa de cada vez.",
     "planLimitStays": "Este evento continua em rascunho. Termine ou cancele outro evento, ou mude de plano.",
     "close": "Fechar",
-    "needsHostTitle": "Add who is hosting before guests are invited.",
-    "needsHostBody": "Guests see the hosts' names on their invitation. This event stays a draft until it has at least one host."
+    "needsHostTitle": "Indique os anfitriões antes de convidar alguém.",
+    "needsHostBody": "Os convidados veem os nomes dos anfitriões no convite. Este evento continua a ser um rascunho até ter pelo menos um anfitrião."
   },
   "eventEnd": {
     "callOff": "Cancelar o evento",

@@ -24,6 +24,6 @@
     "assistant.resource_context_too_long": "El contexto del recurso puede tener como máximo {most, number, ::group-auto} caracteres; este tiene {count, number, ::group-auto}. Envíe lo que se ve en la pantalla, no el registro completo.",
     "sign_in.idle_timeout": "{organisation} cierra la sesión tras {days, number, ::group-auto} días sin uso. Vuelva a iniciar sesión para seguir.",
     "validation.cover_description_too_long": "Acorte la descripción a {count, number, ::group-auto} caracteres como máximo.",
-    "validation.event_host_too_long": "A host's name can be at most {count, number, ::group-auto} characters. This one has {length, number, ::group-auto}.",
-    "validation.event_hosts_too_many": "An event can have at most {count, number, ::group-auto} hosts."
+    "validation.event_host_too_long": "El nombre de un anfitrión puede tener {count, number, ::group-auto} caracteres como máximo. Este tiene {length, number, ::group-auto}.",
+    "validation.event_hosts_too_many": "Un evento puede tener {count, number, ::group-auto} anfitriones como máximo."
 }

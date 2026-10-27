@@ -203,7 +203,7 @@
     "removeNamed": "Remove {{name}}",
     "most": "{{most, number}} is the most hosts an event can have.",
     "lastHost": "A live event needs at least one host, so this name can't be removed. You can still change it.",
-    "lastHostRefused": "A live event needs at least one host. Add a name here before saving.",
+    "lastHostRefused": "Guests can see this event, so it needs at least one host. Add a name here before saving.",
     "moved": "{{name}} moved to {{position}} of {{count, number}}",
     "removed": "{{name}} removed",
     "blank": "Enter a name or remove this host.",

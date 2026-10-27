@@ -1558,8 +1558,8 @@
     "planLimit_many": "Non publié. Votre forfait {{plan}} permet d’avoir {{count, number}} d’événements publiés ou en pause à la fois.",
     "planLimitStays": "Cet événement reste en brouillon. Terminez ou annulez un autre événement, ou changez de forfait.",
     "close": "Fermer",
-    "needsHostTitle": "Add who is hosting before guests are invited.",
-    "needsHostBody": "Guests see the hosts' names on their invitation. This event stays a draft until it has at least one host."
+    "needsHostTitle": "Indiquez les hôtes avant d’inviter qui que ce soit.",
+    "needsHostBody": "Les invités voient le nom des hôtes sur leur invitation. Cet événement reste un brouillon tant qu’il n’a pas au moins un hôte."
   },
   "eventEnd": {
     "callOff": "Annuler l’événement",
