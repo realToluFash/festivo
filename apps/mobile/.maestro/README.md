@@ -33,6 +33,7 @@ screenshot. `shared-flows-chained-*` run them one after another, as a batch woul
 | `open-switcher`            | Your organisations               | `mobile-switcher`            |
 | `open-create-organisation` | the Create an organisation sheet | `mobile-create-organisation` |
 | `return-home`              | Home                             | none                         |
+| `switch-organisation`      | Home, in the organisation `ORG`  | none                         |
 
 `sign-in-screen-english` picks English on the sign-in screen, for a phone a run in another
 language left signed out: `sign-in`'s first wait is on the English 'Email'.
