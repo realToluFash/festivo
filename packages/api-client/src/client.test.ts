@@ -290,6 +290,93 @@ describe('the session refreshes without signing anybody out', () => {
   });
 });
 
+describe('a refresh answered after the session changed hands (sc-16226)', () => {
+  function held(): {
+    client: ApiClient;
+    tokens: TokenStore & { saved: unknown };
+    onSignedOut: ReturnType<typeof vi.fn>;
+    asked: Promise<void>;
+    answer: (response: Response) => void;
+    signOutBody: () => unknown;
+  } {
+    const tokens = store('ada-expired', 'ada-refresh');
+    const onSignedOut = vi.fn();
+    let answer!: (response: Response) => void;
+    let refreshAsked!: () => void;
+    const asked = new Promise<void>((resolve) => (refreshAsked = resolve));
+    const refreshAnswered = new Promise<Response>((resolve) => (answer = resolve));
+    let signOutBody: unknown = null;
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      onSignedOut,
+      fetch: async (input, init) => {
+        const url = String(input);
+        if (url.includes('/auth/refresh')) {
+          refreshAsked();
+          return refreshAnswered;
+        }
+        if (url.includes('/auth/logout')) {
+          signOutBody = JSON.parse(String(init?.body));
+          return new Response(null, { status: 204 });
+        }
+        if (url.includes('/auth/login')) {
+          return issued({ accessToken: 'grace', refreshToken: 'grace-refresh', account: ACCOUNT });
+        }
+        return problem(401, 'unauthenticated');
+      },
+    });
+
+    return { client, tokens, onSignedOut, asked, answer, signOutBody: () => signOutBody };
+  }
+
+  test('a successful answer does not sign the earlier account back in', async () => {
+    const { client, tokens, onSignedOut, asked, answer } = held();
+
+    const earlier = client.get('/api/events').catch(() => undefined);
+    await asked;
+    await tokens.clear();
+    await client.signIn('grace@example.com', 'a decent passphrase');
+    answer(issued({ accessToken: 'ada-fresh', refreshToken: 'ada-next' }));
+    await earlier;
+
+    expect(tokens.access()).toBe('grace');
+    expect(tokens.refresh()).toBe('grace-refresh');
+    expect(onSignedOut).not.toHaveBeenCalled();
+  });
+
+  test('a refused answer does not sign the new account out', async () => {
+    const { client, tokens, onSignedOut, asked, answer } = held();
+
+    const earlier = client.get('/api/events').catch(() => undefined);
+    await asked;
+    await tokens.clear();
+    await client.signIn('grace@example.com', 'a decent passphrase');
+    answer(problem(401, 'invalid_refresh_token'));
+    await earlier;
+
+    expect(tokens.access()).toBe('grace');
+    expect(onSignedOut).not.toHaveBeenCalled();
+  });
+
+  test('a sign-out waits for the refresh on the wire and ends the chain it rotated to', async () => {
+    const { client, tokens, onSignedOut, asked, answer, signOutBody } = held();
+
+    const earlier = client.get('/api/events').catch(() => undefined);
+    await asked;
+    const signingOut = client.signOut();
+    answer(issued({ accessToken: 'ada-fresh', refreshToken: 'ada-next' }));
+    await signingOut;
+    await earlier;
+
+    expect(signOutBody()).toMatchObject({ refreshToken: 'ada-next' });
+    expect(tokens.access()).toBeNull();
+    expect(tokens.refresh()).toBeNull();
+    expect(onSignedOut).not.toHaveBeenCalled();
+  });
+});
+
 describe('request building', () => {
   test('the base url is read at call time, not at construction', async () => {
     let base = 'http://first.test';
