@@ -189,6 +189,7 @@ describe('the checks catch what they are for', () => {
       'icu.',
       [
         { locale: 'es', key: 'waiting', slot: '#' },
+        { locale: 'es', key: 'party', slot: '#' },
         { locale: 'es', key: 'expiry', slot: '{minutes, number}' },
       ],
     ],

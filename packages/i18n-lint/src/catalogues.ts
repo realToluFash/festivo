@@ -269,7 +269,9 @@ const COUNTING_ARGUMENT = /^\{\s*\w+\s*,\s*(?:plural|selectordinal)\s*,/;
 function countsWithHash(text: string): boolean {
   const counting: boolean[] = [];
 
-  for (const [at, char] of [...text].entries()) {
+  for (let at = 0; at < text.length; at++) {
+    const char = text[at];
+
     if (char === '{') counting.push(COUNTING_ARGUMENT.test(text.slice(at)));
     else if (char === '}') counting.pop();
     else if (char === '#' && counting.includes(true)) return true;

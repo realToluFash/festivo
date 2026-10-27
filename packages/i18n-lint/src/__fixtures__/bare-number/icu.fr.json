@@ -1,5 +1,6 @@
 {
   "waiting": "{count, plural, one {{count, number, ::group-auto} person is waiting} other {{count, number, ::group-auto} people are waiting}}",
+  "party": "🎉 {count, plural, one {{count, number, ::group-auto} guest} other {{count, number, ::group-auto} guests}}",
   "expiry": "It works for {minutes, number, ::group-auto} minutes.",
   "code": "Your code is {code}.",
   "settings": "Turn it on at /settings#two-factor."
