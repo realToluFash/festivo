@@ -133,7 +133,6 @@ final class WorkerStopTest extends MessagingTestCase
         }
     }
 
-    /** A run killed before its `finally` leaves a due row that every later in-process worker test would claim and send. */
     private static function sweepKilledRuns(): void
     {
         $organisations = Type\vec(Type\string())->coerce(self::connection()->fetchFirstColumn("SELECT audience->>'organisationId' FROM scheduled_notifications WHERE cancellation_key LIKE 'stop-mid-send-%'"));
