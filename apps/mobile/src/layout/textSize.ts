@@ -29,6 +29,13 @@ export function breaksAWord(lines: readonly string[]): boolean {
   );
 }
 
+/** The one size for labels whose widest word, drawn at `start`, measures `widest` in a slot `slot` wide: `start` when it fits, never below `size`. */
+export function fitWidest(size: number, start: number, widest: number, slot: number): number {
+  if (widest <= slot) return start;
+
+  return Math.max(size, Math.floor((start * slot) / widest));
+}
+
 /** A name in the frame takes one line, and two at the accessibility sizes, before it is cut. */
 export function nameLines(fontScale: number): 1 | 2 {
   return atAccessibilitySizes(fontScale) ? 2 : 1;

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   breakableEmail,
   breaksAWord,
+  fitWidest,
   fitWords,
   nameLines,
   railWidth,
@@ -46,6 +47,20 @@ describe('breaksAWord', () => {
 
   it('passes one line', () => {
     expect(breaksAWord(['Paramètres'])).toBe(false);
+  });
+});
+
+describe('fitWidest', () => {
+  it('keeps the start when the widest word fits its slot', () => {
+    expect(fitWidest(12, 25.7, 110, 118)).toBe(25.7);
+  });
+
+  it('steps down in proportion, to a whole point, so the widest word fits', () => {
+    expect(fitWidest(12, 25.7, 150, 118)).toBe(20);
+  });
+
+  it('never steps below the default size', () => {
+    expect(fitWidest(12, 25.7, 400, 118)).toBe(12);
   });
 });
 

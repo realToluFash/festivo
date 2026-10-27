@@ -29,7 +29,7 @@ import { type WaitingInvitations, useWaitingInvitations } from '../invitations.t
 import { type DomainOffer, useDomainOffer } from '../joinOffers.ts';
 import { DESTINATION_HREF, type Destination, destinations } from '../kit/appNav.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
-import { railWidth } from '../layout/textSize.ts';
+import { fitWidest, railWidth } from '../layout/textSize.ts';
 import {
   type LayoutKind,
   useAccessibilitySizes,
@@ -50,7 +50,7 @@ import { ReadOut, useReadOut } from './ReadOut.tsx';
 import { type StepClosed, stepClosed, useFocusBackToOpener, useFocusOnAnswer } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type TextHandle, Text } from './Text.tsx';
-import { Title, useWholeWords } from './Title.tsx';
+import { Title } from './Title.tsx';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 
@@ -406,18 +406,47 @@ function TabBar({ current }: { current: Destination }) {
   const { organisation } = useSignedIn();
   const { fontScale } = useWindowDimensions();
   const shown = destinations(organisation);
-  const words = useWholeWords(
-    tokens.typeMeta.size,
-    tokens.typeMeta.size * fontScale,
-    shown.map((destination) => t(`frame.${destination}`)),
-  );
+  const size = tokens.typeMeta.size;
+  const start = size * fontScale;
+  const words = [
+    ...new Set(shown.flatMap((destination) => t(`frame.${destination}`).split(/\s+/u))),
+  ];
+  const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
+  const [slot, setSlot] = useState(0);
+  const widths = words
+    .map((word) => measured[`${fontScale}|${word}`])
+    .filter((width) => width != null);
+  const drawn =
+    slot > 0 && widths.length === words.length
+      ? fitWidest(size, start, Math.max(...widths), slot)
+      : start;
 
   return (
     <View
       style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, tokens.spaceSm) }]}
       accessibilityRole="tablist"
     >
-      {shown.map((destination) => {
+      <View
+        style={styles.measure}
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        {words.map((word) => (
+          <Text
+            key={word}
+            size={size}
+            weight="bold"
+            onLayout={(event) => {
+              const { width } = event.nativeEvent.layout;
+              setMeasured((current) => ({ ...current, [`${fontScale}|${word}`]: width }));
+            }}
+          >
+            {word}
+          </Text>
+        ))}
+      </View>
+      {shown.map((destination, index) => {
         const on = destination === current;
 
         return (
@@ -425,6 +454,7 @@ function TabBar({ current }: { current: Destination }) {
             key={destination}
             style={styles.tab}
             onPress={() => router.navigate(DESTINATION_HREF[destination])}
+            onLayout={index === 0 ? (event) => setSlot(event.nativeEvent.layout.width) : undefined}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
             testID={`frame.${destination}`}
@@ -432,10 +462,10 @@ function TabBar({ current }: { current: Destination }) {
             <View style={[styles.tabMark, on && styles.tabMarkOn]} />
             <Icon destination={destination} on={on} size={tokens.space3xl} />
             <Text
-              size={tokens.typeMeta.size}
+              size={size}
               weight={on ? 'bold' : 'medium'}
               style={[styles.centred, on ? styles.ink : styles.secondaryInk]}
-              {...words}
+              maxFontSizeMultiplier={drawn / size}
             >
               {t(`frame.${destination}`)}
             </Text>
@@ -1011,6 +1041,15 @@ const styles = StyleSheet.create({
     marginBottom: tokens.spaceHair,
   },
   tabMarkOn: { backgroundColor: tokens.colorInk },
+  // Each word at its full size, unbounded, so the bar can size its labels before any of them breaks a word.
+  measure: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: 10000,
+    alignItems: 'flex-start',
+    opacity: 0,
+  },
   rail: {
     gap: tokens.spaceXxl,
     paddingRight: tokens.spaceMd,

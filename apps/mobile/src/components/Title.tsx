@@ -7,7 +7,7 @@ import { Text, type TextProps } from './Text.tsx';
 type WholeWordsProps = TextProps & { size: number; children: string };
 
 /** One size for several texts, stepping down from `start` while any of them breaks a word, never below `size` (sc-13496). */
-export function useWholeWords(size: number, start: number, texts: readonly string[]) {
+function useWholeWords(size: number, start: number, texts: readonly string[]) {
   const text = texts.join('\n');
   const [state, setState] = useState(() => fitWords(null, start, text));
   const fit = fitWords(state, start, text);
