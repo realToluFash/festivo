@@ -1,0 +1,13 @@
+# Your organisations, from Home's Switch organisation. Shared, as open-settings.yaml is.
+appId: host.exp.Exponent
+---
+- runFlow: return-home.yaml
+- tapOn:
+    id: 'home.switchOrganisation'
+# Create an organisation closes the list, so it can sit below the fold.
+- scrollUntilVisible:
+    element:
+      id: 'switcher.create'
+    direction: DOWN
+    timeout: 30000
+- takeScreenshot: mobile-switcher
