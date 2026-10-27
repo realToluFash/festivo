@@ -391,6 +391,11 @@ span {
 /* ── A phone: one bar, its links behind Menu (sc-13413) ───────────────────── */
 
 @media (width <= 40rem) {
+  /* One column under a 100vh minimum would share the spare height with the bar. */
+  .shell {
+    grid-template-rows: auto 1fr;
+  }
+
   .shell-sidebar {
     flex-direction: row;
     align-items: center;
