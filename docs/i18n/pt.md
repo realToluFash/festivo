@@ -529,3 +529,6 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   fecha como `orgGeneral.readOnly`: "pode ver estes dados mas não alterá-los", e não o "pode
   consultar tudo, mas sem alterar nada" do aviso, porque a linha fala dos dados acima dela. Um
   guardar recusado pela regra diz só "Nada foi guardado.", o início de `refused`.
+- **27 Oct 2026. O marco de um evento cancelado** (sc-16725 para sc-16709,
+  `messages:timeline.event_called_off`). "Cancelamento de {name}", um substantivo, para não
+  concordar com um nome de evento cujo género o código não conhece.
