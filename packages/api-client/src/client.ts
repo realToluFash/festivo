@@ -696,7 +696,11 @@ export interface RequestOptions {
 }
 
 export class ApiClient {
-  private refreshing: Promise<boolean> | null = null;
+  /** Bumped whenever the session changes hands, so an answer meant for an earlier one is let go (sc-16226). */
+  private session = 0;
+  private refreshing: { session: number; done: Promise<boolean> } | null = null;
+  /** The session ends when sign-out starts, so no refresh begins until its tokens are cleared. */
+  private signingOut = 0;
 
   constructor(private readonly options: ClientOptions) {}
 
@@ -708,6 +712,7 @@ export class ApiClient {
     path: string,
     init: RequestOptions,
   ): Promise<{ body: T; response: Response }> {
+    const session = this.session;
     let response = await this.send(path, init);
 
     // One retry, and only after a refresh that actually succeeded. Retrying a
@@ -716,6 +721,7 @@ export class ApiClient {
       response.status === 401 &&
       !init.anonymous &&
       this.options.tokens != null &&
+      this.session === session &&
       !(await isAnswer(response))
     ) {
       if (await this.refreshOnce()) {
@@ -2222,21 +2228,31 @@ export class ApiClient {
   }
 
   async signOut(): Promise<void> {
-    const body: Record<string, string> = { refreshTokenIn: this.delivery() };
+    // A refresh in flight rotates the token this sign-out has to end.
+    await this.refreshing?.done.catch(() => false);
+    this.session += 1;
+    this.signingOut += 1;
 
-    if (this.delivery() === 'body') {
-      const token = await this.options.tokens?.refresh();
-      if (token != null && token !== '') body.refreshToken = token;
+    try {
+      const body: Record<string, string> = { refreshTokenIn: this.delivery() };
+
+      if (this.delivery() === 'body') {
+        const token = await this.options.tokens?.refresh();
+        if (token != null && token !== '') body.refreshToken = token;
+      }
+
+      const response = await this.sendTokenRequest('/api/auth/logout', body).catch(() => null);
+
+      // Only the API can clear an httpOnly cookie, so a sign-out it never answered has not happened.
+      if (this.delivery() === 'cookie' && (response == null || response.status >= 500)) {
+        throw new ApiUnreachableError();
+      }
+
+      await this.options.tokens?.clear();
+    } finally {
+      this.session += 1;
+      this.signingOut -= 1;
     }
-
-    const response = await this.sendTokenRequest('/api/auth/logout', body).catch(() => null);
-
-    // Only the API can clear an httpOnly cookie, so a sign-out it never answered has not happened.
-    if (this.delivery() === 'cookie' && (response == null || response.status >= 500)) {
-      throw new ApiUnreachableError();
-    }
-
-    await this.options.tokens?.clear();
   }
 
   /** A 503 is an answer here — it names the dependency that is down — so it is not thrown. */
@@ -2298,14 +2314,22 @@ export class ApiClient {
    * refresh would revoke the whole chain and sign the user out mid-task.
    */
   private refreshOnce(): Promise<boolean> {
-    this.refreshing ??= this.doRefresh().finally(() => {
-      this.refreshing = null;
-    });
+    if (this.signingOut > 0) return Promise.resolve(false);
+    if (this.refreshing?.session === this.session) return this.refreshing.done;
 
-    return this.refreshing;
+    const refreshing = { session: this.session, done: this.doRefresh(this.session) };
+    this.refreshing = refreshing;
+    void refreshing.done
+      .catch(() => false)
+      .finally(() => {
+        if (this.refreshing === refreshing) this.refreshing = null;
+      });
+
+    return refreshing.done;
   }
 
-  private async doRefresh(): Promise<boolean> {
+  /** An answer for a session that has since been signed out of, or out of and into another, neither saves nor signs out. */
+  private async doRefresh(session: number): Promise<boolean> {
     const store = this.options.tokens;
     if (store == null) return false;
 
@@ -2324,6 +2348,7 @@ export class ApiClient {
     );
 
     if (response.status >= 500) throw new ApiUnreachableError();
+    if (this.session !== session) return false;
 
     if (!response.ok) {
       await this.forgetSession(await toProblem(response));
@@ -2331,6 +2356,7 @@ export class ApiClient {
     }
 
     const issued = asIssuedTokens(await response.json().catch(() => null), this.delivery());
+    if (this.session !== session) return false;
 
     if (issued == null) {
       await this.forgetSession();
@@ -2399,6 +2425,7 @@ export class ApiClient {
     credentials: Record<string, string>,
     controller: string,
   ): Promise<SignInOutcome> {
+    this.session += 1;
     const response = await this.sendTokenRequest(path, credentials);
 
     if (response.status === 202) {
@@ -2422,6 +2449,7 @@ export class ApiClient {
     credentials: Record<string, string>,
     controller: string,
   ): Promise<SignedIn> {
+    this.session += 1;
     return this.adopt(await this.sendTokenRequest(path, credentials), path, controller);
   }
 
@@ -2435,12 +2463,14 @@ export class ApiClient {
       );
     }
 
+    this.session += 1;
     await this.options.tokens?.save(tokens);
 
     return { tokens, account, linked: body.linked === true };
   }
 
   private async forgetSession(why?: Problem): Promise<void> {
+    this.session += 1;
     await this.options.tokens?.clear();
     this.options.onSignedOut?.(why);
   }
