@@ -76,7 +76,7 @@ export default function RootLayout() {
           insets. A native header plus a safe-area wrapper double-pads the top,
           and the result is a gap nobody can find the source of. */}
       <WindowOrigin>
-        <Stack screenOptions={{ headerShown: false, contentStyle: styles.card }} />
+        <Stack screenOptions={{ headerShown: false, contentStyle: styles.screen }} />
       </WindowOrigin>
     </SafeAreaProvider>
   );
@@ -92,5 +92,5 @@ const styles = StyleSheet.create({
   },
   failed: { padding: 24 },
   root: { flex: 1, backgroundColor: tokens.colorPage },
-  card: { backgroundColor: tokens.colorPage },
+  screen: { backgroundColor: tokens.colorPage },
 });
