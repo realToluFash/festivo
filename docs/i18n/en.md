@@ -573,3 +573,14 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   (`emails:signInRules.twoFactorDue.subject`, sc-15219): "Two-factor due by {deadline}:
   {organisation}". "{organisation} requires two-factor from {deadline}" was cut before the
   deadline in a 390 px inbox (qa2, #15218); the organisation goes last, as sc-14100 and sc-9219.
+- **27 Oct 2026. Delivery states and reasons for a message to guests** (sc-3942, settled on
+  pm's #15426). The field is **Message**, not "Body". Over a limit, the house sentence with the
+  limit as a slot: "Shorten the subject to {{count}} characters or fewer." and "Shorten the
+  message to {{count}} characters or fewer."; the slot is formatted with `Intl` ("10,000"),
+  never written in. An empty choice reads "Choose at least one guest.", the picker's own verb.
+  A spam complaint is the state **Reported as spam**, beside Sent, Delivered, Bounced and Not
+  sent; never "Complained", and never a reason under Bounced. A later send skipped for it
+  (`complained`) reads "Reported an earlier email as spam", reusing the state's verb so the
+  host connects the two. Won over "… from this organisation …", which every reason the host
+  sees already implies and which overruns a phone row. Other skip reasons read as short
+  phrases in the same row: "No email address", "Address is bouncing".

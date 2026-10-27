@@ -223,33 +223,31 @@ span {
   margin-top: var(--space3xl);
 }
 
-/* Buttons are pills, in three levels, and never below 44px. */
+/* Buttons are pills, in three levels, and never below 44px. A label that wraps keeps its lines apart and
+   centred, and the ends keep a fixed curve so its lines stay inside. */
 .button {
+  --buttonHit: var(--sizeHit);
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: var(--sizeHit);
-  padding: 0 var(--spaceXl);
+  min-height: var(--buttonHit);
+  padding: var(--spaceSm) var(--spaceXl);
   border: var(--borderControl);
-  border-radius: var(--radiusPill);
+  border-radius: calc(var(--buttonHit) / 2);
   background: var(--colorCard);
   color: var(--colorInk);
   font: var(--typeButton);
+  line-height: 1.3;
+  text-align: center;
   max-width: 100%;
   text-decoration: none;
   cursor: pointer;
 }
 
-/* A label naming a role or an organisation wraps whole; the ends keep a fixed curve so its lines stay inside. */
-.button:has(> .button-label) {
-  padding-block: var(--spaceSm);
-  border-radius: calc(var(--sizeHit) / 2);
-}
-
+/* A label naming a role, an organisation or a person wraps whole. */
 .button-label {
   min-width: 0;
-  line-height: 1.3;
-  text-align: center;
   overflow-wrap: anywhere;
 }
 
@@ -935,12 +933,13 @@ span {
   }
 
   .auth-card .input,
-  .auth-card .field-reveal button,
-  .auth-card .button {
+  .auth-card .field-reveal button {
     min-height: var(--sizeHitPhonePrimary);
   }
 
   .auth-card .button {
+    --buttonHit: var(--sizeHitPhonePrimary);
+
     font-size: 1rem;
   }
 
@@ -1763,6 +1762,10 @@ span {
   align-self: flex-start;
 }
 
+.no-organisation-footnote {
+  justify-content: space-between;
+}
+
 .no-organisation .no-organisation-heading {
   margin-top: var(--spaceXs);
   font: var(--typeLabel);
@@ -2055,17 +2058,15 @@ span {
     flex: none;
   }
 
-  .settings-general .input,
-  .settings-general .settings-save .button {
-    min-height: var(--sizeHitPhonePrimary);
-  }
-
   /* 16px is the smallest size iOS Safari will not zoom into on focus. */
   .settings-general .input {
+    min-height: var(--sizeHitPhonePrimary);
     font-size: 1rem;
   }
 
   .settings-general .settings-save .button {
+    --buttonHit: var(--sizeHitPhonePrimary);
+
     width: 100%;
     font-size: 1rem;
   }
