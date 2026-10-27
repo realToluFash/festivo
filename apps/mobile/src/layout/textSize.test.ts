@@ -2,13 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import {
   breakableEmail,
-  breaksAWord,
-  fitWords,
+  fitWidest,
   nameLines,
   railWidth,
-  settleWords,
   sideListWidth,
   titleSize,
+  wordsIn,
 } from './textSize.ts';
 
 const AX1 = 1.786;
@@ -35,17 +34,28 @@ describe('titleSize', () => {
   });
 });
 
-describe('breaksAWord', () => {
-  it('passes lines broken at spaces', () => {
-    expect(breaksAWord(['Revenir sans votre ', 'application ', 'd’authentification'])).toBe(false);
+describe('wordsIn', () => {
+  it('lists each word once, across the texts', () => {
+    expect(wordsIn(['Revenir sans votre', 'sans  application '])).toEqual([
+      'Revenir',
+      'sans',
+      'votre',
+      'application',
+    ]);
+  });
+});
+
+describe('fitWidest', () => {
+  it('keeps the start when the widest word fits its slot', () => {
+    expect(fitWidest(12, 25.7, 110, 118)).toBe(25.7);
   });
 
-  it('finds a word broken across two lines', () => {
-    expect(breaksAWord(['Configura', 'ción'])).toBe(true);
+  it('steps down in proportion, to a whole point, so the widest word fits', () => {
+    expect(fitWidest(12, 25.7, 150, 118)).toBe(20);
   });
 
-  it('passes one line', () => {
-    expect(breaksAWord(['Paramètres'])).toBe(false);
+  it('never steps below the default size', () => {
+    expect(fitWidest(12, 25.7, 400, 118)).toBe(12);
   });
 });
 
@@ -73,51 +83,5 @@ describe('breakableEmail', () => {
     expect(breakableEmail('camille.moreau@traiteur-lumiere.fr')).toBe(
       'camille.moreau@​traiteur-lumiere.fr',
     );
-  });
-});
-
-describe('a text stepping down rather than break a word', () => {
-  const broken = ['Paramètres de l’organi', 'sation'];
-  const whole = ['Paramètres de ', 'l’organisation'];
-
-  it('starts at the step’s size', () => {
-    expect(fitWords(null, titleSize(28, AX2), 'Paramètres').drawn).toBe(43);
-  });
-
-  it('drops a point while a word is broken, and settles once none is', () => {
-    const first = fitWords(null, titleSize(28, AX2), 'Paramètres');
-    const second = settleWords(first, 28, broken);
-    expect(second.drawn).toBe(42);
-    expect(settleWords(second, 28, whole)).toBe(second);
-  });
-
-  it('stops at the default size', () => {
-    const atFloor = { key: fitWords(null, titleSize(28, AX2), 'Paramètres').key, drawn: 28 };
-    expect(settleWords(atFloor, 28, broken)).toBe(atFloor);
-    expect(settleWords({ ...atFloor, drawn: 28.5 }, 28, broken).drawn).toBe(28);
-  });
-
-  it('starts again when the step changes', () => {
-    const stepped = { ...fitWords(null, titleSize(28, AX2), 'Paramètres'), drawn: 41 };
-    const atDefault = fitWords(stepped, titleSize(28, 1), 'Paramètres');
-    expect(atDefault.drawn).toBe(28);
-    expect(fitWords(atDefault, titleSize(28, AX2), 'Paramètres').drawn).toBe(43);
-  });
-
-  it('starts again when the text changes', () => {
-    const stepped = { ...fitWords(null, titleSize(28, AX2), 'Paramètres'), drawn: 41 };
-    expect(fitWords(stepped, titleSize(28, AX2), 'Membres').drawn).toBe(43);
-  });
-
-  it('starts a bar label at the full scale and steps it down the same way', () => {
-    const label = fitWords(null, 12 * AX2, 'Configuración');
-    expect(label.drawn).toBeCloseTo(12 * AX2);
-    expect(settleWords(label, 12, ['Configura', 'ción']).drawn).toBeCloseTo(12 * AX2 - 1);
-    expect(settleWords({ ...label, drawn: 12 }, 12, ['Configura', 'ción']).drawn).toBe(12);
-  });
-
-  it('keeps its size while neither changes', () => {
-    const stepped = { ...fitWords(null, titleSize(28, AX2), 'Paramètres'), drawn: 41 };
-    expect(fitWords(stepped, titleSize(28, AX2), 'Paramètres')).toBe(stepped);
   });
 });

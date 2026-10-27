@@ -410,6 +410,7 @@ function TabBar({ current }: { current: Destination }) {
     tokens.typeMeta.size,
     tokens.typeMeta.size * fontScale,
     shown.map((destination) => t(`frame.${destination}`)),
+    { weight: 'bold' },
   );
 
   return (
@@ -417,7 +418,8 @@ function TabBar({ current }: { current: Destination }) {
       style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, tokens.spaceSm) }]}
       accessibilityRole="tablist"
     >
-      {shown.map((destination) => {
+      {words.measure}
+      {shown.map((destination, index) => {
         const on = destination === current;
 
         return (
@@ -425,6 +427,9 @@ function TabBar({ current }: { current: Destination }) {
             key={destination}
             style={styles.tab}
             onPress={() => router.navigate(DESTINATION_HREF[destination])}
+            onLayout={
+              index === 0 ? (event) => words.room(event.nativeEvent.layout.width) : undefined
+            }
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
             testID={`frame.${destination}`}
@@ -435,7 +440,7 @@ function TabBar({ current }: { current: Destination }) {
               size={tokens.typeMeta.size}
               weight={on ? 'bold' : 'medium'}
               style={[styles.centred, on ? styles.ink : styles.secondaryInk]}
-              {...words}
+              maxFontSizeMultiplier={words.maxFontSizeMultiplier}
             >
               {t(`frame.${destination}`)}
             </Text>
