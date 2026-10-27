@@ -1559,7 +1559,8 @@
     "planLimitStays": "Este evento sigue como borrador. Finalice o cancele otro evento, o cambie de plan.",
     "close": "Cerrar",
     "needsHostTitle": "Indique los anfitriones antes de invitar a nadie.",
-    "needsHostBody": "Los invitados ven los nombres de los anfitriones en su invitación. Este evento seguirá siendo un borrador hasta que tenga al menos un anfitrión."
+    "needsHostBody": "Los invitados ven los nombres de los anfitriones en su invitación. Este evento seguirá siendo un borrador hasta que tenga al menos un anfitrión.",
+    "addHosts": "Indicar los anfitriones"
   },
   "eventHosts": {
     "heading": "Anfitriones",

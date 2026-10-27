@@ -1523,7 +1523,8 @@
     "planLimitStays": "This event stays a draft. Finish or call off another event, or change plan.",
     "close": "Close",
     "needsHostTitle": "Add who is hosting before guests are invited.",
-    "needsHostBody": "Guests see the hosts' names on their invitation. This event stays a draft until it has at least one host."
+    "needsHostBody": "Guests see the hosts' names on their invitation. This event stays a draft until it has at least one host.",
+    "addHosts": "Add who is hosting"
   },
   "eventHosts": {
     "heading": "Hosted by",

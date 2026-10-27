@@ -1559,7 +1559,8 @@
     "planLimitStays": "Este evento continua em rascunho. Termine ou cancele outro evento, ou mude de plano.",
     "close": "Fechar",
     "needsHostTitle": "Indique os anfitriões antes de convidar alguém.",
-    "needsHostBody": "Os convidados veem os nomes dos anfitriões no convite. Este evento continua a ser um rascunho até ter pelo menos um anfitrião."
+    "needsHostBody": "Os convidados veem os nomes dos anfitriões no convite. Este evento continua a ser um rascunho até ter pelo menos um anfitrião.",
+    "addHosts": "Indicar os anfitriões"
   },
   "eventHosts": {
     "heading": "Anfitriões",

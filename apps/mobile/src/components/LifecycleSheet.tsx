@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { tokens } from '../theme/tokens.ts';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { Sheet } from './Sheet.tsx';
 import { Text } from './Text.tsx';
@@ -39,6 +40,8 @@ export function useLifecycleAction<C extends object, R extends { kind: string }>
   });
 
   const ask = (choice: C) => setAsking(confirming(choice, false, false));
+  /** Opens refused, without asking first, when the event already says why. */
+  const tell = (refusal: Exclude<R, { kind: 'failed' }>) => setAsking(refusal);
   const close = () => !pending && setAsking(null);
 
   const go = (choice: C, call: () => Promise<{ event: OrganisationEvent }>) => {
@@ -75,10 +78,10 @@ export function useLifecycleAction<C extends object, R extends { kind: string }>
     );
   };
 
-  return { asking, pending, ask, go, close };
+  return { asking, pending, ask, tell, go, close };
 }
 
-/** The sheet every lifecycle move asks in: `confirm` while it asks, and without it a refusal with Close. Test ids are `testID` with Sheet, Yes, No and Close. */
+/** The sheet every lifecycle move asks in: `confirm` while it asks, and without it a refusal with Close, and `onward` where the refusal has a way forward, and `retold` takes focus to the title when a refusal replaces the question. Test ids are `testID` with Sheet, Yes, No, Close and Onward. */
 export function LifecycleSheet({
   phone,
   open,
@@ -87,6 +90,8 @@ export function LifecycleSheet({
   title,
   lines,
   confirm,
+  onward = null,
+  retold,
   onClose,
 }: {
   phone: boolean;
@@ -96,6 +101,8 @@ export function LifecycleSheet({
   title: string;
   lines: string[];
   confirm: { label: string; keep: string; pending: boolean; onGo: () => void } | null;
+  onward?: { label: string; onPress: () => void } | null;
+  retold?: unknown;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -104,9 +111,9 @@ export function LifecycleSheet({
     <Sheet open={open} onClose={onClose} opener={opener} testID={`${testID}Sheet`}>
       {open && (
         <View style={styles.sheet}>
-          <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+          <AnswerHeading answer={retold} size={tokens.typeTitleSection.size} weight="bold">
             {title}
-          </Text>
+          </AnswerHeading>
           {lines.map((line) => (
             <Text key={line} size={tokens.typeBodyPhone.size} muted>
               {line}
@@ -129,6 +136,33 @@ export function LifecycleSheet({
                   testID={`${testID}No`}
                 />
               </>
+            ) : onward != null && phone ? (
+              <>
+                <PrimaryButton
+                  label={onward.label}
+                  onPress={onward.onPress}
+                  testID={`${testID}Onward`}
+                />
+                <SecondaryButton
+                  label={t('eventLive.close')}
+                  onPress={onClose}
+                  stacked
+                  testID={`${testID}Close`}
+                />
+              </>
+            ) : onward != null ? (
+              <View style={styles.footer}>
+                <SecondaryButton
+                  label={t('eventLive.close')}
+                  onPress={onClose}
+                  testID={`${testID}Close`}
+                />
+                <PrimaryButton
+                  label={onward.label}
+                  onPress={onward.onPress}
+                  testID={`${testID}Onward`}
+                />
+              </View>
             ) : (
               <PrimaryButton
                 label={t('eventLive.close')}
@@ -147,4 +181,12 @@ const styles = StyleSheet.create({
   sheet: { gap: tokens.spaceLg, padding: tokens.space3xl },
   actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
   stacked: { gap: tokens.spaceSm },
+  footer: {
+    flexGrow: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: tokens.spaceSm,
+  },
 });

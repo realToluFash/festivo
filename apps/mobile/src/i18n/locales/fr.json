@@ -1559,7 +1559,8 @@
     "planLimitStays": "Cet événement reste en brouillon. Terminez ou annulez un autre événement, ou changez de forfait.",
     "close": "Fermer",
     "needsHostTitle": "Indiquez les hôtes avant d’inviter qui que ce soit.",
-    "needsHostBody": "Les invités voient le nom des hôtes sur leur invitation. Cet événement reste un brouillon tant qu’il n’a pas au moins un hôte."
+    "needsHostBody": "Les invités voient le nom des hôtes sur leur invitation. Cet événement reste un brouillon tant qu’il n’a pas au moins un hôte.",
+    "addHosts": "Indiquer les hôtes"
   },
   "eventHosts": {
     "heading": "Hôtes",
