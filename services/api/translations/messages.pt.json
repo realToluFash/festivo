@@ -207,5 +207,5 @@
     "event.delete_name_mismatch": "Escreva {name} exatamente como aparece para o eliminar.",
     "timeline.event_starts": "{name} começa",
     "timeline.event_ends": "{name} termina",
-    "timeline.event_called_off": "{name} called off"
+    "timeline.event_called_off": "Cancelamento de {name}"
 }
