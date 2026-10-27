@@ -1,5 +1,5 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
-import { type HostRow, eventFormErrors, keepsLastHost } from '@soirely/domain';
+import { type HostRow, eventFormErrors } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
@@ -170,15 +170,9 @@ describe("the app's Hosted by against the shared rules (sc-15497)", () => {
     expect(isDirty({ ...typed, hosts: [] }, typed)).toBe(true);
   });
 
-  it("keeps a live event's last saved host, and lets one made live before hosts add and remove freely", () => {
+  it('sends the first host added to an event made live without one', () => {
     const live = { ...gala, status: 'live' as const };
 
-    expect(keepsLastHost(live, 1)).toBe(true);
-    expect(keepsLastHost(live, 2)).toBe(false);
-    expect(keepsLastHost({ ...live, status: 'paused' }, 1)).toBe(true);
-    expect(keepsLastHost({ ...live, hosts: [] }, 1)).toBe(false);
-    expect(keepsLastHost({ ...live, hosts: [] }, 0)).toBe(false);
-    expect(keepsLastHost(gala, 1)).toBe(false);
     expect(changesOf({ ...live, hosts: [] }, { ...typedOf(live), hosts: rows('Tayo') })).toEqual({
       hosts: ['Tayo'],
     });

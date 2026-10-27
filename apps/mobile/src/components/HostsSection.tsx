@@ -58,7 +58,7 @@ export function HostsSection({
   const addButton = useRef<View>(null);
   const focusNext = useRef<FocusNext>(null);
   const nextKey = useRef(Math.max(0, ...rows.map((row) => row.key)) + 1);
-  const [arrival] = useState(() => (arrive ? hostsArrival(rows) : null));
+  const [arrival, setArrival] = useState(() => (arrive ? hostsArrival(rows) : null));
   const keepLast = keepsLastHost(saved, rows.length);
   const phone = kind === 'phone';
 
@@ -105,6 +105,7 @@ export function HostsSection({
     const key = nextKey.current;
     nextKey.current += 1;
     focusNext.current = { to: { key, control: 'name' }, keys: true };
+    if (arrival === 'add') setArrival(null);
     onRows([...rows, { key, name: '' }], null);
   }
 
