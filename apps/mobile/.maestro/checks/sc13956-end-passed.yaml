@@ -5,5 +5,6 @@ appId: host.exp.Exponent
 - extendedWaitUntil:
     visible:
       id: 'events.draftLine'
+      text: '{{t:eventLive.endPassed}}'
     timeout: 30000
 - takeScreenshot: end-passed
