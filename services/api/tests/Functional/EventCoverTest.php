@@ -26,7 +26,9 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Encoding\Base64;
 use Psl\Json;
+use Psl\SecureRandom;
 use Psl\Str;
+use Psl\Str\Byte;
 use Psl\Type;
 use Psl\Vec;
 
@@ -231,6 +233,58 @@ final class EventCoverTest extends ApiTestCase
         self::assertSame(422, $this->statusCode());
         self::assertStringContainsString('1200 × 675', $this->violations()['file'] ?? '');
         self::assertSame($before, $this->cover($this->as($this->owner, 'GET', '/api/events/' . $this->eventId)));
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function damagedJpegs(): iterable
+    {
+        $whole = self::photo(1600, 900);
+        $scan = (Byte\search($whole, "\xFF\xDA") ?? 0) + 14;
+
+        yield 'cut off after its header' => [Byte\slice($whole, 0, $scan + 6)];
+        yield 'cut off halfway' => [Byte\slice($whole, 0, Byte\length($whole) >> 1)];
+        yield 'a header and a random body' => [Byte\slice($whole, 0, $scan) . SecureRandom\bytes(60_000)];
+        yield 'a header and a random body that ends as a JPEG ends' => [Byte\slice($whole, 0, $scan) . SecureRandom\bytes(60_000) . "\xFF\xD9"];
+    }
+
+    /** The browser reads its size from the header and showed it as a grey box (qa2, #16039; Decided, 27 Oct). */
+    #[Test]
+    #[DataProvider('damagedJpegs')]
+    public function aJpegWhosePictureIsCutOffOrNotPictureDataIsRefusedAtThePreviewAndTheSave(string $bytes): void
+    {
+        $this->as($this->owner, 'PUT', $this->coverPath(), ['uploadKey' => $this->upload(self::photo(1600, 900), 'image/jpeg'), 'position' => 20]);
+        $before = $this->cover($this->last());
+
+        $this->as($this->owner, 'POST', $this->path('event-cover-uploads/preview'), ['uploadKey' => $this->upload($bytes, 'image/jpeg')]);
+        self::assertSame(422, $this->statusCode());
+        self::assertStringContainsString('JPEG, PNG, WebP or HEIC', $this->violations()['file'] ?? '');
+
+        $this->as($this->owner, 'PUT', $this->coverPath(), ['uploadKey' => $this->upload($bytes, 'image/jpeg'), 'position' => 50]);
+        self::assertSame(422, $this->statusCode());
+        self::assertStringContainsString('JPEG, PNG, WebP or HEIC', $this->violations()['file'] ?? '');
+        self::assertSame($before, $this->cover($this->as($this->owner, 'GET', '/api/events/' . $this->eventId)));
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function wholeJpegsAStrictReaderWarnsAbout(): iterable
+    {
+        $whole = self::photo(1600, 900);
+        $scan = Byte\search($whole, "\xFF\xDA") ?? 0;
+
+        yield 'padding between segments' => [Byte\slice($whole, 0, $scan) . "\0\0\0" . Byte\slice($whole, $scan)];
+        yield 'no end marker' => [Byte\strip_suffix($whole, "\xFF\xD9")];
+        yield 'bytes after the end' => [$whole . SecureRandom\bytes(512)];
+    }
+
+    #[Test]
+    #[DataProvider('wholeJpegsAStrictReaderWarnsAbout')]
+    public function aJpegWhoseWholePictureShowsIsTakenThoughAStrictReaderWarns(string $bytes): void
+    {
+        $this->as($this->owner, 'POST', $this->path('event-cover-uploads/preview'), ['uploadKey' => $this->upload($bytes, 'image/jpeg')]);
+        self::assertSame(200, $this->statusCode());
+
+        $this->as($this->owner, 'PUT', $this->coverPath(), ['uploadKey' => $this->upload($bytes, 'image/jpeg'), 'position' => 50]);
+        self::assertSame(200, $this->statusCode());
     }
 
     #[Test]
