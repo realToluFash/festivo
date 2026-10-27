@@ -30,6 +30,7 @@ export function ListPicker({
   value,
   onChange,
   disabled = false,
+  readOnly = false,
   pickerRef,
   testID,
 }: {
@@ -40,6 +41,8 @@ export function ListPicker({
   value: string;
   onChange: (code: string) => void;
   disabled?: boolean;
+  /** Drawn and announced as a field that can't change, not as one that is only busy. */
+  readOnly?: boolean;
   /** For moving screen-reader focus here when it is the field refused first. */
   pickerRef?: Ref<View> | undefined;
   testID: string;
@@ -79,17 +82,18 @@ export function ListPicker({
     <>
       <Pressable
         ref={pickerRef}
-        style={styles.field}
+        style={[styles.field, readOnly && styles.fieldReadOnly]}
         onPress={() => setOpen(true)}
-        disabled={disabled}
-        accessibilityRole="button"
+        disabled={disabled || readOnly}
+        accessibilityRole={readOnly ? undefined : 'button'}
+        accessibilityState={{ disabled: disabled || readOnly }}
         accessibilityLabel={blank ? label : `${label}: ${chosen}`}
         testID={testID}
       >
         <Text size={CONTROL_TEXT_SIZE} style={blank ? styles.placeholder : styles.value}>
           {blank ? placeholder : chosen}
         </Text>
-        <Chevron />
+        {!readOnly && <Chevron />}
       </Pressable>
 
       <Modal
@@ -203,6 +207,7 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radiusField,
     backgroundColor: tokens.colorCard,
   },
+  fieldReadOnly: { backgroundColor: tokens.colorNeutralFill },
   value: { flex: 1, color: tokens.colorInk },
   placeholder: { flex: 1, color: tokens.colorInkTertiary },
   fill: { flex: 1 },
