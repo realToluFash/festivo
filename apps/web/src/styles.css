@@ -4254,7 +4254,7 @@ button.members-row {
   text-decoration: none;
 }
 
-/* ── An event's timeline: Coming up and Full schedule (sc-3624) ─────────────── */
+/* ── An event's timeline: Coming up and All dates (sc-3624) ─────────────── */
 
 .coming-up-head {
   display: flex;

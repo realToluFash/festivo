@@ -1607,7 +1607,7 @@
   },
   "timeline": {
     "comingUp": "Prochaines dates",
-    "fullSchedule": "Calendrier complet",
+    "allDates": "Calendrier complet",
     "loading": "Chargement du calendrier…",
     "intro": "Toutes les dates de cet événement, dans l’ordre chronologique. Les heures sont celles du fuseau {{timeZone}}, le fuseau de l’événement.",
     "finished": "Plus rien à venir : toutes les dates de cet événement sont passées.",

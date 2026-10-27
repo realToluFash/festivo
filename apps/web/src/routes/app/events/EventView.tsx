@@ -21,7 +21,7 @@ import { DraftRow, StatusPill } from './MakeLive.tsx';
 import { PauseButton, PausedRow } from './PauseEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { typeLabel } from './eventTypes.ts';
-import { ComingUp, FullSchedule } from './Timeline.tsx';
+import { ComingUp, AllDates } from './Timeline.tsx';
 
 type Load =
   | { kind: 'loading' }
@@ -29,7 +29,7 @@ type Load =
   | { kind: 'notFound' }
   | { kind: 'loaded'; event: OrganisationEvent };
 
-type Page = 'event' | 'guests' | 'schedule';
+type Page = 'event' | 'guests' | 'dates';
 
 export function EventView() {
   return <ForEvent page="event" />;
@@ -39,8 +39,8 @@ export function EventGuests() {
   return <ForEvent page="guests" />;
 }
 
-export function EventSchedule() {
-  return <ForEvent page="schedule" />;
+export function EventDates() {
+  return <ForEvent page="dates" />;
 }
 
 function ForEvent({ page }: { page: Page }) {
@@ -154,8 +154,8 @@ function EventOf({
       {load.kind === 'loaded' && page === 'guests' && (
         <GuestsComing event={load.event} heading={heading} />
       )}
-      {load.kind === 'loaded' && page === 'schedule' && (
-        <Schedule event={load.event} heading={heading} />
+      {load.kind === 'loaded' && page === 'dates' && (
+        <AllDatesPage event={load.event} heading={heading} />
       )}
     </div>
   );
@@ -360,7 +360,7 @@ function editOutcome(state: unknown): EditOutcome | null {
   return edit === 'saved' || edit === 'unchanged' ? edit : null;
 }
 
-function Schedule({
+function AllDatesPage({
   event,
   heading,
 }: {
@@ -370,14 +370,14 @@ function Schedule({
   const { t } = useTranslation();
   const now = useServerNow();
 
-  usePageTitle(pageTitle(t, [t('timeline.fullSchedule'), event.name]));
+  usePageTitle(pageTitle(t, [t('timeline.allDates'), event.name]));
 
   return (
     <section className="card timeline-page">
       <h1 ref={heading} tabIndex={-1}>
-        {t('timeline.fullSchedule')}
+        {t('timeline.allDates')}
       </h1>
-      <FullSchedule event={event} now={now} heading={heading} />
+      <AllDates event={event} now={now} heading={heading} />
     </section>
   );
 }

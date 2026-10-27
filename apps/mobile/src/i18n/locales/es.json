@@ -1607,7 +1607,7 @@
   },
   "timeline": {
     "comingUp": "Próximas fechas",
-    "fullSchedule": "Calendario completo",
+    "allDates": "Calendario completo",
     "loading": "Cargando el calendario…",
     "intro": "Todas las fechas de este evento, en orden cronológico. Las horas están en {{timeZone}}, la zona horaria del evento.",
     "finished": "Nada a la vista. Todas las fechas de este evento ya han pasado.",

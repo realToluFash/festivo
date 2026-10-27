@@ -6,13 +6,13 @@ import { AppFrame } from '../../../src/components/AppFrame.tsx';
 import { bodyEdges } from '../../../src/components/bodyEdges.ts';
 import { Screen } from '../../../src/components/Screen.tsx';
 import { Text } from '../../../src/components/Text.tsx';
-import { FullSchedule } from '../../../src/components/Timeline.tsx';
+import { AllDates } from '../../../src/components/Timeline.tsx';
 import { useServerNow } from '../../../src/kit/serverNow.ts';
 import { useLayout } from '../../../src/layout/useLayout.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 
-/** Every milestone on the event, opened from Coming up's Full schedule (sc-3624). */
-export default function EventSchedule() {
+/** Every milestone on the event, opened from Coming up's All dates (sc-3624). */
+export default function EventDates() {
   const { t } = useTranslation();
   const { kind } = useLayout();
   const { id = '' } = useLocalSearchParams<{ id?: string }>();
@@ -24,16 +24,16 @@ export default function EventSchedule() {
   return (
     <AppFrame
       current="events"
-      title={t('timeline.fullSchedule')}
+      title={t('timeline.allDates')}
       back={phone ? { label: t('timeline.backToEvent'), onPress: back } : undefined}
     >
       <Screen edges={bodyEdges(kind)} contentStyle={styles.content}>
         {!phone && (
           <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
-            {t('timeline.fullSchedule')}
+            {t('timeline.allDates')}
           </Text>
         )}
-        <FullSchedule kind={kind} eventId={id} now={now} />
+        <AllDates kind={kind} eventId={id} now={now} />
       </Screen>
     </AppFrame>
   );
