@@ -683,6 +683,8 @@ export class ApiClient {
   /** Bumped whenever the session changes hands, so an answer meant for an earlier one is let go (sc-16226). */
   private session = 0;
   private refreshing: { session: number; done: Promise<boolean> } | null = null;
+  /** The session ends when sign-out starts, so no refresh begins until its tokens are cleared. */
+  private signingOut = 0;
 
   constructor(private readonly options: ClientOptions) {}
 
@@ -2193,22 +2195,28 @@ export class ApiClient {
     // A refresh in flight rotates the token this sign-out has to end.
     await this.refreshing?.done.catch(() => false);
     this.session += 1;
+    this.signingOut += 1;
 
-    const body: Record<string, string> = { refreshTokenIn: this.delivery() };
+    try {
+      const body: Record<string, string> = { refreshTokenIn: this.delivery() };
 
-    if (this.delivery() === 'body') {
-      const token = await this.options.tokens?.refresh();
-      if (token != null && token !== '') body.refreshToken = token;
+      if (this.delivery() === 'body') {
+        const token = await this.options.tokens?.refresh();
+        if (token != null && token !== '') body.refreshToken = token;
+      }
+
+      const response = await this.sendTokenRequest('/api/auth/logout', body).catch(() => null);
+
+      // Only the API can clear an httpOnly cookie, so a sign-out it never answered has not happened.
+      if (this.delivery() === 'cookie' && (response == null || response.status >= 500)) {
+        throw new ApiUnreachableError();
+      }
+
+      await this.options.tokens?.clear();
+    } finally {
+      this.session += 1;
+      this.signingOut -= 1;
     }
-
-    const response = await this.sendTokenRequest('/api/auth/logout', body).catch(() => null);
-
-    // Only the API can clear an httpOnly cookie, so a sign-out it never answered has not happened.
-    if (this.delivery() === 'cookie' && (response == null || response.status >= 500)) {
-      throw new ApiUnreachableError();
-    }
-
-    await this.options.tokens?.clear();
   }
 
   /** A 503 is an answer here — it names the dependency that is down — so it is not thrown. */
@@ -2270,6 +2278,7 @@ export class ApiClient {
    * refresh would revoke the whole chain and sign the user out mid-task.
    */
   private refreshOnce(): Promise<boolean> {
+    if (this.signingOut > 0) return Promise.resolve(false);
     if (this.refreshing?.session === this.session) return this.refreshing.done;
 
     const refreshing = { session: this.session, done: this.doRefresh(this.session) };
