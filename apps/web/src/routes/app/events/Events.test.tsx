@@ -3540,6 +3540,30 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     expect(within(page).getByText('Something you need to do')).toBeDefined();
   });
 
+  it('says Loading the dates… in All dates until the dates arrive', async () => {
+    clockAt('2026-10-11T08:00:00Z');
+    signedIn();
+    let arrive = (): void => undefined;
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () =>
+        new Promise<Response>((resolve) => {
+          arrive = () => resolve(json(MADRID));
+        }),
+    });
+    at('/app/events/ev_1/dates');
+
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
+      'section',
+    )!;
+
+    expect(await within(page).findByText('Loading the dates…')).toBeDefined();
+    arrive();
+
+    await waitFor(() => expect(within(page).getAllByRole('listitem')).toHaveLength(6));
+    expect(within(page).queryByText('Loading the dates…')).toBeNull();
+  });
+
   it('marks an overdue You milestone Overdue and keeps it Next up', async () => {
     clockAt('2026-10-21T08:00:00Z');
     signedIn();
