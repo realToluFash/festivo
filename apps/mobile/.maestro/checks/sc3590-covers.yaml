@@ -1,0 +1,69 @@
+# sc-3590: the cover on each row of Events and across the top of the event's page, at its saved position (${TOP} at 0, ${MIDDLE} at 50, ${BOTTOM} at 100) or its type's default (${NONE}), at the orientation given.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'frame.events'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${TOP}'
+    direction: DOWN
+    timeout: 30000
+- takeScreenshot: list
+- openLink: ${METRO_URL}/--/events
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${TOP}'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'events.row.${TOP}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page.cover'
+    timeout: 20000
+- assertVisible: 'Red at the top'
+- takeScreenshot: page-top
+- openLink: ${METRO_URL}/--/events
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${MIDDLE}'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'events.row.${MIDDLE}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page.cover'
+    timeout: 20000
+- takeScreenshot: page-middle
+- openLink: ${METRO_URL}/--/events
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${BOTTOM}'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'events.row.${BOTTOM}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page.cover'
+    timeout: 20000
+- assertVisible: 'Blue at the bottom'
+- takeScreenshot: page-bottom
+- openLink: ${METRO_URL}/--/events
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${NONE}'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'events.row.${NONE}'
+- extendedWaitUntil:
+    visible:
+      id: 'cover-default-graduation'
+    timeout: 20000
+- takeScreenshot: page-default
