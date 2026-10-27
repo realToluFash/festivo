@@ -1554,5 +1554,15 @@
     "delete": "Delete",
     "failed": "That did not go through, so nothing was changed. Try again.",
     "deleted": "{{event}} was deleted."
+  },
+  "eventMute": {
+    "heading": "Just for you",
+    "note": "Nobody else on this event is affected.",
+    "switch": "Mute this event",
+    "on": "On",
+    "off": "Off",
+    "notLoaded": "Couldn't load whether this event is muted.",
+    "tryAgain": "Try again",
+    "notSaved": "Couldn't save. Try again."
   }
 }

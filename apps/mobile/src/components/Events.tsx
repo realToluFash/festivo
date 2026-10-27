@@ -19,6 +19,7 @@ import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { DeleteEventSection } from './DeleteEvent.tsx';
 import { EventCover } from './EventCover.tsx';
+import { MuteEventCard } from './MuteEventCard.tsx';
 import { EndRow } from './EndEvent.tsx';
 import { DraftRow } from './MakeLive.tsx';
 import { Notice } from './Notice.tsx';
@@ -270,6 +271,7 @@ export function EventPage({
       {onEdit != null && (
         <SecondaryButton label={t('eventEdit.open')} onPress={onEdit} testID="events.page.edit" />
       )}
+      <MuteEventCard kind={kind} eventId={event.id} />
       {onDeleted != null && <DeleteEventSection kind={kind} event={event} onDeleted={onDeleted} />}
     </View>
   );

@@ -1590,5 +1590,15 @@
     "delete": "Supprimer",
     "failed": "La demande n’a pas abouti, donc rien n’a été modifié. Réessayez.",
     "deleted": "L’événement {{event}} a été supprimé."
+  },
+  "eventMute": {
+    "heading": "Just for you",
+    "note": "Nobody else on this event is affected.",
+    "switch": "Mute this event",
+    "on": "On",
+    "off": "Off",
+    "notLoaded": "Couldn't load whether this event is muted.",
+    "tryAgain": "Try again",
+    "notSaved": "Couldn't save. Try again."
   }
 }

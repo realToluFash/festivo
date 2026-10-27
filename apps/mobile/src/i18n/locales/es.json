@@ -1590,5 +1590,15 @@
     "delete": "Eliminar",
     "failed": "No se ha podido completar, así que no se ha cambiado nada. Inténtelo de nuevo.",
     "deleted": "Se ha eliminado {{event}}."
+  },
+  "eventMute": {
+    "heading": "Just for you",
+    "note": "Nobody else on this event is affected.",
+    "switch": "Mute this event",
+    "on": "On",
+    "off": "Off",
+    "notLoaded": "Couldn't load whether this event is muted.",
+    "tryAgain": "Try again",
+    "notSaved": "Couldn't save. Try again."
   }
 }
