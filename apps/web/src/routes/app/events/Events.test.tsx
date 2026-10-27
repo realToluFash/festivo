@@ -2319,6 +2319,33 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     expect(screen.getByText('Finished', { selector: '.pill-quiet' })).toBeDefined();
   });
 
+  it('says it was called off, not that it is over, when the call-off is refused on a called-off event (sc-17382)', async () => {
+    signedIn();
+    const calledOff = live({
+      status: 'ended',
+      phase: 'finished',
+      concludedAt: '2026-10-28T09:00:00+00:00',
+    });
+    let reads = 0;
+    await onThePage(live(), {
+      'GET /api/events/ev_1': () => json({ event: (reads += 1) === 1 ? live() : calledOff }),
+      'POST /api/events/ev_1/end': () => problem(409, 'event_state_invalid'),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Call off' }));
+    fireEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Call off' }),
+    );
+
+    const refused = await screen.findByRole('alertdialog', {
+      name: 'Somebody else changed this event while you had it open.',
+    });
+    expect(
+      within(refused).getByText("It's called off now. The page shows what it is now."),
+    ).toBeDefined();
+    expect(within(refused).queryByText('This event is already over.')).toBeNull();
+  });
+
   it.each([
     ['without events.manage', READER, live()],
     ['on a Draft', IRE, event(AHEAD)],
