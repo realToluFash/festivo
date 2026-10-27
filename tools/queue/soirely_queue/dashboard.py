@@ -7,9 +7,10 @@ import http.server
 import json
 import pathlib
 import time
+import urllib.parse
 import webbrowser
 
-from . import drawing, machine, permissions, roles, runlog, runner, store
+from . import drawing, machine, permissions, roles, runlog, runner, sessions, store
 
 PAGE = pathlib.Path(__file__).with_name("dashboard.html")
 RECENT = 20
@@ -27,7 +28,7 @@ def run_view(entry):
             "stopped": entry.get("stopped"), "item": entry.get("item"),
             "seconds": (entry.get("duration_ms") or 0) // 1000 or None,
             "model": entry.get("model"), "effort": entry.get("effort"),
-            "report": first_line(entry.get("report")),
+            "session": entry.get("session"), "report": first_line(entry.get("report")),
             "failed": bool(entry.get("stopped") or entry.get("is_error")
                            or entry.get("exit") not in (0, None))}
 
@@ -107,6 +108,9 @@ def snapshot(db, platform, now, home, load=machine.load):
             running = sum(1 for name in names if platform.worker_active(name))
             holding = [dict(worker=name, id=h["id"], reason=h["reason"])
                        for name in names if (h := store.held_by(db, role, now, name))]
+            live = [{"worker": name, "session": run["session"], "at": run.get("at")}
+                    for name in names if platform.worker_active(name)
+                    and (run := sessions.current(db, name))]
             state, detail = ("running", None) if running else \
                 ("elsewhere", {"machine": away[0], "seen": away[1]}) if role in on and away \
                 else ("busy", None) if held else \
@@ -122,6 +126,7 @@ def snapshot(db, platform, now, home, load=machine.load):
                 "last": run_view(last) if last else None,
                 "held": {"id": held["id"], "reason": held["reason"]} if held else None,
                 "holding": holding if len(names) > 1 else [],
+                "sessions": live,
                 "waiting": len(waiting),
                 "next": [{"id": w["id"], "reason": w["reason"]} for w in waiting[:NEXT]],
                 "note": machine.price_note(role, ready[role]["model"], config),
@@ -144,13 +149,20 @@ def snapshot(db, platform, now, home, load=machine.load):
     return view
 
 
-def serve(read, port, open_page=True, say=print):
-    """Serves the page and `/status.json` until interrupted. `read` returns a snapshot; one
-    request at a time, since the queue's connection belongs to this thread."""
+def serve(read, port, open_page=True, say=print, session=lambda session_id: None):
+    """Serves the page, `/status.json` and `/session.json?id=` until interrupted. `read`
+    returns a snapshot and `session` one session's view, or None; one request at a time,
+    since the queue's connection belongs to this thread."""
     class Page(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
-            if self.path.split("?")[0] == "/status.json":
+            path, _, query = self.path.partition("?")
+            if path == "/status.json":
                 body, kind = json.dumps(read(time.time())).encode(), "application/json"
+            elif path == "/session.json":
+                found = session((urllib.parse.parse_qs(query).get("id") or [""])[0])
+                if found is None:
+                    return self.send_error(404)
+                body, kind = json.dumps(found).encode(), "application/json"
             elif self.path in ("/", "/index.html"):
                 body, kind = PAGE.read_bytes(), "text/html; charset=utf-8"
             else:

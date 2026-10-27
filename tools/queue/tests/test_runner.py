@@ -11,13 +11,14 @@ import time
 import unittest
 from unittest import mock
 
-from soirely_queue import checkout, github, review, runlog, runner, shared, store
+from soirely_queue import checkout, github, review, runlog, runner, sessions, shared, store
 
 from .fakes import FakeRefs
 
 MINUTE = 60
 ON_ZERO = 3 * MINUTE * 1000  # a minute whose offset is 0
 FIXTURES = pathlib.Path(__file__).parent / "fixtures"
+SESSION = "0b6f1e2a-3c4d-4e5f-8a9b-0c1d2e3f4a5b"
 ON_ONE = ON_ZERO + MINUTE
 
 
@@ -575,13 +576,15 @@ class Worker(unittest.TestCase):
     def tearDown(self):
         self.folder.cleanup()
 
-    def work_with(self, result, code=0, *later, ended=None):
+    def work_with(self, result, code=0, *later, ended=None, seen=None):
         calls = []
         self.answers = []
 
         def claude(argv, input, cwd, env, finished):
             calls.append((argv, {"input": input, "cwd": cwd, "env": env,
                                  "run_dir_there": pathlib.Path(env["SQ_RUN_DIR"]).is_dir()}))
+            if seen is not None:
+                seen.append(sessions.current(self.db, "ops"))
             self.answers.append(finished())
             store.finish(self.db, 1, "done")
             self.answers.append(finished())
@@ -644,6 +647,19 @@ class Worker(unittest.TestCase):
         self.assertEqual(runlog.last(self.home, "ops")["account"], "owner@example.test")
         self.assertEqual(kwargs["env"]["CLAUDE_CONFIG_DIR"], str(self.root / "claude"))
         self.assertEqual(self.platform.notes, [])
+
+    def test_the_run_starts_under_a_session_id_it_records_before_claude_starts(self):
+        seen = []
+        with mock.patch("soirely_queue.sessions.new_id", return_value=SESSION):
+            entry, calls = self.work_with({"result": "ok"}, seen=seen)
+        argv = calls[0][0]
+        self.assertEqual(argv[argv.index("--session-id") + 1], SESSION)
+        self.assertEqual(seen[0]["session"], SESSION)
+        self.assertEqual((seen[0]["folder"], seen[0]["cwd"]),
+                         (str(self.root / "claude"), str(self.root / "soirely-ops")))
+        logged = runlog.last(self.home, "ops")
+        self.assertEqual((logged["session"], logged["item"], logged["cwd"]),
+                         (SESSION, 1, str(self.root / "soirely-ops")))
 
     def test_the_item_counts_as_finished_once_the_run_closes_it(self):
         self.work_with({"result": "Done."})
@@ -806,6 +822,21 @@ class Worker(unittest.TestCase):
             entry = runner.worker_ended(self.home, self.platform, "ops", 1, now=ON_ZERO)
         self.assertEqual(entry["report"], "the worker ended without a report: timeout")
         self.assertIsNone(runner.worker_ended(self.home, self.platform, "ops", 1))
+
+    def test_a_worker_stopped_by_its_limit_names_the_session_it_was_running(self):
+        sessions.begin(self.db, "ops", {"item": 1, "session": SESSION})
+        sessions.begin(self.db, "dev2", {"item": 1, "session": "another"})
+        with mock.patch.dict("os.environ", {"SERVICE_RESULT": "timeout"}):
+            entry = runner.worker_ended(self.home, self.platform, "ops", 1, now=ON_ZERO,
+                                        db=self.db)
+        self.assertEqual(entry["session"], SESSION)
+
+    def test_a_session_left_from_an_earlier_item_is_not_named(self):
+        sessions.begin(self.db, "ops", {"item": 7, "session": SESSION})
+        with mock.patch.dict("os.environ", {"SERVICE_RESULT": "timeout"}):
+            entry = runner.worker_ended(self.home, self.platform, "ops", 1, now=ON_ZERO,
+                                        db=self.db)
+        self.assertNotIn("session", entry)
 
 
 FAKE_CLAUDE = textwrap.dedent("""

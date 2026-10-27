@@ -585,6 +585,117 @@
       footer code {
         font-size: 12px;
       }
+      a {
+        color: var(--accent);
+      }
+      a.session {
+        font-weight: 600;
+        text-decoration: none;
+      }
+      a.session:hover {
+        text-decoration: underline;
+      }
+      .back {
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+      }
+      .facts {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        gap: 6px 16px;
+        margin: 0;
+        font-size: 13px;
+      }
+      .facts dt {
+        color: var(--text-3);
+      }
+      .facts dd {
+        margin: 0;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+      .mono,
+      .steps pre {
+        font:
+          12.5px/1.5 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+      }
+      .panel pre.mono {
+        margin: 4px 0 0;
+        padding: 8px 10px;
+        background: var(--surface-2);
+        border-radius: 8px;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      .steps {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 8px;
+      }
+      .step {
+        display: grid;
+        grid-template-columns: 84px 1fr;
+        gap: 12px;
+        align-items: baseline;
+        min-width: 0;
+      }
+      .step .at {
+        white-space: nowrap;
+        font-size: 12px;
+        color: var(--text-3);
+        font-variant-numeric: tabular-nums;
+      }
+      .step .body {
+        min-width: 0;
+      }
+      .step .said {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      .step.thinking .body,
+      .step.system .body {
+        color: var(--text-2);
+      }
+      .step details {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 6px 10px;
+        min-width: 0;
+      }
+      .step details.error {
+        border-color: color-mix(in srgb, var(--critical) 50%, var(--line));
+      }
+      .step summary {
+        cursor: pointer;
+        display: flex;
+        gap: 8px;
+        align-items: baseline;
+        min-width: 0;
+      }
+      .step summary .shown {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+        flex: 1;
+      }
+      .step pre {
+        margin: 8px 0 2px;
+        padding: 8px 10px;
+        background: var(--surface-2);
+        border-radius: 8px;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        max-height: 420px;
+        overflow: auto;
+      }
       @media (max-width: 960px) {
         .kpis {
           grid-template-columns: repeat(2, 1fr);
@@ -600,6 +711,10 @@
         .roles {
           grid-template-columns: 1fr;
         }
+        .step {
+          grid-template-columns: 1fr;
+          gap: 2px;
+        }
         h1 {
           font-size: 24px;
         }
@@ -607,7 +722,8 @@
     </style>
   </head>
   <body>
-    <div class="wrap">
+    <div class="wrap" id="session-view" hidden></div>
+    <div class="wrap" id="overview">
       <header>
         <div>
           <div class="eyebrow">Soirely agents</div>
@@ -788,6 +904,14 @@
         tags.push(`<span class="tag">${esc(r.account || 'not logged in')}</span>`);
         const blocks = [];
         if (r.owner) blocks.push(`<div class="owner"><b>Waiting on you:</b> ${esc(r.owner)}</div>`);
+        if (r.sessions.length)
+          blocks.push(`<div class="block"><div class="k"><span>Session</span></div>
+      <ul class="holding">${r.sessions
+        .map(
+          (s) =>
+            `<li><a class="session" href="#session=${esc(s.session)}">${esc(s.worker)}: watch it work</a> <span class="more">started ${since(s.at)}</span></li>`,
+        )
+        .join('')}</ul></div>`);
         if (r.holding.length)
           blocks.push(`<div class="block"><div class="k"><span>Working on</span><span>${r.holding.length} of ${r.workers} workers</span></div>
       <ul class="holding">${r.holding
@@ -890,7 +1014,7 @@
             d.recent
               .map(
                 (r) => `<tr><td class="when" title="${esc(clock(r.at))}">${since(r.at)}</td>
-        <td class="role-chip">${esc(r.worker || r.role)}</td><td class="when">${esc(r.account || '')}</td><td class="num">${duration(r.seconds)}</td>
+        <td class="role-chip">${r.session ? `<a class="session" href="#session=${esc(r.session)}" title="Open this run's session">${esc(r.worker || r.role)}</a>` : esc(r.worker || r.role)}</td><td class="when">${esc(r.account || '')}</td><td class="num">${duration(r.seconds)}</td>
         <td class="num">${money(r.cost)}</td>
         <td class="report ${r.failed ? 'fail' : ''}" title="${esc(r.report)}">${esc(r.report || 'No report')}</td></tr>`,
               )
@@ -946,6 +1070,7 @@
       document.addEventListener('click', async (event) => {
         const button = event.target.closest('[data-copy]');
         if (!button) return;
+        const label = button.dataset.label || (button.dataset.label = button.textContent);
         const text = document.getElementById('prompt-' + button.dataset.copy).textContent;
         try {
           await navigator.clipboard.writeText(text);
@@ -957,11 +1082,201 @@
           getSelection().addRange(range);
           button.textContent = 'Selected, press ⌘C';
         }
-        setTimeout(() => (button.textContent = 'Copy prompt'), 2000);
+        setTimeout(() => (button.textContent = label), 2000);
       });
 
+      let sessionId = null,
+        session = null,
+        sessionShown = '',
+        sessionFailing = false;
+      const opened = new Set();
+      const time = (at) =>
+        at == null
+          ? ''
+          : new Date(at * 1000).toLocaleTimeString(undefined, {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            });
+      const count = (n) => (n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'k' : String(n));
+      const more = (n) => (n ? `\n… ${n.toLocaleString()} more characters cut` : '');
+
+      function folded(key, summary, inner, cls = '') {
+        return `<details class="${cls}" data-key="${key}" ${opened.has(String(key)) ? 'open' : ''}><summary>${summary}</summary>${inner}</details>`;
+      }
+
+      function step(s, i) {
+        let body;
+        if (s.kind === 'prompt')
+          body = folded(
+            i,
+            '<b>The brief sq gave it</b>',
+            `<pre>${esc(s.text + more(s.cut))}</pre>`,
+          );
+        else if (s.kind === 'thinking')
+          body = folded(i, 'Thinking', `<pre>${esc(s.text + more(s.cut))}</pre>`);
+        else if (s.kind === 'tool') {
+          const state =
+            s.output == null
+              ? session.live
+                ? '<span class="pill good live">Running</span>'
+                : '<span class="pill">No output</span>'
+              : s.error
+                ? '<span class="pill critical">Error</span>'
+                : '';
+          const input = s.input ? `<pre>${esc(s.input + more(s.input_cut))}</pre>` : '';
+          const output =
+            s.output == null
+              ? ''
+              : `<pre>${esc((s.output || '(no output)') + more(s.output_cut))}</pre>`;
+          body = folded(
+            i,
+            `<span class="tag">${esc(s.name)}</span><span class="shown mono">${esc(s.shown)}</span>${state}`,
+            input + output,
+            s.error ? 'error' : '',
+          );
+        } else body = `<div class="said">${esc(s.text + more(s.cut))}</div>`;
+        return `<li class="step ${s.kind}"><span class="at">${time(s.at)}</span><div class="body">${body}</div></li>`;
+      }
+
+      function sessionPage(d) {
+        const back = `<a class="back" href="#">← All roles</a>`;
+        if (!d)
+          return `${back}<header><div><div class="eyebrow">Session</div><h1>Loading…</h1></div></header>`;
+        if (d.notFound)
+          return `${back}<header><div><div class="eyebrow">Session</div><h1>No such session</h1></div></header>
+      <div class="empty">No worker on this machine recorded session ${esc(sessionId)}.</div>`;
+        const end = d.ended;
+        const failed = end && (end.stopped || (end.exit != null && String(end.exit) !== '0'));
+        const took = end
+          ? end.seconds
+          : d.live && d.at
+            ? Math.floor(Date.now() / 1000 - d.at)
+            : null;
+        const pills = [
+          sessionFailing ? `<span class="pill critical">sq web is not answering</span>` : '',
+          d.live
+            ? `<span class="pill good live">Running</span>`
+            : end
+              ? `<span class="pill ${failed ? 'critical' : ''}">${failed ? 'Ended without finishing' : 'Ended'}</span>`
+              : `<span class="pill warning">Not running, no report</span>`,
+          d.at ? `<span>started ${esc(clock(d.at))}</span>` : '',
+          took != null
+            ? `<span>${duration(took)}${d.max_minutes ? ` of its ${d.max_minutes}m limit` : ''}</span>`
+            : '',
+          d.last_at && d.live ? `<span>last step ${since(d.last_at)}</span>` : '',
+        ].filter(Boolean);
+        const facts = [];
+        const fact = (k, v) => v && facts.push(`<dt>${k}</dt><dd>${v}</dd>`);
+        fact('Item', d.item ? `${d.item}${d.reason ? ': ' + esc(d.reason) : ''}` : '');
+        fact(
+          'Story',
+          d.story
+            ? `<a href="${esc(d.story.url)}" target="_blank" rel="noopener">sc-${d.story.id}</a> ${esc(d.story.name)} <span class="tag">${esc(d.story.state)}</span>`
+            : '',
+        );
+        fact(
+          'Pull request',
+          d.prs
+            .map(
+              (pr) =>
+                `<a href="${esc(pr.url)}" target="_blank" rel="noopener">#${pr.number}</a> ${esc(pr.title)} <span class="tag">${esc(pr.state)}</span>`,
+            )
+            .join('<br>'),
+        );
+        fact('Account', esc(d.account || ''));
+        fact('Model', esc(model(d)));
+        fact(
+          'Checkout',
+          d.cwd
+            ? `<span class="mono">${esc(d.cwd)}</span>${d.main ? ` from main at <span class="mono">${esc(d.main.slice(0, 7))}</span>` : ''}`
+            : '',
+        );
+        fact(
+          'Tokens',
+          d.tokens
+            ? `${count(d.tokens.context)} in context now, ${count(d.tokens.output)} written`
+            : '',
+        );
+        fact('Cost', end && end.cost != null ? money(end.cost) : '');
+        fact('Transcript', d.transcript ? `<span class="mono">${esc(d.transcript)}</span>` : '');
+        const resume = d.resume
+          ? `<div class="block"><div class="k"><span>Continue it in a terminal</span><button class="copy" data-copy="resume" type="button">Copy command</button></div>
+      <pre class="mono" id="prompt-resume">${esc(d.resume)}</pre></div>`
+          : '';
+        const report = end
+          ? `<div class="block"><div class="k"><span>Its report</span></div><div class="v said ${failed ? 'fail' : ''}">${esc(end.report || 'No report')}</div></div>`
+          : '';
+        const steps = d.missing
+          ? `<div class="empty">${esc(d.missing)}</div>`
+          : d.steps.length
+            ? `<ol class="steps">${d.steps.map(step).join('')}</ol>`
+            : `<div class="empty">Nothing in the transcript yet.</div>`;
+        return `${back}<header><div><div class="eyebrow">Session · ${esc(TITLES[d.role] || d.role)}</div>
+      <h1>${esc(d.worker)}</h1></div><div class="meta">${pills.join('<span class="sep">|</span>')}</div></header>
+      <section class="panel"><dl class="facts">${facts.join('')}</dl>${resume}${report}</section>
+      <section><h2>Steps <span class="count">${d.steps.length || ''}</span></h2>${steps}</section>`;
+      }
+
+      function renderSession() {
+        const key = JSON.stringify([session, sessionFailing]);
+        if (key === sessionShown) return;
+        sessionShown = key;
+        const view = document.getElementById('session-view');
+        const following = innerHeight + scrollY >= document.body.scrollHeight - 80;
+        view.innerHTML = sessionPage(session);
+        if (session && session.worker) document.title = `${session.worker} · session`;
+        if (following && session && session.live) scrollTo(0, document.body.scrollHeight);
+      }
+
+      async function refreshSession() {
+        if (!sessionId) return;
+        const asked = sessionId;
+        try {
+          const response = await fetch('session.json?id=' + asked, { cache: 'no-store' });
+          if (response.status !== 404 && !response.ok) throw new Error(response.status);
+          const found = response.status === 404 ? { notFound: true } : await response.json();
+          if (asked !== sessionId) return;
+          session = found;
+          sessionFailing = false;
+        } catch (error) {
+          sessionFailing = true;
+        }
+        renderSession();
+      }
+
+      function route() {
+        const match = location.hash.match(/^#session=([0-9a-f-]{36})$/);
+        const next = match ? match[1] : null;
+        if (next !== sessionId) {
+          sessionId = next;
+          session = null;
+          sessionShown = '';
+          opened.clear();
+        }
+        document.getElementById('overview').hidden = !!sessionId;
+        document.getElementById('session-view').hidden = !sessionId;
+        if (sessionId) {
+          renderSession();
+          refreshSession();
+          scrollTo(0, 0);
+        } else render();
+      }
+
+      document.addEventListener(
+        'toggle',
+        (event) => {
+          const key = event.target.dataset && event.target.dataset.key;
+          if (key == null) return;
+          if (event.target.open) opened.add(key);
+          else opened.delete(key);
+        },
+        true,
+      );
+      window.addEventListener('hashchange', route);
+
       function render() {
-        if (!data) return;
+        if (!data || sessionId) return;
         drawings(data);
         header(data);
         kpis(data);
@@ -1003,8 +1318,12 @@
         tip.style.opacity = 1;
       });
 
+      route();
       refresh();
       setInterval(refresh, 5000);
+      setInterval(() => {
+        if (sessionId && (!session || session.live)) refreshSession();
+      }, 3000);
       setInterval(() => {
         const updated = document.getElementById('updated');
         if (updated && fetchedAt)

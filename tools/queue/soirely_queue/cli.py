@@ -13,7 +13,8 @@ import sys
 import time
 
 from . import (actions, agents, dashboard, digests, github, launchd, machine, payloads,
-               permissions, roles, runlog, runner, shared, store, sync, systemd, update, work)
+               permissions, roles, runlog, runner, sessions, shared, store, sync, systemd, update,
+               work)
 from . import text as T
 from . import views as V
 from .ledger import Printer
@@ -780,7 +781,8 @@ def admin(argv):
         status(db, platform, time.time())
     elif a.command == "web":
         dashboard.serve(lambda now: dashboard.snapshot(db, platform, now, home()), a.port,
-                        open_page=not a.no_open)
+                        open_page=not a.no_open,
+                        session=lambda found: sessions.view(db, home(), platform, found))
     elif a.command == "run":
         try:
             runner.run(db, home(), platform, sq_path, sys.executable, dry_run=a.dry_run)
@@ -789,13 +791,13 @@ def admin(argv):
     elif a.command == "worker":
         runner.worker(db, home(), platform, a.role, a.item)
     elif a.command == "worker-ended":
-        runner.worker_ended(home(), platform, a.role, a.item)
+        runner.worker_ended(home(), platform, a.role, a.item, db=db)
     elif a.command == "worker-supervise":
         result, exit_status = launchd.supervise(
             [sys.executable, str(sq_path), "worker", a.role, str(a.item)], a.minutes * 60,
             launchd.size_bytes(a.memory))
         os.environ.update(SERVICE_RESULT=result, EXIT_STATUS=str(exit_status))
-        runner.worker_ended(home(), platform, a.role, a.item)
+        runner.worker_ended(home(), platform, a.role, a.item, db=db)
         pidfile = platform.pidfile(a.role)
         if pidfile.exists() and pidfile.read_text().strip() == str(os.getpid()):
             pidfile.unlink()
