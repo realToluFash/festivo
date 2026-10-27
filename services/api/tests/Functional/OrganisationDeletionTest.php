@@ -77,6 +77,22 @@ final class OrganisationDeletionTest extends ApiTestCase
         );
     }
 
+    /** sc-16866: counted, not loaded, and only the members who are in. */
+    #[Test]
+    public function theConfirmationCountsOnlyActiveMembers(): void
+    {
+        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Coordinator);
+        $this->member('tunde@ire.events', 'Tunde Bakare', SeededRole::Coordinator);
+        $this->member('ada@ire.events', 'Ada Obi', SeededRole::Coordinator, status: MembershipStatus::PendingApproval);
+        $this->member('kemi@ire.events', 'Kemi Ola', SeededRole::Coordinator, status: MembershipStatus::Suspended);
+        $this->member('femi@ire.events', 'Femi Ade', SeededRole::Coordinator, status: MembershipStatus::LeftOrRemoved);
+
+        $body = $this->as($this->owner, 'GET', $this->path('/deletion'));
+
+        self::assertSame(200, $this->statusCode(), Json\encode($body));
+        self::assertSame(3, $body['members']);
+    }
+
     /** One instant, written in each reader's zone: London is on GMT by then though the deletion happened in BST. */
     #[Test]
     #[DataProvider('readers')]
@@ -360,12 +376,22 @@ final class OrganisationDeletionTest extends ApiTestCase
         return $user;
     }
 
-    private function member(string $address, string $name, SeededRole $seeded, ?string $zone = 'Africa/Lagos'): User
-    {
+    private function member(
+        string $address,
+        string $name,
+        SeededRole $seeded,
+        ?string $zone = 'Africa/Lagos',
+        MembershipStatus $status = MembershipStatus::Active,
+    ): User {
         $user = $this->account($address, $name, $zone);
         $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
         $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => $seeded]) ?? self::fail('no role');
-        self::em()->persist(new Membership($organisation, $user, $role, MembershipStatus::Active, new DateTimeImmutable()));
+        $membership = new Membership($organisation, $user, $role, $status->isEntry() ? $status : MembershipStatus::Active, new DateTimeImmutable());
+        if (!$status->isEntry()) {
+            $membership->setStatus($status, new DateTimeImmutable());
+        }
+
+        self::em()->persist($membership);
         self::em()->flush();
 
         return $user;
