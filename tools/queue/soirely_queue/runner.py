@@ -173,6 +173,8 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
         return say(f"error: {'; '.join(errors)}")
     from .cli import refresh_work
     local.checks(db, config, now)
+    if not dry_run:
+        local.sweep_scratch(db, config, now, say)
     refresh_work(db, now)
     if not dry_run:
         void_passes(db, now, say)
