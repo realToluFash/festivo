@@ -505,3 +505,6 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   del aviso (`signInRules.unlinkedBody`, `gateBody`, sin «ahora») y cierra con las de
   `orgGeneral.readOnly`: «puede ver estos datos pero no cambiarlos». Un guardado que la regla
   rechaza dice solo «No se ha guardado nada.», como el comienzo de `refused`.
+- **27 Oct 2026. El hito de un evento cancelado** (sc-16725 para sc-16709,
+  `messages:timeline.event_called_off`). «Se cancela {name}», con el verbo delante como
+  «Empieza {name}» y «Termina {name}», y sin concordar con un nombre cuyo género no conocemos.
