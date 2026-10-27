@@ -37,6 +37,8 @@ screenshot. `shared-flows-chained-*` run them one after another, as a batch woul
 
 `sign-in-screen-english` picks English on the sign-in screen, for a phone a run in another
 language left signed out: `sign-in`'s first wait is on the English 'Email'.
+`sign-in-screen-language` picks the one passed as `LANGUAGE`, by its chip, before
+`sign-in-any-language`.
 
 Two flows tap one control by `testID`, passed as `ID`: `scroll-tap` scrolls to it from above
 or below, for a step inside another flow; `ownership-tap` takes a screenshot of what follows

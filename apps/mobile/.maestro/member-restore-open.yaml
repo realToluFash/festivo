@@ -3,12 +3,8 @@
 #   node .qa/bin/qa-env.mjs maestro member-restore-open --android EMAIL=… PASSWORD=… LANGUAGE=… MEMBER=<membership id> SHOT=…
 appId: host.exp.Exponent
 ---
-- runFlow: sign-in-in.yaml
-- extendedWaitUntil:
-    notVisible:
-      id: 'signIn.submit'
-    timeout: 30000
-- waitForAnimationToEnd
+- runFlow: sign-in-screen-language.yaml
+- runFlow: sign-in-any-language.yaml
 - openLink: ${METRO_URL}/--/settings/members
 - extendedWaitUntil:
     visible:
