@@ -32,6 +32,7 @@ const gala: OrganisationEvent = {
   currency: 'NGN',
   cover: null,
   madeLiveAt: null,
+  pausedAt: null,
   phase: 'draft',
   concludedAt: null,
   createdAt: '2026-10-01T09:00:00Z',

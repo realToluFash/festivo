@@ -9,4 +9,5 @@ enum EventGuard: string
 {
     case EndNotPassed = 'end_not_passed';
     case PlanLimit = 'plan_limit';
+    case PhaseAllows = 'phase_allows';
 }

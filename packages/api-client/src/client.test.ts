@@ -2249,6 +2249,7 @@ describe('events (sc-1486)', () => {
     cover: null,
     venue: null,
     madeLiveAt: null,
+    pausedAt: null,
     phase: 'draft',
     concludedAt: null,
     createdAt: '2026-10-21T09:00:00+00:00',
@@ -2419,6 +2420,39 @@ describe('events (sc-1486)', () => {
     expect(clock.now().toISOString()).toBe('2026-11-14T15:00:00.000Z');
   });
 
+  test.each([
+    ['pauseEvent', 'pause', 'paused'],
+    ['resumeEvent', 'resume', 'live'],
+  ] as const)('%s posts to /%s and answers the tagged event', async (method, path, status) => {
+    const moved = {
+      ...EVENT,
+      status,
+      phase: status,
+      pausedAt: status === 'paused' ? '2026-10-27T09:00:00+00:00' : null,
+    };
+    const sent: string[] = [];
+    const api = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (url, init) => {
+        sent.push(`${init?.method ?? 'GET'} ${new URL(String(url)).pathname}`);
+
+        return new Response(JSON.stringify({ event: moved }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ETag: '"5"' },
+        });
+      },
+    });
+
+    expect(await api[method](EVENT.id)).toEqual({ event: moved, tag: '"5"' });
+    expect(sent).toEqual([`POST /api/events/${EVENT.id}/${path}`]);
+  });
+
+  test('an event with a pausedAt that is not a string or null is an error', async () => {
+    await expect(
+      client(() => json({ event: { ...EVENT, pausedAt: 1 } })).api.event('e1'),
+    ).rejects.toThrow(/events controller/);
+  });
+
   test('an event with a madeLiveAt that is not a string or null is an error', async () => {
     await expect(
       client(() => json({ event: { ...EVENT, madeLiveAt: 1 } })).api.event('e1'),
@@ -2575,6 +2609,7 @@ describe("an event's venue (sc-3589)", () => {
     currency: 'NGN',
     cover: null,
     madeLiveAt: null,
+    pausedAt: null,
     phase: 'draft',
     concludedAt: null,
     createdAt: '2026-10-26T09:00:00+00:00',
