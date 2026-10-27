@@ -1577,16 +1577,16 @@
     "close": "Cerrar"
   },
   "eventPause": {
-    "pause": "Pause",
-    "title": "Pause {{name}}?",
-    "body": "Guests can't reply or change anything until you resume it.",
-    "nothingLost": "Nothing is lost. Check-in and service keep working.",
-    "keepItLive": "Keep it live",
-    "failed": "Not paused. Try again in a moment.",
-    "notPaused": "Not paused.",
-    "notice": "Paused. Guests can't reply or change anything until you resume it. Check-in and service still work.",
-    "resume": "Resume",
-    "resumeFailed": "Not resumed. Try again in a moment."
+    "pause": "Pausar",
+    "title": "¿Pausar {{name}}?",
+    "body": "Los invitados no podrán responder ni cambiar nada hasta que lo reanude.",
+    "nothingLost": "No se pierde nada. El registro de llegada y el servicio siguen funcionando.",
+    "keepItLive": "Mantenerlo publicado",
+    "failed": "No se ha pausado. Vuelva a intentarlo en un momento.",
+    "notPaused": "No se ha pausado.",
+    "notice": "En pausa. Los invitados no pueden responder ni cambiar nada hasta que lo reanude. El registro de llegada y el servicio siguen funcionando.",
+    "resume": "Reanudar",
+    "resumeFailed": "No se ha reanudado. Vuelva a intentarlo en un momento."
   },
   "eventDelete": {
     "open": "Eliminar el evento",

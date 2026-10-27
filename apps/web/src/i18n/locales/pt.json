@@ -157,17 +157,17 @@
     "calledOffNotice": "Cancelado no dia {{date}}, antes de começar. Os convidados que abrem a sua ligação são informados de que não se vai realizar."
   },
   "eventPause": {
-    "pause": "Pause",
-    "title": "Pause {{name}}?",
-    "body": "Guests can't reply or change anything until you resume it.",
-    "nothingLost": "Nothing is lost. Check-in and service keep working.",
-    "keepItLive": "Keep it live",
-    "failed": "Not paused. Try again in a moment.",
-    "paused": "{{name}} is paused.",
-    "notice": "Paused. Guests can't reply or change anything until you resume it. Check-in and service still work.",
-    "resume": "Resume",
-    "resumeFailed": "Not resumed. Try again in a moment.",
-    "resumed": "{{name}} is live again."
+    "pause": "Pausar",
+    "title": "Pausar {{name}}?",
+    "body": "Os convidados não vão poder responder nem alterar nada até retomar o evento.",
+    "nothingLost": "Não se perde nada. O registo de entradas e o serviço continuam a funcionar.",
+    "keepItLive": "Manter publicado",
+    "failed": "Não foi pausado. Tente novamente daqui a pouco.",
+    "paused": "O evento {{name}} está em pausa.",
+    "notice": "Em pausa. Os convidados não podem responder nem alterar nada até retomar o evento. O registo de entradas e o serviço continuam a funcionar.",
+    "resume": "Retomar",
+    "resumeFailed": "Não foi retomado. Tente novamente daqui a pouco.",
+    "resumed": "O evento {{name}} voltou a estar publicado."
   },
   "eventDelete": {
     "open": "Eliminar o evento",
