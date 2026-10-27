@@ -1558,8 +1558,8 @@
     "planLimit_many": "No se ha publicado. Su plan {{plan}} permite tener {{count}} de eventos publicados o en pausa a la vez.",
     "planLimitStays": "Este evento sigue como borrador. Finalice o cancele otro evento, o cambie de plan.",
     "close": "Cerrar",
-    "needsHostTitle": "Add who is hosting before guests are invited.",
-    "needsHostBody": "Guests see the hosts' names on their invitation. This event stays a draft until it has at least one host."
+    "needsHostTitle": "Indique los anfitriones antes de invitar a nadie.",
+    "needsHostBody": "Los invitados ven los nombres de los anfitriones en su invitación. Este evento seguirá siendo un borrador hasta que tenga al menos un anfitrión."
   },
   "eventEnd": {
     "callOff": "Cancelar el evento",
