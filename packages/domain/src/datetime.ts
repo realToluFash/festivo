@@ -107,7 +107,7 @@ export function formatEventDate(moment: string, timeZone: string, locale: string
   return new Intl.DateTimeFormat(locale, { ...EVENT_DAY, timeZone }).format(date);
 }
 
-/** CLDR's interval format, which writes a date once when both ends fall on it. */
+/** Not `formatRange`, which Hermes does not have: the app's event page crashed on it. */
 export function formatEventRange(
   startsAt: string,
   endsAt: string,
@@ -119,9 +119,10 @@ export function formatEventRange(
 
   if (start == null || end == null) return '';
 
-  return new Intl.DateTimeFormat(locale, {
-    ...EVENT_DAY,
-    ...EVENT_CLOCK,
-    timeZone,
-  }).formatRange(start, end);
+  const day = new Intl.DateTimeFormat(locale, { ...EVENT_DAY, timeZone });
+  const dayAndClock = new Intl.DateTimeFormat(locale, { ...EVENT_DAY, ...EVENT_CLOCK, timeZone });
+  const clock = new Intl.DateTimeFormat(locale, { ...EVENT_CLOCK, timeZone });
+  const sameDay = day.format(start) === day.format(end);
+
+  return `${dayAndClock.format(start)} – ${(sameDay ? clock : dayAndClock).format(end)}`;
 }
