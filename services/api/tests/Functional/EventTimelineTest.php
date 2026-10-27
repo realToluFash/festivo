@@ -186,8 +186,10 @@ final class EventTimelineTest extends ApiTestCase
 
         $listed = $this->as($this->owner, '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/events?finished=true');
         $events = Type\vec(Type\shape(['id' => Type\string(), 'milestones' => Type\mixed()], true))->coerce($listed['events'] ?? null);
+        $titles = Vec\map(Type\vec(Type\shape(['title' => Type\string()], true))->coerce($events[0]['milestones'] ?? null), static fn (array $milestone): string => $milestone['title']);
 
         self::assertSame([$id], Vec\map($events, static fn (array $event): string => $event['id']));
+        self::assertSame(['Owambe called off'], $titles);
         self::assertSame($this->timeline($this->owner, $id)['milestones'], $events[0]['milestones']);
     }
 

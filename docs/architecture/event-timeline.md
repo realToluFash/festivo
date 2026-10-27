@@ -44,8 +44,9 @@ and the timeline, the route and the clients do not change.
   (`apps/mobile/src/components/Timeline.tsx`).
 - **Two milestones at the same instant** keep the order their sources were read in.
 
-`EventDates` is the worked example: the start is always there, titled "{name} starts", and
-the end, "{name} ends", only when `EventDayCount` says the event touches more than one date.
+`EventDates` is the worked example: the start, titled "{name} starts", unless the event was
+called off, and the end, "{name} ends", only when `EventDayCount` says the event touches more
+than one date.
 
 ## Once an event is Ended
 
