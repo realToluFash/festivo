@@ -11,7 +11,10 @@ import {
   type EventType,
   EVENT_PHASES,
   EVENT_STATES,
+  type EventTimeline,
   isEventType,
+  type Milestone,
+  MILESTONE_OWNERS,
   type ServerClock,
   serverClock,
 } from '@soirely/domain';
@@ -1506,6 +1509,21 @@ export class ApiClient {
     );
   }
 
+  /** Earliest first, only the areas the reader's role reads (sc-3624); refused `not_found` as event is. */
+  async eventTimeline(eventId: string): Promise<EventTimeline> {
+    const timeline = asEventTimeline(
+      await this.get<unknown>(`/api/events/${encodeURIComponent(eventId)}/timeline`),
+    );
+
+    if (timeline == null) {
+      throw new Error(
+        'The API answered an event timeline in a shape this client does not know. Check EventTimelineController in services/api.',
+      );
+    }
+
+    return timeline;
+  }
+
   /** The event as an edit form opens it, with the tag the save sends back. */
   async taggedEvent(eventId: string): Promise<TaggedEvent> {
     return this.tagged(
@@ -2613,6 +2631,49 @@ function asRolesCatalogue(raw: unknown): RolesCatalogue | null {
     roles: parsedRoles as OrganisationRole[],
     areas: parsedAreas as RolesCatalogue['areas'],
   };
+}
+
+function asEventTimeline(raw: unknown): EventTimeline | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const { timeZone, milestones } = raw as Record<string, unknown>;
+
+  if (typeof timeZone !== 'string' || !Array.isArray(milestones)) return null;
+
+  const read = milestones.map(asMilestone);
+
+  return read.every((one) => one != null) ? { timeZone, milestones: read } : null;
+}
+
+function asMilestone(raw: unknown): Milestone | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const { at, title, note, owner, area, action } = raw as Record<string, unknown>;
+  const known = oneOf(owner, MILESTONE_OWNERS);
+  const link =
+    action === null
+      ? null
+      : typeof action === 'object' &&
+          action != null &&
+          'label' in action &&
+          'link' in action &&
+          typeof action.label === 'string' &&
+          typeof action.link === 'string'
+        ? { label: action.label, link: action.link }
+        : undefined;
+
+  if (
+    typeof at !== 'string' ||
+    typeof title !== 'string' ||
+    !isStringOrNull(note) ||
+    typeof area !== 'string' ||
+    known == null ||
+    link === undefined
+  ) {
+    return null;
+  }
+
+  return { at, title, note, owner: known, area, action: link };
 }
 
 function asOrganisationEvent(raw: unknown): OrganisationEvent | null {

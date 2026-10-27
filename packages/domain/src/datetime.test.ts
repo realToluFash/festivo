@@ -221,13 +221,22 @@ describe('a wall-clock day and time, as the event page writes them', () => {
   });
 });
 
-describe('the end of a copy, as its form works it out (sc-3593)', () => {
-  it('is a day and a clock in the event’s zone', () => {
-    expect(formatEventMoment('2027-05-16T01:00:00Z', 'Africa/Lagos', 'en')).toBe(
-      'Sun, May 16, 2027, 02:00',
+describe('a milestone’s moment, in the event’s zone', () => {
+  it('carries its own offset across a change of clocks', () => {
+    expect(formatEventMoment('2026-10-24T18:00:00+02:00', 'Europe/Madrid', 'en')).toBe(
+      'Sat, Oct 24, 18:00',
+    );
+    expect(formatEventMoment('2026-10-26T02:00:00+01:00', 'Europe/Madrid', 'en')).toBe(
+      'Mon, Oct 26, 02:00',
     );
   });
 
+  it('is written in the reader’s language', () => {
+    expect(formatEventMoment('2026-10-24T18:00:00+02:00', 'Europe/Madrid', 'fr')).toMatch(/sam/);
+  });
+});
+
+describe('the length of a copy, as its form gives it (sc-3593)', () => {
   it('is whole hours and minutes, in the reader’s words', () => {
     expect(durationWords(600, 'en')).toEqual({ hours: '10 hours', minutes: null });
     expect(durationWords(140, 'en')).toEqual({ hours: '2 hours', minutes: '20 minutes' });

@@ -20,4 +20,10 @@ enum PermissionArea: string
     case Members = 'members';
     case Billing = 'billing';
     case Organisation = 'organisation';
+
+    /** What lets a member see the area's milestones on an event's timeline (sc-3624). The organisation's settings have no read of their own. */
+    public function reading(): Permission
+    {
+        return self::Organisation === $this ? Permission::OrganisationManage : Permission::from($this->value . '.read');
+    }
 }

@@ -112,7 +112,11 @@ export function formatEventMoment(moment: string | Date, timeZone: string, local
 
   if (date == null) return '';
 
-  return new Intl.DateTimeFormat(locale, { ...EVENT_DAY, ...EVENT_CLOCK, timeZone }).format(date);
+  return new Intl.DateTimeFormat(locale, {
+    ...EVENT_DAY_WITHOUT_YEAR,
+    ...EVENT_CLOCK,
+    timeZone,
+  }).format(date);
 }
 
 /** Whole hours and the minutes left, each in the reader's words; a client joins the two through its catalogue. */

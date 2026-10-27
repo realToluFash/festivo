@@ -7,6 +7,7 @@ import {
   formatEventRange,
   shownPhase,
 } from '@soirely/domain';
+import { router } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -25,6 +26,7 @@ import { PauseButton, PausedRow } from './PauseEvent.tsx';
 import { Notice } from './Notice.tsx';
 import { readOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
+import { ComingUp } from './Timeline.tsx';
 import { cardFrame } from './cardFrame.ts';
 
 /** The phase the page shows: the server's, flipped by the corrected clock at the start and the end (sc-3585). */
@@ -235,53 +237,63 @@ export function EventPage({
   }, [event.id, phase, t]);
 
   return (
-    <View style={cardFrame(kind)} testID="events.page">
-      <EventCover cover={event.cover} type={event.type} testID="events.page.cover" />
-      <View style={styles.pageHead}>
-        <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
-          {event.name}
-        </Text>
-        <EventState phase={phase} />
-      </View>
-      {calledOff(event) && event.concludedAt != null && (
-        <Notice
-          tone="quiet"
-          mark={tokens.marks.info.glyph}
-          body={t('eventEnd.calledOffNotice', {
-            date: formatEventDate(event.concludedAt, event.timeZone, dateLocale()),
+    <View style={styles.cards}>
+      <View style={cardFrame(kind)} testID="events.page">
+        <EventCover cover={event.cover} type={event.type} testID="events.page.cover" />
+        <View style={styles.pageHead}>
+          <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
+            {event.name}
+          </Text>
+          <EventState phase={phase} />
+        </View>
+        {calledOff(event) && event.concludedAt != null && (
+          <Notice
+            tone="quiet"
+            mark={tokens.marks.info.glyph}
+            body={t('eventEnd.calledOffNotice', {
+              date: formatEventDate(event.concludedAt, event.timeZone, dateLocale()),
+            })}
+          />
+        )}
+        <DraftRow kind={kind} event={event} manages={manages} now={now} onChange={onChange} />
+        <PausedRow event={event} phase={phase} manages={manages} onChange={onChange} />
+        <View style={styles.lifecycle}>
+          <PauseButton
+            kind={kind}
+            event={event}
+            phase={phase}
+            manages={manages}
+            onChange={onChange}
+          />
+          <EndRow
+            kind={kind}
+            event={event}
+            phase={phase}
+            manages={manages}
+            now={now}
+            onChange={onChange}
+          />
+        </View>
+        <EventType event={event} size={tokens.typeBody.size} />
+        <Text size={tokens.typeBody.size}>
+          {t('eventsScreen.when', {
+            range: formatEventRange(event.startsAt, event.endsAt, event.timeZone, dateLocale()),
+            timeZone: event.timeZone,
           })}
-        />
-      )}
-      <DraftRow kind={kind} event={event} manages={manages} now={now} onChange={onChange} />
-      <PausedRow event={event} phase={phase} manages={manages} onChange={onChange} />
-      <View style={styles.lifecycle}>
-        <PauseButton
-          kind={kind}
-          event={event}
-          phase={phase}
-          manages={manages}
-          onChange={onChange}
-        />
-        <EndRow
-          kind={kind}
-          event={event}
-          phase={phase}
-          manages={manages}
-          now={now}
-          onChange={onChange}
-        />
+        </Text>
+        {onEdit != null && (
+          <SecondaryButton label={t('eventEdit.open')} onPress={onEdit} testID="events.page.edit" />
+        )}
+        {onDeleted != null && (
+          <DeleteEventSection kind={kind} event={event} onDeleted={onDeleted} />
+        )}
       </View>
-      <EventType event={event} size={tokens.typeBody.size} />
-      <Text size={tokens.typeBody.size}>
-        {t('eventsScreen.when', {
-          range: formatEventRange(event.startsAt, event.endsAt, event.timeZone, dateLocale()),
-          timeZone: event.timeZone,
-        })}
-      </Text>
-      {onEdit != null && (
-        <SecondaryButton label={t('eventEdit.open')} onPress={onEdit} testID="events.page.edit" />
-      )}
-      {onDeleted != null && <DeleteEventSection kind={kind} event={event} onDeleted={onDeleted} />}
+      <ComingUp
+        kind={kind}
+        eventId={event.id}
+        now={now}
+        onFullSchedule={() => router.push(`/events/${encodeURIComponent(event.id)}/schedule`)}
+      />
     </View>
   );
 }
@@ -309,6 +321,7 @@ export function EventNotFound({ onBack }: { onBack: () => void }) {
 
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
+  cards: { gap: tokens.spaceLg },
   rows: {
     paddingVertical: tokens.spaceXxs,
     paddingHorizontal: tokens.spaceSm,
