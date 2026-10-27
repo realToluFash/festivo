@@ -299,7 +299,7 @@ a genuine collection is still `$users`.
 
 ## Tests
 
-**See the `writing-tests` skill.** It owns the three kinds and their base cases, where
+**See the `writing-tests` skill.** It owns the four kinds and their base cases, where
 doubles live, the database routine, and how to tell a guard from an assertion that can never
 fail.
 
