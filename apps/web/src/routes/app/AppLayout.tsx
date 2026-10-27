@@ -16,6 +16,8 @@ import { TwoFactorOverdue } from '../../components/TwoFactorOverdue.tsx';
 import {
   joinOrganisation,
   landingFor,
+  onMovedOn,
+  rereadOrganisations,
   restoreSession,
   switchOrganisation,
   useSession,
@@ -160,6 +162,24 @@ function Shell() {
       { replace: true, state: null },
     );
   }, [switchTo, organisation?.id, session.pausedIn, location, navigate]);
+
+  const arrivedAt = useRef(pathname);
+
+  // The page was read when it loaded; each move after that reads the organisations again (sc-16229).
+  useEffect(() => {
+    if (arrivedAt.current === pathname) return;
+
+    arrivedAt.current = pathname;
+    void rereadOrganisations();
+  }, [pathname]);
+
+  useEffect(
+    () =>
+      onMovedOn((next) => {
+        setSwitched({ id: next.id, name: next.name, at: arrivedAt.current });
+      }),
+    [],
+  );
 
   const atAccount = pathname.startsWith('/app/account');
 
