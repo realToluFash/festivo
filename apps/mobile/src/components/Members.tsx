@@ -479,7 +479,7 @@ export function MemberPage({
 
   return (
     <View style={styles.stack}>
-      <View style={styles.person}>
+      <View style={styles.person} testID={`members.person.${member.id}`}>
         <Avatar name={member.user.name} large />
         <View style={styles.rowText}>
           {kind !== 'phone' && (
