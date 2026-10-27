@@ -22,6 +22,11 @@ class Units(unittest.TestCase):
         self.assertIn("ExecStart=/usr/bin/python3 /q/sq/sq run", service)
         self.assertIn("MemoryMax=16G", made["soirely.slice"])
 
+    def test_workers_find_nvms_node_ahead_of_every_other(self):
+        with mock.patch.object(systemd.machine, "tool_folders", return_value=["/nvm/v22/bin"]), \
+                mock.patch("shutil.which", side_effect=lambda tool, **_: f"/usr/bin/{tool}"):
+            self.assertEqual(systemd.search_path(), "/nvm/v22/bin:/usr/bin:/usr/local/bin:/bin")
+
     def test_the_slice_takes_the_machines_cap(self):
         made = systemd.units("/q/sq/sq", "/c/env", slice_memory="28G")
         self.assertIn("MemoryMax=28G", made["soirely.slice"])

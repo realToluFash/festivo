@@ -30,7 +30,8 @@ def search_path():
     finds neither claude nor a version manager's node."""
     found = [str(pathlib.Path(shutil.which(tool)).parent)
              for tool in ("claude", "gh", "git", "docker", "python3") if shutil.which(tool)]
-    return ":".join(dict.fromkeys(found + ["/usr/local/bin", "/usr/bin", "/bin"]))
+    return ":".join(dict.fromkeys(machine.tool_folders() + found +
+                                  ["/usr/local/bin", "/usr/bin", "/bin"]))
 
 
 def units(sq, env_file, python="/usr/bin/python3", slice_memory=machine.SLICE_MEMORY):
@@ -77,6 +78,7 @@ def systemctl(*args, check=True):
 
 class Linux:
     name = "systemd"
+    search_path = staticmethod(search_path)
 
     def install(self, sq, env_file, python):
         """Writes the units when they differ, and says whether anything changed."""
