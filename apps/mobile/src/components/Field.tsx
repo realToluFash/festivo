@@ -25,6 +25,7 @@ export const CONTROL_TEXT_SIZE = 16;
 /** A label, the control, its error under it, then any help: the order every form uses. */
 export function Field({
   label,
+  labelID,
   pill,
   labelAction,
   error,
@@ -35,6 +36,8 @@ export function Field({
   children,
 }: {
   label: string;
+  /** The label's nativeID, for a control that names itself by it on Android (accessibilityLabelledBy). */
+  labelID?: string | undefined;
   pill?: string | undefined;
   labelAction?: FieldAction | undefined;
   error?: string | null | undefined;
@@ -63,7 +66,7 @@ export function Field({
       style={styles.field}
     >
       <View style={styles.labelRow}>
-        <Text size={tokens.typeButton.size} weight="semibold">
+        <Text size={tokens.typeButton.size} weight="semibold" nativeID={labelID}>
           {label}
         </Text>
         {pill != null && (

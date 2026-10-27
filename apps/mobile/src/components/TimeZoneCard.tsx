@@ -44,6 +44,8 @@ const LIST_PADDING = tokens.spaceXxs;
 const LIST_BORDER = 1;
 const LIST_FRAME = 2 * (LIST_PADDING + LIST_BORDER);
 
+const FIND_LABEL = 'timeZone.findLabel';
+
 /** Your account > Account, the time zone the times sent to this person are written in (sc-868). */
 export function TimeZoneCard({
   timezone,
@@ -238,7 +240,12 @@ function Choosing({
           onLayout={(event) => setGroupHeight(event.nativeEvent.layout.height)}
           style={styles.choosing}
         >
-          <Field label={t('timeZone.find')} error={error} help={short ? undefined : help}>
+          <Field
+            label={t('timeZone.find')}
+            labelID={FIND_LABEL}
+            error={error}
+            help={short ? undefined : help}
+          >
             <TextField
               ref={input}
               wrong={error != null}
@@ -255,11 +262,9 @@ function Choosing({
               returnKeyType="done"
               onSubmitEditing={() => void save()}
               submitBehavior="submit"
-              accessibilityLabel={t('timeZone.find')}
-              // On Android the label replaces what the field holds, so a picked zone is said as its value; VoiceOver reads the value itself.
-              accessibilityValue={
-                Platform.OS === 'android' ? { text: showingPicked ? typed : '' } : undefined
-              }
+              // TalkBack reads a content description in place of what the field holds, and again whenever it changes (sc-17281).
+              accessibilityLabel={Platform.OS === 'android' ? undefined : t('timeZone.find')}
+              accessibilityLabelledBy={FIND_LABEL}
               accessibilityHint={short ? help : undefined}
               testID="timeZone.search"
             />
