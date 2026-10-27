@@ -49,6 +49,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. Eliminar un evento** (sc-14417 para sc-3592, `eventDelete.*` web y app,
+  `messages:event.delete_name_mismatch`). Sigue a eliminar una organización: «Eliminar el
+  evento», con el artículo, como «Cancelar el evento»; el diálogo «¿Eliminar {{event}}?» y la
+  salida «Conservarlo», porque «evento» es masculino. `mismatch` y la API son la misma frase. El
+  equipo es «todo el equipo», nunca «su equipo», que se confunde con el del evento. «Support» se
+  nombra entero, «el servicio de asistencia de Soirely», como `ownership.deleteWindow`; la
+  fecha lleva «hasta el {{deadline}}». El aviso final abre con el verbo, «Se ha eliminado
+  {{event}}.», para que nada concuerde con el nombre. Las mayúsculas cuentan: «con las
+  mayúsculas»; el apóstrofo es «recto» o «curvo». `failed` repite `ownership.failed`.
 - **26 Oct 2026. El formulario de evento en la app** (sc-14367 para sc-3595,
   `eventsScreen.newEvent|noneCreate`, `eventForm.searchType|timesIn|pickerDone|created|leaveBody`,
   `eventForm.venueSuggestionsBelow_*`). El botón que confirma un selector de fecha u hora es
@@ -448,6 +457,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   or many, because the button and the refusal get no {{count}}: «Reasignar y eliminar {{role}}»,
   and «Elija el rol de sustitución», the same noun as the legend «Rol de sustitución». Not
   «Pasarlas…» or «estas personas» after «1 persona tiene este rol» (sc-13017).
+  The line under the chosen role, `rolesScreen.removeAfter`, takes the role as subject and an
+  infinitive: «El rol {{role}} se aplica al volver a usar Soirely», not «Pasan a ser…» (sc-14755).
 - **26 Oct 2026. The beyond-grant line names access** (`membersScreen.beyondGrant`, sc-13089). «… así que no puede cambiarle el rol ni el acceso»: the «le» points at the member, so neither noun takes «su», which would read as the reader's.
 - **26 Oct 2026. A security email's subject opens on the feature, then its state**
   (`emails:twoFactor.on.subject`, `twoFactor.off.subject`, sc-14100): «Verificación en dos pasos

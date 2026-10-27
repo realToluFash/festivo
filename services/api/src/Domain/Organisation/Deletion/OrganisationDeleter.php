@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\Deletion;
 
 use App\Audit\Auditor;
+use App\Deletion\RestoreWindow;
+use App\Deletion\TypedName;
 use App\Domain\Organisation\Members\OwnerCheck;
 use App\Entity\Membership;
 use App\Entity\Organisation;
@@ -15,7 +17,6 @@ use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
-use Psl\Str;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -37,12 +38,11 @@ final readonly class OrganisationDeleter
     ) {
     }
 
-    /** The name is typed as shown: exact and case-sensitive once the spaces around it are gone. */
     public function delete(Organisation $organisation, User $by, string $typedName, ?string $asked = null): DateTimeImmutable
     {
         $this->ownerCheck->require($organisation, $by, 'organisation.owner_required');
 
-        if (Str\trim($typedName) !== $organisation->getName()) {
+        if (!TypedName::matches($typedName, $organisation->getName())) {
             throw ApiException::validation([[
                 'propertyPath' => 'name',
                 'message' => $this->translator->trans('organisation.delete_name_mismatch', ['{name}' => $organisation->getName()]),

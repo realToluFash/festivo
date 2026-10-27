@@ -216,5 +216,6 @@
     "validation.cover_description_too_long": "Encurte a descrição para um máximo de {count} caracteres.",
     "validation.cover_position_invalid": "Escolha uma posição entre 0, a parte de cima da fotografia, e 100, a parte de baixo.",
     "validation.cover_photo_required": "Escolha uma fotografia para a capa.",
-    "validation.cover_upload_missing": "Não foi possível carregar a fotografia. Tente novamente."
+    "validation.cover_upload_missing": "Não foi possível carregar a fotografia. Tente novamente.",
+    "event.delete_name_mismatch": "Escreva {name} exatamente como aparece para o eliminar."
 }

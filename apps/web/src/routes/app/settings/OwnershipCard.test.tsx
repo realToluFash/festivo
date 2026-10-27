@@ -485,8 +485,8 @@ describe('Settings > General, ownership and leaving', () => {
     expect(screen.getByRole('button', { name: 'Delete organisation' })).toBeDefined();
   });
 
-  it('sends nothing until the name is typed exactly, case and accents included', async () => {
-    signedIn();
+  it('sends nothing until the name is typed exactly, case and accents included, a curly apostrophe typing a straight one', async () => {
+    signedIn(membership({ id: 'org_1', name: "Ìrè's Events" }));
     const sent = answering({
       'GET /api/orgs/org_1/members': () => json(MEMBERS),
       'GET /api/orgs/org_1/deletion': () =>
@@ -507,24 +507,24 @@ describe('Settings > General, ownership and leaving', () => {
     settings();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation' }));
-    const button = screen.getByRole('button', { name: 'Delete Ìrè Events' });
+    const button = screen.getByRole('button', { name: "Delete Ìrè's Events" });
     expect(button.hasAttribute('disabled')).toBe(false);
 
-    fireEvent.change(screen.getByLabelText('Type Ìrè Events to confirm'), {
-      target: { value: 'ìrè events' },
+    fireEvent.change(screen.getByLabelText("Type Ìrè's Events to confirm"), {
+      target: { value: "ìrè's events" },
     });
     fireEvent.click(button);
-    expect(screen.getByText('Type Ìrè Events exactly as shown to delete it.')).toBeDefined();
+    expect(screen.getByText("Type Ìrè's Events exactly as shown to delete it.")).toBeDefined();
     expect(sent.some((one) => one.line === 'DELETE /api/orgs/org_1')).toBe(false);
 
-    fireEvent.change(screen.getByLabelText('Type Ìrè Events to confirm'), {
-      target: { value: '  Ìrè Events ' },
+    fireEvent.change(screen.getByLabelText("Type Ìrè's Events to confirm"), {
+      target: { value: '  Ìrè’s Events ' },
     });
     fireEvent.click(button);
 
     await waitFor(() =>
       expect(sent.find((one) => one.line === 'DELETE /api/orgs/org_1')?.body).toEqual({
-        name: '  Ìrè Events ',
+        name: '  Ìrè’s Events ',
       }),
     );
   });

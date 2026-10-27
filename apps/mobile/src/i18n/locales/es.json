@@ -828,7 +828,7 @@
     "removeMove_other": "{{count}} personas tienen este rol. Páselas a:",
     "removeMove_many": "{{count}} de personas tienen este rol. Páselas a:",
     "removeNoReplacement": "Elija el rol de sustitución.",
-    "removeAfter": "Pasan a ser {{role}} en su próxima solicitud. No se cierra ninguna sesión.",
+    "removeAfter": "El rol {{role}} se aplica al volver a usar Soirely. No se cierra ninguna sesión.",
     "removeConfirm": "Reasignar y eliminar {{role}}",
     "removeConfirmEmpty": "Eliminar {{role}}",
     "keep": "Conservar {{role}}",
@@ -1573,5 +1573,22 @@
     "alreadyOver": "Este evento ya ha terminado.",
     "calledOffNotice": "Cancelado el {{date}}, antes de empezar. Los invitados que abren su enlace ven que no se celebrará.",
     "close": "Cerrar"
+  },
+  "eventDelete": {
+    "open": "Eliminar el evento",
+    "note": "Elimina el evento y todo su contenido para todo el equipo. Los invitados que abran su enlace verán que ya no está disponible.",
+    "title": "¿Eliminar {{event}}?",
+    "draftBody": "Es un borrador sin nadie en la lista de invitados. Se eliminará para todo el equipo.",
+    "removes": "Para todo el equipo, esto elimina:",
+    "removesEvent": "el evento, sus detalles y su programa",
+    "guests": "Los invitados que abran su enlace verán que ya no está disponible.",
+    "window": "Si ha sido un error, el servicio de asistencia de Soirely puede restaurarlo hasta el {{deadline}}. Después, desaparece para siempre.",
+    "type": "Escriba {{event}} para eliminarlo",
+    "typeHint": "Tal como está escrito, con las mayúsculas. Sirve tanto el apóstrofo recto como el curvo.",
+    "mismatch": "Escriba {{event}} exactamente como aparece para eliminarlo.",
+    "keep": "Conservarlo",
+    "delete": "Eliminar",
+    "failed": "No se ha podido completar, así que no se ha cambiado nada. Inténtelo de nuevo.",
+    "deleted": "Se ha eliminado {{event}}."
   }
 }

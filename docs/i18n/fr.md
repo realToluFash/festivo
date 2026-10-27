@@ -54,6 +54,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **26 Oct 2026. Supprimer un événement** (sc-14417 pour sc-3592, `eventDelete.*` web et app,
+  `messages:event.delete_name_mismatch`). Comme pour une organisation : « Supprimer
+  l’événement », la fenêtre « Supprimer {{event}} ? », la sortie « Le conserver ».
+  `mismatch` et l’API sont la même phrase. « Support » est « l’assistance Soirely », jamais
+  « le support », et la date « jusqu’au {{deadline}} ». L’annonce est « L’événement {{event}}
+  a été supprimé », le participe accordé avec « événement », jamais avec un nom de genre
+  inconnu. La liste s’annonce « Pour toute votre équipe, cela supprime : », pour que rien ne
+  s’accorde avec ce qui suit. "Details" est « informations », comme « Modifier les
+  informations ». L’apostrophe est « droite » ou « courbe ». `failed` reprend `ownership.failed`.
 - **26 Oct 2026. Le formulaire d’événement dans l’app** (sc-14367 pour sc-3595,
   `eventsScreen.newEvent|noneCreate`, `eventForm.searchType|timesIn|pickerDone|created|leaveBody`,
   `eventForm.venueSuggestionsBelow_*`). Le bouton qui valide un sélecteur de date ou d’heure est
@@ -506,4 +515,6 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   or many, because the button and the refusal get no {{count}} : « Réattribuer et supprimer
   {{role}} », and « Choisissez le rôle de remplacement », the legend’s own noun. Not « Les
   passer… » or « ces personnes » after « 1 personne a ce rôle. La passer à : » (sc-13017).
+  The line under the chosen role, `rolesScreen.removeAfter`, takes the role as subject :
+  « Le rôle {{role}} s’applique dès la prochaine utilisation de Soirely », not « Elles deviennent… » (sc-14755).
 - **26 Oct 2026. The beyond-grant line names access** (`membersScreen.beyondGrant`, sc-13089). « … vous ne pouvez donc modifier ni son rôle ni son accès » : after « cette personne », « son accès » is hers; it rules out restoring on the suspension cards.

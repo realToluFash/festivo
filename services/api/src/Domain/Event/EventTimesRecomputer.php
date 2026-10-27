@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Event;
 
+use App\Domain\Messaging\NotificationScheduler;
 use App\Entity\Event;
 use DateTimeZone;
 use Doctrine\ORM\EntityManagerInterface;
@@ -17,6 +18,7 @@ final readonly class EventTimesRecomputer
     public function __construct(
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
+        private NotificationScheduler $notificationScheduler,
     ) {
     }
 
@@ -37,6 +39,10 @@ final readonly class EventTimesRecomputer
         foreach ($events as $event) {
             if (!$event->rederiveUtc(LocalTimeResolver::resolve(...))) {
                 continue;
+            }
+
+            if ($write) {
+                $this->notificationScheduler->rescheduleForEvent($event);
             }
 
             if (0 === ++$changed % self::BATCH_SIZE) {

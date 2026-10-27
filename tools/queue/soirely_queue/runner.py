@@ -13,8 +13,8 @@ import sys
 import threading
 import time
 
-from . import (checkout, drawing, local, machine, permissions, review, roles, runlog, shared,
-               store, sync, update)
+from . import (checkout, drawing, harness, local, machine, permissions, review, roles, runlog,
+               shared, store, sync, update)
 
 VERSION_EVERY_SECONDS = 10 * 60
 # `claude -p` stays up while a background shell it started still runs, so a run whose item
@@ -129,13 +129,16 @@ def agree(db, config, platform, now, say, remote, ready):
     GitHub cannot be reached: then another machine may be taking this one's roles over, so
     nothing shared starts here, and only this machine's own ops work runs."""
     try:
-        return shared.reconcile(remote, db, config, started(db) & ready,
-                                lambda role: any_active(platform, config, role),
-                                holding(db, now), now, bool(paused(db)))
+        agreed = shared.reconcile(remote, db, config, started(db) & ready,
+                                  lambda role: any_active(platform, config, role),
+                                  holding(db, now), now, bool(paused(db)))
     except Exception as error:  # noqa: BLE001 — offline, rate-limited, or GitHub refusing
+        store.set_meta(db, "shared_unreachable", str(error)[:160])
         say(f"warning: could not reach the shared leases ({str(error)[:160]}); starting only "
             "this machine's own ops work until it can")
         return None
+    store.set_meta(db, "shared_unreachable", None)
+    return agreed
 
 
 def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
@@ -421,7 +424,8 @@ def run_dir(home, name, item_id):
 
 
 def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=machine.load,
-           prepare=checkout.prepare, make_review=review.make, now=None):
+           prepare=checkout.prepare, make_review=review.make, refresh_harness=harness.refresh,
+           now=None):
     """Runs inside the worker's unit: prepares the checkout, runs the model, records the
     run. `name` is the role, or `pm-2` and on for a further worker of it."""
     role = machine.worker_role(name)
@@ -437,6 +441,8 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
     path = machine.checkout(config, role, name)
     try:
         main, note = prepare(path, role, story)
+        if role in roles.TESTERS:
+            note = "\n".join(filter(None, [note, refresh_harness(db, path, main)]))
         cwd = path
         if role in review.ROLES:
             pr = row["pr"] if row else None

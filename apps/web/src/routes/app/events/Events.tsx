@@ -2,7 +2,7 @@ import { type OrganisationEvent } from '@soirely/api-client';
 import { eventsInOrder, formatEventDate, serverClock, shownPhase } from '@soirely/domain';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { dateLocale } from '../../../i18n/index.ts';
@@ -12,6 +12,7 @@ import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { EventCoverImage } from './EventCoverImage.tsx';
 import { typeLabel } from './eventTypes.ts';
 import { StatusPill } from './MakeLive.tsx';
+import { OutcomeLine } from './OutcomeLine.tsx';
 
 type Load =
   | { kind: 'loading' }
@@ -23,6 +24,18 @@ export function Events() {
   const session = useSession();
   const organisation = session.organisation;
   const title = useRef<HTMLHeadingElement>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [deleted] = useState(() => deletedEvent(location.state));
+
+  useEffect(() => {
+    if (deletedEvent(location.state) == null) return;
+
+    void navigate(
+      { pathname: location.pathname, search: location.search, hash: location.hash },
+      { replace: true, state: null },
+    );
+  }, [location, navigate]);
 
   if (organisation == null) return null;
 
@@ -40,6 +53,7 @@ export function Events() {
           </Link>
         )}
       </div>
+      {deleted != null && <OutcomeLine words={t('eventDelete.deleted', { event: deleted })} />}
       <EventsOf
         key={organisation.id}
         organisationId={organisation.id}
@@ -188,4 +202,14 @@ function FirstRun({
       )}
     </section>
   );
+}
+
+/** Set by Delete event on its way to the Events list, which says the event was deleted. */
+function deletedEvent(state: unknown): string | null {
+  const deleted =
+    typeof state === 'object' && state != null && 'deletedEvent' in state
+      ? state.deletedEvent
+      : null;
+
+  return typeof deleted === 'string' ? deleted : null;
 }

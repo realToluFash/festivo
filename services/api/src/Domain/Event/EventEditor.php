@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Event;
 
 use App\Audit\Auditor;
+use App\Domain\Messaging\NotificationScheduler;
 use App\Entity\Event;
 use App\Entity\User;
 use App\Enum\Actor;
@@ -34,6 +35,7 @@ final readonly class EventEditor
         private Auditor $auditor,
         private ClockInterface $clock,
         private TranslatorInterface $translator,
+        private NotificationScheduler $notificationScheduler,
     ) {
     }
 
@@ -85,6 +87,7 @@ final readonly class EventEditor
 
             if ($schedule !== [$before['startsAt'], $before['endsAt'], $before['timeZone']]) {
                 $event->setTimes($checked['startsAt'], $checked['endsAt']);
+                $this->notificationScheduler->rescheduleForEvent($event);
             }
 
             $changes = Auditor::diff($before, self::recorded($event));

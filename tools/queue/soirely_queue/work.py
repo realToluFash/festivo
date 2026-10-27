@@ -154,14 +154,57 @@ def held_epic(story, epics):
     return epic
 
 
+# A story merges after the lead's pass and goes to Ready For QA, so from there on its code
+# is on main, whatever QA makes of it.
+MERGED = ("Ready For QA", "In QA", "Passsed QA", "Failed QA", "Done")
+# Claimed, a story is its developer's: a blocks link added after the claim holds nothing.
+HOLDABLE = ("Backlog", "To Do", "Needs Design", "Ready For Dev")
+
+
+def blockers(story):
+    """The stories a blocks link names as blocking this one."""
+    return sorted({link["subject"] for link in story.get("links") or []
+                   if link["verb"] == "blocks" and link["object"] == story["id"]
+                   and link["subject"] != story["id"]})
+
+
+def merged(story):
+    return bool(story.get("archived")) or story["state"] in MERGED
+
+
+def holding(story, stories):
+    """The blockers that have not merged and so hold the story back from its builder. One
+    the sync has not stored holds it as unknown; a translation ticket's links hold nothing."""
+    if story["state"] not in HOLDABLE:
+        return []
+    by_id = stories if isinstance(stories, dict) else {s["id"]: s for s in stories}
+    found = []
+    for blocker_id in blockers(story):
+        blocker = by_id.get(blocker_id)
+        if blocker and (merged(blocker) or "translation" in blocker["labels"]):
+            continue
+        found.append(blocker or {"id": blocker_id, "state": "unknown"})
+    return found
+
+
+def held_by(holders):
+    return "held by " + ", ".join(f"sc-{s['id']} ({s['state']})" for s in holders)
+
+
+def builds(role):
+    return role in R.DEVS or role == "ops"
+
+
 def queued(role, stories, epics=None, ios=None):
     config = R.ROLES[role]
     has_ios = machine.has_xcode if ios is None else lambda: ios
+    by_id = {s["id"]: s for s in stories}
     return [story for story in stories
             if not story["done"] and story["state"] in config["queue"]
             and config["filter"](set(story["labels"]), story["state"])
             and R.can_test(role, story, has_ios)
-            and not held_epic(story, epics)]
+            and not held_epic(story, epics)
+            and not (builds(role) and holding(story, by_id))]
 
 
 def retester(story, now=None):
@@ -198,6 +241,10 @@ def queue_items(stories, moves=None, now=None, epics=None, ios=None):
                 continue
             pool = R.pool(role, story["state"], story["labels"])
             fingerprint = f"{pool}:story:sc-{story['id']}:{story['state']}:{story['moved_at']}"
+            # Offered once its last blocker merges, as new work, though it was offered before
+            # the link was made.
+            if builds(role) and story["state"] in HOLDABLE and blockers(story):
+                fingerprint += ":after:" + ",".join(f"sc-{b}" for b in blockers(story))
             if role in R.TESTERS and story["state"] == "Ready For QA":
                 first = retester(story, now)
                 if first and first != role:

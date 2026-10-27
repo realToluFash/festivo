@@ -828,7 +828,7 @@
     "removeMove_other": "{{count}} pessoas têm esta função. Passá-las para:",
     "removeMove_many": "{{count}} de pessoas têm esta função. Passá-las para:",
     "removeNoReplacement": "Escolha a função de substituição.",
-    "removeAfter": "Passam a ser {{role}} no próximo pedido. Ninguém termina a sessão.",
+    "removeAfter": "A função {{role}} aplica-se ao voltar a usar a Soirely. Ninguém termina a sessão.",
     "removeConfirm": "Reatribuir e remover {{role}}",
     "removeConfirmEmpty": "Remover {{role}}",
     "keep": "Manter {{role}}",
@@ -1573,5 +1573,22 @@
     "alreadyOver": "Este evento já terminou.",
     "calledOffNotice": "Cancelado no dia {{date}}, antes de começar. Os convidados que abrem a sua ligação são informados de que não se vai realizar.",
     "close": "Fechar"
+  },
+  "eventDelete": {
+    "open": "Eliminar o evento",
+    "note": "Elimina o evento e tudo o que contém para toda a equipa. Os convidados que abrirem a sua ligação veem que já não está disponível.",
+    "title": "Eliminar {{event}}?",
+    "draftBody": "É um rascunho sem ninguém na lista de convidados. Vai ser eliminado para toda a equipa.",
+    "removes": "Para toda a equipa, isto elimina:",
+    "removesEvent": "o evento, os seus detalhes e o programa",
+    "guests": "Os convidados que abrirem a sua ligação vão ver que já não está disponível.",
+    "window": "Se foi um engano, o apoio ao cliente da Soirely pode restaurá-lo até {{deadline}}. Depois disso, desaparece de vez.",
+    "type": "Escreva {{event}} para o eliminar",
+    "typeHint": "Tal como está escrito, incluindo as maiúsculas. Tanto o apóstrofo reto como o curvo são aceites.",
+    "mismatch": "Escreva {{event}} exatamente como aparece para o eliminar.",
+    "keep": "Manter o evento",
+    "delete": "Eliminar",
+    "failed": "Não foi possível concluir, por isso nada foi alterado. Tente novamente.",
+    "deleted": "O evento {{event}} foi eliminado."
   }
 }

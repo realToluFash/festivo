@@ -30,8 +30,10 @@ setup:
 # ── The containers ───────────────────────────────────────────────────────────
 
 # Start everything and wait until each service can answer, not merely exist.
+# The notification worker answers once the database is migrated.
 up:
-    {{COMPOSE}} up -d --wait
+    {{COMPOSE}} up -d --remove-orphans
+    services="$(node scripts/stack-services.mjs)" && {{COMPOSE}} up -d --wait --no-recreate $services
 
 # Stop everything. Volumes survive, so the databases do.
 down:
@@ -52,8 +54,8 @@ logs service="api":
 #
 # Rebuild the API image and restart it.
 rebuild-api:
-    {{COMPOSE}} build api
-    {{COMPOSE}} up -d api
+    {{COMPOSE}} build api notification-worker
+    {{COMPOSE}} up -d api notification-worker
 
 # A shell in the API container.
 shell:
@@ -81,12 +83,16 @@ migrate-database-dev:
 # silently: Doctrine records which version ran, not what it contained, so
 # migrate-database-dev reports nothing to do while the schema is wrong. This is
 # the way out, and it is destructive — the development database is dropped.
+# The notification worker is stopped first: Postgres refuses to drop a database
+# it is connected to.
 #
 # Drop, recreate and migrate the development database.
 reset-database-dev:
+    services="$(node scripts/stack-services.mjs --after-migrations)" && {{COMPOSE}} stop $services
     {{CONSOLE}} doctrine:database:drop --if-exists --force
     {{CONSOLE}} doctrine:database:create
     {{CONSOLE}} doctrine:migrations:migrate --no-interaction --allow-no-migration
+    services="$(node scripts/stack-services.mjs --after-migrations)" && {{COMPOSE}} up -d --wait --force-recreate $services
 
 # Dropping is the point. Migrating an existing test database leaves behind
 # anything a since-deleted migration created, and the suite then passes against

@@ -381,6 +381,39 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 // QA runs the copy in .qa/bin, gitignored, so checking out an old commit keeps the harness.
 const INSTALLED = basename(HERE) === 'bin' && basename(dirname(HERE)) === '.qa';
 
+const AFTER_MIGRATIONS = 'soirely.after-migrations';
+
+const lasting = (service) => service.restart !== 'no';
+const afterMigrating = (service) => service.labels?.[AFTER_MIGRATIONS] === 'true';
+
+/** --wait fails when a one-shot init container exits 0, and on a service waiting for migrations. */
+export function servicesToWait(services) {
+  return Object.entries(services ?? {})
+    .filter(([, service]) => lasting(service) && !afterMigrating(service))
+    .map(([name]) => name);
+}
+
+export function servicesAfterMigrations(services) {
+  return Object.entries(services ?? {})
+    .filter(([, service]) => lasting(service) && afterMigrating(service))
+    .map(([name]) => name);
+}
+
+export function composeServices(cwd) {
+  const result = spawnSync('docker', ['compose', 'config', '--format', 'json'], {
+    cwd,
+    encoding: 'utf8',
+  });
+  if (result.status !== 0) {
+    throw new Error(`docker compose config failed: ${result.stderr}`);
+  }
+  return JSON.parse(result.stdout).services;
+}
+
+// An older commit's compose.yaml may not name the worker, and compose leaves its container
+// running, connected to the database the checkout drops.
+export const REBUILD = ['compose', 'up', '-d', '--build', '--remove-orphans'];
+
 export function testerOf(worktree) {
   const match = /^soirely-qa(\d*)$/.exec(basename(worktree));
   return match ? Number(match[1] || 1) : null;
@@ -579,49 +612,78 @@ function checkout(args) {
   const npmLock = hashOf(join(root, 'package-lock.json'));
   const composerLock = hashOf(join(root, 'services/api/composer.lock'));
 
-  step('Node dependencies');
-  if (state.npmLock === npmLock && existsSync(join(root, 'node_modules'))) {
-    console.log('  lockfile unchanged');
-  } else {
-    run('npm', ['ci', '--no-audit', '--no-fund'], { cwd: root });
-  }
-
-  step('PHP dependencies');
-  if (state.composerLock === composerLock && existsSync(join(root, 'services/api/vendor'))) {
-    console.log('  lockfile unchanged');
-  } else {
-    run('node', ['scripts/php-tool.mjs', 'composer', 'install'], { cwd: root });
+  const steps = dependencySteps(
+    state.npmLock === npmLock && existsSync(join(root, 'node_modules')),
+    state.composerLock === composerLock && existsSync(join(root, 'services/api/vendor')),
+  );
+  for (const entry of steps) {
+    if (entry === 'clearApiCache') {
+      clearApiCache(root);
+      continue;
+    }
+    step(entry.step);
+    if (entry.run) run(...entry.run, { cwd: root });
+    else console.log('  lockfile unchanged');
   }
   writeFileSync(statePath, JSON.stringify({ npmLock, composerLock, head, label }, null, 2));
 
   step('The stack, rebuilt from this commit');
-  run('docker', ['compose', 'up', '-d', '--build'], { cwd: root });
-  // Waits on the lasting services only: --wait fails when a one-shot init container exits 0.
-  const services = JSON.parse(
-    capture('docker', ['compose', 'config', '--format', 'json'], { cwd: root }) ?? '{}',
-  ).services;
-  const lasting = Object.entries(services ?? {})
-    .filter(([, service]) => service.restart !== 'no')
-    .map(([name]) => name);
-  run('docker', ['compose', 'up', '-d', '--wait', '--no-recreate', ...lasting], { cwd: root });
+  run('docker', REBUILD, { cwd: root });
+  run(
+    'docker',
+    ['compose', 'up', '-d', '--wait', '--no-recreate', ...servicesToWait(composeServices(root))],
+    { cwd: root },
+  );
 
   const console_ = ['compose', 'exec', '-T', 'api', 'php', 'bin/console'];
   run('docker', [...console_, 'lexik:jwt:generate-keypair', '--skip-if-exists'], { cwd: root });
 
   step(keepData ? 'The database, migrated' : 'The database, from nothing');
-  // From nothing: an edited unreleased migration leaves a migrated database wrong.
-  if (!keepData) {
-    run('docker', [...console_, 'doctrine:database:drop', '--if-exists', '--force'], { cwd: root });
-    run('docker', [...console_, 'doctrine:database:create'], { cwd: root });
+  const afterMigrations = servicesAfterMigrations(composeServices(root));
+  for (const args of databaseCommands(console_, afterMigrations, keepData)) {
+    run('docker', args, { cwd: root });
   }
-  run('docker', [...console_, 'doctrine:migrations:migrate', '-n', '--allow-no-migration'], {
-    cwd: root,
-  });
 
   status();
   console.log(
     '\nA bundler already running is serving the previous checkout. Restart `ios` or `android`.',
   );
+}
+
+// The api cache is cleared again once the new vendor is in: a worker restarting during the
+// install compiles a container against the old vendor, dropping what it cannot load.
+export function dependencySteps(npmUnchanged, composerUnchanged) {
+  return [
+    {
+      step: 'Node dependencies',
+      run: npmUnchanged ? null : ['npm', ['ci', '--no-audit', '--no-fund']],
+    },
+    {
+      step: 'PHP dependencies',
+      run: composerUnchanged ? null : ['node', ['scripts/php-tool.mjs', 'composer', 'install']],
+    },
+    'clearApiCache',
+  ];
+}
+
+// With no names, compose stop and up act on the whole stack, so an old commit with no
+// worker skips both.
+export function databaseCommands(console_, afterMigrations, keepData) {
+  const waiting = afterMigrations.length > 0;
+  return [
+    // From nothing: an edited unreleased migration leaves a migrated database wrong.
+    ...(keepData
+      ? []
+      : [
+          // Postgres refuses to drop a database the worker is still connected to.
+          ...(waiting ? [['compose', 'stop', ...afterMigrations]] : []),
+          [...console_, 'doctrine:database:drop', '--if-exists', '--force'],
+          [...console_, 'doctrine:database:create'],
+        ]),
+    [...console_, 'doctrine:migrations:migrate', '-n', '--allow-no-migration'],
+    // Recreated, so a health check failed while waiting for the schema does not end --wait at once.
+    ...(waiting ? [['compose', 'up', '-d', '--wait', '--force-recreate', ...afterMigrations]] : []),
+  ];
 }
 
 function status() {

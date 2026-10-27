@@ -19,9 +19,12 @@ import {
   batchFlow,
   checkId,
   codeStep,
+  databaseCommands,
+  dependencySteps,
   composeBatch,
   localise,
   parseBatch,
+  REBUILD,
   rerunHints,
   STEP_MS,
   totp,
@@ -871,5 +874,66 @@ describe('the flows a batch runs', () => {
     } finally {
       rmSync(target, { recursive: true, force: true });
     }
+  });
+});
+
+describe('the harness in .qa/bin', () => {
+  it('imports nothing from beside itself, so a copy refreshed alone runs', () => {
+    const source = readFileSync(join(import.meta.dirname, 'qa-env.mjs'), 'utf8');
+    expect([...source.matchAll(/from '\.{1,2}\/[^']+'/g)]).toEqual([]);
+  });
+
+  it('runs from a copy alone in a folder', () => {
+    const bin = mkdtempSync(join(tmpdir(), 'qa-bin-'));
+    writeFileSync(join(bin, 'qa-env.mjs'), readFileSync(join(import.meta.dirname, 'qa-env.mjs')));
+    return expect(import(join(bin, 'qa-env.mjs'))).resolves.toHaveProperty('databaseCommands');
+  });
+
+  it('removes a worker the checked-out compose.yaml no longer names', () => {
+    expect(REBUILD).toContain('--remove-orphans');
+  });
+});
+
+describe('the dependencies, from a checkout', () => {
+  it('clears the api cache after both installs', () => {
+    const steps = dependencySteps(false, false);
+    expect(steps.at(-1)).toBe('clearApiCache');
+    expect(steps.slice(0, -1).map((entry) => entry.run[0])).toEqual(['npm', 'node']);
+  });
+
+  it('still clears it when neither lockfile changed', () => {
+    expect(dependencySteps(true, true)).toEqual([
+      { step: 'Node dependencies', run: null },
+      { step: 'PHP dependencies', run: null },
+      'clearApiCache',
+    ]);
+  });
+});
+
+describe('the database, from a checkout', () => {
+  const console_ = ['console'];
+  const verbs = (commands) => commands.map((args) => args.slice(0, 2).join(' '));
+
+  it('stops the worker before the drop and recreates it after migrating', () => {
+    expect(verbs(databaseCommands(console_, ['notification-worker'], false))).toEqual([
+      'compose stop',
+      'console doctrine:database:drop',
+      'console doctrine:database:create',
+      'console doctrine:migrations:migrate',
+      'compose up',
+    ]);
+  });
+
+  it('keeps the data, and still recreates the worker after migrating', () => {
+    expect(verbs(databaseCommands(console_, ['notification-worker'], true))).toEqual([
+      'console doctrine:migrations:migrate',
+      'compose up',
+    ]);
+  });
+
+  it('touches no service on a commit with nothing waiting for migrations', () => {
+    const commands = databaseCommands(console_, [], false);
+    expect(commands.filter(([first]) => first === 'compose')).toEqual([]);
+    expect(commands).toHaveLength(3);
   });
 });

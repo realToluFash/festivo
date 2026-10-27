@@ -828,7 +828,7 @@
     "removeMove_other": "{{count}} personnes ont ce rôle. Les passer à :",
     "removeMove_many": "{{count}} de personnes ont ce rôle. Les passer à :",
     "removeNoReplacement": "Choisissez le rôle de remplacement.",
-    "removeAfter": "Elles deviennent {{role}} à leur prochaine requête. Personne n’est déconnecté.",
+    "removeAfter": "Le rôle {{role}} s’applique dès la prochaine utilisation de Soirely. Personne n’est déconnecté.",
     "removeConfirm": "Réattribuer et supprimer {{role}}",
     "removeConfirmEmpty": "Supprimer {{role}}",
     "keep": "Garder {{role}}",
@@ -1573,5 +1573,22 @@
     "alreadyOver": "Cet événement est déjà terminé.",
     "calledOffNotice": "Annulé le {{date}}, avant son début. Les invités qui ouvrent leur lien voient qu’il n’aura pas lieu.",
     "close": "Fermer"
+  },
+  "eventDelete": {
+    "open": "Supprimer l’événement",
+    "note": "Supprime l’événement et tout son contenu pour toute votre équipe. Les invités qui ouvrent leur lien voient qu’il n’est plus disponible.",
+    "title": "Supprimer {{event}} ?",
+    "draftBody": "C’est un brouillon dont la liste d’invités est vide. Il sera supprimé pour toute votre équipe.",
+    "removes": "Pour toute votre équipe, cela supprime :",
+    "removesEvent": "l’événement, ses informations et son programme",
+    "guests": "Les invités qui ouvrent leur lien verront qu’il n’est plus disponible.",
+    "window": "En cas d’erreur, l’assistance Soirely peut le restaurer jusqu’au {{deadline}}. Ensuite, il disparaît définitivement.",
+    "type": "Saisissez {{event}} pour le supprimer",
+    "typeHint": "Tel qu’il est écrit, majuscules comprises. L’apostrophe droite comme l’apostrophe courbe sont acceptées.",
+    "mismatch": "Saisissez {{event}} exactement comme indiqué pour le supprimer.",
+    "keep": "Le conserver",
+    "delete": "Supprimer",
+    "failed": "La demande n’a pas abouti, donc rien n’a été modifié. Réessayez.",
+    "deleted": "L’événement {{event}} a été supprimé."
   }
 }
