@@ -37,7 +37,9 @@ appId: host.exp.Exponent
 - takeScreenshot: kept
 - runScript:
     file: ../scripts/change-event-elsewhere.js
-- assertTrue: ${output.changed == 200}
+- assertTrue:
+    condition: ${output.changed == 200}
+    label: 'Changed elsewhere, answered ${output.changed}'
 - scrollUntilVisible:
     element:
       id: 'eventForm.send'
