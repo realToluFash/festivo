@@ -4,6 +4,7 @@ appId: host.exp.Exponent
 ---
 - tapOn:
     id: 'unreachable.retry'
+    retryTapIfNoChange: false
 - takeScreenshot: ${SHOT}-pressed
 - waitForAnimationToEnd:
     timeout: 15000

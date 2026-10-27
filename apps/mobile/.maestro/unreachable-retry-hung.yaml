@@ -3,7 +3,10 @@ appId: host.exp.Exponent
 ---
 - tapOn:
     id: 'unreachable.retry'
+    retryTapIfNoChange: false
 - extendedWaitUntil:
-    visible: '${BUSY}'
+    visible:
+      id: 'unreachable.retry'
+      enabled: false
     timeout: 5000
 - takeScreenshot: ${SHOT}
