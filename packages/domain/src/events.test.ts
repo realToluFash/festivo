@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest';
 import {
   EVENT_TYPES,
   type EventDraft,
+  clockMinutes,
+  copiedEnd,
   draftOf,
   type VenueDraft,
   eventChanges,
@@ -374,5 +376,57 @@ describe('the order events are listed in (sc-1593)', () => {
     eventsInOrder(given, 'en');
 
     expect(given.map((e) => e.name)).toEqual(['B', 'A']);
+  });
+});
+
+describe('a copy of an event (sc-3593)', () => {
+  const lagos = { startsAt: '2026-11-14T16:00:00+01:00', endsAt: '2026-11-15T02:00:00+01:00' };
+  const acrossTheChange = {
+    startsAt: '2027-03-27T20:00:00+01:00',
+    endsAt: '2027-03-28T08:00:00+02:00',
+  };
+  const inJuly = { startsAt: '2027-07-17T20:00:00+02:00', endsAt: '2027-07-18T08:00:00+02:00' };
+
+  it('ends as long after its new start as the original did', () => {
+    expect(copiedEnd('2027-05-15', '16:00', 'Africa/Lagos', lagos)).toEqual(
+      new Date('2027-05-16T01:00:00Z'),
+    );
+    expect(clockMinutes(lagos, 'Africa/Lagos')).toBe(600);
+  });
+
+  it('keeps the length on the clock when the original crosses a change of clocks', () => {
+    expect(copiedEnd('2027-07-17', '20:00', 'Europe/Madrid', acrossTheChange)).toEqual(
+      new Date('2027-07-18T08:00:00+02:00'),
+    );
+    expect(copiedEnd('2027-07-17', '21:00', 'Europe/Madrid', acrossTheChange)).toEqual(
+      new Date('2027-07-18T09:00:00+02:00'),
+    );
+    expect(clockMinutes(acrossTheChange, 'Europe/Madrid')).toBe(720);
+  });
+
+  it('keeps the length on the clock when the copy crosses one', () => {
+    expect(copiedEnd('2027-03-27', '20:00', 'Europe/Madrid', inJuly)).toEqual(
+      new Date('2027-03-28T08:00:00+02:00'),
+    );
+    expect(copiedEnd('2027-03-27', '21:00', 'Europe/Madrid', inJuly)).toEqual(
+      new Date('2027-03-28T09:00:00+02:00'),
+    );
+  });
+
+  it('saves an end the clocks skip later by the gap, and a repeated one at its earlier offset', () => {
+    const tenAndAHalf = { ...inJuly, endsAt: '2027-07-18T06:30:00+02:00' };
+    const sixAndAHalf = { ...inJuly, endsAt: '2027-07-18T02:30:00+02:00' };
+
+    expect(copiedEnd('2027-03-27', '16:00', 'Europe/Madrid', tenAndAHalf)).toEqual(
+      new Date('2027-03-28T03:30:00+02:00'),
+    );
+    expect(copiedEnd('2027-10-30', '20:00', 'Europe/Madrid', sixAndAHalf)).toEqual(
+      new Date('2027-10-31T02:30:00+02:00'),
+    );
+  });
+
+  it('has no end until the start has a date and a time', () => {
+    expect(copiedEnd('2027-05-15', '', 'Africa/Lagos', lagos)).toBeNull();
+    expect(copiedEnd('', '16:00', 'Africa/Lagos', lagos)).toBeNull();
   });
 });

@@ -110,6 +110,19 @@ final readonly class EventRules
         return $checked;
     }
 
+    /** A start alone, refused as check() refuses it. */
+    public function startsAt(?string $typed, string $timeZone): DateTimeImmutable
+    {
+        $violations = [];
+        $startsAt = $this->wallClock($typed, 'startsAt', 'validation.event_start_required', $violations);
+
+        if (null === $startsAt) {
+            throw ApiException::validation($violations);
+        }
+
+        return LocalTimeResolver::resolve($startsAt, new DateTimeZone($timeZone));
+    }
+
     /** As typed, with each run of line breaks a single space; packages/domain's hostNameOf does the same. */
     public static function hostName(string $typed): string
     {

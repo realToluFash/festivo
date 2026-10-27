@@ -13,6 +13,7 @@ import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { type EditOutcome } from './EditEvent.tsx';
 import { DeleteEvent } from './DeleteEvent.tsx';
+import { DuplicateEvent } from './DuplicateEvent.tsx';
 import { CalledOffNotice, EndButton } from './EndEvent.tsx';
 import { EventCoverImage } from './EventCoverImage.tsx';
 import { PHASE_WORD } from './eventWords.ts';
@@ -281,6 +282,7 @@ function EventPage({
           <Link className="button" to={`/app/events/${encodeURIComponent(event.id)}/guests`}>
             {t('eventPage.guests')}
           </Link>
+          {can(session, 'events.create') && <DuplicateEvent event={event} />}
         </div>
         {can(session, 'events.create') && <DeleteEvent event={event} />}
       </section>

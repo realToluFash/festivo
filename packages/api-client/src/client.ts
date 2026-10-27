@@ -1461,6 +1461,15 @@ export class ApiClient {
     );
   }
 
+  /** A Draft set up as the event, from `startsAt` local to its zone (sc-3593). Refused `validation_failed` on startsAt. */
+  async duplicateEvent(eventId: string, startsAt: string): Promise<OrganisationEvent> {
+    return this.organisationEvent(
+      await this.post<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}/duplicate`, {
+        startsAt,
+      }),
+    );
+  }
+
   /** Empty under three characters, with nothing asked. Refused 503 when the lookup is down. */
   async addressSuggestions(query: string): Promise<AddressSuggestion[]> {
     if (query.trim().length < 3) return [];

@@ -4144,6 +4144,59 @@ button.members-row {
   }
 }
 
+/* ── Duplicate an event (sc-3593) ─────────────────────────────────────────── */
+
+.event-copy-lists {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--spaceLg);
+  padding: var(--spaceLg) var(--spaceXl);
+  border: var(--borderInset);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  font: var(--typeSmall);
+}
+
+.event-copy-lists h3 {
+  margin: 0 0 var(--spaceXs);
+  font: inherit;
+  font-weight: 600;
+}
+
+.event-copy-lists ul {
+  margin: 0;
+  padding-left: var(--spaceXl);
+  color: var(--colorInkSecondary);
+}
+
+.event-copy-created {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+}
+
+.event-copy-created:empty {
+  display: none;
+}
+
+.event-copy-created p {
+  margin: 0;
+}
+
+@media (width <= 40rem) {
+  .event-copy-dialog {
+    top: 0;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+  }
+
+  .event-copy-dialog .dialog-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+}
+
 /* ── An event's venue (sc-3589) ───────────────────────────────────────────── */
 
 .venue-suggestions {
