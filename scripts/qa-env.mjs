@@ -1360,7 +1360,7 @@ function hierarchy(args) {
   if (!ok) process.exitCode = 1;
 }
 
-function maestro(args) {
+async function maestro(args) {
   const root = qaWorktree();
   const onAndroid = args.includes('--android');
   const [flow, ...vars] = args.filter((a) => !a.startsWith('--'));
@@ -1380,7 +1380,7 @@ function maestro(args) {
   }
   const file = join(flows, `${flow}.yaml`);
 
-  const ok = run(
+  const ok = await runAsync(
     maestroBin() ?? 'maestro',
     [
       ...maestroTarget(device, onAndroid, CONFIG.driverPort),
@@ -1390,7 +1390,7 @@ function maestro(args) {
       ...env.flatMap((e) => ['-e', e]),
       file,
     ],
-    { cwd: root, optional: true, env: onAndroid ? androidTools().env : {} },
+    { cwd: root, env: onAndroid ? androidTools().env : {}, timeoutMs: runBudgetMs(1) },
   );
   spawnSync('sh', ['-c', `find "${out}" -mindepth 2 -name '*.png' -exec cp {} "${out}/" \\;`]);
   console.log(`\nEvidence in ${out}`);
@@ -1466,27 +1466,30 @@ export function batchCheck(flow, check, language, { reset }) {
     .trimEnd();
   return [
     flow.slice(0, at + 5),
+    helperStep(`/started?check=${encodeURIComponent(id)}`, '../batch/helper.js'),
     reset ? '- runFlow: ../batch/reset.yaml\n' : '',
     `${commands}\n`,
     helperStep(`/passed?check=${encodeURIComponent(id)}`, '../batch/helper.js'),
   ].join('');
 }
 
-export function batchFlow({ checks, languages, cold }) {
+export const batchRuns = (checks, languages) =>
+  languages.flatMap((language) => checks.map((check) => ({ check, language })));
+
+export function batchFlow({ checks, languages, cold, runs = batchRuns(checks, languages) }) {
   const lines = [`appId: ${EXPO_GO}`, '---', '- launchApp:', `    appId: ${EXPO_GO}`];
   lines.push(`    stopApp: ${cold ? 'true' : 'false'}`);
   if (cold) lines.push('- runFlow: batch/sign-out.yaml');
   else lines.push(helperStep('/reload', 'batch/helper.js').trimEnd());
   lines.push('- runFlow: batch/session.yaml');
-  languages.forEach((language, index) => {
-    if (index > 0) lines.push(helperStep(`/language?to=${language}`, 'batch/helper.js').trimEnd());
-    for (const check of checks) {
-      lines.push(
-        '- runFlow:',
-        `    file: _checks/${checkId(check, language)}.yaml`,
-        '    optional: true',
-      );
-    }
+  runs.forEach(({ check, language }, index) => {
+    if (index > 0 && language !== runs[index - 1].language)
+      lines.push(helperStep(`/language?to=${language}`, 'batch/helper.js').trimEnd());
+    lines.push(
+      '- runFlow:',
+      `    file: _checks/${checkId(check, language)}.yaml`,
+      '    optional: true',
+    );
   });
   return `${lines.join('\n')}\n`;
 }
@@ -1626,8 +1629,9 @@ function appRunning(device, onAndroid) {
 }
 
 // Under ten seconds an answer: batch/helper.js asks again while this says wait.
-function startHelper({ email, secret, token, passed, device, onAndroid }) {
+function startHelper({ email, secret, token, passed, begun, heard, device, onAndroid }) {
   const server = createServer(async (request, response) => {
+    heard.at = Date.now();
     const url = new URL(request.url ?? '/', 'http://helper');
     const reply = (status, body) => {
       response.writeHead(status, { 'Content-Type': 'application/json' });
@@ -1654,6 +1658,10 @@ function startHelper({ email, secret, token, passed, device, onAndroid }) {
         await api('/api/auth/locale', { method: 'PUT', token, body: { locale } });
         return reply(200, { language: locale });
       }
+      if (url.pathname === '/started') {
+        begun.push(url.searchParams.get('check'));
+        return reply(200, {});
+      }
       if (url.pathname === '/passed') {
         passed.add(url.searchParams.get('check'));
         return reply(200, {});
@@ -1669,20 +1677,34 @@ function startHelper({ email, secret, token, passed, device, onAndroid }) {
   });
 }
 
-// Maestro hangs rather than exits when its driver dies, so a run gets a budget.
+// Maestro hangs rather than exits when its driver dies, so a run gets a budget, and a batch
+// whose flows stop calling the harness for STALL_MS is stopped sooner.
 export const runBudgetMs = (runs) => (5 + 2 * runs) * 60_000;
+export const STALL_MS = 5 * 60_000;
 
-export function runAsync(command, args, { cwd, env, timeoutMs }) {
+export function runAsync(command, args, { cwd, env, timeoutMs, stall }) {
   return new Promise((done) => {
     const child = spawn(command, args, { cwd, stdio: 'inherit', env: { ...process.env, ...env } });
+    const stop = (why) => {
+      console.error(`\n${command} ${why}: stopped.`);
+      child.kill('SIGKILL');
+    };
     const timer =
       timeoutMs &&
-      setTimeout(() => {
-        console.error(`\n${command} still running after ${timeoutMs / 60_000} minutes: stopped.`);
-        child.kill('SIGKILL');
-      }, timeoutMs);
+      setTimeout(() => stop(`still running after ${timeoutMs / 60_000} minutes`), timeoutMs);
+    const watchdog =
+      stall &&
+      setInterval(
+        () => {
+          if (Date.now() - stall.heard.at < stall.ms) return;
+          stall.stalled = true;
+          stop(`has not reached the harness for ${Math.round(stall.ms / 1000)} s`);
+        },
+        Math.min(stall.ms, 10_000),
+      );
     const finish = (ok) => {
       clearTimeout(timer);
+      clearInterval(watchdog);
       done(ok);
     };
     child.on('exit', (code) => finish(code === 0));
@@ -1730,8 +1752,21 @@ async function batch(args) {
 
   const named = languages[0] !== 'any';
   const token = named ? await apiSession(email, password, secret) : null;
+  const before = named ? (await api('/api/auth/me', { method: 'GET', token })).locale : null;
   const passed = new Set();
-  const helper = await startHelper({ email, secret, token, passed, device, onAndroid });
+  const begun = [];
+  const heard = { at: Date.now() };
+  const crashed = [];
+  const helper = await startHelper({
+    email,
+    secret,
+    token,
+    passed,
+    begun,
+    heard,
+    device,
+    onAndroid,
+  });
   // The secret stays with the helper: no flow is handed it.
   const env = {
     METRO_URL: CONFIG.urls.metro,
@@ -1742,8 +1777,11 @@ async function batch(args) {
     ORG_NAME: ACCOUNT_ORGANISATION,
     ...rest,
   };
-  const test = (flow, runs) =>
-    runAsync(
+  const test = async (flow, runs) => {
+    const from = begun.length;
+    heard.at = Date.now();
+    const stall = { ms: STALL_MS, heard };
+    await runAsync(
       maestroBin() ?? 'maestro',
       [
         ...maestroTarget(device, onAndroid, CONFIG.driverPort),
@@ -1753,8 +1791,17 @@ async function batch(args) {
         ...Object.entries(env).flatMap(([key, value]) => ['-e', `${key}=${value}`]),
         flow,
       ],
-      { cwd: root, env: onAndroid ? androidTools().env : {}, timeoutMs: runBudgetMs(runs) },
+      { cwd: root, env: onAndroid ? androidTools().env : {}, timeoutMs: runBudgetMs(runs), stall },
     );
+    const after = afterRun(batchRuns(checks, languages), {
+      begun,
+      from,
+      passed,
+      stalled: stall.stalled,
+    });
+    if (after.crashed) crashed.push(after.crashed);
+    return after;
+  };
 
   const started = Date.now();
   try {
@@ -1769,22 +1816,38 @@ async function batch(args) {
     } else {
       if (named)
         await api('/api/auth/locale', { method: 'PUT', token, body: { locale: languages[0] } });
-      await test(join(flows, '_batch.yaml'), checks.length * languages.length);
+      const first = await test(join(flows, '_batch.yaml'), checks.length * languages.length);
+      // After a driver crash the checks it never reached run in a fresh Maestro.
+      await resumeBatch(first.rest, async (rest, attempt) => {
+        const flow = join(flows, `_rest.${attempt}.yaml`);
+        const written = batchFlow({ runs: rest });
+        writeFileSync(flow, onAndroid ? forAndroid(written) : written);
+        if (named)
+          await api('/api/auth/locale', {
+            method: 'PUT',
+            token,
+            body: { locale: rest[0].language },
+          });
+        return test(flow, rest.length);
+      });
     }
   } finally {
     helper.close();
+    // The app follows the account's language when it next opens, and later flows expect English.
+    if (named)
+      await api('/api/auth/locale', { method: 'PUT', token, body: { locale: before ?? 'en' } });
   }
   const seconds = Math.round((Date.now() - started) / 1000);
 
   spawnSync('sh', ['-c', `find "${out}" -mindepth 2 -name '*.png' -exec cp {} "${out}/" \\;`]);
-  const runs = languages.flatMap((language) => checks.map((check) => ({ check, language })));
+  const runs = batchRuns(checks, languages);
   const ids = runs.map(({ check, language }) => checkId(check, language));
   const failed = ids.filter((id) => !passed.has(id));
   console.log(
     `\nBatch ${name}${cold ? ', each check alone and cold' : ''}: ` +
       `${ids.length - failed.length} passed, ${failed.length} failed, in ${Math.floor(seconds / 60)}m${seconds % 60}s`,
   );
-  for (const id of ids) console.log(`  ${passed.has(id) ? '✓' : '✗'} ${id}`);
+  for (const line of batchSummary(ids, { passed, begun, crashed })) console.log(`  ${line}`);
   console.log(`Evidence in ${out}`);
   if (failed.length) {
     const failures = runs.filter(({ check, language }) => !passed.has(checkId(check, language)));
@@ -1793,6 +1856,30 @@ async function batch(args) {
       console.log(`  ${hint}`);
     process.exitCode = 1;
   }
+}
+
+export const MAX_RESUMES = 3;
+
+export async function resumeBatch(rest, resume) {
+  for (let attempt = 1; rest.length && attempt <= MAX_RESUMES; attempt++)
+    ({ rest } = await resume(rest, attempt));
+}
+
+// A run that stalls blames the last check it began itself, and is resumed only past that check.
+export function afterRun(runs, { begun, from, passed, stalled }) {
+  const current = begun.slice(from).at(-1);
+  if (!stalled || !current || passed.has(current)) return { crashed: null, rest: [] };
+  const rest = runs.filter(({ check, language }) => !begun.includes(checkId(check, language)));
+  return { crashed: current, rest };
+}
+
+export function batchSummary(ids, { passed, begun, crashed }) {
+  return ids.map((id) => {
+    if (passed.has(id)) return `✓ ${id}`;
+    if (crashed.includes(id)) return `✗ ${id}: Maestro's driver stopped answering (a driver crash)`;
+    if (!begun.includes(id)) return `✗ ${id}: not run`;
+    return `✗ ${id}`;
+  });
 }
 
 export function rerunHints(name, failures, { args, email, secret, rest = {} }) {
