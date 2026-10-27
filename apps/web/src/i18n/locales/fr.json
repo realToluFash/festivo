@@ -1889,6 +1889,10 @@
     "muteEvent": "Mute this event",
     "muteNotSaved": "Couldn't save. Try again."
   },
+  "eventMute": {
+    "heading": "Just for you",
+    "note": "Nobody else on this event is affected."
+  },
   "notificationSettings": {
     "title": "Notification settings",
     "push": "Push",

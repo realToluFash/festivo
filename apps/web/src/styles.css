@@ -4008,6 +4008,18 @@ button.members-row {
 
 /* ── Delete an event (sc-3592): under a rule, apart from the actions ───────── */
 
+.event-mute {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  background: var(--colorInset);
+}
+
+.event-mute > * {
+  margin: 0;
+}
+
 .event-delete {
   display: flex;
   flex-wrap: wrap;

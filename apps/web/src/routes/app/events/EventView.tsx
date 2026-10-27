@@ -17,6 +17,7 @@ import { CalledOffNotice, EndButton } from './EndEvent.tsx';
 import { EventCoverImage } from './EventCoverImage.tsx';
 import { PHASE_WORD } from './eventWords.ts';
 import { DraftRow, StatusPill } from './MakeLive.tsx';
+import { MuteEvent } from './MuteEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { typeLabel } from './eventTypes.ts';
 
@@ -251,6 +252,7 @@ function EventPage({
           {t('eventPage.guests')}
         </Link>
       </div>
+      <MuteEvent eventId={event.id} />
       {can(session, 'events.create') && <DeleteEvent event={event} />}
     </section>
   );
