@@ -6,7 +6,7 @@ import {
 } from '@soirely/api-client';
 import { roleName, typedNameMatches } from '@soirely/domain';
 import { router } from 'expo-router';
-import { type Ref, useEffect, useRef, useState } from 'react';
+import { type Ref, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -25,6 +25,9 @@ import { PasswordField } from './PasswordField.tsx';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { type StepClosed, stepClosed, useAboveKeyboard, useFocusBackToOpener } from './Screen.tsx';
 import { Text } from './Text.tsx';
+
+type Preview =
+  { kind: 'counting' } | { kind: 'counted'; counted: OrganisationDeletion } | { kind: 'failed' };
 
 type Step =
   | { kind: 'resting'; flash: string | null; closed?: StepClosed }
@@ -491,7 +494,8 @@ function Delete({
   onKeep: () => void;
 }) {
   const { t } = useTranslation();
-  const [preview, setPreview] = useState<OrganisationDeletion | null>(null);
+  const [preview, setPreview] = useState<Preview>({ kind: 'counting' });
+  const [attempt, setAttempt] = useState(0);
   const [typed, setTyped] = useState('');
   const [busy, setBusy] = useState(false);
   const [mismatch, setMismatch] = useState<string | null>(null);
@@ -500,19 +504,20 @@ function Delete({
   const aboveKeyboard = useAboveKeyboard();
   const name = organisation.name;
   const matches = typedNameMatches(typed, name);
+  const heard = useMemo(() => ({ answer, attempt }), [answer, attempt]);
 
   useEffect(() => {
     let current = true;
 
     api.organisationDeletion(organisation.id).then(
-      (counted) => current && setPreview(counted),
-      () => {},
+      (counted) => current && setPreview({ kind: 'counted', counted }),
+      () => current && setPreview({ kind: 'failed' }),
     );
 
     return () => {
       current = false;
     };
-  }, [organisation.id]);
+  }, [organisation.id, attempt]);
 
   async function submit(): Promise<void> {
     if (busy) return;
@@ -544,23 +549,43 @@ function Delete({
 
   return (
     <View style={styles.form}>
-      <AnswerHeading answer={answer} size={tokens.typeButton.size} weight="semibold">
+      <AnswerHeading answer={heard} size={tokens.typeButton.size} weight="semibold">
         {t('ownership.deleteTitle', { organisation: name })}
       </AnswerHeading>
-      <Notice
-        tone="attention"
-        mark="!"
-        title={t('ownership.deleteWarningTitle')}
-        body={
-          preview == null
-            ? t('ownership.deleteLoading')
-            : `${t('ownership.deleteCounts', {
-                events: t('ownership.events', { count: preview.events }),
-                guests: t('ownership.guests', { count: preview.guests }),
-                members: t('ownership.members', { count: preview.members }),
-              })} ${t('ownership.deleteWindow', { deadline: preview.restoreCloses })}`
-        }
-      />
+      {preview.kind === 'failed' ? (
+        <View style={styles.choices}>
+          <Notice
+            tone="broken"
+            mark={tokens.marks.broken.glyph}
+            title={t('ownership.deleteWarningTitle')}
+            body={t('ownership.deleteUncounted')}
+            announce
+          />
+          <SecondaryButton
+            label={t('ownership.deleteRetry')}
+            onPress={() => {
+              setPreview({ kind: 'counting' });
+              setAttempt((n) => n + 1);
+            }}
+            testID="ownership.delete.retry"
+          />
+        </View>
+      ) : (
+        <Notice
+          tone="attention"
+          mark="!"
+          title={t('ownership.deleteWarningTitle')}
+          body={
+            preview.kind === 'counting'
+              ? t('ownership.deleteLoading')
+              : `${t('ownership.deleteCounts', {
+                  events: t('ownership.events', { count: preview.counted.events }),
+                  guests: t('ownership.guests', { count: preview.counted.guests }),
+                  members: t('ownership.members', { count: preview.counted.members }),
+                })} ${t('ownership.deleteWindow', { deadline: preview.counted.restoreCloses })}`
+          }
+        />
+      )}
       {failed != null && (
         <ReadOut
           words={failed}

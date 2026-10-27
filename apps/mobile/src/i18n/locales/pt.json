@@ -1076,6 +1076,8 @@
     "deleteTitle": "Eliminar {{organisation}}?",
     "deleteWarningTitle": "Tudo o que contém desaparece",
     "deleteLoading": "A contar o que contém…",
+    "deleteUncounted": "We could not count what it holds. Deleting it still deletes every event, guest and member in it, for everybody, now. Soirely support can restore it for 30 days.",
+    "deleteRetry": "Try again",
     "deleteCounts": "São eliminados com ela {{events}}, {{guests}} e {{members}}.",
     "deleteWindow": "É eliminada já, para todos. O apoio ao cliente da Soirely pode restaurá-la até {{deadline}}; depois disso, desaparece de vez.",
     "events_one": "{{count, number}} evento",
