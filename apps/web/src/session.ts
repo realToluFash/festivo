@@ -11,7 +11,7 @@ import {
   awaiting,
   primaryEmailAddress,
 } from '@soirely/api-client';
-import { chooseOrganisation, choosePaused, roleHolds } from '@soirely/domain';
+import { chooseOrganisation, choosePaused, forgetEventsTab, roleHolds } from '@soirely/domain';
 import i18next from 'i18next';
 import { useSyncExternalStore } from 'react';
 
@@ -210,6 +210,7 @@ export function switchOrganisation(id: string): void {
   if (organisation == null) return;
 
   remember(id);
+  forgetEventsTab();
   set({ status: 'signedIn', session: { ...state.session, organisation, pausedIn: null } });
 }
 

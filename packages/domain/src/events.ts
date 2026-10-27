@@ -340,15 +340,3 @@ export function eventChanges(
 
   return changes;
 }
-
-/** Soonest start first, the same start by name in the reader's collation (CLDR), as both clients list them (sc-1593). */
-export function eventsInOrder<T extends { name: string; startsAt: string }>(
-  events: readonly T[],
-  locale: string,
-): T[] {
-  const collator = new Intl.Collator(locale);
-
-  return [...events].sort(
-    (a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt) || collator.compare(a.name, b.name),
-  );
-}

@@ -170,3 +170,34 @@ export function formatEventRange(
     sameDay ? clock.format(end) : formatEventDayAndClock(end, timeZone, locale)
   }`;
 }
+
+/** An Events Home card's date, "Saturday, Nov 14", in the event's zone (sc-3594). */
+export function formatEventWeekday(moment: string, timeZone: string, locale: string): string {
+  const date = asDate(moment);
+
+  if (date == null) return '';
+
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+    timeZone,
+  }).format(date);
+}
+
+/** "Sep 30", for a day close enough that the year goes without saying. */
+export function formatEventShortDay(moment: string, timeZone: string, locale: string): string {
+  const date = asDate(moment);
+
+  if (date == null) return '';
+
+  return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', timeZone }).format(date);
+}
+
+export function formatEventClock(moment: string, timeZone: string, locale: string): string {
+  const date = asDate(moment);
+
+  if (date == null) return '';
+
+  return new Intl.DateTimeFormat(locale, { ...EVENT_CLOCK, timeZone }).format(date);
+}

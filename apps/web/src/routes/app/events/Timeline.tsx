@@ -5,7 +5,6 @@ import {
   formatEventMoment,
   type MarkedMilestone,
   markedMilestones,
-  milestoneDistance,
   type MilestoneOwner,
   namesZone,
 } from '@soirely/domain';
@@ -16,6 +15,7 @@ import { Link } from 'react-router';
 import { api } from '../../../api.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
+import { distanceWords } from './distanceWords.ts';
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; timeline: Timeline };
 
@@ -244,16 +244,6 @@ function OwnerPill({ owner }: { owner: MilestoneOwner }) {
 
 function Distance({ at, timeZone, now }: { at: string; timeZone: string; now: Date }) {
   const { t } = useTranslation();
-  const distance = milestoneDistance(at, timeZone, now);
 
-  switch (distance.kind) {
-    case 'now':
-      return t('timeline.now');
-    case 'today':
-      return t('timeline.today');
-    case 'inDays':
-      return t('timeline.inDays', { count: distance.count });
-    case 'daysAgo':
-      return t('timeline.daysAgo', { count: distance.count });
-  }
+  return distanceWords(t, at, timeZone, now);
 }

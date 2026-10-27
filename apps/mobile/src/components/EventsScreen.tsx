@@ -1,5 +1,12 @@
-import type { Membership, OrganisationEvent } from '@soirely/api-client';
-import { roleHolds } from '@soirely/domain';
+import type { ListedEvent, Membership, OrganisationEvent } from '@soirely/api-client';
+import {
+  type EventsTab,
+  rememberEventsTab,
+  rememberedEventsTab,
+  roleHolds,
+  serverClock,
+  withPastPage,
+} from '@soirely/domain';
 import { Redirect, router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, RefreshControl, StyleSheet, View } from 'react-native';
@@ -21,7 +28,8 @@ import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AppFrame } from './AppFrame.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
-import { EventList, EventNotFound, EventPage, EventsFailed, NoEvents } from './Events.tsx';
+import { EventNotFound, EventPage, EventsFailed, NoEvents } from './Events.tsx';
+import { EventsHome, type HomeLoad } from './EventsHome.tsx';
 import { type ListAndPageSpacing, ListAndPage, useListAndPageKind } from './ListAndPage.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
@@ -29,9 +37,9 @@ import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
 
 type Load =
-  | { kind: 'loading' }
-  | { kind: 'failed' }
-  | { kind: 'loaded'; events: OrganisationEvent[]; refreshing: boolean };
+  { kind: 'loading' } | { kind: 'failed' } | ({ kind: 'loaded'; refreshing: boolean } & HomeLoad);
+
+const PAST_PAGE = 10;
 
 const LOADING: Load = { kind: 'loading' };
 
@@ -102,10 +110,24 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     if (organisationId == null || !reads || attempt === 0) return;
     let live = true;
 
-    api.events(organisationId).then(
-      (events) =>
+    Promise.all([
+      api.unfinishedEvents(organisationId),
+      api.events(organisationId, { finished: true, itemsPerPage: PAST_PAGE }),
+    ]).then(
+      ([unfinished, past]) =>
         live &&
-        setHeld({ in: organisationId, load: { kind: 'loaded', events, refreshing: false } }),
+        setHeld({
+          in: organisationId,
+          load: {
+            kind: 'loaded',
+            unfinished,
+            past: past.events,
+            pastTotal: past.total,
+            pastPages: 1,
+            at: serverClock.now(),
+            refreshing: false,
+          },
+        }),
       () => live && setHeld({ in: organisationId, load: { kind: 'failed' } }),
     );
 
@@ -114,10 +136,42 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     };
   }, [organisationId, reads, attempt]);
 
-  const listed =
-    load.kind === 'loaded' && open != null
-      ? (load.events.find((event) => event.id === open) ?? null)
-      : null;
+  const [tab, setTab] = useState<{ in: string | undefined; tab: EventsTab }>(() => ({
+    in: organisationId,
+    tab: organisationId == null ? 'upcoming' : rememberedEventsTab(organisationId),
+  }));
+  if (tab.in !== organisationId) {
+    setTab({
+      in: organisationId,
+      tab: organisationId == null ? 'upcoming' : rememberedEventsTab(organisationId),
+    });
+  }
+  const [more, setMore] = useState<'idle' | 'loading' | 'failed'>('idle');
+  const [moreShown, setMoreShown] = useState<string | null>(null);
+  const showMore = () => {
+    if (organisationId == null || load.kind !== 'loaded') return;
+    const loaded = load;
+
+    setMore('loading');
+    api
+      .events(organisationId, {
+        finished: true,
+        page: loaded.pastPages + 1,
+        itemsPerPage: PAST_PAGE,
+      })
+      .then(
+        (page) => {
+          const read = withPastPage(loaded, page, PAST_PAGE);
+
+          setHeld({ in: organisationId, load: read.load });
+          setMoreShown(t('eventsScreen.moreShown', { count: read.added }));
+          setMore('idle');
+        },
+        () => setMore('failed'),
+      );
+  };
+  const everyLoaded = load.kind === 'loaded' ? [...load.unfinished, ...load.past] : [];
+  const listed = open != null ? (everyLoaded.find((event) => event.id === open) ?? null) : null;
   const latest = (event: OrganisationEvent) => (changed?.id === event.id ? changed : event);
   const onChange = (event: OrganisationEvent) => {
     setChanged(event);
@@ -127,7 +181,8 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
             in: before.in,
             load: {
               ...before.load,
-              events: before.load.events.map((each) => (each.id === event.id ? event : each)),
+              unfinished: before.load.unfinished.map((each) => kept(each, event)),
+              past: before.load.past.map((each) => kept(each, event)),
             },
           }
         : before,
@@ -141,7 +196,8 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
                 in: before.in,
                 load: {
                   ...before.load,
-                  events: before.load.events.filter((each) => each.id !== event.id),
+                  unfinished: before.load.unfinished.filter((each) => each.id !== event.id),
+                  past: before.load.past.filter((each) => each.id !== event.id),
                 },
               }
             : before,
@@ -242,7 +298,7 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
           {t('eventsScreen.refreshing')}
         </Text>
       )}
-      {load.events.length === 0 ? (
+      {load.unfinished.length === 0 && load.pastTotal === 0 ? (
         <NoEvents kind={kind} onCreate={creates ? newEvent : undefined} />
       ) : (
         <>
@@ -253,7 +309,20 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
               testID="events.new"
             />
           )}
-          <EventList events={load.events} open={open} onOpen={select} />
+          <EventsHome
+            kind={kind}
+            load={load}
+            tab={tab.tab}
+            onTab={(next) => {
+              if (organisationId != null) rememberEventsTab(organisationId, next);
+              setTab({ in: organisationId, tab: next });
+            }}
+            open={open}
+            onOpen={select}
+            more={more}
+            shown={moreShown}
+            onShowMore={showMore}
+          />
         </>
       )}
     </View>
@@ -296,6 +365,11 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
       />
     </AppFrame>
   );
+}
+
+/** An edit on the event's page, with the milestones the list read, until the next load reads both again. */
+function kept(listed: ListedEvent, changed: OrganisationEvent): ListedEvent {
+  return listed.id === changed.id ? { ...changed, milestones: listed.milestones } : listed;
 }
 
 function Waiting({ words }: { words: string }) {

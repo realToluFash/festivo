@@ -31,8 +31,10 @@ const {
   replaceOrganisation,
   rereadAccount,
   signOutHere,
+  switchOrganisation,
   useSignedIn,
 } = await import('./signedIn.ts');
+const { rememberEventsTab, rememberedEventsTab } = await import('@soirely/domain');
 const { useWaitingInvitations } = await import('./invitations.ts');
 const { default: i18next } = await import('i18next');
 
@@ -172,6 +174,29 @@ describe('an organisation saved from its page', () => {
     replaceOrganisation({ ...other, name: 'Okafor & Co' });
 
     expect(useSignedIn().organisation?.id).toBe('org_1');
+  });
+});
+
+describe('Switch organisation (sc-3594)', () => {
+  const other = { ...organisation, id: 'org_2', name: 'Okafor Weddings' };
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    api.me.mockResolvedValue(account);
+    api.organisationsWithPaused.mockResolvedValue({
+      organisations: [organisation, other],
+      paused: [],
+    });
+    await reloadSignedIn();
+  });
+
+  it('opens Events on Upcoming in the organisation switched back to', () => {
+    rememberEventsTab('org_1', 'past');
+
+    switchOrganisation('org_2');
+    switchOrganisation('org_1');
+
+    expect(rememberedEventsTab('org_1')).toBe('upcoming');
   });
 });
 
