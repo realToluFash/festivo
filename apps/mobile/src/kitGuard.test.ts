@@ -410,6 +410,27 @@ describe('every text field is named through fieldName (sc-17333)', () => {
   });
 });
 
+describe('a field hands its children the id its label shows under (sc-17333)', () => {
+  // On Android a TextField is named only by this id; without it, fieldName falls back to a content description.
+  it('in Field', () => {
+    expect(
+      labelLinkBroken(readFileSync(join('src', 'components', 'Field.tsx'), 'utf8')),
+      'Give the label Text nativeID={labelID} and wrap the children in <FieldLabel value={labelID}>.',
+    ).toBe(false);
+  });
+
+  it('notices a label and a provider that name different ids', () => {
+    const shown = '<Text weight="semibold" nativeID={labelID}>\n  {label}\n</Text>';
+    expect(labelLinkBroken(`${shown}\n<FieldLabel value={labelID}>{children}</FieldLabel>`)).toBe(
+      false,
+    );
+    expect(labelLinkBroken(`${shown}\n<FieldLabel value={otherID}>{children}</FieldLabel>`)).toBe(
+      true,
+    );
+    expect(labelLinkBroken(`<Text>\n  {label}\n</Text>\n{children}`)).toBe(true);
+  });
+});
+
 describe('changing the layout keeps the form', () => {
   // A frame that returns a different tree per layout remounts the form, and a rotation throws away what was typed.
   it('is one tree at every size in AuthFrame', () => {
@@ -858,6 +879,22 @@ function inputsNamedAnotherWay(text: string): number[] {
 }
 
 /** A prop's value as written, its braces balanced, or null when the markup does not set it. */
+/** Whether the Text showing a Field's label and the FieldLabel around its children name different ids. */
+function labelLinkBroken(text: string): boolean {
+  const label = [...text.matchAll(/(?<![\w.])<Text\b/gu)]
+    .map((match) => text.slice(match.index, tagEnd(text, match.index)))
+    .find((markup) =>
+      text
+        .slice(text.indexOf(markup) + markup.length)
+        .trimStart()
+        .startsWith('{label}'),
+    );
+  const shown = label == null ? null : propValue(label, 'nativeID');
+  const handed = /<FieldLabel\s+value=(\{[^}]+\})/u.exec(text)?.[1] ?? null;
+
+  return shown == null || handed == null || shown !== handed;
+}
+
 function propValue(markup: string, name: string): string | null {
   const start = markup.search(new RegExp(`\\b${name}=`, 'u'));
   if (start === -1) return null;
