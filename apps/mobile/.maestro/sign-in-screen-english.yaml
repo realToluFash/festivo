@@ -1,0 +1,17 @@
+# The signed-out app in English: picks English on the sign-in screen's language row, which
+# keeps the device's last choice. Run before sign-in.yaml, whose first wait is on 'Email'.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 60000
+- tapOn: 'English'
+- extendedWaitUntil:
+    visible: 'Email'
+    timeout: 10000
+- takeScreenshot: mobile-sign-in-english

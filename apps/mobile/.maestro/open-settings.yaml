@@ -2,7 +2,7 @@
 # step with `runFlow: open-settings.yaml`. It neither relaunches Expo Go nor signs in.
 appId: host.exp.Exponent
 ---
-- openLink: ${METRO_URL}/--/
+- runFlow: return-home.yaml
 - tapOn:
     id: 'home.openSettings'
 - extendedWaitUntil:
