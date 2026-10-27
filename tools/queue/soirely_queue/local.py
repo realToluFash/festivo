@@ -27,9 +27,10 @@ SMALL_DAYS = 14
 SMALL_BYTES = 1_000_000
 NEVER_SWEPT = "untracked-before-main-"
 HARNESS = ("bin", "state.json")
+RECORDS = {"release": ("installed",)}
 STORY_NUMBER = re.compile(r"\d{4,}")
 LARGEST = 5
-DU_SECONDS = 300
+DEVICES = ("~/Library/Developer/CoreSimulator/Devices", "~/.android/avd")
 
 
 def gigabytes(text):
@@ -114,6 +115,18 @@ def scratch_folders(config):
                 yield tester, place / ".qa"
 
 
+def sweepable(scratch):
+    """The entries a sweep may clear: a folder holding a record the harness reads back is
+    swept entry by entry, around the record."""
+    for entry in scratch.iterdir():
+        if entry.name in HARNESS:
+            continue
+        if entry.name in RECORDS and entry.is_dir() and not entry.is_symlink():
+            yield from (e for e in entry.iterdir() if e.name not in RECORDS[entry.name])
+        else:
+            yield entry
+
+
 def sweep_scratch(db, config, now=None, say=print):
     """Once a day, clears what testers left in `.qa/`: an entry nothing has touched for three
     days, or fourteen for one under a megabyte, unless its story is In QA under that tester."""
@@ -125,8 +138,8 @@ def sweep_scratch(db, config, now=None, say=print):
     stories = store.stories(db)
     for tester, scratch in scratch_folders(config):
         held, freed, gone = held_stories(stories, tester), 0, 0
-        for entry in scratch.iterdir():
-            if entry.name.startswith((NEVER_SWEPT, ".")) or entry.name in HARNESS or \
+        for entry in sweepable(scratch):
+            if entry.name.startswith((NEVER_SWEPT, ".")) or \
                     set(STORY_NUMBER.findall(entry.name)) & held:
                 continue
             try:
@@ -146,30 +159,44 @@ def sweep_scratch(db, config, now=None, say=print):
                 continue
             freed, gone = freed + size, gone + 1
         if gone:
-            say(f"swept {amount(freed)} from {scratch}: {gone} entries untouched for "
-                f"{SCRATCH_DAYS} days")
+            say(f"swept {amount(freed)} from {scratch}: {gone} entries")
 
 
 def amount(size):
     return f"{size / 1e9:.1f} GB" if size >= 1e9 else f"{size / 1e6:.0f} MB"
 
 
-def largest_folders(config):
-    """The workspace's five largest folders, then the simulators and the emulators, as
-    `name size` for an ops item to name."""
+def measured(config):
+    """The workspace's folders and the simulators and emulators, which a falling disk names."""
     root = machine.workspace(config)
     inside = sorted(p for p in root.iterdir() if p.is_dir() and not p.is_symlink()) \
         if root and root.is_dir() else []
-    devices = [pathlib.Path(p).expanduser() for p in
-               ("~/Library/Developer/CoreSimulator/Devices", "~/.android/avd")]
-    devices = [p for p in devices if p.exists()]
+    devices = [pathlib.Path(d).expanduser() for d in DEVICES]
+    return inside, [p for p in devices if p.exists()]
+
+
+def largest_folders(config, start, out=None):
+    """The workspace's five largest folders, then the simulators and the emulators, as
+    `name size`. `du` can take minutes, so it runs on its own: `start` begins it and gives
+    None, and a later call gives what it found, or None while it is still going."""
+    out = out or machine.config_dir() / "largest-folders"
+    inside, devices = measured(config)
+    if start:
+        out.unlink(missing_ok=True)
+        try:
+            subprocess.Popen(["sh", "-c", 'du -sk "$@" > "$0.part" 2>/dev/null; mv "$0.part" "$0"',
+                              str(out), *map(str, inside + devices)],
+                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL, start_new_session=True)
+        except OSError:
+            pass
+        return None
     try:
-        out = subprocess.run(["du", "-sk", *map(str, inside + devices)],
-                             capture_output=True, text=True, timeout=DU_SECONDS).stdout
-    except (OSError, subprocess.TimeoutExpired):
-        return f"du did not finish within {DU_SECONDS} seconds"
+        lines = out.read_text().splitlines()
+    except OSError:
+        return None
     sizes = {}
-    for line in out.splitlines():
+    for line in lines:
         kb, _, path = line.partition("\t")
         if kb.isdigit():
             sizes[pathlib.Path(path)] = int(kb) / 1e6
@@ -178,7 +205,7 @@ def largest_folders(config):
                                                                   if d in sizes])
 
 
-def checks(db, config, now=None, cache=None, free=None, largest=None):
+def checks(db, config, now=None, cache=None, free=None, largest=None, dry_run=False):
     """What needs this machine's ops now, kept for the work it becomes."""
     now = now or time.time()
     cache, free = cache or build_cache_gb, free or machine.free_gb
@@ -194,12 +221,12 @@ def checks(db, config, now=None, cache=None, free=None, largest=None):
     elif floor and left < 2 * floor:
         period = int(now // SWEEP_SECONDS)
         seen = store.get_meta(db, "largest_folders") or {}
-        if seen.get("period") != period:
-            seen = {"period": period, "text": largest(config)}
+        if not dry_run and (seen.get("period") != period or not seen.get("text")):
+            seen = {"period": period, "text": largest(config, seen.get("period") != period)}
             store.set_meta(db, "largest_folders", seen)
         found.append({"key": "disk-falling", "urgent": False, "period": period,
                       "reason": f"{left:.0f} GB free on {name}, under twice minFreeGb {floor}; "
-                                f"the largest: {seen['text']}"})
+                                f"the largest: {seen.get('text') or 'still being measured'}"})
     seen = store.get_meta(db, "build_cache") or {}
     if now - seen.get("at", 0) >= DOCKER_EVERY_SECONDS:
         seen = {"at": now, "gb": cache()}

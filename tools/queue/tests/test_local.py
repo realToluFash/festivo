@@ -4,6 +4,7 @@ import os
 import pathlib
 import subprocess
 import tempfile
+import time
 import unittest
 import urllib.error
 from unittest import mock
@@ -20,7 +21,7 @@ class Checks(unittest.TestCase):
 
     def found(self, now=DAY * 10, free=100.0, cache=1.0):
         return local.checks(self.db, self.config, now, cache=lambda: cache, free=lambda c: free,
-                            largest=lambda c: "soirely-qa3 16.0 GB")
+                            largest=lambda c, start: "soirely-qa3 16.0 GB")
 
     def items(self):
         return work.machine_items(store.get_meta(self.db, "machine_checks"))
@@ -72,9 +73,23 @@ class Checks(unittest.TestCase):
         asked = []
         for now in (DAY * 10, DAY * 10 + 60):
             local.checks(self.db, self.config, now, cache=lambda: 1.0, free=lambda c: 25.0,
-                         largest=lambda c: asked.append(1) or "soirely-qa3 16.0 GB")
-        self.assertEqual(len(asked), 1)
+                         largest=lambda c, start: asked.append(start) or "soirely-qa3 16.0 GB")
+        self.assertEqual(asked, [True])
         self.assertIn("soirely-qa3 16.0 GB", self.items()[0]["reason"])
+
+    def test_the_minute_reads_the_measure_once_it_has_finished(self):
+        answers, asked = [None, None, "soirely-qa3 16.0 GB"], []
+        for minute in range(4):
+            local.checks(self.db, self.config, DAY * 10 + 60 * minute, cache=lambda: 1.0,
+                         free=lambda c: 25.0,
+                         largest=lambda c, start: asked.append(start) or answers.pop(0))
+        self.assertEqual(asked, [True, False, False])
+        self.assertIn("soirely-qa3 16.0 GB", self.items()[0]["reason"])
+
+    def test_a_dry_run_measures_nothing(self):
+        local.checks(self.db, self.config, DAY * 10, cache=lambda: 1.0, free=lambda c: 25.0,
+                     largest=lambda c, start: self.fail("measured"), dry_run=True)
+        self.assertIn("still being measured", self.items()[0]["reason"])
 
     def test_a_disk_under_the_floor_is_urgent_and_not_also_falling(self):
         self.found(free=4.0)
@@ -199,6 +214,15 @@ class Scratch(unittest.TestCase):
         self.sweep()
         self.assertTrue(all(path.exists() for path in kept))
 
+    def test_an_old_release_folder_keeps_the_record_of_what_is_installed(self):
+        release = self.entry("release", 30)
+        record = release / "installed"
+        record.write_text("com.soirely.app")
+        os.utime(record, (self.NOW - 30 * DAY, self.NOW - 30 * DAY))
+        self.sweep()
+        self.assertTrue(record.exists())
+        self.assertFalse((release / "shot.png").exists())
+
     def test_a_sweep_that_frees_space_says_how_much_and_where(self):
         self.entry("s10118", 4, size=3_000_000)
         self.entry("s10119", 1, tester="qa")
@@ -215,12 +239,28 @@ class Scratch(unittest.TestCase):
         self.sweep(self.NOW + DAY)
         self.assertFalse(old.exists())
 
-    def test_the_largest_folders_come_largest_first(self):
-        for name, size in (("soirely-qa2", 3), ("soirely-qa3", 9), ("soirely-ops", 1)):
+    def test_the_largest_folders_come_largest_first_then_the_devices(self):
+        for name, size in (("soirely-qa2", 3), ("soirely-qa3", 9), ("soirely-ops", 1),
+                           ("soirely-dev2", 4), ("soirely-dev3", 5), ("soirely-l10n", 2)):
             self.entry("s1", 0, size=size * 100_000, tester=name.split("-")[1])
-        named = local.largest_folders(self.config)
-        self.assertLess(named.index("soirely-qa3"), named.index("soirely-qa2"))
-        self.assertLess(named.index("soirely-qa2"), named.index("soirely-ops"))
+        elsewhere = tempfile.TemporaryDirectory()
+        self.addCleanup(elsewhere.cleanup)
+        home = pathlib.Path(elsewhere.name)
+        for device in local.DEVICES:
+            folder = pathlib.Path(device.replace("~", str(home)))
+            folder.mkdir(parents=True)
+            (folder / "disk.img").write_bytes(b"x" * 900_000)
+        out = self.root / "largest-folders"
+        with mock.patch.dict(os.environ, {"HOME": str(home)}):
+            self.assertIsNone(local.largest_folders(self.config, True, out))
+            for _ in range(200):
+                if out.exists():
+                    break
+                time.sleep(0.05)
+            named = local.largest_folders(self.config, False, out).split(", ")
+        self.assertEqual([n.split()[0].rsplit("/", 1)[-1] for n in named],
+                         ["soirely-qa3", "soirely-dev3", "soirely-dev2", "soirely-qa2",
+                          "soirely-l10n", "Devices", "avd"])
 
     def test_a_machine_without_testers_sweeps_nothing(self):
         (self.root / "soirely-ops").mkdir()

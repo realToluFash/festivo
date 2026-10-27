@@ -172,7 +172,7 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
     if errors and not store.get_meta(db, "synced_ok_at"):
         return say(f"error: {'; '.join(errors)}")
     from .cli import refresh_work
-    local.checks(db, config, now)
+    local.checks(db, config, now, dry_run=dry_run)
     if not dry_run:
         local.sweep_scratch(db, config, now, say)
     refresh_work(db, now)
