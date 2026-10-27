@@ -393,6 +393,19 @@ export function useFocusBackToOpener(
   return openers.ref;
 }
 
+/** Focus back to the opener that `closed` names, as `useFocusBackToOpener`; rendered inside a list's ScrollColumn so the opener comes into view. */
+export function FocusBack({
+  closed,
+  fallback,
+  children,
+}: {
+  closed: StepClosed | undefined;
+  fallback?: RefObject<ScreenReaderTarget | null>;
+  children: (opener: (key: string) => RefCallback<View>) => ReactNode;
+}) {
+  return children(useFocusBackToOpener(closed, fallback));
+}
+
 /** The scroll context a ScrollView provides, and the props that keep it in step with that view. */
 function useScreenScrollView() {
   const windowOrigin = useContext(Origin);
@@ -431,19 +444,47 @@ export function ScrollColumn({
   style,
   contentContainerStyle,
   refreshControl,
+  away = false,
 }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
   refreshControl?: ReactElement<RefreshControlProps> | undefined;
+  /** Out of the layout behind another column; back in, it shows where it was left. */
+  away?: boolean;
 }) {
   const { screenScroll, scrollProps } = useScreenScrollView();
   const docked = useContext(Dock)?.docked ?? false;
+  const left = useRef<number | null>(null);
+  const restore = () => {
+    if (away || left.current == null) return;
+    screenScroll.ref.current?.scrollTo({ y: left.current, animated: false });
+  };
+
+  useEffect(() => {
+    if (away) left.current = screenScroll.offset.current > 0 ? screenScroll.offset.current : null;
+    else restore();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [away]);
 
   return (
     <ScreenScroll.Provider value={screenScroll}>
       <ScrollView
         {...scrollProps}
+        onScroll={(event) => {
+          if (away) return;
+          scrollProps.onScroll(event);
+          if (
+            left.current != null &&
+            Math.abs(event.nativeEvent.contentOffset.y - left.current) < 1
+          ) {
+            left.current = null;
+          }
+        }}
+        onScrollBeginDrag={() => {
+          left.current = null;
+        }}
+        onContentSizeChange={restore}
         style={style}
         contentContainerStyle={contentContainerStyle}
         refreshControl={refreshControl}

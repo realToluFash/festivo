@@ -556,3 +556,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   (`emails:signInRules.twoFactorDue.subject`, sc-15219) : « Double authentification avant le
   {deadline} : {organisation} », the organisation last so a 390 px inbox shows the date
   (qa2, #15218). « avant le » takes the weekday `{deadline}` opens on.
+- **27 oct. 2026. La page des informations nomme la règle, pas le rôle** (sc-16443 pour
+  sc-16265, `orgGeneral.readOnlyUntil*`, `refusedByRule`). Chaque ligne reprend la règle dans
+  les mots du bandeau (`signInRules.unlinkedBody`, `gateBody`, « n’accepte que » sans « plus »)
+  et finit comme `orgGeneral.readOnly` : « vous pouvez voir ces informations mais pas les
+  modifier ». Un enregistrement refusé par la règle dit seulement « Rien n’a été enregistré. »,
+  le début de `refused`.

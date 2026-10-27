@@ -501,3 +501,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   (`emails:signInRules.twoFactorDue.subject`, sc-15219): «Verificación en dos pasos antes del
   {deadline}: {organisation}». «antes del» reads with the weekday that `{deadline}` opens on;
   the organisation goes last, so a 390 px inbox shows the date (qa2, #15218).
+- **27 Oct 2026. La página de datos nombra la regla, no la función** (sc-16443 para sc-16265,
+  `orgGeneral.readOnlyUntil*`, `refusedByRule`). Cada línea abre con la regla en las palabras
+  del aviso (`signInRules.unlinkedBody`, `gateBody`, sin «ahora») y cierra con las de
+  `orgGeneral.readOnly`: «puede ver estos datos pero no cambiarlos». Un guardado que la regla
+  rechaza dice solo «No se ha guardado nada.», como el comienzo de `refused`.

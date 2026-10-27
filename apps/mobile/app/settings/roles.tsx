@@ -1,14 +1,7 @@
 import type { OrganisationRole, RolesCatalogue } from '@soirely/api-client';
 import { roleHolds, roleName } from '@soirely/domain';
 import { Redirect } from 'expo-router';
-import {
-  type ReactNode,
-  type RefCallback,
-  type RefObject,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type RefCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -23,9 +16,9 @@ import {
 import { Notice } from '../../src/components/Notice.tsx';
 import { RoleList, RolePage, RemoveRole } from '../../src/components/Roles.tsx';
 import {
+  FocusBack,
   type StepClosed,
   stepClosed,
-  useFocusBackToOpener,
   useFocusOnAnswer,
 } from '../../src/components/Screen.tsx';
 import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
@@ -307,19 +300,6 @@ export default function RolesScreen() {
       </SettingsSplit>
     </AppFrame>
   );
-}
-
-/** Focus back to the row or New role that opened the page, inside the list's scroll so it comes into view. */
-function FocusBack({
-  closed,
-  fallback,
-  children,
-}: {
-  closed: StepClosed | undefined;
-  fallback: RefObject<TextHandle | null>;
-  children: (opener: (key: string) => RefCallback<View>) => ReactNode;
-}) {
-  return children(useFocusBackToOpener(closed, fallback));
 }
 
 /** The first role a manager can change opens beside the list, as on the web. */

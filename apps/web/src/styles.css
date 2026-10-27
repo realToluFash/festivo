@@ -2036,6 +2036,11 @@ span {
   margin: 0;
 }
 
+/* Room for the negative margin a last notice-action takes, as a notice's padding gives it. */
+.settings-read-only-rule {
+  padding-bottom: var(--spaceLg);
+}
+
 .settings-wide {
   max-width: 85rem;
 }

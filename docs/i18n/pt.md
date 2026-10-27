@@ -524,3 +524,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   (`emails:signInRules.twoFactorDue.subject`, sc-15219): "Autenticação de dois fatores até
   {deadline}: {organisation}". "até" needs no article before the weekday `{deadline}` opens
   on; the organisation goes last, so a 390 px inbox shows the date (qa2, #15218).
+- **27 Oct 2026. A página de dados nomeia a regra, não a função** (sc-16443 para sc-16265,
+  `orgGeneral.readOnlyUntil*`, `refusedByRule`). Cada linha abre com a regra nas palavras do
+  aviso (`signInRules.unlinkedBody`, `gateBody`; "só aceita", porque aqui a regra não é nova) e
+  fecha como `orgGeneral.readOnly`: "pode ver estes dados mas não alterá-los", e não o "pode
+  consultar tudo, mas sem alterar nada" do aviso, porque a linha fala dos dados acima dela. Um
+  guardar recusado pela regra diz só "Nada foi guardado.", o início de `refused`.
