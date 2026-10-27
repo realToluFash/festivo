@@ -137,7 +137,10 @@
     "planLimit_other": "Não foi publicado. O seu plano {{plan}} permite ter {{count, number}} eventos publicados ou em pausa de cada vez.",
     "planLimit_many": "Não foi publicado. O seu plano {{plan}} permite ter {{count, number}} de eventos publicados ou em pausa de cada vez.",
     "planLimitStays": "Este evento continua em rascunho. Termine ou cancele outro evento, ou mude de plano.",
-    "close": "Fechar"
+    "close": "Fechar",
+    "needsHostTitle": "Add who is hosting before guests are invited.",
+    "needsHostBody": "Guests see the hosts' names on their invitation. This event stays a draft until it has at least one host.",
+    "addHosts": "Add who is hosting"
   },
   "eventEnd": {
     "callOff": "Cancelar o evento",
@@ -191,6 +194,25 @@
     "nothingChanged": "Nada foi alterado, por isso nada foi enviado.",
     "scheduleConcluded": "Este evento terminou, por isso o início, o fim e o fuso horário já não podem ser alterados.",
     "scheduleLocked": "Este evento terminou, por isso o início, o fim e o fuso horário já não podem ser alterados."
+  },
+  "eventHosts": {
+    "heading": "Hosted by",
+    "explainer": "Guests read these names on their invitation and their page, in this order. Write them the way you want guests to see them.",
+    "none": "No hosts yet. The event can be made live once it has at least one.",
+    "add": "Add a host",
+    "label": "Host {{position}}",
+    "moveUp": "Move {{name}} up",
+    "moveDown": "Move {{name}} down",
+    "remove": "Remove",
+    "removeNamed": "Remove {{name}}",
+    "most": "{{most}} is the most hosts an event can have.",
+    "lastHost": "A live event needs at least one host, so this name can't be removed. You can still change it.",
+    "lastHostRefused": "A live event needs at least one host. Add a name here before saving.",
+    "moved": "{{name}} moved to {{position}} of {{count}}",
+    "removed": "{{name}} removed",
+    "blank": "Enter a name or remove this host.",
+    "tooLong": "A host's name can be at most {{most}} characters. This one has {{length}}.",
+    "duplicate": "{{name}} is already a host."
   },
   "eventCover": {
     "heading": "Capa",

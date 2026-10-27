@@ -24,6 +24,7 @@ use App\Storage\ObjectStore;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
+use Doctrine\DBAL\Connection;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -354,6 +355,7 @@ final class EventDeletionTest extends ApiTestCase
     private function live(string $name): string
     {
         $id = $this->draft($name);
+        self::service(Connection::class)->executeStatement('UPDATE events SET hosts = :hosts WHERE id = :id', ['hosts' => '["Funmi Adeyemi"]', 'id' => $id]);
         $this->as($this->owner, 'POST', '/api/events/' . $id . '/make-live');
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
 

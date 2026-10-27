@@ -29,6 +29,7 @@ function event(overrides: Record<string, unknown> = {}) {
     currency: 'NGN',
     cover: null,
     venue: null,
+    hosts: ['Funmi Adeyemi'],
     madeLiveAt: null,
     phase: 'draft',
     concludedAt: null,

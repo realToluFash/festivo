@@ -185,10 +185,10 @@ describe('eventAllows', () => {
 });
 
 describe('eventTransition', () => {
-  it('takes a draft live, past two guards', () => {
+  it('takes a draft live, past three guards', () => {
     expect(eventTransition('draft', 'make_live')).toEqual({
       to: 'live',
-      guards: ['end_not_passed', 'plan_limit'],
+      guards: ['end_not_passed', 'has_host', 'plan_limit'],
     });
   });
 

@@ -23,6 +23,7 @@
     "event_currency_in_use": "A moeda não pode ser alterada depois de haver montantes registados neste evento.",
     "event_state_invalid": "O estado do evento não o permite.",
     "event_concluded": "O fim do evento já passou.",
+    "event_host_required": "O evento precisa de pelo menos um anfitrião.",
     "plan_limit": "O limite do plano foi atingido.",
     "unauthenticated": "Inicie sessão para continuar.",
     "invalid_credentials": "Esse endereço de correio electrónico e essa palavra-passe não correspondem.",
