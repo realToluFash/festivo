@@ -1,38 +1,59 @@
 import { useState } from 'react';
-import { useWindowDimensions } from 'react-native';
+import { type TextLayoutEvent, useWindowDimensions } from 'react-native';
 
-import { fitTitle, settleTitle } from '../layout/textSize.ts';
+import { fitWords, settleWords, titleSize } from '../layout/textSize.ts';
 import { Text, type TextProps } from './Text.tsx';
 
-/** Grows less than other text at the accessibility sizes, and steps down rather than break a word (sc-13496). */
-export function Title({
+type WholeWordsProps = TextProps & { size: number; children: string };
+
+/** One size for several texts, stepping down from `start` while any of them breaks a word, never below `size` (sc-13496). */
+export function useWholeWords(size: number, start: number, texts: readonly string[]) {
+  const text = texts.join('\n');
+  const [state, setState] = useState(() => fitWords(null, start, text));
+  const fit = fitWords(state, start, text);
+  if (fit !== state) setState(fit);
+
+  return {
+    maxFontSizeMultiplier: fit.drawn / size,
+    onTextLayout: (event: TextLayoutEvent) => {
+      const lines = event.nativeEvent.lines.map((line) => line.text);
+      setState((current) =>
+        current.key === fit.key && current.drawn === fit.drawn
+          ? settleWords(current, size, lines)
+          : current,
+      );
+    },
+  };
+}
+
+/** Steps down from `start` rather than break a word, never below `size` (sc-13496). */
+export function WholeWords({
   size,
+  start,
   children,
   onTextLayout,
   ...rest
-}: TextProps & { size: number; children: string }) {
-  const { fontScale } = useWindowDimensions();
-  const [state, setState] = useState(() => fitTitle(null, size, fontScale, children));
-  const fit = fitTitle(state, size, fontScale, children);
-  if (fit !== state) setState(fit);
+}: WholeWordsProps & { start: number }) {
+  const words = useWholeWords(size, start, [children]);
 
   return (
     <Text
-      weight="bold"
       {...rest}
       size={size}
-      maxFontSizeMultiplier={fit.drawn / size}
+      maxFontSizeMultiplier={words.maxFontSizeMultiplier}
       onTextLayout={(event) => {
         onTextLayout?.(event);
-        const next = settleTitle(
-          fit,
-          size,
-          event.nativeEvent.lines.map((line) => line.text),
-        );
-        if (next !== fit) setState(next);
+        words.onTextLayout(event);
       }}
     >
       {children}
     </Text>
   );
+}
+
+/** Grows less than other text at the accessibility sizes, and steps down rather than break a word (sc-13496). */
+export function Title({ size, ...rest }: WholeWordsProps) {
+  const { fontScale } = useWindowDimensions();
+
+  return <WholeWords weight="bold" {...rest} size={size} start={titleSize(size, fontScale)} />;
 }

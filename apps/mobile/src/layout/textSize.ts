@@ -51,25 +51,20 @@ export function breakableEmail(email: string): string {
   return email.replace('@', '@​');
 }
 
-export interface TitleFit {
+export interface WordsFit {
   readonly key: string;
   readonly drawn: number;
 }
 
-export function fitTitle(
-  fit: TitleFit | null,
-  size: number,
-  fontScale: number,
-  text: string,
-): TitleFit {
-  const steps = titleSize(size, fontScale);
-  const key = `${steps}|${text}`;
+/** A text drawn at `start`, until the text or its start changes. */
+export function fitWords(fit: WordsFit | null, start: number, text: string): WordsFit {
+  const key = `${start}|${text}`;
 
-  return fit?.key === key ? fit : { key, drawn: steps };
+  return fit?.key === key ? fit : { key, drawn: start };
 }
 
 /** After a layout: a point smaller while a word is broken, never below the default size. */
-export function settleTitle(fit: TitleFit, size: number, lines: readonly string[]): TitleFit {
+export function settleWords(fit: WordsFit, size: number, lines: readonly string[]): WordsFit {
   if (fit.drawn <= size || !breaksAWord(lines)) return fit;
 
   return { key: fit.key, drawn: Math.max(size, fit.drawn - 1) };

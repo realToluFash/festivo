@@ -14,7 +14,7 @@ import threading
 import time
 
 from . import (checkout, drawing, harness, local, machine, permissions, review, roles, runlog,
-               shared, store, sync, update)
+               sessions, shared, store, sync, update)
 
 VERSION_EVERY_SECONDS = 10 * 60
 # `claude -p` stays up while a background shell it started still runs, so a run whose item
@@ -286,9 +286,11 @@ def prompt(row, role, main, note):
     return "\n".join(lines + ["", brief(row, role), MILESTONES.format(role=role)])
 
 
-def command(values, config_dir, allowed=(), denied=()):
+def command(values, config_dir, allowed=(), denied=(), session=None):
     argv = ["claude", "-p", "--model", values["model"], "--effort", values["effort"],
             "--permission-mode", "auto", "--output-format", "stream-json", "--verbose"]
+    if session:
+        argv += ["--session-id", session]
     if values.get("maxBudgetUsd"):
         argv += ["--max-budget-usd", str(values["maxBudgetUsd"])]
     if allowed:
@@ -461,8 +463,11 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
     entry["main"] = main
     folder = machine.claude_dir(config, role)
     entry["account"] = machine.account(folder)
+    entry.update(session=sessions.new_id(), folder=str(folder), cwd=str(cwd),
+                 story=row["story_id"] if row else None)
     argv, env = command(values, folder, permissions.for_role(permissions.applied(), role),
-                        permissions.denied(home / "sq" / "sq", folder))
+                        permissions.denied(home / "sq" / "sq", folder), entry["session"])
+    sessions.begin(db, name, entry)
     scratch = run_dir(home, name, item_id)
     scratch.mkdir(parents=True, exist_ok=True)
     env["SQ_RUN_DIR"] = str(scratch)
@@ -494,7 +499,7 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
     return entry
 
 
-def worker_ended(home, platform, name, item_id, now=None, load=machine.load):
+def worker_ended(home, platform, name, item_id, now=None, load=machine.load, db=None):
     """`ExecStopPost`: a run stopped by its memory or time limit, or a crash, writes no
     report of its own, so this leaves the record, and takes its review worktree away."""
     role = machine.worker_role(name)
@@ -514,6 +519,9 @@ def worker_ended(home, platform, name, item_id, now=None, load=machine.load):
              "report": f"the worker ended without a report: {said}"}
     if name != role:
         entry["worker"] = name
+    run = sessions.current(db, name) if db is not None else None
+    if run and run.get("item") == item_id:
+        entry = {**run, **entry, "at": run.get("at", entry["at"]), "ended": entry["at"]}
     runlog.append(home, role, entry)
     platform.notify(f"Soirely: {name}'s worker stopped", entry["report"])
     return entry
