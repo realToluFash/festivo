@@ -33,6 +33,10 @@ final readonly class Trigger
         if (null !== $day && !self::isCalendarDay($day)) {
             throw new InvalidArgumentException('A trigger day is an ISO 8601 calendar date, such as 2026-11-20.');
         }
+
+        if ((EventAnchor::Moment === $anchor) !== (null !== $moment) || (EventAnchor::Date === $anchor) !== (null !== $day)) {
+            throw new InvalidArgumentException("A trigger anchored on {$anchor->value} carries a moment only if it counts from one, and a day only if it counts from one.");
+        }
     }
 
     public static function at(DateTimeImmutable $moment): self

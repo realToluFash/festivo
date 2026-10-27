@@ -10,6 +10,7 @@ use App\Domain\Messaging\Model\Trigger;
 use DateTimeImmutable;
 use DateTimeZone;
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -79,5 +80,27 @@ final class TriggerTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         Trigger::relativeTo('2026-11-20', '7 days before');
+    }
+
+    /** @param array<string, ?string> $stored */
+    #[Test]
+    #[DataProvider('mismatchedRows')]
+    public function aStoredRowWhoseFieldsDisagreeWithItsAnchorIsRefused(array $stored): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageMatches('/^A trigger anchored on /');
+
+        Trigger::fromArray($stored);
+    }
+
+    /** @return iterable<string, array{array<string, ?string>}> */
+    public static function mismatchedRows(): iterable
+    {
+        $row = ['anchor' => 'date', 'moment' => null, 'day' => '2026-11-20', 'offset' => '-P3D', 'timeOfDay' => null];
+
+        yield 'a day anchor with no day' => [['day' => null] + $row];
+        yield 'a moment anchor with no moment' => [['anchor' => 'moment', 'day' => null] + $row];
+        yield 'a moment anchor with a day' => [['anchor' => 'moment', 'moment' => '2026-11-17T09:00:00+00:00'] + $row];
+        yield 'an event anchor with a day' => [['anchor' => 'event_start'] + $row];
     }
 }

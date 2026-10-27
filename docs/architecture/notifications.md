@@ -52,7 +52,7 @@ $scheduler->schedule(
     'payment.reminder',                         // the registered type
     "payment-reminder:{$payment->getId()}",     // the cancellation key
     "payment:{$payment->getId()}:due",          // the source id, part of the idempotency key
-    Trigger::relativeTo($payment->getDueAt(), '-P3D', '10:00'),
+    Trigger::relativeTo($payment->getDueDate()->format('Y-m-d'), '-P3D', '10:00'),
     Audience::membersWithPermission($organisationId, Permission::BudgetManage),
     ['paymentId' => $payment->getId()->toRfc4122()],
     $event,
