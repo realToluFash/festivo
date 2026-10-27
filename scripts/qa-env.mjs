@@ -723,6 +723,41 @@ function simulatorId(name) {
   return null;
 }
 
+// iOS offers to save a password after every sign-in, and on an iPad Maestro cannot see the
+// sheet to dismiss it. The restriction a device profile would set turns the offer off; the
+// simulator reads it when it boots.
+export function passwordAutoFillFiles(device) {
+  const profiles = join(device, 'data/Library/UserConfigurationProfiles');
+  return [
+    join(profiles, 'UserSettings.plist'),
+    join(profiles, 'EffectiveUserSettings.plist'),
+    join(profiles, 'PublicInfo/PublicEffectiveUserSettings.plist'),
+  ];
+}
+
+export function passwordAutoFillOff(file) {
+  return [
+    ['-insert', 'restrictedBool', '-dictionary', file],
+    ['-insert', 'restrictedBool.allowPasswordAutoFill', '-dictionary', file],
+    ['-replace', 'restrictedBool.allowPasswordAutoFill.value', '-bool', 'NO', file],
+  ];
+}
+
+function withoutPasswordAutoFill(udid) {
+  const device = join(homedir(), 'Library/Developer/CoreSimulator/Devices', udid);
+  const files = passwordAutoFillFiles(device);
+  const off = (file) =>
+    capture('plutil', ['-extract', 'restrictedBool.allowPasswordAutoFill.value', 'raw', file]) ===
+    'false';
+  if (files.every(off)) return;
+  run('xcrun', ['simctl', 'shutdown', udid], { optional: true });
+  for (const file of files) {
+    mkdirSync(dirname(file), { recursive: true });
+    if (!existsSync(file)) run('plutil', ['-create', 'xml1', file]);
+    for (const step of passwordAutoFillOff(file)) run('plutil', step, { optional: true });
+  }
+}
+
 function ensureExpoGo(udid) {
   if (capture('xcrun', ['simctl', 'get_app_container', udid, EXPO_GO])) return true;
   const list = JSON.parse(capture('xcrun', ['simctl', 'list', 'devices', 'booted', '-j']) ?? '{}');
@@ -745,6 +780,7 @@ async function ios(args) {
   const devices = [open].map((key) => {
     const udid = simulatorId(CONFIG.simulators[key].name);
     if (!udid) throw new Error(`no ${CONFIG.simulators[key].name} simulator — run setup`);
+    withoutPasswordAutoFill(udid);
     run('xcrun', ['simctl', 'boot', udid], { optional: true });
     run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true });
     if (!ensureExpoGo(udid)) {
@@ -1260,6 +1296,7 @@ async function releaseIos(args) {
   if (other) run('xcrun', ['simctl', 'shutdown', other], { optional: true });
   const udid = simulatorId(CONFIG.simulators[open].name);
   if (!udid) throw new Error(`no ${CONFIG.simulators[open].name} simulator — run setup`);
+  withoutPasswordAutoFill(udid);
   run('xcrun', ['simctl', 'boot', udid], { optional: true });
   run('open', ['-a', 'Simulator'], { optional: true });
   // A fresh install every time, so the launch below is the app's first, with no cache.
