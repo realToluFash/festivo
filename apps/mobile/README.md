@@ -127,9 +127,10 @@ Resolution is the stored override, then the device, then English. The supported
 set comes from `/locales.json` at the repository root, the same file the API and
 the web client read.
 
-`intl-pluralrules` is imported deliberately: Hermes does not ship a full ICU, so
-without it `_one`/`_other` silently resolves to the key path on device while
-working perfectly in a browser.
+Plural rules come from `@formatjs/intl-pluralrules`, forced in `src/intl.ts`:
+Hermes does not ship a full ICU, so without it `_one`/`_other` silently resolves
+to the key path on device while working perfectly in a browser, and an older
+ICU never picks `_many` for a million in Spanish, French or Portuguese.
 
 ## Tests
 

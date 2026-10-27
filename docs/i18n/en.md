@@ -62,6 +62,72 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **27 Oct 2026. An event's hosts** (sc-15427 for sc-6713, `web:eventHosts.*`,
+  `eventLive.needsHost*|addHosts` web and app, `messages:validation.event_host*`,
+  `messages:event.host_required|last_host`, `errors:event_host_required`). Settled as sc-6713
+  wrote it, except the last-host lines (#15501): the rule holds for any event that has been made
+  live, Live, Paused or Finished alike, so they say why from the guest's side, "Guests can see
+  this event, so …", never "A live event …". The refusals take "cannot". One line waits on [dev2]:
+  `eventHosts.lastHost` should read "Guests can see this event, so it needs at least one host.
+  You can still change this name.", but `Events.test.tsx` matches the old line; es, fr and pt
+  already say the settled one. A host is a name as guests read it, perhaps a couple on one row
+  ("Chief and Mrs Adeyemi"), so es, fr and pt keep a name out of any agreement: "removed",
+  "moved" and "already a host" are written around the name.
+- **26 Oct 2026. Deleting an event** (sc-14417 for sc-3592, `eventDelete.*` web and app,
+  `messages:event.delete_name_mismatch`). Settled as sc-3592 wrote it; `DeleteEvent.test.tsx`
+  pins it. The act is "Delete event", the dialog "Delete {{event}}?", the way out "Keep it". It
+  follows deleting an organisation: `mismatch` and the API's refusal are one sentence, the check
+  made twice, and the restore window closes on "gone for good". The reader's team is "your whole
+  team"; guests are "Guests following their link", as for calling off. The app's `failed` is
+  `ownership.failed` word for word. es, fr and pt name "support" in full, as
+  `ownership.deleteWindow` does, and agree `deleted` with "event", never with the name.
+- **26 Oct 2026. Happening now, ending or calling off an event** (sc-14189 for sc-3585,
+  `web:events.happeningNow`, `mobile:eventsScreen.happeningNow`, `eventEnd.*` web and app,
+  `eventEdit.scheduleLocked|scheduleConcluded`, `messages:event.already_over|schedule_concluded`).
+  Settled as sc-3585 wrote it. Before the start the act is "Call off" (it won't go ahead); from
+  the start it is "End now"; afterwards the event is "Finished", as sc-3584 settled. A refusal
+  starts "Not ended.", as "Not made live." does. The confirmation's way out is "Keep it on", for
+  both acts, never "Cancel", which in es, fr and pt is the same word as calling off. The read-only
+  help line (`scheduleLocked`) explains, so it keeps "can't"; the refusal of a save that changes
+  the dates anyway (`scheduleConcluded`) and the API's say "cannot". es, fr and pt write the two
+  as one sentence. Guests are "Guests following their link", the people who open the invitation.
+- **26 Oct 2026. Making a draft event live, and the event states** (sc-13956, sc-3584,
+  `eventLive.*` web and app, `events.live|paused|finished`, `eventsScreen.*`,
+  `messages:event.state_invalid`, `event.concluded`, `messages+intl-icu:event.plan_limit`).
+  Settled as sc-3584 wrote it; `Events.test.tsx` pins most of it. An event is "Draft", "Live",
+  "Paused" or "Finished"; the act is "Make live", and a refusal starts "Not made live.", as a
+  refused save starts "Not saved.". A colleague is "somebody else". The plan limit is one
+  sentence on screen and from the API, with the limit as a plural. One line waits on [dev]:
+  `endPassed` should read "… so it cannot be made live. …", as `messages:event.concluded` does,
+  since a refusal takes no contraction, but the test matches "can't". The role permission
+  `rolesScreen…events` still says "publish … conclude", the older words; es, fr and pt already
+  write making live as publishing (_publicar_, _publier_), so the states read _Publicado_,
+  _Publié_, and the permission and the button agree in those three.
+- **26 Oct 2026. The Google-or-Apple refusal's title** (sc-13612, `errors:oauth_only_unlinked`).
+  One 403 code answers an Owner requiring Google or Apple before linking their own and a member
+  stranded read-only, so its title states the shared fact, "No Google or Apple account is
+  linked.", and each `detail` says what to do. "Read-only" stays on the stranded member's banner
+  (`unlinkedTitle`), the only place it is true. es, fr and pt name the account, as their details do.
+- **26 Oct 2026. An event's venue, and the app's event list** (`web:eventForm.venue*`,
+  `web:eventPage.venue*`, `addVenue`, `openInMaps`, `messages:validation.event_venue_*`,
+  `mobile:eventsScreen.*`, sc-3589 and sc-1593 via sc-13205). Settled as built, except two lines
+  that wait on [dev], because `Events.test.tsx` matches their English: `venueLookupDown` should
+  read "Suggestions are not available right now. …", no contraction, as it reports a failure;
+  `venueZoneOffer` should read "The venue is in {{zone}}. Use that time zone?", since "Use it?"
+  leaves the reader to work out what "it" is. es, fr and pt are written to the settled meaning
+  already. A venue is "Venue" in every label; its address is "Address". The two length limits
+  say the same sentence on the web and from the API, the house "Shorten the … to {{most}}
+  characters or fewer.".
+- **26 Oct 2026. An event's cover** (sc-13587, `web:eventCover.*`, `messages:validation.cover_*`).
+  The section is "Cover" and the dialog "Cover photo"; the person's own image is "photo"
+  throughout, and "image" only in "Describe the image", the screen reader's word. The API's
+  description limit now reads as the web's, "Shorten the description to {count} characters or
+  fewer.", replacing "… characters at most." The refusals read "That file is not a photo we can
+  use. Choose a JPEG, PNG, WebP or HEIC." and "The photo did not upload. Try again." (web and API
+  alike), and the created line "The event is saved without its photo. {{reason}}", with no comma:
+  no contractions in an error, as the house rule has it (changed in the catalogues and
+  `Events.test.tsx` by [dev] in #634, sc-3590). Every
+  locale's created line must read with any refusal after it as `{{reason}}`.
 - **26 Oct 2026. An event's type** (`web:eventForm.type`, `typePlaceholder`, `typeMissing`,
   `web:eventTypes.*`, `messages:validation.event_type_required`, sc-3588 via sc-13205). The
   field is "Type", its prompt "Choose what kind of event", and the refusal, on screen and from
@@ -128,11 +194,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   not take a seat". They wait on [dev2]. es, fr and pt write `ownerNoSuspend` and
   `members.suspend_owner` as one sentence, as a limit checked twice.
 - **24 Oct 2026. The claim that lapsed (sc-9151, sc-9219, `emails:ownerClaim.lapsed.*`).**
-  `{claimant}` can be a bare address, so it is never a possessive: the subject is "{claimant}
-  did not become the owner of {organisation}. The claim lapsed", as "is now the owner". Each
+  The subject leads with the outcome, "Claim lapsed: {organisation}", as sc-14100: the long
+  sentence ran past one row of a 360dp inbox at 473px (QA, 26 Oct). The heading still names
+  the claimant, "{claimant} did not become the owner of {organisation}. The claim lapsed", as
+  "is now the owner"; `{claimant}` can be a bare address, so it is never a possessive. Each
   reason ends ", so ownership did not pass.", as the web `recordRemoved`; the role is "an
-  Administrator", and the date "Lapsed on {deadline}.", as "Withdrawn on". `OwnerClaimTest` pins
-  the old English, so the English reword waits on [dev]; es, fr and pt already say the new one.
+  Administrator", and the date "Lapsed on {deadline}.", as "Withdrawn on".
 - **24 Oct 2026. The rest of a role's holders (sc-9068, `rolesScreen.moreHolders_*`, web
   and app).** "and {{count}} more", kept: it closes the list of five names it follows, and the
   button reveals them in place, so "Show" would only lengthen it. The count is never below 1.
@@ -513,3 +580,14 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **17 Oct 2026. "Choose the country code, then type the number any way you like."**
   (`verifyPhone.numberHelp`). Settled as written by PM on sc-945; it is true for every way the
   code can start, and es/pt already read naturally from it.
+- **27 Oct 2026. Delivery states and reasons for a message to guests** (sc-3942, settled on
+  pm's #15426). The field is **Message**, not "Body". Over a limit, the house sentence with the
+  limit as a slot: "Shorten the subject to {{count}} characters or fewer." and "Shorten the
+  message to {{count}} characters or fewer."; the slot is formatted with `Intl` ("10,000"),
+  never written in. An empty choice reads "Choose at least one guest.", the picker's own verb.
+  A spam complaint is the state **Reported as spam**, beside Sent, Delivered, Bounced and Not
+  sent; never "Complained", and never a reason under Bounced. A later send skipped for it
+  (`complained`) reads "Reported an earlier email as spam", reusing the state's verb so the
+  host connects the two. Won over "… from this organisation …", which every reason the host
+  sees already implies and which overruns a phone row. Other skip reasons read as short
+  phrases in the same row: "No email address", "Address is bouncing".

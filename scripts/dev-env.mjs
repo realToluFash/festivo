@@ -4,7 +4,13 @@ import { spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { renderQaEnv, stackConfig } from './qa-env.mjs';
+import {
+  composeServices,
+  renderQaEnv,
+  servicesAfterMigrations,
+  servicesToWait,
+  stackConfig,
+} from './qa-env.mjs';
 
 // Developer 1 is the main checkout on the development ports. QA holds +10000 to +30000.
 // Only five whole steps fit under 65536, so the rest take half steps: no two development
@@ -122,6 +128,19 @@ function setup(config) {
   run('docker', [...console_, 'lexik:jwt:generate-keypair', '--skip-if-exists'], root);
   run('docker', [...console_, 'doctrine:database:create', '--if-not-exists'], root);
   run('docker', [...console_, 'doctrine:migrations:migrate', '-n', '--allow-no-migration'], root);
+  run(
+    'docker',
+    // Recreated, so a health check failed while waiting for the schema does not end --wait at once.
+    [
+      'compose',
+      'up',
+      '-d',
+      '--wait',
+      '--force-recreate',
+      ...servicesAfterMigrations(composeServices(root)),
+    ],
+    root,
+  );
   run('npm', ['run', 'test:db'], root);
 
   status(config);
@@ -129,14 +148,12 @@ function setup(config) {
 
 export function startStack(root, env = {}) {
   run('docker', ['compose', 'up', '-d', '--build'], root, env);
-  // Waits on the lasting services only: --wait fails when a one-shot init container exits 0.
-  const services = JSON.parse(
-    capture('docker', ['compose', 'config', '--format', 'json'], root) ?? '{}',
-  ).services;
-  const lasting = Object.entries(services ?? {})
-    .filter(([, service]) => service.restart !== 'no')
-    .map(([name]) => name);
-  run('docker', ['compose', 'up', '-d', '--wait', '--no-recreate', ...lasting], root, env);
+  run(
+    'docker',
+    ['compose', 'up', '-d', '--wait', '--no-recreate', ...servicesToWait(composeServices(root))],
+    root,
+    env,
+  );
 }
 
 function env(config) {

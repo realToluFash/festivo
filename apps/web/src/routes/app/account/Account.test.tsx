@@ -142,7 +142,7 @@ describe("the account's time zone", () => {
     const sent = answering({
       'PUT /api/auth/timezone': () => json({ timezone: 'Europe/London' }),
       'GET /api/auth/me': () => me({ timezone: 'Europe/London' }),
-      'GET /api/orgs': () => json({ organisations: [] }),
+      'GET /api/orgs': () => json({ organisations: [MEMBERSHIP] }),
     });
     open();
 
@@ -343,7 +343,7 @@ describe('the time zone list after a language change', () => {
   const SAVING_KOLKATA = {
     'PUT /api/auth/timezone': () => json({ timezone: 'Asia/Kolkata' }),
     'GET /api/auth/me': () => me({ timezone: 'Asia/Kolkata' }),
-    'GET /api/orgs': () => json({ organisations: [] }),
+    'GET /api/orgs': () => json({ organisations: [MEMBERSHIP] }),
   };
 
   async function saveKolkata(): Promise<void> {

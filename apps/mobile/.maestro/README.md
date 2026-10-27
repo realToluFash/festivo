@@ -21,9 +21,10 @@ Maestro needs a Java runtime. `java -version` failing means
 ## Shared flows
 
 The steps every QA pass repeats. Each finds its controls by `testID`, so it runs in any
-language, and opens its screen with `openLink`, so it runs alone on a signed-in phone
-(`qa-env.mjs maestro <name>`) or as a step inside another flow (`- runFlow: <name>.yaml`)
-without relaunching Expo Go or signing in. Each ends with one screenshot.
+language, and starts with `return-home.yaml`, which closes an open sheet and taps Home, so
+it runs alone on a signed-in phone (`qa-env.mjs maestro <name>`) or as a step after any other
+(`- runFlow: <name>.yaml`) without relaunching Expo Go or signing in. Each ends with one
+screenshot. `shared-flows-chained-*` run them one after another, as a batch would.
 
 | Flow                       | Leaves the app on                | Screenshot                   |
 | -------------------------- | -------------------------------- | ---------------------------- |
@@ -31,6 +32,14 @@ without relaunching Expo Go or signing in. Each ends with one screenshot.
 | `open-settings`            | Settings                         | `mobile-settings`            |
 | `open-switcher`            | Your organisations               | `mobile-switcher`            |
 | `open-create-organisation` | the Create an organisation sheet | `mobile-create-organisation` |
+| `return-home`              | Home                             | none                         |
+
+`sign-in-screen-english` picks English on the sign-in screen, for a phone a run in another
+language left signed out: `sign-in`'s first wait is on the English 'Email'.
+
+Two flows tap one control by `testID`, passed as `ID`: `scroll-tap` scrolls to it from above
+or below, for a step inside another flow; `ownership-tap` takes a screenshot of what follows
+and turns off the retry, for a button whose request is held.
 
 A flow a tester writes is posted to `[ops]` on the story they were testing, and ops commits
 it here.
@@ -80,3 +89,6 @@ Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each co
   screen, so an `extendedWaitUntil` or `assertVisible` on a line under a phone's fold passes
   on the iPhone and times out there. Use `scrollUntilVisible`, which does not scroll when the
   line is already in view.
+- **On a tablet, a section's title is also a row in the split list** beside every settings
+  page, so a wait that ends on `{{t:settings.organisation}}` ends on the list, not the page.
+  Wait on a line only the page has, such as its intro or a field's `testID`.

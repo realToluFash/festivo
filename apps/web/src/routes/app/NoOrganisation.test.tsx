@@ -101,14 +101,70 @@ describe('the page an account in no organisation stands on (sc-13339)', () => {
     },
   );
 
-  it('keeps the account pages and their sidebar, so Dashboard leads back here', async () => {
+  it('sends the account pages back to this page, with Dashboard and the rest gone (sc-13406)', async () => {
     inNone();
     answering({ 'GET /api/invitations': () => json({ invitations: [] }) });
     app('/app/account');
 
-    for (const name of PRODUCT_LINKS) await screen.findByRole('link', { name });
-    expect(screen.queryByRole('heading', { name: 'You are not in an organisation' })).toBeNull();
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Your account' });
+    const wayBack = screen.getByRole('link', { name: 'Join or start an organisation' });
+    expect(wayBack.getAttribute('href')).toBe('/app');
+    expect(
+      wayBack.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    for (const name of PRODUCT_LINKS) expect(screen.queryByRole('link', { name })).toBeNull();
+    expect(screen.getByLabelText('Language')).toBeDefined();
+
+    fireEvent.click(wayBack);
+
+    await screen.findByRole('heading', { level: 1, name: 'You are not in an organisation' });
   });
+
+  it('keeps the same header and way back on the security page (sc-13406)', async () => {
+    inNone();
+    answering({ 'GET /api/invitations': () => json({ invitations: [] }) });
+    app('/app/account/security');
+
+    await screen.findByRole('heading', { level: 1, name: 'Your account' });
+    expect(screen.getByRole('link', { name: 'Join or start an organisation' })).toBeDefined();
+    for (const name of PRODUCT_LINKS) expect(screen.queryByRole('link', { name })).toBeNull();
+    expect(screen.getByLabelText('Language')).toBeDefined();
+  });
+
+  it.each(['/app/account', '/app/account/security'])(
+    'keeps the sidebar and the switcher at %s for an account in an organisation (sc-13406)',
+    async (path) => {
+      const ire = membership();
+      __setSessionState({
+        status: 'signedIn',
+        session: {
+          name: 'Chidi Okoro',
+          email: 'chidi@ire.events',
+          verified: true,
+          complete: true,
+          awaiting: null,
+          providers: [],
+          needsOrganisation: false,
+          hasPassword: true,
+          organisation: ire,
+          organisations: [ire],
+          organisationCountry: 'NG',
+          timezone: null,
+          waitingFor: null,
+        },
+      });
+      answering({
+        'GET /api/invitations': () => json({ invitations: [] }),
+        'GET /api/orgs': () => json({ organisations: [ire] }),
+      });
+      app(path);
+
+      await screen.findByRole('heading', { level: 1, name: 'Your account' });
+      for (const name of PRODUCT_LINKS) expect(screen.getByRole('link', { name })).toBeDefined();
+      expect(screen.getByRole('button', { name: /Organisation: Ìrè Events/ })).toBeDefined();
+      expect(screen.queryByRole('link', { name: 'Join or start an organisation' })).toBeNull();
+    },
+  );
 
   it('offers the four languages with no Automatic, and redraws in the one picked, saving it (sc-9797)', async () => {
     inNone();

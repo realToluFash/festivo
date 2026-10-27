@@ -1,7 +1,7 @@
 import type { ExpoConfig } from 'expo/config';
 
-// Not src/theme/tokens.ts: Expo loads this file with Node's require, and Node 20 cannot strip that file's TypeScript.
-import { tokens } from '../../docs/design/tokens.mjs';
+import { withFontScaleKept } from './plugins/withFontScaleKept.ts';
+import { tokens } from './src/theme/tokens.ts';
 
 /**
  * Expo configuration, as code so it can read the environment.
@@ -83,6 +83,11 @@ const config: ExpoConfig = {
     'expo-web-browser',
     'expo-apple-authentication',
     'expo-system-ui',
+    // The system's photo picker needs no library access, so nothing asks for it or for the camera.
+    [
+      'expo-image-picker',
+      { photosPermission: false, cameraPermission: false, microphonePermission: false },
+    ],
     [
       'expo-splash-screen',
       {
@@ -113,4 +118,4 @@ const config: ExpoConfig = {
   },
 };
 
-export default config;
+export default withFontScaleKept(config);

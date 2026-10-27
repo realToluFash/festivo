@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import i18next from 'i18next';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -317,6 +318,24 @@ describe('Settings > Members', () => {
 
     expect(await screen.findByText('Sent Saturday, Oct 10 · revoked Sunday, Oct 11')).toBeDefined();
     expect(sent.map((one) => one.line)).toContain('DELETE /api/orgs/org_1/invitations/inv_1');
+  });
+
+  it('says an invitation you sent in its own sentence, not with you in the inviter slot', async () => {
+    const you = i18next.t('membersScreen.you');
+    i18next.addResource('en', 'translation', 'membersScreen.you', 'SENTINEL');
+    signedIn();
+    answering(READS);
+    open();
+
+    try {
+      const yours = (await screen.findByText('amaka@ire.events')).parentElement!;
+      const bisis = screen.getByText('yusuf.b@gmail.com').parentElement!;
+      expect(within(yours).getByText('Coordinator · invited by you')).toBeDefined();
+      expect(within(yours).queryByText(/SENTINEL/)).toBeNull();
+      expect(within(bisis).getByText('Coordinator · invited by Bisi Adeyemi')).toBeDefined();
+    } finally {
+      i18next.addResource('en', 'translation', 'membersScreen.you', you);
+    }
   });
 
   it('tells how somebody got here, naming who moved them', async () => {
@@ -757,7 +776,7 @@ describe('inviting somebody', () => {
     expect(removed.hasAttribute('aria-describedby')).toBe(false);
   });
 
-  it('gives Remove from ‹organisation› its full label as title and name, cut to one line (sc-13483)', async () => {
+  it('names Remove from ‹organisation› by its whole label, shown rather than held in a title (sc-14816)', async () => {
     signedIn();
     answering({ ...READS, 'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)) });
     open();
@@ -765,7 +784,7 @@ describe('inviting somebody', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
     const remove = screen.getByRole('button', { name: 'Remove from Ìrè Events' });
 
-    expect(remove.getAttribute('title')).toBe('Remove from Ìrè Events');
+    expect(remove.hasAttribute('title')).toBe(false);
     expect(remove.querySelector('.button-label')?.textContent).toBe('Remove from Ìrè Events');
   });
 
@@ -1339,7 +1358,46 @@ describe('inviting somebody', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /^Folake Adeyemi/ }));
 
-    expect(screen.getByText(/You can't change your own role/)).toBeDefined();
+    expect(screen.getByText(/You cannot change your own role. Another owner can/)).toBeDefined();
+    expect(screen.getByRole('link', { name: /Go to General/ }).getAttribute('href')).toBe(
+      '/app/settings',
+    );
+    expect(screen.queryByRole('radio')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull();
+  });
+
+  it('tells an administrator on their own row that an owner can change it, and offers nothing', async () => {
+    signedIn(
+      membership({
+        id: 'org_1',
+        name: 'Ìrè Events',
+        role: { id: 'role_2', seededAs: 'administrator', name: null },
+        permissions: OWNER_PERMISSIONS.filter((one) => !one.startsWith('billing')),
+      }),
+    );
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () =>
+        json({
+          ...LIST,
+          members: [
+            member({ self: false }),
+            member({
+              id: 'm_bisi',
+              user: { ...BISI, email: 'bisi@ire.events' },
+              role: { id: 'role_2', seededAs: 'administrator', name: null },
+              self: true,
+            }),
+          ],
+        }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Bisi Adeyemi/ }));
+
+    expect(screen.getByText('You cannot change your own role. An owner can.')).toBeDefined();
+    expect(screen.queryByText(/Another owner can/)).toBeNull();
+    expect(screen.queryByRole('link', { name: /Go to General/ })).toBeNull();
     expect(screen.queryByRole('radio')).toBeNull();
     expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull();
   });
@@ -1474,7 +1532,7 @@ describe('suspending and restoring a member', () => {
 
     expect(
       screen.getByText(
-        "Owners can't be suspended. To suspend Kemi Lawal, change their role first.",
+        'Owners cannot be suspended. To suspend Kemi Lawal, change their role first.',
       ),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Suspend' })).toBeNull();
@@ -1568,7 +1626,7 @@ describe('suspending and restoring a member', () => {
         ),
       ).toBeDefined();
       expect(screen.getByText(way)).toBeDefined();
-      expect(screen.getByText("Suspended members don't take a seat.")).toBeDefined();
+      expect(screen.getByText('Suspended members do not take a seat.')).toBeDefined();
       expect(screen.getByRole('button', { name: 'Open Members ›' })).toBeDefined();
       expect(screen.queryByRole('link', { name: 'Change the plan ›' })).toBeNull();
       expect(
@@ -1601,7 +1659,7 @@ describe('suspending and restoring a member', () => {
 
     expect(
       await screen.findByText(
-        "Someone else changed the access for Bisi Adeyemi while this page was open, so your change wasn't made. This is how it stands now.",
+        'Someone else changed the access for Bisi Adeyemi while this page was open, so your change was not made. This is how it stands now.',
       ),
     ).toBeDefined();
     expect(await screen.findByRole('button', { name: 'Restore access' })).toBeDefined();
@@ -1660,7 +1718,7 @@ describe('suspending and restoring a member', () => {
 
     expect(
       await screen.findByText(
-        "Someone else changed the access for Bisi Adeyemi while this page was open, so your change wasn't made. This is how it stands now.",
+        'Someone else changed the access for Bisi Adeyemi while this page was open, so your change was not made. This is how it stands now.',
       ),
     ).toBeDefined();
     expect(await screen.findByRole('button', { name: 'Restore access' })).toBeDefined();

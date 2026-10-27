@@ -1,19 +1,9 @@
-import { type EventDraft, type EventField, type VenueField } from '@soirely/domain';
+import { EVENT_FORM_FIELDS, type EventDraft, type EventFormField } from '@soirely/domain';
 
-export type Field = EventField | VenueField | 'timeZone' | 'currency';
+export type Field = EventFormField;
 export type Errors = Partial<Record<Field, string | undefined>>;
 
-/** In the order the form shows them, so the first refused is the one focus goes to. */
-export const FIELDS: readonly Field[] = [
-  'name',
-  'type',
-  'startsAt',
-  'endsAt',
-  'venueName',
-  'venueAddress',
-  'timeZone',
-  'currency',
-];
+export const FIELDS = EVENT_FORM_FIELDS;
 
 /** The input focus goes to: the empty half of a start or an end, or the end's date when it is too early. */
 export function inputFor(field: Field, draft: EventDraft): string {
@@ -36,4 +26,10 @@ export function describedBy(...ids: (string | null)[]): string | undefined {
   const joined = ids.filter((id) => id != null).join(' ');
 
   return joined === '' ? undefined : joined;
+}
+
+export const ADD_HOST_ID = 'event-host-add';
+
+export function hostInputId(row: { key: number }): string {
+  return `event-host-${row.key}`;
 }

@@ -10,12 +10,16 @@ import {
   type SettingsSection,
   settingsGroups,
 } from '../kit/appNav.ts';
-import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
+import { breakableEmail } from '../layout/textSize.ts';
+import {
+  type LayoutKind,
+  SETTINGS_LIST_WIDTH,
+  useLayout,
+  useSideListWidth,
+} from '../layout/useLayout.ts';
 import { signOutHere, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Text } from './Text.tsx';
-
-const LIST_WIDTH = 320;
 
 /** The section keeps its place in the tree on every layout, so a rotation keeps what was typed. */
 export function SettingsSplit({
@@ -38,6 +42,7 @@ export function SettingsSplit({
 export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsSection | null }) {
   const { t } = useTranslation();
   const { account, organisation } = useSignedIn();
+  const width = useSideListWidth(SETTINGS_LIST_WIDTH);
   const phone = kind === 'phone';
   const line: Record<SettingsSection, string> = {
     account: t('settings.accountLine'),
@@ -104,8 +109,14 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
   const signOut = (
     <View style={[styles.foot, !phone && styles.footTablet]}>
       {kind !== 'tabletLandscape' && account != null && (
-        <Text size={tokens.typeBody.size} muted>
-          {t('settings.signedInAs', { email: primaryEmailAddress(account) ?? '' })}
+        <Text
+          size={tokens.typeBody.size}
+          muted
+          accessibilityLabel={t('settings.signedInAs', {
+            email: primaryEmailAddress(account) ?? '',
+          })}
+        >
+          {t('settings.signedInAs', { email: breakableEmail(primaryEmailAddress(account) ?? '') })}
         </Text>
       )}
       <Pressable
@@ -136,7 +147,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
   }
 
   return (
-    <View style={styles.tabletList}>
+    <View style={[styles.tabletList, { width }]}>
       {groups.map(({ key, heading, rows }) => (
         <Fragment key={key}>
           {heading}
@@ -149,12 +160,9 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
   );
 }
 
-/** On a phone a section opens over the list, so its way back is to Settings. */
+// A tablet opens a section in place of the last, so a window shrunk to a phone may have no Settings under it.
 export function backToSettings(label: string) {
-  return {
-    label,
-    onPress: () => (router.canGoBack() ? router.back() : router.replace(DESTINATION_HREF.settings)),
-  };
+  return { label, onPress: () => router.dismissTo(DESTINATION_HREF.settings) };
 }
 
 /** What a tablet shows beside the list before a section is chosen. */
@@ -213,7 +221,8 @@ const styles = StyleSheet.create({
   foot: { gap: tokens.spaceSm, paddingTop: tokens.spaceSm, paddingHorizontal: tokens.spaceXxs },
   footTablet: { paddingTop: 0, paddingHorizontal: tokens.spaceHair },
   signOut: {
-    height: tokens.sizeHitPhonePrimary,
+    minHeight: tokens.sizeHitPhonePrimary,
+    paddingVertical: tokens.spaceXxs,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: tokens.sizeHitPhonePrimary / 2,
@@ -221,9 +230,8 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorControlBorder,
     backgroundColor: tokens.colorCard,
   },
-  signOutDense: { height: tokens.sizeHit, borderRadius: tokens.sizeHit / 2 },
+  signOutDense: { minHeight: tokens.sizeHit, borderRadius: tokens.sizeHit / 2 },
   tabletList: {
-    width: LIST_WIDTH,
     gap: tokens.spaceXs,
     paddingVertical: tokens.spaceXl,
     paddingHorizontal: tokens.spaceLg,

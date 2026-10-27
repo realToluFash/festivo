@@ -124,7 +124,7 @@ final class ObjectStoreTest extends FunctionalTestCase
     #[Test]
     public function aPublicObjectNeedsNoSignatureToRead(): void
     {
-        $signed = $this->store->signUpload(UploadPurpose::EventCover, 'image/png', 'cover.png');
+        $signed = $this->store->signUpload(UploadPurpose::OrganisationLogo, 'image/png', 'logo.png');
 
         $url = $this->store->urlFor($signed->bucket, $signed->key);
 

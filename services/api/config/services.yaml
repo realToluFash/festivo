@@ -202,8 +202,70 @@ services:
 
     App\Http\Access\Interfaces\EventDirectoryInterface: '@App\Domain\Event\EventDirectory'
 
+    App\Domain\Event\Interfaces\ActiveEventsLimitInterface: '@App\Domain\Event\UnlimitedActiveEvents'
+
+    # Epic 36's product defaults until sc-3980 stores each member's own; that story swaps this line.
+    App\Domain\Messaging\Interfaces\NotificationPreferencesInterface: '@App\Domain\Messaging\ProductDefaultPreferences'
+
 when@test:
     services:
+        # No notification type has merged yet (sc-104 is the machine); the suite schedules these.
+        App\Tests\Double\Messaging\RecordingEmailSender:
+            public: true
+            autoconfigure: true
+        App\Domain\Messaging\Channel\EmailSender: '@App\Tests\Double\Messaging\RecordingEmailSender'
+        App\Tests\Double\Messaging\Meanwhile:
+            public: true
+        test.notification.notice:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments: ['test.notice']
+        test.notification.urgent:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments: ['test.urgent', !php/enum App\Enum\NotificationPriority::Urgent]
+        test.notification.info:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments: ['test.info', !php/enum App\Enum\NotificationPriority::Info]
+        test.notification.interrupted:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                { $name: 'test.interrupted', $meanwhile: '@App\Tests\Double\Messaging\Meanwhile' }
+        test.notification.collapsing:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments: { $name: 'test.collapsing', $collapseKey: 'test.collapsing' }
+        test.notification.timely:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments: { $name: 'test.timely', $tooLateAfter: 'PT1H' }
+        test.notification.deletion:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                {
+                    $name: 'test.deletion',
+                    $eventRule: !php/enum App\Enum\NotificationEventRule::DeletionNotice,
+                }
+        test.notification.host_message:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                {
+                    $name: 'test.host_message',
+                    $eventRule: !php/enum App\Enum\NotificationEventRule::HostMessage,
+                }
+        test.notification.guest:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                {
+                    $name: 'test.guest',
+                    $audienceKind: !php/enum App\Enum\NotificationAudienceKind::Guest,
+                }
+
         # Routes that exist only in the suite, to prove the access layer before
         # any real organisation or event route uses it.
         App\Tests\Fixtures\Access\:
@@ -221,6 +283,11 @@ when@test:
         App\Tests\Double\ScriptedEventAmounts:
             public: true
             autoconfigure: true
+
+        # A test sets the plan's limit here, and sees it consulted, until billing has one (sc-581).
+        App\Tests\Double\ScriptedActiveEventsLimit:
+            public: true
+        App\Domain\Event\Interfaces\ActiveEventsLimitInterface: '@App\Tests\Double\ScriptedActiveEventsLimit'
 
         App\Tests\Double\ScriptedAddressProvider:
             public: true

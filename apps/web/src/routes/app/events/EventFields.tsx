@@ -8,6 +8,7 @@ export function Moment({
   legend,
   skipped,
   hint,
+  lockedBy,
   date,
   time,
   error,
@@ -18,7 +19,9 @@ export function Moment({
   id: string;
   legend: string;
   skipped?: string | null;
-  hint?: string;
+  hint?: string | undefined;
+  /** The id of the line that says why it can't change; the inputs are then read-only. */
+  lockedBy?: string | undefined;
   date: string;
   time: string;
   error: string | undefined;
@@ -31,7 +34,9 @@ export function Moment({
     error == null ? null : `${id}-error`,
     skipped == null ? null : `${id}-gap`,
     hint == null ? null : `${id}-hint`,
+    lockedBy ?? null,
   );
+  const off = busy || lockedBy != null;
   const className = error == null ? 'input' : 'input input-wrong';
 
   return (
@@ -45,7 +50,7 @@ export function Moment({
             className={className}
             type="date"
             value={date}
-            {...offField(busy)}
+            {...offField(off)}
             aria-invalid={error != null}
             aria-describedby={described}
             onChange={(event) => onDate(event.target.value)}
@@ -58,7 +63,7 @@ export function Moment({
             className={className}
             type="time"
             value={time}
-            {...offField(busy)}
+            {...offField(off)}
             aria-invalid={error != null}
             aria-describedby={described}
             onChange={(event) => onTime(event.target.value)}
@@ -89,6 +94,7 @@ export function Choice({
   id,
   label,
   hint,
+  lockedBy,
   value,
   error,
   busy,
@@ -97,7 +103,8 @@ export function Choice({
 }: {
   id: string;
   label: string;
-  hint?: string;
+  hint?: string | undefined;
+  lockedBy?: string | undefined;
   value: string;
   error: string | undefined;
   busy: boolean;
@@ -117,11 +124,12 @@ export function Choice({
           .filter((one) => one != null)
           .join(' ')}
         value={value}
-        disabled={busy}
+        disabled={busy || lockedBy != null}
         aria-invalid={error != null}
         aria-describedby={describedBy(
           error == null ? null : `${id}-error`,
           hint == null ? null : `${id}-hint`,
+          lockedBy ?? null,
         )}
         onChange={(event) => onChange(event.target.value)}
       >

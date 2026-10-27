@@ -9,6 +9,8 @@ use App\Address\Exception\ProviderUnavailable;
 use App\Address\Interfaces\AddressProviderInterface;
 use App\Address\Model\Address;
 use App\Address\Model\Suggestion;
+use Psl\Str;
+use Psl\Vec;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
@@ -38,7 +40,7 @@ final readonly class AddressLookup
             function (ItemInterface $item) use ($trimmed, $countryCode): array {
                 $item->expiresAfter($this->suggestTtlSeconds);
 
-                return $this->addressProvider->suggest($trimmed, $countryCode);
+                return $this->distinct($this->addressProvider->suggest($trimmed, $countryCode));
             },
         );
     }
@@ -66,6 +68,24 @@ final readonly class AddressLookup
 
                 return null;
             },
+        );
+    }
+
+    /**
+     * Two rows that read the same are one choice offered twice, so the one the provider ranked higher stays.
+     *
+     * @param list<Suggestion> $suggestions
+     *
+     * @return list<Suggestion>
+     */
+    private function distinct(array $suggestions): array
+    {
+        return Vec\unique_by(
+            $suggestions,
+            static fn (Suggestion $suggestion): array => [
+                Str\lowercase(Str\trim($suggestion->text)),
+                null === $suggestion->secondaryText ? null : Str\lowercase(Str\trim($suggestion->secondaryText)),
+            ],
         );
     }
 

@@ -54,6 +54,69 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **27 Oct 2026. Les hôtes d’un événement** (sc-15427 pour sc-6713, `web:eventHosts.*`,
+  `eventLive.needsHost*|addHosts` web et app, `messages:validation.event_host*`,
+  `messages:event.host_required|last_host`). Host est « hôte », comme `errors:event_host_required` ;
+  le mot ne prête pas à confusion, puisque les guests sont toujours « invités ». La section est
+  « Hôtes », chaque ligne « Hôte {{position}} ». "Add who is hosting" est « Indiquer les hôtes ».
+  Un hôte est un nom tel que les invités le lisent, parfois un couple sur une ligne, donc rien ne
+  s’accorde avec {{name}} : « {{name}} figure déjà parmi les hôtes », « … ne figure plus parmi
+  les hôtes », « {{name}} : position {{position}} sur {{count}} ». Retirer est « Retirer », comme
+  le glossaire. La limite est la même phrase à l’écran et dans l’API. Le dernier hôte s’explique
+  du côté des invités : « Les invités peuvent voir cet événement, il lui faut donc … ».
+- **26 Oct 2026. Supprimer un événement** (sc-14417 pour sc-3592, `eventDelete.*` web et app,
+  `messages:event.delete_name_mismatch`). Comme pour une organisation : « Supprimer
+  l’événement », la fenêtre « Supprimer {{event}} ? », la sortie « Le conserver ».
+  `mismatch` et l’API sont la même phrase. « Support » est « l’assistance Soirely », jamais
+  « le support », et la date « jusqu’au {{deadline}} ». L’annonce est « L’événement {{event}}
+  a été supprimé », le participe accordé avec « événement », jamais avec un nom de genre
+  inconnu. La liste s’annonce « Pour toute votre équipe, cela supprime : », pour que rien ne
+  s’accorde avec ce qui suit. "Details" est « informations », comme « Modifier les
+  informations ». L’apostrophe est « droite » ou « courbe ». `failed` reprend `ownership.failed`.
+- **26 Oct 2026. Le formulaire d’événement dans l’app** (sc-14367 pour sc-3595,
+  `eventsScreen.newEvent|noneCreate`, `eventForm.searchType|timesIn|pickerDone|created|leaveBody`,
+  `eventForm.venueSuggestionsBelow_*`). Le bouton qui valide un sélecteur de date ou d’heure est
+  « OK », comme sur iOS, jamais « Terminé », qui est l’état d’un événement. Le titre de la feuille
+  est « Heures dans le fuseau {{zone}} », comme `clocksSkip`. « Type » et « Date » sont les mêmes
+  mots qu’en anglais (same-as-english.json). La recherche suit la règle « Rechercher un … » au
+  singulier : « Rechercher un type d’événement ».
+- **26 Oct 2026. En cours, terminer ou annuler un événement** (sc-14189 pour sc-3585,
+  `events.happeningNow`, `eventsScreen.happeningNow`, `eventEnd.*` web et app,
+  `eventEdit.schedule*`, `messages:event.already_over|schedule_concluded`). « En cours » dans
+  la pastille. "End now" est « Terminer maintenant », comme l’état « Terminé » ; "Call
+  off" est « Annuler l’événement », avec le nom, car un « Annuler » seul se lit comme le
+  bouton qui ferme la fenêtre. La sortie est « Le maintenir » dans les deux fenêtres, le mot
+  d’un événement « maintenu » plutôt qu’« annulé ». Un refus commence par « Non terminé. ».
+  Les invités sont « les invités qui ouvrent leur lien ». `already_over` dit « il n’est
+  donc plus possible d’y mettre fin », pour ne pas répéter « terminé ». `scheduleLocked` et
+  `scheduleConcluded` sont la même phrase : le français n’a pas la contraction qui les
+  distingue.
+- **26 Oct 2026. Publier un brouillon, et les états d’un événement** (sc-13956, sc-3584,
+  `eventLive.*` web et app, `events.*`, `eventsScreen.*`, `messages:event.*`,
+  `event.plan_limit`). "Make live" est « Publier », comme la permission « Créer, publier,
+  suspendre et clore des événements ». Les états s’accordent avec « événement » :
+  « Brouillon », « Publié », « En pause », « Terminé ». « En pause » plutôt que « Suspendu »,
+  qui désigne déjà un accès suspendu. Un refus commence par « Non publié. », comme
+  « Non enregistré. » ; le collègue est « quelqu’un d’autre ». La limite du forfait est la même
+  phrase à l’écran et dans l’API, « Votre forfait {{plan}} permet d’avoir {{count}} événement
+  publié ou en pause à la fois », « d’événements » au `many` ; `one` couvre 0. « Call off » est
+  « annuler ».
+- **26 Oct 2026. Le lieu de l’événement et la liste des événements dans l’app**
+  (`web:eventForm.venue*`, `web:eventPage.venue*`, `addVenue`, `openInMaps`,
+  `messages:validation.event_venue_*`, `mobile:eventsScreen.*`, sc-3589 and sc-1593 via
+  sc-13205). Venue is « Lieu » (« Nom du lieu », « Lieu à confirmer », « Ajouter le lieu »),
+  never « salle », which is only one kind of venue. "Open in maps" is « Voir sur une carte »,
+  since no French user says « ouvrir dans Plans » for every maps app. The zone offer says « dans
+  le fuseau {{zone}} », as the DST line does. "Type" for the event's type is the French word too,
+  so `web:eventForm.type` is in `same-as-english.json`, with the app's `eventTypes.baby_shower`.
+  The app's retry button is « Réessayer », as the web's.
+- **26 Oct 2026. La couverture d’un événement** (sc-13587, `web:eventCover.*`,
+  `messages:validation.cover_*`). La section s’appelle « Image de couverture », jamais
+  « Couverture » seul, qui se lit comme une assurance ou une zone desservie ; le dialogue,
+  « Photo de couverture ». « Importer une photo », pas « Téléverser », qui sonne québécois ;
+  « Retirer la photo », comme le glossaire. Les tailles s’écrivent en Mo, « 15 Mo ». La ligne de
+  l’événement créé, « L’événement a été enregistré sans sa photo. {{reason}} », se lit avec
+  n’importe quel refus à la suite.
 - **26 Oct 2026. Le type d’événement** (`web:eventForm.type*`, `web:eventTypes.*`,
   `messages:validation.event_type_required`, sc-3588 via sc-13205). « Type », « Choisissez le
   type d’événement », et le refus, identique à l’écran et dans l’API, « Choisissez de quel type
@@ -133,9 +196,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   which also covers owners. The email facts read « Date de suspension » and « Date de
   rétablissement ». `ownerNoSuspend` and `members.suspend_owner` open on the same sentence.
 - **24 Oct 2026. The claim that lapsed** (`emails:ownerClaim.lapsed.*`, sc-9219). "Lapse" is
-  « expirer », as the web. The subject is « {claimant} ne deviendra pas propriétaire de
-  l’organisation {organisation}. La demande a expiré », as the started email: « propriétaire »
-  with no article agrees with nobody, and « la demande faite par » ran past a phone inbox. Each reason ends « la propriété n’a donc pas été
+  « expirer », as the web. The subject leads with the outcome, « Demande expirée : {organisation} »
+  (U+00A0 before the colon), as sc-14100: the whole sentence ran to 620px in a 272px inbox row
+  (QA, 26 Oct). The heading keeps « {claimant} ne deviendra pas propriétaire de l’organisation
+  {organisation}. La demande a expiré »: « propriétaire » with no article agrees with nobody. Each reason ends « la propriété n’a donc pas été
   transférée »; the date « Expirée le {deadline} », as « Retirée le ».
 - **24 Oct 2026. The rest of a role's holders** (`rolesScreen.moreHolders_*`, web and app,
   sc-9068). « et {{count}} autre », « et {{count}} autres », after the five names: « autre »
@@ -461,4 +525,6 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   or many, because the button and the refusal get no {{count}} : « Réattribuer et supprimer
   {{role}} », and « Choisissez le rôle de remplacement », the legend’s own noun. Not « Les
   passer… » or « ces personnes » after « 1 personne a ce rôle. La passer à : » (sc-13017).
+  The line under the chosen role, `rolesScreen.removeAfter`, takes the role as subject :
+  « Le rôle {{role}} s’applique dès la prochaine utilisation de Soirely », not « Elles deviennent… » (sc-14755).
 - **26 Oct 2026. The beyond-grant line names access** (`membersScreen.beyondGrant`, sc-13089). « … vous ne pouvez donc modifier ni son rôle ni son accès » : after « cette personne », « son accès » is hers; it rules out restoring on the suspension cards.

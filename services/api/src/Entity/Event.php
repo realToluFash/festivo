@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Doctrine\Interfaces\SoftDeletableInterface;
+use App\Doctrine\Traits\SoftDeletable;
 use App\Doctrine\Traits\Timestampable;
 use App\Enum\EventStatus;
 use App\Enum\EventType;
@@ -20,11 +22,17 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'events')]
 #[ORM\Index(name: 'idx_event_organisation_starts', columns: ['organisation_id', 'starts_at_utc'])]
 #[ORM\Index(name: 'idx_event_organisation_closes', columns: ['organisation_id', 'closes_at'])]
-class Event
+#[ORM\Index(name: 'idx_event_deleted', columns: ['deleted_at'])]
+class Event implements SoftDeletableInterface
 {
+    use SoftDeletable;
     use Timestampable;
 
     public const int NAME_MAXIMUM = 120;
+
+    public const int HOST_NAME_MAXIMUM = 60;
+
+    public const int HOSTS_MAXIMUM = 6;
 
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
@@ -60,6 +68,9 @@ class Event
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $endedAt = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $madeLiveAt = null;
 
     #[ORM\Column(
         type: Types::DATETIME_IMMUTABLE,
@@ -103,6 +114,10 @@ class Event
 
     #[ORM\Column(type: Types::FLOAT, nullable: true)]
     private ?float $venueLongitude = null;
+
+    /** @var list<string> the hosts' names as guests read them, in order (sc-6713) */
+    #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
+    private array $hosts = [];
 
     /** Moved by Doctrine on every update; the resource's ETag (sc-3587). */
     #[ORM\Version]
@@ -159,6 +174,12 @@ class Event
     public function getTimeZone(): string
     {
         return $this->timeZone;
+    }
+
+    /** UTC; null while it is a Draft (sc-3584). */
+    public function getMadeLiveAt(): ?DateTimeImmutable
+    {
+        return $this->madeLiveAt;
     }
 
     /** When it was ended early, before its own end (sc-3585). */
@@ -234,9 +255,35 @@ class Event
         return $this->version;
     }
 
+    /** Only EventLifecycle calls this, once /event-states.json's transition and its guards allow it. */
+    public function makeLive(DateTimeImmutable $at): void
+    {
+        $this->status = EventStatus::Live;
+        $this->madeLiveAt = $at->setTimezone(new DateTimeZone('UTC'));
+    }
+
+    /** Only EventLifecycle calls this: before the start it calls the event off, after it ends it early (sc-3585). */
+    public function end(DateTimeImmutable $at): void
+    {
+        $this->status = EventStatus::Ended;
+        $this->endedAt = $at->setTimezone(new DateTimeZone('UTC'));
+    }
+
     public function setName(string $name): void
     {
         $this->name = $name;
+    }
+
+    /** @return list<string> */
+    public function getHosts(): array
+    {
+        return $this->hosts;
+    }
+
+    /** @param list<string> $hosts */
+    public function setHosts(array $hosts): void
+    {
+        $this->hosts = $hosts;
     }
 
     public function setType(EventType $type): void

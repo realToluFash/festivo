@@ -167,6 +167,20 @@ export function draftOf(event: {
   };
 }
 
+/** A Finished event's schedule is locked, so what was typed into it before the end passed is put back (sc-3585). */
+export function scheduleKept<T extends { draft: EventDraft; timeZone: string }>(
+  typed: T,
+  saved: { draft: EventDraft; timeZone: string },
+): T {
+  const { startDate, startTime, endDate, endTime } = saved.draft;
+
+  return {
+    ...typed,
+    draft: { ...typed.draft, startDate, startTime, endDate, endTime },
+    timeZone: saved.timeZone,
+  };
+}
+
 /** The API's venue limits, counted in characters after trimming (sc-3589). */
 export const VENUE_NAME_MAXIMUM = 120;
 export const VENUE_ADDRESS_MAXIMUM = 300;
@@ -220,6 +234,38 @@ export function venueSent(draft: VenueDraft): VenueSent | null {
     address: address === '' ? null : address,
     ...(draft.addressId == null || address === '' ? {} : { addressId: draft.addressId }),
   };
+}
+
+export type EventFormField = EventField | VenueField | 'timeZone' | 'currency';
+
+/** In the order both clients' forms show them, so the first refused is the one focus goes to. */
+export const EVENT_FORM_FIELDS: readonly EventFormField[] = [
+  'name',
+  'type',
+  'startsAt',
+  'endsAt',
+  'venueName',
+  'venueAddress',
+  'timeZone',
+  'currency',
+];
+
+/** Every check the event form makes before it sends anything, the first problem per field only. */
+export function eventFormProblems(typed: {
+  draft: EventDraft;
+  venue: VenueDraft;
+  timeZone: string;
+  currency: string;
+}): { field: EventFormField; problem: EventProblem | VenueProblem | 'currencyBlank' }[] {
+  const found = [
+    ...eventProblems(typed.draft, typed.timeZone),
+    ...venueProblems(typed.venue),
+    ...(typed.currency === ''
+      ? [{ field: 'currency' as const, problem: 'currencyBlank' as const }]
+      : []),
+  ];
+
+  return EVENT_FORM_FIELDS.flatMap((field) => found.find((one) => one.field === field) ?? []);
 }
 
 export interface EventDetails {

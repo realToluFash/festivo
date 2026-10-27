@@ -41,6 +41,60 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **27 Oct 2026. Os anfitriões de um evento** (sc-15427 para sc-6713, `web:eventHosts.*`,
+  `eventLive.needsHost*|addHosts` web e app, `messages:validation.event_host*`,
+  `messages:event.host_required|last_host`). Host é "anfitrião", como `errors:event_host_required`;
+  a secção é "Anfitriões" e cada linha "Anfitrião {{position}}". "Add who is hosting" é "Indicar
+  os anfitriões". Um anfitrião é um nome tal como os convidados o leem, por vezes um casal numa
+  linha, por isso nada concorda com {{name}}: "{{name}} já consta da lista de anfitriões", "… já
+  não consta da lista de anfitriões", "{{name}}: posição {{position}} de {{count}}". Remover é
+  "Remover", como em Conta. O limite é a mesma frase no ecrã e na API. O último anfitrião
+  explica-se do lado dos convidados: "Os convidados podem ver este evento, por isso …".
+- **26 Oct 2026. Eliminar um evento** (sc-14417 para sc-3592, `eventDelete.*` web e app,
+  `messages:event.delete_name_mismatch`). Como para uma organização: "Eliminar o evento", com
+  o artigo, como "Cancelar o evento"; o diálogo "Eliminar {{event}}?" e a saída "Manter o
+  evento", como em `eventEnd`. `mismatch` e a API são a mesma frase. "Support" é "o apoio ao
+  cliente da Soirely" e restaurar é "restaurá-lo", como `ownership.deleteWindow`; a data é "até
+  {{deadline}}". O aviso é "O evento {{event}} foi eliminado", com o particípio a concordar com
+  "evento", nunca com o nome. A equipa é "toda a equipa". O apóstrofo é "reto" ou "curvo".
+  `failed` repete `ownership.failed`.
+- **26 Oct 2026. O formulário de evento na app** (sc-14367 para sc-3595,
+  `eventsScreen.newEvent|noneCreate`, `eventForm.searchType|timesIn|pickerDone|created|leaveBody`,
+  `eventForm.venueSuggestionsBelow_*`). O botão que confirma um seletor de data ou hora é "OK",
+  como no iOS, nunca "Concluído" nem "Terminado", que é o estado de um evento. O título da folha
+  é "Horas no fuso horário {{zone}}", como em `clocksSkip`. A pesquisa segue a regra "Pesquisar"
+  mais o nome no plural: "Pesquisar tipos de evento".
+- **26 Oct 2026. A decorrer, terminar ou cancelar um evento** (sc-14189 para sc-3585,
+  `events.happeningNow`, `eventsScreen.happeningNow`, `eventEnd.*` web e app,
+  `eventEdit.schedule*`, `messages:event.already_over|schedule_concluded`). "A decorrer" na
+  pílula, a forma pt-PT, nunca "Acontecendo agora". "End now" é "Terminar agora", como o estado
+  "Terminado"; "Call off" é "Cancelar o evento", com o nome, porque um "Cancelar" sozinho lê-se
+  como o botão que fecha o diálogo. A saída é "Manter o evento" nos dois diálogos. Uma recusa
+  começa "Não foi terminado.". Os convidados são "os convidados que abrirem a sua ligação". A
+  data do aviso leva "no dia {{date}}", pela regra do dia da semana. `scheduleLocked` e
+  `scheduleConcluded` são a mesma frase: o português não tem a contração que as distingue.
+- **26 Oct 2026. Publicar um rascunho e os estados de um evento** (sc-13956, sc-3584,
+  `eventLive.*` web e app, `events.*`, `eventsScreen.*`, `messages:event.*`,
+  `event.plan_limit`). "Make live" é "Publicar", como a permissão "Criar, publicar, pausar e
+  concluir eventos". Os estados concordam com "evento": "Rascunho", "Publicado", "Em pausa",
+  "Terminado". Uma recusa começa "Não foi publicado.", como "Não foi guardado."; o colega é
+  "outra pessoa". O limite do plano é a mesma frase no ecrã e na API, "O seu plano {{plan}}
+  permite ter {{count}} evento publicado ou em pausa de cada vez", com "de eventos" em `many`;
+  0 é `other` em pt-PT. "Call off" é "cancelar". "Depois de este evento ser publicado", sem
+  contrair a preposição antes do sujeito do infinitivo.
+- **26 Oct 2026. O local do evento e a lista de eventos na app** (`web:eventForm.venue*`,
+  `web:eventPage.venue*`, `addVenue`, `openInMaps`, `messages:validation.event_venue_*`,
+  `mobile:eventsScreen.*`, sc-3589 and sc-1593 via sc-13205). Venue is "Local" ("Nome do
+  local", "Local a confirmar", "Adicionar o local"), never "recinto" or "espaço"; its address is
+  "Morada", the postal word, not "Endereço". "Open in maps" is "Ver no mapa". The zone offer asks
+  "Pretende usá-lo?", impersonal and formal. The app's empty list says "na versão web da
+  Soirely", feminine, as everywhere.
+- **26 Oct 2026. A capa de um evento** (sc-13587, `web:eventCover.*`,
+  `messages:validation.cover_*`). «Capa» para a secção e «Fotografia de capa» para o diálogo;
+  «fotografia», nunca «foto», em toda a secção, e «imagem» só em «Descreva a imagem», a palavra
+  do leitor de ecrã. «Carregar» para upload, com o gerúndio de PT-PT «A carregar…»; «píxeis», não
+  «pixels». A linha do evento criado, «O evento foi guardado sem a fotografia. {{reason}}», lê-se
+  com qualquer das recusas a seguir.
 - **26 Oct 2026. O tipo de evento** (`web:eventForm.type*`, `web:eventTypes.*`,
   `messages:validation.event_type_required`, sc-3588 via sc-13205). "Tipo", "Escolha o tipo de
   evento", e a recusa, igual no ecrã e na API, "Escolha que tipo de evento é.". Birthday é
@@ -71,7 +125,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   pode usar este convite." The email's `{date}` has a full month, so "válido até {date}."
   ends it. The subtitle names its counts after a colon, "com acesso: {{active}} · convites:
   {{invited}}". History lines name what was acted on, "Convite enviado por", "Pedido aprovado
-  por", "Acesso suspenso / reposto / retirado por". Who sent an invitation in a list is "convite enviado por {{inviter}}", and the reader as sender is "si", "convite enviado por si", never "de a sua conta" (QA, 26 Oct).
+  por", "Acesso suspenso / reposto / retirado por". Who sent an invitation in a list is "convite enviado por {{inviter}}", and the reader as sender is "si", "convite enviado por si" (`membersScreen.invitedAsByYou`), never "de a sua conta" (QA, 26 Oct). The row marker `membersScreen.you` stays "a sua conta", never "si" (QA #15272).
 - **25 Oct 2026. Deleting an organisation** (`errors:owner_required`,
   `messages:organisation.owner_required`, `delete_name_mismatch`, `emails:organisationDeleted.*`,
   sc-3215). The refusals name the role, "Só alguém com a função Proprietário…", as
@@ -118,8 +172,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   suspensão" and "Data da reposição". `ownerNoSuspend` and `members.suspend_owner` say the
   same sentence.
 - **24 Oct 2026. The claim that lapsed** (`emails:ownerClaim.lapsed.*`, sc-9219). "Lapse" is
-  "caducar", as the web. The subject is "{claimant} não assumiu a propriedade de
-  {organisation}. O pedido caducou", never "o pedido de {claimant}" with a bare address. Each
+  "caducar", as the web. The subject leads with the outcome, "Pedido caducado: {organisation}", as
+  sc-14100: the sentence ran past one row of a 360dp inbox (QA, 26 Oct). The heading keeps
+  "{claimant} não assumiu a propriedade de {organisation}. O pedido caducou", never "o pedido
+  de {claimant}" with a bare address. Each
   reason ends "por isso a propriedade não foi transferida"; the date takes a label, "Data em
   que o pedido caducou: {deadline}.", as the withdrawn email.
 - **24 Oct 2026. The rest of a role's holders** (`rolesScreen.moreHolders_*`, web and app,
@@ -433,4 +489,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   or many, because the button and the refusal get no {{count}}: "Reatribuir e remover {{role}}",
   and "Escolha a função de substituição", the legend's own noun. Not "Passá-las…" or "estas
   pessoas" after "1 pessoa tem esta função" (sc-13017).
+  The line under the chosen role, `rolesScreen.removeAfter`, takes the role as subject and an
+  infinitive: "A função {{role}} aplica-se ao voltar a usar a Soirely", not "Passam a ser…" (sc-14755).
 - **26 Oct 2026. The beyond-grant line names access** (`membersScreen.beyondGrant`, sc-13089). "… por isso não pode alterar-lhe a função nem o acesso": the enclitic "lhe" points at the member, so "o acesso" is never read as the reader's.
+- **26 Oct 2026. A security email's subject opens on the feature, then its state**
+  (`emails:twoFactor.on.subject`, `twoFactor.off.subject`, sc-14100): "Autenticação de dois
+  fatores ativada" / "desativada", a pair that differs only in its last word. "A autenticação
+  de dois fatores foi desativada" ran past one line of a 360dp inbox row.

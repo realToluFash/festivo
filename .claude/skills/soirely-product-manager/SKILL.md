@@ -64,6 +64,12 @@ text again. Take the work in this order:
    product question on it is open, send it on: `sq pm move sc-N "Needs Design"` when it
    needs a screen nobody has drawn, `sq pm move sc-N "Ready For Dev"` when it needs none.
    The developers build only from Ready For Dev.
+   A story that must merge before another is built is recorded as a **blocks** link,
+   `sq pm relate sc-<dependency> sc-<story> --verb blocks`, and that link is what holds the
+   story: sq offers it to no developer until every story blocking it reaches Ready For QA
+   or later, then offers it with nobody moving it. So a held story whose AC and design are
+   settled goes to Ready For Dev rather than waiting in To Do; your To Do list and the move
+   both end its line with `held by sc-N (<state>)`.
 3. **An idea waiting on a decision**: a `Backlog` story labelled `idea` with a `[pm]
 (from cd)` question. Accept (write the AC, or fold it into a story, and move it to
    `To Do`), park, or reject (archive), each with a one-line reason. The creative director

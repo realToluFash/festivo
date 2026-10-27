@@ -177,6 +177,9 @@ def comment(c, a):
     if to and story.get("archived"):
         raise Refused(f"sc-{story['id']} is archived, so a comment there wakes nobody: ask on "
                       "the story that replaced it, or an open one")
+    files = a.files or []
+    if files:
+        c.shortcut.upload(story["id"], files)
     posted = post(c, story, to, a.text, parent)
     if a.reply_to:
         store.mark_handled(c.db, c.role, [a.reply_to])
@@ -184,9 +187,16 @@ def comment(c, a):
     if to and story["done"]:
         woken = ", ".join(sorted({R.developer_of(story["labels"]) if t == "dev"
                                   else R.FORMER.get(t, t) for t in to}))
-        return (f"posted #{posted['id']} on sc-{story['id']}, which is Done: it wakes "
-                f"{woken}. New work goes on an open story or a new one")
-    return f"posted #{posted['id']} on sc-{story['id']}"
+        return (f"posted #{posted['id']} on sc-{story['id']}{with_files(files)}, which is Done: "
+                f"it wakes {woken}. New work goes on an open story or a new one")
+    return (f"posted #{posted['id']} on sc-{story['id']}"
+            f"{with_files(files)}")
+
+
+def with_files(files):
+    if not files:
+        return ""
+    return f" with {len(files)} file{'' if len(files) == 1 else 's'}"
 
 
 def note(c, a):
@@ -245,12 +255,32 @@ def ops_only(c, story):
                       f"sc-{story['id']} is not")
 
 
+def linguists_own(c, story, state):
+    if c.role in R.DEVS and W.linguists(story) \
+            and c.state_id(state)[1] in ("In Review", "Ready For QA"):
+        raise Refused(f"sc-{story['id']} is a translation ticket, the linguist's to move. A "
+                      "pull request on it goes to the lead and is merged with the ticket left "
+                      "where it stands")
+
+
+def holding_now(c, story):
+    """The blockers holding the story, each as Shortcut has it now."""
+    if story["state"] not in W.HOLDABLE:
+        return []
+    return W.holding(story, {b: c.story(b) for b in W.blockers(story)})
+
+
 def move(c, a):
     guard(c, "move")
     story = c.story(a.story)
     ops_only(c, story)
+    linguists_own(c, story, a.state)
     state = set_state(c, story, a.state, check=c.role != "pm")
-    c.refresh(story["id"])
+    moved = c.refresh(story["id"])
+    holders = holding_now(c, moved) if state == "Ready For Dev" else []
+    if holders:
+        return (f"sc-{story['id']} is now {state}, {W.held_by(holders)}: no developer is "
+                "offered it until they merge")
     return f"sc-{story['id']} is now {state}"
 
 
@@ -323,6 +353,10 @@ def claim(c, a):
             raise Refused(f"sc-{story['id']} is in epic {held['name']}, which is "
                           f"{held.get('state_name') or held.get('state')}: its stories wait "
                           "until the owner moves it to In Progress")
+        holders = holding_now(c, story)
+        if holders:
+            raise Refused(f"sc-{story['id']} is {W.held_by(holders)}: it is offered once "
+                          "they merge, at Ready For QA or later. Nothing claimed: pick another")
         holder = store.take_story(c.db, story, c.role)
         if holder != c.role:
             raise Refused(f"{holder} claimed sc-{story['id']} first: pick another")
@@ -395,7 +429,7 @@ def report(c, a):
                remove={"qa failed", "needs qa"} if passed else {"qa passed"})
     c.refresh(story["id"])
     return (f"reported #{posted['id']} on sc-{story['id']}"
-            f"{f' with {len(a.files)} files' if a.files else ''}; "
+            f"{with_files(a.files)}; "
             f"it is now {'Passsed QA' if passed else 'Failed QA'}")
 
 
@@ -586,6 +620,7 @@ def relate(c, a):
         return f"already linked: sc-{subject} {a.verb} sc-{other}"
     c.shortcut.relate(subject, other, a.verb)
     c.refresh(subject)
+    c.refresh(other)
     return f"sc-{subject} {a.verb} sc-{other}"
 
 
@@ -651,7 +686,7 @@ def review(c, a):
     # Only a story in review moves: a linguist's ticket, say, keeps its own state.
     if story and story["state"] in W.REVIEWED and not W.side_pr(story, pr):
         set_state(c, story, "Passed Code Review" if a.verdict == "pass" else "Failed Code Review")
-    # A Done story stays Done: QA has nothing to take, and a push alone wakes the lead.
+    # A Done story, or a linguist's ticket, keeps its state: a push alone wakes the lead.
     done = story and W.finished(story)
     if story and a.verdict == "pass":
         # A developer's change on a linguist's ticket is not the ticket ready for QA.
@@ -662,7 +697,7 @@ def review(c, a):
         post(c, story, [R.developer_of(story["labels"])],
              f"Review of PR #{a.pr} at {head[:7]}: {blocking} blocking. {url}\n"
              + ("Answer each finding in its thread, fix and push; the lead is woken by the push."
-                if done else
+                if done or W.side_pr(story, pr) else
                 "Answer each finding in its thread, fix, push, and hand it back to In Review."))
     stale = resync(c)
     if story:
@@ -762,7 +797,7 @@ ASK_PARTS = ("Machine", "Rule", "For", "Without it")
 def this_machine():
     from . import machine
     try:
-        return machine.load().get("machine") or socket.gethostname()
+        return machine.machine_name(machine.load())
     except machine.ConfigError:
         return socket.gethostname()
 
@@ -913,6 +948,7 @@ def pr_edit(c, a):
 def to_qa(c, a):
     guard(c, "to-qa")
     story = c.story(a.story)
+    linguists_own(c, story, "Ready For QA")
     merged = [pr for pr in store.prs_for_story(c.db, story["id"]) if pr["state"] == "merged"]
     if not merged:
         raise Refused(f"sc-{story['id']} has no merged pull request")

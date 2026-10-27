@@ -62,12 +62,36 @@ def sync_shortcut(db, shortcut, now, full=False):
     with ThreadPoolExecutor(max_workers=8) as pool:
         for raw in pool.map(shortcut.story, stale):
             store.put_story(db, slim(raw, states, epics))
-    fetched = len(stale)
+    fetched = len(stale) + sync_blockers(db, shortcut, states, epics, full)
     if full:
         store.set_meta(db, "full_at", now)
     if ready:
         store.set_meta(db, "ready_at", now)
     return fetched
+
+
+def sync_blockers(db, shortcut, states, epics, full=False):
+    """The stories that block one not yet claimed, since a blocker the searches miss (Done
+    long ago, or in a state no queue reads) still decides whether the story is held. Search
+    leaves archived stories out, so a full sync fetches each blocker still holding again, to
+    see it archived. One Shortcut does not have is not asked for again."""
+    missing = set(store.get_meta(db, "missing_stories") or [])
+    wanted = set()
+    for story in store.stories(db):
+        if story["done"] or story["state"] not in work.HOLDABLE:
+            continue
+        for blocker_id in work.blockers(story):
+            known = store.story(db, blocker_id)
+            if blocker_id not in missing and (not known or full and not work.merged(known)):
+                wanted.add(blocker_id)
+    for blocker_id in sorted(wanted):
+        try:
+            store.put_story(db, slim(shortcut.story(blocker_id), states, epics))
+        except ShortcutError as error:
+            if " 404 " in str(error):
+                missing.add(blocker_id)
+    store.set_meta(db, "missing_stories", sorted(missing))
+    return len(wanted)
 
 
 def refresh_story(db, shortcut, story_id, now=None):

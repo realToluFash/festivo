@@ -260,7 +260,12 @@ describe('the pages Soirely has, signed in', () => {
     timeZone: 'Africa/Lagos',
     dayCount: 2,
     currency: 'NGN',
+    cover: null,
     venue: null,
+    hosts: ['Funmi Adeyemi'],
+    madeLiveAt: null,
+    phase: 'draft',
+    concludedAt: null,
     createdAt: '2026-10-21T09:00:00+00:00',
   };
 

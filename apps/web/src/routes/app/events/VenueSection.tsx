@@ -1,6 +1,5 @@
-import { type AddressSuggestion } from '@soirely/api-client';
-import { type VenueDraft } from '@soirely/domain';
-import { useEffect, useRef, useState } from 'react';
+import { NOTHING_SEEN, type VenueDraft, addressLookup } from '@soirely/domain';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
@@ -8,8 +7,6 @@ import { useComboboxKeys } from '../../../comboboxKeys.ts';
 import { offField } from '../../../offField.ts';
 import { FieldError } from './EventFields.tsx';
 import { type Errors, describedBy } from './eventFieldOrder.ts';
-
-const ASK_AFTER_MS = 250;
 
 /** The form's Venue section (sc-3589): a name, and an address picked from the lookup's suggestions or typed. */
 export function VenueSection({
@@ -25,91 +22,48 @@ export function VenueSection({
   busy: boolean;
   timeZone: string;
   onVenue: (change: Partial<VenueDraft>) => void;
-  onUseZone: (zone: string) => void;
+  /** Left out where the zone can't change, and then nothing is offered. */
+  onUseZone?: (zone: string) => void;
 }) {
   const { t } = useTranslation();
-  const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
-  const [lookupDown, setLookupDown] = useState(false);
-  const [offered, setOffered] = useState<{ zone: string; keep: string } | null>(null);
-  const [announced, setAnnounced] = useState('');
-  const asked = useRef(0);
-  const timer = useRef<number | undefined>(undefined);
+  const [seen, setSeen] = useState(NOTHING_SEEN);
+  const [zoneSet, setZoneSet] = useState<string | null>(null);
+  const [lookup] = useState(() =>
+    addressLookup({
+      suggest: (query) => api.addressSuggestions(query),
+      resolve: (id) => api.address(id),
+      onVenue,
+      onSeen: setSeen,
+    }),
+  );
 
-  useEffect(() => () => window.clearTimeout(timer.current), []);
+  useEffect(() => () => lookup.stop(), [lookup]);
 
+  const { suggestions, down: lookupDown } = seen;
   const open = suggestions.length > 0;
   const { active, setActive, onKeyDown } = useComboboxKeys({
     count: suggestions.length,
     onPick: (index) => {
       const chosen = suggestions[index];
-      if (chosen != null) void pick(chosen);
+      if (chosen != null) void lookup.pick(chosen, timeZone);
     },
-    onEscape: close,
+    onEscape: () => lookup.dismiss(),
   });
-  const offer = offered != null && offered.zone !== timeZone ? offered : null;
-
-  function close(): void {
-    setSuggestions([]);
-    setActive(-1);
-  }
+  const offer =
+    seen.offered != null && seen.offered.zone !== timeZone && onUseZone != null
+      ? seen.offered
+      : null;
+  const announced =
+    zoneSet != null
+      ? t('eventForm.venueZoneSet', { zone: zoneSet })
+      : open
+        ? t('eventForm.venueSuggestionsFound', { count: suggestions.length })
+        : '';
 
   function type(address: string): void {
-    const query = address.trim();
-    const ask = ++asked.current;
-
-    onVenue({ address, addressId: null });
-    setOffered(null);
-    window.clearTimeout(timer.current);
-
-    if (query.length < 3) {
-      close();
-      return;
-    }
-
-    timer.current = window.setTimeout(() => {
-      api.addressSuggestions(query).then(
-        (found) => {
-          if (ask !== asked.current) return;
-          setLookupDown(false);
-          setSuggestions(found);
-          setActive(-1);
-          setAnnounced(
-            found.length === 0 ? '' : t('eventForm.venueSuggestionsFound', { count: found.length }),
-          );
-        },
-        () => {
-          if (ask !== asked.current) return;
-          setLookupDown(true);
-          close();
-        },
-      );
-    }, ASK_AFTER_MS);
-  }
-
-  async function pick(suggestion: AddressSuggestion): Promise<void> {
-    const ask = ++asked.current;
-    const zoneBefore = timeZone;
-
-    close();
-    setAnnounced('');
-    onVenue({
-      address:
-        suggestion.secondaryText == null
-          ? suggestion.text
-          : `${suggestion.text}, ${suggestion.secondaryText}`,
-      addressId: suggestion.id,
-    });
-
-    try {
-      const address = await api.address(suggestion.id);
-
-      if (ask !== asked.current) return;
-      onVenue({ address: address.formatted, addressId: suggestion.id });
-      if (address.timeZone != null && address.timeZone !== zoneBefore)
-        setOffered({ zone: address.timeZone, keep: zoneBefore });
-    } catch {
-      // The suggestion's own line stays, and the API saves it as typed if it cannot resolve it either.
-    }
+    setActive(-1);
+    setZoneSet(null);
+    lookup.type(address);
   }
 
   return (
@@ -158,7 +112,7 @@ export function VenueSection({
           )}
           onChange={(event) => type(event.target.value)}
           onKeyDown={onKeyDown}
-          onBlur={close}
+          onBlur={() => lookup.dismiss()}
         />
         <ul
           className="tz-list venue-suggestions"
@@ -175,9 +129,9 @@ export function VenueSection({
               role="option"
               aria-selected={index === active}
               onMouseDown={(event) => event.preventDefault()}
-              onClick={() => void pick(suggestion)}
+              onClick={() => void lookup.pick(suggestion, timeZone)}
               onKeyDown={(event) => {
-                if (event.key === 'Enter') void pick(suggestion);
+                if (event.key === 'Enter') void lookup.pick(suggestion, timeZone);
               }}
             >
               <span>{suggestion.text}</span>
@@ -213,10 +167,10 @@ export function VenueSection({
                   className="button button-primary"
                   disabled={busy}
                   onClick={() => {
-                    onUseZone(offer.zone);
-                    setOffered(null);
+                    onUseZone?.(offer.zone);
+                    lookup.answered();
                     document.getElementById('event-venue-address')?.focus();
-                    setAnnounced(t('eventForm.venueZoneSet', { zone: offer.zone }));
+                    setZoneSet(offer.zone);
                   }}
                 >
                   {t('eventForm.venueZoneUse', { zone: offer.zone })}
@@ -226,7 +180,7 @@ export function VenueSection({
                   className="button"
                   disabled={busy}
                   onClick={() => {
-                    setOffered(null);
+                    lookup.answered();
                     document.getElementById('event-venue-address')?.focus();
                   }}
                 >

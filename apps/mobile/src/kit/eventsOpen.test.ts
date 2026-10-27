@@ -15,6 +15,11 @@ const gala: OrganisationEvent = {
   timeZone: 'Europe/London',
   dayCount: 1,
   currency: 'GBP',
+  cover: null,
+  hosts: ['Funmi Adeyemi'],
+  madeLiveAt: null,
+  phase: 'draft',
+  concludedAt: null,
   createdAt: '2026-10-01T09:00:00Z',
 };
 

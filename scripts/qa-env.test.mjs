@@ -2,6 +2,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   symlinkSync,
@@ -16,12 +17,20 @@ import {
   allowCleartext,
   batchCheck,
   batchFlow,
+  batchRuns,
+  afterRun,
+  batchSummary,
   checkId,
   codeStep,
+  databaseCommands,
+  dependencySteps,
   composeBatch,
   localise,
   parseBatch,
+  REBUILD,
   rerunHints,
+  runAsync,
+  runBudgetMs,
   STEP_MS,
   totp,
   androidFlows,
@@ -34,17 +43,29 @@ import {
   emulatorAbi,
   emulatorFor,
   expoGoApk,
+  expoGoRunning,
   expoSdkMajor,
   forAndroid,
   linkIntent,
+  MAX_RESUMES,
+  resumeBatch,
   maestroTarget,
   parseTarget,
+  passwordAutoFillFiles,
+  passwordAutoFillOff,
   playImage,
   QA_OVERRIDES,
   QA_PORTS,
   qaConfig,
+  APP_SERVICES,
+  launchVideo,
+  iosBundle,
   releaseApk,
-  staleApks,
+  releaseApp,
+  releasePlatform,
+  simulatorArch,
+  staleBuilds,
+  xcodeWorkspace,
   renderQaEnv,
   reversedPorts,
   simulatorFor,
@@ -267,7 +288,7 @@ describe('a release build', () => {
   it('leaves only the APK of the commit just built', () => {
     const apk = releaseApk('/qa', 'c8646738ce1413ea1e718dce85ff4973f0f9b22c');
     expect(
-      staleApks(
+      staleBuilds(
         [
           'soirely-c8646738ce14.apk',
           'soirely-0123456789ab.apk',
@@ -277,6 +298,69 @@ describe('a release build', () => {
         apk,
       ),
     ).toEqual(['soirely-0123456789ab.apk']);
+  });
+
+  it('names the launch video by platform, so both launches of a commit are kept', () => {
+    const sha = 'c8646738ce1413ea1e718dce85ff4973f0f9b22c';
+    expect(launchVideo('/qa', sha, 'ios')).toBe('/qa/.qa/release/launch-c8646738ce14.ios.mp4');
+    expect(launchVideo('/qa', sha, 'android')).not.toBe(launchVideo('/qa', sha, 'ios'));
+  });
+
+  it('keeps the app beside the APK, and replaces only an older app', () => {
+    const app = releaseApp('/qa', 'c8646738ce1413ea1e718dce85ff4973f0f9b22c');
+    expect(app).toBe('/qa/.qa/release/soirely-c8646738ce14.app');
+    expect(
+      staleBuilds(
+        ['soirely-c8646738ce14.app', 'soirely-0123456789ab.app', 'soirely-0123456789ab.apk'],
+        app,
+      ),
+    ).toEqual(['soirely-0123456789ab.app']);
+  });
+
+  it('is for the simulator on a Mac, unless --android asks for the emulator', () => {
+    expect(releasePlatform([], 'darwin')).toBe('ios');
+    expect(releasePlatform(['--ipad', '--offline'], 'darwin')).toBe('ios');
+    expect(releasePlatform(['--android'], 'darwin')).toBe('android');
+    expect(releasePlatform(['--ipad'], 'linux')).toBe('android');
+  });
+
+  it("builds for the Mac's own simulator architecture", () => {
+    expect(simulatorArch('arm64')).toBe('arm64');
+    expect(simulatorArch('x64')).toBe('x86_64');
+  });
+
+  it('turns password AutoFill off in every profile file the simulator reads', () => {
+    const files = passwordAutoFillFiles('/sims/ABC');
+    expect(files).toEqual([
+      '/sims/ABC/data/Library/UserConfigurationProfiles/UserSettings.plist',
+      '/sims/ABC/data/Library/UserConfigurationProfiles/EffectiveUserSettings.plist',
+      '/sims/ABC/data/Library/UserConfigurationProfiles/PublicInfo/PublicEffectiveUserSettings.plist',
+    ]);
+    expect(passwordAutoFillOff(files[0])).toEqual([
+      ['-insert', 'restrictedBool', '-dictionary', files[0]],
+      ['-insert', 'restrictedBool.allowPasswordAutoFill', '-dictionary', files[0]],
+      ['-replace', 'restrictedBool.allowPasswordAutoFill.value', '-bool', 'NO', files[0]],
+    ]);
+  });
+
+  it('installs the bundle the app config names', () => {
+    const config = readFileSync(new URL('../apps/mobile/app.config.ts', import.meta.url), 'utf8');
+    expect(iosBundle(config)).toBe('com.soirely.app');
+    expect(() => iosBundle('ios: { supportsTablet: true }')).toThrow(/bundleIdentifier/);
+  });
+
+  it('builds the one workspace prebuild made', () => {
+    expect(xcodeWorkspace(['Podfile', 'Soirely.xcodeproj', 'Soirely.xcworkspace'])).toBe(
+      'Soirely.xcworkspace',
+    );
+    expect(() => xcodeWorkspace(['Soirely.xcodeproj'])).toThrow(/found 0/);
+  });
+
+  it('takes offline as every service the app reaches, stopped', () => {
+    const compose = readFileSync(new URL('../compose.yaml', import.meta.url), 'utf8');
+    for (const service of APP_SERVICES) {
+      expect(compose).toMatch(new RegExp(`^  ${service}:$`, 'm'));
+    }
   });
 
   it('launches offline only once the emulator has no default network', () => {
@@ -650,11 +734,15 @@ describe('a check in a batch', () => {
     '',
   ].join('\n');
 
-  it('starts from a reload, names its screenshots for itself, and reports it passed', () => {
+  it('reports it started, starts from a reload, names its screenshots, and reports it passed', () => {
     expect(batchCheck(flow, 'settings', 'es', { reset: true })).toBe(
       [
         'appId: host.exp.Exponent',
         '---',
+        '- runScript:',
+        '    file: ../batch/helper.js',
+        '    env:',
+        "      ASK: '/started?check=settings.es'",
         '- runFlow: ../batch/reset.yaml',
         '- openLink: ${METRO_URL}/--/settings',
         '- takeScreenshot: settings.es-settings',
@@ -693,6 +781,14 @@ describe('a batch flow', () => {
     const flow = batchFlow({ checks: ['home'], languages: ['en'], cold: false });
     expect(flow.indexOf("ASK: '/reload'")).toBeGreaterThan(flow.indexOf('launchApp'));
     expect(flow.indexOf("ASK: '/reload'")).toBeLessThan(flow.indexOf('session.yaml'));
+  });
+
+  it('picks up after a crash in the language it stopped in', () => {
+    const rest = batchRuns(['home', 'settings'], ['en', 'es']).slice(1);
+    const flow = batchFlow({ runs: rest });
+    expect(flow).not.toContain('_checks/home.en.yaml');
+    expect(flow.match(/\/language\?to=/g)).toHaveLength(1);
+    expect(flow.indexOf('_checks/settings.en.yaml')).toBeLessThan(flow.indexOf('/language?to=es'));
   });
 
   it('relaunches and signs out first when it is one check, cold', () => {
@@ -775,6 +871,135 @@ describe('the batch command', () => {
   });
 });
 
+describe('Expo Go after a reload', () => {
+  it('is running while launchd holds a process for it', () => {
+    expect(
+      expoGoRunning(
+        '38266\t0\tUIKitApplication:dev.mobile.maestro-driver-iosUITests.xctrunner[2a09][rb-legacy]\n' +
+          '36687\t0\tUIKitApplication:host.exp.Exponent[7164][rb-legacy]',
+      ),
+    ).toBe(true);
+  });
+
+  it('is closed when its entry has no process, or there is none', () => {
+    expect(expoGoRunning('-\t-9\tUIKitApplication:host.exp.Exponent[7164][rb-legacy]')).toBe(false);
+    expect(expoGoRunning('36010\t0\tUIKitApplication:com.apple.Spotlight[7454][rb-legacy]')).toBe(
+      false,
+    );
+  });
+});
+
+describe('the list a batch ends with', () => {
+  it('names the check the driver died in, and those it never reached', () => {
+    expect(
+      batchSummary(['home', 'settings', 'roles', 'members'], {
+        passed: new Set(['home', 'members']),
+        begun: ['home', 'settings', 'members'],
+        crashed: ['settings'],
+      }),
+    ).toEqual([
+      '✓ home',
+      "✗ settings: Maestro's driver stopped answering (a driver crash)",
+      '✗ roles: not run',
+      '✓ members',
+    ]);
+  });
+});
+
+describe('what a stalled Maestro run leaves to resume', () => {
+  const runs = ['home', 'settings', 'roles', 'members'].map((check) => ({
+    check,
+    language: 'any',
+  }));
+
+  it('blames the check the driver died in and resumes past it', () => {
+    expect(
+      afterRun(runs, {
+        begun: ['home', 'settings'],
+        from: 0,
+        passed: new Set(['home']),
+        stalled: true,
+      }),
+    ).toEqual({ crashed: 'settings', rest: runs.slice(2) });
+  });
+
+  it('stops when a resumed run reaches no new check, blaming nobody', () => {
+    expect(
+      afterRun(runs.slice(2), {
+        begun: ['home', 'settings'],
+        from: 2,
+        passed: new Set(['home']),
+        stalled: true,
+      }),
+    ).toEqual({ crashed: null, rest: [] });
+  });
+
+  it('resumes nothing after a run that ended without stalling', () => {
+    expect(
+      afterRun(runs, {
+        begun: ['home', 'settings'],
+        from: 0,
+        passed: new Set(['home']),
+        stalled: false,
+      }),
+    ).toEqual({ crashed: null, rest: [] });
+  });
+
+  it('stops resuming after the cap when every resume crashes on the same check', async () => {
+    let resumes = 0;
+    await resumeBatch(runs, async (rest) => {
+      resumes++;
+      return { rest: resumes > 20 ? [] : rest };
+    });
+    expect(resumes).toBe(MAX_RESUMES);
+  });
+
+  it('stops resuming once a resume leaves nothing to run', async () => {
+    let resumes = 0;
+    await resumeBatch(runs, async () => {
+      resumes++;
+      return { rest: [] };
+    });
+    expect(resumes).toBe(1);
+  });
+});
+
+describe('the time a Maestro run is given', () => {
+  it('grows with its checks, and stops a hung single check within minutes', () => {
+    expect(runBudgetMs(1)).toBe(7 * 60_000);
+    expect(runBudgetMs(10)).toBeGreaterThan(runBudgetMs(1));
+    expect(runBudgetMs(10)).toBeLessThan(47 * 60_000);
+  });
+
+  it('stops a run that never exits once its budget is spent', async () => {
+    const started = Date.now();
+    const ok = await runAsync(process.execPath, ['-e', 'setInterval(() => {}, 1e3)'], {
+      timeoutMs: 300,
+    });
+    expect(ok).toBe(false);
+    expect(Date.now() - started).toBeLessThan(5_000);
+  });
+
+  it('stops a run that has stopped reaching the harness, long before its budget', async () => {
+    const stall = { ms: 300, heard: { at: Date.now() } };
+    const ok = await runAsync(process.execPath, ['-e', 'setInterval(() => {}, 1e3)'], {
+      timeoutMs: 60_000,
+      stall,
+    });
+    expect(ok).toBe(false);
+    expect(stall.stalled).toBe(true);
+  });
+
+  it('leaves a run alone while it keeps reaching the harness', async () => {
+    const stall = { ms: 300, heard: { at: Date.now() } };
+    const beat = setInterval(() => (stall.heard.at = Date.now()), 50);
+    const ok = await runAsync(process.execPath, ['-e', 'setTimeout(() => {}, 1_000)'], { stall });
+    clearInterval(beat);
+    expect(ok).toBe(true);
+    expect(stall.stalled).toBeUndefined();
+  });
+});
+
 describe('the flows a batch runs', () => {
   it("composes the repository's checks in all four languages", () => {
     const root = join(import.meta.dirname, '..');
@@ -786,18 +1011,9 @@ describe('the flows a batch runs', () => {
       ]),
     );
     const source = join(root, 'apps/mobile/.maestro');
-    const checks = [
-      'home',
-      'settings',
-      'account',
-      'security',
-      'organisation',
-      'members',
-      'roles',
-      'sign-in-rules',
-      'switcher',
-      'create-organisation',
-    ];
+    const checks = readdirSync(join(source, 'checks'))
+      .filter((file) => file.endsWith('.yaml'))
+      .map((file) => file.slice(0, -'.yaml'.length));
     const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
     try {
       composeBatch(source, target, {
@@ -814,11 +1030,81 @@ describe('the flows a batch runs', () => {
       expect(readFileSync(join(target, '_checks/security.es.yaml'), 'utf8')).toContain(
         "'Seguridad'",
       );
+      expect(readFileSync(join(target, '_checks/sign-in-rules.fr.yaml'), 'utf8')).toContain(
+        "'Règles de connexion|Règles de connexion de .*'",
+      );
       expect(readFileSync(join(target, 'batch/session.yaml'), 'utf8')).not.toContain('{{t:');
       expect(readFileSync(join(target, 'batch/reopen.yaml'), 'utf8')).not.toContain('{{t:');
+      const reset = readFileSync(join(target, 'batch/reset.yaml'), 'utf8');
+      expect(reset).toContain('ASK: /running');
+      expect(reset).not.toMatch(/when:\s+(not)?[vV]isible/);
+      expect(readdirSync(join(target, 'batch')).filter((f) => f.includes('save-password'))).toEqual(
+        [],
+      );
       expect(readFileSync(join(target, 'sign-in.yaml'), 'utf8')).toContain('stopApp: true');
     } finally {
       rmSync(target, { recursive: true, force: true });
     }
+  });
+});
+
+describe('the harness in .qa/bin', () => {
+  it('imports nothing from beside itself, so a copy refreshed alone runs', () => {
+    const source = readFileSync(join(import.meta.dirname, 'qa-env.mjs'), 'utf8');
+    expect([...source.matchAll(/from '\.{1,2}\/[^']+'/g)]).toEqual([]);
+  });
+
+  it('runs from a copy alone in a folder', () => {
+    const bin = mkdtempSync(join(tmpdir(), 'qa-bin-'));
+    writeFileSync(join(bin, 'qa-env.mjs'), readFileSync(join(import.meta.dirname, 'qa-env.mjs')));
+    return expect(import(join(bin, 'qa-env.mjs'))).resolves.toHaveProperty('databaseCommands');
+  });
+
+  it('removes a worker the checked-out compose.yaml no longer names', () => {
+    expect(REBUILD).toContain('--remove-orphans');
+  });
+});
+
+describe('the dependencies, from a checkout', () => {
+  it('clears the api cache after both installs', () => {
+    const steps = dependencySteps(false, false);
+    expect(steps.at(-1)).toBe('clearApiCache');
+    expect(steps.slice(0, -1).map((entry) => entry.run[0])).toEqual(['npm', 'node']);
+  });
+
+  it('still clears it when neither lockfile changed', () => {
+    expect(dependencySteps(true, true)).toEqual([
+      { step: 'Node dependencies', run: null },
+      { step: 'PHP dependencies', run: null },
+      'clearApiCache',
+    ]);
+  });
+});
+
+describe('the database, from a checkout', () => {
+  const console_ = ['console'];
+  const verbs = (commands) => commands.map((args) => args.slice(0, 2).join(' '));
+
+  it('stops the worker before the drop and recreates it after migrating', () => {
+    expect(verbs(databaseCommands(console_, ['notification-worker'], false))).toEqual([
+      'compose stop',
+      'console doctrine:database:drop',
+      'console doctrine:database:create',
+      'console doctrine:migrations:migrate',
+      'compose up',
+    ]);
+  });
+
+  it('keeps the data, and still recreates the worker after migrating', () => {
+    expect(verbs(databaseCommands(console_, ['notification-worker'], true))).toEqual([
+      'console doctrine:migrations:migrate',
+      'compose up',
+    ]);
+  });
+
+  it('touches no service on a commit with nothing waiting for migrations', () => {
+    const commands = databaseCommands(console_, [], false);
+    expect(commands.filter(([first]) => first === 'compose')).toEqual([]);
+    expect(commands).toHaveLength(3);
   });
 });

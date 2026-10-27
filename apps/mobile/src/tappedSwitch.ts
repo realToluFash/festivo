@@ -11,7 +11,7 @@ const switches = tappedSwitches();
 const SERVED_MS = 2 * SETTLED_MS;
 
 export function switchByTap(id: string): void {
-  if (switchOrganisation(id)) switches.landed(id);
+  switchOrganisation(id, () => switches.landed(id));
 }
 
 /** A tapped switch that landed while this frame's screen was in view, until its heading has taken focus. */

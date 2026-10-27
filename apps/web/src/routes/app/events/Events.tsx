@@ -1,23 +1,41 @@
 import { type OrganisationEvent } from '@soirely/api-client';
-import { eventsInOrder, formatEventDate } from '@soirely/domain';
+import { eventsInOrder, formatEventDate, serverClock, shownPhase } from '@soirely/domain';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { dateLocale } from '../../../i18n/index.ts';
+import { useServerNow } from '../../../serverNow.ts';
 import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
+import { EventCoverImage } from './EventCoverImage.tsx';
 import { typeLabel } from './eventTypes.ts';
+import { StatusPill } from './MakeLive.tsx';
+import { OutcomeLine } from './OutcomeLine.tsx';
 
 type Load =
-  { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; events: OrganisationEvent[] };
+  | { kind: 'loading' }
+  | { kind: 'failed' }
+  | { kind: 'loaded'; events: OrganisationEvent[]; at: Date };
 
 export function Events() {
   const { t } = useTranslation();
   const session = useSession();
   const organisation = session.organisation;
   const title = useRef<HTMLHeadingElement>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [deleted] = useState(() => deletedEvent(location.state));
+
+  useEffect(() => {
+    if (deletedEvent(location.state) == null) return;
+
+    void navigate(
+      { pathname: location.pathname, search: location.search, hash: location.hash },
+      { replace: true, state: null },
+    );
+  }, [location, navigate]);
 
   if (organisation == null) return null;
 
@@ -35,6 +53,7 @@ export function Events() {
           </Link>
         )}
       </div>
+      {deleted != null && <OutcomeLine words={t('eventDelete.deleted', { event: deleted })} />}
       <EventsOf
         key={organisation.id}
         organisationId={organisation.id}
@@ -61,12 +80,13 @@ function EventsOf({
   const firstRunTitle = useRef<HTMLHeadingElement>(null);
   const list = useRef<HTMLUListElement>(null);
   const land = useFocusOnceShown();
+  const now = useServerNow();
 
   useEffect(() => {
     let current = true;
 
     api.events(organisationId).then(
-      (events) => current && setLoad({ kind: 'loaded', events }),
+      (events) => current && setLoad({ kind: 'loaded', events, at: serverClock.now() }),
       () => current && setLoad({ kind: 'failed' }),
     );
 
@@ -121,11 +141,17 @@ function EventsOf({
       {eventsInOrder(load.events, dateLocale()).map((event) => (
         <li key={event.id}>
           <Link className="events-row" to={`/app/events/${encodeURIComponent(event.id)}`}>
+            <EventCoverImage
+              photo={event.cover}
+              type={event.type}
+              sizes="6rem"
+              className="events-row-cover"
+            />
             <span className="events-row-title">
               <span className="events-row-name">{event.name}</span>
               <span className="muted">{typeLabel(event.type, t)}</span>
             </span>
-            <span className="pill-quiet">{t('events.draft')}</span>
+            <StatusPill phase={shownPhase(event, load.at, now)} />
             <span className="muted events-row-date">
               {formatEventDate(event.startsAt, event.timeZone, dateLocale())}
             </span>
@@ -176,4 +202,14 @@ function FirstRun({
       )}
     </section>
   );
+}
+
+/** Set by Delete event on its way to the Events list, which says the event was deleted. */
+function deletedEvent(state: unknown): string | null {
+  const deleted =
+    typeof state === 'object' && state != null && 'deletedEvent' in state
+      ? state.deletedEvent
+      : null;
+
+  return typeof deleted === 'string' ? deleted : null;
 }

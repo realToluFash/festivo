@@ -3,6 +3,8 @@
 # session is kept, and Expo Go is not relaunched.
 appId: host.exp.Exponent
 ---
+# A check that turned the iPad and failed before turning it back leaves it turned.
+- setOrientation: PORTRAIT
 - runScript:
     file: helper.js
     env:
@@ -18,10 +20,15 @@ appId: host.exp.Exponent
     visible: '{{t:any:settings.signedInAs}}'
     timeout: 60000
     optional: true
-# The first reload after signing in can close Expo Go rather than reload it.
+# The first reload after signing in can close Expo Go rather than reload it. Asked of the
+# harness, since a notVisible condition waits out seven seconds from the last command.
+- runScript:
+    file: helper.js
+    env:
+      ASK: /running
 - runFlow:
     when:
-      notVisible: '{{t:any:settings.signedInAs}}'
+      true: ${!output.helper.running}
     file: reopen.yaml
 - extendedWaitUntil:
     visible: '{{t:any:settings.signedInAs}}'

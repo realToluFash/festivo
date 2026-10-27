@@ -495,6 +495,7 @@ WRITES = [
     ("comment", actions.comment, "post a tagged comment; --reply-to answers one",
      lambda p: (p.add_argument("story"), p.add_argument("--to"),
                 p.add_argument("--reply-to", type=int),
+                p.add_argument("--files", nargs="+", help="uploaded to the story first"),
                 p.add_argument("--untagged", action="store_true",
                                help="no addressee: a record, or with --reply-to a reply "
                                     "that only confirms; wakes nobody"), body(p))),

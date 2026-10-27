@@ -2,7 +2,9 @@
 # batch/sign-out.yaml is the batch's: it also passes when nobody is signed in.
 appId: host.exp.Exponent
 ---
-- openLink: ${METRO_URL}/--/settings
+- runFlow: return-home.yaml
+- tapOn:
+    id: 'home.openSettings'
 - scrollUntilVisible:
     element:
       id: 'settings.signOut'

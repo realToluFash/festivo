@@ -8,6 +8,7 @@ import {
   draftOf,
   type VenueDraft,
   eventChanges,
+  eventFormProblems,
   eventNameLength,
   eventProblems,
   eventsInOrder,
@@ -17,6 +18,7 @@ import {
   venueProblems,
   venueSent,
   savedWallClock,
+  scheduleKept,
   skippedTime,
 } from './events.ts';
 
@@ -77,6 +79,33 @@ describe('the new event form', () => {
         '',
       ).map(({ field }) => field),
     ).toEqual(['name', 'type', 'startsAt', 'endsAt']);
+  });
+});
+
+describe('the whole form, as both clients check it (sc-3595)', () => {
+  const venue: VenueDraft = { name: '', address: '', addressId: null };
+
+  it('passes a filled form', () => {
+    expect(
+      eventFormProblems({ draft: DRAFT, venue, timeZone: 'Africa/Lagos', currency: 'NGN' }),
+    ).toEqual([]);
+  });
+
+  it('names every refused field once, in the order the form shows them', () => {
+    expect(
+      eventFormProblems({
+        draft: { ...DRAFT, name: ' ', type: '', endDate: '2026-11-13' },
+        venue: { ...venue, address: 'a'.repeat(301) },
+        timeZone: 'Africa/Lagos',
+        currency: '',
+      }),
+    ).toEqual([
+      { field: 'name', problem: 'nameBlank' },
+      { field: 'type', problem: 'typeMissing' },
+      { field: 'endsAt', problem: 'endBeforeStart' },
+      { field: 'venueAddress', problem: 'venueAddressTooLong' },
+      { field: 'currency', problem: 'currencyBlank' },
+    ]);
   });
 });
 
@@ -144,6 +173,18 @@ describe('editing an event (sc-3587)', () => {
         venue,
       }),
     ).toEqual({ type: 'party' });
+  });
+
+  it("puts a Finished event's schedule back as saved and keeps the rest as typed (sc-3585)", () => {
+    const typed = {
+      draft: { ...draftOf(saved), name: 'Owambe at night', endTime: '23:30' },
+      timeZone: 'Europe/Paris',
+      currency: 'EUR',
+      venue,
+    };
+    const kept = scheduleKept(typed, { draft: draftOf(saved), timeZone: saved.timeZone });
+
+    expect(eventChanges(saved, kept)).toEqual({ name: 'Owambe at night', currency: 'EUR' });
   });
 });
 

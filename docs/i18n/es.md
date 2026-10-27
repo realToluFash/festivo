@@ -49,6 +49,66 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **27 Oct 2026. Los anfitriones de un evento** (sc-15427 para sc-6713, `web:eventHosts.*`,
+  `eventLive.needsHost*|addHosts` web y app, `messages:validation.event_host*`,
+  `messages:event.host_required|last_host`). Host es «anfitrión», como ya decía
+  `errors:event_host_required`; la sección es «Anfitriones» y cada fila «Anfitrión {{position}}».
+  "Add who is hosting" es «Indicar los anfitriones» («Indique los anfitriones antes de invitar a
+  nadie»). Un anfitrión es un nombre tal como lo leen los invitados, a veces una pareja en una
+  fila, así que ninguna frase concuerda con {{name}}: «{{name}} ya figura entre los
+  anfitriones», «… ya no figura entre los anfitriones», «{{name}}: posición {{position}} de
+  {{count}}». Quitar es «Quitar», como una foto o una dirección. El límite es la misma frase en
+  pantalla y en la API, «Un evento puede tener {{most}} anfitriones como máximo.». El último
+  anfitrión se explica desde el invitado: «Los invitados pueden ver este evento, así que …».
+- **26 Oct 2026. Eliminar un evento** (sc-14417 para sc-3592, `eventDelete.*` web y app,
+  `messages:event.delete_name_mismatch`). Sigue a eliminar una organización: «Eliminar el
+  evento», con el artículo, como «Cancelar el evento»; el diálogo «¿Eliminar {{event}}?» y la
+  salida «Conservarlo», porque «evento» es masculino. `mismatch` y la API son la misma frase. El
+  equipo es «todo el equipo», nunca «su equipo», que se confunde con el del evento. «Support» se
+  nombra entero, «el servicio de asistencia de Soirely», como `ownership.deleteWindow`; la
+  fecha lleva «hasta el {{deadline}}». El aviso final abre con el verbo, «Se ha eliminado
+  {{event}}.», para que nada concuerde con el nombre. Las mayúsculas cuentan: «con las
+  mayúsculas»; el apóstrofo es «recto» o «curvo». `failed` repite `ownership.failed`.
+- **26 Oct 2026. El formulario de evento en la app** (sc-14367 para sc-3595,
+  `eventsScreen.newEvent|noneCreate`, `eventForm.searchType|timesIn|pickerDone|created|leaveBody`,
+  `eventForm.venueSuggestionsBelow_*`). El botón que confirma un selector de fecha u hora es
+  «Listo», nunca «Hecho», que es un calco, ni «Finalizado», que es el estado de un evento. El
+  título de la hoja es «Horas en {{zone}}». La búsqueda sigue la regla «Buscar» y el sustantivo
+  en plural: «Buscar tipos de evento».
+- **26 Oct 2026. En curso, finalizar o cancelar un evento** (sc-14189 para sc-3585,
+  `events.happeningNow`, `eventsScreen.happeningNow`, `eventEnd.*` web y app,
+  `eventEdit.schedule*`, `messages:event.already_over|schedule_concluded`). «En curso» en la
+  píldora. "End now" es «Finalizar ahora», como el estado «Finalizado»; "Call off" es
+  «Cancelar el evento», con el sustantivo, porque un «Cancelar» solo se lee como el botón que
+  cierra el diálogo. La salida es «Mantenerlo» en los dos diálogos, nunca «Cancelar». Una
+  negativa empieza «No se ha finalizado.». Los invitados son «los invitados que abran su
+  enlace». La fecha lleva «el {{date}}», como «desde el {{date}}». `scheduleLocked` y
+  `scheduleConcluded` son la misma frase: el español no tiene la contracción que las distingue.
+- **26 Oct 2026. Publicar un borrador y los estados del evento** (sc-13956, sc-3584,
+  `eventLive.*` web y app, `events.*`, `eventsScreen.*`, `messages:event.*`,
+  `event.plan_limit`). "Make live" es «Publicar», como ya dice el permiso «Crear, publicar,
+  pausar y concluir eventos». Los estados concuerdan con «evento»: «Borrador», «Publicado»,
+  «En pausa», «Finalizado». Una negativa empieza «No se ha publicado.», como «No se ha
+  guardado.»; el colega es «otra persona». El límite del plan dice «Su plan {{plan}} permite
+  tener {{count}} evento publicado o en pausa a la vez», con «de eventos» en `many`, y es la
+  misma frase en pantalla y en la API. «Call off» es «cancelar».
+- **26 Oct 2026. El lugar del evento y la lista de eventos en la app** (`web:eventForm.venue*`,
+  `web:eventPage.venue*`, `addVenue`, `openInMaps`, `messages:validation.event_venue_*`,
+  `mobile:eventsScreen.*`, sc-3589 y sc-1593 via sc-13205). Venue es «Lugar» («Nombre del
+  lugar», «Lugar por confirmar», «Añadir el lugar»), no «recinto» ni «local», que suenan a
+  edificio o a bar. El límite de longitud dice lo mismo en pantalla y en la API, «Acorte el
+  nombre del lugar a {count} caracteres como máximo.». La oferta de zona horaria pregunta
+  «¿Quiere usar esa zona horaria?», con botones «Usar {{zone}}» / «Mantener {{zone}}». La app
+  repite las palabras de la web: «Cargando eventos…», «Borrador», «Este evento no está
+  disponible»; su botón de reintento es «Inténtelo de nuevo», como el resto de la app.
+- **26 Oct 2026. La portada de un evento** (sc-13587, `web:eventCover.*`,
+  `messages:validation.cover_*`). «Portada» para la sección y «Foto de portada» para el diálogo,
+  como en las redes que el anfitrión ya conoce; «foto» para la imagen propia, e «imagen» solo en
+  «Describa la imagen», que es lo que oye el lector de pantalla. Subir es «Subir una foto»;
+  quitar, «Quitar la foto», no «Eliminar», porque el archivo no se borra de ningún sitio del
+  usuario. Fuera de límite, «más ligera» para el tamaño en MB y «más grande» para los píxeles.
+  La línea del evento creado, «El evento se ha guardado sin su foto. {{reason}}», se lee con
+  cualquiera de las negativas detrás.
 - **26 Oct 2026. El tipo de evento** (`web:eventForm.type*`, `web:eventTypes.*`,
   `messages:validation.event_type_required`, sc-3588 via sc-13205). «Tipo», «Elija el tipo de
   evento», y el rechazo, igual en pantalla y en la API, «Elija qué tipo de evento es.». Las
@@ -120,9 +180,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   suspensión» and «Fecha de restablecimiento». The screen's `ownerNoSuspend` and
   `members.suspend_owner` open on the same sentence.
 - **24 Oct 2026. The claim that lapsed** (`emails:ownerClaim.lapsed.*`, sc-9219). "Lapse" is
-  «caducar», as the web. The subject puts the claimant as subject, «{claimant} no ha obtenido la
-  propiedad de {organisation}. La solicitud ha caducado», never «la solicitud de {claimant}»
-  with a bare address. Each reason ends «así que la propiedad no se ha transferido»; the date
+  «caducar», as the web. The subject leads with the outcome, «Solicitud caducada: {organisation}», as
+  sc-14100: the long sentence ran past one row of a 360dp inbox and lost «caducado» (QA, 26 Oct);
+  the heading still names {claimant}, «{claimant} no ha obtenido la propiedad de
+  {organisation}. La solicitud ha caducado», never «la solicitud de {claimant}» with a bare address. Each reason ends «así que la propiedad no se ha transferido»; the date
   «Caducada el {deadline}», as «Retirada el».
 - **24 Oct 2026. The rest of a role's holders** (`rolesScreen.moreHolders_*`, web and app,
   sc-9068). «y {{count}} más», after the five names it continues; nothing agrees with the
@@ -407,4 +468,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   or many, because the button and the refusal get no {{count}}: «Reasignar y eliminar {{role}}»,
   and «Elija el rol de sustitución», the same noun as the legend «Rol de sustitución». Not
   «Pasarlas…» or «estas personas» after «1 persona tiene este rol» (sc-13017).
+  The line under the chosen role, `rolesScreen.removeAfter`, takes the role as subject and an
+  infinitive: «El rol {{role}} se aplica al volver a usar Soirely», not «Pasan a ser…» (sc-14755).
 - **26 Oct 2026. The beyond-grant line names access** (`membersScreen.beyondGrant`, sc-13089). «… así que no puede cambiarle el rol ni el acceso»: the «le» points at the member, so neither noun takes «su», which would read as the reader's.
+- **26 Oct 2026. A security email's subject opens on the feature, then its state**
+  (`emails:twoFactor.on.subject`, `twoFactor.off.subject`, sc-14100): «Verificación en dos pasos
+  activada» / «desactivada», a pair that differs only in its last word. «Se ha desactivado la
+  verificación en dos pasos» ran past one line of a 360dp inbox row and hid the state.

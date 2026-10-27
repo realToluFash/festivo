@@ -18,7 +18,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { homedir } from 'node:os';
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, dirname, extname, join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
@@ -225,9 +225,50 @@ export function releaseApk(root, sha) {
   return join(root, '.qa/release', `soirely-${sha.slice(0, 12)}.apk`);
 }
 
-export function staleApks(names, apk) {
-  return names.filter((name) => /^soirely-[0-9a-f]{12}\.apk$/.test(name) && name !== basename(apk));
+export function releaseApp(root, sha) {
+  return join(root, '.qa/release', `soirely-${sha.slice(0, 12)}.app`);
 }
+
+export function launchVideo(root, sha, platform) {
+  return join(root, '.qa/release', `launch-${sha.slice(0, 12)}.${platform}.mp4`);
+}
+
+// A Mac keeps an APK and an app side by side: each build replaces only its own kind.
+export function staleBuilds(names, build) {
+  const kind = extname(build);
+  return names.filter(
+    (name) =>
+      /^soirely-[0-9a-f]{12}\.(apk|app)$/.test(name) &&
+      extname(name) === kind &&
+      name !== basename(build),
+  );
+}
+
+// On a Mac the simulator, as maestro does, unless --android asks for the emulator.
+export function releasePlatform(args, platform = process.platform) {
+  return platform === 'darwin' && !args.includes('--android') ? 'ios' : 'android';
+}
+
+export function simulatorArch(arch = process.arch) {
+  return arch === 'arm64' ? 'arm64' : 'x86_64';
+}
+
+export function iosBundle(appConfig) {
+  const id = /ios:\s*\{[^}]*bundleIdentifier:\s*'([^']+)'/.exec(appConfig)?.[1];
+  if (!id) throw new Error('no ios.bundleIdentifier in apps/mobile/app.config.ts');
+  return id;
+}
+
+export function xcodeWorkspace(names) {
+  const found = names.filter((name) => name.endsWith('.xcworkspace'));
+  if (found.length !== 1) {
+    throw new Error(`expected one .xcworkspace in ios/, found ${found.length}`);
+  }
+  return found[0];
+}
+
+// A simulator shares the Mac's network, so offline is the stack the app reaches, stopped.
+export const APP_SERVICES = ['api', 'mercure', 'storage', 'oidc'];
 
 export function defaultNetwork(dump) {
   const network = /^Active default network: (\S+)/m.exec(dump)?.[1];
@@ -339,6 +380,39 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 
 // QA runs the copy in .qa/bin, gitignored, so checking out an old commit keeps the harness.
 const INSTALLED = basename(HERE) === 'bin' && basename(dirname(HERE)) === '.qa';
+
+const AFTER_MIGRATIONS = 'soirely.after-migrations';
+
+const lasting = (service) => service.restart !== 'no';
+const afterMigrating = (service) => service.labels?.[AFTER_MIGRATIONS] === 'true';
+
+/** --wait fails when a one-shot init container exits 0, and on a service waiting for migrations. */
+export function servicesToWait(services) {
+  return Object.entries(services ?? {})
+    .filter(([, service]) => lasting(service) && !afterMigrating(service))
+    .map(([name]) => name);
+}
+
+export function servicesAfterMigrations(services) {
+  return Object.entries(services ?? {})
+    .filter(([, service]) => lasting(service) && afterMigrating(service))
+    .map(([name]) => name);
+}
+
+export function composeServices(cwd) {
+  const result = spawnSync('docker', ['compose', 'config', '--format', 'json'], {
+    cwd,
+    encoding: 'utf8',
+  });
+  if (result.status !== 0) {
+    throw new Error(`docker compose config failed: ${result.stderr}`);
+  }
+  return JSON.parse(result.stdout).services;
+}
+
+// An older commit's compose.yaml may not name the worker, and compose leaves its container
+// running, connected to the database the checkout drops.
+export const REBUILD = ['compose', 'up', '-d', '--build', '--remove-orphans'];
 
 export function testerOf(worktree) {
   const match = /^soirely-qa(\d*)$/.exec(basename(worktree));
@@ -538,49 +612,78 @@ function checkout(args) {
   const npmLock = hashOf(join(root, 'package-lock.json'));
   const composerLock = hashOf(join(root, 'services/api/composer.lock'));
 
-  step('Node dependencies');
-  if (state.npmLock === npmLock && existsSync(join(root, 'node_modules'))) {
-    console.log('  lockfile unchanged');
-  } else {
-    run('npm', ['ci', '--no-audit', '--no-fund'], { cwd: root });
-  }
-
-  step('PHP dependencies');
-  if (state.composerLock === composerLock && existsSync(join(root, 'services/api/vendor'))) {
-    console.log('  lockfile unchanged');
-  } else {
-    run('node', ['scripts/php-tool.mjs', 'composer', 'install'], { cwd: root });
+  const steps = dependencySteps(
+    state.npmLock === npmLock && existsSync(join(root, 'node_modules')),
+    state.composerLock === composerLock && existsSync(join(root, 'services/api/vendor')),
+  );
+  for (const entry of steps) {
+    if (entry === 'clearApiCache') {
+      clearApiCache(root);
+      continue;
+    }
+    step(entry.step);
+    if (entry.run) run(...entry.run, { cwd: root });
+    else console.log('  lockfile unchanged');
   }
   writeFileSync(statePath, JSON.stringify({ npmLock, composerLock, head, label }, null, 2));
 
   step('The stack, rebuilt from this commit');
-  run('docker', ['compose', 'up', '-d', '--build'], { cwd: root });
-  // Waits on the lasting services only: --wait fails when a one-shot init container exits 0.
-  const services = JSON.parse(
-    capture('docker', ['compose', 'config', '--format', 'json'], { cwd: root }) ?? '{}',
-  ).services;
-  const lasting = Object.entries(services ?? {})
-    .filter(([, service]) => service.restart !== 'no')
-    .map(([name]) => name);
-  run('docker', ['compose', 'up', '-d', '--wait', '--no-recreate', ...lasting], { cwd: root });
+  run('docker', REBUILD, { cwd: root });
+  run(
+    'docker',
+    ['compose', 'up', '-d', '--wait', '--no-recreate', ...servicesToWait(composeServices(root))],
+    { cwd: root },
+  );
 
   const console_ = ['compose', 'exec', '-T', 'api', 'php', 'bin/console'];
   run('docker', [...console_, 'lexik:jwt:generate-keypair', '--skip-if-exists'], { cwd: root });
 
   step(keepData ? 'The database, migrated' : 'The database, from nothing');
-  // From nothing: an edited unreleased migration leaves a migrated database wrong.
-  if (!keepData) {
-    run('docker', [...console_, 'doctrine:database:drop', '--if-exists', '--force'], { cwd: root });
-    run('docker', [...console_, 'doctrine:database:create'], { cwd: root });
+  const afterMigrations = servicesAfterMigrations(composeServices(root));
+  for (const args of databaseCommands(console_, afterMigrations, keepData)) {
+    run('docker', args, { cwd: root });
   }
-  run('docker', [...console_, 'doctrine:migrations:migrate', '-n', '--allow-no-migration'], {
-    cwd: root,
-  });
 
   status();
   console.log(
     '\nA bundler already running is serving the previous checkout. Restart `ios` or `android`.',
   );
+}
+
+// The api cache is cleared again once the new vendor is in: a worker restarting during the
+// install compiles a container against the old vendor, dropping what it cannot load.
+export function dependencySteps(npmUnchanged, composerUnchanged) {
+  return [
+    {
+      step: 'Node dependencies',
+      run: npmUnchanged ? null : ['npm', ['ci', '--no-audit', '--no-fund']],
+    },
+    {
+      step: 'PHP dependencies',
+      run: composerUnchanged ? null : ['node', ['scripts/php-tool.mjs', 'composer', 'install']],
+    },
+    'clearApiCache',
+  ];
+}
+
+// With no names, compose stop and up act on the whole stack, so an old commit with no
+// worker skips both.
+export function databaseCommands(console_, afterMigrations, keepData) {
+  const waiting = afterMigrations.length > 0;
+  return [
+    // From nothing: an edited unreleased migration leaves a migrated database wrong.
+    ...(keepData
+      ? []
+      : [
+          // Postgres refuses to drop a database the worker is still connected to.
+          ...(waiting ? [['compose', 'stop', ...afterMigrations]] : []),
+          [...console_, 'doctrine:database:drop', '--if-exists', '--force'],
+          [...console_, 'doctrine:database:create'],
+        ]),
+    [...console_, 'doctrine:migrations:migrate', '-n', '--allow-no-migration'],
+    // Recreated, so a health check failed while waiting for the schema does not end --wait at once.
+    ...(waiting ? [['compose', 'up', '-d', '--wait', '--force-recreate', ...afterMigrations]] : []),
+  ];
 }
 
 function status() {
@@ -620,6 +723,47 @@ function simulatorId(name) {
   return null;
 }
 
+// iOS offers to save a password after every sign-in, and on an iPad Maestro cannot see the
+// sheet to dismiss it. The restriction a device profile would set turns the offer off; the
+// simulator reads it when it boots.
+export function passwordAutoFillFiles(device) {
+  const profiles = join(device, 'data/Library/UserConfigurationProfiles');
+  return [
+    join(profiles, 'UserSettings.plist'),
+    join(profiles, 'EffectiveUserSettings.plist'),
+    join(profiles, 'PublicInfo/PublicEffectiveUserSettings.plist'),
+  ];
+}
+
+export function passwordAutoFillOff(file) {
+  return [
+    ['-insert', 'restrictedBool', '-dictionary', file],
+    ['-insert', 'restrictedBool.allowPasswordAutoFill', '-dictionary', file],
+    ['-replace', 'restrictedBool.allowPasswordAutoFill.value', '-bool', 'NO', file],
+  ];
+}
+
+const deviceFiles = (udid) =>
+  passwordAutoFillFiles(join(homedir(), 'Library/Developer/CoreSimulator/Devices', udid));
+
+const passwordAutoFillIsOff = (udid) =>
+  deviceFiles(udid).every(
+    (file) =>
+      capture('plutil', ['-extract', 'restrictedBool.allowPasswordAutoFill.value', 'raw', file]) ===
+      'false',
+  );
+
+function withoutPasswordAutoFill(udid) {
+  if (passwordAutoFillIsOff(udid)) return;
+  const files = deviceFiles(udid);
+  run('xcrun', ['simctl', 'shutdown', udid], { optional: true });
+  for (const file of files) {
+    mkdirSync(dirname(file), { recursive: true });
+    if (!existsSync(file)) run('plutil', ['-create', 'xml1', file]);
+    for (const step of passwordAutoFillOff(file)) run('plutil', step, { optional: true });
+  }
+}
+
 function ensureExpoGo(udid) {
   if (capture('xcrun', ['simctl', 'get_app_container', udid, EXPO_GO])) return true;
   const list = JSON.parse(capture('xcrun', ['simctl', 'list', 'devices', 'booted', '-j']) ?? '{}');
@@ -636,10 +780,15 @@ async function ios(args) {
   const { open, shut } = simulatorFor(args);
   const other = simulatorId(CONFIG.simulators[shut].name);
   if (other) run('xcrun', ['simctl', 'shutdown', other], { optional: true });
+  // An offline release launch stopped these; a release build owns soirely:// while installed.
+  startAppServices(root);
+  const id = iosBundle(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
   const devices = [open].map((key) => {
     const udid = simulatorId(CONFIG.simulators[key].name);
     if (!udid) throw new Error(`no ${CONFIG.simulators[key].name} simulator — run setup`);
+    withoutPasswordAutoFill(udid);
     run('xcrun', ['simctl', 'boot', udid], { optional: true });
+    run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true });
     if (!ensureExpoGo(udid)) {
       throw new Error(
         `Expo Go is on no booted simulator to copy from. Install it once with \`npx expo start --ios\` on any simulator, then rerun.`,
@@ -859,6 +1008,7 @@ async function android(args) {
   const root = qaWorktree();
   assertQaStack(root);
   const { open } = emulatorFor(args);
+  startAppServices(root);
 
   step(`The ${open}`);
   await bootEmulator(tools, CONFIG.emulators[open].name);
@@ -929,7 +1079,7 @@ function buildRelease(tools, root, apk) {
   mkdirSync(dirname(apk), { recursive: true });
   copyFileSync(join(mobile, 'android/app/build/outputs/apk/release/app-release.apk'), apk);
   rmSync(join(mobile, 'android'), { recursive: true, force: true });
-  for (const name of staleApks(readdirSync(dirname(apk)), apk)) rmSync(join(dirname(apk), name));
+  for (const name of staleBuilds(readdirSync(dirname(apk)), apk)) rmSync(join(dirname(apk), name));
 }
 
 function airplaneMode(tools, on) {
@@ -970,12 +1120,7 @@ function recordLaunch(tools) {
   });
 }
 
-async function release(args) {
-  const tools = androidTools();
-  if (!existsSync(tools.emulator)) {
-    throw new Error(`no Android emulator in ${tools.sdk}: set ANDROID_HOME`);
-  }
-  const root = qaWorktree();
+function releaseCommit(root) {
   assertQaStack(root);
   if (git(['status', '--porcelain', '--untracked-files=no'], root) !== '') {
     throw new Error(`${root} has uncommitted changes: a release build names one commit`);
@@ -986,12 +1131,27 @@ async function release(args) {
     spawnSync('git', ['merge-base', '--is-ancestor', sha, 'origin/main'], {
       cwd: root,
     }).status === 0;
+  step(`A release build of ${sha.slice(0, 12)} (${subject})`);
+  if (!onMain) console.log('  not on origin/main: this is a branch build');
+  return sha;
+}
+
+function release(args) {
+  return releasePlatform(args) === 'ios' ? releaseIos(args) : releaseAndroid(args);
+}
+
+async function releaseAndroid(args) {
+  const tools = androidTools();
+  if (!existsSync(tools.emulator)) {
+    throw new Error(`no Android emulator in ${tools.sdk}: set ANDROID_HOME`);
+  }
+  const root = qaWorktree();
+  const sha = releaseCommit(root);
   const { open } = emulatorFor(args);
   const offline = args.includes('--offline');
 
-  step(`A release build of ${sha.slice(0, 12)} (${subject})`);
-  if (!onMain) console.log('  not on origin/main: this is a branch build');
   const apk = releaseApk(root, sha);
+  startAppServices(root);
   if (existsSync(apk) && !args.includes('--rebuild')) {
     console.log(`  already built: ${apk}`);
   } else {
@@ -1020,7 +1180,7 @@ async function release(args) {
   await pause(1000);
   adbOut(tools, ['shell', 'am', 'start', '-n', `${id}/.MainActivity`]);
   await recording;
-  const video = join(root, '.qa/release', `launch-${sha.slice(0, 12)}.mp4`);
+  const video = launchVideo(root, sha, 'android');
   rmSync(video, { force: true });
   adbOut(tools, ['pull', LAUNCH_RECORDING, video]);
   adbOut(tools, ['shell', 'rm', '-f', LAUNCH_RECORDING]);
@@ -1029,6 +1189,142 @@ async function release(args) {
       ` (${emulatorSerial()}), ${offline ? 'offline: no default network, no stack' : 'online'}.` +
       `\n${existsSync(video) ? `Its first 15 seconds: ${video}` : 'The launch was not recorded.'}` +
       `\nThe next \`android\` removes it and turns airplane mode off.`,
+  );
+}
+
+// The same bundle as on Android, and Release, so the JS and fonts are inside and Metro is not asked.
+function buildIosRelease(root, app) {
+  if (capture('pod', ['--version']) === null) {
+    throw new Error('no CocoaPods on this Mac: brew install cocoapods');
+  }
+  const mobile = join(root, 'apps/mobile');
+  const env = { ...CONFIG.app, EXPO_PUBLIC_ENVIRONMENT: 'qa', CI: '1' };
+
+  const pkg = join(mobile, 'package.json');
+  const scripts = readFileSync(pkg, 'utf8');
+  try {
+    run('npx', ['expo', 'prebuild', '--platform', 'ios', '--no-install', '--clean'], {
+      cwd: mobile,
+      env,
+    });
+  } finally {
+    writeFileSync(pkg, scripts);
+  }
+  const ios = join(mobile, 'ios');
+  run('pod', ['install'], { cwd: ios, env });
+  const workspace = xcodeWorkspace(readdirSync(ios));
+  const scheme = basename(workspace, '.xcworkspace');
+  // A release build refuses http, and a QA stack serves nothing else.
+  run('plutil', [
+    '-replace',
+    'NSAppTransportSecurity',
+    '-json',
+    '{"NSAllowsArbitraryLoads":true}',
+    join(ios, scheme, 'Info.plist'),
+  ]);
+
+  const derived = join(ios, 'build');
+  run(
+    'xcodebuild',
+    [
+      '-workspace',
+      workspace,
+      '-scheme',
+      scheme,
+      '-configuration',
+      'Release',
+      '-sdk',
+      'iphonesimulator',
+      '-destination',
+      'generic/platform=iOS Simulator',
+      '-derivedDataPath',
+      derived,
+      `ARCHS=${simulatorArch()}`,
+      'CODE_SIGNING_ALLOWED=NO',
+      'build',
+    ],
+    { cwd: ios, env: { ...env, NODE_ENV: 'production' } },
+  );
+
+  mkdirSync(dirname(app), { recursive: true });
+  rmSync(app, { recursive: true, force: true });
+  cpSync(join(derived, 'Build/Products/Release-iphonesimulator', `${scheme}.app`), app, {
+    recursive: true,
+  });
+  rmSync(ios, { recursive: true, force: true });
+  for (const name of staleBuilds(readdirSync(dirname(app)), app)) {
+    rmSync(join(dirname(app), name), { recursive: true, force: true });
+  }
+}
+
+function stopAppServices(root) {
+  run('docker', ['compose', 'stop', ...APP_SERVICES], { cwd: root });
+}
+
+// Makes what a `down` removed, where `start` fails on a stack with no containers.
+function startAppServices(root) {
+  run('docker', ['compose', 'up', '-d', '--wait', '--no-recreate', ...APP_SERVICES], {
+    cwd: root,
+  });
+}
+
+function recordSimulator(udid, video) {
+  rmSync(video, { force: true });
+  const recorder = spawn('xcrun', ['simctl', 'io', udid, 'recordVideo', '--force', video], {
+    stdio: 'ignore',
+  });
+  const stopped = new Promise((done) => {
+    recorder.on('error', () => done());
+    recorder.on('exit', () => done());
+  });
+  return async () => {
+    await pause(15000);
+    recorder.kill('SIGINT');
+    await stopped;
+  };
+}
+
+async function releaseIos(args) {
+  const root = qaWorktree();
+  const sha = releaseCommit(root);
+  const { open, shut } = simulatorFor(args);
+  const offline = args.includes('--offline');
+
+  const app = releaseApp(root, sha);
+  if (existsSync(app) && !args.includes('--rebuild')) {
+    console.log(`  already built: ${app}`);
+  } else {
+    buildIosRelease(root, app);
+  }
+
+  step(`The ${open}`);
+  const other = simulatorId(CONFIG.simulators[shut].name);
+  if (other) run('xcrun', ['simctl', 'shutdown', other], { optional: true });
+  const udid = simulatorId(CONFIG.simulators[open].name);
+  if (!udid) throw new Error(`no ${CONFIG.simulators[open].name} simulator — run setup`);
+  withoutPasswordAutoFill(udid);
+  run('xcrun', ['simctl', 'boot', udid], { optional: true });
+  run('open', ['-a', 'Simulator'], { optional: true });
+  // A fresh install every time, so the launch below is the app's first, with no cache.
+  const id = iosBundle(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
+  run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true });
+  run('xcrun', ['simctl', 'install', udid, app]);
+  if (offline) stopAppServices(root);
+  else startAppServices(root);
+
+  const video = launchVideo(root, sha, 'ios');
+  const recorded = recordSimulator(udid, video);
+  await pause(1000);
+  run('xcrun', ['simctl', 'launch', udid, id]);
+  await recorded();
+  console.log(
+    `\nSoirely ${sha.slice(0, 12)}, a release build, on its first launch on the ${open}` +
+      `, ${offline ? `offline: ${APP_SERVICES.join(', ')} stopped` : 'online'}.` +
+      `\n${existsSync(video) ? `Its first 15 seconds: ${video}` : 'The launch was not recorded.'}` +
+      `\nThe next \`ios\` removes it and starts the stack again.` +
+      (offline
+        ? `\nWeb and android see the stack stopped too, until \`ios\`, \`android\` or \`release\` without --offline starts it.`
+        : ''),
   );
 }
 
@@ -1064,7 +1360,7 @@ function hierarchy(args) {
   if (!ok) process.exitCode = 1;
 }
 
-function maestro(args) {
+async function maestro(args) {
   const root = qaWorktree();
   const onAndroid = args.includes('--android');
   const [flow, ...vars] = args.filter((a) => !a.startsWith('--'));
@@ -1084,7 +1380,7 @@ function maestro(args) {
   }
   const file = join(flows, `${flow}.yaml`);
 
-  const ok = run(
+  const ok = await runAsync(
     maestroBin() ?? 'maestro',
     [
       ...maestroTarget(device, onAndroid, CONFIG.driverPort),
@@ -1094,7 +1390,7 @@ function maestro(args) {
       ...env.flatMap((e) => ['-e', e]),
       file,
     ],
-    { cwd: root, optional: true, env: onAndroid ? androidTools().env : {} },
+    { cwd: root, env: onAndroid ? androidTools().env : {}, timeoutMs: runBudgetMs(1) },
   );
   spawnSync('sh', ['-c', `find "${out}" -mindepth 2 -name '*.png' -exec cp {} "${out}/" \\;`]);
   console.log(`\nEvidence in ${out}`);
@@ -1170,27 +1466,30 @@ export function batchCheck(flow, check, language, { reset }) {
     .trimEnd();
   return [
     flow.slice(0, at + 5),
+    helperStep(`/started?check=${encodeURIComponent(id)}`, '../batch/helper.js'),
     reset ? '- runFlow: ../batch/reset.yaml\n' : '',
     `${commands}\n`,
     helperStep(`/passed?check=${encodeURIComponent(id)}`, '../batch/helper.js'),
   ].join('');
 }
 
-export function batchFlow({ checks, languages, cold }) {
+export const batchRuns = (checks, languages) =>
+  languages.flatMap((language) => checks.map((check) => ({ check, language })));
+
+export function batchFlow({ checks, languages, cold, runs = batchRuns(checks, languages) }) {
   const lines = [`appId: ${EXPO_GO}`, '---', '- launchApp:', `    appId: ${EXPO_GO}`];
   lines.push(`    stopApp: ${cold ? 'true' : 'false'}`);
   if (cold) lines.push('- runFlow: batch/sign-out.yaml');
   else lines.push(helperStep('/reload', 'batch/helper.js').trimEnd());
   lines.push('- runFlow: batch/session.yaml');
-  languages.forEach((language, index) => {
-    if (index > 0) lines.push(helperStep(`/language?to=${language}`, 'batch/helper.js').trimEnd());
-    for (const check of checks) {
-      lines.push(
-        '- runFlow:',
-        `    file: _checks/${checkId(check, language)}.yaml`,
-        '    optional: true',
-      );
-    }
+  runs.forEach(({ check, language }, index) => {
+    if (index > 0 && language !== runs[index - 1].language)
+      lines.push(helperStep(`/language?to=${language}`, 'batch/helper.js').trimEnd());
+    lines.push(
+      '- runFlow:',
+      `    file: _checks/${checkId(check, language)}.yaml`,
+      '    optional: true',
+    );
   });
   return `${lines.join('\n')}\n`;
 }
@@ -1317,9 +1616,22 @@ async function reloadApp() {
   });
 }
 
+export function expoGoRunning(launchctlList) {
+  return new RegExp(
+    `^\\d+\\s+\\S+\\s+UIKitApplication:${EXPO_GO.replaceAll('.', '\\.')}\\[`,
+    'm',
+  ).test(launchctlList);
+}
+
+function appRunning(device, onAndroid) {
+  if (onAndroid) return Boolean(adbOut(androidTools(), ['shell', 'pidof', EXPO_GO_ANDROID]));
+  return expoGoRunning(capture('xcrun', ['simctl', 'spawn', device, 'launchctl', 'list']) ?? '');
+}
+
 // Under ten seconds an answer: batch/helper.js asks again while this says wait.
-function startHelper({ email, secret, token, passed }) {
+function startHelper({ email, secret, token, passed, begun, heard, device, onAndroid }) {
   const server = createServer(async (request, response) => {
+    heard.at = Date.now();
     const url = new URL(request.url ?? '/', 'http://helper');
     const reply = (status, body) => {
       response.writeHead(status, { 'Content-Type': 'application/json' });
@@ -1338,10 +1650,17 @@ function startHelper({ email, secret, token, passed }) {
         await reloadApp();
         return reply(200, { reloaded: true });
       }
+      if (url.pathname === '/running') {
+        return reply(200, { running: appRunning(device, onAndroid) });
+      }
       if (url.pathname === '/language') {
         const locale = url.searchParams.get('to');
         await api('/api/auth/locale', { method: 'PUT', token, body: { locale } });
         return reply(200, { language: locale });
+      }
+      if (url.pathname === '/started') {
+        begun.push(url.searchParams.get('check'));
+        return reply(200, {});
       }
       if (url.pathname === '/passed') {
         passed.add(url.searchParams.get('check'));
@@ -1358,11 +1677,38 @@ function startHelper({ email, secret, token, passed }) {
   });
 }
 
-function runAsync(command, args, { cwd, env }) {
+// Maestro hangs rather than exits when its driver dies, so a run gets a budget, and a batch
+// whose flows stop calling the harness for STALL_MS is stopped sooner.
+export const runBudgetMs = (runs) => (5 + 2 * runs) * 60_000;
+export const STALL_MS = 5 * 60_000;
+
+export function runAsync(command, args, { cwd, env, timeoutMs, stall }) {
   return new Promise((done) => {
     const child = spawn(command, args, { cwd, stdio: 'inherit', env: { ...process.env, ...env } });
-    child.on('exit', (code) => done(code === 0));
-    child.on('error', () => done(false));
+    const stop = (why) => {
+      console.error(`\n${command} ${why}: stopped.`);
+      child.kill('SIGKILL');
+    };
+    const timer =
+      timeoutMs &&
+      setTimeout(() => stop(`still running after ${timeoutMs / 60_000} minutes`), timeoutMs);
+    const watchdog =
+      stall &&
+      setInterval(
+        () => {
+          if (Date.now() - stall.heard.at < stall.ms) return;
+          stall.stalled = true;
+          stop(`has not reached the harness for ${Math.round(stall.ms / 1000)} s`);
+        },
+        Math.min(stall.ms, 10_000),
+      );
+    const finish = (ok) => {
+      clearTimeout(timer);
+      clearInterval(watchdog);
+      done(ok);
+    };
+    child.on('exit', (code) => finish(code === 0));
+    child.on('error', () => finish(false));
   });
 }
 
@@ -1385,6 +1731,11 @@ async function batch(args) {
   const missing = checks.filter((check) => !existsSync(join(source, 'checks', `${check}.yaml`)));
   if (missing.length) throw new Error(`no ${missing.join(', ')} in apps/mobile/.maestro/checks`);
   const device = maestroDevice(args);
+  if (!onAndroid && !passwordAutoFillIsOff(device)) {
+    throw new Error(
+      'this simulator still offers to save a password — run `ios` first, which turns it off',
+    );
+  }
 
   const out = join(root, '.qa', name);
   rmSync(out, { recursive: true, force: true });
@@ -1401,8 +1752,21 @@ async function batch(args) {
 
   const named = languages[0] !== 'any';
   const token = named ? await apiSession(email, password, secret) : null;
+  const before = named ? (await api('/api/auth/me', { method: 'GET', token })).locale : null;
   const passed = new Set();
-  const helper = await startHelper({ email, secret, token, passed });
+  const begun = [];
+  const heard = { at: Date.now() };
+  const crashed = [];
+  const helper = await startHelper({
+    email,
+    secret,
+    token,
+    passed,
+    begun,
+    heard,
+    device,
+    onAndroid,
+  });
   // The secret stays with the helper: no flow is handed it.
   const env = {
     METRO_URL: CONFIG.urls.metro,
@@ -1413,8 +1777,11 @@ async function batch(args) {
     ORG_NAME: ACCOUNT_ORGANISATION,
     ...rest,
   };
-  const test = (flow) =>
-    runAsync(
+  const test = async (flow, runs) => {
+    const from = begun.length;
+    heard.at = Date.now();
+    const stall = { ms: STALL_MS, heard };
+    await runAsync(
       maestroBin() ?? 'maestro',
       [
         ...maestroTarget(device, onAndroid, CONFIG.driverPort),
@@ -1424,8 +1791,17 @@ async function batch(args) {
         ...Object.entries(env).flatMap(([key, value]) => ['-e', `${key}=${value}`]),
         flow,
       ],
-      { cwd: root, env: onAndroid ? androidTools().env : {} },
+      { cwd: root, env: onAndroid ? androidTools().env : {}, timeoutMs: runBudgetMs(runs), stall },
     );
+    const after = afterRun(batchRuns(checks, languages), {
+      begun,
+      from,
+      passed,
+      stalled: stall.stalled,
+    });
+    if (after.crashed) crashed.push(after.crashed);
+    return after;
+  };
 
   const started = Date.now();
   try {
@@ -1434,28 +1810,44 @@ async function batch(args) {
         for (const check of checks) {
           if (named)
             await api('/api/auth/locale', { method: 'PUT', token, body: { locale: language } });
-          await test(join(flows, `_cold.${checkId(check, language)}.yaml`));
+          await test(join(flows, `_cold.${checkId(check, language)}.yaml`), 1);
         }
       }
     } else {
       if (named)
         await api('/api/auth/locale', { method: 'PUT', token, body: { locale: languages[0] } });
-      await test(join(flows, '_batch.yaml'));
+      const first = await test(join(flows, '_batch.yaml'), checks.length * languages.length);
+      // After a driver crash the checks it never reached run in a fresh Maestro.
+      await resumeBatch(first.rest, async (rest, attempt) => {
+        const flow = join(flows, `_rest.${attempt}.yaml`);
+        const written = batchFlow({ runs: rest });
+        writeFileSync(flow, onAndroid ? forAndroid(written) : written);
+        if (named)
+          await api('/api/auth/locale', {
+            method: 'PUT',
+            token,
+            body: { locale: rest[0].language },
+          });
+        return test(flow, rest.length);
+      });
     }
   } finally {
     helper.close();
+    // The app follows the account's language when it next opens, and later flows expect English.
+    if (named)
+      await api('/api/auth/locale', { method: 'PUT', token, body: { locale: before ?? 'en' } });
   }
   const seconds = Math.round((Date.now() - started) / 1000);
 
   spawnSync('sh', ['-c', `find "${out}" -mindepth 2 -name '*.png' -exec cp {} "${out}/" \\;`]);
-  const runs = languages.flatMap((language) => checks.map((check) => ({ check, language })));
+  const runs = batchRuns(checks, languages);
   const ids = runs.map(({ check, language }) => checkId(check, language));
   const failed = ids.filter((id) => !passed.has(id));
   console.log(
     `\nBatch ${name}${cold ? ', each check alone and cold' : ''}: ` +
       `${ids.length - failed.length} passed, ${failed.length} failed, in ${Math.floor(seconds / 60)}m${seconds % 60}s`,
   );
-  for (const id of ids) console.log(`  ${passed.has(id) ? '✓' : '✗'} ${id}`);
+  for (const line of batchSummary(ids, { passed, begun, crashed })) console.log(`  ${line}`);
   console.log(`Evidence in ${out}`);
   if (failed.length) {
     const failures = runs.filter(({ check, language }) => !passed.has(checkId(check, language)));
@@ -1464,6 +1856,30 @@ async function batch(args) {
       console.log(`  ${hint}`);
     process.exitCode = 1;
   }
+}
+
+export const MAX_RESUMES = 3;
+
+export async function resumeBatch(rest, resume) {
+  for (let attempt = 1; rest.length && attempt <= MAX_RESUMES; attempt++)
+    ({ rest } = await resume(rest, attempt));
+}
+
+// A run that stalls blames the last check it began itself, and is resumed only past that check.
+export function afterRun(runs, { begun, from, passed, stalled }) {
+  const current = begun.slice(from).at(-1);
+  if (!stalled || !current || passed.has(current)) return { crashed: null, rest: [] };
+  const rest = runs.filter(({ check, language }) => !begun.includes(checkId(check, language)));
+  return { crashed: current, rest };
+}
+
+export function batchSummary(ids, { passed, begun, crashed }) {
+  return ids.map((id) => {
+    if (passed.has(id)) return `✓ ${id}`;
+    if (crashed.includes(id)) return `✗ ${id}: Maestro's driver stopped answering (a driver crash)`;
+    if (!begun.includes(id)) return `✗ ${id}: not run`;
+    return `✗ ${id}`;
+  });
 }
 
 export function rerunHints(name, failures, { args, email, secret, rest = {} }) {

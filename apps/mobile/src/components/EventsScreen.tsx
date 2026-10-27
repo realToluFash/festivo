@@ -1,12 +1,14 @@
 import type { Membership, OrganisationEvent } from '@soirely/api-client';
 import { roleHolds } from '@soirely/domain';
-import { Redirect, useFocusEffect } from 'expo-router';
+import { Redirect, router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, RefreshControl, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
+import { offersDelete } from '../kit/eventDelete.ts';
+import { takeCoverRefused, takeSaved } from '../kit/eventSaved.ts';
 import {
   type Opened,
   type Selection,
@@ -18,9 +20,11 @@ import { useLayout } from '../layout/useLayout.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AppFrame } from './AppFrame.tsx';
+import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { EventList, EventNotFound, EventPage, EventsFailed, NoEvents } from './Events.tsx';
-import { type ListAndPageSpacing, ListAndPage } from './ListAndPage.tsx';
+import { type ListAndPageSpacing, ListAndPage, useListAndPageKind } from './ListAndPage.tsx';
 import { Notice } from './Notice.tsx';
+import { ReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
 
@@ -34,10 +38,18 @@ const LOADING: Load = { kind: 'loading' };
 /** Events, `EventsHome-*` and `EventView-*` (sc-1593): the organisation's events, read-only, and an event's page. */
 export function EventsScreen({ linked = null }: { linked?: string | null }) {
   const { t } = useTranslation();
-  const { kind } = useLayout();
+  const kind = useListAndPageKind(SPACING, 'nothing');
   const { account, organisation } = useSignedIn();
   const organisationId = organisation?.id;
   const reads = organisation != null && roleHolds(organisation, 'events.read');
+  const creates = organisation != null && roleHolds(organisation, 'events.create');
+  const manages = organisation != null && roleHolds(organisation, 'events.manage');
+  const deletes = offersDelete(organisation);
+  const [deleted, setDeleted] = useState<string | null>(null);
+  const [savedEvent, setSavedEvent] = useState<string | null>(null);
+  const [coverRefused, setCoverRefused] = useState<{ eventId: string; reason: string } | null>(
+    null,
+  );
   const phone = kind === 'phone';
   const landscape = kind === 'tabletLandscape';
 
@@ -47,15 +59,21 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
   });
   const load = held.in === organisationId ? held.load : LOADING;
   const [attempt, setAttempt] = useState(0);
+  // An event changed on its page, until the next load reads it from the server too.
+  const [changed, setChanged] = useState<OrganisationEvent | null>(null);
 
   const [selected, setSelected] = useState<Selection>({ in: organisationId, id: linked });
   const current = selectionIn(selected, organisationId);
   if (current !== selected) setSelected(current);
   const open = current.id;
-  const select = (id: string | null) => setSelected({ in: organisationId, id });
+  const select = (id: string | null) => {
+    if (id != null) setDeleted(null);
+    setSelected({ in: organisationId, id });
+  };
 
   // The rows stay in place while they reload; a failed load gives way to loading.
   const reload = useCallback(() => {
+    setChanged(null);
     setHeld((before) => ({
       in: before.in,
       load: before.load.kind === 'loaded' ? { ...before.load, refreshing: true } : LOADING,
@@ -63,7 +81,14 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     setAttempt((n) => n + 1);
   }, []);
 
-  useFocusEffect(reload);
+  useFocusEffect(
+    useCallback(() => {
+      setSavedEvent(takeSaved());
+      setCoverRefused(takeCoverRefused());
+      setDeleted(null);
+      reload();
+    }, [reload]),
+  );
 
   useEffect(() => {
     const listener = AppState.addEventListener('change', (state) => {
@@ -93,6 +118,39 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     load.kind === 'loaded' && open != null
       ? (load.events.find((event) => event.id === open) ?? null)
       : null;
+  const latest = (event: OrganisationEvent) => (changed?.id === event.id ? changed : event);
+  const onChange = (event: OrganisationEvent) => {
+    setChanged(event);
+    setHeld((before) =>
+      before.load.kind === 'loaded'
+        ? {
+            in: before.in,
+            load: {
+              ...before.load,
+              events: before.load.events.map((each) => (each.id === event.id ? event : each)),
+            },
+          }
+        : before,
+    );
+  };
+  const onDeleted = deletes
+    ? (event: OrganisationEvent) => {
+        setHeld((before) =>
+          before.load.kind === 'loaded'
+            ? {
+                in: before.in,
+                load: {
+                  ...before.load,
+                  events: before.load.events.filter((each) => each.id !== event.id),
+                },
+              }
+            : before,
+        );
+        setDeleted(event.name);
+        select(null);
+        reload();
+      }
+    : undefined;
   const opened = useOpened(
     open != null && listed == null && (load.kind !== 'loading' || !reads) ? open : null,
     account != null,
@@ -103,11 +161,45 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     return <Redirect href={DESTINATION_HREF.home} />;
   }
 
+  const onEdit = manages
+    ? () => open != null && router.push(`/events/${encodeURIComponent(open)}/edit`)
+    : undefined;
+  const found = listed ?? (opened.kind === 'loaded' ? opened.event : null);
+  const shown = found == null ? null : latest(found);
   const page =
-    open == null ? null : listed != null ? (
-      <EventPage kind={kind} event={listed} />
-    ) : opened.kind === 'loaded' ? (
-      <EventPage kind={kind} event={opened.event} />
+    open == null ? null : shown != null ? (
+      <View style={styles.stack}>
+        {savedEvent === open && (
+          <ReadOut words={t('eventEdit.saved')}>
+            <Notice tone="done" mark={tokens.marks.done.glyph} body={t('eventEdit.saved')} />
+          </ReadOut>
+        )}
+        <EventPage
+          kind={kind}
+          event={shown}
+          manages={manages}
+          onChange={onChange}
+          onEdit={onEdit}
+          onDeleted={onDeleted}
+        />
+        {coverRefused?.eventId === open && (
+          <View style={styles.stack}>
+            <Notice
+              tone="broken"
+              mark={tokens.marks.broken.glyph}
+              body={t('eventCover.createdWithout', { reason: coverRefused.reason })}
+              announce
+            />
+            {onEdit != null && (
+              <SecondaryButton
+                label={t('eventEdit.open')}
+                onPress={onEdit}
+                testID="events.page.coverRefused.edit"
+              />
+            )}
+          </View>
+        )}
+      </View>
     ) : opened.kind === 'notFound' ? (
       <EventNotFound onBack={() => select(null)} />
     ) : opened.kind === 'failed' ? (
@@ -116,7 +208,8 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
       <Waiting words={t('eventsScreen.loadingEvent')} />
     );
   const inFront = page != null;
-  const pageName = listed?.name ?? (opened.kind === 'loaded' ? opened.event.name : null);
+  const pageName = shown?.name ?? null;
+  const newEvent = () => router.push('/events/new');
 
   const heading = !phone && (
     <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
@@ -130,6 +223,15 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     <EventsFailed onRetry={reload} testID="events.retry" />
   ) : (
     <View style={styles.stack}>
+      {deleted != null && (
+        <ReadOut words={t('eventDelete.deleted', { event: deleted })}>
+          <Notice
+            tone="done"
+            mark={tokens.marks.done.glyph}
+            body={t('eventDelete.deleted', { event: deleted })}
+          />
+        </ReadOut>
+      )}
       {load.refreshing && (
         <Text
           size={tokens.typeSmall.size}
@@ -141,12 +243,18 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
         </Text>
       )}
       {load.events.length === 0 ? (
-        <NoEvents
-          kind={kind}
-          creates={organisation != null && roleHolds(organisation, 'events.create')}
-        />
+        <NoEvents kind={kind} onCreate={creates ? newEvent : undefined} />
       ) : (
-        <EventList events={load.events} open={open} onOpen={select} />
+        <>
+          {creates && (
+            <PrimaryButton
+              label={t('eventsScreen.newEvent')}
+              onPress={newEvent}
+              testID="events.new"
+            />
+          )}
+          <EventList events={load.events} open={open} onOpen={select} />
+        </>
       )}
     </View>
   );
@@ -162,6 +270,7 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
       }
     >
       <ListAndPage
+        kind={kind}
         heading={heading}
         list={list}
         listRefresh={

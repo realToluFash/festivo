@@ -4,7 +4,7 @@ import {
   type OrganisationDeletion,
   type OrganisationMember,
 } from '@soirely/api-client';
-import { roleName } from '@soirely/domain';
+import { roleName, typedNameMatches } from '@soirely/domain';
 import { type FormEvent, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
@@ -115,7 +115,9 @@ export function OwnershipCard({ organisation }: { organisation: Membership }) {
               ref={leaveButton}
               onClick={() => setStep({ kind: 'leave' })}
             >
-              {t('ownership.leave', { organisation: organisation.name })}
+              <span className="button-label">
+                {t('ownership.leave', { organisation: organisation.name })}
+              </span>
             </button>
           </div>
           {owner && (
@@ -366,9 +368,11 @@ function Transfer({
 
       <div className="actions">
         <button className="button button-primary" type="submit" aria-busy={busy}>
-          {chosen == null
-            ? t('ownership.transfer')
-            : t('ownership.makeOwner', { name: chosen.user.name })}
+          <span className="button-label">
+            {chosen == null
+              ? t('ownership.transfer')
+              : t('ownership.makeOwner', { name: chosen.user.name })}
+          </span>
         </button>
         <button className="button" type="button" {...offButton(busy)} onClick={onCancel}>
           {t('ownership.keep')}
@@ -461,7 +465,9 @@ function Leave({
               {...offButton(busy)}
               onClick={() => void leave()}
             >
-              {t('ownership.leave', { organisation: organisation.name })}
+              <span className="button-label">
+                {t('ownership.leave', { organisation: organisation.name })}
+              </span>
             </button>
             <button type="button" className="button" {...offButton(busy)} onClick={onStay}>
               {t('ownership.stay')}
@@ -481,7 +487,7 @@ function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: ()
   const [busy, setBusy] = useState(false);
   const [mismatch, setMismatch] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
-  const matches = typed.trim() === organisation.name;
+  const matches = typedNameMatches(typed, organisation.name);
   const heading = useRef<HTMLHeadingElement>(null);
 
   useLayoutEffect(() => focusStep(heading.current), []);
@@ -592,7 +598,7 @@ function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: ()
           aria-describedby={mismatch != null ? 'delete-confirm-error' : 'delete-confirm-note'}
           onChange={(event) => {
             setTyped(event.target.value);
-            if (event.target.value.trim() === organisation.name) setMismatch(null);
+            if (typedNameMatches(event.target.value, organisation.name)) setMismatch(null);
           }}
         />
         {mismatch != null && <FieldError id="delete-confirm-error" message={mismatch} />}
@@ -603,10 +609,14 @@ function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: ()
 
       <div className="actions">
         <button className="button button-danger" type="submit" aria-busy={busy}>
-          {t('ownership.deleteButton', { organisation: organisation.name })}
+          <span className="button-label">
+            {t('ownership.deleteButton', { organisation: organisation.name })}
+          </span>
         </button>
         <button className="button" type="button" {...offButton(busy)} onClick={onKeep}>
-          {t('ownership.deleteKeep', { organisation: organisation.name })}
+          <span className="button-label">
+            {t('ownership.deleteKeep', { organisation: organisation.name })}
+          </span>
         </button>
       </div>
     </form>
