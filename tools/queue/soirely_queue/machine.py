@@ -185,9 +185,10 @@ def settings(config, role):
 
 def effort_for(values, kind):
     """A comment run takes `inboxEffort` where it is set, and the role's `effort` where it is
-    not: a pm comment can turn into specifying a story. Every other kind of work takes
-    `effort`."""
-    return values.get("inboxEffort") or values["effort"] if kind == "inbox" else values["effort"]
+    not. Every other kind of work takes `effort`."""
+    if kind != "inbox":
+        return values["effort"]
+    return values.get("inboxEffort") or values["effort"]
 
 
 def slice_memory(config):

@@ -79,9 +79,7 @@ repository because it describes the machine, not the project. The repository shi
 **Comment runs can take an effort of their own, `inboxEffort`.** A run on a role's inbox
 (the comments addressed to it) takes the role's `effort` unless `inboxEffort` is set, in
 `defaults` or on the role. Lowering it suits a role whose comments are mostly answered from
-the thread: in the week of 21 Oct, pm's comment runs cost a median $1.29 at `max`, $0.35 at
-`xhigh` and $0.23 at `medium`. It is left unset for pm, since a comment can turn into
-specifying a story. Every other kind of work (a story, a sweep, a review) takes `effort`.
+the thread. Every other kind of work (a story, a sweep, a review) takes `effort`.
 `inboxEffort` is checked like `effort`, and the run log and the session view on `sq web`
 show the effort each run used.
 
