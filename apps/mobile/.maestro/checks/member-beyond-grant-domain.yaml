@@ -8,6 +8,7 @@ appId: host.exp.Exponent
 - scrollUntilVisible:
     element:
       id: members.row.${DOMAIN_ID}
+    centerElement: true
     timeout: 20000
 - tapOn:
     id: members.row.${DOMAIN_ID}
