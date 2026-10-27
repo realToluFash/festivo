@@ -1389,6 +1389,7 @@
   },
   "eventsScreen": {
     "title": "Events",
+    "back": "‹ Events",
     "loading": "Loading events…",
     "refreshing": "Refreshing…",
     "draft": "Draft",
