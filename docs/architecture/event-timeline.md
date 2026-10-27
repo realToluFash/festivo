@@ -37,6 +37,11 @@ and the timeline, the route and the clients do not change.
   disagree with the date line (decided 27 Oct, sc-3624).
 - **An action** is a label and a path into the area, for a milestone the reader can act on.
   Neither client renders it yet: the first area that returns one adds it to both rows.
+- **Coming up is held at two rows' height**, the most `EventDates` returns, so Finished and
+  a failed load take the same room as the milestones and nothing below moves. The panel
+  shows four: the first area that adds a milestone raises that floor to four rows, in
+  `.coming-up-rows` (`apps/web/src/styles.css`, three widths) and `rows`/`rowsPhone`
+  (`apps/mobile/src/components/Timeline.tsx`).
 - **Two milestones at the same instant** keep the order their sources were read in.
 
 `EventDates` is the worked example: the start is always there, titled "{name} starts", and
