@@ -13,8 +13,8 @@ import sys
 import time
 
 from . import (actions, agents, dashboard, digests, github, launchd, machine, payloads,
-               permissions, roles, runlog, runner, sessions, shared, store, sync, systemd, update,
-               work)
+               permissions, remote, roles, runlog, runner, sessions, shared, store, sync, systemd,
+               update, work)
 from . import text as T
 from . import views as V
 from .ledger import Printer
@@ -41,8 +41,8 @@ def home():
     return path
 
 
-def open_db():
-    return store.connect(str(home() / "queue.db"))
+def open_db(threads=False):
+    return store.connect(str(home() / "queue.db"), threads=threads)
 
 
 def refresh_work(db, now):
@@ -738,7 +738,9 @@ def admin(argv):
     sub.add_parser("status", help="what every role holds and has waiting, and this machine's "
                                   "manager")
     web = sub.add_parser("web", help="the same as status, as a live page on this machine")
-    web.add_argument("--port", type=int, default=8765)
+    web.add_argument("--port", type=int, help="agents.json's web.port, or 8765")
+    web.add_argument("--listen", help="the address to serve on: agents.json's web.listen, or "
+                                      "127.0.0.1; any other needs SQ_WEB_TOKEN")
     web.add_argument("--no-open", action="store_true", help="print the address, open nothing")
     sub.add_parser("sync", help="sync now").add_argument("--full", action="store_true")
     sub.add_parser("install", help="copy sq where no branch switch removes it")
@@ -780,9 +782,13 @@ def admin(argv):
     if a.command == "status":
         status(db, platform, time.time())
     elif a.command == "web":
-        dashboard.serve(lambda now: dashboard.snapshot(db, platform, now, home()), a.port,
-                        open_page=not a.no_open,
-                        session=lambda found: sessions.view(db, home(), platform, found))
+        db = open_db(threads=True)
+        host, port = remote.web(remote.config()) or (remote.LOOPBACK, remote.DEFAULT_PORT)
+        dashboard.serve(lambda now: dashboard.snapshot(db, platform, now, home()),
+                        a.port or port, open_page=not a.no_open,
+                        session=lambda found: sessions.view(db, home(), platform, found),
+                        host=a.listen or host, secret=remote.token(),
+                        peers=lambda: remote.peers(remote.config()))
     elif a.command == "run":
         try:
             runner.run(db, home(), platform, sq_path, sys.executable, dry_run=a.dry_run)
