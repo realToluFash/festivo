@@ -3,8 +3,6 @@ import {
   COVER_MIDDLE,
   type CoverRefusal,
   type EventType,
-  coverDimensionsRefusal,
-  coverFileRefusal,
   coverTypeOf,
   draggedPosition,
   positionPart,
@@ -25,7 +23,7 @@ import { useDialogKeys } from '../../../dialogFocus.ts';
 import { offButton } from '../../../offButton.ts';
 import { FieldError } from './EventFields.tsx';
 import { type CoverPhoto, EventCoverImage } from './EventCoverImage.tsx';
-import { discardCoverUpload, imageSize, refusalOf } from './coverPhoto.ts';
+import { checkCoverPick, discardCoverUpload, refusalOf } from './coverPhoto.ts';
 
 /** What Use this photo saves: a new photo when `upload` is set, and always the position and description. */
 export type CoverUse = {
@@ -88,13 +86,11 @@ export function CoverSection({
     event.target.value = '';
     if (file == null) return;
 
-    const refused = coverFileRefusal(file);
-    const size = refused == null ? await imageSize(file) : null;
-    const tooSmall = refused ?? coverDimensionsRefusal(size);
+    const checked = await checkCoverPick(file);
 
-    setRefusal(tooSmall);
+    setRefusal(checked.refusal);
     setRemoved(false);
-    if (tooSmall == null) setOpened({ file, shows: size != null, from: 'upload' });
+    if (checked.refusal == null) setOpened({ file, shows: checked.shows, from: 'upload' });
   }
 
   const close = useCallback(
@@ -223,13 +219,21 @@ function CheckIcon() {
   );
 }
 
-type Upload =
-  | { kind: 'saved' }
-  | { kind: 'uploading' }
-  | { kind: 'ready'; key: string }
-  | { kind: 'failed'; message: string };
+/** A pick on its way through the checks the server makes; `local` is null when this browser cannot show the file itself. */
+type Trying = { file: File; local: string | null };
 
-/** Modal, as the APG dialog: focus starts on the slider, Tab wraps, Escape and Close are Cancel, and only Use this photo saves. */
+function newTrying(file: File, shows: boolean): Trying {
+  return { file, local: shows ? URL.createObjectURL(file) : null };
+}
+
+/** A pick the server has read: `url` is the browser's own object URL when `local`, otherwise the server's copy. */
+type Chosen = { key: string; url: string; local: boolean };
+
+function pickPhoto(url: string, position: number): CoverPhoto {
+  return { sizes: [{ width: 0, url }], position, description: null };
+}
+
+/** Modal, as the APG dialog: focus starts on the slider, Tab wraps, Escape and Close are Cancel, and only Use this photo saves. A refused pick never reaches the frame (sc-16524). */
 function CoverDialog({
   file,
   shows,
@@ -250,88 +254,139 @@ function CoverDialog({
   onClose: (focus: 'opener' | 'cover' | 'upload', removed?: boolean) => void;
 }) {
   const { t } = useTranslation();
-  const [local] = useState(() => (file != null && shows ? URL.createObjectURL(file) : null));
-  const [converted, setConverted] = useState<string | null>(null);
-  const preview = local ?? converted;
-  const [upload, setUpload] = useState<Upload>(
-    file == null ? { kind: 'saved' } : { kind: 'uploading' },
+  const savedFrame = {
+    position: saved?.position ?? COVER_MIDDLE,
+    description: saved?.description ?? '',
+  };
+  const [trying, setTrying] = useState<Trying | null>(() =>
+    file == null ? null : newTrying(file, shows),
   );
-  const [position, setPosition] = useState(
-    file == null ? (saved?.position ?? COVER_MIDDLE) : COVER_MIDDLE,
-  );
-  const [description, setDescription] = useState(file == null ? (saved?.description ?? '') : '');
+  const [chosen, setChosen] = useState<Chosen | null>(null);
+  const [refusal, setRefusal] = useState<string | null>(null);
+  const [position, setPosition] = useState(file == null ? savedFrame.position : COVER_MIDDLE);
+  const [description, setDescription] = useState(file == null ? savedFrame.description : '');
   const [descriptionError, setDescriptionError] = useState<string | undefined>();
   const [failure, setFailure] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const dialog = useRef<HTMLDivElement>(null);
   const slider = useRef<HTMLInputElement>(null);
   const describe = useRef<HTMLTextAreaElement>(null);
+  const picker = useRef<HTMLButtonElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const before = useRef(savedFrame);
+  const focusNext = useRef<'slider' | 'picker' | null>('slider');
   const kept = useRef(false);
   const fullScreen = useFullScreen();
   const drag = useRef<{ y: number; start: number } | null>(null);
 
   useEffect(() => {
-    slider.current?.focus();
+    if (focusNext.current == null) return;
+
+    (focusNext.current === 'slider' ? slider : picker).current?.focus();
+    focusNext.current = null;
+  });
+
+  const refuse = useCallback((message: string) => {
+    setTrying(null);
+    setPosition(before.current.position);
+    setDescription(before.current.description);
+    setDescriptionError(undefined);
+    setRefusal(message);
+    focusNext.current = 'picker';
   }, []);
 
-  useEffect(
-    () => () => {
-      if (local != null && !kept.current) URL.revokeObjectURL(local);
-    },
-    [local],
-  );
-
   useEffect(() => {
-    if (file == null) return;
+    if (trying == null) return;
+    const url = trying.local;
     let current = true;
     let uploaded: string | null = null;
+    let promoted = false;
 
     api
       .signEventCoverUpload(organisationId, {
-        contentType: coverTypeOf(file) ?? file.type,
-        size: file.size,
-        filename: file.name,
+        contentType: coverTypeOf(trying.file) ?? trying.file.type,
+        size: trying.file.size,
+        filename: trying.file.name,
       })
       .then(async (signed) => {
-        await api.uploadTo(signed, file);
+        await api.uploadTo(signed, trying.file);
         uploaded = signed.key;
         if (!current) return discardCoverUpload(organisationId, signed.key);
 
         // The server reads every new photo whole, so a damaged JPEG the browser sized is refused here, not saved grey.
         const copy = await api.previewEventCoverUpload(organisationId, signed.key);
         if (!current) return;
-        if (!shows) setConverted(copy);
-        setUpload((now) => (now.kind === 'failed' ? now : { kind: 'ready', key: signed.key }));
+        promoted = true;
+        setChosen({ key: signed.key, url: url ?? copy, local: url != null });
+        setTrying(null);
       })
       .catch((error: unknown) => {
-        if (current) setUpload({ kind: 'failed', message: refusalOf(error, t) });
+        if (current) refuse(refusalOf(error, t));
       });
 
     return () => {
       current = false;
-      if (uploaded != null && !kept.current) discardCoverUpload(organisationId, uploaded);
+      if (promoted) return;
+      if (url != null) URL.revokeObjectURL(url);
+      if (uploaded != null) discardCoverUpload(organisationId, uploaded);
     };
-  }, [file, shows, organisationId, t]);
+  }, [trying, organisationId, refuse, t]);
+
+  useEffect(
+    () => () => {
+      if (chosen == null || kept.current) return;
+      if (chosen.local) URL.revokeObjectURL(chosen.url);
+      discardCoverUpload(organisationId, chosen.key);
+    },
+    [chosen, organisationId],
+  );
 
   const cancel = useCallback(() => onClose('opener'), [onClose]);
 
-  /** A new photo the frame could not show is never saved unseen (sc-13861). */
-  const unseen = useCallback(() => {
-    if (file != null && preview != null)
-      setUpload({ kind: 'failed', message: t('eventCover.uploadFailed') });
-  }, [file, preview, t]);
-
   useDialogKeys(dialog, cancel, pending);
 
-  const shown: CoverPhoto | null =
-    file == null
-      ? saved == null
+  /** A new photo the frame could not show is never saved unseen (sc-13861). */
+  function unseen(): void {
+    if (trying != null) return refuse(t('eventCover.uploadFailed'));
+    if (chosen == null) return;
+
+    before.current = savedFrame;
+    setChosen(null);
+    refuse(t('eventCover.uploadFailed'));
+  }
+
+  async function pick(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const next = event.target.files?.[0];
+    event.target.value = '';
+    if (next == null) return;
+
+    const checked = await checkCoverPick(next);
+    if (checked.refusal != null) {
+      setRefusal(t(`eventCover.refused_${checked.refusal}`));
+      focusNext.current = 'picker';
+      return;
+    }
+
+    if (trying == null) before.current = chosen == null ? savedFrame : { position, description };
+    setTrying(newTrying(next, checked.shows));
+    setRefusal(null);
+    setPosition(COVER_MIDDLE);
+    setDescription('');
+    setDescriptionError(undefined);
+    focusNext.current = 'slider';
+  }
+
+  const shown: CoverPhoto | null | 'choose' =
+    trying != null
+      ? trying.local == null
         ? null
-        : { ...saved, position }
-      : preview == null
-        ? null
-        : { sizes: [{ width: 0, url: preview }], position, description: null };
-  const ready = upload.kind === 'saved' || upload.kind === 'ready';
+        : pickPhoto(trying.local, position)
+      : chosen != null
+        ? pickPhoto(chosen.url, position)
+        : saved != null
+          ? { ...saved, position }
+          : 'choose';
+  const ready = trying == null && shown !== 'choose';
   const count = [...description].length;
 
   async function use(): Promise<void> {
@@ -349,12 +404,7 @@ function CoverDialog({
     try {
       await onUse({
         upload:
-          upload.kind === 'ready' && preview != null
-            ? {
-                key: upload.key,
-                preview: { sizes: [{ width: 0, url: preview }], position, description: null },
-              }
-            : null,
+          chosen == null ? null : { key: chosen.key, preview: pickPhoto(chosen.url, position) },
         position,
         description: trimmed === '' ? null : trimmed,
       });
@@ -380,6 +430,23 @@ function CoverDialog({
     }
   }
 
+  const pickerButton = (
+    <button
+      ref={picker}
+      type="button"
+      className="button cover-dialog-picker"
+      aria-describedby={
+        [refusal != null && 'cover-dialog-refusal', shown === 'choose' && 'cover-dialog-accepted']
+          .filter(Boolean)
+          .join(' ') || undefined
+      }
+      {...offButton(pending, { dim: false })}
+      onClick={() => fileInput.current?.click()}
+    >
+      {shown === 'choose' ? t('eventCover.choose') : t('eventCover.chooseAnother')}
+    </button>
+  );
+
   const removeButton = (
     <button
       type="button"
@@ -392,7 +459,7 @@ function CoverDialog({
   );
 
   function startDrag(event: PointerEvent<HTMLDivElement>): void {
-    if (shown == null) return;
+    if (shown == null || shown === 'choose') return;
     event.currentTarget.setPointerCapture(event.pointerId);
     drag.current = { y: event.clientY, start: position };
   }
@@ -432,87 +499,106 @@ function CoverDialog({
         </div>
 
         <div className="cover-dialog-body">
-          <div
-            className="cover-frame"
-            onPointerDown={startDrag}
-            onPointerMove={moveDrag}
-            onPointerUp={() => (drag.current = null)}
-            onPointerCancel={() => (drag.current = null)}
-          >
-            <EventCoverImage
-              photo={shown}
-              type={type}
-              sizes="(width <= 40rem) 100vw, 45rem"
-              onFail={unseen}
-            />
-            {upload.kind === 'uploading' && (
-              <p className="cover-frame-state" role="status">
-                {t('eventCover.uploading')}
+          {shown === 'choose' ? (
+            <div className="cover-choose">
+              {pickerButton}
+              <p className="field-help" id="cover-dialog-accepted">
+                {t('eventCover.accepted')}
               </p>
-            )}
-          </div>
-          {upload.kind === 'failed' && (
-            <div className="notice notice-broken" role="alert">
-              <span className="mark mark-broken" aria-hidden="true">
-                ✕
-              </span>
-              <p className="notice-title">{upload.message}</p>
+            </div>
+          ) : (
+            <div
+              className="cover-frame"
+              onPointerDown={startDrag}
+              onPointerMove={moveDrag}
+              onPointerUp={() => (drag.current = null)}
+              onPointerCancel={() => (drag.current = null)}
+            >
+              <EventCoverImage
+                photo={shown}
+                type={type}
+                sizes="(width <= 40rem) 100vw, 45rem"
+                onFail={unseen}
+              />
+              {trying != null && (
+                <p className="cover-frame-state" role="status">
+                  {t('eventCover.uploading')}
+                </p>
+              )}
             </div>
           )}
-
-          <div className="field">
-            <label htmlFor="cover-position">{t('eventCover.position')}</label>
+          <div className="cover-dialog-pick">
             <input
-              ref={slider}
-              id="cover-position"
-              className="cover-slider"
-              type="range"
-              min={0}
-              max={100}
-              step={1}
-              value={position}
-              aria-valuetext={t(`eventCover.showing_${positionPart(position)}`)}
-              aria-disabled={shown == null}
-              onChange={(event) => {
-                if (shown != null) setPosition(Number(event.target.value));
-              }}
+              ref={fileInput}
+              id="cover-dialog-file"
+              className="visually-hidden"
+              type="file"
+              accept={ACCEPT}
+              tabIndex={-1}
+              aria-hidden="true"
+              onChange={(event) => void pick(event)}
             />
-            <div className="cover-slider-marks" aria-hidden="true">
-              <span>{t('eventCover.top')}</span>
-              <span>{t('eventCover.bottom')}</span>
-            </div>
+            {shown !== 'choose' && pickerButton}
+            <FieldError id="cover-dialog-refusal" message={refusal ?? undefined} />
           </div>
 
-          <div className="field">
-            <label htmlFor="cover-description">
-              {t('eventCover.describe')}
-              <span className="cover-optional">{t('eventCover.optional')}</span>
-            </label>
-            <textarea
-              ref={describe}
-              id="cover-description"
-              className={descriptionError == null ? 'input' : 'input input-wrong'}
-              rows={2}
-              value={description}
-              aria-invalid={descriptionError != null}
-              aria-describedby={
-                descriptionError == null
-                  ? 'cover-description-hint cover-description-count'
-                  : 'cover-description-error cover-description-hint cover-description-count'
-              }
-              onChange={(event) => {
-                setDescription(event.target.value);
-                setDescriptionError(undefined);
-              }}
-            />
-            <FieldError id="cover-description-error" message={descriptionError} />
-            <p className="field-help" id="cover-description-hint">
-              {t('eventCover.describeHint')}
-            </p>
-            <p className="field-help" id="cover-description-count">
-              {t('eventCover.describeCount', { count, most: COVER_DESCRIPTION_MAXIMUM })}
-            </p>
-          </div>
+          {shown !== 'choose' && (
+            <>
+              <div className="field">
+                <label htmlFor="cover-position">{t('eventCover.position')}</label>
+                <input
+                  ref={slider}
+                  id="cover-position"
+                  className="cover-slider"
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={position}
+                  aria-valuetext={t(`eventCover.showing_${positionPart(position)}`)}
+                  aria-disabled={shown == null}
+                  onChange={(event) => {
+                    if (shown != null) setPosition(Number(event.target.value));
+                  }}
+                />
+                <div className="cover-slider-marks" aria-hidden="true">
+                  <span>{t('eventCover.top')}</span>
+                  <span>{t('eventCover.bottom')}</span>
+                </div>
+              </div>
+
+              <div className="field">
+                <label htmlFor="cover-description">
+                  {t('eventCover.describe')}
+                  <span className="cover-optional">{t('eventCover.optional')}</span>
+                </label>
+                <textarea
+                  ref={describe}
+                  id="cover-description"
+                  className={descriptionError == null ? 'input' : 'input input-wrong'}
+                  rows={2}
+                  value={description}
+                  aria-invalid={descriptionError != null}
+                  aria-describedby={
+                    descriptionError == null
+                      ? 'cover-description-hint cover-description-count'
+                      : 'cover-description-error cover-description-hint cover-description-count'
+                  }
+                  onChange={(event) => {
+                    setDescription(event.target.value);
+                    setDescriptionError(undefined);
+                  }}
+                />
+                <FieldError id="cover-description-error" message={descriptionError} />
+                <p className="field-help" id="cover-description-hint">
+                  {t('eventCover.describeHint')}
+                </p>
+                <p className="field-help" id="cover-description-count">
+                  {t('eventCover.describeCount', { count, most: COVER_DESCRIPTION_MAXIMUM })}
+                </p>
+              </div>
+            </>
+          )}
 
           {saved != null && fullScreen && <div className="cover-remove-below">{removeButton}</div>}
 

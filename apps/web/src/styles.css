@@ -4048,6 +4048,33 @@ button.members-row {
   background: color-mix(in srgb, var(--colorCard) 70%, transparent);
 }
 
+.cover-choose {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spaceMd);
+  box-sizing: border-box;
+  aspect-ratio: 16 / 9;
+  padding: var(--spaceXl);
+  border: 2px dashed var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  text-align: center;
+}
+
+.cover-choose .field-help {
+  margin: 0;
+}
+
+.cover-dialog-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  min-width: 0;
+}
+
 .cover-slider {
   width: 100%;
   min-height: var(--sizeHit);

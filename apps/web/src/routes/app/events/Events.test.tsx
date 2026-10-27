@@ -2878,7 +2878,7 @@ describe('The cover (sc-3590)', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Upload a photo' }));
   });
 
-  it('an upload that fails says so and keeps the previous cover', async () => {
+  it('an upload that fails says so, the frame keeps the saved cover, and Cancel saves nothing', async () => {
     signedIn();
     const sent = serving(PHOTO, { 'PUT /upload/1': () => new Response(null, { status: 500 }) });
     await editing();
@@ -2887,7 +2887,7 @@ describe('The cover (sc-3590)', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
 
     expect(await within(dialog).findByText('The photo did not upload. Try again.')).toBeDefined();
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
+    expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(PHOTO.sizes[0]!.url);
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
@@ -3173,9 +3173,7 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
     const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
 
     expect(await within(dialog).findByText(line)).toBeDefined();
-    const use = within(dialog).getByRole('button', { name: 'Use this photo' });
-    expect(use.getAttribute('aria-disabled')).toBe('true');
-    fireEvent.click(use);
+    expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(PHOTO.sizes[0]!.url);
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
@@ -3202,9 +3200,9 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
       const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
 
       expect(await within(dialog).findByText(line)).toBeDefined();
-      const use = within(dialog).getByRole('button', { name: 'Use this photo' });
-      expect(use.getAttribute('aria-disabled')).toBe('true');
-      fireEvent.click(use);
+      expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(
+        PHOTO.sizes[0]!.url,
+      );
       fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
@@ -3257,9 +3255,7 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
     const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
 
     expect(await within(dialog).findByText('The photo did not upload. Try again.')).toBeDefined();
-    expect(
-      within(dialog).getByRole('button', { name: 'Use this photo' }).getAttribute('aria-disabled'),
-    ).toBe('true');
+    expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(PHOTO.sizes[0]!.url);
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
@@ -3283,12 +3279,13 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
     fireEvent.error(dialog.querySelector('.cover-frame img')!);
 
     expect(await within(dialog).findByText('The photo did not upload. Try again.')).toBeDefined();
-    expect(dialog.querySelector('.cover-frame [data-testid="cover-default"]')).not.toBeNull();
+    expect(dialog.querySelector('.cover-frame')).toBeNull();
+    expect(within(dialog).getByRole('button', { name: 'Choose a photo' })).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
     expect(sent.filter(({ line }) => line.startsWith('PUT /api/events'))).toEqual([]);
   });
 
-  it('a JPEG the frame cannot show before its upload finishes stays unsaved once the upload does', async () => {
+  it('a JPEG the frame cannot show before its upload finishes stays unsaved once the upload does, and Use this photo keeps the saved cover', async () => {
     signedIn();
     vi.stubGlobal(
       'Image',
@@ -3325,10 +3322,13 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(within(dialog).getByText('The photo did not upload. Try again.')).toBeDefined();
-    const use = within(dialog).getByRole('button', { name: 'Use this photo' });
-    expect(use.getAttribute('aria-disabled')).toBe('true');
-    fireEvent.click(use);
-    expect(sent.filter(({ line }) => line.startsWith('PUT /api/events'))).toEqual([]);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
+    await waitFor(() =>
+      expect(sent.find(({ line }) => line === 'PUT /api/events/ev_1/cover')?.body).toEqual({
+        position: PHOTO.position,
+        description: PHOTO.description,
+      }),
+    );
   });
 
   it('a file named .jpg that is not a readable photo is refused while Cover photo is open', async () => {
@@ -3343,9 +3343,9 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
     const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
 
     expect(await within(dialog).findByText(line)).toBeDefined();
-    const use = within(dialog).getByRole('button', { name: 'Use this photo' });
-    expect(use.getAttribute('aria-disabled')).toBe('true');
-    fireEvent.click(use);
+    expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(PHOTO.sizes[0]!.url);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(sent.filter(({ line: sentLine }) => sentLine.startsWith('PUT /api/events'))).toEqual([]);
   });
 
@@ -3429,6 +3429,271 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
 
     expect(dialog.querySelector('.cover-frame .cover-default-wedding')).not.toBeNull();
     expect(within(dialog).queryByText('The photo did not upload. Try again.')).toBeNull();
+  });
+});
+
+describe('Cover photo chooses its own photo, and a refused one never reaches the frame (sc-16524)', () => {
+  const PHOTO = {
+    position: 30,
+    description: 'Adaeze and Tunde under the arch',
+    sizes: [
+      { width: 640, url: 'http://store.test/c/small.webp' },
+      { width: 1280, url: 'http://store.test/c/medium.webp' },
+    ],
+  };
+  const DAMAGED = 'That file is not a photo we can use. Choose a JPEG, PNG, WebP or HEIC.';
+
+  /** Every upload is keyed by its file's name, and the server refuses a file named damaged. */
+  function serving(cover: unknown) {
+    const sent: { line: string; body: unknown }[] = [];
+    let held = event({ cover });
+    let uploads = 0;
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
+      sent.push({ line, body });
+
+      if (line === 'POST /api/orgs/org_1/event-cover-uploads') {
+        uploads += 1;
+        return json(
+          {
+            upload: {
+              url: `http://store.test/upload/${uploads}`,
+              key: `event_cover/org_1/2026/10/${(body as { filename: string }).filename}`,
+              content_type: 'image/jpeg',
+            },
+          },
+          201,
+        );
+      }
+      if (line.startsWith('PUT /upload/')) return new Response(null, { status: 200 });
+      if (line === 'POST /api/orgs/org_1/event-cover-uploads/preview')
+        return (body as { uploadKey: string }).uploadKey.includes('damaged')
+          ? problem(422, 'validation_failed', {
+              violations: [{ propertyPath: 'file', message: DAMAGED, code: 'validation_failed' }],
+            })
+          : json({ preview: 'data:image/webp;base64,UklGRg==' });
+      if (line === 'DELETE /api/orgs/org_1/event-cover-uploads')
+        return new Response(null, { status: 204 });
+      if (line === 'PUT /api/events/ev_1/cover') {
+        const { position, description } = body as { position: number; description: string | null };
+        held = event({ cover: { ...PHOTO, position, description } });
+      }
+
+      return new Response(JSON.stringify({ event: held }), { headers: { ETag: '"1"' } });
+    });
+
+    return sent;
+  }
+
+  function jpeg(name: string, type = 'image/jpeg'): File {
+    return new File(['x'], name, { type });
+  }
+
+  function upload(chosen: File): void {
+    fireEvent.change(document.getElementById('cover-file')!, { target: { files: [chosen] } });
+  }
+
+  function pickInDialog(chosen: File): void {
+    fireEvent.change(document.getElementById('cover-dialog-file')!, {
+      target: { files: [chosen] },
+    });
+  }
+
+  function frameSource(dialog: HTMLElement): string | null | undefined {
+    return dialog.querySelector('.cover-frame img')?.getAttribute('src');
+  }
+
+  async function editing(): Promise<void> {
+    at('/app/events/ev_1/edit');
+    await screen.findByRole('heading', { level: 1, name: 'Edit details' });
+  }
+
+  beforeEach(() => {
+    URL.createObjectURL = (chosen: Blob) => `blob:${(chosen as File).name}`;
+    URL.revokeObjectURL = () => undefined;
+    vi.stubGlobal(
+      'Image',
+      class {
+        naturalWidth = 2400;
+        naturalHeight = 1600;
+        onload: (() => void) | null = null;
+        set src(_: string) {
+          queueMicrotask(() => this.onload?.());
+        }
+      },
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('a refused pick keeps the photo chosen earlier in the visit, at its position, and Use this photo saves that one', async () => {
+    signedIn();
+    const sent = serving(null);
+    await editing();
+
+    upload(jpeg('arch.jpg'));
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    await waitFor(() => expect(within(dialog).queryByText('Uploading…')).toBeNull());
+    fireEvent.change(within(dialog).getByLabelText('Photo position'), { target: { value: '80' } });
+    fireEvent.change(within(dialog).getByLabelText(/Describe the image/), {
+      target: { value: 'The arch' },
+    });
+
+    pickInDialog(jpeg('damaged.jpg'));
+    const picker = within(dialog).getByRole('button', { name: 'Choose another photo' });
+
+    expect(await within(dialog).findByText(DAMAGED)).toBeDefined();
+    expect(frameSource(dialog)).toBe('blob:arch.jpg');
+    expect((within(dialog).getByLabelText('Photo position') as HTMLInputElement).value).toBe('80');
+    expect((within(dialog).getByLabelText(/Describe the image/) as HTMLTextAreaElement).value).toBe(
+      'The arch',
+    );
+    await waitFor(() => expect(document.activeElement).toBe(picker));
+    expect(picker.getAttribute('aria-describedby')).toContain('cover-dialog-refusal');
+    expect(document.getElementById('cover-refusal')).toBeNull();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
+
+    await waitFor(() =>
+      expect(sent.find(({ line }) => line === 'PUT /api/events/ev_1/cover')?.body).toEqual({
+        uploadKey: 'event_cover/org_1/2026/10/arch.jpg',
+        position: 80,
+        description: 'The arch',
+      }),
+    );
+    expect(
+      sent.find(({ line }) => line === 'DELETE /api/orgs/org_1/event-cover-uploads')?.body,
+    ).toEqual({ uploadKey: 'event_cover/org_1/2026/10/damaged.jpg' });
+  });
+
+  it('a refused pick from the cover keeps the saved photo at its saved position, and Use this photo saves it as shown', async () => {
+    signedIn();
+    const sent = serving(PHOTO);
+    await editing();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change photo' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    pickInDialog(jpeg('damaged.jpg'));
+
+    expect(await within(dialog).findByText(DAMAGED)).toBeDefined();
+    expect(frameSource(dialog)).toBe(PHOTO.sizes[0]!.url);
+    expect(dialog.querySelector('.cover-frame img')?.getAttribute('alt')).toBe(PHOTO.description);
+    expect((within(dialog).getByLabelText('Photo position') as HTMLInputElement).value).toBe('30');
+    expect((within(dialog).getByLabelText(/Describe the image/) as HTMLTextAreaElement).value).toBe(
+      PHOTO.description,
+    );
+    expect(within(dialog).getByRole('button', { name: 'Remove photo' })).toBeDefined();
+
+    fireEvent.change(within(dialog).getByLabelText('Photo position'), { target: { value: '60' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
+
+    await waitFor(() =>
+      expect(sent.find(({ line }) => line === 'PUT /api/events/ev_1/cover')?.body).toEqual({
+        position: 60,
+        description: PHOTO.description,
+      }),
+    );
+  });
+
+  it('a refused pick from Upload a photo with a photo saved shows the saved photo, and Cancel keeps the saved cover', async () => {
+    signedIn();
+    const sent = serving(PHOTO);
+    await editing();
+
+    upload(jpeg('damaged.jpg'));
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+
+    expect(await within(dialog).findByText(DAMAGED)).toBeDefined();
+    expect(frameSource(dialog)).toBe(PHOTO.sizes[0]!.url);
+    expect((within(dialog).getByLabelText(/Describe the image/) as HTMLTextAreaElement).value).toBe(
+      PHOTO.description,
+    );
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    const img = within(screen.getByRole('button', { name: 'Change photo' })).getByRole('img');
+    expect(img.getAttribute('src')).toBe(PHOTO.sizes[0]!.url);
+    expect(img.style.objectPosition).toBe('50% 30%');
+    expect(sent.filter(({ line }) => line.startsWith('PUT /api/events'))).toEqual([]);
+  });
+
+  it('a refused first pick leaves Choose a photo, with nothing to position or describe and nothing to use', async () => {
+    signedIn();
+    const sent = serving(null);
+    await editing();
+
+    upload(jpeg('damaged.jpg'));
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    const choose = await within(dialog).findByRole('button', { name: 'Choose a photo' });
+
+    expect(within(dialog).getByText(DAMAGED)).toBeDefined();
+    expect(dialog.querySelector('.cover-frame')).toBeNull();
+    expect(dialog.querySelector('[data-testid="cover-default"]')).toBeNull();
+    expect(
+      within(dialog).getByText('JPEG, PNG, WebP or HEIC, up to 15 MB, at least 1200 × 675 pixels.'),
+    ).toBeDefined();
+    expect(within(dialog).queryByLabelText('Photo position')).toBeNull();
+    expect(within(dialog).queryByLabelText(/Describe the image/)).toBeNull();
+    expect(within(dialog).queryByRole('button', { name: 'Remove photo' })).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(choose));
+    expect(choose.getAttribute('aria-describedby')).toBe(
+      'cover-dialog-refusal cover-dialog-accepted',
+    );
+    const use = within(dialog).getByRole('button', { name: 'Use this photo' });
+    expect(use.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(use);
+    expect(sent.filter(({ line }) => line.startsWith('PUT /api/events'))).toEqual([]);
+  });
+
+  it('a good pick after a refusal clears it, fills the frame at the middle with no description, and focus goes to Photo position', async () => {
+    signedIn();
+    serving(PHOTO);
+    await editing();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change photo' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    pickInDialog(jpeg('damaged.jpg'));
+    await within(dialog).findByText(DAMAGED);
+
+    pickInDialog(jpeg('garden.jpg'));
+
+    await waitFor(() => expect(frameSource(dialog)).toBe('blob:garden.jpg'));
+    expect(within(dialog).queryByText(DAMAGED)).toBeNull();
+    const slider = within(dialog).getByLabelText('Photo position') as HTMLInputElement;
+    expect(slider.value).toBe('50');
+    expect((within(dialog).getByLabelText(/Describe the image/) as HTMLTextAreaElement).value).toBe(
+      '',
+    );
+    await waitFor(() => expect(document.activeElement).toBe(slider));
+    await waitFor(() => expect(within(dialog).queryByText('Uploading…')).toBeNull());
+    expect(
+      within(dialog)
+        .getByRole('button', { name: 'Choose another photo' })
+        .getAttribute('aria-describedby'),
+    ).toBeNull();
+  });
+
+  it("refuses a wrong type from the dialog's picker before it uploads, under the picker, and the dialog stays open", async () => {
+    signedIn();
+    const sent = serving(PHOTO);
+    await editing();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change photo' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    pickInDialog(jpeg('a.gif', 'image/gif'));
+
+    expect(
+      await within(dialog).findByText(
+        'That file is not a photo we can use. Choose a JPEG, PNG, WebP or HEIC.',
+      ),
+    ).toBeDefined();
+    expect(screen.getByRole('dialog', { name: 'Cover photo' })).toBeDefined();
+    expect(frameSource(dialog)).toBe(PHOTO.sizes[0]!.url);
+    expect(sent.map(({ line }) => line)).not.toContain('POST /api/orgs/org_1/event-cover-uploads');
   });
 });
 
