@@ -160,12 +160,9 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
   );
 }
 
-/** On a phone a section opens over the list, so its way back is to Settings. */
+// A tablet opens a section in place of the last, so a window shrunk to a phone may have no Settings under it.
 export function backToSettings(label: string) {
-  return {
-    label,
-    onPress: () => (router.canGoBack() ? router.back() : router.replace(DESTINATION_HREF.settings)),
-  };
+  return { label, onPress: () => router.dismissTo(DESTINATION_HREF.settings) };
 }
 
 /** What a tablet shows beside the list before a section is chosen. */
