@@ -79,7 +79,9 @@ def baseline(db):
     store.set_meta(db, "baselined_at", time.time())
 
 
-def brief(row, role):
+def brief(rows, role):
+    """What a run is for: one item, or the comments of an inbox batch in queue order."""
+    row = rows[0]
     sq = f"sq {role}"
     scope = [f"This is {row['pool']}: work only on this machine (disk, Docker, the role "
              "stacks, the manager). Shared duties belong to whichever machine holds the ops "
@@ -90,14 +92,30 @@ def brief(row, role):
     return "\n".join(scope + draw + [
         f"Run `{roles.invoke(role)}` as an unattended routine run "
         "(.claude/skills/role-routine, section 3).",
-        f"Your work is item {row['id']}: {row['reason']}.",
-        f"Start with `{sq} next`. It prints what this work needs and the commands to act with. "
-        f"Read and write only through `{sq}` (`{sq} help`), never the Shortcut tools or gh. "
-        "Nobody is watching: never wait for an answer.",
-        f"As your last step run `{sq} done {row['id']} --note \"<one line>\"`, "
-        "even when you could not finish; the note says why.",
+        *(batch_lines(rows, sq) if len(rows) > 1 else [
+            f"Your work is item {row['id']}: {row['reason']}.",
+            f"Start with `{sq} next`. It prints what this work needs and the commands to act "
+            f"with. Read and write only through `{sq}` (`{sq} help`), never the Shortcut tools "
+            "or gh. Nobody is watching: never wait for an answer.",
+            f"As your last step run `{sq} done {row['id']} --note \"<one line>\"`, "
+            "even when you could not finish; the note says why."]),
         "Then report in at most ten lines.",
     ])
+
+
+def batch_lines(rows, sq):
+    listed = [f"- item {row['id']}: {row['reason']}" + (
+        f" (comments {', '.join('#' + c for c in row['comments'].split(','))})"
+        if row["comments"] else "") for row in rows]
+    return [f"Your work is {len(rows)} comment items, in queue order:", *listed,
+            f"Start with `{sq} next`. It prints what each needs and the commands to act with. "
+            f"Read and write only through `{sq}` (`{sq} help`), never the Shortcut tools or gh. "
+            "Nobody is watching: never wait for an answer.",
+            f"Finish each on its own with `{sq} done <item> --note \"<one line>\"` as soon as "
+            "it is answered, or needs no reply.",
+            "A comment that needs a test pass, a build, a story to specify or other long work "
+            f"is not started here: hand it back with `{sq} solo <item>`, and its own run takes "
+            "it next. Carry on with the rest."]
 
 
 class Session:
@@ -149,7 +167,7 @@ def cmd_tick(s, a):
     row = store.claim(s.db, s.role, now)
     if not row:
         return print("idle")
-    print(f"wake: {row['reason']}\n---\n{brief(row, s.role)}")
+    print(f"wake: {row['reason']}\n---\n{brief([row], s.role)}")
 
 
 def cmd_next(s, a):
@@ -164,12 +182,13 @@ def cmd_next(s, a):
 
 
 def own_item(s, now, show):
-    """Inside a worker, the item the runner launched it on; it never claims another, since
+    """Inside a worker, the items the runner launched it on; it never claims another, since
     the runner would not know the claim was its worker's and would wait out the lease."""
-    row = store.held_by(s.db, s.role, now, this_worker())
-    if not row:
+    rows = store.held(s.db, s.role, now, this_worker())
+    if not rows:
         return print(f"{this_worker()}'s item is finished: end this run")
-    show(row)
+    for row in rows:
+        show(row)
 
 
 def render(s, row):
@@ -189,10 +208,20 @@ def cmd_done(s, a):
 
 
 def cmd_release(s, a):
-    row = store.held_by(s.db, s.role, worker=this_worker())
-    if row:
+    for row in store.held(s.db, s.role, worker=this_worker()):
         store.release(s.db, row["id"])
     print("released")
+
+
+def cmd_solo(s, a):
+    rows = store.held(s.db, s.role, worker=this_worker())
+    work_id = int(a.id)
+    if work_id not in {row["id"] for row in rows}:
+        sys.exit(f"item {work_id} is not one this run holds")
+    if len(rows) == 1:
+        sys.exit(f"this run holds only {work_id}: do it now")
+    store.hand_back(s.db, work_id)
+    print(f"item {work_id} goes back to the queue, to run by itself")
 
 
 def cmd_queue(s, a):
@@ -435,6 +464,8 @@ READS = [
     ("done", cmd_done, "finish the work you hold, with a note for your next run",
      lambda p: (p.add_argument("id", nargs="?"), p.add_argument("--note"))),
     ("release", cmd_release, "give back the work you hold, unfinished", None),
+    ("solo", cmd_solo, "hand one comment of a batch back, to run by itself next",
+     lambda p: p.add_argument("id")),
     ("queue", cmd_queue, "your queue or sweep list, one line per story", None),
     ("drawings", cmd_drawings, "the stories listed to draw, oldest first, each with its "
      "prompt", None),

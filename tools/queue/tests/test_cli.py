@@ -78,6 +78,49 @@ class InsideAWorker(unittest.TestCase):
         self.assertEqual(self.run_command(cli.cmd_tick), "busy")
 
 
+    def test_next_prints_every_item_of_a_batch_and_release_gives_them_all_back(self):
+        store.claim(self.db, "pm", 1000, worker="pm", batch=2)
+        self.assertEqual(self.run_command(cli.cmd_next).splitlines(), ["1", "2"])
+        self.run_command(cli.cmd_release)
+        self.assertEqual(store.held(self.db, "pm", 1000, "pm"), [])
+
+    def solo(self, work_id):
+        out = io.StringIO()
+        with redirect_stdout(out), mock.patch.dict("os.environ", {"SOIRELY_WORKER": "pm"}), \
+                mock.patch("time.time", return_value=1000):
+            cli.cmd_solo(self.session, mock.Mock(id=str(work_id)))
+        return out.getvalue().strip()
+
+    def test_solo_hands_one_comment_of_a_batch_back_to_run_by_itself(self):
+        store.claim(self.db, "pm", 1000, worker="pm", batch=2)
+        self.assertEqual(self.solo(2), "item 2 goes back to the queue, to run by itself")
+        self.assertEqual([row["id"] for row in store.held(self.db, "pm", 1000, "pm")], [1])
+        self.assertEqual(store.item(self.db, 2)["solo"], 1)
+
+    def test_solo_refuses_in_a_run_holding_only_that_item_or_one_it_does_not_hold(self):
+        store.claim(self.db, "pm", 1000, worker="pm")
+        with self.assertRaises(SystemExit) as refused:
+            self.solo(1)
+        self.assertEqual(refused.exception.code, "this run holds only 1: do it now")
+        with self.assertRaises(SystemExit) as refused:
+            self.solo(2)
+        self.assertEqual(refused.exception.code, "item 2 is not one this run holds")
+        self.assertEqual(store.item(self.db, 1)["status"], "claimed")
+
+
+class Brief(unittest.TestCase):
+    def test_a_batch_lists_each_item_with_its_comments_and_how_to_hand_one_back(self):
+        rows = [{"id": 4, "pool": "qa", "kind": "inbox", "reason": "[qa] on sc-1",
+                 "comments": "17122,17136"},
+                {"id": 7, "pool": "qa", "kind": "inbox", "reason": "[qa] on sc-2",
+                 "comments": None}]
+        text = cli.brief(rows, "qa")
+        self.assertIn("Your work is 2 comment items, in queue order:\n"
+                      "- item 4: [qa] on sc-1 (comments #17122, #17136)\n"
+                      "- item 7: [qa] on sc-2\n", text)
+        self.assertIn("`sq qa solo <item>`", text)
+        self.assertIn("`sq qa done <item> --note", text)
+
 def check(name, bucket):
     return {"name": name, "bucket": bucket, "workflow": "Pull request", "link": f"https://x/{name}"}
 
@@ -246,10 +289,10 @@ class PermissionsPending(unittest.TestCase):
                                          "- Bash(xcrun simctl boot:*) for all"])
 
 
-class Brief(unittest.TestCase):
+class BatchBrief(unittest.TestCase):
     def test_machine_work_opens_by_keeping_ops_to_this_machine(self):
         row = {"id": 4, "pool": "ops@tolu-mac", "kind": "machine", "reason": "the daily sweep"}
-        self.assertTrue(cli.brief(row, "ops").startswith(
+        self.assertTrue(cli.brief([row], "ops").startswith(
             "This is ops@tolu-mac: work only on this machine (disk, Docker, the role stacks, "
             "the manager). Shared duties belong to whichever machine holds the ops lease."))
-        self.assertFalse(cli.brief(dict(row, kind="main", pool="ops"), "ops").startswith("This is"))
+        self.assertFalse(cli.brief([dict(row, kind="main", pool="ops")], "ops").startswith("This is"))

@@ -83,6 +83,23 @@ the thread. Every other kind of work (a story, a sweep, a review) takes `effort`
 `inboxEffort` is checked like `effort`, and the run log and the session view on `sq web`
 show the effort each run used.
 
+**A role can answer several comments in one run, `inboxBatch`.** Off unless set: unset or
+`1` is one comment item per run. From `2`, a worker that claims an inbox item also claims the
+role's next open inbox items, in queue order, up to that many in all, each on a story of its
+own and none another machine holds. The run pays its start once, under the role's one
+`maxRuntime` and `maxBudgetUsd`, and the run log names every item with the cost once.
+
+- **A tester's comment on a story in Ready For QA or In QA runs by itself**, since it may ask
+  for a test pass.
+- **A run that finds long work in its batch** (a test pass, a build, a story to specify)
+  hands that item back with `sq <role> solo <item>`. It goes back to the queue marked to run
+  alone, and its own run takes it with the full `maxRuntime`. In a run holding only that
+  item, `solo` refuses: do it now.
+- **Each item finishes on its own.** One the run did not finish goes back to the queue when
+  its worker ends, as a single item does.
+- **Anything but a whole number from 1** (`0`, `1.5`, `"3"`, `true`) refuses the role, and
+  `sq status` names it, as a bad `workers` does.
+
 **Safeguards.** A typo in a model or effort is the costliest mistake this file can hold, so
 each is checked against a list in the repository, `tools/queue/models.json`: every model id
 `sq` accepts, with the effort levels that model takes.

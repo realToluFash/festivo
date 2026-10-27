@@ -231,13 +231,14 @@ def wake(db, config, platform, role, name, values, now, say, sq, python, kinds, 
     if platform.worker_active(name):
         say(f"{name}: worker still running")
         return True
-    claimed = store.held_by(db, role, now, worker=name)
-    if claimed and claimed["worker"]:
-        # Its worker is gone without finishing it, a crash or a kill; a role run by hand
-        # claims with no worker, so only a worker's item is given back.
-        store.release(db, claimed["id"])
-        say(f"{name}: item {claimed['id']} given back, its worker ended without "
-            "finishing it")
+    claimed = store.held(db, role, now, worker=name)
+    if claimed and claimed[0]["worker"]:
+        # Its worker is gone without finishing them, a crash or a kill; a role run by hand
+        # claims with no worker, so only a worker's items are given back.
+        for row in claimed:
+            store.release(db, row["id"])
+            say(f"{name}: item {row['id']} given back, its worker ended without "
+                "finishing it")
         claimed = None
     if claimed:
         say(f"{name}: busy")
@@ -249,41 +250,76 @@ def wake(db, config, platform, role, name, values, now, say, sq, python, kinds, 
         kinds = ("machine",)
     values = dict(values, maxRuntimeMinutes=machine.minutes(values["maxRuntime"]))
     row = store.claim(db, role, now, kinds=kinds, skip=skip, worker=name,
-                      workers=values.get("workers") or 1)
+                      workers=values.get("workers") or 1, batch=machine.inbox_batch(values),
+                      alone=lambda item: testing(db, role, item))
     if not row:
         say(f"{name}: idle")
         return False
-    key = store.claim_key(row)
-    try:
-        taken = view and row["kind"] != "machine" and \
-            not shared.claim_item(remote, view, row["pool"], key, role)
-    except RuntimeError as error:
-        store.release(db, row["id"])
-        say(f"error: {name}: could not claim {key} ({error}); item {row['id']} released")
-        return False
-    if taken:
-        store.release(db, row["id"])
-        say(f"{name}: {key} was just taken on another machine")
-        return True
+    batch = store.held(db, role, now, worker=name)
+    for item in batch:
+        key = store.claim_key(item)
+        try:
+            taken = view and item["kind"] != "machine" and \
+                not shared.claim_item(remote, view, item["pool"], key, role)
+        except RuntimeError as error:
+            for each in batch:
+                store.release(db, each["id"])
+            say(f"error: {name}: could not claim {key} ({error}); "
+                f"{items(batch)} released")
+            return False
+        if taken and item["id"] == row["id"]:
+            for each in batch:
+                store.release(db, each["id"])
+            say(f"{name}: {key} was just taken on another machine")
+            return True
+        if taken:
+            store.release(db, item["id"])
+            say(f"{name}: {key} was just taken on another machine; item {item['id']} left out")
+    batch = store.held(db, role, now, worker=name)
     try:
         path = machine.checkout(config, role, name)
         if name != role:
             checkout.ensure(machine.checkout(config, role), path)
         platform.launch(name, row["id"], values, sq, python, path, machine.env_file())
     except (OSError, subprocess.CalledProcessError, checkout.Unprepared) as error:
-        store.release(db, row["id"])
-        say(f"error: {name}: the worker did not start ({error}); item {row['id']} released")
+        for item in batch:
+            store.release(db, item["id"])
+        say(f"error: {name}: the worker did not start ({error}); {items(batch)} released")
         return False
-    say(f"{name}: woke for {row['reason']} (item {row['id']})")
+    if len(batch) > 1:
+        say(f"{name}: woke for {len(batch)} comments ({items(batch)})")
+    else:
+        say(f"{name}: woke for {row['reason']} (item {row['id']})")
     return True
 
 
-def prompt(row, role, main, note):
+def items(rows):
+    return ("item " if len(rows) == 1 else "items ") + ", ".join(str(r["id"]) for r in rows)
+
+
+def testing(db, role, item):
+    """A tester's comment on a story waiting for or in QA may ask for a test pass, so it runs
+    by itself."""
+    if role not in roles.TESTERS or not item["story_id"]:
+        return False
+    return (store.story(db, item["story_id"]) or {}).get("state") in ("Ready For QA", "In QA")
+
+
+def prompt(rows, role, main, note):
     from .cli import brief
     lines = [f"Your checkout was brought up to origin/main at {main[:7]} before this run."]
     if note:
         lines.append(note)
-    return "\n".join(lines + ["", brief(row, role), MILESTONES.format(role=role)])
+    return "\n".join(lines + ["", brief(rows, role), MILESTONES.format(role=role)])
+
+
+def settled(db, ids):
+    """Every item of the run is done, or handed back to run by itself."""
+    for work_id in ids:
+        row = store.item(db, work_id)
+        if not row or not (row["status"] == "done" or (row["status"] == "open" and row["solo"])):
+            return False
+    return True
 
 
 def command(values, config_dir, allowed=(), denied=(), session=None):
@@ -435,6 +471,8 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
     role = machine.worker_role(name)
     config = load()
     row = store.item(db, item_id)
+    batch = store.held(db, role, now, worker=name) if row else []
+    batch = batch if len(batch) > 1 and any(r["id"] == item_id for r in batch) else [row]
     values = machine.settings(config, role)
     values = dict(values, effort=machine.effort_for(values, row["kind"] if row else None))
     story = store.story(db, row["story_id"]) if row and row["story_id"] else None
@@ -443,6 +481,8 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
              "claude": (store.get_meta(db, "claude_version") or {}).get("version")}
     if name != role:
         entry["worker"] = name
+    if len(batch) > 1:
+        entry["items"] = [r["id"] for r in batch]
     path = machine.checkout(config, role, name)
     try:
         main, note = prepare(path, role, story)
@@ -473,9 +513,9 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
     scratch.mkdir(parents=True, exist_ok=True)
     env["SQ_RUN_DIR"] = str(scratch)
     try:
+        ids = [r["id"] for r in batch] if row else [item_id]
         code, stdout, stderr, ended = run_claude(
-            argv, prompt(row, role, main, note), cwd, env,
-            lambda: (store.item(db, item_id) or {"status": None})["status"] == "done")
+            argv, prompt(batch, role, main, note), cwd, env, lambda: settled(db, ids))
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
         if cwd != path:
