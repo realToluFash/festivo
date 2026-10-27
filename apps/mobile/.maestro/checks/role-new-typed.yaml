@@ -3,7 +3,8 @@ appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/roles
 - extendedWaitUntil:
-    visible: '{{t:rolesScreen.title}}'
+    visible:
+      id: 'roles.role.owner'
     timeout: 30000
 - scrollUntilVisible:
     element:
@@ -16,10 +17,13 @@ appId: host.exp.Exponent
 - inputText: 'Tablet Crew'
 - takeScreenshot: role-new-typed
 - hideKeyboard
-- swipe:
-    start: 75%, 70%
-    end: 75%, 30%
-- swipe:
-    start: 75%, 70%
-    end: 75%, 30%
+- repeat:
+    while:
+      notVisible: '{{t:rolesScreen.seeHeading}}'
+    times: 8
+    commands:
+      - swipe:
+          start: 75%, 70%
+          end: 75%, 30%
+- assertVisible: '{{t:rolesScreen.seeHeading}}'
 - takeScreenshot: role-new-foot
