@@ -1,4 +1,4 @@
-# sc-3590: the cover on each row of Events and across the top of the event's page, at its saved position (${TOP} at 0, ${MIDDLE} at 50, ${BOTTOM} at 100) or its type's default (${NONE}), at the orientation given. TOP_NAME, MIDDLE_NAME and BOTTOM_NAME are those events' names in the test data.
+# sc-3590: the cover on each row of Events and across the top of the event's page, at its saved position (${TOP} at 0, ${MIDDLE} at 50, ${BOTTOM} at 100) or its type's default (${NONE}), at the orientation given. TOP_NAME, MIDDLE_NAME, BOTTOM_NAME and NONE_NAME are those events' names in the test data.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
@@ -89,9 +89,17 @@ appId: host.exp.Exponent
     id: 'events.row.${NONE}'
 - scrollUntilVisible:
     element:
+      text: '${NONE_NAME}'
+      childOf:
+        id: 'events.page'
+    direction: DOWN
+    timeout: 20000
+    centerElement: true
+- scrollUntilVisible:
+    element:
       id: 'cover-default-graduation'
       childOf:
         id: 'events.page.cover'
-    direction: DOWN
-    timeout: 20000
+    direction: UP
+    timeout: 10000
 - takeScreenshot: page-default
