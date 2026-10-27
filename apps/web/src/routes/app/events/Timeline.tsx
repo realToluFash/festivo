@@ -7,6 +7,7 @@ import {
   markedMilestones,
   type MilestoneOwner,
   namesZone,
+  serverClock,
 } from '@soirely/domain';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -17,7 +18,8 @@ import { dateLocale } from '../../../i18n/index.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { distanceWords } from './distanceWords.ts';
 
-type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; timeline: Timeline };
+type Load =
+  { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; timeline: Timeline; at: Date };
 
 const OWNER_WORD: Record<MilestoneOwner, string> = {
   event: 'timeline.owner_event',
@@ -31,10 +33,12 @@ const OWNER_KEY: Record<MilestoneOwner, string> = {
   automatic: 'timeline.key_automatic',
 };
 
+/** Read again when the event's status moves, so a Call off or End now shows its dates without a reload; judged by a clock no older than the read, so a date it stamped is never still ahead. */
 function useTimeline(
-  eventId: string,
+  { id: eventId, status }: OrganisationEvent,
   heading: RefObject<HTMLHeadingElement | null>,
-): { load: Load; retried: boolean; retry: () => void } {
+  now: Date,
+): { load: Load; now: Date; retried: boolean; retry: () => void } {
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const land = useFocusOnceShown();
@@ -43,17 +47,18 @@ function useTimeline(
     let current = true;
 
     api.eventTimeline(eventId).then(
-      (timeline) => current && setLoad({ kind: 'loaded', timeline }),
+      (timeline) => current && setLoad({ kind: 'loaded', timeline, at: serverClock.now() }),
       () => current && setLoad({ kind: 'failed' }),
     );
 
     return () => {
       current = false;
     };
-  }, [eventId, attempt]);
+  }, [eventId, status, attempt]);
 
   return {
     load,
+    now: load.kind === 'loaded' && load.at > now ? load.at : now,
     retried: attempt > 0,
     retry: () => {
       setLoad({ kind: 'loading' });
@@ -68,10 +73,10 @@ function readerZone(): string {
 }
 
 /** Event View's panel: the next four, or why there are none, in rows held at one height. */
-export function ComingUp({ event, now }: { event: OrganisationEvent; now: Date }) {
+export function ComingUp({ event, now: tick }: { event: OrganisationEvent; now: Date }) {
   const { t } = useTranslation();
   const heading = useRef<HTMLHeadingElement>(null);
-  const { load, retried, retry } = useTimeline(event.id, heading);
+  const { load, now, retried, retry } = useTimeline(event, heading, tick);
   const shown = load.kind === 'loaded' ? comingUp(load.timeline.milestones, now) : [];
 
   return (
@@ -117,7 +122,7 @@ export function ComingUp({ event, now }: { event: OrganisationEvent; now: Date }
 /** Every milestone, earliest first, under the line naming the event's zone. */
 export function AllDates({
   event,
-  now,
+  now: tick,
   heading,
 }: {
   event: OrganisationEvent;
@@ -125,7 +130,7 @@ export function AllDates({
   heading: RefObject<HTMLHeadingElement | null>;
 }) {
   const { t } = useTranslation();
-  const { load, retried, retry } = useTimeline(event.id, heading);
+  const { load, now, retried, retry } = useTimeline(event, heading, tick);
 
   return (
     <>

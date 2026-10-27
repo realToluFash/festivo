@@ -6,7 +6,9 @@ import {
   markedMilestones,
   type MilestoneOwner,
   namesZone,
+  serverClock,
 } from '@soirely/domain';
+import { type EventStatus, type OrganisationEvent } from '@soirely/api-client';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -21,7 +23,8 @@ import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { distanceWords } from '../kit/distanceWords.ts';
 
-type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; timeline: EventTimeline };
+type Load =
+  { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; timeline: EventTimeline; at: Date };
 
 const OWNER_WORD: Record<MilestoneOwner, string> = {
   event: 'timeline.owner_event',
@@ -39,7 +42,12 @@ const OWNER_SHAPE: Record<MilestoneOwner, string> = { event: '▦', you: '●', 
 
 const HIDDEN = { accessibilityElementsHidden: true, importantForAccessibility: 'no' } as const;
 
-function useTimeline(eventId: string): { load: Load; retried: boolean; retry: () => void } {
+/** Read again when the event's status moves, so a Call off or End now shows its dates without a reload; judged by a clock no older than the read, so a date it stamped is never still ahead. */
+function useTimeline(
+  eventId: string,
+  now: Date,
+  status?: EventStatus,
+): { load: Load; now: Date; retried: boolean; retry: () => void } {
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
 
@@ -47,17 +55,18 @@ function useTimeline(eventId: string): { load: Load; retried: boolean; retry: ()
     let live = true;
 
     api.eventTimeline(eventId).then(
-      (timeline) => live && setLoad({ kind: 'loaded', timeline }),
+      (timeline) => live && setLoad({ kind: 'loaded', timeline, at: serverClock.now() }),
       () => live && setLoad({ kind: 'failed' }),
     );
 
     return () => {
       live = false;
     };
-  }, [eventId, attempt]);
+  }, [eventId, status, attempt]);
 
   return {
     load,
+    now: load.kind === 'loaded' && load.at > now ? load.at : now,
     retried: attempt > 0,
     retry: () => {
       setLoad({ kind: 'loading' });
@@ -73,17 +82,17 @@ function readerZone(): string {
 /** The event page's panel: the next four, or why there are none, in rows held at one height. */
 export function ComingUp({
   kind,
-  eventId,
-  now,
+  event,
+  now: tick,
   onAllDates,
 }: {
   kind: LayoutKind;
-  eventId: string;
+  event: OrganisationEvent;
   now: Date;
   onAllDates: () => void;
 }) {
   const { t } = useTranslation();
-  const { load, retried, retry } = useTimeline(eventId);
+  const { load, now, retried, retry } = useTimeline(event.id, tick, event.status);
   const shown = load.kind === 'loaded' ? comingUp(load.timeline.milestones, now) : [];
 
   return (
@@ -131,9 +140,17 @@ export function ComingUp({
 }
 
 /** Every milestone, earliest first, under the line naming the event's zone. */
-export function AllDates({ kind, eventId, now }: { kind: LayoutKind; eventId: string; now: Date }) {
+export function AllDates({
+  kind,
+  eventId,
+  now: tick,
+}: {
+  kind: LayoutKind;
+  eventId: string;
+  now: Date;
+}) {
   const { t } = useTranslation();
-  const { load, retried, retry } = useTimeline(eventId);
+  const { load, now, retried, retry } = useTimeline(eventId, tick);
 
   return (
     <View style={cardFrame(kind)} testID="timeline.allDates.page">

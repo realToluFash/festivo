@@ -206,5 +206,6 @@
     "validation.cover_upload_missing": "No se ha podido subir la foto. Vuelva a intentarlo.",
     "event.delete_name_mismatch": "Escriba {name} exactamente como aparece para eliminarlo.",
     "timeline.event_starts": "Empieza {name}",
-    "timeline.event_ends": "Termina {name}"
+    "timeline.event_ends": "Termina {name}",
+    "timeline.event_called_off": "{name} called off"
 }

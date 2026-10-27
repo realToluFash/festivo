@@ -229,7 +229,7 @@ export function EventPage({
       </View>
       <ComingUp
         kind={kind}
-        eventId={event.id}
+        event={event}
         now={now}
         onAllDates={() => router.push(`/events/${encodeURIComponent(event.id)}/dates`)}
       />

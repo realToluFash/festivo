@@ -4254,6 +4254,61 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     expect(within(page).getByText('Something you need to do')).toBeDefined();
   });
 
+  it('reads the dates again on Call off, and the called-off moment is never Next up (sc-16709)', async () => {
+    clockAt('2030-10-13T09:00:00Z');
+    signedIn();
+    const ahead = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+    let reads = 0;
+    answering({
+      'GET /api/events/ev_1': () =>
+        new Response(
+          JSON.stringify({ event: event({ ...ahead, status: 'live', phase: 'live' }) }),
+          {
+            headers: { ETag: '"1"' },
+          },
+        ),
+      'GET /api/events/ev_1/timeline': () =>
+        json(
+          ++reads === 1
+            ? {
+                timeZone: 'Africa/Lagos',
+                milestones: [milestone(ahead.startsAt, 'Adaeze and Tunde starts')],
+              }
+            : {
+                timeZone: 'Africa/Lagos',
+                milestones: [milestone('2030-10-13T10:00:05+01:00', 'Adaeze and Tunde called off')],
+              },
+        ),
+      'POST /api/events/ev_1/end': () =>
+        new Response(
+          JSON.stringify({
+            event: event({
+              ...ahead,
+              status: 'ended',
+              phase: 'finished',
+              concludedAt: '2030-10-13T10:00:05+01:00',
+            }),
+          }),
+          { headers: { ETag: '"2"' } },
+        ),
+    });
+    at('/app/events/ev_1');
+
+    const panel = await comingUp();
+    await waitFor(() => expect(rows(panel)).toHaveLength(1));
+
+    vi.setSystemTime(new Date('2030-10-13T09:00:05.500Z'));
+    fireEvent.click(screen.getByRole('button', { name: 'Call off' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Call off Adaeze and Tunde?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Call off' }));
+
+    expect(
+      await within(panel).findByText('Nothing coming up. Every date on this event has passed.'),
+    ).toBeDefined();
+    expect(within(panel).queryByRole('listitem')).toBeNull();
+    expect(reads).toBe(2);
+  });
+
   it('says Loading the dates… in All dates until the dates arrive', async () => {
     clockAt('2026-10-11T08:00:00Z');
     signedIn();
