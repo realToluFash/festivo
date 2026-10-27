@@ -1,9 +1,9 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
 import {
+  clockMinutes,
   copiedEnd,
+  durationWords,
   formatEventMoment,
-  formatHours,
-  lengthInHours,
   localDateTime,
   skippedLine,
 } from '@soirely/domain';
@@ -116,7 +116,11 @@ function DuplicateDialog({ event, onClose }: { event: OrganisationEvent; onClose
   }
 
   const end = copiedEnd(date, time, event.timeZone, event);
-  const duration = formatHours(lengthInHours(event), locale);
+  const words = durationWords(clockMinutes(event, event.timeZone) ?? 0, locale);
+  const duration =
+    words.hours != null && words.minutes != null
+      ? t('eventDuplicate.hoursAndMinutes', { hourWords: words.hours, minuteWords: words.minutes })
+      : (words.hours ?? words.minutes ?? '');
 
   return (
     <>
@@ -153,6 +157,7 @@ function DuplicateDialog({ event, onClose }: { event: OrganisationEvent; onClose
             <div>
               <h3>{t('eventDuplicate.notCopied')}</h3>
               <ul>
+                <li>{t('eventDuplicate.notCopiedHosts')}</li>
                 <li>{t('eventDuplicate.notCopiedGuests')}</li>
                 <li>{t('eventDuplicate.notCopiedReplies')}</li>
                 <li>{t('eventDuplicate.notCopiedHappened')}</li>

@@ -6,7 +6,7 @@ import {
   formatDay,
   formatEventDate,
   formatEventMoment,
-  formatHours,
+  durationWords,
   formatEventRange,
   formatTimeOfDay,
   formatWallClock,
@@ -228,8 +228,11 @@ describe('the end of a copy, as its form works it out (sc-3593)', () => {
     );
   });
 
-  it('is so many hours later, in the reader’s words', () => {
-    expect([formatHours(10, 'en'), formatHours(1, 'en')]).toEqual(['10 hours', '1 hour']);
-    expect(formatHours(1.5, 'fr')).toMatch(/^1,5\sheure$/u);
+  it('is whole hours and minutes, in the reader’s words', () => {
+    expect(durationWords(600, 'en')).toEqual({ hours: '10 hours', minutes: null });
+    expect(durationWords(140, 'en')).toEqual({ hours: '2 hours', minutes: '20 minutes' });
+    expect(durationWords(45, 'en')).toEqual({ hours: null, minutes: '45 minutes' });
+    expect(durationWords(0, 'en')).toEqual({ hours: '0 hours', minutes: null });
+    expect(durationWords(105, 'fr').minutes).toBe('45 minutes');
   });
 });

@@ -86,7 +86,7 @@ export function savedWallClock(date: string, time: string, timeZone: string): st
 
   if (typed == null) return null;
 
-  return skippedTime(date, time, timeZone)?.savedAs ?? typed;
+  return resolved(typed, timeZone)?.wallClock ?? typed;
 }
 
 export function skippedTime(
@@ -95,27 +95,47 @@ export function skippedTime(
   timeZone: string,
 ): { savedAs: string } | null {
   const typed = localDateTime(date, time);
-  const local = typed == null ? Number.NaN : Date.parse(`${typed}Z`);
+  const saved = typed == null ? null : resolved(typed, timeZone);
 
-  if (Number.isNaN(local) || timeZone === '') return null;
-
-  const offsetAt = zoneOffsets(timeZone);
-
-  if (offsetAt == null) return null;
-
-  const before = offsetAt(local - DAY);
-  const after = offsetAt(local + DAY);
-  const held = [before, after].some((offset) => offsetAt(local - offset) === offset);
-
-  if (held || after <= before) return null;
-
-  return { savedAs: new Date(local - before + after).toISOString().slice(0, 16) };
+  return saved == null || saved.wallClock === typed ? null : { savedAs: saved.wallClock };
 }
 
-/** The instant the API's LocalTimeResolver makes of a wall-clock time; a repeated time takes the earlier offset. */
-export function wallClockInstant(date: string, time: string, timeZone: string): number | null {
+/** As the API's EventDuplicator ends a copy: the original's length on the clock after the saved start (sc-3593). */
+export function copiedEnd(
+  date: string,
+  time: string,
+  timeZone: string,
+  original: { startsAt: string; endsAt: string },
+): Date | null {
   const typed = localDateTime(date, time);
-  const local = typed == null ? Number.NaN : Date.parse(`${typed}Z`);
+  const start = typed == null ? null : resolved(typed, timeZone);
+  const length = clockMinutes(original, timeZone);
+
+  if (start == null || length == null) return null;
+
+  const end = new Date(Date.parse(`${start.wallClock}Z`) + length * MINUTE).toISOString();
+  const instant = resolved(end.slice(0, 16), timeZone)?.instant;
+
+  return instant == null ? null : new Date(instant);
+}
+
+/** End minus start as the event's page shows them, whatever the clocks did in between. */
+export function clockMinutes(
+  event: { startsAt: string; endsAt: string },
+  timeZone: string,
+): number | null {
+  const offsetAt = timeZone === '' ? null : zoneOffsets(timeZone);
+  const startsAt = Date.parse(event.startsAt);
+  const endsAt = Date.parse(event.endsAt);
+
+  if (offsetAt == null || Number.isNaN(startsAt) || Number.isNaN(endsAt)) return null;
+
+  return Math.round((endsAt + offsetAt(endsAt) - startsAt - offsetAt(startsAt)) / MINUTE);
+}
+
+/** The API's LocalTimeResolver: a skipped time moves later by the gap, a repeated one takes the earlier offset. */
+function resolved(typed: string, timeZone: string): { instant: number; wallClock: string } | null {
+  const local = Date.parse(`${typed}Z`);
   const offsetAt = Number.isNaN(local) || timeZone === '' ? null : zoneOffsets(timeZone);
 
   if (offsetAt == null) return null;
@@ -123,26 +143,9 @@ export function wallClockInstant(date: string, time: string, timeZone: string): 
   const before = offsetAt(local - DAY);
   const after = offsetAt(local + DAY);
   const held = [before, after].filter((offset) => offsetAt(local - offset) === offset);
+  const instant = local - (held[0] ?? before);
 
-  return local - (held[0] ?? before);
-}
-
-/** As the API's EventDuplicator ends a copy: the original's elapsed length after the new start (sc-3593). */
-export function copiedEnd(
-  date: string,
-  time: string,
-  timeZone: string,
-  original: { startsAt: string; endsAt: string },
-): Date | null {
-  const start = wallClockInstant(date, time, timeZone);
-
-  return start == null
-    ? null
-    : new Date(start + Date.parse(original.endsAt) - Date.parse(original.startsAt));
-}
-
-export function lengthInHours(event: { startsAt: string; endsAt: string }): number {
-  return (Date.parse(event.endsAt) - Date.parse(event.startsAt)) / 3_600_000;
+  return { instant, wallClock: new Date(instant + offsetAt(instant)).toISOString().slice(0, 16) };
 }
 
 function zoneOffsets(timeZone: string): ((instant: number) => number) | null {

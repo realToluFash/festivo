@@ -9,6 +9,8 @@ use App\Domain\Event\Cover\EventCoverEditor;
 use App\Entity\Event;
 use App\Entity\User;
 use App\Enum\Actor;
+use DateTimeImmutable;
+use DateTimeZone;
 use Doctrine\ORM\EntityManagerInterface;
 use Throwable;
 
@@ -23,13 +25,15 @@ final readonly class EventDuplicator
     ) {
     }
 
-    /** `$startsAt` is local to the original's zone. The length is elapsed time, so a copy across a change of clocks ends an hour off the original's wall-clock end. */
+    /** `$startsAt` is local to the original's zone. The length is read on the clock, not in elapsed time, so a change of clocks on either night moves neither end. */
     public function duplicate(Event $original, User $by, ?string $startsAt): Event
     {
+        $zone = new DateTimeZone($original->getTimeZone());
         $start = $this->eventRules->startsAt($startsAt, $original->getTimeZone());
-        $length = $original->getEndsAt()->getTimestamp() - $original->getStartsAt()->getTimestamp();
+        $length = self::wallClock($original->getEndsAt())->getTimestamp() - self::wallClock($original->getStartsAt())->getTimestamp();
+        $end = self::wallClock($start);
 
-        $copy = new Event($original->getOrganisation(), $original->getName(), $original->getType(), $start, $start->setTimestamp($start->getTimestamp() + $length), $original->getCurrency());
+        $copy = new Event($original->getOrganisation(), $original->getName(), $original->getType(), $start, LocalTimeResolver::resolve($end->setTimestamp($end->getTimestamp() + $length), $zone), $original->getCurrency());
         EventVenue::write($copy, EventVenue::of($original));
         $this->entityManager->persist($copy);
         $cover = $this->eventCoverEditor->copy($original, $copy);
@@ -51,5 +55,10 @@ final readonly class EventDuplicator
         }
 
         return $copy;
+    }
+
+    private static function wallClock(DateTimeImmutable $zoned): DateTimeImmutable
+    {
+        return new DateTimeImmutable($zoned->format('Y-m-d H:i:s'), new DateTimeZone('UTC'));
     }
 }

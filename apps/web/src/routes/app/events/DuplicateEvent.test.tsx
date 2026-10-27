@@ -149,6 +149,7 @@ describe('Duplicate an event (sc-3593)', () => {
     );
     expect(within(dialog).getByText('Cover and its description')).toBeDefined();
     expect(within(dialog).getByText('Anything that happened at the event')).toBeDefined();
+    expect(within(dialog).getByText('Hosts')).toBeDefined();
     expect(
       within(dialog).getByText(
         'It ends 10 hours after it starts, like the original. Times in Africa/Lagos.',
@@ -160,6 +161,36 @@ describe('Duplicate an event (sc-3593)', () => {
     expect(
       within(dialog).getByText(
         'It ends Sun, May 16, 2027, 02:00, 10 hours later, like the original. Times in Africa/Lagos.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('gives a length that is not whole hours in hours and minutes', async () => {
+    signedIn();
+    const { dialog } = await opened(event({ endsAt: '2030-11-14T18:20:00+01:00' }));
+
+    expect(
+      within(dialog).getByText(
+        'It ends 2 hours 20 minutes after it starts, like the original. Times in Africa/Lagos.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('reads the length on the clock when the original crosses a change of clocks', async () => {
+    signedIn();
+    const { dialog } = await opened(
+      event({
+        startsAt: '2027-03-27T20:00:00+01:00',
+        endsAt: '2027-03-28T08:00:00+02:00',
+        timeZone: 'Europe/Madrid',
+      }),
+    );
+
+    start(dialog, '2027-07-17', '20:00');
+
+    expect(
+      within(dialog).getByText(
+        'It ends Sun, Jul 18, 2027, 08:00, 12 hours later, like the original. Times in Europe/Madrid.',
       ),
     ).toBeDefined();
   });

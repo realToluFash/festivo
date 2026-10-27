@@ -76,15 +76,29 @@ final class EventDuplicateTest extends ApiTestCase
         self::assertSame($copy, $this->show($copy['id']));
     }
 
-    #[Test]
-    public function theLengthIsElapsedTimeKeptAcrossAChangeOfClocks(): void
+    /**
+     * @return iterable<string, array{string, string, string, string}>
+     */
+    public static function clockChanges(): iterable
     {
-        $id = $this->original(['startsAt' => '2030-03-30T20:00', 'endsAt' => '2030-03-31T08:00', 'timeZone' => 'Europe/London']);
+        yield 'the original crosses the change' => ['2027-03-27T20:00', '2027-03-28T08:00', '2027-07-17T20:00', '2027-07-18T08:00:00+02:00'];
+        yield 'the copy crosses the change' => ['2027-07-17T20:00', '2027-07-18T08:00', '2027-03-27T20:00', '2027-03-28T08:00:00+02:00'];
+        yield 'the original crosses it, copied an hour later' => ['2027-03-27T20:00', '2027-03-28T08:00', '2027-07-17T21:00', '2027-07-18T09:00:00+02:00'];
+        yield 'the copy crosses it an hour later' => ['2027-07-17T20:00', '2027-07-18T08:00', '2027-03-27T21:00', '2027-03-28T09:00:00+02:00'];
+        yield 'an end in the skipped hour moves later by the gap' => ['2027-07-17T20:00', '2027-07-18T06:30', '2027-03-27T16:00', '2027-03-28T03:30:00+02:00'];
+        yield 'an end in the repeated hour takes the earlier offset' => ['2027-07-17T20:00', '2027-07-18T02:30', '2027-10-30T20:00', '2027-10-31T02:30:00+02:00'];
+    }
 
-        $copy = $this->duplicate($id, '2030-06-01T20:00');
+    #[Test]
+    #[DataProvider('clockChanges')]
+    public function theLengthIsKeptOnTheClockWhateverTheClocksDo(string $startsAt, string $endsAt, string $copiedStart, string $copiedEnd): void
+    {
+        $id = $this->original(['startsAt' => $startsAt, 'endsAt' => $endsAt, 'timeZone' => 'Europe/Madrid']);
+
+        $copy = $this->duplicate($id, $copiedStart);
 
         self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
-        self::assertSame(['Europe/London', '2030-06-01T20:00:00+01:00', '2030-06-02T07:00:00+01:00'], [$copy['timeZone'], $copy['startsAt'], $copy['endsAt']]);
+        self::assertSame(['Europe/Madrid', $copiedEnd], [$copy['timeZone'], $copy['endsAt']]);
     }
 
     #[Test]

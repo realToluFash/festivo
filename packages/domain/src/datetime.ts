@@ -115,13 +115,22 @@ export function formatEventMoment(moment: string | Date, timeZone: string, local
   return new Intl.DateTimeFormat(locale, { ...EVENT_DAY, ...EVENT_CLOCK, timeZone }).format(date);
 }
 
-export function formatHours(hours: number, locale: string): string {
-  return new Intl.NumberFormat(locale, {
-    style: 'unit',
-    unit: 'hour',
-    unitDisplay: 'long',
-    maximumFractionDigits: 2,
-  }).format(hours);
+/** Whole hours and the minutes left, each in the reader's words; a client joins the two through its catalogue. */
+export function durationWords(
+  minutes: number,
+  locale: string,
+): { hours: string | null; minutes: string | null } {
+  const unit = (amount: number, name: 'hour' | 'minute'): string =>
+    new Intl.NumberFormat(locale, { style: 'unit', unit: name, unitDisplay: 'long' }).format(
+      amount,
+    );
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+
+  return {
+    hours: hours > 0 || rest === 0 ? unit(hours, 'hour') : null,
+    minutes: rest > 0 ? unit(rest, 'minute') : null,
+  };
 }
 
 /** Not `formatRange`, which Hermes does not have: the app's event page crashed on it. */
