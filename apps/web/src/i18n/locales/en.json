@@ -1860,7 +1860,7 @@
     "couldNotLoad": "Couldn't load your notification settings.",
     "tryAgain": "Try again",
     "pushBlocked": "Push is off in this browser, so pushes won't reach you here. Turn it on in your browser settings.",
-    "quietHours": "Between 21:00 and 08:00 your time, only Event day pushes come through.",
+    "quietHours": "Between {{start}} and {{end}} your time, only Event day pushes come through.",
     "category": {
       "guest_replies": "Guest replies",
       "messages": "Messages",
@@ -1874,7 +1874,7 @@
       "messages": "A send that didn't reach everyone, was held for credits or was cancelled, and credits running low.",
       "event_day": "Your shift or call time changed, or the event changed in its last 24 hours.",
       "event_changes": "When someone else changes whether, when or where an event you are on takes place.",
-      "money": "Payments due, usage at 80% and 100%, failed payments and invoices.",
+      "money": "Payments due, usage at {{low}} and {{high}}, failed payments and invoices.",
       "account_security": "Sign-ins, your password, two-factor, ownership and access. Email can't be switched off."
     }
   }

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
+import { currentLocale } from '../../../i18n/index.ts';
 import { AccountSections } from '../../../components/AccountSections.tsx';
 import { Pending } from '../../../components/Pending.tsx';
 
@@ -21,6 +22,9 @@ const ORDER: readonly NotificationCategory[] = [
   'money',
   'account_security',
 ];
+
+const QUIET_HOURS = { start: 21, end: 8 };
+const USAGE_THRESHOLDS = { low: 0.8, high: 1 };
 
 /** Notification settings (sc-3980): six categories against Push and Email, each switch saved as it changes. */
 export function NotificationSettings() {
@@ -144,7 +148,7 @@ export function NotificationSettings() {
                     <th scope="row">
                       <span className="notification-settings-name">{name}</span>
                       <span id={noteId} className="notification-settings-note">
-                        {t(`notificationSettings.note.${category}`)}
+                        {t(`notificationSettings.note.${category}`, usageThresholds())}
                       </span>
                       {failed != null && (
                         <span className="field-error">
@@ -187,9 +191,26 @@ export function NotificationSettings() {
             </tbody>
           </table>
 
-          <p className="muted">{t('notificationSettings.quietHours')}</p>
+          <p className="muted">{t('notificationSettings.quietHours', quietHours())}</p>
         </section>
       )}
     </div>
   );
+}
+
+function quietHours(): { start: string; end: string } {
+  const time = new Intl.DateTimeFormat(currentLocale(), {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  });
+  const at = (hour: number) => time.format(new Date(2000, 0, 1, hour));
+
+  return { start: at(QUIET_HOURS.start), end: at(QUIET_HOURS.end) };
+}
+
+function usageThresholds(): { low: string; high: string } {
+  const percent = new Intl.NumberFormat(currentLocale(), { style: 'percent' });
+
+  return { low: percent.format(USAGE_THRESHOLDS.low), high: percent.format(USAGE_THRESHOLDS.high) };
 }

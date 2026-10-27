@@ -51,6 +51,19 @@ describe('Notification settings (sc-3980)', () => {
     expect((security as HTMLInputElement).checked).toBe(true);
   });
 
+  it('formats the quiet hours and the usage thresholds rather than carrying them in the copy', async () => {
+    settings(() => json({ categories: CATEGORIES }));
+
+    expect(
+      await screen.findByText(
+        'Between 21:00 and 08:00 your time, only Event day pushes come through.',
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText('Payments due, usage at 80% and 100%, failed payments and invoices.'),
+    ).toBeTruthy();
+  });
+
   it('saves a switch as it changes and says so', async () => {
     settings(() =>
       json({
