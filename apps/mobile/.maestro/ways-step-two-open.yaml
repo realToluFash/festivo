@@ -27,3 +27,4 @@ appId: host.exp.Exponent
     id: 'ways.continue'
 - waitForAnimationToEnd:
     timeout: 5000
+- takeScreenshot: mobile-13266-step-two-provider

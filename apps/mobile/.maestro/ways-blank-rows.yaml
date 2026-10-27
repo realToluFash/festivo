@@ -1,11 +1,12 @@
 # Signs in, opens Security, and shows Ways to sign in down to Apple, for rows linked with a blank address. sc-13266.
+#
+# Needs the address and password of an account with a provider linked under a
+# blank address, which `just qa-account` does not make.
+#
+#   just qa-mobile ways-blank-rows EMAIL=… PASSWORD=…
 appId: host.exp.Exponent
 ---
 - runFlow: sign-in.yaml
-- extendedWaitUntil:
-    notVisible:
-      id: 'signIn.submit'
-    timeout: 30000
 - waitForAnimationToEnd:
     timeout: 5000
 - openLink: ${METRO_URL}/--/settings/security
