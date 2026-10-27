@@ -70,8 +70,8 @@ $scheduler->cancel("payment-reminder:{$payment->getId()}");
   day count on the event's clock (sc-98), and the due time is stored in UTC. A day is never
   a moment: it is the same day on any clock.
 - **An event's new date, time or zone** re-schedules every pending row that counts from the
-  event (`EventEditor`, `EventTimesRecomputer`). A new zone also re-schedules a row from a
-  caller's day, with its same day, offset and time of day on the new clock (sc-17127); a new
+  event (`EventEditor`, `EventTimesRecomputer`). A new zone, or new rules for the zone after
+  a tzdata update, also re-schedules a row from a caller's day, with its same day, offset and time of day on the new clock (sc-17127); a new
   date or time leaves it, and an exact moment follows no change. A caller's own date is
   still the caller's to move: schedule again with the same key.
 - **The same key again** replaces the pending row. There is never more than one pending row

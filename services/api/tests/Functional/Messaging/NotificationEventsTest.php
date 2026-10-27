@@ -97,6 +97,7 @@ final class NotificationEventsTest extends MessagingTestCase
     {
         $event = $this->event('+10 days');
         self::scheduler()->schedule('test.notice', 'day-before', 'day-before', Trigger::relativeToEvent(EventAnchor::EventStart, '-P1D', '10:00'), $this->members(), [], $event);
+        self::scheduler()->schedule('test.notice', 'payment', 'payment', Trigger::relativeTo('2026-11-20', '-P3D', '10:00'), $this->members(), [], $event);
         $id = ['id' => $event->getId()->toRfc4122()];
         self::connection()->executeStatement("UPDATE events SET starts_at_utc = starts_at_utc - INTERVAL '3 hours', ends_at_utc = ends_at_utc - INTERVAL '3 hours' WHERE id = :id", $id);
         self::connection()->executeStatement("UPDATE scheduled_notifications SET due_at = due_at - INTERVAL '3 hours' WHERE event_id = :id", $id);
@@ -105,7 +106,8 @@ final class NotificationEventsTest extends MessagingTestCase
         self::assertSame(1, self::service(EventTimesRecomputer::class)->recompute());
 
         self::assertSame('10:00', $this->dueAt('day-before')->setTimezone(new DateTimeZone('Africa/Lagos'))->format('H:i'));
-        self::assertSame(1, self::rowCount("SELECT COUNT(*) FROM scheduled_notifications WHERE status = 'pending'"));
+        self::assertSame('2026-11-17 09:00', $this->dueAt('payment')->format('Y-m-d H:i'));
+        self::assertSame(2, self::rowCount("SELECT COUNT(*) FROM scheduled_notifications WHERE status = 'pending'"));
     }
 
     #[Test]

@@ -90,7 +90,7 @@ final readonly class NotificationScheduler
         return $this->reschedule($event, [EventAnchor::EventStart, EventAnchor::EventEnd]);
     }
 
-    /** After an event's zone changes: a caller's day is read again on the new clock too, with its same date, offset and time of day. */
+    /** After an event's clock changes, to a new zone or to new rules for its zone: a caller's day is read again on the new clock too, with its same date, offset and time of day. */
     public function rescheduleForNewZone(Event $event): int
     {
         return $this->reschedule($event, [EventAnchor::EventStart, EventAnchor::EventEnd, EventAnchor::Date]);
