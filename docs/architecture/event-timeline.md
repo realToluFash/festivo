@@ -32,7 +32,11 @@ and the timeline, the route and the clients do not change.
   organiser has to do, `automatic` for something Soirely does for them.
 - **Title and note are written in the request's language**, from the API's catalogue. The
   note is one line, or none.
+- **A title never carries its date or time.** Each screen shows those from `at`, in the
+  event's zone and the reader's locale, so a time in the title would show twice and could
+  disagree with the date line (decided 27 Oct, sc-3624).
 - **An action** is a label and a path into the area, for a milestone the reader can act on.
+  Neither client renders it yet: the first area that returns one adds it to both rows.
 - **Two milestones at the same instant** keep the order their sources were read in.
 
 `EventDates` is the worked example: the start is always there, titled "{name} starts", and
