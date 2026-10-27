@@ -1752,6 +1752,7 @@ async function batch(args) {
 
   const named = languages[0] !== 'any';
   const token = named ? await apiSession(email, password, secret) : null;
+  const before = named ? (await api('/api/auth/me', { method: 'GET', token })).locale : null;
   const passed = new Set();
   const begun = [];
   const heard = { at: Date.now() };
@@ -1830,6 +1831,9 @@ async function batch(args) {
     }
   } finally {
     helper.close();
+    // The app follows the account's language when it next opens, and later flows expect English.
+    if (named)
+      await api('/api/auth/locale', { method: 'PUT', token, body: { locale: before ?? 'en' } });
   }
   const seconds = Math.round((Date.now() - started) / 1000);
 
