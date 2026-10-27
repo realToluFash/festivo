@@ -13,9 +13,9 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'members.row.*'
     index: 0
-- scrollUntilVisible:
-    element: '{{t:membersScreen.roleTitle}}'
-    direction: DOWN
+- extendedWaitUntil:
+    visible:
+      id: 'members.person.*'
     timeout: 15000
 - waitForAnimationToEnd:
     timeout: 5000
