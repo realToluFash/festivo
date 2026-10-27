@@ -1863,5 +1863,26 @@
     "youWithdrewTold": "Retirou o seu pedido. Todas as pessoas que foram avisadas recebem um e-mail.",
     "withdrawEnded": "Este pedido já terminou.",
     "withdrawNotClaimant": "Só a pessoa que fez este pedido pode retirá-lo."
+  },
+  "notifications": {
+    "bell": "Notifications",
+    "bellUnread_one": "Notifications, {{count}} unread",
+    "bellUnread_other": "Notifications, {{count}} unread",
+    "overNinetyNine": "99+",
+    "heading": "Notifications",
+    "markAllRead": "Mark all read",
+    "allRead": "All read.",
+    "unread": "Unread",
+    "muted": "Muted",
+    "loading": "Loading notifications",
+    "couldNotLoad": "Couldn't load your notifications.",
+    "tryAgain": "Try again",
+    "empty": "Nothing yet. Replies, changes and reminders for your events show up here.",
+    "eventGone": "This event is no longer available.",
+    "arrived": "New notification: {{title}}",
+    "arrivedAt": "New notification: {{title}} · {{event}}",
+    "whereWhen": "{{event}} · {{when}}",
+    "atTime": "at {{time}}",
+    "settings": "Notification settings"
   }
 }

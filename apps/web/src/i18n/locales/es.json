@@ -1863,5 +1863,26 @@
     "youWithdrewTold": "Ha retirado su solicitud. Se avisa por correo electrónico a todas las personas a las que se informó.",
     "withdrawEnded": "Esta solicitud ya ha terminado.",
     "withdrawNotClaimant": "Solo la persona que inició esta solicitud puede retirarla."
+  },
+  "notifications": {
+    "bell": "Notifications",
+    "bellUnread_one": "Notifications, {{count}} unread",
+    "bellUnread_other": "Notifications, {{count}} unread",
+    "overNinetyNine": "99+",
+    "heading": "Notifications",
+    "markAllRead": "Mark all read",
+    "allRead": "All read.",
+    "unread": "Unread",
+    "muted": "Muted",
+    "loading": "Loading notifications",
+    "couldNotLoad": "Couldn't load your notifications.",
+    "tryAgain": "Try again",
+    "empty": "Nothing yet. Replies, changes and reminders for your events show up here.",
+    "eventGone": "This event is no longer available.",
+    "arrived": "New notification: {{title}}",
+    "arrivedAt": "New notification: {{title}} · {{event}}",
+    "whereWhen": "{{event}} · {{when}}",
+    "atTime": "at {{time}}",
+    "settings": "Notification settings"
   }
 }

@@ -71,6 +71,7 @@ function signedIn(organisations: readonly Membership[]): void {
       complete: true,
       awaiting: null,
       providers: [],
+      userId: 'u1',
       needsOrganisation: false,
       hasPassword: true,
       organisation: organisations[0] ?? null,

@@ -16,6 +16,7 @@ function settings(organisation = IRE) {
     complete: true,
     awaiting: null,
     providers: [],
+    userId: 'u1',
     needsOrganisation: false,
     hasPassword: true,
     organisation,

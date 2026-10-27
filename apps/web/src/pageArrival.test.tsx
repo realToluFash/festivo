@@ -241,6 +241,7 @@ describe('the pages Soirely has, signed in', () => {
     complete: true,
     awaiting: null,
     providers: [],
+    userId: 'u1',
     needsOrganisation: false,
     hasPassword: true,
     organisation: IRE,

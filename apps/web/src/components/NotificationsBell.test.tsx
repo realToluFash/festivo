@@ -1,0 +1,162 @@
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { RouterProvider, createMemoryRouter } from 'react-router';
+
+import { NotificationsBell } from './NotificationsBell.tsx';
+
+function json(body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+function item(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'n1',
+    category: 'event_changes',
+    title: 'Ada Obi changed the event',
+    lines: ['The date is now Saturday, Nov 14 (was Friday, Nov 13).'],
+    eventId: 'e1',
+    eventName: 'Ada & Tomi',
+    eventAvailable: true,
+    muted: false,
+    place: '/app/events/e1',
+    read: false,
+    createdAt: new Date().toISOString(),
+    ...overrides,
+  };
+}
+
+function answering(answers: Record<string, () => Response>) {
+  const sent: string[] = [];
+
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+    sent.push(line);
+
+    const answer = answers[line];
+    if (answer == null) throw new TypeError('Failed to fetch');
+
+    return answer();
+  });
+
+  return sent;
+}
+
+function bell() {
+  const router = createMemoryRouter(
+    [
+      { path: '/app', element: <NotificationsBell userId="u1" /> },
+      { path: '/app/events/:id', element: <p>Event page</p> },
+    ],
+    { initialEntries: ['/app'] },
+  );
+
+  render(<RouterProvider router={router} />);
+
+  return router;
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe('the bell (sc-3980)', () => {
+  it('names the exact count and shows 99+ above 99', async () => {
+    answering({
+      'GET /api/notifications': () => json({ items: [item()], unreadCount: 100, next: null }),
+    });
+    bell();
+
+    const button = await screen.findByRole('button', { name: 'Notifications, 100 unread' });
+    expect(within(button).getByText('99+')).toBeTruthy();
+  });
+
+  it('shows no badge at 0', async () => {
+    answering({
+      'GET /api/notifications': () => json({ items: [], unreadCount: 0, next: null }),
+    });
+    bell();
+
+    const button = await screen.findByRole('button', { name: 'Notifications' });
+    fireEvent.click(button);
+
+    expect(await screen.findByText(/Nothing yet/)).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Mark all read' }).getAttribute('aria-disabled'),
+    ).toBe('true');
+    expect(screen.getByRole('link', { name: 'Notification settings' })).toBeTruthy();
+  });
+
+  it('draws each change line as its own row, and the word Unread', async () => {
+    answering({
+      'GET /api/notifications': () =>
+        json({
+          items: [item({ lines: ['First line.', 'Second line.'], muted: true })],
+          unreadCount: 1,
+          next: null,
+        }),
+    });
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+
+    expect(await screen.findByText('First line.')).toBeTruthy();
+    expect(screen.getByText('Second line.')).toBeTruthy();
+    expect(screen.getByText('Unread')).toBeTruthy();
+    expect(screen.getByText('Muted')).toBeTruthy();
+    expect(screen.getByText(/^Ada & Tomi · at \d\d:\d\d$/)).toBeTruthy();
+  });
+
+  it('opening an item marks it read and goes to its place', async () => {
+    const sent = answering({
+      'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
+      'POST /api/notifications/n1/read': () => json({ item: item({ read: true }), unreadCount: 0 }),
+    });
+    const router = bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Ada Obi changed the event/ }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app/events/e1'));
+    expect(sent).toContain('POST /api/notifications/n1/read');
+  });
+
+  it('an item whose event is gone says so instead of navigating', async () => {
+    answering({
+      'GET /api/notifications': () =>
+        json({ items: [item({ eventAvailable: false })], unreadCount: 1, next: null }),
+      'POST /api/notifications/n1/read': () =>
+        json({ item: item({ read: true, eventAvailable: false }), unreadCount: 0 }),
+    });
+    const router = bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Ada Obi changed the event/ }));
+
+    expect((await screen.findByRole('status')).textContent).toBe(
+      'This event is no longer available.',
+    );
+    expect(router.state.location.pathname).toBe('/app');
+  });
+
+  it('Mark all read clears the count and keeps focus on the button', async () => {
+    const sent = answering({
+      'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
+      'POST /api/notifications/read-all': () => json({ unreadCount: 0 }),
+    });
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    const markAll = await screen.findByRole('button', { name: 'Mark all read' });
+    markAll.focus();
+    fireEvent.click(markAll);
+
+    expect(await screen.findByText('All read.')).toBeTruthy();
+    expect(markAll.getAttribute('aria-disabled')).toBe('true');
+    expect(document.activeElement).toBe(markAll);
+    expect(sent).toContain('POST /api/notifications/read-all');
+    expect(screen.getByRole('button', { name: 'Notifications' })).toBeTruthy();
+  });
+});

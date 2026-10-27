@@ -17,6 +17,7 @@ function inside(organisation: Membership): void {
       complete: true,
       awaiting: null,
       providers: [],
+      userId: 'u1',
       needsOrganisation: false,
       hasPassword: true,
       organisation,

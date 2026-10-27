@@ -4102,3 +4102,203 @@ button.members-row {
   align-items: center;
   text-decoration: none;
 }
+
+/* The bell (sc-3980): a popover from the sidebar, capped at the page width less 48px so
+   nothing in it scrolls sideways at 320. */
+.shell-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceSm);
+}
+
+.notifications {
+  position: relative;
+}
+
+.notifications-bell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--sizeHit);
+  height: var(--sizeHit);
+  border: 0;
+  border-radius: var(--radiusNav);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  cursor: pointer;
+}
+
+.notifications-bell:hover {
+  background: var(--colorInset);
+}
+
+.bell-mark {
+  flex: none;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.notifications-badge {
+  position: absolute;
+  top: var(--spaceXxs);
+  right: var(--spaceXxs);
+  min-width: 18px;
+  padding: var(--spaceHair) var(--spaceXxs);
+  border-radius: var(--radiusPill);
+  background: var(--colorInk);
+  color: var(--colorCard);
+  font: var(--typePill);
+  text-align: center;
+}
+
+.notifications-panel {
+  position: absolute;
+  top: calc(100% + var(--spaceSm));
+  left: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  width: 24rem;
+  max-width: calc(100vw - 48px);
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--colorCard);
+  border: var(--borderCard);
+  border-radius: var(--radiusCardDesktop);
+  box-shadow: var(--shadowPopover);
+}
+
+.notifications-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceSm);
+  padding: var(--spaceLg) var(--spaceXl);
+  border-bottom: var(--borderCard);
+}
+
+.notifications-header h2 {
+  margin: 0;
+  font: var(--typeTitleSection);
+}
+
+.notifications-header [aria-disabled='true'] {
+  color: var(--colorInkSecondary);
+  cursor: default;
+}
+
+.notifications-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.notifications-list > li + li {
+  border-top: var(--borderCard);
+}
+
+.notification-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  width: 100%;
+  min-height: var(--sizeHit);
+  padding: var(--spaceLg) var(--spaceXl);
+  border: 0;
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: var(--typeBody);
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.notification-item:hover {
+  background: var(--colorInset);
+}
+
+.notification-item.unread .notification-title {
+  font-weight: 700;
+}
+
+.notification-where {
+  font: var(--typeMeta);
+  color: var(--colorInkSecondary);
+}
+
+.notification-marks {
+  display: flex;
+  gap: var(--spaceLg);
+  font: var(--typeMeta);
+}
+
+.notification-unread,
+.notification-muted {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXxs);
+}
+
+.notification-unread {
+  color: var(--colorAccentText);
+}
+
+.notification-muted {
+  color: var(--colorInkSecondary);
+}
+
+.notification-muted .bell-mark {
+  width: 14px;
+  height: 14px;
+}
+
+.notification-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radiusPill);
+  background: var(--colorAccent);
+}
+
+.notification-gone {
+  margin: 0;
+  padding: 0 var(--spaceXl) var(--spaceLg);
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
+}
+
+.notifications-skeleton {
+  height: 64px;
+  margin: var(--spaceSm) var(--spaceXl);
+  border-radius: var(--radiusSmall);
+  background: var(--colorInset);
+}
+
+.notifications-empty,
+.notifications-failed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spaceSm);
+  padding: var(--space3xl) var(--spaceXl);
+  color: var(--colorInkSecondary);
+  text-align: center;
+}
+
+.notifications-empty p,
+.notifications-failed p {
+  margin: 0;
+}
+
+.notifications-settings {
+  display: flex;
+  align-items: center;
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceXl);
+  border-top: var(--borderCard);
+  font: var(--typeButton);
+}

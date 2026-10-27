@@ -10,6 +10,7 @@ import { OrganisationSwitcher } from '../../components/OrganisationSwitcher.tsx'
 import { Pending } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { LinkedNotice } from '../../components/LinkedNotice.tsx';
+import { NotificationsBell } from '../../components/NotificationsBell.tsx';
 import { SignInRulesNotices } from '../../components/SignInRulesNotices.tsx';
 import { AccessPaused } from '../../components/AccessPaused.tsx';
 import { TwoFactorOverdue } from '../../components/TwoFactorOverdue.tsx';
@@ -224,7 +225,10 @@ function Shell() {
       </a>
 
       <aside className="shell-sidebar">
-        <div className="brand">{t('app.name')}</div>
+        <div className="shell-brand-row">
+          <div className="brand">{t('app.name')}</div>
+          <NotificationsBell userId={session.userId} />
+        </div>
 
         {organisation != null && (
           <OrganisationSwitcher
