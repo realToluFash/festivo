@@ -2,21 +2,10 @@
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
-- openLink: ${METRO_URL}/--/
-- extendedWaitUntil:
-    visible:
-      id: 'home.switchOrganisation'
-    timeout: 30000
-- tapOn:
-    id: 'home.switchOrganisation'
-- scrollUntilVisible:
-    element:
-      id: 'switcher.${ORG}'
-    direction: DOWN
-    timeout: 20000
-- tapOn:
-    id: 'switcher.${ORG}'
-- waitForAnimationToEnd
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
 - openLink: ${METRO_URL}/--/events
 - extendedWaitUntil:
     visible:
@@ -29,22 +18,10 @@ appId: host.exp.Exponent
       id: 'events.page'
     timeout: 20000
 - takeScreenshot: before-switch
-- tapOn:
-    id: 'frame.home'
-- extendedWaitUntil:
-    visible:
-      id: 'home.switchOrganisation'
-    timeout: 20000
-- tapOn:
-    id: 'home.switchOrganisation'
-- scrollUntilVisible:
-    element:
-      id: 'switcher.${OTHER_ORG}'
-    direction: DOWN
-    timeout: 20000
-- tapOn:
-    id: 'switcher.${OTHER_ORG}'
-- waitForAnimationToEnd
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${OTHER_ORG}
 - tapOn:
     id: 'frame.events'
 - extendedWaitUntil:
@@ -54,21 +31,10 @@ appId: host.exp.Exponent
 - assertNotVisible:
     id: 'events.row.${EVENT}'
 - takeScreenshot: after-switch
-- openLink: ${METRO_URL}/--/
-- extendedWaitUntil:
-    visible:
-      id: 'home.switchOrganisation'
-    timeout: 30000
-- tapOn:
-    id: 'home.switchOrganisation'
-- scrollUntilVisible:
-    element:
-      id: 'switcher.${EMPTY_ORG}'
-    direction: DOWN
-    timeout: 20000
-- tapOn:
-    id: 'switcher.${EMPTY_ORG}'
-- waitForAnimationToEnd
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${EMPTY_ORG}
 - openLink: ${METRO_URL}/--/events
 - extendedWaitUntil:
     visible: '{{t:eventsScreen.noneTitle}}'

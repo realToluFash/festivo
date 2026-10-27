@@ -2,21 +2,10 @@
 appId: host.exp.Exponent
 ---
 - setOrientation: PORTRAIT
-- openLink: ${METRO_URL}/--/
-- extendedWaitUntil:
-    visible:
-      id: 'home.switchOrganisation'
-    timeout: 30000
-- tapOn:
-    id: 'home.switchOrganisation'
-- scrollUntilVisible:
-    element:
-      id: 'switcher.${ORG}'
-    direction: DOWN
-    timeout: 20000
-- tapOn:
-    id: 'switcher.${ORG}'
-- waitForAnimationToEnd
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
 - extendedWaitUntil:
     visible:
       id: 'frame.settings'

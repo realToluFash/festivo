@@ -10,5 +10,8 @@ appId: host.exp.Exponent
 - takeScreenshot: notfound
 - tapOn:
     id: 'events.backToEvents'
-- waitForAnimationToEnd
+- extendedWaitUntil:
+    notVisible:
+      id: 'events.notFound'
+    timeout: 20000
 - takeScreenshot: notfound-back
