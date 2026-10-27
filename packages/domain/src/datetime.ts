@@ -107,7 +107,7 @@ export function formatEventDate(moment: string, timeZone: string, locale: string
   return new Intl.DateTimeFormat(locale, { ...EVENT_DAY, timeZone }).format(date);
 }
 
-export function formatEventMoment(moment: string | Date, timeZone: string, locale: string): string {
+export function formatEventMoment(moment: string, timeZone: string, locale: string): string {
   const date = asDate(moment);
 
   if (date == null) return '';
@@ -119,7 +119,7 @@ export function formatEventMoment(moment: string | Date, timeZone: string, local
   }).format(date);
 }
 
-/** A milestone's moment with its year, for a moment that may fall in another year than today. */
+/** A moment with its weekday, date, year and clock, as the board draws an event's start and end. */
 export function formatEventDayAndClock(
   moment: string | Date,
   timeZone: string,
@@ -163,9 +163,10 @@ export function formatEventRange(
   if (start == null || end == null) return '';
 
   const day = new Intl.DateTimeFormat(locale, { ...EVENT_DAY, timeZone });
-  const dayAndClock = new Intl.DateTimeFormat(locale, { ...EVENT_DAY, ...EVENT_CLOCK, timeZone });
   const clock = new Intl.DateTimeFormat(locale, { ...EVENT_CLOCK, timeZone });
   const sameDay = day.format(start) === day.format(end);
 
-  return `${dayAndClock.format(start)} – ${(sameDay ? clock : dayAndClock).format(end)}`;
+  return `${formatEventDayAndClock(start, timeZone, locale)} – ${
+    sameDay ? clock.format(end) : formatEventDayAndClock(end, timeZone, locale)
+  }`;
 }
