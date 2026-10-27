@@ -61,7 +61,10 @@ export function needsHost(event: { status: EventState; hosts: readonly string[] 
   );
 }
 
-/** A live event keeps one host: the last name cannot be removed once the event is no longer a Draft. */
-export function keepsLastHost(status: EventState, typedCount: number): boolean {
-  return status !== 'draft' && typedCount <= 1;
+/** A live event keeps one host: the last name cannot be removed once the event is no longer a Draft, if it has saved one. */
+export function keepsLastHost(
+  event: { status: EventState; hosts: readonly string[] },
+  typedCount: number,
+): boolean {
+  return event.status !== 'draft' && event.hosts.length > 0 && typedCount <= 1;
 }

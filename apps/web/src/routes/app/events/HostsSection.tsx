@@ -21,7 +21,7 @@ type Control = 'name' | 'up' | 'down';
 export function HostsSection({
   rows,
   errors,
-  status,
+  saved,
   busy,
   onRows,
   onLeave,
@@ -29,7 +29,7 @@ export function HostsSection({
 }: {
   rows: readonly HostRow[];
   errors: HostErrors;
-  status: EventStatus;
+  saved: { status: EventStatus; hosts: readonly string[] };
   busy: boolean;
   onRows: (rows: HostRow[], touched: number | null) => void;
   onLeave: (row: HostRow) => void;
@@ -38,7 +38,7 @@ export function HostsSection({
   const { t } = useTranslation();
   const focusNext = useRef<{ key: number; control: Control } | 'add' | null>(null);
   const nextKey = useRef(Math.max(0, ...rows.map((row) => row.key)) + 1);
-  const keepLast = keepsLastHost(status, rows.length);
+  const keepLast = keepsLastHost(saved, rows.length);
 
   useEffect(() => {
     const next = focusNext.current;

@@ -511,7 +511,7 @@ function DetailsForm({
         <HostsSection
           rows={hosts}
           errors={hostErrors}
-          status={saved.status}
+          saved={saved}
           busy={busy}
           onRows={editHosts}
           onLeave={leaveHost}

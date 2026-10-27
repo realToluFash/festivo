@@ -77,8 +77,12 @@ describe('needsHost', () => {
 
 describe('keepsLastHost', () => {
   it('keeps the last name once the event is no longer a Draft', () => {
-    expect(keepsLastHost('live', 1)).toBe(true);
-    expect(keepsLastHost('live', 2)).toBe(false);
-    expect(keepsLastHost('draft', 1)).toBe(false);
+    expect(keepsLastHost({ status: 'live', hosts: ['Funmi'] }, 1)).toBe(true);
+    expect(keepsLastHost({ status: 'live', hosts: ['Funmi'] }, 2)).toBe(false);
+    expect(keepsLastHost({ status: 'draft', hosts: ['Funmi'] }, 1)).toBe(false);
+  });
+
+  it('lets a live event with no saved host remove a row it has just added', () => {
+    expect(keepsLastHost({ status: 'live', hosts: [] }, 1)).toBe(false);
   });
 });
