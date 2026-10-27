@@ -1422,7 +1422,7 @@
   },
   "eventsScreen": {
     "title": "Événements",
-    "back": "‹ Events",
+    "back": "‹ Événements",
     "loading": "Chargement des événements…",
     "refreshing": "Actualisation…",
     "draft": "Brouillon",
