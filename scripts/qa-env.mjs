@@ -1816,9 +1816,9 @@ async function batch(args) {
     } else {
       if (named)
         await api('/api/auth/locale', { method: 'PUT', token, body: { locale: languages[0] } });
-      let { rest } = await test(join(flows, '_batch.yaml'), checks.length * languages.length);
+      const first = await test(join(flows, '_batch.yaml'), checks.length * languages.length);
       // After a driver crash the checks it never reached run in a fresh Maestro.
-      for (let attempt = 1; rest.length && attempt <= MAX_RESUMES; attempt++) {
+      await resumeBatch(first.rest, async (rest, attempt) => {
         const flow = join(flows, `_rest.${attempt}.yaml`);
         const written = batchFlow({ runs: rest });
         writeFileSync(flow, onAndroid ? forAndroid(written) : written);
@@ -1828,8 +1828,8 @@ async function batch(args) {
             token,
             body: { locale: rest[0].language },
           });
-        ({ rest } = await test(flow, rest.length));
-      }
+        return test(flow, rest.length);
+      });
     }
   } finally {
     helper.close();
@@ -1859,6 +1859,11 @@ async function batch(args) {
 }
 
 export const MAX_RESUMES = 3;
+
+export async function resumeBatch(rest, resume) {
+  for (let attempt = 1; rest.length && attempt <= MAX_RESUMES; attempt++)
+    ({ rest } = await resume(rest, attempt));
+}
 
 // A run that stalls blames the last check it began itself, and is resumed only past that check.
 export function afterRun(runs, { begun, from, passed, stalled }) {

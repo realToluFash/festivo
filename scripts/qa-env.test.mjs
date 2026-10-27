@@ -48,6 +48,7 @@ import {
   forAndroid,
   linkIntent,
   MAX_RESUMES,
+  resumeBatch,
   maestroTarget,
   parseTarget,
   passwordAutoFillFiles,
@@ -944,9 +945,22 @@ describe('what a stalled Maestro run leaves to resume', () => {
     ).toEqual({ crashed: null, rest: [] });
   });
 
-  it('caps the resumes', () => {
-    expect(MAX_RESUMES).toBeGreaterThan(0);
-    expect(MAX_RESUMES).toBeLessThan(10);
+  it('stops resuming after the cap when every resume crashes on the same check', async () => {
+    let resumes = 0;
+    await resumeBatch(runs, async (rest) => {
+      resumes++;
+      return { rest: resumes > 20 ? [] : rest };
+    });
+    expect(resumes).toBe(MAX_RESUMES);
+  });
+
+  it('stops resuming once a resume leaves nothing to run', async () => {
+    let resumes = 0;
+    await resumeBatch(runs, async () => {
+      resumes++;
+      return { rest: [] };
+    });
+    expect(resumes).toBe(1);
   });
 });
 
