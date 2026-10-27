@@ -625,12 +625,18 @@ def relate(c, a):
         if not found:
             return f"not linked: {asked}" + (
                 f"; sc-{other} {a.verb} sc-{subject} is" if inverse else "")
+        held = a.verb == "blocks" and subject in {b["id"] for b in holding_now(c, c.story(other))}
         for link in found:
             c.shortcut.unrelate(link["id"])
-        if a.verb == "blocks":
+        if held and not holding_now(c, c.story(other)):
             released = store.get_meta(c.db, "released", {})
             released[str(other)] = time.time()
             store.set_meta(c.db, "released", released)
+        elif a.verb == "blocks" and not held:
+            # A link that held nothing leaves the story offered under its blocker, as it was.
+            unlinked = store.get_meta(c.db, "unlinked", {})
+            unlinked[str(other)] = sorted({*unlinked.get(str(other), []), subject})
+            store.set_meta(c.db, "unlinked", unlinked)
         c.refresh(subject)
         c.refresh(other)
         return f"removed: {asked}"

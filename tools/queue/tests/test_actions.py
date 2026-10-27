@@ -679,6 +679,33 @@ class Unrelating(Base):
         self.remove("sc-1", "sc-2")
         self.assertEqual(self.wakes_for_2(), ["sc-2 moved to Ready For Dev"])
 
+    def offer_and_handle_2(self):
+        for story_id in (7, 2):
+            self.as_("pm").story(story_id)
+        self.assertEqual(self.wakes_for_2(), ["sc-2 moved to Ready For Dev"])
+        for item in store.waiting(self.db, "dev"):
+            if item["story_id"] == 2:
+                store.finish(self.db, item["id"])
+        self.assertEqual(self.wakes_for_2(), [])
+
+    def test_removing_a_link_to_a_merged_blocker_does_not_offer_the_story_again(self):
+        self.fake.add(7, "Done")
+        self.fake.relate(7, 2, "blocks")
+        self.offer_and_handle_2()
+        self.remove("sc-7", "sc-2")
+        self.assertEqual(self.wakes_for_2(), [])
+
+    def test_removing_the_last_holding_link_offers_the_story_though_a_merged_blocker_stays(self):
+        self.fake.add(7, "Done")
+        self.fake.add(9, "Ready For Dev")
+        self.fake.relate(7, 2, "blocks")
+        self.offer_and_handle_2()
+        actions.relate(self.as_("pm"), args(story="sc-9", other="sc-2", verb="blocks",
+                                            remove=False))
+        self.assertEqual(self.wakes_for_2(), [])
+        self.remove("sc-9", "sc-2")
+        self.assertEqual(self.wakes_for_2(), ["sc-2 moved to Ready For Dev"])
+
     def test_no_such_link_changes_nothing(self):
         self.assertEqual(self.remove("sc-1", "sc-2"), "not linked: sc-1 blocks sc-2")
 
