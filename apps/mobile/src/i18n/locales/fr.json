@@ -923,8 +923,8 @@
     "contactBlank": "Indiquez une adresse e-mail de contact.",
     "contactInvalid": "Cela ne ressemble pas à une adresse e-mail. Vérifiez qu’elle contient un @ et un domaine.",
     "readOnly": "Votre rôle, {{role}}, permet de voir ces informations mais pas de les modifier. Les propriétaires le peuvent.",
-    "readOnlyUntilLinked": "{{organisation}} signs in with Google or Apple only. Until you link one, you can see these but not change them.",
-    "readOnlyUntilTwoFactor": "{{organisation}} asks people who can manage members, roles, billing or security to use two-factor. Until you turn it on, you can see these but not change them.",
+    "readOnlyUntilLinked": "{{organisation}} n’accepte que la connexion avec Google ou Apple. Tant que vous n’avez pas associé l’un des deux, vous pouvez voir ces informations mais pas les modifier.",
+    "readOnlyUntilTwoFactor": "{{organisation}} demande la double authentification aux personnes qui peuvent gérer les membres, les rôles, la facturation ou la sécurité. Tant que vous ne l’avez pas activée, vous pouvez voir ces informations mais pas les modifier.",
     "failed": "L’enregistrement n’a pas abouti. Rien n’a été modifié. Réessayez dans un instant.",
     "searchCurrency": "Rechercher une devise",
     "searchTimezone": "Rechercher un fuseau horaire",
@@ -932,7 +932,7 @@
     "languageHint": "Les e-mails d’invitation adressés aux personnes sans compte Soirely sont rédigés dans cette langue. Celles qui ont déjà un compte reçoivent le leur dans leur propre langue.",
     "savedLanguage": "Enregistré. Les e-mails d’invitation adressés aux personnes sans compte Soirely partent désormais en {{language}}. Les invitations déjà envoyées ne sont pas renvoyées.",
     "refused": "Rien n’a été enregistré. Votre rôle n’inclut pas l’autorisation nécessaire.",
-    "refusedByRule": "Nothing was saved.",
+    "refusedByRule": "Rien n’a été enregistré.",
     "searchLanguage": "Rechercher une langue"
   },
   "invitations": {
