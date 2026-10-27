@@ -4,19 +4,25 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Messaging;
 
+use App\Deletion\Pruner;
+use App\Deletion\Restorer;
 use App\Domain\Event\EventEditor;
 use App\Domain\Event\EventTimesRecomputer;
 use App\Domain\Messaging\Model\Audience;
 use App\Domain\Messaging\Model\EventAnchor;
 use App\Domain\Messaging\Model\Trigger;
+use App\Domain\Messaging\NotificationPathCheck;
 use App\Entity\Event;
+use App\Enum\DeletedKind;
 use App\Enum\Permission;
 use App\Http\EntityTag;
+use App\Tests\Double\RecordingLogger;
 use DateTimeImmutable;
 use DateTimeZone;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Type;
 use Psl\Vec;
+use Psr\Clock\ClockInterface;
 
 final class NotificationEventsTest extends MessagingTestCase
 {
@@ -210,6 +216,129 @@ final class NotificationEventsTest extends MessagingTestCase
 
         self::assertSame(0, self::rowCount('SELECT COUNT(*) FROM scheduled_notifications'));
         self::assertSame(0, self::rowCount('SELECT COUNT(*) FROM notification_deliveries'));
+    }
+
+    #[Test]
+    public function aMembersRowWithNoEventIsHeldWhileItsOrganisationIsDeleted(): void
+    {
+        self::scheduler()->schedule('test.notice', 'members', 'members', Trigger::at(new DateTimeImmutable('-31 minutes')), $this->members());
+        $this->deleteOrganisation();
+        $logger = new RecordingLogger();
+
+        self::runUntilIdle();
+
+        self::assertSame([], self::sender()->sent);
+        self::assertSame(['pending', 'deleted'], self::connection()->fetchNumeric('SELECT status, held FROM scheduled_notifications'));
+        self::assertSame(0, self::rowCount('SELECT COUNT(*) FROM notification_deliveries'));
+        self::connection()->executeStatement("UPDATE scheduled_notifications SET claimed_at = NOW() - INTERVAL '1 hour', claimed_until = NOW() - INTERVAL '2 seconds'");
+        self::assertSame([], new NotificationPathCheck(self::connection(), self::service(ClockInterface::class), $logger)->run());
+        self::assertSame([], $logger->records);
+    }
+
+    #[Test]
+    public function aMembersRowWithNoEventGoesOnceItsOrganisationIsRestored(): void
+    {
+        self::scheduler()->schedule('test.notice', 'members', 'members', Trigger::at(new DateTimeImmutable('-1 minute')), $this->members());
+        $this->deleteOrganisation();
+        self::runUntilIdle();
+
+        $this->restoreOrganisation();
+        self::aMinutePasses();
+        self::runUntilIdle();
+
+        self::assertSame(['OWNER'], self::sentTo());
+        self::assertSame(['fanned_out', null], self::connection()->fetchNumeric('SELECT status, held FROM scheduled_notifications'));
+    }
+
+    #[Test]
+    public function aMembersRowWithNoEventNotYetDueAtTheRestoreGoesAtItsDueTime(): void
+    {
+        self::scheduler()->schedule('test.notice', 'members', 'members', Trigger::at(new DateTimeImmutable('+1 hour')), $this->members());
+        $this->deleteOrganisation();
+        $this->restoreOrganisation();
+
+        self::runUntilIdle();
+        self::assertSame([], self::sender()->sent);
+
+        self::connection()->executeStatement("UPDATE scheduled_notifications SET due_at = NOW() - INTERVAL '1 second'");
+        self::runUntilIdle();
+
+        self::assertSame(['OWNER'], self::sentTo());
+    }
+
+    #[Test]
+    public function aMembersRowWithNoEventRestoredPastItsTypesLimitIsRecordedTooLate(): void
+    {
+        self::scheduler()->schedule('test.timely', 'members', 'members', Trigger::at(new DateTimeImmutable('-1 minute')), $this->members());
+        $this->deleteOrganisation();
+        self::runUntilIdle();
+
+        self::connection()->executeStatement("UPDATE scheduled_notifications SET send_by = NOW() - INTERVAL '2 seconds'");
+        $this->restoreOrganisation();
+        self::aMinutePasses();
+        self::runUntilIdle();
+
+        self::assertSame([], self::sender()->sent);
+        self::assertSame(['too_late', null], self::connection()->fetchNumeric('SELECT status, held FROM scheduled_notifications'));
+    }
+
+    #[Test]
+    public function aDeliveryWithNoEventWaitingWhenItsOrganisationIsDeletedIsHeldForTheRestore(): void
+    {
+        self::scheduler()->schedule('test.notice', 'fanned', 'fanned', Trigger::at(new DateTimeImmutable('-1 minute')), $this->members());
+        self::worker()->step();
+        $this->deleteOrganisation();
+
+        self::runUntilIdle();
+        self::assertSame(['pending', 'deleted'], self::connection()->fetchNumeric('SELECT status, held FROM notification_deliveries'));
+
+        $this->restoreOrganisation();
+        self::aMinutePasses();
+        self::runUntilIdle();
+
+        self::assertSame(['OWNER'], self::sentTo());
+    }
+
+    #[Test]
+    public function anOrganisationsRowsWithNoEventGoAtItsPurgeWhateverTheirState(): void
+    {
+        self::scheduler()->schedule('test.notice', 'fanned', 'fanned', Trigger::at(new DateTimeImmutable('-1 minute')), $this->members());
+        self::worker()->step();
+        self::scheduler()->schedule('test.notice', 'held', 'held', Trigger::at(new DateTimeImmutable('-1 minute')), $this->members());
+        self::scheduler()->schedule('test.notice', 'later', 'later', Trigger::at(new DateTimeImmutable('+1 day')), $this->members());
+        self::connection()->executeStatement(
+            "UPDATE organisations SET deleted_at = NOW() - INTERVAL '31 days' WHERE id = :id",
+            ['id' => $this->organisation->getId()->toRfc4122()],
+        );
+        self::runUntilIdle();
+        self::assertSame(1, self::rowCount('SELECT COUNT(*) FROM notification_deliveries'));
+
+        self::service(Pruner::class)->prune();
+
+        self::assertSame(0, self::rowCount('SELECT COUNT(*) FROM scheduled_notifications'));
+        self::assertSame(0, self::rowCount('SELECT COUNT(*) FROM notification_deliveries'));
+    }
+
+    #[Test]
+    public function aMembersRowWithNoEventForAnOrganisationNotDeletedSends(): void
+    {
+        self::scheduler()->schedule('test.notice', 'members', 'members', Trigger::at(new DateTimeImmutable('-1 minute')), $this->members());
+
+        self::runUntilIdle();
+
+        self::assertSame(['OWNER'], self::sentTo());
+    }
+
+    private function deleteOrganisation(): void
+    {
+        self::connection()->executeStatement('UPDATE organisations SET deleted_at = NOW() WHERE id = :id', ['id' => $this->organisation->getId()->toRfc4122()]);
+        self::em()->clear();
+    }
+
+    private function restoreOrganisation(): void
+    {
+        self::service(Restorer::class)->restore(DeletedKind::Organisation, $this->organisation->getId(), 'Adaeze from support');
+        self::em()->clear();
     }
 
     private function deleteEvent(Event $event): void
