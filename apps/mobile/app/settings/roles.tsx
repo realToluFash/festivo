@@ -15,7 +15,11 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../src/api.ts';
 import { AppFrame } from '../../src/components/AppFrame.tsx';
 import { PrimaryButton, SecondaryButton } from '../../src/components/Buttons.tsx';
-import { type ListAndPageSpacing, ListAndPage } from '../../src/components/ListAndPage.tsx';
+import {
+  type ListAndPageSpacing,
+  ListAndPage,
+  useListAndPageKind,
+} from '../../src/components/ListAndPage.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
 import { RoleList, RolePage, RemoveRole } from '../../src/components/Roles.tsx';
 import {
@@ -28,7 +32,6 @@ import { SettingsSplit, backToSettings } from '../../src/components/SettingsList
 import { Text, type TextHandle } from '../../src/components/Text.tsx';
 import { cardFrame } from '../../src/components/cardFrame.ts';
 import { DESTINATION_HREF } from '../../src/kit/appNav.ts';
-import { useLayout } from '../../src/layout/useLayout.ts';
 import { useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
@@ -45,7 +48,7 @@ const LOADING: Load = { kind: 'loading' };
 /** Settings > Roles, `Roles-Phone` and `Roles-Tablet*` (sc-1931): sc-66's roles screen, in the app. */
 export default function RolesScreen() {
   const { t } = useTranslation();
-  const { kind } = useLayout();
+  const kind = useListAndPageKind(SPACING, 'settingsList');
   const { organisation } = useSignedIn();
   const organisationId = organisation?.id;
   const [held, setHeld] = useState<{ in: string | undefined; load: Load }>({
@@ -282,6 +285,7 @@ export default function RolesScreen() {
     >
       <SettingsSplit open="roles">
         <ListAndPage
+          kind={kind}
           heading={heading}
           besideHeading={catalogue != null && newRole()}
           list={

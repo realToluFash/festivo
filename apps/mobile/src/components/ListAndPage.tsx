@@ -4,10 +4,17 @@ import {
   type StyleProp,
   StyleSheet,
   View,
+  useWindowDimensions,
   type ViewStyle,
 } from 'react-native';
 
-import { useLayout, useSideListWidth } from '../layout/useLayout.ts';
+import {
+  type LayoutKind,
+  listAndPageKind,
+  type SectionBeside,
+  useLayout,
+  useSideListWidth,
+} from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { bodyEdges } from './bodyEdges.ts';
 import { QuietButton } from './Buttons.tsx';
@@ -17,7 +24,7 @@ export interface ListAndPageSpacing {
   phone: StyleProp<ViewStyle>;
   tabletPortrait: StyleProp<ViewStyle>;
   /** Around the heading and both columns on a tablet on its side. */
-  landscape: ViewStyle;
+  landscape: ViewStyle & { paddingHorizontal: number };
   /** Each column's content on a tablet on its side. */
   column: StyleProp<ViewStyle>;
   listWidth: number;
@@ -34,12 +41,22 @@ export interface ListAndPageProps {
   page: ReactNode;
   /** Changes with the page, so a page opened after a longer one shows from its top. */
   pageKey: string;
-  /** On a phone and a tablet held upright, whether the page shows in place of the list. */
+  /** Wherever the two show one at a time, whether the page shows in place of the list. */
   pageInFront: boolean;
   /** On a tablet held upright, the page under the list in one column, with no back (Events, sc-1593). */
   pageBelowUpright?: boolean;
   back: { label: string; onPress: () => void; testID: string };
   spacing: ListAndPageSpacing;
+  /** The screen's own `useListAndPageKind`, so the two never decide apart. */
+  kind: LayoutKind;
+}
+
+export function useListAndPageKind(spacing: ListAndPageSpacing, beside: SectionBeside): LayoutKind {
+  return listAndPageKind(useWindowDimensions(), beside, {
+    margins: 2 * spacing.landscape.paddingHorizontal,
+    list: spacing.listWidth,
+    between: spacing.between,
+  });
 }
 
 // The half behind is out of the layout, so neither touch, TalkBack nor Tab reaches it.
@@ -54,8 +71,9 @@ export function ListAndPage({
   pageBelowUpright = false,
   back,
   spacing,
+  kind,
 }: ListAndPageProps) {
-  const { kind } = useLayout();
+  const { kind: frame } = useLayout();
   const listWidth = useSideListWidth(spacing.listWidth);
   const landscape = kind === 'tabletLandscape';
   const column = landscape
@@ -66,7 +84,7 @@ export function ListAndPage({
 
   if (kind === 'tabletPortrait' && pageBelowUpright) {
     return (
-      <Screen edges={bodyEdges(kind)} scroll={false} contentStyle={styles.bare}>
+      <Screen edges={bodyEdges(frame)} scroll={false} contentStyle={styles.bare}>
         <ScrollColumn
           style={styles.fill}
           contentContainerStyle={column}
@@ -82,7 +100,7 @@ export function ListAndPage({
 
   return (
     <Screen
-      edges={bodyEdges(kind)}
+      edges={bodyEdges(frame)}
       scroll={false}
       contentStyle={landscape ? spacing.landscape : styles.bare}
     >
