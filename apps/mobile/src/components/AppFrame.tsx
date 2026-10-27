@@ -50,7 +50,7 @@ import { ReadOut, useReadOut } from './ReadOut.tsx';
 import { type StepClosed, stepClosed, useFocusBackToOpener, useFocusOnAnswer } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type TextHandle, Text } from './Text.tsx';
-import { Title } from './Title.tsx';
+import { Title, WholeWords } from './Title.tsx';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 
@@ -404,6 +404,7 @@ function TabBar({ current }: { current: Destination }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { organisation } = useSignedIn();
+  const { fontScale } = useWindowDimensions();
 
   return (
     <View
@@ -424,13 +425,14 @@ function TabBar({ current }: { current: Destination }) {
           >
             <View style={[styles.tabMark, on && styles.tabMarkOn]} />
             <Icon destination={destination} on={on} size={tokens.space3xl} />
-            <Text
+            <WholeWords
               size={tokens.typeMeta.size}
+              start={tokens.typeMeta.size * fontScale}
               weight={on ? 'bold' : 'medium'}
               style={[styles.centred, on ? styles.ink : styles.secondaryInk]}
             >
               {t(`frame.${destination}`)}
-            </Text>
+            </WholeWords>
           </Pressable>
         );
       })}
