@@ -1,10 +1,11 @@
-import { ApiError, type OrganisationEvent } from '@soirely/api-client';
+import { ApiError, type EventStatus, type OrganisationEvent } from '@soirely/api-client';
 import { type EventPhase, eventAllows } from '@soirely/domain';
-import { type RefObject, useState } from 'react';
+import { type RefObject, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { offButton } from '../../../offButton.ts';
+import { NOW_STATE } from './eventWords.ts';
 import { LifecycleDialog } from './LifecycleDialog.tsx';
 import { useLifecycleAction } from './useLifecycleAction.ts';
 
@@ -55,32 +56,39 @@ export function PauseButton({
   );
 }
 
-/** `Event View` (tweak: Paused): the amber line and the page's primary Resume, which asks nothing; past the end the phase is Finished and neither shows. */
+/** `Event View` (tweak: Paused): the amber line and the page's primary Resume, which asks nothing; past the end the phase is Finished and neither shows. A refusal reloads the event, which may then be past Paused: the row stays to say so. */
 export function PausedRow({
   event,
   phase,
   manages,
+  heading,
   onChange,
   onResumed,
 }: {
   event: OrganisationEvent;
   phase: EventPhase;
   manages: boolean;
+  heading: RefObject<HTMLHeadingElement | null>;
   onChange: (event: OrganisationEvent) => void;
   onResumed: () => void;
 }) {
   const { t } = useTranslation();
   const [state, setState] = useState<'idle' | 'pending' | 'failed'>('idle');
+  const [changedTo, setChangedTo] = useState<EventStatus | null>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  const changed = changedTo === event.status;
 
-  if (phase !== 'paused') return null;
+  if (phase !== 'paused' && !changed) return null;
 
   const resume = () => {
     setState('pending');
+    setChangedTo(null);
     api.resumeEvent(event.id).then(
       ({ event: resumed }) => {
         setState('idle');
         onChange(resumed);
         onResumed();
+        window.setTimeout(() => heading.current?.focus(), 0);
       },
       (error: unknown) => {
         if (!(error instanceof ApiError && error.is('event_state_invalid'))) {
@@ -92,7 +100,9 @@ export function PausedRow({
         void api.event(event.id).then(
           (latest) => {
             setState('idle');
+            setChangedTo(latest.status);
             onChange(latest);
+            window.setTimeout(() => (button.current ?? heading.current)?.focus(), 0);
           },
           () => setState('failed'),
         );
@@ -104,11 +114,19 @@ export function PausedRow({
     <div className="notice notice-attention event-paused">
       <span className="mark mark-paused" aria-hidden="true" />
       <div className="notice-body">
-        <p>{t('eventPause.notice')}</p>
+        {changed ? (
+          <div role="alert">
+            <p>{t('eventLive.changedElsewhere')}</p>
+            <p>{t(NOW_STATE[event.status])}</p>
+          </div>
+        ) : (
+          <p>{t('eventPause.notice')}</p>
+        )}
         {state === 'failed' && <p role="alert">{t('eventPause.resumeFailed')}</p>}
         {manages && eventAllows(phase, 'resume') && (
           <div className="notice-action">
             <button
+              ref={button}
               type="button"
               className="button button-primary"
               {...offButton(state === 'pending', { dim: false })}

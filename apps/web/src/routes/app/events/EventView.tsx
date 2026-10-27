@@ -221,6 +221,7 @@ function EventPage({
         event={event}
         phase={phase}
         manages={can(session, 'events.manage')}
+        heading={heading}
         onChange={onChange}
         onResumed={() => setMoved('resumed')}
       />
