@@ -1,0 +1,14 @@
+# sc-1593: a link to ${MISSING}, an event that does not exist, then Back to Events.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${MISSING}
+- extendedWaitUntil:
+    visible:
+      id: 'events.notFound'
+    timeout: 30000
+- takeScreenshot: notfound
+- tapOn:
+    id: 'events.backToEvents'
+- waitForAnimationToEnd
+- takeScreenshot: notfound-back

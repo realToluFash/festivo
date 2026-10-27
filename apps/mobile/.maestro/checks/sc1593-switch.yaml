@@ -1,0 +1,76 @@
+# sc-1593: ${EVENT} open in ${ORG}, then Switch organisation to ${OTHER_ORG}: Events shows ${OTHER_EVENT}, not ${EVENT}; then ${EMPTY_ORG}, which has none.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'home.switchOrganisation'
+    timeout: 30000
+- tapOn:
+    id: 'home.switchOrganisation'
+- scrollUntilVisible:
+    element:
+      id: 'switcher.${ORG}'
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: 'switcher.${ORG}'
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EVENT}'
+    timeout: 30000
+- tapOn:
+    id: 'events.row.${EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- takeScreenshot: before-switch
+- tapOn:
+    id: 'frame.home'
+- extendedWaitUntil:
+    visible:
+      id: 'home.switchOrganisation'
+    timeout: 20000
+- tapOn:
+    id: 'home.switchOrganisation'
+- scrollUntilVisible:
+    element:
+      id: 'switcher.${OTHER_ORG}'
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: 'switcher.${OTHER_ORG}'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${OTHER_EVENT}'
+    timeout: 20000
+- assertNotVisible:
+    id: 'events.row.${EVENT}'
+- takeScreenshot: after-switch
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'home.switchOrganisation'
+    timeout: 30000
+- tapOn:
+    id: 'home.switchOrganisation'
+- scrollUntilVisible:
+    element:
+      id: 'switcher.${EMPTY_ORG}'
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: 'switcher.${EMPTY_ORG}'
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible: '{{t:eventsScreen.noneTitle}}'
+    timeout: 20000
+- takeScreenshot: empty

@@ -1,0 +1,52 @@
+# sc-1593: in ${ORG}, the row of ${EVENT}, a multi-day event, opens its page; back returns to the list; then ${SINGLE_DAY_EVENT}, a single-day one.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'home.switchOrganisation'
+    timeout: 30000
+- tapOn:
+    id: 'home.switchOrganisation'
+- scrollUntilVisible:
+    element:
+      id: 'switcher.${ORG}'
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: 'switcher.${ORG}'
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EVENT}'
+    timeout: 30000
+- tapOn:
+    id: 'events.row.${EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- takeScreenshot: page-multiday
+- runFlow:
+    when:
+      visible:
+        id: 'events.back'
+    commands:
+      - tapOn:
+          id: 'events.back'
+- waitForAnimationToEnd
+- takeScreenshot: back-to-list
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${SINGLE_DAY_EVENT}'
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: 'events.row.${SINGLE_DAY_EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- takeScreenshot: page-singleday
