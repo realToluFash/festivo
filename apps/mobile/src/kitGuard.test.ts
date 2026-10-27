@@ -382,53 +382,52 @@ describe('a field is read by the name it shows', () => {
     expect(
       fieldsReadByAnotherName("<Field label={t('a')}>\n  <TextField value={v} />\n</Field>"),
     ).toEqual([]);
+  });
+});
+
+describe('every text field is named through fieldName (sc-17333)', () => {
+  // TalkBack reads a content description in place of what the field holds, and says it again on every key.
+  it('in every TextInput in the app', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      inputsNamedAnotherWay(text).map((line) => `${path}:${line}`),
+    );
+
+    expect(offenders, 'Spread fieldName(...) after the props the TextInput is given.').toEqual([]);
+  });
+
+  it('notices a TextInput named another way', () => {
     expect(
-      fieldsReadByAnotherName(
-        "<Field label={t('a')} labelID={A}>\n  <TextField\n    accessibilityLabel={Platform.OS === 'android' ? undefined : t('a')}\n    accessibilityLabelledBy={A}\n  />\n</Field>",
+      inputsNamedAnotherWay(
+        '<TextInput\n  {...rest}\n  {...fieldName(Platform.OS, rest.accessibilityLabel, { labelID })}\n/>',
       ),
     ).toEqual([]);
+    expect(inputsNamedAnotherWay("<TextInput\n  accessibilityLabel={t('a')}\n/>")).toEqual([1]);
     expect(
-      fieldsReadByAnotherName(
-        "<Field label={t('a')}>\n  <TextField accessibilityLabel={Platform.OS === 'android' ? undefined : t('a')} />\n</Field>",
+      inputsNamedAnotherWay(
+        '<TextInput\n  {...fieldName(Platform.OS, a, {})}\n  accessibilityValue={{ text: v }}\n/>',
       ),
     ).toEqual([1]);
   });
 });
 
-describe('a field labelled by its Field carries no content description on Android (sc-17281)', () => {
-  // TalkBack reads a content description in place of what the field holds, and says it again whenever it changes.
-  it('in every Field in the app', () => {
-    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
-      fieldsDescribedOnAndroid(text).map((line) => `${path}:${line}`),
-    );
-
+describe('a field hands its children the id its label shows under (sc-17333)', () => {
+  // On Android a TextField is named only by this id; without it, fieldName falls back to a content description.
+  it('in Field', () => {
     expect(
-      offenders,
-      'Leave accessibilityLabel undefined on Android and set no accessibilityValue.',
-    ).toEqual([]);
+      labelLinkBroken(readFileSync(join('src', 'components', 'Field.tsx'), 'utf8')),
+      'Give the label Text nativeID={labelID} and wrap the children in <FieldLabel value={labelID}>.',
+    ).toBe(false);
   });
 
-  it('notices a content description', () => {
-    expect(
-      fieldsDescribedOnAndroid(
-        "<Field label={t('a')} labelID={A}>\n  <TextField\n    accessibilityLabel={Platform.OS === 'android' ? undefined : t('a')}\n    accessibilityLabelledBy={A}\n  />\n</Field>",
-      ),
-    ).toEqual([]);
-    expect(
-      fieldsDescribedOnAndroid(
-        "<Field label={t('a')} labelID={A}>\n  <TextField\n    accessibilityLabel={t('a')}\n    accessibilityLabelledBy={A}\n  />\n</Field>",
-      ),
-    ).toEqual([1]);
-    expect(
-      fieldsDescribedOnAndroid(
-        "<Field label={t('a')} labelID={A}>\n  <TextField\n    accessibilityLabel={Platform.OS === 'android' ? undefined : t('a')}\n    accessibilityLabelledBy={A}\n    accessibilityValue={{ text: v }}\n  />\n</Field>",
-      ),
-    ).toEqual([1]);
-    expect(
-      fieldsDescribedOnAndroid(
-        "<Field label={t('a')}>\n  <CoverField accessibilityLabel={t('a')} accessibilityValue={{ text: v }} />\n</Field>",
-      ),
-    ).toEqual([]);
+  it('notices a label and a provider that name different ids', () => {
+    const shown = '<Text weight="semibold" nativeID={labelID}>\n  {label}\n</Text>';
+    expect(labelLinkBroken(`${shown}\n<FieldLabel value={labelID}>{children}</FieldLabel>`)).toBe(
+      false,
+    );
+    expect(labelLinkBroken(`${shown}\n<FieldLabel value={otherID}>{children}</FieldLabel>`)).toBe(
+      true,
+    );
+    expect(labelLinkBroken(`<Text>\n  {label}\n</Text>\n{children}`)).toBe(true);
   });
 });
 
@@ -856,10 +855,8 @@ function pressablesInAccessibleViews(text: string): number[] {
 function fieldsReadByAnotherName(text: string): number[] {
   return [...text.matchAll(/(?<![\w.])<Field\b/gu)].flatMap((match) => {
     const body = text.slice(match.index, text.indexOf('</Field>', match.index));
-    const field = body.slice(0, tagEnd(body, 0));
-    const control = body.slice(tagEnd(body, 0));
-    const label = propValue(field, 'label');
-    const read = readOffAndroid(control, propValue(field, 'labelID'));
+    const label = propValue(body.slice(0, tagEnd(body, 0)), 'label');
+    const read = propValue(body.slice(tagEnd(body, 0)), 'accessibilityLabel');
 
     return read == null || read.replace(/\s+/gu, '') === label?.replace(/\s+/gu, '')
       ? []
@@ -867,34 +864,37 @@ function fieldsReadByAnotherName(text: string): number[] {
   });
 }
 
-/** The lines of each Field with a labelID whose control still gives Android a content description: a label or a value. */
-function fieldsDescribedOnAndroid(text: string): number[] {
-  return [...text.matchAll(/(?<![\w.])<Field\b/gu)].flatMap((match) => {
-    const body = text.slice(match.index, text.indexOf('</Field>', match.index));
-    if (propValue(body.slice(0, tagEnd(body, 0)), 'labelID') == null) return [];
-
-    const control = body.slice(tagEnd(body, 0));
-    const read = propValue(control, 'accessibilityLabel');
+/** The lines of each TextInput that does not take its name from fieldName, or overrides it after. */
+function inputsNamedAnotherWay(text: string): number[] {
+  return [...text.matchAll(/(?<![\w.])<TextInput\b/gu)].flatMap((match) => {
+    const tag = text.slice(match.index, tagEnd(text, match.index));
+    const named = tag.search(/\{\.\.\.fieldName\(/u);
+    const after = named < 0 ? '' : tag.slice(named);
     const quiet =
-      (read == null || /^\{Platform\.OS === 'android' \? undefined : /u.test(read)) &&
-      propValue(control, 'accessibilityValue') == null;
+      named >= 0 &&
+      !/\baccessibility(Label|LabelledBy|Value)=/u.test(after.slice(after.indexOf(')}')));
 
     return quiet ? [] : [text.slice(0, match.index).split('\n').length];
   });
 }
 
-/** The control's accessibilityLabel, unwrapped where Android has none because it is labelled by the Field's own label. */
-function readOffAndroid(control: string, labelID: string | null): string | null {
-  const read = propValue(control, 'accessibilityLabel');
-  const offAndroid = read?.match(/^\{Platform\.OS === 'android' \? undefined : (.*)\}$/su);
-  if (offAndroid?.[1] == null) return read;
+/** A prop's value as written, its braces balanced, or null when the markup does not set it. */
+/** Whether the Text showing a Field's label and the FieldLabel around its children name different ids. */
+function labelLinkBroken(text: string): boolean {
+  const label = [...text.matchAll(/(?<![\w.])<Text\b/gu)]
+    .map((match) => text.slice(match.index, tagEnd(text, match.index)))
+    .find((markup) =>
+      text
+        .slice(text.indexOf(markup) + markup.length)
+        .trimStart()
+        .startsWith('{label}'),
+    );
+  const shown = label == null ? null : propValue(label, 'nativeID');
+  const handed = /<FieldLabel\s+value=(\{[^}]+\})/u.exec(text)?.[1] ?? null;
 
-  return labelID != null && propValue(control, 'accessibilityLabelledBy') === labelID
-    ? `{${offAndroid[1]}}`
-    : read;
+  return shown == null || handed == null || shown !== handed;
 }
 
-/** A prop's value as written, its braces balanced, or null when the markup does not set it. */
 function propValue(markup: string, name: string): string | null {
   const start = markup.search(new RegExp(`\\b${name}=`, 'u'));
   if (start === -1) return null;
