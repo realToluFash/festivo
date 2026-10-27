@@ -355,9 +355,8 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
         }
         pageInFront={inFront}
         pageKey={open ?? ''}
-        pageBelowUpright
         back={{
-          label: t('eventsScreen.title'),
+          label: t('eventsScreen.back'),
           onPress: () => select(null),
           testID: 'events.back',
         }}

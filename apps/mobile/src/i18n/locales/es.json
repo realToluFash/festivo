@@ -1419,6 +1419,7 @@
   },
   "eventsScreen": {
     "title": "Eventos",
+    "back": "‹ Events",
     "loading": "Cargando eventos…",
     "refreshing": "Actualizando…",
     "draft": "Borrador",

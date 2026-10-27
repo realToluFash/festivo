@@ -1419,6 +1419,7 @@
   },
   "eventsScreen": {
     "title": "Événements",
+    "back": "‹ Events",
     "loading": "Chargement des événements…",
     "refreshing": "Actualisation…",
     "draft": "Brouillon",

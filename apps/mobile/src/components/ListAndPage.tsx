@@ -43,8 +43,6 @@ export interface ListAndPageProps {
   pageKey: string;
   /** Wherever the two show one at a time, whether the page shows in place of the list. */
   pageInFront: boolean;
-  /** On a tablet held upright, the page under the list in one column, with no back (Events, sc-1593). */
-  pageBelowUpright?: boolean;
   back: { label: string; onPress: () => void; testID: string };
   spacing: ListAndPageSpacing;
   /** The screen's own `useListAndPageKind`, so the two never decide apart. */
@@ -68,7 +66,6 @@ export function ListAndPage({
   page,
   pageKey,
   pageInFront,
-  pageBelowUpright = false,
   back,
   spacing,
   kind,
@@ -81,22 +78,6 @@ export function ListAndPage({
     : kind === 'phone'
       ? spacing.phone
       : spacing.tabletPortrait;
-
-  if (kind === 'tabletPortrait' && pageBelowUpright) {
-    return (
-      <Screen edges={bodyEdges(frame)} scroll={false} contentStyle={styles.bare}>
-        <ScrollColumn
-          style={styles.fill}
-          contentContainerStyle={column}
-          refreshControl={listRefresh}
-        >
-          {heading}
-          {list}
-          {page}
-        </ScrollColumn>
-      </Screen>
-    );
-  }
 
   return (
     <Screen
@@ -121,6 +102,7 @@ export function ListAndPage({
             style={styles.fill}
             contentContainerStyle={column}
             refreshControl={listRefresh}
+            away={!landscape && pageInFront}
           >
             {!landscape && heading}
             {list}
