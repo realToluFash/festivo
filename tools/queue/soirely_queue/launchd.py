@@ -15,7 +15,10 @@ import signal
 import subprocess
 import time
 
+from . import remote
+
 LABEL = "com.soirely.routine"
+WEB_LABEL = "com.soirely.web"
 LOG_LIMIT_BYTES = 10 * 1024 * 1024
 POLL_SECONDS = 5
 GRACE_SECONDS = 10
@@ -25,6 +28,10 @@ UNITS = {"": 1, "k": 1024, "m": 1024 ** 2, "g": 1024 ** 3, "t": 1024 ** 4}
 
 def agent_path():
     return pathlib.Path("~/Library/LaunchAgents").expanduser() / f"{LABEL}.plist"
+
+
+def web_agent_path():
+    return pathlib.Path("~/Library/LaunchAgents").expanduser() / f"{WEB_LABEL}.plist"
 
 
 def log_dir():
@@ -62,6 +69,23 @@ def agent(sq, python):
         "RunAtLoad": True,
         # The token is read from the env file by sq itself, never written here.
         "EnvironmentVariables": {"PATH": search_path(), "SOIRELY_TICK": "1"},
+        "StandardOutPath": log,
+        "StandardErrorPath": log,
+    }
+
+
+def web_agent(sq, python, listen):
+    """`sq web`, kept running so the other machines can read this one."""
+    log = str(log_dir() / "web.log")
+    host, port = listen
+    return {
+        "Label": WEB_LABEL,
+        "ProgramArguments": [stable_python(python), str(sq), "web", "--no-open",
+                             "--listen", str(host), "--port", str(port)],
+        "KeepAlive": True,
+        "RunAtLoad": True,
+        "ThrottleInterval": 10,
+        "EnvironmentVariables": {"PATH": search_path()},
         "StandardOutPath": log,
         "StandardErrorPath": log,
     }
@@ -153,10 +177,11 @@ class Mac:
         for log in log_dir().glob("*.log"):
             if log.stat().st_size > LOG_LIMIT_BYTES:
                 log.replace(log.with_suffix(".log.1"))
+        web = self.install_web(sq, python, remote.web(remote.config()))
         target = agent_path()
         text = plistlib.dumps(agent(sq, python))
         if target.exists() and target.read_bytes() == text:
-            return False
+            return web
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(text)
         if self.loaded():
@@ -166,6 +191,26 @@ class Mac:
             else:
                 self.reload(target)
         return True
+
+    def install_web(self, sq, python, listen):
+        """Keeps the web agent loaded while agents.json has `web`, and takes it away once it
+        has not. Says whether anything changed."""
+        target, service = web_agent_path(), f"{domain()}/{WEB_LABEL}"
+        if not listen:
+            if not target.exists():
+                return False
+            self.launchctl("bootout", service)
+            target.unlink()
+            return True
+        text = plistlib.dumps(web_agent(sq, python, listen))
+        changed = not target.exists() or target.read_bytes() != text
+        if changed:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(text)
+            self.launchctl("bootout", service)
+        if changed or self.launchctl("print", service).returncode:
+            self.launchctl("bootstrap", domain(), str(target))
+        return changed
 
     def reload(self, target, detached=False):
         steps = f"launchctl bootout {domain()}/{LABEL}; launchctl bootstrap {domain()} '{target}'"

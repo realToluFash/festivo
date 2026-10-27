@@ -52,6 +52,45 @@ class Install(unittest.TestCase):
         self.assertIn("MemoryMax=16G", self.installed_slice())
 
 
+class Web(unittest.TestCase):
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.addCleanup(self.folder.cleanup)
+        self.root = pathlib.Path(self.folder.name)
+        environ = mock.patch.dict("os.environ", {"SOIRELY_CONFIG": str(self.root),
+                                                 "XDG_CONFIG_HOME": str(self.root)})
+        environ.start()
+        self.addCleanup(environ.stop)
+        self.unit = self.root / "systemd" / "user" / "soirely-web.service"
+
+    def install(self, active="active", **settings):
+        (self.root / "agents.json").write_text(json.dumps(settings))
+        with mock.patch.object(systemd, "systemctl") as systemctl:
+            systemctl.return_value.stdout = active
+            systemd.Linux().install("/q/sq/sq", "/c/env", "python3")
+        return [c.args[0] for c in systemctl.call_args_list]
+
+    def test_with_web_set_its_page_is_a_service_that_restarts(self):
+        calls = self.install(web={"listen": "0.0.0.0"})
+        text = self.unit.read_text()
+        self.assertIn("ExecStart=python3 /q/sq/sq web --no-open --listen 0.0.0.0 --port 8765",
+                      text)
+        self.assertIn("Restart=always", text)
+        self.assertIn("EnvironmentFile=-/c/env", text)
+        self.assertEqual(calls[-2:], ["enable", "restart"])
+
+    def test_an_unchanged_service_is_left_running_and_started_when_it_stopped(self):
+        self.install(web={})
+        self.assertEqual(self.install(web={}), ["is-active"])
+        self.assertEqual(self.install("inactive", web={}), ["is-active", "start"])
+
+    def test_without_web_the_service_is_taken_away(self):
+        self.install(web={})
+        self.assertEqual(self.install(), ["disable", "daemon-reload"])
+        self.assertFalse(self.unit.exists())
+        self.assertEqual(self.install(), [])
+
+
 class Launch(unittest.TestCase):
     def launched(self, values=VALUES):
         with mock.patch("subprocess.run") as run:
