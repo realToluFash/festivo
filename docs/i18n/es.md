@@ -508,3 +508,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **27 Oct 2026. El hito de un evento cancelado** (sc-16725 para sc-16709,
   `messages:timeline.event_called_off`). «Se cancela {name}», con el verbo delante como
   «Empieza {name}» y «Termina {name}», y sin concordar con un nombre cuyo género no conocemos.
+- **27 Oct 2026. Un recuento de borrado que falla** (`ownership.deleteUncounted`,
+  `ownership.deleteRetry`, web y app, sc-16928 para sc-16866). «No se ha podido calcular lo que
+  contiene», con el verbo de `deleteLoading`. Restaurar es «restaurarla», como `deleteWindow`,
+  y el plazo fijo «durante 30 días». El botón es «Reintentar», como el de la pantalla Eventos.
