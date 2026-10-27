@@ -606,3 +606,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   host connects the two. Won over "… from this organisation …", which every reason the host
   sees already implies and which overruns a phone row. Other skip reasons read as short
   phrases in the same row: "No email address", "Address is bouncing".
+- **27 Oct 2026. Events Home's tabs and empty states** (sc-15981 for sc-3594, `events.tab*|empty*|
+startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the same plus
+  `nextUp|showingMore`). Kept as sc-3594 wrote it. The tabs are **Upcoming**, **Drafts** and
+  **Past**; each empty state is a short title and one line saying what will show there. A
+  cancelled past event reads "Called off on {{date}}", the act sc-3585 named. The two
+  `moreFailed` keep their second sentence different on purpose: each repeats its own screen's
+  load failure, web "Try again in a moment." as `events.failed`, the app "Check your connection
+  and try again." as `eventsScreen.failedLoad`. es, fr and pt follow the same split.
