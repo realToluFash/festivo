@@ -195,6 +195,25 @@ describe('Duplicate an event (sc-3593)', () => {
     ).toBeDefined();
   });
 
+  it('names the year of an end that falls in the next year', async () => {
+    signedIn();
+    const { dialog } = await opened(
+      event({
+        startsAt: '2027-07-17T20:00:00+02:00',
+        endsAt: '2027-07-18T08:00:00+02:00',
+        timeZone: 'Europe/Madrid',
+      }),
+    );
+
+    start(dialog, '2027-12-31', '20:00');
+
+    expect(
+      within(dialog).getByText(
+        'It ends Sat, Jan 1, 2028, 08:00, 12 hours later, like the original. Times in Europe/Madrid.',
+      ),
+    ).toBeDefined();
+  });
+
   it('sends nothing with no start, says so beside it and moves focus to the first empty field', async () => {
     signedIn();
     const { sent, dialog } = await opened(event());
