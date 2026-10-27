@@ -1,0 +1,9 @@
+# sc-13956: ${EV_PAST}, a draft whose end has passed; its line says so.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_PAST}
+- extendedWaitUntil:
+    visible:
+      id: 'events.draftLine'
+    timeout: 30000
+- takeScreenshot: end-passed
