@@ -1561,6 +1561,25 @@
     "needsHostTitle": "Indique os anfitriões antes de convidar alguém.",
     "needsHostBody": "Os convidados veem os nomes dos anfitriões no convite. Este evento continua a ser um rascunho até ter pelo menos um anfitrião."
   },
+  "eventHosts": {
+    "heading": "Anfitriões",
+    "explainer": "Os convidados leem estes nomes no convite e na página do evento, por esta ordem. Escreva-os tal como quer que os convidados os vejam.",
+    "none": "Ainda não há anfitriões. O evento pode ser publicado assim que tiver pelo menos um.",
+    "add": "Adicionar um anfitrião",
+    "label": "Anfitrião {{position}}",
+    "moveUp": "Mover {{name}} para cima",
+    "moveDown": "Mover {{name}} para baixo",
+    "remove": "Remover",
+    "removeNamed": "Remover {{name}}",
+    "most": "Um evento pode ter, no máximo, {{most, number}} anfitriões.",
+    "lastHost": "Os convidados podem ver este evento, por isso precisa de pelo menos um anfitrião. Pode continuar a alterar este nome.",
+    "lastHostRefused": "Os convidados podem ver este evento, por isso precisa de pelo menos um anfitrião. Escreva um nome aqui antes de guardar.",
+    "moved": "{{name}}: posição {{position}} de {{count, number}}",
+    "removed": "{{name}} já não consta da lista de anfitriões",
+    "blank": "Escreva um nome ou remova este anfitrião.",
+    "tooLong": "O nome de um anfitrião pode ter, no máximo, {{most, number}} caracteres. Este tem {{length, number}}.",
+    "duplicate": "{{name}} já consta da lista de anfitriões."
+  },
   "eventEnd": {
     "callOff": "Cancelar o evento",
     "endNow": "Terminar agora",

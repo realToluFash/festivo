@@ -1,10 +1,11 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
-import { eventFormErrors } from '@soirely/domain';
+import { type HostRow, eventFormErrors, keepsLastHost } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
 import {
   blankEvent,
+  changesOf,
   firstRefused,
   isDirty,
   newEventOf,
@@ -144,5 +145,73 @@ describe('the platform pickers', () => {
     const picked = pickerValue('', '', new Date('2026-10-26T08:15:00Z'));
 
     expect([pickedDate(picked), pickedTime(picked)]).toEqual(['2026-10-26', '12:00']);
+  });
+});
+
+const rows = (...names: string[]): HostRow[] => names.map((name, key) => ({ key, name }));
+
+describe("the app's Hosted by against the shared rules (sc-15497)", () => {
+  it('opens with the saved hosts in order, and a new event with none', () => {
+    expect(typedOf({ ...gala, hosts: ['Funmi Adeyemi', 'Tayo Adeyemi'] }).hosts).toEqual(
+      rows('Funmi Adeyemi', 'Tayo Adeyemi'),
+    );
+    expect(blankEvent({ timezone: 'Africa/Lagos', currency: 'NGN' }).hosts).toEqual([]);
+  });
+
+  it('sends the whole list, trimmed and on one line, only when it changed', () => {
+    const typed = typedOf(gala);
+
+    expect(changesOf(gala, typed)).toEqual({});
+    expect(changesOf(gala, { ...typed, hosts: rows(' Funmi Adeyemi ') })).toEqual({});
+    expect(changesOf(gala, { ...typed, hosts: rows('Funmi\nAdeyemi', ' Tayo ') })).toEqual({
+      hosts: ['Funmi Adeyemi', 'Tayo'],
+    });
+    expect(changesOf(gala, { ...typed, hosts: [] })).toEqual({ hosts: [] });
+    expect(isDirty({ ...typed, hosts: [] }, typed)).toBe(true);
+  });
+
+  it("keeps a live event's last saved host, and lets one made live before hosts add and remove freely", () => {
+    const live = { ...gala, status: 'live' as const };
+
+    expect(keepsLastHost(live, 1)).toBe(true);
+    expect(keepsLastHost(live, 2)).toBe(false);
+    expect(keepsLastHost({ ...live, status: 'paused' }, 1)).toBe(true);
+    expect(keepsLastHost({ ...live, hosts: [] }, 1)).toBe(false);
+    expect(keepsLastHost({ ...live, hosts: [] }, 0)).toBe(false);
+    expect(keepsLastHost(gala, 1)).toBe(false);
+    expect(changesOf({ ...live, hosts: [] }, { ...typedOf(live), hosts: rows('Tayo') })).toEqual({
+      hosts: ['Tayo'],
+    });
+    expect(changesOf({ ...live, hosts: [] }, { ...typedOf(live), hosts: [] })).toEqual({});
+  });
+
+  it("puts the server's refusal of one name under that name's row", () => {
+    const hosts: HostRow[] = [
+      { key: 7, name: 'Funmi' },
+      { key: 3, name: 'Tayo' },
+    ];
+
+    expect(
+      sendOutcome(
+        refusal(422, 'validation_failed', [
+          { propertyPath: 'hosts[1]', message: 'Not this one.', code: 'x' },
+          { propertyPath: 'endsAt', message: 'Too early.', code: 'x' },
+        ]),
+        t,
+        hosts,
+      ),
+    ).toEqual({ kind: 'refused', errors: { endsAt: 'Too early.' }, hosts: { 3: 'Not this one.' } });
+    expect(
+      sendOutcome(
+        refusal(422, 'validation_failed', [{ propertyPath: 'hosts', message: 'Six.', code: 'x' }]),
+        t,
+        hosts,
+      ),
+    ).toEqual({ kind: 'refused', errors: {}, hosts: { 3: 'Six.' } });
+    expect(sendOutcome(refusal(409, 'event_host_required'), t, hosts)).toEqual({
+      kind: 'refused',
+      errors: {},
+      hosts: { 7: 'eventHosts.lastHostRefused' },
+    });
   });
 });
