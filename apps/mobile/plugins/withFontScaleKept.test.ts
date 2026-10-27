@@ -31,7 +31,7 @@ describe('withFontScaleForwarded', () => {
 
   it('imports what the override names, under the package line', () => {
     expect(forwarded).toMatch(
-      /^package com\.soirely\.app\nimport android\.content\.res\.Configuration\nimport com\.facebook\.react\.bridge\.LifecycleEventListener\n/,
+      /^package com\.soirely\.app\nimport android\.content\.ComponentCallbacks\nimport android\.content\.res\.Configuration\nimport com\.facebook\.react\.bridge\.LifecycleEventListener\nimport com\.facebook\.react\.uimanager\.DisplayMetricsHolder\n/,
     );
   });
 
@@ -40,6 +40,22 @@ describe('withFontScaleForwarded', () => {
     expect(forwarded).toContain('getNativeModule("DeviceInfo") as? LifecycleEventListener');
     expect(forwarded).toContain('deviceInfo?.onHostResume()');
     expect(forwarded.trimEnd().endsWith('  }\n}')).toBe(true);
+  });
+
+  it('measures text against the activity, whose font scale is already the new one', () => {
+    expect(forwarded).toMatch(
+      /super\.onConfigurationChanged\(newConfig\)\n\s+DisplayMetricsHolder\.initDisplayMetrics\(this\)\n/,
+    );
+  });
+
+  it('forwards once the application has the new font scale, and stops listening after', () => {
+    expect(forwarded).toContain(
+      'if (application.resources.configuration.fontScale == newConfig.fontScale) {',
+    );
+    expect(forwarded).toContain(
+      'application.registerComponentCallbacks(object : ComponentCallbacks {',
+    );
+    expect(forwarded).toContain('application.unregisterComponentCallbacks(this)');
   });
 
   it('fails a debug build loudly when DeviceInfo stops listening for resume', () => {

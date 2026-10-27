@@ -3,15 +3,34 @@ import configPlugins, { type ConfigPlugin } from 'expo/config-plugins.js';
 const { AndroidConfig, withAndroidManifest, withMainActivity } = configPlugins;
 
 const IMPORTS = [
+  'import android.content.ComponentCallbacks',
   'import android.content.res.Configuration',
   'import com.facebook.react.bridge.LifecycleEventListener',
+  'import com.facebook.react.uimanager.DisplayMetricsHolder',
 ];
 
-// React Native tells JavaScript about a new font scale only on resume, so a change made while the app stays open would never reach it.
+// React Native measures text against the application's font scale, which Android may update after the activity's: a layout in between keeps the old size under the new scale, and its measurement is cached.
+// React Native tells JavaScript about a new font scale only on resume, and reads it from the application, so the forward waits for the application to have it.
 // DeviceInfo is internal to React Native, so a debug build fails here on the first upgrade that renames it or drops the interface.
 const OVERRIDE = `
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)
+    DisplayMetricsHolder.initDisplayMetrics(this)
+    if (application.resources.configuration.fontScale == newConfig.fontScale) {
+      forwardFontScale()
+      return
+    }
+    application.registerComponentCallbacks(object : ComponentCallbacks {
+      override fun onConfigurationChanged(applicationConfig: Configuration) {
+        application.unregisterComponentCallbacks(this)
+        forwardFontScale()
+      }
+
+      override fun onLowMemory() = Unit
+    })
+  }
+
+  private fun forwardFontScale() {
     val context = reactHost?.currentReactContext ?: return
     val deviceInfo = context.getNativeModule("DeviceInfo") as? LifecycleEventListener
     check(deviceInfo != null || !BuildConfig.DEBUG) {
