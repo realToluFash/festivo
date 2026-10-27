@@ -166,4 +166,7 @@ fan-out and a delivery already written is held, and both go within a minute of
 `app:restore-organisation`. A row not yet due at the restore goes at its due time. Each row
 names its audience's organisation (`organisation_id`), so at the organisation's purge
 (`app:prune-deleted`) every row with no event goes with it, deliveries and all, whatever its
-state, as an event's rows go with the event.
+state, as an event's rows go with the event. This hold does not read the type's event rule, so a
+deletion notice scheduled with no event would wait like any other row and go at the purge
+unsent; an organisation-level deletion notice sent through the scheduler needs its own
+exception here first.
