@@ -11,8 +11,7 @@ import { PrimaryButton, SecondaryButton } from '../../src/components/Buttons.tsx
 import {
   type ListAndPageSpacing,
   ListAndPage,
-  useListAndPageKind,
-  useSettingsListGivesWay,
+  useListAndPageLayout,
 } from '../../src/components/ListAndPage.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
 import { RoleList, RolePage, RemoveRole } from '../../src/components/Roles.tsx';
@@ -42,8 +41,7 @@ const LOADING: Load = { kind: 'loading' };
 /** Settings > Roles, `Roles-Phone` and `Roles-Tablet*` (sc-1931): sc-66's roles screen, in the app. */
 export default function RolesScreen() {
   const { t } = useTranslation();
-  const kind = useListAndPageKind(SPACING, 'settingsList');
-  const givesWay = useSettingsListGivesWay(SPACING);
+  const { kind, givesWay } = useListAndPageLayout(SPACING, 'settingsList');
   const { organisation } = useSignedIn();
   const organisationId = organisation?.id;
   const [held, setHeld] = useState<{ in: string | undefined; load: Load }>({
