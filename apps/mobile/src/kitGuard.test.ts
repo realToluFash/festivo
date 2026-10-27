@@ -395,6 +395,43 @@ describe('a field is read by the name it shows', () => {
   });
 });
 
+describe('a field labelled by its Field carries no content description on Android (sc-17281)', () => {
+  // TalkBack reads a content description in place of what the field holds, and says it again whenever it changes.
+  it('in every Field in the app', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      fieldsDescribedOnAndroid(text).map((line) => `${path}:${line}`),
+    );
+
+    expect(
+      offenders,
+      'Leave accessibilityLabel undefined on Android and set no accessibilityValue.',
+    ).toEqual([]);
+  });
+
+  it('notices a content description', () => {
+    expect(
+      fieldsDescribedOnAndroid(
+        "<Field label={t('a')} labelID={A}>\n  <TextField\n    accessibilityLabel={Platform.OS === 'android' ? undefined : t('a')}\n    accessibilityLabelledBy={A}\n  />\n</Field>",
+      ),
+    ).toEqual([]);
+    expect(
+      fieldsDescribedOnAndroid(
+        "<Field label={t('a')} labelID={A}>\n  <TextField\n    accessibilityLabel={t('a')}\n    accessibilityLabelledBy={A}\n  />\n</Field>",
+      ),
+    ).toEqual([1]);
+    expect(
+      fieldsDescribedOnAndroid(
+        "<Field label={t('a')} labelID={A}>\n  <TextField\n    accessibilityLabel={Platform.OS === 'android' ? undefined : t('a')}\n    accessibilityLabelledBy={A}\n    accessibilityValue={{ text: v }}\n  />\n</Field>",
+      ),
+    ).toEqual([1]);
+    expect(
+      fieldsDescribedOnAndroid(
+        "<Field label={t('a')}>\n  <CoverField accessibilityLabel={t('a')} accessibilityValue={{ text: v }} />\n</Field>",
+      ),
+    ).toEqual([]);
+  });
+});
+
 describe('changing the layout keeps the form', () => {
   // A frame that returns a different tree per layout remounts the form, and a rotation throws away what was typed.
   it('is one tree at every size in AuthFrame', () => {
@@ -827,6 +864,22 @@ function fieldsReadByAnotherName(text: string): number[] {
     return read == null || read.replace(/\s+/gu, '') === label?.replace(/\s+/gu, '')
       ? []
       : [text.slice(0, match.index).split('\n').length];
+  });
+}
+
+/** The lines of each Field with a labelID whose control still gives Android a content description: a label or a value. */
+function fieldsDescribedOnAndroid(text: string): number[] {
+  return [...text.matchAll(/(?<![\w.])<Field\b/gu)].flatMap((match) => {
+    const body = text.slice(match.index, text.indexOf('</Field>', match.index));
+    if (propValue(body.slice(0, tagEnd(body, 0)), 'labelID') == null) return [];
+
+    const control = body.slice(tagEnd(body, 0));
+    const read = propValue(control, 'accessibilityLabel');
+    const quiet =
+      (read == null || /^\{Platform\.OS === 'android' \? undefined : /u.test(read)) &&
+      propValue(control, 'accessibilityValue') == null;
+
+    return quiet ? [] : [text.slice(0, match.index).split('\n').length];
   });
 }
 
