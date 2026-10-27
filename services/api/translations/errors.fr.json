@@ -36,7 +36,6 @@
     "permission_required": "Votre rôle n’inclut pas l’autorisation nécessaire.",
     "account_unverified": "Vérifiez votre compte pour continuer.",
     "profile_incomplete": "Ajoutez quelques informations pour continuer.",
-    "too_many_requests": "Trop de tentatives. Veuillez patienter et réessayer.",
     "too_many_attempts": "Trop de tentatives. Veuillez patienter et réessayer.",
     "verification_code_invalid": "Ce code ne correspond pas.",
     "verification_code_expired": "Ce code a expiré.",

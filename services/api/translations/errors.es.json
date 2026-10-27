@@ -36,7 +36,6 @@
     "permission_required": "Su función no incluye el permiso que esto necesita.",
     "account_unverified": "Verifique su cuenta para continuar.",
     "profile_incomplete": "Añada algunos datos para continuar.",
-    "too_many_requests": "Demasiados intentos. Espere e inténtelo de nuevo.",
     "too_many_attempts": "Demasiados intentos. Espere e inténtelo de nuevo.",
     "verification_code_invalid": "Ese código no coincide.",
     "verification_code_expired": "Ese código ha caducado.",

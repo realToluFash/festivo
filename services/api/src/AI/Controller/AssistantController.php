@@ -254,11 +254,9 @@ final class AssistantController
     {
         $limiter = $this->assistantChatLimiter->create($request->getClientIp() ?? 'anonymous');
 
-        if (!$limiter->consume()->isAccepted()) {
-            throw new ApiException(
-                ErrorCode::TooManyRequests,
-                'assistant.too_many',
-            );
+        $limit = $limiter->consume();
+        if (!$limit->isAccepted()) {
+            throw ApiException::tooManyAttempts('limits.assistant_requests', $limit->getRetryAfter());
         }
     }
 }
