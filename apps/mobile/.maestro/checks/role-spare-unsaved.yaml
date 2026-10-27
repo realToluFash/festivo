@@ -1,0 +1,25 @@
+# sc-12226: the role page named by ${ROLE} with Guests changed to Read and not saved, then the unsaved line.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/roles
+- extendedWaitUntil:
+    visible: '{{t:rolesScreen.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'roles.role.${ROLE}'
+    direction: DOWN
+- tapOn:
+    id: 'roles.role.${ROLE}'
+- scrollUntilVisible:
+    element:
+      id: 'roles.area.guests.read'
+    direction: DOWN
+- tapOn:
+    id: 'roles.area.guests.read'
+- takeScreenshot: role-spare-changed
+- scrollUntilVisible:
+    element:
+      id: 'roles.discard'
+    direction: DOWN
+- takeScreenshot: role-spare-unsaved
