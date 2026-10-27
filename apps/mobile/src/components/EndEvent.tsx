@@ -1,20 +1,17 @@
 import { type OrganisationEvent } from '@soirely/api-client';
 import { type EventPhase, endLabel } from '@soirely/domain';
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { type EndRefusal, NOW_STATE, endRefusalOf } from '../kit/makeLive.ts';
+import { type EndRefusal, CHANGED_WORDS, endRefusalOf } from '../kit/makeLive.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
-import { Sheet } from './Sheet.tsx';
-import { Text } from './Text.tsx';
+import { SecondaryButton } from './Buttons.tsx';
+import { LifecycleSheet, useLifecycleAction } from './LifecycleSheet.tsx';
 
-type Asking =
-  | { kind: 'confirm'; label: 'callOff' | 'endNow'; pending: boolean; failed: boolean }
-  | Exclude<EndRefusal, { kind: 'failed' }>;
+type Label = 'callOff' | 'endNow';
 
 /** `Lifecycle-*` (tweak: Call off, End now; sc-3585): one action, named Call off before the start and End now from it. */
 export function EndRow({
@@ -33,48 +30,18 @@ export function EndRow({
   onChange: (event: OrganisationEvent) => void;
 }) {
   const { t } = useTranslation();
-  const [asking, setAsking] = useState<Asking | null>(null);
   const opener = useRef<View>(null);
+  const { asking, ask, go, close } = useLifecycleAction<{ label: Label }, EndRefusal>({
+    event,
+    onChange,
+    refusalOf: endRefusalOf,
+  });
   const label = manages ? endLabel(event, phase, now) : null;
 
   // A refusal reloads the event, which may then offer no End now: its sheet stays to say so.
   if (label == null && asking == null) return null;
 
-  const confirming = (failed: boolean, pending = false): Asking => ({
-    kind: 'confirm',
-    label: asking?.kind === 'confirm' ? asking.label : (label ?? 'endNow'),
-    pending,
-    failed,
-  });
-
-  const go = () => {
-    setAsking(confirming(false, true));
-    api.endEvent(event.id).then(
-      ({ event: ended }) => {
-        setAsking(null);
-        onChange(ended);
-      },
-      (error: unknown) => {
-        const refusal = endRefusalOf(error);
-
-        if (refusal.kind === 'failed') {
-          setAsking(confirming(true));
-          return;
-        }
-
-        api.event(event.id).then(
-          (latest) => {
-            onChange(latest);
-            setAsking(refusal);
-          },
-          () => setAsking(confirming(true)),
-        );
-      },
-    );
-  };
-
-  const pending = asking?.kind === 'confirm' && asking.pending;
-  const close = () => !pending && setAsking(null);
+  const callOff = asking?.kind === 'confirm' && asking.label === 'callOff';
 
   return (
     <View style={styles.row} testID="events.endRow">
@@ -82,96 +49,47 @@ export function EndRow({
         <SecondaryButton
           ref={opener}
           label={t(`eventEnd.${label}`)}
-          onPress={() => setAsking({ kind: 'confirm', label, pending: false, failed: false })}
+          onPress={() => ask({ label })}
           testID="events.end"
         />
       )}
-      <Sheet open={asking != null} onClose={close} opener={opener} testID="events.endSheet">
-        {asking != null && (
-          <Asked
-            phone={kind === 'phone'}
-            name={event.name}
-            status={event.status}
-            asking={asking}
-            onGo={go}
-            onClose={close}
-          />
-        )}
-      </Sheet>
-    </View>
-  );
-}
-
-function Asked({
-  phone,
-  name,
-  status,
-  asking,
-  onGo,
-  onClose,
-}: {
-  phone: boolean;
-  name: string;
-  status: OrganisationEvent['status'];
-  asking: Asking;
-  onGo: () => void;
-  onClose: () => void;
-}) {
-  const { t } = useTranslation();
-  const callOff = asking.kind === 'confirm' && asking.label === 'callOff';
-
-  const [title, lines] =
-    asking.kind === 'confirm'
-      ? [
-          callOff ? t('eventEnd.callOffTitle', { name }) : t('eventEnd.endTitle', { name }),
-          [
-            callOff ? t('eventEnd.callOffBody') : t('eventEnd.endBody'),
-            t('eventEnd.final'),
-            ...(asking.failed ? [t('eventEnd.failed')] : []),
-          ],
-        ]
-      : asking.kind === 'changed'
-        ? [t('eventEnd.notEnded'), [t('eventLive.changedElsewhere'), t(NOW_STATE[status])]]
-        : [t('eventEnd.notEnded'), [t('eventEnd.alreadyOver')]];
-
-  return (
-    <View style={styles.sheet}>
-      <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
-        {title}
-      </Text>
-      {lines.map((line) => (
-        <Text key={line} size={tokens.typeBodyPhone.size} muted>
-          {line}
-        </Text>
-      ))}
-      <View style={phone ? styles.stacked : styles.actions}>
-        {asking.kind === 'confirm' ? (
-          <>
-            <PrimaryButton
-              label={callOff ? t('eventEnd.callOff') : t('eventEnd.endNow')}
-              onPress={onGo}
-              busy={asking.pending}
-              testID="events.endYes"
-            />
-            <SecondaryButton
-              label={t('eventEnd.keepItOn')}
-              onPress={onClose}
-              off={asking.pending}
-              stacked={phone}
-              testID="events.endNo"
-            />
-          </>
-        ) : (
-          <PrimaryButton label={t('eventEnd.close')} onPress={onClose} testID="events.endClose" />
-        )}
-      </View>
+      <LifecycleSheet
+        phone={kind === 'phone'}
+        open={asking != null}
+        opener={opener}
+        testID="events.end"
+        title={
+          asking == null || asking.kind === 'confirm'
+            ? t(callOff ? 'eventEnd.callOffTitle' : 'eventEnd.endTitle', { name: event.name })
+            : t('eventEnd.notEnded')
+        }
+        lines={
+          asking == null || asking.kind === 'confirm'
+            ? [
+                t(callOff ? 'eventEnd.callOffBody' : 'eventEnd.endBody'),
+                t('eventEnd.final'),
+                ...(asking?.failed === true ? [t('eventEnd.failed')] : []),
+              ]
+            : asking.kind === 'changed'
+              ? CHANGED_WORDS[event.phase].map((line) => t(line))
+              : [t('eventEnd.alreadyOver')]
+        }
+        confirm={
+          asking?.kind === 'confirm'
+            ? {
+                label: t(callOff ? 'eventEnd.callOff' : 'eventEnd.endNow'),
+                keep: t('eventEnd.keepItOn'),
+                pending: asking.pending,
+                onGo: () => go({ label: asking.label }, () => api.endEvent(event.id)),
+              }
+            : null
+        }
+        onClose={close}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceMd },
-  sheet: { gap: tokens.spaceLg, padding: tokens.space3xl },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
-  stacked: { gap: tokens.spaceSm },
 });

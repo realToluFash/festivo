@@ -29,6 +29,10 @@ final readonly class EventLifecycle
 
     public const string ENDED = 'event.ended';
 
+    public const string PAUSED = 'event.paused';
+
+    public const string RESUMED = 'event.resumed';
+
     public function __construct(
         private EntityManagerInterface $entityManager,
         private ActiveEventsLimitInterface $activeEventsLimit,
@@ -49,6 +53,18 @@ final readonly class EventLifecycle
         return $this->move($event, EventAction::End, self::ENDED, $by, static fn (Event $event, DateTimeImmutable $now) => $event->end($now));
     }
 
+    /** Refused while it is Finished, as Resume is: a pause stops guests and keeps everything (sc-3586). */
+    public function pause(Event $event, User $by): Event
+    {
+        return $this->move($event, EventAction::Pause, self::PAUSED, $by, static fn (Event $event, DateTimeImmutable $now) => $event->pause($now));
+    }
+
+    /** Never checks the plan's limit: a Paused event already counts toward it (sc-3586, "Decided, 21 Oct"). */
+    public function resume(Event $event, User $by): Event
+    {
+        return $this->move($event, EventAction::Resume, self::RESUMED, $by, static fn (Event $event) => $event->resume());
+    }
+
     /** @param Closure(Event, DateTimeImmutable): void $apply */
     private function move(Event $event, EventAction $action, string $audited, User $by, Closure $apply): Event
     {
@@ -56,8 +72,7 @@ final readonly class EventLifecycle
             $this->entityManager->refresh($event, LockMode::PESSIMISTIC_WRITE);
             $before = $event->getStatus();
             $now = $this->clock->now();
-            $transition = EventTransition::of($before, $action)
-                ?? throw new ApiException(ErrorCode::EventStateInvalid, $this->translator->trans('event.state_invalid'), members: ['phase' => EventPhase::of($before, $event->getStartsAt(), $event->getEndsAt(), $now)->value]);
+            $transition = EventTransition::of($before, $action) ?? throw $this->stateInvalid($event, $now);
 
             foreach ($transition->guards as $guard) {
                 $this->check($guard, $action, $event, $now);
@@ -82,6 +97,7 @@ final readonly class EventLifecycle
             EventGuard::HasHost => [] !== $event->getHosts()
                 ? null
                 : throw new ApiException(ErrorCode::EventHostRequired, $this->translator->trans('event.host_required')),
+            EventGuard::PhaseAllows => $this->phaseOf($event, $now)->allows($action) ? null : throw $this->stateInvalid($event, $now),
             EventGuard::PlanLimit => null === ($limit = $this->activeEventsLimit->reachedBy($event->getOrganisation()))
                 ? null
                 : throw new ApiException(
@@ -90,5 +106,15 @@ final readonly class EventLifecycle
                     members: ['plan' => $limit->plan, 'limit' => $limit->limit],
                 ),
         };
+    }
+
+    private function stateInvalid(Event $event, DateTimeImmutable $now): ApiException
+    {
+        return new ApiException(ErrorCode::EventStateInvalid, $this->translator->trans('event.state_invalid'), members: ['phase' => $this->phaseOf($event, $now)->value]);
+    }
+
+    private function phaseOf(Event $event, DateTimeImmutable $now): EventPhase
+    {
+        return EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $now);
     }
 }

@@ -858,16 +858,18 @@ class Merging(Base):
         body = post.call_args.args[4]
         self.assertEqual(github.verdict({"body": body}), {"verdict": "pass", "sha": HEAD})
 
-    def test_a_pass_on_a_done_story_wakes_no_tester(self):
-        self.fake.add(1, "Done", ["dev2"])
-        store.put_pr(self.db, pr())
-        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
-                mock.patch("soirely_queue.github.post_review", return_value={}), \
-                mock.patch("soirely_queue.sync.sync_github"):
-            actions.review(self.as_("lead"), args(pr=9, verdict="pass", findings=None,
-                                                  qa=None, text="summary"))
-        self.assertEqual(self.state(1), "Done")
-        self.assertEqual(self.fake.comments, [])
+    def test_a_pass_on_a_follow_up_leaves_the_story_and_wakes_no_tester(self):
+        for state in ("Ready For QA", "In QA", "Failed QA", "Passsed QA", "Done"):
+            self.fake.add(1, state, ["dev2"])
+            store.put_pr(self.db, pr())
+            told = len(self.fake.comments)
+            with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                    mock.patch("soirely_queue.github.post_review", return_value={}), \
+                    mock.patch("soirely_queue.sync.sync_github"):
+                actions.review(self.as_("lead"), args(pr=9, verdict="pass", findings=None,
+                                                      qa=None, text="summary"))
+            self.assertEqual(self.state(1), state)
+            self.assertEqual(len(self.fake.comments), told)
 
     def test_findings_on_a_done_story_ask_only_for_a_push(self):
         self.fake.add(1, "Done", ["dev2"])
@@ -1077,7 +1079,7 @@ class Merging(Base):
         self.assertIn("m" * 40, self.fake.comments[-1][1])
 
     def test_a_follow_up_pr_on_a_story_in_qa_merges_and_leaves_the_story(self):
-        for state in ("Ready For QA", "In QA", "Failed QA"):
+        for state in ("Ready For QA", "In QA", "Failed QA", "Passsed QA", "Done"):
             self.fake.add(1, state, ["dev2"])
             store.put_pr(self.db, pr("pass"))
             told = len(self.fake.comments)

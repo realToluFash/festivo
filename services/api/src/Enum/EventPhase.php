@@ -46,7 +46,7 @@ enum EventPhase: string
                 EventAction::CheckIn,
                 EventAction::Service,
             ],
-            self::Paused => [EventAction::End],
+            self::Paused => [EventAction::Edit, EventAction::EditSchedule, EventAction::Resume, EventAction::End, EventAction::Delete, EventAction::CheckIn, EventAction::Service],
             self::Finished => [EventAction::Edit, EventAction::Delete],
         };
     }

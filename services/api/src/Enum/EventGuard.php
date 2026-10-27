@@ -10,4 +10,5 @@ enum EventGuard: string
     case EndNotPassed = 'end_not_passed';
     case HasHost = 'has_host';
     case PlanLimit = 'plan_limit';
+    case PhaseAllows = 'phase_allows';
 }

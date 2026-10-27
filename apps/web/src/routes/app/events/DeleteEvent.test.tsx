@@ -31,6 +31,7 @@ function event(overrides: Record<string, unknown> = {}) {
     venue: null,
     hosts: ['Funmi Adeyemi'],
     madeLiveAt: null,
+    pausedAt: null,
     phase: 'draft',
     concludedAt: null,
     createdAt: '2026-10-21T09:00:00+00:00',

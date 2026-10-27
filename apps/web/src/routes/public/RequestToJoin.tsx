@@ -361,7 +361,7 @@ function Ask({
           <p className="field-help" id="request-message-help">
             {t('requestToJoin.messageHelp', {
               count: REQUEST_MESSAGE_MAXIMUM,
-              used: Array.from(message.trim()).length,
+              length: Array.from(message.trim()).length,
             })}
           </p>
         </div>

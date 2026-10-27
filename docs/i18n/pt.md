@@ -73,6 +73,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   começa "Não foi terminado.". Os convidados são "os convidados que abrirem a sua ligação". A
   data do aviso leva "no dia {{date}}", pela regra do dia da semana. `scheduleLocked` e
   `scheduleConcluded` são a mesma frase: o português não tem a contração que as distingue.
+- **27 Oct 2026. Pausar e retomar um evento** (sc-15439 para sc-3586, `eventPause.*` web e
+  app). "Pausar", como a permissão; "Retomar"; a saída é "Manter publicado". As recusas: "Não
+  foi pausado.", "Não foi retomado.". "Check-in" é "o registo de entradas" dos convidados,
+  nunca "a receção", que é a festa. O resultado concorda com "evento", nunca com o nome: "O
+  evento {{name}} voltou a estar publicado".
 - **26 Oct 2026. Publicar um rascunho e os estados de um evento** (sc-13956, sc-3584,
   `eventLive.*` web e app, `events.*`, `eventsScreen.*`, `messages:event.*`,
   `event.plan_limit`). "Make live" é "Publicar", como a permissão "Criar, publicar, pausar e

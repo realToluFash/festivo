@@ -1,5 +1,5 @@
 {
-  "$comment": "The single declaration of an event's lifecycle (sc-3584). `states` are stored; `phases` are worked out from the state and the clock, and say what the event allows. A transition with no row from the event's stored state is refused. Read by packages/domain for both clients, and mounted into the API, whose enums EventStatesSourceTest checks against this file in both directions. Paused gains the rest of its actions with sc-3586.",
+  "$comment": "The single declaration of an event's lifecycle (sc-3584). `states` are stored; `phases` are worked out from the state and the clock, and say what the event allows. A transition with no row from the event's stored state is refused. Read by packages/domain for both clients, and mounted into the API, whose enums EventStatesSourceTest checks against this file in both directions. A Paused event keeps everything and stops what guests can do (sc-3586).",
   "states": ["draft", "live", "paused", "ended"],
   "actions": [
     "edit",
@@ -7,13 +7,14 @@
     "delete",
     "make_live",
     "pause",
+    "resume",
     "end",
     "invite",
     "message",
     "check_in",
     "service"
   ],
-  "guards": ["end_not_passed", "has_host", "plan_limit"],
+  "guards": ["end_not_passed", "has_host", "plan_limit", "phase_allows"],
   "transitions": [
     {
       "from": "draft",
@@ -21,7 +22,9 @@
       "to": "live",
       "guards": ["end_not_passed", "has_host", "plan_limit"]
     },
+    { "from": "live", "action": "pause", "to": "paused", "guards": ["phase_allows"] },
     { "from": "live", "action": "end", "to": "ended", "guards": ["end_not_passed"] },
+    { "from": "paused", "action": "resume", "to": "live", "guards": ["phase_allows"] },
     { "from": "paused", "action": "end", "to": "ended", "guards": ["end_not_passed"] }
   ],
   "phases": {
@@ -48,7 +51,7 @@
       "check_in",
       "service"
     ],
-    "paused": ["end"],
+    "paused": ["edit", "edit_schedule", "resume", "end", "delete", "check_in", "service"],
     "finished": ["edit", "delete"]
   }
 }

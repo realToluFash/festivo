@@ -91,6 +91,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   donc plus possible d’y mettre fin », pour ne pas répéter « terminé ». `scheduleLocked` et
   `scheduleConcluded` sont la même phrase : le français n’a pas la contraction qui les
   distingue.
+- **27 Oct 2026. Mettre en pause et reprendre un événement** (sc-15439 pour sc-3586,
+  `eventPause.*` web et app). « Mettre en pause », comme l’état « En pause » ; « Reprendre » ;
+  la sortie est « Le laisser publié ». Les refus : « Non mis en pause. », « Non repris. ». Le
+  blocage dure « jusqu’à la reprise », sans verbe à accorder. "Check-in" est « l’accueil des
+  invités ». Le résultat s’accorde avec « événement », jamais avec le nom : « L’événement
+  {{name}} est de nouveau publié ».
 - **26 Oct 2026. Publier un brouillon, et les états d’un événement** (sc-13956, sc-3584,
   `eventLive.*` web et app, `events.*`, `eventsScreen.*`, `messages:event.*`,
   `event.plan_limit`). "Make live" est « Publier », comme la permission « Créer, publier,
