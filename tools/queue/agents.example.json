@@ -14,7 +14,6 @@
   "defaults": {
     "model": "claude-opus-5-5",
     "effort": "medium",
-    "inboxEffort": "medium",
     "memoryMax": "3G",
     "maxRuntime": "90m",
     "maxBudgetUsd": null

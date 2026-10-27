@@ -58,9 +58,10 @@ class Checked(unittest.TestCase):
         self.assertIn("claude-opus-5-5", refused["ops"])
         self.assertIn("dev2", ready)
 
-    def test_comment_runs_take_medium_unless_a_role_or_the_defaults_say_otherwise(self):
+    def test_comment_runs_take_the_roles_effort_unless_inbox_effort_is_set(self):
         ready = machine.check(config(self.root, roles={"ops": {"effort": "xhigh"}}))[2]
-        self.assertEqual(ready["ops"]["inboxEffort"], "medium")
+        self.assertIsNone(ready["ops"]["inboxEffort"])
+        self.assertEqual(machine.effort_for(ready["ops"], "inbox"), "xhigh")
         set_by_default = config(self.root, roles={"ops": {}, "dev2": {"inboxEffort": "low"}})
         set_by_default["defaults"]["inboxEffort"] = "high"
         ready = machine.check(set_by_default)[2]

@@ -25,7 +25,7 @@ RUNTIME = re.compile(r"^(\d+)(m|h)$")
 # Claude Code's own default folder, which keeps its account file beside it, not inside.
 CLAUDE_DEFAULT = pathlib.Path("~/.claude").expanduser()
 # Under everything in agents.json: a worker is never left without a time limit.
-BUILT_IN = {"maxRuntime": "90m", "wakeEvery": "3m", "workers": 1, "inboxEffort": "medium"}
+BUILT_IN = {"maxRuntime": "90m", "wakeEvery": "3m", "workers": 1}
 # What every worker on the machine may use between them, the systemd slice's MemoryMax.
 SLICE_MEMORY = "16G"
 
@@ -184,8 +184,9 @@ def settings(config, role):
 
 
 def effort_for(values, kind):
-    """A comment run takes `inboxEffort`: answering a thread rarely needs what deciding a
-    story does. Every other kind of work takes the role's `effort`."""
+    """A comment run takes `inboxEffort` where it is set, and the role's `effort` where it is
+    not: a pm comment can turn into specifying a story. Every other kind of work takes
+    `effort`."""
     return values.get("inboxEffort") or values["effort"] if kind == "inbox" else values["effort"]
 
 

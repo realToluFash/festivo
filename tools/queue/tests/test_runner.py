@@ -644,7 +644,7 @@ class Worker(unittest.TestCase):
             self.assertEqual(entry["effort"], argv[argv.index("--effort") + 1])
             return entry["effort"]
 
-        self.assertEqual(effort("inbox", effort="xhigh"), "medium")
+        self.assertEqual(effort("inbox", effort="xhigh"), "xhigh")
         self.assertEqual(effort("story", effort="xhigh"), "xhigh")
         self.assertEqual(effort("inbox", effort="xhigh", inboxEffort="high"), "high")
         self.assertEqual(effort("sweep", effort="xhigh", inboxEffort="high"), "xhigh")

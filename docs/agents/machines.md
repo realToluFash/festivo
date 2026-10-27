@@ -76,14 +76,14 @@ repository because it describes the machine, not the project. The repository shi
 `agents.example.json` carries `claude-opus-5-5` and `medium`. A role sets `model` or
 `effort` to differ from the default, and only that role changes.
 
-**Comment runs take `inboxEffort`, `medium` unless it is set.** A run on a role's inbox
-(the comments addressed to it) reads a thread and answers it, and rarely needs what deciding
-a story does: in the week of 21 Oct, pm's comment runs cost a median $1.29 at `max`, $0.35
-at `xhigh` and $0.23 at `medium`. Every other kind of work (a story, a sweep, a review) takes
-the role's `effort`. Set `inboxEffort` in `defaults`, or on one role, to change it: a role
-whose comment runs should match its own effort sets `"inboxEffort": "xhigh"` beside
-`"effort": "xhigh"`. It is checked like `effort`, and the run log and the session view on
-`sq web` show the effort each run used.
+**Comment runs can take an effort of their own, `inboxEffort`.** A run on a role's inbox
+(the comments addressed to it) takes the role's `effort` unless `inboxEffort` is set, in
+`defaults` or on the role. Lowering it suits a role whose comments are mostly answered from
+the thread: in the week of 21 Oct, pm's comment runs cost a median $1.29 at `max`, $0.35 at
+`xhigh` and $0.23 at `medium`. It is left unset for pm, since a comment can turn into
+specifying a story. Every other kind of work (a story, a sweep, a review) takes `effort`.
+`inboxEffort` is checked like `effort`, and the run log and the session view on `sq web`
+show the effort each run used.
 
 **Safeguards.** A typo in a model or effort is the costliest mistake this file can hold, so
 each is checked against a list in the repository, `tools/queue/models.json`: every model id
