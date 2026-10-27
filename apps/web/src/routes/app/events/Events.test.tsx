@@ -3069,7 +3069,7 @@ describe('Hosted by, in Edit details (sc-6713)', () => {
       field.getAttribute('aria-describedby') ?? 'none',
     )?.textContent;
     expect(help).toBe(
-      "A live event needs at least one host, so this name can't be removed. You can still change it.",
+      'Guests can see this event, so it needs at least one host. You can still change this name.',
     );
   });
 
