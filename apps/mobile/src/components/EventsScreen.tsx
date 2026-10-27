@@ -22,7 +22,7 @@ import { tokens } from '../theme/tokens.ts';
 import { AppFrame } from './AppFrame.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { EventList, EventNotFound, EventPage, EventsFailed, NoEvents } from './Events.tsx';
-import { type ListAndPageSpacing, ListAndPage } from './ListAndPage.tsx';
+import { type ListAndPageSpacing, ListAndPage, useListAndPageKind } from './ListAndPage.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
@@ -38,7 +38,7 @@ const LOADING: Load = { kind: 'loading' };
 /** Events, `EventsHome-*` and `EventView-*` (sc-1593): the organisation's events, read-only, and an event's page. */
 export function EventsScreen({ linked = null }: { linked?: string | null }) {
   const { t } = useTranslation();
-  const { kind } = useLayout();
+  const kind = useListAndPageKind(SPACING, 'nothing');
   const { account, organisation } = useSignedIn();
   const organisationId = organisation?.id;
   const reads = organisation != null && roleHolds(organisation, 'events.read');
@@ -270,6 +270,7 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
       }
     >
       <ListAndPage
+        kind={kind}
         heading={heading}
         list={list}
         listRefresh={

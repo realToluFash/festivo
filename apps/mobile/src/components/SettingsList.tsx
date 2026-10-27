@@ -11,12 +11,15 @@ import {
   settingsGroups,
 } from '../kit/appNav.ts';
 import { breakableEmail } from '../layout/textSize.ts';
-import { type LayoutKind, useLayout, useSideListWidth } from '../layout/useLayout.ts';
+import {
+  type LayoutKind,
+  SETTINGS_LIST_WIDTH,
+  useLayout,
+  useSideListWidth,
+} from '../layout/useLayout.ts';
 import { signOutHere, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Text } from './Text.tsx';
-
-const LIST_WIDTH = 320;
 
 /** The section keeps its place in the tree on every layout, so a rotation keeps what was typed. */
 export function SettingsSplit({
@@ -39,7 +42,7 @@ export function SettingsSplit({
 export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsSection | null }) {
   const { t } = useTranslation();
   const { account, organisation } = useSignedIn();
-  const width = useSideListWidth(LIST_WIDTH);
+  const width = useSideListWidth(SETTINGS_LIST_WIDTH);
   const phone = kind === 'phone';
   const line: Record<SettingsSection, string> = {
     account: t('settings.accountLine'),
