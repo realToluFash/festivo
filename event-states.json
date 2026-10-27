@@ -14,13 +14,13 @@
     "check_in",
     "service"
   ],
-  "guards": ["end_not_passed", "plan_limit", "phase_allows"],
+  "guards": ["end_not_passed", "has_host", "plan_limit", "phase_allows"],
   "transitions": [
     {
       "from": "draft",
       "action": "make_live",
       "to": "live",
-      "guards": ["end_not_passed", "plan_limit"]
+      "guards": ["end_not_passed", "has_host", "plan_limit"]
     },
     { "from": "live", "action": "pause", "to": "paused", "guards": ["phase_allows"] },
     { "from": "live", "action": "end", "to": "ended", "guards": ["end_not_passed"] },

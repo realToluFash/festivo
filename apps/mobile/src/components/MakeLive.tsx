@@ -34,7 +34,7 @@ export function DraftRow({
     onChange,
     onDone: () => readOut(t('eventLive.madeLive')),
     refusalOf,
-    reloads: (refusal) => refusal.kind !== 'planLimit',
+    reloads: (refusal) => refusal.kind === 'changed' || refusal.kind === 'concluded',
   });
   const row = draftRowOf(event, now, manages);
 
@@ -55,10 +55,12 @@ export function DraftRow({
         ? [t('eventLive.changedElsewhere'), [t(NOW_STATE[event.status])]]
         : asking.kind === 'concluded'
           ? [t('eventLive.notMadeLive'), [t('eventLive.endPassed')]]
-          : [
-              t('eventLive.planLimit', { plan: asking.plan, count: asking.limit }),
-              [t('eventLive.planLimitStays')],
-            ];
+          : asking.kind === 'needsHost'
+            ? [t('eventLive.needsHostTitle'), [t('eventLive.needsHostBody')]]
+            : [
+                t('eventLive.planLimit', { plan: asking.plan, count: asking.limit }),
+                [t('eventLive.planLimitStays')],
+              ];
 
   return (
     <View style={row == null ? null : styles.row} testID="events.draftRow">

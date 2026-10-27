@@ -41,7 +41,7 @@ export function NoOrganisation({
         <p>{t('noOrganisation.wayOn', { email: session.email })}</p>
       )}
       <StartOrganisation email={session.email} onStarted={onStarted} />
-      <div className="auth-footnote">
+      <div className="auth-footnote no-organisation-footnote">
         <span>{t('noOrganisation.signedInAs', { email: session.email })}</span>
         <Link className="link-button" to="/app/account/security">
           {t('noOrganisation.account')}

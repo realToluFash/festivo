@@ -58,6 +58,12 @@ describe('refusalOf', () => {
     expect(refusalOf(problem('event_concluded'))).toEqual({ kind: 'concluded' });
   });
 
+  it('reads a 409 event_host_required as needing a host (sc-6713)', () => {
+    expect(refusalOf(problem('event_host_required', { status: 409 }))).toEqual({
+      kind: 'needsHost',
+    });
+  });
+
   it('reads a 403 plan_limit with its plan and limit', () => {
     expect(refusalOf(problem('plan_limit', { status: 403, plan: 'Free', limit: 3 }))).toEqual({
       kind: 'planLimit',

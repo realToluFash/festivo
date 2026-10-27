@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 
 import { useDialogKeys } from '../../../dialogFocus.ts';
 import { offButton } from '../../../offButton.ts';
@@ -82,6 +83,15 @@ export function LifecycleDialog<C>({
               >
                 {confirm}
               </button>
+            </>
+          ) : asking.link != null ? (
+            <>
+              <button ref={first} type="button" className="button" onClick={onClose}>
+                {t('eventLive.close')}
+              </button>
+              <Link className="button button-primary" to={asking.link.to}>
+                {asking.link.label}
+              </Link>
             </>
           ) : (
             <button ref={first} type="button" className="button button-primary" onClick={onClose}>

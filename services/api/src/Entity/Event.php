@@ -30,6 +30,10 @@ class Event implements SoftDeletableInterface
 
     public const int NAME_MAXIMUM = 120;
 
+    public const int HOST_NAME_MAXIMUM = 60;
+
+    public const int HOSTS_MAXIMUM = 6;
+
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
     private Uuid $id;
@@ -113,6 +117,10 @@ class Event implements SoftDeletableInterface
 
     #[ORM\Column(type: Types::FLOAT, nullable: true)]
     private ?float $venueLongitude = null;
+
+    /** @var list<string> the hosts' names as guests read them, in order (sc-6713) */
+    #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
+    private array $hosts = [];
 
     /** Moved by Doctrine on every update; the resource's ETag (sc-3587). */
     #[ORM\Version]
@@ -288,6 +296,18 @@ class Event implements SoftDeletableInterface
     public function setName(string $name): void
     {
         $this->name = $name;
+    }
+
+    /** @return list<string> */
+    public function getHosts(): array
+    {
+        return $this->hosts;
+    }
+
+    /** @param list<string> $hosts */
+    public function setHosts(array $hosts): void
+    {
+        $this->hosts = $hosts;
     }
 
     public function setType(EventType $type): void

@@ -62,6 +62,17 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **27 Oct 2026. An event's hosts** (sc-15427 for sc-6713, `web:eventHosts.*`,
+  `eventLive.needsHost*|addHosts` web and app, `messages:validation.event_host*`,
+  `messages:event.host_required|last_host`, `errors:event_host_required`). Settled as sc-6713
+  wrote it, except the last-host lines (#15501): the rule holds for any event that has been made
+  live, Live, Paused or Finished alike, so they say why from the guest's side, "Guests can see
+  this event, so …", never "A live event …". The refusals take "cannot". One line waits on [dev2]:
+  `eventHosts.lastHost` should read "Guests can see this event, so it needs at least one host.
+  You can still change this name.", but `Events.test.tsx` matches the old line; es, fr and pt
+  already say the settled one. A host is a name as guests read it, perhaps a couple on one row
+  ("Chief and Mrs Adeyemi"), so es, fr and pt keep a name out of any agreement: "removed",
+  "moved" and "already a host" are written around the name.
 - **26 Oct 2026. Deleting an event** (sc-14417 for sc-3592, `eventDelete.*` web and app,
   `messages:event.delete_name_mismatch`). Settled as sc-3592 wrote it; `DeleteEvent.test.tsx`
   pins it. The act is "Delete event", the dialog "Delete {{event}}?", the way out "Keep it". It
@@ -569,3 +580,14 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **17 Oct 2026. "Choose the country code, then type the number any way you like."**
   (`verifyPhone.numberHelp`). Settled as written by PM on sc-945; it is true for every way the
   code can start, and es/pt already read naturally from it.
+- **27 Oct 2026. Delivery states and reasons for a message to guests** (sc-3942, settled on
+  pm's #15426). The field is **Message**, not "Body". Over a limit, the house sentence with the
+  limit as a slot: "Shorten the subject to {{count}} characters or fewer." and "Shorten the
+  message to {{count}} characters or fewer."; the slot is formatted with `Intl` ("10,000"),
+  never written in. An empty choice reads "Choose at least one guest.", the picker's own verb.
+  A spam complaint is the state **Reported as spam**, beside Sent, Delivered, Bounced and Not
+  sent; never "Complained", and never a reason under Bounced. A later send skipped for it
+  (`complained`) reads "Reported an earlier email as spam", reusing the state's verb so the
+  host connects the two. Won over "… from this organisation …", which every reason the host
+  sees already implies and which overruns a phone row. Other skip reasons read as short
+  phrases in the same row: "No email address", "Address is bouncing".

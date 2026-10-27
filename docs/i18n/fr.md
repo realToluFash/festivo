@@ -54,6 +54,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **27 Oct 2026. Les hôtes d’un événement** (sc-15427 pour sc-6713, `web:eventHosts.*`,
+  `eventLive.needsHost*|addHosts` web et app, `messages:validation.event_host*`,
+  `messages:event.host_required|last_host`). Host est « hôte », comme `errors:event_host_required` ;
+  le mot ne prête pas à confusion, puisque les guests sont toujours « invités ». La section est
+  « Hôtes », chaque ligne « Hôte {{position}} ». "Add who is hosting" est « Indiquer les hôtes ».
+  Un hôte est un nom tel que les invités le lisent, parfois un couple sur une ligne, donc rien ne
+  s’accorde avec {{name}} : « {{name}} figure déjà parmi les hôtes », « … ne figure plus parmi
+  les hôtes », « {{name}} : position {{position}} sur {{count}} ». Retirer est « Retirer », comme
+  le glossaire. La limite est la même phrase à l’écran et dans l’API. Le dernier hôte s’explique
+  du côté des invités : « Les invités peuvent voir cet événement, il lui faut donc … ».
 - **26 Oct 2026. Supprimer un événement** (sc-14417 pour sc-3592, `eventDelete.*` web et app,
   `messages:event.delete_name_mismatch`). Comme pour une organisation : « Supprimer
   l’événement », la fenêtre « Supprimer {{event}} ? », la sortie « Le conserver ».

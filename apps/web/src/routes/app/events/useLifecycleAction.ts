@@ -12,6 +12,7 @@ export interface Refused {
   kind: 'refused';
   title: string;
   lines: string[];
+  link?: { label: string; to: string };
 }
 
 export type Asking<C> = Confirming<C> | Refused;
@@ -57,6 +58,8 @@ export function useLifecycleAction<C extends object>({
 
   const ask = (choice: C) => setAsking(confirming(choice, false, false));
 
+  const tell = (refused: Omit<Refused, 'kind'>) => setAsking({ kind: 'refused', ...refused });
+
   const close = () => {
     setAsking(null);
     window.setTimeout(() => (opener.current ?? heading.current)?.focus(), 0);
@@ -95,5 +98,5 @@ export function useLifecycleAction<C extends object>({
     );
   };
 
-  return { asking, opener, ask, go, close };
+  return { asking, opener, ask, tell, go, close };
 }

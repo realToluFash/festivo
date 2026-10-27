@@ -306,6 +306,8 @@ export interface OrganisationEvent {
   cover: EventCover | null;
   /** Null until a venue is added: the page says "Venue to be confirmed" (sc-3589). */
   venue: EventVenue | null;
+  /** The names guests read, in order; none until somebody adds one, and Make live waits for one (sc-6713). */
+  hosts: string[];
   /** Null while it is a Draft. */
   madeLiveAt: string | null;
   /** Null unless its phase is Paused (sc-3586). */
@@ -384,8 +386,8 @@ export interface PickedAddress extends VenueAddress {
   timeZone: string | null;
 }
 
-/** What an edit sends: any of the fields, those left out keep their value (sc-3587). */
-export type EventChanges = Partial<NewEvent>;
+/** What an edit sends: any of the fields, those left out keep their value (sc-3587); `hosts` is the whole list (sc-6713). */
+export type EventChanges = Partial<NewEvent> & { hosts?: string[] };
 
 /** An event with its `ETag`, which an edit sends back as `If-Match`. */
 export interface TaggedEvent {
@@ -2624,6 +2626,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   const dayCount = candidate.dayCount;
   const cover = candidate.cover === null ? null : asEventCover(candidate.cover);
   const venue = candidate.venue === null ? null : asEventVenue(candidate.venue);
+  const hosts = candidate.hosts;
   const madeLiveAt = candidate.madeLiveAt;
   const pausedAt = candidate.pausedAt;
   const phase = oneOf(candidate.phase, EVENT_PHASES);
@@ -2638,6 +2641,8 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     type == null ||
     cover === undefined ||
     venue === undefined ||
+    !Array.isArray(hosts) ||
+    hosts.some((host) => typeof host !== 'string') ||
     fields.some((field) => typeof candidate[field] !== 'string') ||
     typeof dayCount !== 'number' ||
     !Number.isInteger(dayCount) ||
@@ -2658,6 +2663,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     currency: candidate.currency as string,
     cover,
     venue,
+    hosts: hosts as string[],
     madeLiveAt,
     pausedAt,
     phase,

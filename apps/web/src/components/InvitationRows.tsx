@@ -138,12 +138,12 @@ function InvitationRow({
               <p>{t('invitations.joined', { organisation, role })}</p>
             </div>
             <button
-              className="button button-primary invitation-row-open"
+              className="button button-primary"
               type="button"
               title={t('invitations.open', { organisation })}
               onClick={() => after.open(outcome.organisationId)}
             >
-              {t('invitations.open', { organisation })}
+              <span className="button-label-cut">{t('invitations.open', { organisation })}</span>
             </button>
           </div>
         ) : (

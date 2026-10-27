@@ -137,7 +137,10 @@
     "planLimit_other": "Non publié. Votre forfait {{plan}} permet d’avoir {{count}} événements publiés ou en pause à la fois.",
     "planLimit_many": "Non publié. Votre forfait {{plan}} permet d’avoir {{count}} d’événements publiés ou en pause à la fois.",
     "planLimitStays": "Cet événement reste en brouillon. Terminez ou annulez un autre événement, ou changez de forfait.",
-    "close": "Fermer"
+    "close": "Fermer",
+    "needsHostTitle": "Indiquez les hôtes avant d’inviter qui que ce soit.",
+    "needsHostBody": "Les invités voient le nom des hôtes sur leur invitation. Cet événement reste un brouillon tant qu’il n’a pas au moins un hôte.",
+    "addHosts": "Indiquer les hôtes"
   },
   "eventEnd": {
     "callOff": "Annuler l’événement",
@@ -204,6 +207,25 @@
     "nothingChanged": "Rien n’a changé, donc rien n’a été envoyé.",
     "scheduleConcluded": "Cet événement est terminé, son début, sa fin et son fuseau horaire ne peuvent donc plus être modifiés.",
     "scheduleLocked": "Cet événement est terminé, son début, sa fin et son fuseau horaire ne peuvent donc plus être modifiés."
+  },
+  "eventHosts": {
+    "heading": "Hôtes",
+    "explainer": "Les invités lisent ces noms sur leur invitation et sur leur page, dans cet ordre. Écrivez-les tels que vous voulez qu’ils les lisent.",
+    "none": "Aucun hôte pour l’instant. L’événement pourra être publié dès qu’il en aura au moins un.",
+    "add": "Ajouter un hôte",
+    "label": "Hôte {{position}}",
+    "moveUp": "Déplacer {{name}} vers le haut",
+    "moveDown": "Déplacer {{name}} vers le bas",
+    "remove": "Retirer",
+    "removeNamed": "Retirer {{name}}",
+    "most": "Un événement peut avoir {{most}} hôtes au maximum.",
+    "lastHost": "Les invités peuvent voir cet événement, il lui faut donc au moins un hôte. Vous pouvez toujours modifier ce nom.",
+    "lastHostRefused": "Les invités peuvent voir cet événement, il lui faut donc au moins un hôte. Saisissez un nom ici avant d’enregistrer.",
+    "moved": "{{name}} : position {{position}} sur {{count}}",
+    "removed": "{{name}} ne figure plus parmi les hôtes",
+    "blank": "Saisissez un nom ou retirez cet hôte.",
+    "tooLong": "Le nom d’un hôte ne peut pas dépasser {{most}} caractères. Celui-ci en compte {{length}}.",
+    "duplicate": "{{name}} figure déjà parmi les hôtes."
   },
   "eventCover": {
     "heading": "Image de couverture",

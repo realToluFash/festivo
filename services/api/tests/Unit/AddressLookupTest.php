@@ -7,9 +7,11 @@ namespace App\Tests\Unit;
 use App\Address\AddressLookup;
 use App\Address\Exception\AddressNotFound;
 use App\Address\Exception\ProviderUnavailable;
+use App\Address\Model\Suggestion;
 use App\Tests\Double\CountingAddressProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Psl\Vec;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Throwable;
 
@@ -131,15 +133,79 @@ final class AddressLookupTest extends TestCase
         self::assertSame(3, $provider->suggestCalls);
     }
 
+    /** Two OpenStreetMap ways of one square read the same, and a host can only guess between them. */
+    #[Test]
+    public function ofTwoSuggestionsThatReadTheSameTheHigherRankedStays(): void
+    {
+        $provider = $this->countingProvider(suggestions: [
+            new Suggestion('way:1', 'Praça do Comércio', 'Lisboa, Portugal'),
+            new Suggestion('way:2', 'Praça do Comércio', 'Lisboa, Portugal'),
+            new Suggestion('node:3', 'Praça do Comércio 1', 'Lisboa, Portugal'),
+        ]);
+
+        self::assertSame(['way:1', 'node:3'], $this->ids($this->lookup($provider)->suggest('praça do comércio')));
+        self::assertSame(1, $provider->suggestCalls);
+    }
+
+    #[Test]
+    public function suggestionsThatDifferOnlyInLetterCaseOrOuterSpacesReadTheSame(): void
+    {
+        $provider = $this->countingProvider(suggestions: [
+            new Suggestion('way:1', 'Praça do Comércio', 'Lisboa, Portugal'),
+            new Suggestion('way:2', 'PRAÇA DO COMÉRCIO', 'lisboa, portugal'),
+            new Suggestion('way:3', '  Praça do Comércio ', ' Lisboa, Portugal  '),
+        ]);
+
+        self::assertSame(['way:1'], $this->ids($this->lookup($provider)->suggest('praça do comércio')));
+        self::assertSame(1, $provider->suggestCalls);
+    }
+
+    #[Test]
+    public function theSameNameOnDifferentLinesIsTwoPlaces(): void
+    {
+        $provider = $this->countingProvider(suggestions: [
+            new Suggestion('way:1', 'Praça do Comércio', 'Lisboa, Portugal'),
+            new Suggestion('way:2', 'Praça do Comércio', 'Coimbra, Portugal'),
+        ]);
+
+        self::assertSame(['way:1', 'way:2'], $this->ids($this->lookup($provider)->suggest('praça do comércio')));
+        self::assertSame(1, $provider->suggestCalls);
+    }
+
+    #[Test]
+    public function aNameWithNoLineMatchesOnlyTheSameNameWithNoLine(): void
+    {
+        $provider = $this->countingProvider(suggestions: [
+            new Suggestion('way:1', 'Praça do Comércio'),
+            new Suggestion('way:2', 'Praça do Comércio', 'Lisboa, Portugal'),
+            new Suggestion('way:3', 'praça do comércio'),
+        ]);
+
+        self::assertSame(['way:1', 'way:2'], $this->ids($this->lookup($provider)->suggest('praça do comércio')));
+        self::assertSame(1, $provider->suggestCalls);
+    }
+
+    /**
+     * @param list<Suggestion> $suggestions
+     *
+     * @return list<string>
+     */
+    private function ids(array $suggestions): array
+    {
+        return Vec\map($suggestions, static fn (Suggestion $suggestion): string => $suggestion->id);
+    }
+
     private function lookup(CountingAddressProvider $provider): AddressLookup
     {
         return new AddressLookup($provider, new ArrayAdapter());
     }
 
+    /** @param list<Suggestion>|null $suggestions */
     private function countingProvider(
         ?Throwable $suggestThrows = null,
         ?Throwable $resolveThrows = null,
+        ?array $suggestions = null,
     ): CountingAddressProvider {
-        return new CountingAddressProvider($suggestThrows, $resolveThrows);
+        return new CountingAddressProvider($suggestThrows, $resolveThrows, $suggestions);
     }
 }

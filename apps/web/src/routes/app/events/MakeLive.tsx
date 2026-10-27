@@ -1,5 +1,5 @@
 import { type OrganisationEvent } from '@soirely/api-client';
-import { type EventPhase, makeLiveRow } from '@soirely/domain';
+import { type EventPhase, makeLiveRow, needsHost } from '@soirely/domain';
 import { type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -38,30 +38,43 @@ export function DraftRow({
 }) {
   const { t } = useTranslation();
   const row = makeLiveRow(event, now);
-  const { asking, opener, ask, go, close } = useLifecycleAction<object>({
+  const hostWanted = {
+    title: t('eventLive.needsHostTitle'),
+    lines: [t('eventLive.needsHostBody')],
+    link: {
+      label: t('eventLive.addHosts'),
+      to: `/app/events/${encodeURIComponent(event.id)}/edit#hosts`,
+    },
+  };
+  const { asking, opener, ask, tell, go, close } = useLifecycleAction<object>({
     event,
     heading,
     onChange,
     onDone: onMadeLive,
     refusalOf: (error) =>
-      error.is('event_concluded')
-        ? {
-            reload: true,
-            then: () => ({ title: t('eventLive.notMadeLive'), lines: [t('eventLive.endPassed')] }),
-          }
-        : error.is('plan_limit')
+      error.is('event_host_required')
+        ? { reload: true, then: () => hostWanted }
+        : error.is('event_concluded')
           ? {
-              reload: false,
+              reload: true,
               then: () => ({
-                title: t('eventLive.planLimit', {
-                  plan: error.problem.plan ?? '',
-                  limit: error.problem.limit ?? 0,
-                  count: error.problem.limit ?? 0,
-                }),
-                lines: [t('eventLive.planLimitStays')],
+                title: t('eventLive.notMadeLive'),
+                lines: [t('eventLive.endPassed')],
               }),
             }
-          : null,
+          : error.is('plan_limit')
+            ? {
+                reload: false,
+                then: () => ({
+                  title: t('eventLive.planLimit', {
+                    plan: error.problem.plan ?? '',
+                    limit: error.problem.limit ?? 0,
+                    count: error.problem.limit ?? 0,
+                  }),
+                  lines: [t('eventLive.planLimitStays')],
+                }),
+              }
+            : null,
   });
 
   return (
@@ -76,7 +89,7 @@ export function DraftRow({
                 ref={opener}
                 type="button"
                 className="button button-primary"
-                onClick={() => ask({})}
+                onClick={() => (needsHost(event) ? tell(hostWanted) : ask({}))}
               >
                 {t('eventLive.makeLive')}
               </button>
