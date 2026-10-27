@@ -40,6 +40,10 @@ function readOnlyLanguage(): HTMLElement {
   return screen.getByTestId('organisation-locale');
 }
 
+function detailsCard(): HTMLElement {
+  return screen.getByRole('region', { name: 'Organisation' });
+}
+
 function settings() {
   return render(
     <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/app/settings'] })} />,
@@ -320,6 +324,105 @@ describe('Settings > General', () => {
     expect(
       screen.getByText(/Your role, Coordinator, can see these but not change them/),
     ).toBeDefined();
+  });
+
+  it('names Google or Apple, not the role, to an Owner the rule keeps read-only', () => {
+    signedIn(
+      membership({
+        permissions: ['events.read', 'members.read'],
+        readOnlyUntilLinked: true,
+        withheldUntilLinked: ['events.manage', 'organisation.manage'],
+      }),
+    );
+    settings();
+
+    expect(screen.queryByRole('button', { name: 'Save changes' })).toBeNull();
+    expect(within(detailsCard()).queryByText(/Your role/)).toBeNull();
+    expect(
+      within(detailsCard()).getByText(
+        'Ìrè Events signs in with Google or Apple only. Until you link one, you can see these but not change them.',
+      ),
+    ).toBeDefined();
+    expect(
+      within(detailsCard())
+        .getByRole('link', { name: 'Link Google or Apple' })
+        .getAttribute('href'),
+    ).toBe('/app/account/security');
+    expect(within(detailsCard()).queryByRole('link', { name: 'Turn on two-factor' })).toBeNull();
+  });
+
+  it('names both rules, Google or Apple first, each with its own link, when both keep the change back', () => {
+    signedIn(
+      membership({
+        role: { id: 'role_2', seededAs: 'administrator', name: null },
+        permissions: ['events.read'],
+        readOnlyUntilLinked: true,
+        withheldUntilLinked: ['events.manage', 'organisation.manage'],
+        withheldUntilTwoFactor: ['members.read', 'organisation.manage'],
+      }),
+    );
+    settings();
+
+    const linking = within(detailsCard()).getByText(/signs in with Google or Apple only/);
+    const twoFactor = within(detailsCard()).getByText(
+      'Ìrè Events asks people who can manage members, roles, billing or security to use two-factor. Until you turn it on, you can see these but not change them.',
+    );
+
+    expect(linking.compareDocumentPosition(twoFactor)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(
+      within(detailsCard()).getByRole('link', { name: 'Turn on two-factor' }).getAttribute('href'),
+    ).toBe('/app/account/security');
+    expect(within(detailsCard()).getByRole('link', { name: 'Link Google or Apple' })).toBeDefined();
+    expect(within(detailsCard()).queryByText(/Your role/)).toBeNull();
+  });
+
+  it('keeps the role line for a Coordinator the Google-or-Apple rule also holds', () => {
+    signedIn(
+      membership({
+        role: { id: 'role_2', seededAs: 'coordinator', name: null },
+        permissions: ['events.read'],
+        readOnlyUntilLinked: true,
+        withheldUntilLinked: ['events.manage'],
+      }),
+    );
+    settings();
+
+    expect(
+      screen.getByText(/Your role, Coordinator, can see these but not change them/),
+    ).toBeDefined();
+    expect(within(detailsCard()).queryByRole('link', { name: 'Link Google or Apple' })).toBeNull();
+  });
+
+  it('says only that nothing was saved when a rule took hold after the page opened, then names the rule', async () => {
+    const held = membership({
+      role: { id: 'role_2', seededAs: 'administrator', name: null },
+      permissions: ['events.read'],
+      readOnlyUntilLinked: true,
+      withheldUntilLinked: ['organisation.manage'],
+    });
+    const refusal = {
+      type: 'https://soirely.com/errors/oauth_only_unlinked',
+      title: 'Ìrè Events signs in with Google or Apple only.',
+      status: 403,
+    };
+    answering(() => new Response('{}', { status: 500 }));
+    vi.mocked(globalThis.fetch).mockImplementation(async (_input, init) =>
+      init?.method === 'PATCH'
+        ? new Response(JSON.stringify(refusal), { status: 403 })
+        : new Response(JSON.stringify({ organisations: [held], requests: [] }), { status: 200 }),
+    );
+    settings();
+
+    fireEvent.change(languageField(), { target: { value: 'pt' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    const refused = (await screen.findByText('Nothing was saved.')).closest('.notice');
+    await waitFor(() => expect(document.activeElement).toBe(refused));
+    expect(screen.queryByText(/Your role does not include/)).toBeNull();
+    await waitFor(() =>
+      expect(within(detailsCard()).getByText(/signs in with Google or Apple only/)).toBeDefined(),
+    );
+    expect(within(detailsCard()).queryByText(/Your role/)).toBeNull();
   });
 
   it('lists the details in the order of the form, then the defaults note, then the role line', () => {

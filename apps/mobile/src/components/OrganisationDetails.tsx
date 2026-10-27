@@ -7,19 +7,22 @@ import {
   countryChoices,
   currencyChoices,
   heldCurrencyLabel,
+  keptBackBy,
   languageChoices,
   organisationProblem,
   roleName,
   timezoneLabel,
   withCurrent,
 } from '@soirely/domain';
+import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, type TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { type TFunction } from 'i18next';
 
 import { api } from '../api.ts';
 import { currentLocale } from '../i18n/index.ts';
+import { SECTION_HREF } from '../kit/appNav.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
 import {
   NO_REFUSAL,
@@ -49,8 +52,8 @@ export function EditableDetails({
 }: {
   organisation: Membership;
   kind: LayoutKind;
-  /** The role lost `organisation.manage` while the page was open: nothing was saved. */
-  onForbidden: () => void;
+  /** The role lost `organisation.manage`, or a sign-in rule took it, while the page was open: nothing was saved. */
+  onForbidden: (byRule: boolean) => void;
 }) {
   const { t } = useTranslation();
   const locale = currentLocale();
@@ -131,7 +134,7 @@ export function EditableDetails({
     );
 
     if (outcome.kind === 'forbidden') {
-      onForbidden();
+      onForbidden(outcome.byRule);
       return;
     }
 
@@ -317,11 +320,45 @@ export function ReadOnlyDetails({
           {languageName(t, organisation.locale)}
         </Text>
       </View>
+      <WhyReadOnly organisation={organisation} />
+    </View>
+  );
+}
+
+/** The role when it is what stops the change, otherwise each sign-in rule that does (sc-16265). */
+function WhyReadOnly({ organisation }: { organisation: Membership }) {
+  const { t } = useTranslation();
+  const rules = keptBackBy(organisation, 'organisation.manage');
+
+  if (rules.length === 0)
+    return (
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
         {t('orgGeneral.readOnly', { role: roleName(t, organisation.role) })}
       </Text>
+    );
+
+  return rules.map((rule) => (
+    <View key={rule}>
+      <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
+        {t(
+          rule === 'linking'
+            ? 'orgGeneral.readOnlyUntilLinked'
+            : 'orgGeneral.readOnlyUntilTwoFactor',
+          { organisation: organisation.name },
+        )}
+      </Text>
+      <Pressable
+        style={styles.action}
+        onPress={() => router.navigate(SECTION_HREF.security)}
+        accessibilityRole="link"
+        testID={rule === 'linking' ? 'organisation.link' : 'organisation.turnOn'}
+      >
+        <Text size={tokens.typeBodyPhone.size} weight="semibold" style={styles.accent}>
+          {t(rule === 'linking' ? 'signInRules.unlinkedLink' : 'signInRules.gateTurnOn')}
+        </Text>
+      </Pressable>
     </View>
-  );
+  ));
 }
 
 /** In the reader's language alone, as a row names it. */
@@ -343,4 +380,6 @@ const styles = StyleSheet.create({
     borderTopColor: tokens.colorInsetBorder,
   },
   secondary: { color: tokens.colorInkSecondary },
+  action: { minHeight: tokens.sizeHit, justifyContent: 'center', alignSelf: 'flex-start' },
+  accent: { color: tokens.colorAccentText },
 });

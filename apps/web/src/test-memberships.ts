@@ -14,6 +14,7 @@ export function membership(overrides: Partial<Membership> = {}): Membership {
     permissions: OWNER_PERMISSIONS,
     withheldUntilTwoFactor: [],
     readOnlyUntilLinked: false,
+    withheldUntilLinked: [],
     twoFactorDue: null,
     signInRules: {
       providerOnly: false,

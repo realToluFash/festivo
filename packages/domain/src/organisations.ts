@@ -50,6 +50,19 @@ export function roleHolds(
   return permission !== '' && membership.permissions.includes(permission);
 }
 
+export type KeptBackBy = 'linking' | 'twoFactor';
+
+/** The sign-in rules keeping back a permission the role itself holds (sc-16265); none means the role is the reason. */
+export function keptBackBy(
+  membership: { withheldUntilLinked: readonly string[]; withheldUntilTwoFactor: readonly string[] },
+  permission: string,
+): KeptBackBy[] {
+  return [
+    ...(membership.withheldUntilLinked.includes(permission) ? (['linking'] as const) : []),
+    ...(membership.withheldUntilTwoFactor.includes(permission) ? (['twoFactor'] as const) : []),
+  ];
+}
+
 export type OrganisationField =
   'name' | 'countryCode' | 'contactAddress' | 'currency' | 'timezone' | 'locale';
 

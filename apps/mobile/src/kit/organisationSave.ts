@@ -9,7 +9,7 @@ import {
 export type SaveOutcome =
   | { kind: 'saved'; organisation: Membership }
   | { kind: 'refused'; errors: Partial<Record<OrganisationField, string>> }
-  | { kind: 'forbidden' }
+  | { kind: 'forbidden'; byRule: boolean }
   | { kind: 'failed' };
 
 export async function saveOrganisation(
@@ -35,7 +35,14 @@ export async function saveOrganisation(
       return { kind: 'refused', errors };
     }
 
-    if (error instanceof ApiError && error.is('permission_required')) return { kind: 'forbidden' };
+    if (error instanceof ApiError && error.is('permission_required'))
+      return { kind: 'forbidden', byRule: false };
+
+    if (
+      error instanceof ApiError &&
+      (error.is('oauth_only_unlinked') || error.is('organisation_two_factor_required'))
+    )
+      return { kind: 'forbidden', byRule: true };
 
     return { kind: 'failed' };
   }

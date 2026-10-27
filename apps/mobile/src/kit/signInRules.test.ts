@@ -42,6 +42,7 @@ function membership(overrides: Partial<Membership> = {}): Membership {
     permissions: ['events.read'],
     withheldUntilTwoFactor: [],
     readOnlyUntilLinked: false,
+    withheldUntilLinked: [],
     twoFactorDue: null,
     signInRules: {
       providerOnly: false,
