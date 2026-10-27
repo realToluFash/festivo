@@ -2036,8 +2036,9 @@ span {
   margin: 0;
 }
 
-.settings-read-only-rule .notice-action:last-child {
-  margin-bottom: 0;
+/* Room for the negative margin a last notice-action takes, as a notice's padding gives it. */
+.settings-read-only-rule {
+  padding-bottom: var(--spaceLg);
 }
 
 .settings-wide {
