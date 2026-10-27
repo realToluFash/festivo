@@ -518,3 +518,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   The line under the chosen role, `rolesScreen.removeAfter`, takes the role as subject :
   « Le rôle {{role}} s’applique dès la prochaine utilisation de Soirely », not « Elles deviennent… » (sc-14755).
 - **26 Oct 2026. The beyond-grant line names access** (`membersScreen.beyondGrant`, sc-13089). « … vous ne pouvez donc modifier ni son rôle ni son accès » : after « cette personne », « son accès » is hers; it rules out restoring on the suspension cards.
+- **27 Oct 2026. The two-factor-due subject opens on the feature and the deadline**
+  (`emails:signInRules.twoFactorDue.subject`, sc-15219) : « Double authentification avant le
+  {deadline} : {organisation} », the organisation last so a 390 px inbox shows the date
+  (qa2, #15218). « avant le » takes the weekday `{deadline}` opens on.
