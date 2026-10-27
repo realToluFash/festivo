@@ -7,6 +7,8 @@
     "limits.reset_requests": "Demasiados pedidos de reposição. Tente novamente {hour, plural, =1 {à {time}} other {às {time}}}.",
     "limits.organisations": "Por agora, não é possível criar mais organizações. Tente novamente {hour, plural, =1 {à {time}} other {às {time}}}.",
     "limits.sign_ups": "Demasiados registos a partir desta rede. Tente novamente {hour, plural, =1 {à {time}} other {às {time}}}.",
+    "limits.address_lookups": "Demasiadas pesquisas de moradas. Tente novamente {hour, plural, =1 {à {time}} other {às {time}}}.",
+    "limits.assistant_requests": "Demasiados pedidos ao assistente. Tente novamente {hour, plural, =1 {à {time}} other {às {time}}}.",
     "contacts.limit_email": "Uma conta pode ter até {count, number, ::group-auto} endereços de e-mail. Remova um para adicionar outro.",
     "contacts.limit_phone": "Uma conta pode ter até {count, number, ::group-auto} números de telefone. Remova um para adicionar outro.",
     "proof.required": "Isto requer a sua palavra-passe, ou um início de sessão com o Google ou a Apple, nos últimos {minutes, number, ::group-auto} minutos, e o código de dois fatores, se a autenticação de dois fatores estiver ativada.",

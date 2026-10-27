@@ -73,7 +73,6 @@ enum ErrorCode: string
     case PermissionRequired = 'permission_required';
     case AccountUnverified = 'account_unverified';
     case ProfileIncomplete = 'profile_incomplete';
-    case TooManyRequests = 'too_many_requests';
     case TooManyAttempts = 'too_many_attempts';
 
     case VerificationCodeInvalid = 'verification_code_invalid';
@@ -133,7 +132,7 @@ enum ErrorCode: string
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid, self::SessionTimedOut => 401,
             self::Forbidden, self::PermissionRequired, self::GrantNotHeld, self::AccountUnverified, self::ProfileIncomplete, self::TwoFactorRequired, self::ProofRequired => 403,
             self::OAuthOnly, self::OAuthOnlyUnlinked, self::OrganisationTwoFactorRequired, self::OrganisationTwoFactorOverdue, self::OwnerRequired => 403,
-            self::TooManyRequests, self::TooManyAttempts => 429,
+            self::TooManyAttempts => 429,
             self::VerificationCodeInvalid, self::VerificationCodeExpired => 422,
             self::VerificationCodeExhausted => 422,
             self::TwoFactorCodeInvalid, self::RecoveryCodeUsed => 422,

@@ -7,14 +7,19 @@ namespace App\Tests\Functional;
 use App\Address\Model\Address;
 use App\Domain\User\UserRegistrar;
 use App\Entity\User;
+use App\Enum\ErrorCode;
 use App\Tests\ApiTestCase;
+use App\Tests\Double\RefusingRateLimiterFactory;
 use App\Tests\Double\ScriptedAddressProvider;
 use App\Tests\Traits\OnboardsAccounts;
+use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\File;
 use Psl\Json;
 use Psl\Type;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 
 /** The answers the clients' tests read too (packages/api-client), so a renamed key fails here rather than silently there. */
 final class AddressesTest extends ApiTestCase
@@ -69,6 +74,49 @@ final class AddressesTest extends ApiTestCase
     public function aPickedAddressServesItsPartsAndItsTimeZone(): void
     {
         self::assertSame(self::answers()['resolve'], $this->data('/api/addresses/node:3589'));
+    }
+
+    /** sc-17310: the lookup limit answers as every other limit a person can hit does. */
+    #[Test]
+    #[DataProvider('refusalsInTwoLanguages')]
+    public function aSpentBudgetNamesTheMinuteItLifts(string $path, string $windowEnd, string $language, string $expected): void
+    {
+        self::getContainer()->set('limiter.address_lookup', new RefusingRateLimiterFactory(new DateTimeImmutable($windowEnd)));
+
+        $this->client->request('GET', $path, server: [
+            'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($this->organiser),
+            'HTTP_ACCEPT_LANGUAGE' => $language,
+        ]);
+        $body = Type\dict(Type\string(), Type\mixed())->coerce(Json\decode((string) $this->client->getResponse()->getContent()));
+
+        self::assertResponseStatusCodeSame(429);
+        self::assertSame(ErrorCode::TooManyAttempts->type(), $body['type']);
+        self::assertGreaterThan(0, (int) $this->client->getResponse()->headers->get('Retry-After'));
+        self::assertSame($expected, $body['detail']);
+    }
+
+    /** @return iterable<string, array{0: string, 1: string, 2: string, 3: string}> */
+    public static function refusalsInTwoLanguages(): iterable
+    {
+        $afternoon = '2099-10-26 14:34:10 UTC';
+
+        yield 'suggestions, en' => ['/api/addresses/suggest?q=a', $afternoon, 'en', 'Too many address lookups. Try again at 14:35 UTC.'];
+        yield 'resolve, en' => ['/api/addresses/node:3589', $afternoon, 'en', 'Too many address lookups. Try again at 14:35 UTC.'];
+        yield 'suggestions, es' => ['/api/addresses/suggest?q=a', $afternoon, 'es', 'Demasiadas búsquedas de direcciones. Inténtelo de nuevo a las 14:35 UTC.'];
+        yield 'resolve, es at one' => ['/api/addresses/node:3589', '2099-10-27 00:59:30 UTC', 'es', 'Demasiadas búsquedas de direcciones. Inténtelo de nuevo a la 01:00 UTC.'];
+    }
+
+    #[Test]
+    public function theBudgetIsSixtyAtOnce(): void
+    {
+        $limiter = self::serviceById('limiter.address_lookup', RateLimiterFactory::class)->create('a-single-caller');
+
+        $accepted = 0;
+        while ($limiter->consume()->isAccepted() && $accepted < 500) {
+            ++$accepted;
+        }
+
+        self::assertSame(60, $accepted);
     }
 
     /** @return array{suggest: mixed, resolve: mixed} */
