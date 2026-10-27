@@ -21,12 +21,9 @@ export function titleSize(size: number, fontScale: number): number {
   return fontScale >= NINTH_STEP_SCALE ? steps[1] : steps[0];
 }
 
-/** Whether a text laid out as these lines was broken inside a word. */
-export function breaksAWord(lines: readonly string[]): boolean {
-  return lines.some(
-    (line, index) =>
-      index < lines.length - 1 && /[^\s\-‐]$/u.test(line) && /^[^\s]/u.test(lines[index + 1] ?? ''),
-  );
+/** Every distinct word in these texts. */
+export function wordsIn(texts: readonly string[]): string[] {
+  return [...new Set(texts.flatMap((text) => text.split(/\s+/u)).filter((word) => word !== ''))];
 }
 
 /** The one size for labels whose widest word, drawn at `start`, measures `widest` in a slot `slot` wide: `start` when it fits, never below `size`. */
@@ -56,23 +53,4 @@ export function sideListWidth(width: number, contentWidth: number, fontScale: nu
 /** An email as drawn, free to break after its @ when it is wider than its line. Its accessibility label stays the address. */
 export function breakableEmail(email: string): string {
   return email.replace('@', '@​');
-}
-
-export interface WordsFit {
-  readonly key: string;
-  readonly drawn: number;
-}
-
-/** A text drawn at `start`, until the text or its start changes. */
-export function fitWords(fit: WordsFit | null, start: number, text: string): WordsFit {
-  const key = `${start}|${text}`;
-
-  return fit?.key === key ? fit : { key, drawn: start };
-}
-
-/** After a layout: a point smaller while a word is broken, never below the default size. */
-export function settleWords(fit: WordsFit, size: number, lines: readonly string[]): WordsFit {
-  if (fit.drawn <= size || !breaksAWord(lines)) return fit;
-
-  return { key: fit.key, drawn: Math.max(size, fit.drawn - 1) };
 }
