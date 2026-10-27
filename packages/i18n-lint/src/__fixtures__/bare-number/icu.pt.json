@@ -1,0 +1,5 @@
+{
+  "waiting": "{count, plural, one {{count, number, ::group-auto} person is waiting} other {{count, number, ::group-auto} people are waiting}}",
+  "expiry": "It works for {minutes, number, ::group-auto} minutes.",
+  "code": "Your code is {code}."
+}

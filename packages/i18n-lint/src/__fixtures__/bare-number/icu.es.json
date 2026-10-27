@@ -1,0 +1,5 @@
+{
+  "waiting": "{count, plural, one {# persona espera} other {# personas esperan}}",
+  "expiry": "Funciona durante {minutes, number} minutos.",
+  "code": "Su código es {code}."
+}

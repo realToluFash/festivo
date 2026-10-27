@@ -9,7 +9,14 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { LOCALES, ROOT, type Surface, type WordCopy } from './surfaces.ts';
+import {
+  LOCALES,
+  NUMBER_SLOTS,
+  ROOT,
+  type NumberCatalogue,
+  type Surface,
+  type WordCopy,
+} from './surfaces.ts';
 
 export type Catalogue = Record<string, unknown>;
 
@@ -125,9 +132,13 @@ export interface SlotMismatch {
   actual: string[];
 }
 
-/** The `{{name}}` slots in a message, sorted. */
+const I18NEXT_SLOT = /\{\{\s*([\w.]+)\s*(?:,\s*([^}]*?))?\s*\}\}/g;
+
+/** The `{{name}}` slots in a message with any format, as `count, number`, sorted. */
 export function slotsIn(text: string): string[] {
-  return [...text.matchAll(/\{\{\s*([\w.]+)\s*\}\}/g)].map((m) => m[1]!).sort();
+  return [...text.matchAll(I18NEXT_SLOT)]
+    .map(([, name, format]) => (format == null ? name! : `${name}, ${format}`))
+    .sort();
 }
 
 /**
@@ -240,5 +251,52 @@ function wordsUnder(strings: Map<string, string>, under: string): Map<string, st
     [...strings]
       .filter(([key]) => key.startsWith(prefix))
       .map(([key, text]) => [key.slice(prefix.length), text]),
+  );
+}
+
+export interface BareNumber {
+  locale: string;
+  key: string;
+  /** The slot as written, or `#` for an ICU plural's own number. */
+  slot: string;
+}
+
+const ICU_SLOT = /\{\s*(\w+)\s*(?:,\s*(\w+)\s*(?:,\s*([^{}]*?))?)?\s*\}/g;
+
+/** Whether a slot writes a number as bare digits, by the syntax its catalogue is in. */
+function bareIn(text: string, syntax: NumberCatalogue['syntax']): string[] {
+  if (syntax === 'i18next') {
+    return [...text.matchAll(I18NEXT_SLOT)]
+      .filter(([, name, format]) => NUMBER_SLOTS.includes(name!) && format?.trim() !== 'number')
+      .map(([slot]) => slot);
+  }
+
+  const slots = [...text.matchAll(ICU_SLOT)].filter(([, name]) => NUMBER_SLOTS.includes(name!));
+
+  if (syntax === 'plain') return slots.map(([slot]) => slot);
+
+  // `#` and a plain `{n, number}` ignore CLDR's minimum grouping and write «1.000» in es.
+  return [
+    ...slots
+      .filter(
+        ([, , type, style]) =>
+          type !== 'plural' &&
+          type !== 'select' &&
+          !(type === 'number' && style === '::group-auto'),
+      )
+      .map(([slot]) => slot),
+    ...(text.includes('#') ? ['#'] : []),
+  ];
+}
+
+/** "1000000 de personnes" where French writes « 1 000 000 de personnes » (sc-15361). */
+export function bareNumbers(
+  catalogue: NumberCatalogue,
+  read: (catalogue: NumberCatalogue, locale: string) => Catalogue = load,
+): BareNumber[] {
+  return LOCALES.flatMap((locale) =>
+    [...stringsOf(read(catalogue, locale))].flatMap(([key, text]) =>
+      bareIn(text, catalogue.syntax).map((slot) => ({ locale, key, slot })),
+    ),
   );
 }
