@@ -62,6 +62,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **27 Oct 2026. Pausing and resuming an event** (sc-15439 for sc-3586, `eventPause.*` web and
+  app). Settled as sc-3586 wrote it. The act is "Pause", the way back "Resume", the way out of
+  the confirmation "Keep it live", never "Cancel". A refusal starts "Not paused." or "Not
+  resumed.", as "Not ended." does. The explanation "Guests can't reply …" keeps its contraction,
+  as `scheduleLocked` does: it explains, it does not refuse. "Check-in" is guests arriving at
+  the door, "service" the food and drink on the night; es, fr and pt name the door, never a
+  hotel or airport check-in.
 - **27 Oct 2026. An event's hosts** (sc-15427 for sc-6713, `web:eventHosts.*`,
   `eventLive.needsHost*|addHosts` web and app, `messages:validation.event_host*`,
   `messages:event.host_required|last_host`, `errors:event_host_required`). Settled as sc-6713
