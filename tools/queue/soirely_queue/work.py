@@ -234,11 +234,12 @@ def epic_order(epics):
     return key
 
 
-def queue_items(stories, moves=None, now=None, epics=None, ios=None):
+def queue_items(stories, moves=None, now=None, epics=None, ios=None, released=None):
     """A story entering a role's queue is work once, unless the role moved it there itself.
     One sitting there waits for a pick. A failed story back in Ready For QA is offered only
     to the tester who failed it, until its retest window closes."""
     moves = moves or {}
+    released = released or {}
     merged = {}
     build_order = {s["id"]: i for i, s in enumerate(sorted(stories, key=epic_order(epics)))}
     for role, config in R.ROLES.items():
@@ -251,6 +252,9 @@ def queue_items(stories, moves=None, now=None, epics=None, ios=None):
             # the link was made.
             if builds(role) and story["state"] in HOLDABLE and blockers(story):
                 fingerprint += ":after:" + ",".join(f"sc-{b}" for b in blockers(story))
+            # Or once its last blocks link is removed, which leaves no blocker to key on.
+            elif builds(role) and story["state"] in HOLDABLE and str(story["id"]) in released:
+                fingerprint += f":released:{released[str(story['id'])]}"
             if role in R.TESTERS and story["state"] == "Ready For QA":
                 first = retester(story, now)
                 if first and first != role:
@@ -631,12 +635,12 @@ def finishing_first(items, stories):
 
 def derive(stories, prs, main_run=None, last_runs=None, busy_roles=(), now=0,
            handled=frozenset(), moves=None, checks=None, epics=None, translated=None,
-           raised=(), last_sweeps=None):
+           raised=(), last_sweeps=None, released=None):
     return finishing_first(
         inbox_items(stories, handled) + developer_items(stories, prs)
         + unblocked_items(stories, prs, translated, raised)
         + review_items(stories, prs) + held_items(stories)
-        + queue_items(stories, moves, now, epics)
+        + queue_items(stories, moves, now, epics, released=released)
         + main_items(main_run)
         + heartbeat_items(stories, last_runs or {}, set(busy_roles), now, epics, last_sweeps)
         + machine_items(checks) + stranded_items(stories, prs, now), stories)

@@ -50,7 +50,8 @@ class FakeShortcut:
                == {"subject_id": subject_id, "object_id": object_id, "verb": verb}
                for x in links):
             raise RuntimeError("Shortcut 422 on POST /api/v3/story-links")
-        if any(x == {"subject_id": object_id, "object_id": subject_id, "verb": verb}
+        if any({k: x[k] for k in ("subject_id", "object_id", "verb")}
+               == {"subject_id": object_id, "object_id": subject_id, "verb": verb}
                for x in self.raw.get(object_id, {}).get("story_links", [])):
             raise RuntimeError("Shortcut 422: Cannot have an inverse duplicated story link.")
         self.links = getattr(self, "links", 0) + 1
@@ -621,7 +622,7 @@ class Relating(Base):
     def test_relating_twice_says_already_linked(self):
         self.fake.add(1, "To Do")
         self.fake.add(2, "To Do")
-        a = args(story="sc-1", other="sc-2", verb="blocks")
+        a = args(story="sc-1", other="sc-2", verb="blocks", remove=False)
         self.assertEqual(actions.relate(self.as_("pm"), a), "sc-1 blocks sc-2")
         self.assertEqual(actions.relate(self.as_("pm"), a), "already linked: sc-1 blocks sc-2")
 
@@ -629,7 +630,7 @@ class Relating(Base):
         self.fake.add(1, "To Do")
         self.fake.add(2, "To Do")
         self.fake.relate(2, 1, "relates to")
-        a = args(story="sc-1", other="sc-2", verb="relates to")
+        a = args(story="sc-1", other="sc-2", verb="relates to", remove=False)
         self.assertEqual(actions.relate(self.as_("pm"), a),
                          "already linked: sc-1 relates to sc-2")
 
@@ -653,16 +654,30 @@ class Unrelating(Base):
         self.assertEqual(self.links(1), [])
         self.assertEqual(self.links(2), [])
 
-    def test_removing_the_last_blocker_lets_a_developer_claim_it(self):
+    def wakes_for_2(self):
+        return [w for w in self.queue_wakes("dev") if w.startswith("sc-2 ")]
+
+    def test_removing_the_last_blocker_offers_the_story_to_developers(self):
         self.fake.add(7, "Ready For Dev")
         self.fake.relate(1, 2, "blocks")
         self.fake.relate(7, 2, "blocks")
         self.remove("sc-1", "sc-2")
-        with self.assertRaisesRegex(actions.Refused, r"held by sc-7 \(Ready For Dev\):"):
-            actions.claim(self.as_("dev"), args(story="sc-2"))
+        self.assertEqual(self.wakes_for_2(), [])
         self.remove("sc-7", "sc-2")
-        actions.claim(self.as_("dev"), args(story="sc-2"))
-        self.assertEqual(self.state(2), "In Progress")
+        self.assertEqual(self.wakes_for_2(), ["sc-2 moved to Ready For Dev"])
+
+    def test_a_story_offered_before_it_was_held_is_offered_again_once_released(self):
+        self.as_("pm").story(2)
+        self.assertEqual(self.wakes_for_2(), ["sc-2 moved to Ready For Dev"])
+        for item in store.waiting(self.db, "dev"):
+            if item["story_id"] == 2:
+                store.finish(self.db, item["id"])
+        self.assertEqual(self.wakes_for_2(), [])
+        actions.relate(self.as_("pm"), args(story="sc-1", other="sc-2", verb="blocks",
+                                            remove=False))
+        self.assertEqual(self.wakes_for_2(), [])
+        self.remove("sc-1", "sc-2")
+        self.assertEqual(self.wakes_for_2(), ["sc-2 moved to Ready For Dev"])
 
     def test_no_such_link_changes_nothing(self):
         self.assertEqual(self.remove("sc-1", "sc-2"), "not linked: sc-1 blocks sc-2")

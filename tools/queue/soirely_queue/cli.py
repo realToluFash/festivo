@@ -59,7 +59,7 @@ def refresh_work(db, now):
                         store.get_meta(db, "machine_checks"), store.get_meta(db, "epics"),
                         store.worked_on(db, "l10n"),
                         [row for row in store.waiting(db, "l10n") if row["kind"] == "unblocked"],
-                        last_sweeps)
+                        last_sweeps, store.get_meta(db, "released"))
     store.record(db, items, now)
     return items
 

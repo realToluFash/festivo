@@ -621,12 +621,16 @@ def relate(c, a):
     inverse = any((link.get("subject_id"), link.get("object_id")) == (other, subject)
                   for link in links)
     asked = f"sc-{subject} {a.verb} sc-{other}"
-    if getattr(a, "remove", False):
+    if a.remove:
         if not found:
             return f"not linked: {asked}" + (
                 f"; sc-{other} {a.verb} sc-{subject} is" if inverse else "")
         for link in found:
             c.shortcut.unrelate(link["id"])
+        if a.verb == "blocks":
+            released = store.get_meta(c.db, "released", {})
+            released[str(other)] = time.time()
+            store.set_meta(c.db, "released", released)
         c.refresh(subject)
         c.refresh(other)
         return f"removed: {asked}"
