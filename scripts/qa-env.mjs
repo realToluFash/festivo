@@ -743,13 +743,19 @@ export function passwordAutoFillOff(file) {
   ];
 }
 
+const deviceFiles = (udid) =>
+  passwordAutoFillFiles(join(homedir(), 'Library/Developer/CoreSimulator/Devices', udid));
+
+const passwordAutoFillIsOff = (udid) =>
+  deviceFiles(udid).every(
+    (file) =>
+      capture('plutil', ['-extract', 'restrictedBool.allowPasswordAutoFill.value', 'raw', file]) ===
+      'false',
+  );
+
 function withoutPasswordAutoFill(udid) {
-  const device = join(homedir(), 'Library/Developer/CoreSimulator/Devices', udid);
-  const files = passwordAutoFillFiles(device);
-  const off = (file) =>
-    capture('plutil', ['-extract', 'restrictedBool.allowPasswordAutoFill.value', 'raw', file]) ===
-    'false';
-  if (files.every(off)) return;
+  if (passwordAutoFillIsOff(udid)) return;
+  const files = deviceFiles(udid);
   run('xcrun', ['simctl', 'shutdown', udid], { optional: true });
   for (const file of files) {
     mkdirSync(dirname(file), { recursive: true });
@@ -1608,7 +1614,19 @@ async function reloadApp() {
 }
 
 // Under ten seconds an answer: batch/helper.js asks again while this says wait.
-function startHelper({ email, secret, token, passed }) {
+export function expoGoRunning(launchctlList) {
+  return new RegExp(
+    `^\\d+\\s+\\S+\\s+UIKitApplication:${EXPO_GO.replaceAll('.', '\\.')}\\[`,
+    'm',
+  ).test(launchctlList);
+}
+
+function appRunning(device, onAndroid) {
+  if (onAndroid) return Boolean(adbOut(androidTools(), ['shell', 'pidof', EXPO_GO_ANDROID]));
+  return expoGoRunning(capture('xcrun', ['simctl', 'spawn', device, 'launchctl', 'list']) ?? '');
+}
+
+function startHelper({ email, secret, token, passed, device, onAndroid }) {
   const server = createServer(async (request, response) => {
     const url = new URL(request.url ?? '/', 'http://helper');
     const reply = (status, body) => {
@@ -1627,6 +1645,9 @@ function startHelper({ email, secret, token, passed }) {
       if (url.pathname === '/reload') {
         await reloadApp();
         return reply(200, { reloaded: true });
+      }
+      if (url.pathname === '/running') {
+        return reply(200, { running: appRunning(device, onAndroid) });
       }
       if (url.pathname === '/language') {
         const locale = url.searchParams.get('to');
@@ -1648,11 +1669,24 @@ function startHelper({ email, secret, token, passed }) {
   });
 }
 
-function runAsync(command, args, { cwd, env }) {
+// Maestro hangs rather than exits when its driver dies, so a run gets a budget.
+export const runBudgetMs = (runs) => (5 + 2 * runs) * 60_000;
+
+function runAsync(command, args, { cwd, env, timeoutMs }) {
   return new Promise((done) => {
     const child = spawn(command, args, { cwd, stdio: 'inherit', env: { ...process.env, ...env } });
-    child.on('exit', (code) => done(code === 0));
-    child.on('error', () => done(false));
+    const timer =
+      timeoutMs &&
+      setTimeout(() => {
+        console.error(`\n${command} still running after ${timeoutMs / 60_000} minutes: stopped.`);
+        child.kill('SIGKILL');
+      }, timeoutMs);
+    const finish = (ok) => {
+      clearTimeout(timer);
+      done(ok);
+    };
+    child.on('exit', (code) => finish(code === 0));
+    child.on('error', () => finish(false));
   });
 }
 
@@ -1675,6 +1709,11 @@ async function batch(args) {
   const missing = checks.filter((check) => !existsSync(join(source, 'checks', `${check}.yaml`)));
   if (missing.length) throw new Error(`no ${missing.join(', ')} in apps/mobile/.maestro/checks`);
   const device = maestroDevice(args);
+  if (!onAndroid && !passwordAutoFillIsOff(device)) {
+    throw new Error(
+      'this simulator still offers to save a password — run `ios` first, which turns it off',
+    );
+  }
 
   const out = join(root, '.qa', name);
   rmSync(out, { recursive: true, force: true });
@@ -1692,7 +1731,7 @@ async function batch(args) {
   const named = languages[0] !== 'any';
   const token = named ? await apiSession(email, password, secret) : null;
   const passed = new Set();
-  const helper = await startHelper({ email, secret, token, passed });
+  const helper = await startHelper({ email, secret, token, passed, device, onAndroid });
   // The secret stays with the helper: no flow is handed it.
   const env = {
     METRO_URL: CONFIG.urls.metro,
@@ -1703,7 +1742,7 @@ async function batch(args) {
     ORG_NAME: ACCOUNT_ORGANISATION,
     ...rest,
   };
-  const test = (flow) =>
+  const test = (flow, runs) =>
     runAsync(
       maestroBin() ?? 'maestro',
       [
@@ -1714,7 +1753,7 @@ async function batch(args) {
         ...Object.entries(env).flatMap(([key, value]) => ['-e', `${key}=${value}`]),
         flow,
       ],
-      { cwd: root, env: onAndroid ? androidTools().env : {} },
+      { cwd: root, env: onAndroid ? androidTools().env : {}, timeoutMs: runBudgetMs(runs) },
     );
 
   const started = Date.now();
@@ -1724,13 +1763,13 @@ async function batch(args) {
         for (const check of checks) {
           if (named)
             await api('/api/auth/locale', { method: 'PUT', token, body: { locale: language } });
-          await test(join(flows, `_cold.${checkId(check, language)}.yaml`));
+          await test(join(flows, `_cold.${checkId(check, language)}.yaml`), 1);
         }
       }
     } else {
       if (named)
         await api('/api/auth/locale', { method: 'PUT', token, body: { locale: languages[0] } });
-      await test(join(flows, '_batch.yaml'));
+      await test(join(flows, '_batch.yaml'), checks.length * languages.length);
     }
   } finally {
     helper.close();

@@ -404,7 +404,7 @@ these flows were being written, and each cost a run:
 | "Signed in as" not found, on a screen that says "Signed in as QA Tester" | Text is matched as a WHOLE regex. Write `Signed in as.*`.                                                                                                             |
 | Two empty fields and a refusal                                           | A flow's own `env:` defaults shadow the values passed with `-e`. Declare no defaults.                                                                                 |
 | Text typed on top of other text                                          | `eraseText` clears 50 characters unless told otherwise, and `openLink` reaches a route without remounting the screen. Erase generously; a batch's reload remounts it. |
-| Every element on the screen missing at once                              | An iOS dialog is over the app — "Save Password?" after any sign-in. Dismiss it with a conditional `runFlow`.                                                          |
+| Every element on the screen missing at once                              | An iOS dialog is over the app. "Save Password?" is turned off by `ios`: run it again if a batch says so.                                                              |
 
 **So: a failing flow is not a failing product until the screenshot says so.** Open the
 failure screenshot before writing anything down. Of the first five failures these flows

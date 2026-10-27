@@ -26,6 +26,7 @@ import {
   parseBatch,
   REBUILD,
   rerunHints,
+  runBudgetMs,
   STEP_MS,
   totp,
   androidFlows,
@@ -38,6 +39,7 @@ import {
   emulatorAbi,
   emulatorFor,
   expoGoApk,
+  expoGoRunning,
   expoSdkMajor,
   forAndroid,
   linkIntent,
@@ -851,6 +853,32 @@ describe('the batch command', () => {
   });
 });
 
+describe('Expo Go after a reload', () => {
+  it('is running while launchd holds a process for it', () => {
+    expect(
+      expoGoRunning(
+        '38266\t0\tUIKitApplication:dev.mobile.maestro-driver-iosUITests.xctrunner[2a09][rb-legacy]\n' +
+          '36687\t0\tUIKitApplication:host.exp.Exponent[7164][rb-legacy]',
+      ),
+    ).toBe(true);
+  });
+
+  it('is closed when its entry has no process, or there is none', () => {
+    expect(expoGoRunning('-\t-9\tUIKitApplication:host.exp.Exponent[7164][rb-legacy]')).toBe(false);
+    expect(expoGoRunning('36010\t0\tUIKitApplication:com.apple.Spotlight[7454][rb-legacy]')).toBe(
+      false,
+    );
+  });
+});
+
+describe('the time a Maestro run is given', () => {
+  it('grows with its checks, and stops a hung single check within minutes', () => {
+    expect(runBudgetMs(1)).toBe(7 * 60_000);
+    expect(runBudgetMs(10)).toBeGreaterThan(runBudgetMs(1));
+    expect(runBudgetMs(10)).toBeLessThan(47 * 60_000);
+  });
+});
+
 describe('the flows a batch runs', () => {
   it("composes the repository's checks in all four languages", () => {
     const root = join(import.meta.dirname, '..');
@@ -886,6 +914,12 @@ describe('the flows a batch runs', () => {
       );
       expect(readFileSync(join(target, 'batch/session.yaml'), 'utf8')).not.toContain('{{t:');
       expect(readFileSync(join(target, 'batch/reopen.yaml'), 'utf8')).not.toContain('{{t:');
+      const reset = readFileSync(join(target, 'batch/reset.yaml'), 'utf8');
+      expect(reset).toContain('ASK: /running');
+      expect(reset).not.toMatch(/when:\s+(not)?[vV]isible/);
+      expect(readdirSync(join(target, 'batch')).filter((f) => f.includes('save-password'))).toEqual(
+        [],
+      );
       expect(readFileSync(join(target, 'sign-in.yaml'), 'utf8')).toContain('stopApp: true');
     } finally {
       rmSync(target, { recursive: true, force: true });
