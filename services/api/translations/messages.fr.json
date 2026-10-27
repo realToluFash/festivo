@@ -205,6 +205,6 @@
     "validation.cover_photo_required": "Choisissez une photo de couverture.",
     "validation.cover_upload_missing": "La photo n’a pas pu être importée. Réessayez.",
     "event.delete_name_mismatch": "Saisissez {name} exactement comme indiqué pour le supprimer.",
-    "timeline.event_starts": "{name} starts",
-    "timeline.event_ends": "{name} ends"
+    "timeline.event_starts": "{name} commence",
+    "timeline.event_ends": "{name} se termine"
 }

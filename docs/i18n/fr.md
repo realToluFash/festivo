@@ -534,3 +534,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   The line under the chosen role, `rolesScreen.removeAfter`, takes the role as subject :
   « Le rôle {{role}} s’applique dès la prochaine utilisation de Soirely », not « Elles deviennent… » (sc-14755).
 - **26 Oct 2026. The beyond-grant line names access** (`membersScreen.beyondGrant`, sc-13089). « … vous ne pouvez donc modifier ni son rôle ni son accès » : after « cette personne », « son accès » is hers; it rules out restoring on the suspension cards.
+- **27 Oct 2026. An event's dates are « le calendrier », never « le programme »** (`timeline.*`,
+  sc-15756). « Programme » is the organiser's Schedule (epic 33); the list of an event's dates
+  is « Calendrier complet », its panel « Prochaines dates ». Distances follow the date :
+  « aujourd’hui », « dans 3 jours », « il y a 2 jours ». The API titles keep the name as
+  subject, « {name} commence », « {name} se termine », so no « de » has to elide before it.

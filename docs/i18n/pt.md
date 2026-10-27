@@ -501,3 +501,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   (`emails:twoFactor.on.subject`, `twoFactor.off.subject`, sc-14100): "Autenticação de dois
   fatores ativada" / "desativada", a pair that differs only in its last word. "A autenticação
   de dois fatores foi desativada" ran past one line of a 360dp inbox row.
+- **27 Oct 2026. An event's dates are "o calendário", never "o programa"** (`timeline.*`,
+  sc-15756). "Programa" is the organiser's Schedule (epic 33); the list of an event's dates is
+  "Calendário completo", its panel "Próximas datas". The owner pill "You" is "A seu cargo",
+  since "Você" is Brazilian. Distances follow the date: "hoje", "daqui a 3 dias", "há 2 dias".
+  The API titles keep the name as subject, "{name} começa", "{name} termina", so no article
+  has to agree with it.

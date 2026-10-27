@@ -480,3 +480,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   (`emails:twoFactor.on.subject`, `twoFactor.off.subject`, sc-14100): «Verificación en dos pasos
   activada» / «desactivada», a pair that differs only in its last word. «Se ha desactivado la
   verificación en dos pasos» ran past one line of a 360dp inbox row and hid the state.
+- **27 Oct 2026. An event's dates are «el calendario», never «el programa»** (`timeline.*`,
+  sc-15756). «Programa» is the organiser's Schedule (epic 33); the list of an event's dates is
+  «Calendario completo», its panel «Próximas fechas». The owner pill «You» is «A su cargo»,
+  because a bare «Usted» reads as a form field. Distances follow the date: «hoy», «dentro de
+  3 días», «hace 2 días». The API titles put the verb first: «Empieza {name}», «Termina {name}».
