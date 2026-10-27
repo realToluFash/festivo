@@ -72,6 +72,9 @@ class Event implements SoftDeletableInterface
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $madeLiveAt = null;
 
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $pausedAt = null;
+
     #[ORM\Column(
         type: Types::DATETIME_IMMUTABLE,
         nullable: true,
@@ -182,6 +185,12 @@ class Event implements SoftDeletableInterface
         return $this->madeLiveAt;
     }
 
+    /** UTC; null unless it is Paused (sc-3586). */
+    public function getPausedAt(): ?DateTimeImmutable
+    {
+        return $this->pausedAt;
+    }
+
     /** When it was ended early, before its own end (sc-3585). */
     public function getEndedAt(): ?DateTimeImmutable
     {
@@ -267,6 +276,21 @@ class Event implements SoftDeletableInterface
     {
         $this->status = EventStatus::Ended;
         $this->endedAt = $at->setTimezone(new DateTimeZone('UTC'));
+        $this->pausedAt = null;
+    }
+
+    /** Only EventLifecycle calls this: guests can do nothing until it resumes, and nothing is lost (sc-3586). */
+    public function pause(DateTimeImmutable $at): void
+    {
+        $this->status = EventStatus::Paused;
+        $this->pausedAt = $at->setTimezone(new DateTimeZone('UTC'));
+    }
+
+    /** Only EventLifecycle calls this. */
+    public function resume(): void
+    {
+        $this->status = EventStatus::Live;
+        $this->pausedAt = null;
     }
 
     public function setName(string $name): void

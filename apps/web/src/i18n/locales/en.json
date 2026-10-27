@@ -152,6 +152,19 @@
     "alreadyOver": "This event is already over.",
     "calledOffNotice": "Called off on {{date}}, before it started. Guests following their link are told it won't go ahead."
   },
+  "eventPause": {
+    "pause": "Pause",
+    "title": "Pause {{name}}?",
+    "body": "Guests can't reply or change anything until you resume it.",
+    "nothingLost": "Nothing is lost. Check-in and service keep working.",
+    "keepItLive": "Keep it live",
+    "failed": "Not paused. Try again in a moment.",
+    "paused": "{{name}} is paused.",
+    "notice": "Paused. Guests can't reply or change anything until you resume it. Check-in and service still work.",
+    "resume": "Resume",
+    "resumeFailed": "Not resumed. Try again in a moment.",
+    "resumed": "{{name}} is live again."
+  },
   "eventDelete": {
     "open": "Delete event",
     "note": "Removes the event and everything in it for your whole team. Guests following its link see that it isn't available.",

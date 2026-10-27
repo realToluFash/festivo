@@ -6,6 +6,9 @@ namespace App\Repository;
 
 use App\Entity\Event;
 use App\Entity\Organisation;
+use App\Enum\EventStatus;
+use DateTimeImmutable;
+use DateTimeZone;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\Uid\Uuid;
@@ -27,6 +30,21 @@ final class EventRepository extends ServiceEntityRepository
     public function countInOrganisation(Organisation $organisation): int
     {
         return $this->count(['organisation' => $organisation]);
+    }
+
+    /** Live or Paused and not yet Finished: what the plan's active-events limit counts (sc-3586, "Decided, 21 Oct"). */
+    public function countActiveIn(Organisation $organisation, DateTimeImmutable $now): int
+    {
+        return (int) $this->createQueryBuilder('e')
+            ->select('COUNT(e.id)')
+            ->andWhere('e.organisation = :organisation')
+            ->andWhere('e.status IN (:active)')
+            ->andWhere('e.closesAt > :now')
+            ->setParameter('organisation', $organisation)
+            ->setParameter('active', [EventStatus::Live->value, EventStatus::Paused->value])
+            ->setParameter('now', $now->setTimezone(new DateTimeZone('UTC')), 'datetime_immutable')
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 
     public function findOrganisationIdOf(Uuid $eventId): ?Uuid

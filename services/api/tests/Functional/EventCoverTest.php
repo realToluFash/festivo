@@ -12,7 +12,6 @@ use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
-use App\Enum\ErrorCode;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Enum\UploadPurpose;
@@ -310,20 +309,18 @@ final class EventCoverTest extends ApiTestCase
         }
     }
 
+    /** Pausing is how somebody gets time to fix things, so the cover still changes (sc-3586). */
     #[Test]
-    public function aPausedEventKeepsItsCover(): void
+    public function aPausedEventsCoverIsChanged(): void
     {
         $this->as($this->owner, 'PUT', $this->coverPath(), ['uploadKey' => $this->upload(self::photo(1600, 900), 'image/jpeg'), 'position' => 50]);
         self::assertSame(200, $this->statusCode());
         self::service(Connection::class)->executeStatement("UPDATE events SET status = 'paused' WHERE id = :id", ['id' => $this->eventId]);
 
         $this->as($this->owner, 'PUT', $this->coverPath(), ['position' => 10]);
-        self::assertSame([409, ErrorCode::EventStateInvalid->type()], [$this->statusCode(), $this->last()['type'] ?? null]);
 
-        $this->as($this->owner, 'DELETE', $this->coverPath());
-        self::assertSame([409, ErrorCode::EventStateInvalid->type()], [$this->statusCode(), $this->last()['type'] ?? null]);
-
-        self::assertSame(50, $this->cover($this->as($this->owner, 'GET', '/api/events/' . $this->eventId))['position'] ?? null);
+        self::assertSame(200, $this->statusCode());
+        self::assertSame(10, $this->cover($this->as($this->owner, 'GET', '/api/events/' . $this->eventId))['position'] ?? null);
     }
 
     #[Test]

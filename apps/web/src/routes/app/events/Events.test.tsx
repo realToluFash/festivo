@@ -33,6 +33,7 @@ function event(overrides: Record<string, unknown> = {}) {
     venue: null,
     hosts: ['Funmi Adeyemi'],
     madeLiveAt: null,
+    pausedAt: null,
     phase: 'draft',
     concludedAt: null,
     createdAt: '2026-10-21T09:00:00+00:00',
@@ -2067,6 +2068,196 @@ describe('The phase, End now and Call off (sc-3585)', () => {
         name: 'Adaeze and Tunde, after',
       }),
     );
+  });
+});
+
+describe('Pause and Resume (sc-3586)', () => {
+  const AHEAD = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+
+  function live(overrides: Record<string, unknown> = {}) {
+    return event({ ...AHEAD, status: 'live', phase: 'live', ...overrides });
+  }
+
+  function paused(overrides: Record<string, unknown> = {}) {
+    return live({
+      status: 'paused',
+      phase: 'paused',
+      pausedAt: '2026-10-27T09:00:00+00:00',
+      ...overrides,
+    });
+  }
+
+  function tagged(body: unknown): Response {
+    return new Response(JSON.stringify(body), { status: 200, headers: { ETag: '"2"' } });
+  }
+
+  async function onThePage(served: unknown, answers: Record<string, Answer> = {}) {
+    const sent = answering({ 'GET /api/events/ev_1': () => json({ event: served }), ...answers });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    return sent;
+  }
+
+  it.each([
+    ['live', live()],
+    ['happening now', live({ phase: 'happening_now' })],
+  ])('asks before pausing an event %s, and Keep it live changes nothing', async (_, served) => {
+    signedIn();
+    const sent = await onThePage(served);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Pause Adaeze and Tunde?' });
+    expect(
+      within(dialog).getByText("Guests can't reply or change anything until you resume it."),
+    ).toBeDefined();
+    expect(
+      within(dialog).getByText('Nothing is lost. Check-in and service keep working.'),
+    ).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Keep it live' }));
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(sent.some(({ line }) => line.startsWith('POST'))).toBe(false);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Pause' })),
+    );
+  });
+
+  it('pauses it: the pill reads Paused, the line and Resume show, and it is announced', async () => {
+    signedIn();
+    const sent = await onThePage(live(), {
+      'POST /api/events/ev_1/pause': () => tagged({ event: paused() }),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+    fireEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Pause' }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText('Paused', { selector: '.pill-quiet' })).toBeDefined(),
+    );
+    expect(sent.filter(({ line }) => line === 'POST /api/events/ev_1/pause')).toHaveLength(1);
+    expect(
+      screen.getByText(
+        "Paused. Guests can't reply or change anything until you resume it. Check-in and service still work.",
+      ),
+    ).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Resume' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
+    await waitFor(() =>
+      expect(screen.getByRole('status').textContent).toBe('Adaeze and Tunde is paused.'),
+    );
+  });
+
+  it('resumes without asking, and the phase follows the clock', async () => {
+    signedIn();
+    const sent = await onThePage(paused(), {
+      'POST /api/events/ev_1/resume': () =>
+        tagged({ event: live({ phase: 'happening_now', pausedAt: null }) }),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
+
+    await waitFor(() =>
+      expect(screen.getByText('Happening now', { selector: '.pill-quiet' })).toBeDefined(),
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(sent.filter(({ line }) => line === 'POST /api/events/ev_1/resume')).toHaveLength(1);
+    expect(screen.queryByText(/^Paused\. Guests/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeDefined();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 })),
+    );
+  });
+
+  it.each([
+    [
+      'somebody else changed it when the resume is refused and it is live now',
+      () => live(),
+      'Somebody else changed this event while you had it open.',
+      "It's live now. The page shows what it is now.",
+    ],
+    [
+      'it is already over when the resume is refused because its end has passed',
+      () => paused({ phase: 'finished', pausedAt: null }),
+      'This event is already over.',
+      "It's finished now. The page shows what it is now.",
+    ],
+  ])('says %s', async (_, reloaded, said, now) => {
+    signedIn();
+    let reads = 0;
+    await onThePage(paused(), {
+      'GET /api/events/ev_1': () => json({ event: (reads += 1) === 1 ? paused() : reloaded() }),
+      'POST /api/events/ev_1/resume': () => problem(409, 'event_state_invalid'),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
+
+    const refused = await screen.findByRole('alert');
+    expect(within(refused).getByText(said)).toBeDefined();
+    expect(within(refused).getByText(now)).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Resume' })).toBeNull();
+  });
+
+  it('says somebody else changed it when the pause is refused event_state_invalid', async () => {
+    signedIn();
+    let reads = 0;
+    await onThePage(live(), {
+      'GET /api/events/ev_1': () => json({ event: (reads += 1) === 1 ? live() : paused() }),
+      'POST /api/events/ev_1/pause': () => problem(409, 'event_state_invalid'),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+    fireEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Pause' }),
+    );
+
+    const refused = await screen.findByRole('alertdialog', {
+      name: 'Somebody else changed this event while you had it open.',
+    });
+    expect(
+      within(refused).getByText("It's paused now. The page shows what it is now."),
+    ).toBeDefined();
+  });
+
+  it('keeps Resume and says so when the resume fails', async () => {
+    signedIn();
+    await onThePage(paused(), { 'POST /api/events/ev_1/resume': () => problem(500, 'internal') });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
+
+    expect(await screen.findByText('Not resumed. Try again in a moment.')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Resume' })).toBeDefined();
+  });
+
+  it.each([
+    ['without events.manage', READER, live()],
+    ['on a Draft', IRE, event(AHEAD)],
+    ['once it is Finished', IRE, live({ phase: 'finished' })],
+    ['while it is Paused', IRE, paused()],
+  ])('offers no Pause %s', async (_, who, served) => {
+    signedIn(who);
+    await onThePage(served);
+
+    expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
+  });
+
+  it('shows the paused line without Resume to somebody without events.manage', async () => {
+    signedIn(READER);
+    await onThePage(paused());
+
+    expect(screen.getByText(/^Paused\. Guests/)).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Resume' })).toBeNull();
+  });
+
+  it('shows a pause run past its end as Finished, with no Resume', async () => {
+    signedIn();
+    await onThePage(paused({ phase: 'finished', pausedAt: null }));
+
+    expect(screen.getByText('Finished', { selector: '.pill-quiet' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Resume' })).toBeNull();
+    expect(screen.queryByText(/^Paused\. Guests/)).toBeNull();
   });
 });
 

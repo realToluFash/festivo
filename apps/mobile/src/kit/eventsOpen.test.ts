@@ -18,6 +18,7 @@ const gala: OrganisationEvent = {
   cover: null,
   hosts: ['Funmi Adeyemi'],
   madeLiveAt: null,
+  pausedAt: null,
   phase: 'draft',
   concludedAt: null,
   createdAt: '2026-10-01T09:00:00Z',

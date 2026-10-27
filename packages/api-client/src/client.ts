@@ -310,6 +310,8 @@ export interface OrganisationEvent {
   hosts: string[];
   /** Null while it is a Draft. */
   madeLiveAt: string | null;
+  /** Null unless its phase is Paused (sc-3586). */
+  pausedAt: string | null;
   /** The server's, as the page shows it on load; a client works one out only to flip it at a boundary (sc-3585). */
   phase: EventPhase;
   /** The end, or when it was ended or called off; null until it is Finished. */
@@ -1605,6 +1607,27 @@ export class ApiClient {
     );
   }
 
+  /** Refused 409 `event_state_invalid` unless it is Live and not Finished (sc-3586). */
+  async pauseEvent(eventId: string): Promise<TaggedEvent> {
+    return this.tagged(
+      await this.exchange<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}/pause`, {
+        method: 'POST',
+      }),
+    );
+  }
+
+  /** Refused 409 `event_state_invalid` unless it is Paused and not Finished; never by the plan's limit. */
+  async resumeEvent(eventId: string): Promise<TaggedEvent> {
+    return this.tagged(
+      await this.exchange<{ event?: unknown }>(
+        `/api/events/${encodeURIComponent(eventId)}/resume`,
+        {
+          method: 'POST',
+        },
+      ),
+    );
+  }
+
   async eventDeletion(eventId: string): Promise<EventDeletion> {
     const body = await this.get<Record<string, unknown>>(
       `/api/events/${encodeURIComponent(eventId)}/deletion`,
@@ -2605,6 +2628,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   const venue = candidate.venue === null ? null : asEventVenue(candidate.venue);
   const hosts = candidate.hosts;
   const madeLiveAt = candidate.madeLiveAt;
+  const pausedAt = candidate.pausedAt;
   const phase = oneOf(candidate.phase, EVENT_PHASES);
   const concludedAt = candidate.concludedAt;
 
@@ -2613,6 +2637,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     phase == null ||
     !isStringOrNull(concludedAt) ||
     !isStringOrNull(madeLiveAt) ||
+    !isStringOrNull(pausedAt) ||
     type == null ||
     cover === undefined ||
     venue === undefined ||
@@ -2640,6 +2665,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     venue,
     hosts: hosts as string[],
     madeLiveAt,
+    pausedAt,
     phase,
     concludedAt,
     createdAt: candidate.createdAt as string,

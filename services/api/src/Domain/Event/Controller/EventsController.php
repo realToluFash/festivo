@@ -120,6 +120,22 @@ final readonly class EventsController
         return $this->tagged($this->eventLifecycle->end($this->event($eventId), $this->user()));
     }
 
+    /** Refused 409 `event_state_invalid` unless it is Live and not yet Finished (sc-3586). */
+    #[Route('/api/events/{eventId}/pause', name: 'events_pause', methods: ['POST'])]
+    #[InEvent(Permission::EventsManage)]
+    public function pause(string $eventId): JsonResponse
+    {
+        return $this->tagged($this->eventLifecycle->pause($this->event($eventId), $this->user()));
+    }
+
+    /** Refused 409 `event_state_invalid` unless it is Paused and not yet Finished; never by the plan's limit (sc-3586). */
+    #[Route('/api/events/{eventId}/resume', name: 'events_resume', methods: ['POST'])]
+    #[InEvent(Permission::EventsManage)]
+    public function resume(string $eventId): JsonResponse
+    {
+        return $this->tagged($this->eventLifecycle->resume($this->event($eventId), $this->user()));
+    }
+
     /**
      * `addressId` is the suggestion the address was picked from (sc-53); without it the address is kept as typed.
      *
