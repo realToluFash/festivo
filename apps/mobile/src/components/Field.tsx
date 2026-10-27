@@ -1,6 +1,7 @@
 import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
+  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -208,6 +209,15 @@ export function focusRefused(field: RefObject<TextInput | null>): void {
 export function focusChecked(field: RefObject<TextInput | null>): void {
   // Android's back gesture hides the keys and leaves the field focused, and focus() skips a focused field.
   if (field.current?.isFocused() === true && !Keyboard.isVisible()) field.current.blur();
+
+  // An iPad drops its keys when one field takes focus from another inside the return key's handling.
+  const another =
+    TextInput.State.currentlyFocusedInput() != null && field.current?.isFocused() !== true;
+  if (Platform.OS === 'ios' && another) {
+    requestAnimationFrame(() => field.current?.focus());
+    return;
+  }
+
   field.current?.focus();
 }
 
