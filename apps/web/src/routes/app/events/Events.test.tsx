@@ -3819,7 +3819,7 @@ describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
 
     const panel = await comingUp();
 
-    expect(await within(panel).findByText("The schedule didn't load.")).toBeDefined();
+    expect(await within(panel).findByText('The schedule did not load.')).toBeDefined();
     expect(within(panel).queryByRole('listitem')).toBeNull();
     expect(within(panel).queryByRole('link', { name: 'Full schedule' })).toBeNull();
 
@@ -3827,7 +3827,7 @@ describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
 
     await waitFor(() => expect(within(panel).getAllByRole('listitem')).toHaveLength(4));
     expect(within(panel).getByRole('link', { name: 'Full schedule' })).toBeDefined();
-    expect(within(panel).queryByText("The schedule didn't load.")).toBeNull();
+    expect(within(panel).queryByText('The schedule did not load.')).toBeNull();
   });
 
   it('lists every milestone in Full schedule under its zone, named once, Passed and Next up as words', async () => {
@@ -3907,7 +3907,7 @@ describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
       'section',
     )!;
 
-    expect(await within(page).findByText("The schedule didn't load.")).toBeDefined();
+    expect(await within(page).findByText('The schedule did not load.')).toBeDefined();
     expect(within(page).getByRole('button', { name: 'Try again' })).toBeDefined();
     expect(within(page).queryByRole('listitem')).toBeNull();
   });

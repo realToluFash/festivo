@@ -64,6 +64,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **27 Oct 2026. Duplicating an event** (sc-15883 for sc-3593, `web:eventDuplicate.*`). Settled
+  as sc-3593 wrote it; `DuplicateEvent.test.tsx` pins it. The act is "Duplicate", the button that
+  confirms it "Create draft", and the new event is "the copy" until it exists, then "Draft". The
+  panel lists "Copied" and "Not copied"; the length is "Length", the event's duration. A refusal
+  starts "Not created.", as "Not made live." does. `{{duration}}` arrives in the reader's words
+  from Intl ("1 hour", "2 hours"), and `hoursAndMinutes` is where es, fr and pt put their "and".
 - **27 Oct 2026. Pausing and resuming an event** (sc-15439 for sc-3586, `eventPause.*` web and
   app). Settled as sc-3586 wrote it. The act is "Pause", the way back "Resume", the way out of
   the confirmation "Keep it live", never "Cancel". A refusal starts "Not paused." or "Not

@@ -6,7 +6,9 @@ import {
   formatDay,
   formatEventClock,
   formatEventDate,
+  formatEventDayAndClock,
   formatEventMoment,
+  durationWords,
   formatEventRange,
   formatEventShortDay,
   formatEventWeekday,
@@ -249,5 +251,23 @@ describe('an Events Home card’s date (sc-3594)', () => {
   it('writes a short day and the clock in the event’s zone', () => {
     expect(formatEventShortDay(lateInLagos, 'Africa/Lagos', 'en-US')).toBe('Nov 14');
     expect(formatEventClock(lateInLagos, 'Africa/Lagos', 'en-US')).toBe('23:30');
+  });
+});
+
+describe('the end of a copy, in the event’s zone (sc-3593)', () => {
+  it('names its year', () => {
+    expect(formatEventDayAndClock('2027-01-01T08:00:00+01:00', 'Europe/Madrid', 'en')).toBe(
+      'Fri, Jan 1, 2027, 08:00',
+    );
+  });
+});
+
+describe('the length of a copy, as its form gives it (sc-3593)', () => {
+  it('is whole hours and minutes, in the reader’s words', () => {
+    expect(durationWords(600, 'en')).toEqual({ hours: '10 hours', minutes: null });
+    expect(durationWords(140, 'en')).toEqual({ hours: '2 hours', minutes: '20 minutes' });
+    expect(durationWords(45, 'en')).toEqual({ hours: null, minutes: '45 minutes' });
+    expect(durationWords(0, 'en')).toEqual({ hours: '0 hours', minutes: null });
+    expect(durationWords(105, 'fr').minutes).toBe('45 minutes');
   });
 });

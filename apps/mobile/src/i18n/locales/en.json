@@ -1594,7 +1594,7 @@
     "loading": "Loading the schedule…",
     "intro": "Every date on this event, earliest first. Times are in {{timeZone}}, the event's time zone.",
     "finished": "Nothing coming up. Everything on this event's schedule has passed.",
-    "failed": "The schedule didn't load.",
+    "failed": "The schedule did not load.",
     "retry": "Try again",
     "momentInZone": "{{moment}} ({{timeZone}})",
     "now": "now",

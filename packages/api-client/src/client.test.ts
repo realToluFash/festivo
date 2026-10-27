@@ -2337,6 +2337,15 @@ describe('events (sc-1486)', () => {
     ]);
   });
 
+  test('an event is duplicated from a start local to its zone (sc-3593)', async () => {
+    const { api, sent } = client(() => json({ event: { ...EVENT, id: 'e2' } }, 201));
+
+    expect(await api.duplicateEvent(EVENT.id, '2027-05-15T16:00')).toEqual({ ...EVENT, id: 'e2' });
+    expect(sent).toEqual([
+      { line: `POST /api/events/${EVENT.id}/duplicate`, body: { startsAt: '2027-05-15T16:00' } },
+    ]);
+  });
+
   test('an event’s timeline is read as served, and a shape it does not know is an error', async () => {
     const timeline = {
       timeZone: 'Europe/Madrid',
