@@ -487,3 +487,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   (`emails:twoFactor.on.subject`, `twoFactor.off.subject`, sc-14100): "Autenticação de dois
   fatores ativada" / "desativada", a pair that differs only in its last word. "A autenticação
   de dois fatores foi desativada" ran past one line of a 360dp inbox row.
+- **27 Oct 2026. The two-factor-due subject opens on the feature and the deadline**
+  (`emails:signInRules.twoFactorDue.subject`, sc-15219): "Autenticação de dois fatores até
+  {deadline}: {organisation}". "até" needs no article before the weekday `{deadline}` opens
+  on; the organisation goes last, so a 390 px inbox shows the date (qa2, #15218).
