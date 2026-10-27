@@ -33,7 +33,17 @@ final class WorkerStopTest extends TestCase
         } while (\microtime(true) < $deadline && \proc_get_status($worker)['running'] && !\file_exists($heartbeat));
 
         $polling = \file_exists($heartbeat);
-        self::assertTrue(\proc_get_status($worker)['running'], 'The worker exited before it was stopped.');
+        $status = \proc_get_status($worker);
+
+        if (!$status['running']) {
+            \proc_close($worker);
+
+            if ($polling) {
+                \unlink($heartbeat);
+            }
+
+            self::fail('The worker exited before it was stopped. ' . self::reported($status));
+        }
 
         if (!$polling) {
             \proc_terminate($worker, \SIGKILL);
@@ -59,10 +69,16 @@ final class WorkerStopTest extends TestCase
 
         \proc_close($worker);
         \unlink($heartbeat);
-        $reported = Str\format('proc_get_status reported running %s, exitcode %d, signaled %s, termsig %d.', \var_export($status['running'], true), $status['exitcode'], \var_export($status['signaled'], true), $status['termsig']);
+        $reported = self::reported($status);
 
         self::assertLessThan(10.0, $elapsed, $reported);
         self::assertFalse($status['signaled'], $reported);
         self::assertSame(0, $status['exitcode'], $reported);
+    }
+
+    /** @param array{running: bool, exitcode: int, signaled: bool, termsig: int, ...} $status */
+    private static function reported(array $status): string
+    {
+        return Str\format('proc_get_status reported running %s, exitcode %d, signaled %s, termsig %d.', \var_export($status['running'], true), $status['exitcode'], \var_export($status['signaled'], true), $status['termsig']);
     }
 }
