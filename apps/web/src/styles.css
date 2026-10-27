@@ -226,13 +226,15 @@ span {
 /* Buttons are pills, in three levels, and never below 44px. A label that wraps keeps its lines apart and
    centred, and the ends keep a fixed curve so its lines stay inside. */
 .button {
+  --buttonHit: var(--sizeHit);
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: var(--sizeHit);
+  min-height: var(--buttonHit);
   padding: var(--spaceSm) var(--spaceXl);
   border: var(--borderControl);
-  border-radius: calc(var(--sizeHit) / 2);
+  border-radius: calc(var(--buttonHit) / 2);
   background: var(--colorCard);
   color: var(--colorInk);
   font: var(--typeButton);
@@ -931,13 +933,13 @@ span {
   }
 
   .auth-card .input,
-  .auth-card .field-reveal button,
-  .auth-card .button {
+  .auth-card .field-reveal button {
     min-height: var(--sizeHitPhonePrimary);
   }
 
   .auth-card .button {
-    border-radius: calc(var(--sizeHitPhonePrimary) / 2);
+    --buttonHit: var(--sizeHitPhonePrimary);
+
     font-size: 1rem;
   }
 
@@ -2052,19 +2054,16 @@ span {
     flex: none;
   }
 
-  .settings-general .input,
-  .settings-general .settings-save .button {
-    min-height: var(--sizeHitPhonePrimary);
-  }
-
   /* 16px is the smallest size iOS Safari will not zoom into on focus. */
   .settings-general .input {
+    min-height: var(--sizeHitPhonePrimary);
     font-size: 1rem;
   }
 
   .settings-general .settings-save .button {
+    --buttonHit: var(--sizeHitPhonePrimary);
+
     width: 100%;
-    border-radius: calc(var(--sizeHitPhonePrimary) / 2);
     font-size: 1rem;
   }
 
