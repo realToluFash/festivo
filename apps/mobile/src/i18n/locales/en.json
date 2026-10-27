@@ -1504,7 +1504,7 @@
   "eventLive": {
     "guestsBlocked": "Guests can't be invited until this event is live.",
     "makeLive": "Make live",
-    "endPassed": "This event's end has passed, so it can't be made live. Change its dates first.",
+    "endPassed": "This event's end has passed, so it cannot be made live. Change its dates first.",
     "changeDates": "Change dates",
     "confirmTitle": "Make {{name}} live?",
     "confirmGuests": "Guests can be invited, and they can see it.",
