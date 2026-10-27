@@ -1005,7 +1005,9 @@ function MemberDetail({
                   {...offButton(suspending === 'suspending')}
                   onClick={() => void suspend()}
                 >
-                  {t('membersScreen.suspendConfirm', { name: member.user.name })}
+                  <span className="button-label">
+                    {t('membersScreen.suspendConfirm', { name: member.user.name })}
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -1016,7 +1018,9 @@ function MemberDetail({
                     land(() => suspendButton.current);
                   }}
                 >
-                  {t('membersScreen.suspendKeep', { name: member.user.name })}
+                  <span className="button-label">
+                    {t('membersScreen.suspendKeep', { name: member.user.name })}
+                  </span>
                 </button>
               </div>
             </>
@@ -1086,7 +1090,9 @@ function MemberDetail({
                   {...offButton(removal === 'removing')}
                   onClick={() => void remove()}
                 >
-                  {t('membersScreen.removeConfirm', { name: member.user.name })}
+                  <span className="button-label">
+                    {t('membersScreen.removeConfirm', { name: member.user.name })}
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -1097,9 +1103,11 @@ function MemberDetail({
                     land(() => (byHand ? removeSuspended.current : removeButton.current));
                   }}
                 >
-                  {byHand
-                    ? t('membersScreen.suspendedRemoveKeep')
-                    : t('membersScreen.removeKeep', { name: member.user.name })}
+                  <span className="button-label">
+                    {byHand
+                      ? t('membersScreen.suspendedRemoveKeep')
+                      : t('membersScreen.removeKeep', { name: member.user.name })}
+                  </span>
                 </button>
               </div>
             </>

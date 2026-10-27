@@ -223,33 +223,29 @@ span {
   margin-top: var(--space3xl);
 }
 
-/* Buttons are pills, in three levels, and never below 44px. */
+/* Buttons are pills, in three levels, and never below 44px. A label that wraps keeps its lines apart and
+   centred, and the ends keep a fixed curve so its lines stay inside. */
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: var(--sizeHit);
-  padding: 0 var(--spaceXl);
+  padding: var(--spaceSm) var(--spaceXl);
   border: var(--borderControl);
-  border-radius: var(--radiusPill);
+  border-radius: calc(var(--sizeHit) / 2);
   background: var(--colorCard);
   color: var(--colorInk);
   font: var(--typeButton);
+  line-height: 1.3;
+  text-align: center;
   max-width: 100%;
   text-decoration: none;
   cursor: pointer;
 }
 
-/* A label naming a role or an organisation wraps whole; the ends keep a fixed curve so its lines stay inside. */
-.button:has(> .button-label) {
-  padding-block: var(--spaceSm);
-  border-radius: calc(var(--sizeHit) / 2);
-}
-
+/* A label naming a role, an organisation or a person wraps whole. */
 .button-label {
   min-width: 0;
-  line-height: 1.3;
-  text-align: center;
   overflow-wrap: anywhere;
 }
 
@@ -941,6 +937,7 @@ span {
   }
 
   .auth-card .button {
+    border-radius: calc(var(--sizeHitPhonePrimary) / 2);
     font-size: 1rem;
   }
 
@@ -2067,6 +2064,7 @@ span {
 
   .settings-general .settings-save .button {
     width: 100%;
+    border-radius: calc(var(--sizeHitPhonePrimary) / 2);
     font-size: 1rem;
   }
 
