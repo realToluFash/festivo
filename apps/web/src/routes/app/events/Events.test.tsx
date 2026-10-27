@@ -3073,6 +3073,17 @@ describe('Hosted by, in Edit details (sc-6713)', () => {
     );
   });
 
+  it('lets a live event with no saved host remove a row it added', async () => {
+    signedIn();
+    serving({ status: 'live', phase: 'live', hosts: [] });
+    await editing();
+
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Add a host' }));
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Host 1')));
+    expect(within(hostSection()).getByRole('button', { name: 'Remove Host 1' })).toBeDefined();
+  });
+
   it('refuses a blank, a too-long and a repeated name at once, focusing the first in page order', async () => {
     signedIn();
     const sent = serving({ hosts: [] });

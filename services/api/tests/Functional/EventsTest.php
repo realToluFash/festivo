@@ -1171,16 +1171,41 @@ final class EventsTest extends ApiTestCase
         self::assertSame([], $this->event($this->last())['hosts']);
     }
 
-    #[Test]
-    public function aLiveEventKeepsItsLastHost(): void
+    /** @return iterable<string, array{bool, bool}> */
+    public static function afterDraft(): iterable
     {
-        $id = $this->live(self::AHEAD, self::AHEAD)['id'];
+        yield 'a live event' => [false, false];
+        yield 'a live event past its end' => [true, false];
+        yield 'an ended event' => [true, true];
+    }
+
+    #[Test]
+    #[DataProvider('afterDraft')]
+    public function anEventAfterDraftKeepsItsLastHost(bool $past, bool $ended): void
+    {
+        $id = ($past ? $this->live('2020-11-14T16:00', '2020-11-15T02:00') : $this->live(self::AHEAD, self::AHEAD))['id'];
+        if ($ended) {
+            self::service(Connection::class)->executeStatement("UPDATE events SET status = 'ended', ended_at = '2020-11-14 18:00:00' WHERE id = :id", ['id' => $id]);
+        }
 
         $this->edit($id, ['hosts' => []], $this->tagOf($id));
 
         self::assertSame(409, $this->statusCode());
         self::assertSame(ErrorCode::EventHostRequired->type(), $this->last()['type'] ?? null);
         self::assertSame(['Funmi Adeyemi'], $this->event($this->as($this->owner, 'GET', '/api/events/' . $id))['hosts']);
+    }
+
+    #[Test]
+    public function aLiveEventWithNoHostSavedEditsAsBefore(): void
+    {
+        $id = $this->hosted($this->live(self::AHEAD, self::AHEAD)['id'], []);
+
+        $this->edit($id, ['name' => 'Renamed', 'hosts' => []], $this->tagOf($id));
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $this->edit($id, ['hosts' => ['Tayo Adeyemi']], $this->tagOf($id));
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(['Renamed', ['Tayo Adeyemi']], [$this->event($this->last())['name'], $this->event($this->last())['hosts']]);
     }
 
     #[Test]
