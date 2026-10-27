@@ -69,17 +69,19 @@ export function followPluralLocales(resolver: PluralResolver): void {
 }
 
 interface Formatter {
-  add(
+  addCached(
     name: string,
-    format: (value: unknown, lng: string | undefined, options: object) => string,
+    format: (lng: string | undefined, options: object) => (value: unknown) => string,
   ): void;
 }
 
 /** i18next writes `{{count, number}}` in the bare language, so each client routes it through pluralLocale too (sc-15361). */
 export function followNumberLocales(formatter: Formatter): void {
-  formatter.add('number', (value, lng, options) =>
-    new Intl.NumberFormat(pluralLocale(narrowLocale(lng)), options).format(value as number),
-  );
+  formatter.addCached('number', (lng, options) => {
+    const format = new Intl.NumberFormat(pluralLocale(narrowLocale(lng)), options);
+
+    return (value) => format.format(value as number);
+  });
 }
 
 function language(locale: string): string {

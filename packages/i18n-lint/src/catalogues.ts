@@ -263,6 +263,21 @@ export interface BareNumber {
 
 const ICU_SLOT = /\{\s*(\w+)\s*(?:,\s*(\w+)\s*(?:,\s*([^{}]*?))?)?\s*\}/g;
 
+const COUNTING_ARGUMENT = /^\{\s*\w+\s*,\s*(?:plural|selectordinal)\s*,/;
+
+/** `#` is the count only inside a plural or selectordinal branch; elsewhere it is a literal. */
+function countsWithHash(text: string): boolean {
+  const counting: boolean[] = [];
+
+  for (const [at, char] of [...text].entries()) {
+    if (char === '{') counting.push(COUNTING_ARGUMENT.test(text.slice(at)));
+    else if (char === '}') counting.pop();
+    else if (char === '#' && counting.includes(true)) return true;
+  }
+
+  return false;
+}
+
 /** Whether a slot writes a number as bare digits, by the syntax its catalogue is in. */
 function bareIn(text: string, syntax: NumberCatalogue['syntax']): string[] {
   if (syntax === 'i18next') {
@@ -285,7 +300,7 @@ function bareIn(text: string, syntax: NumberCatalogue['syntax']): string[] {
           !(type === 'number' && style === '::group-auto'),
       )
       .map(([slot]) => slot),
-    ...(text.includes('#') ? ['#'] : []),
+    ...(countsWithHash(text) ? ['#'] : []),
   ];
 }
 

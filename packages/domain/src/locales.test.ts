@@ -59,15 +59,15 @@ describe('followPluralLocales', () => {
 
 describe('followNumberLocales', () => {
   const written = (lng: string, value: number): string => {
-    let number: ((value: unknown, lng: string | undefined, options: object) => string) | null =
+    let number: ((lng: string | undefined, options: object) => (value: unknown) => string) | null =
       null;
     followNumberLocales({
-      add(_name, format) {
+      addCached(_name, format) {
         number = format;
       },
     });
 
-    return number!(value, lng, {});
+    return number!(lng, {})(value);
   };
 
   it.each([
