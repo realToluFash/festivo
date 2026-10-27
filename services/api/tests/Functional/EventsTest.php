@@ -266,6 +266,68 @@ final class EventsTest extends ApiTestCase
         self::assertSame(['Owambe', 'Owambe'], $this->listed());
     }
 
+    #[Test]
+    public function theListLeavesOutTheFinishedWhichAreListedMostRecentlyClosedFirst(): void
+    {
+        $this->create('A draft long past', '2020-11-14T16:00');
+        $ahead = $this->live(self::AHEAD, '2030-11-15T02:00')['id'];
+        $happening = $this->live('2020-11-14T16:00', '2030-11-15T02:00')['id'];
+        $older = $this->live('2020-11-14T16:00', '2020-11-15T02:00')['id'];
+        $newer = $this->live('2021-11-14T16:00', '2021-11-15T02:00')['id'];
+        $calledOff = $this->live(self::AHEAD, '2030-11-15T02:00')['id'];
+        $this->as($this->owner, 'POST', '/api/events/' . $calledOff . '/end');
+
+        $unfinished = $this->as($this->owner, 'GET', $this->path('events'));
+        $finished = $this->as($this->owner, 'GET', $this->path('events?finished=true'));
+
+        self::assertSame(['A draft long past', $happening, $ahead], Vec\map(self::page($unfinished)['events'], static fn (array $event): string => 'draft' === $event['status'] ? $event['name'] : $event['id']));
+        self::assertSame([$calledOff, $newer, $older], Vec\map(self::page($finished)['events'], static fn (array $event): string => $event['id']));
+        self::assertSame([3, 1, 50], [self::page($finished)['total'], self::page($finished)['page'], self::page($finished)['itemsPerPage']]);
+    }
+
+    #[Test]
+    public function aPageSaysHowManyThereAreInAll(): void
+    {
+        foreach (['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo'] as $name) {
+            $this->create($name, self::AHEAD);
+        }
+
+        $second = self::page($this->as($this->owner, 'GET', $this->path('events?page=2&itemsPerPage=2')));
+        $last = self::page($this->as($this->owner, 'GET', $this->path('events?page=3&itemsPerPage=2')));
+
+        self::assertSame([['Charlie', 'Delta'], 5, 2, 2], [Vec\map($second['events'], static fn (array $event): string => $event['name']), $second['total'], $second['page'], $second['itemsPerPage']]);
+        self::assertSame(['Echo'], Vec\map($last['events'], static fn (array $event): string => $event['name']));
+        self::assertSame(200, self::page($this->as($this->owner, 'GET', $this->path('events?itemsPerPage=500')))['itemsPerPage']);
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function unreadablePages(): iterable
+    {
+        yield 'page zero' => ['page=0'];
+        yield 'a page that is not a number' => ['page=two'];
+        yield 'finished that is not true or false' => ['finished=yes'];
+    }
+
+    #[Test]
+    #[DataProvider('unreadablePages')]
+    public function aPageItCannotReadIsRefused(string $query): void
+    {
+        $this->as($this->owner, 'GET', $this->path('events?' . $query));
+
+        self::assertSame(422, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(ErrorCode::ValidationFailed->type(), $this->last()['type'] ?? null);
+    }
+
+    #[Test]
+    public function eachListedEventCarriesItsTimeline(): void
+    {
+        $this->create('Owambe', self::AHEAD);
+
+        $listed = self::page($this->as($this->owner, 'GET', $this->path('events')))['events'];
+
+        self::assertSame([['at' => '2030-11-14T16:00:00+01:00', 'title' => 'Owambe starts', 'note' => null, 'owner' => 'event', 'area' => 'events', 'action' => null]], $listed[0]['milestones']);
+    }
+
     /** @return iterable<string, array{SeededRole, bool}> */
     public static function creators(): iterable
     {
@@ -1650,6 +1712,17 @@ final class EventsTest extends ApiTestCase
         self::em()->flush();
 
         return $user;
+    }
+
+    /** @return array{events: list<array<string, mixed>>, total: int, page: int, itemsPerPage: int} */
+    private static function page(array $body): array
+    {
+        return Type\shape([
+            'events' => Type\vec(Type\dict(Type\string(), Type\mixed())),
+            'total' => Type\int(),
+            'page' => Type\int(),
+            'itemsPerPage' => Type\int(),
+        ])->coerce($body);
     }
 
     private function path(string $rest): string

@@ -4,9 +4,12 @@ import {
   fallsOnLaterDay,
   formatCountdown,
   formatDay,
+  formatEventClock,
   formatEventDate,
   formatEventMoment,
   formatEventRange,
+  formatEventShortDay,
+  formatEventWeekday,
   formatTimeOfDay,
   formatWallClock,
   formatWallDay,
@@ -232,5 +235,19 @@ describe('a milestone’s moment, in the event’s zone', () => {
 
   it('is written in the reader’s language', () => {
     expect(formatEventMoment('2026-10-24T18:00:00+02:00', 'Europe/Madrid', 'fr')).toMatch(/sam/);
+  });
+});
+
+describe('an Events Home card’s date (sc-3594)', () => {
+  const lateInLagos = '2026-11-14T23:30:00+01:00';
+
+  it('writes the weekday in full, in the event’s zone and the reader’s locale', () => {
+    expect(formatEventWeekday(lateInLagos, 'Africa/Lagos', 'en-US')).toBe('Saturday, Nov 14');
+    expect(formatEventWeekday(lateInLagos, 'Africa/Lagos', 'es')).toBe('sábado, 14 nov');
+  });
+
+  it('writes a short day and the clock in the event’s zone', () => {
+    expect(formatEventShortDay(lateInLagos, 'Africa/Lagos', 'en-US')).toBe('Nov 14');
+    expect(formatEventClock(lateInLagos, 'Africa/Lagos', 'en-US')).toBe('23:30');
   });
 });

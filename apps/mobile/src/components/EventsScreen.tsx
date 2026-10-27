@@ -102,10 +102,16 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     if (organisationId == null || !reads || attempt === 0) return;
     let live = true;
 
-    api.events(organisationId).then(
-      (events) =>
+    Promise.all([
+      api.unfinishedEvents(organisationId),
+      api.events(organisationId, { finished: true, itemsPerPage: 200 }),
+    ]).then(
+      ([unfinished, finished]) =>
         live &&
-        setHeld({ in: organisationId, load: { kind: 'loaded', events, refreshing: false } }),
+        setHeld({
+          in: organisationId,
+          load: { kind: 'loaded', events: [...unfinished, ...finished.events], refreshing: false },
+        }),
       () => live && setHeld({ in: organisationId, load: { kind: 'failed' } }),
     );
 

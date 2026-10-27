@@ -322,6 +322,22 @@ export interface OrganisationEvent {
   createdAt: string;
 }
 
+/** As a list shows it: with its timeline's milestones, so the list's Next up is the timeline's (sc-3624). */
+export interface ListedEvent extends OrganisationEvent {
+  milestones: Milestone[];
+}
+
+export interface EventsQuery {
+  finished?: boolean;
+  page?: number;
+  itemsPerPage?: number;
+}
+
+export interface EventsPage {
+  events: ListedEvent[];
+  total: number;
+}
+
 /** The organiser's photo, re-encoded as WebP at each width. `position` is how far down the photo the 16:9 frame sits, 0 to 100. */
 export interface EventCover {
   position: number;
@@ -1435,20 +1451,40 @@ export class ApiClient {
     );
   }
 
-  /** Soonest first, as the API orders them. */
-  async events(organisationId: string): Promise<OrganisationEvent[]> {
-    const body = await this.get<{ events?: unknown }>(
-      `/api/orgs/${encodeURIComponent(organisationId)}/events`,
-    );
-    const events = Array.isArray(body?.events) ? body.events.map(asOrganisationEvent) : null;
+  /** One page of the unfinished events, soonest first, or of the Finished, most recently finished first; `total` counts every page (sc-3594). */
+  async events(
+    organisationId: string,
+    { finished = false, page = 1, itemsPerPage }: EventsQuery = {},
+  ): Promise<EventsPage> {
+    const query = new URLSearchParams({ finished: String(finished), page: String(page) });
 
-    if (events == null || events.some((event) => event == null)) {
+    if (itemsPerPage != null) query.set('itemsPerPage', String(itemsPerPage));
+
+    const body = await this.get<{ events?: unknown; total?: unknown }>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/events?${query.toString()}`,
+    );
+    const events = Array.isArray(body?.events) ? body.events.map(asListedEvent) : null;
+
+    if (events == null || events.some((event) => event == null) || !isCount(body?.total)) {
       throw new Error(
         'The API answered GET /api/orgs/{id}/events in a shape this client does not know. Check the events controller in services/api.',
       );
     }
 
-    return events as OrganisationEvent[];
+    return { events: events as ListedEvent[], total: body.total };
+  }
+
+  /** Every page of them, so a list can group them by the clock without one falling off a page (sc-3594). */
+  async unfinishedEvents(organisationId: string): Promise<ListedEvent[]> {
+    const events: ListedEvent[] = [];
+
+    for (let page = 1; ; page++) {
+      const read = await this.events(organisationId, { page });
+
+      events.push(...read.events);
+
+      if (read.events.length === 0 || events.length >= read.total) return events;
+    }
   }
 
   /** Refused `validation_failed` with violations on name, type, startsAt, endsAt, timeZone or currency. */
@@ -2665,6 +2701,20 @@ function asMilestone(raw: unknown): Milestone | null {
   }
 
   return { at, title, note, owner: known, area, action: link };
+}
+
+function asListedEvent(raw: unknown): ListedEvent | null {
+  const event = asOrganisationEvent(raw);
+  const milestones = (raw as { milestones?: unknown } | null)?.milestones;
+  const read = Array.isArray(milestones) ? milestones.map(asMilestone) : null;
+
+  return event == null || read == null || read.some((one) => one == null)
+    ? null
+    : { ...event, milestones: read as Milestone[] };
+}
+
+function isCount(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0;
 }
 
 function asOrganisationEvent(raw: unknown): OrganisationEvent | null {

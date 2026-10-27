@@ -18,6 +18,7 @@ import { useSyncExternalStore } from 'react';
 import { followAccount } from './accountLanguage.ts';
 import { GATED, SIGNED_OUT, api } from './api.ts';
 import { currentLocale } from './i18n/index.ts';
+import { forgetEventsTab } from './routes/app/events/eventsTab.ts';
 
 export interface Session {
   name: string;
@@ -210,6 +211,7 @@ export function switchOrganisation(id: string): void {
   if (organisation == null) return;
 
   remember(id);
+  forgetEventsTab();
   set({ status: 'signedIn', session: { ...state.session, organisation, pausedIn: null } });
 }
 
