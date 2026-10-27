@@ -18,8 +18,8 @@ from . import roles
 HERE = pathlib.Path(__file__).resolve().parent
 EXAMPLE = HERE.parent / "agents.example.json"
 MODELS = HERE.parent / "models.json"
-SETTINGS = ("model", "effort", "memoryMax", "maxRuntime", "maxBudgetUsd", "wakeEvery",
-            "workers")
+SETTINGS = ("model", "effort", "inboxEffort", "memoryMax", "maxRuntime", "maxBudgetUsd",
+            "wakeEvery", "workers")
 SIZE = re.compile(r"^\d+[KMG]$")
 RUNTIME = re.compile(r"^(\d+)(m|h)$")
 # Claude Code's own default folder, which keeps its account file beside it, not inside.
@@ -183,6 +183,14 @@ def settings(config, role):
     return merged
 
 
+def effort_for(values, kind):
+    """A comment run takes `inboxEffort` where it is set, and the role's `effort` where it is
+    not. Every other kind of work takes `effort`."""
+    if kind != "inbox":
+        return values["effort"]
+    return values.get("inboxEffort") or values["effort"]
+
+
 def slice_memory(config):
     """`sliceMemoryMax`, or 16G when it is unset or not a size, which `check` reports."""
     value = config.get("sliceMemoryMax")
@@ -206,6 +214,10 @@ def setting_problems(values, known, where):
         problems.append(f"{where}: no effort; the default belongs in defaults.effort")
     elif model in known and effort not in known[model]["efforts"]:
         problems.append(f"{where}: effort {effort!r} is not one {model} takes: "
+                        f"{', '.join(known[model]['efforts'])}")
+    inbox = values.get("inboxEffort")
+    if inbox is not None and model in known and inbox not in known[model]["efforts"]:
+        problems.append(f"{where}: inboxEffort {inbox!r} is not one {model} takes: "
                         f"{', '.join(known[model]['efforts'])}")
     memory = values.get("memoryMax")
     if memory is not None and not SIZE.match(str(memory)):

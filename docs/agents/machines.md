@@ -76,6 +76,13 @@ repository because it describes the machine, not the project. The repository shi
 `agents.example.json` carries `claude-opus-5-5` and `medium`. A role sets `model` or
 `effort` to differ from the default, and only that role changes.
 
+**Comment runs can take an effort of their own, `inboxEffort`.** A run on a role's inbox
+(the comments addressed to it) takes the role's `effort` unless `inboxEffort` is set, in
+`defaults` or on the role. Lowering it suits a role whose comments are mostly answered from
+the thread. Every other kind of work (a story, a sweep, a review) takes `effort`.
+`inboxEffort` is checked like `effort`, and the run log and the session view on `sq web`
+show the effort each run used.
+
 **Safeguards.** A typo in a model or effort is the costliest mistake this file can hold, so
 each is checked against a list in the repository, `tools/queue/models.json`: every model id
 `sq` accepts, with the effort levels that model takes.
