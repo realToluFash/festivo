@@ -12,14 +12,16 @@ appId: host.exp.Exponent
       - tapOn:
           id: 'createOrganisation.cancel'
       - waitForAnimationToEnd
-# The switcher's scrim closes it. Its edge clears the sheet by 20 points on any device.
+# The switcher's scrim closes it. A tap on its side margin: the top edge is the status bar, where iOS
+# takes a tap as scroll-to-top. 3% is inside the 20-point padding on a phone, and wider screens stop the
+# sheet at 480 points, centred.
 - runFlow:
     when:
       visible:
         id: 'switcher\..+'
     commands:
       - tapOn:
-          point: '50%,2%'
+          point: '3%,50%'
       - extendedWaitUntil:
           notVisible:
             id: 'switcher\..+'
