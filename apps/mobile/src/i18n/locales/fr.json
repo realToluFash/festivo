@@ -1604,5 +1604,31 @@
     "delete": "Supprimer",
     "failed": "La demande n’a pas abouti, donc rien n’a été modifié. Réessayez.",
     "deleted": "L’événement {{event}} a été supprimé."
+  },
+  "timeline": {
+    "comingUp": "Coming up",
+    "fullSchedule": "Full schedule",
+    "loading": "Loading the schedule…",
+    "intro": "Every date on this event, earliest first. Times are in {{timeZone}}, the event's time zone.",
+    "finished": "Nothing coming up. Everything on this event's schedule has passed.",
+    "failed": "The schedule didn't load.",
+    "retry": "Try again",
+    "momentInZone": "{{moment}} ({{timeZone}})",
+    "now": "now",
+    "today": "today",
+    "inDays_one": "in {{count, number}} day",
+    "inDays_other": "in {{count, number}} days",
+    "daysAgo_one": "{{count, number}} day ago",
+    "daysAgo_other": "{{count, number}} days ago",
+    "passed": "Passed",
+    "nextUp": "Next up",
+    "overdue": "Overdue",
+    "owner_event": "Event",
+    "owner_you": "You",
+    "owner_automatic": "Automatic",
+    "key_event": "The event itself",
+    "key_you": "Something you need to do",
+    "key_automatic": "Soirely does it for you",
+    "backToEvent": "Event"
   }
 }
