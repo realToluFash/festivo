@@ -1,0 +1,10 @@
+# Presses Try again on Cannot reach Soirely and screenshots straight away, then after it settles.
+# sc-13256. Pass SHOT.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'unreachable.retry'
+- takeScreenshot: ${SHOT}-pressed
+- waitForAnimationToEnd:
+    timeout: 15000
+- takeScreenshot: ${SHOT}-after

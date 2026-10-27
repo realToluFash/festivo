@@ -1,0 +1,29 @@
+# Signed out, starts Create an account from launch and leaves the app on Check your email.
+# sc-13256. Pass NAME, EMAIL, PASSWORD and SHOT.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/register
+- extendedWaitUntil:
+    visible:
+      id: 'register.name'
+    timeout: 60000
+- tapOn:
+    id: 'register.name'
+- inputText: ${NAME}
+- tapOn:
+    id: 'register.email'
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'register.password'
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'register.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'verifyEmail.code'
+    timeout: 30000
+- takeScreenshot: ${SHOT}
