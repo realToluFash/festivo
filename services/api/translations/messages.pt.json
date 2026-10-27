@@ -205,6 +205,6 @@
     "validation.cover_photo_required": "Escolha uma fotografia para a capa.",
     "validation.cover_upload_missing": "Não foi possível carregar a fotografia. Tente novamente.",
     "event.delete_name_mismatch": "Escreva {name} exatamente como aparece para o eliminar.",
-    "timeline.event_starts": "{name} starts",
-    "timeline.event_ends": "{name} ends"
+    "timeline.event_starts": "{name} começa",
+    "timeline.event_ends": "{name} termina"
 }
