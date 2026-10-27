@@ -229,8 +229,8 @@ export function releaseApp(root, sha) {
   return join(root, '.qa/release', `soirely-${sha.slice(0, 12)}.app`);
 }
 
-export function launchVideo(root, sha, platform) {
-  return join(root, '.qa/release', `launch-${sha.slice(0, 12)}.${platform}.mp4`);
+export function launchVideo(root, sha, platform, device) {
+  return join(root, '.qa/release', `launch-${sha.slice(0, 12)}.${platform}.${device}.mp4`);
 }
 
 // A Mac keeps an APK and an app side by side: each build replaces only its own kind.
@@ -774,21 +774,49 @@ function ensureExpoGo(udid) {
   return false;
 }
 
+function installedIosRelease(root) {
+  return join(root, '.qa/release/ios-release-on');
+}
+
+// A release build on the simulator not opened still owns soirely:// there. simctl
+// uninstalls only on a booted device, so that one is booted for it, then shut.
+function shutSimulator(root, key, id) {
+  const udid = simulatorId(CONFIG.simulators[key].name);
+  if (!udid) return;
+  if (iosReleaseOn(root, key)) {
+    run('xcrun', ['simctl', 'boot', udid], { optional: true });
+    if (run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true })) {
+      clearIosRelease(root, key);
+    }
+  }
+  run('xcrun', ['simctl', 'shutdown', udid], { optional: true });
+}
+
+function iosReleaseOn(root, key) {
+  const recorded = installedIosRelease(root);
+  return existsSync(recorded) && readFileSync(recorded, 'utf8').trim() === key;
+}
+
+function clearIosRelease(root, key) {
+  if (iosReleaseOn(root, key)) rmSync(installedIosRelease(root));
+}
+
 async function ios(args) {
   const root = qaWorktree();
   assertQaStack(root);
   const { open, shut } = simulatorFor(args);
-  const other = simulatorId(CONFIG.simulators[shut].name);
-  if (other) run('xcrun', ['simctl', 'shutdown', other], { optional: true });
+  const id = iosBundle(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
+  shutSimulator(root, shut, id);
   // An offline release launch stopped these; a release build owns soirely:// while installed.
   startAppServices(root);
-  const id = iosBundle(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
   const devices = [open].map((key) => {
     const udid = simulatorId(CONFIG.simulators[key].name);
     if (!udid) throw new Error(`no ${CONFIG.simulators[key].name} simulator — run setup`);
     withoutPasswordAutoFill(udid);
     run('xcrun', ['simctl', 'boot', udid], { optional: true });
-    run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true });
+    if (run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true })) {
+      clearIosRelease(root, open);
+    }
     if (!ensureExpoGo(udid)) {
       throw new Error(
         `Expo Go is on no booted simulator to copy from. Install it once with \`npx expo start --ios\` on any simulator, then rerun.`,
@@ -1180,7 +1208,7 @@ async function releaseAndroid(args) {
   await pause(1000);
   adbOut(tools, ['shell', 'am', 'start', '-n', `${id}/.MainActivity`]);
   await recording;
-  const video = launchVideo(root, sha, 'android');
+  const video = launchVideo(root, sha, 'android', open);
   rmSync(video, { force: true });
   adbOut(tools, ['pull', LAUNCH_RECORDING, video]);
   adbOut(tools, ['shell', 'rm', '-f', LAUNCH_RECORDING]);
@@ -1298,21 +1326,21 @@ async function releaseIos(args) {
   }
 
   step(`The ${open}`);
-  const other = simulatorId(CONFIG.simulators[shut].name);
-  if (other) run('xcrun', ['simctl', 'shutdown', other], { optional: true });
+  const id = iosBundle(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
+  shutSimulator(root, shut, id);
   const udid = simulatorId(CONFIG.simulators[open].name);
   if (!udid) throw new Error(`no ${CONFIG.simulators[open].name} simulator — run setup`);
   withoutPasswordAutoFill(udid);
   run('xcrun', ['simctl', 'boot', udid], { optional: true });
   run('open', ['-a', 'Simulator'], { optional: true });
   // A fresh install every time, so the launch below is the app's first, with no cache.
-  const id = iosBundle(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
   run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true });
   run('xcrun', ['simctl', 'install', udid, app]);
+  writeFileSync(installedIosRelease(root), open);
   if (offline) stopAppServices(root);
   else startAppServices(root);
 
-  const video = launchVideo(root, sha, 'ios');
+  const video = launchVideo(root, sha, 'ios', open);
   const recorded = recordSimulator(udid, video);
   await pause(1000);
   run('xcrun', ['simctl', 'launch', udid, id]);

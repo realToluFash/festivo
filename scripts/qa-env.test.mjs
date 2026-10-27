@@ -300,10 +300,20 @@ describe('a release build', () => {
     ).toEqual(['soirely-0123456789ab.apk']);
   });
 
-  it('names the launch video by platform, so both launches of a commit are kept', () => {
+  it('names the launch video by platform and device, so every launch of a commit is kept', () => {
     const sha = 'c8646738ce1413ea1e718dce85ff4973f0f9b22c';
-    expect(launchVideo('/qa', sha, 'ios')).toBe('/qa/.qa/release/launch-c8646738ce14.ios.mp4');
-    expect(launchVideo('/qa', sha, 'android')).not.toBe(launchVideo('/qa', sha, 'ios'));
+    expect(launchVideo('/qa', sha, 'ios', 'phone')).toBe(
+      '/qa/.qa/release/launch-c8646738ce14.ios.phone.mp4',
+    );
+    expect(launchVideo('/qa', sha, 'ios', 'ipad')).not.toBe(
+      launchVideo('/qa', sha, 'ios', 'phone'),
+    );
+    expect(launchVideo('/qa', sha, 'android', 'phone')).not.toBe(
+      launchVideo('/qa', sha, 'ios', 'phone'),
+    );
+    expect(launchVideo('/qa', sha, 'android', 'tablet')).not.toBe(
+      launchVideo('/qa', sha, 'android', 'phone'),
+    );
   });
 
   it('keeps the app beside the APK, and replaces only an older app', () => {
