@@ -8,6 +8,7 @@ use App\Domain\Event\EventDayCount;
 use App\Domain\Event\Timeline\Interfaces\MilestoneSourceInterface;
 use App\Domain\Event\Timeline\Model\Milestone;
 use App\Entity\Event;
+use App\Enum\EventPhase;
 use App\Enum\MilestoneOwner;
 use App\Enum\PermissionArea;
 use DateTimeImmutable;
@@ -27,7 +28,7 @@ final readonly class EventDates implements MilestoneSourceInterface
         $zone = new DateTimeZone($event->getTimeZone());
         $endedAt = $event->getEndedAt()?->setTimezone($zone);
 
-        if (null !== $endedAt && $endedAt < $event->getStartsAt()) {
+        if (null !== $endedAt && EventPhase::calledOff($endedAt, $event->getStartsAt())) {
             return [$this->milestone($event, $endedAt, 'timeline.event_called_off')];
         }
 
