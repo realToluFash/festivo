@@ -659,14 +659,14 @@
     "contactBlank": "Indique um e-mail de contacto.",
     "contactInvalid": "Isso não parece um endereço de e-mail. Confirme que tem um @ e um domínio.",
     "readOnly": "A sua função, {{role}}, pode ver estes dados mas não alterá-los. Os proprietários podem.",
-    "readOnlyUntilLinked": "{{organisation}} signs in with Google or Apple only. Until you link one, you can see these but not change them.",
-    "readOnlyUntilTwoFactor": "{{organisation}} asks people who can manage members, roles, billing or security to use two-factor. Until you turn it on, you can see these but not change them.",
+    "readOnlyUntilLinked": "{{organisation}} só aceita o início de sessão com Google ou Apple. Até associar uma dessas contas, pode ver estes dados mas não alterá-los.",
+    "readOnlyUntilTwoFactor": "{{organisation}} pede a autenticação de dois fatores a quem pode gerir membros, funções, faturação ou segurança. Até a ativar, pode ver estes dados mas não alterá-los.",
     "failed": "Não foi possível guardar. Nada foi alterado. Tente novamente dentro de um momento.",
     "language": "Idioma dos convites",
     "languageHint": "Os e-mails de convite para pessoas sem conta Soirely são escritos neste idioma. Quem já tem uma conta recebe o convite no seu próprio idioma.",
     "savedLanguage": "Guardado. A partir de agora, os e-mails de convite para pessoas sem conta Soirely são enviados em {{language}}. Os convites já enviados não voltam a ser enviados.",
     "refused": "Nada foi guardado. A sua função não inclui a permissão necessária para isto.",
-    "refusedByRule": "Nothing was saved."
+    "refusedByRule": "Nada foi guardado."
   },
   "completeProfile": {
     "title": "Alguns dados",

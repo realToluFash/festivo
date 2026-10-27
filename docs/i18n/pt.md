@@ -520,3 +520,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   carrega diz "A carregar mais…". A contagem anunciada concorda o verbo: "Foi mostrado mais 1 …",
   "Foram mostrados mais …", com "de eventos" em `many`; 0 é `other`. `moreFailed` repete a
   segunda frase da falha de carregamento do seu ecrã, como em inglês.
+- **27 Oct 2026. A página de dados nomeia a regra, não a função** (sc-16443 para sc-16265,
+  `orgGeneral.readOnlyUntil*`, `refusedByRule`). Cada linha abre com a regra nas palavras do
+  aviso (`signInRules.unlinkedBody`, `gateBody`; "só aceita", porque aqui a regra não é nova) e
+  fecha como `orgGeneral.readOnly`: "pode ver estes dados mas não alterá-los", e não o "pode
+  consultar tudo, mas sem alterar nada" do aviso, porque a linha fala dos dados acima dela. Um
+  guardar recusado pela regra diz só "Nada foi guardado.", o início de `refused`.
