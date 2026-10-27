@@ -6,7 +6,7 @@ import {
 } from '@soirely/api-client';
 import { roleName, typedNameMatches } from '@soirely/domain';
 import { router } from 'expo-router';
-import { type Ref, useEffect, useRef, useState } from 'react';
+import { type Ref, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -504,6 +504,7 @@ function Delete({
   const aboveKeyboard = useAboveKeyboard();
   const name = organisation.name;
   const matches = typedNameMatches(typed, name);
+  const heard = useMemo(() => ({ answer, attempt }), [answer, attempt]);
 
   useEffect(() => {
     let current = true;
@@ -548,7 +549,7 @@ function Delete({
 
   return (
     <View style={styles.form}>
-      <AnswerHeading answer={answer} size={tokens.typeButton.size} weight="semibold">
+      <AnswerHeading answer={heard} size={tokens.typeButton.size} weight="semibold">
         {t('ownership.deleteTitle', { organisation: name })}
       </AnswerHeading>
       {preview.kind === 'failed' ? (

@@ -77,7 +77,7 @@ final class OrganisationDeletionTest extends ApiTestCase
         );
     }
 
-    /** sc-16866: counted, not loaded, and only the members who are in. */
+    /** sc-16866: only the members who are in. */
     #[Test]
     public function theConfirmationCountsOnlyActiveMembers(): void
     {
