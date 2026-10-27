@@ -1,5 +1,5 @@
 import { ApiError, type EventStatus, type OrganisationEvent } from '@soirely/api-client';
-import { type EventPhase, makeLiveRow } from '@soirely/domain';
+import { type EventPhase, makeLiveRow, needsHost } from '@soirely/domain';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -24,6 +24,7 @@ type Asking =
   | { kind: 'confirm'; pending: boolean; failed: boolean }
   | { kind: 'changed'; status: EventStatus }
   | { kind: 'concluded' }
+  | { kind: 'needsHost' }
   | { kind: 'planLimit'; plan: string; limit: number };
 
 /** A Draft's line for the areas it blocks (Guests so far), with Make live beside it, as `/event-states.json` says. */
@@ -73,6 +74,8 @@ export function DraftRow({
       (error: unknown) => {
         if (error instanceof ApiError && error.is('event_state_invalid')) {
           void reload((latest) => ({ kind: 'changed', status: latest.status }));
+        } else if (error instanceof ApiError && error.is('event_host_required')) {
+          void reload(() => ({ kind: 'needsHost' }));
         } else if (error instanceof ApiError && error.is('event_concluded')) {
           void reload(() => ({ kind: 'concluded' }));
         } else if (error instanceof ApiError && error.is('plan_limit')) {
@@ -100,7 +103,13 @@ export function DraftRow({
                 ref={makeLive}
                 type="button"
                 className="button button-primary"
-                onClick={() => setAsking({ kind: 'confirm', pending: false, failed: false })}
+                onClick={() =>
+                  setAsking(
+                    needsHost(event)
+                      ? { kind: 'needsHost' }
+                      : { kind: 'confirm', pending: false, failed: false },
+                  )
+                }
               >
                 {t('eventLive.makeLive')}
               </button>
@@ -112,7 +121,13 @@ export function DraftRow({
         </div>
       )}
       {asking != null && (
-        <MakeLiveDialog name={event.name} asking={asking} onGo={go} onClose={close} />
+        <MakeLiveDialog
+          name={event.name}
+          eventId={event.id}
+          asking={asking}
+          onGo={go}
+          onClose={close}
+        />
       )}
     </>
   );
@@ -121,11 +136,13 @@ export function DraftRow({
 /** The phone's bottom sheet on narrow screens; the first line wraps rather than truncates. */
 function MakeLiveDialog({
   name,
+  eventId,
   asking,
   onGo,
   onClose,
 }: {
   name: string;
+  eventId: string;
   asking: Asking;
   onGo: () => void;
   onClose: () => void;
@@ -152,14 +169,16 @@ function MakeLiveDialog({
         ? [t('eventLive.changedElsewhere'), [t(NOW_STATE[asking.status])]]
         : asking.kind === 'concluded'
           ? [t('eventLive.notMadeLive'), [t('eventLive.endPassed')]]
-          : [
-              t('eventLive.planLimit', {
-                plan: asking.plan,
-                limit: asking.limit,
-                count: asking.limit,
-              }),
-              [t('eventLive.planLimitStays')],
-            ];
+          : asking.kind === 'needsHost'
+            ? [t('eventLive.needsHostTitle'), [t('eventLive.needsHostBody')]]
+            : [
+                t('eventLive.planLimit', {
+                  plan: asking.plan,
+                  limit: asking.limit,
+                  count: asking.limit,
+                }),
+                [t('eventLive.planLimitStays')],
+              ];
 
   return (
     <>
@@ -201,6 +220,18 @@ function MakeLiveDialog({
               >
                 {t('eventLive.makeLive')}
               </button>
+            </>
+          ) : asking.kind === 'needsHost' ? (
+            <>
+              <button ref={first} type="button" className="button" onClick={onClose}>
+                {t('eventLive.close')}
+              </button>
+              <Link
+                className="button button-primary"
+                to={`/app/events/${encodeURIComponent(eventId)}/edit#hosts`}
+              >
+                {t('eventLive.addHosts')}
+              </Link>
             </>
           ) : (
             <button ref={first} type="button" className="button button-primary" onClick={onClose}>

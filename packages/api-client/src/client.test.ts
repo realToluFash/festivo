@@ -2248,6 +2248,7 @@ describe('events (sc-1486)', () => {
     currency: 'NGN',
     cover: null,
     venue: null,
+    hosts: ['Funmi Adeyemi', 'Tayo Adeyemi'],
     madeLiveAt: null,
     phase: 'draft',
     concludedAt: null,
@@ -2419,6 +2420,22 @@ describe('events (sc-1486)', () => {
     expect(clock.now().toISOString()).toBe('2026-11-14T15:00:00.000Z');
   });
 
+  test('an event keeps its hosts in their order (sc-6713)', async () => {
+    expect((await client(() => json({ event: EVENT })).api.event('e1')).hosts).toEqual([
+      'Funmi Adeyemi',
+      'Tayo Adeyemi',
+    ]);
+  });
+
+  test.each([[undefined], [null], ['Funmi'], [['Funmi', 1]]])(
+    'an event whose hosts are %j is an error (sc-6713)',
+    async (hosts) => {
+      await expect(
+        client(() => json({ event: { ...EVENT, hosts } })).api.event('e1'),
+      ).rejects.toThrow(/events controller/);
+    },
+  );
+
   test('an event with a madeLiveAt that is not a string or null is an error', async () => {
     await expect(
       client(() => json({ event: { ...EVENT, madeLiveAt: 1 } })).api.event('e1'),
@@ -2574,6 +2591,7 @@ describe("an event's venue (sc-3589)", () => {
     dayCount: 2,
     currency: 'NGN',
     cover: null,
+    hosts: [],
     madeLiveAt: null,
     phase: 'draft',
     concludedAt: null,

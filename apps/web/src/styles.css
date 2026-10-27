@@ -3441,6 +3441,80 @@ button.members-row {
   min-width: 0;
 }
 
+.event-hosts-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.event-hosts-head p,
+.event-hosts-none {
+  margin: 0;
+}
+
+.event-hosts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  container-type: inline-size;
+}
+
+.event-host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  min-width: 0;
+}
+
+.event-host-line {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+}
+
+.event-host-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-block: var(--spaceSm);
+  resize: none;
+  overflow-wrap: anywhere;
+  field-sizing: content;
+}
+
+.event-host-controls {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.event-host-arrow,
+.event-host-gap {
+  width: var(--sizeHit);
+  padding: 0;
+}
+
+.event-host-gap {
+  height: var(--sizeHit);
+}
+
+.event-hosts-add {
+  align-self: flex-start;
+}
+
+@container (width < 440px) {
+  .event-host-line {
+    flex-wrap: wrap;
+  }
+
+  .event-host-name {
+    flex-basis: 100%;
+  }
+}
+
 .event-moment {
   display: flex;
   flex-direction: column;

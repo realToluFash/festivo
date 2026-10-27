@@ -60,7 +60,7 @@ export function DraftRow({
         const refusal = refusalOf(error);
 
         if (refusal.kind === 'changed' || refusal.kind === 'concluded') void reload(refusal);
-        else if (refusal.kind === 'planLimit') setAsking(refusal);
+        else if (refusal.kind === 'planLimit' || refusal.kind === 'needsHost') setAsking(refusal);
         else setAsking({ kind: 'confirm', pending: false, failed: true });
       },
     );
@@ -132,10 +132,12 @@ function Asked({
         ? [t('eventLive.changedElsewhere'), [t(NOW_STATE[status])]]
         : asking.kind === 'concluded'
           ? [t('eventLive.notMadeLive'), [t('eventLive.endPassed')]]
-          : [
-              t('eventLive.planLimit', { plan: asking.plan, count: asking.limit }),
-              [t('eventLive.planLimitStays')],
-            ];
+          : asking.kind === 'needsHost'
+            ? [t('eventLive.needsHostTitle'), [t('eventLive.needsHostBody')]]
+            : [
+                t('eventLive.planLimit', { plan: asking.plan, count: asking.limit }),
+                [t('eventLive.planLimitStays')],
+              ];
 
   return (
     <View style={styles.sheet}>

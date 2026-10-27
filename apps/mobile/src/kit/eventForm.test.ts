@@ -31,6 +31,7 @@ const gala: OrganisationEvent = {
   dayCount: 1,
   currency: 'NGN',
   cover: null,
+  hosts: ['Funmi Adeyemi'],
   madeLiveAt: null,
   phase: 'draft',
   concludedAt: null,

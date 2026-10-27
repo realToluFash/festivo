@@ -37,6 +37,7 @@ export function draftRowOf(
 export type MakeLiveRefusal =
   | { kind: 'changed' }
   | { kind: 'concluded' }
+  | { kind: 'needsHost' }
   | { kind: 'planLimit'; plan: string; limit: number }
   | { kind: 'failed' };
 
@@ -45,6 +46,7 @@ export function refusalOf(error: unknown): MakeLiveRefusal {
   if (!(error instanceof ApiError)) return { kind: 'failed' };
   if (error.is('event_state_invalid')) return { kind: 'changed' };
   if (error.is('event_concluded')) return { kind: 'concluded' };
+  if (error.is('event_host_required')) return { kind: 'needsHost' };
   if (error.is('plan_limit')) {
     return { kind: 'planLimit', plan: error.problem.plan ?? '', limit: error.problem.limit ?? 0 };
   }

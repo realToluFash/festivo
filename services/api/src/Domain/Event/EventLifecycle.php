@@ -79,6 +79,9 @@ final readonly class EventLifecycle
             EventGuard::EndNotPassed => $now < $event->getEndsAt()
                 ? null
                 : throw new ApiException(ErrorCode::EventConcluded, $this->translator->trans(EventAction::End === $action ? 'event.already_over' : 'event.concluded')),
+            EventGuard::HasHost => [] !== $event->getHosts()
+                ? null
+                : throw new ApiException(ErrorCode::EventHostRequired, $this->translator->trans('event.host_required')),
             EventGuard::PlanLimit => null === ($limit = $this->activeEventsLimit->reachedBy($event->getOrganisation()))
                 ? null
                 : throw new ApiException(

@@ -133,7 +133,10 @@
     "planLimit_one": "Not made live. Your {{plan}} plan allows {{count}} event to be live or paused at a time.",
     "planLimit_other": "Not made live. Your {{plan}} plan allows {{count}} events to be live or paused at a time.",
     "planLimitStays": "This event stays a draft. Finish or call off another event, or change plan.",
-    "close": "Close"
+    "close": "Close",
+    "needsHostTitle": "Add who is hosting before guests are invited.",
+    "needsHostBody": "Guests see the hosts' names on their invitation. This event stays a draft until it has at least one host.",
+    "addHosts": "Add who is hosting"
   },
   "eventEnd": {
     "callOff": "Call off",
@@ -187,6 +190,25 @@
     "nothingChanged": "Nothing changed, so nothing was sent.",
     "scheduleConcluded": "This event is over, so its start, end and time zone cannot be changed.",
     "scheduleLocked": "This event is over, so its start, end and time zone can't be changed."
+  },
+  "eventHosts": {
+    "heading": "Hosted by",
+    "explainer": "Guests read these names on their invitation and their page, in this order. Write them the way you want guests to see them.",
+    "none": "No hosts yet. The event can be made live once it has at least one.",
+    "add": "Add a host",
+    "label": "Host {{position}}",
+    "moveUp": "Move {{name}} up",
+    "moveDown": "Move {{name}} down",
+    "remove": "Remove",
+    "removeNamed": "Remove {{name}}",
+    "most": "{{most}} is the most hosts an event can have.",
+    "lastHost": "A live event needs at least one host, so this name can't be removed. You can still change it.",
+    "lastHostRefused": "A live event needs at least one host. Add a name here before saving.",
+    "moved": "{{name}} moved to {{position}} of {{count}}",
+    "removed": "{{name}} removed",
+    "blank": "Enter a name or remove this host.",
+    "tooLong": "A host's name can be at most {{most}} characters. This one has {{length}}.",
+    "duplicate": "{{name}} is already a host."
   },
   "eventCover": {
     "heading": "Cover",

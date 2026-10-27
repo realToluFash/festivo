@@ -31,6 +31,7 @@ function event(overrides: Record<string, unknown> = {}) {
     currency: 'NGN',
     cover: null,
     venue: null,
+    hosts: ['Funmi Adeyemi'],
     madeLiveAt: null,
     phase: 'draft',
     concludedAt: null,
@@ -2893,5 +2894,323 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
 
     expect(dialog.querySelector('.cover-frame .cover-default-wedding')).not.toBeNull();
     expect(within(dialog).queryByText('The photo did not upload. Try again.')).toBeNull();
+  });
+});
+
+describe('Hosted by, in Edit details (sc-6713)', () => {
+  type Sent = { line: string; body: unknown; ifMatch: string | null };
+
+  /** The event as the API holds it, and every request sent; a PATCH is applied as the API would. */
+  function serving(held: Record<string, unknown>, answers: Record<string, Answer> = {}) {
+    const sent: Sent[] = [];
+    let current = event(held);
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
+      sent.push({ line, body, ifMatch: new Headers(init?.headers).get('If-Match') });
+
+      const answer = await answers[line]?.(body);
+      if (answer != null) return answer;
+
+      if (line === 'PATCH /api/events/ev_1') current = { ...current, ...(body as object) };
+
+      return new Response(JSON.stringify({ event: current }), {
+        status: 200,
+        headers: { ETag: '"4"' },
+      });
+    });
+
+    return sent;
+  }
+
+  async function editing(hash = ''): Promise<void> {
+    at(`/app/events/ev_1/edit${hash}`);
+    await screen.findByRole('heading', { level: 1, name: 'Edit details' });
+  }
+
+  function hostSection(): HTMLElement {
+    return screen.getByRole('region', { name: 'Hosted by' });
+  }
+
+  function names(): string[] {
+    return within(hostSection())
+      .queryAllByRole('textbox')
+      .map((field) => (field as HTMLTextAreaElement).value);
+  }
+
+  function patched(sent: Sent[]): Sent | undefined {
+    return sent.find(({ line }) => line === 'PATCH /api/events/ev_1');
+  }
+
+  it('lists the hosts in their order, each labelled by its position, after About the event', async () => {
+    signedIn();
+    serving({ hosts: ['Funmi Adeyemi', 'Tayo Adeyemi'] });
+    await editing();
+
+    expect(names()).toEqual(['Funmi Adeyemi', 'Tayo Adeyemi']);
+    expect(screen.getByLabelText<HTMLTextAreaElement>('Host 2').value).toBe('Tayo Adeyemi');
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((one) => one.textContent);
+    expect(headings.indexOf('Hosted by')).toBe(headings.indexOf('About the event') + 1);
+  });
+
+  it('says a draft with no hosts has none yet, and adds an empty row with focus in it', async () => {
+    signedIn();
+    serving({ hosts: [] });
+    await editing();
+
+    expect(
+      within(hostSection()).getByText(
+        'No hosts yet. The event can be made live once it has at least one.',
+      ),
+    ).toBeDefined();
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Add a host' }));
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Host 1')));
+    expect(within(hostSection()).getByRole('button', { name: 'Remove Host 1' })).toBeDefined();
+  });
+
+  it('sends the names as typed and trimmed, in their order, with the tag it read', async () => {
+    signedIn();
+    const sent = serving({ hosts: [] });
+    await editing();
+
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Add a host' }));
+    fireEvent.change(screen.getByLabelText('Host 1'), { target: { value: ' Funmi Adeyemi ' } });
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Add a host' }));
+    fireEvent.change(screen.getByLabelText('Host 2'), {
+      target: { value: 'The Okafor\nfamily' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() =>
+      expect(patched(sent)).toEqual({
+        line: 'PATCH /api/events/ev_1',
+        body: { hosts: ['Funmi Adeyemi', 'The Okafor family'] },
+        ifMatch: '"4"',
+      }),
+    );
+  });
+
+  it('moves a host, keeping focus on the arrow pressed or the other once it reaches the end, and announces it', async () => {
+    signedIn();
+    const sent = serving({ hosts: ['Funmi Adeyemi', 'Tayo Adeyemi', 'Ade Bello'] });
+    await editing();
+
+    expect(
+      within(hostSection()).queryByRole('button', { name: 'Move Funmi Adeyemi up' }),
+    ).toBeNull();
+    expect(within(hostSection()).queryByRole('button', { name: 'Move Ade Bello down' })).toBeNull();
+
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Move Ade Bello up' }));
+    expect(names()).toEqual(['Funmi Adeyemi', 'Ade Bello', 'Tayo Adeyemi']);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(hostSection()).getByRole('button', { name: 'Move Ade Bello up' }),
+      ),
+    );
+    expect(document.querySelector('.event-form [role="status"]')?.textContent).toBe(
+      'Ade Bello moved to 2 of 3',
+    );
+
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Move Ade Bello up' }));
+    expect(names()).toEqual(['Ade Bello', 'Funmi Adeyemi', 'Tayo Adeyemi']);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(hostSection()).getByRole('button', { name: 'Move Ade Bello down' }),
+      ),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() =>
+      expect(patched(sent)?.body).toEqual({
+        hosts: ['Ade Bello', 'Funmi Adeyemi', 'Tayo Adeyemi'],
+      }),
+    );
+  });
+
+  it("removes a host, announcing it and moving focus to the next row's name, else Add a host", async () => {
+    signedIn();
+    serving({ hosts: ['Funmi Adeyemi', 'Tayo Adeyemi'] });
+    await editing();
+
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Remove Funmi Adeyemi' }));
+    expect(names()).toEqual(['Tayo Adeyemi']);
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Host 1')));
+    expect(document.querySelector('.event-form [role="status"]')?.textContent).toBe(
+      'Funmi Adeyemi removed',
+    );
+
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Remove Tayo Adeyemi' }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(hostSection()).getByRole('button', { name: 'Add a host' }),
+      ),
+    );
+  });
+
+  it('offers no Add a host at six, and says six is the most', async () => {
+    signedIn();
+    serving({ hosts: ['A', 'B', 'C', 'D', 'E', 'F'] });
+    await editing();
+
+    expect(within(hostSection()).queryByRole('button', { name: 'Add a host' })).toBeNull();
+    expect(within(hostSection()).getByText('6 is the most hosts an event can have.')).toBeDefined();
+  });
+
+  it("keeps a live event's last host, saying why under its name", async () => {
+    signedIn();
+    serving({ status: 'live', phase: 'live', hosts: ['Funmi Adeyemi'] });
+    await editing();
+
+    expect(within(hostSection()).queryByRole('button', { name: /^Remove/ })).toBeNull();
+    const field = screen.getByLabelText('Host 1');
+    const help = document.getElementById(
+      field.getAttribute('aria-describedby') ?? 'none',
+    )?.textContent;
+    expect(help).toBe(
+      "A live event needs at least one host, so this name can't be removed. You can still change it.",
+    );
+  });
+
+  it('lets a live event with no saved host remove a row it added', async () => {
+    signedIn();
+    serving({ status: 'live', phase: 'live', hosts: [] });
+    await editing();
+
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Add a host' }));
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Host 1')));
+    expect(within(hostSection()).getByRole('button', { name: 'Remove Host 1' })).toBeDefined();
+  });
+
+  it('refuses a blank, a too-long and a repeated name at once, focusing the first in page order', async () => {
+    signedIn();
+    const sent = serving({ hosts: [] });
+    await editing();
+
+    for (const name of ['Funmi Adeyemi', ' ', 'x'.repeat(66), 'FUNMI adeyemi']) {
+      fireEvent.click(within(hostSection()).getByRole('button', { name: 'Add a host' }));
+      const fields = within(hostSection()).getAllByRole('textbox');
+      fireEvent.change(fields[fields.length - 1]!, { target: { value: name } });
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Host 2')));
+    expect(within(hostSection()).getByText('Enter a name or remove this host.')).toBeDefined();
+    expect(
+      within(hostSection()).getByText(
+        "A host's name can be at most 60 characters. This one has 66.",
+      ),
+    ).toBeDefined();
+    expect(within(hostSection()).getByText('Funmi Adeyemi is already a host.')).toBeDefined();
+    expect(patched(sent)).toBeUndefined();
+  });
+
+  it("puts the event name's refusal ahead of a host's for focus", async () => {
+    signedIn();
+    serving({ hosts: [' '] });
+    await editing();
+
+    fireEvent.change(screen.getByLabelText('Event name'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Event name')));
+    expect(within(hostSection()).getByText('Enter a name or remove this host.')).toBeDefined();
+  });
+
+  it("shows the server's refusal under the host it names", async () => {
+    signedIn();
+    serving(
+      { hosts: ['Funmi Adeyemi'] },
+      {
+        'PATCH /api/events/ev_1': () =>
+          problem(422, 'validation_failed', {
+            violations: [
+              { propertyPath: 'hosts[1]', message: 'Tayo is already a host.', code: 'x' },
+            ],
+          }),
+      },
+    );
+    await editing();
+
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Add a host' }));
+    fireEvent.change(screen.getByLabelText('Host 2'), { target: { value: 'Tayo' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Host 2')));
+    expect(within(hostSection()).getByText('Tayo is already a host.')).toBeDefined();
+  });
+
+  it('arrives from Make live at Add a host when there are none', async () => {
+    signedIn();
+    serving({ hosts: [] });
+    await editing('#hosts');
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(hostSection()).getByRole('button', { name: 'Add a host' }),
+      ),
+    );
+  });
+
+  it("arrives from Make live at the first host's name", async () => {
+    signedIn();
+    serving({ hosts: ['Funmi Adeyemi'] });
+    await editing('#hosts');
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Host 1')));
+  });
+});
+
+describe('Make live with no hosts (sc-6713)', () => {
+  const AHEAD = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+
+  it('opens refused, sends nothing, and links to Hosted by', async () => {
+    signedIn();
+    const sent = answering({
+      'GET /api/events/ev_1': () => json({ event: event({ ...AHEAD, hosts: [] }) }),
+    });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Make live' }));
+
+    const refused = await screen.findByRole('alertdialog', {
+      name: 'Add who is hosting before guests are invited.',
+    });
+    expect(
+      within(refused).getByText(
+        "Guests see the hosts' names on their invitation. This event stays a draft until it has at least one host.",
+      ),
+    ).toBeDefined();
+    expect(
+      within(refused).getByRole('link', { name: 'Add who is hosting' }).getAttribute('href'),
+    ).toBe('/app/events/ev_1/edit#hosts');
+    expect(sent.map(({ line }) => line)).not.toContain('POST /api/events/ev_1/make-live');
+  });
+
+  it('says the same when the API refuses it after the dialog opened', async () => {
+    signedIn();
+    let reads = 0;
+    answering({
+      'GET /api/events/ev_1': () =>
+        json({
+          event: event({ ...AHEAD, hosts: (reads += 1) === 1 ? ['Funmi Adeyemi'] : [] }),
+        }),
+      'POST /api/events/ev_1/make-live': () => problem(409, 'event_host_required'),
+    });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+    fireEvent.click(screen.getByRole('button', { name: 'Make live' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Make Adaeze and Tunde live?' });
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Make live' }));
+
+    expect(
+      await screen.findByRole('alertdialog', {
+        name: 'Add who is hosting before guests are invited.',
+      }),
+    ).toBeDefined();
   });
 });

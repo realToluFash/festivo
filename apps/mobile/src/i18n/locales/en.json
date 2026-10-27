@@ -1521,7 +1521,9 @@
     "planLimit_one": "Not made live. Your {{plan}} plan allows {{count}} event to be live or paused at a time.",
     "planLimit_other": "Not made live. Your {{plan}} plan allows {{count}} events to be live or paused at a time.",
     "planLimitStays": "This event stays a draft. Finish or call off another event, or change plan.",
-    "close": "Close"
+    "close": "Close",
+    "needsHostTitle": "Add who is hosting before guests are invited.",
+    "needsHostBody": "Guests see the hosts' names on their invitation. This event stays a draft until it has at least one host."
   },
   "eventEnd": {
     "callOff": "Call off",
