@@ -1,0 +1,31 @@
+# Signs in by testID alone, in any language, from a fresh launch. sc-13408.
+#
+# sign-in.yaml waits on the English 'Email'; this one runs on a phone left in any of the four.
+#
+#   node .qa/bin/qa-env.mjs maestro sign-in-any-language -e EMAIL=… -e PASSWORD=…
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 90000
+- takeScreenshot: mobile-sign-in-language
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- eraseText: 120
+- inputText: ${PASSWORD}
+- tapOn:
+    id: 'signIn.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'home.switchOrganisation'
+    timeout: 60000
+- takeScreenshot: mobile-signed-in

@@ -1,0 +1,15 @@
+# Closes the keys by a tap on the sheet's own text, then taps Create organisation. sc-13408.
+#
+# The tap is on the Spanish intro, the language the retest ran in: the sheet's text has
+# no testID to tap instead.
+appId: host.exp.Exponent
+---
+- tapOn: 'Usted tendrá.*'
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: mobile-13408-keys-down-before
+- tapOn:
+    id: 'createOrganisation.create'
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: mobile-13408-keys-down-after

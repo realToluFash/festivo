@@ -1,0 +1,8 @@
+# Taps Create organisation. sc-13408.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'createOrganisation.create'
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: mobile-13408-tap-create
