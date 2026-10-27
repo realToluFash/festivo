@@ -1613,7 +1613,6 @@ async function reloadApp() {
   });
 }
 
-// Under ten seconds an answer: batch/helper.js asks again while this says wait.
 export function expoGoRunning(launchctlList) {
   return new RegExp(
     `^\\d+\\s+\\S+\\s+UIKitApplication:${EXPO_GO.replaceAll('.', '\\.')}\\[`,
@@ -1626,6 +1625,7 @@ function appRunning(device, onAndroid) {
   return expoGoRunning(capture('xcrun', ['simctl', 'spawn', device, 'launchctl', 'list']) ?? '');
 }
 
+// Under ten seconds an answer: batch/helper.js asks again while this says wait.
 function startHelper({ email, secret, token, passed, device, onAndroid }) {
   const server = createServer(async (request, response) => {
     const url = new URL(request.url ?? '/', 'http://helper');
@@ -1672,7 +1672,7 @@ function startHelper({ email, secret, token, passed, device, onAndroid }) {
 // Maestro hangs rather than exits when its driver dies, so a run gets a budget.
 export const runBudgetMs = (runs) => (5 + 2 * runs) * 60_000;
 
-function runAsync(command, args, { cwd, env, timeoutMs }) {
+export function runAsync(command, args, { cwd, env, timeoutMs }) {
   return new Promise((done) => {
     const child = spawn(command, args, { cwd, stdio: 'inherit', env: { ...process.env, ...env } });
     const timer =

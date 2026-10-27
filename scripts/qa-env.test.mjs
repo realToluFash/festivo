@@ -26,6 +26,7 @@ import {
   parseBatch,
   REBUILD,
   rerunHints,
+  runAsync,
   runBudgetMs,
   STEP_MS,
   totp,
@@ -876,6 +877,15 @@ describe('the time a Maestro run is given', () => {
     expect(runBudgetMs(1)).toBe(7 * 60_000);
     expect(runBudgetMs(10)).toBeGreaterThan(runBudgetMs(1));
     expect(runBudgetMs(10)).toBeLessThan(47 * 60_000);
+  });
+
+  it('stops a run that never exits once its budget is spent', async () => {
+    const started = Date.now();
+    const ok = await runAsync(process.execPath, ['-e', 'setInterval(() => {}, 1e3)'], {
+      timeoutMs: 300,
+    });
+    expect(ok).toBe(false);
+    expect(Date.now() - started).toBeLessThan(5_000);
   });
 });
 
