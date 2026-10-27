@@ -84,6 +84,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   negativa empieza «No se ha finalizado.». Los invitados son «los invitados que abran su
   enlace». La fecha lleva «el {{date}}», como «desde el {{date}}». `scheduleLocked` y
   `scheduleConcluded` son la misma frase: el español no tiene la contracción que las distingue.
+- **27 Oct 2026. Pausar y reanudar un evento** (sc-15439 para sc-3586, `eventPause.*` web y
+  app). «Pausar», como el permiso; «Reanudar»; la salida es «Mantenerlo publicado». Las
+  negativas, «No se ha pausado.» y «No se ha reanudado.». "Check-in" es «el registro de
+  llegada» de los invitados, nunca «la recepción», que es la fiesta. El resultado concuerda con
+  «evento», nunca con el nombre: «El evento {{name}} vuelve a estar publicado».
 - **26 Oct 2026. Publicar un borrador y los estados del evento** (sc-13956, sc-3584,
   `eventLive.*` web y app, `events.*`, `eventsScreen.*`, `messages:event.*`,
   `event.plan_limit`). "Make live" es «Publicar», como ya dice el permiso «Crear, publicar,
