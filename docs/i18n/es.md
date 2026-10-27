@@ -464,3 +464,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   (`emails:twoFactor.on.subject`, `twoFactor.off.subject`, sc-14100): «Verificación en dos pasos
   activada» / «desactivada», a pair that differs only in its last word. «Se ha desactivado la
   verificación en dos pasos» ran past one line of a 360dp inbox row and hid the state.
+- **27 Oct 2026. The two-factor-due subject opens on the feature and the deadline**
+  (`emails:signInRules.twoFactorDue.subject`, sc-15219): «Verificación en dos pasos antes del
+  {deadline}: {organisation}». «antes del» reads with the weekday that `{deadline}` opens on;
+  the organisation goes last, so a 390 px inbox shows the date (qa2, #15218).
