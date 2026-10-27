@@ -7,11 +7,12 @@ import tempfile
 import threading
 import time
 import unittest
+import urllib.error
 import urllib.request
 from contextlib import redirect_stdout
 from unittest import mock
 
-from soirely_queue import dashboard, runlog, runner, store
+from soirely_queue import dashboard, runlog, runner, sessions, store
 
 from tests.test_runner import FakePlatform, config, work
 
@@ -180,6 +181,20 @@ class Snapshot(unittest.TestCase):
         self.assertIn("permissions: main grants 2 change(s) this machine has not applied: "
                       "just agents permissions apply", warnings)
 
+    def test_a_running_worker_and_each_recent_run_link_to_their_session(self):
+        session = "0b6f1e2a-3c4d-4e5f-8a9b-0c1d2e3f4a5b"
+        sessions.begin(self.db, "ops", {"session": session, "at": NOW, "item": 1})
+        sessions.begin(self.db, "dev2", {"session": "left-from-before", "at": NOW - 600})
+        self.platform.active.add("ops")
+        runlog.append(self.home, "ops", {"at": NOW, "role": "ops", "session": session,
+                                         "exit": 0, "report": "done"})
+        view = self.snap()
+        roles = {r["role"]: r for r in view["roles"]}
+        self.assertEqual(roles["ops"]["sessions"],
+                         [{"worker": "ops", "session": session, "at": NOW}])
+        self.assertEqual(roles["dev2"]["sessions"], [])
+        self.assertEqual(view["recent"][0]["session"], session)
+
     def test_a_failed_run_is_marked(self):
         runlog.append(self.home, "ops", {"at": NOW, "role": "ops", "exit": "1",
                                          "stopped": "exit-code", "report": "ended"})
@@ -213,3 +228,28 @@ class Serve(unittest.TestCase):
         with urllib.request.urlopen(url) as answer:
             self.assertIn("<title>Soirely agents</title>", answer.read().decode())
         self.assertEqual(len(reads), 1)
+
+    def test_a_session_is_served_by_its_id_and_an_unknown_one_is_not_found(self):
+        said, asked = [], []
+        server_ready = threading.Event()
+
+        def say(line):
+            said.append(line)
+            server_ready.set()
+
+        def session(found):
+            asked.append(found)
+            return {"session": found} if found == "known" else None
+
+        thread = threading.Thread(target=dashboard.serve, daemon=True,
+                                  args=(lambda now: {}, 0),
+                                  kwargs={"open_page": False, "say": say, "session": session})
+        thread.start()
+        self.assertTrue(server_ready.wait(5))
+        url = said[0].split()[2]
+        with urllib.request.urlopen(url + "session.json?id=known") as answer:
+            self.assertEqual(json.load(answer), {"session": "known"})
+        with self.assertRaises(urllib.error.HTTPError) as refused:
+            urllib.request.urlopen(url + "session.json?id=other")
+        self.assertEqual(refused.exception.code, 404)
+        self.assertEqual(asked, ["known", "other"])
