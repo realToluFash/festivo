@@ -199,7 +199,7 @@ function MilestoneRow({
     <li className={`timeline-row${standing === 'passed' ? ' timeline-row-passed' : ''}`}>
       <p className="timeline-when">
         <time dateTime={milestone.at}>
-          {namesZone(timeZone, readerZone())
+          {distance && namesZone(timeZone, readerZone())
             ? t('timeline.momentInZone', { moment, timeZone })
             : moment}
         </time>
@@ -228,11 +228,6 @@ function MilestoneRow({
         )}
         {nextUp && <span className="pill-quiet timeline-next-up">{t('timeline.nextUp')}</span>}
       </div>
-      {milestone.action != null && (
-        <Link className="link-button" to={milestone.action.link}>
-          {milestone.action.label}
-        </Link>
-      )}
     </li>
   );
 }

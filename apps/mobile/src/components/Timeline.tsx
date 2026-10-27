@@ -228,9 +228,10 @@ function MilestoneRow({
   const { milestone, standing, nextUp } = marked;
   const passed = standing === 'passed';
   const moment = formatEventMoment(milestone.at, timeZone, dateLocale());
-  const when = namesZone(timeZone, readerZone())
-    ? t('timeline.momentInZone', { moment, timeZone })
-    : moment;
+  const when =
+    distance && namesZone(timeZone, readerZone())
+      ? t('timeline.momentInZone', { moment, timeZone })
+      : moment;
 
   return (
     <View style={[styles.row, !first && styles.rowDivider]} testID="timeline.row">

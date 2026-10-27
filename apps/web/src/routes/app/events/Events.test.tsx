@@ -3514,7 +3514,7 @@ describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
     expect(within(panel).queryByText("The schedule didn't load.")).toBeNull();
   });
 
-  it('lists every milestone in Full schedule under its zone, Passed and Next up as words', async () => {
+  it('lists every milestone in Full schedule under its zone, named once, Passed and Next up as words', async () => {
     clockAt('2026-10-11T08:00:00Z');
     signedIn();
     answering({
@@ -3532,12 +3532,12 @@ describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
       ),
     ).toBeDefined();
     expect(rows(page)).toEqual([
-      'Sat, Oct 10, 12:00 (Europe/Madrid)Save the date sentAutomatic✓ Passed',
-      'Sat, Oct 17, 18:00 (Europe/Madrid)Boda startsEventNext up',
-      'Sun, Oct 18, 09:00 (Europe/Madrid)BrunchAutomatic',
-      'Mon, Oct 19, 12:00 (Europe/Madrid)Balance dueYou',
-      'Tue, Oct 20, 12:00 (Europe/Madrid)Thank-you notes sentAutomatic',
-      'Mon, Oct 26, 02:00 (Europe/Madrid)Boda endsEvent',
+      'Sat, Oct 10, 12:00Save the date sentAutomatic✓ Passed',
+      'Sat, Oct 17, 18:00Boda startsEventNext up',
+      'Sun, Oct 18, 09:00BrunchAutomatic',
+      'Mon, Oct 19, 12:00Balance dueYou',
+      'Tue, Oct 20, 12:00Thank-you notes sentAutomatic',
+      'Mon, Oct 26, 02:00Boda endsEvent',
     ]);
     expect(within(page).getByText('Something you need to do')).toBeDefined();
   });
@@ -3556,10 +3556,8 @@ describe("An event's timeline: Coming up and Full schedule (sc-3624)", () => {
     )!;
 
     await waitFor(() => expect(within(page).getAllByRole('listitem')).toHaveLength(6));
-    expect(rows(page)[3]).toBe('Mon, Oct 19, 12:00 (Europe/Madrid)Balance dueYou⚠ OverdueNext up');
-    expect(rows(page)[4]).toBe(
-      'Tue, Oct 20, 12:00 (Europe/Madrid)Thank-you notes sentAutomatic✓ Passed',
-    );
+    expect(rows(page)[3]).toBe('Mon, Oct 19, 12:00Balance dueYou⚠ OverdueNext up');
+    expect(rows(page)[4]).toBe('Tue, Oct 20, 12:00Thank-you notes sentAutomatic✓ Passed');
   });
 
   it('marks nothing Next up in Full schedule once the event is over', async () => {
