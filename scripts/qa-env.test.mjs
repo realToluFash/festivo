@@ -328,15 +328,11 @@ describe('a release build', () => {
       '/sims/ABC/data/Library/UserConfigurationProfiles/EffectiveUserSettings.plist',
       '/sims/ABC/data/Library/UserConfigurationProfiles/PublicInfo/PublicEffectiveUserSettings.plist',
     ]);
-    const steps = passwordAutoFillOff(files[0]);
-    expect(steps.at(-1)).toEqual([
-      '-replace',
-      'restrictedBool.allowPasswordAutoFill.value',
-      '-bool',
-      'NO',
-      files[0],
+    expect(passwordAutoFillOff(files[0])).toEqual([
+      ['-insert', 'restrictedBool', '-dictionary', files[0]],
+      ['-insert', 'restrictedBool.allowPasswordAutoFill', '-dictionary', files[0]],
+      ['-replace', 'restrictedBool.allowPasswordAutoFill.value', '-bool', 'NO', files[0]],
     ]);
-    expect(steps.every((step) => step.at(-1) === files[0])).toBe(true);
   });
 
   it('installs the bundle the app config names', () => {
