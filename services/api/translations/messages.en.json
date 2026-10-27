@@ -49,8 +49,6 @@
     "validation.event_end_required": "Choose when the event ends.",
     "validation.event_host_blank": "Enter a name or remove this host.",
     "validation.event_host_duplicate": "{name} is already a host.",
-    "validation.event_host_too_long": "A host's name can be at most {count} characters. This one has {length}.",
-    "validation.event_hosts_too_many": "An event can have at most {count} hosts.",
     "validation.event_name_required": "Give the event a name.",
     "validation.event_start_required": "Choose when the event starts.",
     "validation.event_time_invalid": "Enter a date and a time with no time zone offset.",

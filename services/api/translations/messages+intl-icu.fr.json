@@ -23,5 +23,7 @@
     "assistant.too_many_tools": "Au plus {most, number, ::group-auto} outils peuvent être proposés ; cette requête en propose {count, number, ::group-auto}.",
     "assistant.resource_context_too_long": "Le contexte de la ressource peut compter au plus {most, number, ::group-auto} caractères ; celui-ci en compte {count, number, ::group-auto}. Envoyez ce qui est à l’écran, pas la fiche entière.",
     "sign_in.idle_timeout": "{organisation} ferme les sessions après {days, number, ::group-auto} jours d’inactivité. Reconnectez-vous pour poursuivre.",
-    "validation.cover_description_too_long": "Raccourcissez la description à {count, number, ::group-auto} caractères maximum."
+    "validation.cover_description_too_long": "Raccourcissez la description à {count, number, ::group-auto} caractères maximum.",
+    "validation.event_host_too_long": "A host's name can be at most {count, number, ::group-auto} characters. This one has {length, number, ::group-auto}.",
+    "validation.event_hosts_too_many": "An event can have at most {count, number, ::group-auto} hosts."
 }

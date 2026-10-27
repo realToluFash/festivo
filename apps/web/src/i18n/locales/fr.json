@@ -205,13 +205,13 @@
     "moveDown": "Move {{name}} down",
     "remove": "Remove",
     "removeNamed": "Remove {{name}}",
-    "most": "{{most}} is the most hosts an event can have.",
+    "most": "{{most, number}} is the most hosts an event can have.",
     "lastHost": "A live event needs at least one host, so this name can't be removed. You can still change it.",
     "lastHostRefused": "A live event needs at least one host. Add a name here before saving.",
-    "moved": "{{name}} moved to {{position}} of {{count}}",
+    "moved": "{{name}} moved to {{position}} of {{count, number}}",
     "removed": "{{name}} removed",
     "blank": "Enter a name or remove this host.",
-    "tooLong": "A host's name can be at most {{most}} characters. This one has {{length}}.",
+    "tooLong": "A host's name can be at most {{most, number}} characters. This one has {{length, number}}.",
     "duplicate": "{{name}} is already a host."
   },
   "eventCover": {

@@ -23,5 +23,7 @@
     "assistant.too_many_tools": "At most {most, number, ::group-auto} tools may be offered; this request offers {count, number, ::group-auto}.",
     "assistant.resource_context_too_long": "The resource context may be at most {most, number, ::group-auto} characters; this one is {count, number, ::group-auto}. Send what is on the screen, not the whole record.",
     "sign_in.idle_timeout": "{organisation} signs people out after {days, number, ::group-auto} days without use. Sign in again to carry on.",
-    "validation.cover_description_too_long": "Shorten the description to {count, number, ::group-auto} characters or fewer."
+    "validation.cover_description_too_long": "Shorten the description to {count, number, ::group-auto} characters or fewer.",
+    "validation.event_host_too_long": "A host's name can be at most {count, number, ::group-auto} characters. This one has {length, number, ::group-auto}.",
+    "validation.event_hosts_too_many": "An event can have at most {count, number, ::group-auto} hosts."
 }
