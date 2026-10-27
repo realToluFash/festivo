@@ -25,6 +25,8 @@ use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Encoding\Base64;
+use Psl\Encoding\Hex;
+use Psl\Hash;
 use Psl\Json;
 use Psl\SecureRandom;
 use Psl\Str;
@@ -243,8 +245,9 @@ final class EventCoverTest extends ApiTestCase
 
         yield 'cut off after its header' => [Byte\slice($whole, 0, $scan + 6)];
         yield 'cut off halfway' => [Byte\slice($whole, 0, Byte\length($whole) >> 1)];
-        yield 'a header and a random body' => [Byte\slice($whole, 0, $scan) . SecureRandom\bytes(60_000)];
-        yield 'a header and a random body that ends as a JPEG ends' => [Byte\slice($whole, 0, $scan) . SecureRandom\bytes(60_000) . "\xFF\xD9"];
+        yield 'a header and a noise body' => [Byte\slice($whole, 0, $scan) . self::noise(60_000)];
+        yield 'a header and a noise body that ends as a JPEG ends' => [Byte\slice($whole, 0, $scan) . self::noise(60_000) . "\xFF\xD9"];
+        yield 'a body holding a frame header that ends as a JPEG ends' => [Byte\slice($whole, 0, $scan) . Byte\replace(self::noise(60_000), "\xFF", "\x00") . "\xFF\xC0\x00\x02\xFF\xD9"];
     }
 
     /** The browser reads its size from the header and showed it as a grey box (qa2, #16039; Decided, 27 Oct). */
@@ -508,6 +511,23 @@ final class EventCoverTest extends ApiTestCase
         }
 
         return $image->getImageBlob();
+    }
+
+    /**
+     * Fixed bytes: a random body is now and then walked as whole, so the refusal would only hold most runs (lead, PR #727).
+     *
+     * @param non-negative-int $length
+     */
+    private static function noise(int $length): string
+    {
+        $block = 'sc-3590';
+        $noise = '';
+        while (Byte\length($noise) < $length) {
+            $block = Hex\decode(Hash\hash($block, Hash\Algorithm::Sha256));
+            $noise .= $block;
+        }
+
+        return Byte\slice($noise, 0, $length);
     }
 
     private static function read(string $bytes): Imagick
