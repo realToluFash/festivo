@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Fixtures\Crash;
 
 use App\Http\Access\Policy\PublicAccess;
-use Psl\Str;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -17,9 +16,11 @@ final class CrashFixtureController
     #[Route('/api/_crash/memory', name: 'crash_fixture_memory', methods: ['GET'])]
     public function memory(): never
     {
-        $held = [];
+        // A chain of small arrays, as Doctrine hydrates rows: no one large allocation fails
+        // with room to spare, and the limit is used up to the last bytes.
+        $held = null;
         while (true) {
-            $held[] = Str\repeat('x', 1_048_576);
+            $held = [$held];
         }
     }
 
