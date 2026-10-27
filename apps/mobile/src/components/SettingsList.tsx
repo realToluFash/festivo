@@ -24,16 +24,19 @@ import { Text } from './Text.tsx';
 /** The section keeps its place in the tree on every layout, so a rotation keeps what was typed. */
 export function SettingsSplit({
   open,
+  givesWay = false,
   children,
 }: {
   open: SettingsSection | null;
+  /** The section's own list takes the Settings list's place. */
+  givesWay?: boolean;
   children: ReactNode;
 }) {
   const { kind } = useLayout();
 
   return (
     <View style={[styles.fill, kind !== 'phone' && styles.row]}>
-      {kind !== 'phone' && <SettingsList kind={kind} open={open} />}
+      {kind !== 'phone' && !givesWay && <SettingsList kind={kind} open={open} />}
       <View style={styles.fill}>{children}</View>
     </View>
   );

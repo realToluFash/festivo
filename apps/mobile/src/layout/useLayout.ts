@@ -42,6 +42,7 @@ export {
   isTablet,
   listAndPageKind,
   SETTINGS_LIST_WIDTH,
+  settingsListGivesWay,
   TABLET_MIN_DIMENSION,
 } from './classify.ts';
 export type { LayoutKind, SectionBeside } from './classify.ts';

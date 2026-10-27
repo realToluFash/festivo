@@ -1,4 +1,4 @@
-import { railWidth, sideListWidth } from './textSize.ts';
+import { atAccessibilitySizes, railWidth, sideListWidth } from './textSize.ts';
 
 /**
  * Which of the three layouts a window is.
@@ -89,21 +89,40 @@ export function listFitsBeside(section: number, { margins, list, between }: List
   return section - margins - list - between >= PAGE_BESIDE_MIN_WIDTH;
 }
 
+function fitsBeside(window: ScreenWindow, beside: SectionBeside, list: ListBeside): boolean {
+  const content = window.width - railWidth(window.fontScale);
+
+  return listFitsBeside(sectionWidth(window, beside), {
+    ...list,
+    list: sideListWidth(list.list, content, window.fontScale),
+  });
+}
+
+/** On its side at the accessibility sizes, a section's own list takes the Settings list's place where the three would not fit (sc-13496). */
+export function settingsListGivesWay(
+  window: ScreenWindow,
+  beside: SectionBeside,
+  list: ListBeside,
+): boolean {
+  return (
+    beside === 'settingsList' &&
+    classifyLayout(window) === 'tabletLandscape' &&
+    atAccessibilitySizes(window.fontScale) &&
+    !fitsBeside(window, beside, list) &&
+    fitsBeside(window, 'nothing', list)
+  );
+}
+
 /** On its side, a list sits beside its page only where the page keeps its room; elsewhere, one at a time. */
 export function listAndPageKind(
   window: ScreenWindow,
   beside: SectionBeside,
-  { margins, list, between }: ListBeside,
+  list: ListBeside,
 ): LayoutKind {
   const kind = classifyLayout(window);
   if (kind !== 'tabletLandscape') return kind;
 
-  const content = window.width - railWidth(window.fontScale);
-  const fits = listFitsBeside(sectionWidth(window, beside), {
-    margins,
-    list: sideListWidth(list, content, window.fontScale),
-    between,
-  });
-
-  return fits ? 'tabletLandscape' : 'tabletPortrait';
+  return fitsBeside(window, beside, list) || settingsListGivesWay(window, beside, list)
+    ? 'tabletLandscape'
+    : 'tabletPortrait';
 }

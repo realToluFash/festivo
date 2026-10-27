@@ -19,6 +19,7 @@ import {
   type ListAndPageSpacing,
   ListAndPage,
   useListAndPageKind,
+  useSettingsListGivesWay,
 } from '../../src/components/ListAndPage.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
 import { type StepClosed, stepClosed, useFocusOnAnswer } from '../../src/components/Screen.tsx';
@@ -48,6 +49,7 @@ const LOADING: Load = { kind: 'loading' };
 export default function MembersScreen() {
   const { t } = useTranslation();
   const kind = useListAndPageKind(SPACING, 'settingsList');
+  const givesWay = useSettingsListGivesWay(SPACING);
   const { organisation } = useSignedIn();
   const organisationId = organisation?.id;
   const [held, setHeld] = useState<{ in: string | undefined; load: Load }>({
@@ -257,7 +259,7 @@ export default function MembersScreen() {
           : undefined
       }
     >
-      <SettingsSplit open="members">
+      <SettingsSplit open="members" givesWay={givesWay}>
         <SheetsAtRoot>
           <ListAndPage
             kind={kind}

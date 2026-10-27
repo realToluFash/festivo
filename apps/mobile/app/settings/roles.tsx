@@ -12,6 +12,7 @@ import {
   type ListAndPageSpacing,
   ListAndPage,
   useListAndPageKind,
+  useSettingsListGivesWay,
 } from '../../src/components/ListAndPage.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
 import { RoleList, RolePage, RemoveRole } from '../../src/components/Roles.tsx';
@@ -42,6 +43,7 @@ const LOADING: Load = { kind: 'loading' };
 export default function RolesScreen() {
   const { t } = useTranslation();
   const kind = useListAndPageKind(SPACING, 'settingsList');
+  const givesWay = useSettingsListGivesWay(SPACING);
   const { organisation } = useSignedIn();
   const organisationId = organisation?.id;
   const [held, setHeld] = useState<{ in: string | undefined; load: Load }>({
@@ -276,7 +278,7 @@ export default function RolesScreen() {
           : undefined
       }
     >
-      <SettingsSplit open="roles">
+      <SettingsSplit open="roles" givesWay={givesWay}>
         <ListAndPage
           kind={kind}
           heading={heading}
