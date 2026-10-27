@@ -2308,6 +2308,8 @@ describe('The cover (sc-3590)', () => {
           201,
         );
       if (line === 'PUT /upload/1') return new Response(null, { status: 200 });
+      if (line === 'POST /api/orgs/org_1/event-cover-uploads/preview')
+        return json({ preview: 'data:image/webp;base64,UklGRg==' });
       if (line === 'PUT /api/events/ev_1/cover') {
         const { position, description } = body as { position: number; description: string | null };
         held = event({ cover: { ...PHOTO, position, description } });
@@ -2814,8 +2816,7 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
     });
   });
 
-  it('a JPEG the browser shows is not sent for a copy', async () => {
-    signedIn();
+  function chooseShownJpeg(): void {
     vi.stubGlobal(
       'Image',
       class {
@@ -2827,17 +2828,45 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
         }
       },
     );
-    const sent = serving(null);
-    await editing();
-
     fireEvent.change(document.getElementById('cover-file')!, {
       target: { files: [new File(['x'], 'arch.jpg', { type: 'image/jpeg' })] },
     });
+  }
+
+  it("a JPEG the browser shows is read by the server too, and the frame keeps the browser's own", async () => {
+    signedIn();
+    const sent = serving(null);
+    await editing();
+
+    chooseShownJpeg();
     const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
 
-    await waitFor(() => expect(sent.map(({ line }) => line)).toContain('PUT /upload/1'));
+    await waitFor(() => expect(sent.map(({ line }) => line)).toContain(PREVIEW));
+    await waitFor(() => expect(within(dialog).queryByText('Uploading…')).toBeNull());
     expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe('blob:chosen');
-    expect(sent.map(({ line }) => line)).not.toContain(PREVIEW);
+    expect(
+      within(dialog).getByRole('button', { name: 'Use this photo' }).getAttribute('aria-disabled'),
+    ).not.toBe('true');
+  });
+
+  it('a damaged JPEG whose size the browser reads is refused while Cover photo is open, and nothing is saved (27 Oct)', async () => {
+    signedIn();
+    const line = 'That file is not a photo we can use. Choose a JPEG, PNG, WebP or HEIC.';
+    const sent = serving(PHOTO, { [PREVIEW]: refusedWith(line) });
+    await editing();
+
+    chooseShownJpeg();
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+
+    expect(await within(dialog).findByText(line)).toBeDefined();
+    const use = within(dialog).getByRole('button', { name: 'Use this photo' });
+    expect(use.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(use);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByRole('button', { name: 'Change photo' })).toBeDefined();
+    expect(sent.filter(({ line: sentLine }) => sentLine.startsWith('PUT /api/events'))).toEqual([]);
   });
 
   for (const [what, line] of [

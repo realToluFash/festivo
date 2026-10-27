@@ -84,6 +84,10 @@ final readonly class CoverPhotoProcessor
             throw CoverPhotoRefused::type();
         }
 
+        if ('JPEG' === $image->getImageFormat() && !JpegStream::isWhole($bytes, $image)) {
+            throw CoverPhotoRefused::type();
+        }
+
         $image->setIteratorIndex(0);
         $image->autoOrient();
 
