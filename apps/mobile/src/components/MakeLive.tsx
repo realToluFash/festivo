@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { type MakeLiveRefusal, NOW_STATE, draftRowOf, refusalOf } from '../kit/makeLive.ts';
+import { type MakeLiveRefusal, CHANGED_WORDS, draftRowOf, refusalOf } from '../kit/makeLive.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton } from './Buttons.tsx';
@@ -52,7 +52,7 @@ export function DraftRow({
           ],
         ]
       : asking.kind === 'changed'
-        ? [t('eventLive.changedElsewhere'), [t(NOW_STATE[event.status])]]
+        ? [t(CHANGED_WORDS[event.phase][0]), [t(CHANGED_WORDS[event.phase][1])]]
         : asking.kind === 'concluded'
           ? [t('eventLive.notMadeLive'), [t('eventLive.endPassed')]]
           : asking.kind === 'needsHost'

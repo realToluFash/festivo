@@ -3,7 +3,7 @@ import { type RefObject, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
-import { NOW_STATE } from './eventWords.ts';
+import { CHANGED_WORDS } from './eventWords.ts';
 
 export type Confirming<C> = { kind: 'confirm'; pending: boolean; failed: boolean } & C;
 
@@ -50,10 +50,11 @@ export function useLifecycleAction<C extends object>({
 
   const changed: Refusal = {
     reload: true,
-    then: (latest) => ({
-      title: t('eventLive.changedElsewhere'),
-      lines: [t(NOW_STATE[latest.status])],
-    }),
+    then: (latest) => {
+      const [title, line] = CHANGED_WORDS[latest.phase];
+
+      return { title: t(title), lines: [t(line)] };
+    },
   };
 
   const ask = (choice: C) => setAsking(confirming(choice, false, false));

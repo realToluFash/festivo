@@ -5,7 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { type EndRefusal, NOW_STATE, endRefusalOf } from '../kit/makeLive.ts';
+import { type EndRefusal, CHANGED_WORDS, endRefusalOf } from '../kit/makeLive.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { SecondaryButton } from './Buttons.tsx';
@@ -71,7 +71,7 @@ export function EndRow({
                 ...(asking?.failed === true ? [t('eventEnd.failed')] : []),
               ]
             : asking.kind === 'changed'
-              ? [t('eventLive.changedElsewhere'), t(NOW_STATE[event.status])]
+              ? CHANGED_WORDS[event.phase].map((line) => t(line))
               : [t('eventEnd.alreadyOver')]
         }
         confirm={

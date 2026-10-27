@@ -5,7 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { NOW_STATE, type PauseRefusal, pauseRefusalOf } from '../kit/makeLive.ts';
+import { CHANGED_WORDS, type PauseRefusal, pauseRefusalOf } from '../kit/makeLive.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
@@ -62,7 +62,7 @@ export function PauseButton({
         }
         lines={
           asking?.kind === 'changed'
-            ? [t('eventLive.changedElsewhere'), t(NOW_STATE[event.status])]
+            ? CHANGED_WORDS[event.phase].map((line) => t(line))
             : [
                 t('eventPause.body'),
                 t('eventPause.nothingLost'),
@@ -135,10 +135,10 @@ export function PausedRow({
       <Notice
         tone="attention"
         mark={PAUSE_BARS}
-        body={changed ? t('eventLive.changedElsewhere') : t('eventPause.notice')}
+        body={changed ? t(CHANGED_WORDS[event.phase][0]) : t('eventPause.notice')}
         detail={
           changed
-            ? t(NOW_STATE[event.status])
+            ? t(CHANGED_WORDS[event.phase][1])
             : state === 'failed'
               ? t('eventPause.resumeFailed')
               : null

@@ -1,4 +1,4 @@
-import { ApiError, type EventStatus, type OrganisationEvent } from '@soirely/api-client';
+import { ApiError, type OrganisationEvent } from '@soirely/api-client';
 import { type EventPhase, type MakeLiveRow, makeLiveRow } from '@soirely/domain';
 
 /** The word each phase shows, never the stored state and never its colour alone (WCAG 2.2 §1.4.1). */
@@ -10,13 +10,14 @@ export const PHASE_WORD = {
   finished: 'eventsScreen.finished',
 } as const satisfies Record<EventPhase, string>;
 
-/** Each state's sentence whole, so a translation can agree it with the event. */
-export const NOW_STATE = {
-  draft: 'eventLive.nowState_draft',
-  live: 'eventLive.nowState_live',
-  paused: 'eventLive.nowState_paused',
-  ended: 'eventLive.nowState_finished',
-} as const satisfies Record<EventStatus, string>;
+/** A refusal's two lines, worded from the reloaded event's phase: past its end the clock moved it, not a colleague, so it says so. */
+export const CHANGED_WORDS = {
+  draft: ['eventLive.changedElsewhere', 'eventLive.nowState_draft'],
+  live: ['eventLive.changedElsewhere', 'eventLive.nowState_live'],
+  happening_now: ['eventLive.changedElsewhere', 'eventLive.nowState_live'],
+  paused: ['eventLive.changedElsewhere', 'eventLive.nowState_paused'],
+  finished: ['eventEnd.alreadyOver', 'eventLive.nowState_finished'],
+} as const satisfies Record<EventPhase, readonly [string, string]>;
 
 export interface DraftRow {
   line: MakeLiveRow['line'];

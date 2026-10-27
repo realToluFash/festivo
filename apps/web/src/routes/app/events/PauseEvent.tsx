@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { offButton } from '../../../offButton.ts';
-import { NOW_STATE } from './eventWords.ts';
+import { CHANGED_WORDS } from './eventWords.ts';
 import { LifecycleDialog } from './LifecycleDialog.tsx';
 import { useLifecycleAction } from './useLifecycleAction.ts';
 
@@ -116,8 +116,9 @@ export function PausedRow({
       <div className="notice-body">
         {changed ? (
           <div role="alert">
-            <p>{t('eventLive.changedElsewhere')}</p>
-            <p>{t(NOW_STATE[event.status])}</p>
+            {CHANGED_WORDS[event.phase].map((line) => (
+              <p key={line}>{t(line)}</p>
+            ))}
           </div>
         ) : (
           <p>{t('eventPause.notice')}</p>
