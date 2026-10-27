@@ -393,6 +393,19 @@ export function useFocusBackToOpener(
   return openers.ref;
 }
 
+/** Focus back to the opener that `closed` names, as `useFocusBackToOpener`; rendered inside a list's ScrollColumn so the opener comes into view. */
+export function FocusBack({
+  closed,
+  fallback,
+  children,
+}: {
+  closed: StepClosed | undefined;
+  fallback?: RefObject<ScreenReaderTarget | null>;
+  children: (opener: (key: string) => RefCallback<View>) => ReactNode;
+}) {
+  return children(useFocusBackToOpener(closed, fallback));
+}
+
 /** The scroll context a ScrollView provides, and the props that keep it in step with that view. */
 function useScreenScrollView() {
   const windowOrigin = useContext(Origin);
