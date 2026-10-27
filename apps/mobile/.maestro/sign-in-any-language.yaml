@@ -24,6 +24,13 @@ appId: host.exp.Exponent
 - inputText: ${PASSWORD}
 - tapOn:
     id: 'signIn.submit'
+# The iOS save-password dialog, as in sign-in.yaml. It is the system's, so it
+# follows the phone's language rather than the app's.
+- runFlow:
+    when:
+      visible: 'Save Password?'
+    commands:
+      - tapOn: 'Not Now'
 - extendedWaitUntil:
     visible:
       id: 'home.switchOrganisation'
