@@ -130,8 +130,9 @@ between is handled as they are then.
 - **It exits** after `--time-limit` or `--memory-limit`, on SIGTERM (finishing the row in
   hand), and when the database connection or the entity manager goes. Its container's
   restart is the reconnect. `--once` handles what is due and exits.
-- **Heartbeat**: `var/notifications-worker.heartbeat`, touched on every poll. The container
-  is unhealthy when it is older than the health window.
+- **Heartbeat**: `var/notifications-worker.heartbeat` (`--heartbeat` overrides it; tests
+  use their own file), touched on every poll. The container is unhealthy when it is older
+  than the health window.
 
 ## The alert
 

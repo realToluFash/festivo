@@ -11,6 +11,7 @@ use App\Enum\Permission;
 use DateTimeImmutable;
 use LogicException;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\SecureRandom;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
 
@@ -36,13 +37,13 @@ final class WorkNotificationsCommandTest extends MessagingTestCase
     public function eachPollLeavesAHeartbeat(): void
     {
         $kernel = self::$kernel ?? throw new LogicException('No kernel.');
-        $heartbeat = $kernel->getProjectDir() . '/var/notifications-worker.heartbeat';
-        \touch($heartbeat, \time() - 600);
-        \clearstatcache();
+        $heartbeat = $kernel->getProjectDir() . '/var/notifications-worker-' . SecureRandom\string(12) . '.heartbeat';
+        $command = new Application($kernel)->find(WorkNotificationsCommand::NAME);
 
-        new CommandTester(new Application($kernel)->find(WorkNotificationsCommand::NAME))->execute(['--once' => true]);
-        \clearstatcache();
+        new CommandTester($command)->execute(['--once' => true, '--heartbeat' => $heartbeat]);
 
-        self::assertGreaterThan(\time() - 5, \filemtime($heartbeat));
+        self::assertFileExists($heartbeat);
+        \unlink($heartbeat);
+        self::assertSame($kernel->getProjectDir() . '/var/notifications-worker.heartbeat', $command->getDefinition()->getOption('heartbeat')->getDefault(), 'The compose healthcheck reads this file.');
     }
 }
