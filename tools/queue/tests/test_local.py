@@ -9,7 +9,7 @@ import unittest
 import urllib.error
 from unittest import mock
 
-from soirely_queue import local, store, work
+from soirely_queue import cli, local, store, work
 
 DAY = 24 * 60 * 60
 
@@ -77,19 +77,35 @@ class Checks(unittest.TestCase):
         self.assertEqual(asked, [True])
         self.assertIn("soirely-qa3 16.0 GB", self.items()[0]["reason"])
 
-    def test_the_minute_reads_the_measure_once_it_has_finished(self):
+    def stored_falling(self):
+        return [row["reason"] for row in self.db.execute("select reason from work")
+                if "twice minFreeGb" in row["reason"]]
+
+    def test_ops_is_woken_with_the_folders_once_the_measure_has_finished(self):
         answers, asked = [None, None, "soirely-qa3 16.0 GB"], []
         for minute in range(4):
-            local.checks(self.db, self.config, DAY * 10 + 60 * minute, cache=lambda: 1.0,
-                         free=lambda c: 25.0,
+            now = DAY * 10 + 60 * minute
+            local.checks(self.db, self.config, now, cache=lambda: 1.0, free=lambda c: 25.0,
                          largest=lambda c, start: asked.append(start) or answers.pop(0))
+            cli.refresh_work(self.db, now)
+            if minute < 2:
+                self.assertEqual(self.stored_falling(), [])
         self.assertEqual(asked, [True, False, False])
-        self.assertIn("soirely-qa3 16.0 GB", self.items()[0]["reason"])
+        self.assertEqual(len(self.stored_falling()), 1)
+        self.assertIn("soirely-qa3 16.0 GB", self.stored_falling()[0])
+
+    def test_a_measure_that_never_finishes_wakes_ops_saying_so(self):
+        for now in (DAY * 10, DAY * 10 + local.MEASURE_SECONDS):
+            local.checks(self.db, self.config, now, cache=lambda: 1.0, free=lambda c: 25.0,
+                         largest=lambda c, start: None)
+            cli.refresh_work(self.db, now)
+        self.assertEqual(len(self.stored_falling()), 1)
+        self.assertIn("du still running after 30 minutes", self.stored_falling()[0])
 
     def test_a_dry_run_measures_nothing(self):
         local.checks(self.db, self.config, DAY * 10, cache=lambda: 1.0, free=lambda c: 25.0,
                      largest=lambda c, start: self.fail("measured"), dry_run=True)
-        self.assertIn("still being measured", self.items()[0]["reason"])
+        self.assertFalse([i for i in self.items() if "twice minFreeGb" in i["reason"]])
 
     def test_a_disk_under_the_floor_is_urgent_and_not_also_falling(self):
         self.found(free=4.0)

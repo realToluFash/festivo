@@ -30,6 +30,7 @@ HARNESS = ("bin", "state.json")
 RECORDS = {"release": ("installed",)}
 STORY_NUMBER = re.compile(r"\d{4,}")
 LARGEST = 5
+MEASURE_SECONDS = 30 * 60
 DEVICES = ("~/Library/Developer/CoreSimulator/Devices", "~/.android/avd")
 
 
@@ -222,11 +223,18 @@ def checks(db, config, now=None, cache=None, free=None, largest=None, dry_run=Fa
         period = int(now // SWEEP_SECONDS)
         seen = store.get_meta(db, "largest_folders") or {}
         if not dry_run and (seen.get("period") != period or not seen.get("text")):
-            seen = {"period": period, "text": largest(config, seen.get("period") != period)}
+            start = seen.get("period") != period
+            seen = {"period": period, "started": now if start else seen.get("started", now),
+                    "text": largest(config, start)}
             store.set_meta(db, "largest_folders", seen)
-        found.append({"key": "disk-falling", "urgent": False, "period": period,
-                      "reason": f"{left:.0f} GB free on {name}, under twice minFreeGb {floor}; "
-                                f"the largest: {seen.get('text') or 'still being measured'}"})
+        text = seen.get("text")
+        if not text and seen.get("period") == period \
+                and now - seen.get("started", now) >= MEASURE_SECONDS:
+            text = f"not measured, du still running after {MEASURE_SECONDS // 60} minutes"
+        if text:
+            found.append({"key": "disk-falling", "urgent": False, "period": period,
+                          "reason": f"{left:.0f} GB free on {name}, under twice minFreeGb "
+                                    f"{floor}; the largest: {text}"})
     seen = store.get_meta(db, "build_cache") or {}
     if now - seen.get("at", 0) >= DOCKER_EVERY_SECONDS:
         seen = {"at": now, "gb": cache()}
