@@ -38,3 +38,4 @@ export * from './venueLookup.ts';
 export * from './typedName.ts';
 export * from './hosts.ts';
 export * from './timeline.ts';
+export * from './eventsHome.ts';
