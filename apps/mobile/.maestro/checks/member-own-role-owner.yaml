@@ -19,5 +19,8 @@ appId: host.exp.Exponent
 - takeScreenshot: member-own-role-owner
 - tapOn:
     id: members.goToOrganisation
-- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 20000
 - takeScreenshot: member-own-role-owner-go
