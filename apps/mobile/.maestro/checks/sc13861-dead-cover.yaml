@@ -1,4 +1,4 @@
-# sc-13861: a saved cover that fails to load shows its type's default (${TYPE}) on the row in Events and across the top of the event's page, and the description (${DESC}) is not read. EVENT is the event's id, NAME its name, which a row whose photo is shown reads after the description.
+# sc-13861: a saved cover that fails to load shows its type's default (${TYPE}) on the row in Events and across the top of the event's page, and the description (${DESC}) is not read. EVENT is the event's id, TAB the Events tab that holds it (upcoming, drafts or past), NAME its name.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events
@@ -6,6 +6,8 @@ appId: host.exp.Exponent
     visible:
       id: 'frame.events'
     timeout: 30000
+- tapOn:
+    id: 'events.tab.${TAB}'
 - scrollUntilVisible:
     element:
       id: 'events.row.${EVENT}'
@@ -14,10 +16,10 @@ appId: host.exp.Exponent
 - extendedWaitUntil:
     visible:
       id: 'events.row.${EVENT}'
-      text: '${NAME}, .*'
+      text: '.*${NAME}.*'
     timeout: 15000
 - assertNotVisible:
-    text: '${DESC}, ${NAME}.*'
+    text: '.*${DESC}.*'
 - takeScreenshot: list
 - tapOn:
     id: 'events.row.${EVENT}'

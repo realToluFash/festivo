@@ -1,4 +1,4 @@
-# sc-13861: a saved cover that loads shows the photo, read by its description (${DESC}), on the row in Events and on the event's page, with no default (${TYPE}) standing in. EVENT is the event's id.
+# sc-13861: a saved cover that loads shows the photo, read by its description (${DESC}), on the row in Events and on the event's page, with no default (${TYPE}) standing in. EVENT is the event's id, TAB the Events tab that holds it (upcoming, drafts or past).
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events
@@ -6,6 +6,8 @@ appId: host.exp.Exponent
     visible:
       id: 'frame.events'
     timeout: 30000
+- tapOn:
+    id: 'events.tab.${TAB}'
 - scrollUntilVisible:
     element:
       id: 'events.row.${EVENT}'
@@ -27,6 +29,11 @@ appId: host.exp.Exponent
       id: 'events.page.cover'
     direction: UP
     timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: 'events.page.cover'
+      text: '.*${DESC}.*'
+    timeout: 15000
 - assertNotVisible:
     id: 'cover-default-${TYPE}'
     childOf:
