@@ -823,13 +823,27 @@ class Worker(unittest.TestCase):
         self.assertEqual(entry["report"], "the worker ended without a report: timeout")
         self.assertIsNone(runner.worker_ended(self.home, self.platform, "ops", 1))
 
-    def test_a_worker_stopped_by_its_limit_names_the_session_it_was_running(self):
-        sessions.begin(self.db, "ops", {"item": 1, "session": SESSION})
+    def test_a_worker_stopped_by_its_limit_keeps_the_session_it_was_running(self):
+        claude = self.root / "claude"
+        path = claude / "projects" / "-x-soirely-ops" / f"{SESSION}.jsonl"
+        path.parent.mkdir(parents=True)
+        path.write_text("")
+        sessions.begin(self.db, "ops", {"at": ON_ZERO, "item": 1, "role": "ops",
+                                        "session": SESSION, "folder": str(claude),
+                                        "cwd": str(self.root / "soirely-ops"),
+                                        "model": "claude-opus-5-5", "story": 1})
         sessions.begin(self.db, "dev2", {"item": 1, "session": "another"})
         with mock.patch.dict("os.environ", {"SERVICE_RESULT": "timeout"}):
-            entry = runner.worker_ended(self.home, self.platform, "ops", 1, now=ON_ZERO,
-                                        db=self.db)
-        self.assertEqual(entry["session"], SESSION)
+            entry = runner.worker_ended(self.home, self.platform, "ops", 1,
+                                        now=ON_ZERO + 60, db=self.db)
+        self.assertEqual((entry["session"], entry["at"], entry["ended"]),
+                         (SESSION, ON_ZERO, ON_ZERO + 60))
+        sessions.begin(self.db, "ops", {"item": 2, "session": "next"})
+        shown = sessions.view(self.db, self.home, self.platform, SESSION,
+                              load=lambda: config(self.root))
+        self.assertEqual((shown["transcript"], shown["model"], shown["ended"]["stopped"]),
+                         (str(path), "claude-opus-5-5", "timeout"))
+        self.assertIn(f"claude --resume {SESSION}", shown["resume"])
 
     def test_a_session_left_from_an_earlier_item_is_not_named(self):
         sessions.begin(self.db, "ops", {"item": 7, "session": SESSION})

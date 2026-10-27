@@ -1203,7 +1203,9 @@
         const resume = d.resume
           ? `<div class="block"><div class="k"><span>Continue it in a terminal</span><button class="copy" data-copy="resume" type="button">Copy command</button></div>
       <pre class="mono" id="prompt-resume">${esc(d.resume)}</pre></div>`
-          : '';
+          : d.resume_gone
+            ? `<div class="block"><div class="k"><span>Continue it in a terminal</span></div><div class="v">${esc(d.resume_gone)}</div></div>`
+            : '';
         const report = end
           ? `<div class="block"><div class="k"><span>Its report</span></div><div class="v said ${failed ? 'fail' : ''}">${esc(end.report || 'No report')}</div></div>`
           : '';

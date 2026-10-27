@@ -151,12 +151,20 @@ class View(unittest.TestCase):
         self.assertIsNone(self.see("1d5c1d1e-0000-4000-8000-000000000000"))
         self.assertIsNone(self.see("../../etc/passwd"))
         self.assertIsNone(self.see(""))
+        self.assertIsNone(self.see(SESSION + "\n"))
 
     def test_the_command_to_continue_it_names_its_account_folder_and_checkout(self):
+        (self.root / "soirely-qa").mkdir()
         sessions.begin(self.db, "qa", self.run)
         self.assertEqual(self.see()["resume"],
                          f"cd {self.root / 'soirely-qa'} && CLAUDE_CONFIG_DIR={self.claude} "
                          f"claude --resume {SESSION}")
+
+    def test_a_session_whose_checkout_was_removed_offers_no_command_and_says_why(self):
+        sessions.begin(self.db, "qa", self.run)
+        shown = self.see()
+        self.assertIsNone(shown["resume"])
+        self.assertIn("was removed when the run ended", shown["resume_gone"])
 
 
 if __name__ == "__main__":

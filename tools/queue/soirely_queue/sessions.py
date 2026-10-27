@@ -4,13 +4,14 @@ transcript Claude writes as it goes, under the account folder it runs as
 
 import datetime
 import json
+import pathlib
 import re
 import shlex
 import uuid
 
 from . import machine, roles, runlog, store
 
-ID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+ID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 OUTPUT_CHARS = 4000
 TEXT_CHARS = 20000
 INPUT_CHARS = 2000
@@ -197,7 +198,7 @@ def pr_view(db, number, story_id):
 
 def view(db, home, platform, session_id, load=machine.load):
     """Everything `sq web` shows for one session, or None for an id no run here started."""
-    if not ID.match(session_id or ""):
+    if not ID.fullmatch(session_id or ""):
         return None
     run = recorded(db, home, session_id)
     if not run:
@@ -220,8 +221,14 @@ def view(db, home, platform, session_id, load=machine.load):
              "main": run.get("main"),
              "story": story_view(db, run.get("story")),
              "prs": pr_view(db, item["pr"] if item else None, run.get("story")),
-             "resume": resume(run) if run.get("folder") and run.get("cwd") else None,
+             "resume": None, "resume_gone": None,
              "ended": None, "steps": [], "tokens": None, "transcript": None}
+    if run.get("folder") and run.get("cwd"):
+        if pathlib.Path(run["cwd"]).is_dir():
+            shown["resume"] = resume(run)
+        else:
+            shown["resume_gone"] = (f"It cannot be continued here: {run['cwd']}, the checkout "
+                                    "it ran in, was removed when the run ended.")
     if entry:
         shown["ended"] = {"cost": entry.get("cost_usd"), "report": entry.get("report"),
                           "seconds": (entry.get("duration_ms") or 0) // 1000 or None,
