@@ -131,9 +131,50 @@ def nvm_node():
                 or name.lstrip("v").startswith(wanted + ".")]
     if not matching:
         return None
-    newest = max(matching, key=lambda name: tuple(
-        int(part) if part.isdigit() else 0 for part in name.lstrip("v").split(".")))
+    newest = max(matching, key=version_key)
     return folder / "versions" / "node" / newest / "bin"
+
+
+def version_key(name):
+    return tuple(int(part) if part.isdigit() else 0 for part in name.lstrip("v").split("."))
+
+
+def wanted_node(config):
+    """The node the main checkout's `.nvmrc` asks for, when it names a version number."""
+    main = checkout(config, "dev")
+    try:
+        wanted = (main / ".nvmrc").read_text().strip().lstrip("v")
+    except (OSError, TypeError):
+        return None
+    return wanted if re.fullmatch(r"\d+(\.\d+)*", wanted) else None
+
+
+def node_version(node):
+    try:
+        stamp = pathlib.Path(node).resolve().stat().st_mtime
+    except OSError:
+        return None
+    return _node_version(str(node), stamp)
+
+
+@functools.lru_cache(maxsize=8)
+def _node_version(node, stamp):
+    try:
+        said = subprocess.run([node, "--version"], capture_output=True, text=True,
+                              timeout=10).stdout.strip().lstrip("v")
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return said if re.fullmatch(r"\d+(\.\d+)*", said) else None
+
+
+def node_behind(config, node):
+    """A warning when the node a worker runs is older than the main checkout's `.nvmrc`."""
+    wanted = wanted_node(config)
+    found = node_version(node) if wanted else None
+    if not found or version_key(found) >= version_key(wanted):
+        return None
+    return (f"workers run node {found}, older than the {wanted} that .nvmrc asks for: "
+            f"nvm install {wanted} && nvm alias default {wanted}")
 
 
 def tool_folders():
