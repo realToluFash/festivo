@@ -42,7 +42,8 @@ final class WorkNotificationsCommand extends Command implements SignalableComman
             ->addOption('once', null, InputOption::VALUE_NONE, 'Handle everything due now, then exit')
             ->addOption('time-limit', null, InputOption::VALUE_REQUIRED, 'Exit after this many seconds', '3600')
             ->addOption('memory-limit', null, InputOption::VALUE_REQUIRED, 'Exit once memory use passes this, in megabytes', '128')
-            ->addOption('poll', null, InputOption::VALUE_REQUIRED, 'Seconds to wait when nothing is due', '1');
+            ->addOption('poll', null, InputOption::VALUE_REQUIRED, 'Seconds to wait when nothing is due', '1')
+            ->addOption('heartbeat', null, InputOption::VALUE_REQUIRED, 'The file touched on every poll', $this->heartbeatPath);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -54,10 +55,11 @@ final class WorkNotificationsCommand extends Command implements SignalableComman
         $deadline = \microtime(true) + self::number($input->getOption('time-limit'));
         $memoryLimit = (int) (self::number($input->getOption('memory-limit')) * 1024 * 1024);
         $pollMicroseconds = (int) (self::number($input->getOption('poll')) * 1_000_000);
+        $heartbeat = Type\string()->coerce($input->getOption('heartbeat'));
         $handled = 0;
 
         while (!$this->stopping) {
-            $this->beat();
+            \touch($heartbeat);
             $didWork = $this->notificationWorker->step();
             $this->entityManager->clear();
 
@@ -99,11 +101,6 @@ final class WorkNotificationsCommand extends Command implements SignalableComman
         $this->stopping = true;
 
         return false;
-    }
-
-    private function beat(): void
-    {
-        \touch($this->heartbeatPath);
     }
 
     private function sleep(int $microseconds): void

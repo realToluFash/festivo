@@ -7,7 +7,7 @@ namespace App\Domain\Event\Interfaces;
 use App\Domain\Event\Model\PlanLimit;
 use App\Entity\Organisation;
 
-/** The plan's active-events limit, consulted before an event is made live. Billing provides the number (sc-581). */
+/** The plan's active-events limit, consulted before an event is made live. Billing provides the number (sc-581); what it is held against is `EventRepository::countActiveIn`, Paused counted as Live is. */
 interface ActiveEventsLimitInterface
 {
     /** Null while the organisation's plan allows one more event to be Live or Paused. */

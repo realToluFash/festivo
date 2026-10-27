@@ -54,6 +54,23 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **27 Oct 2026. Dupliquer un événement** (sc-15883 pour sc-3593, `web:eventDuplicate.*`).
+  « Dupliquer » et « Créer le brouillon » ; le nouvel événement est « la copie » tant qu’il
+  n’existe pas. Le panneau dit « Ce qui est copié » / « Ce qui n’est pas copié », car un
+  participe seul devrait s’accorder avec chaque ligne. Length est « Durée ». Un refus commence
+  par « Non créé. », comme « Non publié. ». Les heures et les minutes se joignent par « et »
+  dans `hoursAndMinutes` (« 2 heures et 20 minutes ») ; la date prend « le {{end}} », et
+  « Heures dans le fuseau {{timeZone}} », comme le formulaire.
+- **27 Oct 2026. Les hôtes d’un événement** (sc-15427 pour sc-6713, `web:eventHosts.*`,
+  `eventLive.needsHost*|addHosts` web et app, `messages:validation.event_host*`,
+  `messages:event.host_required|last_host`). Host est « hôte », comme `errors:event_host_required` ;
+  le mot ne prête pas à confusion, puisque les guests sont toujours « invités ». La section est
+  « Hôtes », chaque ligne « Hôte {{position}} ». "Add who is hosting" est « Indiquer les hôtes ».
+  Un hôte est un nom tel que les invités le lisent, parfois un couple sur une ligne, donc rien ne
+  s’accorde avec {{name}} : « {{name}} figure déjà parmi les hôtes », « … ne figure plus parmi
+  les hôtes », « {{name}} : position {{position}} sur {{count}} ». Retirer est « Retirer », comme
+  le glossaire. La limite est la même phrase à l’écran et dans l’API. Le dernier hôte s’explique
+  du côté des invités : « Les invités peuvent voir cet événement, il lui faut donc … ».
 - **26 Oct 2026. Supprimer un événement** (sc-14417 pour sc-3592, `eventDelete.*` web et app,
   `messages:event.delete_name_mismatch`). Comme pour une organisation : « Supprimer
   l’événement », la fenêtre « Supprimer {{event}} ? », la sortie « Le conserver ».
@@ -81,6 +98,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   donc plus possible d’y mettre fin », pour ne pas répéter « terminé ». `scheduleLocked` et
   `scheduleConcluded` sont la même phrase : le français n’a pas la contraction qui les
   distingue.
+- **27 Oct 2026. Mettre en pause et reprendre un événement** (sc-15439 pour sc-3586,
+  `eventPause.*` web et app). « Mettre en pause », comme l’état « En pause » ; « Reprendre » ;
+  la sortie est « Le laisser publié ». Les refus : « Non mis en pause. », « Non repris. ». Le
+  blocage dure « jusqu’à la reprise », sans verbe à accorder. "Check-in" est « l’accueil des
+  invités ». Le résultat s’accorde avec « événement », jamais avec le nom : « L’événement
+  {{name}} est de nouveau publié ».
 - **26 Oct 2026. Publier un brouillon, et les états d’un événement** (sc-13956, sc-3584,
   `eventLive.*` web et app, `events.*`, `eventsScreen.*`, `messages:event.*`,
   `event.plan_limit`). "Make live" est « Publier », comme la permission « Créer, publier,
@@ -107,6 +130,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   « Retirer la photo », comme le glossaire. Les tailles s’écrivent en Mo, « 15 Mo ». La ligne de
   l’événement créé, « L’événement a été enregistré sans sa photo. {{reason}} », se lit avec
   n’importe quel refus à la suite.
+  Après un refus, les boutons du dialogue sont « Choisir une autre photo » et, cadre vide,
+  « Choisir une photo » (sc-16573) : à l’infinitif, comme « Importer une photo » et « Utiliser
+  cette photo », tandis que le refus lui-même s’adresse à l’impératif, « Choisissez-en une plus
+  grande ».
 - **26 Oct 2026. Le type d’événement** (`web:eventForm.type*`, `web:eventTypes.*`,
   `messages:validation.event_type_required`, sc-3588 via sc-13205). « Type », « Choisissez le
   type d’événement », et le refus, identique à l’écran et dans l’API, « Choisissez de quel type
@@ -518,3 +545,25 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   The line under the chosen role, `rolesScreen.removeAfter`, takes the role as subject :
   « Le rôle {{role}} s’applique dès la prochaine utilisation de Soirely », not « Elles deviennent… » (sc-14755).
 - **26 Oct 2026. The beyond-grant line names access** (`membersScreen.beyondGrant`, sc-13089). « … vous ne pouvez donc modifier ni son rôle ni son accès » : after « cette personne », « son accès » is hers; it rules out restoring on the suspension cards.
+- **27 Oct 2026. An event's dates are « le calendrier », never « le programme »** (`timeline.*`,
+  sc-15756). « Programme » is the organiser's Schedule (epic 33); the list of an event's dates
+  is « Calendrier complet », its panel « Prochaines dates ». Distances follow the date :
+  « aujourd’hui », « dans 3 jours », « il y a 2 jours ». The API titles keep the name as
+  subject, « {name} commence », « {name} se termine », so no « de » has to elide before it.
+- **27 Oct 2026. Les onglets de l’accueil Événements et leurs états vides** (sc-15981 pour
+  sc-3594, `events.*`, `eventsScreen.*`). Les onglets sont « À venir », « Brouillons » et
+  « Passés ». « Make live » reste « publier » ; « Called off on » est « Annulé le {{date}} ».
+  « Next up » est « Prochaine étape », comme `timeline.nextUp`, et l’état vide des événements à
+  venir le reprend. Le décompte annoncé dit « supplémentaire(s) », « d’événements » au `many`.
+  `moreFailed` reprend la seconde phrase de l’échec de chargement de son écran, comme en anglais.
+- **27 oct. 2026. La page des informations nomme la règle, pas le rôle** (sc-16443 pour
+  sc-16265, `orgGeneral.readOnlyUntil*`, `refusedByRule`). Chaque ligne reprend la règle dans
+  les mots du bandeau (`signInRules.unlinkedBody`, `gateBody`, « n’accepte que » sans « plus »)
+  et finit comme `orgGeneral.readOnly` : « vous pouvez voir ces informations mais pas les
+  modifier ». Un enregistrement refusé par la règle dit seulement « Rien n’a été enregistré. »,
+  le début de `refused`.
+- **27 oct. 2026. Le jalon d’un événement annulé** (sc-16725 pour sc-16709,
+  `messages:timeline.event_called_off`). « Annulation : {name} », un nom, donc sans accord avec
+  un nom d’événement dont on ignore le genre. Les deux-points, avec U+00A0 avant, plutôt que le « Annulation de »
+  convenu avec le pm : « de » devant un nom qui commence par une voyelle ou un article
+  (« de Anniversaire », « de Le Gala ») se lirait mal, et le code ne peut pas élider.

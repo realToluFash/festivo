@@ -27,3 +27,9 @@ export function describedBy(...ids: (string | null)[]): string | undefined {
 
   return joined === '' ? undefined : joined;
 }
+
+export const ADD_HOST_ID = 'event-host-add';
+
+export function hostInputId(row: { key: number }): string {
+  return `event-host-${row.key}`;
+}

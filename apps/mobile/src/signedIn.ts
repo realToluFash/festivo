@@ -5,7 +5,12 @@ import type {
   Membership,
   PausedOrganisation,
 } from '@soirely/api-client';
-import { type InvitationOutcome, chooseOrganisation, choosePaused } from '@soirely/domain';
+import {
+  type InvitationOutcome,
+  chooseOrganisation,
+  choosePaused,
+  forgetEventsTab,
+} from '@soirely/domain';
 import { router } from 'expo-router';
 import i18next from 'i18next';
 import { useEffect, useSyncExternalStore } from 'react';
@@ -168,6 +173,7 @@ export function switchOrganisation(id: string, landed?: () => void): boolean {
   if (organisation == null) return false;
 
   const go = (): void => {
+    forgetEventsTab();
     set({ ...state, organisation, pausedIn: null });
     void AsyncStorage.setItem(REMEMBERED, id).catch(() => {});
     landed?.();

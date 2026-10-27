@@ -257,7 +257,9 @@ Never write one: a loop that does not end holds the run until its time limit.
    request is open and its checks are green. That is the handover to `/soirely-tech-lead`, who
    either passes it, moving it to `Passed Code Review` for you to merge and move on
    (section 9), or moves it to `Failed Code Review` with `[dev]` findings on the pull
-   request. See **create-pr**.
+   request. See **create-pr**. A pull request on a story labelled **translation** goes to
+   the lead with no move: the ticket stays where the linguist put it, and the linguist
+   moves it on once the pull request merges. sq refuses the move.
 5. **Report**: the story, the PR number, what you did not do, and every assumption you made
    where the AC was silent.
 
@@ -308,5 +310,6 @@ does it: it moves the story to `Ready For QA` and tells `[qa]` the merge commit,
 tests what landed (`--text` adds anything QA should know). For a pull request that merged
 some other way at a head the pass covers, `sq dev to-qa sc-N` does the same. Nobody else
 makes this move: a passed story you merge and leave in `Passed Code Review` is a story
-nobody tests.
+nobody tests. A story labelled **translation** is the exception: it stays where the
+linguist put it, and sq refuses `to-qa` on it as it refuses the move.
 Never move it before the merge, and never mark it Done.

@@ -4,13 +4,22 @@ import { join } from 'node:path';
 
 import {
   type Catalogue,
+  bareNumbers,
   emptyMessages,
   keyParity,
   pluralFamilies,
   slotParity,
   wordDrift,
 } from './catalogues.ts';
-import { LOCALES, ROOT, SHARED_WORDS, SURFACES, type WordCopy } from './surfaces.ts';
+import {
+  LOCALES,
+  NUMBER_CATALOGUES,
+  ROOT,
+  SHARED_WORDS,
+  SURFACES,
+  type SlotSyntax,
+  type WordCopy,
+} from './surfaces.ts';
 
 /**
  * Every surface, the same four checks.
@@ -65,6 +74,18 @@ describe.each(SURFACES.map((s) => [s.name, s] as const))('%s', (_name, surface) 
     ).toEqual([]);
   });
 });
+
+describe.each(NUMBER_CATALOGUES.map((catalogue) => [catalogue.name, catalogue] as const))(
+  '%s',
+  (_name, catalogue) => {
+    it('writes every number with its language’s format, never as bare digits', () => {
+      expect(
+        bareNumbers(catalogue).map((bare) => `${bare.locale}: ${bare.key} writes ${bare.slot}`),
+        'a count, cap or total reads «1000000» where French writes « 1 000 000 » (sc-15361)',
+      ).toEqual([]);
+    });
+  },
+);
 
 describe.each(SHARED_WORDS.map((shared) => [shared.what, shared] as const))(
   '%s',
@@ -153,6 +174,39 @@ describe('the checks catch what they are for', () => {
       { locale: 'es', word: 'owner', readings: { web: 'Owner', api: 'Dueño' } },
     ]);
   });
+
+  it.each([
+    [
+      'i18next',
+      '',
+      [
+        { locale: 'fr', key: 'guests_other', slot: '{{count}}' },
+        { locale: 'fr', key: 'cap', slot: '{{most}}' },
+      ],
+    ],
+    [
+      'icu',
+      'icu.',
+      [
+        { locale: 'es', key: 'waiting', slot: '#' },
+        { locale: 'es', key: 'party', slot: '#' },
+        { locale: 'es', key: 'expiry', slot: '{minutes, number}' },
+      ],
+    ],
+    ['plain', 'plain.', [{ locale: 'pt', key: 'expiry', slot: '{minutes}' }]],
+  ] as const)(
+    'notices a number written as bare digits in a %s catalogue',
+    (syntax, prefix, bare) => {
+      const catalogue = {
+        name: 'fixture',
+        catalogues: 'packages/i18n-lint/src/__fixtures__/bare-number',
+        file: (locale: string) => `${prefix}${locale}.json`,
+        syntax: syntax as SlotSyntax,
+      };
+
+      expect(bareNumbers(catalogue)).toEqual(bare);
+    },
+  );
 
   it('notices an empty message', () => {
     const empty = emptyMessages(surfaceFor('packages/i18n-lint/src/__fixtures__/empty-message'));

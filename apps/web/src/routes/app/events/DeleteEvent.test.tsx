@@ -29,7 +29,9 @@ function event(overrides: Record<string, unknown> = {}) {
     currency: 'NGN',
     cover: null,
     venue: null,
+    hosts: ['Funmi Adeyemi'],
     madeLiveAt: null,
+    pausedAt: null,
     phase: 'draft',
     concludedAt: null,
     createdAt: '2026-10-21T09:00:00+00:00',
@@ -111,7 +113,7 @@ function answering(answers: Record<string, Answer>) {
 async function onTheEvent(shown: ReturnType<typeof event>, answers: Record<string, Answer> = {}) {
   const sent = answering({
     'GET /api/events/ev_1': () => json({ event: shown }),
-    'GET /api/orgs/org_1/events': () => json({ events: [] }),
+    'GET /api/orgs/org_1/events': () => json({ events: [], total: 0 }),
     'DELETE /api/events/ev_1': () => new Response(null, { status: 204 }),
     ...answers,
   });

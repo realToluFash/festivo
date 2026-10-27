@@ -2,13 +2,13 @@ import type { OrganisationEvent } from '@soirely/api-client';
 import {
   type EventPhase,
   calledOff,
-  eventsInOrder,
   formatEventDate,
   formatEventRange,
   shownPhase,
 } from '@soirely/domain';
+import { router } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
@@ -21,9 +21,11 @@ import { DeleteEventSection } from './DeleteEvent.tsx';
 import { EventCover } from './EventCover.tsx';
 import { EndRow } from './EndEvent.tsx';
 import { DraftRow } from './MakeLive.tsx';
+import { PauseButton, PausedRow } from './PauseEvent.tsx';
 import { Notice } from './Notice.tsx';
 import { readOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
+import { ComingUp } from './Timeline.tsx';
 import { cardFrame } from './cardFrame.ts';
 
 /** The phase the page shows: the server's, flipped by the corrected clock at the start and the end (sc-3585). */
@@ -32,7 +34,7 @@ function useShownPhase(event: OrganisationEvent, now: Date): EventPhase {
 }
 
 /** A word and a shape, never colour alone (WCAG 2.2 §1.4.1); the pill grows with its word. */
-function EventState({ phase }: { phase: EventPhase }) {
+export function EventState({ phase }: { phase: EventPhase }) {
   const { t } = useTranslation();
   const live = phase === 'live';
 
@@ -87,10 +89,6 @@ function PhaseShape({ phase }: { phase: EventPhase }) {
   }
 }
 
-function RowState({ event, now }: { event: OrganisationEvent; now: Date }) {
-  return <EventState phase={useShownPhase(event, now)} />;
-}
-
 function EventType({ event, size }: { event: OrganisationEvent; size: number }) {
   const { t } = useTranslation();
 
@@ -98,62 +96,6 @@ function EventType({ event, size }: { event: OrganisationEvent; size: number }) 
     <Text size={size} muted>
       {t(`eventTypes.${event.type}`)}
     </Text>
-  );
-}
-
-export function EventList({
-  events,
-  open,
-  onOpen,
-}: {
-  events: readonly OrganisationEvent[];
-  open: string | null;
-  onOpen: (id: string) => void;
-}) {
-  const locale = dateLocale();
-  const now = useServerNow();
-
-  return (
-    <View style={styles.rows}>
-      {eventsInOrder(events, locale).map((event, index) => {
-        const date = formatEventDate(event.startsAt, event.timeZone, locale);
-        const selected = event.id === open;
-
-        return (
-          <Pressable
-            key={event.id}
-            style={[styles.row, index > 0 && styles.rowDivider, selected && styles.rowOpen]}
-            onPress={() => onOpen(event.id)}
-            accessibilityRole="button"
-            accessibilityState={{ selected }}
-            testID={`events.row.${event.id}`}
-          >
-            <View style={styles.rowCover}>
-              <EventCover cover={event.cover} type={event.type} radius={tokens.radiusSmall} />
-            </View>
-            <View style={styles.rowText}>
-              <Text size={tokens.typeRowTitle.size} weight="semibold">
-                {event.name}
-              </Text>
-              <EventType event={event} size={tokens.typeSmall.size} />
-              <Text size={tokens.typeSmall.size} muted>
-                {date}
-              </Text>
-              <RowState event={event} now={now} />
-            </View>
-            <Text
-              size={tokens.typeTitleDialog.size}
-              muted
-              accessibilityElementsHidden
-              importantForAccessibility="no"
-              accessible={false}
-            >
-              ›
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
   );
 }
 
@@ -234,43 +176,63 @@ export function EventPage({
   }, [event.id, phase, t]);
 
   return (
-    <View style={cardFrame(kind)} testID="events.page">
-      <EventCover cover={event.cover} type={event.type} testID="events.page.cover" />
-      <View style={styles.pageHead}>
-        <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
-          {event.name}
-        </Text>
-        <EventState phase={phase} />
-      </View>
-      {calledOff(event) && event.concludedAt != null && (
-        <Notice
-          tone="quiet"
-          mark={tokens.marks.info.glyph}
-          body={t('eventEnd.calledOffNotice', {
-            date: formatEventDate(event.concludedAt, event.timeZone, dateLocale()),
+    <View style={styles.cards}>
+      <View style={cardFrame(kind)} testID="events.page">
+        <EventCover cover={event.cover} type={event.type} testID="events.page.cover" />
+        <View style={styles.pageHead}>
+          <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
+            {event.name}
+          </Text>
+          <EventState phase={phase} />
+        </View>
+        {calledOff(event) && event.concludedAt != null && (
+          <Notice
+            tone="quiet"
+            mark={tokens.marks.info.glyph}
+            body={t('eventEnd.calledOffNotice', {
+              date: formatEventDate(event.concludedAt, event.timeZone, dateLocale()),
+            })}
+          />
+        )}
+        <DraftRow kind={kind} event={event} manages={manages} now={now} onChange={onChange} />
+        <PausedRow event={event} phase={phase} manages={manages} onChange={onChange} />
+        <View style={styles.lifecycle}>
+          <PauseButton
+            kind={kind}
+            event={event}
+            phase={phase}
+            manages={manages}
+            onChange={onChange}
+          />
+          <EndRow
+            kind={kind}
+            event={event}
+            phase={phase}
+            manages={manages}
+            now={now}
+            onChange={onChange}
+          />
+        </View>
+        <EventType event={event} size={tokens.typeBody.size} />
+        <Text size={tokens.typeBody.size}>
+          {t('eventsScreen.when', {
+            range: formatEventRange(event.startsAt, event.endsAt, event.timeZone, dateLocale()),
+            timeZone: event.timeZone,
           })}
-        />
-      )}
-      <DraftRow kind={kind} event={event} manages={manages} now={now} onChange={onChange} />
-      <EndRow
+        </Text>
+        {onEdit != null && (
+          <SecondaryButton label={t('eventEdit.open')} onPress={onEdit} testID="events.page.edit" />
+        )}
+        {onDeleted != null && (
+          <DeleteEventSection kind={kind} event={event} onDeleted={onDeleted} />
+        )}
+      </View>
+      <ComingUp
         kind={kind}
         event={event}
-        phase={phase}
-        manages={manages}
         now={now}
-        onChange={onChange}
+        onAllDates={() => router.push(`/events/${encodeURIComponent(event.id)}/dates`)}
       />
-      <EventType event={event} size={tokens.typeBody.size} />
-      <Text size={tokens.typeBody.size}>
-        {t('eventsScreen.when', {
-          range: formatEventRange(event.startsAt, event.endsAt, event.timeZone, dateLocale()),
-          timeZone: event.timeZone,
-        })}
-      </Text>
-      {onEdit != null && (
-        <SecondaryButton label={t('eventEdit.open')} onPress={onEdit} testID="events.page.edit" />
-      )}
-      {onDeleted != null && <DeleteEventSection kind={kind} event={event} onDeleted={onDeleted} />}
     </View>
   );
 }
@@ -298,27 +260,7 @@ export function EventNotFound({ onBack }: { onBack: () => void }) {
 
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
-  rows: {
-    paddingVertical: tokens.spaceXxs,
-    paddingHorizontal: tokens.spaceSm,
-    borderRadius: tokens.radiusCardPhone,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
-    backgroundColor: tokens.colorCard,
-  },
-  row: {
-    minHeight: 72,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceLg,
-    paddingVertical: tokens.spaceLg,
-    paddingHorizontal: tokens.spaceSm,
-    borderRadius: tokens.radiusField,
-  },
-  rowDivider: { borderTopWidth: 1, borderTopColor: tokens.colorInsetBorder },
-  rowOpen: { backgroundColor: tokens.colorAccentTint },
-  rowCover: { width: 96 },
-  rowText: { flex: 1, minWidth: 0, gap: 3 },
+  cards: { gap: tokens.spaceLg },
   pageHead: { gap: tokens.spaceXs },
   stateWord: { color: tokens.colorInkSecondary },
   stateLive: {
@@ -353,6 +295,7 @@ const styles = StyleSheet.create({
   },
   ringNow: { borderColor: tokens.colorAttention },
   halfNow: { width: '50%', height: '100%', backgroundColor: tokens.colorAttention },
+  lifecycle: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceMd },
   bars: { flexDirection: 'row', gap: 2 },
   bar: { width: 3, height: 10, borderRadius: 1, backgroundColor: tokens.colorAttention },
 });

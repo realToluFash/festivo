@@ -1,3 +1,5 @@
+import { railWidth, sideListWidth } from './textSize.ts';
+
 /**
  * Which of the three layouts a window is.
  *
@@ -29,6 +31,11 @@ export interface WindowSize {
  */
 export const TABLET_MIN_DIMENSION = 600;
 
+// Width only ever steps a window down: the Settings list (320), a section's widest margins (64) and a page.
+export const UPRIGHT_MIN_WIDTH = 744;
+
+export const SIDE_MIN_WIDTH = 964;
+
 export function classifyLayout({ width, height }: WindowSize): LayoutKind {
   // Degenerate sizes happen: a window measured before layout, a hidden frame,
   // a web container with no height yet. Phone is the safe answer — it is the
@@ -38,13 +45,65 @@ export function classifyLayout({ width, height }: WindowSize): LayoutKind {
     return 'phone';
   }
 
-  if (Math.min(width, height) < TABLET_MIN_DIMENSION) {
+  if (Math.min(width, height) < TABLET_MIN_DIMENSION || width < UPRIGHT_MIN_WIDTH) {
     return 'phone';
   }
 
-  return width >= height ? 'tabletLandscape' : 'tabletPortrait';
+  return width < height || width < SIDE_MIN_WIDTH ? 'tabletPortrait' : 'tabletLandscape';
 }
 
 export function isTablet(kind: LayoutKind): boolean {
   return kind !== 'phone';
+}
+
+/** The room a page keeps beside its list: about what the phone frame gives one. */
+export const PAGE_BESIDE_MIN_WIDTH = 360;
+
+export const SETTINGS_LIST_WIDTH = 320;
+
+export interface ScreenWindow extends WindowSize {
+  fontScale: number;
+}
+
+/** What sits beside a section on a tablet, after the rail. */
+export type SectionBeside = 'nothing' | 'settingsList';
+
+export function sectionWidth(window: ScreenWindow, beside: SectionBeside): number {
+  const kind = classifyLayout(window);
+  const content = window.width - (kind === 'tabletLandscape' ? railWidth(window.fontScale) : 0);
+  const columns =
+    beside === 'settingsList' && kind !== 'phone'
+      ? sideListWidth(SETTINGS_LIST_WIDTH, content, window.fontScale)
+      : 0;
+
+  return content - columns;
+}
+
+export interface ListBeside {
+  margins: number;
+  list: number;
+  between: number;
+}
+
+export function listFitsBeside(section: number, { margins, list, between }: ListBeside): boolean {
+  return section - margins - list - between >= PAGE_BESIDE_MIN_WIDTH;
+}
+
+/** On its side, a list sits beside its page only where the page keeps its room; elsewhere, one at a time. */
+export function listAndPageKind(
+  window: ScreenWindow,
+  beside: SectionBeside,
+  { margins, list, between }: ListBeside,
+): LayoutKind {
+  const kind = classifyLayout(window);
+  if (kind !== 'tabletLandscape') return kind;
+
+  const content = window.width - railWidth(window.fontScale);
+  const fits = listFitsBeside(sectionWidth(window, beside), {
+    margins,
+    list: sideListWidth(list, content, window.fontScale),
+    between,
+  });
+
+  return fits ? 'tabletLandscape' : 'tabletPortrait';
 }

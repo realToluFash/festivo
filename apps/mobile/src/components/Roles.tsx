@@ -190,7 +190,7 @@ export function RolePage({
   const nameAnswer = phone ? answer : (discarded ?? answer);
   const { read: nameInput } = useFocusOnAnswer<TextInput>(naming ? nameAnswer : undefined);
   const { read: removeButton } = useFocusOnAnswer<View>(removeAnswer);
-  const aboveKeyboard = useAboveKeyboard();
+  const { ref: nameAboveKeyboard, onLayout: liftName } = useAboveKeyboard();
   const [nameHeight, setNameHeight] = useState(0);
   const [grant, setGrant] = useState<string[]>(startingGrant);
   const [typed, setTyped] = useState(role?.name ?? '');
@@ -308,10 +308,10 @@ export function RolePage({
         <View style={[styles.fill, styles.headText]}>
           {naming ? (
             <View
-              ref={phone ? aboveKeyboard.ref : undefined}
+              ref={nameAboveKeyboard}
               onLayout={(event) => {
                 setNameHeight(event.nativeEvent.layout.height);
-                if (phone) aboveKeyboard.onLayout();
+                liftName();
               }}
             >
               <Field label={t('rolesScreen.nameLabel')} error={nameError}>

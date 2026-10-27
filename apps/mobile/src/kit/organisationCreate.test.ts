@@ -21,6 +21,7 @@ const created: Membership = {
   permissions: ['organisation.manage'],
   withheldUntilTwoFactor: [],
   readOnlyUntilLinked: false,
+  withheldUntilLinked: [],
   twoFactorDue: null,
   signInRules: {
     providerOnly: false,

@@ -562,7 +562,12 @@ function Delete({
         }
       />
       {failed != null && (
-        <ReadOut words={failed} interrupts accessibilityRole="alert">
+        <ReadOut
+          words={failed}
+          interrupts
+          accessibilityRole="alert"
+          testID="ownership.delete.refused"
+        >
           <Notice tone="broken" mark={tokens.marks.broken.glyph} body={failed} />
         </ReadOut>
       )}

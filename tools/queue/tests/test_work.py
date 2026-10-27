@@ -839,6 +839,82 @@ class FinishedStories(unittest.TestCase):
         self.assertEqual(work.developer_items([archived], [pr(state="merged")]), [])
 
 
+class FollowUps(unittest.TestCase):
+    """An open pull request on a story QA has, or has had, is reviewed and merged while the
+    story keeps its state."""
+
+    STATES = ("Ready For QA", "In QA", "Failed QA", "Passsed QA", "Done")
+
+    def on(self, state, **kw):
+        return dict(story(state=state, labels=["dev2"], **kw), done=state == "Done")
+
+    def test_an_unreviewed_follow_up_wakes_the_lead(self):
+        for state in self.STATES:
+            items = work.review_items([self.on(state)], [pr()])
+            self.assertEqual([(i["kind"], i["roles"], i["pr"]) for i in items],
+                             [("review", ["lead"], 7)], state)
+            self.assertIn("not reviewed yet", items[0]["reason"])
+            self.assertEqual(work.review_items([self.on(state)], [pr(checks="pending")]), [])
+
+    def test_a_linguists_own_pr_never_waits_on_the_lead(self):
+        for state in self.STATES:
+            ticket = dict(story(state=state, labels=["translation"]), done=state == "Done")
+            own = dict(pr(), branch="l10n/sc-1")
+            self.assertEqual(work.review_items([ticket], [own]), [], state)
+            self.assertEqual(kinds(work.review_items([ticket], [pr()])), ["review"], state)
+
+    def test_a_pass_at_the_head_wakes_its_builder_to_merge(self):
+        passed = pr(lead=[verdict("pass", HEAD[:7])])
+        for state in self.STATES:
+            self.assertEqual(work.review_items([self.on(state)], [passed]), [], state)
+            items = work.developer_items([self.on(state)], [passed])
+            self.assertEqual([(i["kind"], i["roles"]) for i in items], [("merge", ["dev2"])],
+                             state)
+
+    def test_open_threads_or_red_checks_hold_the_merge(self):
+        held = pr(lead=[verdict("pass", HEAD[:7])],
+                  threads=[thread("blocking: x", "Done.")])
+        red = pr(checks="red", lead=[verdict("pass", HEAD[:7])])
+        for state in self.STATES:
+            self.assertNotIn("merge", kinds(work.developer_items([self.on(state)], [held])))
+            self.assertEqual(kinds(work.developer_items([self.on(state)], [red])),
+                             ["checks-red"])
+            self.assertEqual(work.review_items([self.on(state)], [red]), [])
+
+    def test_a_push_after_the_pass_takes_it_back_to_the_lead(self):
+        pushed = pr(head=OLD, lead=[verdict("pass", HEAD[:7])])
+        for state in self.STATES:
+            items = work.review_items([self.on(state)], [pushed])
+            self.assertEqual([i["kind"] for i in items], ["review"], state)
+            self.assertIn("pushed after the pass", items[0]["reason"])
+            self.assertNotIn("merge", kinds(work.developer_items([self.on(state)], [pushed])))
+
+    def test_a_move_after_findings_is_no_hand_back(self):
+        back = pr(lead=[verdict("back", HEAD[:7])])
+        for state in self.STATES:
+            moved = self.on(state, moved_at="2026-10-19T10:00:00Z")
+            self.assertEqual(work.review_items([moved], [back]), [], state)
+
+    def test_an_archived_story_offers_only_the_close(self):
+        for state in self.STATES:
+            archived = dict(self.on(state), archived=True)
+            self.assertEqual(work.review_items([archived], [pr()]), [])
+            passed = pr(lead=[verdict("pass", HEAD[:7])])
+            self.assertEqual(kinds(work.developer_items([archived], [passed])), ["close"])
+
+    def test_a_storys_own_pr_still_goes_through_review(self):
+        self.assertEqual(kinds(work.developer_items([story(state="In Progress",
+                                                           labels=["dev2"])], [pr()])),
+                         ["to-review"])
+        self.assertEqual(kinds(work.review_items([story(labels=["dev2"])], [pr()])),
+                         ["review"])
+        passed = pr(lead=[verdict("pass", HEAD[:7])])
+        self.assertEqual(kinds(work.developer_items(
+            [story(state="Passed Code Review", labels=["dev2"])], [passed])), ["merge"])
+        for state in ("Ready For Dev", "Backlog", "Needs Design"):
+            self.assertEqual(work.review_items([story(state=state)], [pr()]), [], state)
+
+
 class Stranded(unittest.TestCase):
     NOW = T.epoch("2026-10-25T12:00:00Z")
 
@@ -864,6 +940,15 @@ class Stranded(unittest.TestCase):
         self.assertEqual(found[401][2], 26)
         self.assertEqual(found[402][:2], ("dev", "dev to move sc-2 to In Review"))
         self.assertIn("archived", found[403][1])
+
+    def test_a_side_pr_on_a_translation_ticket_waits_on_the_lead_in_any_state(self):
+        side = self.open_pr(7, 1, updated="2026-10-20T10:00:00Z")
+        for state in ("In Progress", "Failed Code Review", "In Review", "Passed Code Review",
+                      "Ready For QA"):
+            ticket = story(1, state, labels=["translation", "dev1"])
+            self.assertEqual(work.waits_on(ticket, side), ("lead", "lead to review it"))
+        both = story(1, "In Progress", labels=["translation", "ops"])
+        self.assertEqual(work.waits_on(both, side), ("ops", "ops to move sc-1 to In Review"))
 
     def test_a_passed_pr_waits_on_its_builder_to_merge_or_bring_main_in(self):
         passed = self.open_pr(7, 1, updated="2026-10-20T10:00:00Z",

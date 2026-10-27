@@ -19,14 +19,11 @@ appId: host.exp.Exponent
 - inputText: ${PASSWORD}
 - tapOn:
     id: 'signIn.submit'
-- runFlow: save-password.yaml
 - runFlow:
     when:
       visible:
         id: 'twoFactor.code'
-    commands:
-      - runFlow: ../sign-in-two-factor.yaml
-      - runFlow: save-password.yaml
+    file: ../sign-in-two-factor.yaml
 - scrollUntilVisible:
     element:
       text: '{{t:any:settings.signedInAs|email}}'

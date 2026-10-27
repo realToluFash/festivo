@@ -16,6 +16,7 @@ use DateTimeZone;
 use Psl\Iter;
 use Psl\Regex;
 use Psl\Str;
+use Psl\Vec;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 final readonly class EventRules
@@ -29,13 +30,13 @@ final readonly class EventRules
     }
 
     /**
-     * The venue is checked only when `venue` is in the fields, and is in what this returns only then.
+     * The venue and the hosts are checked only when they are in the fields, and are in what this returns only then.
      *
-     * @param array{name: ?string, type: ?string, startsAt: ?string, endsAt: ?string, timeZone: string, currency: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null} $fields
-     * @param ?string                                                                                                                                                                                 $held      the event's currency on an edit, which may stay although no longer offered
-     * @param ?Venue                                                                                                                                                                                  $heldVenue the event's venue on an edit, whose address keeps its parts when sent back unchanged
+     * @param array{name: ?string, type: ?string, startsAt: ?string, endsAt: ?string, timeZone: string, currency: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null, hosts?: list<string>} $fields
+     * @param ?string                                                                                                                                                                                                       $held      the event's currency on an edit, which may stay although no longer offered
+     * @param ?Venue                                                                                                                                                                                                        $heldVenue the event's venue on an edit, whose address keeps its parts when sent back unchanged
      *
-     * @return array{name: string, type: EventType, startsAt: DateTimeImmutable, endsAt: DateTimeImmutable, currency: string, venue?: ?Venue}
+     * @return array{name: string, type: EventType, startsAt: DateTimeImmutable, endsAt: DateTimeImmutable, currency: string, venue?: ?Venue, hosts?: list<string>}
      */
     public function check(array $fields, ?string $held = null, ?Venue $heldVenue = null): array
     {
@@ -77,6 +78,12 @@ final readonly class EventRules
             $violations[] = $this->violation('venueAddress', 'validation.event_venue_address_too_long', ['{count}' => (string) Venue::ADDRESS_MAXIMUM]);
         }
 
+        $hosts = Iter\contains_key($fields, 'hosts') ? Vec\map($fields['hosts'], self::hostName(...)) : null;
+
+        if (null !== $hosts) {
+            $this->checkHosts($hosts, $violations);
+        }
+
         if (null !== $zone && null !== $startsAt && null !== $endsAt) {
             $startsAt = LocalTimeResolver::resolve($startsAt, new DateTimeZone($zone));
             $endsAt = LocalTimeResolver::resolve($endsAt, new DateTimeZone($zone));
@@ -92,7 +99,65 @@ final readonly class EventRules
 
         $checked = ['name' => $name, 'type' => $type, 'startsAt' => $startsAt, 'endsAt' => $endsAt, 'currency' => $currency];
 
-        return Iter\contains_key($fields, 'venue') ? [...$checked, 'venue' => $venue] : $checked;
+        if (Iter\contains_key($fields, 'venue')) {
+            $checked['venue'] = $venue;
+        }
+
+        if (null !== $hosts) {
+            $checked['hosts'] = $hosts;
+        }
+
+        return $checked;
+    }
+
+    /** A start alone, refused as check() refuses it. */
+    public function startsAt(?string $typed, string $timeZone): DateTimeImmutable
+    {
+        $violations = [];
+        $startsAt = $this->wallClock($typed, 'startsAt', 'validation.event_start_required', $violations);
+
+        if (null === $startsAt) {
+            throw ApiException::validation($violations);
+        }
+
+        return LocalTimeResolver::resolve($startsAt, new DateTimeZone($timeZone));
+    }
+
+    /** As typed, with each run of line breaks a single space; packages/domain's hostNameOf does the same. */
+    public static function hostName(string $typed): string
+    {
+        return Str\trim(Regex\replace($typed, '/[\r\n]+/', ' '));
+    }
+
+    /**
+     * Each name is refused under `hosts[i]`, a repeat on the later of the two rows, compared regardless of case.
+     *
+     * @param list<string>                                                     $hosts
+     * @param list<array{propertyPath: string, message: string, code: string}> $violations
+     */
+    private function checkHosts(array $hosts, array &$violations): void
+    {
+        if (Iter\count($hosts) > Event::HOSTS_MAXIMUM) {
+            $violations[] = $this->violation('hosts', 'validation.event_hosts_too_many', ['{count}' => (string) Event::HOSTS_MAXIMUM]);
+        }
+
+        $seen = [];
+
+        foreach ($hosts as $index => $host) {
+            $path = 'hosts[' . $index . ']';
+            $length = Str\length($host);
+            $folded = Str\lowercase($host);
+
+            if ('' === $host) {
+                $violations[] = $this->violation($path, 'validation.event_host_blank');
+            } elseif ($length > Event::HOST_NAME_MAXIMUM) {
+                $violations[] = $this->violation($path, 'validation.event_host_too_long', ['{count}' => (string) Event::HOST_NAME_MAXIMUM, '{length}' => (string) $length]);
+            } elseif (Iter\contains_key($seen, $folded)) {
+                $violations[] = $this->violation($path, 'validation.event_host_duplicate', ['{name}' => $seen[$folded]]);
+            } else {
+                $seen[$folded] = $host;
+            }
+        }
     }
 
     /**

@@ -16,6 +16,8 @@ import { TwoFactorOverdue } from '../../components/TwoFactorOverdue.tsx';
 import {
   joinOrganisation,
   landingFor,
+  onMovedOn,
+  rereadOrganisations,
   restoreSession,
   switchOrganisation,
   useSession,
@@ -161,6 +163,24 @@ function Shell() {
     );
   }, [switchTo, organisation?.id, session.pausedIn, location, navigate]);
 
+  const arrivedAt = useRef(pathname);
+
+  // The page was read when it loaded; each move after that reads the organisations again (sc-16229).
+  useEffect(() => {
+    if (arrivedAt.current === pathname) return;
+
+    arrivedAt.current = pathname;
+    void rereadOrganisations();
+  }, [pathname]);
+
+  useEffect(
+    () =>
+      onMovedOn((next) => {
+        setSwitched({ id: next.id, name: next.name, at: arrivedAt.current });
+      }),
+    [],
+  );
+
   const atAccount = pathname.startsWith('/app/account');
 
   // Every product page would open this page again, so it stands alone: only what works without an organisation, the account pages under the same header.
@@ -219,11 +239,11 @@ function Shell() {
 
   return (
     <div className="shell">
-      <a className="skip-link" href="#content">
+      <a className="skip-link" href="#content" inert={menuOpen}>
         {t('app.skipToContent')}
       </a>
 
-      <aside className="shell-sidebar">
+      <aside className="shell-sidebar" inert={menuOpen}>
         <div className="brand">{t('app.name')}</div>
 
         {organisation != null && (
@@ -248,6 +268,15 @@ function Shell() {
           aria-controls={menuOpen ? menuId : undefined}
           onClick={() => setMenuOpen(true)}
         >
+          <svg
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            aria-hidden="true"
+          >
+            <path d="M2 4h12M2 8h12M2 12h12" strokeLinecap="round" />
+          </svg>
           {t('nav.menu')}
         </button>
 
@@ -256,7 +285,7 @@ function Shell() {
         </div>
       </aside>
 
-      <main id="content" className="shell-content">
+      <main id="content" className="shell-content" inert={menuOpen}>
         <LinkedNotice />
         {organisation != null && session.pausedIn == null && (
           <SignInRulesNotices key={organisation.id} organisation={organisation} />

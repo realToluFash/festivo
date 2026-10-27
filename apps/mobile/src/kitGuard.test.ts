@@ -615,6 +615,48 @@ describe('a way back that names an outcome is off while its request runs (sc-125
     expect(propValue(pressable, 'disabled')).toBe('{off}');
     expect(propValue(pressable, 'accessibilityState')).toBe('{{ disabled: off }}');
   });
+
+  it('where PrimaryButton busy still takes the tap, so the keys stay up, and does nothing with it', () => {
+    const text = readFileSync(join('src', 'components', 'Buttons.tsx'), 'utf8');
+    const body = text.slice(text.indexOf('export function PrimaryButton('));
+    const start = body.indexOf('<Pressable');
+    const pressable = body.slice(start, tagEnd(body, start));
+
+    expect(propValue(pressable, 'disabled')).toBe('{off || undefined}');
+    expect(propValue(pressable, 'onPress')).toBe('{busy ? undefined : onPress}');
+    expect(propValue(pressable, 'accessibilityState')).toBe('{{ disabled: inactive, busy }}');
+  });
+
+  it('where PrimaryButton busy or taken off is read as off once Pressable has merged its props', () => {
+    const pressableSource = readFileSync(
+      require.resolve('react-native/Libraries/Components/Pressable/Pressable.js'),
+      'utf8',
+    );
+    expect(pressableSource).toMatch(/disabled != null \? \{\.\.\._accessibilityState, disabled\}/u);
+
+    const text = readFileSync(join('src', 'components', 'Buttons.tsx'), 'utf8');
+    const body = text.slice(text.indexOf('export function PrimaryButton('));
+    const start = body.indexOf('<Pressable');
+    const pressable = body.slice(start, tagEnd(body, start));
+    const evaluate = (prop: string) =>
+      new Function(
+        'busy',
+        'off',
+        `const inactive = busy || off; return ${propValue(pressable, prop)?.slice(1, -1)};`,
+      ) as (busy: boolean, off: boolean) => unknown;
+    const disabled = evaluate('disabled');
+    const state = evaluate('accessibilityState');
+    const readAsOff = (busy: boolean, off: boolean) => {
+      const merged = disabled(busy, off);
+      return merged != null ? merged : (state(busy, off) as { disabled: boolean }).disabled;
+    };
+
+    expect([readAsOff(true, false), readAsOff(false, true), readAsOff(false, false)]).toEqual([
+      true,
+      true,
+      false,
+    ]);
+  });
 });
 
 interface Source {

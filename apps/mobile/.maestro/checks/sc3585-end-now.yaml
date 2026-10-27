@@ -1,0 +1,43 @@
+# sc-3585: ${EV_END}, a Live event after its start: End now, its sheet, Keep it on, then End now confirmed.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_END}
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.happening_now'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.end'
+- takeScreenshot: happening-end-now
+- tapOn:
+    id: 'events.end'
+- extendedWaitUntil:
+    visible:
+      id: 'events.endYes'
+    timeout: 10000
+- takeScreenshot: confirm
+- tapOn:
+    id: 'events.endNo'
+- extendedWaitUntil:
+    notVisible:
+      id: 'events.endYes'
+    timeout: 10000
+- assertVisible:
+    id: 'events.phase.happening_now'
+- takeScreenshot: kept
+- tapOn:
+    id: 'events.end'
+- extendedWaitUntil:
+    visible:
+      id: 'events.endYes'
+    timeout: 10000
+- tapOn:
+    id: 'events.endYes'
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.finished'
+    timeout: 15000
+- assertNotVisible:
+    id: 'events.end'
+- takeScreenshot: ended

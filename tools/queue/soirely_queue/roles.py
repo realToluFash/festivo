@@ -216,7 +216,7 @@ WAITING = "Waiting On Owner"
 # Where a story waits for its merge: In Review only for one passed before these states.
 MERGING = ("Passed Code Review", "In Review")
 # A follow-up pull request on a story whose main one already went to QA merges and leaves it.
-FOLLOWING_UP = ("Ready For QA", "In QA", "Failed QA")
+FOLLOWING_UP = ("Ready For QA", "In QA", "Failed QA", "Passsed QA")
 MOVES = {
     "dev": {"In Progress": ("Ready For Dev", "Failed QA", "Failed Code Review", "In Review"),
             "In Review": ("In Progress", "Failed Code Review", "Passed Code Review"),
@@ -228,8 +228,10 @@ MOVES = {
     "ux": {"Ready For Dev": ("Needs Design",), WAITING: ("Needs Design",)},
     "qa": {"In QA": ("Ready For QA", "In QA"), "Passsed QA": ("In QA",),
            "Failed QA": ("In QA",)},
-    "l10n": {"In Progress": ("To Do", "Ready For Dev", "Failed QA", "Failed Code Review"),
-             "Ready For QA": ("In Progress",)},
+    # From review too: a developer's pull request on the ticket can leave it there.
+    "l10n": {"In Progress": ("To Do", "Ready For Dev", "Failed QA", "Failed Code Review",
+                             *MERGING),
+             "Ready For QA": ("In Progress", *MERGING)},
     # Only on a story labelled ops. Ready For QA and Done come with the merge.
     "ops": {"In Progress": ("Backlog", "To Do", "Ready For Dev", "Failed QA",
                             "Failed Code Review", "In Review"),

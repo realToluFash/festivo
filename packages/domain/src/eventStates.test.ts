@@ -157,6 +157,7 @@ describe('eventAllows', () => {
     ['delete', true],
     ['make_live', true],
     ['pause', false],
+    ['resume', false],
     ['end', false],
     ['invite', false],
     ['message', false],
@@ -166,17 +167,29 @@ describe('eventAllows', () => {
     expect(eventAllows('draft', action)).toBe(allowed);
   });
 
-  it.each(['live', 'happening_now'] as const)('%s allows everything but make_live', (phase) => {
-    expect(allowedActions(phase)).toHaveLength(everything - 1);
-    expect(eventAllows(phase, 'make_live')).toBe(false);
-  });
+  it.each(['live', 'happening_now'] as const)(
+    '%s allows everything but make_live and resume',
+    (phase) => {
+      expect(allowedActions(phase)).toHaveLength(everything - 2);
+      expect(eventAllows(phase, 'make_live')).toBe(false);
+      expect(eventAllows(phase, 'resume')).toBe(false);
+    },
+  );
 
   it('finished allows edit and delete, and not edit_schedule', () => {
     expect([...allowedActions('finished')].sort()).toEqual(['delete', 'edit']);
   });
 
-  it('paused allows only end until sc-3586 says the rest', () => {
-    expect(allowedActions('paused')).toEqual(['end']);
+  it('paused keeps editing, ending and the door, and takes nothing from guests', () => {
+    expect([...allowedActions('paused')].sort()).toEqual([
+      'check_in',
+      'delete',
+      'edit',
+      'edit_schedule',
+      'end',
+      'resume',
+      'service',
+    ]);
   });
 
   it('refuses an action nobody declared', () => {
@@ -185,10 +198,10 @@ describe('eventAllows', () => {
 });
 
 describe('eventTransition', () => {
-  it('takes a draft live, past two guards', () => {
+  it('takes a draft live, past three guards', () => {
     expect(eventTransition('draft', 'make_live')).toEqual({
       to: 'live',
-      guards: ['end_not_passed', 'plan_limit'],
+      guards: ['end_not_passed', 'has_host', 'plan_limit'],
     });
   });
 
@@ -202,6 +215,13 @@ describe('eventTransition', () => {
 
   it.each(['draft', 'ended'] as const)('has no end from %s', (state) => {
     expect(eventTransition(state, 'end')).toBeNull();
+  });
+
+  it('pauses only a live event, and resumes only a paused one', () => {
+    expect(eventTransition('live', 'pause')).toEqual({ to: 'paused', guards: ['phase_allows'] });
+    expect(eventTransition('paused', 'resume')).toEqual({ to: 'live', guards: ['phase_allows'] });
+    expect(eventTransition('paused', 'pause')).toBeNull();
+    expect(eventTransition('live', 'resume')).toBeNull();
   });
 });
 

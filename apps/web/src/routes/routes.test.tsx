@@ -393,6 +393,22 @@ describe('the application tree', () => {
       expect(menu.getAttribute('aria-controls')).toBe(dialog.id);
     });
 
+    it('makes the page behind it inert while it is open', () => {
+      const { container } = at('/app');
+      const behind = () => [
+        container.querySelector('.skip-link')!,
+        container.querySelector('.shell-sidebar')!,
+        container.querySelector('main#content')!,
+      ];
+
+      openMenu();
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(behind().every((element) => !element.hasAttribute('inert'))).toBe(true);
+
+      openMenu();
+      expect(behind().every((element) => element.hasAttribute('inert'))).toBe(true);
+    });
+
     it('keeps Tab inside while it is open', () => {
       at('/app');
 

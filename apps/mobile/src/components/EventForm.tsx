@@ -9,11 +9,14 @@ import {
   EVENT_TYPES,
   type EventDraft,
   type EventFormField,
+  type HostErrors,
+  type HostRow,
   type VenueDraft,
   currencyChoices,
-  eventChanges,
   eventFormErrors,
   eventNameLength,
+  firstRefusedOf,
+  hostErrorsOf,
   filledEndDate,
   formatWallClock,
   formatWallDay,
@@ -27,7 +30,15 @@ import {
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useNavigation } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
-import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Platform, Pressable, StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -37,7 +48,7 @@ import {
   type EventErrors,
   type EventTyped,
   blankEvent,
-  firstRefused,
+  changesOf,
   isDirty,
   newEventOf,
   pickedDate,
@@ -57,9 +68,11 @@ import { cardFrame } from './cardFrame.ts';
 import { type CoverUse, CoverField, discardCoverUpload } from './CoverField.tsx';
 import { focusPicker } from './CountryPicker.tsx';
 import { CONTROL_TEXT_SIZE, Field, FieldError, TextField, focusChecked } from './Field.tsx';
+import { HostsSection } from './HostsSection.tsx';
 import { ListPicker } from './ListPicker.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
+import { useBroughtIntoView } from './Screen.tsx';
 import { Sheet } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 import { VenueFields } from './VenueFields.tsx';
@@ -72,6 +85,7 @@ export function EventForm({
   kind,
   organisation,
   opened,
+  toHosts = false,
   onCreated,
   onSaved,
   onLatest,
@@ -79,6 +93,8 @@ export function EventForm({
   kind: LayoutKind;
   organisation: Membership;
   opened?: TaggedEvent | undefined;
+  /** Opened from Make live's Add who is hosting (sc-15497). */
+  toHosts?: boolean;
   onCreated: (eventId: string) => void;
   onSaved: (outcome: 'saved' | 'unchanged') => void;
   /** Show the latest: the event is read again and the form starts over from it. */
@@ -94,6 +110,9 @@ export function EventForm({
   const [entered, setTyped] = useState(from);
   const [endChosen, setEndChosen] = useState(editing);
   const [errors, setErrors] = useState<EventErrors>({});
+  const [hostErrors, setHostErrors] = useState<HostErrors>({});
+  const [hostsChecked, setHostsChecked] = useState(false);
+  const [focusHost, setFocusHost] = useState<{ key: number } | null>(null);
   const [unsent, setUnsent] = useState<{ count: number } | null>(null);
   const [status, setStatus] = useState<Status>('editing');
   const [asking, setAsking] = useState<Asking>(null);
@@ -110,7 +129,7 @@ export function EventForm({
     () => (over ? scheduleKept(entered, from) : entered),
     [over, entered, from],
   );
-  const { draft, venue, timeZone, currency } = typed;
+  const { draft, venue, timeZone, currency, hosts } = typed;
   const dirty = isDirty(typed, from) || (!editing && cover != null);
 
   const nameInput = useRef<TextInput>(null);
@@ -246,22 +265,40 @@ export function EventForm({
     change(field, { draft: { ...draft, ...next } });
   }
 
-  function refuse(found: EventErrors): void {
+  function refuse(found: EventErrors, hostFound: HostErrors = {}): void {
     setErrors(found);
-    const first = firstRefused(found);
-    setFocusOn(first == null ? null : { field: first });
+    setHostErrors(hostFound);
+    const first = firstRefusedOf(found, hostFound, hosts);
+    setFocusOn(first != null && 'field' in first ? { field: first.field } : null);
+    setFocusHost(first != null && 'host' in first ? { key: first.host } : null);
+  }
+
+  function editHosts(rows: HostRow[], touched: number | null): void {
+    setTyped((previous) => ({ ...previous, hosts: rows }));
+    if (touched != null) setHostErrors((previous) => ({ ...previous, [touched]: undefined }));
+    else if (hostsChecked) setHostErrors(hostErrorsOf(rows, t));
+    if (status === 'failed') setStatus('editing');
+  }
+
+  /** After the first Save, each host is checked again as its field is left. */
+  function leaveHost(row: HostRow): void {
+    if (!hostsChecked) return;
+    setHostErrors((previous) => ({ ...previous, [row.key]: hostErrorsOf(hosts, t)[row.key] }));
   }
 
   async function send(): Promise<void> {
     if (busy) return;
 
     const found = eventFormErrors(typed, t);
-    const count = Object.keys(found).length;
+    const hostFound = editing ? hostErrorsOf(hosts, t) : {};
+    const count = Object.keys(found).length + Object.keys(hostFound).length;
+
+    if (editing) setHostsChecked(true);
 
     if (count > 0) {
       setUnsent({ count });
       setStatus('editing');
-      refuse(found);
+      refuse(found, hostFound);
       return;
     }
 
@@ -297,16 +334,16 @@ export function EventForm({
         leaving.current = true;
         onCreated(created.id);
       } else if (opened != null) {
-        await api.updateEvent(opened.event.id, eventChanges(opened.event, typed), opened.tag);
+        await api.updateEvent(opened.event.id, changesOf(opened.event, typed), opened.tag);
         leaving.current = true;
         onSaved('saved');
       }
     } catch (error) {
-      const outcome = sendOutcome(error, t);
+      const outcome = sendOutcome(error, t, hosts);
 
       if (outcome.kind === 'refused') {
         setStatus('editing');
-        refuse(outcome.errors);
+        refuse(outcome.errors, outcome.hosts);
         return;
       }
 
@@ -340,30 +377,34 @@ export function EventForm({
         </ReadOut>
       )}
       {status === 'failed' && (
-        <ReadOut words={failed} interrupts accessibilityRole="alert">
-          <Notice tone="broken" mark={tokens.marks.broken.glyph} body={failed} />
-        </ReadOut>
+        <InSight>
+          <ReadOut words={failed} interrupts accessibilityRole="alert">
+            <Notice tone="broken" mark={tokens.marks.broken.glyph} body={failed} />
+          </ReadOut>
+        </InSight>
       )}
       {status === 'changedElsewhere' && (
-        <ReadOut words={t('eventEdit.changedElsewhere')} interrupts accessibilityRole="alert">
-          <Notice
-            tone="broken"
-            mark={tokens.marks.broken.glyph}
-            body={t('eventEdit.changedElsewhere')}
-          />
-          <View style={styles.actions}>
-            <SecondaryButton
-              label={t('eventEdit.showLatest')}
-              onPress={() => setAsking('latest')}
-              testID="eventForm.showLatest"
+        <InSight>
+          <ReadOut words={t('eventEdit.changedElsewhere')} interrupts accessibilityRole="alert">
+            <Notice
+              tone="broken"
+              mark={tokens.marks.broken.glyph}
+              body={t('eventEdit.changedElsewhere')}
             />
-            <SecondaryButton
-              label={t('eventEdit.cancel')}
-              onPress={() => setStatus('editing')}
-              testID="eventForm.keepMine"
-            />
-          </View>
-        </ReadOut>
+            <View style={styles.actions}>
+              <SecondaryButton
+                label={t('eventEdit.showLatest')}
+                onPress={() => setAsking('latest')}
+                testID="eventForm.showLatest"
+              />
+              <SecondaryButton
+                label={t('eventEdit.cancel')}
+                onPress={() => setStatus('editing')}
+                testID="eventForm.keepMine"
+              />
+            </View>
+          </ReadOut>
+        </InSight>
       )}
       {problems != null && <ReadOut words={problems} answer={unsent} />}
 
@@ -404,6 +445,20 @@ export function EventForm({
           />
         </Field>
 
+        {opened != null && (
+          <HostsSection
+            kind={kind}
+            rows={hosts}
+            errors={hostErrors}
+            saved={opened.event}
+            busy={busy}
+            arrive={toHosts}
+            focusHost={focusHost}
+            onRows={editHosts}
+            onLeave={leaveHost}
+          />
+        )}
+
         <CoverField
           type={draft.type}
           cover={cover}
@@ -425,7 +480,8 @@ export function EventForm({
           time={draft.startTime}
           timeZone={timeZone}
           error={errors.startsAt}
-          disabled={busy || over}
+          disabled={busy}
+          readOnly={over}
           pickerRef={startPicker}
           testID="eventForm.start"
           onPick={(date, time) =>
@@ -444,7 +500,8 @@ export function EventForm({
           time={draft.endTime}
           timeZone={timeZone}
           error={errors.endsAt}
-          disabled={busy || over}
+          disabled={busy}
+          readOnly={over}
           pickerRef={endPicker}
           testID="eventForm.end"
           onPick={(date, time) => {
@@ -471,7 +528,8 @@ export function EventForm({
             choices={zones}
             value={timeZone}
             onChange={(zone) => change('timeZone', { timeZone: zone })}
-            disabled={busy || over}
+            disabled={busy}
+            readOnly={over}
             pickerRef={zonePicker}
             testID="eventForm.timeZone"
           />
@@ -539,6 +597,13 @@ export function EventForm({
   );
 }
 
+/** The answer to a press at the foot of the form shows at its top, so it scrolls there; ReadOut already says it, so focus stays. */
+function InSight({ children }: { children: ReactNode }) {
+  const { shown } = useBroughtIntoView();
+
+  return <View ref={shown}>{children}</View>;
+}
+
 /** Keep editing is the safe answer, so it comes first and system back gives it. */
 function Ask({
   open,
@@ -590,6 +655,7 @@ function Moment({
   timeZone,
   error,
   disabled,
+  readOnly,
   pickerRef,
   testID,
   onPick,
@@ -601,6 +667,7 @@ function Moment({
   timeZone: string;
   error: string | undefined;
   disabled: boolean;
+  readOnly: boolean;
   pickerRef: RefObject<View | null>;
   testID: string;
   onPick: (date: string, time: string) => void;
@@ -656,10 +723,15 @@ function Moment({
           <Field label={t('eventForm.date')}>
             <Pressable
               ref={pickerRef}
-              style={[styles.pick, error != null && styles.pickWrong]}
+              style={[
+                styles.pick,
+                readOnly && styles.pickReadOnly,
+                error != null && styles.pickWrong,
+              ]}
               onPress={() => open('date')}
-              disabled={disabled}
-              accessibilityRole="button"
+              disabled={disabled || readOnly}
+              accessibilityRole={readOnly ? undefined : 'button'}
+              accessibilityState={{ disabled: disabled || readOnly }}
               accessibilityLabel={t('eventForm.date')}
               accessibilityValue={{
                 text: [label, date === '' ? null : dayWords, timeZone]
@@ -676,10 +748,15 @@ function Moment({
         </View>
         <Field label={t('eventForm.time')}>
           <Pressable
-            style={[styles.pick, error != null && styles.pickWrong]}
+            style={[
+              styles.pick,
+              readOnly && styles.pickReadOnly,
+              error != null && styles.pickWrong,
+            ]}
             onPress={() => open('time')}
-            disabled={disabled}
-            accessibilityRole="button"
+            disabled={disabled || readOnly}
+            accessibilityRole={readOnly ? undefined : 'button'}
+            accessibilityState={{ disabled: disabled || readOnly }}
             accessibilityLabel={t('eventForm.time')}
             accessibilityValue={{
               text: [label, time === '' ? null : timeWords, timeZone]
@@ -778,6 +855,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   pickDate: { flex: 1 },
+  pickReadOnly: { backgroundColor: tokens.colorNeutralFill },
   pickWrong: { borderColor: tokens.colorBroken },
   placeholder: { color: tokens.colorInkTertiary },
 });

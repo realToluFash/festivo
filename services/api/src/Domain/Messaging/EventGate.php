@@ -41,18 +41,12 @@ final readonly class EventGate
             },
             EventPhase::Finished => match ($rule) {
                 NotificationEventRule::Automatic => EventVerdict::Cancel,
-                NotificationEventRule::AfterConclusion => self::calledOff($event) ? EventVerdict::Cancel : EventVerdict::Send,
+                NotificationEventRule::AfterConclusion => EventPhase::calledOff($event->endedAt, $event->startsAt) ? EventVerdict::Cancel : EventVerdict::Send,
                 NotificationEventRule::HostMessage => $now < ($event->endedAt ?? $event->endsAt)->add(new DateInterval(self::HOST_MESSAGES_AFTER_END))
                     ? EventVerdict::Send
                     : EventVerdict::Cancel,
                 default => EventVerdict::Send,
             },
         };
-    }
-
-    /** Ended before it started: called off (sc-3585), so it never took place. */
-    private static function calledOff(EventState $event): bool
-    {
-        return null !== $event->endedAt && $event->endedAt < $event->startsAt;
     }
 }

@@ -137,8 +137,10 @@ only in the organisation that set it:
   `app:sign-in-rules:record-two-factor-holds` audits each member it holds, once
   (`memberships.two_factor_blocked_at`).
 
-`GET /api/orgs` and `GET /api/orgs/{id}/permissions` carry `withheldUntilTwoFactor` and
-`readOnlyUntilLinked`, and leave the withheld permissions out of `permissions`. `GET
+`GET /api/orgs` and `GET /api/orgs/{id}/permissions` carry `withheldUntilTwoFactor`,
+`readOnlyUntilLinked` and `withheldUntilLinked` (the changes the role holds that the
+read-only rule keeps back), and leave the withheld permissions out of `permissions`, so a
+client can tell a rule from the role as the reason (sc-16265). `GET
 /api/orgs` also carries `twoFactorDue` (`at`, `written` in the member's own zone by sc-868,
 `overdue`) while the member has a deadline to meet.
 

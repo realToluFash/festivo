@@ -13,12 +13,15 @@ import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { type EditOutcome } from './EditEvent.tsx';
 import { DeleteEvent } from './DeleteEvent.tsx';
+import { DuplicateEvent } from './DuplicateEvent.tsx';
 import { CalledOffNotice, EndButton } from './EndEvent.tsx';
 import { EventCoverImage } from './EventCoverImage.tsx';
 import { PHASE_WORD } from './eventWords.ts';
 import { DraftRow, StatusPill } from './MakeLive.tsx';
+import { PauseButton, PausedRow } from './PauseEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { typeLabel } from './eventTypes.ts';
+import { ComingUp, AllDates } from './Timeline.tsx';
 
 type Load =
   | { kind: 'loading' }
@@ -26,7 +29,7 @@ type Load =
   | { kind: 'notFound' }
   | { kind: 'loaded'; event: OrganisationEvent };
 
-type Page = 'event' | 'guests';
+type Page = 'event' | 'guests' | 'dates';
 
 export function EventView() {
   return <ForEvent page="event" />;
@@ -34,6 +37,10 @@ export function EventView() {
 
 export function EventGuests() {
   return <ForEvent page="guests" />;
+}
+
+export function EventDates() {
+  return <ForEvent page="dates" />;
 }
 
 function ForEvent({ page }: { page: Page }) {
@@ -137,16 +144,19 @@ function EventOf({
         </section>
       )}
 
-      {load.kind === 'loaded' &&
-        (page === 'event' ? (
-          <EventPage
-            event={load.event}
-            heading={heading}
-            onChange={(event) => setLoad({ kind: 'loaded', event })}
-          />
-        ) : (
-          <GuestsComing event={load.event} heading={heading} />
-        ))}
+      {load.kind === 'loaded' && page === 'event' && (
+        <EventPage
+          event={load.event}
+          heading={heading}
+          onChange={(event) => setLoad({ kind: 'loaded', event })}
+        />
+      )}
+      {load.kind === 'loaded' && page === 'guests' && (
+        <GuestsComing event={load.event} heading={heading} />
+      )}
+      {load.kind === 'loaded' && page === 'dates' && (
+        <AllDatesPage event={load.event} heading={heading} />
+      )}
     </div>
   );
 }
@@ -169,6 +179,7 @@ function EventPage({
   const coverLine = useRef<HTMLParagraphElement>(null);
   const [madeLive, setMadeLive] = useState(false);
   const [ended, setEnded] = useState(false);
+  const [moved, setMoved] = useState<'paused' | 'resumed' | null>(null);
   const now = useServerNow();
   const loadedAt = useLoadedAt(event);
   const phase = shownPhase(event, loadedAt, now);
@@ -183,76 +194,100 @@ function EventPage({
   }, [location, navigate]);
 
   return (
-    <section className="card event-page-card" aria-labelledby="event-title">
-      <EventCoverImage
-        photo={event.cover}
-        type={event.type}
-        sizes="(width <= 40rem) 100vw, 45rem"
-        className="event-page-cover"
-      />
-      <div className="event-page-head">
-        <h1 id="event-title" ref={heading} tabIndex={-1}>
-          {event.name}
-        </h1>
-        <StatusPill phase={phase} />
-        <PhaseChange key={loadedAt.getTime()} phase={phase} />
-      </div>
-      <p className="muted">{typeLabel(event.type, t)}</p>
-      <p>
-        {t('eventPage.when', {
-          range: formatEventRange(event.startsAt, event.endsAt, event.timeZone, dateLocale()),
-          timeZone: event.timeZone,
-        })}
-      </p>
-      <CalledOffNotice event={event} />
-      <DraftRow
-        event={event}
-        now={now}
-        manages={can(session, 'events.manage')}
-        heading={heading}
-        onChange={onChange}
-        onMadeLive={() => setMadeLive(true)}
-      />
-      {madeLive && <OutcomeLine words={t('eventLive.madeLive')} />}
-      {ended && <OutcomeLine words={t(PHASE_WORD.finished)} />}
-      <Venue event={event} manages={can(session, 'events.manage')} />
-      {coverRefused != null && (
-        <ArrivalNotice
-          role="alert"
-          line={t('eventCover.createdWithout', { reason: coverRefused })}
-          lineRef={coverLine}
-          focusable={false}
-          retry={t('eventEdit.open')}
-          onRetry={() => void navigate(`/app/events/${encodeURIComponent(event.id)}/edit#cover`)}
+    <>
+      <section className="card event-page-card" aria-labelledby="event-title">
+        <EventCoverImage
+          photo={event.cover}
+          type={event.type}
+          sizes="(width <= 40rem) 100vw, 45rem"
+          className="event-page-cover"
         />
-      )}
-      {outcome != null && (
-        <OutcomeLine
-          words={outcome === 'saved' ? t('eventEdit.saved') : t('eventEdit.nothingChanged')}
+        <div className="event-page-head">
+          <h1 id="event-title" ref={heading} tabIndex={-1}>
+            {event.name}
+          </h1>
+          <StatusPill phase={phase} />
+          <PhaseChange key={loadedAt.getTime()} phase={phase} />
+        </div>
+        <p className="muted">{typeLabel(event.type, t)}</p>
+        <p>
+          {t('eventPage.when', {
+            range: formatEventRange(event.startsAt, event.endsAt, event.timeZone, dateLocale()),
+            timeZone: event.timeZone,
+          })}
+        </p>
+        <CalledOffNotice event={event} />
+        <DraftRow
+          event={event}
+          now={now}
+          manages={can(session, 'events.manage')}
+          heading={heading}
+          onChange={onChange}
+          onMadeLive={() => setMadeLive(true)}
         />
-      )}
-      <div className="event-page-actions">
-        {can(session, 'events.manage') && (
-          <Link className="button" to={`/app/events/${encodeURIComponent(event.id)}/edit`}>
-            {t('eventEdit.open')}
-          </Link>
+        {madeLive && <OutcomeLine words={t('eventLive.madeLive')} />}
+        {ended && <OutcomeLine words={t(PHASE_WORD.finished)} />}
+        <PausedRow
+          event={event}
+          phase={phase}
+          manages={can(session, 'events.manage')}
+          heading={heading}
+          onChange={onChange}
+          onResumed={() => setMoved('resumed')}
+        />
+        {moved != null && (
+          <OutcomeLine key={moved} words={t(`eventPause.${moved}`, { name: event.name })} />
         )}
-        {can(session, 'events.manage') && (
-          <EndButton
-            event={event}
-            phase={phase}
-            now={now}
-            heading={heading}
-            onChange={onChange}
-            onEnded={() => setEnded(true)}
+        <Venue event={event} manages={can(session, 'events.manage')} />
+        {coverRefused != null && (
+          <ArrivalNotice
+            role="alert"
+            line={t('eventCover.createdWithout', { reason: coverRefused })}
+            lineRef={coverLine}
+            focusable={false}
+            retry={t('eventEdit.open')}
+            onRetry={() => void navigate(`/app/events/${encodeURIComponent(event.id)}/edit#cover`)}
           />
         )}
-        <Link className="button" to={`/app/events/${encodeURIComponent(event.id)}/guests`}>
-          {t('eventPage.guests')}
-        </Link>
-      </div>
-      {can(session, 'events.create') && <DeleteEvent event={event} />}
-    </section>
+        {outcome != null && (
+          <OutcomeLine
+            words={outcome === 'saved' ? t('eventEdit.saved') : t('eventEdit.nothingChanged')}
+          />
+        )}
+        <div className="event-page-actions">
+          {can(session, 'events.manage') && (
+            <Link className="button" to={`/app/events/${encodeURIComponent(event.id)}/edit`}>
+              {t('eventEdit.open')}
+            </Link>
+          )}
+          {can(session, 'events.manage') && (
+            <PauseButton
+              event={event}
+              phase={phase}
+              heading={heading}
+              onChange={onChange}
+              onPaused={() => setMoved('paused')}
+            />
+          )}
+          {can(session, 'events.manage') && (
+            <EndButton
+              event={event}
+              phase={phase}
+              now={now}
+              heading={heading}
+              onChange={onChange}
+              onEnded={() => setEnded(true)}
+            />
+          )}
+          <Link className="button" to={`/app/events/${encodeURIComponent(event.id)}/guests`}>
+            {t('eventPage.guests')}
+          </Link>
+          {can(session, 'events.create') && <DuplicateEvent event={event} />}
+        </div>
+        {can(session, 'events.create') && <DeleteEvent event={event} />}
+      </section>
+      <ComingUp event={event} now={now} />
+    </>
   );
 }
 
@@ -323,6 +358,28 @@ function editOutcome(state: unknown): EditOutcome | null {
   const edit = typeof state === 'object' && state != null && 'edit' in state ? state.edit : null;
 
   return edit === 'saved' || edit === 'unchanged' ? edit : null;
+}
+
+function AllDatesPage({
+  event,
+  heading,
+}: {
+  event: OrganisationEvent;
+  heading: RefObject<HTMLHeadingElement | null>;
+}) {
+  const { t } = useTranslation();
+  const now = useServerNow();
+
+  usePageTitle(pageTitle(t, [t('timeline.allDates'), event.name]));
+
+  return (
+    <section className="card timeline-page">
+      <h1 ref={heading} tabIndex={-1}>
+        {t('timeline.allDates')}
+      </h1>
+      <AllDates event={event} now={now} heading={heading} />
+    </section>
+  );
 }
 
 function GuestsComing({

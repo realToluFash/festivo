@@ -14,8 +14,12 @@ export function Dashboard() {
     if (organisationId == null) return;
     let current = true;
 
-    api.events(organisationId).then(
-      (events) => current && setCounted({ organisationId, count: events.length }),
+    Promise.all([
+      api.events(organisationId, { itemsPerPage: 1 }),
+      api.events(organisationId, { finished: true, itemsPerPage: 1 }),
+    ]).then(
+      ([unfinished, finished]) =>
+        current && setCounted({ organisationId, count: unfinished.total + finished.total }),
       () => undefined,
     );
 

@@ -49,7 +49,9 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Place (a track)                      | Settled 19 Oct 2026: where an item happens. "Track" stays internal; never "venue", "room" or "stage".                                                                                                                                                        |
 | Show to guests, Fixed time           | Settled 19 Oct 2026: the schedule item form's switches.                                                                                                                                                                                                      |
 | Your cues, You're on, You're up next | Settled 19 Oct 2026 (sc-3896): "Your cues, {{name}}" with the full name; "You're on" only while the cue runs, "You're up next" before.                                                                                                                       |
-| Coming up                            | Settled 19 Oct 2026: the room screen's heading (sc-3897) only. "Times as of {{time}}" when offline, time from Intl.                                                                                                                                          |
+| Coming up                            | Settled 19 Oct 2026: the room screen's heading (sc-3897). "Times as of {{time}}" when offline, time from Intl. Widened 27 Oct 2026 (sc-15756) to Event View's panel of an event's next dates.                                                                |
+| All dates (an event's dates)         | Settled 27 Oct 2026 (sc-3624 #16015): the screen of every date on an event, /app/events/<id>/dates. Replaced "Full schedule", which clashed with Schedule. "Loading the dates…", "The dates did not load." es, fr, pt: a calendar of dates, not Schedule.    |
+| Passed, Next up, Overdue             | 27 Oct 2026 (sc-15756): a date's standing on All dates. Owners: "Event", "You", "Automatic".                                                                                                                                                                 |
 | The day, Programme                   | Settled 19 Oct 2026 (sc-3899): the guest page heading, "The day" for one day, "Programme" when items span several days.                                                                                                                                      |
 | That's everything                    | Settled 19 Oct 2026: the end of the run of show, then "Finished {{count}} min behind plan.", "… ahead of plan." or "Finished on plan.", three whole keys. Replaced "That's the whole night".                                                                 |
 
@@ -62,6 +64,30 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **27 Oct 2026. Duplicating an event** (sc-15883 for sc-3593, `web:eventDuplicate.*`). Settled
+  as sc-3593 wrote it; `DuplicateEvent.test.tsx` pins it. The act is "Duplicate", the button that
+  confirms it "Create draft", and the new event is "the copy" until it exists, then "Draft". The
+  panel lists "Copied" and "Not copied"; the length is "Length", the event's duration. A refusal
+  starts "Not created.", as "Not made live." does. `{{duration}}` arrives in the reader's words
+  from Intl ("1 hour", "2 hours"), and `hoursAndMinutes` is where es, fr and pt put their "and".
+- **27 Oct 2026. Pausing and resuming an event** (sc-15439 for sc-3586, `eventPause.*` web and
+  app). Settled as sc-3586 wrote it. The act is "Pause", the way back "Resume", the way out of
+  the confirmation "Keep it live", never "Cancel". A refusal starts "Not paused." or "Not
+  resumed.", as "Not ended." does. The explanation "Guests can't reply …" keeps its contraction,
+  as `scheduleLocked` does: it explains, it does not refuse. "Check-in" is guests arriving at
+  the door, "service" the food and drink on the night; es, fr and pt name the door, never a
+  hotel or airport check-in.
+- **27 Oct 2026. An event's hosts** (sc-15427 for sc-6713, `web:eventHosts.*`,
+  `eventLive.needsHost*|addHosts` web and app, `messages:validation.event_host*`,
+  `messages:event.host_required|last_host`, `errors:event_host_required`). Settled as sc-6713
+  wrote it, except the last-host lines (#15501): the rule holds for any event that has been made
+  live, Live, Paused or Finished alike, so they say why from the guest's side, "Guests can see
+  this event, so …", never "A live event …". The refusals take "cannot". One line waits on [dev2]:
+  `eventHosts.lastHost` should read "Guests can see this event, so it needs at least one host.
+  You can still change this name.", but `Events.test.tsx` matches the old line; es, fr and pt
+  already say the settled one. A host is a name as guests read it, perhaps a couple on one row
+  ("Chief and Mrs Adeyemi"), so es, fr and pt keep a name out of any agreement: "removed",
+  "moved" and "already a host" are written around the name.
 - **26 Oct 2026. Deleting an event** (sc-14417 for sc-3592, `eventDelete.*` web and app,
   `messages:event.delete_name_mismatch`). Settled as sc-3592 wrote it; `DeleteEvent.test.tsx`
   pins it. The act is "Delete event", the dialog "Delete {{event}}?", the way out "Keep it". It
@@ -569,3 +595,32 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **17 Oct 2026. "Choose the country code, then type the number any way you like."**
   (`verifyPhone.numberHelp`). Settled as written by PM on sc-945; it is true for every way the
   code can start, and es/pt already read naturally from it.
+- **27 Oct 2026. Delivery states and reasons for a message to guests** (sc-3942, settled on
+  pm's #15426). The field is **Message**, not "Body". Over a limit, the house sentence with the
+  limit as a slot: "Shorten the subject to {{count}} characters or fewer." and "Shorten the
+  message to {{count}} characters or fewer."; the slot is formatted with `Intl` ("10,000"),
+  never written in. An empty choice reads "Choose at least one guest.", the picker's own verb.
+  A spam complaint is the state **Reported as spam**, beside Sent, Delivered, Bounced and Not
+  sent; never "Complained", and never a reason under Bounced. A later send skipped for it
+  (`complained`) reads "Reported an earlier email as spam", reusing the state's verb so the
+  host connects the two. Won over "… from this organisation …", which every reason the host
+  sees already implies and which overruns a phone row. Other skip reasons read as short
+  phrases in the same row: "No email address", "Address is bouncing".
+- **27 Oct 2026. Events Home's tabs and empty states** (sc-15981 for sc-3594, `events.tab*|empty*|
+startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the same plus
+  `nextUp|showingMore`). Kept as sc-3594 wrote it. The tabs are **Upcoming**, **Drafts** and
+  **Past**; each empty state is a short title and one line saying what will show there. A
+  cancelled past event reads "Called off on {{date}}", the act sc-3585 named. The two
+  `moreFailed` keep their second sentence different on purpose: each repeats its own screen's
+  load failure, web "Try again in a moment." as `events.failed`, the app "Check your connection
+  and try again." as `eventsScreen.failedLoad`. es, fr and pt follow the same split.
+- **27 Oct 2026. The details page names the sign-in rule, not the role** (sc-16443 for
+  sc-16265, `orgGeneral.readOnlyUntilLinked|readOnlyUntilTwoFactor|refusedByRule`, web and
+  app). Kept as sc-16265 wrote it. Each line opens with the rule in the banner's words
+  (`signInRules.unlinkedBody`, `gateBody`, without "now", since the page states the rule rather
+  than announcing it) and ends with the role line's "you can see these but not change them", so
+  the page reads the same whichever reason holds it back. A save the rule refuses says only
+  "Nothing was saved.": the line under the details already says why.
+- **27 Oct 2026. A called-off event's milestone** (sc-16725 for sc-16709,
+  `messages:timeline.event_called_off`). "{name} called off", as pm wrote it, beside
+  "{name} starts" and "{name} ends"; the act stays "Call off" (sc-3585).

@@ -387,14 +387,24 @@ services:
       - '${OIDC_PORT:-8089}:8080'
     # The image is distroless: no shell, no wget, no curl. It does carry a JDK,
     # and Java runs a single source file directly, so the check is a few lines
-    # of Java mounted with the config. Each run starts a JVM, about a second and
-    # a half, hence the longer timeout.
+    # of Java mounted with the config. Each run starts a JVM and compiles the
+    # file, about a second of CPU, so it runs often only while starting; a short
+    # interval across several stacks saturates the Docker VM.
     healthcheck:
-      test: ['CMD', 'java', '/config/Healthcheck.java']
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 10s
+      test:
+        [
+          'CMD',
+          'java',
+          '-XX:TieredStopAtLevel=1',
+          '-XX:+UseSerialGC',
+          '-Xmx64m',
+          '/config/Healthcheck.java',
+        ]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+      start_interval: 2s
     restart: unless-stopped
 
 volumes:

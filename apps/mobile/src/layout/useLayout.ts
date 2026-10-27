@@ -37,5 +37,11 @@ export function useSideListWidth(width: number): number {
   return sideListWidth(width, window - (landscape ? railWidth(fontScale) : 0), fontScale);
 }
 
-export { classifyLayout, isTablet, TABLET_MIN_DIMENSION } from './classify.ts';
-export type { LayoutKind } from './classify.ts';
+export {
+  classifyLayout,
+  isTablet,
+  listAndPageKind,
+  SETTINGS_LIST_WIDTH,
+  TABLET_MIN_DIMENSION,
+} from './classify.ts';
+export type { LayoutKind, SectionBeside } from './classify.ts';

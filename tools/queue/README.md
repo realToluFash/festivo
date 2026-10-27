@@ -123,9 +123,10 @@ story or pull request, read fresh rather than from the last sync, and says why i
   Progress. Epics are read on every sync, so the change reaches the queue within a minute.
 - **A Done story still wakes.** A comment addressed to a role after the story went Done
   wakes it, and its payload says the story is Done and new work goes on an open story. An
-  open pull request on a Done story is a follow-up, reviewed and merged like any other: the
-  lead reviews it, its builder is woken by its checks, by the pass and by a conflict with
-  main, and `merge` leaves the story Done. An archived story wakes nobody by comment, and its
+  open pull request on a Done story, or on one in Ready For QA, In QA, Failed QA or Passsed
+  QA, is a follow-up, reviewed and merged like any other: the lead reviews it, its builder
+  is woken by its checks, by the pass and by a conflict with main, and `merge` leaves the
+  story where it is, with no tester told. An archived story wakes nobody by comment, and its
   open pull request wakes its builder once to close it. The sync fetches the story of every
   open pull request however old it is, and remembers one Shortcut does not have.
 - **Nothing is stranded.** An open pull request with no story, or untouched for 24 hours,

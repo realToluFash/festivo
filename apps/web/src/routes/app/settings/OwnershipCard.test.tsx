@@ -364,6 +364,19 @@ describe('Settings > General, ownership and leaving', () => {
     expect(shown.filter((element) => !breaksAnywhere(element))).toEqual([]);
   });
 
+  it('wraps Leave ‹organisation› as a whole label, on the card and in its dialog (sc-15298)', () => {
+    signedIn(IRE);
+    answering({});
+    settings();
+
+    const card = screen.getByRole('button', { name: 'Leave Ìrè Events' });
+    expect(card.querySelector('.button-label')?.textContent).toBe('Leave Ìrè Events');
+
+    fireEvent.click(card);
+    const confirm = screen.getByRole('button', { name: 'Leave Ìrè Events' });
+    expect(confirm.querySelector('.button-label')?.textContent).toBe('Leave Ìrè Events');
+  });
+
   it('lands an account that left its only organisation on the page that says so', async () => {
     signedIn(
       membership({

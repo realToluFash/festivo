@@ -41,6 +41,21 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **27 Oct 2026. Duplicar um evento** (sc-15883 para sc-3593, `web:eventDuplicate.*`). "Duplicar"
+  e "Criar rascunho"; o evento novo é "a cópia" até existir. O painel diz "O que é copiado" / "O
+  que não é copiado", porque um particípio sozinho teria de concordar com cada linha. Length é
+  "Duração". Uma recusa começa "Não foi criado.", como "Não foi publicado.". As horas e os
+  minutos juntam-se com "e" em `hoursAndMinutes` ("2 horas e 20 minutos"); a data leva "no dia
+  {{end}}", como `calledOffNotice`, e "Horas no fuso horário {{timeZone}}", como o formulário.
+- **27 Oct 2026. Os anfitriões de um evento** (sc-15427 para sc-6713, `web:eventHosts.*`,
+  `eventLive.needsHost*|addHosts` web e app, `messages:validation.event_host*`,
+  `messages:event.host_required|last_host`). Host é "anfitrião", como `errors:event_host_required`;
+  a secção é "Anfitriões" e cada linha "Anfitrião {{position}}". "Add who is hosting" é "Indicar
+  os anfitriões". Um anfitrião é um nome tal como os convidados o leem, por vezes um casal numa
+  linha, por isso nada concorda com {{name}}: "{{name}} já consta da lista de anfitriões", "… já
+  não consta da lista de anfitriões", "{{name}}: posição {{position}} de {{count}}". Remover é
+  "Remover", como em Conta. O limite é a mesma frase no ecrã e na API. O último anfitrião
+  explica-se do lado dos convidados: "Os convidados podem ver este evento, por isso …".
 - **26 Oct 2026. Eliminar um evento** (sc-14417 para sc-3592, `eventDelete.*` web e app,
   `messages:event.delete_name_mismatch`). Como para uma organização: "Eliminar o evento", com
   o artigo, como "Cancelar o evento"; o diálogo "Eliminar {{event}}?" e a saída "Manter o
@@ -64,6 +79,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   começa "Não foi terminado.". Os convidados são "os convidados que abrirem a sua ligação". A
   data do aviso leva "no dia {{date}}", pela regra do dia da semana. `scheduleLocked` e
   `scheduleConcluded` são a mesma frase: o português não tem a contração que as distingue.
+- **27 Oct 2026. Pausar e retomar um evento** (sc-15439 para sc-3586, `eventPause.*` web e
+  app). "Pausar", como a permissão; "Retomar"; a saída é "Manter publicado". As recusas: "Não
+  foi pausado.", "Não foi retomado.". "Check-in" é "o registo de entradas" dos convidados,
+  nunca "a receção", que é a festa. O resultado concorda com "evento", nunca com o nome: "O
+  evento {{name}} voltou a estar publicado".
 - **26 Oct 2026. Publicar um rascunho e os estados de um evento** (sc-13956, sc-3584,
   `eventLive.*` web e app, `events.*`, `eventsScreen.*`, `messages:event.*`,
   `event.plan_limit`). "Make live" é "Publicar", como a permissão "Criar, publicar, pausar e
@@ -86,6 +106,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   do leitor de ecrã. «Carregar» para upload, com o gerúndio de PT-PT «A carregar…»; «píxeis», não
   «pixels». A linha do evento criado, «O evento foi guardado sem a fotografia. {{reason}}», lê-se
   com qualquer das recusas a seguir.
+  Depois de uma recusa, os botões do diálogo são «Escolher outra fotografia» e, com a moldura
+  vazia, «Escolher uma fotografia» (sc-16573): no infinitivo, como «Carregar uma fotografia» e
+  «Usar esta fotografia», enquanto a recusa pede no imperativo, «Escolha uma maior».
 - **26 Oct 2026. O tipo de evento** (`web:eventForm.type*`, `web:eventTypes.*`,
   `messages:validation.event_type_required`, sc-3588 via sc-13205). "Tipo", "Escolha o tipo de
   evento", e a recusa, igual no ecrã e na API, "Escolha que tipo de evento é.". Birthday é
@@ -116,7 +139,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   pode usar este convite." The email's `{date}` has a full month, so "válido até {date}."
   ends it. The subtitle names its counts after a colon, "com acesso: {{active}} · convites:
   {{invited}}". History lines name what was acted on, "Convite enviado por", "Pedido aprovado
-  por", "Acesso suspenso / reposto / retirado por". Who sent an invitation in a list is "convite enviado por {{inviter}}", and the reader as sender is "si", "convite enviado por si", never "de a sua conta" (QA, 26 Oct).
+  por", "Acesso suspenso / reposto / retirado por". Who sent an invitation in a list is "convite enviado por {{inviter}}", and the reader as sender is "si", "convite enviado por si" (`membersScreen.invitedAsByYou`), never "de a sua conta" (QA, 26 Oct). The row marker `membersScreen.you` stays "a sua conta", never "si" (QA #15272).
 - **25 Oct 2026. Deleting an organisation** (`errors:owner_required`,
   `messages:organisation.owner_required`, `delete_name_mismatch`, `emails:organisationDeleted.*`,
   sc-3215). The refusals name the role, "Só alguém com a função Proprietário…", as
@@ -487,3 +510,25 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   (`emails:twoFactor.on.subject`, `twoFactor.off.subject`, sc-14100): "Autenticação de dois
   fatores ativada" / "desativada", a pair that differs only in its last word. "A autenticação
   de dois fatores foi desativada" ran past one line of a 360dp inbox row.
+- **27 Oct 2026. An event's dates are "o calendário", never "o programa"** (`timeline.*`,
+  sc-15756). "Programa" is the organiser's Schedule (epic 33); the list of an event's dates is
+  "Calendário completo", its panel "Próximas datas". The owner pill "You" is "A seu cargo",
+  since "Você" is Brazilian. Distances follow the date: "hoje", "daqui a 3 dias", "há 2 dias".
+  The API titles keep the name as subject, "{name} começa", "{name} termina", so no article
+  has to agree with it.
+- **27 Oct 2026. Os separadores de Eventos e os seus estados vazios** (sc-15981 para sc-3594,
+  `events.*`, `eventsScreen.*`). Os separadores são "Próximos", "Rascunhos" e "Anteriores".
+  "Make live" continua a ser "publicar"; "Called off on" é "Cancelado a {{date}}", com "a" antes
+  da data, à maneira pt-PT. "Next up" é "A seguir", como `timeline.nextUp`. O botão enquanto
+  carrega diz "A carregar mais…". A contagem anunciada concorda o verbo: "Foi mostrado mais 1 …",
+  "Foram mostrados mais …", com "de eventos" em `many`; 0 é `other`. `moreFailed` repete a
+  segunda frase da falha de carregamento do seu ecrã, como em inglês.
+- **27 Oct 2026. A página de dados nomeia a regra, não a função** (sc-16443 para sc-16265,
+  `orgGeneral.readOnlyUntil*`, `refusedByRule`). Cada linha abre com a regra nas palavras do
+  aviso (`signInRules.unlinkedBody`, `gateBody`; "só aceita", porque aqui a regra não é nova) e
+  fecha como `orgGeneral.readOnly`: "pode ver estes dados mas não alterá-los", e não o "pode
+  consultar tudo, mas sem alterar nada" do aviso, porque a linha fala dos dados acima dela. Um
+  guardar recusado pela regra diz só "Nada foi guardado.", o início de `refused`.
+- **27 Oct 2026. O marco de um evento cancelado** (sc-16725 para sc-16709,
+  `messages:timeline.event_called_off`). "Cancelamento de {name}", um substantivo, para não
+  concordar com um nome de evento cujo género o código não conhece.

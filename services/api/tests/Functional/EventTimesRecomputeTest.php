@@ -19,6 +19,7 @@ use LogicException;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Vec;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
+use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\Console\Tester\CommandTester;
 
@@ -175,7 +176,9 @@ final class EventTimesRecomputeTest extends ApiTestCase
     {
         $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
 
-        return Vec\map(self::service(EventRepository::class)->findInOrganisation($organisation), static fn (Event $event): string => $event->getName());
+        $upcoming = self::service(EventRepository::class)->findPageInOrganisation($organisation, false, Clock::get()->now(), 1, 50);
+
+        return Vec\map($upcoming, static fn (Event $event): string => $event->getName());
     }
 
     /** @param array<string, mixed> $input */

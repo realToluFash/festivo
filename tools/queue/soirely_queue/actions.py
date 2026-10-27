@@ -255,6 +255,14 @@ def ops_only(c, story):
                       f"sc-{story['id']} is not")
 
 
+def linguists_own(c, story, state):
+    if c.role in R.DEVS and W.linguists(story) \
+            and c.state_id(state)[1] in ("In Review", "Ready For QA"):
+        raise Refused(f"sc-{story['id']} is a translation ticket, the linguist's to move. A "
+                      "pull request on it goes to the lead and is merged with the ticket left "
+                      "where it stands")
+
+
 def holding_now(c, story):
     """The blockers holding the story, each as Shortcut has it now."""
     if story["state"] not in W.HOLDABLE:
@@ -266,6 +274,7 @@ def move(c, a):
     guard(c, "move")
     story = c.story(a.story)
     ops_only(c, story)
+    linguists_own(c, story, a.state)
     state = set_state(c, story, a.state, check=c.role != "pm")
     moved = c.refresh(story["id"])
     holders = holding_now(c, moved) if state == "Ready For Dev" else []
@@ -605,14 +614,40 @@ def relate(c, a):
     subject, other = story_number(a.story), story_number(a.other)
     pairs = {(subject, other)} if a.verb != "relates to" else {(subject, other),
                                                                 (other, subject)}
-    links = c.shortcut.story(subject).get("story_links", [])
-    if any(link.get("verb") == a.verb and (link.get("subject_id"), link.get("object_id"))
-           in pairs for link in links):
-        return f"already linked: sc-{subject} {a.verb} sc-{other}"
+    links = [link for link in c.shortcut.story(subject).get("story_links", [])
+             if link.get("verb") == a.verb]
+    found = [link for link in links
+             if (link.get("subject_id"), link.get("object_id")) in pairs]
+    inverse = any((link.get("subject_id"), link.get("object_id")) == (other, subject)
+                  for link in links)
+    asked = f"sc-{subject} {a.verb} sc-{other}"
+    if a.remove:
+        if not found:
+            return f"not linked: {asked}" + (
+                f"; sc-{other} {a.verb} sc-{subject} is" if inverse else "")
+        held = a.verb == "blocks" and subject in {b["id"] for b in holding_now(c, c.story(other))}
+        for link in found:
+            c.shortcut.unrelate(link["id"])
+        if held and not holding_now(c, c.story(other)):
+            released = store.get_meta(c.db, "released", {})
+            released[str(other)] = time.time()
+            store.set_meta(c.db, "released", released)
+        elif a.verb == "blocks" and not held:
+            # A link that held nothing leaves the story offered under its blocker, as it was.
+            unlinked = store.get_meta(c.db, "unlinked", {})
+            unlinked[str(other)] = sorted({*unlinked.get(str(other), []), subject})
+            store.set_meta(c.db, "unlinked", unlinked)
+        c.refresh(subject)
+        c.refresh(other)
+        return f"removed: {asked}"
+    if found:
+        return f"already linked: {asked}"
+    if inverse:
+        raise Refused(f"sc-{other} {a.verb} sc-{subject} exists: remove it first with --remove")
     c.shortcut.relate(subject, other, a.verb)
     c.refresh(subject)
     c.refresh(other)
-    return f"sc-{subject} {a.verb} sc-{other}"
+    return asked
 
 
 def archive(c, a):
@@ -677,18 +712,18 @@ def review(c, a):
     # Only a story in review moves: a linguist's ticket, say, keeps its own state.
     if story and story["state"] in W.REVIEWED and not W.side_pr(story, pr):
         set_state(c, story, "Passed Code Review" if a.verdict == "pass" else "Failed Code Review")
-    # A Done story stays Done: QA has nothing to take, and a push alone wakes the lead.
-    done = story and W.finished(story)
+    # A follow-up's story, or a linguist's ticket, keeps its state: a push alone wakes the lead.
+    follow_up = story and W.follow_up(story)
     if story and a.verdict == "pass":
         # A developer's change on a linguist's ticket is not the ticket ready for QA.
-        if not W.side_pr(story, pr) and not done:
+        if not W.side_pr(story, pr) and not follow_up:
             post(c, story, ["qa"], f"PR #{a.pr} passed review at {head[:7]}: {pr['url']}\n\n"
                                    f"{a.qa or 'Nothing beyond the AC to look at hard.'}")
     elif story:
         post(c, story, [R.developer_of(story["labels"])],
              f"Review of PR #{a.pr} at {head[:7]}: {blocking} blocking. {url}\n"
              + ("Answer each finding in its thread, fix and push; the lead is woken by the push."
-                if done else
+                if follow_up or W.side_pr(story, pr) else
                 "Answer each finding in its thread, fix, push, and hand it back to In Review."))
     stale = resync(c)
     if story:
@@ -855,7 +890,7 @@ def merge(c, a):
         raise Refused(f"sc-{story['id']} is archived, so its PR merges nowhere: close it with "
                       f"`sq {c.role} pr-close {a.pr} --text \"<why>\"`")
     side = W.side_pr(story, pr)
-    follow_up = not side and (story["state"] in R.FOLLOWING_UP or W.finished(story))
+    follow_up = not side and W.follow_up(story)
     if story["state"] not in R.MERGING and not side and not follow_up:
         raise Refused(f"its story is {story['state']}, not Passed Code Review: move it to "
                       "In Review for the lead once its checks are green")
@@ -939,6 +974,7 @@ def pr_edit(c, a):
 def to_qa(c, a):
     guard(c, "to-qa")
     story = c.story(a.story)
+    linguists_own(c, story, "Ready For QA")
     merged = [pr for pr in store.prs_for_story(c.db, story["id"]) if pr["state"] == "merged"]
     if not merged:
         raise Refused(f"sc-{story['id']} has no merged pull request")

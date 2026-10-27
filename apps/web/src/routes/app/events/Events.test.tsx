@@ -1,9 +1,9 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { EVENT_TYPES, serverClock } from '@soirely/domain';
+import { EVENT_TYPES, forgetEventsTab, serverClock } from '@soirely/domain';
 
-import { __setSessionState, type Session } from '../../../session.ts';
+import { __setSessionState, type Session, switchOrganisation } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { breaksAnywhere } from '../../../test-wrapping.ts';
 import { routes } from '../../index.tsx';
@@ -31,7 +31,9 @@ function event(overrides: Record<string, unknown> = {}) {
     currency: 'NGN',
     cover: null,
     venue: null,
+    hosts: ['Funmi Adeyemi'],
     madeLiveAt: null,
+    pausedAt: null,
     phase: 'draft',
     concludedAt: null,
     createdAt: '2026-10-21T09:00:00+00:00',
@@ -39,7 +41,7 @@ function event(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function signedIn(organisation = IRE): void {
+function signedIn(organisation = IRE, organisations = [organisation]): void {
   const session: Session = {
     name: 'Folake Adeyemi',
     email: 'folake@ire.events',
@@ -50,7 +52,7 @@ function signedIn(organisation = IRE): void {
     needsOrganisation: false,
     hasPassword: true,
     organisation,
-    organisations: [organisation],
+    organisations,
     organisationCountry: null,
     timezone: null,
     waitingFor: null,
@@ -59,7 +61,7 @@ function signedIn(organisation = IRE): void {
   __setSessionState({ status: 'signedIn', session });
 }
 
-type Answer = (body: unknown) => Response | Promise<Response>;
+type Answer = (body: unknown, url: URL) => Response | Promise<Response>;
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status });
@@ -76,14 +78,33 @@ function answering(answers: Record<string, Answer>) {
   const sent: { line: string; body: unknown }[] = [];
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-    const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+    const url = new URL(String(input));
+    const line = `${init?.method ?? 'GET'} ${url.pathname}`;
     const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
     sent.push({ line, body });
 
-    return (await answers[line]?.(body)) ?? json({});
+    return (await answers[line]?.(body, url)) ?? json({});
   });
 
   return sent;
+}
+
+/** The list's two requests: every unfinished event, and the Finished a page at a time of `pastTotal`. */
+function listed(
+  unfinished: Record<string, unknown>[],
+  past: Record<string, unknown>[] = [],
+  pastTotal = past.length,
+): Answer {
+  return (_body, url) => {
+    const page = Number(url.searchParams.get('page') ?? '1');
+    const perPage = Number(url.searchParams.get('itemsPerPage') ?? '50');
+    const finished = url.searchParams.get('finished') === 'true';
+    const events = (finished ? past : unfinished)
+      .slice((page - 1) * perPage, page * perPage)
+      .map((one) => ({ milestones: [], ...one }));
+
+    return json({ events, total: finished ? pastTotal : unfinished.length });
+  };
 }
 
 function at(path: string): void {
@@ -101,45 +122,48 @@ function spaced(text: string | null): string {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  forgetEventsTab();
 });
 
 describe('Events', () => {
-  it('lists each event with Draft and its start date, in the order the API gives', async () => {
+  it('lists each draft with Draft, its type, and its date with how far away it is', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-13T12:00:00Z'));
+    serverClock.observe(new Date().toUTCString());
     signedIn();
     answering({
-      'GET /api/orgs/org_1/events': () =>
-        json({
-          events: [
-            event(),
-            event({
-              id: 'ev_2',
-              name: 'Board dinner',
-              type: 'corporate',
-              startsAt: '2026-12-01T19:00:00+00:00',
-              endsAt: '2026-12-01T23:00:00+00:00',
-              timeZone: 'Europe/London',
-            }),
-          ],
+      'GET /api/orgs/org_1/events': listed([
+        event({
+          id: 'ev_2',
+          name: 'Board dinner',
+          type: 'corporate',
+          startsAt: '2026-12-01T19:00:00+00:00',
+          endsAt: '2026-12-01T23:00:00+00:00',
+          timeZone: 'Europe/London',
         }),
+        event(),
+      ]),
     });
     at('/app/events');
 
+    fireEvent.click(await screen.findByRole('tab', { name: 'Drafts 2' }));
     const rows = await screen.findAllByRole('listitem');
 
     expect(rows.map((row) => spaced(row.textContent))).toEqual([
-      'Adaeze and TundeWeddingDraftSat, Nov 14, 2026',
-      'Board dinnerCorporate eventDraftTue, Dec 1, 2026',
+      'DraftAdaeze and TundeWeddingSaturday, Nov 14 · in 32 days',
+      'DraftBoard dinnerCorporate eventTuesday, Dec 1 · in 49 days',
     ]);
     expect(within(rows[0]!).getByRole('link').getAttribute('href')).toBe('/app/events/ev_1');
     expect(screen.getByRole('link', { name: 'New event' }).getAttribute('href')).toBe(
       '/app/events/new',
     );
-    expect(screen.queryByRole('tab')).toBeNull();
+    vi.useRealTimers();
+    serverClock.observe(new Date().toUTCString());
   });
 
   it('shows the first-run card, with Create an event, to an organisation with no events', async () => {
     signedIn();
-    answering({ 'GET /api/orgs/org_1/events': () => json({ events: [] }) });
+    answering({ 'GET /api/orgs/org_1/events': listed([]) });
     at('/app/events');
 
     const card = (await screen.findByRole('heading', { name: 'Set up your first event' }))
@@ -154,7 +178,7 @@ describe('Events', () => {
 
   it('shows no button without Create events, and says who can create one', async () => {
     signedIn(READER);
-    answering({ 'GET /api/orgs/org_1/events': () => json({ events: [] }) });
+    answering({ 'GET /api/orgs/org_1/events': listed([]) });
     at('/app/events');
 
     await screen.findByRole('heading', { name: 'Set up your first event' });
@@ -172,8 +196,8 @@ describe('Events', () => {
     signedIn();
     let calls = 0;
     answering({
-      'GET /api/orgs/org_1/events': () =>
-        ++calls === 1 ? problem(500, 'internal_error') : json({ events: [event()] }),
+      'GET /api/orgs/org_1/events': (body, url) =>
+        ++calls <= 2 ? problem(500, 'internal_error') : listed([event()])(body, url),
     });
     at('/app/events');
 
@@ -183,6 +207,7 @@ describe('Events', () => {
     expect(screen.queryAllByRole('listitem')).toHaveLength(0);
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    fireEvent.click(await screen.findByRole('tab', { name: /Drafts/ }));
 
     expect(await screen.findByRole('link', { name: /Adaeze and Tunde/ })).toBeDefined();
     expect(screen.queryByRole('alert')).toBeNull();
@@ -197,8 +222,8 @@ describe('Events', () => {
       signedIn();
       let calls = 0;
       answering({
-        'GET /api/orgs/org_1/events': () =>
-          ++calls === 1 ? problem(500, 'internal_error') : json({ events }),
+        'GET /api/orgs/org_1/events': (body, url) =>
+          ++calls <= 2 ? problem(500, 'internal_error') : listed(events)(body, url),
       });
       at('/app/events');
 
@@ -228,11 +253,295 @@ describe('Events', () => {
   it("counts the organisation's events on the dashboard", async () => {
     signedIn();
     answering({
-      'GET /api/orgs/org_1/events': () => json({ events: [event(), event({ id: 'ev_2' })] }),
+      'GET /api/orgs/org_1/events': listed([event()], [event({ id: 'ev_2' })]),
     });
     at('/app');
 
     expect(await screen.findByText('2 events')).toBeDefined();
+  });
+});
+
+describe('Events Home (sc-3594)', () => {
+  const NOW = new Date('2026-11-01T12:00:00Z');
+
+  function live(name: string, overrides: Record<string, unknown> = {}) {
+    return event({ id: name, name, status: 'live', phase: 'live', ...overrides });
+  }
+
+  function starts(title: string, at: string) {
+    return { at, title, note: null, owner: 'event', area: 'events', action: null };
+  }
+
+  function finished(count: number) {
+    return Array.from({ length: count }, (_, index) =>
+      event({
+        id: `past_${index}`,
+        name: `Past ${String(index).padStart(2, '0')}`,
+        status: 'ended',
+        phase: 'finished',
+        startsAt: '2026-09-01T10:00:00+01:00',
+        endsAt: '2026-09-01T12:00:00+01:00',
+        concludedAt: new Date(
+          Date.parse('2026-10-30T10:00:00Z') - index * 86_400_000,
+        ).toISOString(),
+      }),
+    );
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date', 'setInterval', 'clearInterval'] });
+    vi.setSystemTime(NOW);
+    serverClock.observe(NOW.toUTCString());
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    serverClock.observe(new Date().toUTCString());
+  });
+
+  it('shows Happening now above the tabs, with its start and Next up, on every tab', async () => {
+    signedIn();
+    answering({
+      'GET /api/orgs/org_1/events': listed([
+        live('Tonight', {
+          phase: 'happening_now',
+          startsAt: '2026-11-01T09:00:00+01:00',
+          endsAt: '2026-11-03T02:00:00+01:00',
+          timeZone: 'Europe/Madrid',
+          milestones: [
+            starts('Tonight starts', '2026-11-01T09:00:00+01:00'),
+            starts('Tonight ends', '2026-11-03T02:00:00+01:00'),
+          ],
+        }),
+        live('Later', { milestones: [starts('Later starts', '2026-11-14T16:00:00+01:00')] }),
+      ]),
+    });
+    at('/app/events');
+
+    const now = (await screen.findByRole('heading', { name: 'Happening now' })).parentElement!;
+    expect(spaced(within(now).getByRole('listitem').textContent)).toBe(
+      'Happening nowTonightWeddingNext up Tonight endsToday · started 09:00 Europe/Madrid',
+    );
+
+    const upcoming = screen.getByRole('tabpanel');
+    expect(spaced(within(upcoming).getByRole('listitem').textContent)).toBe(
+      'LiveLaterWeddingNext up Later startsSaturday, Nov 14 · in 13 days',
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Past 0' }));
+    expect(screen.getByRole('heading', { name: 'Happening now' })).toBeDefined();
+  });
+
+  it('leaves Happening now out when nothing is, and Next up out with no milestone ahead', async () => {
+    signedIn();
+    answering({ 'GET /api/orgs/org_1/events': listed([live('Later')]) });
+    at('/app/events');
+
+    const [row] = await screen.findAllByRole('listitem');
+
+    expect(screen.queryByRole('heading', { name: 'Happening now' })).toBeNull();
+    expect(row!.textContent).not.toContain('Next up');
+  });
+
+  it('counts each tab, Upcoming with the Paused, and moves between them by arrow keys', async () => {
+    signedIn();
+    answering({
+      'GET /api/orgs/org_1/events': listed(
+        [
+          live('Later'),
+          live('Paused', {
+            status: 'paused',
+            phase: 'paused',
+            startsAt: '2026-11-10T16:00:00+01:00',
+          }),
+          event({ id: 'draft', name: 'Draft' }),
+        ],
+        finished(3),
+        3,
+      ),
+    });
+    at('/app/events');
+
+    const upcoming = await screen.findByRole('tab', { name: 'Upcoming 2' });
+    expect(upcoming.getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tab', { name: 'Drafts 1' }).getAttribute('tabindex')).toBe('-1');
+    expect(
+      within(screen.getByRole('tabpanel'))
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['Paused', 'Later']);
+
+    fireEvent.keyDown(upcoming, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Drafts 1' }));
+    expect(screen.getByRole('tab', { name: 'Drafts 1' }).getAttribute('aria-selected')).toBe(
+      'true',
+    );
+
+    fireEvent.keyDown(document.activeElement!, { key: 'End' });
+    expect(screen.getByRole('tab', { name: 'Past 3' }).getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(upcoming);
+  });
+
+  it.each([
+    [
+      'Upcoming',
+      'Nothing coming up',
+      'Events you make live show here, with the next thing each one needs.',
+    ],
+    [
+      'Drafts',
+      'No drafts',
+      'New events stay drafts, visible only to your team, until you make them live.',
+    ],
+    [
+      'Past',
+      'Nothing finished yet',
+      'Finished events stay here, so you can look back or start the next one from them.',
+    ],
+  ])('says %s is empty in its own words', async (tab, title, line) => {
+    signedIn();
+    answering({
+      'GET /api/orgs/org_1/events': listed(
+        tab === 'Upcoming' ? [event()] : [live('Later')],
+        tab === 'Past' ? [] : finished(1),
+      ),
+    });
+    at('/app/events');
+
+    fireEvent.click(await screen.findByRole('tab', { name: new RegExp(`^${tab}`) }));
+
+    expect(
+      within(screen.getByRole('tabpanel')).getByRole('heading', { name: title }),
+    ).toBeDefined();
+    expect(screen.getByText(line)).toBeDefined();
+  });
+
+  it('counts every Finished event from the first page, and Show more loads ten more until there are none', async () => {
+    signedIn();
+    const sent = answering({ 'GET /api/orgs/org_1/events': listed([], finished(12), 12) });
+    at('/app/events');
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Past 12' }));
+    expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(10);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+
+    await waitFor(() =>
+      expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(12),
+    );
+    expect(screen.getByRole('tab', { name: 'Past 12' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+    expect(document.querySelector('.events-panel [aria-live="polite"]')?.textContent).toBe(
+      '2 more finished events shown.',
+    );
+    expect(sent.filter(({ line }) => line === 'GET /api/orgs/org_1/events')).toHaveLength(3);
+  });
+
+  it('reaches every Finished event, counted once, when one finishes between the first page and Show more', async () => {
+    const tonight = live('Tonight', {
+      startsAt: '2026-11-01T09:00:00Z',
+      endsAt: '2026-11-01T12:00:30Z',
+    });
+    const past = finished(25);
+    const ended = { ...tonight, status: 'ended', phase: 'finished', concludedAt: tonight.endsAt };
+    let served: Record<string, unknown>[] = past;
+    signedIn();
+    answering({
+      'GET /api/orgs/org_1/events': (body, url) =>
+        listed([tonight], served, served.length)(body, url),
+    });
+    at('/app/events');
+    fireEvent.click(await screen.findByRole('tab', { name: 'Past 25' }));
+
+    served = [ended, ...past];
+    await act(() => vi.advanceTimersByTimeAsync(30_000));
+    expect(screen.getByRole('tab', { name: 'Past 26' })).toBeDefined();
+
+    const items = () => within(screen.getByRole('tabpanel')).getAllByRole('listitem');
+    fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+    await waitFor(() => expect(items()).toHaveLength(20));
+    fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+    await waitFor(() => expect(items()).toHaveLength(26));
+
+    expect(screen.getByRole('tab', { name: 'Past 26' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+  });
+
+  it('offers no Show more with ten or fewer, and says when a call-off happened', async () => {
+    signedIn();
+    answering({
+      'GET /api/orgs/org_1/events': listed(
+        [],
+        [
+          event({
+            name: 'Called off',
+            status: 'ended',
+            phase: 'finished',
+            startsAt: '2026-12-01T10:00:00+01:00',
+            concludedAt: '2026-09-30T10:00:00+01:00',
+          }),
+        ],
+      ),
+    });
+    at('/app/events');
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Past 1' }));
+
+    expect(spaced(screen.getByRole('listitem').textContent)).toContain('Called off on Sep 30');
+    expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+  });
+
+  it('moves an event to Happening now at its start and to Past at its end, with no reload', async () => {
+    signedIn();
+    const sent = answering({
+      'GET /api/orgs/org_1/events': listed([
+        live('Party', { startsAt: '2026-11-01T12:00:30Z', endsAt: '2026-11-01T12:01:00Z' }),
+      ]),
+    });
+    at('/app/events');
+    await screen.findByRole('tab', { name: 'Upcoming 1' });
+
+    await act(() => vi.advanceTimersByTimeAsync(30_000));
+    expect(screen.getByRole('heading', { name: 'Happening now' })).toBeDefined();
+    expect(screen.getByRole('tab', { name: 'Upcoming 0' })).toBeDefined();
+
+    await act(() => vi.advanceTimersByTimeAsync(30_000));
+    expect(screen.queryByRole('heading', { name: 'Happening now' })).toBeNull();
+    expect(screen.getByRole('tab', { name: 'Past 1' })).toBeDefined();
+    expect(sent.filter(({ line }) => line === 'GET /api/orgs/org_1/events')).toHaveLength(2);
+  });
+
+  it('keeps the tab chosen when the person comes back, and opens on Upcoming after Switch organisation', async () => {
+    const other = membership({ id: 'org_2', name: 'Other' });
+    signedIn(IRE, [IRE, other]);
+    answering({
+      'GET /api/orgs/org_1/events': listed([event()]),
+      'GET /api/orgs/org_2/events': listed([event({ organisationId: 'org_2' })]),
+    });
+    at('/app/events');
+    fireEvent.click(await screen.findByRole('tab', { name: 'Drafts 1' }));
+    cleanup();
+
+    at('/app/events');
+    expect(
+      (await screen.findByRole('tab', { name: 'Drafts 1' })).getAttribute('aria-selected'),
+    ).toBe('true');
+    cleanup();
+
+    switchOrganisation('org_2');
+    at('/app/events');
+    expect(
+      (await screen.findByRole('tab', { name: 'Upcoming 0' })).getAttribute('aria-selected'),
+    ).toBe('true');
+    cleanup();
+
+    switchOrganisation('org_1');
+    at('/app/events');
+    expect(
+      (await screen.findByRole('tab', { name: 'Upcoming 0' })).getAttribute('aria-selected'),
+    ).toBe('true');
   });
 });
 
@@ -873,7 +1182,7 @@ describe("Editing an event's details (sc-3587)", () => {
       const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
       sent.push({ line, body, ifMatch: new Headers(init?.headers).get('If-Match') });
 
-      const answer = await answers[line]?.(body);
+      const answer = await answers[line]?.(body, new URL(String(input)));
       if (answer != null) return answer;
 
       if (line === 'PATCH /api/events/ev_1') {
@@ -1363,7 +1672,7 @@ describe("An event's venue (sc-3589)", () => {
       const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
       sent.push({ line: `${line}${url.search}`, body });
 
-      const answer = await answers[line]?.(body);
+      const answer = await answers[line]?.(body, new URL(String(input)));
       if (answer != null) return answer;
 
       return new Response(JSON.stringify({ event: served }), {
@@ -1772,7 +2081,7 @@ describe('Make live (sc-3584)', () => {
 
     expect(
       screen.getByText(
-        "This event's end has passed, so it can't be made live. Change its dates first.",
+        "This event's end has passed, so it cannot be made live. Change its dates first.",
       ),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
@@ -1783,7 +2092,7 @@ describe('Make live (sc-3584)', () => {
 
   it('shows Live in the list', async () => {
     signedIn();
-    answering({ 'GET /api/orgs/org_1/events': () => json({ events: [live()] }) });
+    answering({ 'GET /api/orgs/org_1/events': listed([live()]) });
     at('/app/events');
 
     const [row] = await screen.findAllByRole('listitem');
@@ -1837,8 +2146,12 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     ['finished', 'Finished'],
   ])('shows the server phase %s as %s in the list', async (phase, word) => {
     signedIn();
-    answering({ 'GET /api/orgs/org_1/events': () => json({ events: [live({ phase })] }) });
+    answering({
+      'GET /api/orgs/org_1/events':
+        phase === 'finished' ? listed([], [live({ phase })]) : listed([live({ phase })]),
+    });
     at('/app/events');
+    if (phase === 'finished') fireEvent.click(await screen.findByRole('tab', { name: /Past/ }));
 
     const [row] = await screen.findAllByRole('listitem');
     expect(within(row!).getByText(word)).toBeDefined();
@@ -1905,7 +2218,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
 
     expect(
       screen.getByText(
-        "This event's end has passed, so it can't be made live. Change its dates first.",
+        "This event's end has passed, so it cannot be made live. Change its dates first.",
       ),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
@@ -2069,6 +2382,196 @@ describe('The phase, End now and Call off (sc-3585)', () => {
   });
 });
 
+describe('Pause and Resume (sc-3586)', () => {
+  const AHEAD = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+
+  function live(overrides: Record<string, unknown> = {}) {
+    return event({ ...AHEAD, status: 'live', phase: 'live', ...overrides });
+  }
+
+  function paused(overrides: Record<string, unknown> = {}) {
+    return live({
+      status: 'paused',
+      phase: 'paused',
+      pausedAt: '2026-10-27T09:00:00+00:00',
+      ...overrides,
+    });
+  }
+
+  function tagged(body: unknown): Response {
+    return new Response(JSON.stringify(body), { status: 200, headers: { ETag: '"2"' } });
+  }
+
+  async function onThePage(served: unknown, answers: Record<string, Answer> = {}) {
+    const sent = answering({ 'GET /api/events/ev_1': () => json({ event: served }), ...answers });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    return sent;
+  }
+
+  it.each([
+    ['live', live()],
+    ['happening now', live({ phase: 'happening_now' })],
+  ])('asks before pausing an event %s, and Keep it live changes nothing', async (_, served) => {
+    signedIn();
+    const sent = await onThePage(served);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Pause Adaeze and Tunde?' });
+    expect(
+      within(dialog).getByText("Guests can't reply or change anything until you resume it."),
+    ).toBeDefined();
+    expect(
+      within(dialog).getByText('Nothing is lost. Check-in and service keep working.'),
+    ).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Keep it live' }));
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(sent.some(({ line }) => line.startsWith('POST'))).toBe(false);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Pause' })),
+    );
+  });
+
+  it('pauses it: the pill reads Paused, the line and Resume show, and it is announced', async () => {
+    signedIn();
+    const sent = await onThePage(live(), {
+      'POST /api/events/ev_1/pause': () => tagged({ event: paused() }),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+    fireEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Pause' }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText('Paused', { selector: '.pill-quiet' })).toBeDefined(),
+    );
+    expect(sent.filter(({ line }) => line === 'POST /api/events/ev_1/pause')).toHaveLength(1);
+    expect(
+      screen.getByText(
+        "Paused. Guests can't reply or change anything until you resume it. Check-in and service still work.",
+      ),
+    ).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Resume' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
+    await waitFor(() =>
+      expect(screen.getByRole('status').textContent).toBe('Adaeze and Tunde is paused.'),
+    );
+  });
+
+  it('resumes without asking, and the phase follows the clock', async () => {
+    signedIn();
+    const sent = await onThePage(paused(), {
+      'POST /api/events/ev_1/resume': () =>
+        tagged({ event: live({ phase: 'happening_now', pausedAt: null }) }),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
+
+    await waitFor(() =>
+      expect(screen.getByText('Happening now', { selector: '.pill-quiet' })).toBeDefined(),
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(sent.filter(({ line }) => line === 'POST /api/events/ev_1/resume')).toHaveLength(1);
+    expect(screen.queryByText(/^Paused\. Guests/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeDefined();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 })),
+    );
+  });
+
+  it.each([
+    [
+      'somebody else changed it when the resume is refused and it is live now',
+      () => live(),
+      'Somebody else changed this event while you had it open.',
+      "It's live now. The page shows what it is now.",
+    ],
+    [
+      'it is already over when the resume is refused because its end has passed',
+      () => paused({ phase: 'finished', pausedAt: null }),
+      'This event is already over.',
+      "It's finished now. The page shows what it is now.",
+    ],
+  ])('says %s', async (_, reloaded, said, now) => {
+    signedIn();
+    let reads = 0;
+    await onThePage(paused(), {
+      'GET /api/events/ev_1': () => json({ event: (reads += 1) === 1 ? paused() : reloaded() }),
+      'POST /api/events/ev_1/resume': () => problem(409, 'event_state_invalid'),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
+
+    const refused = await screen.findByRole('alert');
+    expect(within(refused).getByText(said)).toBeDefined();
+    expect(within(refused).getByText(now)).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Resume' })).toBeNull();
+  });
+
+  it('says somebody else changed it when the pause is refused event_state_invalid', async () => {
+    signedIn();
+    let reads = 0;
+    await onThePage(live(), {
+      'GET /api/events/ev_1': () => json({ event: (reads += 1) === 1 ? live() : paused() }),
+      'POST /api/events/ev_1/pause': () => problem(409, 'event_state_invalid'),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+    fireEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Pause' }),
+    );
+
+    const refused = await screen.findByRole('alertdialog', {
+      name: 'Somebody else changed this event while you had it open.',
+    });
+    expect(
+      within(refused).getByText("It's paused now. The page shows what it is now."),
+    ).toBeDefined();
+  });
+
+  it('keeps Resume and says so when the resume fails', async () => {
+    signedIn();
+    await onThePage(paused(), { 'POST /api/events/ev_1/resume': () => problem(500, 'internal') });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
+
+    expect(await screen.findByText('Not resumed. Try again in a moment.')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Resume' })).toBeDefined();
+  });
+
+  it.each([
+    ['without events.manage', READER, live()],
+    ['on a Draft', IRE, event(AHEAD)],
+    ['once it is Finished', IRE, live({ phase: 'finished' })],
+    ['while it is Paused', IRE, paused()],
+  ])('offers no Pause %s', async (_, who, served) => {
+    signedIn(who);
+    await onThePage(served);
+
+    expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
+  });
+
+  it('shows the paused line without Resume to somebody without events.manage', async () => {
+    signedIn(READER);
+    await onThePage(paused());
+
+    expect(screen.getByText(/^Paused\. Guests/)).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Resume' })).toBeNull();
+  });
+
+  it('shows a pause run past its end as Finished, with no Resume', async () => {
+    signedIn();
+    await onThePage(paused({ phase: 'finished', pausedAt: null }));
+
+    expect(screen.getByText('Finished', { selector: '.pill-quiet' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Resume' })).toBeNull();
+    expect(screen.queryByText(/^Paused\. Guests/)).toBeNull();
+  });
+});
+
 const TYPED = {
   formatted: '',
   line1: null,
@@ -2102,7 +2605,7 @@ describe('The cover (sc-3590)', () => {
       const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
       sent.push({ line, body });
 
-      const answer = await answers[line]?.(body);
+      const answer = await answers[line]?.(body, new URL(String(input)));
       if (answer != null) return answer;
       if (line === 'POST /api/orgs/org_1/event-cover-uploads')
         return json(
@@ -2116,6 +2619,8 @@ describe('The cover (sc-3590)', () => {
           201,
         );
       if (line === 'PUT /upload/1') return new Response(null, { status: 200 });
+      if (line === 'POST /api/orgs/org_1/event-cover-uploads/preview')
+        return json({ preview: 'data:image/webp;base64,UklGRg==' });
       if (line === 'PUT /api/events/ev_1/cover') {
         const { position, description } = body as { position: number; description: string | null };
         held = event({ cover: { ...PHOTO, position, description } });
@@ -2373,7 +2878,7 @@ describe('The cover (sc-3590)', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Upload a photo' }));
   });
 
-  it('an upload that fails says so and keeps the previous cover', async () => {
+  it('an upload that fails says so, the frame keeps the saved cover, and Cancel saves nothing', async () => {
     signedIn();
     const sent = serving(PHOTO, { 'PUT /upload/1': () => new Response(null, { status: 500 }) });
     await editing();
@@ -2382,7 +2887,7 @@ describe('The cover (sc-3590)', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
 
     expect(await within(dialog).findByText('The photo did not upload. Try again.')).toBeDefined();
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
+    expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(PHOTO.sizes[0]!.url);
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
@@ -2413,8 +2918,10 @@ describe('The cover (sc-3590)', () => {
     answering({
       'GET /api/events/ev_1': () =>
         json({ event: event({ cover: { ...PHOTO, description: null } }) }),
-      'GET /api/orgs/org_1/events': () =>
-        json({ events: [event({ cover: PHOTO }), event({ id: 'ev_2', type: 'gala' })] }),
+      'GET /api/orgs/org_1/events': listed([
+        event({ cover: PHOTO }),
+        event({ id: 'ev_2', type: 'gala' }),
+      ]),
     });
     at('/app/events/ev_1');
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
@@ -2425,6 +2932,7 @@ describe('The cover (sc-3590)', () => {
     cleanup();
 
     at('/app/events');
+    fireEvent.click(await screen.findByRole('tab', { name: /Drafts/ }));
     const rows = await screen.findAllByRole('listitem');
 
     expect(within(rows[0]!).getByRole('img').getAttribute('alt')).toBe(PHOTO.description);
@@ -2536,7 +3044,7 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
       const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
       sent.push({ line, body });
 
-      const answer = await answers[line]?.(body);
+      const answer = await answers[line]?.(body, new URL(String(input)));
       if (answer != null) return answer;
       if (line === 'POST /api/orgs/org_1/event-cover-uploads')
         return json(
@@ -2622,8 +3130,7 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
     });
   });
 
-  it('a JPEG the browser shows is not sent for a copy', async () => {
-    signedIn();
+  function chooseShownJpeg(): void {
     vi.stubGlobal(
       'Image',
       class {
@@ -2635,17 +3142,43 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
         }
       },
     );
-    const sent = serving(null);
-    await editing();
-
     fireEvent.change(document.getElementById('cover-file')!, {
       target: { files: [new File(['x'], 'arch.jpg', { type: 'image/jpeg' })] },
     });
+  }
+
+  it("a JPEG the browser shows is read by the server too, and the frame keeps the browser's own", async () => {
+    signedIn();
+    const sent = serving(null);
+    await editing();
+
+    chooseShownJpeg();
     const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
 
-    await waitFor(() => expect(sent.map(({ line }) => line)).toContain('PUT /upload/1'));
+    await waitFor(() => expect(sent.map(({ line }) => line)).toContain(PREVIEW));
+    await waitFor(() => expect(within(dialog).queryByText('Uploading…')).toBeNull());
     expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe('blob:chosen');
-    expect(sent.map(({ line }) => line)).not.toContain(PREVIEW);
+    expect(
+      within(dialog).getByRole('button', { name: 'Use this photo' }).getAttribute('aria-disabled'),
+    ).not.toBe('true');
+  });
+
+  it('a damaged JPEG whose size the browser reads is refused while Cover photo is open, and nothing is saved (27 Oct)', async () => {
+    signedIn();
+    const line = 'That file is not a photo we can use. Choose a JPEG, PNG, WebP or HEIC.';
+    const sent = serving(PHOTO, { [PREVIEW]: refusedWith(line) });
+    await editing();
+
+    chooseShownJpeg();
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+
+    expect(await within(dialog).findByText(line)).toBeDefined();
+    expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(PHOTO.sizes[0]!.url);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByRole('button', { name: 'Change photo' })).toBeDefined();
+    expect(sent.filter(({ line: sentLine }) => sentLine.startsWith('PUT /api/events'))).toEqual([]);
   });
 
   for (const [what, line] of [
@@ -2667,9 +3200,9 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
       const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
 
       expect(await within(dialog).findByText(line)).toBeDefined();
-      const use = within(dialog).getByRole('button', { name: 'Use this photo' });
-      expect(use.getAttribute('aria-disabled')).toBe('true');
-      fireEvent.click(use);
+      expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(
+        PHOTO.sizes[0]!.url,
+      );
       fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
@@ -2722,9 +3255,7 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
     const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
 
     expect(await within(dialog).findByText('The photo did not upload. Try again.')).toBeDefined();
-    expect(
-      within(dialog).getByRole('button', { name: 'Use this photo' }).getAttribute('aria-disabled'),
-    ).toBe('true');
+    expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(PHOTO.sizes[0]!.url);
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
@@ -2748,12 +3279,13 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
     fireEvent.error(dialog.querySelector('.cover-frame img')!);
 
     expect(await within(dialog).findByText('The photo did not upload. Try again.')).toBeDefined();
-    expect(dialog.querySelector('.cover-frame [data-testid="cover-default"]')).not.toBeNull();
+    expect(dialog.querySelector('.cover-frame')).toBeNull();
+    expect(within(dialog).getByRole('button', { name: 'Choose a photo' })).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
     expect(sent.filter(({ line }) => line.startsWith('PUT /api/events'))).toEqual([]);
   });
 
-  it('a JPEG the frame cannot show before its upload finishes stays unsaved once the upload does', async () => {
+  it('a JPEG the frame cannot show before its upload finishes stays unsaved once the upload does, and Use this photo keeps the saved cover', async () => {
     signedIn();
     vi.stubGlobal(
       'Image',
@@ -2790,10 +3322,13 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(within(dialog).getByText('The photo did not upload. Try again.')).toBeDefined();
-    const use = within(dialog).getByRole('button', { name: 'Use this photo' });
-    expect(use.getAttribute('aria-disabled')).toBe('true');
-    fireEvent.click(use);
-    expect(sent.filter(({ line }) => line.startsWith('PUT /api/events'))).toEqual([]);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
+    await waitFor(() =>
+      expect(sent.find(({ line }) => line === 'PUT /api/events/ev_1/cover')?.body).toEqual({
+        position: PHOTO.position,
+        description: PHOTO.description,
+      }),
+    );
   });
 
   it('a file named .jpg that is not a readable photo is refused while Cover photo is open', async () => {
@@ -2808,9 +3343,9 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
     const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
 
     expect(await within(dialog).findByText(line)).toBeDefined();
-    const use = within(dialog).getByRole('button', { name: 'Use this photo' });
-    expect(use.getAttribute('aria-disabled')).toBe('true');
-    fireEvent.click(use);
+    expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(PHOTO.sizes[0]!.url);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(sent.filter(({ line: sentLine }) => sentLine.startsWith('PUT /api/events'))).toEqual([]);
   });
 
@@ -2852,10 +3387,10 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
     signedIn();
     answering({
       'GET /api/events/ev_1': () => json({ event: event({ cover: PHOTO }) }),
-      'GET /api/orgs/org_1/events': () =>
-        json({
-          events: [event({ cover: PHOTO }), event({ id: 'ev_2', type: 'gala', cover: PHOTO })],
-        }),
+      'GET /api/orgs/org_1/events': listed([
+        event({ cover: PHOTO }),
+        event({ id: 'ev_2', type: 'gala', cover: PHOTO }),
+      ]),
     });
     at('/app/events/ev_1');
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
@@ -2869,6 +3404,7 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
     cleanup();
 
     at('/app/events');
+    fireEvent.click(await screen.findByRole('tab', { name: /Drafts/ }));
     const rows = await screen.findAllByRole('listitem');
     fireEvent.error(within(rows[1]!).getByRole('img'));
 
@@ -2893,5 +3429,961 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
 
     expect(dialog.querySelector('.cover-frame .cover-default-wedding')).not.toBeNull();
     expect(within(dialog).queryByText('The photo did not upload. Try again.')).toBeNull();
+  });
+});
+
+describe('Cover photo chooses its own photo, and a refused one never reaches the frame (sc-16524)', () => {
+  const PHOTO = {
+    position: 30,
+    description: 'Adaeze and Tunde under the arch',
+    sizes: [
+      { width: 640, url: 'http://store.test/c/small.webp' },
+      { width: 1280, url: 'http://store.test/c/medium.webp' },
+    ],
+  };
+  const DAMAGED = 'That file is not a photo we can use. Choose a JPEG, PNG, WebP or HEIC.';
+
+  /** Every upload is keyed by its file's name, and the server refuses a file named damaged. */
+  function serving(cover: unknown) {
+    const sent: { line: string; body: unknown }[] = [];
+    let held = event({ cover });
+    let uploads = 0;
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
+      sent.push({ line, body });
+
+      if (line === 'POST /api/orgs/org_1/event-cover-uploads') {
+        uploads += 1;
+        return json(
+          {
+            upload: {
+              url: `http://store.test/upload/${uploads}`,
+              key: `event_cover/org_1/2026/10/${(body as { filename: string }).filename}`,
+              content_type: 'image/jpeg',
+            },
+          },
+          201,
+        );
+      }
+      if (line.startsWith('PUT /upload/')) return new Response(null, { status: 200 });
+      if (line === 'POST /api/orgs/org_1/event-cover-uploads/preview')
+        return (body as { uploadKey: string }).uploadKey.includes('damaged')
+          ? problem(422, 'validation_failed', {
+              violations: [{ propertyPath: 'file', message: DAMAGED, code: 'validation_failed' }],
+            })
+          : json({ preview: 'data:image/webp;base64,UklGRg==' });
+      if (line === 'DELETE /api/orgs/org_1/event-cover-uploads')
+        return new Response(null, { status: 204 });
+      if (line === 'PUT /api/events/ev_1/cover') {
+        const { position, description } = body as { position: number; description: string | null };
+        held = event({ cover: { ...PHOTO, position, description } });
+      }
+
+      return new Response(JSON.stringify({ event: held }), { headers: { ETag: '"1"' } });
+    });
+
+    return sent;
+  }
+
+  function jpeg(name: string, type = 'image/jpeg'): File {
+    return new File(['x'], name, { type });
+  }
+
+  function upload(chosen: File): void {
+    fireEvent.change(document.getElementById('cover-file')!, { target: { files: [chosen] } });
+  }
+
+  function pickInDialog(chosen: File): void {
+    fireEvent.change(document.getElementById('cover-dialog-file')!, {
+      target: { files: [chosen] },
+    });
+  }
+
+  function frameSource(dialog: HTMLElement): string | null | undefined {
+    return dialog.querySelector('.cover-frame img')?.getAttribute('src');
+  }
+
+  async function editing(): Promise<void> {
+    at('/app/events/ev_1/edit');
+    await screen.findByRole('heading', { level: 1, name: 'Edit details' });
+  }
+
+  beforeEach(() => {
+    URL.createObjectURL = (chosen: Blob) => `blob:${(chosen as File).name}`;
+    URL.revokeObjectURL = () => undefined;
+    vi.stubGlobal(
+      'Image',
+      class {
+        naturalWidth = 2400;
+        naturalHeight = 1600;
+        onload: (() => void) | null = null;
+        set src(_: string) {
+          queueMicrotask(() => this.onload?.());
+        }
+      },
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('a refused pick keeps the photo chosen earlier in the visit, at its position, and Use this photo saves that one', async () => {
+    signedIn();
+    const sent = serving(null);
+    await editing();
+
+    upload(jpeg('arch.jpg'));
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    await waitFor(() => expect(within(dialog).queryByText('Uploading…')).toBeNull());
+    fireEvent.change(within(dialog).getByLabelText('Photo position'), { target: { value: '80' } });
+    fireEvent.change(within(dialog).getByLabelText(/Describe the image/), {
+      target: { value: 'The arch' },
+    });
+
+    pickInDialog(jpeg('damaged.jpg'));
+    const picker = within(dialog).getByRole('button', { name: 'Choose another photo' });
+
+    expect(await within(dialog).findByText(DAMAGED)).toBeDefined();
+    expect(frameSource(dialog)).toBe('blob:arch.jpg');
+    expect((within(dialog).getByLabelText('Photo position') as HTMLInputElement).value).toBe('80');
+    expect((within(dialog).getByLabelText(/Describe the image/) as HTMLTextAreaElement).value).toBe(
+      'The arch',
+    );
+    await waitFor(() => expect(document.activeElement).toBe(picker));
+    expect(picker.getAttribute('aria-describedby')).toContain('cover-dialog-refusal');
+    expect(document.getElementById('cover-refusal')).toBeNull();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
+
+    await waitFor(() =>
+      expect(sent.find(({ line }) => line === 'PUT /api/events/ev_1/cover')?.body).toEqual({
+        uploadKey: 'event_cover/org_1/2026/10/arch.jpg',
+        position: 80,
+        description: 'The arch',
+      }),
+    );
+    expect(
+      sent.find(({ line }) => line === 'DELETE /api/orgs/org_1/event-cover-uploads')?.body,
+    ).toEqual({ uploadKey: 'event_cover/org_1/2026/10/damaged.jpg' });
+  });
+
+  it('a refused pick from the cover keeps the saved photo at its saved position, and Use this photo saves it as shown', async () => {
+    signedIn();
+    const sent = serving(PHOTO);
+    await editing();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change photo' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    pickInDialog(jpeg('damaged.jpg'));
+
+    expect(await within(dialog).findByText(DAMAGED)).toBeDefined();
+    expect(frameSource(dialog)).toBe(PHOTO.sizes[0]!.url);
+    expect(dialog.querySelector('.cover-frame img')?.getAttribute('alt')).toBe(PHOTO.description);
+    expect((within(dialog).getByLabelText('Photo position') as HTMLInputElement).value).toBe('30');
+    expect((within(dialog).getByLabelText(/Describe the image/) as HTMLTextAreaElement).value).toBe(
+      PHOTO.description,
+    );
+    expect(within(dialog).getByRole('button', { name: 'Remove photo' })).toBeDefined();
+
+    fireEvent.change(within(dialog).getByLabelText('Photo position'), { target: { value: '60' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
+
+    await waitFor(() =>
+      expect(sent.find(({ line }) => line === 'PUT /api/events/ev_1/cover')?.body).toEqual({
+        position: 60,
+        description: PHOTO.description,
+      }),
+    );
+  });
+
+  it('a refused pick from Upload a photo with a photo saved shows the saved photo, and Cancel keeps the saved cover', async () => {
+    signedIn();
+    const sent = serving(PHOTO);
+    await editing();
+
+    upload(jpeg('damaged.jpg'));
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+
+    expect(await within(dialog).findByText(DAMAGED)).toBeDefined();
+    expect(frameSource(dialog)).toBe(PHOTO.sizes[0]!.url);
+    expect((within(dialog).getByLabelText(/Describe the image/) as HTMLTextAreaElement).value).toBe(
+      PHOTO.description,
+    );
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    const img = within(screen.getByRole('button', { name: 'Change photo' })).getByRole('img');
+    expect(img.getAttribute('src')).toBe(PHOTO.sizes[0]!.url);
+    expect(img.style.objectPosition).toBe('50% 30%');
+    expect(sent.filter(({ line }) => line.startsWith('PUT /api/events'))).toEqual([]);
+  });
+
+  it('a refused first pick leaves Choose a photo, with nothing to position or describe and nothing to use', async () => {
+    signedIn();
+    const sent = serving(null);
+    await editing();
+
+    upload(jpeg('damaged.jpg'));
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    const choose = await within(dialog).findByRole('button', { name: 'Choose a photo' });
+
+    expect(within(dialog).getByText(DAMAGED)).toBeDefined();
+    expect(dialog.querySelector('.cover-frame')).toBeNull();
+    expect(dialog.querySelector('[data-testid="cover-default"]')).toBeNull();
+    expect(
+      within(dialog).getByText('JPEG, PNG, WebP or HEIC, up to 15 MB, at least 1200 × 675 pixels.'),
+    ).toBeDefined();
+    expect(within(dialog).queryByLabelText('Photo position')).toBeNull();
+    expect(within(dialog).queryByLabelText(/Describe the image/)).toBeNull();
+    expect(within(dialog).queryByRole('button', { name: 'Remove photo' })).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(choose));
+    expect(choose.getAttribute('aria-describedby')).toBe(
+      'cover-dialog-refusal cover-dialog-accepted',
+    );
+    const use = within(dialog).getByRole('button', { name: 'Use this photo' });
+    expect(use.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(use);
+    expect(sent.filter(({ line }) => line.startsWith('PUT /api/events'))).toEqual([]);
+  });
+
+  it('a good pick after a refusal clears it, fills the frame at the middle with no description, and focus goes to Photo position', async () => {
+    signedIn();
+    serving(PHOTO);
+    await editing();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change photo' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    pickInDialog(jpeg('damaged.jpg'));
+    await within(dialog).findByText(DAMAGED);
+
+    pickInDialog(jpeg('garden.jpg'));
+
+    await waitFor(() => expect(frameSource(dialog)).toBe('blob:garden.jpg'));
+    expect(within(dialog).queryByText(DAMAGED)).toBeNull();
+    const slider = within(dialog).getByLabelText('Photo position') as HTMLInputElement;
+    expect(slider.value).toBe('50');
+    expect((within(dialog).getByLabelText(/Describe the image/) as HTMLTextAreaElement).value).toBe(
+      '',
+    );
+    await waitFor(() => expect(document.activeElement).toBe(slider));
+    await waitFor(() => expect(within(dialog).queryByText('Uploading…')).toBeNull());
+    expect(
+      within(dialog)
+        .getByRole('button', { name: 'Choose another photo' })
+        .getAttribute('aria-describedby'),
+    ).toBeNull();
+  });
+
+  it('a photo the frame cannot show keeps the position and description given the saved photo in this visit, as a refusal from the server does', async () => {
+    signedIn();
+    serving(PHOTO);
+    await editing();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change photo' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    fireEvent.change(within(dialog).getByLabelText('Photo position'), { target: { value: '70' } });
+    fireEvent.change(within(dialog).getByLabelText(/Describe the image/), {
+      target: { value: 'The terrace at dusk' },
+    });
+
+    pickInDialog(jpeg('b.jpg'));
+    await waitFor(() => expect(frameSource(dialog)).toBe('blob:b.jpg'));
+    await waitFor(() => expect(within(dialog).queryByText('Uploading…')).toBeNull());
+    fireEvent.error(dialog.querySelector('.cover-frame img')!);
+
+    expect(await within(dialog).findByText('The photo did not upload. Try again.')).toBeDefined();
+    expect(frameSource(dialog)).toBe(PHOTO.sizes[0]!.url);
+    expect((within(dialog).getByLabelText('Photo position') as HTMLInputElement).value).toBe('70');
+    expect((within(dialog).getByLabelText(/Describe the image/) as HTMLTextAreaElement).value).toBe(
+      'The terrace at dusk',
+    );
+  });
+
+  it('a photo the frame cannot show gives back the one chosen earlier in this visit, and Use this photo saves that one', async () => {
+    signedIn();
+    const sent = serving(null);
+    await editing();
+
+    upload(jpeg('a.jpg'));
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    await waitFor(() => expect(within(dialog).queryByText('Uploading…')).toBeNull());
+    fireEvent.change(within(dialog).getByLabelText('Photo position'), { target: { value: '80' } });
+
+    pickInDialog(jpeg('b.jpg'));
+    await waitFor(() => expect(frameSource(dialog)).toBe('blob:b.jpg'));
+    await waitFor(() => expect(within(dialog).queryByText('Uploading…')).toBeNull());
+    fireEvent.error(dialog.querySelector('.cover-frame img')!);
+
+    expect(await within(dialog).findByText('The photo did not upload. Try again.')).toBeDefined();
+    expect(frameSource(dialog)).toBe('blob:a.jpg');
+    expect((within(dialog).getByLabelText('Photo position') as HTMLInputElement).value).toBe('80');
+    expect(
+      sent
+        .filter(({ line }) => line === 'DELETE /api/orgs/org_1/event-cover-uploads')
+        .map(({ body }) => body),
+    ).toEqual([{ uploadKey: 'event_cover/org_1/2026/10/b.jpg' }]);
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
+
+    await waitFor(() =>
+      expect(sent.find(({ line }) => line === 'PUT /api/events/ev_1/cover')?.body).toEqual({
+        uploadKey: 'event_cover/org_1/2026/10/a.jpg',
+        position: 80,
+        description: null,
+      }),
+    );
+  });
+
+  it('a refusal from the server keeps the position and description given the saved photo in this visit, as one before upload does', async () => {
+    signedIn();
+    serving(PHOTO);
+    await editing();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change photo' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    fireEvent.change(within(dialog).getByLabelText('Photo position'), { target: { value: '70' } });
+    fireEvent.change(within(dialog).getByLabelText(/Describe the image/), {
+      target: { value: 'The terrace at dusk' },
+    });
+
+    pickInDialog(jpeg('damaged.jpg'));
+
+    expect(await within(dialog).findByText(DAMAGED)).toBeDefined();
+    expect(frameSource(dialog)).toBe(PHOTO.sizes[0]!.url);
+    expect((within(dialog).getByLabelText('Photo position') as HTMLInputElement).value).toBe('70');
+    expect((within(dialog).getByLabelText(/Describe the image/) as HTMLTextAreaElement).value).toBe(
+      'The terrace at dusk',
+    );
+  });
+
+  it('announces a refusal in the dialog, and two the same in a row leave focus where the organiser takes it next', async () => {
+    signedIn();
+    serving(PHOTO);
+    await editing();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change photo' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    const picker = within(dialog).getByRole('button', { name: 'Choose another photo' });
+    pickInDialog(jpeg('a.gif', 'image/gif'));
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert.id).toBe('cover-dialog-refusal');
+    await waitFor(() => expect(document.activeElement).toBe(picker));
+
+    pickInDialog(jpeg('b.gif', 'image/gif'));
+    await waitFor(() => expect(document.activeElement).toBe(picker));
+    const describe = within(dialog).getByLabelText(/Describe the image/);
+    describe.focus();
+    fireEvent.change(describe, { target: { value: 'T' } });
+    fireEvent.change(within(dialog).getByLabelText('Photo position'), { target: { value: '31' } });
+
+    expect(document.activeElement).toBe(describe);
+  });
+
+  it("refuses a wrong type from the dialog's picker before it uploads, under the picker, and the dialog stays open", async () => {
+    signedIn();
+    const sent = serving(PHOTO);
+    await editing();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change photo' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    pickInDialog(jpeg('a.gif', 'image/gif'));
+
+    expect(
+      await within(dialog).findByText(
+        'That file is not a photo we can use. Choose a JPEG, PNG, WebP or HEIC.',
+      ),
+    ).toBeDefined();
+    expect(screen.getByRole('dialog', { name: 'Cover photo' })).toBeDefined();
+    expect(frameSource(dialog)).toBe(PHOTO.sizes[0]!.url);
+    expect(sent.map(({ line }) => line)).not.toContain('POST /api/orgs/org_1/event-cover-uploads');
+  });
+});
+
+describe('Hosted by, in Edit details (sc-6713)', () => {
+  type Sent = { line: string; body: unknown; ifMatch: string | null };
+
+  /** The event as the API holds it, and every request sent; a PATCH is applied as the API would. */
+  function serving(held: Record<string, unknown>, answers: Record<string, Answer> = {}) {
+    const sent: Sent[] = [];
+    let current = event(held);
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
+      sent.push({ line, body, ifMatch: new Headers(init?.headers).get('If-Match') });
+
+      const answer = await answers[line]?.(body, new URL(String(input)));
+      if (answer != null) return answer;
+
+      if (line === 'PATCH /api/events/ev_1') current = { ...current, ...(body as object) };
+
+      return new Response(JSON.stringify({ event: current }), {
+        status: 200,
+        headers: { ETag: '"4"' },
+      });
+    });
+
+    return sent;
+  }
+
+  async function editing(hash = ''): Promise<void> {
+    at(`/app/events/ev_1/edit${hash}`);
+    await screen.findByRole('heading', { level: 1, name: 'Edit details' });
+  }
+
+  function hostSection(): HTMLElement {
+    return screen.getByRole('region', { name: 'Hosted by' });
+  }
+
+  function names(): string[] {
+    return within(hostSection())
+      .queryAllByRole('textbox')
+      .map((field) => (field as HTMLTextAreaElement).value);
+  }
+
+  function patched(sent: Sent[]): Sent | undefined {
+    return sent.find(({ line }) => line === 'PATCH /api/events/ev_1');
+  }
+
+  it('lists the hosts in their order, each labelled by its position, after About the event', async () => {
+    signedIn();
+    serving({ hosts: ['Funmi Adeyemi', 'Tayo Adeyemi'] });
+    await editing();
+
+    expect(names()).toEqual(['Funmi Adeyemi', 'Tayo Adeyemi']);
+    expect(screen.getByLabelText<HTMLTextAreaElement>('Host 2').value).toBe('Tayo Adeyemi');
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((one) => one.textContent);
+    expect(headings.indexOf('Hosted by')).toBe(headings.indexOf('About the event') + 1);
+  });
+
+  it('says a draft with no hosts has none yet, and adds an empty row with focus in it', async () => {
+    signedIn();
+    serving({ hosts: [] });
+    await editing();
+
+    expect(
+      within(hostSection()).getByText(
+        'No hosts yet. The event can be made live once it has at least one.',
+      ),
+    ).toBeDefined();
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Add a host' }));
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Host 1')));
+    expect(within(hostSection()).getByRole('button', { name: 'Remove Host 1' })).toBeDefined();
+  });
+
+  it('sends the names as typed and trimmed, in their order, with the tag it read', async () => {
+    signedIn();
+    const sent = serving({ hosts: [] });
+    await editing();
+
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Add a host' }));
+    fireEvent.change(screen.getByLabelText('Host 1'), { target: { value: ' Funmi Adeyemi ' } });
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Add a host' }));
+    fireEvent.change(screen.getByLabelText('Host 2'), {
+      target: { value: 'The Okafor\nfamily' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() =>
+      expect(patched(sent)).toEqual({
+        line: 'PATCH /api/events/ev_1',
+        body: { hosts: ['Funmi Adeyemi', 'The Okafor family'] },
+        ifMatch: '"4"',
+      }),
+    );
+  });
+
+  it('moves a host, keeping focus on the arrow pressed or the other once it reaches the end, and announces it', async () => {
+    signedIn();
+    const sent = serving({ hosts: ['Funmi Adeyemi', 'Tayo Adeyemi', 'Ade Bello'] });
+    await editing();
+
+    expect(
+      within(hostSection()).queryByRole('button', { name: 'Move Funmi Adeyemi up' }),
+    ).toBeNull();
+    expect(within(hostSection()).queryByRole('button', { name: 'Move Ade Bello down' })).toBeNull();
+
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Move Ade Bello up' }));
+    expect(names()).toEqual(['Funmi Adeyemi', 'Ade Bello', 'Tayo Adeyemi']);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(hostSection()).getByRole('button', { name: 'Move Ade Bello up' }),
+      ),
+    );
+    expect(document.querySelector('.event-form [role="status"]')?.textContent).toBe(
+      'Ade Bello moved to 2 of 3',
+    );
+
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Move Ade Bello up' }));
+    expect(names()).toEqual(['Ade Bello', 'Funmi Adeyemi', 'Tayo Adeyemi']);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(hostSection()).getByRole('button', { name: 'Move Ade Bello down' }),
+      ),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() =>
+      expect(patched(sent)?.body).toEqual({
+        hosts: ['Ade Bello', 'Funmi Adeyemi', 'Tayo Adeyemi'],
+      }),
+    );
+  });
+
+  it("removes a host, announcing it and moving focus to the next row's name, else Add a host", async () => {
+    signedIn();
+    serving({ hosts: ['Funmi Adeyemi', 'Tayo Adeyemi'] });
+    await editing();
+
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Remove Funmi Adeyemi' }));
+    expect(names()).toEqual(['Tayo Adeyemi']);
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Host 1')));
+    expect(document.querySelector('.event-form [role="status"]')?.textContent).toBe(
+      'Funmi Adeyemi removed',
+    );
+
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Remove Tayo Adeyemi' }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(hostSection()).getByRole('button', { name: 'Add a host' }),
+      ),
+    );
+  });
+
+  it('offers no Add a host at six, and says six is the most', async () => {
+    signedIn();
+    serving({ hosts: ['A', 'B', 'C', 'D', 'E', 'F'] });
+    await editing();
+
+    expect(within(hostSection()).queryByRole('button', { name: 'Add a host' })).toBeNull();
+    expect(within(hostSection()).getByText('6 is the most hosts an event can have.')).toBeDefined();
+  });
+
+  it("keeps a live event's last host, saying why under its name", async () => {
+    signedIn();
+    serving({ status: 'live', phase: 'live', hosts: ['Funmi Adeyemi'] });
+    await editing();
+
+    expect(within(hostSection()).queryByRole('button', { name: /^Remove/ })).toBeNull();
+    const field = screen.getByLabelText('Host 1');
+    const help = document.getElementById(
+      field.getAttribute('aria-describedby') ?? 'none',
+    )?.textContent;
+    expect(help).toBe(
+      'Guests can see this event, so it needs at least one host. You can still change this name.',
+    );
+  });
+
+  it('lets a live event with no saved host remove a row it added', async () => {
+    signedIn();
+    serving({ status: 'live', phase: 'live', hosts: [] });
+    await editing();
+
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Add a host' }));
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Host 1')));
+    expect(within(hostSection()).getByRole('button', { name: 'Remove Host 1' })).toBeDefined();
+  });
+
+  it('refuses a blank, a too-long and a repeated name at once, focusing the first in page order', async () => {
+    signedIn();
+    const sent = serving({ hosts: [] });
+    await editing();
+
+    for (const name of ['Funmi Adeyemi', ' ', 'x'.repeat(66), 'FUNMI adeyemi']) {
+      fireEvent.click(within(hostSection()).getByRole('button', { name: 'Add a host' }));
+      const fields = within(hostSection()).getAllByRole('textbox');
+      fireEvent.change(fields[fields.length - 1]!, { target: { value: name } });
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Host 2')));
+    expect(within(hostSection()).getByText('Enter a name or remove this host.')).toBeDefined();
+    expect(
+      within(hostSection()).getByText(
+        "A host's name can be at most 60 characters. This one has 66.",
+      ),
+    ).toBeDefined();
+    expect(within(hostSection()).getByText('Funmi Adeyemi is already a host.')).toBeDefined();
+    expect(patched(sent)).toBeUndefined();
+  });
+
+  it("puts the event name's refusal ahead of a host's for focus", async () => {
+    signedIn();
+    serving({ hosts: [' '] });
+    await editing();
+
+    fireEvent.change(screen.getByLabelText('Event name'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Event name')));
+    expect(within(hostSection()).getByText('Enter a name or remove this host.')).toBeDefined();
+  });
+
+  it("shows the server's refusal under the host it names", async () => {
+    signedIn();
+    serving(
+      { hosts: ['Funmi Adeyemi'] },
+      {
+        'PATCH /api/events/ev_1': () =>
+          problem(422, 'validation_failed', {
+            violations: [
+              { propertyPath: 'hosts[1]', message: 'Tayo is already a host.', code: 'x' },
+            ],
+          }),
+      },
+    );
+    await editing();
+
+    fireEvent.click(within(hostSection()).getByRole('button', { name: 'Add a host' }));
+    fireEvent.change(screen.getByLabelText('Host 2'), { target: { value: 'Tayo' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Host 2')));
+    expect(within(hostSection()).getByText('Tayo is already a host.')).toBeDefined();
+  });
+
+  it('arrives from Make live at Add a host when there are none', async () => {
+    signedIn();
+    serving({ hosts: [] });
+    await editing('#hosts');
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(hostSection()).getByRole('button', { name: 'Add a host' }),
+      ),
+    );
+  });
+
+  it("arrives from Make live at the first host's name", async () => {
+    signedIn();
+    serving({ hosts: ['Funmi Adeyemi'] });
+    await editing('#hosts');
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Host 1')));
+  });
+});
+
+describe('Make live with no hosts (sc-6713)', () => {
+  const AHEAD = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+
+  it('opens refused, sends nothing, and links to Hosted by', async () => {
+    signedIn();
+    const sent = answering({
+      'GET /api/events/ev_1': () => json({ event: event({ ...AHEAD, hosts: [] }) }),
+    });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Make live' }));
+
+    const refused = await screen.findByRole('alertdialog', {
+      name: 'Add who is hosting before guests are invited.',
+    });
+    expect(
+      within(refused).getByText(
+        "Guests see the hosts' names on their invitation. This event stays a draft until it has at least one host.",
+      ),
+    ).toBeDefined();
+    expect(
+      within(refused).getByRole('link', { name: 'Add who is hosting' }).getAttribute('href'),
+    ).toBe('/app/events/ev_1/edit#hosts');
+    expect(sent.map(({ line }) => line)).not.toContain('POST /api/events/ev_1/make-live');
+  });
+
+  it('says the same when the API refuses it after the dialog opened', async () => {
+    signedIn();
+    let reads = 0;
+    answering({
+      'GET /api/events/ev_1': () =>
+        json({
+          event: event({ ...AHEAD, hosts: (reads += 1) === 1 ? ['Funmi Adeyemi'] : [] }),
+        }),
+      'POST /api/events/ev_1/make-live': () => problem(409, 'event_host_required'),
+    });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+    fireEvent.click(screen.getByRole('button', { name: 'Make live' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Make Adaeze and Tunde live?' });
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Make live' }));
+
+    expect(
+      await screen.findByRole('alertdialog', {
+        name: 'Add who is hosting before guests are invited.',
+      }),
+    ).toBeDefined();
+  });
+});
+
+describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
+  function milestone(at: string, title: string, owner = 'event') {
+    return { at, title, note: null, owner, area: 'events', action: null };
+  }
+
+  const MADRID = {
+    timeZone: 'Europe/Madrid',
+    milestones: [
+      milestone('2026-10-10T12:00:00+02:00', 'Save the date sent', 'automatic'),
+      milestone('2026-10-17T18:00:00+02:00', 'Boda starts'),
+      milestone('2026-10-18T09:00:00+02:00', 'Brunch', 'automatic'),
+      milestone('2026-10-19T12:00:00+02:00', 'Balance due', 'you'),
+      milestone('2026-10-20T12:00:00+02:00', 'Thank-you notes sent', 'automatic'),
+      milestone('2026-10-26T02:00:00+01:00', 'Boda ends'),
+    ],
+  };
+
+  function clockAt(device: string): void {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+    vi.setSystemTime(new Date(device));
+    serverClock.observe(new Date(device).toUTCString());
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+    serverClock.observe(new Date().toUTCString());
+  });
+
+  async function comingUp(): Promise<HTMLElement> {
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    return screen.getByRole('region', { name: 'Coming up' });
+  }
+
+  function rows(within_: HTMLElement): string[] {
+    return within(within_)
+      .getAllByRole('listitem')
+      .map((row) => spaced(row.textContent));
+  }
+
+  it('shows the next four with how far away each is and its owner as a word', async () => {
+    clockAt('2026-10-11T08:00:00Z');
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () => json(MADRID),
+    });
+    at('/app/events/ev_1');
+
+    const panel = await comingUp();
+
+    await waitFor(() => expect(within(panel).getAllByRole('listitem')).toHaveLength(4));
+    expect(rows(panel)).toEqual([
+      'Sat, Oct 17, 18:00 (Europe/Madrid) · in 6 daysBoda startsEventNext up',
+      'Sun, Oct 18, 09:00 (Europe/Madrid) · in 7 daysBrunchAutomatic',
+      'Mon, Oct 19, 12:00 (Europe/Madrid) · in 8 daysBalance dueYou',
+      'Tue, Oct 20, 12:00 (Europe/Madrid) · in 9 daysThank-you notes sentAutomatic',
+    ]);
+    expect(within(panel).getByRole('link', { name: 'All dates' }).getAttribute('href')).toBe(
+      '/app/events/ev_1/dates',
+    );
+  });
+
+  it('says nothing is coming up once everything has passed, and still links All dates', async () => {
+    clockAt('2026-11-01T08:00:00Z');
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () =>
+        json({ ...MADRID, milestones: MADRID.milestones.filter((one) => one.owner !== 'you') }),
+    });
+    at('/app/events/ev_1');
+
+    const panel = await comingUp();
+
+    expect(
+      await within(panel).findByText('Nothing coming up. Every date on this event has passed.'),
+    ).toBeDefined();
+    expect(within(panel).queryByRole('listitem')).toBeNull();
+    expect(within(panel).getByRole('link', { name: 'All dates' })).toBeDefined();
+  });
+
+  it('shows no rows and no All dates link while it fails, until Try again loads it', async () => {
+    clockAt('2026-10-11T08:00:00Z');
+    signedIn();
+    let calls = 0;
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () =>
+        ++calls === 1 ? problem(500, 'internal_error') : json(MADRID),
+    });
+    at('/app/events/ev_1');
+
+    const panel = await comingUp();
+
+    expect(await within(panel).findByText('The dates did not load.')).toBeDefined();
+    expect(within(panel).queryByRole('listitem')).toBeNull();
+    expect(within(panel).queryByRole('link', { name: 'All dates' })).toBeNull();
+
+    fireEvent.click(within(panel).getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(within(panel).getAllByRole('listitem')).toHaveLength(4));
+    expect(within(panel).getByRole('link', { name: 'All dates' })).toBeDefined();
+    expect(within(panel).queryByText('The dates did not load.')).toBeNull();
+  });
+
+  it('lists every milestone in All dates under its zone, named once, Passed and Next up as words', async () => {
+    clockAt('2026-10-11T08:00:00Z');
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () => json(MADRID),
+    });
+    at('/app/events/ev_1/dates');
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'All dates' });
+    const page = heading.closest('section')!;
+
+    expect(
+      await within(page).findByText(
+        "Every date on this event, earliest first. Times are in Europe/Madrid, the event's time zone.",
+      ),
+    ).toBeDefined();
+    expect(rows(page)).toEqual([
+      'Sat, Oct 10, 12:00Save the date sentAutomatic✓ Passed',
+      'Sat, Oct 17, 18:00Boda startsEventNext up',
+      'Sun, Oct 18, 09:00BrunchAutomatic',
+      'Mon, Oct 19, 12:00Balance dueYou',
+      'Tue, Oct 20, 12:00Thank-you notes sentAutomatic',
+      'Mon, Oct 26, 02:00Boda endsEvent',
+    ]);
+    expect(within(page).getByText('Something you need to do')).toBeDefined();
+  });
+
+  it('reads the dates again on Call off, and the called-off moment is never Next up (sc-16709)', async () => {
+    clockAt('2030-10-13T09:00:00Z');
+    signedIn();
+    const ahead = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+    let reads = 0;
+    answering({
+      'GET /api/events/ev_1': () =>
+        new Response(
+          JSON.stringify({ event: event({ ...ahead, status: 'live', phase: 'live' }) }),
+          {
+            headers: { ETag: '"1"' },
+          },
+        ),
+      'GET /api/events/ev_1/timeline': () =>
+        json(
+          ++reads === 1
+            ? {
+                timeZone: 'Africa/Lagos',
+                milestones: [milestone(ahead.startsAt, 'Adaeze and Tunde starts')],
+              }
+            : {
+                timeZone: 'Africa/Lagos',
+                milestones: [milestone('2030-10-13T10:00:05+01:00', 'Adaeze and Tunde called off')],
+              },
+        ),
+      'POST /api/events/ev_1/end': () =>
+        new Response(
+          JSON.stringify({
+            event: event({
+              ...ahead,
+              status: 'ended',
+              phase: 'finished',
+              concludedAt: '2030-10-13T10:00:05+01:00',
+            }),
+          }),
+          { headers: { ETag: '"2"' } },
+        ),
+    });
+    at('/app/events/ev_1');
+
+    const panel = await comingUp();
+    await waitFor(() => expect(rows(panel)).toHaveLength(1));
+
+    vi.setSystemTime(new Date('2030-10-13T09:00:05.500Z'));
+    fireEvent.click(screen.getByRole('button', { name: 'Call off' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Call off Adaeze and Tunde?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Call off' }));
+
+    expect(
+      await within(panel).findByText('Nothing coming up. Every date on this event has passed.'),
+    ).toBeDefined();
+    expect(within(panel).queryByRole('listitem')).toBeNull();
+    expect(reads).toBe(2);
+  });
+
+  it('says Loading the dates… in All dates until the dates arrive', async () => {
+    clockAt('2026-10-11T08:00:00Z');
+    signedIn();
+    let arrive = (): void => undefined;
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () =>
+        new Promise<Response>((resolve) => {
+          arrive = () => resolve(json(MADRID));
+        }),
+    });
+    at('/app/events/ev_1/dates');
+
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
+      'section',
+    )!;
+
+    expect(await within(page).findByText('Loading the dates…')).toBeDefined();
+    arrive();
+
+    await waitFor(() => expect(within(page).getAllByRole('listitem')).toHaveLength(6));
+    expect(within(page).queryByText('Loading the dates…')).toBeNull();
+  });
+
+  it('marks an overdue You milestone Overdue and keeps it Next up', async () => {
+    clockAt('2026-10-21T08:00:00Z');
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () => json(MADRID),
+    });
+    at('/app/events/ev_1/dates');
+
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
+      'section',
+    )!;
+
+    await waitFor(() => expect(within(page).getAllByRole('listitem')).toHaveLength(6));
+    expect(rows(page)[3]).toBe('Mon, Oct 19, 12:00Balance dueYou⚠ OverdueNext up');
+    expect(rows(page)[4]).toBe('Tue, Oct 20, 12:00Thank-you notes sentAutomatic✓ Passed');
+  });
+
+  it('marks nothing Next up in All dates once the event is over', async () => {
+    clockAt('2026-11-01T08:00:00Z');
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () =>
+        json({ ...MADRID, milestones: MADRID.milestones.filter((one) => one.owner !== 'you') }),
+    });
+    at('/app/events/ev_1/dates');
+
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
+      'section',
+    )!;
+
+    await waitFor(() => expect(within(page).getAllByRole('listitem')).toHaveLength(5));
+    expect(within(page).queryByText('Next up')).toBeNull();
+    expect(within(page).getAllByText('Passed')).toHaveLength(5);
+  });
+
+  it('shows Try again in All dates when it fails, with no rows', async () => {
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () => problem(500, 'internal_error'),
+    });
+    at('/app/events/ev_1/dates');
+
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
+      'section',
+    )!;
+
+    expect(await within(page).findByText('The dates did not load.')).toBeDefined();
+    expect(within(page).getByRole('button', { name: 'Try again' })).toBeDefined();
+    expect(within(page).queryByRole('listitem')).toBeNull();
   });
 });

@@ -284,6 +284,11 @@ when@test:
             public: true
             autoconfigure: true
 
+        # Only the event's own dates are on the timeline yet; a test adds other areas' milestones here.
+        App\Tests\Double\ScriptedMilestones:
+            public: true
+            autoconfigure: true
+
         # A test sets the plan's limit here, and sees it consulted, until billing has one (sc-581).
         App\Tests\Double\ScriptedActiveEventsLimit:
             public: true
