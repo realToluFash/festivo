@@ -1,4 +1,4 @@
-# sc-3584: in ${ORG}, opening each event from the list, the draft ${DRAFT} shows the row and Make live, whose sheet closes on Not yet; the draft ${PAST}, whose end has passed, says so with no Make live; then ${EVENT} is made live and reads Live with Make live gone.
+# sc-3584: in ${ORG}, opening each event from the list, the draft ${DRAFT} shows the row and Make live, whose sheet closes on Not yet; the draft ${PAST}, whose end has passed, says so with no Make live; then ${EVENT} is made live and reads Live with Make live gone. DRAFT and EVENT are drafts with a host and an end still to come: on a draft with no host Make live opens the refused sheet, which has no Not yet. EVENT stays live after a run, so each run needs a new draft for it.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
@@ -49,6 +49,7 @@ appId: host.exp.Exponent
     visible:
       id: 'events.draftLine'
     timeout: 30000
+- assertVisible: '{{t:eventLive.endPassed}}'
 - assertNotVisible:
     id: 'events.makeLive'
 - takeScreenshot: past-end
