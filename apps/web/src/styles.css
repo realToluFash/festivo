@@ -391,6 +391,11 @@ span {
 /* ── A phone: one bar, its links behind Menu (sc-13413) ───────────────────── */
 
 @media (width <= 40rem) {
+  /* One column under a 100vh minimum would share the spare height with the bar. */
+  .shell {
+    grid-template-rows: auto 1fr;
+  }
+
   .shell-sidebar {
     flex-direction: row;
     align-items: center;
@@ -415,17 +420,25 @@ span {
   }
 
   .shell-menu-button {
-    display: block;
+    display: flex;
     flex: none;
+    align-items: center;
+    gap: var(--spaceXs);
     min-height: var(--sizeHit);
     padding: 0 var(--spaceLg);
     border: var(--borderControl);
-    border-radius: var(--radiusField);
+    border-radius: var(--radiusPill);
+    white-space: nowrap;
     background: var(--colorCard);
     color: var(--colorInk);
     font: var(--typeButton);
     cursor: pointer;
   }
+}
+
+.shell-menu-button svg {
+  width: 16px;
+  height: 16px;
 }
 
 .shell-menu {
