@@ -255,11 +255,10 @@ function Choosing({
               returnKeyType="done"
               onSubmitEditing={() => void save()}
               submitBehavior="submit"
-              // On Android the label replaces what the field holds, so a picked zone goes into it; VoiceOver reads the value itself.
-              accessibilityLabel={
-                Platform.OS === 'android' && showingPicked
-                  ? `${t('timeZone.find')}, ${typed}`
-                  : t('timeZone.find')
+              accessibilityLabel={t('timeZone.find')}
+              // On Android the label replaces what the field holds, so a picked zone is said as its value; VoiceOver reads the value itself.
+              accessibilityValue={
+                Platform.OS === 'android' ? { text: showingPicked ? typed : '' } : undefined
               }
               accessibilityHint={short ? help : undefined}
               testID="timeZone.search"
