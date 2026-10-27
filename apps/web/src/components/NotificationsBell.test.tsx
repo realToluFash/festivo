@@ -188,6 +188,37 @@ describe('the bell (sc-3980)', () => {
     expect(screen.getByRole('heading', { name: 'Notifications' })).toBeTruthy();
   });
 
+  it('More says when the mute state did not load, and Try again reads it again', async () => {
+    let reads = 0;
+    answering({
+      'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
+      'GET /api/events/e1/mute': () => {
+        reads += 1;
+        if (reads === 1) throw new TypeError('Failed to fetch');
+        return json({ muted: true });
+      },
+    });
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'More for Ada Obi changed the event, Ada & Tomi',
+      }),
+    );
+
+    expect(await screen.findByText("Couldn't load whether this event is muted.")).toBeTruthy();
+    const mute = screen.getByRole('switch', { name: 'Mute this event' }) as HTMLInputElement;
+    expect(mute.disabled).toBe(true);
+    expect(screen.queryByText("Couldn't save. Try again.")).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(mute.checked).toBe(true));
+    expect(mute.disabled).toBe(false);
+    expect(screen.queryByText("Couldn't load whether this event is muted.")).toBeNull();
+  });
+
   it('an item whose event is gone has no More', async () => {
     answering({
       'GET /api/notifications': () =>

@@ -7,6 +7,7 @@ import { Link, useNavigate } from 'react-router';
 import { api } from '../api.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { useLiveNotifications } from '../liveNotifications.ts';
+import { MuteSwitch } from './MuteSwitch.tsx';
 
 const MUTABLE: ReadonlySet<NotificationCategory> = new Set([
   'guest_replies',
@@ -340,35 +341,14 @@ function MuteMenu({
   label: string;
   onMuted: (muted: boolean) => void;
 }) {
-  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [muted, setMuted] = useState<boolean | null>(null);
-  const [failed, setFailed] = useState(false);
   const more = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
 
-    let current = true;
     dialog.current?.focus();
-    api.eventMuted(eventId).then(
-      (answer) => {
-        if (current) setMuted(answer);
-      },
-      () => {
-        if (current) setFailed(true);
-      },
-    );
-
-    return () => {
-      current = false;
-    };
-  }, [open, eventId]);
-
-  useEffect(() => {
-    if (!open) return;
-
     const close = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape' || !dialog.current?.contains(document.activeElement)) return;
       setOpen(false);
@@ -379,17 +359,6 @@ function MuteMenu({
 
     return () => document.removeEventListener('keydown', close);
   }, [open]);
-
-  async function change(next: boolean): Promise<void> {
-    setFailed(false);
-    setMuted(next);
-    try {
-      onMuted(await api.muteEvent(eventId, next));
-    } catch {
-      setMuted(!next);
-      setFailed(true);
-    }
-  }
 
   return (
     <>
@@ -411,17 +380,7 @@ function MuteMenu({
           aria-label={label}
           tabIndex={-1}
         >
-          <label className="notification-switch">
-            <input
-              type="checkbox"
-              role="switch"
-              checked={muted === true}
-              disabled={muted == null}
-              onChange={(event) => void change(event.currentTarget.checked)}
-            />
-            <span>{t('notifications.muteEvent')}</span>
-          </label>
-          {failed && <p className="field-error">{t('notifications.muteNotSaved')}</p>}
+          <MuteSwitch eventId={eventId} onMuted={onMuted} />
         </div>
       )}
     </>

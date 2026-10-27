@@ -61,6 +61,7 @@ function json(body: unknown, status = 200): Response {
 async function onTheEvent(
   muted: boolean,
   put: (body: unknown) => Response = (body) => json(body),
+  get: () => Response = () => json({ muted }),
 ): Promise<{ line: string; body: unknown }[]> {
   const sent: { line: string; body: unknown }[] = [];
 
@@ -70,7 +71,7 @@ async function onTheEvent(
     sent.push({ line, body });
 
     if (line === 'GET /api/events/ev_1') return json({ event: EVENT });
-    if (line === 'GET /api/events/ev_1/mute') return json({ muted });
+    if (line === 'GET /api/events/ev_1/mute') return get();
     if (line === 'PUT /api/events/ev_1/mute') return put(body);
 
     return json({});
@@ -152,5 +153,25 @@ describe('Mute this event on the event page (sc-3980)', () => {
 
     await within(card()).findByText("Couldn't save. Try again.");
     expect((toggle as HTMLInputElement).checked).toBe(false);
+  });
+
+  it('says when the switch did not load, and Try again reads it again', async () => {
+    signedIn(READER);
+    let reads = 0;
+    await onTheEvent(false, undefined, () => {
+      reads += 1;
+      return reads === 1 ? json({ title: 'Down' }, 503) : json({ muted: true });
+    });
+    const toggle = within(card()).getByRole('switch', { name: 'Mute this event' });
+
+    await within(card()).findByText("Couldn't load whether this event is muted.");
+    expect((toggle as HTMLInputElement).disabled).toBe(true);
+    expect(within(card()).queryByText("Couldn't save. Try again.")).toBeNull();
+
+    fireEvent.click(within(card()).getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect((toggle as HTMLInputElement).checked).toBe(true));
+    expect((toggle as HTMLInputElement).disabled).toBe(false);
+    expect(within(card()).queryByText("Couldn't load whether this event is muted.")).toBeNull();
   });
 });

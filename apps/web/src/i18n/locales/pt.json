@@ -1887,6 +1887,7 @@
     "settings": "Notification settings",
     "more": "More for {{title}}, {{event}}",
     "muteEvent": "Mute this event",
+    "muteNotLoaded": "Couldn't load whether this event is muted.",
     "muteNotSaved": "Couldn't save. Try again."
   },
   "eventMute": {
