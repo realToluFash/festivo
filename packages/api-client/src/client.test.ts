@@ -2305,6 +2305,49 @@ describe('events (sc-1486)', () => {
     ]);
   });
 
+  test('an event’s timeline is read as served, and a shape it does not know is an error', async () => {
+    const timeline = {
+      timeZone: 'Europe/Madrid',
+      milestones: [
+        {
+          at: '2026-10-24T18:00:00+02:00',
+          title: 'Boda starts',
+          note: null,
+          owner: 'event',
+          area: 'events',
+          action: null,
+        },
+        {
+          at: '2026-10-26T02:00:00+01:00',
+          title: 'Balance due',
+          note: 'The venue’s second half',
+          owner: 'you',
+          area: 'budget',
+          action: { label: 'Open the budget', link: '/app/events/e1/budget' },
+        },
+      ],
+    };
+    const { api, sent } = client(() => json(timeline));
+
+    expect(await api.eventTimeline('e1')).toEqual(timeline);
+    expect(sent).toEqual([{ line: 'GET /api/events/e1/timeline', body: null }]);
+
+    const [first] = timeline.milestones;
+    await expect(
+      client(() =>
+        json({ ...timeline, milestones: [{ ...first, owner: 'host' }] }),
+      ).api.eventTimeline('e1'),
+    ).rejects.toThrow(/EventTimelineController/);
+    await expect(
+      client(() =>
+        json({ ...timeline, milestones: [{ ...first, action: { label: 'Open' } }] }),
+      ).api.eventTimeline('e1'),
+    ).rejects.toThrow(/EventTimelineController/);
+    await expect(client(() => json({ milestones: [] })).api.eventTimeline('e1')).rejects.toThrow(
+      /EventTimelineController/,
+    );
+  });
+
   test('an event in a shape it does not know, or a status it does not know, is an error', async () => {
     await expect(
       client(() => json({ events: [{ ...EVENT, status: 'published' }] })).api.events('org_1'),

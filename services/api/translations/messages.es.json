@@ -223,5 +223,7 @@
     "validation.cover_position_invalid": "Elija una posición entre 0, la parte superior de la foto, y 100, la inferior.",
     "validation.cover_photo_required": "Elija una foto para la portada.",
     "validation.cover_upload_missing": "No se ha podido subir la foto. Vuelva a intentarlo.",
-    "event.delete_name_mismatch": "Escriba {name} exactamente como aparece para eliminarlo."
+    "event.delete_name_mismatch": "Escriba {name} exactamente como aparece para eliminarlo.",
+    "timeline.event_starts": "{name} starts",
+    "timeline.event_ends": "{name} ends"
 }
