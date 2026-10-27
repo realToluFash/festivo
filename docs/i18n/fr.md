@@ -562,3 +562,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   et finit comme `orgGeneral.readOnly` : « vous pouvez voir ces informations mais pas les
   modifier ». Un enregistrement refusé par la règle dit seulement « Rien n’a été enregistré. »,
   le début de `refused`.
+- **27 oct. 2026. Le jalon d’un événement annulé** (sc-16725 pour sc-16709,
+  `messages:timeline.event_called_off`). « Annulation : {name} », un nom, donc sans accord avec
+  un nom d’événement dont on ignore le genre. Les deux-points plutôt que le « Annulation de »
+  convenu avec le pm : « de » devant un nom qui commence par une voyelle ou un article
+  (« de Anniversaire », « de Le Gala ») se lirait mal, et le code ne peut pas élider.
