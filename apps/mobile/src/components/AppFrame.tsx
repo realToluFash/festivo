@@ -50,7 +50,7 @@ import { ReadOut, useReadOut } from './ReadOut.tsx';
 import { type StepClosed, stepClosed, useFocusBackToOpener, useFocusOnAnswer } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type TextHandle, Text } from './Text.tsx';
-import { Title } from './Title.tsx';
+import { Title, useWholeWords } from './Title.tsx';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 
@@ -404,13 +404,20 @@ function TabBar({ current }: { current: Destination }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { organisation } = useSignedIn();
+  const { fontScale } = useWindowDimensions();
+  const shown = destinations(organisation);
+  const words = useWholeWords(
+    tokens.typeMeta.size,
+    tokens.typeMeta.size * fontScale,
+    shown.map((destination) => t(`frame.${destination}`)),
+  );
 
   return (
     <View
       style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, tokens.spaceSm) }]}
       accessibilityRole="tablist"
     >
-      {destinations(organisation).map((destination) => {
+      {shown.map((destination) => {
         const on = destination === current;
 
         return (
@@ -428,6 +435,7 @@ function TabBar({ current }: { current: Destination }) {
               size={tokens.typeMeta.size}
               weight={on ? 'bold' : 'medium'}
               style={[styles.centred, on ? styles.ink : styles.secondaryInk]}
+              {...words}
             >
               {t(`frame.${destination}`)}
             </Text>

@@ -12,6 +12,7 @@ import {
   type LayoutKind,
   listAndPageKind,
   type SectionBeside,
+  settingsListGivesWay,
   useLayout,
   useSideListWidth,
 } from '../layout/useLayout.ts';
@@ -45,16 +46,29 @@ export interface ListAndPageProps {
   pageInFront: boolean;
   back: { label: string; onPress: () => void; testID: string };
   spacing: ListAndPageSpacing;
-  /** The screen's own `useListAndPageKind`, so the two never decide apart. */
+  /** The screen's own `useListAndPageLayout`, so the two never decide apart. */
   kind: LayoutKind;
 }
 
-export function useListAndPageKind(spacing: ListAndPageSpacing, beside: SectionBeside): LayoutKind {
-  return listAndPageKind(useWindowDimensions(), beside, {
+function listBeside(spacing: ListAndPageSpacing) {
+  return {
     margins: 2 * spacing.landscape.paddingHorizontal,
     list: spacing.listWidth,
     between: spacing.between,
-  });
+  };
+}
+
+export function useListAndPageLayout(
+  spacing: ListAndPageSpacing,
+  beside: SectionBeside,
+): { kind: LayoutKind; givesWay: boolean } {
+  const window = useWindowDimensions();
+  const list = listBeside(spacing);
+
+  return {
+    kind: listAndPageKind(window, beside, list),
+    givesWay: settingsListGivesWay(window, beside, list),
+  };
 }
 
 // The half behind is out of the layout, so neither touch, TalkBack nor Tab reaches it.

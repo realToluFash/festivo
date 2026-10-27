@@ -18,7 +18,7 @@ import {
 import {
   type ListAndPageSpacing,
   ListAndPage,
-  useListAndPageKind,
+  useListAndPageLayout,
 } from '../../src/components/ListAndPage.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
 import { type StepClosed, stepClosed, useFocusOnAnswer } from '../../src/components/Screen.tsx';
@@ -47,7 +47,7 @@ const LOADING: Load = { kind: 'loading' };
 /** Settings > Members, `MembersApp-*` (sc-3404): who is in the organisation, a role change and a removal. */
 export default function MembersScreen() {
   const { t } = useTranslation();
-  const kind = useListAndPageKind(SPACING, 'settingsList');
+  const { kind, givesWay } = useListAndPageLayout(SPACING, 'settingsList');
   const { organisation } = useSignedIn();
   const organisationId = organisation?.id;
   const [held, setHeld] = useState<{ in: string | undefined; load: Load }>({
@@ -257,7 +257,7 @@ export default function MembersScreen() {
           : undefined
       }
     >
-      <SettingsSplit open="members">
+      <SettingsSplit open="members" givesWay={givesWay}>
         <SheetsAtRoot>
           <ListAndPage
             kind={kind}
