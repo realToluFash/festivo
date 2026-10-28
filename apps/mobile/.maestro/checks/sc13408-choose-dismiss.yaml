@@ -43,8 +43,9 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - takeScreenshot: at-tap
 - assertNotVisible: '(?i)(shift|delete)'
-- waitForAnimationToEnd:
-    timeout: 6000
+- extendedWaitUntil:
+    visible: '{{t:passwordCard.failedBody}}'
+    timeout: 15000
 - waitForAnimationToEnd
 - takeScreenshot: refused
 - assertNotVisible: '(?i)(shift|delete)'

@@ -1,4 +1,5 @@
 # Choose a password: keys hidden (card tap), Save password tapped with the API held, then let through. Keys stay down. sc-13408.
+# This sets the account's password, so in a batch on one no-password account it runs last.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/security
@@ -53,8 +54,10 @@ appId: host.exp.Exponent
     file: ../batch/helper.js
     env:
       ASK: /api?to=up
-- waitForAnimationToEnd:
-    timeout: 6000
+- extendedWaitUntil:
+    visible:
+      id: 'password.change'
+    timeout: 15000
 - waitForAnimationToEnd
 - takeScreenshot: answered
 - assertNotVisible: '(?i)(shift|delete)'
