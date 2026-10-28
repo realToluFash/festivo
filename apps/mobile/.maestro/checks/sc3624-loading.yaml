@@ -1,0 +1,12 @@
+# sc-3624: ${EV} with the API paused: Coming up says it is loading, with All dates still linked.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}
+- scrollUntilVisible:
+    element:
+      id: 'timeline.comingUp.loading'
+    direction: DOWN
+    timeout: 30000
+- assertVisible:
+    id: 'timeline.allDates'
+- takeScreenshot: loading
