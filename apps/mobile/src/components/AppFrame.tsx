@@ -411,7 +411,8 @@ export function BackButton({
 }
 
 function goTo(destination: Destination): void {
-  leaveThen(() => router.navigate(DESTINATION_HREF[destination]));
+  const href = DESTINATION_HREF[destination];
+  leaveThen((discarding) => (discarding ? router.dismissTo(href) : router.navigate(href)));
 }
 
 function TabBar({ current }: { current: Destination }) {

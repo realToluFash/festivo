@@ -211,7 +211,7 @@ export function EventForm({
     setCover(null);
   }
 
-  // The frame's destinations and its switcher leave the form without removing it, so they ask here (sc-3595).
+  // The frame's destinations and its switcher ask here, and a destination left this way takes the form off the stack (sc-3595).
   useEffect(
     () =>
       dirty

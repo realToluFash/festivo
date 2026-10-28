@@ -9,7 +9,16 @@ export function holdLeaving(ask: (go: () => void) => void): () => void {
   };
 }
 
-export function leaveThen(go: () => void): void {
-  if (held == null) go();
-  else held(go);
+/** `go` hears whether the reader discarded unsaved work, so the destination can take that screen off the stack. */
+export function leaveThen(go: (discarding: boolean) => void): void {
+  const ask = held;
+  if (ask == null) {
+    go(false);
+    return;
+  }
+
+  ask(() => {
+    if (held === ask) held = null;
+    go(true);
+  });
 }

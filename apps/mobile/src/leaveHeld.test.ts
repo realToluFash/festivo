@@ -24,6 +24,30 @@ describe('leaving a screen with unsaved work', () => {
     release();
   });
 
+  it('tells the destination the screen was discarded only when it asked', () => {
+    const discarding: boolean[] = [];
+
+    leaveThen((discarded) => discarding.push(discarded));
+    const release = holdLeaving((go) => go());
+    leaveThen((discarded) => discarding.push(discarded));
+    release();
+
+    expect(discarding).toEqual([false, true]);
+  });
+
+  it('goes at once after the reader has left, though the screen is still mounted', () => {
+    const went: string[] = [];
+    const asked: (() => void)[] = [];
+    holdLeaving((go) => asked.push(go));
+
+    leaveThen(() => went.push('/'));
+    asked[0]?.();
+    leaveThen(() => went.push('/settings'));
+
+    expect(asked).toHaveLength(1);
+    expect(went).toEqual(['/', '/settings']);
+  });
+
   it('goes at once again once the screen lets go', () => {
     const went: string[] = [];
     const release = holdLeaving(() => {});
