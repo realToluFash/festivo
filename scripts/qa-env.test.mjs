@@ -86,6 +86,8 @@ import {
   TESTERS,
   testerOf,
   experienceResumed,
+  lastBundleRun,
+  reloadUntilRun,
   openUntilShown,
 } from './qa-env.mjs';
 
@@ -661,6 +663,50 @@ describe('a flow on Android', () => {
       ),
     ).toBe(false);
     expect(experienceResumed('')).toBe(false);
+  });
+
+  it('reads when the app last started from logcat', () => {
+    const run = (at) =>
+      `${at}  4743  4743 I ReactNativeJS: Running "main" with {"rootTag":1,"initialProps":{}}\n`;
+    expect(lastBundleRun('')).toBe(0);
+    expect(lastBundleRun('--------- beginning of main\n')).toBe(0);
+    expect(
+      lastBundleRun(
+        run('1793215144.427') +
+          '1793215150.001  4743  4743 I ReactNativeJS: Running application\n' +
+          run('1793215204.427'),
+      ),
+    ).toBe(1793215204.427);
+  });
+
+  it('answers a reload once the app has run again, or when its time is up', async () => {
+    const reloading = (ranAfterPolls) => {
+      let at = 0;
+      let polls = 0;
+      let reloaded = false;
+      return {
+        options: {
+          reload: async () => {
+            reloaded = true;
+          },
+          lastRun: () => (reloaded && polls >= ranAfterPolls ? 200 : 100),
+          wait: async (ms) => {
+            polls++;
+            at += ms;
+          },
+          now: () => at,
+        },
+        at: () => at,
+      };
+    };
+
+    const quick = reloading(2);
+    expect(await reloadUntilRun(quick.options)).toBe(true);
+    expect(quick.at()).toBe(500);
+
+    const never = reloading(Infinity);
+    expect(await reloadUntilRun(never.options)).toBe(false);
+    expect(never.at()).toBeLessThanOrEqual(8000);
   });
 
   const clocked = ({ shownAfter = Infinity, sendCost = 0, checkCost = 0 } = {}) => {
