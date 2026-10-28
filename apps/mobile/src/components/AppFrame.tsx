@@ -28,6 +28,7 @@ import { useTranslation } from 'react-i18next';
 import { type WaitingInvitations, useWaitingInvitations } from '../invitations.ts';
 import { type DomainOffer, useDomainOffer } from '../joinOffers.ts';
 import { DESTINATION_HREF, type Destination, destinations } from '../kit/appNav.ts';
+import { backRowHiding } from '../kit/backRow.ts';
 import { leaveThen } from '../leaveHeld.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { railWidth } from '../layout/textSize.ts';
@@ -75,7 +76,7 @@ export function useStartOrganisation(): OrganisationStart | undefined {
 
 const HideBack = createContext<((hidden: boolean) => void) | undefined>(undefined);
 
-/** While `hidden`, the phone header keeps its title and drops the back row (sc-3132). */
+/** While `hidden`, the phone header keeps its title and drops the back row (sc-3132); it comes back a moment after, as `backRowHiding` holds it. */
 export function useHeaderWithoutBack(hidden: boolean): void {
   const hide = useContext(HideBack);
 
@@ -135,6 +136,8 @@ export function AppFrame({
   const createdWords = useRef<View>(null);
   const switched = created == null ? null : t('switcher.switched', { name: created.name });
   const [backHidden, setBackHidden] = useState(false);
+  const [backRow] = useState(() => backRowHiding(setBackHidden));
+  useEffect(() => backRow.stop, [backRow]);
   const signedIn = useSignedIn();
   const waiting = useWaitingInvitations();
   const offer = useDomainOffer();
@@ -228,7 +231,7 @@ export function AppFrame({
             ))}
           <OpenSwitcher.Provider value={openSwitcher}>
             <StartOrganisation.Provider value={startOrganisation}>
-              <HideBack.Provider value={setBackHidden}>
+              <HideBack.Provider value={backRow.hide}>
                 {standIn === 'paused' && signedIn.pausedIn != null ? (
                   <AccessPaused
                     paused={signedIn.pausedIn}

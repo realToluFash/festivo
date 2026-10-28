@@ -13,6 +13,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
+import { focusBackMs } from '../kit/focusBack.ts';
 import { listRoom, shortWhileTyping } from '../kit/keyboard.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -23,6 +24,7 @@ import { Field, focusChecked, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import {
+  SETTLED_MS,
   type StepClosed,
   stepClosed,
   useAboveKeyboard,
@@ -123,6 +125,7 @@ export function TimeZoneCard({
               body={t('timeZone.saved', { zone: saved })}
               answer={saved}
               takesFocus
+              readMs={focusBackMs(Platform.OS, SETTLED_MS, 'step')}
             />
           )}
           <SecondaryButton
