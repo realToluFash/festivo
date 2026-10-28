@@ -230,6 +230,12 @@ export function focusChecked(field: RefObject<TextInput | null>): void {
   field.current?.focus();
 }
 
+/** At a submit the client checks passed: keys hidden over a focused field stay hidden while it runs and after it. */
+export function keysStayDown(): void {
+  // A header tap on an iPhone hides the keys and leaves the field focused, and iOS raises them again as the held field changes.
+  if (!Keyboard.isVisible()) TextInput.State.currentlyFocusedInput()?.blur();
+}
+
 export function TextField({
   wrong = false,
   submitting = false,

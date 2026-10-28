@@ -20,7 +20,7 @@ import { currentSessionId } from '../tokens.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
-import { CodeField, Field, focusChecked } from './Field.tsx';
+import { CodeField, Field, focusChecked, keysStayDown } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import { PasswordRule } from './PasswordRule.tsx';
@@ -192,6 +192,7 @@ function Changing({
       return;
     }
 
+    keysStayDown();
     setSaving(true);
     setRefusal(null);
 
@@ -387,6 +388,7 @@ function Setting({
 
   async function passCode(): Promise<void> {
     if (busy || !codeChecks.passes({ code: code.current })) return;
+    keysStayDown();
     setBusy(true);
 
     try {
@@ -410,6 +412,7 @@ function Setting({
       return;
     }
 
+    keysStayDown();
     setBusy(true);
 
     try {
