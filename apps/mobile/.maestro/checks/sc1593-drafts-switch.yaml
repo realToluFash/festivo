@@ -1,0 +1,44 @@
+# sc-1593 after sc-3594's tabs: ${EVENT} open in ${ORG}, then Switch organisation to ${OTHER_ORG}: its Drafts show ${OTHER_EVENT}, not ${EVENT}; then ${EMPTY_ORG}, which has none.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- takeScreenshot: before-switch
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${OTHER_ORG}
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.drafts'
+    timeout: 20000
+- assertNotVisible:
+    id: 'events.page'
+- tapOn:
+    id: 'events.tab.drafts'
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${OTHER_EVENT}'
+    timeout: 20000
+- assertNotVisible:
+    id: 'events.row.${EVENT}'
+- takeScreenshot: after-switch
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${EMPTY_ORG}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible: '{{t:eventsScreen.noneTitle}}'
+    timeout: 20000
+- takeScreenshot: empty

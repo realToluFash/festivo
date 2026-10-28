@@ -1,0 +1,55 @@
+# sc-1593 after sc-3594's tabs: in ${ORG}, the Drafts tab lists ${EVENT} (multi-day); its page; back to the list; then ${SINGLE_DAY_EVENT}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.drafts'
+    timeout: 30000
+- tapOn:
+    id: 'events.tab.drafts'
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EVENT}'
+    timeout: 20000
+- takeScreenshot: drafts
+- scroll
+- takeScreenshot: drafts-scrolled
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${EVENT}'
+    direction: UP
+    timeout: 20000
+- tapOn:
+    id: 'events.row.${EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- takeScreenshot: page-multiday
+- runFlow:
+    when:
+      visible:
+        id: 'frame.back'
+    commands:
+      - tapOn:
+          id: 'frame.back'
+- waitForAnimationToEnd
+- takeScreenshot: back-to-list
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${SINGLE_DAY_EVENT}'
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: 'events.row.${SINGLE_DAY_EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- takeScreenshot: page-singleday
