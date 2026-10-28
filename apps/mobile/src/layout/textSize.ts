@@ -21,12 +21,16 @@ export function titleSize(size: number, fontScale: number): number {
   return fontScale >= NINTH_STEP_SCALE ? steps[1] : steps[0];
 }
 
-/** Whether a text laid out as these lines was broken inside a word. */
-export function breaksAWord(lines: readonly string[]): boolean {
-  return lines.some(
-    (line, index) =>
-      index < lines.length - 1 && /[^\s\-‐]$/u.test(line) && /^[^\s]/u.test(lines[index + 1] ?? ''),
-  );
+/** Every distinct word in these texts. */
+export function wordsIn(texts: readonly string[]): string[] {
+  return [...new Set(texts.flatMap((text) => text.split(/\s+/u)).filter((word) => word !== ''))];
+}
+
+/** The one size for labels whose widest word, drawn at `start`, measures `widest` in a slot `slot` wide: `start` when it fits, never below `size`. */
+export function fitWidest(size: number, start: number, widest: number, slot: number): number {
+  if (widest <= slot) return start;
+
+  return Math.max(size, Math.floor((start * slot) / widest));
 }
 
 /** A name in the frame takes one line, and two at the accessibility sizes, before it is cut. */
@@ -49,28 +53,4 @@ export function sideListWidth(width: number, contentWidth: number, fontScale: nu
 /** An email as drawn, free to break after its @ when it is wider than its line. Its accessibility label stays the address. */
 export function breakableEmail(email: string): string {
   return email.replace('@', '@​');
-}
-
-export interface TitleFit {
-  readonly key: string;
-  readonly drawn: number;
-}
-
-export function fitTitle(
-  fit: TitleFit | null,
-  size: number,
-  fontScale: number,
-  text: string,
-): TitleFit {
-  const steps = titleSize(size, fontScale);
-  const key = `${steps}|${text}`;
-
-  return fit?.key === key ? fit : { key, drawn: steps };
-}
-
-/** After a layout: a point smaller while a word is broken, never below the default size. */
-export function settleTitle(fit: TitleFit, size: number, lines: readonly string[]): TitleFit {
-  if (fit.drawn <= size || !breaksAWord(lines)) return fit;
-
-  return { key: fit.key, drawn: Math.max(size, fit.drawn - 1) };
 }

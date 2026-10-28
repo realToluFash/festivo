@@ -63,4 +63,20 @@ final class EventPhaseTest extends TestCase
         self::assertFalse(EventPhase::Finished->allows(EventAction::EditSchedule));
         self::assertFalse(EventPhase::Finished->allows(EventAction::End));
     }
+
+    /** Paused stops what guests can do and keeps everything else (sc-3586). */
+    #[Test]
+    public function aPausedEventIsEditedAndResumedButTakesNothingFromGuests(): void
+    {
+        foreach ([EventAction::Edit, EventAction::EditSchedule, EventAction::Resume, EventAction::End, EventAction::Delete, EventAction::CheckIn, EventAction::Service] as $allowed) {
+            self::assertTrue(EventPhase::Paused->allows($allowed), $allowed->value);
+        }
+
+        foreach ([EventAction::Pause, EventAction::Invite, EventAction::Message, EventAction::MakeLive] as $refused) {
+            self::assertFalse(EventPhase::Paused->allows($refused), $refused->value);
+        }
+
+        self::assertFalse(EventPhase::Finished->allows(EventAction::Resume));
+        self::assertFalse(EventPhase::Finished->allows(EventAction::Pause));
+    }
 }

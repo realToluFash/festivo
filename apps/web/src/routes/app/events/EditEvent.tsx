@@ -2,6 +2,14 @@ import { ApiError, type TaggedEvent } from '@soirely/api-client';
 import {
   EVENT_NAME_MAXIMUM,
   type EventDraft,
+  type HostErrors,
+  type HostRow,
+  firstRefusedOf,
+  hostErrorsOf,
+  hostRefusalsOf,
+  hostRequiredOf,
+  hostsChanged,
+  hostsSent,
   draftOf,
   eventChanges,
   scheduleKept,
@@ -39,8 +47,17 @@ import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { CoverSection } from './CoverSection.tsx';
 import { Choice, FieldError, Moment } from './EventFields.tsx';
-import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
+import {
+  ADD_HOST_ID,
+  type Errors,
+  FIELDS,
+  type Field,
+  describedBy,
+  hostInputId,
+  inputFor,
+} from './eventFieldOrder.ts';
 import { typeChoices } from './eventTypes.ts';
+import { HostsSection } from './HostsSection.tsx';
 import { VenueSection } from './VenueSection.tsx';
 
 /** What the event page announces once the form has closed (sc-3587). */
@@ -50,7 +67,13 @@ type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'notFound' } | Ta
 
 type Status = 'editing' | 'saving' | 'failed' | 'latestFailed' | 'changedElsewhere';
 
-type Typed = { draft: EventDraft; timeZone: string; currency: string; venue: VenueDraft };
+type Typed = {
+  draft: EventDraft;
+  timeZone: string;
+  currency: string;
+  venue: VenueDraft;
+  hosts: HostRow[];
+};
 
 export function EditEvent() {
   const session = useSession();
@@ -159,6 +182,7 @@ function typedOf({ event }: TaggedEvent): Typed {
     timeZone: event.timeZone,
     currency: event.currency,
     venue: venueDraftOf(event.venue),
+    hosts: event.hosts.map((name, key) => ({ key, name })),
   };
 }
 
@@ -183,6 +207,9 @@ function DetailsForm({
   const [entered, setTyped] = useState<Typed>(() => typedOf(opened));
   const [cover, setCover] = useState(saved.cover);
   const [errors, setErrors] = useState<Errors>({});
+  const [hostErrors, setHostErrors] = useState<HostErrors>({});
+  const [hostsChecked, setHostsChecked] = useState(false);
+  const [said, setSaid] = useState('');
   const [unsent, setUnsent] = useState(0);
   const [status, setStatus] = useState<Status>('editing');
   const [confirming, setConfirming] = useState<'latest' | null>(null);
@@ -199,8 +226,19 @@ function DetailsForm({
     () => (over ? scheduleKept(entered, typedOf(opened)) : entered),
     [over, entered, opened],
   );
-  const { draft, timeZone, currency, venue } = typed;
-  const changes = useMemo(() => eventChanges(saved, typed), [saved, typed]);
+  const { draft, timeZone, currency, venue, hosts } = typed;
+  const changes = useMemo(
+    () => ({
+      ...eventChanges(saved, typed),
+      ...(hostsChanged(
+        saved.hosts,
+        typed.hosts.map((row) => row.name),
+      )
+        ? { hosts: hostsSent(typed.hosts.map((row) => row.name)) }
+        : {}),
+    }),
+    [saved, typed],
+  );
   const lockedBy = over ? 'event-schedule-over' : undefined;
 
   usePageTitle(pageTitle(t, [t('eventEdit.title'), saved.name]));
@@ -221,12 +259,16 @@ function DetailsForm({
 
   const [toVenue] = useState(() => location.hash === '#venue');
   const [toCover] = useState(() => location.hash === '#cover');
+  const [toHosts] = useState(() => location.hash === '#hosts');
+  const [firstHost] = useState(() => typed.hosts[0]);
 
   useEffect(() => {
     if (reread) document.getElementById('event-name')?.focus();
     else if (toVenue) document.getElementById('event-venue-name')?.focus();
     else if (toCover) document.getElementById('cover-upload')?.focus();
-  }, [reread, toVenue, toCover]);
+    else if (toHosts)
+      document.getElementById(firstHost == null ? ADD_HOST_ID : hostInputId(firstHost))?.focus();
+  }, [reread, toVenue, toCover, toHosts, firstHost]);
 
   useEffect(() => {
     if (!dirty) return;
@@ -252,14 +294,35 @@ function DetailsForm({
     setErrors((previous) => ({ ...previous, [field]: undefined }));
   }
 
+  /** Focus goes to the first refused in page order: the name and type, then the hosts top to bottom, then the rest. */
   function refuse(
     found: Errors,
     focus = (id: string) => document.getElementById(id)?.focus(),
+    hostFound: HostErrors = {},
   ): void {
-    const first = FIELDS.find((field) => found[field] != null);
+    const first = firstRefusedOf(found, hostFound, hosts);
+    const id =
+      first == null
+        ? null
+        : 'field' in first
+          ? inputFor(first.field, draft)
+          : hostInputId({ key: first.host });
 
-    focusNext.current = first == null ? null : () => focus(inputFor(first, draft));
+    focusNext.current = id == null ? null : () => focus(id);
     setErrors(found);
+    setHostErrors(hostFound);
+  }
+
+  function editHosts(rows: HostRow[], touched: number | null): void {
+    setTyped((previous) => ({ ...previous, hosts: rows }));
+    if (touched != null) setHostErrors((previous) => ({ ...previous, [touched]: undefined }));
+    else if (hostsChecked) setHostErrors(hostErrorsOf(rows, t));
+  }
+
+  function leaveHost(row: HostRow): void {
+    if (!hostsChecked) return;
+
+    setHostErrors((previous) => ({ ...previous, [row.key]: hostErrorsOf(hosts, t)[row.key] }));
   }
 
   function close(outcome: EditOutcome): void {
@@ -272,13 +335,17 @@ function DetailsForm({
     if (busy) return;
 
     const found: Errors = eventFormErrors(typed, t);
+    const hostFound = hostErrorsOf(hosts, t);
 
-    const unsentFields = Object.keys(found).length;
+    const unsentFields = Object.keys(found).length + Object.keys(hostFound).length;
+
+    setSaid('');
+    setHostsChecked(true);
 
     if (unsentFields > 0) {
       setUnsent(unsentFields);
       setStatus('editing');
-      refuse(found);
+      refuse(found, undefined, hostFound);
       return;
     }
 
@@ -311,6 +378,16 @@ function DetailsForm({
         return;
       }
 
+      const hostRequired =
+        error instanceof ApiError && error.is('event_host_required')
+          ? hostRequiredOf(hosts, t)
+          : null;
+      if (hostRequired != null) {
+        setStatus('editing');
+        refuse({}, land, hostRequired);
+        return;
+      }
+
       if (error instanceof ApiError && error.is('event_currency_in_use')) {
         setStatus('editing');
         refuse({ currency: t('eventEdit.currencyInUse') }, land);
@@ -321,9 +398,11 @@ function DetailsForm({
       const fromServer: Errors = {};
       for (const field of FIELDS) if (refused[field] != null) fromServer[field] = refused[field];
 
-      if (Object.keys(fromServer).length > 0) {
+      const hostsFromServer = hostRefusalsOf(refused, hosts);
+
+      if (Object.keys(fromServer).length + Object.keys(hostsFromServer).length > 0) {
         setStatus('editing');
-        refuse(fromServer, land);
+        refuse(fromServer, land, hostsFromServer);
         return;
       }
 
@@ -372,7 +451,7 @@ function DetailsForm({
 
       <form className="event-form" noValidate onSubmit={(event) => void save(event)}>
         <p className="visually-hidden" role="status">
-          {unsent > 0 ? t('eventForm.problems', { count: unsent }) : ''}
+          {unsent > 0 ? t('eventForm.problems', { count: unsent }) : said}
         </p>
 
         <section className="card" aria-labelledby="event-about">
@@ -409,6 +488,19 @@ function DetailsForm({
             onChange={(value) => edit('type', { type: isEventType(value) ? value : '' })}
           />
         </section>
+
+        <HostsSection
+          rows={hosts}
+          errors={hostErrors}
+          saved={saved}
+          busy={busy}
+          onRows={editHosts}
+          onLeave={leaveHost}
+          onSay={(line) => {
+            setUnsent(0);
+            setSaid(line);
+          }}
+        />
 
         <CoverSection
           type={draft.type}

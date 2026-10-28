@@ -2,6 +2,7 @@ import { useFocusEffect } from 'expo-router';
 import { type Ref, useCallback, useEffect, useState } from 'react';
 import {
   AppState,
+  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -10,10 +11,10 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { passwordProps } from '../kit/fields.ts';
+import { fieldName, passwordProps } from '../kit/fields.ts';
 import { faced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
-import { fieldStyles, useHeld } from './Field.tsx';
+import { fieldStyles, useFieldLabel, useHeld } from './Field.tsx';
 import { Text } from './Text.tsx';
 
 /** Room for "Show" or "Hide", so typed text never runs under the control. */
@@ -55,11 +56,16 @@ export function PasswordField({
 
   useFocusEffect(useCallback(() => () => setRevealed(false), []));
   const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
+  const labelID = useFieldLabel();
 
   return (
     <View>
       <TextInput
         {...rest}
+        {...fieldName(Platform.OS, rest.accessibilityLabel, {
+          labelID,
+          placeholder: rest.placeholder,
+        })}
         {...passwordProps(revealed)}
         value={value}
         {...holding}

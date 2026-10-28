@@ -90,7 +90,7 @@ final class NotificationWorker
                     LIMIT 1
                     FOR UPDATE SKIP LOCKED
                 )
-                RETURNING id, type, event_id, due_at, send_by, audience, payload, priority, fanned_out_after
+                RETURNING id, type, event_id, organisation_id, due_at, send_by, audience, payload, priority, fanned_out_after
                 SQL,
             [
                 'now' => $now,
@@ -139,7 +139,12 @@ final class NotificationWorker
 
         $eventId = Type\nullable(Type\string())->coerce($row['event_id']);
         $event = null === $eventId ? null : $this->eventState($eventId);
-        $verdict = null === $eventId ? EventVerdict::Send : EventGate::verdict($type->eventRule(), $event, $now);
+        $deleted = null === $eventId ? $this->organisationDeleted($row['organisation_id']) : true === $event?->deleted;
+        $verdict = match (true) {
+            null !== $eventId => EventGate::verdict($type->eventRule(), $event, $now),
+            $deleted => EventVerdict::Hold,
+            default => EventVerdict::Send,
+        };
 
         if (EventVerdict::Cancel === $verdict) {
             $this->finishScheduled($id, ScheduledNotificationStatus::Cancelled, 'the event no longer takes it');
@@ -147,7 +152,7 @@ final class NotificationWorker
             return;
         }
 
-        if (EventVerdict::Hold === $verdict && true === $event?->deleted) {
+        if (EventVerdict::Hold === $verdict && $deleted) {
             $this->holdScheduled($id, $now);
 
             return;
@@ -189,7 +194,7 @@ final class NotificationWorker
         });
     }
 
-    /** Before fan-out, because a deleted event's audience resolves to nobody (sc-104, "a deleted event's rows wait for a restore"). Its lease is its recheck. */
+    /** Before fan-out, because a deleted event's or organisation's audience resolves to nobody (sc-104, sc-17126). Its lease is its recheck. */
     private function holdScheduled(string $id, DateTimeImmutable $now): void
     {
         $this->connection->executeStatement(
@@ -390,12 +395,17 @@ final class NotificationWorker
 
         $eventId = Type\nullable(Type\string())->coerce($row['event_id']);
         $event = null === $eventId ? null : $this->eventState($eventId);
-        $verdict = null === $eventId ? EventVerdict::Send : EventGate::verdict($type->eventRule(), $event, $now);
+        $deleted = null === $eventId ? $this->organisationDeleted($row['organisation_id']) : true === $event?->deleted;
+        $verdict = match (true) {
+            null !== $eventId => EventGate::verdict($type->eventRule(), $event, $now),
+            $deleted => EventVerdict::Hold,
+            default => EventVerdict::Send,
+        };
 
         if (EventVerdict::Hold === $verdict) {
             $this->connection->executeStatement(
                 'UPDATE notification_deliveries SET held = :held, next_attempt_at = :recheck, claimed_until = NULL WHERE id = :id',
-                ['held' => (true === $event?->deleted ? NotificationHold::Deleted : NotificationHold::Paused)->value, 'recheck' => $now->add(new DateInterval(self::HOLD_RECHECK)), 'id' => $id],
+                ['held' => ($deleted ? NotificationHold::Deleted : NotificationHold::Paused)->value, 'recheck' => $now->add(new DateInterval(self::HOLD_RECHECK)), 'id' => $id],
                 ['recheck' => Types::DATETIME_IMMUTABLE],
             );
 
@@ -574,7 +584,7 @@ final class NotificationWorker
     {
         $row = $this->connection->fetchAssociative(
             <<<'SQL'
-                SELECT d.id, d.type, d.event_id, d.recipient_kind, d.recipient_id, d.channel, d.send_by, d.attempts, s.audience, s.payload
+                SELECT d.id, d.type, d.event_id, d.recipient_kind, d.recipient_id, d.channel, d.send_by, d.attempts, s.organisation_id, s.audience, s.payload
                 FROM notification_deliveries d
                 JOIN scheduled_notifications s ON s.id = d.scheduled_notification_id
                 WHERE d.id = :id
@@ -583,6 +593,14 @@ final class NotificationWorker
         );
 
         return false === $row ? throw new LogicException('A claimed delivery has gone.') : $row;
+    }
+
+    private function organisationDeleted(mixed $organisationId): bool
+    {
+        return null !== $organisationId && true === Type\bool()->coerce($this->connection->fetchOne(
+            'SELECT deleted_at IS NOT NULL FROM organisations WHERE id = :id',
+            ['id' => $organisationId],
+        ));
     }
 
     /** Past the soft-delete filter, so that a deleted event's deletion notices can still go (sc-13214). */

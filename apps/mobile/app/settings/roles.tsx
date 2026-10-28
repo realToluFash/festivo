@@ -1,34 +1,30 @@
 import type { OrganisationRole, RolesCatalogue } from '@soirely/api-client';
 import { roleHolds, roleName } from '@soirely/domain';
 import { Redirect } from 'expo-router';
-import {
-  type ReactNode,
-  type RefCallback,
-  type RefObject,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type RefCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../src/api.ts';
 import { AppFrame } from '../../src/components/AppFrame.tsx';
 import { PrimaryButton, SecondaryButton } from '../../src/components/Buttons.tsx';
-import { type ListAndPageSpacing, ListAndPage } from '../../src/components/ListAndPage.tsx';
+import {
+  type ListAndPageSpacing,
+  ListAndPage,
+  useListAndPageLayout,
+} from '../../src/components/ListAndPage.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
 import { RoleList, RolePage, RemoveRole } from '../../src/components/Roles.tsx';
 import {
+  FocusBack,
   type StepClosed,
   stepClosed,
-  useFocusBackToOpener,
   useFocusOnAnswer,
 } from '../../src/components/Screen.tsx';
 import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
 import { Text, type TextHandle } from '../../src/components/Text.tsx';
 import { cardFrame } from '../../src/components/cardFrame.ts';
 import { DESTINATION_HREF } from '../../src/kit/appNav.ts';
-import { useLayout } from '../../src/layout/useLayout.ts';
 import { useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
@@ -45,7 +41,7 @@ const LOADING: Load = { kind: 'loading' };
 /** Settings > Roles, `Roles-Phone` and `Roles-Tablet*` (sc-1931): sc-66's roles screen, in the app. */
 export default function RolesScreen() {
   const { t } = useTranslation();
-  const { kind } = useLayout();
+  const { kind, givesWay } = useListAndPageLayout(SPACING, 'settingsList');
   const { organisation } = useSignedIn();
   const organisationId = organisation?.id;
   const [held, setHeld] = useState<{ in: string | undefined; load: Load }>({
@@ -280,8 +276,9 @@ export default function RolesScreen() {
           : undefined
       }
     >
-      <SettingsSplit open="roles">
+      <SettingsSplit open="roles" givesWay={givesWay}>
         <ListAndPage
+          kind={kind}
           heading={heading}
           besideHeading={catalogue != null && newRole()}
           list={
@@ -303,19 +300,6 @@ export default function RolesScreen() {
       </SettingsSplit>
     </AppFrame>
   );
-}
-
-/** Focus back to the row or New role that opened the page, inside the list's scroll so it comes into view. */
-function FocusBack({
-  closed,
-  fallback,
-  children,
-}: {
-  closed: StepClosed | undefined;
-  fallback: RefObject<TextHandle | null>;
-  children: (opener: (key: string) => RefCallback<View>) => ReactNode;
-}) {
-  return children(useFocusBackToOpener(closed, fallback));
 }
 
 /** The first role a manager can change opens beside the list, as on the web. */

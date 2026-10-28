@@ -11,13 +11,14 @@ import time
 import unittest
 from unittest import mock
 
-from soirely_queue import checkout, github, review, runlog, runner, shared, store
+from soirely_queue import checkout, github, review, runlog, runner, sessions, shared, store
 
 from .fakes import FakeRefs
 
 MINUTE = 60
 ON_ZERO = 3 * MINUTE * 1000  # a minute whose offset is 0
 FIXTURES = pathlib.Path(__file__).parent / "fixtures"
+SESSION = "0b6f1e2a-3c4d-4e5f-8a9b-0c1d2e3f4a5b"
 ON_ONE = ON_ZERO + MINUTE
 
 
@@ -382,6 +383,61 @@ class Run(unittest.TestCase):
         self.assertIsNone(store.held_by(self.db, "lead", ON_ZERO))
         self.assertTrue(any(line.startswith("error: lead: could not claim") for line in self.said))
 
+    def test_a_role_with_an_inbox_batch_wakes_one_worker_for_its_comments(self):
+        self.config["roles"]["ops"] = {"inboxBatch": 3}
+        store.record(self.db, [dict(work("ops", f"inbox:{n}"), story_id=n) for n in (1, 2, 3, 4)],
+                     ON_ZERO)
+        self.run_once()
+        self.assertEqual([(r, i) for r, i, _ in self.platform.launched], [("ops", 1)])
+        self.assertEqual([row["id"] for row in store.held(self.db, "ops", ON_ZERO, "ops")],
+                         [1, 2, 3])
+        self.assertIn("ops: woke for 3 comments (items 1, 2, 3)", self.said)
+        self.assertEqual(self.remote.data(shared.claim_ref("ops", "sc-3"))["machine"], "here")
+
+    def test_a_batch_item_another_machine_just_took_is_left_out_of_it(self):
+        self.config["roles"]["ops"] = {"inboxBatch": 3}
+        store.record(self.db, [dict(work("ops", f"inbox:{n}"), story_id=n) for n in (1, 2)],
+                     ON_ZERO)
+        create = self.remote.create
+
+        def taken_first_on_another_machine(ref, message):
+            if ref == shared.claim_ref("ops", "sc-2"):
+                create(ref, shared.record("claim", role="ops", machine="tolu-mac", at=ON_ZERO))
+            return create(ref, message)
+
+        self.remote.create = taken_first_on_another_machine
+        self.run_once()
+        self.assertEqual([row["id"] for row in store.held(self.db, "ops", ON_ZERO, "ops")], [1])
+        self.assertEqual(store.item(self.db, 2)["status"], "open")
+        self.assertIn("ops: woke for [ops] on sc-1 (item 1)", self.said)
+
+    def test_every_item_of_a_batch_is_given_back_when_its_worker_died(self):
+        self.config["roles"]["ops"] = {"inboxBatch": 2}
+        store.record(self.db, [dict(work("ops", f"inbox:{n}"), story_id=n) for n in (1, 2)],
+                     ON_ZERO)
+        self.run_once()
+        self.run_once(ON_ZERO + 3 * MINUTE)
+        for item_id in (1, 2):
+            self.assertIn(f"ops: item {item_id} given back, its worker ended without "
+                          "finishing it", self.said)
+
+    def test_a_testers_comment_on_a_story_in_qa_runs_by_itself(self):
+        self.config["roles"]["qa"] = {"inboxBatch": 3}
+        (self.root / "soirely-qa").mkdir()
+        runner.set_started(self.db, ["qa"], True)
+        store.put_story(self.db, {"id": 1, "state": "In QA"})
+        store.put_story(self.db, {"id": 2, "state": "Ready For Dev"})
+        store.put_story(self.db, {"id": 3, "state": "Ready For QA"})
+        store.put_story(self.db, {"id": 4, "state": "Done"})
+        store.record(self.db, [dict(work("qa", f"inbox:{n}"), story_id=n) for n in (1, 2, 3, 4)],
+                     ON_ZERO)
+        self.run_once()
+        self.assertEqual([row["id"] for row in store.held(self.db, "qa", ON_ZERO, "qa")], [1])
+        store.finish(self.db, 1, now=ON_ZERO)
+        self.run_once(ON_ZERO + 3 * MINUTE)
+        self.assertEqual([row["id"] for row in
+                          store.held(self.db, "qa", ON_ZERO + 3 * MINUTE, "qa")], [2, 4])
+
     def test_work_with_no_story_is_claimed_by_its_kind(self):
         store.record(self.db, [dict(work("ops"), kind="main")], ON_ZERO)
         self.run_once()
@@ -575,13 +631,15 @@ class Worker(unittest.TestCase):
     def tearDown(self):
         self.folder.cleanup()
 
-    def work_with(self, result, code=0, *later, ended=None):
+    def work_with(self, result, code=0, *later, ended=None, seen=None, roles=None):
         calls = []
         self.answers = []
 
         def claude(argv, input, cwd, env, finished):
             calls.append((argv, {"input": input, "cwd": cwd, "env": env,
                                  "run_dir_there": pathlib.Path(env["SQ_RUN_DIR"]).is_dir()}))
+            if seen is not None:
+                seen.append(sessions.current(self.db, "ops"))
             self.answers.append(finished())
             store.finish(self.db, 1, "done")
             self.answers.append(finished())
@@ -589,7 +647,7 @@ class Worker(unittest.TestCase):
             return code, "".join(json.dumps(event) + "\n" for event in stream), "", ended
 
         entry = runner.worker(self.db, self.home, self.platform, "ops", 1, run_claude=claude,
-                              load=lambda: config(self.root),
+                              load=lambda: config(self.root, **({"roles": roles} if roles else {})),
                               prepare=lambda *_: ("c" * 40, None), now=ON_ZERO)
         return entry, calls
 
@@ -632,6 +690,20 @@ class Worker(unittest.TestCase):
         self.assertIn("Bash(docker system df:*)", calls[0][0])
         self.assertEqual(settings(), before)
 
+    def test_a_comment_run_takes_the_inbox_effort_and_other_work_the_roles(self):
+        def effort(kind, **ops):
+            self.db.execute("update work set kind = ?, status = 'claimed' where id = 1", (kind,))
+            entry, calls = self.work_with({"total_cost_usd": 0.1, "result": "ok"},
+                                          roles={"ops": ops})
+            argv = calls[0][0]
+            self.assertEqual(entry["effort"], argv[argv.index("--effort") + 1])
+            return entry["effort"]
+
+        self.assertEqual(effort("inbox", effort="xhigh"), "xhigh")
+        self.assertEqual(effort("story", effort="xhigh"), "xhigh")
+        self.assertEqual(effort("inbox", effort="xhigh", inboxEffort="high"), "high")
+        self.assertEqual(effort("sweep", effort="xhigh", inboxEffort="high"), "xhigh")
+
     def test_the_run_is_recorded_with_its_cost(self):
         entry, calls = self.work_with({"total_cost_usd": 0.42, "num_turns": 9,
                                        "result": "Fixed the cache step."})
@@ -645,9 +717,52 @@ class Worker(unittest.TestCase):
         self.assertEqual(kwargs["env"]["CLAUDE_CONFIG_DIR"], str(self.root / "claude"))
         self.assertEqual(self.platform.notes, [])
 
+    def test_the_run_starts_under_a_session_id_it_records_before_claude_starts(self):
+        seen = []
+        with mock.patch("soirely_queue.sessions.new_id", return_value=SESSION):
+            entry, calls = self.work_with({"result": "ok"}, seen=seen)
+        argv = calls[0][0]
+        self.assertEqual(argv[argv.index("--session-id") + 1], SESSION)
+        self.assertEqual(seen[0]["session"], SESSION)
+        self.assertEqual((seen[0]["folder"], seen[0]["cwd"]),
+                         (str(self.root / "claude"), str(self.root / "soirely-ops")))
+        logged = runlog.last(self.home, "ops")
+        self.assertEqual((logged["session"], logged["item"], logged["cwd"]),
+                         (SESSION, 1, str(self.root / "soirely-ops")))
+
     def test_the_item_counts_as_finished_once_the_run_closes_it(self):
         self.work_with({"result": "Done."})
         self.assertEqual(self.answers, [False, True])
+
+    def test_a_batch_runs_once_and_ends_when_each_item_is_done_or_handed_back(self):
+        store.record(self.db, [work("ops")] + [dict(work("ops", f"inbox:{n}"), story_id=n)
+                                               for n in (2, 3)], ON_ZERO)
+        store.release(self.db, 1)
+        store.claim(self.db, "ops", ON_ZERO, worker="ops", batch=3)
+        first, second, third = [row["id"] for row in store.held(self.db, "ops", ON_ZERO, "ops")]
+        answers, prompts, taken = [], [], []
+
+        def claude(argv, input, cwd, env, finished):
+            prompts.append(input)
+            store.finish(self.db, first, "answered")
+            answers.append(finished())
+            store.hand_back(self.db, third)
+            answers.append(finished())
+            store.claim(self.db, "ops", ON_ZERO, worker="ops-2", workers=2)
+            taken.append(store.item(self.db, third)["worker"])
+            store.finish(self.db, second, "no reply needed")
+            answers.append(finished())
+            return 0, json.dumps({"type": "result", "total_cost_usd": 0.6, "result": "ok"}), \
+                "", None
+
+        entry = runner.worker(self.db, self.home, self.platform, "ops", 1, run_claude=claude,
+                              load=lambda: config(self.root),
+                              prepare=lambda *_: ("c" * 40, None), now=ON_ZERO)
+        self.assertEqual(answers, [False, False, True])
+        self.assertEqual(taken, ["ops-2"])
+        self.assertIn("Your work is 3 comment items, in queue order:", prompts[0])
+        self.assertEqual((entry["item"], entry["items"]), (1, [first, second, third]))
+        self.assertEqual([e["cost_usd"] for e in runlog.entries(self.home, "ops")], [0.6])
 
     def test_the_report_is_the_runs_own_answer_not_a_later_notice(self):
         # Both results as claude 2.1.310 wrote them, the second after a background sleep ended.
@@ -806,6 +921,37 @@ class Worker(unittest.TestCase):
             entry = runner.worker_ended(self.home, self.platform, "ops", 1, now=ON_ZERO)
         self.assertEqual(entry["report"], "the worker ended without a report: timeout")
         self.assertIsNone(runner.worker_ended(self.home, self.platform, "ops", 1))
+
+    def test_a_worker_stopped_by_its_limit_keeps_the_session_it_was_running(self):
+        claude = self.root / "claude"
+        path = claude / "projects" / "-x-soirely-ops" / f"{SESSION}.jsonl"
+        path.parent.mkdir(parents=True)
+        path.write_text("")
+        sessions.begin(self.db, "ops", {"at": ON_ZERO, "item": 1, "role": "ops",
+                                        "session": SESSION, "folder": str(claude),
+                                        "cwd": str(self.root / "soirely-ops"),
+                                        "model": "claude-opus-5-5", "story": 1})
+        sessions.begin(self.db, "dev2", {"item": 1, "session": "another"})
+        with mock.patch.dict("os.environ", {"SERVICE_RESULT": "timeout"}):
+            entry = runner.worker_ended(self.home, self.platform, "ops", 1,
+                                        now=ON_ZERO + 60, db=self.db)
+        self.assertEqual((entry["session"], entry["at"], entry["duration_ms"]),
+                         (SESSION, ON_ZERO, 60000))
+        self.assertNotIn("ended", entry)
+        sessions.begin(self.db, "ops", {"item": 2, "session": "next"})
+        shown = sessions.view(self.db, self.home, self.platform, SESSION,
+                              load=lambda: config(self.root))
+        self.assertEqual((shown["transcript"], shown["model"], shown["ended"]["stopped"],
+                          shown["ended"]["seconds"]),
+                         (str(path), "claude-opus-5-5", "timeout", 60))
+        self.assertIn(f"claude --resume {SESSION}", shown["resume"])
+
+    def test_a_session_left_from_an_earlier_item_is_not_named(self):
+        sessions.begin(self.db, "ops", {"item": 7, "session": SESSION})
+        with mock.patch.dict("os.environ", {"SERVICE_RESULT": "timeout"}):
+            entry = runner.worker_ended(self.home, self.platform, "ops", 1, now=ON_ZERO,
+                                        db=self.db)
+        self.assertNotIn("session", entry)
 
 
 FAKE_CLAUDE = textwrap.dedent("""

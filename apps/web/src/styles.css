@@ -223,34 +223,40 @@ span {
   margin-top: var(--space3xl);
 }
 
-/* Buttons are pills, in three levels, and never below 44px. */
+/* Buttons are pills, in three levels, and never below 44px. A label that wraps keeps its lines apart and
+   centred, and the ends keep a fixed curve so its lines stay inside. */
 .button {
+  --buttonHit: var(--sizeHit);
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: var(--sizeHit);
-  padding: 0 var(--spaceXl);
+  min-height: var(--buttonHit);
+  padding: var(--spaceSm) var(--spaceXl);
   border: var(--borderControl);
-  border-radius: var(--radiusPill);
+  border-radius: calc(var(--buttonHit) / 2);
   background: var(--colorCard);
   color: var(--colorInk);
   font: var(--typeButton);
+  line-height: 1.3;
+  text-align: center;
   max-width: 100%;
   text-decoration: none;
   cursor: pointer;
 }
 
-/* A label naming a role or an organisation wraps whole; the ends keep a fixed curve so its lines stay inside. */
-.button:has(> .button-label) {
-  padding-block: var(--spaceSm);
-  border-radius: calc(var(--sizeHit) / 2);
-}
-
+/* A label naming a role, an organisation or a person wraps whole. */
 .button-label {
   min-width: 0;
-  line-height: 1.3;
-  text-align: center;
   overflow-wrap: anywhere;
+}
+
+/* The button's own box is a flex container, which never shows an ellipsis for its text. */
+.button-label-cut {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .button:hover {
@@ -356,8 +362,10 @@ span {
  */
 
 @media (width <= 60rem) {
+  /* One column under a 100vh minimum would share the spare height with the sidebar. */
   .shell {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
   }
 
   .shell-sidebar {
@@ -409,17 +417,25 @@ span {
   }
 
   .shell-menu-button {
-    display: block;
+    display: flex;
     flex: none;
+    align-items: center;
+    gap: var(--spaceXs);
     min-height: var(--sizeHit);
     padding: 0 var(--spaceLg);
     border: var(--borderControl);
-    border-radius: var(--radiusField);
+    border-radius: var(--radiusPill);
+    white-space: nowrap;
     background: var(--colorCard);
     color: var(--colorInk);
     font: var(--typeButton);
     cursor: pointer;
   }
+}
+
+.shell-menu-button svg {
+  width: 16px;
+  height: 16px;
 }
 
 .shell-menu {
@@ -935,12 +951,13 @@ span {
   }
 
   .auth-card .input,
-  .auth-card .field-reveal button,
-  .auth-card .button {
+  .auth-card .field-reveal button {
     min-height: var(--sizeHitPhonePrimary);
   }
 
   .auth-card .button {
+    --buttonHit: var(--sizeHitPhonePrimary);
+
     font-size: 1rem;
   }
 
@@ -1692,13 +1709,6 @@ span {
   color: var(--colorInk);
 }
 
-.invitation-row-open {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .profile-invitations {
   display: flex;
   flex-direction: column;
@@ -1761,6 +1771,10 @@ span {
 
 .no-organisation-start .button {
   align-self: flex-start;
+}
+
+.no-organisation-footnote {
+  justify-content: space-between;
 }
 
 .no-organisation .no-organisation-heading {
@@ -2019,6 +2033,11 @@ span {
   margin: 0;
 }
 
+/* Room for the negative margin a last notice-action takes, as a notice's padding gives it. */
+.settings-read-only-rule {
+  padding-bottom: var(--spaceLg);
+}
+
 .settings-wide {
   max-width: 85rem;
 }
@@ -2055,17 +2074,15 @@ span {
     flex: none;
   }
 
-  .settings-general .input,
-  .settings-general .settings-save .button {
-    min-height: var(--sizeHitPhonePrimary);
-  }
-
   /* 16px is the smallest size iOS Safari will not zoom into on focus. */
   .settings-general .input {
+    min-height: var(--sizeHitPhonePrimary);
     font-size: 1rem;
   }
 
   .settings-general .settings-save .button {
+    --buttonHit: var(--sizeHitPhonePrimary);
+
     width: 100%;
     font-size: 1rem;
   }
@@ -3390,7 +3407,67 @@ button.members-row {
   border-top: var(--borderDivider);
 }
 
-.events-row {
+.events-home,
+.events-tabs,
+.events-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  min-width: 0;
+}
+
+.events-now-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Happening now is one large card, set apart by the amber of its pill's half-circle. */
+.events-card-now {
+  padding: var(--spaceLg);
+  border: var(--borderCard);
+  border-left: var(--spaceXs) solid var(--colorAttention);
+  border-radius: var(--radiusCardDesktop);
+  background: var(--colorCard);
+}
+
+.events-tab-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXs);
+  border-bottom: var(--borderDivider);
+}
+
+.events-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  min-height: var(--sizeHit);
+  padding-inline: var(--spaceMd);
+  border: 0;
+  border-bottom: var(--spaceXxs) solid transparent;
+  background: none;
+  color: var(--colorInkSecondary);
+  font: var(--typeButton);
+  cursor: pointer;
+}
+
+.events-tab[aria-selected='true'] {
+  border-bottom-color: var(--colorAccent);
+  color: var(--colorInk);
+}
+
+.events-tab-count {
+  padding-inline: var(--spaceXs);
+  border-radius: var(--radiusPill);
+  background: var(--colorInset);
+  font: var(--typePill);
+}
+
+.events-card {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -3398,24 +3475,73 @@ button.members-row {
   min-height: var(--sizeHit);
   padding-block: var(--spaceMd);
   color: var(--colorInk);
-  text-decoration: none;
 }
 
-.events-row-title {
+.events-card-body {
   display: flex;
-  flex: 0 1 auto;
+  flex: 1 1 12rem;
   flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXxs);
   min-width: 0;
 }
 
-.events-row-name {
+.events-card-name {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sizeHit);
+  color: var(--colorInk);
   font: var(--typeRowTitle);
   overflow-wrap: anywhere;
 }
 
-.events-row-date {
-  flex: 1 0 auto;
+.events-card-next-word {
+  font: var(--typeLabel);
+  letter-spacing: var(--typeLabelTracking);
+}
+
+.events-card-action {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sizeHit);
+}
+
+.events-card-date {
+  flex: 0 1 auto;
+  margin-left: auto;
   text-align: right;
+}
+
+.events-card-cover {
+  flex: 0 0 6rem;
+  border-radius: var(--radiusSmall);
+}
+
+.events-card-now .events-card-cover {
+  flex-basis: 12rem;
+}
+
+.events-empty h3 {
+  margin: 0;
+}
+
+.events-more {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+}
+
+@media (width <= 40rem) {
+  .events-card-date {
+    margin-left: 0;
+    text-align: left;
+  }
+
+  .events-card-cover,
+  .events-card-now .events-card-cover {
+    flex-basis: 100%;
+  }
 }
 
 .events-first-run-create,
@@ -3437,6 +3563,80 @@ button.members-row {
 
 .event-form .field {
   min-width: 0;
+}
+
+.event-hosts-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.event-hosts-head p,
+.event-hosts-none {
+  margin: 0;
+}
+
+.event-hosts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  container-type: inline-size;
+}
+
+.event-host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  min-width: 0;
+}
+
+.event-host-line {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+}
+
+.event-host-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-block: var(--spaceSm);
+  resize: none;
+  overflow-wrap: anywhere;
+  field-sizing: content;
+}
+
+.event-host-controls {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.event-host-arrow,
+.event-host-gap {
+  width: var(--sizeHit);
+  padding: 0;
+}
+
+.event-host-gap {
+  height: var(--sizeHit);
+}
+
+.event-hosts-add {
+  align-self: flex-start;
+}
+
+@container (width < 440px) {
+  .event-host-line {
+    flex-wrap: wrap;
+  }
+
+  .event-host-name {
+    flex-basis: 100%;
+  }
 }
 
 .event-moment {
@@ -3845,6 +4045,33 @@ button.members-row {
   background: color-mix(in srgb, var(--colorCard) 70%, transparent);
 }
 
+.cover-choose {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spaceMd);
+  box-sizing: border-box;
+  aspect-ratio: 16 / 9;
+  padding: var(--spaceXl);
+  border: 2px dashed var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  text-align: center;
+}
+
+.cover-choose .field-help {
+  margin: 0;
+}
+
+.cover-dialog-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  min-width: 0;
+}
+
 .cover-slider {
   width: 100%;
   min-height: var(--sizeHit);
@@ -3886,11 +4113,6 @@ button.members-row {
 
 .event-page-cover {
   margin-bottom: var(--spaceXl);
-}
-
-.events-row-cover {
-  flex: 0 0 6rem;
-  border-radius: var(--radiusSmall);
 }
 
 @media (width <= 40rem) {
@@ -3977,6 +4199,15 @@ button.members-row {
   border-radius: 0;
 }
 
+.mark-paused::before {
+  box-sizing: border-box;
+  width: 0.625rem;
+  height: 0.75rem;
+  border-left: 0.1875rem solid var(--colorAttentionText);
+  border-right: 0.1875rem solid var(--colorAttentionText);
+  content: '';
+}
+
 .pill-finished::before {
   width: auto;
   height: auto;
@@ -4058,6 +4289,59 @@ button.members-row {
   }
 }
 
+/* ── Duplicate an event (sc-3593) ─────────────────────────────────────────── */
+
+.event-copy-lists {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--spaceLg);
+  padding: var(--spaceLg) var(--spaceXl);
+  border: var(--borderInset);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  font: var(--typeSmall);
+}
+
+.event-copy-lists h3 {
+  margin: 0 0 var(--spaceXs);
+  font: inherit;
+  font-weight: 600;
+}
+
+.event-copy-lists ul {
+  margin: 0;
+  padding-left: var(--spaceXl);
+  color: var(--colorInkSecondary);
+}
+
+.event-copy-created {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+}
+
+.event-copy-created:empty {
+  display: none;
+}
+
+.event-copy-created p {
+  margin: 0;
+}
+
+@media (width <= 40rem) {
+  .event-copy-dialog {
+    top: 0;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+  }
+
+  .event-copy-dialog .dialog-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+}
+
 /* ── An event's venue (sc-3589) ───────────────────────────────────────────── */
 
 .venue-suggestions {
@@ -4113,6 +4397,195 @@ button.members-row {
   display: inline-flex;
   align-items: center;
   text-decoration: none;
+}
+
+/* ── An event's timeline: Coming up and All dates (sc-3624) ─────────────── */
+
+.coming-up-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spaceSm) var(--spaceMd);
+}
+
+/* Held at the height of the event's own two milestones, so the panels below do not move between states. */
+.coming-up-rows {
+  display: flex;
+  flex-direction: column;
+  min-height: 140px;
+}
+
+.timeline-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timeline-row {
+  display: grid;
+  grid-template-areas:
+    'when marks'
+    'title title'
+    'note note'
+    'action action';
+  grid-template-columns: 1fr auto;
+  gap: var(--spaceXxs) var(--spaceMd);
+  padding-block: var(--spaceMd);
+  border-bottom: 1px solid var(--colorBorder);
+}
+
+.timeline-row:last-child {
+  border-bottom: 0;
+}
+
+.timeline-row p {
+  margin: 0;
+}
+
+.timeline-when {
+  grid-area: when;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+.timeline-title {
+  grid-area: title;
+  font: var(--typeRowTitle);
+}
+
+.timeline-note {
+  grid-area: note;
+  font: var(--typeSmall);
+}
+
+.timeline-row > .link-button {
+  grid-area: action;
+  justify-self: start;
+}
+
+.timeline-marks {
+  display: flex;
+  flex-wrap: wrap;
+  grid-area: marks;
+  justify-content: flex-end;
+  gap: var(--spaceXs);
+}
+
+.timeline-row-passed .timeline-when,
+.timeline-row-passed .timeline-title,
+.timeline-row-passed .timeline-note {
+  color: var(--colorInkTertiary);
+}
+
+.timeline-owner {
+  gap: var(--spaceXxs);
+}
+
+.timeline-owner::before {
+  content: '▦' / '';
+}
+
+.timeline-owner-you {
+  background: var(--colorAttentionTint);
+  color: var(--colorAttentionText);
+}
+
+.timeline-owner-you::before {
+  content: '●' / '';
+}
+
+.timeline-owner-automatic::before {
+  content: '→' / '';
+}
+
+.timeline-next-up {
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
+}
+
+.timeline-overdue {
+  background: var(--colorBrokenTint);
+  color: var(--colorBrokenText);
+}
+
+.timeline-inset {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceMd);
+  margin: 0;
+  padding: var(--spaceLg);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+}
+
+.timeline-inset p {
+  flex: 1;
+  margin: 0;
+}
+
+.timeline-finished-mark,
+.timeline-failed-mark {
+  margin-right: var(--spaceSm);
+}
+
+.timeline-failed-mark {
+  color: var(--colorBroken);
+}
+
+.timeline-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm) var(--spaceXl);
+  margin: var(--spaceLg) 0 0;
+}
+
+.timeline-key div {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.timeline-key dd {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+@media (width <= 40rem) {
+  .coming-up-rows {
+    min-height: 178px;
+  }
+
+  .timeline-failed .button {
+    width: 100%;
+  }
+}
+
+/* At 320 the pills leave the date line for their own, so the longer fr and pt words wrap rather than cut. */
+@media (width <= 22.5rem) {
+  .coming-up-rows {
+    min-height: 236px;
+  }
+
+  .timeline-row {
+    grid-template-areas:
+      'when'
+      'title'
+      'marks'
+      'note'
+      'action';
+    grid-template-columns: 1fr;
+  }
+
+  .timeline-marks {
+    justify-content: flex-start;
+  }
 }
 
 /* The bell (sc-3980): a popover from the sidebar, capped at the page width less 48px so

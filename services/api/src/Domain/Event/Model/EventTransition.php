@@ -25,8 +25,10 @@ final readonly class EventTransition
     public static function all(): array
     {
         return [
-            new self(EventStatus::Draft, EventAction::MakeLive, EventStatus::Live, [EventGuard::EndNotPassed, EventGuard::PlanLimit]),
+            new self(EventStatus::Draft, EventAction::MakeLive, EventStatus::Live, [EventGuard::EndNotPassed, EventGuard::HasHost, EventGuard::PlanLimit]),
+            new self(EventStatus::Live, EventAction::Pause, EventStatus::Paused, [EventGuard::PhaseAllows]),
             new self(EventStatus::Live, EventAction::End, EventStatus::Ended, [EventGuard::EndNotPassed]),
+            new self(EventStatus::Paused, EventAction::Resume, EventStatus::Live, [EventGuard::PhaseAllows]),
             new self(EventStatus::Paused, EventAction::End, EventStatus::Ended, [EventGuard::EndNotPassed]),
         ];
     }

@@ -289,6 +289,11 @@ when@test:
             autowire: true
             autoconfigure: true
 
+        # Routes PHP itself dies on, for the crash answer (sc-16890).
+        App\Tests\Fixtures\Crash\:
+            resource: '../tests/Fixtures/Crash/'
+            autoconfigure: true
+
         # The suite can never reach a real provider, whatever ASSISTANT_PROVIDER
         # happens to say on this machine. Every assisted path — the gate, the
         # validation, the proxy, the record — runs here, and none of it is
@@ -297,6 +302,11 @@ when@test:
 
         # Nothing records an amount against an event yet (sc-100 will); a test records one here.
         App\Tests\Double\ScriptedEventAmounts:
+            public: true
+            autoconfigure: true
+
+        # Only the event's own dates are on the timeline yet; a test adds other areas' milestones here.
+        App\Tests\Double\ScriptedMilestones:
             public: true
             autoconfigure: true
 

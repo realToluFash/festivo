@@ -13,7 +13,8 @@ import sys
 import time
 
 from . import (actions, agents, dashboard, digests, github, launchd, machine, payloads,
-               permissions, roles, runlog, runner, shared, store, sync, systemd, update, work)
+               permissions, remote, roles, runlog, runner, sessions, shared, store, sync, systemd,
+               update, work)
 from . import text as T
 from . import views as V
 from .ledger import Printer
@@ -40,8 +41,8 @@ def home():
     return path
 
 
-def open_db():
-    return store.connect(str(home() / "queue.db"))
+def open_db(threads=False):
+    return store.connect(str(home() / "queue.db"), threads=threads)
 
 
 def refresh_work(db, now):
@@ -59,7 +60,8 @@ def refresh_work(db, now):
                         store.get_meta(db, "machine_checks"), store.get_meta(db, "epics"),
                         store.worked_on(db, "l10n"),
                         [row for row in store.waiting(db, "l10n") if row["kind"] == "unblocked"],
-                        last_sweeps)
+                        last_sweeps, store.get_meta(db, "released"),
+                        store.get_meta(db, "unlinked"))
     store.record(db, items, now)
     return items
 
@@ -77,7 +79,9 @@ def baseline(db):
     store.set_meta(db, "baselined_at", time.time())
 
 
-def brief(row, role):
+def brief(rows, role):
+    """What a run is for: one item, or the comments of an inbox batch in queue order."""
+    row = rows[0]
     sq = f"sq {role}"
     scope = [f"This is {row['pool']}: work only on this machine (disk, Docker, the role "
              "stacks, the manager). Shared duties belong to whichever machine holds the ops "
@@ -88,14 +92,30 @@ def brief(row, role):
     return "\n".join(scope + draw + [
         f"Run `{roles.invoke(role)}` as an unattended routine run "
         "(.claude/skills/role-routine, section 3).",
-        f"Your work is item {row['id']}: {row['reason']}.",
-        f"Start with `{sq} next`. It prints what this work needs and the commands to act with. "
-        f"Read and write only through `{sq}` (`{sq} help`), never the Shortcut tools or gh. "
-        "Nobody is watching: never wait for an answer.",
-        f"As your last step run `{sq} done {row['id']} --note \"<one line>\"`, "
-        "even when you could not finish; the note says why.",
+        *(batch_lines(rows, sq) if len(rows) > 1 else [
+            f"Your work is item {row['id']}: {row['reason']}.",
+            f"Start with `{sq} next`. It prints what this work needs and the commands to act "
+            f"with. Read and write only through `{sq}` (`{sq} help`), never the Shortcut tools "
+            "or gh. Nobody is watching: never wait for an answer.",
+            f"As your last step run `{sq} done {row['id']} --note \"<one line>\"`, "
+            "even when you could not finish; the note says why."]),
         "Then report in at most ten lines.",
     ])
+
+
+def batch_lines(rows, sq):
+    listed = [f"- item {row['id']}: {row['reason']}" + (
+        f" (comments {', '.join('#' + c for c in row['comments'].split(','))})"
+        if row["comments"] else "") for row in rows]
+    return [f"Your work is {len(rows)} comment items, in queue order:", *listed,
+            f"Start with `{sq} next`. It prints what each needs and the commands to act with. "
+            f"Read and write only through `{sq}` (`{sq} help`), never the Shortcut tools or gh. "
+            "Nobody is watching: never wait for an answer.",
+            f"Finish each on its own with `{sq} done <item> --note \"<one line>\"` as soon as "
+            "it is answered, or needs no reply.",
+            "A comment that needs a test pass, a build, a story to specify or other long work "
+            f"is not started here: hand it back with `{sq} solo <item>`, and its own run takes "
+            "it next. Carry on with the rest."]
 
 
 class Session:
@@ -141,38 +161,39 @@ def cmd_tick(s, a):
     now = time.time()
     synced(s.db, now)
     if this_worker():
-        return own_item(s, now, lambda row: print("busy"))
+        return own_item(s, now, lambda rows: print("busy"))
     if store.held_by(s.db, s.role, now):
         return print("busy")
     row = store.claim(s.db, s.role, now)
     if not row:
         return print("idle")
-    print(f"wake: {row['reason']}\n---\n{brief(row, s.role)}")
+    print(f"wake: {row['reason']}\n---\n{brief([row], s.role)}")
 
 
 def cmd_next(s, a):
     now = time.time()
     synced(s.db, now)
     if this_worker():
-        return own_item(s, now, lambda row: render(s, row))
+        return own_item(s, now, lambda rows: render(s, rows))
     row = store.held_by(s.db, s.role, now) or store.claim(s.db, s.role, now)
     if not row:
         return print("idle")
-    render(s, row)
+    render(s, [row])
 
 
 def own_item(s, now, show):
-    """Inside a worker, the item the runner launched it on; it never claims another, since
+    """Inside a worker, the items the runner launched it on; it never claims another, since
     the runner would not know the claim was its worker's and would wait out the lease."""
-    row = store.held_by(s.db, s.role, now, this_worker())
-    if not row:
+    rows = store.held(s.db, s.role, now, this_worker())
+    if not rows:
         return print(f"{this_worker()}'s item is finished: end this run")
-    show(row)
+    show(rows)
 
 
-def render(s, row):
-    s.printer.run = f"work:{row['id']}"
-    payloads.render(s.printer, s.db, row, s.cache)
+def render(s, rows):
+    s.printer.run = f"work:{rows[0]['id']}"
+    for row in rows:
+        payloads.render(s.printer, s.db, row, s.cache)
     s.done()
 
 
@@ -187,10 +208,20 @@ def cmd_done(s, a):
 
 
 def cmd_release(s, a):
-    row = store.held_by(s.db, s.role, worker=this_worker())
-    if row:
+    for row in store.held(s.db, s.role, worker=this_worker()):
         store.release(s.db, row["id"])
     print("released")
+
+
+def cmd_solo(s, a):
+    rows = store.held(s.db, s.role, worker=this_worker())
+    work_id = int(a.id)
+    if work_id not in {row["id"] for row in rows}:
+        sys.exit(f"item {work_id} is not one this run holds")
+    if len(rows) == 1:
+        sys.exit(f"this run holds only {work_id}: do it now")
+    store.hand_back(s.db, work_id)
+    print(f"item {work_id} goes back to the queue, to run by itself")
 
 
 def cmd_queue(s, a):
@@ -433,6 +464,8 @@ READS = [
     ("done", cmd_done, "finish the work you hold, with a note for your next run",
      lambda p: (p.add_argument("id", nargs="?"), p.add_argument("--note"))),
     ("release", cmd_release, "give back the work you hold, unfinished", None),
+    ("solo", cmd_solo, "hand one comment of a batch back, to run by itself next",
+     lambda p: p.add_argument("id")),
     ("queue", cmd_queue, "your queue or sweep list, one line per story", None),
     ("drawings", cmd_drawings, "the stories listed to draw, oldest first, each with its "
      "prompt", None),
@@ -477,7 +510,11 @@ DETAILS = {
             "exact piece of text with --replace OLD --with NEW. --replace takes several "
             "targets, refuses unless OLD appears exactly once in every one of them, and then "
             "changes all or none; --dry says which would change.",
-    "relate": "Link two stories. A link that already exists answers \"already linked\".",
+    "relate": "Link two stories. A link that already exists answers \"already linked\". "
+              "--remove deletes the link as it was made, subject and object in order; a "
+              "relates to link is removed from either end. With no such link it changes "
+              "nothing and answers \"not linked\", naming the link the other way round if "
+              "that is the one there.",
     "permission-ask": "Ask for a command your permission rules refused. It posts on sc-4992 "
                       "in the owner's format, and refuses a rule already asked, with the "
                       "answer if there is one. Never wait for the answer: only the owner "
@@ -546,7 +583,9 @@ WRITES = [
     ("relate", actions.relate, "link two stories",
      lambda p: (p.add_argument("story"), p.add_argument("other"),
                 p.add_argument("--verb", default="relates to",
-                               choices=["relates to", "blocks", "duplicates"]))),
+                               choices=["relates to", "blocks", "duplicates"]),
+                p.add_argument("--remove", action="store_true",
+                               help="delete the link instead of adding it"))),
     ("archive", actions.archive, "archive a story", lambda p: p.add_argument("story")),
     ("to-draw", actions.to_draw, "list a story you cannot draw here, with the prompt that "
      "draws it", lambda p: (p.add_argument("story"), body(p))),
@@ -730,7 +769,9 @@ def admin(argv):
     sub.add_parser("status", help="what every role holds and has waiting, and this machine's "
                                   "manager")
     web = sub.add_parser("web", help="the same as status, as a live page on this machine")
-    web.add_argument("--port", type=int, default=8765)
+    web.add_argument("--port", type=int, help="agents.json's web.port, or 8765")
+    web.add_argument("--listen", help="the address to serve on: agents.json's web.listen, or "
+                                      "127.0.0.1; any other needs SQ_WEB_TOKEN")
     web.add_argument("--no-open", action="store_true", help="print the address, open nothing")
     sub.add_parser("sync", help="sync now").add_argument("--full", action="store_true")
     sub.add_parser("install", help="copy sq where no branch switch removes it")
@@ -772,8 +813,13 @@ def admin(argv):
     if a.command == "status":
         status(db, platform, time.time())
     elif a.command == "web":
-        dashboard.serve(lambda now: dashboard.snapshot(db, platform, now, home()), a.port,
-                        open_page=not a.no_open)
+        db = open_db(threads=True)
+        host, port = remote.web(remote.config()) or (remote.LOOPBACK, remote.DEFAULT_PORT)
+        dashboard.serve(lambda now: dashboard.snapshot(db, platform, now, home()),
+                        a.port or port, open_page=not a.no_open,
+                        session=lambda found: sessions.view(db, home(), platform, found),
+                        host=a.listen or host, secret=remote.token(),
+                        peers=lambda: remote.peers(remote.config()))
     elif a.command == "run":
         try:
             runner.run(db, home(), platform, sq_path, sys.executable, dry_run=a.dry_run)
@@ -782,13 +828,13 @@ def admin(argv):
     elif a.command == "worker":
         runner.worker(db, home(), platform, a.role, a.item)
     elif a.command == "worker-ended":
-        runner.worker_ended(home(), platform, a.role, a.item)
+        runner.worker_ended(home(), platform, a.role, a.item, db=db)
     elif a.command == "worker-supervise":
         result, exit_status = launchd.supervise(
             [sys.executable, str(sq_path), "worker", a.role, str(a.item)], a.minutes * 60,
             launchd.size_bytes(a.memory))
         os.environ.update(SERVICE_RESULT=result, EXIT_STATUS=str(exit_status))
-        runner.worker_ended(home(), platform, a.role, a.item)
+        runner.worker_ended(home(), platform, a.role, a.item, db=db)
         pidfile = platform.pidfile(a.role)
         if pidfile.exists() and pidfile.read_text().strip() == str(os.getpid()):
             pidfile.unlink()

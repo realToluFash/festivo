@@ -385,6 +385,52 @@ describe('a field is read by the name it shows', () => {
   });
 });
 
+describe('every text field is named through fieldName (sc-17333)', () => {
+  // TalkBack reads a content description in place of what the field holds, and says it again on every key.
+  it('in every TextInput in the app', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      inputsNamedAnotherWay(text).map((line) => `${path}:${line}`),
+    );
+
+    expect(offenders, 'Spread fieldName(...) after the props the TextInput is given.').toEqual([]);
+  });
+
+  it('notices a TextInput named another way', () => {
+    expect(
+      inputsNamedAnotherWay(
+        '<TextInput\n  {...rest}\n  {...fieldName(Platform.OS, rest.accessibilityLabel, { labelID })}\n/>',
+      ),
+    ).toEqual([]);
+    expect(inputsNamedAnotherWay("<TextInput\n  accessibilityLabel={t('a')}\n/>")).toEqual([1]);
+    expect(
+      inputsNamedAnotherWay(
+        '<TextInput\n  {...fieldName(Platform.OS, a, {})}\n  accessibilityValue={{ text: v }}\n/>',
+      ),
+    ).toEqual([1]);
+  });
+});
+
+describe('a field hands its children the id its label shows under (sc-17333)', () => {
+  // On Android a TextField is named only by this id; without it, fieldName falls back to a content description.
+  it('in Field', () => {
+    expect(
+      labelLinkBroken(readFileSync(join('src', 'components', 'Field.tsx'), 'utf8')),
+      'Give the label Text nativeID={labelID} and wrap the children in <FieldLabel value={labelID}>.',
+    ).toBe(false);
+  });
+
+  it('notices a label and a provider that name different ids', () => {
+    const shown = '<Text weight="semibold" nativeID={labelID}>\n  {label}\n</Text>';
+    expect(labelLinkBroken(`${shown}\n<FieldLabel value={labelID}>{children}</FieldLabel>`)).toBe(
+      false,
+    );
+    expect(labelLinkBroken(`${shown}\n<FieldLabel value={otherID}>{children}</FieldLabel>`)).toBe(
+      true,
+    );
+    expect(labelLinkBroken(`<Text>\n  {label}\n</Text>\n{children}`)).toBe(true);
+  });
+});
+
 describe('changing the layout keeps the form', () => {
   // A frame that returns a different tree per layout remounts the form, and a rotation throws away what was typed.
   it('is one tree at every size in AuthFrame', () => {
@@ -615,6 +661,48 @@ describe('a way back that names an outcome is off while its request runs (sc-125
     expect(propValue(pressable, 'disabled')).toBe('{off}');
     expect(propValue(pressable, 'accessibilityState')).toBe('{{ disabled: off }}');
   });
+
+  it('where PrimaryButton busy still takes the tap, so the keys stay up, and does nothing with it', () => {
+    const text = readFileSync(join('src', 'components', 'Buttons.tsx'), 'utf8');
+    const body = text.slice(text.indexOf('export function PrimaryButton('));
+    const start = body.indexOf('<Pressable');
+    const pressable = body.slice(start, tagEnd(body, start));
+
+    expect(propValue(pressable, 'disabled')).toBe('{off || undefined}');
+    expect(propValue(pressable, 'onPress')).toBe('{busy ? undefined : onPress}');
+    expect(propValue(pressable, 'accessibilityState')).toBe('{{ disabled: inactive, busy }}');
+  });
+
+  it('where PrimaryButton busy or taken off is read as off once Pressable has merged its props', () => {
+    const pressableSource = readFileSync(
+      require.resolve('react-native/Libraries/Components/Pressable/Pressable.js'),
+      'utf8',
+    );
+    expect(pressableSource).toMatch(/disabled != null \? \{\.\.\._accessibilityState, disabled\}/u);
+
+    const text = readFileSync(join('src', 'components', 'Buttons.tsx'), 'utf8');
+    const body = text.slice(text.indexOf('export function PrimaryButton('));
+    const start = body.indexOf('<Pressable');
+    const pressable = body.slice(start, tagEnd(body, start));
+    const evaluate = (prop: string) =>
+      new Function(
+        'busy',
+        'off',
+        `const inactive = busy || off; return ${propValue(pressable, prop)?.slice(1, -1)};`,
+      ) as (busy: boolean, off: boolean) => unknown;
+    const disabled = evaluate('disabled');
+    const state = evaluate('accessibilityState');
+    const readAsOff = (busy: boolean, off: boolean) => {
+      const merged = disabled(busy, off);
+      return merged != null ? merged : (state(busy, off) as { disabled: boolean }).disabled;
+    };
+
+    expect([readAsOff(true, false), readAsOff(false, true), readAsOff(false, false)]).toEqual([
+      true,
+      true,
+      false,
+    ]);
+  });
 });
 
 interface Source {
@@ -776,7 +864,37 @@ function fieldsReadByAnotherName(text: string): number[] {
   });
 }
 
+/** The lines of each TextInput that does not take its name from fieldName, or overrides it after. */
+function inputsNamedAnotherWay(text: string): number[] {
+  return [...text.matchAll(/(?<![\w.])<TextInput\b/gu)].flatMap((match) => {
+    const tag = text.slice(match.index, tagEnd(text, match.index));
+    const named = tag.search(/\{\.\.\.fieldName\(/u);
+    const after = named < 0 ? '' : tag.slice(named);
+    const quiet =
+      named >= 0 &&
+      !/\baccessibility(Label|LabelledBy|Value)=/u.test(after.slice(after.indexOf(')}')));
+
+    return quiet ? [] : [text.slice(0, match.index).split('\n').length];
+  });
+}
+
 /** A prop's value as written, its braces balanced, or null when the markup does not set it. */
+/** Whether the Text showing a Field's label and the FieldLabel around its children name different ids. */
+function labelLinkBroken(text: string): boolean {
+  const label = [...text.matchAll(/(?<![\w.])<Text\b/gu)]
+    .map((match) => text.slice(match.index, tagEnd(text, match.index)))
+    .find((markup) =>
+      text
+        .slice(text.indexOf(markup) + markup.length)
+        .trimStart()
+        .startsWith('{label}'),
+    );
+  const shown = label == null ? null : propValue(label, 'nativeID');
+  const handed = /<FieldLabel\s+value=(\{[^}]+\})/u.exec(text)?.[1] ?? null;
+
+  return shown == null || handed == null || shown !== handed;
+}
+
 function propValue(markup: string, name: string): string | null {
   const start = markup.search(new RegExp(`\\b${name}=`, 'u'));
   if (start === -1) return null;

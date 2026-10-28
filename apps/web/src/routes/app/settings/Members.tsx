@@ -545,6 +545,7 @@ function InvitationRow({
   const again = useRef<HTMLButtonElement>(null);
   const land = useFocusOnceShown();
   const day = (at: string | null) => (at == null ? '' : formatDay(at, dateLocale()));
+  const role = invitation.role == null ? '' : roleName(t, invitation.role);
   const ended: Record<string, string | null> = {
     pending: invitation.expiresAt,
     expired: invitation.expiresAt,
@@ -571,13 +572,9 @@ function InvitationRow({
     <div className="members-invitation">
       <span className="members-row-name">{invitation.email}</span>
       <span className="muted">
-        {t('membersScreen.invitedAs', {
-          role: invitation.role == null ? '' : roleName(t, invitation.role),
-          inviter:
-            invitation.invitedBy?.id === caller
-              ? t('membersScreen.you')
-              : (invitation.invitedBy?.name ?? ''),
-        })}
+        {invitation.invitedBy?.id === caller
+          ? t('membersScreen.invitedAsByYou', { role })
+          : t('membersScreen.invitedAs', { role, inviter: invitation.invitedBy?.name ?? '' })}
       </span>
       <span className="muted">
         {t(`membersScreen.dates.${invitation.status}`, {
@@ -1005,7 +1002,9 @@ function MemberDetail({
                   {...offButton(suspending === 'suspending')}
                   onClick={() => void suspend()}
                 >
-                  {t('membersScreen.suspendConfirm', { name: member.user.name })}
+                  <span className="button-label">
+                    {t('membersScreen.suspendConfirm', { name: member.user.name })}
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -1016,7 +1015,9 @@ function MemberDetail({
                     land(() => suspendButton.current);
                   }}
                 >
-                  {t('membersScreen.suspendKeep', { name: member.user.name })}
+                  <span className="button-label">
+                    {t('membersScreen.suspendKeep', { name: member.user.name })}
+                  </span>
                 </button>
               </div>
             </>
@@ -1086,7 +1087,9 @@ function MemberDetail({
                   {...offButton(removal === 'removing')}
                   onClick={() => void remove()}
                 >
-                  {t('membersScreen.removeConfirm', { name: member.user.name })}
+                  <span className="button-label">
+                    {t('membersScreen.removeConfirm', { name: member.user.name })}
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -1097,9 +1100,11 @@ function MemberDetail({
                     land(() => (byHand ? removeSuspended.current : removeButton.current));
                   }}
                 >
-                  {byHand
-                    ? t('membersScreen.suspendedRemoveKeep')
-                    : t('membersScreen.removeKeep', { name: member.user.name })}
+                  <span className="button-label">
+                    {byHand
+                      ? t('membersScreen.suspendedRemoveKeep')
+                      : t('membersScreen.removeKeep', { name: member.user.name })}
+                  </span>
                 </button>
               </div>
             </>

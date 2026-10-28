@@ -11,7 +11,7 @@ import {
   awaiting,
   primaryEmailAddress,
 } from '@soirely/api-client';
-import { chooseOrganisation, choosePaused, roleHolds } from '@soirely/domain';
+import { chooseOrganisation, choosePaused, forgetEventsTab, roleHolds } from '@soirely/domain';
 import i18next from 'i18next';
 import { useSyncExternalStore } from 'react';
 
@@ -157,7 +157,18 @@ export async function rereadCredentials(): Promise<void> {
 
 let rereads = 0;
 
-/** Read again in a newly picked language, so the dates the server wrote follow it; a failed read leaves them as they were (sc-9267). */
+const movedOn = new Set<(organisation: Membership) => void>();
+
+/** Told when a reread finds the organisation shown gone and opens another in its place. */
+export function onMovedOn(listener: (organisation: Membership) => void): () => void {
+  movedOn.add(listener);
+
+  return () => {
+    movedOn.delete(listener);
+  };
+}
+
+/** Read again on a language pick (sc-9267), a move or a return to the tab (sc-16229); a failed read leaves them as they were. */
 export async function rereadOrganisations(): Promise<void> {
   if (state.status !== 'signedIn' || state.session.awaiting != null) return;
 
@@ -176,9 +187,24 @@ export async function rereadOrganisations(): Promise<void> {
     return;
 
   const current = state.session;
-  const organisation =
-    read.organisations.find((membership) => membership.id === current.organisation?.id) ??
-    current.organisation;
+  const kept = read.organisations.find((membership) => membership.id === current.organisation?.id);
+
+  if (kept == null && current.organisation != null && current.pausedIn == null) {
+    const organisation = chooseOrganisation(read.organisations, recalled());
+    const pausedIn = choosePaused(read.paused, recalled(), read.organisations.length);
+
+    forgetEventsTab();
+    set({
+      status: 'signedIn',
+      session: { ...current, organisations: read.organisations, organisation, pausedIn },
+    });
+    if (organisation != null && pausedIn == null)
+      for (const listener of movedOn) listener(organisation);
+
+    return;
+  }
+
+  const organisation = kept ?? current.organisation;
   const pausedIn =
     current.pausedIn == null
       ? null
@@ -212,6 +238,7 @@ export function switchOrganisation(id: string): void {
   if (organisation == null) return;
 
   remember(id);
+  forgetEventsTab();
   set({ status: 'signedIn', session: { ...state.session, organisation, pausedIn: null } });
 }
 
@@ -338,6 +365,10 @@ if (typeof window !== 'undefined') {
   });
 
   i18next.on('languageChanged', () => void rereadOrganisations());
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void rereadOrganisations();
+  });
 
   // The API said the account is behind a gate this session did not know about, so read it again.
   window.addEventListener(GATED, () => {

@@ -5,46 +5,207 @@ declare(strict_types=1);
 namespace App\Tests\Functional\Messaging;
 
 use App\Domain\Messaging\Command\WorkNotificationsCommand;
+use App\Domain\Messaging\Model\Audience;
+use App\Domain\Messaging\Model\Trigger;
+use App\Enum\Permission;
+use App\Tests\Double\Messaging\RecordingEmailSender;
+use DAMA\DoctrineTestBundle\PHPUnit\SkipDatabaseRollback;
+use DateTimeImmutable;
+use Doctrine\DBAL\ArrayParameterType;
 use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\TestCase;
 use Psl\Async;
 use Psl\DateTime\Duration;
+use Psl\SecureRandom;
+use Psl\Str;
+use Psl\Type;
 
-final class WorkerStopTest extends TestCase
+final class WorkerStopTest extends MessagingTestCase
 {
     /** Compose's stop sends SIGTERM and kills at 10 s; without pcntl PHP never sees the signal. */
     #[Test]
     public function aStoppedWorkerExitsCleanlyWithinTenSeconds(): void
     {
+        $root = self::root();
+        // The stack's notification-worker beats on the default file, which would say this worker is polling before it is.
+        $heartbeat = $root . '/var/notifications-worker-' . SecureRandom\string(12) . '.heartbeat';
+        $worker = self::start($heartbeat, []);
+        $status = self::await($worker, 200, static fn (): bool => \file_exists($heartbeat));
+        $polling = \file_exists($heartbeat);
+
+        if (!$status['running']) {
+            \proc_close($worker);
+
+            if ($polling) {
+                \unlink($heartbeat);
+            }
+
+            self::fail('The worker exited before it was stopped. ' . self::reported($status));
+        }
+
+        if (!$polling) {
+            \proc_terminate($worker, \SIGKILL);
+            \proc_close($worker);
+            self::fail('The worker had not begun polling within 30 seconds, so it was not stopped.');
+        }
+
+        [$status, $elapsed] = self::stop($worker, static function (): void {});
+        \unlink($heartbeat);
+        $reported = self::reported($status);
+
+        self::assertLessThan(10.0, $elapsed, $reported);
+        self::assertFalse($status['signaled'], $reported);
+        self::assertSame(0, $status['exitcode'], $reported);
+    }
+
+    /** Committed, because the worker reads the database from its own process; it deletes what it made. */
+    #[Test]
+    #[SkipDatabaseRollback]
+    public function aWorkerStoppedDuringAProviderCallRecordsTheSendBeforeItExits(): void
+    {
+        $root = self::root();
+        $token = SecureRandom\string(12);
+        $heartbeat = $root . '/var/notifications-worker-' . $token . '.heartbeat';
+        $gate = $root . '/var/notification-provider-' . $token;
+        $members = Audience::membersWithPermission($this->organisation->getId(), Permission::BillingManage);
+        self::sweepKilledRuns();
+        $scheduled = self::scheduler()->schedule('test.notice', 'stop-mid-send-' . $token, 'stop-mid-send-' . $token, Trigger::at(new DateTimeImmutable('-1 minute')), $members);
+
+        try {
+            $worker = self::start($heartbeat, [RecordingEmailSender::GATE => $gate]);
+            $status = self::await($worker, 20, static fn (): bool => \file_exists($gate . '.called'));
+
+            if (!$status['running']) {
+                \proc_close($worker);
+                self::fail('The worker exited before its provider call began, so it was not stopped. ' . self::reported($status));
+            }
+
+            if (!\file_exists($gate . '.called')) {
+                \proc_terminate($worker, \SIGKILL);
+                \proc_close($worker);
+                self::fail('The worker had not claimed the delivery and called its provider within 30 seconds, so it was not stopped.');
+            }
+
+            // The answer waits long enough for a worker that does not finish its step to have exited already.
+            [$status, $elapsed] = self::stop($worker, static function () use ($gate): void {
+                Async\sleep(Duration::milliseconds(500));
+                \touch($gate . '.answer');
+            });
+
+            if (\file_exists($gate . '.gave-up')) {
+                self::fail('The provider gave up before the test answered it, so the SIGTERM may have landed after the call. ' . self::reported($status));
+            }
+
+            $delivery = Type\string()->coerce(self::scalar('SELECT status FROM notification_deliveries WHERE scheduled_notification_id = :id', ['id' => $scheduled->toRfc4122()]) ?: 'missing');
+            $reported = self::reported($status) . Str\format(' The delivery is %s.', $delivery);
+
+            self::assertLessThan(10.0, $elapsed, $reported);
+            self::assertFalse($status['signaled'], $reported);
+            self::assertSame(0, $status['exitcode'], $reported);
+            self::assertSame('sent', $delivery, $reported);
+        } finally {
+            foreach (['.called', '.answer', '.gave-up'] as $suffix) {
+                if (\file_exists($gate . $suffix)) {
+                    \unlink($gate . $suffix);
+                }
+            }
+
+            if (\file_exists($heartbeat)) {
+                \unlink($heartbeat);
+            }
+
+            self::connection()->executeStatement('DELETE FROM scheduled_notifications WHERE id = :id', ['id' => $scheduled->toRfc4122()]);
+            self::connection()->executeStatement('DELETE FROM organisations WHERE id = :id', ['id' => $this->organisation->getId()->toRfc4122()]);
+            self::connection()->executeStatement('DELETE FROM users WHERE id = :id', ['id' => $this->owner->getId()->toRfc4122()]);
+        }
+    }
+
+    private static function sweepKilledRuns(): void
+    {
+        $organisations = Type\vec(Type\string())->coerce(self::connection()->fetchFirstColumn("SELECT audience->>'organisationId' FROM scheduled_notifications WHERE cancellation_key LIKE 'stop-mid-send-%'"));
+
+        foreach ($organisations as $organisation) {
+            $users = self::connection()->fetchFirstColumn('SELECT user_id FROM memberships WHERE organisation_id = :id', ['id' => $organisation]);
+            self::connection()->executeStatement('DELETE FROM organisations WHERE id = :id', ['id' => $organisation]);
+            self::connection()->executeStatement('DELETE FROM users WHERE id IN (:ids)', ['ids' => $users], ['ids' => ArrayParameterType::STRING]);
+        }
+
+        self::connection()->executeStatement("DELETE FROM scheduled_notifications WHERE cancellation_key LIKE 'stop-mid-send-%'");
+    }
+
+    /** @return non-empty-string */
+    private static function root(): string
+    {
         self::assertTrue(\extension_loaded('pcntl'), 'The api image has no pcntl, so SIGTERM cannot be caught.');
 
-        $root = \dirname(__DIR__, 3);
-        $heartbeat = $root . '/var/notifications-worker.heartbeat';
-        \touch($heartbeat, \time() - 600);
-        $worker = \proc_open(['php', 'bin/console', WorkNotificationsCommand::NAME, '--poll=1'], [1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pipes, $root, [...\getenv(), 'APP_ENV' => 'test']);
+        return \dirname(__DIR__, 3);
+    }
+
+    /**
+     * @param array<string, string> $environment
+     *
+     * @return resource
+     */
+    private static function start(string $heartbeat, array $environment): mixed
+    {
+        $worker = \proc_open(['php', 'bin/console', WorkNotificationsCommand::NAME, '--poll=1', '--heartbeat=' . $heartbeat], [1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pipes, self::root(), [...\getenv(), ...$environment, 'APP_ENV' => 'test']);
         self::assertNotFalse($worker);
+
+        return $worker;
+    }
+
+    /**
+     * PHP keeps only the exit code after the first call that sees the child gone, so the status is that call's.
+     *
+     * @param resource         $worker
+     * @param callable(): bool $ready
+     *
+     * @return array{running: bool, exitcode: int, signaled: bool, termsig: int, ...}
+     */
+    private static function await(mixed $worker, int $milliseconds, callable $ready): array
+    {
         $deadline = \microtime(true) + 30;
 
         do {
-            Async\sleep(Duration::milliseconds(200));
+            Async\sleep(Duration::milliseconds($milliseconds));
             \clearstatcache();
-        } while (\microtime(true) < $deadline && \proc_get_status($worker)['running'] && (int) \filemtime($heartbeat) < \time() - 5);
+            $status = \proc_get_status($worker);
+        } while (\microtime(true) < $deadline && $status['running'] && !$ready());
 
-        self::assertTrue(\proc_get_status($worker)['running'], 'The worker exited before it was stopped.');
+        return $status;
+    }
 
+    /**
+     * @param resource         $worker
+     * @param callable(): void $meanwhile
+     *
+     * @return array{array{running: bool, exitcode: int, signaled: bool, termsig: int, ...}, float}
+     */
+    private static function stop(mixed $worker, callable $meanwhile): array
+    {
         \proc_terminate($worker, \SIGTERM);
         $stopped = \microtime(true);
+        $meanwhile();
+        $status = \proc_get_status($worker);
 
-        $exitCode = null;
-
-        while (null === $exitCode && \microtime(true) - $stopped < 15) {
+        while ($status['running'] && \microtime(true) - $stopped < 15) {
             Async\sleep(Duration::milliseconds(100));
             $status = \proc_get_status($worker);
-            $exitCode = $status['running'] ? null : $status['exitcode'];
         }
 
-        self::assertLessThan(10.0, \microtime(true) - $stopped);
-        self::assertSame(0, $exitCode);
+        $elapsed = \microtime(true) - $stopped;
+
+        if ($status['running']) {
+            \proc_terminate($worker, \SIGKILL);
+        }
+
         \proc_close($worker);
+
+        return [$status, $elapsed];
+    }
+
+    /** @param array{running: bool, exitcode: int, signaled: bool, termsig: int, ...} $status */
+    private static function reported(array $status): string
+    {
+        return Str\format('proc_get_status reported running %s, exitcode %d, signaled %s, termsig %d.', \var_export($status['running'], true), $status['exitcode'], \var_export($status['signaled'], true), $status['termsig']);
     }
 }

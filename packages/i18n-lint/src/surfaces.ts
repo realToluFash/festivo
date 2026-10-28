@@ -59,6 +59,49 @@ export const SURFACES: readonly Surface[] = [
 
 export const LOCALES = LOCALE_CODES;
 
+/** Slots holding a number a person reads. One that names (a phone number, a code, a year) is never grouped. */
+export const NUMBER_SLOTS: readonly string[] = [
+  'active',
+  'count',
+  'days',
+  'invited',
+  'left',
+  'length',
+  'limit',
+  'minutes',
+  'most',
+  'total',
+];
+
+/** Symfony's plain catalogue swaps `{count}` in as it is, so it cannot format a number at all. */
+export type SlotSyntax = 'i18next' | 'icu' | 'plain';
+
+export interface NumberCatalogue extends Pick<Surface, 'name' | 'catalogues' | 'file'> {
+  syntax: SlotSyntax;
+}
+
+/** Every catalogue a number can be written in, on all three surfaces. */
+export const NUMBER_CATALOGUES: readonly NumberCatalogue[] = [
+  ...SURFACES.map((surface) => ({
+    ...surface,
+    syntax: surface.name.startsWith('services/api') ? ('plain' as const) : ('i18next' as const),
+  })),
+  ...(['messages', 'emails'] as const).flatMap((domain) => [
+    {
+      name: `services/api (${domain})`,
+      catalogues: 'services/api/translations',
+      file: (locale: string) => `${domain}.${locale}.json`,
+      syntax: 'plain' as const,
+    },
+    {
+      name: `services/api (${domain}, ICU)`,
+      catalogues: 'services/api/translations',
+      file: (locale: string) => `${domain}+intl-icu.${locale}.json`,
+      syntax: 'icu' as const,
+    },
+  ]),
+];
+
 export interface WordCopy extends Pick<Surface, 'name' | 'catalogues' | 'file'> {
   /** The dotted key the words sit under. */
   under: string;

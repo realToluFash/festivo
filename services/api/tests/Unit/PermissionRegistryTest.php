@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit;
 
 use App\Enum\Permission;
+use App\Enum\PermissionArea;
 use App\Enum\SeededRole;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -53,5 +54,13 @@ final class PermissionRegistryTest extends TestCase
         self::assertNull(Permission::tryFrom('budget.everything'));
         $this->expectException(ValueError::class);
         Permission::from('budget.everything');
+    }
+
+    #[Test]
+    public function everyAreaIsReadThroughOneOfItsOwnPermissions(): void
+    {
+        foreach (PermissionArea::cases() as $area) {
+            self::assertSame($area, $area->reading()->area(), $area->value);
+        }
     }
 }

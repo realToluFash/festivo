@@ -1,0 +1,29 @@
+# sc-11741: after request-link-register.yaml and the link replaced elsewhere: verify the address, Continue, and land on the dead-link screen. Pass CODE.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+- openLink: ${METRO_URL}
+- extendedWaitUntil:
+    visible:
+      id: 'verifyEmail.code'
+    timeout: 60000
+- tapOn:
+    id: 'verifyEmail.code'
+- inputText: ${CODE}
+- hideKeyboard
+- tapOn:
+    id: 'verifyEmail.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'verifyEmail.continue'
+    timeout: 30000
+- tapOn:
+    id: 'verifyEmail.continue'
+- extendedWaitUntil:
+    visible:
+      id: 'requestToJoin.home'
+    timeout: 30000
+- assertNotVisible:
+    id: 'requestToJoin.ask'
+- takeScreenshot: register-dead

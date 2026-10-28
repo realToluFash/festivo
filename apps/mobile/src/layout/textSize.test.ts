@@ -2,13 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import {
   breakableEmail,
-  breaksAWord,
-  fitTitle,
+  fitWidest,
   nameLines,
   railWidth,
-  settleTitle,
   sideListWidth,
   titleSize,
+  wordsIn,
 } from './textSize.ts';
 
 const AX1 = 1.786;
@@ -35,17 +34,28 @@ describe('titleSize', () => {
   });
 });
 
-describe('breaksAWord', () => {
-  it('passes lines broken at spaces', () => {
-    expect(breaksAWord(['Revenir sans votre ', 'application ', 'd’authentification'])).toBe(false);
+describe('wordsIn', () => {
+  it('lists each word once, across the texts', () => {
+    expect(wordsIn(['Revenir sans votre', 'sans  application '])).toEqual([
+      'Revenir',
+      'sans',
+      'votre',
+      'application',
+    ]);
+  });
+});
+
+describe('fitWidest', () => {
+  it('keeps the start when the widest word fits its slot', () => {
+    expect(fitWidest(12, 25.7, 110, 118)).toBe(25.7);
   });
 
-  it('finds a word broken across two lines', () => {
-    expect(breaksAWord(['Configura', 'ción'])).toBe(true);
+  it('steps down in proportion, to a whole point, so the widest word fits', () => {
+    expect(fitWidest(12, 25.7, 150, 118)).toBe(20);
   });
 
-  it('passes one line', () => {
-    expect(breaksAWord(['Paramètres'])).toBe(false);
+  it('never steps below the default size', () => {
+    expect(fitWidest(12, 25.7, 400, 118)).toBe(12);
   });
 });
 
@@ -73,44 +83,5 @@ describe('breakableEmail', () => {
     expect(breakableEmail('camille.moreau@traiteur-lumiere.fr')).toBe(
       'camille.moreau@​traiteur-lumiere.fr',
     );
-  });
-});
-
-describe('a title stepping down', () => {
-  const broken = ['Paramètres de l’organi', 'sation'];
-  const whole = ['Paramètres de ', 'l’organisation'];
-
-  it('starts at the step’s size', () => {
-    expect(fitTitle(null, 28, AX2, 'Paramètres').drawn).toBe(43);
-  });
-
-  it('drops a point while a word is broken, and settles once none is', () => {
-    const first = fitTitle(null, 28, AX2, 'Paramètres');
-    const second = settleTitle(first, 28, broken);
-    expect(second.drawn).toBe(42);
-    expect(settleTitle(second, 28, whole)).toBe(second);
-  });
-
-  it('stops at the default size', () => {
-    const atFloor = { key: fitTitle(null, 28, AX2, 'Paramètres').key, drawn: 28 };
-    expect(settleTitle(atFloor, 28, broken)).toBe(atFloor);
-    expect(settleTitle({ ...atFloor, drawn: 28.5 }, 28, broken).drawn).toBe(28);
-  });
-
-  it('starts again when the step changes', () => {
-    const stepped = { ...fitTitle(null, 28, AX2, 'Paramètres'), drawn: 41 };
-    const atDefault = fitTitle(stepped, 28, 1, 'Paramètres');
-    expect(atDefault.drawn).toBe(28);
-    expect(fitTitle(atDefault, 28, AX2, 'Paramètres').drawn).toBe(43);
-  });
-
-  it('starts again when the text changes', () => {
-    const stepped = { ...fitTitle(null, 28, AX2, 'Paramètres'), drawn: 41 };
-    expect(fitTitle(stepped, 28, AX2, 'Membres').drawn).toBe(43);
-  });
-
-  it('keeps its size while neither changes', () => {
-    const stepped = { ...fitTitle(null, 28, AX2, 'Paramètres'), drawn: 41 };
-    expect(fitTitle(stepped, 28, AX2, 'Paramètres')).toBe(stepped);
   });
 });

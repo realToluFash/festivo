@@ -1,0 +1,23 @@
+# sc-13956: ${EV_OK}, a draft with a host; its notice, the Make live sheet, and the event made live.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_OK}
+- extendedWaitUntil:
+    visible:
+      id: 'events.draftLine'
+    timeout: 30000
+- takeScreenshot: draft-row
+- tapOn:
+    id: 'events.makeLive'
+- extendedWaitUntil:
+    visible:
+      id: 'events.makeLiveYes'
+    timeout: 10000
+- takeScreenshot: confirm
+- tapOn:
+    id: 'events.makeLiveYes'
+- extendedWaitUntil:
+    notVisible:
+      id: 'events.draftLine'
+    timeout: 15000
+- takeScreenshot: made-live

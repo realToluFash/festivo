@@ -15,9 +15,11 @@ final class CountingAddressProvider implements AddressProviderInterface
 
     public int $resolveCalls = 0;
 
+    /** @param list<Suggestion>|null $suggestions */
     public function __construct(
         private readonly ?Throwable $suggestThrows = null,
         private readonly ?Throwable $resolveThrows = null,
+        private readonly ?array $suggestions = null,
     ) {
     }
 
@@ -29,7 +31,7 @@ final class CountingAddressProvider implements AddressProviderInterface
             throw $this->suggestThrows;
         }
 
-        return [new Suggestion('node:1', $query)];
+        return $this->suggestions ?? [new Suggestion('node:1', $query)];
     }
 
     public function resolve(string $id): Address

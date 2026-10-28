@@ -118,6 +118,9 @@ class Shortcut:
         return self.call("POST", "/api/v3/story-links",
                          {"subject_id": subject_id, "object_id": object_id, "verb": verb})
 
+    def unrelate(self, link_id):
+        return self.call("DELETE", f"/api/v3/story-links/{link_id}")
+
     def upload(self, story_id, paths):
         boundary = uuid.uuid4().hex
         parts = [f"--{boundary}\r\nContent-Disposition: form-data; name=\"story_id\"\r\n\r\n"

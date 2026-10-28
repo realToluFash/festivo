@@ -366,6 +366,19 @@ describe('Settings > General, ownership and leaving', () => {
     expect(shown.filter((element) => !breaksAnywhere(element))).toEqual([]);
   });
 
+  it('wraps Leave ‹organisation› as a whole label, on the card and in its dialog (sc-15298)', () => {
+    signedIn(IRE);
+    answering({});
+    settings();
+
+    const card = screen.getByRole('button', { name: 'Leave Ìrè Events' });
+    expect(card.querySelector('.button-label')?.textContent).toBe('Leave Ìrè Events');
+
+    fireEvent.click(card);
+    const confirm = screen.getByRole('button', { name: 'Leave Ìrè Events' });
+    expect(confirm.querySelector('.button-label')?.textContent).toBe('Leave Ìrè Events');
+  });
+
   it('lands an account that left its only organisation on the page that says so', async () => {
     signedIn(
       membership({
@@ -450,19 +463,87 @@ describe('Settings > General, ownership and leaving', () => {
     },
   );
 
-  it('leaves a failed count reading as counting, with the confirm still open (sc-11295)', async () => {
+  it.each([
+    ['no connection', () => Promise.reject(new TypeError('Failed to fetch'))],
+    ['an answer that is not 2xx', () => json({ title: 'Down' }, 503)],
+    [
+      'a 2xx that is not the preview',
+      () => new Response('<html>Fatal error</html>', { headers: { 'Content-Type': 'text/html' } }),
+    ],
+  ])('says a failed count, %s, failed and offers Try again (sc-16866)', async (_, answer) => {
     signedIn();
     answering({
       'GET /api/orgs/org_1/members': () => json(MEMBERS),
-      'GET /api/orgs/org_1/deletion': () => json({ title: 'Down' }, 503),
+      'GET /api/orgs/org_1/deletion': answer,
     });
     settings();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation' }));
-    await new Promise((settled) => setTimeout(settled, 0));
 
-    expect(screen.getByRole('heading', { name: 'Delete Ìrè Events?' })).toBeDefined();
+    const failure = await screen.findByText(
+      'We could not count what it holds. Deleting it still deletes every event, guest and member in it, for everybody, now. Soirely support can restore it for 30 days.',
+    );
+    expect(screen.getByRole('alert').contains(failure)).toBe(true);
+    expect(screen.queryByText('Counting what it holds…')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeDefined();
+  });
+
+  it('counts again on Try again, and the button goes once the counts come (sc-16866)', async () => {
+    signedIn();
+    const answers: (() => Response)[] = [
+      () => json({ title: 'Down' }, 503),
+      () => json({ title: 'Down' }, 503),
+      () => json(DELETION),
+    ];
+    const sent = answering({
+      'GET /api/orgs/org_1/members': () => json(MEMBERS),
+      'GET /api/orgs/org_1/deletion': () => answers.shift()!(),
+    });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
     expect(screen.getByText('Counting what it holds…')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { name: 'Delete Ìrè Events?' }),
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+    expect(
+      await screen.findByText(/^5 events, 1,204 guests and 9 members are deleted with it\./),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+    expect(screen.queryByText(/We could not count/)).toBeNull();
+    expect(sent.filter((one) => one.line === 'GET /api/orgs/org_1/deletion')).toHaveLength(3);
+  });
+
+  it('still deletes while the count has failed (sc-16866)', async () => {
+    signedIn();
+    const sent = answering({
+      'GET /api/orgs/org_1/members': () => json(MEMBERS),
+      'GET /api/orgs/org_1/deletion': () => json({ title: 'Down' }, 503),
+      'DELETE /api/orgs/org_1': () =>
+        json({
+          deletedAt: '2026-10-17T13:20:00+00:00',
+          restoreClosesAt: '2026-11-16T13:20:00+00:00',
+          restoreCloses: 'Monday, Nov 16 at 14:20 WAT',
+        }),
+    });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation' }));
+    await screen.findByRole('button', { name: 'Try again' });
+    fireEvent.change(screen.getByLabelText('Type Ìrè Events to confirm'), {
+      target: { value: 'Ìrè Events' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Ìrè Events' }));
+
+    await waitFor(() =>
+      expect(sent.find((one) => one.line === 'DELETE /api/orgs/org_1')?.body).toEqual({
+        name: 'Ìrè Events',
+      }),
+    );
   });
 
   it('opens no confirm for the organisation switched to before the count comes back (sc-11295)', async () => {

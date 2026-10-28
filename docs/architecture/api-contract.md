@@ -99,19 +99,21 @@ at 16:32 UTC."), in its `detail` only (sc-12379): no screen quotes it, and whoev
 raw `detail` reads it from anywhere. `Retry-After` stays in seconds either way (RFC 9110
 §10.2.3).
 
-| Endpoint                                           | Budget                                                             | Spent by                 |
-| -------------------------------------------------- | ------------------------------------------------------------------ | ------------------------ |
-| `POST /api/auth/register`                          | 10 per IP per hour, fixed window                                   | every attempt            |
-| `POST /api/auth/login`                             | 5 per address and 30 per IP per 15 minutes, fixed windows          | a refused password       |
-| `PATCH /api/auth/password`, `POST /api/auth/proof` | 5 per account per 15 minutes, fixed window, one budget for both    | a wrong current password |
-| `POST /api/auth/password/set/code`                 | 5 per account per 15 minutes, fixed window, across resends         | a wrong code             |
-| Two-factor codes, wherever asked                   | 5 per account per 15 minutes, fixed window                         | a wrong code             |
-| `POST /api/auth/verify/resend`                     | one per 60 seconds per address                                     | every code sent          |
-| `POST /api/auth/two-factor/recovery`               | 3 per account per 24 hours, rolling                                | every request started    |
-| `POST /api/auth/sessions/others`                   | 5 per account per 15 minutes, fixed window                         | every proved call        |
-| `POST /api/auth/emails`, `/phones`                 | 10 per account per hour, fixed window, shared                      | every add asked for      |
-| `POST /api/orgs`                                   | 5 per account per hour, fixed window                               | every organisation made  |
-| `POST /api/request-links/ask`                      | 5 per account and 100 per organisation per 24 hours, fixed windows | every request made       |
+| Endpoint                                            | Budget                                                                        | Spent by                 |
+| --------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------ |
+| `POST /api/auth/register`                           | 10 per IP per hour, fixed window                                              | every attempt            |
+| `POST /api/auth/login`                              | 5 per address and 30 per IP per 15 minutes, fixed windows                     | a refused password       |
+| `PATCH /api/auth/password`, `POST /api/auth/proof`  | 5 per account per 15 minutes, fixed window, one budget for both               | a wrong current password |
+| `POST /api/auth/password/set/code`                  | 5 per account per 15 minutes, fixed window, across resends                    | a wrong code             |
+| Two-factor codes, wherever asked                    | 5 per account per 15 minutes, fixed window                                    | a wrong code             |
+| `POST /api/auth/verify/resend`                      | one per 60 seconds per address                                                | every code sent          |
+| `POST /api/auth/two-factor/recovery`                | 3 per account per 24 hours, rolling                                           | every request started    |
+| `POST /api/auth/sessions/others`                    | 5 per account per 15 minutes, fixed window                                    | every proved call        |
+| `POST /api/auth/emails`, `/phones`                  | 10 per account per hour, fixed window, shared                                 | every add asked for      |
+| `POST /api/orgs`                                    | 5 per account per hour, fixed window                                          | every organisation made  |
+| `POST /api/request-links/ask`                       | 5 per account and 100 per organisation per 24 hours, fixed windows            | every request made       |
+| `GET /api/addresses/suggest`, `/api/addresses/{id}` | 60 per IP at once, refilled at 30 a minute, token bucket, one budget for both | every request            |
+| `POST /api/assistant/chat`                          | 20 per IP at once, refilled at 10 a minute, token bucket                      | every request            |
 
 ## Verifying an address
 

@@ -6,10 +6,13 @@ import datetime
 import http.server
 import json
 import pathlib
+import shutil
+import threading
 import time
+import urllib.parse
 import webbrowser
 
-from . import drawing, machine, permissions, roles, runlog, runner, store
+from . import drawing, machine, permissions, remote, roles, runlog, runner, sessions, store
 
 PAGE = pathlib.Path(__file__).with_name("dashboard.html")
 RECENT = 20
@@ -27,7 +30,7 @@ def run_view(entry):
             "stopped": entry.get("stopped"), "item": entry.get("item"),
             "seconds": (entry.get("duration_ms") or 0) // 1000 or None,
             "model": entry.get("model"), "effort": entry.get("effort"),
-            "report": first_line(entry.get("report")),
+            "session": entry.get("session"), "report": first_line(entry.get("report")),
             "failed": bool(entry.get("stopped") or entry.get("is_error")
                            or entry.get("exit") not in (0, None))}
 
@@ -54,8 +57,8 @@ def snapshot(db, platform, now, home, load=machine.load):
     view = {"now": now, "synced_ago": now - synced_at if synced_at else None,
             "errors": [f"sync: {e}" for e in store.get_meta(db, "sync_errors") or []],
             "warnings": [], "machine": None, "manager": platform.timer_active(),
-            "paused": runner.paused(db), "machines": [], "roles": [], "elsewhere": [],
-            "recent": [], "spend": spend(home, 7), "drawings": store.drawings(db),
+            "paused": runner.paused(db), "machines": [], "peers": [], "roles": [],
+            "elsewhere": [], "recent": [], "spend": spend(home, 7), "drawings": store.drawings(db),
             "drawing": drawing_view(db)}
     try:
         config = load()
@@ -66,11 +69,22 @@ def snapshot(db, platform, now, home, load=machine.load):
     if config:
         problems, refused, ready = machine.check(config)
         view["machine"] = config.get("machine") or "this machine"
+        view["peers"] = sorted(remote.peers(config))
+        view["warnings"] += remote.problems(config)
         view["free_gb"] = round(machine.free_gb(config))
         view["errors"] += problems
         late = runner.drift(config, (store.get_meta(db, "claude_version") or {}).get("version"))
         if late:
             view["warnings"].append(late)
+        search = getattr(platform, "search_path", None)
+        node = search and shutil.which("node", path=search())
+        if search and not node:
+            wanted = machine.wanted_node(config) or "22"
+            view["warnings"].append("workers have no node: install nvm with a default alias "
+                                    f"(nvm alias default {wanted}), or node on the PATH")
+        behind = node and machine.node_behind(config, node)
+        if behind:
+            view["warnings"].append(behind)
         on = runner.started(db)
         agreed = store.get_meta(db, "shared_view") or {}
         unreachable = store.get_meta(db, "shared_unreachable")
@@ -107,6 +121,9 @@ def snapshot(db, platform, now, home, load=machine.load):
             running = sum(1 for name in names if platform.worker_active(name))
             holding = [dict(worker=name, id=h["id"], reason=h["reason"])
                        for name in names if (h := store.held_by(db, role, now, name))]
+            live = [{"worker": name, "session": run["session"], "at": run.get("at")}
+                    for name in names if platform.worker_active(name)
+                    and (run := sessions.current(db, name))]
             state, detail = ("running", None) if running else \
                 ("elsewhere", {"machine": away[0], "seen": away[1]}) if role in on and away \
                 else ("busy", None) if held else \
@@ -122,6 +139,7 @@ def snapshot(db, platform, now, home, load=machine.load):
                 "last": run_view(last) if last else None,
                 "held": {"id": held["id"], "reason": held["reason"]} if held else None,
                 "holding": holding if len(names) > 1 else [],
+                "sessions": live,
                 "waiting": len(waiting),
                 "next": [{"id": w["id"], "reason": w["reason"]} for w in waiting[:NEXT]],
                 "note": machine.price_note(role, ready[role]["model"], config),
@@ -144,30 +162,71 @@ def snapshot(db, platform, now, home, load=machine.load):
     return view
 
 
-def serve(read, port, open_page=True, say=print):
-    """Serves the page and `/status.json` until interrupted. `read` returns a snapshot; one
-    request at a time, since the queue's connection belongs to this thread."""
+def serve(read, port, open_page=True, say=print, session=lambda session_id: None,
+          host=remote.LOOPBACK, secret=None, peers=dict, fetch=remote.fetch):
+    """Serves the page, `/status.json` and `/session.json?id=` until interrupted, and the same
+    for each peer under `/m/<name>/`, read through `fetch`. `read` returns a snapshot,
+    `session` one session's view or None, and `peers` the names and addresses of the other
+    machines. Loopback needs no token; anyone else does. Each request has a thread of its own,
+    so a peer that is slow to answer, or a connection left idle, holds only itself; the queue
+    is read by one request at a time."""
+    if not remote.loopback(host) and not remote.usable(secret):
+        say(f"error: sq web will not listen on {host} without {remote.TOKEN} of at least "
+            f"{remote.TOKEN_MIN} characters in the env file")
+        return
+
+    reading = threading.Lock()
+
     class Page(http.server.BaseHTTPRequestHandler):
+        timeout = 10
+
         def do_GET(self):
-            if self.path.split("?")[0] == "/status.json":
-                body, kind = json.dumps(read(time.time())).encode(), "application/json"
-            elif self.path in ("/", "/index.html"):
+            path, _, query = self.path.partition("?")
+            ok, cookie = remote.allowed(self.client_address[0], self.headers, query, secret)
+            if not ok:
+                return self.send_error(401)
+            if cookie:
+                self.send_response(303)
+                self.send_header("Location", path)
+                self.send_header("Set-Cookie", f"{remote.COOKIE}={cookie}; HttpOnly; "
+                                               "SameSite=Strict; Path=/; Max-Age=31536000")
+                self.end_headers()
+                return None
+            status, kind = 200, "application/json"
+            if path.startswith("/m/"):
+                name, _, rest = path[len("/m/"):].partition("/")
+                base = peers().get(urllib.parse.unquote(name))
+                if not base or rest not in ("status.json", "session.json"):
+                    return self.send_error(404)
+                status, body = fetch(base, rest + (f"?{query}" if query else ""), secret)
+            elif path == "/status.json":
+                with reading:
+                    body = json.dumps(read(time.time())).encode()
+            elif path == "/session.json":
+                with reading:
+                    found = session((urllib.parse.parse_qs(query).get("id") or [""])[0])
+                if found is None:
+                    return self.send_error(404)
+                body = json.dumps(found).encode()
+            elif path in ("/", "/index.html"):
                 body, kind = PAGE.read_bytes(), "text/html; charset=utf-8"
             else:
                 return self.send_error(404)
-            self.send_response(200)
+            self.send_response(status)
             self.send_header("Content-Type", kind)
             self.send_header("Cache-Control", "no-store")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+            return None
 
         def log_message(self, *_):
             pass
 
-    server = http.server.HTTPServer(("127.0.0.1", port), Page)
+    server = http.server.ThreadingHTTPServer((host, port), Page)
     url = f"http://127.0.0.1:{server.server_port}/"
-    say(f"sq web: {url} (ctrl-c stops it)")
+    elsewhere = "" if remote.loopback(host) else f", and on {host} with the token"
+    say(f"sq web: {url} (ctrl-c stops it){elsewhere}")
     if open_page:
         webbrowser.open(url)
     try:

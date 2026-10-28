@@ -7,7 +7,15 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { useLayout, useSideListWidth } from '../layout/useLayout.ts';
+import {
+  type LayoutKind,
+  listAndPageKind,
+  type SectionBeside,
+  settingsListGivesWay,
+  useLayout,
+  useSideListWidth,
+  useWindowFrame,
+} from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { bodyEdges } from './bodyEdges.ts';
 import { QuietButton } from './Buttons.tsx';
@@ -17,7 +25,7 @@ export interface ListAndPageSpacing {
   phone: StyleProp<ViewStyle>;
   tabletPortrait: StyleProp<ViewStyle>;
   /** Around the heading and both columns on a tablet on its side. */
-  landscape: ViewStyle;
+  landscape: ViewStyle & { paddingHorizontal: number };
   /** Each column's content on a tablet on its side. */
   column: StyleProp<ViewStyle>;
   listWidth: number;
@@ -25,7 +33,7 @@ export interface ListAndPageSpacing {
 }
 
 export interface ListAndPageProps {
-  heading: ReactNode;
+  heading?: ReactNode;
   /** Beside the heading on a tablet on its side, and nowhere otherwise. */
   besideHeading?: ReactNode;
   list: ReactNode;
@@ -34,12 +42,33 @@ export interface ListAndPageProps {
   page: ReactNode;
   /** Changes with the page, so a page opened after a longer one shows from its top. */
   pageKey: string;
-  /** On a phone and a tablet held upright, whether the page shows in place of the list. */
+  /** Wherever the two show one at a time, whether the page shows in place of the list. */
   pageInFront: boolean;
-  /** On a tablet held upright, the page under the list in one column, with no back (Events, sc-1593). */
-  pageBelowUpright?: boolean;
   back: { label: string; onPress: () => void; testID: string };
   spacing: ListAndPageSpacing;
+  /** The screen's own `useListAndPageLayout`, so the two never decide apart. */
+  kind: LayoutKind;
+}
+
+function listBeside(spacing: ListAndPageSpacing) {
+  return {
+    margins: 2 * spacing.landscape.paddingHorizontal,
+    list: spacing.listWidth,
+    between: spacing.between,
+  };
+}
+
+export function useListAndPageLayout(
+  spacing: ListAndPageSpacing,
+  beside: SectionBeside,
+): { kind: LayoutKind; givesWay: boolean } {
+  const window = useWindowFrame();
+  const list = listBeside(spacing);
+
+  return {
+    kind: listAndPageKind(window, beside, list),
+    givesWay: settingsListGivesWay(window, beside, list),
+  };
 }
 
 // The half behind is out of the layout, so neither touch, TalkBack nor Tab reaches it.
@@ -51,11 +80,11 @@ export function ListAndPage({
   page,
   pageKey,
   pageInFront,
-  pageBelowUpright = false,
   back,
   spacing,
+  kind,
 }: ListAndPageProps) {
-  const { kind } = useLayout();
+  const { kind: frame } = useLayout();
   const listWidth = useSideListWidth(spacing.listWidth);
   const landscape = kind === 'tabletLandscape';
   const column = landscape
@@ -64,29 +93,13 @@ export function ListAndPage({
       ? spacing.phone
       : spacing.tabletPortrait;
 
-  if (kind === 'tabletPortrait' && pageBelowUpright) {
-    return (
-      <Screen edges={bodyEdges(kind)} scroll={false} contentStyle={styles.bare}>
-        <ScrollColumn
-          style={styles.fill}
-          contentContainerStyle={column}
-          refreshControl={listRefresh}
-        >
-          {heading}
-          {list}
-          {page}
-        </ScrollColumn>
-      </Screen>
-    );
-  }
-
   return (
     <Screen
-      edges={bodyEdges(kind)}
+      edges={bodyEdges(frame)}
       scroll={false}
       contentStyle={landscape ? spacing.landscape : styles.bare}
     >
-      {landscape && (
+      {landscape && (heading || besideHeading) && (
         <View style={styles.head}>
           <View style={styles.fill}>{heading}</View>
           {besideHeading}
@@ -103,6 +116,7 @@ export function ListAndPage({
             style={styles.fill}
             contentContainerStyle={column}
             refreshControl={listRefresh}
+            away={!landscape && pageInFront}
           >
             {!landscape && heading}
             {list}

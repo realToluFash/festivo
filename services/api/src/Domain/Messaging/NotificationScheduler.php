@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Messaging;
 
 use App\Domain\Messaging\Model\Audience;
+use App\Domain\Messaging\Model\EventAnchor;
 use App\Domain\Messaging\Model\EventTimes;
 use App\Domain\Messaging\Model\Trigger;
 use App\Entity\Event;
@@ -12,6 +13,7 @@ use App\Enum\NotificationChannel;
 use App\Enum\NotificationDeliveryStatus;
 use App\Enum\NotificationPriority;
 use App\Enum\ScheduledNotificationStatus;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
 use InvalidArgumentException;
@@ -19,6 +21,7 @@ use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;
+use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use stdClass;
 use Symfony\Component\Uid\Uuid;
@@ -57,6 +60,7 @@ final readonly class NotificationScheduler
                 'cancellation_key' => $cancellationKey,
                 'source_id' => $sourceId,
                 'event_id' => $event?->getId()->toRfc4122(),
+                'organisation_id' => $audience->organisationId?->toRfc4122(),
                 'trigger' => Json\encode($trigger->toArray()),
                 'due_at' => $dueAt,
                 'send_by' => $definition->tooLateAt($dueAt, $times),
@@ -81,8 +85,20 @@ final readonly class NotificationScheduler
         return $this->connection->transactional(fn (): int => $this->remove($cancellationKey));
     }
 
-    /** After an event's date, time or zone changes: each pending row counted from the event is written again at its new due time. */
+    /** After an event's date or time changes: each pending row counted from the event is written again at its new due time. */
     public function rescheduleForEvent(Event $event): int
+    {
+        return $this->reschedule($event, [EventAnchor::EventStart, EventAnchor::EventEnd]);
+    }
+
+    /** After an event's clock changes, to a new zone or to new rules for its zone: a caller's day is read again on the new clock too, with its same date, offset and time of day. */
+    public function rescheduleForNewZone(Event $event): int
+    {
+        return $this->reschedule($event, [EventAnchor::EventStart, EventAnchor::EventEnd, EventAnchor::Date]);
+    }
+
+    /** @param list<EventAnchor> $anchors */
+    private function reschedule(Event $event, array $anchors): int
     {
         $rows = $this->connection->fetchAllAssociative(
             <<<'SQL'
@@ -90,10 +106,15 @@ final readonly class NotificationScheduler
                 FROM scheduled_notifications
                 WHERE event_id = :event
                   AND status = :pending
-                  AND trigger->>'anchor' <> 'date'
+                  AND trigger->>'anchor' IN (:anchors)
                 ORDER BY id
                 SQL,
-            ['event' => $event->getId()->toRfc4122(), 'pending' => ScheduledNotificationStatus::Pending->value],
+            [
+                'event' => $event->getId()->toRfc4122(),
+                'pending' => ScheduledNotificationStatus::Pending->value,
+                'anchors' => Vec\map($anchors, static fn (EventAnchor $anchor): string => $anchor->value),
+            ],
+            ['anchors' => ArrayParameterType::STRING],
         );
 
         foreach ($rows as $row) {

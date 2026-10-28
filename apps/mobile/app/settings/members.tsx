@@ -15,7 +15,11 @@ import {
   MemberPage,
   activeCount,
 } from '../../src/components/Members.tsx';
-import { type ListAndPageSpacing, ListAndPage } from '../../src/components/ListAndPage.tsx';
+import {
+  type ListAndPageSpacing,
+  ListAndPage,
+  useListAndPageLayout,
+} from '../../src/components/ListAndPage.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
 import { type StepClosed, stepClosed, useFocusOnAnswer } from '../../src/components/Screen.tsx';
 import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
@@ -24,7 +28,6 @@ import { type TextHandle, Text } from '../../src/components/Text.tsx';
 import { cardFrame } from '../../src/components/cardFrame.ts';
 import { useShownLanguage } from '../../src/i18n/index.ts';
 import { DESTINATION_HREF, SECTION_HREF } from '../../src/kit/appNav.ts';
-import { useLayout } from '../../src/layout/useLayout.ts';
 import { useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
@@ -44,7 +47,7 @@ const LOADING: Load = { kind: 'loading' };
 /** Settings > Members, `MembersApp-*` (sc-3404): who is in the organisation, a role change and a removal. */
 export default function MembersScreen() {
   const { t } = useTranslation();
-  const { kind } = useLayout();
+  const { kind, givesWay } = useListAndPageLayout(SPACING, 'settingsList');
   const { organisation } = useSignedIn();
   const organisationId = organisation?.id;
   const [held, setHeld] = useState<{ in: string | undefined; load: Load }>({
@@ -254,9 +257,10 @@ export default function MembersScreen() {
           : undefined
       }
     >
-      <SettingsSplit open="members">
+      <SettingsSplit open="members" givesWay={givesWay}>
         <SheetsAtRoot>
           <ListAndPage
+            kind={kind}
             heading={heading}
             list={
               <ComeForward.Provider value={listForward}>

@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import { TABLET_MIN_DIMENSION, classifyLayout, isTablet } from './classify.ts';
+import {
+  PAGE_BESIDE_MIN_WIDTH,
+  SIDE_MIN_WIDTH,
+  TABLET_MIN_DIMENSION,
+  UPRIGHT_MIN_WIDTH,
+  classifyLayout,
+  isTablet,
+  listAndPageKind,
+  listFitsBeside,
+  sectionWidth,
+  settingsListGivesWay,
+} from './classify.ts';
 
 /**
  * The classifier, against the sizes real devices actually report.
@@ -40,23 +51,130 @@ describe('tablets', () => {
     ['iPad mini landscape', 1133, 744, 'tabletLandscape'],
     ['iPad Pro portrait', 1024, 1366, 'tabletPortrait'],
     ['iPad Pro landscape', 1366, 1024, 'tabletLandscape'],
-    ['a 7-inch Android portrait', 600, 960, 'tabletPortrait'],
+    ['iPad 11-inch portrait', 834, 1194, 'tabletPortrait'],
+    ['iPad 11-inch landscape', 1194, 834, 'tabletLandscape'],
+    ['the Android tablet portrait', 800, 1280, 'tabletPortrait'],
+    ['the Android tablet landscape', 1280, 800, 'tabletLandscape'],
+    ['a 7-inch Android portrait', 600, 960, 'phone'],
+    ['a 7-inch Android landscape', 960, 600, 'tabletPortrait'],
+    ['the narrowest tablet window', 600, 800, 'phone'],
+    ['beside another app on the Android tablet', 640, 800, 'phone'],
+    ['iPad mini landscape in half the screen', 566, 744, 'phone'],
   ])('%s is %s', (_name, width, height, expected) => {
     expect(classifyLayout({ width, height })).toBe(expected);
   });
 
   /** A square window has to land somewhere, and landscape is the wider shape. */
-  it('treats a square window as landscape', () => {
-    expect(classifyLayout({ width: 800, height: 800 })).toBe('tabletLandscape');
+  it('treats a square window wide enough for the rail as landscape', () => {
+    expect(classifyLayout({ width: 1000, height: 1000 })).toBe('tabletLandscape');
+    expect(classifyLayout({ width: 800, height: 800 })).toBe('tabletPortrait');
   });
 });
 
-describe('the threshold', () => {
-  it('is exclusive below and inclusive at the boundary', () => {
+describe('the thresholds', () => {
+  it('takes the smaller side first, exclusive below and inclusive at the boundary', () => {
     const below = TABLET_MIN_DIMENSION - 1;
 
-    expect(classifyLayout({ width: below, height: 1000 })).toBe('phone');
-    expect(classifyLayout({ width: TABLET_MIN_DIMENSION, height: 1000 })).toBe('tabletPortrait');
+    expect(classifyLayout({ width: 1000, height: below })).toBe('phone');
+    expect(classifyLayout({ width: 1000, height: TABLET_MIN_DIMENSION })).toBe('tabletLandscape');
+  });
+
+  /** Width only ever steps a window down, so the windows sc-12241 lists land in the next narrower layout. */
+  it.each([
+    [743, 800, 'phone'],
+    [744, 800, 'tabletPortrait'],
+    [700, 620, 'phone'],
+    [800, 620, 'tabletPortrait'],
+    [960, 600, 'tabletPortrait'],
+    [963, 620, 'tabletPortrait'],
+    [964, 620, 'tabletLandscape'],
+  ])('%i×%i is %s', (width, height, expected) => {
+    expect(classifyLayout({ width, height })).toBe(expected);
+  });
+
+  it('is built from the columns each layout holds', () => {
+    expect(UPRIGHT_MIN_WIDTH).toBe(320 + 64 + PAGE_BESIDE_MIN_WIDTH);
+    expect(SIDE_MIN_WIDTH).toBe(UPRIGHT_MIN_WIDTH + 220);
+  });
+});
+
+/** Roles' list is 236 with 16 between and margins of 64; Members' is 300 with 20 and 48; Events' 360 with 20 and 48. */
+describe('a list beside its page', () => {
+  const ROLES = { margins: 64, list: 236, between: 16 };
+  const MEMBERS = { margins: 48, list: 300, between: 20 };
+  const side = (width: number, fontScale = 1) => ({ width, height: 800, fontScale });
+
+  it.each([
+    ['an iPad mini on its side', 1133, 'tabletPortrait', 'tabletPortrait'],
+    ['an 11-inch iPad on its side', 1180, 'tabletPortrait', 'tabletPortrait'],
+    ['1240 wide', 1240, 'tabletLandscape', 'tabletPortrait'],
+    ['the Android tablet on its side', 1280, 'tabletLandscape', 'tabletLandscape'],
+    ['a 13-inch iPad on its side', 1376, 'tabletLandscape', 'tabletLandscape'],
+  ])('%s in Settings: Roles %s, Members %s', (_name, width, roles, members) => {
+    expect(listAndPageKind(side(width), 'settingsList', ROLES)).toBe(roles);
+    expect(listAndPageKind(side(width), 'settingsList', MEMBERS)).toBe(members);
+  });
+
+  it('keeps a page its 360 at the boundary', () => {
+    expect(listAndPageKind(side(1216), 'settingsList', ROLES)).toBe('tabletLandscape');
+    expect(listAndPageKind(side(1215), 'settingsList', ROLES)).toBe('tabletPortrait');
+    expect(listAndPageKind(side(1268), 'settingsList', MEMBERS)).toBe('tabletLandscape');
+    expect(listAndPageKind(side(1267), 'settingsList', MEMBERS)).toBe('tabletPortrait');
+  });
+
+  it('gives a section the window less the rail, and less the Settings list in Settings', () => {
+    expect(sectionWidth(side(1133), 'nothing')).toBe(1133 - 220);
+    expect(sectionWidth(side(1133), 'settingsList')).toBe(1133 - 220 - 320);
+    expect(sectionWidth({ width: 834, height: 1194, fontScale: 1 }, 'settingsList')).toBe(
+      834 - 320,
+    );
+    expect(sectionWidth({ width: 430, height: 932, fontScale: 1 }, 'settingsList')).toBe(430);
+  });
+
+  it('widens the rail and the lists at the accessibility sizes', () => {
+    expect(sectionWidth(side(1376, 2), 'settingsList')).toBe(1376 - 300 - Math.round(1076 * 0.4));
+  });
+
+  it('gives a section’s own list the Settings list’s place on its side at the accessibility sizes', () => {
+    for (const list of [ROLES, MEMBERS]) {
+      expect(settingsListGivesWay(side(1376, 2), 'settingsList', list)).toBe(true);
+      expect(listAndPageKind(side(1376, 2), 'settingsList', list)).toBe('tabletLandscape');
+      expect(settingsListGivesWay(side(1180, 1.786), 'settingsList', list)).toBe(true);
+    }
+  });
+
+  it('keeps the Settings list where the three fit, below the accessibility sizes, and held upright', () => {
+    expect(settingsListGivesWay(side(1376), 'settingsList', MEMBERS)).toBe(false);
+    expect(settingsListGivesWay(side(1180), 'settingsList', MEMBERS)).toBe(false);
+    expect(
+      settingsListGivesWay({ width: 1032, height: 1376, fontScale: 2 }, 'settingsList', MEMBERS),
+    ).toBe(false);
+    expect(settingsListGivesWay(side(1376, 2), 'nothing', MEMBERS)).toBe(false);
+  });
+
+  it('shows one at a time where even the section’s own list leaves its page too little', () => {
+    expect(settingsListGivesWay(side(964, 2), 'settingsList', MEMBERS)).toBe(false);
+    expect(listAndPageKind(side(964, 2), 'settingsList', MEMBERS)).toBe('tabletPortrait');
+  });
+
+  it('leaves Events, with nothing beside it, its list beside the page from 1133', () => {
+    const EVENTS = { margins: 48, list: 360, between: 20 };
+
+    expect(listAndPageKind(side(1133), 'nothing', EVENTS)).toBe('tabletLandscape');
+  });
+
+  it('decides one at a time from the arithmetic it shows', () => {
+    expect(listFitsBeside(1216 - 220 - 320, ROLES)).toBe(true);
+    expect(listFitsBeside(1215 - 220 - 320, ROLES)).toBe(false);
+  });
+
+  it('leaves the phone and upright layouts as they are', () => {
+    expect(listAndPageKind({ width: 834, height: 1194, fontScale: 1 }, 'settingsList', ROLES)).toBe(
+      'tabletPortrait',
+    );
+    expect(listAndPageKind({ width: 932, height: 430, fontScale: 1 }, 'settingsList', ROLES)).toBe(
+      'phone',
+    );
   });
 });
 

@@ -39,8 +39,18 @@ final readonly class EventCreator
         EventVenue::write($event, $checked['venue'] ?? null);
         $this->entityManager->persist($event);
 
-        $this->auditor->record(self::CREATED, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), [
-            'organisation' => [null, $organisation->getId()->toRfc4122()],
+        $this->auditor->record(self::CREATED, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), self::recorded($event));
+
+        $this->entityManager->flush();
+
+        return $event;
+    }
+
+    /** @return array<string, array{0: mixed, 1: mixed}> */
+    public static function recorded(Event $event): array
+    {
+        return [
+            'organisation' => [null, $event->getOrganisation()->getId()->toRfc4122()],
             'name' => [null, $event->getName()],
             'type' => [null, $event->getType()->value],
             'startsAt' => [null, $event->getStartsAt()->format(\DATE_ATOM)],
@@ -48,10 +58,6 @@ final readonly class EventCreator
             'timeZone' => [null, $event->getTimeZone()],
             'currency' => [null, $event->getCurrency()],
             ...Auditor::diff([], EventEditor::venueRecorded($event)),
-        ]);
-
-        $this->entityManager->flush();
-
-        return $event;
+        ];
     }
 }

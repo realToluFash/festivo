@@ -1,0 +1,34 @@
+# sc-12241: New role, Role name tapped and typed in, with the keyboard up.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/roles
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      notVisible:
+        id: 'roles.role.owner'
+    commands:
+      - tapOn:
+          id: 'frame.back'
+      - extendedWaitUntil:
+          visible:
+            id: 'roles.role.owner'
+          timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'roles.new'
+    direction: DOWN
+- tapOn:
+    id: 'roles.new'
+- waitForAnimationToEnd
+- takeScreenshot: new-role
+- tapOn:
+    id: 'roles.name'
+- inputText: 'Tablet Crew'
+- waitForAnimationToEnd
+- takeScreenshot: new-role-keyboard
+- hideKeyboard

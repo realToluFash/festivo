@@ -12,6 +12,7 @@ use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Enum\EventAction;
 use App\Enum\EventPhase;
+use App\Enum\EventStatus;
 use App\Http\EntityTag;
 use App\Http\Exception\ApiException;
 use Doctrine\DBAL\LockMode;
@@ -43,8 +44,9 @@ final readonly class EventEditor
      * A field left out keeps its value. Start and end are wall-clock times, so a new zone alone keeps them as typed.
      *
      * A type sent as null is refused like a missing one on create: an event, once typed, stays typed (sc-3588).
+     * `hosts` replaces the whole list, and an event made live keeps at least one (sc-6713).
      *
-     * @param array{name?: string, type?: ?string, startsAt?: string, endsAt?: string, timeZone?: string, currency?: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null} $fields
+     * @param array{name?: string, type?: ?string, startsAt?: string, endsAt?: string, timeZone?: string, currency?: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null, hosts?: list<string>} $fields
      */
     public function edit(Event $event, ?string $ifMatch, User $by, array $fields): Event
     {
@@ -69,6 +71,7 @@ final readonly class EventEditor
                 'timeZone' => $fields['timeZone'] ?? $event->getTimeZone(),
                 'currency' => $fields['currency'] ?? $event->getCurrency(),
                 ...Iter\contains_key($fields, 'venue') ? ['venue' => $fields['venue']] : [],
+                ...Iter\contains_key($fields, 'hosts') ? ['hosts' => $fields['hosts']] : [],
             ], $event->getCurrency(), EventVenue::of($event));
 
             if ($checked['currency'] !== $event->getCurrency() && $this->eventAmounts->anyRecordedFor($event)) {
@@ -83,11 +86,24 @@ final readonly class EventEditor
                 EventVenue::write($event, $checked['venue']);
             }
 
+            if (Iter\contains_key($checked, 'hosts')) {
+                if ([] === $checked['hosts'] && [] !== $event->getHosts() && EventStatus::Draft !== $event->getStatus()) {
+                    throw new ApiException(ErrorCode::EventHostRequired, $this->translator->trans('event.last_host'));
+                }
+
+                $event->setHosts($checked['hosts']);
+            }
+
             $schedule = [$checked['startsAt']->format(\DATE_ATOM), $checked['endsAt']->format(\DATE_ATOM), $checked['startsAt']->getTimezone()->getName()];
 
             if ($schedule !== [$before['startsAt'], $before['endsAt'], $before['timeZone']]) {
                 $event->setTimes($checked['startsAt'], $checked['endsAt']);
-                $this->notificationScheduler->rescheduleForEvent($event);
+
+                if ($schedule[2] === $before['timeZone']) {
+                    $this->notificationScheduler->rescheduleForEvent($event);
+                } else {
+                    $this->notificationScheduler->rescheduleForNewZone($event);
+                }
             }
 
             $changes = Auditor::diff($before, self::recorded($event));
@@ -131,6 +147,7 @@ final readonly class EventEditor
             'timeZone' => $event->getTimeZone(),
             'currency' => $event->getCurrency(),
             ...self::venueRecorded($event),
+            'hosts' => $event->getHosts(),
         ];
     }
 

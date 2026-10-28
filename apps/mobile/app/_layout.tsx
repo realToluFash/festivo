@@ -1,8 +1,8 @@
 import '../src/intl.ts';
 import { loadAsync } from 'expo-font';
-import { SplashScreen, Stack } from 'expo-router';
+import { DefaultTheme, SplashScreen, Stack, ThemeProvider } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
@@ -11,6 +11,7 @@ import { Text } from '../src/components/Text.tsx';
 import { initI18n } from '../src/i18n/index.ts';
 import { loadInstallId } from '../src/installId.ts';
 import { FONT_FACES, facesLoaded } from '../src/theme/fonts.ts';
+import { tokens } from '../src/theme/tokens.ts';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -53,7 +54,7 @@ export default function RootLayout() {
 
   if (state === 'loading') {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={styles.page}>
         <ActivityIndicator />
       </View>
     );
@@ -61,7 +62,7 @@ export default function RootLayout() {
 
   if (state === 'failed') {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <View style={[styles.page, styles.failed]}>
         <Text weight="medium">Soirely could not start</Text>
         <Text muted>{message}</Text>
       </View>
@@ -69,14 +70,30 @@ export default function RootLayout() {
   }
 
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider style={styles.root}>
       <StatusBar style="dark" />
       {/* No header: every screen is built on `Screen`, which owns its own
           insets. A native header plus a safe-area wrapper double-pads the top,
           and the result is a gap nobody can find the source of. */}
-      <WindowOrigin>
-        <Stack screenOptions={{ headerShown: false }} />
-      </WindowOrigin>
+      <ThemeProvider value={theme}>
+        <WindowOrigin>
+          <Stack screenOptions={{ headerShown: false }} />
+        </WindowOrigin>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }
+
+// The splash, these views, the stack's container and every screen's card share the page colour, so no navigator grey shows between them (sc-13257).
+const theme = { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: tokens.colorPage } };
+
+const styles = StyleSheet.create({
+  page: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: tokens.colorPage,
+  },
+  failed: { padding: 24 },
+  root: { flex: 1, backgroundColor: tokens.colorPage },
+});

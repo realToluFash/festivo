@@ -1,7 +1,14 @@
-import type { Membership, OrganisationEvent } from '@soirely/api-client';
-import { roleHolds } from '@soirely/domain';
+import type { ListedEvent, Membership, OrganisationEvent } from '@soirely/api-client';
+import {
+  type EventsTab,
+  rememberEventsTab,
+  rememberedEventsTab,
+  roleHolds,
+  serverClock,
+  withPastPage,
+} from '@soirely/domain';
 import { Redirect, router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { type RefCallback, useCallback, useEffect, useState } from 'react';
 import { AppState, RefreshControl, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -21,24 +28,26 @@ import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AppFrame } from './AppFrame.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
-import { EventList, EventNotFound, EventPage, EventsFailed, NoEvents } from './Events.tsx';
-import { type ListAndPageSpacing, ListAndPage } from './ListAndPage.tsx';
+import { EventNotFound, EventPage, EventsFailed, NoEvents } from './Events.tsx';
+import { EventsHome, type HomeLoad } from './EventsHome.tsx';
+import { type ListAndPageSpacing, ListAndPage, useListAndPageLayout } from './ListAndPage.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
+import { FocusBack, type StepClosed, stepClosed } from './Screen.tsx';
 import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
 
 type Load =
-  | { kind: 'loading' }
-  | { kind: 'failed' }
-  | { kind: 'loaded'; events: OrganisationEvent[]; refreshing: boolean };
+  { kind: 'loading' } | { kind: 'failed' } | ({ kind: 'loaded'; refreshing: boolean } & HomeLoad);
+
+const PAST_PAGE = 10;
 
 const LOADING: Load = { kind: 'loading' };
 
 /** Events, `EventsHome-*` and `EventView-*` (sc-1593): the organisation's events, read-only, and an event's page. */
 export function EventsScreen({ linked = null }: { linked?: string | null }) {
   const { t } = useTranslation();
-  const { kind } = useLayout();
+  const { kind } = useListAndPageLayout(SPACING, 'nothing');
   const { account, organisation } = useSignedIn();
   const organisationId = organisation?.id;
   const reads = organisation != null && roleHolds(organisation, 'events.read');
@@ -66,10 +75,13 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
   const current = selectionIn(selected, organisationId);
   if (current !== selected) setSelected(current);
   const open = current.id;
-  const select = (id: string | null) => {
+  const [closed, setClosed] = useState<StepClosed | undefined>(undefined);
+  const select = (id: string | null, back?: StepClosed) => {
     if (id != null) setDeleted(null);
     setSelected({ in: organisationId, id });
+    setClosed(back);
   };
+  const toList = () => select(null, open == null ? undefined : stepClosed(`row.${open}`));
 
   // The rows stay in place while they reload; a failed load gives way to loading.
   const reload = useCallback(() => {
@@ -102,10 +114,24 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     if (organisationId == null || !reads || attempt === 0) return;
     let live = true;
 
-    api.events(organisationId).then(
-      (events) =>
+    Promise.all([
+      api.unfinishedEvents(organisationId),
+      api.events(organisationId, { finished: true, itemsPerPage: PAST_PAGE }),
+    ]).then(
+      ([unfinished, past]) =>
         live &&
-        setHeld({ in: organisationId, load: { kind: 'loaded', events, refreshing: false } }),
+        setHeld({
+          in: organisationId,
+          load: {
+            kind: 'loaded',
+            unfinished,
+            past: past.events,
+            pastTotal: past.total,
+            pastPages: 1,
+            at: serverClock.now(),
+            refreshing: false,
+          },
+        }),
       () => live && setHeld({ in: organisationId, load: { kind: 'failed' } }),
     );
 
@@ -114,10 +140,42 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     };
   }, [organisationId, reads, attempt]);
 
-  const listed =
-    load.kind === 'loaded' && open != null
-      ? (load.events.find((event) => event.id === open) ?? null)
-      : null;
+  const [tab, setTab] = useState<{ in: string | undefined; tab: EventsTab }>(() => ({
+    in: organisationId,
+    tab: organisationId == null ? 'upcoming' : rememberedEventsTab(organisationId),
+  }));
+  if (tab.in !== organisationId) {
+    setTab({
+      in: organisationId,
+      tab: organisationId == null ? 'upcoming' : rememberedEventsTab(organisationId),
+    });
+  }
+  const [more, setMore] = useState<'idle' | 'loading' | 'failed'>('idle');
+  const [moreShown, setMoreShown] = useState<string | null>(null);
+  const showMore = () => {
+    if (organisationId == null || load.kind !== 'loaded') return;
+    const loaded = load;
+
+    setMore('loading');
+    api
+      .events(organisationId, {
+        finished: true,
+        page: loaded.pastPages + 1,
+        itemsPerPage: PAST_PAGE,
+      })
+      .then(
+        (page) => {
+          const read = withPastPage(loaded, page, PAST_PAGE);
+
+          setHeld({ in: organisationId, load: read.load });
+          setMoreShown(t('eventsScreen.moreShown', { count: read.added }));
+          setMore('idle');
+        },
+        () => setMore('failed'),
+      );
+  };
+  const everyLoaded = load.kind === 'loaded' ? [...load.unfinished, ...load.past] : [];
+  const listed = open != null ? (everyLoaded.find((event) => event.id === open) ?? null) : null;
   const latest = (event: OrganisationEvent) => (changed?.id === event.id ? changed : event);
   const onChange = (event: OrganisationEvent) => {
     setChanged(event);
@@ -127,7 +185,8 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
             in: before.in,
             load: {
               ...before.load,
-              events: before.load.events.map((each) => (each.id === event.id ? event : each)),
+              unfinished: before.load.unfinished.map((each) => kept(each, event)),
+              past: before.load.past.map((each) => kept(each, event)),
             },
           }
         : before,
@@ -141,7 +200,8 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
                 in: before.in,
                 load: {
                   ...before.load,
-                  events: before.load.events.filter((each) => each.id !== event.id),
+                  unfinished: before.load.unfinished.filter((each) => each.id !== event.id),
+                  past: before.load.past.filter((each) => each.id !== event.id),
                 },
               }
             : before,
@@ -201,7 +261,7 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
         )}
       </View>
     ) : opened.kind === 'notFound' ? (
-      <EventNotFound onBack={() => select(null)} />
+      <EventNotFound onBack={toList} />
     ) : opened.kind === 'failed' ? (
       <EventsFailed onRetry={opened.retry} testID="events.page.retry" />
     ) : (
@@ -211,67 +271,72 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
   const pageName = shown?.name ?? null;
   const newEvent = () => router.push('/events/new');
 
-  const heading = !phone && (
-    <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
-      {t('eventsScreen.title')}
-    </Text>
-  );
-
-  const list = !reads ? null : load.kind === 'loading' ? (
-    <Waiting words={t('eventsScreen.loading')} />
-  ) : load.kind === 'failed' ? (
-    <EventsFailed onRetry={reload} testID="events.retry" />
-  ) : (
-    <View style={styles.stack}>
-      {deleted != null && (
-        <ReadOut words={t('eventDelete.deleted', { event: deleted })}>
-          <Notice
-            tone="done"
-            mark={tokens.marks.done.glyph}
-            body={t('eventDelete.deleted', { event: deleted })}
-          />
-        </ReadOut>
-      )}
-      {load.refreshing && (
-        <Text
-          size={tokens.typeSmall.size}
-          muted
-          accessibilityRole="text"
-          testID="events.refreshing"
-        >
-          {t('eventsScreen.refreshing')}
-        </Text>
-      )}
-      {load.events.length === 0 ? (
-        <NoEvents kind={kind} onCreate={creates ? newEvent : undefined} />
-      ) : (
-        <>
-          {creates && (
-            <PrimaryButton
-              label={t('eventsScreen.newEvent')}
-              onPress={newEvent}
-              testID="events.new"
+  const list = (opener: (key: string) => RefCallback<View>) =>
+    !reads ? null : load.kind === 'loading' ? (
+      <Waiting words={t('eventsScreen.loading')} />
+    ) : load.kind === 'failed' ? (
+      <EventsFailed onRetry={reload} testID="events.retry" />
+    ) : (
+      <View style={styles.stack}>
+        {deleted != null && (
+          <ReadOut words={t('eventDelete.deleted', { event: deleted })}>
+            <Notice
+              tone="done"
+              mark={tokens.marks.done.glyph}
+              body={t('eventDelete.deleted', { event: deleted })}
             />
-          )}
-          <EventList events={load.events} open={open} onOpen={select} />
-        </>
-      )}
-    </View>
-  );
+          </ReadOut>
+        )}
+        {load.refreshing && (
+          <Text
+            size={tokens.typeSmall.size}
+            muted
+            accessibilityRole="text"
+            testID="events.refreshing"
+          >
+            {t('eventsScreen.refreshing')}
+          </Text>
+        )}
+        {load.unfinished.length === 0 && load.pastTotal === 0 ? (
+          <NoEvents kind={kind} onCreate={creates ? newEvent : undefined} />
+        ) : (
+          <>
+            {creates && (
+              <PrimaryButton
+                label={t('eventsScreen.newEvent')}
+                onPress={newEvent}
+                testID="events.new"
+              />
+            )}
+            <EventsHome
+              kind={kind}
+              load={load}
+              tab={tab.tab}
+              onTab={(next) => {
+                if (organisationId != null) rememberEventsTab(organisationId, next);
+                setTab({ in: organisationId, tab: next });
+              }}
+              open={open}
+              onOpen={select}
+              opener={opener}
+              more={more}
+              shown={moreShown}
+              onShowMore={showMore}
+            />
+          </>
+        )}
+      </View>
+    );
 
   return (
     <AppFrame
       current="events"
       title={phone && inFront ? (pageName ?? t('eventsScreen.title')) : t('eventsScreen.title')}
-      back={
-        phone && inFront
-          ? { label: t('eventsScreen.title'), onPress: () => select(null) }
-          : undefined
-      }
+      back={phone && inFront ? { label: t('eventsScreen.title'), onPress: toList } : undefined}
     >
       <ListAndPage
-        heading={heading}
-        list={list}
+        kind={kind}
+        list={<FocusBack closed={closed}>{list}</FocusBack>}
         listRefresh={
           reads && load.kind === 'loaded' ? (
             <RefreshControl refreshing={load.refreshing} onRefresh={reload} />
@@ -285,16 +350,20 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
         }
         pageInFront={inFront}
         pageKey={open ?? ''}
-        pageBelowUpright
         back={{
-          label: t('eventsScreen.title'),
-          onPress: () => select(null),
+          label: t('eventsScreen.back'),
+          onPress: toList,
           testID: 'events.back',
         }}
         spacing={SPACING}
       />
     </AppFrame>
   );
+}
+
+/** An edit on the event's page, with the milestones the list read, until the next load reads both again. */
+function kept(listed: ListedEvent, changed: OrganisationEvent): ListedEvent {
+  return listed.id === changed.id ? { ...changed, milestones: listed.milestones } : listed;
 }
 
 function Waiting({ words }: { words: string }) {

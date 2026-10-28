@@ -9,6 +9,26 @@ export const FIELD_DEFAULTS = {
   spellCheck: false,
 } as const;
 
+export interface FieldName {
+  accessibilityLabel?: string | undefined;
+  accessibilityLabelledBy?: string | undefined;
+}
+
+/** On Android a field is named by the label it shows, or while empty by its placeholder: TalkBack reads a content description in place of what the field holds, and again on every key (sc-17281, sc-17333). */
+export function fieldName(
+  os: string,
+  name: string | undefined,
+  shown: { labelID?: string | undefined; placeholder?: string | undefined },
+): FieldName {
+  if (os !== 'android') return { accessibilityLabel: name };
+  if (shown.labelID != null)
+    return { accessibilityLabel: undefined, accessibilityLabelledBy: shown.labelID };
+
+  return shown.placeholder == null || shown.placeholder === ''
+    ? { accessibilityLabel: name }
+    : { accessibilityLabel: undefined };
+}
+
 /** Revealed or not, a password is never corrected, capitalised or kept from a paste. */
 export function passwordProps(revealed: boolean) {
   return {

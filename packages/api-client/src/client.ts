@@ -11,7 +11,10 @@ import {
   type EventType,
   EVENT_PHASES,
   EVENT_STATES,
+  type EventTimeline,
   isEventType,
+  type Milestone,
+  MILESTONE_OWNERS,
   type ServerClock,
   serverClock,
 } from '@soirely/domain';
@@ -341,13 +344,33 @@ export interface OrganisationEvent {
   cover: EventCover | null;
   /** Null until a venue is added: the page says "Venue to be confirmed" (sc-3589). */
   venue: EventVenue | null;
+  /** The names guests read, in order; none until somebody adds one, and Make live waits for one (sc-6713). */
+  hosts: string[];
   /** Null while it is a Draft. */
   madeLiveAt: string | null;
+  /** Null unless its phase is Paused (sc-3586). */
+  pausedAt: string | null;
   /** The server's, as the page shows it on load; a client works one out only to flip it at a boundary (sc-3585). */
   phase: EventPhase;
   /** The end, or when it was ended or called off; null until it is Finished. */
   concludedAt: string | null;
   createdAt: string;
+}
+
+/** As a list shows it: with its timeline's milestones, so the list's Next up is the timeline's (sc-3624). */
+export interface ListedEvent extends OrganisationEvent {
+  milestones: Milestone[];
+}
+
+export interface EventsQuery {
+  finished?: boolean;
+  page?: number;
+  itemsPerPage?: number;
+}
+
+export interface EventsPage {
+  events: ListedEvent[];
+  total: number;
 }
 
 /** The organiser's photo, re-encoded as WebP at each width. `position` is how far down the photo the 16:9 frame sits, 0 to 100. */
@@ -417,8 +440,8 @@ export interface PickedAddress extends VenueAddress {
   timeZone: string | null;
 }
 
-/** What an edit sends: any of the fields, those left out keep their value (sc-3587). */
-export type EventChanges = Partial<NewEvent>;
+/** What an edit sends: any of the fields, those left out keep their value (sc-3587); `hosts` is the whole list (sc-6713). */
+export type EventChanges = Partial<NewEvent> & { hosts?: string[] };
 
 /** An event with its `ETag`, which an edit sends back as `If-Match`. */
 export interface TaggedEvent {
@@ -434,6 +457,8 @@ export interface Membership extends Organisation {
   withheldUntilTwoFactor: string[];
   /** Under a Google-or-Apple-only rule with no provider linked: may read, not change (sc-69). */
   readOnlyUntilLinked: boolean;
+  /** The changes the role holds that the read-only rule keeps back, empty unless `readOnlyUntilLinked` (sc-16265). */
+  withheldUntilLinked: string[];
   /** While this organisation requires two-factor of everyone and this account has none (sc-609). */
   twoFactorDue: TwoFactorDue | null;
   signInRules: OrganisationSignInRules;
@@ -708,7 +733,11 @@ export interface RequestOptions {
 }
 
 export class ApiClient {
-  private refreshing: Promise<boolean> | null = null;
+  /** Bumped whenever the session changes hands, so an answer meant for an earlier one is let go (sc-16226). */
+  private session = 0;
+  private refreshing: { session: number; done: Promise<boolean> } | null = null;
+  /** The session ends when sign-out starts, so no refresh begins until its tokens are cleared. */
+  private signingOut = 0;
 
   constructor(private readonly options: ClientOptions) {}
 
@@ -720,6 +749,7 @@ export class ApiClient {
     path: string,
     init: RequestOptions,
   ): Promise<{ body: T; response: Response }> {
+    const session = this.session;
     let response = await this.send(path, init);
 
     // One retry, and only after a refresh that actually succeeded. Retrying a
@@ -728,6 +758,7 @@ export class ApiClient {
       response.status === 401 &&
       !init.anonymous &&
       this.options.tokens != null &&
+      this.session === session &&
       !(await isAnswer(response))
     ) {
       if (await this.refreshOnce()) {
@@ -1544,20 +1575,40 @@ export class ApiClient {
     );
   }
 
-  /** Soonest first, as the API orders them. */
-  async events(organisationId: string): Promise<OrganisationEvent[]> {
-    const body = await this.get<{ events?: unknown }>(
-      `/api/orgs/${encodeURIComponent(organisationId)}/events`,
-    );
-    const events = Array.isArray(body?.events) ? body.events.map(asOrganisationEvent) : null;
+  /** One page of the unfinished events, soonest first, or of the Finished, most recently finished first; `total` counts every page (sc-3594). */
+  async events(
+    organisationId: string,
+    { finished = false, page = 1, itemsPerPage }: EventsQuery = {},
+  ): Promise<EventsPage> {
+    const query = new URLSearchParams({ finished: String(finished), page: String(page) });
 
-    if (events == null || events.some((event) => event == null)) {
+    if (itemsPerPage != null) query.set('itemsPerPage', String(itemsPerPage));
+
+    const body = await this.get<{ events?: unknown; total?: unknown }>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/events?${query.toString()}`,
+    );
+    const events = Array.isArray(body?.events) ? body.events.map(asListedEvent) : null;
+
+    if (events == null || events.some((event) => event == null) || !isCount(body?.total)) {
       throw new Error(
         'The API answered GET /api/orgs/{id}/events in a shape this client does not know. Check the events controller in services/api.',
       );
     }
 
-    return events as OrganisationEvent[];
+    return { events: events as ListedEvent[], total: body.total };
+  }
+
+  /** Every page of them, so a list can group them by the clock without one falling off a page (sc-3594). */
+  async unfinishedEvents(organisationId: string): Promise<ListedEvent[]> {
+    const events: ListedEvent[] = [];
+
+    for (let page = 1; ; page++) {
+      const read = await this.events(organisationId, { page });
+
+      events.push(...read.events);
+
+      if (read.events.length === 0 || events.length >= read.total) return events;
+    }
   }
 
   /** Refused `validation_failed` with violations on name, type, startsAt, endsAt, timeZone or currency. */
@@ -1567,6 +1618,15 @@ export class ApiClient {
         `/api/orgs/${encodeURIComponent(organisationId)}/events`,
         event,
       ),
+    );
+  }
+
+  /** A Draft set up as the event, from `startsAt` local to its zone (sc-3593). Refused `validation_failed` on startsAt. */
+  async duplicateEvent(eventId: string, startsAt: string): Promise<OrganisationEvent> {
+    return this.organisationEvent(
+      await this.post<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}/duplicate`, {
+        startsAt,
+      }),
     );
   }
 
@@ -1607,6 +1667,21 @@ export class ApiClient {
     return this.organisationEvent(
       await this.get<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}`),
     );
+  }
+
+  /** Earliest first, only the areas the reader's role reads (sc-3624); refused `not_found` as event is. */
+  async eventTimeline(eventId: string): Promise<EventTimeline> {
+    const timeline = asEventTimeline(
+      await this.get<unknown>(`/api/events/${encodeURIComponent(eventId)}/timeline`),
+    );
+
+    if (timeline == null) {
+      throw new Error(
+        'The API answered an event timeline in a shape this client does not know. Check EventTimelineController in services/api.',
+      );
+    }
+
+    return timeline;
   }
 
   /** The event as an edit form opens it, with the tag the save sends back. */
@@ -1716,6 +1791,27 @@ export class ApiClient {
       await this.exchange<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}/end`, {
         method: 'POST',
       }),
+    );
+  }
+
+  /** Refused 409 `event_state_invalid` unless it is Live and not Finished (sc-3586). */
+  async pauseEvent(eventId: string): Promise<TaggedEvent> {
+    return this.tagged(
+      await this.exchange<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}/pause`, {
+        method: 'POST',
+      }),
+    );
+  }
+
+  /** Refused 409 `event_state_invalid` unless it is Paused and not Finished; never by the plan's limit. */
+  async resumeEvent(eventId: string): Promise<TaggedEvent> {
+    return this.tagged(
+      await this.exchange<{ event?: unknown }>(
+        `/api/events/${encodeURIComponent(eventId)}/resume`,
+        {
+          method: 'POST',
+        },
+      ),
     );
   }
 
@@ -2250,21 +2346,31 @@ export class ApiClient {
   }
 
   async signOut(): Promise<void> {
-    const body: Record<string, string> = { refreshTokenIn: this.delivery() };
+    // A refresh in flight rotates the token this sign-out has to end.
+    await this.refreshing?.done.catch(() => false);
+    this.session += 1;
+    this.signingOut += 1;
 
-    if (this.delivery() === 'body') {
-      const token = await this.options.tokens?.refresh();
-      if (token != null && token !== '') body.refreshToken = token;
+    try {
+      const body: Record<string, string> = { refreshTokenIn: this.delivery() };
+
+      if (this.delivery() === 'body') {
+        const token = await this.options.tokens?.refresh();
+        if (token != null && token !== '') body.refreshToken = token;
+      }
+
+      const response = await this.sendTokenRequest('/api/auth/logout', body).catch(() => null);
+
+      // Only the API can clear an httpOnly cookie, so a sign-out it never answered has not happened.
+      if (this.delivery() === 'cookie' && (response == null || response.status >= 500)) {
+        throw new ApiUnreachableError();
+      }
+
+      await this.options.tokens?.clear();
+    } finally {
+      this.session += 1;
+      this.signingOut -= 1;
     }
-
-    const response = await this.sendTokenRequest('/api/auth/logout', body).catch(() => null);
-
-    // Only the API can clear an httpOnly cookie, so a sign-out it never answered has not happened.
-    if (this.delivery() === 'cookie' && (response == null || response.status >= 500)) {
-      throw new ApiUnreachableError();
-    }
-
-    await this.options.tokens?.clear();
   }
 
   /** A 503 is an answer here — it names the dependency that is down — so it is not thrown. */
@@ -2326,14 +2432,22 @@ export class ApiClient {
    * refresh would revoke the whole chain and sign the user out mid-task.
    */
   private refreshOnce(): Promise<boolean> {
-    this.refreshing ??= this.doRefresh().finally(() => {
-      this.refreshing = null;
-    });
+    if (this.signingOut > 0) return Promise.resolve(false);
+    if (this.refreshing?.session === this.session) return this.refreshing.done;
 
-    return this.refreshing;
+    const refreshing = { session: this.session, done: this.doRefresh(this.session) };
+    this.refreshing = refreshing;
+    void refreshing.done
+      .catch(() => false)
+      .finally(() => {
+        if (this.refreshing === refreshing) this.refreshing = null;
+      });
+
+    return refreshing.done;
   }
 
-  private async doRefresh(): Promise<boolean> {
+  /** An answer for a session that has since been signed out of, or out of and into another, neither saves nor signs out. */
+  private async doRefresh(session: number): Promise<boolean> {
     const store = this.options.tokens;
     if (store == null) return false;
 
@@ -2352,6 +2466,7 @@ export class ApiClient {
     );
 
     if (response.status >= 500) throw new ApiUnreachableError();
+    if (this.session !== session) return false;
 
     if (!response.ok) {
       await this.forgetSession(await toProblem(response));
@@ -2359,6 +2474,7 @@ export class ApiClient {
     }
 
     const issued = asIssuedTokens(await response.json().catch(() => null), this.delivery());
+    if (this.session !== session) return false;
 
     if (issued == null) {
       await this.forgetSession();
@@ -2427,6 +2543,7 @@ export class ApiClient {
     credentials: Record<string, string>,
     controller: string,
   ): Promise<SignInOutcome> {
+    this.session += 1;
     const response = await this.sendTokenRequest(path, credentials);
 
     if (response.status === 202) {
@@ -2450,6 +2567,7 @@ export class ApiClient {
     credentials: Record<string, string>,
     controller: string,
   ): Promise<SignedIn> {
+    this.session += 1;
     return this.adopt(await this.sendTokenRequest(path, credentials), path, controller);
   }
 
@@ -2463,12 +2581,14 @@ export class ApiClient {
       );
     }
 
+    this.session += 1;
     await this.options.tokens?.save(tokens);
 
     return { tokens, account, linked: body.linked === true };
   }
 
   private async forgetSession(why?: Problem): Promise<void> {
+    this.session += 1;
     await this.options.tokens?.clear();
     this.options.onSignedOut?.(why);
   }
@@ -2697,6 +2817,63 @@ function asRolesCatalogue(raw: unknown): RolesCatalogue | null {
   };
 }
 
+function asEventTimeline(raw: unknown): EventTimeline | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const { timeZone, milestones } = raw as Record<string, unknown>;
+
+  if (typeof timeZone !== 'string' || !Array.isArray(milestones)) return null;
+
+  const read = milestones.map(asMilestone);
+
+  return read.every((one) => one != null) ? { timeZone, milestones: read } : null;
+}
+
+function asMilestone(raw: unknown): Milestone | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const { at, title, note, owner, area, action } = raw as Record<string, unknown>;
+  const known = oneOf(owner, MILESTONE_OWNERS);
+  const link =
+    action === null
+      ? null
+      : typeof action === 'object' &&
+          action != null &&
+          'label' in action &&
+          'link' in action &&
+          typeof action.label === 'string' &&
+          typeof action.link === 'string'
+        ? { label: action.label, link: action.link }
+        : undefined;
+
+  if (
+    typeof at !== 'string' ||
+    typeof title !== 'string' ||
+    !isStringOrNull(note) ||
+    typeof area !== 'string' ||
+    known == null ||
+    link === undefined
+  ) {
+    return null;
+  }
+
+  return { at, title, note, owner: known, area, action: link };
+}
+
+function asListedEvent(raw: unknown): ListedEvent | null {
+  const event = asOrganisationEvent(raw);
+  const milestones = (raw as { milestones?: unknown } | null)?.milestones;
+  const read = Array.isArray(milestones) ? milestones.map(asMilestone) : null;
+
+  return event == null || read == null || read.some((one) => one == null)
+    ? null
+    : { ...event, milestones: read as Milestone[] };
+}
+
+function isCount(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0;
+}
+
 function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   if (typeof raw !== 'object' || raw == null) return null;
 
@@ -2717,7 +2894,9 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   const dayCount = candidate.dayCount;
   const cover = candidate.cover === null ? null : asEventCover(candidate.cover);
   const venue = candidate.venue === null ? null : asEventVenue(candidate.venue);
+  const hosts = candidate.hosts;
   const madeLiveAt = candidate.madeLiveAt;
+  const pausedAt = candidate.pausedAt;
   const phase = oneOf(candidate.phase, EVENT_PHASES);
   const concludedAt = candidate.concludedAt;
 
@@ -2726,9 +2905,12 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     phase == null ||
     !isStringOrNull(concludedAt) ||
     !isStringOrNull(madeLiveAt) ||
+    !isStringOrNull(pausedAt) ||
     type == null ||
     cover === undefined ||
     venue === undefined ||
+    !Array.isArray(hosts) ||
+    hosts.some((host) => typeof host !== 'string') ||
     fields.some((field) => typeof candidate[field] !== 'string') ||
     typeof dayCount !== 'number' ||
     !Number.isInteger(dayCount) ||
@@ -2749,7 +2931,9 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     currency: candidate.currency as string,
     cover,
     venue,
+    hosts: hosts as string[],
     madeLiveAt,
+    pausedAt,
     phase,
     concludedAt,
     createdAt: candidate.createdAt as string,
@@ -3092,6 +3276,7 @@ function asMembership(raw: unknown): Membership | null {
       : [],
     withheldUntilTwoFactor: stringList(candidate.withheldUntilTwoFactor) ?? [],
     readOnlyUntilLinked: candidate.readOnlyUntilLinked === true,
+    withheldUntilLinked: stringList(candidate.withheldUntilLinked) ?? [],
     twoFactorDue: asTwoFactorDue(candidate.twoFactorDue),
     signInRules: asOrganisationSignInRules(candidate.signInRules) ?? {
       providerOnly: false,

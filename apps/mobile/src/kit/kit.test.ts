@@ -4,6 +4,7 @@ import { tokens } from '../theme/tokens.ts';
 import {
   codeProps,
   FIELD_DEFAULTS,
+  fieldName,
   type FieldText,
   fieldText,
   nextPin,
@@ -519,5 +520,32 @@ describe('a field through a text-size change', () => {
 
     expect(nextPin(typedAfter, 1.3, 1)).toEqual({ pinned: 'grace@example.com', scale: 1.3 });
     expect(nextPin(typedAfter, 1.3, 1.3)).toEqual({ pinned: undefined, scale: 1.3 });
+  });
+});
+
+describe('a field on Android is named by what it shows, so TalkBack reads what it holds (sc-17333)', () => {
+  it('is named by the label its Field shows', () => {
+    expect(fieldName('android', 'Event name', { labelID: 'r1' })).toEqual({
+      accessibilityLabel: undefined,
+      accessibilityLabelledBy: 'r1',
+    });
+  });
+
+  it('is named by its placeholder when it shows no label', () => {
+    expect(fieldName('android', 'Search countries', { placeholder: 'Search countries' })).toEqual({
+      accessibilityLabel: undefined,
+    });
+  });
+
+  it('keeps its content description when it shows no name at all', () => {
+    expect(fieldName('android', 'Code', { placeholder: '' })).toEqual({
+      accessibilityLabel: 'Code',
+    });
+  });
+
+  it('keeps its label on iOS, where VoiceOver reads the value beside it', () => {
+    expect(fieldName('ios', 'Event name', { labelID: 'r1' })).toEqual({
+      accessibilityLabel: 'Event name',
+    });
   });
 });

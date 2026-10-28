@@ -33,13 +33,28 @@ screenshot. `shared-flows-chained-*` run them one after another, as a batch woul
 | `open-switcher`            | Your organisations               | `mobile-switcher`            |
 | `open-create-organisation` | the Create an organisation sheet | `mobile-create-organisation` |
 | `return-home`              | Home                             | none                         |
+| `switch-organisation`      | Home, in the organisation `ORG`  | none                         |
 
-`sign-in-screen-english` picks English on the sign-in screen, for a phone a run in another
-language left signed out: `sign-in`'s first wait is on the English 'Email'.
+`sign-in-screen-language` picks the one passed as `LANGUAGE`, by its chip, before
+`sign-in-any-language`. `sign-in-screen-english` runs it with `LANGUAGE: English`, for a phone
+a run in another language left signed out: `sign-in`'s first wait is on the English 'Email'.
+`text-size-signed-out` starts with it too, so a change to the chip row lands in one flow.
 
 Two flows tap one control by `testID`, passed as `ID`: `scroll-tap` scrolls to it from above
 or below, for a step inside another flow; `ownership-tap` takes a screenshot of what follows
 and turns off the retry, for a button whose request is held.
+
+Signing in, each on its own outcome:
+
+| Flow                   | Needs                                        | Leaves the app on                     |
+| ---------------------- | -------------------------------------------- | ------------------------------------- |
+| `sign-in-unverified`   | `EMAIL`, `PASSWORD` of an unverified account | the verification gate                 |
+| `verify-email`         | the same                                     | past the gate, with the newest code   |
+| `verify-email-refused` | the same                                     | the gate, a new code on its countdown |
+| `sign-in-locked`       | `EMAIL`, a fresh address                     | sign-in, past the limit               |
+| `signed-out-elsewhere` | a session ended from another client          | sign-in, with "You were signed out"   |
+
+`verify-email` reads the code from Mailpit with `scripts/latest-code.js`.
 
 A flow a tester writes is posted to `[ops]` on the story they were testing, and ops commits
 it here.

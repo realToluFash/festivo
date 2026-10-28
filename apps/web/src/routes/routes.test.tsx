@@ -1,5 +1,7 @@
 import { type Account } from '@soirely/api-client';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -258,6 +260,16 @@ describe('the application tree', () => {
     expect(screen.queryByRole('heading', { level: 1, name: 'Sign in' })).toBeNull();
   });
 
+  it("stacks the sidebar from a tablet's width down only as tall as what it holds (sc-17608)", () => {
+    const styles = readFileSync(join(import.meta.dirname, '../styles.css'), 'utf8');
+    const stacked = /@media \(width <= 60rem\) \{[^@]*?\n {2}\.shell \{([^}]*)\}/u.exec(
+      styles,
+    )?.[1];
+
+    expect(stacked).toMatch(/grid-template-columns: minmax\(0, 1fr\);/u);
+    expect(stacked).toMatch(/grid-template-rows: auto 1fr;/u);
+  });
+
   describe("at a phone's width, the menu (sc-13413)", () => {
     beforeEach(() => {
       vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
@@ -393,6 +405,22 @@ describe('the application tree', () => {
       const dialog = openMenu();
       expect(menu.getAttribute('aria-expanded')).toBe('true');
       expect(menu.getAttribute('aria-controls')).toBe(dialog.id);
+    });
+
+    it('makes the page behind it inert while it is open', () => {
+      const { container } = at('/app');
+      const behind = () => [
+        container.querySelector('.skip-link')!,
+        container.querySelector('.shell-sidebar')!,
+        container.querySelector('main#content')!,
+      ];
+
+      openMenu();
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(behind().every((element) => !element.hasAttribute('inert'))).toBe(true);
+
+      openMenu();
+      expect(behind().every((element) => element.hasAttribute('inert'))).toBe(true);
     });
 
     it('keeps Tab inside while it is open', () => {

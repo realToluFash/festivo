@@ -1,0 +1,80 @@
+# The signed-out screens at whatever text size the simulator is set to, top and scrolled. sc-13281.
+#
+#   node .qa/bin/qa-env.mjs maestro text-size-signed-out EMAIL=… SHOT=…
+#
+# No `env:` block: a default there shadows the value passed with -e.
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-screen-language.yaml
+- waitForAnimationToEnd:
+    timeout: 5000
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- takeScreenshot: ${SHOT}-sign-in
+- scroll
+- takeScreenshot: ${SHOT}-sign-in-scrolled
+- scrollUntilVisible:
+    element:
+      id: 'signIn.email'
+    direction: UP
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- scrollUntilVisible:
+    element:
+      id: 'signIn.password'
+- tapOn:
+    id: 'signIn.password'
+- eraseText: 120
+- inputText: 'not-the-password'
+- takeScreenshot: ${SHOT}-sign-in-keyboard
+- scrollUntilVisible:
+    element:
+      id: 'signIn.submit'
+- tapOn:
+    id: 'signIn.submit'
+- runFlow:
+    when:
+      visible: 'Save Password?'
+    commands:
+      - tapOn: 'Not Now'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: ${SHOT}-sign-in-refused
+- scroll
+- takeScreenshot: ${SHOT}-sign-in-refused-scrolled
+- openLink: ${METRO_URL}/--/register
+- extendedWaitUntil:
+    visible:
+      id: 'register.name'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: ${SHOT}-register
+- scrollUntilVisible:
+    element:
+      id: 'register.submit'
+- takeScreenshot: ${SHOT}-register-scrolled
+- tapOn:
+    id: 'register.submit'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: ${SHOT}-register-blank
+- scrollUntilVisible:
+    element:
+      id: 'register.name'
+    direction: UP
+- takeScreenshot: ${SHOT}-register-blank-top
+- openLink: ${METRO_URL}/--/forgot-password
+- extendedWaitUntil:
+    visible:
+      id: 'recovery.email'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: ${SHOT}-forgot
+- scroll
+- takeScreenshot: ${SHOT}-forgot-scrolled

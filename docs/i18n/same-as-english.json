@@ -56,6 +56,7 @@
     "web:eventTypes.baby_shower",
     "mobile:eventTypes.baby_shower",
     "web:eventForm.type",
+    "web:eventDuplicate.copiedType",
     "mobile:eventForm.type",
     "mobile:eventForm.date"
   ],

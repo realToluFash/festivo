@@ -75,6 +75,12 @@ final readonly class Grants
         return $this->withheld;
     }
 
+    /** @return list<Permission> the changes the role holds that the read-only rule keeps back until a provider is linked */
+    public function withheldUntilLinked(): array
+    {
+        return $this->readOnly ? Vec\filter(Permission::cases(), fn (Permission $permission): bool => $permission->isChange() && $this->roleHolds($permission)) : [];
+    }
+
     public function isReadOnly(): bool
     {
         return $this->readOnly;

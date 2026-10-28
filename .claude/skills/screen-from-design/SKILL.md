@@ -72,9 +72,18 @@ its list; tablet landscape keeps a detail pane put while the list is browsed. Na
 overlays and the primary action all change form, not just size.
 
 - **`apps/mobile/src/layout/classify.ts` is the only thing that decides which layout it
-  is.** `classifyLayout()` reads the _smaller_ dimension and the orientation, never width
-  alone — width alone makes a landscape phone report as a tablet. Use `useLayout().kind`.
-  Never re-derive a breakpoint in a screen.
+  is.** `classifyLayout()` reads the _smaller_ dimension first, never width alone — width
+  alone makes a landscape phone report as a tablet. Under 600 on the smaller side is the
+  phone layout. Width then only ever steps a window down: under 744 wide is the phone
+  layout, and a window wider than tall is the landscape layout only from 964 wide, else
+  portrait (sc-12241). The limits are the columns each layout holds, measured on the app's
+  whole frame, bars included (`useWindowFrame()`), never Android's window, which leaves out
+  the navigation bar. Use
+  `useLayout().kind`. Never re-derive a breakpoint in a screen.
+- **A list beside its page** goes through `ListAndPage`: on its side, the list sits beside
+  the page only where the page keeps 360, and the two show one at a time, as upright,
+  anywhere else. A screen built on it reads `useListAndPageKind()`, not `useLayout()`, and
+  hands that kind to `ListAndPage`, so the screen and the component never decide apart.
 - **Grep the design for the layout before trusting that it drew it.** An artboard
   frequently draws one layout and the foundations describe three. No mention of
   `landscape` or `tablet` in the artboard means it was **not drawn**, not that there is no

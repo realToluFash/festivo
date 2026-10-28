@@ -15,6 +15,7 @@ const organisation: Membership = {
   permissions: ['organisation.manage'],
   withheldUntilTwoFactor: [],
   readOnlyUntilLinked: false,
+  withheldUntilLinked: [],
   twoFactorDue: null,
   signInRules: {
     providerOnly: false,
@@ -98,7 +99,20 @@ describe('saving the Organisation page', () => {
 
     expect(
       await saveOrganisation(update, organisation, { ...detailsOf(organisation), locale: 'fr' }),
-    ).toEqual({ kind: 'forbidden' });
+    ).toEqual({ kind: 'forbidden', byRule: false });
+  });
+
+  it('says a sign-in rule refused it, not the role, when one took hold after the page opened', async () => {
+    for (const code of ['oauth_only_unlinked', 'organisation_two_factor_required']) {
+      const problem = { type: `https://soirely.com/errors/${code}`, title: 'No.', status: 403 };
+      const update = vi.fn(async () => {
+        throw new ApiError(problem, new Response(JSON.stringify(problem), { status: 403 }));
+      });
+
+      expect(
+        await saveOrganisation(update, organisation, { ...detailsOf(organisation), locale: 'fr' }),
+      ).toEqual({ kind: 'forbidden', byRule: true });
+    }
   });
 
   it('fails whole on anything else', async () => {

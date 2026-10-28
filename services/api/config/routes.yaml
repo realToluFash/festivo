@@ -14,3 +14,6 @@ when@test:
     access_fixtures:
         resource: ../tests/Fixtures/Access/
         type: attribute
+    crash_fixtures:
+        resource: ../tests/Fixtures/Crash/
+        type: attribute

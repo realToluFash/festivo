@@ -17,6 +17,9 @@ import {
   allowCleartext,
   batchCheck,
   batchFlow,
+  batchRuns,
+  afterRun,
+  batchSummary,
   checkId,
   codeStep,
   databaseCommands,
@@ -44,6 +47,8 @@ import {
   expoSdkMajor,
   forAndroid,
   linkIntent,
+  MAX_RESUMES,
+  resumeBatch,
   maestroTarget,
   parseTarget,
   passwordAutoFillFiles,
@@ -295,10 +300,20 @@ describe('a release build', () => {
     ).toEqual(['soirely-0123456789ab.apk']);
   });
 
-  it('names the launch video by platform, so both launches of a commit are kept', () => {
+  it('names the launch video by platform and device, so every launch of a commit is kept', () => {
     const sha = 'c8646738ce1413ea1e718dce85ff4973f0f9b22c';
-    expect(launchVideo('/qa', sha, 'ios')).toBe('/qa/.qa/release/launch-c8646738ce14.ios.mp4');
-    expect(launchVideo('/qa', sha, 'android')).not.toBe(launchVideo('/qa', sha, 'ios'));
+    expect(launchVideo('/qa', sha, 'ios', 'phone')).toBe(
+      '/qa/.qa/release/launch-c8646738ce14.ios.phone.mp4',
+    );
+    expect(launchVideo('/qa', sha, 'ios', 'ipad')).not.toBe(
+      launchVideo('/qa', sha, 'ios', 'phone'),
+    );
+    expect(launchVideo('/qa', sha, 'android', 'phone')).not.toBe(
+      launchVideo('/qa', sha, 'ios', 'phone'),
+    );
+    expect(launchVideo('/qa', sha, 'android', 'tablet')).not.toBe(
+      launchVideo('/qa', sha, 'android', 'phone'),
+    );
   });
 
   it('keeps the app beside the APK, and replaces only an older app', () => {
@@ -729,11 +744,15 @@ describe('a check in a batch', () => {
     '',
   ].join('\n');
 
-  it('starts from a reload, names its screenshots for itself, and reports it passed', () => {
+  it('reports it started, starts from a reload, names its screenshots, and reports it passed', () => {
     expect(batchCheck(flow, 'settings', 'es', { reset: true })).toBe(
       [
         'appId: host.exp.Exponent',
         '---',
+        '- runScript:',
+        '    file: ../batch/helper.js',
+        '    env:',
+        "      ASK: '/started?check=settings.es'",
         '- runFlow: ../batch/reset.yaml',
         '- openLink: ${METRO_URL}/--/settings',
         '- takeScreenshot: settings.es-settings',
@@ -772,6 +791,14 @@ describe('a batch flow', () => {
     const flow = batchFlow({ checks: ['home'], languages: ['en'], cold: false });
     expect(flow.indexOf("ASK: '/reload'")).toBeGreaterThan(flow.indexOf('launchApp'));
     expect(flow.indexOf("ASK: '/reload'")).toBeLessThan(flow.indexOf('session.yaml'));
+  });
+
+  it('picks up after a crash in the language it stopped in', () => {
+    const rest = batchRuns(['home', 'settings'], ['en', 'es']).slice(1);
+    const flow = batchFlow({ runs: rest });
+    expect(flow).not.toContain('_checks/home.en.yaml');
+    expect(flow.match(/\/language\?to=/g)).toHaveLength(1);
+    expect(flow.indexOf('_checks/settings.en.yaml')).toBeLessThan(flow.indexOf('/language?to=es'));
   });
 
   it('relaunches and signs out first when it is one check, cold', () => {
@@ -872,6 +899,97 @@ describe('Expo Go after a reload', () => {
   });
 });
 
+describe('the list a batch ends with', () => {
+  it('names the check the driver died in, and those it never reached', () => {
+    expect(
+      batchSummary(['home', 'settings', 'roles', 'members'], {
+        passed: new Set(['home', 'members']),
+        begun: ['home', 'settings', 'members'],
+        crashed: ['settings'],
+      }),
+    ).toEqual([
+      '✓ home',
+      "✗ settings: Maestro's driver stopped answering (a driver crash)",
+      '✗ roles: not run',
+      '✓ members',
+    ]);
+  });
+});
+
+describe('what a Maestro run that lost its driver leaves to resume', () => {
+  const runs = ['home', 'settings', 'roles', 'members'].map((check) => ({
+    check,
+    language: 'any',
+  }));
+
+  it('blames the check the driver died in and resumes past it', () => {
+    expect(
+      afterRun(runs, { begun: ['home', 'settings'], from: 0, passed: new Set(['home']) }),
+    ).toEqual({ crashed: 'settings', rest: runs.slice(2) });
+  });
+
+  it('resumes past a check that passed before the driver died, blaming nobody', () => {
+    expect(
+      afterRun(runs, {
+        begun: ['home', 'settings'],
+        from: 0,
+        passed: new Set(['home', 'settings']),
+      }),
+    ).toEqual({ crashed: null, rest: runs.slice(2) });
+  });
+
+  it('stops when a resumed run reaches no new check, blaming nobody', () => {
+    expect(
+      afterRun(runs.slice(2), { begun: ['home', 'settings'], from: 2, passed: new Set(['home']) }),
+    ).toEqual({ crashed: null, rest: [] });
+  });
+
+  it('resumes nothing after a run that reached its last check, even one that failed', () => {
+    expect(
+      afterRun(runs, {
+        begun: ['home', 'settings', 'roles', 'members'],
+        from: 0,
+        passed: new Set(['home']),
+      }),
+    ).toEqual({ crashed: null, rest: [] });
+  });
+
+  it('lists a cold check that failed on its own as a plain failure, not a crash', () => {
+    expect(
+      afterRun([runs[1]], { begun: ['home', 'settings'], from: 1, passed: new Set(['home']) }),
+    ).toEqual({ crashed: null, rest: [] });
+  });
+
+  it('blames the last check of a run the watchdog stopped, resuming nothing', () => {
+    expect(
+      afterRun(runs, {
+        begun: ['home', 'settings', 'roles', 'members'],
+        from: 0,
+        passed: new Set(['home']),
+        stalled: true,
+      }),
+    ).toEqual({ crashed: 'members', rest: [] });
+  });
+
+  it('stops resuming after the cap when every resume crashes on the same check', async () => {
+    let resumes = 0;
+    await resumeBatch(runs, async (rest) => {
+      resumes++;
+      return { rest: resumes > 20 ? [] : rest };
+    });
+    expect(resumes).toBe(MAX_RESUMES);
+  });
+
+  it('stops resuming once a resume leaves nothing to run', async () => {
+    let resumes = 0;
+    await resumeBatch(runs, async () => {
+      resumes++;
+      return { rest: [] };
+    });
+    expect(resumes).toBe(1);
+  });
+});
+
 describe('the time a Maestro run is given', () => {
   it('grows with its checks, and stops a hung single check within minutes', () => {
     expect(runBudgetMs(1)).toBe(7 * 60_000);
@@ -886,6 +1004,25 @@ describe('the time a Maestro run is given', () => {
     });
     expect(ok).toBe(false);
     expect(Date.now() - started).toBeLessThan(5_000);
+  });
+
+  it('stops a run that has stopped reaching the harness, long before its budget', async () => {
+    const stall = { ms: 300, heard: { at: Date.now() } };
+    const ok = await runAsync(process.execPath, ['-e', 'setInterval(() => {}, 1e3)'], {
+      timeoutMs: 60_000,
+      stall,
+    });
+    expect(ok).toBe(false);
+    expect(stall.stalled).toBe(true);
+  });
+
+  it('leaves a run alone while it keeps reaching the harness', async () => {
+    const stall = { ms: 300, heard: { at: Date.now() } };
+    const beat = setInterval(() => (stall.heard.at = Date.now()), 50);
+    const ok = await runAsync(process.execPath, ['-e', 'setTimeout(() => {}, 1_000)'], { stall });
+    clearInterval(beat);
+    expect(ok).toBe(true);
+    expect(stall.stalled).toBeUndefined();
   });
 });
 

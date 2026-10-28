@@ -3,15 +3,58 @@ import configPlugins, { type ConfigPlugin } from 'expo/config-plugins.js';
 const { AndroidConfig, withAndroidManifest, withMainActivity } = configPlugins;
 
 const IMPORTS = [
+  'import android.content.ComponentCallbacks',
   'import android.content.res.Configuration',
   'import com.facebook.react.bridge.LifecycleEventListener',
+  'import com.facebook.react.uimanager.DisplayMetricsHolder',
+  'import com.facebook.react.uimanager.PixelUtil',
 ];
 
-// React Native tells JavaScript about a new font scale only on resume, so a change made while the app stays open would never reach it.
+// React Native measures text against the application's font scale, which Android may update after the activity's: a layout in between keeps the old size under the new scale, and its measurement is cached.
+// React Native asks for that layout only when the application's scale has moved, so the activity asks for it when the activity's has.
+// React Native tells JavaScript about a new font scale only on resume, and reads it from the application, so the forward waits until the application has the activity's current scale, however many changes it is behind.
 // DeviceInfo is internal to React Native, so a debug build fails here on the first upgrade that renames it or drops the interface.
 const OVERRIDE = `
+  private var fontScaleWait: ComponentCallbacks? = null
+
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)
+    val measuredScale = PixelUtil.toPixelFromSP(1.0)
+    DisplayMetricsHolder.initDisplayMetrics(this)
+    if (PixelUtil.toPixelFromSP(1.0) != measuredScale) {
+      reactDelegate?.reactRootView?.requestLayout()
+    }
+    if (!forwardOnceApplicationCaughtUp() && fontScaleWait == null) {
+      fontScaleWait = object : ComponentCallbacks {
+        override fun onConfigurationChanged(applicationConfig: Configuration) {
+          forwardOnceApplicationCaughtUp()
+        }
+
+        override fun onLowMemory() = Unit
+      }.also { application.registerComponentCallbacks(it) }
+    }
+  }
+
+  override fun onDestroy() {
+    stopWaitingForApplication()
+    super.onDestroy()
+  }
+
+  private fun forwardOnceApplicationCaughtUp(): Boolean {
+    if (application.resources.configuration.fontScale != resources.configuration.fontScale) {
+      return false
+    }
+    stopWaitingForApplication()
+    forwardFontScale()
+    return true
+  }
+
+  private fun stopWaitingForApplication() {
+    fontScaleWait?.let { application.unregisterComponentCallbacks(it) }
+    fontScaleWait = null
+  }
+
+  private fun forwardFontScale() {
     val context = reactHost?.currentReactContext ?: return
     val deviceInfo = context.getNativeModule("DeviceInfo") as? LifecycleEventListener
     check(deviceInfo != null || !BuildConfig.DEBUG) {
@@ -30,9 +73,9 @@ export function withFontScaleHandled(configChanges: string | undefined): string 
 
 /** MainActivity.kt, passing a configuration change on to JavaScript at once. */
 export function withFontScaleForwarded(source: string): string {
-  if (source.includes('override fun onConfigurationChanged')) {
+  if (/override fun (onConfigurationChanged|onDestroy)\b/.test(source)) {
     throw new Error(
-      'MainActivity already handles configuration changes; merge the font-scale forward into it.',
+      'MainActivity already handles configuration changes or its destruction; merge the font-scale forward into it.',
     );
   }
   const missing = IMPORTS.filter((line) => !source.includes(line));

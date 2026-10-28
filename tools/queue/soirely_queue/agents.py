@@ -257,8 +257,9 @@ def down(db, home, platform, say=print, now=False, sleep=time.sleep, wait=WAIT_S
             waited += 10
         platform.stop_workers()
     for name in workers:
-        held = store.held_by(db, machine.worker_role(name), worker=name)
-        if held and not platform.worker_active(name):
+        if platform.worker_active(name):
+            continue
+        for held in store.held(db, machine.worker_role(name), worker=name):
             store.release(db, held["id"])
             say(f"{name}: gave back item {held['id']}")
     for role in listed:

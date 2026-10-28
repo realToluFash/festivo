@@ -7,7 +7,6 @@ namespace App\Domain\Organisation\Deletion;
 use App\Entity\Organisation;
 use App\Repository\EventRepository;
 use App\Repository\MembershipRepository;
-use Psl\Iter;
 
 /** What a deletion destroys, counted for the confirmation (sc-68). */
 final readonly class OrganisationHoldings
@@ -24,7 +23,7 @@ final readonly class OrganisationHoldings
         return [
             'events' => $this->eventRepository->countInOrganisation($organisation),
             'guests' => 0,
-            'members' => Iter\count($this->membershipRepository->findActiveIn($organisation)),
+            'members' => $this->membershipRepository->countActiveIn($organisation),
         ];
     }
 }
