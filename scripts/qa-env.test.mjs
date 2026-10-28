@@ -23,6 +23,7 @@ import {
   batchRuns,
   afterRun,
   batchSummary,
+  bundlerEnv,
   checkId,
   codeStep,
   databaseCommands,
@@ -196,6 +197,19 @@ describe('the QA .env against compose.yaml', () => {
       expect(overrides.OAUTH_APPLE_ISSUERS.split(',')).toContain(`${sandbox}apple`);
       expect(app.EXPO_PUBLIC_API_URL).toBe(`http://127.0.0.1:${ports.API_PORT}`);
     }
+  });
+});
+
+describe('the bundler environment', () => {
+  it('starts Metro without a file watcher, for the QA app', () => {
+    const env = bundlerEnv({ PATH: '/bin', CI: '' }, { EXPO_PUBLIC_API_URL: 'http://api' });
+
+    expect(env).toEqual({
+      PATH: '/bin',
+      EXPO_PUBLIC_API_URL: 'http://api',
+      EXPO_PUBLIC_ENVIRONMENT: 'qa',
+      CI: '1',
+    });
   });
 });
 
