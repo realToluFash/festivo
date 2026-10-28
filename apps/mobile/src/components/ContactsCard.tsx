@@ -2,6 +2,7 @@ import { type Account, ApiError, type Provider } from '@soirely/api-client';
 import {
   CONTACTS_MOST,
   contactActions,
+  confirmWith,
   contactsLeft,
   formatPhone,
   formatTimeOfDay,
@@ -92,7 +93,7 @@ export function ContactsCards({
         country={account.organisationCountry ?? ''}
         verified={verified}
         confirming={{
-          via: account.hasPassword ? 'password' : (account.providers[0]?.provider ?? null),
+          via: confirmWith(account.hasPassword, account.providers),
           twoFactorOn,
         }}
         onChanged={onChanged}

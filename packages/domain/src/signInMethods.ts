@@ -33,16 +33,25 @@ export function providerRows(
   });
 }
 
+/** How to confirm it is you when no provider is acted on: the password, else the provider linked first. */
+export function confirmWith(
+  hasPassword: boolean,
+  linked: readonly { provider: SignInProvider }[],
+): 'password' | SignInProvider | null {
+  if (hasPassword) return 'password';
+
+  return linked[0]?.provider ?? null;
+}
+
 /** How to confirm it is you: the password, else the provider acted on if linked, else the one that is. */
 export function proveWith(
   hasPassword: boolean,
   linked: readonly { provider: SignInProvider }[],
   actingOn: SignInProvider,
 ): 'password' | SignInProvider | null {
-  if (hasPassword) return 'password';
-  if (linked.some((entry) => entry.provider === actingOn)) return actingOn;
+  if (!hasPassword && linked.some((entry) => entry.provider === actingOn)) return actingOn;
 
-  return linked[0]?.provider ?? null;
+  return confirmWith(hasPassword, linked);
 }
 
 /** The way in left once a provider is unlinked: the password if set, else the other provider. */

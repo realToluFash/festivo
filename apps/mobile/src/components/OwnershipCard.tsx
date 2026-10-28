@@ -3,8 +3,9 @@ import {
   type Membership,
   type OrganisationDeletion,
   type OrganisationMember,
+  type Provider,
 } from '@soirely/api-client';
-import { roleName, typedNameMatches } from '@soirely/domain';
+import { PROOF_MINUTES, confirmWith, roleName, typedNameMatches } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type Ref, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
@@ -13,8 +14,10 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
 import { refusalTitle } from '../kit/refusal.ts';
+import { keptProof, keptProofRanOut, signedInWith, tripRefused } from '../kit/waysProof.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
-import { reloadSignedIn } from '../signedIn.ts';
+import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
+import { reloadSignedIn, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
@@ -50,6 +53,8 @@ export function OwnershipCard({
 }) {
   const { t } = useTranslation();
   const owner = organisation.role.seededAs === 'owner';
+  const { account } = useSignedIn();
+  const via = account == null ? 'password' : confirmWith(account.hasPassword, account.providers);
   const [step, setStep] = useState<Step>({ kind: 'resting', flash: null });
   const [members, setMembers] = useState<OrganisationMember[] | null>(null);
   const opener = useFocusBackToOpener(step.kind === 'resting' ? step.closed : undefined);
@@ -96,7 +101,14 @@ export function OwnershipCard({
           {owner && (
             <Row
               title={t('ownership.transfer')}
-              note={t('ownership.transferNote', { organisation: name })}
+              note={
+                via === 'password' || via == null
+                  ? t('ownership.transferNote', { organisation: name })
+                  : t('ownership.transferNoteProvider', {
+                      organisation: name,
+                      provider: PROVIDER_NAMES[via],
+                    })
+              }
               action={t('ownership.transfer')}
               opener={opener('transfer')}
               onPress={() => setStep({ kind: 'transfer', fromLeave: false })}
@@ -128,6 +140,7 @@ export function OwnershipCard({
         <Transfer
           answer={step}
           organisation={organisation}
+          via={via}
           candidates={others}
           onCancel={() => backTo(step.fromLeave ? 'leave' : 'transfer')}
           onDone={(to) =>
@@ -186,20 +199,32 @@ function Row({
 
 type TransferField = 'owner' | 'password' | 'code';
 
+/** Google or Apple brought the owner back: the proof, or the code still to come when two-factor is on. */
+interface Vouched {
+  email: string | null;
+  proof: string | null;
+}
+
 function Transfer({
   answer,
   organisation,
+  via,
   candidates,
   onCancel,
   onDone,
 }: {
   answer: Step;
   organisation: Membership;
+  via: 'password' | Provider | null;
   candidates: OrganisationMember[];
   onCancel: () => void;
   onDone: (name: string) => void;
 }) {
   const { t } = useTranslation();
+  const provider = via === 'password' ? null : via;
+  const [vouched, setVouched] = useState<Vouched | null>(null);
+  // The five minutes from Google's or Apple's sign-in ran out before the press: back to Continue, the owner kept.
+  const [expired, setExpired] = useState<object | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
@@ -220,7 +245,9 @@ function Transfer({
     (field, value) => {
       if (field === 'owner') return value === '' ? t('ownership.ownerBlank') : null;
       if (field === 'password')
-        return pending == null && value === '' ? t('ownership.passwordBlank') : null;
+        return provider == null && pending == null && value === ''
+          ? t('ownership.passwordBlank')
+          : null;
 
       return codeAsked && value.trim() === '' ? t('ownership.codeBlank') : null;
     },
@@ -230,15 +257,55 @@ function Transfer({
     },
   );
 
+  async function continueWith(by: Provider): Promise<void> {
+    if (busy || !checks.passes({ owner: picked ?? '', password, code })) return;
+
+    setBusy(true);
+    setRefused(null);
+    setExpired(null);
+
+    try {
+      const { proof } = await api.prove({
+        provider: by,
+        signIn: await confirmWithProvider(by, true),
+      });
+      setVouched({ email: null, proof });
+    } catch (error) {
+      const signedIn = signedInWith(by, error, null);
+      if (signedIn != null) {
+        setPending(keptProof(error, null));
+        setVouched({ ...signedIn, proof: null });
+        setCodeAsked(true);
+      } else {
+        // Closing Google or Apple says so too: nothing was transferred, and the owner stays chosen.
+        setRefused({
+          field: null,
+          message: tripRefused(error)
+            ? t('waysCard.providerRefused', { provider: PROVIDER_NAMES[by] })
+            : t('waysCard.providerFailed', { provider: PROVIDER_NAMES[by] }),
+        });
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function submit(): Promise<void> {
     if (busy || !checks.passes({ owner: picked ?? '', password, code }) || chosen == null) return;
+    if (provider != null && vouched == null) return;
 
     setBusy(true);
     setRefused(null);
 
     try {
-      const first = pending != null ? { pendingProof: pending } : { password };
-      const { proof } = await api.prove(first, codeAsked ? code.trim() : undefined);
+      const proof =
+        vouched?.proof ??
+        (
+          await api.prove(
+            pending != null ? { pendingProof: pending } : { password },
+            codeAsked ? code.trim() : undefined,
+          )
+        ).proof;
       await api.transferOwnership(organisation.id, chosen.id, proof);
       await reloadSignedIn();
       onDone(chosen.user.name);
@@ -246,6 +313,16 @@ function Transfer({
       setBusy(false);
       if (!(error instanceof ApiError)) {
         setRefused({ field: null, message: t('ownership.failed') });
+
+        return;
+      }
+
+      if (keptProofRanOut(error, vouched != null)) {
+        setVouched(null);
+        setPending(null);
+        setCodeAsked(false);
+        setCode('');
+        setExpired({});
 
         return;
       }
@@ -309,7 +386,19 @@ function Transfer({
         {ownerError != null && <FieldError message={ownerError} />}
       </View>
 
-      {pending == null && (
+      {expired != null && provider != null && (
+        <Notice
+          tone="attention"
+          mark="!"
+          body={t('waysCard.proofExpired', {
+            provider: PROVIDER_NAMES[provider],
+            count: PROOF_MINUTES,
+          })}
+          answer={expired}
+        />
+      )}
+
+      {provider == null && pending == null && (
         <Field
           label={t('ownership.password')}
           error={passwordError}
@@ -333,6 +422,29 @@ function Transfer({
             testID="ownership.password"
           />
         </Field>
+      )}
+
+      {provider != null && vouched == null && (
+        <>
+          <Text size={tokens.typeSmall.size} style={styles.secondary}>
+            {t('waysCard.proveWithProvider', { provider: PROVIDER_NAMES[provider] })}
+          </Text>
+          <Text size={tokens.typeSmall.size} style={styles.secondary}>
+            {t('ownership.passwordWhy', { organisation: name })}
+          </Text>
+        </>
+      )}
+
+      {provider != null && vouched != null && (
+        <Notice
+          tone="quiet"
+          mark={tokens.marks.done.glyph}
+          markTone="done"
+          title={t('waysCard.signedInWith', { provider: PROVIDER_NAMES[provider] })}
+          accentTitle
+          detail={vouched.email}
+          announce
+        />
       )}
 
       {codeAsked && (
@@ -359,16 +471,29 @@ function Transfer({
         {t('ownership.bothEmailed', { name: chosen?.user.name ?? t('ownership.theNewOwner') })}
       </Text>
 
-      <PrimaryButton
-        label={
-          chosen == null
-            ? t('ownership.transfer')
-            : t('ownership.makeOwner', { name: chosen.user.name })
-        }
-        busy={busy}
-        onPress={() => void submit()}
-        testID="ownership.transfer.send"
-      />
+      {provider != null && vouched == null ? (
+        <PrimaryButton
+          label={
+            busy
+              ? t('waysCard.checking')
+              : t('waysCard.continueWith', { provider: PROVIDER_NAMES[provider] })
+          }
+          busy={busy}
+          onPress={() => void continueWith(provider)}
+          testID="ownership.transfer.provider"
+        />
+      ) : (
+        <PrimaryButton
+          label={
+            chosen == null
+              ? t('ownership.transfer')
+              : t('ownership.makeOwner', { name: chosen.user.name })
+          }
+          busy={busy}
+          onPress={() => void submit()}
+          testID="ownership.transfer.send"
+        />
+      )}
       <QuietButton
         label={t('ownership.keep')}
         onPress={onCancel}

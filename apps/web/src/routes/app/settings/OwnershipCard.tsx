@@ -3,8 +3,10 @@ import {
   type Membership,
   type OrganisationDeletion,
   type OrganisationMember,
+  type Provider,
+  type ProviderSignInAttempt,
 } from '@soirely/api-client';
-import { roleName, typedNameMatches } from '@soirely/domain';
+import { PROOF_MINUTES, confirmWith, roleName, typedNameMatches } from '@soirely/domain';
 import { type FormEvent, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
@@ -13,10 +15,18 @@ import { useNavigate } from 'react-router';
 import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { PasswordField } from '../../../components/PasswordField.tsx';
+import { AppleMark, GoogleMark } from '../../../components/ProviderSignIn.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
 import { offButton } from '../../../offButton.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
-import { refreshAccount } from '../../../session.ts';
+import {
+  PROVIDER_NAMES,
+  type ProviderReturn,
+  dropProviderReturn,
+  heldProviderReturn,
+  startProviderSignIn,
+} from '../../../providerSignIn.ts';
+import { refreshAccount, useSession } from '../../../session.ts';
 import { focusStep, useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 
 type Opener = 'transfer' | 'leave' | 'delete';
@@ -26,7 +36,7 @@ type Preview =
 
 type Step =
   | { kind: 'resting'; flash: string | null }
-  | { kind: 'transfer'; from: Opener }
+  | { kind: 'transfer'; from: Opener; returned: ProviderReturn | null }
   | { kind: 'leave' }
   | { kind: 'delete' };
 
@@ -34,7 +44,21 @@ type Step =
 export function OwnershipCard({ organisation }: { organisation: Membership }) {
   const { t } = useTranslation();
   const owner = organisation.role.seededAs === 'owner';
-  const [step, setStep] = useState<Step>({ kind: 'resting', flash: null });
+  const { hasPassword, providers } = useSession();
+  const via = confirmWith(hasPassword, providers);
+  // Back from Google or Apple, started by Transfer ownership in this organisation: once, on arrival.
+  const [returned] = useState(() => {
+    const held = heldProviderReturn(['transfer']);
+
+    return held?.purpose.kind === 'transfer' && held.purpose.organisation === organisation.id
+      ? held
+      : null;
+  });
+  const [step, setStep] = useState<Step>(
+    returned == null
+      ? { kind: 'resting', flash: null }
+      : { kind: 'transfer', from: 'transfer', returned },
+  );
   const [members, setMembers] = useState<OrganisationMember[] | null>(null);
   const title = useRef<HTMLHeadingElement>(null);
   const flash = useRef<HTMLDivElement>(null);
@@ -42,6 +66,11 @@ export function OwnershipCard({ organisation }: { organisation: Membership }) {
   const leaveButton = useRef<HTMLButtonElement>(null);
   const deleteButton = useRef<HTMLButtonElement>(null);
   const land = useFocusOnceShown();
+
+  // Removed only once committed: React may abandon a render and run the initializer again.
+  useEffect(() => {
+    if (returned != null) dropProviderReturn();
+  }, [returned]);
 
   useEffect(() => {
     if (!owner) return;
@@ -90,14 +119,19 @@ export function OwnershipCard({ organisation }: { organisation: Membership }) {
               <div>
                 <p className="notice-title">{t('ownership.transfer')}</p>
                 <p className="muted">
-                  {t('ownership.transferNote', { organisation: organisation.name })}
+                  {via === 'password' || via == null
+                    ? t('ownership.transferNote', { organisation: organisation.name })
+                    : t('ownership.transferNoteProvider', {
+                        organisation: organisation.name,
+                        provider: PROVIDER_NAMES[via],
+                      })}
                 </p>
               </div>
               <button
                 type="button"
                 className="button"
                 ref={transferButton}
-                onClick={() => setStep({ kind: 'transfer', from: 'transfer' })}
+                onClick={() => setStep({ kind: 'transfer', from: 'transfer', returned: null })}
               >
                 {t('ownership.transfer')}
               </button>
@@ -145,6 +179,8 @@ export function OwnershipCard({ organisation }: { organisation: Membership }) {
       {step.kind === 'transfer' && (
         <Transfer
           organisation={organisation}
+          via={via}
+          returned={step.returned}
           candidates={others}
           onCancel={() => rest(step.from)}
           onDone={(name) => {
@@ -161,7 +197,7 @@ export function OwnershipCard({ organisation }: { organisation: Membership }) {
         <Leave
           organisation={organisation}
           onlyOwner={onlyOwner}
-          onTransfer={() => setStep({ kind: 'transfer', from: 'leave' })}
+          onTransfer={() => setStep({ kind: 'transfer', from: 'leave', returned: null })}
           onStay={() => rest('leave')}
         />
       )}
@@ -175,39 +211,62 @@ export function OwnershipCard({ organisation }: { organisation: Membership }) {
 
 type TransferField = 'owner' | 'password' | 'code';
 
+/** Google or Apple brought the owner back: the proof, or the code still to come when two-factor is on. */
+interface Vouched {
+  email: string | null;
+  proof: string | null;
+}
+
 function Transfer({
   organisation,
+  via,
+  returned,
   candidates,
   onCancel,
   onDone,
 }: {
   organisation: Membership;
+  via: 'password' | Provider | null;
+  returned: ProviderReturn | null;
   candidates: OrganisationMember[];
   onCancel: () => void;
   onDone: (name: string) => void;
 }) {
   const { t } = useTranslation();
-  const [picked, setPicked] = useState<string | null>(null);
+  const provider = via === 'password' ? null : via;
+  const [picked, setPicked] = useState<string | null>(
+    returned?.purpose.kind === 'transfer' ? returned.purpose.owner : null,
+  );
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   const [codeAsked, setCodeAsked] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(returned != null && 'signIn' in returned);
   const [refused, setRefused] = useState<{ field: TransferField | null; message: string } | null>(
-    null,
+    () =>
+      returned != null && 'failed' in returned
+        ? {
+            field: null,
+            message: t('waysCard.providerFailed', { provider: PROVIDER_NAMES[returned.provider] }),
+          }
+        : null,
   );
+  const [vouched, setVouched] = useState<Vouched | null>(null);
+  // The five minutes from Google's or Apple's sign-in ran out before the press: back to Continue, the owner kept.
+  const [expired, setExpired] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const passwordInput = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<string | null>(null);
   const chosen = candidates.find((one) => one.id === picked) ?? null;
-
-  useEffect(() => heading.current?.focus(), []);
+  const exchanged = useRef(false);
 
   const checks = useFormChecks<TransferField>(
     ['owner', 'password', 'code'],
     (field, value) => {
       if (field === 'owner') return value === '' ? t('ownership.ownerBlank') : null;
       if (field === 'password')
-        return pending == null && value === '' ? t('ownership.passwordBlank') : null;
+        return provider == null && pending == null && value === ''
+          ? t('ownership.passwordBlank')
+          : null;
 
       return codeAsked && value.trim() === '' ? t('ownership.codeBlank') : null;
     },
@@ -217,18 +276,73 @@ function Transfer({
         : document.getElementById(field === 'owner' ? 'transfer-owner' : 'transfer-code')?.focus(),
   );
 
+  async function vouch(by: Provider, signIn: ProviderSignInAttempt): Promise<void> {
+    try {
+      const { proof } = await api.prove({ provider: by, signIn });
+      setVouched({ email: null, proof });
+    } catch (error) {
+      if (error instanceof ApiError && error.is('two_factor_required')) {
+        setPending(error.problem.pendingProof ?? null);
+        setVouched({ email: error.problem.providerEmail ?? null, proof: null });
+        setCodeAsked(true);
+      } else {
+        setRefused({
+          field: null,
+          message:
+            error instanceof ApiError && error.is('invalid_credentials')
+              ? t('waysCard.providerRefused', { provider: PROVIDER_NAMES[by] })
+              : t('waysCard.providerFailed', { provider: PROVIDER_NAMES[by] }),
+        });
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    heading.current?.focus();
+    if (returned == null || !('signIn' in returned) || exchanged.current) return;
+    exchanged.current = true;
+    void vouch(returned.provider, returned.signIn);
+    // Once, on arrival: Google's or Apple's sign-in is single-use, and its five minutes count from now.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function continueWith(by: Provider): void {
+    if (busy || !checks.passes({ owner: picked ?? '', password, code }) || picked == null) return;
+
+    setRefused(null);
+    setExpired(false);
+    void startProviderSignIn(by, {
+      kind: 'transfer',
+      organisation: organisation.id,
+      owner: picked,
+    }).catch(() =>
+      setRefused({
+        field: null,
+        message: t('waysCard.providerFailed', { provider: PROVIDER_NAMES[by] }),
+      }),
+    );
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (busy || !checks.passes({ owner: picked ?? '', password, code })) return;
-    if (chosen == null) return;
+    if (chosen == null || (provider != null && vouched == null)) return;
 
     setBusy(true);
     setRefused(null);
     const land = focusWhereSent();
 
     try {
-      const first = pending != null ? { pendingProof: pending } : { password };
-      const { proof } = await api.prove(first, codeAsked ? code.trim() : undefined);
+      const proof =
+        vouched?.proof ??
+        (
+          await api.prove(
+            pending != null ? { pendingProof: pending } : { password },
+            codeAsked ? code.trim() : undefined,
+          )
+        ).proof;
       await api.transferOwnership(organisation.id, chosen.id, proof);
       await refreshAccount();
       onDone(chosen.user.name);
@@ -236,6 +350,17 @@ function Transfer({
       setBusy(false);
       if (!(error instanceof ApiError)) {
         setRefused({ field: null, message: t('membersScreen.actionFailed') });
+
+        return;
+      }
+
+      if (vouched != null && error.is('proof_required')) {
+        setVouched(null);
+        setPending(null);
+        setCodeAsked(false);
+        setCode('');
+        setExpired(true);
+        heading.current?.focus();
 
         return;
       }
@@ -279,6 +404,20 @@ function Transfer({
         </div>
       )}
 
+      {expired && provider != null && (
+        <div className="notice notice-attention" role="status">
+          <span className="mark mark-attention" aria-hidden="true">
+            !
+          </span>
+          <p>
+            {t('waysCard.proofExpired', {
+              provider: PROVIDER_NAMES[provider],
+              count: PROOF_MINUTES,
+            })}
+          </p>
+        </div>
+      )}
+
       <fieldset
         className="members-roles"
         id="transfer-owner"
@@ -310,7 +449,7 @@ function Transfer({
         {ownerError != null && <FieldError id="transfer-owner-error" message={ownerError} />}
       </fieldset>
 
-      {pending == null && (
+      {provider == null && pending == null && (
         <div className="field">
           <label htmlFor="transfer-password">{t('ownership.password')}</label>
           <PasswordField
@@ -337,6 +476,29 @@ function Transfer({
           <p className="muted" id="transfer-password-why">
             {t('ownership.passwordWhy', { organisation: organisation.name })}
           </p>
+        </div>
+      )}
+
+      {provider != null && vouched == null && (
+        <div className="field">
+          <p className="muted">
+            {t('waysCard.proveWithProvider', { provider: PROVIDER_NAMES[provider] })}
+          </p>
+          <p className="muted">{t('ownership.passwordWhy', { organisation: organisation.name })}</p>
+        </div>
+      )}
+
+      {provider != null && vouched != null && (
+        <div className="notice notice-quiet signed-in" role="status">
+          <span className="mark mark-done" aria-hidden="true">
+            ✓
+          </span>
+          <div className="notice-body">
+            <p className="notice-title">
+              {t('waysCard.signedInWith', { provider: PROVIDER_NAMES[provider] })}
+            </p>
+            {vouched.email != null && <p className="signed-in-address">{vouched.email}</p>}
+          </div>
         </div>
       )}
 
@@ -370,13 +532,29 @@ function Transfer({
       </p>
 
       <div className="actions">
-        <button className="button button-primary" type="submit" aria-busy={busy}>
-          <span className="button-label">
-            {chosen == null
-              ? t('ownership.transfer')
-              : t('ownership.makeOwner', { name: chosen.user.name })}
-          </span>
-        </button>
+        {provider != null && vouched == null ? (
+          <button
+            className={provider === 'google' ? 'button button-google' : 'button button-apple'}
+            type="button"
+            aria-busy={busy}
+            onClick={() => continueWith(provider)}
+          >
+            {provider === 'google' ? <GoogleMark /> : <AppleMark />}
+            <span>
+              {busy
+                ? t('waysCard.checking')
+                : t('waysCard.continueWith', { provider: PROVIDER_NAMES[provider] })}
+            </span>
+          </button>
+        ) : (
+          <button className="button button-primary" type="submit" aria-busy={busy}>
+            <span className="button-label">
+              {chosen == null
+                ? t('ownership.transfer')
+                : t('ownership.makeOwner', { name: chosen.user.name })}
+            </span>
+          </button>
+        )}
         <button className="button" type="button" {...offButton(busy)} onClick={onCancel}>
           {t('ownership.keep')}
         </button>
