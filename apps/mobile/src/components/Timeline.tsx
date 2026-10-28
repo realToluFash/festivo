@@ -10,11 +10,19 @@ import {
 } from '@soirely/domain';
 import { type EventStatus, type OrganisationEvent } from '@soirely/api-client';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View, useWindowDimensions } from 'react-native';
+import {
+  ActivityIndicator,
+  PixelRatio,
+  Platform,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
+import { SMALL_LINE, TITLE_LINE, rowsFloor } from '../layout/textSize.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { QuietButton, SecondaryButton } from './Buttons.tsx';
@@ -43,17 +51,6 @@ const OWNER_KEY: Record<MilestoneOwner, string> = {
 const OWNER_SHAPE: Record<MilestoneOwner, string> = { event: '▦', you: '●', automatic: '→' };
 
 const HIDDEN = { accessibilityElementsHidden: true, importantForAccessibility: 'no' } as const;
-
-const SMALL_LINE = tokens.typeSmall.size * tokens.typeSmall.lineHeight;
-const TITLE_LINE = tokens.typeRowTitle.size * tokens.typeRowTitle.lineHeight;
-
-/** The height of two upcoming rows, held while loading, failed or Finished so the panels below do not move; worked from the lines the rows are set in, not measured on one screen. */
-function rowsFloor(fontScale: number): number {
-  const lines = (SMALL_LINE * 2 + TITLE_LINE) * fontScale;
-  const row = lines + tokens.spaceMd * 2 + tokens.spaceXxs * 2 + tokens.spaceXxs * 2;
-
-  return row * 2 + 1;
-}
 
 /** Read again when the event's status moves, so a Call off or End now shows its dates without a reload; judged by a clock no older than the read, so a date it stamped is never still ahead. */
 function useTimeline(
@@ -134,7 +131,11 @@ export function ComingUp({
           />
         )}
       </View>
-      <View style={{ minHeight: rowsFloor(fontScale) }}>
+      <View
+        style={{
+          minHeight: rowsFloor(fontScale, Platform.OS === 'android' ? PixelRatio.get() : null),
+        }}
+      >
         {load.kind === 'loading' && <DatesLoading testID="timeline.comingUp.loading" />}
         {load.kind === 'failed' && (
           <DatesFailed announced={retried} onRetry={retry} testID="timeline.comingUp.retry" />
