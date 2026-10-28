@@ -24,7 +24,9 @@ import { cardFrame } from './cardFrame.ts';
 import { distanceWords } from '../kit/distanceWords.ts';
 
 type Load =
-  { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; timeline: EventTimeline; at: Date };
+  | { kind: 'loading' }
+  | { kind: 'failed' }
+  | { kind: 'loaded'; timeline: EventTimeline; status: EventStatus; at: Date };
 
 const OWNER_WORD: Record<MilestoneOwner, string> = {
   event: 'timeline.owner_event',
@@ -47,15 +49,19 @@ function useTimeline(
   eventId: string,
   now: Date,
   status?: EventStatus,
-): { load: Load; now: Date; retried: boolean; retry: () => void } {
+): { load: Load; now: Date; ended: boolean; retried: boolean; retry: () => void } {
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let live = true;
 
-    api.eventTimeline(eventId).then(
-      (timeline) => live && setLoad({ kind: 'loaded', timeline, at: serverClock.now() }),
+    Promise.all([
+      api.eventTimeline(eventId),
+      status ?? api.event(eventId).then((event) => event.status),
+    ]).then(
+      ([timeline, read]) =>
+        live && setLoad({ kind: 'loaded', timeline, status: read, at: serverClock.now() }),
       () => live && setLoad({ kind: 'failed' }),
     );
 
@@ -67,6 +73,7 @@ function useTimeline(
   return {
     load,
     now: load.kind === 'loaded' && load.at > now ? load.at : now,
+    ended: (status ?? (load.kind === 'loaded' ? load.status : null)) === 'ended',
     retried: attempt > 0,
     retry: () => {
       setLoad({ kind: 'loading' });
@@ -92,9 +99,8 @@ export function ComingUp({
   onAllDates: () => void;
 }) {
   const { t } = useTranslation();
-  const { load, now, retried, retry } = useTimeline(event.id, tick, event.status);
-  const shown =
-    load.kind === 'loaded' ? comingUp(load.timeline.milestones, now, event.status === 'ended') : [];
+  const { load, now, ended, retried, retry } = useTimeline(event.id, tick, event.status);
+  const shown = load.kind === 'loaded' ? comingUp(load.timeline.milestones, now, ended) : [];
 
   return (
     <View style={cardFrame(kind)} testID="timeline.comingUp">
@@ -158,7 +164,7 @@ export function AllDates({
   now: Date;
 }) {
   const { t } = useTranslation();
-  const { load, now, retried, retry } = useTimeline(eventId, tick);
+  const { load, now, ended, retried, retry } = useTimeline(eventId, tick);
 
   return (
     <View style={cardFrame(kind)} testID="timeline.allDates.page">
@@ -172,7 +178,7 @@ export function AllDates({
             {t('timeline.intro', { timeZone: load.timeline.timeZone })}
           </Text>
           <View>
-            {markedMilestones(load.timeline.milestones, now).map((marked, index) => (
+            {markedMilestones(load.timeline.milestones, now, ended).map((marked, index) => (
               <MilestoneRow
                 key={index}
                 marked={marked}
