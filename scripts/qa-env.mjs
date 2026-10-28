@@ -1821,12 +1821,7 @@ async function batch(args) {
       ],
       { cwd: root, env: onAndroid ? androidTools().env : {}, timeoutMs: runBudgetMs(runs), stall },
     );
-    const after = afterRun(batchRuns(checks, languages), {
-      begun,
-      from,
-      passed,
-      stalled: stall.stalled,
-    });
+    const after = afterRun(batchRuns(checks, languages), { begun, from, passed });
     if (after.crashed) crashed.push(after.crashed);
     return after;
   };
@@ -1893,12 +1888,13 @@ export async function resumeBatch(rest, resume) {
     ({ rest } = await resume(rest, attempt));
 }
 
-// A run that stalls blames the last check it began itself, and is resumed only past that check.
-export function afterRun(runs, { begun, from, passed, stalled }) {
+// Checks are optional, so a run that ends before its last check lost its driver, hung or killed.
+// It blames the last check it began itself if that one did not pass, and resumes past it.
+export function afterRun(runs, { begun, from, passed }) {
   const current = begun.slice(from).at(-1);
-  if (!stalled || !current || passed.has(current)) return { crashed: null, rest: [] };
   const rest = runs.filter(({ check, language }) => !begun.includes(checkId(check, language)));
-  return { crashed: current, rest };
+  if (!current || !rest.length) return { crashed: null, rest: [] };
+  return { crashed: passed.has(current) ? null : current, rest };
 }
 
 export function batchSummary(ids, { passed, begun, crashed }) {

@@ -924,33 +924,32 @@ describe('what a stalled Maestro run leaves to resume', () => {
 
   it('blames the check the driver died in and resumes past it', () => {
     expect(
+      afterRun(runs, { begun: ['home', 'settings'], from: 0, passed: new Set(['home']) }),
+    ).toEqual({ crashed: 'settings', rest: runs.slice(2) });
+  });
+
+  it('resumes past a check that passed before the driver died, blaming nobody', () => {
+    expect(
       afterRun(runs, {
         begun: ['home', 'settings'],
         from: 0,
-        passed: new Set(['home']),
-        stalled: true,
+        passed: new Set(['home', 'settings']),
       }),
-    ).toEqual({ crashed: 'settings', rest: runs.slice(2) });
+    ).toEqual({ crashed: null, rest: runs.slice(2) });
   });
 
   it('stops when a resumed run reaches no new check, blaming nobody', () => {
     expect(
-      afterRun(runs.slice(2), {
-        begun: ['home', 'settings'],
-        from: 2,
-        passed: new Set(['home']),
-        stalled: true,
-      }),
+      afterRun(runs.slice(2), { begun: ['home', 'settings'], from: 2, passed: new Set(['home']) }),
     ).toEqual({ crashed: null, rest: [] });
   });
 
-  it('resumes nothing after a run that ended without stalling', () => {
+  it('resumes nothing after a run that reached its last check, even one that failed', () => {
     expect(
       afterRun(runs, {
-        begun: ['home', 'settings'],
+        begun: ['home', 'settings', 'roles', 'members'],
         from: 0,
         passed: new Set(['home']),
-        stalled: false,
       }),
     ).toEqual({ crashed: null, rest: [] });
   });
