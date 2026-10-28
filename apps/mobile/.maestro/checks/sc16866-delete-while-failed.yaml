@@ -1,0 +1,47 @@
+# Settings > Organisation, opened with the API stopped, then deleted once it is back: the typed name still deletes. Deletes the batch's organisation, so run it last or alone. sc-16866.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible: '{{t:settings.organisation}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'ownership.delete'
+    timeout: 60000
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    id: 'ownership.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'ownership.delete.retry'
+    timeout: 30000
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- tapOn:
+    id: 'ownership.delete.name'
+- inputText: 'QA Organisatio'
+- hideKeyboard
+- tapOn:
+    id: 'ownership.delete.send'
+- waitForAnimationToEnd
+- assertVisible: '{{t:ownership.deleteMismatch}}'
+- takeScreenshot: mismatch
+- tapOn:
+    id: 'ownership.delete.name'
+- eraseText: 60
+- inputText: 'QA Organisation'
+- hideKeyboard
+- tapOn:
+    id: 'ownership.delete.send'
+- extendedWaitUntil:
+    notVisible:
+      id: 'ownership.delete.send'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: deleted
