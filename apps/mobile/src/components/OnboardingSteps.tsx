@@ -2,8 +2,8 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { tokens } from '../theme/tokens.ts';
+import { StepMark } from './StepMark.tsx';
 import { Text } from './Text.tsx';
-import { useMarkSide } from './markSide.ts';
 
 /** The two gates as a strip: where the person is, with each step a shape and a word, never colour alone. */
 export function OnboardingSteps({
@@ -14,7 +14,6 @@ export function OnboardingSteps({
   /** A provider that confirmed the address, so there was no code to enter. */
   confirmedBy?: string | undefined;
 }) {
-  const markSide = useMarkSide(tokens.space3xl);
   const { t } = useTranslation();
   const emailDone = at !== 'verifying';
   const detailsNow = at === 'details';
@@ -22,21 +21,7 @@ export function OnboardingSteps({
   return (
     <View style={styles.steps}>
       <View style={styles.step}>
-        <View
-          style={[styles.mark, markSide, emailDone ? styles.done : styles.now]}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        >
-          <Text
-            size={tokens.typePill.size}
-            weight="bold"
-            mono
-            style={styles.onMark}
-            accessible={false}
-          >
-            {emailDone ? '✓' : '1'}
-          </Text>
-        </View>
+        <StepMark step={1} state={emailDone ? 'done' : 'now'} />
         <Text
           size={tokens.typeButton.size}
           weight="semibold"
@@ -50,21 +35,7 @@ export function OnboardingSteps({
         </Text>
       </View>
       <View style={styles.step}>
-        <View
-          style={[styles.mark, markSide, detailsNow ? styles.now : styles.later]}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        >
-          <Text
-            size={tokens.typePill.size}
-            weight="bold"
-            mono
-            style={detailsNow ? styles.onMark : styles.secondary}
-            accessible={false}
-          >
-            2
-          </Text>
-        </View>
+        <StepMark step={2} state={detailsNow ? 'now' : 'later'} />
         <Text
           size={tokens.typeButton.size}
           weight="semibold"
@@ -80,19 +51,6 @@ export function OnboardingSteps({
 const styles = StyleSheet.create({
   steps: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceXl },
   step: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
-  mark: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: tokens.radiusPill,
-  },
-  now: { backgroundColor: tokens.colorDark },
-  done: { backgroundColor: tokens.colorAccent },
-  later: {
-    borderWidth: 1.5,
-    borderColor: tokens.colorMarkEmpty,
-    backgroundColor: tokens.colorCard,
-  },
-  onMark: { color: tokens.colorInkOnDark },
   doneInk: { color: tokens.colorAccentText },
   secondary: { color: tokens.colorInkSecondary },
 });
