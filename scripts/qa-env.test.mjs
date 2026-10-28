@@ -66,6 +66,10 @@ import {
   APP_SERVICES,
   launchVideo,
   iosBundle,
+  clearIosRelease,
+  installedApps,
+  iosReleases,
+  recordIosRelease,
   releaseApk,
   releaseApp,
   releasePlatform,
@@ -368,6 +372,37 @@ describe('a release build', () => {
       ['-insert', 'restrictedBool.allowPasswordAutoFill', '-dictionary', files[0]],
       ['-replace', 'restrictedBool.allowPasswordAutoFill.value', '-bool', 'NO', files[0]],
     ]);
+  });
+
+  it('keeps a release recorded on one simulator when the other is cleared', () => {
+    const root = mkdtempSync(join(tmpdir(), 'qa-'));
+    const recorded = join(root, '.qa/release/ios-release-on');
+    mkdirSync(join(root, '.qa/release'), { recursive: true });
+    recordIosRelease(root, 'phone');
+    recordIosRelease(root, 'ipad');
+    recordIosRelease(root, 'phone');
+    expect(iosReleases(root)).toEqual(['phone', 'ipad']);
+    clearIosRelease(root, 'ipad');
+    expect(iosReleases(root)).toEqual(['phone']);
+    clearIosRelease(root, 'phone');
+    expect(existsSync(recorded)).toBe(false);
+    writeFileSync(recorded, 'phone');
+    expect(iosReleases(root)).toEqual(['phone']);
+    rmSync(root, { recursive: true });
+  });
+
+  it("reads every app on a simulator's disk", () => {
+    const device = mkdtempSync(join(tmpdir(), 'sim-'));
+    const containers = join(device, 'data/Containers/Bundle/Application');
+    expect(installedApps(device)).toEqual([]);
+    mkdirSync(join(containers, 'A/soirely-d94e55f4e08e.app'), { recursive: true });
+    mkdirSync(join(containers, 'A/_CodeSignature'), { recursive: true });
+    mkdirSync(join(containers, 'B/Expo Go.app'), { recursive: true });
+    expect(installedApps(device).sort()).toEqual([
+      join(containers, 'A/soirely-d94e55f4e08e.app/Info.plist'),
+      join(containers, 'B/Expo Go.app/Info.plist'),
+    ]);
+    rmSync(device, { recursive: true });
   });
 
   it('installs the bundle the app config names', () => {
