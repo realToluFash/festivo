@@ -1639,8 +1639,16 @@ async function signIn(email, password, secret) {
 // A cold batch outlives an access token: a 401 renews the session and asks once more (sc-17974).
 export function renewingSession({ open, refresh }) {
   let current = null;
+  // A failed sign-in is not kept, so the next call tries again rather than rethrowing it.
+  const keep = (session) => {
+    const kept = session.catch((error) => {
+      if (current === kept) current = null;
+      throw error;
+    });
+    return kept;
+  };
   return async (request) => {
-    current ??= open();
+    current ??= keep(open());
     const held = current;
     const { accessToken } = await held;
     try {
@@ -1649,7 +1657,7 @@ export function renewingSession({ open, refresh }) {
       if (error.status !== 401) throw error;
       // A refresh token presented twice ends the whole session, so callers share one renewal.
       if (current === held)
-        current = held.then(({ refreshToken }) => refresh(refreshToken)).catch(open);
+        current = keep(held.then(({ refreshToken }) => refresh(refreshToken)).catch(open));
       return request((await current).accessToken);
     }
   };

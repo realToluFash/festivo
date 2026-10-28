@@ -1363,6 +1363,41 @@ describe('renewingSession', () => {
     expect(refreshed).toBe(1);
   });
 
+  it('signs in fresh on the next call when a renewal fails', async () => {
+    let opened = 0;
+    const session = renewingSession({
+      open: async () => {
+        opened += 1;
+        if (opened === 2) throw new Error('network blip');
+        return tokens(opened);
+      },
+      refresh: async () => {
+        throw refused();
+      },
+    });
+    const call = () =>
+      session(async (token) => {
+        if (token === 'access-1') throw refused();
+        return token;
+      });
+    await expect(call()).rejects.toThrow('network blip');
+    expect(await call()).toBe('access-3');
+  });
+
+  it('signs in again on the next call when the first sign-in fails', async () => {
+    let opened = 0;
+    const session = renewingSession({
+      open: async () => {
+        opened += 1;
+        if (opened === 1) throw new Error('network blip');
+        return tokens(opened);
+      },
+      refresh: async () => {},
+    });
+    await expect(session(async (token) => token)).rejects.toThrow('network blip');
+    expect(await session(async (token) => token)).toBe('access-2');
+  });
+
   it('passes any other failure through', async () => {
     const session = renewingSession({ open: async () => tokens(1), refresh: async () => {} });
     const broken = Object.assign(new Error('answered 500'), { status: 500 });
