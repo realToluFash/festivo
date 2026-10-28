@@ -11,7 +11,9 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'verifyEmail.code'
 - inputText: ${CODE}
-- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'verifyEmail.submit'
 - tapOn:
     id: 'verifyEmail.submit'
 - extendedWaitUntil:
