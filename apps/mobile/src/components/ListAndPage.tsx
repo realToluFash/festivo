@@ -33,7 +33,7 @@ export interface ListAndPageSpacing {
 }
 
 export interface ListAndPageProps {
-  heading: ReactNode;
+  heading?: ReactNode;
   /** Beside the heading on a tablet on its side, and nowhere otherwise. */
   besideHeading?: ReactNode;
   list: ReactNode;
@@ -99,7 +99,7 @@ export function ListAndPage({
       scroll={false}
       contentStyle={landscape ? spacing.landscape : styles.bare}
     >
-      {landscape && (
+      {landscape && (heading || besideHeading) && (
         <View style={styles.head}>
           <View style={styles.fill}>{heading}</View>
           {besideHeading}

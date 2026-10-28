@@ -133,3 +133,18 @@ describe('the Settings list', () => {
     expect(destinationOf(SECTION_HREF.signInRules)).toBe('settings');
   });
 });
+
+describe('Events titles itself once, in the frame header (sc-17559)', () => {
+  it('gives the body no heading of its own on any layout', () => {
+    const events = source(join(SRC, 'components', 'EventsScreen.tsx'));
+
+    expect(events).not.toMatch(/heading=/u);
+    expect(events).not.toMatch(/accessibilityRole="header">\s*\{t\('eventsScreen\.title'\)\}/u);
+  });
+
+  it('leaves no head row on a tablet on its side when there is nothing to put in it', () => {
+    const split = source(join(SRC, 'components', 'ListAndPage.tsx'));
+
+    expect(split).toMatch(/\{landscape && \(heading \|\| besideHeading\) && \(/u);
+  });
+});

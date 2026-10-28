@@ -271,12 +271,6 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
   const pageName = shown?.name ?? null;
   const newEvent = () => router.push('/events/new');
 
-  const heading = !phone && (
-    <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
-      {t('eventsScreen.title')}
-    </Text>
-  );
-
   const list = (opener: (key: string) => RefCallback<View>) =>
     !reads ? null : load.kind === 'loading' ? (
       <Waiting words={t('eventsScreen.loading')} />
@@ -342,7 +336,6 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     >
       <ListAndPage
         kind={kind}
-        heading={heading}
         list={<FocusBack closed={closed}>{list}</FocusBack>}
         listRefresh={
           reads && load.kind === 'loaded' ? (
