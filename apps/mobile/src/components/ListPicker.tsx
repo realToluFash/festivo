@@ -11,6 +11,7 @@ import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { faced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
+import { useHeld } from './Field.tsx';
 import { LIFT } from './keyboardWatch.ts';
 import { Screen } from './Screen.tsx';
 import { Text } from './Text.tsx';
@@ -53,6 +54,7 @@ export function ListPicker({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const searchNameID = useId();
+  const searching = useHeld(false, search, undefined, setSearch);
   const { kind, width, height } = useLayout();
   const beside = searchBesideTitle({ os: Platform.OS, phone: kind === 'phone', width, height });
 
@@ -74,8 +76,7 @@ export function ListPicker({
       )}
       <TextInput
         style={faced(styles.search)}
-        value={search}
-        onChangeText={setSearch}
+        {...searching}
         placeholder={searchLabel}
         placeholderTextColor={tokens.colorInkTertiary}
         cursorColor={tokens.colorInk}

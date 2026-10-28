@@ -7,8 +7,11 @@ import {
   fieldName,
   type FieldText,
   fieldText,
+  nextGiven,
   nextPin,
   passwordProps,
+  type Typing,
+  valueHanded,
 } from './fields.ts';
 import {
   barFits,
@@ -559,5 +562,51 @@ describe('a field on Android is named by what it shows, so TalkBack reads what i
     expect(fieldName('ios', 'Event name', { labelID: 'r1' })).toEqual({
       accessibilityLabel: 'Event name',
     });
+  });
+});
+
+describe('a key typed on Android leaves the field its text, so TalkBack says only the key (sc-18648)', () => {
+  const opened: Typing = { typed: 'Gal', pinned: 'Gal', given: undefined };
+  const handed = (value: string, typing: Typing) => {
+    const next = nextGiven('android', value, typing);
+    const field = {
+      held: false,
+      value: valueHanded('android', value, next.given),
+      defaultValue: undefined,
+      typed: next.typed,
+      pinned: next.pinned,
+    };
+
+    return fieldText(field);
+  };
+
+  it('hands back no text for a key, its value being what was typed', () => {
+    const typedX = { ...opened, typed: 'Galx' };
+
+    expect(nextGiven('android', 'Galx', typedX)).toBe(typedX);
+    expect(handed('Galx', typedX)).toEqual({ defaultValue: 'Gal' });
+  });
+
+  it('opens holding the value the screen filled it with', () => {
+    expect(handed('Gal', opened)).toEqual({ defaultValue: 'Gal' });
+  });
+
+  it('is handed a value that is not what was typed, so an added domain empties the field', () => {
+    const typed = { typed: 'example.com', pinned: '', given: undefined };
+
+    expect(nextGiven('android', '', typed)).toEqual({ typed: '', pinned: '', given: '' });
+    expect(handed('', typed)).toEqual({ value: '' });
+  });
+
+  it('keeps what was typed through a text-size change', () => {
+    const typedX = { ...opened, typed: 'Galx' };
+    const field = { held: false, value: undefined, defaultValue: undefined, ...typedX };
+
+    expect(nextPin(field, 1.3, 1).pinned).toBe('Galx');
+  });
+
+  it('is handed its value on every render on iOS, where VoiceOver says only the key', () => {
+    expect(nextGiven('ios', 'Gal', { ...opened, typed: 'Ga' })).toEqual({ ...opened, typed: 'Ga' });
+    expect(valueHanded('ios', 'Galx', undefined)).toBe('Galx');
   });
 });

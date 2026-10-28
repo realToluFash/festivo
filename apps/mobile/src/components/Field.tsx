@@ -20,7 +20,16 @@ import {
   View,
 } from 'react-native';
 
-import { codeProps, FIELD_DEFAULTS, fieldName, fieldText, nextPin } from '../kit/fields.ts';
+import {
+  codeProps,
+  FIELD_DEFAULTS,
+  fieldName,
+  fieldText,
+  nextGiven,
+  nextPin,
+  type Typing,
+  valueHanded,
+} from '../kit/fields.ts';
 import { faced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { fieldFocused, fieldLeft } from './focusedField.ts';
@@ -192,22 +201,33 @@ export function useHeld(
   defaultValue: string | undefined,
   onChangeText: ((text: string) => void) | undefined,
 ): Pick<TextInputProps, 'value' | 'defaultValue' | 'onChangeText'> {
-  const [typed, setTyped] = useState(value ?? defaultValue ?? '');
-  const [pinned, setPinned] = useState<string>();
+  const [typing, setTyping] = useState<Typing>({
+    typed: value ?? defaultValue ?? '',
+    pinned: Platform.OS === 'android' ? value : undefined,
+    given: undefined,
+  });
   const { fontScale } = useWindowDimensions();
   const [scale, setScale] = useState(fontScale);
-  const field = { held, value, defaultValue, typed, pinned };
+  const handed = nextGiven(Platform.OS, value, typing);
+  const { typed, pinned, given } = handed;
+  const field = {
+    held,
+    value: valueHanded(Platform.OS, value, given),
+    defaultValue,
+    typed,
+    pinned,
+  };
   const next = nextPin(field, fontScale, scale);
 
   if (next.scale !== scale) setScale(next.scale);
-  if (next.pinned !== pinned) setPinned(next.pinned);
+  if (handed !== typing || next.pinned !== pinned) setTyping({ ...handed, pinned: next.pinned });
 
   if (held) return { ...fieldText(field), onChangeText: undefined };
 
   return {
     ...fieldText(field),
     onChangeText: (text) => {
-      if (value === undefined) setTyped(text);
+      setTyping((last) => ({ ...last, typed: text, given: undefined }));
       onChangeText?.(text);
     },
   };
@@ -256,7 +276,6 @@ export function TextField({
         labelID,
         placeholder: rest.placeholder,
       })}
-      value={value}
       {...holding}
       ref={ref}
       style={faced([styles.input, wrong && styles.wrong, style])}
@@ -291,7 +310,6 @@ export function CodeField({
         labelID,
         placeholder: rest.placeholder,
       })}
-      value={value}
       {...holding}
       ref={ref}
       style={faced([styles.code, wrong && styles.wrong, style])}
