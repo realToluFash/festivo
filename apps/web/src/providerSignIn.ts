@@ -21,13 +21,15 @@ const LINKED = 'soirely.provider.linked';
 const LINKING = 'soirely.provider.linking';
 const RETURNED = 'soirely.provider.returned';
 
-/** Why Security sent the person to a provider: to confirm it is them, or to choose the account to link. */
+/** Why Settings sent the person to a provider: to confirm it is them, or to choose the account to link. */
 export type ReturnPurpose =
   | { kind: 'prove'; then: { action: 'link' | 'unlink'; provider: Provider } }
   | { kind: 'link' }
   | { kind: 'signOutOthers' }
   /** Account's "Make primary" (sc-113): the address that becomes the one signing in. */
-  | { kind: 'makePrimary'; address: string };
+  | { kind: 'makePrimary'; address: string }
+  /** General's Transfer ownership (sc-18959): the organisation, and the member chosen to own it. */
+  | { kind: 'transfer'; organisation: string; owner: string };
 
 /** What Security finds on its return: the provider's code to send on, or that it did not finish. */
 export type ProviderReturn = { provider: Provider; purpose: ReturnPurpose } & (
@@ -92,9 +94,7 @@ export async function startProviderSignIn(
       codeChallenge: base64Url(await sha256(attempt.codeVerifier)),
       ...(provider === 'apple'
         ? { scope: 'openid name email', extra: { response_mode: 'form_post' } }
-        : purpose?.kind === 'prove' ||
-            purpose?.kind === 'signOutOthers' ||
-            purpose?.kind === 'makePrimary'
+        : purpose != null && purpose.kind !== 'link'
           ? { extra: REAUTHENTICATE }
           : {}),
     }),
