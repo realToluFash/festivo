@@ -1,11 +1,10 @@
 import { ApiError, type EventStatus, type OrganisationEvent } from '@soirely/api-client';
-import { type EventPhase, eventAllows } from '@soirely/domain';
-import { type RefObject, useRef, useState } from 'react';
+import { type EventPhase, changedWords, eventAllows } from '@soirely/domain';
+import { type RefObject, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { offButton } from '../../../offButton.ts';
-import { CHANGED_WORDS } from './eventWords.ts';
 import { LifecycleDialog } from './LifecycleDialog.tsx';
 import { useLifecycleAction } from './useLifecycleAction.ts';
 
@@ -75,7 +74,6 @@ export function PausedRow({
   const { t } = useTranslation();
   const [state, setState] = useState<'idle' | 'pending' | 'failed'>('idle');
   const [changedTo, setChangedTo] = useState<EventStatus | null>(null);
-  const button = useRef<HTMLButtonElement>(null);
   const changed = changedTo === event.status;
 
   if (phase !== 'paused' && !changed) return null;
@@ -102,7 +100,7 @@ export function PausedRow({
             setState('idle');
             setChangedTo(latest.status);
             onChange(latest);
-            window.setTimeout(() => (button.current ?? heading.current)?.focus(), 0);
+            window.setTimeout(() => heading.current?.focus(), 0);
           },
           () => setState('failed'),
         );
@@ -116,7 +114,7 @@ export function PausedRow({
       <div className="notice-body">
         {changed ? (
           <div role="alert">
-            {CHANGED_WORDS[event.phase].map((line) => (
+            {changedWords(event).map((line) => (
               <p key={line}>{t(line)}</p>
             ))}
           </div>
@@ -127,7 +125,6 @@ export function PausedRow({
         {manages && eventAllows(phase, 'resume') && (
           <div className="notice-action">
             <button
-              ref={button}
               type="button"
               className="button button-primary"
               {...offButton(state === 'pending', { dim: false })}

@@ -120,7 +120,6 @@
     "request.body_not_json": "The request body is not valid JSON.",
     "request.method_not_accepted": "This address does not accept {method}.",
     "address.unknown": "No address with that id.",
-    "address.lookups_too_many": "Too many address lookups. Please wait a moment.",
     "event.version_required": "Send the version you are changing, as If-Match.",
     "event.changed_since": "Somebody else changed this event since you opened it.",
     "event.currency_in_use": "The currency cannot change once amounts are recorded against this event.",
@@ -190,7 +189,6 @@
     "members.not_member": "That person is not a member of this organisation.",
     "roles.not_in_organisation": "That role is not in this organisation.",
     "assistant.refused": "The assistant would not answer that.",
-    "assistant.too_many": "Too many assistant requests. Please wait a moment.",
     "assistant.too_large": "The request is larger than the assistant accepts.",
     "limits.recoveries_per_day": "You can ask 3 times a day. Try again {when}.",
     "limits.join_requests": "Too many requests for now. Try again {when}.",
@@ -206,5 +204,6 @@
     "validation.cover_upload_missing": "The photo did not upload. Try again.",
     "event.delete_name_mismatch": "Type {name} exactly as shown to delete it.",
     "timeline.event_starts": "{name} starts",
-    "timeline.event_ends": "{name} ends"
+    "timeline.event_ends": "{name} ends",
+    "timeline.event_called_off": "{name} called off"
 }

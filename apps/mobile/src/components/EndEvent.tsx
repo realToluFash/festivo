@@ -1,11 +1,11 @@
 import { type OrganisationEvent } from '@soirely/api-client';
-import { type EventPhase, endLabel } from '@soirely/domain';
+import { type EventPhase, changedWords, endLabel } from '@soirely/domain';
 import { useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { type EndRefusal, CHANGED_WORDS, endRefusalOf } from '../kit/makeLive.ts';
+import { type EndRefusal, endRefusalOf } from '../kit/makeLive.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { SecondaryButton } from './Buttons.tsx';
@@ -71,7 +71,7 @@ export function EndRow({
                 ...(asking?.failed === true ? [t('eventEnd.failed')] : []),
               ]
             : asking.kind === 'changed'
-              ? CHANGED_WORDS[event.phase].map((line) => t(line))
+              ? changedWords(event).map((line) => t(line))
               : [t('eventEnd.alreadyOver')]
         }
         confirm={

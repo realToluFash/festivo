@@ -1,6 +1,6 @@
 ---
 name: writing-tests
-description: How tests are written and run in services/api — the three kinds and their base cases, where doubles live, the database routine, and how to tell a guard from an assertion that can never fail. Use when adding or changing a test, or when a suite is green and something is still broken.
+description: How tests are written and run in services/api — the four kinds and their base cases, where doubles live, the database routine, and how to tell a guard from an assertion that can never fail. Use when adding or changing a test, or when a suite is green and something is still broken.
 ---
 
 # Writing tests here
@@ -26,19 +26,26 @@ broken suite rather than a wrong command. `just test-api` and `npm run test:api`
 database migrated in place keeps whatever a since-deleted migration created, and the suite
 then passes against a schema no fresh environment will ever have.
 
-## The three kinds, and the base case for each
+## The four kinds, and the base case for each
 
 | Kind           | Extends                        | What it is for                                          |
 | -------------- | ------------------------------ | ------------------------------------------------------- |
 | **Unit**       | `PHPUnit\...\TestCase`         | a rule, in isolation, with no container and no database |
 | **Functional** | `App\Tests\FunctionalTestCase` | the container: a service against a real database        |
 | **API**        | `App\Tests\ApiTestCase`        | an HTTP request, status code and response body          |
+| **Server**     | `PHPUnit\...\TestCase`         | a real FrankenPHP process, for what kills PHP itself    |
 
 ```php
 final class AddressLookupTest extends TestCase            { ... }   // tests/Unit/
 final class AuditTest extends FunctionalTestCase          { ... }   // tests/Functional/
 final class RequestLocaleTest extends ApiTestCase         { ... }   // tests/Functional/
+final class FatalErrorAnswerTest extends TestCase         { ... }   // tests/Functional/
 ```
+
+A Server test starts `frankenphp php-server` on a free port and drives it over HTTP. It is
+for a fatal error, a memory or time limit, anything that only `public/index.php` and the
+runtime see: `ApiTestCase`'s client never goes through the front controller, so the same
+test moved onto it passes without PHP ever dying.
 
 `FunctionalTestCase` boots the kernel in `setUp`; `ApiTestCase` creates the client there.
 A subclass with its own `setUp` calls `parent::setUp()` first.

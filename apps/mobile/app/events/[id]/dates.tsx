@@ -2,10 +2,9 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { AppFrame } from '../../../src/components/AppFrame.tsx';
+import { AppFrame, BackButton } from '../../../src/components/AppFrame.tsx';
 import { bodyEdges } from '../../../src/components/bodyEdges.ts';
 import { Screen } from '../../../src/components/Screen.tsx';
-import { Text } from '../../../src/components/Text.tsx';
 import { AllDates } from '../../../src/components/Timeline.tsx';
 import { useServerNow } from '../../../src/kit/serverNow.ts';
 import { useLayout } from '../../../src/layout/useLayout.ts';
@@ -29,9 +28,11 @@ export default function EventDates() {
     >
       <Screen edges={bodyEdges(kind)} contentStyle={styles.content}>
         {!phone && (
-          <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
-            {t('timeline.allDates')}
-          </Text>
+          <BackButton
+            label={t('timeline.backToEvent')}
+            onPress={back}
+            testID="timeline.allDates.back"
+          />
         )}
         <AllDates kind={kind} eventId={id} now={now} />
       </Screen>

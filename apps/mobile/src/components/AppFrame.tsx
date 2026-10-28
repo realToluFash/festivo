@@ -50,7 +50,7 @@ import { ReadOut, useReadOut } from './ReadOut.tsx';
 import { type StepClosed, stepClosed, useFocusBackToOpener, useFocusOnAnswer } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type TextHandle, Text } from './Text.tsx';
-import { Title } from './Title.tsx';
+import { Title, useWholeWords } from './Title.tsx';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 
@@ -375,19 +375,7 @@ function FrameHeader({
         <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
       )}
       {back != null && !backHidden && (
-        <Pressable
-          style={styles.back}
-          onPress={back.onPress}
-          accessibilityRole="button"
-          testID="frame.back"
-        >
-          <Svg width={tokens.sizeMark} height={tokens.sizeMark} viewBox="0 0 24 24" fill="none">
-            <Path d="m15 18-6-6 6-6" {...STROKE} stroke={tokens.colorInk} />
-          </Svg>
-          <Text size={tokens.typeBodyPhone.size} weight="semibold">
-            {back.label}
-          </Text>
-        </Pressable>
+        <BackButton label={back.label} onPress={back.onPress} testID="frame.back" />
       )}
       <Title
         size={back == null ? tokens.typeTitlePage.size : tokens.typeTitlePhone.size}
@@ -400,17 +388,47 @@ function FrameHeader({
   );
 }
 
+export function BackButton({
+  label,
+  onPress,
+  testID,
+}: {
+  label: string;
+  onPress: () => void;
+  testID: string;
+}) {
+  return (
+    <Pressable style={styles.back} onPress={onPress} accessibilityRole="button" testID={testID}>
+      <Svg width={tokens.sizeMark} height={tokens.sizeMark} viewBox="0 0 24 24" fill="none">
+        <Path d="m15 18-6-6 6-6" {...STROKE} stroke={tokens.colorInk} />
+      </Svg>
+      <Text size={tokens.typeBodyPhone.size} weight="semibold">
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 function TabBar({ current }: { current: Destination }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { organisation } = useSignedIn();
+  const { fontScale } = useWindowDimensions();
+  const shown = destinations(organisation);
+  const words = useWholeWords(
+    tokens.typeMeta.size,
+    tokens.typeMeta.size * fontScale,
+    shown.map((destination) => t(`frame.${destination}`)),
+    { weight: 'bold' },
+  );
 
   return (
     <View
       style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, tokens.spaceSm) }]}
       accessibilityRole="tablist"
     >
-      {destinations(organisation).map((destination) => {
+      {words.measure}
+      {shown.map((destination, index) => {
         const on = destination === current;
 
         return (
@@ -418,6 +436,9 @@ function TabBar({ current }: { current: Destination }) {
             key={destination}
             style={styles.tab}
             onPress={() => router.navigate(DESTINATION_HREF[destination])}
+            onLayout={
+              index === 0 ? (event) => words.room(event.nativeEvent.layout.width) : undefined
+            }
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
             testID={`frame.${destination}`}
@@ -428,6 +449,7 @@ function TabBar({ current }: { current: Destination }) {
               size={tokens.typeMeta.size}
               weight={on ? 'bold' : 'medium'}
               style={[styles.centred, on ? styles.ink : styles.secondaryInk]}
+              maxFontSizeMultiplier={words.maxFontSizeMultiplier}
             >
               {t(`frame.${destination}`)}
             </Text>

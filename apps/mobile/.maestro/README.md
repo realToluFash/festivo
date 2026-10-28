@@ -44,6 +44,18 @@ Two flows tap one control by `testID`, passed as `ID`: `scroll-tap` scrolls to i
 or below, for a step inside another flow; `ownership-tap` takes a screenshot of what follows
 and turns off the retry, for a button whose request is held.
 
+Signing in, each on its own outcome:
+
+| Flow                   | Needs                                        | Leaves the app on                     |
+| ---------------------- | -------------------------------------------- | ------------------------------------- |
+| `sign-in-unverified`   | `EMAIL`, `PASSWORD` of an unverified account | the verification gate                 |
+| `verify-email`         | the same                                     | past the gate, with the newest code   |
+| `verify-email-refused` | the same                                     | the gate, a new code on its countdown |
+| `sign-in-locked`       | `EMAIL`, a fresh address                     | sign-in, past the limit               |
+| `signed-out-elsewhere` | a session ended from another client          | sign-in, with "You were signed out"   |
+
+`verify-email` reads the code from Mailpit with `scripts/latest-code.js`.
+
 A flow a tester writes is posted to `[ops]` on the story they were testing, and ops commits
 it here.
 

@@ -120,6 +120,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   usuario. Fuera de límite, «más ligera» para el tamaño en MB y «más grande» para los píxeles.
   La línea del evento creado, «El evento se ha guardado sin su foto. {{reason}}», se lee con
   cualquiera de las negativas detrás.
+  Tras una negativa, los botones del diálogo son «Elegir otra foto» y, con el marco vacío,
+  «Elegir una foto» (sc-16573): infinitivo, como «Subir una foto» y «Usar esta foto», mientras
+  que la negativa misma pide en imperativo, «Elija una más grande».
 - **26 Oct 2026. El tipo de evento** (`web:eventForm.type*`, `web:eventTypes.*`,
   `messages:validation.event_type_required`, sc-3588 via sc-13205). «Tipo», «Elija el tipo de
   evento», y el rechazo, igual en pantalla y en la API, «Elija qué tipo de evento es.». Las
@@ -506,3 +509,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   del aviso (`signInRules.unlinkedBody`, `gateBody`, sin «ahora») y cierra con las de
   `orgGeneral.readOnly`: «puede ver estos datos pero no cambiarlos». Un guardado que la regla
   rechaza dice solo «No se ha guardado nada.», como el comienzo de `refused`.
+- **27 Oct 2026. El hito de un evento cancelado** (sc-16725 para sc-16709,
+  `messages:timeline.event_called_off`). «Se cancela {name}», con el verbo delante como
+  «Empieza {name}» y «Termina {name}», y sin concordar con un nombre cuyo género no conocemos.
+- **27 Oct 2026. Un recuento de borrado que falla** (`ownership.deleteUncounted`,
+  `ownership.deleteRetry`, web y app, sc-16928 para sc-16866). «No se ha podido calcular lo que
+  contiene», con el verbo de `deleteLoading`. Restaurar es «restaurarla», como `deleteWindow`,
+  y el plazo fijo «durante 30 días». El botón es «Reintentar», como el de la pantalla Eventos.

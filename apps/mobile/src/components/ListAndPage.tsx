@@ -4,7 +4,6 @@ import {
   type StyleProp,
   StyleSheet,
   View,
-  useWindowDimensions,
   type ViewStyle,
 } from 'react-native';
 
@@ -12,8 +11,10 @@ import {
   type LayoutKind,
   listAndPageKind,
   type SectionBeside,
+  settingsListGivesWay,
   useLayout,
   useSideListWidth,
+  useWindowFrame,
 } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { bodyEdges } from './bodyEdges.ts';
@@ -32,7 +33,7 @@ export interface ListAndPageSpacing {
 }
 
 export interface ListAndPageProps {
-  heading: ReactNode;
+  heading?: ReactNode;
   /** Beside the heading on a tablet on its side, and nowhere otherwise. */
   besideHeading?: ReactNode;
   list: ReactNode;
@@ -45,16 +46,29 @@ export interface ListAndPageProps {
   pageInFront: boolean;
   back: { label: string; onPress: () => void; testID: string };
   spacing: ListAndPageSpacing;
-  /** The screen's own `useListAndPageKind`, so the two never decide apart. */
+  /** The screen's own `useListAndPageLayout`, so the two never decide apart. */
   kind: LayoutKind;
 }
 
-export function useListAndPageKind(spacing: ListAndPageSpacing, beside: SectionBeside): LayoutKind {
-  return listAndPageKind(useWindowDimensions(), beside, {
+function listBeside(spacing: ListAndPageSpacing) {
+  return {
     margins: 2 * spacing.landscape.paddingHorizontal,
     list: spacing.listWidth,
     between: spacing.between,
-  });
+  };
+}
+
+export function useListAndPageLayout(
+  spacing: ListAndPageSpacing,
+  beside: SectionBeside,
+): { kind: LayoutKind; givesWay: boolean } {
+  const window = useWindowFrame();
+  const list = listBeside(spacing);
+
+  return {
+    kind: listAndPageKind(window, beside, list),
+    givesWay: settingsListGivesWay(window, beside, list),
+  };
 }
 
 // The half behind is out of the layout, so neither touch, TalkBack nor Tab reaches it.
@@ -85,7 +99,7 @@ export function ListAndPage({
       scroll={false}
       contentStyle={landscape ? spacing.landscape : styles.bare}
     >
-      {landscape && (
+      {landscape && (heading || besideHeading) && (
         <View style={styles.head}>
           <View style={styles.fill}>{heading}</View>
           {besideHeading}

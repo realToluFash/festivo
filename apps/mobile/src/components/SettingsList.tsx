@@ -1,7 +1,7 @@
 import { primaryEmailAddress } from '@soirely/api-client';
 import { router } from 'expo-router';
-import { Fragment, type ReactNode } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Fragment, type ReactNode, useRef } from 'react';
+import { type LayoutRectangle, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -24,16 +24,19 @@ import { Text } from './Text.tsx';
 /** The section keeps its place in the tree on every layout, so a rotation keeps what was typed. */
 export function SettingsSplit({
   open,
+  givesWay = false,
   children,
 }: {
   open: SettingsSection | null;
+  /** The section's own list takes the Settings list's place. */
+  givesWay?: boolean;
   children: ReactNode;
 }) {
   const { kind } = useLayout();
 
   return (
     <View style={[styles.fill, kind !== 'phone' && styles.row]}>
-      {kind !== 'phone' && <SettingsList kind={kind} open={open} />}
+      {kind !== 'phone' && !givesWay && <SettingsList kind={kind} open={open} />}
       <View style={styles.fill}>{children}</View>
     </View>
   );
@@ -44,6 +47,21 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
   const { account, organisation } = useSignedIn();
   const width = useSideListWidth(SETTINGS_LIST_WIDTH);
   const phone = kind === 'phone';
+  const scroll = useRef<ScrollView>(null);
+  // Each section mounts the list afresh at its top, so the open row is brought into view once.
+  const seen = useRef<{ viewport?: number; row?: LayoutRectangle; revealed?: boolean }>({});
+  const reveal = (next: { viewport?: number; row?: LayoutRectangle }) => {
+    seen.current = { ...seen.current, ...next };
+    const { viewport, row, revealed } = seen.current;
+    if (viewport == null || row == null || revealed === true) return;
+    seen.current.revealed = true;
+    if (row.y + row.height > viewport) {
+      scroll.current?.scrollTo({
+        y: row.y + row.height - viewport + tokens.spaceXl,
+        animated: false,
+      });
+    }
+  };
   const line: Record<SettingsSection, string> = {
     account: t('settings.accountLine'),
     security: t('settings.securityLine'),
@@ -70,7 +88,14 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
     ),
     key: heading,
     rows: sections.map((section, index) => (
-      <View key={section}>
+      <View
+        key={section}
+        onLayout={
+          !phone && open === section
+            ? (event) => reveal({ row: event.nativeEvent.layout })
+            : undefined
+        }
+      >
         {phone && index > 0 && <View style={styles.divider} />}
         <Pressable
           style={[
@@ -147,7 +172,12 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
   }
 
   return (
-    <View style={[styles.tabletList, { width }]}>
+    <ScrollView
+      ref={scroll}
+      style={[styles.tabletList, { width }]}
+      contentContainerStyle={styles.tabletLines}
+      onLayout={(event) => reveal({ viewport: event.nativeEvent.layout.height })}
+    >
       {groups.map(({ key, heading, rows }) => (
         <Fragment key={key}>
           {heading}
@@ -156,7 +186,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
       ))}
       <View style={styles.fill} />
       {signOut}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -232,12 +262,18 @@ const styles = StyleSheet.create({
   },
   signOutDense: { minHeight: tokens.sizeHit, borderRadius: tokens.sizeHit / 2 },
   tabletList: {
-    gap: tokens.spaceXs,
-    paddingVertical: tokens.spaceXl,
-    paddingHorizontal: tokens.spaceLg,
+    flexGrow: 0,
+    flexShrink: 0,
     backgroundColor: tokens.colorCard,
     borderRightWidth: 1,
     borderRightColor: tokens.colorBorder,
+  },
+  // A short list still reaches the foot, so signing out sits at the bottom until the list outgrows the screen.
+  tabletLines: {
+    flexGrow: 1,
+    gap: tokens.spaceXs,
+    paddingVertical: tokens.spaceXl,
+    paddingHorizontal: tokens.spaceLg,
   },
   choose: {
     flex: 1,

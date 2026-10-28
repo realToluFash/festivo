@@ -7,6 +7,8 @@
     "limits.reset_requests": "Trop de demandes de réinitialisation. Réessayez {hour, plural, other {à {time}}}.",
     "limits.organisations": "Trop de nouvelles organisations pour le moment. Réessayez {hour, plural, other {à {time}}}.",
     "limits.sign_ups": "Trop d’inscriptions depuis ce réseau. Réessayez {hour, plural, other {à {time}}}.",
+    "limits.address_lookups": "Trop de recherches d’adresse. Réessayez {hour, plural, other {à {time}}}.",
+    "limits.assistant_requests": "Trop de requêtes à l’assistant. Réessayez {hour, plural, other {à {time}}}.",
     "contacts.limit_email": "Un compte est limité à {count, number, ::group-auto} adresses e-mail. Retirez-en une pour en ajouter une autre.",
     "contacts.limit_phone": "Un compte est limité à {count, number, ::group-auto} numéros de téléphone. Retirez-en un pour en ajouter un autre.",
     "proof.required": "Cette action nécessite votre mot de passe, ou une connexion avec Google ou Apple, dans les {minutes, number, ::group-auto} dernières minutes, ainsi que votre code de double authentification s’il est activé.",

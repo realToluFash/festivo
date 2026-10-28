@@ -104,6 +104,9 @@
         "symfony/symfony": "*"
     },
     "extra": {
+        "runtime": {
+            "error_handler": "App\\Http\\FatalErrorHandler"
+        },
         "symfony": {
             "allow-contrib": false,
             "require": "7.4.*"

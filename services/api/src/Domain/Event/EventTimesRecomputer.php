@@ -42,7 +42,7 @@ final readonly class EventTimesRecomputer
             }
 
             if ($write) {
-                $this->notificationScheduler->rescheduleForEvent($event);
+                $this->notificationScheduler->rescheduleForNewZone($event);
             }
 
             if (0 === ++$changed % self::BATCH_SIZE) {

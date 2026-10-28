@@ -229,8 +229,8 @@ export function releaseApp(root, sha) {
   return join(root, '.qa/release', `soirely-${sha.slice(0, 12)}.app`);
 }
 
-export function launchVideo(root, sha, platform) {
-  return join(root, '.qa/release', `launch-${sha.slice(0, 12)}.${platform}.mp4`);
+export function launchVideo(root, sha, platform, device) {
+  return join(root, '.qa/release', `launch-${sha.slice(0, 12)}.${platform}.${device}.mp4`);
 }
 
 // A Mac keeps an APK and an app side by side: each build replaces only its own kind.
@@ -774,21 +774,49 @@ function ensureExpoGo(udid) {
   return false;
 }
 
+function installedIosRelease(root) {
+  return join(root, '.qa/release/ios-release-on');
+}
+
+// A release build on the simulator not opened still owns soirely:// there. simctl
+// uninstalls only on a booted device, so that one is booted for it, then shut.
+function shutSimulator(root, key, id) {
+  const udid = simulatorId(CONFIG.simulators[key].name);
+  if (!udid) return;
+  if (iosReleaseOn(root, key)) {
+    run('xcrun', ['simctl', 'boot', udid], { optional: true });
+    if (run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true })) {
+      clearIosRelease(root, key);
+    }
+  }
+  run('xcrun', ['simctl', 'shutdown', udid], { optional: true });
+}
+
+function iosReleaseOn(root, key) {
+  const recorded = installedIosRelease(root);
+  return existsSync(recorded) && readFileSync(recorded, 'utf8').trim() === key;
+}
+
+function clearIosRelease(root, key) {
+  if (iosReleaseOn(root, key)) rmSync(installedIosRelease(root));
+}
+
 async function ios(args) {
   const root = qaWorktree();
   assertQaStack(root);
   const { open, shut } = simulatorFor(args);
-  const other = simulatorId(CONFIG.simulators[shut].name);
-  if (other) run('xcrun', ['simctl', 'shutdown', other], { optional: true });
+  const id = iosBundle(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
+  shutSimulator(root, shut, id);
   // An offline release launch stopped these; a release build owns soirely:// while installed.
   startAppServices(root);
-  const id = iosBundle(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
   const devices = [open].map((key) => {
     const udid = simulatorId(CONFIG.simulators[key].name);
     if (!udid) throw new Error(`no ${CONFIG.simulators[key].name} simulator — run setup`);
     withoutPasswordAutoFill(udid);
     run('xcrun', ['simctl', 'boot', udid], { optional: true });
-    run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true });
+    if (run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true })) {
+      clearIosRelease(root, open);
+    }
     if (!ensureExpoGo(udid)) {
       throw new Error(
         `Expo Go is on no booted simulator to copy from. Install it once with \`npx expo start --ios\` on any simulator, then rerun.`,
@@ -1180,7 +1208,7 @@ async function releaseAndroid(args) {
   await pause(1000);
   adbOut(tools, ['shell', 'am', 'start', '-n', `${id}/.MainActivity`]);
   await recording;
-  const video = launchVideo(root, sha, 'android');
+  const video = launchVideo(root, sha, 'android', open);
   rmSync(video, { force: true });
   adbOut(tools, ['pull', LAUNCH_RECORDING, video]);
   adbOut(tools, ['shell', 'rm', '-f', LAUNCH_RECORDING]);
@@ -1298,21 +1326,21 @@ async function releaseIos(args) {
   }
 
   step(`The ${open}`);
-  const other = simulatorId(CONFIG.simulators[shut].name);
-  if (other) run('xcrun', ['simctl', 'shutdown', other], { optional: true });
+  const id = iosBundle(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
+  shutSimulator(root, shut, id);
   const udid = simulatorId(CONFIG.simulators[open].name);
   if (!udid) throw new Error(`no ${CONFIG.simulators[open].name} simulator — run setup`);
   withoutPasswordAutoFill(udid);
   run('xcrun', ['simctl', 'boot', udid], { optional: true });
   run('open', ['-a', 'Simulator'], { optional: true });
   // A fresh install every time, so the launch below is the app's first, with no cache.
-  const id = iosBundle(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
   run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true });
   run('xcrun', ['simctl', 'install', udid, app]);
+  writeFileSync(installedIosRelease(root), open);
   if (offline) stopAppServices(root);
   else startAppServices(root);
 
-  const video = launchVideo(root, sha, 'ios');
+  const video = launchVideo(root, sha, 'ios', open);
   const recorded = recordSimulator(udid, video);
   await pause(1000);
   run('xcrun', ['simctl', 'launch', udid, id]);
@@ -1677,8 +1705,8 @@ function startHelper({ email, secret, token, passed, begun, heard, device, onAnd
   });
 }
 
-// Maestro hangs rather than exits when its driver dies, so a run gets a budget, and a batch
-// whose flows stop calling the harness for STALL_MS is stopped sooner.
+// A dead driver either ends Maestro at once or hangs it. For the hang a run gets a budget, and a
+// batch whose flows stop calling the harness for STALL_MS is stopped sooner.
 export const runBudgetMs = (runs) => (5 + 2 * runs) * 60_000;
 export const STALL_MS = 5 * 60_000;
 
@@ -1777,7 +1805,7 @@ async function batch(args) {
     ORG_NAME: ACCOUNT_ORGANISATION,
     ...rest,
   };
-  const test = async (flow, runs) => {
+  const test = async (flow, held) => {
     const from = begun.length;
     heard.at = Date.now();
     const stall = { ms: STALL_MS, heard };
@@ -1791,14 +1819,14 @@ async function batch(args) {
         ...Object.entries(env).flatMap(([key, value]) => ['-e', `${key}=${value}`]),
         flow,
       ],
-      { cwd: root, env: onAndroid ? androidTools().env : {}, timeoutMs: runBudgetMs(runs), stall },
+      {
+        cwd: root,
+        env: onAndroid ? androidTools().env : {},
+        timeoutMs: runBudgetMs(held.length),
+        stall,
+      },
     );
-    const after = afterRun(batchRuns(checks, languages), {
-      begun,
-      from,
-      passed,
-      stalled: stall.stalled,
-    });
+    const after = afterRun(held, { begun, from, passed, stalled: stall.stalled });
     if (after.crashed) crashed.push(after.crashed);
     return after;
   };
@@ -1810,13 +1838,13 @@ async function batch(args) {
         for (const check of checks) {
           if (named)
             await api('/api/auth/locale', { method: 'PUT', token, body: { locale: language } });
-          await test(join(flows, `_cold.${checkId(check, language)}.yaml`), 1);
+          await test(join(flows, `_cold.${checkId(check, language)}.yaml`), [{ check, language }]);
         }
       }
     } else {
       if (named)
         await api('/api/auth/locale', { method: 'PUT', token, body: { locale: languages[0] } });
-      const first = await test(join(flows, '_batch.yaml'), checks.length * languages.length);
+      const first = await test(join(flows, '_batch.yaml'), batchRuns(checks, languages));
       // After a driver crash the checks it never reached run in a fresh Maestro.
       await resumeBatch(first.rest, async (rest, attempt) => {
         const flow = join(flows, `_rest.${attempt}.yaml`);
@@ -1828,7 +1856,7 @@ async function batch(args) {
             token,
             body: { locale: rest[0].language },
           });
-        return test(flow, rest.length);
+        return test(flow, rest);
       });
     }
   } finally {
@@ -1865,12 +1893,15 @@ export async function resumeBatch(rest, resume) {
     ({ rest } = await resume(rest, attempt));
 }
 
-// A run that stalls blames the last check it began itself, and is resumed only past that check.
-export function afterRun(runs, { begun, from, passed, stalled }) {
+// Checks are optional, so a run that ends before the last check it held, or that the watchdog
+// stopped, lost its driver. It blames the last check it began if that one did not pass, and
+// resumes past it.
+export function afterRun(held, { begun, from, passed, stalled = false }) {
   const current = begun.slice(from).at(-1);
-  if (!stalled || !current || passed.has(current)) return { crashed: null, rest: [] };
-  const rest = runs.filter(({ check, language }) => !begun.includes(checkId(check, language)));
-  return { crashed: current, rest };
+  const rest = held.filter(({ check, language }) => !begun.includes(checkId(check, language)));
+  if (!current) return { crashed: null, rest: [] };
+  const lost = rest.length > 0 || stalled;
+  return { crashed: lost && !passed.has(current) ? current : null, rest };
 }
 
 export function batchSummary(ids, { passed, begun, crashed }) {

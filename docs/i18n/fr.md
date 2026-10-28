@@ -130,6 +130,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   « Retirer la photo », comme le glossaire. Les tailles s’écrivent en Mo, « 15 Mo ». La ligne de
   l’événement créé, « L’événement a été enregistré sans sa photo. {{reason}} », se lit avec
   n’importe quel refus à la suite.
+  Après un refus, les boutons du dialogue sont « Choisir une autre photo » et, cadre vide,
+  « Choisir une photo » (sc-16573) : à l’infinitif, comme « Importer une photo » et « Utiliser
+  cette photo », tandis que le refus lui-même s’adresse à l’impératif, « Choisissez-en une plus
+  grande ».
 - **26 Oct 2026. Le type d’événement** (`web:eventForm.type*`, `web:eventTypes.*`,
   `messages:validation.event_type_required`, sc-3588 via sc-13205). « Type », « Choisissez le
   type d’événement », et le refus, identique à l’écran et dans l’API, « Choisissez de quel type
@@ -562,3 +566,13 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   et finit comme `orgGeneral.readOnly` : « vous pouvez voir ces informations mais pas les
   modifier ». Un enregistrement refusé par la règle dit seulement « Rien n’a été enregistré. »,
   le début de `refused`.
+- **27 oct. 2026. Le jalon d’un événement annulé** (sc-16725 pour sc-16709,
+  `messages:timeline.event_called_off`). « Annulation : {name} », un nom, donc sans accord avec
+  un nom d’événement dont on ignore le genre. Les deux-points, avec U+00A0 avant, plutôt que le « Annulation de »
+  convenu avec le pm : « de » devant un nom qui commence par une voyelle ou un article
+  (« de Anniversaire », « de Le Gala ») se lirait mal, et le code ne peut pas élider.
+- **27 oct. 2026. Un décompte de suppression qui échoue** (`ownership.deleteUncounted`,
+  `ownership.deleteRetry`, web et app, sc-16928 pour sc-16866). « Impossible de calculer son
+  contenu », comme « Calcul de son contenu… » (`deleteLoading`). « Si vous la supprimez », puis
+  « restaurer » et « l’assistance Soirely », comme `deleteWindow`, avec un délai fixe
+  « pendant 30 jours ». Le bouton est « Réessayer », comme ailleurs.

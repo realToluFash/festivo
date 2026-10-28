@@ -625,3 +625,6 @@ startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the sa
   than announcing it) and ends with the role line's "you can see these but not change them", so
   the page reads the same whichever reason holds it back. A save the rule refuses says only
   "Nothing was saved.": the line under the details already says why.
+- **27 Oct 2026. A called-off event's milestone** (sc-16725 for sc-16709,
+  `messages:timeline.event_called_off`). "{name} called off", as pm wrote it, beside
+  "{name} starts" and "{name} ends"; the act stays "Call off" (sc-3585).

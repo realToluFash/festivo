@@ -362,8 +362,10 @@ span {
  */
 
 @media (width <= 60rem) {
+  /* One column under a 100vh minimum would share the spare height with the sidebar. */
   .shell {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
   }
 
   .shell-sidebar {
@@ -391,11 +393,6 @@ span {
 /* ── A phone: one bar, its links behind Menu (sc-13413) ───────────────────── */
 
 @media (width <= 40rem) {
-  /* One column under a 100vh minimum would share the spare height with the bar. */
-  .shell {
-    grid-template-rows: auto 1fr;
-  }
-
   .shell-sidebar {
     flex-direction: row;
     align-items: center;
@@ -4048,6 +4045,33 @@ button.members-row {
   background: color-mix(in srgb, var(--colorCard) 70%, transparent);
 }
 
+.cover-choose {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spaceMd);
+  box-sizing: border-box;
+  aspect-ratio: 16 / 9;
+  padding: var(--spaceXl);
+  border: 2px dashed var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  text-align: center;
+}
+
+.cover-choose .field-help {
+  margin: 0;
+}
+
+.cover-dialog-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  min-width: 0;
+}
+
 .cover-slider {
   width: 100%;
   min-height: var(--sizeHit);
@@ -4373,11 +4397,16 @@ button.members-row {
   gap: var(--spaceSm) var(--spaceMd);
 }
 
+/* While the dates fail there is no All dates link, but its box stays, so the head keeps its height in every locale. */
+.coming-up-link-held {
+  visibility: hidden;
+}
+
 /* Held at the height of the event's own two milestones, so the panels below do not move between states. */
 .coming-up-rows {
   display: flex;
   flex-direction: column;
-  min-height: 140px;
+  min-height: 148px;
 }
 
 .timeline-list {
@@ -4523,7 +4552,7 @@ button.members-row {
 
 @media (width <= 40rem) {
   .coming-up-rows {
-    min-height: 178px;
+    min-height: 179px;
   }
 
   .timeline-failed .button {

@@ -106,6 +106,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   do leitor de ecrã. «Carregar» para upload, com o gerúndio de PT-PT «A carregar…»; «píxeis», não
   «pixels». A linha do evento criado, «O evento foi guardado sem a fotografia. {{reason}}», lê-se
   com qualquer das recusas a seguir.
+  Depois de uma recusa, os botões do diálogo são «Escolher outra fotografia» e, com a moldura
+  vazia, «Escolher uma fotografia» (sc-16573): no infinitivo, como «Carregar uma fotografia» e
+  «Usar esta fotografia», enquanto a recusa pede no imperativo, «Escolha uma maior».
 - **26 Oct 2026. O tipo de evento** (`web:eventForm.type*`, `web:eventTypes.*`,
   `messages:validation.event_type_required`, sc-3588 via sc-13205). "Tipo", "Escolha o tipo de
   evento", e a recusa, igual no ecrã e na API, "Escolha que tipo de evento é.". Birthday é
@@ -530,3 +533,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   fecha como `orgGeneral.readOnly`: "pode ver estes dados mas não alterá-los", e não o "pode
   consultar tudo, mas sem alterar nada" do aviso, porque a linha fala dos dados acima dela. Um
   guardar recusado pela regra diz só "Nada foi guardado.", o início de `refused`.
+- **27 Oct 2026. O marco de um evento cancelado** (sc-16725 para sc-16709,
+  `messages:timeline.event_called_off`). "Cancelamento de {name}", um substantivo, para não
+  concordar com um nome de evento cujo género o código não conhece.
+- **27 Oct 2026. Uma contagem de eliminação que falha** (`ownership.deleteUncounted`,
+  `ownership.deleteRetry`, web e app, sc-16928 para sc-16866). "Não foi possível contar o que
+  contém", com o verbo de `deleteLoading`. "Se a eliminar … são eliminados na mesma", e
+  "restaurá-la", como `deleteWindow`, com o prazo fixo "durante 30 dias". O botão é "Tentar
+  novamente", como no ecrã Eventos.

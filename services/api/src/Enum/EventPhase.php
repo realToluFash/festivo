@@ -30,6 +30,12 @@ enum EventPhase: string
         };
     }
 
+    /** Ended before it started: called off (sc-3585), so it never took place. */
+    public static function calledOff(?DateTimeImmutable $endedAt, DateTimeImmutable $startsAt): bool
+    {
+        return null !== $endedAt && $endedAt < $startsAt;
+    }
+
     /** @return list<EventAction> */
     public function allowed(): array
     {

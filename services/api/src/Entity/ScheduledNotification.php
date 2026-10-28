@@ -20,6 +20,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_scheduled_notification_oldest', columns: ['due_at'], options: ['where' => "((status)::text = 'pending'::text)"])]
 #[ORM\Index(name: 'idx_scheduled_notification_claimed', columns: ['claimed_at'])]
 #[ORM\Index(name: 'idx_scheduled_notification_event', columns: ['event_id'])]
+#[ORM\Index(name: 'idx_scheduled_notification_organisation', columns: ['organisation_id'])]
 class ScheduledNotification
 {
     #[ORM\Id]
@@ -38,6 +39,11 @@ class ScheduledNotification
     #[ORM\ManyToOne(targetEntity: Event::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
     private ?Event $event = null;
+
+    /** The audience's organisation, so that its purge takes the rows no event does (sc-17126). */
+    #[ORM\ManyToOne(targetEntity: Organisation::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
+    private ?Organisation $organisation = null;
 
     /** @var array<string, mixed> */
     #[ORM\Column(type: Types::JSON, options: ['jsonb' => true])]
@@ -118,6 +124,11 @@ class ScheduledNotification
     public function getEvent(): ?Event
     {
         return $this->event;
+    }
+
+    public function getOrganisation(): ?Organisation
+    {
+        return $this->organisation;
     }
 
     /** @return array<string, mixed> */

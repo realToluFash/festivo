@@ -21,6 +21,9 @@ import { focusStep, useFocusOnceShown, useStepFocus } from '../../../stepFocus.t
 
 type Opener = 'transfer' | 'leave' | 'delete';
 
+type Preview =
+  { kind: 'counting' } | { kind: 'counted'; counted: OrganisationDeletion } | { kind: 'failed' };
+
 type Step =
   | { kind: 'resting'; flash: string | null }
   | { kind: 'transfer'; from: Opener }
@@ -482,7 +485,8 @@ function Leave({
 function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: () => void }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [preview, setPreview] = useState<OrganisationDeletion | null>(null);
+  const [preview, setPreview] = useState<Preview>({ kind: 'counting' });
+  const [attempt, setAttempt] = useState(0);
   const [typed, setTyped] = useState('');
   const [busy, setBusy] = useState(false);
   const [mismatch, setMismatch] = useState<string | null>(null);
@@ -496,14 +500,14 @@ function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: ()
     let current = true;
 
     api.organisationDeletion(organisation.id).then(
-      (counted) => current && setPreview(counted),
-      () => {},
+      (counted) => current && setPreview({ kind: 'counted', counted }),
+      () => current && setPreview({ kind: 'failed' }),
     );
 
     return () => {
       current = false;
     };
-  }, [organisation.id]);
+  }, [organisation.id, attempt]);
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -547,28 +551,50 @@ function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: ()
       <h3 tabIndex={-1} ref={heading}>
         {t('ownership.deleteTitle', { organisation: organisation.name })}
       </h3>
-      <div className="notice notice-attention">
-        <span className="mark mark-attention" aria-hidden="true">
-          !
-        </span>
+      <div
+        className={preview.kind === 'failed' ? 'notice notice-broken' : 'notice notice-attention'}
+      >
+        {preview.kind === 'failed' ? (
+          <span className="mark mark-broken" aria-hidden="true">
+            ✕
+          </span>
+        ) : (
+          <span className="mark mark-attention" aria-hidden="true">
+            !
+          </span>
+        )}
         <div className="notice-body">
           <p className="notice-title">{t('ownership.deleteWarningTitle')}</p>
           <div>
-            {preview == null && <p>{t('ownership.deleteLoading')}</p>}
-            {/* Mounted empty with the heading, so only the counts are announced, when they come. */}
+            {preview.kind === 'counting' && <p>{t('ownership.deleteLoading')}</p>}
+            {/* Mounted empty with the heading, so only the counts or the failure are announced, when they come. */}
             <div role="alert">
-              {preview != null && (
+              {preview.kind === 'counted' && (
                 <p>
                   {t('ownership.deleteCounts', {
-                    events: t('ownership.events', { count: preview.events }),
-                    guests: t('ownership.guests', { count: preview.guests }),
-                    members: t('ownership.members', { count: preview.members }),
+                    events: t('ownership.events', { count: preview.counted.events }),
+                    guests: t('ownership.guests', { count: preview.counted.guests }),
+                    members: t('ownership.members', { count: preview.counted.members }),
                   })}{' '}
-                  {t('ownership.deleteWindow', { deadline: preview.restoreCloses })}
+                  {t('ownership.deleteWindow', { deadline: preview.counted.restoreCloses })}
                 </p>
               )}
+              {preview.kind === 'failed' && <p>{t('ownership.deleteUncounted')}</p>}
             </div>
           </div>
+          {preview.kind === 'failed' && (
+            <button
+              type="button"
+              className="button"
+              onClick={() => {
+                focusStep(heading.current);
+                setPreview({ kind: 'counting' });
+                setAttempt((n) => n + 1);
+              }}
+            >
+              {t('ownership.deleteRetry')}
+            </button>
+          )}
         </div>
       </div>
 

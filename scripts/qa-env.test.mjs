@@ -300,10 +300,20 @@ describe('a release build', () => {
     ).toEqual(['soirely-0123456789ab.apk']);
   });
 
-  it('names the launch video by platform, so both launches of a commit are kept', () => {
+  it('names the launch video by platform and device, so every launch of a commit is kept', () => {
     const sha = 'c8646738ce1413ea1e718dce85ff4973f0f9b22c';
-    expect(launchVideo('/qa', sha, 'ios')).toBe('/qa/.qa/release/launch-c8646738ce14.ios.mp4');
-    expect(launchVideo('/qa', sha, 'android')).not.toBe(launchVideo('/qa', sha, 'ios'));
+    expect(launchVideo('/qa', sha, 'ios', 'phone')).toBe(
+      '/qa/.qa/release/launch-c8646738ce14.ios.phone.mp4',
+    );
+    expect(launchVideo('/qa', sha, 'ios', 'ipad')).not.toBe(
+      launchVideo('/qa', sha, 'ios', 'phone'),
+    );
+    expect(launchVideo('/qa', sha, 'android', 'phone')).not.toBe(
+      launchVideo('/qa', sha, 'ios', 'phone'),
+    );
+    expect(launchVideo('/qa', sha, 'android', 'tablet')).not.toBe(
+      launchVideo('/qa', sha, 'android', 'phone'),
+    );
   });
 
   it('keeps the app beside the APK, and replaces only an older app', () => {
@@ -906,7 +916,7 @@ describe('the list a batch ends with', () => {
   });
 });
 
-describe('what a stalled Maestro run leaves to resume', () => {
+describe('what a Maestro run that lost its driver leaves to resume', () => {
   const runs = ['home', 'settings', 'roles', 'members'].map((check) => ({
     check,
     language: 'any',
@@ -914,35 +924,51 @@ describe('what a stalled Maestro run leaves to resume', () => {
 
   it('blames the check the driver died in and resumes past it', () => {
     expect(
+      afterRun(runs, { begun: ['home', 'settings'], from: 0, passed: new Set(['home']) }),
+    ).toEqual({ crashed: 'settings', rest: runs.slice(2) });
+  });
+
+  it('resumes past a check that passed before the driver died, blaming nobody', () => {
+    expect(
       afterRun(runs, {
         begun: ['home', 'settings'],
         from: 0,
-        passed: new Set(['home']),
-        stalled: true,
+        passed: new Set(['home', 'settings']),
       }),
-    ).toEqual({ crashed: 'settings', rest: runs.slice(2) });
+    ).toEqual({ crashed: null, rest: runs.slice(2) });
   });
 
   it('stops when a resumed run reaches no new check, blaming nobody', () => {
     expect(
-      afterRun(runs.slice(2), {
-        begun: ['home', 'settings'],
-        from: 2,
+      afterRun(runs.slice(2), { begun: ['home', 'settings'], from: 2, passed: new Set(['home']) }),
+    ).toEqual({ crashed: null, rest: [] });
+  });
+
+  it('resumes nothing after a run that reached its last check, even one that failed', () => {
+    expect(
+      afterRun(runs, {
+        begun: ['home', 'settings', 'roles', 'members'],
+        from: 0,
         passed: new Set(['home']),
-        stalled: true,
       }),
     ).toEqual({ crashed: null, rest: [] });
   });
 
-  it('resumes nothing after a run that ended without stalling', () => {
+  it('lists a cold check that failed on its own as a plain failure, not a crash', () => {
+    expect(
+      afterRun([runs[1]], { begun: ['home', 'settings'], from: 1, passed: new Set(['home']) }),
+    ).toEqual({ crashed: null, rest: [] });
+  });
+
+  it('blames the last check of a run the watchdog stopped, resuming nothing', () => {
     expect(
       afterRun(runs, {
-        begun: ['home', 'settings'],
+        begun: ['home', 'settings', 'roles', 'members'],
         from: 0,
         passed: new Set(['home']),
-        stalled: false,
+        stalled: true,
       }),
-    ).toEqual({ crashed: null, rest: [] });
+    ).toEqual({ crashed: 'members', rest: [] });
   });
 
   it('stops resuming after the cap when every resume crashes on the same check', async () => {

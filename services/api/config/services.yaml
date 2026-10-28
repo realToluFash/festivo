@@ -273,6 +273,11 @@ when@test:
             autowire: true
             autoconfigure: true
 
+        # Routes PHP itself dies on, for the crash answer (sc-16890).
+        App\Tests\Fixtures\Crash\:
+            resource: '../tests/Fixtures/Crash/'
+            autoconfigure: true
+
         # The suite can never reach a real provider, whatever ASSISTANT_PROVIDER
         # happens to say on this machine. Every assisted path — the gate, the
         # validation, the proxy, the record — runs here, and none of it is

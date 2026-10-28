@@ -1,6 +1,7 @@
 """The Mac runner. launchd is never called; the supervisor and a detached worker run for
 real, since they need only POSIX."""
 
+import json
 import os
 import pathlib
 import plistlib
@@ -43,6 +44,20 @@ class Agent(unittest.TestCase):
                 self.assertEqual(launchd.stable_python(versioned), str(stable))
                 self.assertEqual(launchd.stable_python("/elsewhere/python3"),
                                  "/elsewhere/python3")
+
+    def test_workers_find_nvms_node_ahead_of_every_other_and_the_usual_tools_after(self):
+        brew = "/opt/homebrew/bin"
+        with mock.patch.object(machine, "tool_folders", return_value=["/nvm/v22/bin", "/m/bin"]), \
+                mock.patch("shutil.which", side_effect=lambda tool, **_: f"{brew}/{tool}"):
+            found = launchd.search_path().split(":")
+        self.assertEqual(found[:3], ["/nvm/v22/bin", "/m/bin", "/opt/homebrew/bin"])
+        self.assertEqual(found.count("/opt/homebrew/bin"), 1)
+
+    def test_with_no_node_to_add_the_path_is_as_before(self):
+        with mock.patch.object(machine, "tool_folders", return_value=[]), \
+                mock.patch("shutil.which", return_value=None):
+            self.assertEqual(launchd.search_path(), "/opt/homebrew/bin:/usr/local/bin:/usr/bin:"
+                                                    "/bin:/usr/sbin:/sbin")
 
     def test_sizes_read_as_systemd_reads_them(self):
         self.assertEqual(launchd.size_bytes("3G"), 3 * 1024 ** 3)
@@ -91,11 +106,18 @@ class Mac(unittest.TestCase):
         self.addCleanup(self.folder.cleanup)
         self.root = pathlib.Path(self.folder.name)
         for name, value in (("log_dir", self.root / "logs"),
-                            ("agent_path", self.root / "LaunchAgents" / "routine.plist")):
+                            ("agent_path", self.root / "LaunchAgents" / "routine.plist"),
+                            ("web_agent_path", self.root / "LaunchAgents" / "web.plist")):
             patch = mock.patch.object(launchd, name, return_value=value)
             patch.start()
             self.addCleanup(patch.stop)
+        config = mock.patch.dict("os.environ", {"SOIRELY_CONFIG": str(self.root)})
+        config.start()
+        self.addCleanup(config.stop)
         self.mac = launchd.Mac(self.root / "roles")
+
+    def configure(self, **settings):
+        (self.root / "agents.json").write_text(json.dumps(settings))
 
     def test_the_agent_is_written_once_and_kept_while_it_matches(self):
         with mock.patch.object(launchd.Mac, "loaded", return_value=False):
@@ -132,6 +154,45 @@ class Mac(unittest.TestCase):
             self.mac.after_run()
         popen.assert_not_called()
         self.assertIn("bootstrap", run.call_args.args[0][-1])
+
+    def test_with_web_set_its_page_is_kept_running_on_that_address(self):
+        self.configure(web={"listen": "0.0.0.0", "port": 8766})
+        with mock.patch.object(launchd.Mac, "loaded", return_value=False), \
+                mock.patch("subprocess.run") as run:
+            run.return_value.returncode = 0
+            self.mac.install("/q/sq/sq", "/c/env", "python3")
+            calls = [c.args[0][1] for c in run.call_args_list]
+            run.reset_mock()
+            self.assertFalse(self.mac.install("/q/sq/sq", "/c/env", "python3"))
+        self.assertEqual(calls, ["bootout", "bootstrap"])
+        self.assertEqual([c.args[0][1] for c in run.call_args_list], ["print"])
+        made = plistlib.loads(launchd.web_agent_path().read_bytes())
+        self.assertEqual(made["ProgramArguments"][1:],
+                         ["/q/sq/sq", "web", "--no-open", "--listen", "0.0.0.0", "--port", "8766"])
+        self.assertTrue(made["KeepAlive"])
+
+    def test_a_web_agent_that_stopped_is_started_again(self):
+        self.configure(web={})
+        with mock.patch.object(launchd.Mac, "loaded", return_value=False), \
+                mock.patch("subprocess.run") as run:
+            run.return_value.returncode = 0
+            self.mac.install("/q/sq/sq", "/c/env", "python3")
+            run.reset_mock()
+            run.return_value.returncode = 113
+            self.mac.install("/q/sq/sq", "/c/env", "python3")
+        self.assertEqual([c.args[0][1] for c in run.call_args_list], ["print", "bootstrap"])
+
+    def test_without_web_the_agent_is_taken_away(self):
+        self.configure(web={})
+        with mock.patch.object(launchd.Mac, "loaded", return_value=False), \
+                mock.patch("subprocess.run") as run:
+            run.return_value.returncode = 0
+            self.mac.install("/q/sq/sq", "/c/env", "python3")
+            self.configure()
+            run.reset_mock()
+            self.assertTrue(self.mac.install("/q/sq/sq", "/c/env", "python3"))
+        self.assertEqual([c.args[0][1] for c in run.call_args_list], ["bootout"])
+        self.assertFalse(launchd.web_agent_path().exists())
 
     def test_down_unloads_the_agent_and_keeps_it_off_at_the_next_login(self):
         with mock.patch("subprocess.run") as run:

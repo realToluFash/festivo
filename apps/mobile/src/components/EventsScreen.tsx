@@ -30,7 +30,7 @@ import { AppFrame } from './AppFrame.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { EventNotFound, EventPage, EventsFailed, NoEvents } from './Events.tsx';
 import { EventsHome, type HomeLoad } from './EventsHome.tsx';
-import { type ListAndPageSpacing, ListAndPage, useListAndPageKind } from './ListAndPage.tsx';
+import { type ListAndPageSpacing, ListAndPage, useListAndPageLayout } from './ListAndPage.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { FocusBack, type StepClosed, stepClosed } from './Screen.tsx';
@@ -47,7 +47,7 @@ const LOADING: Load = { kind: 'loading' };
 /** Events, `EventsHome-*` and `EventView-*` (sc-1593): the organisation's events, read-only, and an event's page. */
 export function EventsScreen({ linked = null }: { linked?: string | null }) {
   const { t } = useTranslation();
-  const kind = useListAndPageKind(SPACING, 'nothing');
+  const { kind } = useListAndPageLayout(SPACING, 'nothing');
   const { account, organisation } = useSignedIn();
   const organisationId = organisation?.id;
   const reads = organisation != null && roleHolds(organisation, 'events.read');
@@ -271,12 +271,6 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
   const pageName = shown?.name ?? null;
   const newEvent = () => router.push('/events/new');
 
-  const heading = !phone && (
-    <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
-      {t('eventsScreen.title')}
-    </Text>
-  );
-
   const list = (opener: (key: string) => RefCallback<View>) =>
     !reads ? null : load.kind === 'loading' ? (
       <Waiting words={t('eventsScreen.loading')} />
@@ -342,7 +336,6 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     >
       <ListAndPage
         kind={kind}
-        heading={heading}
         list={<FocusBack closed={closed}>{list}</FocusBack>}
         listRefresh={
           reads && load.kind === 'loaded' ? (

@@ -7,6 +7,8 @@
     "limits.reset_requests": "Too many reset requests. Try again {hour, plural, other {at {time}}}.",
     "limits.organisations": "Too many new organisations for now. Try again {hour, plural, other {at {time}}}.",
     "limits.sign_ups": "Too many sign-ups from this network. Try again {hour, plural, other {at {time}}}.",
+    "limits.address_lookups": "Too many address lookups. Try again {hour, plural, other {at {time}}}.",
+    "limits.assistant_requests": "Too many assistant requests. Try again {hour, plural, other {at {time}}}.",
     "contacts.limit_email": "An account holds {count, number, ::group-auto} email addresses. Remove one to add another.",
     "contacts.limit_phone": "An account holds {count, number, ::group-auto} phone numbers. Remove one to add another.",
     "proof.required": "This needs your password, or a sign-in with Google or Apple, in the last {minutes, number, ::group-auto} minutes, and your two-factor code if two-factor is on.",

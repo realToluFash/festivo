@@ -1,0 +1,27 @@
+# Verifying with the code from the newest email, on an unverified account. sc-56.
+#
+#   node .qa/bin/qa-env.mjs maestro verify-email EMAIL=… PASSWORD=…
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-unverified.yaml
+- runScript: scripts/latest-code.js
+- tapOn:
+    id: 'verifyEmail.code'
+- eraseText: 20
+- inputText: ${output.code}
+- tapOn:
+    id: 'verifyEmail.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'verifyEmail.continue'
+    timeout: 15000
+- takeScreenshot: mobile-verify-email-done
+- tapOn:
+    id: 'verifyEmail.continue'
+# Continue goes on to Complete your profile or Home, depending on the account.
+- extendedWaitUntil:
+    notVisible:
+      id: 'verifyEmail.continue'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: mobile-verify-email-continued
