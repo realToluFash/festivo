@@ -15,6 +15,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   allowCleartext,
+  apiMoves,
   batchCheck,
   batchFlow,
   batchRuns,
@@ -773,6 +774,30 @@ describe('a check in a batch', () => {
   it('carries no language in its name when the batch names none', () => {
     expect(checkId('settings', 'any')).toBe('settings');
     expect(checkId('settings', 'es')).toBe('settings.es');
+  });
+});
+
+describe('the API a check holds', () => {
+  it('pauses, stops and brings back only the api service', () => {
+    expect(apiMoves('up', 'paused')).toEqual([['pause', 'api']]);
+    expect(apiMoves('up', 'stopped')).toEqual([['stop', 'api']]);
+    expect(apiMoves('paused', 'up')).toEqual([['unpause', 'api']]);
+    expect(apiMoves('stopped', 'up')).toEqual([['up', '-d', '--wait', '--no-recreate', 'api']]);
+  });
+
+  it('goes through up between paused and stopped, since a paused container is not stopped', () => {
+    expect(apiMoves('paused', 'stopped')).toEqual([
+      ['unpause', 'api'],
+      ['stop', 'api'],
+    ]);
+    expect(apiMoves('stopped', 'paused')).toEqual([
+      ['up', '-d', '--wait', '--no-recreate', 'api'],
+      ['pause', 'api'],
+    ]);
+  });
+
+  it('does nothing when the API is already there', () => {
+    for (const state of ['up', 'paused', 'stopped']) expect(apiMoves(state, state)).toEqual([]);
   });
 });
 

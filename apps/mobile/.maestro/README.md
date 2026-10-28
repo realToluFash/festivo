@@ -77,6 +77,12 @@ A check is written like a flow, and also:
 - **`takeScreenshot: <name>`, on one line.** The harness prefixes the check and language, so
   `settings` in a Spanish batch lands in `.qa/<batch>/settings.es-settings.png`.
 
+A check that needs the API held asks the harness through `batch/helper.js` with
+`ASK: /api?to=paused`, `/api?to=stopped` or `/api?to=up`. It answers once the QA stack's `api`
+service is there, and `up` once it is healthy again. Hold it after the screen before has
+loaded: Events keeps its rows, so a row tapped with the API paused holds only Event View's
+reads. Every check starts with the API up, whatever the one before it left.
+
 Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each code
 (`batch/helper.js`), so it runs inside a batch, which holds the account's `TOTP_SECRET`.
 

@@ -1656,8 +1656,43 @@ function appRunning(device, onAndroid) {
   return expoGoRunning(capture('xcrun', ['simctl', 'spawn', device, 'launchctl', 'list']) ?? '');
 }
 
+export const API_STATES = ['up', 'paused', 'stopped'];
+
+export function apiMoves(from, to) {
+  if (from === to) return [];
+  const up = {
+    paused: [['unpause', 'api']],
+    stopped: [['up', '-d', '--wait', '--no-recreate', 'api']],
+  };
+  if (to === 'up') return up[from];
+  if (from !== 'up') return [...up[from], ...apiMoves('up', to)];
+  return [[to === 'paused' ? 'pause' : 'stop', 'api']];
+}
+
+// A check holds Event View's reads by pausing the API once the list has loaded. Each move waits
+// for the one before it, and the state is what the last finished move left.
+function apiControl(root) {
+  let state = 'up';
+  let moving = Promise.resolve();
+  const move = (to) => {
+    const next = moving.then(async () => {
+      for (const args of apiMoves(state, to)) {
+        if (!(await runAsync('docker', ['compose', ...args], { cwd: root })))
+          throw new Error(`docker compose ${args.join(' ')} failed`);
+        state = args[0] === 'pause' ? 'paused' : args[0] === 'stop' ? 'stopped' : 'up';
+      }
+    });
+    moving = next.catch(() => {});
+    return next;
+  };
+  return { move, isUp: () => state === 'up' };
+}
+
+const within = (ms, promise) =>
+  Promise.race([promise.then(() => true), pause(ms).then(() => false)]);
+
 // Under ten seconds an answer: batch/helper.js asks again while this says wait.
-function startHelper({ email, secret, token, passed, begun, heard, device, onAndroid }) {
+function startHelper({ email, secret, token, passed, begun, heard, device, onAndroid, api }) {
   const server = createServer(async (request, response) => {
     heard.at = Date.now();
     const url = new URL(request.url ?? '/', 'http://helper');
@@ -1686,7 +1721,16 @@ function startHelper({ email, secret, token, passed, begun, heard, device, onAnd
         await api('/api/auth/locale', { method: 'PUT', token, body: { locale } });
         return reply(200, { language: locale });
       }
+      if (url.pathname === '/api') {
+        const to = url.searchParams.get('to');
+        if (!API_STATES.includes(to))
+          throw new Error(`no API state ${to}: ${API_STATES.join(', ')}`);
+        if (!(await within(8000, api.move(to)))) return reply(200, { wait: true });
+        return reply(200, { api: to });
+      }
+      // A check that failed while it held the API leaves it held for the next.
       if (url.pathname === '/started') {
+        if (!api.isUp() && !(await within(8000, api.move('up')))) return reply(200, { wait: true });
         begun.push(url.searchParams.get('check'));
         return reply(200, {});
       }
@@ -1785,6 +1829,7 @@ async function batch(args) {
   const begun = [];
   const heard = { at: Date.now() };
   const crashed = [];
+  const api = apiControl(root);
   const helper = await startHelper({
     email,
     secret,
@@ -1794,6 +1839,7 @@ async function batch(args) {
     heard,
     device,
     onAndroid,
+    api,
   });
   // The secret stays with the helper: no flow is handed it.
   const env = {
@@ -1861,6 +1907,7 @@ async function batch(args) {
     }
   } finally {
     helper.close();
+    await api.move('up');
     // The app follows the account's language when it next opens, and later flows expect English.
     if (named)
       await api('/api/auth/locale', { method: 'PUT', token, body: { locale: before ?? 'en' } });
