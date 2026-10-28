@@ -694,7 +694,7 @@ function Switcher({
   );
   useFocusBackToOpener(offerClosed, afterOffer);
   useFocusBack(open, opener);
-  // Android's window runs behind the bars and the cutout, so the card keeps its margin from them, not from the edge.
+  // The modal runs behind the bars, the cutout and the home indicator, so the card keeps its margin from them, not from the edge.
   const fit =
     Platform.OS === 'android'
       ? {
@@ -704,8 +704,14 @@ function Switcher({
           paddingLeft: insets.left + tokens.spaceXxl,
           paddingRight: insets.right + tokens.spaceXxl,
         }
-      : // Sized from the window: on an iPhone on its side the modal can keep its upright height (sc-10118).
-        { width, height };
+      : {
+          // Even on both sides, so a short card stays centred on the screen rather than in the safe area.
+          paddingVertical: Math.max(insets.top, insets.bottom) + tokens.spaceXxl,
+          paddingHorizontal: Math.max(insets.left, insets.right) + tokens.spaceXxl,
+          // Sized from the window: on an iPhone on its side the modal can keep its upright height (sc-10118).
+          width,
+          height,
+        };
 
   return (
     <Modal
@@ -1108,7 +1114,6 @@ const styles = StyleSheet.create({
   },
   scrim: {
     justifyContent: 'center',
-    padding: tokens.spaceXxl,
     backgroundColor: tokens.scrimDialog,
   },
   sheetFrame: {
