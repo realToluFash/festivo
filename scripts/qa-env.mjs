@@ -338,8 +338,9 @@ export function forAndroid(flow) {
     .replace(
       /^(\s*)- openLink: \$\{METRO_URL\}(\S*)$/gm,
       (_, indent, path) =>
-        `${indent}- evalScript: \${http.get(HELPER_URL + '/open?path=' + ` +
-        `encodeURIComponent(${scriptOf(path)})).body}`,
+        `${indent}- evalScript: \${(function () { var response = http.get(HELPER_URL + ` +
+        `'/open?path=' + encodeURIComponent(${scriptOf(path)})); if (!response.ok) ` +
+        `throw new Error('the harness refused /open: ' + response.body); return response.body; })()}`,
     );
 }
 
@@ -349,7 +350,7 @@ const scriptOf = (link) =>
     .split(/\$\{([^}]+)\}/)
     .map((part, i) => (i % 2 ? `(${part})` : `'${part.replaceAll("'", "\\'")}'`))
     .filter((part) => part !== "''")
-    .join(' + ');
+    .join(' + ') || "''";
 
 // The whole directory, so a flow's runFlow and runScript paths still resolve, rewritten too.
 export function androidFlows(source, target) {
@@ -1810,7 +1811,8 @@ export function startHelper({
       }
       if (url.pathname === '/open') {
         const path = url.searchParams.get('path') ?? '';
-        if (!path.startsWith('/')) throw new Error(`open what? /open?path=/--/… gave ${path}`);
+        if (path && !path.startsWith('/'))
+          throw new Error(`open what? /open?path=/--/… gave ${path}`);
         open(`${CONFIG.urls.metro}${path}`);
         return reply(200, { opened: path });
       }
