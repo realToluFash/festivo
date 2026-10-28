@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -6,6 +6,7 @@ import { AppFrame, BackButton } from '../../../src/components/AppFrame.tsx';
 import { bodyEdges } from '../../../src/components/bodyEdges.ts';
 import { Screen } from '../../../src/components/Screen.tsx';
 import { AllDates } from '../../../src/components/Timeline.tsx';
+import { upFromDates } from '../../../src/kit/eventDates.ts';
 import { useServerNow } from '../../../src/kit/serverNow.ts';
 import { useLayout } from '../../../src/layout/useLayout.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
@@ -14,11 +15,16 @@ import { tokens } from '../../../src/theme/tokens.ts';
 export default function EventDates() {
   const { t } = useTranslation();
   const { kind } = useLayout();
-  const { id = '' } = useLocalSearchParams<{ id?: string }>();
+  const { id = '', from } = useLocalSearchParams<{ id?: string; from?: string }>();
+  const navigation = useNavigation();
   const now = useServerNow();
   const phone = kind === 'phone';
-  const back = () =>
-    router.canGoBack() ? router.back() : router.replace(`/events/${encodeURIComponent(id)}`);
+  const back = () => {
+    const { routes, index } = navigation.getState() ?? { routes: [], index: 0 };
+
+    if (upFromDates(routes, index, from) === 'back') router.back();
+    else router.replace(`/events/${encodeURIComponent(id)}`);
+  };
 
   return (
     <AppFrame
