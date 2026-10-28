@@ -1338,7 +1338,20 @@ describe('the flows a batch runs', () => {
       expect(readFileSync(join(target, '_checks/sign-in-rules.fr.yaml'), 'utf8')).toContain(
         "'Règles de connexion|Règles de connexion de .*'",
       );
-      expect(readFileSync(join(target, 'batch/session.yaml'), 'utf8')).not.toContain('{{t:');
+      const session = readFileSync(join(target, 'batch/session.yaml'), 'utf8');
+      expect(session).not.toContain('{{t:');
+      const signedIn = new RegExp(
+        `^(?:${[...session.matchAll(/notVisible: '(.*)'/g)].at(-1)[1].replaceAll("''", "'")})$`,
+      );
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        for (const line of [
+          catalogues[code].settings.signedInAs,
+          catalogues[code].noOrganisation.signedInAs,
+        ]) {
+          expect(line.replace('{{email}}', 'qa@soirely.test')).toMatch(signedIn);
+          expect(line.replace('{{email}}', 'other@soirely.test')).not.toMatch(signedIn);
+        }
+      }
       expect(readFileSync(join(target, 'batch/reopen.yaml'), 'utf8')).not.toContain('{{t:');
       const reset = readFileSync(join(target, 'batch/reset.yaml'), 'utf8');
       expect(reset).toContain('ASK: /running');
