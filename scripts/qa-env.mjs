@@ -846,10 +846,13 @@ function shutSimulator(root, key, id) {
 export const UNINSTALL_BOOTS = 4;
 
 // An uninstall exits 0 and lists the app gone, yet the next boots can bring it back from
-// the registry. Only a boot that finds it gone says the uninstall held.
+// the registry. Only a boot that comes up and finds it gone says the uninstall held.
 export function uninstallHeld({ boot, installed, uninstall, shut }, boots = UNINSTALL_BOOTS) {
   for (let attempt = 0; attempt < boots; attempt++) {
-    boot();
+    if (!boot()) {
+      shut();
+      continue;
+    }
     if (!installed()) return true;
     uninstall();
     shut();
@@ -859,7 +862,7 @@ export function uninstallHeld({ boot, installed, uninstall, shut }, boots = UNIN
 
 // simctl boot returns before the device is up, and an uninstall made then may not last.
 function bootIos(udid) {
-  run('xcrun', ['simctl', 'bootstatus', udid, '-b'], { optional: true });
+  return run('xcrun', ['simctl', 'bootstatus', udid, '-b'], { optional: true });
 }
 
 function uninstallIos(udid, id) {

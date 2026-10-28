@@ -395,8 +395,8 @@ describe('a release build', () => {
 
   it('clears an iOS release only once a boot finds it gone', () => {
     const calls = [];
-    const device = (present) => ({
-      boot: () => calls.push('boot'),
+    const device = (present, up = () => true) => ({
+      boot: () => calls.push('boot') && up(),
       installed: () => present.shift(),
       uninstall: () => calls.push('uninstall'),
       shut: () => calls.push('shut'),
@@ -406,6 +406,16 @@ describe('a release build', () => {
     calls.length = 0;
     expect(uninstallHeld(device(Array(UNINSTALL_BOOTS).fill(true)))).toBe(false);
     expect(calls.filter((call) => call === 'boot')).toHaveLength(UNINSTALL_BOOTS);
+  });
+
+  it('keeps an iOS release recorded when the device does not boot', () => {
+    const device = {
+      boot: () => false,
+      installed: () => false,
+      uninstall: () => {},
+      shut: () => {},
+    };
+    expect(uninstallHeld(device)).toBe(false);
   });
 
   it('installs the bundle the app config names', () => {
