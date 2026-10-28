@@ -16,9 +16,9 @@ final class CrashFixtureController
     #[Route('/api/_crash/memory', name: 'crash_fixture_memory', methods: ['GET'])]
     public function memory(): never
     {
-        // Many small rows, as Doctrine hydrates them: no one large allocation fails with room
-        // to spare, and the limit is used up to the last bytes. Kept flat: PHP 8.4.27 segfaults
-        // freeing an array nested some hundred thousand deep, which no request can build.
+        // Many small rows, as Doctrine hydrates them. Proves makeRoom's headroom on 8.4.26 only:
+        // 8.4.27 lifts the limit after the error, so there it proves the 500's shape. Kept flat:
+        // 8.4.27 segfaults freeing an array nested some hundred thousand deep.
         $held = [];
         $id = 0;
         while (true) {
