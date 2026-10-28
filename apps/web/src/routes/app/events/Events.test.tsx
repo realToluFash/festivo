@@ -4297,6 +4297,29 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     expect(within(panel).queryByText('The dates did not load.')).toBeNull();
   });
 
+  it('says Loading the dates… in Coming up until the dates arrive, with All dates linked', async () => {
+    clockAt('2026-10-11T08:00:00Z');
+    signedIn();
+    let arrive = (): void => undefined;
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () =>
+        new Promise<Response>((resolve) => {
+          arrive = () => resolve(json(MADRID));
+        }),
+    });
+    at('/app/events/ev_1');
+
+    const panel = await comingUp();
+
+    expect(within(panel).getByRole('status').textContent).toBe('Loading the dates…');
+    expect(within(panel).getByRole('link', { name: 'All dates' })).toBeDefined();
+    arrive();
+
+    await waitFor(() => expect(within(panel).getAllByRole('listitem')).toHaveLength(4));
+    expect(within(panel).queryByText('Loading the dates…')).toBeNull();
+  });
+
   it('lists every milestone in All dates under its zone, named once, Passed and Next up as words', async () => {
     clockAt('2026-10-11T08:00:00Z');
     signedIn();
