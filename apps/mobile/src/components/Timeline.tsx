@@ -10,11 +10,19 @@ import {
 } from '@soirely/domain';
 import { type EventStatus, type OrganisationEvent } from '@soirely/api-client';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  PixelRatio,
+  Platform,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
+import { SMALL_LINE, TITLE_LINE, rowsFloor } from '../layout/textSize.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { QuietButton, SecondaryButton } from './Buttons.tsx';
@@ -99,6 +107,7 @@ export function ComingUp({
   onAllDates: () => void;
 }) {
   const { t } = useTranslation();
+  const { fontScale } = useWindowDimensions();
   const { load, now, ended, retried, retry } = useTimeline(event.id, tick, event.status);
   const shown = load.kind === 'loaded' ? comingUp(load.timeline.milestones, now, ended) : [];
 
@@ -122,7 +131,11 @@ export function ComingUp({
           />
         )}
       </View>
-      <View style={kind === 'phone' ? styles.rowsPhone : styles.rows}>
+      <View
+        style={{
+          minHeight: rowsFloor(fontScale, Platform.OS === 'android' ? PixelRatio.get() : null),
+        }}
+      >
         {load.kind === 'loading' && <DatesLoading testID="timeline.comingUp.loading" />}
         {load.kind === 'failed' && (
           <DatesFailed announced={retried} onRetry={retry} testID="timeline.comingUp.retry" />
@@ -267,10 +280,14 @@ function MilestoneRow({
 
   return (
     <View style={[styles.row, !first && styles.rowDivider]} testID="timeline.row">
-      <Text size={tokens.typeSmall.size} muted style={passed && styles.passed}>
+      <Text size={tokens.typeSmall.size} muted style={[styles.smallLine, passed && styles.passed]}>
         {distance ? `${when} · ${distanceWords(t, milestone.at, timeZone, now)}` : when}
       </Text>
-      <Text size={tokens.typeRowTitle.size} weight="semibold" style={passed && styles.passed}>
+      <Text
+        size={tokens.typeRowTitle.size}
+        weight="semibold"
+        style={[styles.titleLine, passed && styles.passed]}
+      >
         {milestone.title}
       </Text>
       <View style={styles.marks}>
@@ -282,7 +299,11 @@ function MilestoneRow({
         {nextUp && <Pill tone="accent" shape={null} word={t('timeline.nextUp')} />}
       </View>
       {milestone.note != null && (
-        <Text size={tokens.typeSmall.size} muted style={passed && styles.passed}>
+        <Text
+          size={tokens.typeSmall.size}
+          muted
+          style={[styles.smallLine, passed && styles.passed]}
+        >
           {milestone.note}
         </Text>
       )}
@@ -308,11 +329,15 @@ function Pill({ tone, shape, word }: { tone: PillTone; shape: string | null; wor
   return (
     <View style={[styles.pill, PILL[tone].fill]}>
       {shape != null && (
-        <Text size={tokens.typeSmall.size} style={PILL[tone].ink} {...HIDDEN}>
+        <Text size={tokens.typeSmall.size} style={[styles.smallLine, PILL[tone].ink]} {...HIDDEN}>
           {shape}
         </Text>
       )}
-      <Text size={tokens.typeSmall.size} weight="semibold" style={PILL[tone].ink}>
+      <Text
+        size={tokens.typeSmall.size}
+        weight="semibold"
+        style={[styles.smallLine, PILL[tone].ink]}
+      >
         {word}
       </Text>
     </View>
@@ -329,11 +354,11 @@ const styles = StyleSheet.create({
   },
   // While the dates fail there is no All dates button, but its box stays, so the head keeps its height.
   linkHeld: { minHeight: tokens.sizeHit, justifyContent: 'center', opacity: 0 },
-  // Held at the height of the event's own two milestones, so the panels below do not move between states.
-  rows: { minHeight: 140 },
-  rowsPhone: { minHeight: 178 },
   row: { gap: tokens.spaceXxs, paddingVertical: tokens.spaceMd },
   rowDivider: { borderTopWidth: 1, borderTopColor: tokens.colorInsetBorder },
+  // Set rather than left to the face, so rowsFloor is the height two rows take on every platform.
+  smallLine: { lineHeight: SMALL_LINE },
+  titleLine: { lineHeight: TITLE_LINE },
   passed: { color: tokens.colorInkTertiary },
   marks: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceXs },
   pill: {
