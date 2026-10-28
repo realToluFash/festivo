@@ -87,6 +87,11 @@ export function nextGiven(os: string, value: string | undefined, typing: Typing)
   return { typed: value, pinned: value, given: value };
 }
 
+/** A key leaves an Android field uncontrolled again, whatever it was last handed. */
+export function keyTyped(last: Typing, text: string): Typing {
+  return { ...last, typed: text, given: undefined };
+}
+
 /** The value TextInput is handed: on Android only one not yet typed, so typing leaves the field uncontrolled. */
 export function valueHanded(
   os: string,

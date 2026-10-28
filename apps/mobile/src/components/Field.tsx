@@ -25,6 +25,7 @@ import {
   FIELD_DEFAULTS,
   fieldName,
   fieldText,
+  keyTyped,
   nextGiven,
   nextPin,
   type Typing,
@@ -227,7 +228,7 @@ export function useHeld(
   return {
     ...fieldText(field),
     onChangeText: (text) => {
-      setTyping((last) => ({ ...last, typed: text, given: undefined }));
+      setTyping((last) => keyTyped(last, text));
       onChangeText?.(text);
     },
   };

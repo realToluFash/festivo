@@ -7,6 +7,7 @@ import {
   fieldName,
   type FieldText,
   fieldText,
+  keyTyped,
   nextGiven,
   nextPin,
   passwordProps,
@@ -598,9 +599,28 @@ describe('a key typed on Android leaves the field its text, so TalkBack says onl
     expect(handed('', typed)).toEqual({ value: '' });
   });
 
+  it('is uncontrolled again after the key that follows a value it was handed', () => {
+    const emptied = nextGiven('android', '', {
+      typed: 'example.com',
+      pinned: '',
+      given: undefined,
+    });
+    const next = keyTyped(emptied, 'e');
+
+    expect(next.given).toBeUndefined();
+    expect(valueHanded('android', 'e', next.given)).toBeUndefined();
+    expect(nextGiven('android', 'e', next)).toBe(next);
+  });
+
   it('keeps what was typed through a text-size change', () => {
-    const typedX = { ...opened, typed: 'Galx' };
-    const field = { held: false, value: undefined, defaultValue: undefined, ...typedX };
+    const next = nextGiven('android', 'Galx', { ...opened, typed: 'Galx' });
+    const field = {
+      held: false,
+      value: valueHanded('android', 'Galx', next.given),
+      defaultValue: undefined,
+      typed: next.typed,
+      pinned: next.pinned,
+    };
 
     expect(nextPin(field, 1.3, 1).pinned).toBe('Galx');
   });
