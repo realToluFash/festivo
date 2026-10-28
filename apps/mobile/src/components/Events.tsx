@@ -117,7 +117,7 @@ export function NoEvents({
   const { t } = useTranslation();
 
   return (
-    <View style={cardFrame(kind)} testID="events.firstRun">
+    <View style={[cardFrame(kind), styles.across]} testID="events.firstRun">
       <Text size={tokens.typeRowTitle.size} weight="semibold" accessibilityRole="header">
         {t('eventsScreen.firstRunTitle')}
       </Text>
@@ -280,6 +280,7 @@ export function EventNotFound({ onBack }: { onBack: () => void }) {
 
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
+  across: { maxWidth: '100%' },
   firstRunStep: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   stepText: { flex: 1 },
   cards: { gap: tokens.spaceLg },
