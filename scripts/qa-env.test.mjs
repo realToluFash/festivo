@@ -544,20 +544,20 @@ describe('a flow on Android', () => {
     expect(forAndroid(forAndroid(flow))).toBe(forAndroid(flow));
   });
 
-  it('has the harness open its links, variables and all', () => {
+  it('has the harness open its links, variables and all, and stop where it cannot', () => {
     const links = [
       '- openLink: ${METRO_URL}',
       '- openLink: ${METRO_URL}/--/',
       '    - openLink: ${METRO_URL}/--/join/${output.link}',
     ].join('\n');
-    const opening = (path) =>
-      "- evalScript: ${(function () { var response = http.get(HELPER_URL + '/open?path=' + " +
-      `encodeURIComponent(${path})); if (!response.ok) throw new Error('the harness refused ` +
-      "/open: ' + response.body); return response.body; })()}";
+    const step = (indent, path) =>
+      `${indent}- evalScript: \${(function (r) { if (!r.ok) ` +
+      `throw new Error('the harness could not open ' + ${path} + ', ' + r.body); ` +
+      `return r.body; })(http.get(HELPER_URL + '/open?path=' + encodeURIComponent(${path})))}`;
     expect(forAndroid(links).split('\n')).toEqual([
-      opening("''"),
-      opening("'/--/'"),
-      `    ${opening("'/--/join/' + (output.link)")}`,
+      step('', "''"),
+      step('', "'/--/'"),
+      step('    ', "'/--/join/' + (output.link)"),
     ]);
     expect(forAndroid(forAndroid(links))).toBe(forAndroid(links));
   });
@@ -953,17 +953,17 @@ describe('the batch helper', () => {
     }
   });
 
-  it('opens a path under the bundler, and refuses anything else', async () => {
+  it('opens the bundler or a path under it, and refuses anything else', async () => {
     const { server, ask, ran } = await helperFor('running');
     try {
-      expect(await ask('/open?path=')).toEqual({ opened: '' });
       expect(await ask('/open?path=%2F--%2Fevents%2F7')).toEqual({ opened: '/--/events/7' });
+      expect(await ask('/open?path=')).toEqual({ opened: '' });
       expect(await ask('/open?path=https%3A%2F%2Fexample.com')).toEqual({
         error: 'open what? /open?path=/--/… gave https://example.com',
       });
       expect(ran).toEqual([
-        expect.stringMatching(/^open exp:\/\/[^/]+$/),
         expect.stringMatching(/^open exp:\/\/.+\/--\/events\/7$/),
+        expect.stringMatching(/^open exp:\/\/[^/]+$/),
       ]);
     } finally {
       server.close();

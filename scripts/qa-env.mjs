@@ -338,9 +338,10 @@ export function forAndroid(flow) {
     .replace(
       /^(\s*)- openLink: \$\{METRO_URL\}(\S*)$/gm,
       (_, indent, path) =>
-        `${indent}- evalScript: \${(function () { var response = http.get(HELPER_URL + ` +
-        `'/open?path=' + encodeURIComponent(${scriptOf(path)})); if (!response.ok) ` +
-        `throw new Error('the harness refused /open: ' + response.body); return response.body; })()}`,
+        `${indent}- evalScript: \${(function (r) { if (!r.ok) ` +
+        `throw new Error('the harness could not open ' + ${scriptOf(path)} + ', ' + r.body); ` +
+        `return r.body; })(http.get(HELPER_URL + '/open?path=' + ` +
+        `encodeURIComponent(${scriptOf(path)})))}`,
     );
 }
 
