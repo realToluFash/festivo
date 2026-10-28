@@ -1,5 +1,7 @@
 import { type Account } from '@soirely/api-client';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -254,6 +256,16 @@ describe('the application tree', () => {
 
     await waitFor(() => expect(screen.getByText('Loading…')).toBeDefined());
     expect(screen.queryByRole('heading', { level: 1, name: 'Sign in' })).toBeNull();
+  });
+
+  it("stacks the sidebar from a tablet's width down only as tall as what it holds (sc-17608)", () => {
+    const styles = readFileSync(join(import.meta.dirname, '../styles.css'), 'utf8');
+    const stacked = /@media \(width <= 60rem\) \{[^@]*?\n {2}\.shell \{([^}]*)\}/u.exec(
+      styles,
+    )?.[1];
+
+    expect(stacked).toMatch(/grid-template-columns: minmax\(0, 1fr\);/u);
+    expect(stacked).toMatch(/grid-template-rows: auto 1fr;/u);
   });
 
   describe("at a phone's width, the menu (sc-13413)", () => {
