@@ -218,7 +218,7 @@ function CheckIcon() {
   );
 }
 
-/** A pick on its way through the checks the server makes; `local` is null when this browser cannot show the file itself. */
+/** A pick on its way through the checks the server makes, never in the frame; `local` is null when this browser cannot show the file itself. */
 type Trying = { file: File; local: string | null };
 
 function newTrying(file: File, shows: boolean): Trying {
@@ -235,7 +235,7 @@ function pickPhoto(url: string, position: number): CoverPhoto {
   return { sizes: [{ width: 0, url }], position, description: null };
 }
 
-/** Modal, as the APG dialog: focus starts on the slider, Tab wraps, Escape and Close are Cancel, and only Use this photo saves. A refused pick never reaches the frame (sc-16524). */
+/** Modal, as the APG dialog: focus starts on the slider, Tab wraps, Escape and Close are Cancel, and only Use this photo saves. A pick reaches the frame only once the server has read it, so a refused one never does (sc-16524, sc-17978). */
 function CoverDialog({
   file,
   shows,
@@ -279,6 +279,8 @@ function CoverDialog({
   const focusNext = useRef<'slider' | 'picker' | null>('slider');
   const held = useRef(new Set<Chosen>());
   const kept = useRef<Chosen | null>(null);
+  const superseding = useRef(false);
+  const parked = useRef<Chosen | null>(null);
   const fullScreen = useFullScreen();
   const drag = useRef<{ y: number; start: number } | null>(null);
 
@@ -310,6 +312,9 @@ function CoverDialog({
 
   useEffect(() => {
     if (trying == null) return;
+    superseding.current = false;
+    drop(parked.current);
+    parked.current = null;
     const url = trying.local;
     let current = true;
     let uploaded: string | null = null;
@@ -332,6 +337,10 @@ function CoverDialog({
         promoted = true;
         const next = { key: signed.key, url: url ?? copy, local: url != null };
         held.current.add(next);
+        if (superseding.current) {
+          parked.current = next;
+          return;
+        }
         setChosen(next);
         setTrying(null);
       })
@@ -345,7 +354,7 @@ function CoverDialog({
       if (url != null) URL.revokeObjectURL(url);
       if (uploaded != null) discardCoverUpload(organisationId, uploaded);
     };
-  }, [trying, organisationId, refuse, t]);
+  }, [trying, organisationId, refuse, drop, t]);
 
   useEffect(
     () => () => {
@@ -360,7 +369,6 @@ function CoverDialog({
 
   /** A new photo the frame could not show is never saved unseen (sc-13861). */
   function unseen(): void {
-    if (trying != null) return refuse(t('eventCover.uploadFailed'));
     if (chosen == null) return;
 
     if (before.current.chosen === chosen) before.current = { ...savedFrame, chosen: null };
@@ -373,8 +381,16 @@ function CoverDialog({
     event.target.value = '';
     if (next == null) return;
 
+    if (trying != null) superseding.current = true;
     const checked = await checkCoverPick(next);
     if (checked.refusal != null) {
+      const unshown = parked.current;
+      superseding.current = false;
+      parked.current = null;
+      if (unshown != null) {
+        setChosen(unshown);
+        setTrying(null);
+      }
       setRefusal(t(`eventCover.refused_${checked.refusal}`));
       picker.current?.focus();
       return;
@@ -394,9 +410,7 @@ function CoverDialog({
 
   const shown: CoverPhoto | null | 'choose' =
     trying != null
-      ? trying.local == null
-        ? null
-        : pickPhoto(trying.local, position)
+      ? null
       : chosen != null
         ? pickPhoto(chosen.url, position)
         : saved != null
