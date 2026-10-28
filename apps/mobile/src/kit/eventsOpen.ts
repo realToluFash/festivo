@@ -49,3 +49,18 @@ export function openedWithoutAsking(
 
   return roleHolds(organisation, 'events.read') ? null : { kind: 'notFound' };
 }
+
+/** What the Events list shows in place of its rows, as far as the pane beside it is concerned. */
+export type ListShown =
+  | { kind: 'loading' }
+  | { kind: 'failed' }
+  | { kind: 'loaded'; unfinished: readonly unknown[]; pastTotal: number };
+
+export function hasNoEvents(load: ListShown): boolean {
+  return load.kind === 'loaded' && load.unfinished.length === 0 && load.pastTotal === 0;
+}
+
+/** The pane shows only when there is something to put in it: an event open, or events to choose from. */
+export function pageless(load: ListShown, eventOpen: boolean): boolean {
+  return !eventOpen && (hasNoEvents(load) || load.kind === 'failed');
+}

@@ -46,6 +46,8 @@ export interface ListAndPageProps {
   pageKey: string;
   /** Wherever the two show one at a time, whether the page shows in place of the list. */
   pageInFront: boolean;
+  /** Nothing to put in the page, so on a tablet on its side the list takes the full width. */
+  pageless?: boolean;
   /** The page's own back, the header's on a phone included; Android's Back runs it too wherever the page is in front. */
   back: { label: string; onPress: () => void; testID: string };
   spacing: ListAndPageSpacing;
@@ -83,6 +85,7 @@ export function ListAndPage({
   page,
   pageKey,
   pageInFront,
+  pageless = false,
   back,
   spacing,
   kind,
@@ -90,6 +93,7 @@ export function ListAndPage({
   const { kind: frame } = useLayout();
   const listWidth = useSideListWidth(spacing.listWidth);
   const landscape = kind === 'tabletLandscape';
+  const split = landscape && !pageless;
   useSystemBack(pageTakesBack(kind, pageInFront), back.onPress);
   const column = landscape
     ? spacing.column
@@ -109,10 +113,10 @@ export function ListAndPage({
           {besideHeading}
         </View>
       )}
-      <View style={landscape ? [styles.split, { gap: spacing.between }] : styles.fill}>
+      <View style={split ? [styles.split, { gap: spacing.between }] : styles.fill}>
         <View
           style={[
-            landscape ? { width: listWidth } : styles.fill,
+            split ? { width: listWidth } : styles.fill,
             !landscape && pageInFront && styles.behind,
           ]}
         >
@@ -126,7 +130,7 @@ export function ListAndPage({
             {list}
           </ScrollColumn>
         </View>
-        <View style={[styles.fill, !landscape && !pageInFront && styles.behind]}>
+        <View style={[styles.fill, (landscape ? pageless : !pageInFront) && styles.behind]}>
           <ScrollColumn key={pageKey} style={styles.fill} contentContainerStyle={column}>
             {kind === 'tabletPortrait' && (
               <View style={styles.start}>
