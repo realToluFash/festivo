@@ -8,3 +8,4 @@ appId: host.exp.Exponent
     direction: DOWN
     timeout: 30000
 - takeScreenshot: live-coming-up
+- assertVisible: '{{t:timeline.nextUp}}'

@@ -12,6 +12,9 @@ appId: host.exp.Exponent
     direction: DOWN
     timeout: 30000
 - takeScreenshot: end-now-before
+- assertVisible:
+    id: 'events.end'
+    text: '{{t:eventEnd.endNow}}'
 - tapOn:
     id: 'events.end'
 - tapOn:
@@ -24,7 +27,7 @@ appId: host.exp.Exponent
 - takeScreenshot: end-now-straight-away
 - assertVisible:
     id: 'timeline.finished'
-- assertNotVisible: 'Next up'
+- assertNotVisible: '{{t:timeline.nextUp}}'
 - tapOn:
     id: 'timeline.allDates'
 - extendedWaitUntil:
@@ -32,4 +35,4 @@ appId: host.exp.Exponent
       id: 'timeline.row'
     timeout: 15000
 - takeScreenshot: end-now-all-dates
-- assertNotVisible: 'Next up'
+- assertNotVisible: '{{t:timeline.nextUp}}'

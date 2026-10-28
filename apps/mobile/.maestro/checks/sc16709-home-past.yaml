@@ -4,6 +4,8 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/events
 - tapOn:
     id: 'events.tab.past'
-- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: '{{t:eventsScreen.calledOffOn}}'
+    timeout: 15000
 - takeScreenshot: home-past
-- assertNotVisible: '.*Next up.*'
+- assertNotVisible: '{{t:eventsScreen.nextUp}}'
