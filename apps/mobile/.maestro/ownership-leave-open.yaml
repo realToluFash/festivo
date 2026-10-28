@@ -6,8 +6,11 @@
 #   2. As the owner, POST /api/orgs/{organisationId}/members/invite {email, roleId}, with
 #      roleId from GET /api/orgs/{organisationId}/roles; without roleId it answers 422.
 #   3. As the second account, POST /api/invitations/{invitationId}/accept.
-#   4. Its membershipId from GET /api/orgs/{organisationId}/members, then
+#   4. Its member's `id` (the membership's, not `user.id`) from
+#      GET /api/orgs/{organisationId}/members, then
 #      ownership-transfer-ready MEMBERSHIP=… TYPED=<owner's password>.
+#   5. Then sign the phone in as the second account for this flow; the owner is still
+#      the only owner, and gets the "only owner" notice instead.
 #
 #   node .qa/bin/qa-env.mjs maestro ownership-leave-open --android
 appId: host.exp.Exponent
