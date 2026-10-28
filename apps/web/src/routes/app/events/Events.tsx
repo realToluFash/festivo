@@ -377,7 +377,7 @@ function EventCard({
   large?: boolean;
 }) {
   const { t } = useTranslation();
-  const next = nextUp(event.milestones, now);
+  const next = nextUp(event.milestones, now, event.status === 'ended');
   const place = event.venue?.name ?? event.venue?.address?.formatted ?? null;
 
   return (

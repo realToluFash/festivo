@@ -93,7 +93,8 @@ export function ComingUp({
 }) {
   const { t } = useTranslation();
   const { load, now, retried, retry } = useTimeline(event.id, tick, event.status);
-  const shown = load.kind === 'loaded' ? comingUp(load.timeline.milestones, now) : [];
+  const shown =
+    load.kind === 'loaded' ? comingUp(load.timeline.milestones, now, event.status === 'ended') : [];
 
   return (
     <View style={cardFrame(kind)} testID="timeline.comingUp">

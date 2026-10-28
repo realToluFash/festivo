@@ -4369,7 +4369,7 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     expect(within(page).getByText('Something you need to do')).toBeDefined();
   });
 
-  it('reads the dates again on Call off, and the called-off moment is never Next up (sc-16709)', async () => {
+  it('reads the dates again on Call off, and the called-off moment is never Next up, even stamped a second ahead of the clock (sc-16709)', async () => {
     clockAt('2030-10-13T09:00:00Z');
     signedIn();
     const ahead = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
@@ -4412,7 +4412,7 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     const panel = await comingUp();
     await waitFor(() => expect(rows(panel)).toHaveLength(1));
 
-    vi.setSystemTime(new Date('2030-10-13T09:00:05.500Z'));
+    vi.setSystemTime(new Date('2030-10-13T09:00:04.200Z'));
     fireEvent.click(screen.getByRole('button', { name: 'Call off' }));
     const dialog = await screen.findByRole('dialog', { name: 'Call off Adaeze and Tunde?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Call off' }));

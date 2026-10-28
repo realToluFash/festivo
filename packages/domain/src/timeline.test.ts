@@ -81,6 +81,19 @@ describe('each milestone marked', () => {
 
     expect(marked.every((one) => one.standing === 'passed' && !one.nextUp)).toBe(true);
   });
+
+  it('marks an Ended event’s own milestones passed even where the clock reads them ahead', () => {
+    const calledOff = milestone('2026-10-17T12:00:01Z', 'Boda called off');
+    const guests = { ...milestone('2026-10-20T12:00:00Z', 'Guest list closes'), area: 'guests' };
+    const marked = markedMilestones([calledOff, guests], new Date('2026-10-17T12:00:00Z'), true);
+
+    expect(marked.map((one) => [one.standing, one.nextUp])).toEqual([
+      ['passed', false],
+      ['upcoming', true],
+    ]);
+    expect(nextUp([calledOff], new Date('2026-10-17T12:00:00Z'), true)).toBeNull();
+    expect(comingUp([calledOff], new Date('2026-10-17T12:00:00Z'), true)).toEqual([]);
+  });
 });
 
 describe('Coming up', () => {

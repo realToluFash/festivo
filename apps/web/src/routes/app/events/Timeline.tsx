@@ -77,7 +77,8 @@ export function ComingUp({ event, now: tick }: { event: OrganisationEvent; now: 
   const { t } = useTranslation();
   const heading = useRef<HTMLHeadingElement>(null);
   const { load, now, retried, retry } = useTimeline(event, heading, tick);
-  const shown = load.kind === 'loaded' ? comingUp(load.timeline.milestones, now) : [];
+  const shown =
+    load.kind === 'loaded' ? comingUp(load.timeline.milestones, now, event.status === 'ended') : [];
 
   return (
     <section className="card coming-up" aria-labelledby="coming-up-title">
@@ -145,15 +146,17 @@ export function AllDates({
         <>
           <p className="muted">{t('timeline.intro', { timeZone: load.timeline.timeZone })}</p>
           <ol className="timeline-list">
-            {markedMilestones(load.timeline.milestones, now).map((marked, index) => (
-              <MilestoneRow
-                key={index}
-                marked={marked}
-                timeZone={load.timeline.timeZone}
-                now={now}
-                distance={false}
-              />
-            ))}
+            {markedMilestones(load.timeline.milestones, now, event.status === 'ended').map(
+              (marked, index) => (
+                <MilestoneRow
+                  key={index}
+                  marked={marked}
+                  timeZone={load.timeline.timeZone}
+                  now={now}
+                  distance={false}
+                />
+              ),
+            )}
           </ol>
           <dl className="timeline-key">
             {(['event', 'you', 'automatic'] as const).map((owner) => (
