@@ -7,9 +7,15 @@ import {
   PROVIDER_NAMES,
   finishProviderSignIn,
   keepProviderReturn,
+  type ReturnPurpose,
   returnPurpose,
 } from '../../providerSignIn.ts';
 import { landAfterSignIn } from '../../signedIn.ts';
+
+const BACK_TO: Partial<Record<ReturnPurpose['kind'], string>> = {
+  makePrimary: '/app/account',
+  makeOwner: '/app/settings/members',
+};
 
 /** Where a provider sends the person back: signed in and on to where the account belongs, or back to sign-in. */
 export function OAuthCallback({ provider }: { provider: Provider }) {
@@ -25,9 +31,7 @@ export function OAuthCallback({ provider }: { provider: Provider }) {
     const purpose = returnPurpose(provider);
     if (purpose != null) {
       keepProviderReturn(provider, window.location.href);
-      navigate(purpose.kind === 'makePrimary' ? '/app/account' : '/app/account/security', {
-        replace: true,
-      });
+      navigate(BACK_TO[purpose.kind] ?? '/app/account/security', { replace: true });
 
       return;
     }

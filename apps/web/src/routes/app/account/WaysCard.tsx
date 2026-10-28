@@ -113,7 +113,8 @@ export function WaysCard({
     if (
       'failed' in back ||
       back.purpose.kind === 'signOutOthers' ||
-      back.purpose.kind === 'makePrimary'
+      back.purpose.kind === 'makePrimary' ||
+      back.purpose.kind === 'makeOwner'
     )
       return;
 

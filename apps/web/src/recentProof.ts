@@ -1,5 +1,7 @@
-import { type RecentProof } from '@soirely/api-client';
+import { type Provider, type RecentProof } from '@soirely/api-client';
 import { proofStands } from '@soirely/domain';
+
+import { api } from './api.ts';
 
 const PROOF = 'soirely.proof';
 
@@ -30,4 +32,19 @@ export function dropProof(): void {
   } catch {
     // Nothing held, then.
   }
+}
+
+/** What Confirm it's you asks this account for: its password, else the provider it signs in with, then the code. */
+export interface Proving {
+  via: 'password' | Provider | null;
+  twoFactorOn: boolean;
+}
+
+export async function howToProve(): Promise<Proving> {
+  const [account, status] = await Promise.all([api.me(), api.twoFactorStatus()]);
+
+  return {
+    via: account.hasPassword ? 'password' : (account.providers[0]?.provider ?? null),
+    twoFactorOn: status.on,
+  };
 }
