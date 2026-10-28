@@ -375,19 +375,7 @@ function FrameHeader({
         <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
       )}
       {back != null && !backHidden && (
-        <Pressable
-          style={styles.back}
-          onPress={back.onPress}
-          accessibilityRole="button"
-          testID="frame.back"
-        >
-          <Svg width={tokens.sizeMark} height={tokens.sizeMark} viewBox="0 0 24 24" fill="none">
-            <Path d="m15 18-6-6 6-6" {...STROKE} stroke={tokens.colorInk} />
-          </Svg>
-          <Text size={tokens.typeBodyPhone.size} weight="semibold">
-            {back.label}
-          </Text>
-        </Pressable>
+        <BackButton label={back.label} onPress={back.onPress} testID="frame.back" />
       )}
       <Title
         size={back == null ? tokens.typeTitlePage.size : tokens.typeTitlePhone.size}
@@ -397,6 +385,27 @@ function FrameHeader({
         {title}
       </Title>
     </View>
+  );
+}
+
+export function BackButton({
+  label,
+  onPress,
+  testID,
+}: {
+  label: string;
+  onPress: () => void;
+  testID: string;
+}) {
+  return (
+    <Pressable style={styles.back} onPress={onPress} accessibilityRole="button" testID={testID}>
+      <Svg width={tokens.sizeMark} height={tokens.sizeMark} viewBox="0 0 24 24" fill="none">
+        <Path d="m15 18-6-6 6-6" {...STROKE} stroke={tokens.colorInk} />
+      </Svg>
+      <Text size={tokens.typeBodyPhone.size} weight="semibold">
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 
