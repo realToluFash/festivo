@@ -36,7 +36,7 @@ import {
   scrollInsets,
   shownEnd,
 } from '../kit/keyboard.ts';
-import { focusBackMs } from '../kit/focusBack.ts';
+import { type FocusBackFrom, focusBackMs } from '../kit/focusBack.ts';
 import { stepOpeners } from '../kit/stepOpeners.ts';
 import { tokens } from '../theme/tokens.ts';
 import { focusedField, watchFocusedField } from './focusedField.ts';
@@ -380,10 +380,11 @@ export function stepClosed(to: string): StepClosed {
   return { to };
 }
 
-/** With a screen reader on, once `closed` is set, moves focus to the opener it names, or to `fallback` when that opener is not there (sc-11173); `opener(key)` is the ref each opener takes. */
+/** With a screen reader on, once `closed` is set, moves focus to the opener it names, or to `fallback` when that opener is not there (sc-11173); `opener(key)` is the ref each opener takes. `from` is where focus comes back from, which `focusBackMs` times. */
 export function useFocusBackToOpener(
   closed: StepClosed | undefined,
   fallback?: RefObject<ScreenReaderTarget | null>,
+  from: FocusBackFrom = 'step',
 ): (key: string) => RefCallback<View> {
   const [openers] = useState(() => stepOpeners<View>());
   const target = useMemo<RefObject<ScreenReaderTarget | null>>(
@@ -394,12 +395,12 @@ export function useFocusBackToOpener(
     }),
     [closed, fallback, openers],
   );
-  useFocusOnAnswer(closed, target, focusBackMs(Platform.OS, SETTLED_MS));
+  useFocusOnAnswer(closed, target, focusBackMs(Platform.OS, SETTLED_MS, from));
 
   return openers.ref;
 }
 
-/** Focus back to the opener that `closed` names, as `useFocusBackToOpener`; rendered inside a list's ScrollColumn so the opener comes into view. */
+/** Focus back to the row a page was opened from, as `useFocusBackToOpener` on a `page` return; rendered inside a list's ScrollColumn so the row comes into view. */
 export function FocusBack({
   closed,
   fallback,
@@ -409,7 +410,7 @@ export function FocusBack({
   fallback?: RefObject<ScreenReaderTarget | null>;
   children: (opener: (key: string) => RefCallback<View>) => ReactNode;
 }) {
-  return children(useFocusBackToOpener(closed, fallback));
+  return children(useFocusBackToOpener(closed, fallback, 'page'));
 }
 
 /** The scroll context a ScrollView provides, and the props that keep it in step with that view. */
