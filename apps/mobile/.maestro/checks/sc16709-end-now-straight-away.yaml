@@ -36,3 +36,4 @@ appId: host.exp.Exponent
     timeout: 15000
 - takeScreenshot: end-now-all-dates
 - assertNotVisible: '{{t:timeline.nextUp}}'
+- assertVisible: '{{t:timeline.passed}}'
