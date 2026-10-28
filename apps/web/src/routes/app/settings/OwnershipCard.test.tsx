@@ -921,6 +921,42 @@ describe('Transfer ownership for an owner with no password (sc-18959)', () => {
     );
   });
 
+  it('comes back from Google to Settings with Transfer ownership open and the owner chosen', async () => {
+    signedIn(IRE, [], GOOGLE_ONLY);
+    sessionStorage.setItem(
+      'soirely.google.attempt',
+      JSON.stringify({
+        state: 's',
+        nonce: 'n',
+        codeVerifier: 'v',
+        purpose: { kind: 'transfer', organisation: 'org_1', owner: 'm_bisi' },
+      }),
+    );
+    window.history.replaceState(null, '', '/oauth/google?state=s&code=the-code');
+    const sent = answering({
+      'GET /api/orgs/org_1/members': () => json(MEMBERS),
+      'POST /api/auth/proof': () => json({ proof: 'p_g', expiresAt: STANDS() }),
+    });
+    render(
+      <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/oauth/google'] })} />,
+    );
+
+    expect(await screen.findByText('Signed in with Google')).toBeDefined();
+    expect(
+      ((await screen.findByRole('radio', { name: /Bisi Adeyemi/ })) as HTMLInputElement).checked,
+    ).toBe(true);
+    expect(screen.getByRole('button', { name: 'Make Bisi Adeyemi the owner' })).toBeDefined();
+    expect(sent.find((one) => one.line === 'POST /api/auth/proof')?.body).toEqual({
+      provider: 'google',
+      providerSignIn: {
+        code: 'the-code',
+        codeVerifier: 'v',
+        redirectUri: `${window.location.origin}/oauth/google`,
+        nonce: 'n',
+      },
+    });
+  });
+
   it('asks for the code after Google when two-factor is on, and a wrong one transfers nothing', async () => {
     signedIn(IRE, [], GOOGLE_ONLY);
     backFrom({ signIn: SIGN_IN });
