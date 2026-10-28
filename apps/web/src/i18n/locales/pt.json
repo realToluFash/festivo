@@ -150,6 +150,7 @@
     "nowState_live": "Já está publicado. A página mostra o estado atual.",
     "nowState_paused": "Está agora em pausa. A página mostra o estado atual.",
     "nowState_finished": "Já terminou. A página mostra o estado atual.",
+    "nowState_calledOff": "It's called off now. The page shows what it is now.",
     "notMadeLive": "Não foi publicado.",
     "planLimit_one": "Não foi publicado. O seu plano {{plan}} permite ter {{count, number}} evento publicado ou em pausa de cada vez.",
     "planLimit_other": "Não foi publicado. O seu plano {{plan}} permite ter {{count, number}} eventos publicados ou em pausa de cada vez.",

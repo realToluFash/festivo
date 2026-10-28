@@ -2319,6 +2319,33 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     expect(screen.getByText('Finished', { selector: '.pill-quiet' })).toBeDefined();
   });
 
+  it('says it was called off, not that it is over, when the call-off is refused on a called-off event (sc-17382)', async () => {
+    signedIn();
+    const calledOff = live({
+      status: 'ended',
+      phase: 'finished',
+      concludedAt: '2026-10-28T09:00:00+00:00',
+    });
+    let reads = 0;
+    await onThePage(live(), {
+      'GET /api/events/ev_1': () => json({ event: (reads += 1) === 1 ? live() : calledOff }),
+      'POST /api/events/ev_1/end': () => problem(409, 'event_state_invalid'),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Call off' }));
+    fireEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Call off' }),
+    );
+
+    const refused = await screen.findByRole('alertdialog', {
+      name: 'Somebody else changed this event while you had it open.',
+    });
+    expect(
+      within(refused).getByText("It's called off now. The page shows what it is now."),
+    ).toBeDefined();
+    expect(within(refused).queryByText('This event is already over.')).toBeNull();
+  });
+
   it.each([
     ['without events.manage', READER, live()],
     ['on a Draft', IRE, event(AHEAD)],
@@ -2495,7 +2522,19 @@ describe('Pause and Resume (sc-3586)', () => {
       'This event is already over.',
       "It's finished now. The page shows what it is now.",
     ],
-  ])('says %s', async (_, reloaded, said, now) => {
+    [
+      'somebody else changed it when the resume is refused and it was called off (sc-17382)',
+      () =>
+        paused({
+          status: 'ended',
+          phase: 'finished',
+          pausedAt: null,
+          concludedAt: '2026-10-28T09:00:00+00:00',
+        }),
+      'Somebody else changed this event while you had it open.',
+      "It's called off now. The page shows what it is now.",
+    ],
+  ])('says %s, and focus is on the title', async (_, reloaded, said, now) => {
     signedIn();
     let reads = 0;
     await onThePage(paused(), {
@@ -2509,6 +2548,9 @@ describe('Pause and Resume (sc-3586)', () => {
     expect(within(refused).getByText(said)).toBeDefined();
     expect(within(refused).getByText(now)).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Resume' })).toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 })),
+    );
   });
 
   it('says somebody else changed it when the pause is refused event_state_invalid', async () => {
@@ -2530,6 +2572,35 @@ describe('Pause and Resume (sc-3586)', () => {
     expect(
       within(refused).getByText("It's paused now. The page shows what it is now."),
     ).toBeDefined();
+  });
+
+  it('says it was called off, not that it is over, when the pause is refused on a called-off event (sc-17382)', async () => {
+    signedIn();
+    const calledOff = live({
+      status: 'ended',
+      phase: 'finished',
+      concludedAt: '2026-10-28T09:00:00+00:00',
+    });
+    let reads = 0;
+    await onThePage(live(), {
+      'GET /api/events/ev_1': () => json({ event: (reads += 1) === 1 ? live() : calledOff }),
+      'POST /api/events/ev_1/pause': () => problem(409, 'event_state_invalid'),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+    fireEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Pause' }),
+    );
+
+    const refused = await screen.findByRole('alertdialog', {
+      name: 'Somebody else changed this event while you had it open.',
+    });
+    expect(
+      within(refused).getByText("It's called off now. The page shows what it is now."),
+    ).toBeDefined();
+    expect(
+      within(refused).queryByText("It's finished now. The page shows what it is now."),
+    ).toBeNull();
   });
 
   it('keeps Resume and says so when the resume fails', async () => {

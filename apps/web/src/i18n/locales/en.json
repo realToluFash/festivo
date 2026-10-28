@@ -146,6 +146,7 @@
     "nowState_live": "It's live now. The page shows what it is now.",
     "nowState_paused": "It's paused now. The page shows what it is now.",
     "nowState_finished": "It's finished now. The page shows what it is now.",
+    "nowState_calledOff": "It's called off now. The page shows what it is now.",
     "notMadeLive": "Not made live.",
     "planLimit_one": "Not made live. Your {{plan}} plan allows {{count, number}} event to be live or paused at a time.",
     "planLimit_other": "Not made live. Your {{plan}} plan allows {{count, number}} events to be live or paused at a time.",

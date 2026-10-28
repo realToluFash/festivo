@@ -1578,6 +1578,7 @@
     "nowState_live": "Il est désormais publié. La page affiche son état actuel.",
     "nowState_paused": "Il est désormais en pause. La page affiche son état actuel.",
     "nowState_finished": "Il est désormais terminé. La page affiche son état actuel.",
+    "nowState_calledOff": "It's called off now. The page shows what it is now.",
     "notMadeLive": "Non publié.",
     "planLimit_one": "Non publié. Votre forfait {{plan}} permet d’avoir {{count, number}} événement publié ou en pause à la fois.",
     "planLimit_other": "Non publié. Votre forfait {{plan}} permet d’avoir {{count, number}} événements publiés ou en pause à la fois.",
