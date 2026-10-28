@@ -759,8 +759,9 @@ export function passwordAutoFillOff(file) {
   ];
 }
 
-const deviceFiles = (udid) =>
-  passwordAutoFillFiles(join(homedir(), 'Library/Developer/CoreSimulator/Devices', udid));
+const simulatorDir = (udid) => join(homedir(), 'Library/Developer/CoreSimulator/Devices', udid);
+
+const deviceFiles = (udid) => passwordAutoFillFiles(simulatorDir(udid));
 
 const passwordAutoFillIsOff = (udid) =>
   deviceFiles(udid).every(
@@ -815,19 +816,28 @@ function uninstallIos(udid, id) {
 }
 
 function installedOn(udid, id) {
-  const device = join(homedir(), 'Library/Developer/CoreSimulator/Devices', udid);
-  return installedApps(device).some(
+  return installedApps(simulatorDir(udid)).some(
     (plist) => capture('plutil', ['-extract', 'CFBundleIdentifier', 'raw', plist]) === id,
   );
 }
 
-function iosReleaseOn(root, key) {
+// A line per device, so a release on one does not drop a failed uninstall on the other.
+function iosReleases(root) {
   const recorded = installedIosRelease(root);
-  return existsSync(recorded) && readFileSync(recorded, 'utf8').trim() === key;
+  return existsSync(recorded) ? readFileSync(recorded, 'utf8').split('\n').filter(Boolean) : [];
+}
+
+const iosReleaseOn = (root, key) => iosReleases(root).includes(key);
+
+function recordIosRelease(root, key) {
+  if (!iosReleaseOn(root, key))
+    writeFileSync(installedIosRelease(root), [...iosReleases(root), key, ''].join('\n'));
 }
 
 function clearIosRelease(root, key) {
-  if (iosReleaseOn(root, key)) rmSync(installedIosRelease(root));
+  const rest = iosReleases(root).filter((device) => device !== key);
+  if (rest.length) writeFileSync(installedIosRelease(root), [...rest, ''].join('\n'));
+  else rmSync(installedIosRelease(root), { force: true });
 }
 
 async function ios(args) {
@@ -843,8 +853,8 @@ async function ios(args) {
     if (!udid) throw new Error(`no ${CONFIG.simulators[key].name} simulator — run setup`);
     withoutPasswordAutoFill(udid);
     run('xcrun', ['simctl', 'boot', udid], { optional: true });
+    // The record stays: only a read after a shutdown says the uninstall held.
     uninstallIos(udid, id);
-    if (!installedOn(udid, id)) clearIosRelease(root, open);
     if (!ensureExpoGo(udid)) {
       throw new Error(
         `Expo Go is on no booted simulator to copy from. Install it once with \`npx expo start --ios\` on any simulator, then rerun.`,
@@ -1364,7 +1374,7 @@ async function releaseIos(args) {
   // A fresh install every time, so the launch below is the app's first, with no cache.
   uninstallIos(udid, id);
   run('xcrun', ['simctl', 'install', udid, app]);
-  writeFileSync(installedIosRelease(root), open);
+  recordIosRelease(root, open);
   if (offline) stopAppServices(root);
   else startAppServices(root);
 
