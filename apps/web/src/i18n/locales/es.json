@@ -1085,6 +1085,8 @@
     "sectionSignInRules": "Normas de inicio de sesión"
   },
   "membersScreen": {
+    "proveOwner_one": "To make somebody an owner of {{organisation}}, confirm it's you. You won't be asked again for a minute.",
+    "proveOwner_other": "To make somebody an owner of {{organisation}}, confirm it's you. You won't be asked again for {{count, number}} minutes.",
     "title": "Miembros",
     "loading": "Cargando miembros…",
     "failedLoad": "No se han podido cargar los miembros. Compruebe la conexión y vuelva a intentarlo.",

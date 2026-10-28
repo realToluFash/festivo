@@ -17,6 +17,7 @@ const BACK_TO: Record<ReturnPurpose['kind'], string> = {
   link: '/app/account/security',
   signOutOthers: '/app/account/security',
   makePrimary: '/app/account',
+  makeOwner: '/app/settings/members',
   transfer: '/app/settings',
 };
 
