@@ -1050,7 +1050,7 @@
     "title": "Propriedade e saída",
     "transfer": "Transferir a propriedade",
     "transferNote": "Entregue {{organisation}} a outro membro. Antes, é pedida a sua palavra-passe.",
-    "transferNoteProvider": "Hand {{organisation}} to another member. Asks you to confirm with {{provider}} first.",
+    "transferNoteProvider": "Entregue {{organisation}} a outro membro. Antes, terá de confirmar com o {{provider}}.",
     "transferBody": "Quem receber a função Proprietário pode alterar a faturação, os membros, as funções e estas definições, e eliminar {{organisation}}. A sua função passa a ser Administrador.",
     "newOwner": "Transferir para",
     "ownerBlank": "Escolha para quem transferir a propriedade.",
