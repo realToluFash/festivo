@@ -24,10 +24,10 @@ import { DraftRow } from './MakeLive.tsx';
 import { PauseButton, PausedRow } from './PauseEvent.tsx';
 import { Notice } from './Notice.tsx';
 import { readOut } from './ReadOut.tsx';
+import { StepMark } from './StepMark.tsx';
 import { Text } from './Text.tsx';
 import { ComingUp } from './Timeline.tsx';
 import { cardFrame } from './cardFrame.ts';
-import { useMarkSide } from './markSide.ts';
 
 /** The phase the page shows: the server's, flipped by the corrected clock at the start and the end (sc-3585). */
 function useShownPhase(event: OrganisationEvent, now: Date): EventPhase {
@@ -114,7 +114,6 @@ export function NoEvents({
   /** Absent for a role without Create events, which reads where events will come from. */
   onCreate?: (() => void) | undefined;
 }) {
-  const markSide = useMarkSide(tokens.space3xl);
   const { t } = useTranslation();
 
   return (
@@ -125,15 +124,7 @@ export function NoEvents({
       <View role="list" style={styles.stack}>
         {FIRST_RUN_STEPS.map((step, index) => (
           <View key={step} role="listitem" style={styles.firstRunStep}>
-            <View
-              style={[styles.stepMark, markSide]}
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants"
-            >
-              <Text size={tokens.typePill.size} weight="bold" mono accessible={false}>
-                {index + 1}
-              </Text>
-            </View>
+            <StepMark step={index + 1} state="later" />
             <Text size={tokens.typeBody.size} style={styles.stepText}>
               {t(step)}
             </Text>
@@ -290,14 +281,6 @@ export function EventNotFound({ onBack }: { onBack: () => void }) {
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
   firstRunStep: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
-  stepMark: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: tokens.radiusPill,
-    borderWidth: 1.5,
-    borderColor: tokens.colorMarkEmpty,
-    backgroundColor: tokens.colorCard,
-  },
   stepText: { flex: 1 },
   cards: { gap: tokens.spaceLg },
   pageHead: { gap: tokens.spaceXs },

@@ -628,6 +628,25 @@ describe('a screen is a composition of the kit', () => {
   });
 });
 
+describe('every numbered step shares one mark (sc-18140)', () => {
+  it('draws the step circle only in StepMark.tsx', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ path }) => !path.endsWith('/StepMark.tsx'))
+      .filter(({ text }) => drawsStepCircle(text))
+      .map(({ path }) => path);
+
+    expect(
+      offenders,
+      'Use <StepMark step={…} state={…} /> from src/components/StepMark.tsx.',
+    ).toEqual([]);
+  });
+
+  it('notices a step circle drawn in place', () => {
+    expect(drawsStepCircle('  const markSide = useMarkSide(tokens.space3xl);')).toBe(true);
+    expect(drawsStepCircle('  const markSide = useMarkSide(tokens.sizeMark);')).toBe(false);
+  });
+});
+
 describe('a mark or a pill grows with the text inside it (sc-13281)', () => {
   it('in every style in the app, which sizes it only through useMarkSide or minHeight', () => {
     const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
@@ -763,6 +782,10 @@ function escapesAnswered(text: string): number {
         (propValue(markup, 'collapsable') === '{false}' ||
           /\baccessibilityViewIsModal(?!=\{false\})\b/u.test(markup)),
     ).length;
+}
+
+function drawsStepCircle(text: string): boolean {
+  return /useMarkSide\(tokens\.space3xl\)/u.test(text);
 }
 
 /** A width or height fixed at the side of a mark or a pill, which the glyph or word inside outgrows. */
