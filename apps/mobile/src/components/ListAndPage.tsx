@@ -4,7 +4,6 @@ import {
   type StyleProp,
   StyleSheet,
   View,
-  useWindowDimensions,
   type ViewStyle,
 } from 'react-native';
 
@@ -15,6 +14,7 @@ import {
   settingsListGivesWay,
   useLayout,
   useSideListWidth,
+  useWindowFrame,
 } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { bodyEdges } from './bodyEdges.ts';
@@ -62,7 +62,7 @@ export function useListAndPageLayout(
   spacing: ListAndPageSpacing,
   beside: SectionBeside,
 ): { kind: LayoutKind; givesWay: boolean } {
-  const window = useWindowDimensions();
+  const window = useWindowFrame();
   const list = listBeside(spacing);
 
   return {
