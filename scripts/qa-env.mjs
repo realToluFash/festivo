@@ -936,6 +936,11 @@ function capped(memory, command, args) {
   ];
 }
 
+// CI=1 turns off Metro's file watcher, which runs out of inotify watches beside an IDE.
+export function bundlerEnv(env, app) {
+  return { ...env, ...app, EXPO_PUBLIC_ENVIRONMENT: 'qa', CI: '1' };
+}
+
 async function startBundler(root, env = process.env) {
   const [command, args] = capped('4G', 'npx', [
     'expo',
@@ -947,7 +952,7 @@ async function startBundler(root, env = process.env) {
     cwd: join(root, 'apps/mobile'),
     detached: true,
     stdio: ['ignore', 'inherit', 'inherit'],
-    env: { ...env, ...CONFIG.app, EXPO_PUBLIC_ENVIRONMENT: 'qa' },
+    env: bundlerEnv(env, CONFIG.app),
   });
   // The whole group: npx dies on a signal and leaves the bundler it started holding the port.
   const stop = (signal) => {
