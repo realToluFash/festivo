@@ -8,7 +8,7 @@ import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import { DevicesCard } from '../../src/components/DevicesCard.tsx';
 import { PasswordCard } from '../../src/components/PasswordCard.tsx';
 import { Screen, type StepClosed, stepClosed } from '../../src/components/Screen.tsx';
-import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
+import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { Text } from '../../src/components/Text.tsx';
 import { TwoFactorCard } from '../../src/components/TwoFactorCard.tsx';
 import { WaysCard } from '../../src/components/WaysCard.tsx';
@@ -25,6 +25,7 @@ import { tokens } from '../../src/theme/tokens.ts';
 /** Settings > Security, `AppSettings-*` state `security`: every card the interim screen held. */
 export default function Security() {
   const { t } = useTranslation();
+  const backToSettings = useBackToSettings();
   const { kind } = useLayout();
   const { account, organisations } = useSignedIn();
   const [settingPassword, setSettingPassword] = useState(false);
