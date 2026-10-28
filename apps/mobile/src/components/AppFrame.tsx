@@ -388,7 +388,6 @@ function FrameHeader({
   );
 }
 
-/** "‹ Event" as the phone's frame header shows it, for a tablet body that has no back in its header (sc-17728). */
 export function BackButton({
   label,
   onPress,
