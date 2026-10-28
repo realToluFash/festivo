@@ -73,9 +73,14 @@ final readonly class TokenIssuer
     {
         $this->entityManager->getConnection()->executeStatement(
             'SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))',
-            ['key' => 'refresh-chain:' . $token->getChainId()->toRfc4122()],
+            ['key' => self::lockFor($token->getChainId())],
         );
         $this->entityManager->refresh($token);
+    }
+
+    public static function lockFor(Uuid $chain): string
+    {
+        return 'refresh-chain:' . $chain->toRfc4122();
     }
 
     /**

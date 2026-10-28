@@ -95,7 +95,7 @@ final class TokenController
 
         if (null !== $token->getRevokedAt()) {
             // A chain with nothing live left was ended by a sign-out, not robbed.
-            if (0 < $this->tokenIssuer->revokeChain($token)) {
+            if ($this->tokenIssuer->revokeChain($token) > 0) {
                 $this->logger->warning('Refresh token replayed; chain revoked', [
                     'chain' => $token->getChainId()->toRfc4122(),
                     'user' => $token->getUser()->getId()->toRfc4122(),
