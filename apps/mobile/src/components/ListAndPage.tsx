@@ -16,10 +16,12 @@ import {
   useSideListWidth,
   useWindowFrame,
 } from '../layout/useLayout.ts';
+import { pageTakesBack } from '../kit/systemBack.ts';
 import { tokens } from '../theme/tokens.ts';
 import { bodyEdges } from './bodyEdges.ts';
 import { QuietButton } from './Buttons.tsx';
 import { Screen, ScrollColumn } from './Screen.tsx';
+import { useSystemBack } from './useSystemBack.ts';
 
 export interface ListAndPageSpacing {
   phone: StyleProp<ViewStyle>;
@@ -44,6 +46,7 @@ export interface ListAndPageProps {
   pageKey: string;
   /** Wherever the two show one at a time, whether the page shows in place of the list. */
   pageInFront: boolean;
+  /** The page's own back, the header's on a phone included; Android's Back runs it too wherever the page is in front. */
   back: { label: string; onPress: () => void; testID: string };
   spacing: ListAndPageSpacing;
   /** The screen's own `useListAndPageLayout`, so the two never decide apart. */
@@ -87,6 +90,7 @@ export function ListAndPage({
   const { kind: frame } = useLayout();
   const listWidth = useSideListWidth(spacing.listWidth);
   const landscape = kind === 'tabletLandscape';
+  useSystemBack(pageTakesBack(kind, pageInFront), back.onPress);
   const column = landscape
     ? spacing.column
     : kind === 'phone'
