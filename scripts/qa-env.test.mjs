@@ -1384,6 +1384,36 @@ describe('renewingSession', () => {
     expect(await call()).toBe('access-3');
   });
 
+  it('signs in again for a call refused after another renewal failed', async () => {
+    let opened = 0;
+    const session = renewingSession({
+      open: async () => {
+        opened += 1;
+        if (opened === 2) throw new Error('network blip');
+        return tokens(opened);
+      },
+      refresh: async () => {
+        throw refused();
+      },
+    });
+    let answerSecond;
+    const secondAnswered = new Promise((resolve) => (answerSecond = resolve));
+    const first = session(async (token) => {
+      if (token === 'access-1') throw refused();
+      return token;
+    });
+    const second = session(async (token) => {
+      if (token === 'access-1') {
+        await secondAnswered;
+        throw refused();
+      }
+      return token;
+    });
+    await expect(first).rejects.toThrow('network blip');
+    answerSecond();
+    expect(await second).toBe('access-3');
+  });
+
   it('signs in again on the next call when the first sign-in fails', async () => {
     let opened = 0;
     const session = renewingSession({

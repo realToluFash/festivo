@@ -1656,7 +1656,8 @@ export function renewingSession({ open, refresh }) {
     } catch (error) {
       if (error.status !== 401) throw error;
       // A refresh token presented twice ends the whole session, so callers share one renewal.
-      if (current === held)
+      if (current === null) current = keep(open());
+      else if (current === held)
         current = keep(held.then(({ refreshToken }) => refresh(refreshToken)).catch(open));
       return request((await current).accessToken);
     }
