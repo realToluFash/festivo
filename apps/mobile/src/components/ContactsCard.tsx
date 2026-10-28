@@ -2,6 +2,7 @@ import { type Account, ApiError, type Provider } from '@soirely/api-client';
 import {
   CONTACTS_MOST,
   contactActions,
+  confirmWith,
   contactsLeft,
   formatPhone,
   formatTimeOfDay,
@@ -22,7 +23,7 @@ import { dateLocale } from '../i18n/index.ts';
 import { emailMessage, useFormChecks } from '../kit/formChecks.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { phoneProblemMessage } from '../phoneProblem.ts';
-import { heldProof, proveVia } from '../recentProof.ts';
+import { heldProof } from '../recentProof.ts';
 import { rereadAccount } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
@@ -92,7 +93,7 @@ export function ContactsCards({
         country={account.organisationCountry ?? ''}
         verified={verified}
         confirming={{
-          via: proveVia(account),
+          via: confirmWith(account.hasPassword, account.providers),
           twoFactorOn,
         }}
         onChanged={onChanged}

@@ -1,5 +1,5 @@
 import { type Account, type Provider, type RecentProof } from '@soirely/api-client';
-import { proofStands } from '@soirely/domain';
+import { confirmWith, proofStands } from '@soirely/domain';
 
 import { api } from './api.ts';
 
@@ -25,7 +25,7 @@ export interface Proving {
 }
 
 export function proveVia(account: Account): Proving['via'] {
-  return account.hasPassword ? 'password' : (account.providers[0]?.provider ?? null);
+  return confirmWith(account.hasPassword, account.providers);
 }
 
 export async function howToProve(): Promise<Proving> {

@@ -7,6 +7,7 @@ import {
 import {
   CONTACTS_MOST,
   contactActions,
+  confirmWith,
   contactsLeft,
   formatPhone,
   formatTimeOfDay,
@@ -23,7 +24,7 @@ import { Link, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { dropProviderReturn, heldProviderReturn } from '../../../providerSignIn.ts';
-import { heldProof, proveVia } from '../../../recentProof.ts';
+import { heldProof } from '../../../recentProof.ts';
 import { ConfirmItsYou } from '../../../components/ConfirmItsYou.tsx';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { emailMessage, useFormChecks } from '../../../formChecks.ts';
@@ -102,7 +103,7 @@ export function ContactsCards({ onPrimaryChanged }: { onPrimaryChanged: () => Pr
   if (account == null || twoFactorOn == null) return null;
 
   const confirming: Confirming = {
-    via: proveVia(account),
+    via: confirmWith(account.hasPassword, account.providers),
     twoFactorOn,
     returned:
       returned != null && 'signIn' in returned && returned.purpose.kind === 'makePrimary'
