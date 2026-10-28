@@ -13,65 +13,62 @@ const IMPORTS = [
   'import com.th3rdwave.safeareacontext.SafeAreaProvider',
 ];
 
-// React Native measures text against the application's font scale, which Android may update after the activity's: a layout in between keeps the old size under the new scale, and its measurement is cached.
-// React Native asks for that layout only when the application's scale has moved, so the activity asks for it when the activity's has.
-// The display metrics the holder points at are live, and may already hold the new values before this callback, so what moved is read from the configuration the activity last saw.
+// React Native measures text against the display metrics it last read, and caches each measurement under the font scale the activity's resources had when the root view was measured.
+// Android may give the activity's resources a new scale with the application's change, before the activity's own callback: a layout in between caches the old size under the new scale, and asking for a layout again finds nothing changed and keeps it.
+// So the metrics are read again from the activity on either change, before the next layout, and the root view is laid out when the scale the activity last saw has moved.
 // React Native tells JavaScript about a new font scale only on resume, and DeviceInfo reads both scale and density from the application, so the forward waits until the application has the activity's current ones, however many changes it is behind, then lays out again for the root view to send the new dimensions.
 // DeviceInfo is internal to React Native, so a debug build fails here on the first upgrade that renames it or drops the interface.
 // The safe-area frame, which picks the tablet layout, is sent only when it moves in pixels, and a display-size change keeps the window's pixels, so its last frame is forgotten to send it again at the new density.
 const OVERRIDE = `
-  private var applicationWait: ComponentCallbacks? = null
+  private val applicationChanges = object : ComponentCallbacks {
+    override fun onConfigurationChanged(applicationConfig: Configuration) {
+      takeSizeChanges()
+    }
+
+    override fun onLowMemory() = Unit
+  }
   private var lastFontScale = 0f
   private var lastDensityDpi = 0
+  private var forwardPending = false
 
   override fun onPostCreate(savedInstanceState: Bundle?) {
     super.onPostCreate(savedInstanceState)
     lastFontScale = resources.configuration.fontScale
     lastDensityDpi = resources.configuration.densityDpi
+    application.registerComponentCallbacks(applicationChanges)
   }
 
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)
-    DisplayMetricsHolder.initDisplayMetrics(this)
-    if (newConfig.fontScale != lastFontScale) {
-      reactDelegate?.reactRootView?.requestLayout()
-    }
-    if (newConfig.densityDpi != lastDensityDpi) {
-      reactDelegate?.reactRootView?.let { resendSafeAreaFrames(it) }
-    }
-    lastFontScale = newConfig.fontScale
-    lastDensityDpi = newConfig.densityDpi
-    if (!forwardOnceApplicationCaughtUp() && applicationWait == null) {
-      applicationWait = object : ComponentCallbacks {
-        override fun onConfigurationChanged(applicationConfig: Configuration) {
-          forwardOnceApplicationCaughtUp()
-        }
-
-        override fun onLowMemory() = Unit
-      }.also { application.registerComponentCallbacks(it) }
-    }
+    takeSizeChanges()
   }
 
   override fun onDestroy() {
-    stopWaitingForApplication()
+    application.unregisterComponentCallbacks(applicationChanges)
     super.onDestroy()
   }
 
-  private fun forwardOnceApplicationCaughtUp(): Boolean {
-    val applicationConfig = application.resources.configuration
-    if (applicationConfig.fontScale != resources.configuration.fontScale ||
-      applicationConfig.densityDpi != resources.configuration.densityDpi
-    ) {
-      return false
+  private fun takeSizeChanges() {
+    val activityConfig = resources.configuration
+    DisplayMetricsHolder.initDisplayMetrics(this)
+    if (activityConfig.fontScale != lastFontScale) {
+      reactDelegate?.reactRootView?.requestLayout()
+      forwardPending = true
     }
-    stopWaitingForApplication()
-    forwardSizes()
-    return true
-  }
-
-  private fun stopWaitingForApplication() {
-    applicationWait?.let { application.unregisterComponentCallbacks(it) }
-    applicationWait = null
+    if (activityConfig.densityDpi != lastDensityDpi) {
+      reactDelegate?.reactRootView?.let { resendSafeAreaFrames(it) }
+      forwardPending = true
+    }
+    lastFontScale = activityConfig.fontScale
+    lastDensityDpi = activityConfig.densityDpi
+    val applicationConfig = application.resources.configuration
+    if (forwardPending &&
+      applicationConfig.fontScale == activityConfig.fontScale &&
+      applicationConfig.densityDpi == activityConfig.densityDpi
+    ) {
+      forwardPending = false
+      forwardSizes()
+    }
   }
 
   private fun forwardSizes() {
