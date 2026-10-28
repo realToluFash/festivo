@@ -916,7 +916,7 @@ describe('the list a batch ends with', () => {
   });
 });
 
-describe('what a stalled Maestro run leaves to resume', () => {
+describe('what a Maestro run that lost its driver leaves to resume', () => {
   const runs = ['home', 'settings', 'roles', 'members'].map((check) => ({
     check,
     language: 'any',
@@ -952,6 +952,23 @@ describe('what a stalled Maestro run leaves to resume', () => {
         passed: new Set(['home']),
       }),
     ).toEqual({ crashed: null, rest: [] });
+  });
+
+  it('lists a cold check that failed on its own as a plain failure, not a crash', () => {
+    expect(
+      afterRun([runs[1]], { begun: ['home', 'settings'], from: 1, passed: new Set(['home']) }),
+    ).toEqual({ crashed: null, rest: [] });
+  });
+
+  it('blames the last check of a run the watchdog stopped, resuming nothing', () => {
+    expect(
+      afterRun(runs, {
+        begun: ['home', 'settings', 'roles', 'members'],
+        from: 0,
+        passed: new Set(['home']),
+        stalled: true,
+      }),
+    ).toEqual({ crashed: 'members', rest: [] });
   });
 
   it('stops resuming after the cap when every resume crashes on the same check', async () => {
