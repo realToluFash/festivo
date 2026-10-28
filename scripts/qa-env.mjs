@@ -1669,30 +1669,56 @@ export function apiMoves(from, to) {
   return [[to === 'paused' ? 'pause' : 'stop', 'api']];
 }
 
+export const apiStateOf = (containerState) =>
+  ({ running: 'up', paused: 'paused' })[containerState.trim()] ?? 'stopped';
+
 // A check holds Event View's reads by pausing the API once the list has loaded. Each move waits
-// for the one before it, and the state is what the last finished move left.
-function apiControl(root) {
-  let state = 'up';
+// for the one before it. The state is read from Docker on the first move and after a failed one,
+// since a killed batch or a half-done move leaves the container in a state nobody recorded.
+export function apiControl({ run, read }) {
+  let state;
   let moving = Promise.resolve();
   const move = (to) => {
     const next = moving.then(async () => {
+      state ??= apiStateOf(await read());
       for (const args of apiMoves(state, to)) {
-        if (!(await runAsync('docker', ['compose', ...args], { cwd: root })))
+        if (!(await run(args))) {
+          state = undefined;
           throw new Error(`docker compose ${args.join(' ')} failed`);
+        }
         state = args[0] === 'pause' ? 'paused' : args[0] === 'stop' ? 'stopped' : 'up';
       }
     });
     moving = next.catch(() => {});
     return next;
   };
-  return { move, isUp: () => state === 'up' };
+  return { move, state: () => state };
 }
+
+const composeApi = (root) =>
+  apiControl({
+    run: (args) => runAsync('docker', ['compose', ...args], { cwd: root }),
+    read: () =>
+      capture('docker', ['compose', 'ps', '-a', 'api', '--format', '{{.State}}'], { cwd: root }) ??
+      '',
+  });
 
 const within = (ms, promise) =>
   Promise.race([promise.then(() => true), pause(ms).then(() => false)]);
 
 // Under ten seconds an answer: batch/helper.js asks again while this says wait.
-function startHelper({ email, secret, token, passed, begun, heard, device, onAndroid, api }) {
+export function startHelper({
+  email,
+  secret,
+  setLocale,
+  apiState,
+  passed,
+  begun,
+  heard,
+  device,
+  onAndroid,
+  port = CONFIG.helperPort,
+}) {
   const server = createServer(async (request, response) => {
     heard.at = Date.now();
     const url = new URL(request.url ?? '/', 'http://helper');
@@ -1718,19 +1744,20 @@ function startHelper({ email, secret, token, passed, begun, heard, device, onAnd
       }
       if (url.pathname === '/language') {
         const locale = url.searchParams.get('to');
-        await api('/api/auth/locale', { method: 'PUT', token, body: { locale } });
+        await setLocale(locale);
         return reply(200, { language: locale });
       }
       if (url.pathname === '/api') {
         const to = url.searchParams.get('to');
         if (!API_STATES.includes(to))
           throw new Error(`no API state ${to}: ${API_STATES.join(', ')}`);
-        if (!(await within(8000, api.move(to)))) return reply(200, { wait: true });
+        if (!(await within(8000, apiState.move(to)))) return reply(200, { wait: true });
         return reply(200, { api: to });
       }
-      // A check that failed while it held the API leaves it held for the next.
+      // A check that failed while it held the API leaves it held for the next, and its last move
+      // may still be running: this one queues behind it.
       if (url.pathname === '/started') {
-        if (!api.isUp() && !(await within(8000, api.move('up')))) return reply(200, { wait: true });
+        if (!(await within(8000, apiState.move('up')))) return reply(200, { wait: true });
         begun.push(url.searchParams.get('check'));
         return reply(200, {});
       }
@@ -1745,7 +1772,7 @@ function startHelper({ email, secret, token, passed, begun, heard, device, onAnd
   });
   return new Promise((ready, failed) => {
     server.once('error', failed);
-    server.listen(CONFIG.helperPort, '127.0.0.1', () => ready(server));
+    server.listen(port, '127.0.0.1', () => ready(server));
   });
 }
 
@@ -1822,6 +1849,8 @@ async function batch(args) {
     onAndroid,
   });
 
+  const apiState = composeApi(root);
+  await apiState.move('up');
   const named = languages[0] !== 'any';
   const token = named ? await apiSession(email, password, secret) : null;
   const before = named ? (await api('/api/auth/me', { method: 'GET', token })).locale : null;
@@ -1829,17 +1858,16 @@ async function batch(args) {
   const begun = [];
   const heard = { at: Date.now() };
   const crashed = [];
-  const api = apiControl(root);
   const helper = await startHelper({
     email,
     secret,
-    token,
+    setLocale: (locale) => api('/api/auth/locale', { method: 'PUT', token, body: { locale } }),
+    apiState,
     passed,
     begun,
     heard,
     device,
     onAndroid,
-    api,
   });
   // The secret stays with the helper: no flow is handed it.
   const env = {
@@ -1907,7 +1935,9 @@ async function batch(args) {
     }
   } finally {
     helper.close();
-    await api.move('up');
+    await apiState
+      .move('up')
+      .catch((error) => console.error(`\nThe API is still held: ${error.message}`));
     // The app follows the account's language when it next opens, and later flows expect English.
     if (named)
       await api('/api/auth/locale', { method: 'PUT', token, body: { locale: before ?? 'en' } });

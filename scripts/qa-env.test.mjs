@@ -15,7 +15,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   allowCleartext,
+  apiControl,
   apiMoves,
+  apiStateOf,
   batchCheck,
   batchFlow,
   batchRuns,
@@ -32,6 +34,7 @@ import {
   rerunHints,
   runAsync,
   runBudgetMs,
+  startHelper,
   STEP_MS,
   totp,
   androidFlows,
@@ -798,6 +801,119 @@ describe('the API a check holds', () => {
 
   it('does nothing when the API is already there', () => {
     for (const state of ['up', 'paused', 'stopped']) expect(apiMoves(state, state)).toEqual([]);
+  });
+
+  it("reads the container's state from Docker", () => {
+    expect(apiStateOf('running\n')).toBe('up');
+    expect(apiStateOf('paused')).toBe('paused');
+    expect(apiStateOf('exited')).toBe('stopped');
+    expect(apiStateOf('')).toBe('stopped');
+  });
+});
+
+function dockerDouble(container, { failing = [] } = {}) {
+  const ran = [];
+  const control = apiControl({
+    read: async () => container,
+    run: async (args) => {
+      ran.push(args.join(' '));
+      return !failing.includes(args[0]);
+    },
+  });
+  return { control, ran };
+}
+
+describe('the API a batch holds', () => {
+  it('starts from what Docker says, not from up', async () => {
+    const { control, ran } = dockerDouble('paused');
+    await control.move('up');
+    expect(ran).toEqual(['unpause api']);
+    expect(control.state()).toBe('up');
+  });
+
+  it('tracks the state across queued moves', async () => {
+    const { control, ran } = dockerDouble('running');
+    await Promise.all([control.move('paused'), control.move('stopped'), control.move('up')]);
+    expect(ran).toEqual(['pause api', 'unpause api', 'stop api', 'up -d --wait --no-recreate api']);
+    expect(control.state()).toBe('up');
+  });
+
+  it('brings the API up from each state', async () => {
+    for (const [container, moves] of [
+      ['running', []],
+      ['paused', ['unpause api']],
+      ['exited', ['up -d --wait --no-recreate api']],
+    ]) {
+      const { control, ran } = dockerDouble(container);
+      await control.move('up');
+      expect(ran).toEqual(moves);
+      expect(control.state()).toBe('up');
+    }
+  });
+
+  it('reads Docker again after a move that failed, and the next move still runs', async () => {
+    const { control, ran } = dockerDouble('running', { failing: ['stop'] });
+    await expect(control.move('stopped')).rejects.toThrow('docker compose stop api failed');
+    expect(control.state()).toBeUndefined();
+    await control.move('paused');
+    expect(ran).toEqual(['stop api', 'pause api']);
+    expect(control.state()).toBe('paused');
+  });
+});
+
+describe('the batch helper', () => {
+  const helperFor = async (container) => {
+    const { control, ran } = dockerDouble(container);
+    const languages = [];
+    const begun = [];
+    const server = await startHelper({
+      setLocale: async (locale) => languages.push(locale),
+      apiState: control,
+      passed: new Set(),
+      begun,
+      heard: { at: 0 },
+      port: 0,
+    });
+    const ask = async (path) => {
+      const response = await fetch(`http://127.0.0.1:${server.address().port}${path}`);
+      return response.json();
+    };
+    return { server, ask, control, ran, languages, begun };
+  };
+
+  it('holds the API for a check, and brings it back when the next check starts', async () => {
+    const { server, ask, control, ran, begun } = await helperFor('running');
+    try {
+      expect(await ask('/api?to=paused')).toEqual({ api: 'paused' });
+      expect(await ask('/started?check=settings')).toEqual({});
+      expect(ran).toEqual(['pause api', 'unpause api']);
+      expect(control.state()).toBe('up');
+      expect(begun).toEqual(['settings']);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('refuses a state it does not know', async () => {
+    const { server, ask, ran } = await helperFor('running');
+    try {
+      expect(await ask('/api?to=gone')).toEqual({
+        error: 'no API state gone: up, paused, stopped',
+      });
+      expect(ran).toEqual([]);
+    } finally {
+      server.close();
+    }
+  });
+
+  it("switches the account's language", async () => {
+    const { server, ask, languages } = await helperFor('running');
+    try {
+      expect(await ask('/language?to=es')).toEqual({ language: 'es' });
+      expect(languages).toEqual(['es']);
+    } finally {
+      server.close();
+    }
   });
 });
 
