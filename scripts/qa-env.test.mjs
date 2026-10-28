@@ -51,6 +51,7 @@ import {
   expoGoRunning,
   expoSdkMajor,
   forAndroid,
+  openIntent,
   linkIntent,
   MAX_RESUMES,
   resumeBatch,
@@ -543,6 +544,32 @@ describe('a flow on Android', () => {
     expect(forAndroid(forAndroid(flow))).toBe(forAndroid(flow));
   });
 
+  it('has the harness open its links, variables and all', () => {
+    const links = [
+      '- openLink: ${METRO_URL}/--/',
+      '    - openLink: ${METRO_URL}/--/join/${output.link}',
+    ].join('\n');
+    expect(forAndroid(links).split('\n')).toEqual([
+      "- evalScript: ${http.get(HELPER_URL + '/open?path=' + encodeURIComponent('/--/')).body}",
+      "    - evalScript: ${http.get(HELPER_URL + '/open?path=' + " +
+        "encodeURIComponent('/--/join/' + (output.link))).body}",
+    ]);
+    expect(forAndroid(forAndroid(links))).toBe(forAndroid(links));
+  });
+
+  it("opens a link in Expo Go's package, not whichever app takes exp://", () => {
+    expect(openIntent("exp://127.0.0.1:28081/--/it's")).toEqual([
+      'shell',
+      'am',
+      'start',
+      '-a',
+      'android.intent.action.VIEW',
+      '-d',
+      "'exp://127.0.0.1:28081/--/it'\\''s'",
+      'host.exp.exponent',
+    ]);
+  });
+
   it('brings the flows it runs, rewritten, where its paths expect them', () => {
     const source = mkdtempSync(join(tmpdir(), 'maestro-'));
     mkdirSync(join(source, 'shared'));
@@ -887,6 +914,7 @@ describe('the batch helper', () => {
       passed: new Set(),
       begun,
       heard: { at: 0 },
+      open: (url) => ran.push(`open ${url}`),
       port: 0,
     });
     const ask = async (path) => {
@@ -915,6 +943,19 @@ describe('the batch helper', () => {
       expect(await ask('/api?to=paused')).toEqual({ api: 'paused' });
       expect(await ask('/language?to=es')).toEqual({ language: 'es' });
       expect(ran).toEqual(['pause api', 'unpause api', 'locale es']);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('opens a path under the bundler, and refuses anything else', async () => {
+    const { server, ask, ran } = await helperFor('running');
+    try {
+      expect(await ask('/open?path=%2F--%2Fevents%2F7')).toEqual({ opened: '/--/events/7' });
+      expect(await ask('/open?path=https%3A%2F%2Fexample.com')).toEqual({
+        error: 'open what? /open?path=/--/… gave https://example.com',
+      });
+      expect(ran).toEqual([expect.stringMatching(/^open exp:\/\/.+\/--\/events\/7$/)]);
     } finally {
       server.close();
     }
