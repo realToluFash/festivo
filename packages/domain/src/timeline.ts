@@ -25,18 +25,26 @@ export interface MarkedMilestone {
 }
 
 /** The earliest at or after `now`; an overdue "You" milestone is undone while its area returns it, so it stays. */
-export function nextUp(milestones: readonly Milestone[], now: Date): Milestone | null {
+export function nextUp(
+  milestones: readonly Milestone[],
+  now: Date,
+  ended = false,
+): Milestone | null {
   const sorted = earliestFirst(milestones);
 
-  return sorted.find((milestone) => standingOf(milestone, now) !== 'passed') ?? null;
+  return sorted.find((milestone) => standingOf(milestone, now, ended) !== 'passed') ?? null;
 }
 
-export function markedMilestones(milestones: readonly Milestone[], now: Date): MarkedMilestone[] {
-  const next = nextUp(milestones, now);
+export function markedMilestones(
+  milestones: readonly Milestone[],
+  now: Date,
+  ended = false,
+): MarkedMilestone[] {
+  const next = nextUp(milestones, now, ended);
 
   return earliestFirst(milestones).map((milestone) => ({
     milestone,
-    standing: standingOf(milestone, now),
+    standing: standingOf(milestone, now, ended),
     nextUp: milestone === next,
   }));
 }
@@ -44,9 +52,10 @@ export function markedMilestones(milestones: readonly Milestone[], now: Date): M
 export function comingUp(
   milestones: readonly Milestone[],
   now: Date,
+  ended = false,
   count = 4,
 ): MarkedMilestone[] {
-  return markedMilestones(milestones, now)
+  return markedMilestones(milestones, now, ended)
     .filter((marked) => marked.standing !== 'passed')
     .slice(0, count);
 }
@@ -72,9 +81,13 @@ export function namesZone(eventZone: string, readerZone: string): boolean {
   return canonicalZone(eventZone) !== canonicalZone(readerZone);
 }
 
+const EVENT_AREA = 'events';
+
 const DAY = 24 * 60 * 60 * 1000;
 
-function standingOf(milestone: Milestone, now: Date): MilestoneStanding {
+/** An Ended event's own milestones have passed by its state, not by a clock that reads whole seconds while its end is stamped to the second (sc-16709). */
+function standingOf(milestone: Milestone, now: Date, ended: boolean): MilestoneStanding {
+  if (ended && milestone.area === EVENT_AREA) return 'passed';
   if (new Date(milestone.at).getTime() >= now.getTime()) return 'upcoming';
 
   return milestone.owner === 'you' ? 'overdue' : 'passed';
