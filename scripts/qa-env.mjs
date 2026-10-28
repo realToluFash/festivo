@@ -822,19 +822,19 @@ function installedOn(udid, id) {
 }
 
 // A line per device, so a release on one does not drop a failed uninstall on the other.
-function iosReleases(root) {
+export function iosReleases(root) {
   const recorded = installedIosRelease(root);
   return existsSync(recorded) ? readFileSync(recorded, 'utf8').split('\n').filter(Boolean) : [];
 }
 
 const iosReleaseOn = (root, key) => iosReleases(root).includes(key);
 
-function recordIosRelease(root, key) {
+export function recordIosRelease(root, key) {
   if (!iosReleaseOn(root, key))
     writeFileSync(installedIosRelease(root), [...iosReleases(root), key, ''].join('\n'));
 }
 
-function clearIosRelease(root, key) {
+export function clearIosRelease(root, key) {
   const rest = iosReleases(root).filter((device) => device !== key);
   if (rest.length) writeFileSync(installedIosRelease(root), [...rest, ''].join('\n'));
   else rmSync(installedIosRelease(root), { force: true });

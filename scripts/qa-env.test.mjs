@@ -65,7 +65,10 @@ import {
   APP_SERVICES,
   launchVideo,
   iosBundle,
+  clearIosRelease,
   installedApps,
+  iosReleases,
+  recordIosRelease,
   releaseApk,
   releaseApp,
   releasePlatform,
@@ -368,6 +371,23 @@ describe('a release build', () => {
       ['-insert', 'restrictedBool.allowPasswordAutoFill', '-dictionary', files[0]],
       ['-replace', 'restrictedBool.allowPasswordAutoFill.value', '-bool', 'NO', files[0]],
     ]);
+  });
+
+  it('keeps a release recorded on one simulator when the other is cleared', () => {
+    const root = mkdtempSync(join(tmpdir(), 'qa-'));
+    const recorded = join(root, '.qa/release/ios-release-on');
+    mkdirSync(join(root, '.qa/release'), { recursive: true });
+    recordIosRelease(root, 'phone');
+    recordIosRelease(root, 'ipad');
+    recordIosRelease(root, 'phone');
+    expect(iosReleases(root)).toEqual(['phone', 'ipad']);
+    clearIosRelease(root, 'ipad');
+    expect(iosReleases(root)).toEqual(['phone']);
+    clearIosRelease(root, 'phone');
+    expect(existsSync(recorded)).toBe(false);
+    writeFileSync(recorded, 'phone');
+    expect(iosReleases(root)).toEqual(['phone']);
+    rmSync(root, { recursive: true });
   });
 
   it("reads every app on a simulator's disk", () => {
