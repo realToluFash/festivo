@@ -39,6 +39,13 @@ appId: host.exp.Exponent
     commands:
       - tapOn:
           id: 'frame.back'
+- runFlow:
+    when:
+      visible:
+        id: 'events.back'
+    commands:
+      - tapOn:
+          id: 'events.back'
 - waitForAnimationToEnd
 - takeScreenshot: back-to-list
 - scrollUntilVisible:
