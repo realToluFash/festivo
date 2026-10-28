@@ -360,17 +360,20 @@ describe('a refresh answered after the session changed hands (sc-16226)', () => 
     expect(onSignedOut).not.toHaveBeenCalled();
   });
 
-  test('a sign-out waits for the refresh on the wire and ends the chain it rotated to', async () => {
+  test('a sign-out does not wait for a refresh that is never answered', async () => {
     const { client, tokens, onSignedOut, asked, answer, signOutBody } = held();
 
     const earlier = client.get('/api/events').catch(() => undefined);
     await asked;
-    const signingOut = client.signOut();
+    await client.signOut();
+
+    expect(signOutBody()).toMatchObject({ refreshToken: 'ada-refresh' });
+    expect(tokens.access()).toBeNull();
+    expect(tokens.refresh()).toBeNull();
+
     answer(issued({ accessToken: 'ada-fresh', refreshToken: 'ada-next' }));
-    await signingOut;
     await earlier;
 
-    expect(signOutBody()).toMatchObject({ refreshToken: 'ada-next' });
     expect(tokens.access()).toBeNull();
     expect(tokens.refresh()).toBeNull();
     expect(onSignedOut).not.toHaveBeenCalled();

@@ -10,12 +10,17 @@ use App\Entity\RefreshToken;
 use App\Enum\ErrorCode;
 use App\Repository\RefreshTokenRepository;
 use App\Tests\ApiTestCase;
+use App\Tests\Double\RecordingLogger;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
+use Doctrine\DBAL\DriverManager;
+use Doctrine\DBAL\Exception\DriverException;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
 use Psl\Regex;
 use Psl\SecureRandom;
+use Psl\Vec;
+use Psr\Log\LogLevel;
 use SensitiveParameter;
 
 final class SessionTest extends ApiTestCase
@@ -134,7 +139,7 @@ final class SessionTest extends ApiTestCase
     }
 
     #[Test]
-    public function signingOutRevokesOneTokenAndNotTheChain(): void
+    public function signingOutRevokesTheTokenItPresents(): void
     {
         ['refreshToken' => $first] = $this->signIn('signout@example.com');
         $second = $this->refresh($first);
@@ -150,6 +155,68 @@ final class SessionTest extends ApiTestCase
 
         $this->refresh($second['refreshToken']);
         self::assertSame(401, $this->client->getResponse()->getStatusCode());
+    }
+
+    #[Test]
+    public function signingOutWithATokenARefreshRotatedAwayEndsTheSession(): void
+    {
+        ['refreshToken' => $first] = $this->signIn('rotated@example.com');
+        $second = $this->refresh($first);
+
+        $this->client->request('POST', '/api/auth/logout', server: [
+            'CONTENT_TYPE' => 'application/json',
+        ], content: Json\encode(['refreshToken' => $first]));
+
+        self::assertSame(204, $this->client->getResponse()->getStatusCode());
+
+        self::em()->clear();
+        self::assertNotNull($this->find($second['refreshToken'])?->getRevokedAt());
+    }
+
+    #[Test]
+    public function aRefreshHoldingTheChainSeesTheSignOutThatEndedItUnderIt(): void
+    {
+        ['refreshToken' => $token] = $this->signIn('raced@example.com');
+        $loaded = $this->find($token);
+        self::assertNotNull($loaded);
+        $issuer = self::service(TokenIssuer::class);
+
+        $issuer->revokeChain($loaded);
+        self::assertNull($loaded->getRevokedAt(), 'the refresh read its token before the sign-out landed');
+
+        $issuer->holdChain($loaded);
+
+        self::assertNotNull($loaded->getRevokedAt());
+    }
+
+    #[Test]
+    public function aRefreshWaitsForTheChainItRotates(): void
+    {
+        self::assertSame('55P03', $this->whileTheChainIsHeld($this->refresh(...)));
+    }
+
+    /** Otherwise a sign-out landing mid-refresh misses the token that refresh issues. */
+    #[Test]
+    public function aSignOutWaitsForTheChainItEnds(): void
+    {
+        self::assertSame('55P03', $this->whileTheChainIsHeld($this->signOut(...)));
+    }
+
+    #[Test]
+    public function aRefreshThatLosesToASignOutIsNotReportedAsATheft(): void
+    {
+        $this->client->disableReboot();
+        $logger = new RecordingLogger();
+        self::getContainer()->set('logger', $logger);
+        ['refreshToken' => $token] = $this->signIn('lost-race@example.com');
+
+        $this->client->request('POST', '/api/auth/logout', server: [
+            'CONTENT_TYPE' => 'application/json',
+        ], content: Json\encode(['refreshToken' => $token]));
+        $this->refresh($token);
+
+        self::assertSame(401, $this->client->getResponse()->getStatusCode());
+        self::assertSame([], Vec\filter($logger->records, static fn (array $record): bool => LogLevel::WARNING === $record['level']));
     }
 
     #[Test]
@@ -302,6 +369,52 @@ final class SessionTest extends ApiTestCase
                 '',
             ),
         ];
+    }
+
+    /**
+     * Another connection holds one session's chain, as a refresh in flight would.
+     *
+     * @param callable(string): mixed $request
+     *
+     * @return ?string the SQLSTATE the request on that session failed with, null if it was answered
+     */
+    private function whileTheChainIsHeld(callable $request): ?string
+    {
+        $this->client->disableReboot();
+        $this->client->catchExceptions(false);
+        ['refreshToken' => $held] = $this->signIn('held-chain@example.com');
+        ['refreshToken' => $free] = $this->signInExisting('held-chain@example.com');
+        $chain = $this->find($held)?->getChainId();
+        self::assertNotNull($chain);
+
+        $elsewhere = DriverManager::getConnection(self::em()->getConnection()->getParams());
+        $elsewhere->beginTransaction();
+        $elsewhere->executeStatement('SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))', ['key' => TokenIssuer::lockFor($chain)]);
+        self::em()->getConnection()->executeStatement("SET lock_timeout = '2s'");
+
+        try {
+            $request($free);
+            self::assertLessThan(300, $this->client->getResponse()->getStatusCode(), 'another session of the account is not held up');
+
+            try {
+                $request($held);
+            } catch (DriverException $e) {
+                return $e->getSQLState();
+            }
+
+            return null;
+        } finally {
+            $elsewhere->rollBack();
+            $elsewhere->close();
+            self::em()->getConnection()->executeStatement('SET lock_timeout = 0');
+        }
+    }
+
+    private function signOut(#[SensitiveParameter] string $token): void
+    {
+        $this->client->request('POST', '/api/auth/logout', server: [
+            'CONTENT_TYPE' => 'application/json',
+        ], content: Json\encode(['refreshToken' => $token]));
     }
 
     /** @return array<string, mixed> */

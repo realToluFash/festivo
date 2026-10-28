@@ -51,6 +51,7 @@ import {
   expoGoRunning,
   expoSdkMajor,
   forAndroid,
+  openIntent,
   linkIntent,
   MAX_RESUMES,
   renewingSession,
@@ -66,6 +67,10 @@ import {
   APP_SERVICES,
   launchVideo,
   iosBundle,
+  clearIosRelease,
+  installedApps,
+  iosReleases,
+  recordIosRelease,
   releaseApk,
   releaseApp,
   releasePlatform,
@@ -370,6 +375,37 @@ describe('a release build', () => {
     ]);
   });
 
+  it('keeps a release recorded on one simulator when the other is cleared', () => {
+    const root = mkdtempSync(join(tmpdir(), 'qa-'));
+    const recorded = join(root, '.qa/release/ios-release-on');
+    mkdirSync(join(root, '.qa/release'), { recursive: true });
+    recordIosRelease(root, 'phone');
+    recordIosRelease(root, 'ipad');
+    recordIosRelease(root, 'phone');
+    expect(iosReleases(root)).toEqual(['phone', 'ipad']);
+    clearIosRelease(root, 'ipad');
+    expect(iosReleases(root)).toEqual(['phone']);
+    clearIosRelease(root, 'phone');
+    expect(existsSync(recorded)).toBe(false);
+    writeFileSync(recorded, 'phone');
+    expect(iosReleases(root)).toEqual(['phone']);
+    rmSync(root, { recursive: true });
+  });
+
+  it("reads every app on a simulator's disk", () => {
+    const device = mkdtempSync(join(tmpdir(), 'sim-'));
+    const containers = join(device, 'data/Containers/Bundle/Application');
+    expect(installedApps(device)).toEqual([]);
+    mkdirSync(join(containers, 'A/soirely-d94e55f4e08e.app'), { recursive: true });
+    mkdirSync(join(containers, 'A/_CodeSignature'), { recursive: true });
+    mkdirSync(join(containers, 'B/Expo Go.app'), { recursive: true });
+    expect(installedApps(device).sort()).toEqual([
+      join(containers, 'A/soirely-d94e55f4e08e.app/Info.plist'),
+      join(containers, 'B/Expo Go.app/Info.plist'),
+    ]);
+    rmSync(device, { recursive: true });
+  });
+
   it('installs the bundle the app config names', () => {
     const config = readFileSync(new URL('../apps/mobile/app.config.ts', import.meta.url), 'utf8');
     expect(iosBundle(config)).toBe('com.soirely.app');
@@ -542,6 +578,37 @@ describe('a flow on Android', () => {
   it('is left alone otherwise', () => {
     expect(forAndroid(flow)).toContain("'host.exp.Exponents'");
     expect(forAndroid(forAndroid(flow))).toBe(forAndroid(flow));
+  });
+
+  it('has the harness open its links, variables and all, and stop where it cannot', () => {
+    const links = [
+      '- openLink: ${METRO_URL}',
+      '- openLink: ${METRO_URL}/--/',
+      '    - openLink: ${METRO_URL}/--/join/${output.link}',
+    ].join('\n');
+    const step = (indent, path) =>
+      `${indent}- evalScript: \${(function (r) { if (!r.ok) ` +
+      `throw new Error('the harness could not open ' + ${path} + ', ' + r.body); ` +
+      `return r.body; })(http.get(HELPER_URL + '/open?path=' + encodeURIComponent(${path})))}`;
+    expect(forAndroid(links).split('\n')).toEqual([
+      step('', "''"),
+      step('', "'/--/'"),
+      step('    ', "'/--/join/' + (output.link)"),
+    ]);
+    expect(forAndroid(forAndroid(links))).toBe(forAndroid(links));
+  });
+
+  it("opens a link in Expo Go's package, not whichever app takes exp://", () => {
+    expect(openIntent("exp://127.0.0.1:28081/--/it's")).toEqual([
+      'shell',
+      'am',
+      'start',
+      '-a',
+      'android.intent.action.VIEW',
+      '-d',
+      "'exp://127.0.0.1:28081/--/it'\\''s'",
+      'host.exp.exponent',
+    ]);
   });
 
   it('brings the flows it runs, rewritten, where its paths expect them', () => {
@@ -888,6 +955,7 @@ describe('the batch helper', () => {
       passed: new Set(),
       begun,
       heard: { at: 0 },
+      open: (url) => ran.push(`open ${url}`),
       port: 0,
     });
     const ask = async (path) => {
@@ -916,6 +984,23 @@ describe('the batch helper', () => {
       expect(await ask('/api?to=paused')).toEqual({ api: 'paused' });
       expect(await ask('/language?to=es')).toEqual({ language: 'es' });
       expect(ran).toEqual(['pause api', 'unpause api', 'locale es']);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('opens the bundler or a path under it, and refuses anything else', async () => {
+    const { server, ask, ran } = await helperFor('running');
+    try {
+      expect(await ask('/open?path=%2F--%2Fevents%2F7')).toEqual({ opened: '/--/events/7' });
+      expect(await ask('/open?path=')).toEqual({ opened: '' });
+      expect(await ask('/open?path=https%3A%2F%2Fexample.com')).toEqual({
+        error: 'open what? /open?path=/--/… gave https://example.com',
+      });
+      expect(ran).toEqual([
+        expect.stringMatching(/^open exp:\/\/.+\/--\/events\/7$/),
+        expect.stringMatching(/^open exp:\/\/[^/]+$/),
+      ]);
     } finally {
       server.close();
     }

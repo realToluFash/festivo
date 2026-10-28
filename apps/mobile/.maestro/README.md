@@ -105,7 +105,8 @@ Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each co
   with `openLink`. A standalone build would use `com.soirely.app` and `launchApp`. On Android
   the package is `host.exp.exponent`, in lower case. Write iOS's: `qa-env.mjs maestro --android`
   runs from a copy of this whole directory with Android's, so a `runFlow` or `runScript` path
-  still resolves.
+  still resolves. In that copy each `openLink: ${METRO_URL}…` asks the harness to open the link
+  in Expo Go by its package, since Maestro's names none and can land on Expo Go's own home.
 - **Scroll to what can sit below the fold.** Maestro on Android sees only what is on
   screen, so an `extendedWaitUntil` or `assertVisible` on a line under a phone's fold passes
   on the iPhone and times out there. Use `scrollUntilVisible`, which does not scroll when the

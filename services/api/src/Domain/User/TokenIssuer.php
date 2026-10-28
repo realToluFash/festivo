@@ -57,7 +57,7 @@ final readonly class TokenIssuer
         return $this->issue($used->getUser(), $used->getChainId(), $request, $used->getSignedInWith());
     }
 
-    /** One session, signed out from itself or from the devices list. The caller flushes. */
+    /** One session, ended from the devices list. The caller flushes. */
     public function end(RefreshToken $session): void
     {
         if (null !== $session->getRevokedAt()) {
@@ -68,10 +68,29 @@ final readonly class TokenIssuer
         $this->revokedSessions->add($session->getChainId());
     }
 
-    /** All of them, since revoking one leaves the thief the newest. Bypasses the UnitOfWork: loaded tokens go stale. */
-    public function revokeChain(#[SensitiveParameter] RefreshToken $token): void
+    /** Until the transaction ends: a sign-out landing mid-refresh would otherwise miss the token that refresh issues. */
+    public function holdChain(#[SensitiveParameter] RefreshToken $token): void
     {
-        $this->entityManager
+        $this->entityManager->getConnection()->executeStatement(
+            'SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))',
+            ['key' => self::lockFor($token->getChainId())],
+        );
+        $this->entityManager->refresh($token);
+    }
+
+    public static function lockFor(Uuid $chain): string
+    {
+        return 'refresh-chain:' . $chain->toRfc4122();
+    }
+
+    /**
+     * All of them, since revoking one leaves the thief the newest. Bypasses the UnitOfWork: loaded tokens go stale.
+     *
+     * @return int how many were still live
+     */
+    public function revokeChain(#[SensitiveParameter] RefreshToken $token): int
+    {
+        $revoked = $this->entityManager
             ->createQuery(
                 'UPDATE ' . RefreshToken::class . ' t SET t.revokedAt = :now'
                 . ' WHERE t.chainId = :chain AND t.revokedAt IS NULL',
@@ -81,6 +100,8 @@ final readonly class TokenIssuer
             ->execute();
 
         $this->revokedSessions->add($token->getChainId());
+
+        return Type\int()->coerce($revoked);
     }
 
     /** Every session the account has, on every device: a new password means nobody stays in on the old one. */

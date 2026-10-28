@@ -258,6 +258,17 @@ export function simulatorArch(arch = process.arch) {
   return arch === 'arm64' ? 'arm64' : 'x86_64';
 }
 
+// What a simulator's disk holds, so it can be read once the device is shut.
+export function installedApps(device) {
+  const containers = join(device, 'data/Containers/Bundle/Application');
+  if (!existsSync(containers)) return [];
+  return readdirSync(containers).flatMap((container) =>
+    readdirSync(join(containers, container))
+      .filter((name) => name.endsWith('.app'))
+      .map((app) => join(containers, container, app, 'Info.plist')),
+  );
+}
+
 export function iosBundle(appConfig) {
   const id = /ios:\s*\{[^}]*bundleIdentifier:\s*'([^']+)'/.exec(appConfig)?.[1];
   if (!id) throw new Error('no ios.bundleIdentifier in apps/mobile/app.config.ts');
@@ -330,9 +341,28 @@ export function expoGoApk(versions, expoRange) {
 }
 
 // Android's package is lower case, and every flow, an old commit's included, names iOS's.
+// Maestro's openLink names no package, and an emulator can hand exp:// to Expo Go's own home
+// rather than the experience, so the harness opens the link instead (sc-3594).
 export function forAndroid(flow) {
-  return flow.replace(/\bhost\.exp\.Exponent\b/g, EXPO_GO_ANDROID);
+  return flow
+    .replace(/\bhost\.exp\.Exponent\b/g, EXPO_GO_ANDROID)
+    .replace(
+      /^(\s*)- openLink: \$\{METRO_URL\}(\S*)$/gm,
+      (_, indent, path) =>
+        `${indent}- evalScript: \${(function (r) { if (!r.ok) ` +
+        `throw new Error('the harness could not open ' + ${scriptOf(path)} + ', ' + r.body); ` +
+        `return r.body; })(http.get(HELPER_URL + '/open?path=' + ` +
+        `encodeURIComponent(${scriptOf(path)})))}`,
+    );
 }
+
+// A link's ${VAR}s become the script's own variables, which Maestro already defines.
+const scriptOf = (link) =>
+  link
+    .split(/\$\{([^}]+)\}/)
+    .map((part, i) => (i % 2 ? `(${part})` : `'${part.replaceAll("'", "\\'")}'`))
+    .filter((part) => part !== "''")
+    .join(' + ') || "''";
 
 // The whole directory, so a flow's runFlow and runScript paths still resolve, rewritten too.
 export function androidFlows(source, target) {
@@ -364,6 +394,25 @@ export function linkIntent(url) {
     '-d',
     `'${url.replaceAll("'", "'\\''")}'`,
   ];
+}
+
+export function openIntent(url) {
+  return [
+    'shell',
+    'am',
+    'start',
+    '-a',
+    'android.intent.action.VIEW',
+    '-d',
+    `'${url.replaceAll("'", "'\\''")}'`,
+    EXPO_GO_ANDROID,
+  ];
+}
+
+// am start says Error on stdout and still exits 0.
+function openOnEmulator(url) {
+  const said = adbOut(androidTools(), openIntent(url));
+  if (said === null || /^Error/m.test(said)) throw new Error(`could not open ${url}: ${said}`);
 }
 
 export function branchForStory(id, remoteBranches) {
@@ -748,8 +797,9 @@ export function passwordAutoFillOff(file) {
   ];
 }
 
-const deviceFiles = (udid) =>
-  passwordAutoFillFiles(join(homedir(), 'Library/Developer/CoreSimulator/Devices', udid));
+const simulatorDir = (udid) => join(homedir(), 'Library/Developer/CoreSimulator/Devices', udid);
+
+const deviceFiles = (udid) => passwordAutoFillFiles(simulatorDir(udid));
 
 const passwordAutoFillIsOff = (udid) =>
   deviceFiles(udid).every(
@@ -788,22 +838,44 @@ function installedIosRelease(root) {
 function shutSimulator(root, key, id) {
   const udid = simulatorId(CONFIG.simulators[key].name);
   if (!udid) return;
-  if (iosReleaseOn(root, key)) {
+  const recorded = iosReleaseOn(root, key);
+  if (recorded) {
     run('xcrun', ['simctl', 'boot', udid], { optional: true });
-    if (run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true })) {
-      clearIosRelease(root, key);
-    }
+    uninstallIos(udid, id);
   }
   run('xcrun', ['simctl', 'shutdown', udid], { optional: true });
+  if (recorded && !installedOn(udid, id)) clearIosRelease(root, key);
 }
 
-function iosReleaseOn(root, key) {
+// An uninstall of the running app exits 0 and lists it gone, yet a reboot brings it back.
+function uninstallIos(udid, id) {
+  run('xcrun', ['simctl', 'terminate', udid, id], { optional: true });
+  run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true });
+}
+
+function installedOn(udid, id) {
+  return installedApps(simulatorDir(udid)).some(
+    (plist) => capture('plutil', ['-extract', 'CFBundleIdentifier', 'raw', plist]) === id,
+  );
+}
+
+// A line per device, so a release on one does not drop a failed uninstall on the other.
+export function iosReleases(root) {
   const recorded = installedIosRelease(root);
-  return existsSync(recorded) && readFileSync(recorded, 'utf8').trim() === key;
+  return existsSync(recorded) ? readFileSync(recorded, 'utf8').split('\n').filter(Boolean) : [];
 }
 
-function clearIosRelease(root, key) {
-  if (iosReleaseOn(root, key)) rmSync(installedIosRelease(root));
+const iosReleaseOn = (root, key) => iosReleases(root).includes(key);
+
+export function recordIosRelease(root, key) {
+  if (!iosReleaseOn(root, key))
+    writeFileSync(installedIosRelease(root), [...iosReleases(root), key, ''].join('\n'));
+}
+
+export function clearIosRelease(root, key) {
+  const rest = iosReleases(root).filter((device) => device !== key);
+  if (rest.length) writeFileSync(installedIosRelease(root), [...rest, ''].join('\n'));
+  else rmSync(installedIosRelease(root), { force: true });
 }
 
 async function ios(args) {
@@ -819,9 +891,8 @@ async function ios(args) {
     if (!udid) throw new Error(`no ${CONFIG.simulators[key].name} simulator — run setup`);
     withoutPasswordAutoFill(udid);
     run('xcrun', ['simctl', 'boot', udid], { optional: true });
-    if (run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true })) {
-      clearIosRelease(root, open);
-    }
+    // The record stays: only a read after a shutdown says the uninstall held.
+    uninstallIos(udid, id);
     if (!ensureExpoGo(udid)) {
       throw new Error(
         `Expo Go is on no booted simulator to copy from. Install it once with \`npx expo start --ios\` on any simulator, then rerun.`,
@@ -1339,9 +1410,9 @@ async function releaseIos(args) {
   run('xcrun', ['simctl', 'boot', udid], { optional: true });
   run('open', ['-a', 'Simulator'], { optional: true });
   // A fresh install every time, so the launch below is the app's first, with no cache.
-  run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true });
+  uninstallIos(udid, id);
   run('xcrun', ['simctl', 'install', udid, app]);
-  writeFileSync(installedIosRelease(root), open);
+  recordIosRelease(root, open);
   if (offline) stopAppServices(root);
   else startAppServices(root);
 
@@ -1401,6 +1472,9 @@ async function maestro(args) {
   const device = maestroDevice(args);
 
   const env = [`METRO_URL=${CONFIG.urls.metro}`, `MAILPIT_URL=${CONFIG.urls.mailpit}`, ...vars];
+  // An Android flow's links are opened by the harness: forAndroid.
+  const helper = onAndroid ? await startHelper({ heard: { at: 0 }, device, onAndroid }) : null;
+  if (helper) env.push(`HELPER_URL=http://127.0.0.1:${CONFIG.helperPort}`);
   const out = join(root, '.qa', flow);
   spawnSync('rm', ['-rf', out]);
   mkdirSync(out, { recursive: true });
@@ -1425,6 +1499,7 @@ async function maestro(args) {
     ],
     { cwd: root, env: onAndroid ? androidTools().env : {}, timeoutMs: runBudgetMs(1) },
   );
+  helper?.close();
   spawnSync('sh', ['-c', `find "${out}" -mindepth 2 -name '*.png' -exec cp {} "${out}/" \\;`]);
   console.log(`\nEvidence in ${out}`);
   if (!ok) process.exitCode = 1;
@@ -1760,6 +1835,7 @@ export function startHelper({
   heard,
   device,
   onAndroid,
+  open = openOnEmulator,
   port = CONFIG.helperPort,
 }) {
   const server = createServer(async (request, response) => {
@@ -1802,6 +1878,13 @@ export function startHelper({
         if (!(await within(8000, apiState.move('up')))) return reply(200, { wait: true });
         begun.push(url.searchParams.get('check'));
         return reply(200, {});
+      }
+      if (url.pathname === '/open') {
+        const path = url.searchParams.get('path') ?? '';
+        if (path && !path.startsWith('/'))
+          throw new Error(`open what? /open?path=/--/… gave ${path}`);
+        open(`${CONFIG.urls.metro}${path}`);
+        return reply(200, { opened: path });
       }
       if (url.pathname === '/passed') {
         passed.add(url.searchParams.get('check'));
