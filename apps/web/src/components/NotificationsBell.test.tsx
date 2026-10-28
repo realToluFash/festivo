@@ -255,6 +255,62 @@ describe('the bell (sc-3980)', () => {
     expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
   });
 
+  it('Show more stays in place and busy while the page loads, and keeps focus', async () => {
+    let answer: (response: Response) => void = () => undefined;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      if (!new URL(String(input)).searchParams.has('after')) {
+        return json({ items: [item()], unreadCount: 1, next: 'n1' });
+      }
+
+      return new Promise<Response>((resolve) => {
+        answer = resolve;
+      });
+    });
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    const more = await screen.findByRole('button', { name: 'Show more' });
+    more.focus();
+    fireEvent.click(more);
+
+    await waitFor(() => expect(more.getAttribute('aria-busy')).toBe('true'));
+    expect(more.getAttribute('aria-disabled')).toBe('true');
+    expect(document.activeElement).toBe(more);
+
+    answer(
+      json({
+        items: [item({ id: 'n2', title: 'Briefing from Bola' })],
+        unreadCount: 1,
+        next: 'n2',
+      }),
+    );
+
+    await screen.findByRole('button', { name: /^Briefing from Bola/ });
+    expect(more.getAttribute('aria-busy')).toBe('false');
+    expect(document.activeElement).toBe(more);
+  });
+
+  it('Show more moves focus to the first new item when the last page takes the button away', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      new URL(String(input)).searchParams.has('after')
+        ? json({
+            items: [item({ id: 'n2', title: 'Briefing from Bola' })],
+            unreadCount: 1,
+            next: null,
+          })
+        : json({ items: [item()], unreadCount: 1, next: 'n1' }),
+    );
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    const more = await screen.findByRole('button', { name: 'Show more' });
+    more.focus();
+    fireEvent.click(more);
+
+    const added = await screen.findByRole('button', { name: /^Briefing from Bola/ });
+    await waitFor(() => expect(document.activeElement).toBe(added));
+  });
+
   it('Show more says when the next page did not load, and keeps the button', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       if (new URL(String(input)).searchParams.has('after')) throw new TypeError('Failed to fetch');
@@ -266,7 +322,7 @@ describe('the bell (sc-3980)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Show more' }));
 
-    expect((await screen.findByRole('alert')).textContent).toBe(
+    expect((await screen.findByRole('alert')).textContent).toContain(
       'More notifications did not load. Try again in a moment.',
     );
     expect(screen.getByRole('button', { name: 'Show more' })).toBeTruthy();

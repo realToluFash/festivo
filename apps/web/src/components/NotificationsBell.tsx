@@ -7,6 +7,7 @@ import { Link, useNavigate } from 'react-router';
 import { api } from '../api.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { useLiveNotifications } from '../liveNotifications.ts';
+import { offButton } from '../offButton.ts';
 import { MuteSwitch } from './MuteSwitch.tsx';
 
 const MUTABLE: ReadonlySet<NotificationCategory> = new Set([
@@ -30,6 +31,7 @@ export function NotificationsBell({ userId }: { userId: string }) {
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
   const [said, setSaid] = useState('');
   const [more, setMore] = useState<'idle' | 'loading' | 'failed'>('idle');
+  const firstAdded = useRef<string | null>(null);
   const container = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -76,6 +78,15 @@ export function NotificationsBell({ userId }: { userId: string }) {
   useEffect(() => {
     if (open) heading.current?.focus();
   }, [open]);
+
+  useEffect(() => {
+    if (firstAdded.current == null) return;
+
+    Array.from(container.current?.querySelectorAll<HTMLElement>('[data-notification]') ?? [])
+      .find((shown) => shown.dataset.notification === firstAdded.current)
+      ?.focus();
+    firstAdded.current = null;
+  }, [feed]);
 
   useEffect(() => {
     if (!open) return;
@@ -167,21 +178,26 @@ export function NotificationsBell({ userId }: { userId: string }) {
     }
   }
 
-  function showMore(after: string): void {
+  function showMore(after: string, shown: NotificationItem[]): void {
     setMore('loading');
     api.notifications(after).then(
       (page) => {
+        const known = new Set(shown.map((item) => item.id));
+        const added = page.items.filter((item) => !known.has(item.id));
+
         setFeed((current) => {
           if (current.status !== 'loaded') return current;
 
-          const shown = new Set(current.items.map((item) => item.id));
+          const present = new Set(current.items.map((item) => item.id));
 
           return {
             ...current,
-            items: [...current.items, ...page.items.filter((item) => !shown.has(item.id))],
+            items: [...current.items, ...added.filter((item) => !present.has(item.id))],
             next: page.next,
           };
         });
+        const first = added[0];
+        if (page.next == null && first != null) firstAdded.current = first.id;
         setSaid(t('notifications.moreShown', { count: page.items.length }));
         setMore('idle');
       },
@@ -260,6 +276,7 @@ export function NotificationsBell({ userId }: { userId: string }) {
                 <li key={item.id} className="notification-row">
                   <button
                     type="button"
+                    data-notification={item.id}
                     className={item.read ? 'notification-item' : 'notification-item unread'}
                     onClick={() => void openItem(item)}
                   >
@@ -316,12 +333,20 @@ export function NotificationsBell({ userId }: { userId: string }) {
               <button
                 type="button"
                 className="link-button"
-                disabled={more === 'loading'}
-                onClick={() => feed.next != null && showMore(feed.next)}
+                {...offButton(more === 'loading', { dim: false })}
+                aria-busy={more === 'loading'}
+                onClick={() => feed.next != null && showMore(feed.next, feed.items)}
               >
                 {t('notifications.showMore')}
               </button>
-              {more === 'failed' && <p role="alert">{t('notifications.moreFailed')}</p>}
+              {more === 'failed' && (
+                <div className="notice notice-attention" role="alert">
+                  <span className="mark mark-attention" aria-hidden="true">
+                    !
+                  </span>
+                  <p className="notice-title">{t('notifications.moreFailed')}</p>
+                </div>
+              )}
             </div>
           )}
 
