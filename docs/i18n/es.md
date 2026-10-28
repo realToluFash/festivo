@@ -504,10 +504,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   {{date}}». "Next up" es «Lo próximo», como `timeline.nextUp`. El botón mientras carga dice
   «Cargando más…», no «Mostrando más…». `moreFailed` repite la segunda frase del fallo de carga
   de su propia pantalla, como en inglés.
-- **27 Oct 2026. The two-factor-due subject opens on the feature and the deadline**
-  (`emails:signInRules.twoFactorDue.subject`, sc-15219): «Verificación en dos pasos antes del
-  {deadline}: {organisation}». «antes del» reads with the weekday that `{deadline}` opens on;
-  the organisation goes last, so a 390 px inbox shows the date (qa2, #15218).
+- **28 Oct 2026. The two-factor-due subject opens on the deadline**
+  (`emails:signInRules.twoFactorDue.subject`, sc-15219): «Antes del {deadline}: verificación en
+  dos pasos en {organisation}». «Verificación en dos pasos» before the date took 36 characters
+  and a 390 px inbox cut inside the weekday (qa2, #18836); «Antes del» takes 10, so the date and
+  time show at 360 px. A subject whose news is a deadline opens on it; the rest keep the feature
+  first (sc-14100).
 - **27 Oct 2026. La página de datos nombra la regla, no la función** (sc-16443 para sc-16265,
   `orgGeneral.readOnlyUntil*`, `refusedByRule`). Cada línea abre con la regla en las palabras
   del aviso (`signInRules.unlinkedBody`, `gateBody`, sin «ahora») y cierra con las de
