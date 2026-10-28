@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
 import { refusalTitle } from '../kit/refusal.ts';
+import { keptProof, keptProofRanOut, signedInWith, tripRefused } from '../kit/waysProof.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { reloadSignedIn, useSignedIn } from '../signedIn.ts';
@@ -270,20 +271,18 @@ function Transfer({
       });
       setVouched({ email: null, proof });
     } catch (error) {
-      if (error instanceof ApiError && error.is('two_factor_required')) {
-        setPending(error.problem.pendingProof ?? null);
-        setVouched({ email: error.problem.providerEmail ?? null, proof: null });
+      const signedIn = signedInWith(by, error, null);
+      if (signedIn != null) {
+        setPending(keptProof(error, null));
+        setVouched({ ...signedIn, proof: null });
         setCodeAsked(true);
-      } else if (error instanceof ApiError && error.is('invalid_credentials')) {
-        setRefused({
-          field: null,
-          message: t('waysCard.providerRefused', { provider: PROVIDER_NAMES[by] }),
-        });
       } else {
         // Closing Google or Apple says so too: nothing was transferred, and the owner stays chosen.
         setRefused({
           field: null,
-          message: t('waysCard.providerFailed', { provider: PROVIDER_NAMES[by] }),
+          message: tripRefused(error)
+            ? t('waysCard.providerRefused', { provider: PROVIDER_NAMES[by] })
+            : t('waysCard.providerFailed', { provider: PROVIDER_NAMES[by] }),
         });
       }
     } finally {
@@ -318,7 +317,7 @@ function Transfer({
         return;
       }
 
-      if (vouched != null && error.is('proof_required')) {
+      if (keptProofRanOut(error, vouched != null)) {
         setVouched(null);
         setPending(null);
         setCodeAsked(false);

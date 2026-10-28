@@ -49,10 +49,9 @@ export function proveWith(
   linked: readonly { provider: SignInProvider }[],
   actingOn: SignInProvider,
 ): 'password' | SignInProvider | null {
-  if (hasPassword) return 'password';
-  if (linked.some((entry) => entry.provider === actingOn)) return actingOn;
+  if (!hasPassword && linked.some((entry) => entry.provider === actingOn)) return actingOn;
 
-  return linked[0]?.provider ?? null;
+  return confirmWith(hasPassword, linked);
 }
 
 /** The way in left once a provider is unlinked: the password if set, else the other provider. */
