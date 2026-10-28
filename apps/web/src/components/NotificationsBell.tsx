@@ -19,7 +19,7 @@ const MUTABLE: ReadonlySet<NotificationCategory> = new Set([
 type Feed =
   | { status: 'loading' }
   | { status: 'failed' }
-  | { status: 'loaded'; items: NotificationItem[]; unread: number };
+  | { status: 'loaded'; items: NotificationItem[]; unread: number; next: string | null };
 
 /** The bell and its feed (sc-3980): a popover from the sidebar on the web, at every width. */
 export function NotificationsBell({ userId }: { userId: string }) {
@@ -29,6 +29,7 @@ export function NotificationsBell({ userId }: { userId: string }) {
   const [open, setOpen] = useState(false);
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
   const [said, setSaid] = useState('');
+  const [more, setMore] = useState<'idle' | 'loading' | 'failed'>('idle');
   const container = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -37,7 +38,13 @@ export function NotificationsBell({ userId }: { userId: string }) {
   const load = useCallback(
     (): Promise<void> =>
       api.notifications().then(
-        (loaded) => setFeed({ status: 'loaded', items: loaded.items, unread: loaded.unreadCount }),
+        (loaded) =>
+          setFeed({
+            status: 'loaded',
+            items: loaded.items,
+            unread: loaded.unreadCount,
+            next: loaded.next,
+          }),
         () => setFeed({ status: 'failed' }),
       ),
     [],
@@ -54,7 +61,7 @@ export function NotificationsBell({ userId }: { userId: string }) {
       }
 
       return {
-        status: 'loaded',
+        ...current,
         items: [item, ...current.items],
         unread: current.unread + (item.read ? 0 : 1),
       };
@@ -104,7 +111,7 @@ export function NotificationsBell({ userId }: { userId: string }) {
       setFeed((current) =>
         current.status === 'loaded'
           ? {
-              status: 'loaded',
+              ...current,
               items: current.items.map((shown) =>
                 shown.id === item.id ? { ...shown, read: true } : shown,
               ),
@@ -150,11 +157,7 @@ export function NotificationsBell({ userId }: { userId: string }) {
   async function readAll(): Promise<void> {
     if (feed.status !== 'loaded' || feed.unread === 0) return;
 
-    setFeed({
-      status: 'loaded',
-      items: feed.items.map((item) => ({ ...item, read: true })),
-      unread: 0,
-    });
+    setFeed({ ...feed, items: feed.items.map((item) => ({ ...item, read: true })), unread: 0 });
     setSaid(t('notifications.allRead'));
     try {
       const left = await api.readAllNotifications();
@@ -162,6 +165,28 @@ export function NotificationsBell({ userId }: { userId: string }) {
     } catch {
       void load();
     }
+  }
+
+  function showMore(after: string): void {
+    setMore('loading');
+    api.notifications(after).then(
+      (page) => {
+        setFeed((current) => {
+          if (current.status !== 'loaded') return current;
+
+          const shown = new Set(current.items.map((item) => item.id));
+
+          return {
+            ...current,
+            items: [...current.items, ...page.items.filter((item) => !shown.has(item.id))],
+            next: page.next,
+          };
+        });
+        setSaid(t('notifications.moreShown', { count: page.items.length }));
+        setMore('idle');
+      },
+      () => setMore('failed'),
+    );
   }
 
   return (
@@ -284,6 +309,20 @@ export function NotificationsBell({ userId }: { userId: string }) {
                 </li>
               ))}
             </ul>
+          )}
+
+          {feed.status === 'loaded' && feed.next != null && (
+            <div className="notifications-more">
+              <button
+                type="button"
+                className="link-button"
+                disabled={more === 'loading'}
+                onClick={() => feed.next != null && showMore(feed.next)}
+              >
+                {t('notifications.showMore')}
+              </button>
+              {more === 'failed' && <p role="alert">{t('notifications.moreFailed')}</p>}
+            </div>
           )}
 
           <Link

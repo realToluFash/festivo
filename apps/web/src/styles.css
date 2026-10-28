@@ -4778,6 +4778,24 @@ button.members-row {
   margin: 0;
 }
 
+.notifications-more {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  padding: var(--spaceSm) var(--spaceXl);
+  border-top: var(--borderCard);
+}
+
+.notifications-more button {
+  min-height: var(--sizeHit);
+}
+
+.notifications-more p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .notifications-settings {
   display: flex;
   align-items: center;

@@ -231,4 +231,44 @@ describe('the bell (sc-3980)', () => {
 
     expect(screen.queryByRole('button', { name: /^More for/ })).toBeNull();
   });
+
+  it('Show more adds the next page under the first and says how many it added', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const after = new URL(String(input)).searchParams.get('after');
+
+      return after == null
+        ? json({ items: [item()], unreadCount: 1, next: 'n1' })
+        : json({
+            items: [item({ id: 'n2', title: 'Briefing from Bola', read: true })],
+            unreadCount: 1,
+            next: null,
+          });
+    });
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Show more' }));
+
+    expect(await screen.findByRole('button', { name: /^Briefing from Bola/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^Ada Obi changed the event/ })).toBeTruthy();
+    expect(screen.getByText('1 more notification shown.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+  });
+
+  it('Show more says when the next page did not load, and keeps the button', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      if (new URL(String(input)).searchParams.has('after')) throw new TypeError('Failed to fetch');
+
+      return json({ items: [item()], unreadCount: 1, next: 'n1' });
+    });
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Show more' }));
+
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'More notifications did not load. Try again in a moment.',
+    );
+    expect(screen.getByRole('button', { name: 'Show more' })).toBeTruthy();
+  });
 });
