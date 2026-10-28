@@ -14,18 +14,23 @@ export interface FieldName {
   accessibilityLabelledBy?: string | undefined;
 }
 
-/** On Android a field is named by the label it shows, or while empty by its placeholder: TalkBack reads a content description in place of what the field holds, and again on every key (sc-17281, sc-17333). */
+/** On Android a field is named by the label it shows, or while empty by its placeholder and once filled by an unseen copy of it: TalkBack reads a content description in place of what the field holds, and again on every key, and reads no placeholder once there is text (sc-17281, sc-17333). */
 export function fieldName(
   os: string,
   name: string | undefined,
-  shown: { labelID?: string | undefined; placeholder?: string | undefined },
+  shown: {
+    labelID?: string | undefined;
+    placeholder?: string | undefined;
+    filled?: { held: boolean; nameID: string } | undefined;
+  },
 ): FieldName {
   if (os !== 'android') return { accessibilityLabel: name };
   if (shown.labelID != null)
     return { accessibilityLabel: undefined, accessibilityLabelledBy: shown.labelID };
+  if (shown.placeholder == null || shown.placeholder === '') return { accessibilityLabel: name };
 
-  return shown.placeholder == null || shown.placeholder === ''
-    ? { accessibilityLabel: name }
+  return shown.filled?.held === true
+    ? { accessibilityLabel: undefined, accessibilityLabelledBy: shown.filled.nameID }
     : { accessibilityLabel: undefined };
 }
 

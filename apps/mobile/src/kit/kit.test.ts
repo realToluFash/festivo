@@ -531,10 +531,22 @@ describe('a field on Android is named by what it shows, so TalkBack reads what i
     });
   });
 
-  it('is named by its placeholder when it shows no label', () => {
-    expect(fieldName('android', 'Search countries', { placeholder: 'Search countries' })).toEqual({
-      accessibilityLabel: undefined,
-    });
+  it('is named by an unseen copy of its placeholder once it holds text', () => {
+    expect(
+      fieldName('android', 'Search countries', {
+        placeholder: 'Search countries',
+        filled: { held: true, nameID: 'r2' },
+      }),
+    ).toEqual({ accessibilityLabel: undefined, accessibilityLabelledBy: 'r2' });
+  });
+
+  it('is named by its placeholder alone while empty, so the name is said once', () => {
+    expect(
+      fieldName('android', 'Search countries', {
+        placeholder: 'Search countries',
+        filled: { held: false, nameID: 'r2' },
+      }),
+    ).toEqual({ accessibilityLabel: undefined });
   });
 
   it('keeps its content description when it shows no name at all', () => {
