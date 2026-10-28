@@ -28,6 +28,7 @@ import { useTranslation } from 'react-i18next';
 import { type WaitingInvitations, useWaitingInvitations } from '../invitations.ts';
 import { type DomainOffer, useDomainOffer } from '../joinOffers.ts';
 import { DESTINATION_HREF, type Destination, destinations } from '../kit/appNav.ts';
+import { leaveThen } from '../leaveHeld.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { railWidth } from '../layout/textSize.ts';
 import {
@@ -345,7 +346,7 @@ function FrameHeader({
               <Pressable
                 key={destination}
                 style={[styles.pill, on && styles.pillOn]}
-                onPress={() => router.navigate(DESTINATION_HREF[destination])}
+                onPress={() => goTo(destination)}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: on }}
                 testID={`frame.${destination}`}
@@ -409,6 +410,11 @@ export function BackButton({
   );
 }
 
+function goTo(destination: Destination): void {
+  const href = DESTINATION_HREF[destination];
+  leaveThen((discarding) => (discarding ? router.dismissTo(href) : router.navigate(href)));
+}
+
 function TabBar({ current }: { current: Destination }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -435,7 +441,7 @@ function TabBar({ current }: { current: Destination }) {
           <Pressable
             key={destination}
             style={styles.tab}
-            onPress={() => router.navigate(DESTINATION_HREF[destination])}
+            onPress={() => goTo(destination)}
             onLayout={
               index === 0 ? (event) => words.room(event.nativeEvent.layout.width) : undefined
             }
@@ -486,7 +492,7 @@ function Rail({
       <Pressable
         key={destination}
         style={[styles.railItem, on && styles.railItemOn]}
-        onPress={() => router.navigate(DESTINATION_HREF[destination])}
+        onPress={() => goTo(destination)}
         accessibilityRole="tab"
         accessibilityState={{ selected: on }}
         testID={`frame.${destination}`}
