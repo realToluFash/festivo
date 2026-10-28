@@ -1601,9 +1601,11 @@ async function api(path, { method = 'POST', body, token } = {}) {
   });
   const answer = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(
+    const error = new Error(
       `${path} answered ${response.status}: ${answer?.detail ?? answer?.title ?? response.statusText}`,
     );
+    error.status = response.status;
+    throw error;
   }
   return answer;
 }
@@ -1624,16 +1626,50 @@ async function nextCode(email, secret) {
   return totp(secret, step);
 }
 
-async function apiSession(email, password, secret) {
+async function signIn(email, password, secret) {
   const answer = await api('/api/auth/login', { body: { email, password } });
-  if (typeof answer.twoFactorChallenge !== 'string') return answer.accessToken;
+  if (typeof answer.twoFactorChallenge !== 'string') return answer;
   if (!secret) throw new Error(`${email} has two-factor on: pass TOTP_SECRET=…`);
   const code = await nextCode(email, secret);
-  return (
-    await api('/api/auth/two-factor/verify', {
-      body: { challenge: answer.twoFactorChallenge, code },
-    })
-  ).accessToken;
+  return api('/api/auth/two-factor/verify', {
+    body: { challenge: answer.twoFactorChallenge, code },
+  });
+}
+
+// A cold batch outlives an access token: a 401 renews the session and asks once more (sc-17974).
+export function renewingSession({ open, refresh }) {
+  let current = null;
+  // A failed sign-in is not kept, so the next call tries again rather than rethrowing it.
+  const keep = (session) => {
+    const kept = session.catch((error) => {
+      if (current === kept) current = null;
+      throw error;
+    });
+    return kept;
+  };
+  return async (request) => {
+    current ??= keep(open());
+    const held = current;
+    const { accessToken } = await held;
+    try {
+      return await request(accessToken);
+    } catch (error) {
+      if (error.status !== 401) throw error;
+      // A refresh token presented twice ends the whole session, so callers share one renewal.
+      if (current === null) current = keep(open());
+      else if (current === held)
+        current = keep(held.then(({ refreshToken }) => refresh(refreshToken)).catch(open));
+      return request((await current).accessToken);
+    }
+  };
+}
+
+function apiSession(email, password, secret) {
+  const session = renewingSession({
+    open: () => signIn(email, password, secret),
+    refresh: (refreshToken) => api('/api/auth/refresh', { body: { refreshToken } }),
+  });
+  return (path, options) => session((token) => api(path, { ...options, token }));
 }
 
 async function reloadApp() {
@@ -1858,15 +1894,15 @@ async function batch(args) {
   const apiState = composeApi(root);
   await apiState.move('up');
   const named = languages[0] !== 'any';
-  const token = named ? await apiSession(email, password, secret) : null;
-  const before = named ? (await api('/api/auth/me', { method: 'GET', token })).locale : null;
+  const signedIn = named ? apiSession(email, password, secret) : null;
+  const before = named ? (await signedIn('/api/auth/me', { method: 'GET' })).locale : null;
   const passed = new Set();
   const begun = [];
   const heard = { at: Date.now() };
   const crashed = [];
   const setLocale = async (locale) => {
     await apiState.move('up');
-    await api('/api/auth/locale', { method: 'PUT', token, body: { locale } });
+    await signedIn('/api/auth/locale', { method: 'PUT', body: { locale } });
   };
   const helper = await startHelper({
     email,
