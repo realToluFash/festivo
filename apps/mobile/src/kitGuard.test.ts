@@ -536,6 +536,18 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
   });
 });
 
+describe('a Password submit with the keys down keeps them down (sc-13408)', () => {
+  it('lets go of a focused field before each request starts', () => {
+    const lines = readFileSync(join('src', 'components', 'PasswordCard.tsx'), 'utf8').split('\n');
+    const starts = lines.flatMap((line, index) =>
+      /^\s*set(Saving|Busy)\(true\);/u.test(line) ? [index] : [],
+    );
+
+    expect(starts).toHaveLength(3);
+    expect(starts.filter((index) => lines[index - 1]?.trim() !== 'keysStayDown();')).toEqual([]);
+  });
+});
+
 describe('a Cancel is off while the change beside it runs (sc-12545)', () => {
   const offWhile = (file: string, busy: string) =>
     selfClosing('QuietButton', readFileSync(join('src', 'components', file), 'utf8'))
