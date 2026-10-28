@@ -784,11 +784,11 @@ function escapesAnswered(text: string): number {
     ).length;
 }
 
-/** A width or height fixed at the side of a mark or a pill, which the glyph or word inside outgrows. */
 function drawsStepCircle(text: string): boolean {
   return /useMarkSide\(tokens\.space3xl\)/u.test(text);
 }
 
+/** A width or height fixed at the side of a mark or a pill, which the glyph or word inside outgrows. */
 function fixedAroundText(text: string): number[] {
   return [...text.matchAll(/(?<![\w])(?:width|height): tokens\.size(?:Mark|Pill)\b/gu)].map(
     (match) => text.slice(0, match.index).split('\n').length,
