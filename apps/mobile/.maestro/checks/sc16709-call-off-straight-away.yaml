@@ -1,0 +1,35 @@
+# sc-16709: ${EV_ACT_OFF}, a Live event: the action confirmed on its open page, then Coming up read straight away with no reload: the Finished line, nothing Next up, and All dates all Passed.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_ACT_OFF}
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.*'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.end'
+    direction: DOWN
+    timeout: 30000
+- takeScreenshot: call-off-before
+- tapOn:
+    id: 'events.end'
+- tapOn:
+    id: 'events.endYes'
+- scrollUntilVisible:
+    element:
+      id: 'timeline.comingUp'
+    direction: DOWN
+    timeout: 5000
+- takeScreenshot: call-off-straight-away
+- assertVisible:
+    id: 'timeline.finished'
+- assertNotVisible: 'Next up'
+- tapOn:
+    id: 'timeline.allDates'
+- extendedWaitUntil:
+    visible:
+      id: 'timeline.row'
+    timeout: 15000
+- takeScreenshot: call-off-all-dates
+- assertNotVisible: 'Next up'
