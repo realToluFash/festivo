@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { withFontScaleForwarded, withFontScaleHandled } from './withFontScaleKept.ts';
+import { withFontScaleForwarded, withSizeChangesHandled } from './withFontScaleKept.ts';
 
 const ACTIVITY = `package com.soirely.app
 import android.os.Bundle
@@ -10,19 +10,20 @@ class MainActivity : ReactActivity() {
 }
 `;
 
-describe('withFontScaleHandled', () => {
-  it('adds fontScale to the changes the template handles', () => {
-    expect(withFontScaleHandled('keyboard|orientation|screenSize')).toBe(
-      'keyboard|orientation|screenSize|fontScale',
+describe('withSizeChangesHandled', () => {
+  it('adds fontScale and density to the changes the template handles', () => {
+    expect(withSizeChangesHandled('keyboard|orientation|screenSize|smallestScreenSize')).toBe(
+      'keyboard|orientation|screenSize|smallestScreenSize|fontScale|density',
     );
   });
 
-  it('leaves fontScale once when it is already there', () => {
-    expect(withFontScaleHandled('fontScale|locale')).toBe('fontScale|locale');
+  it('leaves each once when it is already there', () => {
+    expect(withSizeChangesHandled('fontScale|locale')).toBe('fontScale|locale|density');
+    expect(withSizeChangesHandled('density|fontScale')).toBe('density|fontScale');
   });
 
-  it('handles fontScale alone when the activity names nothing', () => {
-    expect(withFontScaleHandled(undefined)).toBe('fontScale');
+  it('handles the two alone when the activity names nothing', () => {
+    expect(withSizeChangesHandled(undefined)).toBe('fontScale|density');
   });
 });
 

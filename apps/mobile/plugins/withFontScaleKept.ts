@@ -64,11 +64,13 @@ const OVERRIDE = `
   }
 `;
 
-/** The activity's configChanges with fontScale among them, so Android hands the change to the app instead of recreating it. */
-export function withFontScaleHandled(configChanges: string | undefined): string {
+const SIZE_CHANGES = ['fontScale', 'density'];
+
+/** The activity's configChanges with font size and display size among them, so Android hands either change to the app instead of recreating it. */
+export function withSizeChangesHandled(configChanges: string | undefined): string {
   const changes = (configChanges ?? '').split('|').filter(Boolean);
 
-  return (changes.includes('fontScale') ? changes : [...changes, 'fontScale']).join('|');
+  return [...changes, ...SIZE_CHANGES.filter((change) => !changes.includes(change))].join('|');
 }
 
 /** MainActivity.kt, passing a configuration change on to JavaScript at once. */
@@ -85,11 +87,13 @@ export function withFontScaleForwarded(source: string): string {
     .replace(/\n}\s*$/, `\n${OVERRIDE}}\n`);
 }
 
-/** Android keeps the open screen through a font-size change, as iOS does, rather than starting the app over. */
+/** Android keeps the open screen through a font-size or display-size change, as iOS does through a font-size change, rather than starting the app over. */
 export const withFontScaleKept: ConfigPlugin = (config) => {
   config = withAndroidManifest(config, (manifest) => {
     const activity = AndroidConfig.Manifest.getMainActivityOrThrow(manifest.modResults);
-    activity.$['android:configChanges'] = withFontScaleHandled(activity.$['android:configChanges']);
+    activity.$['android:configChanges'] = withSizeChangesHandled(
+      activity.$['android:configChanges'],
+    );
 
     return manifest;
   });
