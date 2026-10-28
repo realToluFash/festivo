@@ -595,6 +595,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **17 Oct 2026. "Choose the country code, then type the number any way you like."**
   (`verifyPhone.numberHelp`). Settled as written by PM on sc-945; it is true for every way the
   code can start, and es/pt already read naturally from it.
+- **27 Oct 2026. The two-factor-due subject opens on the feature and the deadline**
+  (`emails:signInRules.twoFactorDue.subject`, sc-15219): "Two-factor due by {deadline}:
+  {organisation}". "{organisation} requires two-factor from {deadline}" was cut before the
+  deadline in a 390 px inbox (qa2, #15218); the organisation goes last, as sc-14100 and sc-9219.
 - **27 Oct 2026. Delivery states and reasons for a message to guests** (sc-3942, settled on
   pm's #15426). The field is **Message**, not "Body". Over a limit, the house sentence with the
   limit as a slot: "Shorten the subject to {{count}} characters or fewer." and "Shorten the

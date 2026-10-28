@@ -117,7 +117,7 @@
     "signInRules.rule.noTwoFactor": "People who can manage members, roles, billing or security no longer need two-factor to do it.",
     "signInRules.rule.everyoneTwoFactor": "Everyone needs two-factor. Members without it have 7 days to turn it on.",
     "signInRules.rule.noEveryoneTwoFactor": "Two-factor is no longer required of everyone.",
-    "signInRules.twoFactorDue.subject": "{organisation} requires two-factor from {deadline}",
+    "signInRules.twoFactorDue.subject": "Two-factor due by {deadline}: {organisation}",
     "signInRules.twoFactorDue.body": "{organisation} now requires two-factor for everyone in it. You have until {deadline} to turn it on. After that, you can't open anything in {organisation} until it's on. Your other organisations and your access to single events are not affected.",
     "signInRules.twoFactorDue.explain": "Two-factor asks for a code from an authenticator app when you sign in, so a stolen password isn't enough on its own. You turn it on once, and it covers every organisation that requires it.",
     "signInRules.twoFactorDue.facts": "Organisation: {organisation}\nRequired from: {deadline}\nYour account: {address}",

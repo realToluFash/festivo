@@ -523,6 +523,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   carrega diz "A carregar mais…". A contagem anunciada concorda o verbo: "Foi mostrado mais 1 …",
   "Foram mostrados mais …", com "de eventos" em `many`; 0 é `other`. `moreFailed` repete a
   segunda frase da falha de carregamento do seu ecrã, como em inglês.
+- **27 Oct 2026. The two-factor-due subject opens on the feature and the deadline**
+  (`emails:signInRules.twoFactorDue.subject`, sc-15219): "Autenticação de dois fatores até
+  {deadline}: {organisation}". "até" needs no article before the weekday `{deadline}` opens
+  on; the organisation goes last, so a 390 px inbox shows the date (qa2, #15218).
 - **27 Oct 2026. A página de dados nomeia a regra, não a função** (sc-16443 para sc-16265,
   `orgGeneral.readOnlyUntil*`, `refusedByRule`). Cada linha abre com a regra nas palavras do
   aviso (`signInRules.unlinkedBody`, `gateBody`; "só aceita", porque aqui a regra não é nova) e
