@@ -279,6 +279,8 @@ function CoverDialog({
   const focusNext = useRef<'slider' | 'picker' | null>('slider');
   const held = useRef(new Set<Chosen>());
   const kept = useRef<Chosen | null>(null);
+  const superseding = useRef(false);
+  const parked = useRef<Chosen | null>(null);
   const fullScreen = useFullScreen();
   const drag = useRef<{ y: number; start: number } | null>(null);
 
@@ -310,6 +312,9 @@ function CoverDialog({
 
   useEffect(() => {
     if (trying == null) return;
+    superseding.current = false;
+    drop(parked.current);
+    parked.current = null;
     const url = trying.local;
     let current = true;
     let uploaded: string | null = null;
@@ -332,6 +337,10 @@ function CoverDialog({
         promoted = true;
         const next = { key: signed.key, url: url ?? copy, local: url != null };
         held.current.add(next);
+        if (superseding.current) {
+          parked.current = next;
+          return;
+        }
         setChosen(next);
         setTrying(null);
       })
@@ -345,7 +354,7 @@ function CoverDialog({
       if (url != null) URL.revokeObjectURL(url);
       if (uploaded != null) discardCoverUpload(organisationId, uploaded);
     };
-  }, [trying, organisationId, refuse, t]);
+  }, [trying, organisationId, refuse, drop, t]);
 
   useEffect(
     () => () => {
@@ -372,8 +381,16 @@ function CoverDialog({
     event.target.value = '';
     if (next == null) return;
 
+    if (trying != null) superseding.current = true;
     const checked = await checkCoverPick(next);
     if (checked.refusal != null) {
+      const unshown = parked.current;
+      superseding.current = false;
+      parked.current = null;
+      if (unshown != null) {
+        setChosen(unshown);
+        setTrying(null);
+      }
       setRefusal(t(`eventCover.refused_${checked.refusal}`));
       picker.current?.focus();
       return;

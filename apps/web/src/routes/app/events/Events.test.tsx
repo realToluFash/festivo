@@ -4022,6 +4022,72 @@ describe('Every pick is held under Uploading… until the server has read it (sc
     );
     expect(within(dialog).queryByText('Uploading…')).toBeNull();
   });
+
+  /** The browser sizes the named file only when told to, so the first pick can answer meanwhile. */
+  function sizingLater(name: string, width: number): () => void {
+    let size: () => void = () => undefined;
+    vi.stubGlobal(
+      'Image',
+      class {
+        naturalWidth = 2400;
+        naturalHeight = 1600;
+        onload: (() => void) | null = null;
+        set src(url: string) {
+          if (url === `blob:${name}`) {
+            this.naturalWidth = width;
+            size = () => this.onload?.();
+          } else queueMicrotask(() => this.onload?.());
+        }
+      },
+    );
+
+    return () => size();
+  }
+
+  it('the first pick answering while the browser sizes the second never shows', async () => {
+    signedIn();
+    const { answer } = serving(PHOTO);
+    const size = sizingLater('second.jpg', 2400);
+    const dialog = await changing();
+
+    pickInDialog(jpeg('first.jpg'));
+    await waitFor(() => expect(within(dialog).getByText('Uploading…')).toBeDefined());
+    pickInDialog(jpeg('second.jpg'));
+    await answer('first.jpg');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expectHeld(dialog);
+
+    size();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expectHeld(dialog);
+    await answer('second.jpg');
+
+    await waitFor(() =>
+      expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe('blob:second.jpg'),
+    );
+  });
+
+  it('a second pick refused before it uploads shows the first, read while the second was sized', async () => {
+    signedIn();
+    const { waiting, answer } = serving(PHOTO);
+    const size = sizingLater('small.jpg', 10);
+    const dialog = await changing();
+
+    pickInDialog(jpeg('first.jpg'));
+    await waitFor(() => expect(within(dialog).getByText('Uploading…')).toBeDefined());
+    pickInDialog(jpeg('small.jpg'));
+    await answer('first.jpg');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expectHeld(dialog);
+
+    size();
+
+    await waitFor(() =>
+      expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe('blob:first.jpg'),
+    );
+    expect(within(dialog).queryByText('Uploading…')).toBeNull();
+    expect(waiting.has('small.jpg')).toBe(false);
+  });
 });
 
 describe('Hosted by, in Edit details (sc-6713)', () => {
