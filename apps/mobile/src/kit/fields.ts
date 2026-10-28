@@ -73,6 +73,34 @@ export function nextPin(
   return { pinned: repin ? field.typed : field.pinned, scale: fontScale };
 }
 
+export interface Typing {
+  typed: string;
+  pinned: string | undefined;
+  /** The value handed to an Android field until its next key. */
+  given: string | undefined;
+}
+
+/** On Android a field is handed its value only where that is not what was typed: React Native puts a changed value back over the whole text, and TalkBack reads the whole field again, as a replacement, on every key (sc-18648). */
+export function nextGiven(os: string, value: string | undefined, typing: Typing): Typing {
+  if (os !== 'android' || value === undefined || value === typing.typed) return typing;
+
+  return { typed: value, pinned: value, given: value };
+}
+
+/** A key leaves an Android field uncontrolled again, whatever it was last handed. */
+export function keyTyped(last: Typing, text: string): Typing {
+  return { ...last, typed: text, given: undefined };
+}
+
+/** The value TextInput is handed: on Android only one not yet typed, so typing leaves the field uncontrolled. */
+export function valueHanded(
+  os: string,
+  value: string | undefined,
+  given: string | undefined,
+): string | undefined {
+  return os === 'android' ? given : value;
+}
+
 /** What a field hands TextInput as its text, held or not. */
 export function fieldText(field: FieldText): { value?: string; defaultValue?: string } {
   if (field.value !== undefined) return { value: field.value };

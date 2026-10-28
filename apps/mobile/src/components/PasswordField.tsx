@@ -67,7 +67,6 @@ export function PasswordField({
           placeholder: rest.placeholder,
         })}
         {...passwordProps(revealed)}
-        value={value}
         {...holding}
         ref={ref}
         style={faced([fieldStyles.input, styles.withReveal, wrong && fieldStyles.wrong])}
