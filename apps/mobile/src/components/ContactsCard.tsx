@@ -22,7 +22,7 @@ import { dateLocale } from '../i18n/index.ts';
 import { emailMessage, useFormChecks } from '../kit/formChecks.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { phoneProblemMessage } from '../phoneProblem.ts';
-import { heldProof } from '../recentProof.ts';
+import { heldProof, proveVia } from '../recentProof.ts';
 import { rereadAccount } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
@@ -92,7 +92,7 @@ export function ContactsCards({
         country={account.organisationCountry ?? ''}
         verified={verified}
         confirming={{
-          via: account.hasPassword ? 'password' : (account.providers[0]?.provider ?? null),
+          via: proveVia(account),
           twoFactorOn,
         }}
         onChanged={onChanged}

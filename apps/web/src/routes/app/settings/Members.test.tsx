@@ -2166,7 +2166,7 @@ describe('making somebody an owner asks for a recent proof (sc-18930)', () => {
     expect(await screen.findByText(INTRO)).toBeDefined();
   });
 
-  it('confirms it is you before Change their role to Owner, and asks no proof for any other role', async () => {
+  it('confirms it is you before Change their role to Owner', async () => {
     signedIn();
     const sent = answering({
       ...READS,
@@ -2220,6 +2220,36 @@ describe('making somebody an owner asks for a recent proof (sc-18930)', () => {
       roleId: 'role_1',
       proof: 'p-1',
     });
+    expect(sessionStorage.getItem('soirely.provider.returned')).toBeNull();
+  });
+
+  it('finishes the role change the member page held, back from Google', async () => {
+    sessionStorage.setItem(
+      'soirely.provider.returned',
+      JSON.stringify({
+        provider: 'google',
+        purpose: { kind: 'makeOwner', roleId: 'role_1', to: { member: 'm_bisi' } },
+        signIn: { code: 'the-code', codeVerifier: 'v', redirectUri: 'r', nonce: 'n' },
+      }),
+    );
+    signedIn();
+    const sent = answering({
+      ...READS,
+      ...PROVING,
+      'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)),
+      'PATCH /api/orgs/org_1/members/m_bisi': () => new Response(null, { status: 204 }),
+    });
+    open();
+
+    await waitFor(() =>
+      expect(sent.find((one) => one.line === 'PATCH /api/orgs/org_1/members/m_bisi')?.body).toEqual(
+        { roleId: 'role_1', proof: 'p-1' },
+      ),
+    );
+    expect(sent.find((one) => one.line === 'POST /api/auth/proof')?.body).toEqual(
+      expect.objectContaining({ provider: 'google' }),
+    );
+    expect(sent.filter((one) => one.line === 'POST /api/auth/proof')).toHaveLength(1);
     expect(sessionStorage.getItem('soirely.provider.returned')).toBeNull();
   });
 });

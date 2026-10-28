@@ -1,4 +1,4 @@
-import { type Provider, type RecentProof } from '@soirely/api-client';
+import { type Account, type Provider, type RecentProof } from '@soirely/api-client';
 import { proofStands } from '@soirely/domain';
 
 import { api } from './api.ts';
@@ -24,11 +24,12 @@ export interface Proving {
   twoFactorOn: boolean;
 }
 
+export function proveVia(account: Account): Proving['via'] {
+  return account.hasPassword ? 'password' : (account.providers[0]?.provider ?? null);
+}
+
 export async function howToProve(): Promise<Proving> {
   const [account, status] = await Promise.all([api.me(), api.twoFactorStatus()]);
 
-  return {
-    via: account.hasPassword ? 'password' : (account.providers[0]?.provider ?? null),
-    twoFactorOn: status.on,
-  };
+  return { via: proveVia(account), twoFactorOn: status.on };
 }
