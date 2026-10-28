@@ -15,6 +15,9 @@ appId: host.exp.Exponent
 - takeScreenshot: typed-keyboard-up
 - evalScript: "${output.replaced = http.post(API + '/api/orgs/' + ORG + '/request-link/replace', {headers: {Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json'}, body: '{}'}).status}"
 - assertTrue: ${output.replaced == 200}
+- scrollUntilVisible:
+    element:
+      id: 'requestToJoin.ask'
 - tapOn:
     id: 'requestToJoin.ask'
 - extendedWaitUntil:

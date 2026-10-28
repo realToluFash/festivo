@@ -19,10 +19,11 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'register.email'
 - inputText: ${EMAIL}
-- tapOn:
-    id: 'register.password'
+- pressKey: Enter
 - inputText: ${PASSWORD}
-- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'register.submit'
 - tapOn:
     id: 'register.submit'
 - extendedWaitUntil:
