@@ -1931,6 +1931,7 @@ export function startHelper({
   device,
   onAndroid,
   open = openOnEmulator,
+  reload = reloadOnEmulator,
   port = CONFIG.helperPort,
 }) {
   const server = createServer(async (request, response) => {
@@ -1951,7 +1952,7 @@ export function startHelper({
       }
       if (url.pathname === '/reload') {
         if (!onAndroid) await reloadApp();
-        else if (!(await reloadOnEmulator()))
+        else if (!(await reload()))
           console.error('\nThe app did not run again within 8s of a reload');
         return reply(200, { reloaded: true });
       }

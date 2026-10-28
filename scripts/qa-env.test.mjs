@@ -704,6 +704,10 @@ describe('a flow on Android', () => {
     expect(await reloadUntilRun(quick.options)).toBe(true);
     expect(quick.at()).toBe(500);
 
+    const already = reloading(0);
+    expect(await reloadUntilRun(already.options)).toBe(true);
+    expect(already.at()).toBe(250);
+
     const never = reloading(Infinity);
     expect(await reloadUntilRun(never.options)).toBe(false);
     expect(never.at()).toBeLessThanOrEqual(8000);
@@ -1100,7 +1104,7 @@ describe('the API a batch holds', () => {
 });
 
 describe('the batch helper', () => {
-  const helperFor = async (container, open) => {
+  const helperFor = async (container, open, options = {}) => {
     const { control, ran } = dockerDouble(container);
     const languages = [];
     const begun = [];
@@ -1114,6 +1118,7 @@ describe('the batch helper', () => {
       begun,
       heard: { at: 0 },
       open: open ?? ((url) => ran.push(`open ${url}`)),
+      ...options,
       port: 0,
     });
     const ask = async (path) => {
@@ -1174,6 +1179,22 @@ describe('the batch helper', () => {
       expect(await ask('/open?path=%2F--%2Fevents%2F7')).toEqual({
         error: expect.stringMatching(/^could not open exp:\/\/.+\/--\/events\/7: Error/),
       });
+    } finally {
+      server.close();
+    }
+  });
+
+  it('on Android, answers a reload once the app has run again', async () => {
+    const { server, ask, ran } = await helperFor('running', undefined, {
+      onAndroid: true,
+      reload: async () => {
+        ran.push('reload until run');
+        return true;
+      },
+    });
+    try {
+      expect(await ask('/reload')).toEqual({ reloaded: true });
+      expect(ran).toEqual(['reload until run']);
     } finally {
       server.close();
     }
