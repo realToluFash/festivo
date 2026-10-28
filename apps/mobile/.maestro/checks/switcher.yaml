@@ -1,10 +1,9 @@
 # Your organisations: Home, then Switch organisation.
 appId: host.exp.Exponent
 ---
-- openLink: ${METRO_URL}/--/
-- tapOn:
-    id: 'home.switchOrganisation'
-- extendedWaitUntil:
-    visible: '{{t:switcher.heading}}'
+- runFlow: ../open-switcher.yaml
+- scrollUntilVisible:
+    element: '{{t:switcher.heading}}'
+    direction: UP
     timeout: 30000
 - takeScreenshot: switcher

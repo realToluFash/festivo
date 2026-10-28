@@ -15,11 +15,15 @@ import { describe, expect, it } from 'vitest';
 
 import {
   allowCleartext,
+  apiControl,
+  apiMoves,
+  apiStateOf,
   batchCheck,
   batchFlow,
   batchRuns,
   afterRun,
   batchSummary,
+  bundlerEnv,
   checkId,
   codeStep,
   databaseCommands,
@@ -27,10 +31,12 @@ import {
   composeBatch,
   localise,
   parseBatch,
+  readyReport,
   REBUILD,
   rerunHints,
   runAsync,
   runBudgetMs,
+  startHelper,
   STEP_MS,
   totp,
   androidFlows,
@@ -42,12 +48,15 @@ import {
   COMPOSE_PROJECT,
   emulatorAbi,
   emulatorFor,
+  emulatorGpu,
   expoGoApk,
   expoGoRunning,
   expoSdkMajor,
   forAndroid,
+  openIntent,
   linkIntent,
   MAX_RESUMES,
+  renewingSession,
   resumeBatch,
   maestroTarget,
   parseTarget,
@@ -60,6 +69,11 @@ import {
   APP_SERVICES,
   launchVideo,
   iosBundle,
+  clearIosRelease,
+  uninstallHeld,
+  UNINSTALL_BOOTS,
+  iosReleases,
+  recordIosRelease,
   releaseApk,
   releaseApp,
   releasePlatform,
@@ -71,6 +85,8 @@ import {
   simulatorFor,
   TESTERS,
   testerOf,
+  experienceResumed,
+  openUntilShown,
 } from './qa-env.mjs';
 
 // A port left at its development default is two stacks fighting over it, and a
@@ -187,6 +203,19 @@ describe('the QA .env against compose.yaml', () => {
   });
 });
 
+describe('the bundler environment', () => {
+  it('starts Metro without a file watcher, for the QA app', () => {
+    const env = bundlerEnv({ PATH: '/bin', CI: '' }, { EXPO_PUBLIC_API_URL: 'http://api' });
+
+    expect(env).toEqual({
+      PATH: '/bin',
+      EXPO_PUBLIC_API_URL: 'http://api',
+      EXPO_PUBLIC_ENVIRONMENT: 'qa',
+      CI: '1',
+    });
+  });
+});
+
 describe('what checkout was asked for', () => {
   it.each([
     ['36', { kind: 'pr', number: 36 }],
@@ -234,6 +263,17 @@ describe('the emulator android opens', () => {
     [['--tablet'], { open: 'tablet', shut: 'phone' }],
   ])('%j opens one and shuts the other', (args, expected) => {
     expect(emulatorFor(args)).toEqual(expected);
+  });
+});
+
+describe('the GPU mode an emulator starts with', () => {
+  it.each([
+    ['linux', {}, 'swangle_indirect'],
+    ['darwin', {}, 'host'],
+    ['linux', { SOIRELY_QA_EMULATOR_GPU: 'host' }, 'host'],
+    ['darwin', { SOIRELY_QA_EMULATOR_GPU: 'swiftshader_indirect' }, 'swiftshader_indirect'],
+  ])('on %s with %j is %s', (platform, env, expected) => {
+    expect(emulatorGpu(platform, env)).toBe(expected);
   });
 });
 
@@ -351,6 +391,48 @@ describe('a release build', () => {
       ['-insert', 'restrictedBool.allowPasswordAutoFill', '-dictionary', files[0]],
       ['-replace', 'restrictedBool.allowPasswordAutoFill.value', '-bool', 'NO', files[0]],
     ]);
+  });
+
+  it('keeps a release recorded on one simulator when the other is cleared', () => {
+    const root = mkdtempSync(join(tmpdir(), 'qa-'));
+    const recorded = join(root, '.qa/release/ios-release-on');
+    mkdirSync(join(root, '.qa/release'), { recursive: true });
+    recordIosRelease(root, 'phone');
+    recordIosRelease(root, 'ipad');
+    recordIosRelease(root, 'phone');
+    expect(iosReleases(root)).toEqual(['phone', 'ipad']);
+    clearIosRelease(root, 'ipad');
+    expect(iosReleases(root)).toEqual(['phone']);
+    clearIosRelease(root, 'phone');
+    expect(existsSync(recorded)).toBe(false);
+    writeFileSync(recorded, 'phone');
+    expect(iosReleases(root)).toEqual(['phone']);
+    rmSync(root, { recursive: true });
+  });
+
+  it('clears an iOS release only once a boot finds it gone', () => {
+    const calls = [];
+    const device = (present, up = () => true) => ({
+      boot: () => calls.push('boot') && up(),
+      installed: () => present.shift(),
+      uninstall: () => calls.push('uninstall'),
+      shut: () => calls.push('shut'),
+    });
+    expect(uninstallHeld(device([true, true, false]))).toBe(true);
+    expect(calls).toEqual(['boot', 'uninstall', 'shut', 'boot', 'uninstall', 'shut', 'boot']);
+    calls.length = 0;
+    expect(uninstallHeld(device(Array(UNINSTALL_BOOTS).fill(true)))).toBe(false);
+    expect(calls.filter((call) => call === 'boot')).toHaveLength(UNINSTALL_BOOTS);
+  });
+
+  it('keeps an iOS release recorded when the device does not boot', () => {
+    const device = {
+      boot: () => false,
+      installed: () => false,
+      uninstall: () => {},
+      shut: () => {},
+    };
+    expect(uninstallHeld(device)).toBe(false);
   });
 
   it('installs the bundle the app config names', () => {
@@ -525,6 +607,120 @@ describe('a flow on Android', () => {
   it('is left alone otherwise', () => {
     expect(forAndroid(flow)).toContain("'host.exp.Exponents'");
     expect(forAndroid(forAndroid(flow))).toBe(forAndroid(flow));
+  });
+
+  it('has the harness open its links, variables and all, and stop where it cannot', () => {
+    const links = [
+      '- openLink: ${METRO_URL}',
+      '- openLink: ${METRO_URL}/--/',
+      '    - openLink: ${METRO_URL}/--/join/${output.link}',
+    ].join('\n');
+    const step = (indent, path) =>
+      `${indent}- evalScript: \${(function (r) { if (!r.ok) ` +
+      `throw new Error('the harness could not open ' + ${path} + ', ' + r.body); ` +
+      `return r.body; })(http.get(HELPER_URL + '/open?path=' + encodeURIComponent(${path})))}`;
+    expect(forAndroid(links).split('\n')).toEqual([
+      step('', "''"),
+      step('', "'/--/'"),
+      step('    ', "'/--/join/' + (output.link)"),
+    ]);
+    expect(forAndroid(forAndroid(links))).toBe(forAndroid(links));
+  });
+
+  it("opens a link in Expo Go's package, not whichever app takes exp://", () => {
+    expect(openIntent("exp://127.0.0.1:28081/--/it's")).toEqual([
+      'shell',
+      'am',
+      'start',
+      '-a',
+      'android.intent.action.VIEW',
+      '-d',
+      "'exp://127.0.0.1:28081/--/it'\\''s'",
+      'host.exp.exponent',
+    ]);
+  });
+
+  it('tells an open experience from Expo Go on its Home or launcher', () => {
+    const resumed = (activity) =>
+      `  ResumedActivity: ActivityRecord{2af8410 u0 ${activity} t2150}\n` +
+      `  topResumedActivity=ActivityRecord{874cd8c u0 ${activity} t2150}\n`;
+    expect(experienceResumed(resumed('host.exp.exponent/.experience.ExperienceActivity'))).toBe(
+      true,
+    );
+    expect(
+      experienceResumed(
+        '    mResumedActivity: ActivityRecord{874cd8c u0 host.exp.exponent/.experience.ExperienceActivity t2150}\n',
+      ),
+    ).toBe(true);
+    expect(experienceResumed(resumed('host.exp.exponent/.experience.HomeActivity'))).toBe(false);
+    expect(experienceResumed(resumed('host.exp.exponent/.LauncherActivity'))).toBe(false);
+    expect(
+      experienceResumed(
+        '  * Hist  #0: ActivityRecord{874cd8c u0 host.exp.exponent/.experience.ExperienceActivity t2150}\n' +
+          resumed('host.exp.exponent/.experience.HomeActivity'),
+      ),
+    ).toBe(false);
+    expect(experienceResumed('')).toBe(false);
+  });
+
+  const clocked = ({ shownAfter = Infinity, sendCost = 0, checkCost = 0 } = {}) => {
+    let at = 0;
+    const sent = [];
+    const checked = [];
+    return {
+      sent,
+      checked,
+      options: {
+        send: () => {
+          sent.push(at);
+          at += sendCost;
+        },
+        shown: () => {
+          checked.push(at);
+          at += checkCost;
+          return checked.length > shownAfter;
+        },
+        wait: async (ms) => {
+          at += ms;
+        },
+        now: () => at,
+      },
+      at: () => at,
+    };
+  };
+
+  it('sends a link Expo Go dropped again, and an opened one only once', async () => {
+    const opened = clocked({ shownAfter: 0 });
+    expect(await openUntilShown(opened.options)).toBe(1);
+    expect(opened.sent).toEqual([0]);
+
+    const dropped = clocked({ shownAfter: 7 });
+    expect(await openUntilShown(dropped.options)).toBe(2);
+    expect(dropped.sent).toEqual([0, 2500]);
+
+    const never = clocked();
+    expect(await openUntilShown(never.options)).toBe(3);
+    expect(never.sent).toEqual([0, 2500, 5000]);
+    expect(never.at()).toBe(7500);
+  });
+
+  it('answers by its deadline when each adb call is slow', async () => {
+    const slow = clocked({ sendCost: 300, checkCost: 700 });
+    await openUntilShown(slow.options);
+    expect([...slow.sent, ...slow.checked].every((at) => at < 8000)).toBe(true);
+    expect(slow.at()).toBeLessThan(9000);
+  });
+
+  it('stops at the first send am start refuses', async () => {
+    await expect(
+      openUntilShown({
+        send: () => {
+          throw new Error('could not open exp://x: Error: Activity not started');
+        },
+        shown: () => false,
+        wait: async () => {},
+      }),
+    ).rejects.toThrow(/could not open/);
   });
 
   it('brings the flows it runs, rewritten, where its paths expect them', () => {
@@ -773,6 +969,190 @@ describe('a check in a batch', () => {
   it('carries no language in its name when the batch names none', () => {
     expect(checkId('settings', 'any')).toBe('settings');
     expect(checkId('settings', 'es')).toBe('settings.es');
+  });
+});
+
+describe('the API a check holds', () => {
+  it('pauses, stops and brings back only the api service', () => {
+    expect(apiMoves('up', 'paused')).toEqual([['pause', 'api']]);
+    expect(apiMoves('up', 'stopped')).toEqual([['stop', 'api']]);
+    expect(apiMoves('paused', 'up')).toEqual([['unpause', 'api']]);
+    expect(apiMoves('stopped', 'up')).toEqual([['up', '-d', '--wait', '--no-recreate', 'api']]);
+  });
+
+  it('goes through up between paused and stopped, since a paused container is not stopped', () => {
+    expect(apiMoves('paused', 'stopped')).toEqual([
+      ['unpause', 'api'],
+      ['stop', 'api'],
+    ]);
+    expect(apiMoves('stopped', 'paused')).toEqual([
+      ['up', '-d', '--wait', '--no-recreate', 'api'],
+      ['pause', 'api'],
+    ]);
+  });
+
+  it('does nothing when the API is already there', () => {
+    for (const state of ['up', 'paused', 'stopped']) expect(apiMoves(state, state)).toEqual([]);
+  });
+
+  it("reads the container's state from Docker", () => {
+    expect(apiStateOf('running\n')).toBe('up');
+    expect(apiStateOf('paused')).toBe('paused');
+    expect(apiStateOf('exited')).toBe('stopped');
+    expect(apiStateOf('')).toBe('stopped');
+  });
+});
+
+function dockerDouble(container, { failing = [] } = {}) {
+  const ran = [];
+  const control = apiControl({
+    read: async () => container,
+    run: async (args) => {
+      ran.push(args.join(' '));
+      return !failing.includes(args[0]);
+    },
+  });
+  return { control, ran };
+}
+
+describe('the API a batch holds', () => {
+  it('starts from what Docker says, not from up', async () => {
+    const { control, ran } = dockerDouble('paused');
+    await control.move('up');
+    expect(ran).toEqual(['unpause api']);
+    expect(control.state()).toBe('up');
+  });
+
+  it('tracks the state across queued moves', async () => {
+    const { control, ran } = dockerDouble('running');
+    await Promise.all([control.move('paused'), control.move('stopped'), control.move('up')]);
+    expect(ran).toEqual(['pause api', 'unpause api', 'stop api', 'up -d --wait --no-recreate api']);
+    expect(control.state()).toBe('up');
+  });
+
+  it('brings the API up from each state', async () => {
+    for (const [container, moves] of [
+      ['running', []],
+      ['paused', ['unpause api']],
+      ['exited', ['up -d --wait --no-recreate api']],
+    ]) {
+      const { control, ran } = dockerDouble(container);
+      await control.move('up');
+      expect(ran).toEqual(moves);
+      expect(control.state()).toBe('up');
+    }
+  });
+
+  it('reads Docker again after a move that failed, and the next move still runs', async () => {
+    const { control, ran } = dockerDouble('running', { failing: ['stop'] });
+    await expect(control.move('stopped')).rejects.toThrow('docker compose stop api failed');
+    expect(control.state()).toBeUndefined();
+    await control.move('paused');
+    expect(ran).toEqual(['stop api', 'pause api']);
+    expect(control.state()).toBe('paused');
+  });
+});
+
+describe('the batch helper', () => {
+  const helperFor = async (container, open) => {
+    const { control, ran } = dockerDouble(container);
+    const languages = [];
+    const begun = [];
+    const server = await startHelper({
+      setLocale: async (locale) => {
+        languages.push(locale);
+        ran.push(`locale ${locale}`);
+      },
+      apiState: control,
+      passed: new Set(),
+      begun,
+      heard: { at: 0 },
+      open: open ?? ((url) => ran.push(`open ${url}`)),
+      port: 0,
+    });
+    const ask = async (path) => {
+      const response = await fetch(`http://127.0.0.1:${server.address().port}${path}`);
+      return response.json();
+    };
+    return { server, ask, control, ran, languages, begun };
+  };
+
+  it('holds the API for a check, and brings it back when the next check starts', async () => {
+    const { server, ask, control, ran, begun } = await helperFor('running');
+    try {
+      expect(await ask('/api?to=paused')).toEqual({ api: 'paused' });
+      expect(await ask('/started?check=settings')).toEqual({});
+      expect(ran).toEqual(['pause api', 'unpause api']);
+      expect(control.state()).toBe('up');
+      expect(begun).toEqual(['settings']);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('brings a held API back before it switches the language', async () => {
+    const { server, ask, ran } = await helperFor('running');
+    try {
+      expect(await ask('/api?to=paused')).toEqual({ api: 'paused' });
+      expect(await ask('/language?to=es')).toEqual({ language: 'es' });
+      expect(ran).toEqual(['pause api', 'unpause api', 'locale es']);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('opens the bundler or a path under it, and refuses anything else', async () => {
+    const { server, ask, ran } = await helperFor('running');
+    try {
+      expect(await ask('/open?path=%2F--%2Fevents%2F7')).toEqual({ opened: '/--/events/7' });
+      expect(await ask('/open?path=')).toEqual({ opened: '' });
+      expect(await ask('/open?path=https%3A%2F%2Fexample.com')).toEqual({
+        error: 'open what? /open?path=/--/… gave https://example.com',
+      });
+      expect(ran).toEqual([
+        expect.stringMatching(/^open exp:\/\/.+\/--\/events\/7$/),
+        expect.stringMatching(/^open exp:\/\/[^/]+$/),
+      ]);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('fails to open when am start refuses a later send', async () => {
+    const refused = async (url) => {
+      await new Promise((done) => setTimeout(done, 1));
+      throw new Error(`could not open ${url}: Error: Activity not started`);
+    };
+    const { server, ask } = await helperFor('running', refused);
+    try {
+      expect(await ask('/open?path=%2F--%2Fevents%2F7')).toEqual({
+        error: expect.stringMatching(/^could not open exp:\/\/.+\/--\/events\/7: Error/),
+      });
+    } finally {
+      server.close();
+    }
+  });
+
+  it('refuses a state it does not know', async () => {
+    const { server, ask, ran } = await helperFor('running');
+    try {
+      expect(await ask('/api?to=gone')).toEqual({
+        error: 'no API state gone: up, paused, stopped',
+      });
+      expect(ran).toEqual([]);
+    } finally {
+      server.close();
+    }
+  });
+
+  it("switches the account's language", async () => {
+    const { server, ask, languages } = await helperFor('running');
+    try {
+      expect(await ask('/language?to=es')).toEqual({ language: 'es' });
+      expect(languages).toEqual(['es']);
+    } finally {
+      server.close();
+    }
   });
 });
 
@@ -1059,7 +1439,20 @@ describe('the flows a batch runs', () => {
       expect(readFileSync(join(target, '_checks/sign-in-rules.fr.yaml'), 'utf8')).toContain(
         "'Règles de connexion|Règles de connexion de .*'",
       );
-      expect(readFileSync(join(target, 'batch/session.yaml'), 'utf8')).not.toContain('{{t:');
+      const session = readFileSync(join(target, 'batch/session.yaml'), 'utf8');
+      expect(session).not.toContain('{{t:');
+      const signedIn = new RegExp(
+        `^(?:${[...session.matchAll(/notVisible: '(.*)'/g)].at(-1)[1].replaceAll("''", "'")})$`,
+      );
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        for (const line of [
+          catalogues[code].settings.signedInAs,
+          catalogues[code].noOrganisation.signedInAs,
+        ]) {
+          expect(line.replace('{{email}}', 'qa@soirely.test')).toMatch(signedIn);
+          expect(line.replace('{{email}}', 'other@soirely.test')).not.toMatch(signedIn);
+        }
+      }
       expect(readFileSync(join(target, 'batch/reopen.yaml'), 'utf8')).not.toContain('{{t:');
       const reset = readFileSync(join(target, 'batch/reset.yaml'), 'utf8');
       expect(reset).toContain('ASK: /running');
@@ -1132,5 +1525,161 @@ describe('the database, from a checkout', () => {
     const commands = databaseCommands(console_, [], false);
     expect(commands.filter(([first]) => first === 'compose')).toEqual([]);
     expect(commands).toHaveLength(3);
+  });
+});
+
+describe('renewingSession', () => {
+  const refused = () => Object.assign(new Error('answered 401'), { status: 401 });
+  const tokens = (n) => ({ accessToken: `access-${n}`, refreshToken: `refresh-${n}` });
+
+  it('signs in once and reuses the token while it is accepted', async () => {
+    let opened = 0;
+    const session = renewingSession({
+      open: async () => tokens(++opened),
+      refresh: async () => {},
+    });
+    await session(async (token) => token);
+    expect(await session(async (token) => token)).toBe('access-1');
+    expect(opened).toBe(1);
+  });
+
+  it('renews with the refresh token on a 401 and asks once more', async () => {
+    const presented = [];
+    const session = renewingSession({
+      open: async () => tokens(1),
+      refresh: async (refreshToken) => (presented.push(refreshToken), tokens(2)),
+    });
+    await session(async (token) => token);
+    const answer = await session(async (token) => {
+      if (token === 'access-1') throw refused();
+      return token;
+    });
+    expect(answer).toBe('access-2');
+    expect(presented).toEqual(['refresh-1']);
+  });
+
+  it('signs in again when the refresh is refused', async () => {
+    let opened = 0;
+    const session = renewingSession({
+      open: async () => tokens(++opened),
+      refresh: async () => {
+        throw refused();
+      },
+    });
+    const answer = await session(async (token) => {
+      if (token === 'access-1') throw refused();
+      return token;
+    });
+    expect(answer).toBe('access-2');
+  });
+
+  it('shares one renewal between calls refused at the same time', async () => {
+    let refreshed = 0;
+    const session = renewingSession({
+      open: async () => tokens(1),
+      refresh: async () => (refreshed++, tokens(2)),
+    });
+    const call = () =>
+      session(async (token) => {
+        if (token === 'access-1') throw refused();
+        return token;
+      });
+    expect(await Promise.all([call(), call()])).toEqual(['access-2', 'access-2']);
+    expect(refreshed).toBe(1);
+  });
+
+  it('signs in fresh on the next call when a renewal fails', async () => {
+    let opened = 0;
+    const session = renewingSession({
+      open: async () => {
+        opened += 1;
+        if (opened === 2) throw new Error('network blip');
+        return tokens(opened);
+      },
+      refresh: async () => {
+        throw refused();
+      },
+    });
+    const call = () =>
+      session(async (token) => {
+        if (token === 'access-1') throw refused();
+        return token;
+      });
+    await expect(call()).rejects.toThrow('network blip');
+    expect(await call()).toBe('access-3');
+  });
+
+  it('signs in again for a call refused after another renewal failed', async () => {
+    let opened = 0;
+    const session = renewingSession({
+      open: async () => {
+        opened += 1;
+        if (opened === 2) throw new Error('network blip');
+        return tokens(opened);
+      },
+      refresh: async () => {
+        throw refused();
+      },
+    });
+    let answerSecond;
+    const secondAnswered = new Promise((resolve) => (answerSecond = resolve));
+    const first = session(async (token) => {
+      if (token === 'access-1') throw refused();
+      return token;
+    });
+    const second = session(async (token) => {
+      if (token === 'access-1') {
+        await secondAnswered;
+        throw refused();
+      }
+      return token;
+    });
+    await expect(first).rejects.toThrow('network blip');
+    answerSecond();
+    expect(await second).toBe('access-3');
+  });
+
+  it('signs in again on the next call when the first sign-in fails', async () => {
+    let opened = 0;
+    const session = renewingSession({
+      open: async () => {
+        opened += 1;
+        if (opened === 1) throw new Error('network blip');
+        return tokens(opened);
+      },
+      refresh: async () => {},
+    });
+    await expect(session(async (token) => token)).rejects.toThrow('network blip');
+    expect(await session(async (token) => token)).toBe('access-2');
+  });
+
+  it('passes any other failure through', async () => {
+    const session = renewingSession({ open: async () => tokens(1), refresh: async () => {} });
+    const broken = Object.assign(new Error('answered 500'), { status: 500 });
+    await expect(
+      session(async () => {
+        throw broken;
+      }),
+    ).rejects.toBe(broken);
+  });
+});
+
+describe('the account --ready reports', () => {
+  const made = { email: 'a@qa.test', password: 'pw', accessToken: 'tok', sessionId: 'sess' };
+
+  it('names the session it signed in with', () => {
+    const report = readyReport({ ...made, secret: null });
+
+    expect(report).toMatch(/accessToken {2}tok\n/);
+    expect(report).toMatch(/sessionId {4}sess\n/);
+    expect(report).not.toContain('TOTP_SECRET');
+  });
+
+  it('adds the two-factor secret when it turned two-factor on', () => {
+    const report = readyReport({ ...made, secret: 'S3CR3T' });
+
+    expect(report).toContain('two-factor on');
+    expect(report).toContain('TOTP_SECRET  S3CR3T');
+    expect(report).toContain('EMAIL=a@qa.test PASSWORD=pw TOTP_SECRET=S3CR3T');
   });
 });

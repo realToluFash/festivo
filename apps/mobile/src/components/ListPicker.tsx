@@ -1,4 +1,4 @@
-import { type Ref, useState } from 'react';
+import { type Ref, useId, useState } from 'react';
 import { FlatList, Modal, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { faced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
+import { useHeld } from './Field.tsx';
 import { LIFT } from './keyboardWatch.ts';
 import { Screen } from './Screen.tsx';
 import { Text } from './Text.tsx';
@@ -52,6 +53,8 @@ export function ListPicker({
   const locale = currentLocale();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const searchNameID = useId();
+  const searching = useHeld(false, search, undefined, setSearch);
   const { kind, width, height } = useLayout();
   const beside = searchBesideTitle({ os: Platform.OS, phone: kind === 'phone', width, height });
 
@@ -64,19 +67,29 @@ export function ListPicker({
       : choices.filter((choice) => choice.name.toLocaleLowerCase(locale).includes(needle));
 
   const searchField = (
-    <TextInput
-      style={faced(beside ? [styles.search, styles.searchBeside] : styles.search)}
-      value={search}
-      onChangeText={setSearch}
-      placeholder={searchLabel}
-      placeholderTextColor={tokens.colorInkTertiary}
-      cursorColor={tokens.colorInk}
-      selectionColor={tokens.colorInk}
-      autoCorrect={false}
-      spellCheck={false}
-      {...fieldName(Platform.OS, searchLabel, { placeholder: searchLabel })}
-      testID={`${testID}.search`}
-    />
+    <View style={beside ? styles.searchBeside : undefined}>
+      {/* TalkBack reads no placeholder once the search holds text, so these words name it then. */}
+      {Platform.OS === 'android' && (
+        <Text nativeID={searchNameID} importantForAccessibility="no" style={styles.searchName}>
+          {searchLabel}
+        </Text>
+      )}
+      <TextInput
+        style={faced(styles.search)}
+        {...searching}
+        placeholder={searchLabel}
+        placeholderTextColor={tokens.colorInkTertiary}
+        cursorColor={tokens.colorInk}
+        selectionColor={tokens.colorInk}
+        autoCorrect={false}
+        spellCheck={false}
+        {...fieldName(Platform.OS, searchLabel, {
+          placeholder: searchLabel,
+          filled: { held: search !== '', nameID: searchNameID },
+        })}
+        testID={`${testID}.search`}
+      />
+    </View>
   );
 
   return (
@@ -231,6 +244,7 @@ const styles = StyleSheet.create({
     fontSize: CONTROL_TEXT_SIZE,
   },
   searchBeside: { flex: 1, marginHorizontal: tokens.spaceLg },
+  searchName: { position: 'absolute', opacity: 0 },
   option: {
     minHeight: tokens.sizeHitPhonePrimary,
     flexDirection: 'row',

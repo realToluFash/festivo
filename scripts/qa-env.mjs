@@ -210,6 +210,11 @@ export function androidSdk(env = process.env, platform = process.platform, home 
   );
 }
 
+// Headless on Linux, the host GPU path goes through X's DRI3 and dumps core where that fails.
+export function emulatorGpu(platform = process.platform, env = process.env) {
+  return env.SOIRELY_QA_EMULATOR_GPU || (platform === 'linux' ? 'swangle_indirect' : 'host');
+}
+
 // The system image and the release APK both read this: an APK for another ABI is refused on install.
 export function emulatorAbi(arch = process.arch) {
   return arch === 'arm64' ? 'arm64-v8a' : 'x86_64';
@@ -325,9 +330,28 @@ export function expoGoApk(versions, expoRange) {
 }
 
 // Android's package is lower case, and every flow, an old commit's included, names iOS's.
+// Maestro's openLink names no package, and an emulator can hand exp:// to Expo Go's own home
+// rather than the experience, so the harness opens the link instead (sc-3594).
 export function forAndroid(flow) {
-  return flow.replace(/\bhost\.exp\.Exponent\b/g, EXPO_GO_ANDROID);
+  return flow
+    .replace(/\bhost\.exp\.Exponent\b/g, EXPO_GO_ANDROID)
+    .replace(
+      /^(\s*)- openLink: \$\{METRO_URL\}(\S*)$/gm,
+      (_, indent, path) =>
+        `${indent}- evalScript: \${(function (r) { if (!r.ok) ` +
+        `throw new Error('the harness could not open ' + ${scriptOf(path)} + ', ' + r.body); ` +
+        `return r.body; })(http.get(HELPER_URL + '/open?path=' + ` +
+        `encodeURIComponent(${scriptOf(path)})))}`,
+    );
 }
+
+// A link's ${VAR}s become the script's own variables, which Maestro already defines.
+const scriptOf = (link) =>
+  link
+    .split(/\$\{([^}]+)\}/)
+    .map((part, i) => (i % 2 ? `(${part})` : `'${part.replaceAll("'", "\\'")}'`))
+    .filter((part) => part !== "''")
+    .join(' + ') || "''";
 
 // The whole directory, so a flow's runFlow and runScript paths still resolve, rewritten too.
 export function androidFlows(source, target) {
@@ -359,6 +383,68 @@ export function linkIntent(url) {
     '-d',
     `'${url.replaceAll("'", "'\\''")}'`,
   ];
+}
+
+export function openIntent(url) {
+  return [
+    'shell',
+    'am',
+    'start',
+    '-a',
+    'android.intent.action.VIEW',
+    '-d',
+    `'${url.replaceAll("'", "'\\''")}'`,
+    EXPO_GO_ANDROID,
+  ];
+}
+
+export function experienceResumed(activities) {
+  const app = EXPO_GO_ANDROID.replaceAll('.', '\\.');
+  return new RegExp(
+    `^\\s*(?:topResumedActivity|mResumedActivity)[=:].*\\s${app}/(?:${app})?\\.experience\\.ExperienceActivity\\s`,
+    'm',
+  ).test(activities);
+}
+
+// Expo Go drops a link sent before its kernel has loaded, as it is just after launchApp
+// cold-starts it, and stays on Home (sc-18603). The deadline counts the adb calls too, so the
+// answer beats the helper's ten seconds.
+export async function openUntilShown({
+  send,
+  shown,
+  wait = pause,
+  now = Date.now,
+  within = 8000,
+  every = 2500,
+  poll = 500,
+}) {
+  const deadline = now() + within;
+  send();
+  let sent = 1;
+  let last = now();
+  for (let left = deadline - now(); left > poll; left = deadline - now()) {
+    await wait(poll);
+    if (shown()) return sent;
+    if (now() - last >= every && deadline - now() > poll) {
+      send();
+      sent++;
+      last = now();
+    }
+  }
+  return sent;
+}
+
+// am start says Error on stdout and still exits 0.
+function openOnEmulator(url) {
+  const tools = androidTools();
+  return openUntilShown({
+    send: () => {
+      const said = adbOut(tools, openIntent(url));
+      if (said === null || /^Error/m.test(said)) throw new Error(`could not open ${url}: ${said}`);
+    },
+    shown: () =>
+      experienceResumed(adbOut(tools, ['shell', 'dumpsys', 'activity', 'activities']) ?? ''),
+  });
 }
 
 export function branchForStory(id, remoteBranches) {
@@ -743,8 +829,9 @@ export function passwordAutoFillOff(file) {
   ];
 }
 
-const deviceFiles = (udid) =>
-  passwordAutoFillFiles(join(homedir(), 'Library/Developer/CoreSimulator/Devices', udid));
+const simulatorDir = (udid) => join(homedir(), 'Library/Developer/CoreSimulator/Devices', udid);
+
+const deviceFiles = (udid) => passwordAutoFillFiles(simulatorDir(udid));
 
 const passwordAutoFillIsOff = (udid) =>
   deviceFiles(udid).every(
@@ -784,21 +871,65 @@ function shutSimulator(root, key, id) {
   const udid = simulatorId(CONFIG.simulators[key].name);
   if (!udid) return;
   if (iosReleaseOn(root, key)) {
-    run('xcrun', ['simctl', 'boot', udid], { optional: true });
-    if (run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true })) {
-      clearIosRelease(root, key);
-    }
+    const gone = uninstallHeld({
+      boot: () => bootIos(udid),
+      installed: () => capture('xcrun', ['simctl', 'get_app_container', udid, id]) !== null,
+      uninstall: () => uninstallIos(udid, id),
+      shut: () => run('xcrun', ['simctl', 'shutdown', udid], { optional: true }),
+    });
+    if (gone) clearIosRelease(root, key);
+    else
+      console.warn(
+        `  ${id} is still on the ${key} after ${UNINSTALL_BOOTS} boots; next run retries`,
+      );
   }
   run('xcrun', ['simctl', 'shutdown', udid], { optional: true });
 }
 
-function iosReleaseOn(root, key) {
-  const recorded = installedIosRelease(root);
-  return existsSync(recorded) && readFileSync(recorded, 'utf8').trim() === key;
+export const UNINSTALL_BOOTS = 4;
+
+// An uninstall exits 0 and lists the app gone, yet the next boots can bring it back from
+// the registry. Only a boot that comes up and finds it gone says the uninstall held.
+export function uninstallHeld({ boot, installed, uninstall, shut }, boots = UNINSTALL_BOOTS) {
+  for (let attempt = 0; attempt < boots; attempt++) {
+    if (!boot()) {
+      shut();
+      continue;
+    }
+    if (!installed()) return true;
+    uninstall();
+    shut();
+  }
+  return false;
 }
 
-function clearIosRelease(root, key) {
-  if (iosReleaseOn(root, key)) rmSync(installedIosRelease(root));
+// simctl boot returns before the device is up, and an uninstall made then may not last.
+function bootIos(udid) {
+  return run('xcrun', ['simctl', 'bootstatus', udid, '-b'], { optional: true });
+}
+
+function uninstallIos(udid, id) {
+  run('xcrun', ['simctl', 'terminate', udid, id], { optional: true });
+  run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true });
+}
+
+// A line per device, so a release on one does not drop a failed uninstall on the other.
+export function iosReleases(root) {
+  const recorded = installedIosRelease(root);
+  return existsSync(recorded) ? readFileSync(recorded, 'utf8').split('\n').filter(Boolean) : [];
+}
+
+const iosReleaseOn = (root, key) => iosReleases(root).includes(key);
+
+export function recordIosRelease(root, key) {
+  if (!iosReleaseOn(root, key))
+    writeFileSync(installedIosRelease(root), [...iosReleases(root), key, ''].join('\n'));
+}
+
+export function clearIosRelease(root, key) {
+  const rest = iosReleases(root).filter((device) => device !== key);
+  if (rest.length) writeFileSync(installedIosRelease(root), [...rest, ''].join('\n'));
+  else rmSync(installedIosRelease(root), { force: true });
 }
 
 async function ios(args) {
@@ -813,10 +944,9 @@ async function ios(args) {
     const udid = simulatorId(CONFIG.simulators[key].name);
     if (!udid) throw new Error(`no ${CONFIG.simulators[key].name} simulator — run setup`);
     withoutPasswordAutoFill(udid);
-    run('xcrun', ['simctl', 'boot', udid], { optional: true });
-    if (run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true })) {
-      clearIosRelease(root, open);
-    }
+    bootIos(udid);
+    // The record stays: only a later boot that finds the app gone says the uninstall held.
+    uninstallIos(udid, id);
     if (!ensureExpoGo(udid)) {
       throw new Error(
         `Expo Go is on no booted simulator to copy from. Install it once with \`npx expo start --ios\` on any simulator, then rerun.`,
@@ -849,6 +979,11 @@ function capped(memory, command, args) {
   ];
 }
 
+// CI=1 turns off Metro's file watcher, which runs out of inotify watches beside an IDE.
+export function bundlerEnv(env, app) {
+  return { ...env, ...app, EXPO_PUBLIC_ENVIRONMENT: 'qa', CI: '1' };
+}
+
 async function startBundler(root, env = process.env) {
   const [command, args] = capped('4G', 'npx', [
     'expo',
@@ -860,7 +995,7 @@ async function startBundler(root, env = process.env) {
     cwd: join(root, 'apps/mobile'),
     detached: true,
     stdio: ['ignore', 'inherit', 'inherit'],
-    env: { ...env, ...CONFIG.app, EXPO_PUBLIC_ENVIRONMENT: 'qa' },
+    env: bundlerEnv(env, CONFIG.app),
   });
   // The whole group: npx dies on a signal and leaves the bundler it started holding the port.
   const stop = (signal) => {
@@ -934,7 +1069,7 @@ async function bootEmulator(tools, name) {
     '-no-audio',
     '-no-boot-anim',
     '-gpu',
-    'host',
+    emulatorGpu(),
     '-no-snapshot-save',
   ];
   if (usesSystemd()) {
@@ -1331,12 +1466,12 @@ async function releaseIos(args) {
   const udid = simulatorId(CONFIG.simulators[open].name);
   if (!udid) throw new Error(`no ${CONFIG.simulators[open].name} simulator — run setup`);
   withoutPasswordAutoFill(udid);
-  run('xcrun', ['simctl', 'boot', udid], { optional: true });
+  bootIos(udid);
   run('open', ['-a', 'Simulator'], { optional: true });
   // A fresh install every time, so the launch below is the app's first, with no cache.
-  run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true });
+  uninstallIos(udid, id);
   run('xcrun', ['simctl', 'install', udid, app]);
-  writeFileSync(installedIosRelease(root), open);
+  recordIosRelease(root, open);
   if (offline) stopAppServices(root);
   else startAppServices(root);
 
@@ -1396,6 +1531,9 @@ async function maestro(args) {
   const device = maestroDevice(args);
 
   const env = [`METRO_URL=${CONFIG.urls.metro}`, `MAILPIT_URL=${CONFIG.urls.mailpit}`, ...vars];
+  // An Android flow's links are opened by the harness: forAndroid.
+  const helper = onAndroid ? await startHelper({ heard: { at: 0 }, device, onAndroid }) : null;
+  if (helper) env.push(`HELPER_URL=http://127.0.0.1:${CONFIG.helperPort}`);
   const out = join(root, '.qa', flow);
   spawnSync('rm', ['-rf', out]);
   mkdirSync(out, { recursive: true });
@@ -1420,6 +1558,7 @@ async function maestro(args) {
     ],
     { cwd: root, env: onAndroid ? androidTools().env : {}, timeoutMs: runBudgetMs(1) },
   );
+  helper?.close();
   spawnSync('sh', ['-c', `find "${out}" -mindepth 2 -name '*.png' -exec cp {} "${out}/" \\;`]);
   console.log(`\nEvidence in ${out}`);
   if (!ok) process.exitCode = 1;
@@ -1596,9 +1735,11 @@ async function api(path, { method = 'POST', body, token } = {}) {
   });
   const answer = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(
+    const error = new Error(
       `${path} answered ${response.status}: ${answer?.detail ?? answer?.title ?? response.statusText}`,
     );
+    error.status = response.status;
+    throw error;
   }
   return answer;
 }
@@ -1619,16 +1760,50 @@ async function nextCode(email, secret) {
   return totp(secret, step);
 }
 
-async function apiSession(email, password, secret) {
+async function signIn(email, password, secret) {
   const answer = await api('/api/auth/login', { body: { email, password } });
-  if (typeof answer.twoFactorChallenge !== 'string') return answer.accessToken;
+  if (typeof answer.twoFactorChallenge !== 'string') return answer;
   if (!secret) throw new Error(`${email} has two-factor on: pass TOTP_SECRET=…`);
   const code = await nextCode(email, secret);
-  return (
-    await api('/api/auth/two-factor/verify', {
-      body: { challenge: answer.twoFactorChallenge, code },
-    })
-  ).accessToken;
+  return api('/api/auth/two-factor/verify', {
+    body: { challenge: answer.twoFactorChallenge, code },
+  });
+}
+
+// A cold batch outlives an access token: a 401 renews the session and asks once more (sc-17974).
+export function renewingSession({ open, refresh }) {
+  let current = null;
+  // A failed sign-in is not kept, so the next call tries again rather than rethrowing it.
+  const keep = (session) => {
+    const kept = session.catch((error) => {
+      if (current === kept) current = null;
+      throw error;
+    });
+    return kept;
+  };
+  return async (request) => {
+    current ??= keep(open());
+    const held = current;
+    const { accessToken } = await held;
+    try {
+      return await request(accessToken);
+    } catch (error) {
+      if (error.status !== 401) throw error;
+      // A refresh token presented twice ends the whole session, so callers share one renewal.
+      if (current === null) current = keep(open());
+      else if (current === held)
+        current = keep(held.then(({ refreshToken }) => refresh(refreshToken)).catch(open));
+      return request((await current).accessToken);
+    }
+  };
+}
+
+function apiSession(email, password, secret) {
+  const session = renewingSession({
+    open: () => signIn(email, password, secret),
+    refresh: (refreshToken) => api('/api/auth/refresh', { body: { refreshToken } }),
+  });
+  return (path, options) => session((token) => api(path, { ...options, token }));
 }
 
 async function reloadApp() {
@@ -1656,8 +1831,72 @@ function appRunning(device, onAndroid) {
   return expoGoRunning(capture('xcrun', ['simctl', 'spawn', device, 'launchctl', 'list']) ?? '');
 }
 
-// Under ten seconds an answer: batch/helper.js asks again while this says wait.
-function startHelper({ email, secret, token, passed, begun, heard, device, onAndroid }) {
+export const API_STATES = ['up', 'paused', 'stopped'];
+
+export function apiMoves(from, to) {
+  if (from === to) return [];
+  const up = {
+    paused: [['unpause', 'api']],
+    stopped: [['up', '-d', '--wait', '--no-recreate', 'api']],
+  };
+  if (to === 'up') return up[from];
+  if (from !== 'up') return [...up[from], ...apiMoves('up', to)];
+  return [[to === 'paused' ? 'pause' : 'stop', 'api']];
+}
+
+export const apiStateOf = (containerState) =>
+  ({ running: 'up', paused: 'paused' })[containerState.trim()] ?? 'stopped';
+
+// A check holds Event View's reads by pausing the API once the list has loaded. Each move waits
+// for the one before it. The state is read from Docker on the first move and after a failed one,
+// since a killed batch or a half-done move leaves the container in a state nobody recorded.
+export function apiControl({ run, read }) {
+  let state;
+  let moving = Promise.resolve();
+  const move = (to) => {
+    const next = moving.then(async () => {
+      state ??= apiStateOf(await read());
+      for (const args of apiMoves(state, to)) {
+        if (!(await run(args))) {
+          state = undefined;
+          throw new Error(`docker compose ${args.join(' ')} failed`);
+        }
+        state = args[0] === 'pause' ? 'paused' : args[0] === 'stop' ? 'stopped' : 'up';
+      }
+    });
+    moving = next.catch(() => {});
+    return next;
+  };
+  return { move, state: () => state };
+}
+
+const composeApi = (root) =>
+  apiControl({
+    run: (args) => runAsync('docker', ['compose', ...args], { cwd: root }),
+    read: () =>
+      capture('docker', ['compose', 'ps', '-a', 'api', '--format', '{{.State}}'], { cwd: root }) ??
+      '',
+  });
+
+const within = (ms, promise) =>
+  Promise.race([promise.then(() => true), pause(ms).then(() => false)]);
+
+// Under ten seconds an answer: batch/helper.js asks again while this says wait. A check that
+// failed while it held the API leaves it held, its last move perhaps still running, so whatever
+// uses the API next queues an 'up' behind it.
+export function startHelper({
+  email,
+  secret,
+  setLocale,
+  apiState,
+  passed,
+  begun,
+  heard,
+  device,
+  onAndroid,
+  open = openOnEmulator,
+  port = CONFIG.helperPort,
+}) {
   const server = createServer(async (request, response) => {
     heard.at = Date.now();
     const url = new URL(request.url ?? '/', 'http://helper');
@@ -1683,12 +1922,28 @@ function startHelper({ email, secret, token, passed, begun, heard, device, onAnd
       }
       if (url.pathname === '/language') {
         const locale = url.searchParams.get('to');
-        await api('/api/auth/locale', { method: 'PUT', token, body: { locale } });
+        if (!(await within(8000, apiState.move('up')))) return reply(200, { wait: true });
+        await setLocale(locale);
         return reply(200, { language: locale });
       }
+      if (url.pathname === '/api') {
+        const to = url.searchParams.get('to');
+        if (!API_STATES.includes(to))
+          throw new Error(`no API state ${to}: ${API_STATES.join(', ')}`);
+        if (!(await within(8000, apiState.move(to)))) return reply(200, { wait: true });
+        return reply(200, { api: to });
+      }
       if (url.pathname === '/started') {
+        if (!(await within(8000, apiState.move('up')))) return reply(200, { wait: true });
         begun.push(url.searchParams.get('check'));
         return reply(200, {});
+      }
+      if (url.pathname === '/open') {
+        const path = url.searchParams.get('path') ?? '';
+        if (path && !path.startsWith('/'))
+          throw new Error(`open what? /open?path=/--/… gave ${path}`);
+        await open(`${CONFIG.urls.metro}${path}`);
+        return reply(200, { opened: path });
       }
       if (url.pathname === '/passed') {
         passed.add(url.searchParams.get('check'));
@@ -1701,7 +1956,7 @@ function startHelper({ email, secret, token, passed, begun, heard, device, onAnd
   });
   return new Promise((ready, failed) => {
     server.once('error', failed);
-    server.listen(CONFIG.helperPort, '127.0.0.1', () => ready(server));
+    server.listen(port, '127.0.0.1', () => ready(server));
   });
 }
 
@@ -1778,17 +2033,24 @@ async function batch(args) {
     onAndroid,
   });
 
+  const apiState = composeApi(root);
+  await apiState.move('up');
   const named = languages[0] !== 'any';
-  const token = named ? await apiSession(email, password, secret) : null;
-  const before = named ? (await api('/api/auth/me', { method: 'GET', token })).locale : null;
+  const signedIn = named ? apiSession(email, password, secret) : null;
+  const before = named ? (await signedIn('/api/auth/me', { method: 'GET' })).locale : null;
   const passed = new Set();
   const begun = [];
   const heard = { at: Date.now() };
   const crashed = [];
+  const setLocale = async (locale) => {
+    await apiState.move('up');
+    await signedIn('/api/auth/locale', { method: 'PUT', body: { locale } });
+  };
   const helper = await startHelper({
     email,
     secret,
-    token,
+    setLocale,
+    apiState,
     passed,
     begun,
     heard,
@@ -1806,6 +2068,7 @@ async function batch(args) {
     ...rest,
   };
   const test = async (flow, held) => {
+    await apiState.move('up');
     const from = begun.length;
     heard.at = Date.now();
     const stall = { ms: STALL_MS, heard };
@@ -1836,34 +2099,29 @@ async function batch(args) {
     if (cold) {
       for (const language of languages) {
         for (const check of checks) {
-          if (named)
-            await api('/api/auth/locale', { method: 'PUT', token, body: { locale: language } });
+          if (named) await setLocale(language);
           await test(join(flows, `_cold.${checkId(check, language)}.yaml`), [{ check, language }]);
         }
       }
     } else {
-      if (named)
-        await api('/api/auth/locale', { method: 'PUT', token, body: { locale: languages[0] } });
+      if (named) await setLocale(languages[0]);
       const first = await test(join(flows, '_batch.yaml'), batchRuns(checks, languages));
       // After a driver crash the checks it never reached run in a fresh Maestro.
       await resumeBatch(first.rest, async (rest, attempt) => {
         const flow = join(flows, `_rest.${attempt}.yaml`);
         const written = batchFlow({ runs: rest });
         writeFileSync(flow, onAndroid ? forAndroid(written) : written);
-        if (named)
-          await api('/api/auth/locale', {
-            method: 'PUT',
-            token,
-            body: { locale: rest[0].language },
-          });
+        if (named) await setLocale(rest[0].language);
         return test(flow, rest);
       });
     }
   } finally {
     helper.close();
+    await apiState
+      .move('up')
+      .catch((error) => console.error(`\nThe API is still held: ${error.message}`));
     // The app follows the account's language when it next opens, and later flows expect English.
-    if (named)
-      await api('/api/auth/locale', { method: 'PUT', token, body: { locale: before ?? 'en' } });
+    if (named) await setLocale(before ?? 'en');
   }
   const seconds = Math.round((Date.now() - started) / 1000);
 
@@ -1950,7 +2208,7 @@ async function account(args) {
     env: { ...process.env, ...env },
   });
   if (made === null) throw new Error('scripts/qa-account.mjs registered no account');
-  const { email, password, name, accessToken: token } = JSON.parse(made);
+  const { email, password, name, accessToken: token, sessionId } = JSON.parse(made);
   await api('/api/auth/complete-profile', {
     method: 'PATCH',
     token,
@@ -1961,18 +2219,28 @@ async function account(args) {
       timezone: 'Europe/London',
     },
   });
-  const lines = [`  email        ${email}`, `  password     ${password}`];
   let secret = null;
   if (twoFactor) {
     ({ secret } = await api('/api/auth/two-factor/enrol', { token }));
     const code = await nextCode(email, secret);
     await api('/api/auth/two-factor/activate', { token, body: { code } });
-    lines.push(`  TOTP_SECRET  ${secret}`);
   }
-  console.log(
-    `\n▸ registered, profile complete, owning QA Organisation${twoFactor ? ', two-factor on' : ''}` +
-      `\n\n${lines.join('\n')}\n\nbatch <name> <check>… EMAIL=${email} PASSWORD=${password}` +
-      `${secret ? ` TOTP_SECRET=${secret}` : ''}\n`,
+  console.log(readyReport({ email, password, secret, accessToken: token, sessionId }));
+}
+
+// The session it signed in with is printed, so a flow can end it from outside the phone.
+export function readyReport({ email, password, secret, accessToken, sessionId }) {
+  const lines = [
+    `  email        ${email}`,
+    `  password     ${password}`,
+    ...(secret ? [`  TOTP_SECRET  ${secret}`] : []),
+    `  accessToken  ${accessToken}`,
+    `  sessionId    ${sessionId}`,
+  ];
+  return (
+    `\n▸ registered, profile complete, owning QA Organisation${secret ? ', two-factor on' : ''}` +
+    `\n\n${lines.join('\n')}\n\nbatch <name> <check>… EMAIL=${email} PASSWORD=${password}` +
+    `${secret ? ` TOTP_SECRET=${secret}` : ''}\n`
   );
 }
 

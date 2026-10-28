@@ -1,0 +1,24 @@
+# sc-3624: ${EV} opened from Events with the API stopped: Coming up's load failure with Try again and no All dates link. Needs the batch helper's /api (sc-17894); /started brings the API back up.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${EV}'
+    direction: DOWN
+    timeout: 30000
+# The list has loaded, so from here only Event View's own reads fail.
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    id: 'events.row.${EV}'
+- scrollUntilVisible:
+    element:
+      id: 'timeline.comingUp.retry'
+    direction: DOWN
+    timeout: 45000
+- assertNotVisible:
+    id: 'timeline.allDates'
+- takeScreenshot: failed

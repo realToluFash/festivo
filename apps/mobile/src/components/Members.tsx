@@ -204,7 +204,7 @@ export function MemberList({
   const [filter, setFilter] = useState<MemberFilter>('all');
   const [closedFor, setClosedFor] = useState(closed);
   const [back, setBack] = useState(closed);
-  const opener = useFocusBackToOpener(back, title);
+  const opener = useFocusBackToOpener(back, title, 'page');
   if (closedFor !== closed) {
     setClosedFor(closed);
     setBack(closed);

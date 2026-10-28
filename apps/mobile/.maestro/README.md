@@ -46,13 +46,19 @@ and turns off the retry, for a button whose request is held.
 
 Signing in, each on its own outcome:
 
-| Flow                   | Needs                                        | Leaves the app on                     |
-| ---------------------- | -------------------------------------------- | ------------------------------------- |
-| `sign-in-unverified`   | `EMAIL`, `PASSWORD` of an unverified account | the verification gate                 |
-| `verify-email`         | the same                                     | past the gate, with the newest code   |
-| `verify-email-refused` | the same                                     | the gate, a new code on its countdown |
-| `sign-in-locked`       | `EMAIL`, a fresh address                     | sign-in, past the limit               |
-| `signed-out-elsewhere` | a session ended from another client          | sign-in, with "You were signed out"   |
+| Flow                   | Needs                                         | Leaves the app on                             |
+| ---------------------- | --------------------------------------------- | --------------------------------------------- |
+| `register-check-email` | `NAME`, `EMAIL` (a fresh address), `PASSWORD` | Check your email, after a sign-up on Register |
+| `verify-email`         | the same                                      | A few details, verified with the newest code  |
+| `verify-email-refused` | the same                                      | Check your email, a new code counting down    |
+| `sign-in-locked`       | `EMAIL`, a fresh address                      | sign-in, past the limit                       |
+| `signed-out-elsewhere` | a session ended from another client           | sign-in, with "You were signed out"           |
+
+Every new account starts from a sign-up (sc-512), so the verify-email flows register `EMAIL`
+themselves through `register-check-email`, which switches the app to English first. The address
+must be fresh: one an account already holds is sent no code, and `verify-email` fails.
+`sign-in-locked` and `signed-out-elsewhere` match English text, so the phone must be in English
+first (`sign-in-screen-english`).
 
 `verify-email` reads the code from Mailpit with `scripts/latest-code.js`.
 
@@ -77,6 +83,12 @@ A check is written like a flow, and also:
 - **`takeScreenshot: <name>`, on one line.** The harness prefixes the check and language, so
   `settings` in a Spanish batch lands in `.qa/<batch>/settings.es-settings.png`.
 
+A check that needs the API held asks the harness through `batch/helper.js` with
+`ASK: /api?to=paused`, `/api?to=stopped` or `/api?to=up`. It answers once the QA stack's `api`
+service is there, and `up` once it is healthy again. Hold it after the screen before has
+loaded: Events keeps its rows, so a row tapped with the API paused holds only Event View's
+reads. Every check starts with the API up, whatever the one before it left.
+
 Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each code
 (`batch/helper.js`), so it runs inside a batch, which holds the account's `TOTP_SECRET`.
 
@@ -99,7 +111,8 @@ Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each co
   with `openLink`. A standalone build would use `com.soirely.app` and `launchApp`. On Android
   the package is `host.exp.exponent`, in lower case. Write iOS's: `qa-env.mjs maestro --android`
   runs from a copy of this whole directory with Android's, so a `runFlow` or `runScript` path
-  still resolves.
+  still resolves. In that copy each `openLink: ${METRO_URL}…` asks the harness to open the link
+  in Expo Go by its package, since Maestro's names none and can land on Expo Go's own home.
 - **Scroll to what can sit below the fold.** Maestro on Android sees only what is on
   screen, so an `extendedWaitUntil` or `assertVisible` on a line under a phone's fold passes
   on the iPhone and times out there. Use `scrollUntilVisible`, which does not scroll when the

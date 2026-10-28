@@ -377,7 +377,7 @@ function EventCard({
   large?: boolean;
 }) {
   const { t } = useTranslation();
-  const next = nextUp(event.milestones, now);
+  const next = nextUp(event.milestones, now, event.status === 'ended');
   const place = event.venue?.name ?? event.venue?.address?.formatted ?? null;
 
   return (
@@ -431,11 +431,17 @@ function CardDate({
   const { t } = useTranslation();
   const locale = dateLocale();
 
-  const date = cardDate(event, phase);
+  const date = cardDate(event, phase, now);
 
   switch (date.kind) {
     case 'startedToday':
       return t('events.startedToday', {
+        time: formatEventClock(date.startsAt, event.timeZone, locale),
+        timeZone: event.timeZone,
+      });
+    case 'startedOn':
+      return t('events.startedOn', {
+        date: formatEventWeekday(date.startsAt, event.timeZone, locale),
         time: formatEventClock(date.startsAt, event.timeZone, locale),
         timeZone: event.timeZone,
       });

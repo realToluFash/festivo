@@ -14,18 +14,23 @@ export interface FieldName {
   accessibilityLabelledBy?: string | undefined;
 }
 
-/** On Android a field is named by the label it shows, or while empty by its placeholder: TalkBack reads a content description in place of what the field holds, and again on every key (sc-17281, sc-17333). */
+/** On Android a field is named by the label it shows, or while empty by its placeholder and once filled by an unseen copy of it: TalkBack reads a content description in place of what the field holds, and again on every key, and reads no placeholder once there is text (sc-17281, sc-17333). */
 export function fieldName(
   os: string,
   name: string | undefined,
-  shown: { labelID?: string | undefined; placeholder?: string | undefined },
+  shown: {
+    labelID?: string | undefined;
+    placeholder?: string | undefined;
+    filled?: { held: boolean; nameID: string } | undefined;
+  },
 ): FieldName {
   if (os !== 'android') return { accessibilityLabel: name };
   if (shown.labelID != null)
     return { accessibilityLabel: undefined, accessibilityLabelledBy: shown.labelID };
+  if (shown.placeholder == null || shown.placeholder === '') return { accessibilityLabel: name };
 
-  return shown.placeholder == null || shown.placeholder === ''
-    ? { accessibilityLabel: name }
+  return shown.filled?.held === true
+    ? { accessibilityLabel: undefined, accessibilityLabelledBy: shown.filled.nameID }
     : { accessibilityLabel: undefined };
 }
 
@@ -66,6 +71,34 @@ export function nextPin(
   const repin = (field.held || fontScale !== scale) && field.value === undefined;
 
   return { pinned: repin ? field.typed : field.pinned, scale: fontScale };
+}
+
+export interface Typing {
+  typed: string;
+  pinned: string | undefined;
+  /** The value handed to an Android field until its next key. */
+  given: string | undefined;
+}
+
+/** On Android a field is handed its value only where that is not what was typed: React Native puts a changed value back over the whole text, and TalkBack reads the whole field again, as a replacement, on every key (sc-18648). */
+export function nextGiven(os: string, value: string | undefined, typing: Typing): Typing {
+  if (os !== 'android' || value === undefined || value === typing.typed) return typing;
+
+  return { typed: value, pinned: value, given: value };
+}
+
+/** A key leaves an Android field uncontrolled again, whatever it was last handed. */
+export function keyTyped(last: Typing, text: string): Typing {
+  return { ...last, typed: text, given: undefined };
+}
+
+/** The value TextInput is handed: on Android only one not yet typed, so typing leaves the field uncontrolled. */
+export function valueHanded(
+  os: string,
+  value: string | undefined,
+  given: string | undefined,
+): string | undefined {
+  return os === 'android' ? given : value;
 }
 
 /** What a field hands TextInput as its text, held or not. */

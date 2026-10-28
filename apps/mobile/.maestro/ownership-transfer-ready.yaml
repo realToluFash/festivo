@@ -1,6 +1,8 @@
 # Settings > Organisation > Ownership and leaving: Transfer ownership open, a new owner
 # picked and a password typed, not yet sent. On a signed-in phone. sc-12511.
 #
+# MEMBERSHIP is a second member's membership id; ownership-leave-open.yaml says how to make one.
+#
 #   node .qa/bin/qa-env.mjs maestro ownership-transfer-ready --android MEMBERSHIP=… TYPED=…
 appId: host.exp.Exponent
 ---

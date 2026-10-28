@@ -2345,9 +2345,8 @@ export class ApiClient {
     await this.delete(`/api/auth/sessions/${encodeURIComponent(id)}`);
   }
 
+  /** Never waits on a refresh in flight: the API ends the whole session from whichever of its tokens arrives. */
   async signOut(): Promise<void> {
-    // A refresh in flight rotates the token this sign-out has to end.
-    await this.refreshing?.done.catch(() => false);
     this.session += 1;
     this.signingOut += 1;
 

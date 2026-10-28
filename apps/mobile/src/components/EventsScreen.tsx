@@ -36,6 +36,7 @@ import { ReadOut } from './ReadOut.tsx';
 import { FocusBack, type StepClosed, stepClosed } from './Screen.tsx';
 import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
+import { useSystemBack } from './useSystemBack.ts';
 
 type Load =
   { kind: 'loading' } | { kind: 'failed' } | ({ kind: 'loaded'; refreshing: boolean } & HomeLoad);
@@ -215,6 +216,10 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     open != null && listed == null && (load.kind !== 'loading' || !reads) ? open : null,
     account != null,
     organisation,
+  );
+
+  useSystemBack(linked != null && !landscape && open == null, () =>
+    router.dismissTo(DESTINATION_HREF.home),
   );
 
   if (organisation != null && !reads && open == null) {

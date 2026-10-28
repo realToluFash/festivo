@@ -26,6 +26,6 @@ appId: host.exp.Exponent
     file: ../sign-in-two-factor.yaml
 - scrollUntilVisible:
     element:
-      text: '{{t:any:settings.signedInAs|email}}'
+      text: '{{t:any:settings.signedInAs|email}}|{{t:any:noOrganisation.signedInAs|email}}'
     direction: DOWN
     timeout: 30000

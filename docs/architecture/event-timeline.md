@@ -96,3 +96,5 @@ the same reader, so Events Home's **Next up** is the timeline's without one requ
 An overdue `you` milestone stays Next up until the area stops returning it, because a missed
 deadline should not vanish from the screen. When every milestone has passed there is none.
 A milestone is **Passed** once its instant is behind `now` and it is not Next up.
+On an Ended event the `events` area's milestones are Passed whatever the clock reads, so
+every caller passes `ended` to `nextUp`, `markedMilestones` and `comingUp` (sc-16709).

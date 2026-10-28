@@ -54,6 +54,10 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **28 Oct 2026. L’événement commencé un autre jour** (sc-17870 pour sc-17853, `events.startedOn`
+  web et `eventsScreen.startedOn` app). « A commencé le {{date}} · {{time}} {{timeZone}} », en
+  paire avec `startedToday` (« Aujourd’hui · a commencé à… »). `{{date}}` est « mardi 27 oct. »,
+  qui prend « le » ; le point de l’abréviation précède le « · », jamais une fin de phrase.
 - **27 Oct 2026. Dupliquer un événement** (sc-15883 pour sc-3593, `web:eventDuplicate.*`).
   « Dupliquer » et « Créer le brouillon » ; le nouvel événement est « la copie » tant qu’il
   n’existe pas. Le panneau dit « Ce qui est copié » / « Ce qui n’est pas copié », car un
@@ -556,6 +560,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   « Next up » est « Prochaine étape », comme `timeline.nextUp`, et l’état vide des événements à
   venir le reprend. Le décompte annoncé dit « supplémentaire(s) », « d’événements » au `many`.
   `moreFailed` reprend la seconde phrase de l’échec de chargement de son écran, comme en anglais.
+- **27 Oct 2026. The two-factor-due subject opens on the feature and the deadline**
+  (`emails:signInRules.twoFactorDue.subject`, sc-15219) : « Double authentification avant le
+  {deadline} : {organisation} », the organisation last so a 390 px inbox shows the date
+  (qa2, #15218). « avant le » takes the weekday `{deadline}` opens on.
 - **27 oct. 2026. La page des informations nomme la règle, pas le rôle** (sc-16443 pour
   sc-16265, `orgGeneral.readOnlyUntil*`, `refusedByRule`). Chaque ligne reprend la règle dans
   les mots du bandeau (`signInRules.unlinkedBody`, `gateBody`, « n’accepte que » sans « plus »)

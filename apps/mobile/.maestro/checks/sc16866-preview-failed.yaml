@@ -1,0 +1,49 @@
+# Settings > Organisation, deleting it with the API stopped: the failure notice and Try again, then the counts once it answers. sc-16866.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible: '{{t:settings.organisation}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'ownership.delete'
+    timeout: 60000
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    id: 'ownership.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'ownership.delete.retry'
+    timeout: 30000
+- assertVisible: '{{t:ownership.deleteUncounted}}'
+- assertNotVisible: '{{t:ownership.deleteLoading}}'
+- waitForAnimationToEnd
+- takeScreenshot: failed
+- tapOn:
+    id: 'ownership.delete.retry'
+- extendedWaitUntil:
+    visible:
+      id: 'ownership.delete.retry'
+    timeout: 30000
+- assertVisible: '{{t:ownership.deleteUncounted}}'
+- takeScreenshot: failed-again
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- tapOn:
+    id: 'ownership.delete.retry'
+- extendedWaitUntil:
+    notVisible:
+      id: 'ownership.delete.retry'
+    timeout: 30000
+- extendedWaitUntil:
+    notVisible: '{{t:ownership.deleteLoading}}'
+    timeout: 15000
+- assertNotVisible: '{{t:ownership.deleteUncounted}}'
+- waitForAnimationToEnd
+- takeScreenshot: counted

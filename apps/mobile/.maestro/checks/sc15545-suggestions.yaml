@@ -35,4 +35,6 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'eventForm.venueSuggestion.0'
 - waitForAnimationToEnd
+- assertNotVisible:
+    id: 'eventForm.venueSuggestions'
 - takeScreenshot: chosen

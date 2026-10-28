@@ -77,7 +77,8 @@ export function ComingUp({ event, now: tick }: { event: OrganisationEvent; now: 
   const { t } = useTranslation();
   const heading = useRef<HTMLHeadingElement>(null);
   const { load, now, retried, retry } = useTimeline(event, heading, tick);
-  const shown = load.kind === 'loaded' ? comingUp(load.timeline.milestones, now) : [];
+  const shown =
+    load.kind === 'loaded' ? comingUp(load.timeline.milestones, now, event.status === 'ended') : [];
 
   return (
     <section className="card coming-up" aria-labelledby="coming-up-title">
@@ -85,13 +86,18 @@ export function ComingUp({ event, now: tick }: { event: OrganisationEvent; now: 
         <h2 id="coming-up-title" ref={heading} tabIndex={-1}>
           {t('timeline.comingUp')}
         </h2>
-        {load.kind === 'loaded' && (
+        {load.kind === 'failed' ? (
+          <span className="link-button coming-up-link-held" aria-hidden="true">
+            {t('timeline.allDates')}
+          </span>
+        ) : (
           <Link className="link-button" to={`/app/events/${encodeURIComponent(event.id)}/dates`}>
             {t('timeline.allDates')}
           </Link>
         )}
       </div>
-      <div className="coming-up-rows" aria-busy={load.kind === 'loading'}>
+      <div className="coming-up-rows">
+        {load.kind === 'loading' && <DatesLoading />}
         {load.kind === 'failed' && <DatesFailed announced={retried} onRetry={retry} />}
         {load.kind === 'loaded' && shown.length === 0 && (
           <p className="timeline-inset timeline-finished">
@@ -134,21 +140,23 @@ export function AllDates({
 
   return (
     <>
-      {load.kind === 'loading' && <p className="muted">{t('timeline.loading')}</p>}
+      {load.kind === 'loading' && <DatesLoading />}
       {load.kind === 'failed' && <DatesFailed announced={retried} onRetry={retry} />}
       {load.kind === 'loaded' && (
         <>
           <p className="muted">{t('timeline.intro', { timeZone: load.timeline.timeZone })}</p>
           <ol className="timeline-list">
-            {markedMilestones(load.timeline.milestones, now).map((marked, index) => (
-              <MilestoneRow
-                key={index}
-                marked={marked}
-                timeZone={load.timeline.timeZone}
-                now={now}
-                distance={false}
-              />
-            ))}
+            {markedMilestones(load.timeline.milestones, now, event.status === 'ended').map(
+              (marked, index) => (
+                <MilestoneRow
+                  key={index}
+                  marked={marked}
+                  timeZone={load.timeline.timeZone}
+                  now={now}
+                  distance={false}
+                />
+              ),
+            )}
           </ol>
           <dl className="timeline-key">
             {(['event', 'you', 'automatic'] as const).map((owner) => (
@@ -163,6 +171,17 @@ export function AllDates({
         </>
       )}
     </>
+  );
+}
+
+function DatesLoading() {
+  const { t } = useTranslation();
+
+  return (
+    <p className="timeline-inset" role="status">
+      <span className="pending-spinner" aria-hidden="true" />
+      {t('timeline.loading')}
+    </p>
   );
 }
 
