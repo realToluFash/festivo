@@ -1,6 +1,6 @@
 import type { MembersList as Members, OrganisationRole } from '@soirely/api-client';
 import { grantableRoles, roleHolds, withheldRoles } from '@soirely/domain';
-import { Redirect, router } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -48,6 +48,7 @@ const LOADING: Load = { kind: 'loading' };
 export default function MembersScreen() {
   const { t } = useTranslation();
   const backToSettings = useBackToSettings();
+  const { from } = useLocalSearchParams<{ from?: string }>();
   const { kind, givesWay } = useListAndPageLayout(SPACING, 'settingsList');
   const { organisation } = useSignedIn();
   const organisationId = organisation?.id;
@@ -240,7 +241,9 @@ export default function MembersScreen() {
           });
         }}
         onAnswered={answered}
-        onGoToOrganisation={() => router.replace(SECTION_HREF.organisation)}
+        onGoToOrganisation={() =>
+          router.replace({ pathname: SECTION_HREF.organisation, params: from ? { from } : {} })
+        }
         nameRef={memberName}
       />
     ) : null;
