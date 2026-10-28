@@ -1,0 +1,40 @@
+# sc-1593 tablet landscape (rotate the device first; this AVD is landscape at rotation 0): with nothing selected the pane says to choose an event; ${EVENT} (a draft in ${ORG}) opens beside the list; switching to ${OTHER_ORG} clears the pane.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.drafts'
+    timeout: 30000
+- tapOn:
+    id: 'events.tab.drafts'
+- extendedWaitUntil:
+    visible: '{{t:eventsScreen.choose}}'
+    timeout: 20000
+- takeScreenshot: nothing-selected
+- tapOn:
+    id: 'events.row.${EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- assertVisible:
+    id: 'events.tab.drafts'
+- takeScreenshot: selected
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${OTHER_ORG}
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible: '{{t:eventsScreen.choose}}'
+    timeout: 20000
+- assertNotVisible:
+    id: 'events.page'
+- takeScreenshot: after-switch
