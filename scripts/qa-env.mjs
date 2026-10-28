@@ -258,17 +258,6 @@ export function simulatorArch(arch = process.arch) {
   return arch === 'arm64' ? 'arm64' : 'x86_64';
 }
 
-// What a simulator's disk holds, so it can be read once the device is shut.
-export function installedApps(device) {
-  const containers = join(device, 'data/Containers/Bundle/Application');
-  if (!existsSync(containers)) return [];
-  return readdirSync(containers).flatMap((container) =>
-    readdirSync(join(containers, container))
-      .filter((name) => name.endsWith('.app'))
-      .map((app) => join(containers, container, app, 'Info.plist')),
-  );
-}
-
 export function iosBundle(appConfig) {
   const id = /ios:\s*\{[^}]*bundleIdentifier:\s*'([^']+)'/.exec(appConfig)?.[1];
   if (!id) throw new Error('no ios.bundleIdentifier in apps/mobile/app.config.ts');
@@ -834,29 +823,50 @@ function installedIosRelease(root) {
 }
 
 // A release build on the simulator not opened still owns soirely:// there. simctl
-// uninstalls only on a booted device, so that one is booted for it, then shut.
+// uninstalls only on a booted device, and the next boot can bring the app back, so
+// the record clears only once a fresh boot finds it gone.
 function shutSimulator(root, key, id) {
   const udid = simulatorId(CONFIG.simulators[key].name);
   if (!udid) return;
-  const recorded = iosReleaseOn(root, key);
-  if (recorded) {
-    run('xcrun', ['simctl', 'boot', udid], { optional: true });
-    uninstallIos(udid, id);
+  if (!iosReleaseOn(root, key)) {
+    run('xcrun', ['simctl', 'shutdown', udid], { optional: true });
+    return;
   }
-  run('xcrun', ['simctl', 'shutdown', udid], { optional: true });
-  if (recorded && !installedOn(udid, id)) clearIosRelease(root, key);
+  const gone = uninstallUntilGone({
+    boot: () => run('xcrun', ['simctl', 'bootstatus', udid, '-b'], { optional: true }),
+    installed: () => capture('xcrun', ['simctl', 'get_app_container', udid, id]) !== null,
+    uninstall: () => uninstallIos(udid, id),
+    shutdown: () => run('xcrun', ['simctl', 'shutdown', udid], { optional: true }),
+  });
+  if (gone) clearIosRelease(root, key);
+  else
+    console.warn(
+      `  Soirely is still on the ${key} after ${UNINSTALL_TRIES} uninstalls; kept the record`,
+    );
+}
+
+export const UNINSTALL_TRIES = 3;
+
+export function uninstallUntilGone(
+  { boot, installed, uninstall, shutdown },
+  tries = UNINSTALL_TRIES,
+) {
+  for (let attempt = 0; attempt < tries; attempt++) {
+    boot();
+    if (!installed()) {
+      shutdown();
+      return true;
+    }
+    uninstall();
+    shutdown();
+  }
+  return false;
 }
 
 // An uninstall of the running app exits 0 and lists it gone, yet a reboot brings it back.
 function uninstallIos(udid, id) {
   run('xcrun', ['simctl', 'terminate', udid, id], { optional: true });
   run('xcrun', ['simctl', 'uninstall', udid, id], { optional: true });
-}
-
-function installedOn(udid, id) {
-  return installedApps(simulatorDir(udid)).some(
-    (plist) => capture('plutil', ['-extract', 'CFBundleIdentifier', 'raw', plist]) === id,
-  );
 }
 
 // A line per device, so a release on one does not drop a failed uninstall on the other.
@@ -891,7 +901,7 @@ async function ios(args) {
     if (!udid) throw new Error(`no ${CONFIG.simulators[key].name} simulator — run setup`);
     withoutPasswordAutoFill(udid);
     run('xcrun', ['simctl', 'boot', udid], { optional: true });
-    // The record stays: only a read after a shutdown says the uninstall held.
+    // The record stays: only a fresh boot says the uninstall held.
     uninstallIos(udid, id);
     if (!ensureExpoGo(udid)) {
       throw new Error(

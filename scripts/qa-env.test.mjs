@@ -68,9 +68,9 @@ import {
   launchVideo,
   iosBundle,
   clearIosRelease,
-  installedApps,
   iosReleases,
   recordIosRelease,
+  uninstallUntilGone,
   releaseApk,
   releaseApp,
   releasePlatform,
@@ -392,18 +392,27 @@ describe('a release build', () => {
     rmSync(root, { recursive: true });
   });
 
-  it("reads every app on a simulator's disk", () => {
-    const device = mkdtempSync(join(tmpdir(), 'sim-'));
-    const containers = join(device, 'data/Containers/Bundle/Application');
-    expect(installedApps(device)).toEqual([]);
-    mkdirSync(join(containers, 'A/soirely-d94e55f4e08e.app'), { recursive: true });
-    mkdirSync(join(containers, 'A/_CodeSignature'), { recursive: true });
-    mkdirSync(join(containers, 'B/Expo Go.app'), { recursive: true });
-    expect(installedApps(device).sort()).toEqual([
-      join(containers, 'A/soirely-d94e55f4e08e.app/Info.plist'),
-      join(containers, 'B/Expo Go.app/Info.plist'),
-    ]);
-    rmSync(device, { recursive: true });
+  it('clears a release only once a fresh boot finds it gone', () => {
+    const device = (bootsHolding) => {
+      const calls = [];
+      let boots = 0;
+      return {
+        calls,
+        boot: () => calls.push(`boot ${++boots}`),
+        installed: () => boots <= bootsHolding,
+        uninstall: () => calls.push('uninstall'),
+        shutdown: () => calls.push('shutdown'),
+      };
+    };
+    const held = device(1);
+    expect(uninstallUntilGone(held)).toBe(true);
+    expect(held.calls).toEqual(['boot 1', 'uninstall', 'shutdown', 'boot 2', 'shutdown']);
+    const returning = device(2);
+    expect(uninstallUntilGone(returning)).toBe(true);
+    expect(returning.calls.filter((call) => call === 'uninstall')).toHaveLength(2);
+    const stuck = device(Infinity);
+    expect(uninstallUntilGone(stuck)).toBe(false);
+    expect(stuck.calls.at(-1)).toBe('shutdown');
   });
 
   it('installs the bundle the app config names', () => {
