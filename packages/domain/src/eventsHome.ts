@@ -1,4 +1,5 @@
 import { type EventPhase, type EventState, calledOff, shownPhase } from './eventStates.ts';
+import { milestoneDistance } from './timeline.ts';
 
 export interface HomeEvent {
   id: string;
@@ -84,16 +85,21 @@ export function forgetEventsTab(): void {
 
 export type CardDate =
   | { kind: 'startedToday'; startsAt: string }
+  | { kind: 'startedOn'; startsAt: string }
   | { kind: 'calledOffOn'; concludedAt: string }
   | { kind: 'dateAway'; startsAt: string };
 
-/** "Today · started 09:00", "Called off on Sep 30", or "Saturday, Nov 14 · in 32 days". */
+/** "Today · started 09:00", "Started Tuesday, Oct 27 · 11:13", "Called off on Sep 30", or "Saturday, Nov 14 · in 32 days". */
 export function cardDate(
-  event: { status: EventState; startsAt: string; concludedAt: string | null },
+  event: { status: EventState; startsAt: string; timeZone: string; concludedAt: string | null },
   phase: EventPhase,
+  now: Date,
 ): CardDate {
   if (phase === 'happening_now') {
-    return { kind: 'startedToday', startsAt: event.startsAt };
+    const startedEarlier =
+      milestoneDistance(event.startsAt, event.timeZone, now).kind === 'daysAgo';
+
+    return { kind: startedEarlier ? 'startedOn' : 'startedToday', startsAt: event.startsAt };
   }
 
   if (phase === 'finished' && calledOff(event) && event.concludedAt != null) {

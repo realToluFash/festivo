@@ -26,6 +26,14 @@ describe('cardDateWords', () => {
     ).toBe('eventsScreen.startedToday {"time":"09:00","timeZone":"Europe/Madrid"}');
   });
 
+  it('says which day it started once that day is over in the event’s zone', () => {
+    expect(
+      cardDateWords(EVENT, 'happening_now', new Date('2026-11-14T23:00:00Z'), 'en-US', t),
+    ).toBe(
+      'eventsScreen.startedOn {"date":"Saturday, Nov 14","time":"09:00","timeZone":"Europe/Madrid"}',
+    );
+  });
+
   it('says when an event was called off', () => {
     const calledOff = {
       ...EVENT,
