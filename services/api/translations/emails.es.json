@@ -117,7 +117,7 @@
     "signInRules.rule.noTwoFactor": "Quienes puedan gestionar miembros, roles, facturación o seguridad ya no necesitan la verificación en dos pasos para hacerlo.",
     "signInRules.rule.everyoneTwoFactor": "La verificación en dos pasos es obligatoria para todos. Los miembros que no la tengan disponen de 7 días para activarla.",
     "signInRules.rule.noEveryoneTwoFactor": "La verificación en dos pasos ya no es obligatoria para todos.",
-    "signInRules.twoFactorDue.subject": "Verificación en dos pasos antes del {deadline}: {organisation}",
+    "signInRules.twoFactorDue.subject": "Antes del {deadline}: verificación en dos pasos en {organisation}",
     "signInRules.twoFactorDue.body": "{organisation} exige ahora la verificación en dos pasos a todas las personas de la organización. Tiene hasta el {deadline} para activarla. Después, no podrá abrir nada en {organisation} hasta que la active. Sus demás organizaciones y su acceso a eventos concretos no se ven afectados.",
     "signInRules.twoFactorDue.explain": "La verificación en dos pasos pide un código de una aplicación de autenticación al iniciar sesión, así que una contraseña robada no basta por sí sola. Se activa una sola vez y sirve para todas las organizaciones que la exijan.",
     "signInRules.twoFactorDue.facts": "Organización: {organisation}\nFecha límite: {deadline}\nSu cuenta: {address}",
