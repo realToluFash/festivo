@@ -85,6 +85,8 @@ import {
   simulatorFor,
   TESTERS,
   testerOf,
+  experienceResumed,
+  openUntilShown,
 } from './qa-env.mjs';
 
 // A port left at its development default is two stacks fighting over it, and a
@@ -638,6 +640,89 @@ describe('a flow on Android', () => {
     ]);
   });
 
+  it('tells an open experience from Expo Go on its Home or launcher', () => {
+    const resumed = (activity) =>
+      `  ResumedActivity: ActivityRecord{2af8410 u0 ${activity} t2150}\n` +
+      `  topResumedActivity=ActivityRecord{874cd8c u0 ${activity} t2150}\n`;
+    expect(experienceResumed(resumed('host.exp.exponent/.experience.ExperienceActivity'))).toBe(
+      true,
+    );
+    expect(
+      experienceResumed(
+        '    mResumedActivity: ActivityRecord{874cd8c u0 host.exp.exponent/.experience.ExperienceActivity t2150}\n',
+      ),
+    ).toBe(true);
+    expect(experienceResumed(resumed('host.exp.exponent/.experience.HomeActivity'))).toBe(false);
+    expect(experienceResumed(resumed('host.exp.exponent/.LauncherActivity'))).toBe(false);
+    expect(
+      experienceResumed(
+        '  * Hist  #0: ActivityRecord{874cd8c u0 host.exp.exponent/.experience.ExperienceActivity t2150}\n' +
+          resumed('host.exp.exponent/.experience.HomeActivity'),
+      ),
+    ).toBe(false);
+    expect(experienceResumed('')).toBe(false);
+  });
+
+  const clocked = ({ shownAfter = Infinity, sendCost = 0, checkCost = 0 } = {}) => {
+    let at = 0;
+    const sent = [];
+    const checked = [];
+    return {
+      sent,
+      checked,
+      options: {
+        send: () => {
+          sent.push(at);
+          at += sendCost;
+        },
+        shown: () => {
+          checked.push(at);
+          at += checkCost;
+          return checked.length > shownAfter;
+        },
+        wait: async (ms) => {
+          at += ms;
+        },
+        now: () => at,
+      },
+      at: () => at,
+    };
+  };
+
+  it('sends a link Expo Go dropped again, and an opened one only once', async () => {
+    const opened = clocked({ shownAfter: 0 });
+    expect(await openUntilShown(opened.options)).toBe(1);
+    expect(opened.sent).toEqual([0]);
+
+    const dropped = clocked({ shownAfter: 7 });
+    expect(await openUntilShown(dropped.options)).toBe(2);
+    expect(dropped.sent).toEqual([0, 2500]);
+
+    const never = clocked();
+    expect(await openUntilShown(never.options)).toBe(3);
+    expect(never.sent).toEqual([0, 2500, 5000]);
+    expect(never.at()).toBe(7500);
+  });
+
+  it('answers by its deadline when each adb call is slow', async () => {
+    const slow = clocked({ sendCost: 300, checkCost: 700 });
+    await openUntilShown(slow.options);
+    expect([...slow.sent, ...slow.checked].every((at) => at < 8000)).toBe(true);
+    expect(slow.at()).toBeLessThan(9000);
+  });
+
+  it('stops at the first send am start refuses', async () => {
+    await expect(
+      openUntilShown({
+        send: () => {
+          throw new Error('could not open exp://x: Error: Activity not started');
+        },
+        shown: () => false,
+        wait: async () => {},
+      }),
+    ).rejects.toThrow(/could not open/);
+  });
+
   it('brings the flows it runs, rewritten, where its paths expect them', () => {
     const source = mkdtempSync(join(tmpdir(), 'maestro-'));
     mkdirSync(join(source, 'shared'));
@@ -969,7 +1054,7 @@ describe('the API a batch holds', () => {
 });
 
 describe('the batch helper', () => {
-  const helperFor = async (container) => {
+  const helperFor = async (container, open) => {
     const { control, ran } = dockerDouble(container);
     const languages = [];
     const begun = [];
@@ -982,7 +1067,7 @@ describe('the batch helper', () => {
       passed: new Set(),
       begun,
       heard: { at: 0 },
-      open: (url) => ran.push(`open ${url}`),
+      open: open ?? ((url) => ran.push(`open ${url}`)),
       port: 0,
     });
     const ask = async (path) => {
@@ -1028,6 +1113,21 @@ describe('the batch helper', () => {
         expect.stringMatching(/^open exp:\/\/.+\/--\/events\/7$/),
         expect.stringMatching(/^open exp:\/\/[^/]+$/),
       ]);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('fails to open when am start refuses a later send', async () => {
+    const refused = async (url) => {
+      await new Promise((done) => setTimeout(done, 1));
+      throw new Error(`could not open ${url}: Error: Activity not started`);
+    };
+    const { server, ask } = await helperFor('running', refused);
+    try {
+      expect(await ask('/open?path=%2F--%2Fevents%2F7')).toEqual({
+        error: expect.stringMatching(/^could not open exp:\/\/.+\/--\/events\/7: Error/),
+      });
     } finally {
       server.close();
     }

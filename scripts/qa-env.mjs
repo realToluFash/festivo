@@ -398,10 +398,53 @@ export function openIntent(url) {
   ];
 }
 
+export function experienceResumed(activities) {
+  const app = EXPO_GO_ANDROID.replaceAll('.', '\\.');
+  return new RegExp(
+    `^\\s*(?:topResumedActivity|mResumedActivity)[=:].*\\s${app}/(?:${app})?\\.experience\\.ExperienceActivity\\s`,
+    'm',
+  ).test(activities);
+}
+
+// Expo Go drops a link sent before its kernel has loaded, as it is just after launchApp
+// cold-starts it, and stays on Home (sc-18603). The deadline counts the adb calls too, so the
+// answer beats the helper's ten seconds.
+export async function openUntilShown({
+  send,
+  shown,
+  wait = pause,
+  now = Date.now,
+  within = 8000,
+  every = 2500,
+  poll = 500,
+}) {
+  const deadline = now() + within;
+  send();
+  let sent = 1;
+  let last = now();
+  for (let left = deadline - now(); left > poll; left = deadline - now()) {
+    await wait(poll);
+    if (shown()) return sent;
+    if (now() - last >= every && deadline - now() > poll) {
+      send();
+      sent++;
+      last = now();
+    }
+  }
+  return sent;
+}
+
 // am start says Error on stdout and still exits 0.
 function openOnEmulator(url) {
-  const said = adbOut(androidTools(), openIntent(url));
-  if (said === null || /^Error/m.test(said)) throw new Error(`could not open ${url}: ${said}`);
+  const tools = androidTools();
+  return openUntilShown({
+    send: () => {
+      const said = adbOut(tools, openIntent(url));
+      if (said === null || /^Error/m.test(said)) throw new Error(`could not open ${url}: ${said}`);
+    },
+    shown: () =>
+      experienceResumed(adbOut(tools, ['shell', 'dumpsys', 'activity', 'activities']) ?? ''),
+  });
 }
 
 export function branchForStory(id, remoteBranches) {
@@ -1899,7 +1942,7 @@ export function startHelper({
         const path = url.searchParams.get('path') ?? '';
         if (path && !path.startsWith('/'))
           throw new Error(`open what? /open?path=/--/… gave ${path}`);
-        open(`${CONFIG.urls.metro}${path}`);
+        await open(`${CONFIG.urls.metro}${path}`);
         return reply(200, { opened: path });
       }
       if (url.pathname === '/passed') {
