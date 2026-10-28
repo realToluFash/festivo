@@ -32,7 +32,7 @@ describe('withFontScaleForwarded', () => {
 
   it('imports what the override names, under the package line', () => {
     expect(forwarded).toMatch(
-      /^package com\.soirely\.app\nimport android\.content\.ComponentCallbacks\nimport android\.content\.res\.Configuration\nimport android\.view\.View\nimport android\.view\.ViewGroup\nimport com\.facebook\.react\.bridge\.LifecycleEventListener\nimport com\.facebook\.react\.uimanager\.DisplayMetricsHolder\nimport com\.th3rdwave\.safeareacontext\.SafeAreaProvider\n/,
+      /^package com\.soirely\.app\nimport android\.content\.ComponentCallbacks\nimport android\.content\.Context\nimport android\.content\.res\.Configuration\nimport android\.view\.View\nimport android\.view\.ViewGroup\nimport android\.widget\.FrameLayout\nimport com\.facebook\.react\.bridge\.LifecycleEventListener\nimport com\.facebook\.react\.uimanager\.DisplayMetricsHolder\nimport com\.th3rdwave\.safeareacontext\.SafeAreaProvider\n/,
     );
   });
 
@@ -61,6 +61,32 @@ describe('withFontScaleForwarded', () => {
     expect(forwarded).toMatch(
       /private fun takeSizeChanges\(\) \{\n\s+val activityConfig = resources\.configuration\n\s+DisplayMetricsHolder\.initDisplayMetrics\(this\)\n/,
     );
+  });
+
+  it("puts the root view in a parent that reads the metrics again before it is measured or laid out, when they no longer match the activity's, and fills them first on a cold start", () => {
+    expect(forwarded).toMatch(
+      /override fun setContentView\(view: View\?\) \{\n\s+super\.setContentView\(\n\s+view\?\.let \{\n\s+MetricsReadFirst\(this\)\.apply \{\n\s+addView\(it, ViewGroup\.LayoutParams\.MATCH_PARENT, ViewGroup\.LayoutParams\.MATCH_PARENT\)/,
+    );
+    expect(forwarded).toMatch(
+      /override fun onMeasure\(widthMeasureSpec: Int, heightMeasureSpec: Int\) \{\n\s+readMetricsIfMoved\(\)\n\s+super\.onMeasure/,
+    );
+    expect(forwarded).toMatch(
+      /override fun onLayout\([^)]*\) \{\n\s+readMetricsIfMoved\(\)\n\s+super\.onLayout/,
+    );
+    expect(forwarded).toMatch(
+      /private fun readMetricsIfMoved\(\) \{\n\s+DisplayMetricsHolder\.initDisplayMetricsIfNotInitialized\(context\)\n\s+val activityMetrics = resources\.displayMetrics\n\s+val reactMetrics = DisplayMetricsHolder\.getScreenDisplayMetrics\(\)/,
+    );
+    expect(forwarded).toMatch(
+      /if \(reactMetrics\.scaledDensity != activityMetrics\.scaledDensity \|\|\n\s+reactMetrics\.densityDpi != activityMetrics\.densityDpi\n\s+\) \{\n\s+DisplayMetricsHolder\.initDisplayMetrics\(context\)/,
+    );
+  });
+
+  it('refuses an activity that already sets its content view', () => {
+    const contented = ACTIVITY.replace(
+      '\n}\n',
+      '\n  override fun setContentView(view: View?) {\n    super.setContentView(view)\n  }\n}\n',
+    );
+    expect(() => withFontScaleForwarded(contented)).toThrow(/already handles/);
   });
 
   it('remembers the scale and density the activity was created with, then listens to the application', () => {
