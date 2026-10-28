@@ -174,6 +174,22 @@ final class SessionTest extends ApiTestCase
     }
 
     #[Test]
+    public function aRefreshHoldingTheChainSeesTheSignOutThatEndedItUnderIt(): void
+    {
+        ['refreshToken' => $token] = $this->signIn('raced@example.com');
+        $loaded = $this->find($token);
+        self::assertNotNull($loaded);
+        $issuer = self::service(TokenIssuer::class);
+
+        $issuer->revokeChain($loaded);
+        self::assertNull($loaded->getRevokedAt(), 'the refresh read its token before the sign-out landed');
+
+        $issuer->holdChain($loaded);
+
+        self::assertNotNull($loaded->getRevokedAt());
+    }
+
+    #[Test]
     public function aRefreshWaitsForTheChainItRotates(): void
     {
         self::assertSame('55P03', $this->whileTheChainIsHeld($this->refresh(...)));
@@ -380,11 +396,13 @@ final class SessionTest extends ApiTestCase
             $request($free);
             self::assertLessThan(300, $this->client->getResponse()->getStatusCode(), 'another session of the account is not held up');
 
-            $request($held);
+            try {
+                $request($held);
+            } catch (DriverException $e) {
+                return $e->getSQLState();
+            }
 
             return null;
-        } catch (DriverException $e) {
-            return $e->getSQLState();
         } finally {
             $elsewhere->rollBack();
             $elsewhere->close();
