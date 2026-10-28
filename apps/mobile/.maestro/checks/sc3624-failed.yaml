@@ -1,0 +1,11 @@
+# sc-3624: ${EV} with the API stopped: Coming up's load failure with Try again and no All dates link.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}
+- extendedWaitUntil:
+    visible:
+      id: 'timeline.comingUp.retry'
+    timeout: 45000
+- assertNotVisible:
+    id: 'timeline.allDates'
+- takeScreenshot: failed
