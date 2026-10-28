@@ -1085,6 +1085,8 @@
     "sectionSignInRules": "Règles de connexion"
   },
   "membersScreen": {
+    "proveOwner_one": "To make somebody an owner of {{organisation}}, confirm it's you. You won't be asked again for a minute.",
+    "proveOwner_other": "To make somebody an owner of {{organisation}}, confirm it's you. You won't be asked again for {{count, number}} minutes.",
     "title": "Membres",
     "loading": "Chargement des membres…",
     "failedLoad": "Impossible de charger les membres. Vérifiez votre connexion et réessayez.",

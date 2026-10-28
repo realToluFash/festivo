@@ -108,7 +108,7 @@ final readonly class MembersController
         ]);
     }
 
-    /** Sending to an address with one pending re-sends it: a new link, and the old one stops working. */
+    /** Sending to an address with one pending re-sends it: a new link, and the old one stops working. Into Owner, `proof` comes from /api/auth/proof. */
     #[Route('/api/orgs/{organisationId}/members/invite', name: 'orgs_members_invite', methods: ['POST'])]
     #[InOrganisation(Permission::MembersManage)]
     public function invite(Request $request, string $organisationId): JsonResponse
@@ -117,9 +117,10 @@ final readonly class MembersController
         $body = Input::body($request, Type\shape([
             'email' => Type\string(),
             'roleId' => Type\string(),
+            'proof' => Type\optional(Type\nullable(Type\string())),
         ]));
 
-        $invitation = $this->invitationSender->invite($organisation, $body['email'], $this->role($organisation, $body['roleId']), $this->user(), $request);
+        $invitation = $this->invitationSender->invite($organisation, $body['email'], $this->role($organisation, $body['roleId']), $this->user(), $request, $body['proof'] ?? null);
 
         return new JsonResponse(
             ['invitation' => MemberSerialiser::invitation($invitation, new DateTimeImmutable())],
@@ -145,15 +146,18 @@ final readonly class MembersController
         return new JsonResponse(['invitation' => MemberSerialiser::invitation($invitation, new DateTimeImmutable())]);
     }
 
-    /** Takes effect on the member's next request: grants are read from the membership every time. */
+    /** Takes effect on the member's next request: grants are read from the membership every time. Into Owner, `proof` comes from /api/auth/proof. */
     #[Route('/api/orgs/{organisationId}/members/{membershipId}', name: 'orgs_members_change_role', methods: ['PATCH'])]
     #[InOrganisation(Permission::MembersManage)]
     public function changeRole(Request $request, string $organisationId, string $membershipId): Response
     {
         $organisation = $this->organisation($organisationId);
-        $body = Input::body($request, Type\shape(['roleId' => Type\string()]));
+        $body = Input::body($request, Type\shape([
+            'roleId' => Type\string(),
+            'proof' => Type\optional(Type\nullable(Type\string())),
+        ]));
         $membership = $this->memberActions->find($organisation, $membershipId, $this->user());
-        $this->memberActions->changeRole($membership, $this->role($organisation, $body['roleId']), $this->user());
+        $this->memberActions->changeRole($membership, $this->role($organisation, $body['roleId']), $this->user(), $body['proof'] ?? null);
 
         return new Response(null, Response::HTTP_NO_CONTENT);
     }

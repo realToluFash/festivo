@@ -1065,6 +1065,8 @@
     "sectionSignInRules": "Sign-in rules"
   },
   "membersScreen": {
+    "proveOwner_one": "To make somebody an owner of {{organisation}}, confirm it's you. You won't be asked again for a minute.",
+    "proveOwner_other": "To make somebody an owner of {{organisation}}, confirm it's you. You won't be asked again for {{count, number}} minutes.",
     "title": "Members",
     "loading": "Loading members…",
     "failedLoad": "We could not load the members. Check your connection and try again.",

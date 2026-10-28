@@ -114,6 +114,7 @@ export function WaysCard({
       'failed' in back ||
       back.purpose.kind === 'signOutOthers' ||
       back.purpose.kind === 'makePrimary' ||
+      back.purpose.kind === 'makeOwner' ||
       back.purpose.kind === 'transfer'
     )
       return;

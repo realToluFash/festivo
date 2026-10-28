@@ -28,6 +28,12 @@ export type ReturnPurpose =
   | { kind: 'signOutOthers' }
   /** Account's "Make primary" (sc-113): the address that becomes the one signing in. */
   | { kind: 'makePrimary'; address: string }
+  /** Members' invitation or role change into Owner (sc-18930): what the form held, to send once back. */
+  | {
+      kind: 'makeOwner';
+      roleId: string;
+      to: { email: string; again: string | null } | { member: string };
+    }
   /** General's Transfer ownership (sc-18959): the organisation, and the member chosen to own it. */
   | { kind: 'transfer'; organisation: string; owner: string };
 
