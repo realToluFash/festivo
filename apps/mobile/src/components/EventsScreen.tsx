@@ -7,13 +7,14 @@ import {
   serverClock,
   withPastPage,
 } from '@soirely/domain';
-import { Redirect, router, useFocusEffect } from 'expo-router';
+import { Redirect, router, useFocusEffect, useNavigation } from 'expo-router';
 import { type RefCallback, useCallback, useEffect, useState } from 'react';
 import { AppState, RefreshControl, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
+import { SHOWN_EVENT } from '../kit/eventDates.ts';
 import { offersDelete } from '../kit/eventDelete.ts';
 import { takeCoverRefused, takeSaved } from '../kit/eventSaved.ts';
 import {
@@ -83,6 +84,13 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     setClosed(back);
   };
   const toList = () => select(null, open == null ? undefined : stepClosed(`row.${open}`));
+  const navigation = useNavigation<{
+    setParams(params: { [SHOWN_EVENT]: string | undefined }): void;
+  }>();
+
+  useEffect(() => {
+    navigation.setParams({ [SHOWN_EVENT]: open ?? undefined });
+  }, [navigation, open]);
 
   // The rows stay in place while they reload; a failed load gives way to loading.
   const reload = useCallback(() => {
