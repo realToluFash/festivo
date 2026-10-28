@@ -210,12 +210,12 @@ export function androidSdk(env = process.env, platform = process.platform, home 
   );
 }
 
-// The system image and the release APK both read this: an APK for another ABI is refused on install.
 // Headless on Linux, the host GPU path goes through X's DRI3 and dumps core where that fails.
 export function emulatorGpu(platform = process.platform, env = process.env) {
   return env.SOIRELY_QA_EMULATOR_GPU || (platform === 'linux' ? 'swangle_indirect' : 'host');
 }
 
+// The system image and the release APK both read this: an APK for another ABI is refused on install.
 export function emulatorAbi(arch = process.arch) {
   return arch === 'arm64' ? 'arm64-v8a' : 'x86_64';
 }
