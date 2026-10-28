@@ -23,6 +23,7 @@ import {
   batchRuns,
   afterRun,
   batchSummary,
+  driverPids,
   bundlerEnv,
   checkId,
   codeStep,
@@ -58,6 +59,7 @@ import {
   MAX_RESUMES,
   renewingSession,
   resumeBatch,
+  runHeld,
   maestroTarget,
   parseTarget,
   passwordAutoFillFiles,
@@ -1361,6 +1363,81 @@ describe('the list a batch ends with', () => {
       '✓ members',
     ]);
   });
+
+  it('says why no check ran when the driver was lost while signing in', () => {
+    expect(
+      batchSummary(['home', 'settings'], {
+        passed: new Set(),
+        begun: [],
+        crashed: [],
+        unstarted: new Map([
+          ['home', 'stalled'],
+          ['settings', 'ended'],
+        ]),
+      }),
+    ).toEqual([
+      "✗ home: not run: Maestro's driver stopped answering before the first check, while signing in",
+      '✗ settings: not run: Maestro ended before the first check, while signing in (its output says why)',
+    ]);
+  });
+});
+
+describe('the driver a frozen run leaves on the simulator', () => {
+  it('is found by its pid, and no other app is', () => {
+    expect(
+      driverPids(
+        '38266\t0\tUIKitApplication:dev.mobile.maestro-driver-iosUITests.xctrunner[2a09][rb-legacy]\n' +
+          '36010\t0\tUIKitApplication:host.exp.Exponent[7454][rb-legacy]\n' +
+          '-\t-9\tUIKitApplication:dev.mobile.maestro-driver-iosUITests.xctrunner[1b02][rb-legacy]',
+      ),
+    ).toEqual([38266]);
+  });
+});
+
+describe('one Maestro run of a batch', () => {
+  const held = ['home', 'settings'].map((check) => ({ check, language: 'any' }));
+  const runOf = ({ checks, stalls }) => {
+    const begun = [];
+    const stops = [];
+    const unstarted = new Map();
+    const options = {
+      begun,
+      passed: new Set(),
+      crashed: [],
+      unstarted,
+      heard: { at: 0 },
+      device: 'SIM-1',
+      onAndroid: false,
+      run: async (stall) => {
+        begun.push(...checks);
+        stall.stalled = stalls;
+      },
+      stop: (device, onAndroid) => stops.push({ device, onAndroid, begun: begun.length }),
+    };
+    return { options, stops, unstarted };
+  };
+
+  it('stops the driver of a run the watchdog stopped, once and on its device, before resuming', async () => {
+    const { options, stops } = runOf({ checks: ['home'], stalls: true });
+    expect(await runHeld(held, options)).toEqual({ crashed: 'home', rest: held.slice(1) });
+    expect(stops).toEqual([{ device: 'SIM-1', onAndroid: false, begun: 1 }]);
+  });
+
+  it('leaves the driver of a run that ended on its own', async () => {
+    const { options, stops } = runOf({ checks: ['home'], stalls: false });
+    await runHeld(held, options);
+    expect(stops).toEqual([]);
+  });
+
+  it('says whether a run lost before its first check stalled or ended', async () => {
+    const stalled = runOf({ checks: [], stalls: true });
+    expect(await runHeld(held, stalled.options)).toEqual({ crashed: null, rest: held });
+    expect([...stalled.unstarted.values()]).toEqual(['stalled', 'stalled']);
+
+    const ended = runOf({ checks: [], stalls: false });
+    expect(await runHeld(held, ended.options)).toEqual({ crashed: null, rest: [] });
+    expect([...ended.unstarted.values()]).toEqual(['ended', 'ended']);
+  });
 });
 
 describe('what a Maestro run that lost its driver leaves to resume', () => {
@@ -1416,6 +1493,13 @@ describe('what a Maestro run that lost its driver leaves to resume', () => {
         stalled: true,
       }),
     ).toEqual({ crashed: 'members', rest: [] });
+  });
+
+  it('resumes every check of a run the watchdog stopped before its first', () => {
+    expect(afterRun(runs, { begun: [], from: 0, passed: new Set(), stalled: true })).toEqual({
+      crashed: null,
+      rest: runs,
+    });
   });
 
   it('stops resuming after the cap when every resume crashes on the same check', async () => {

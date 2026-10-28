@@ -1862,6 +1862,34 @@ export function expoGoRunning(launchctlList) {
   ).test(launchctlList);
 }
 
+const IOS_DRIVER = 'dev.mobile.maestro-driver-iosUITests.xctrunner';
+const ANDROID_DRIVERS = ['dev.mobile.maestro', 'dev.mobile.maestro.test'];
+
+export function driverPids(launchctlList) {
+  const entry = new RegExp(
+    `^(\\d+)\\s+\\S+\\s+UIKitApplication:${IOS_DRIVER.replaceAll('.', '\\.')}\\[`,
+    'gm',
+  );
+  return [...launchctlList.matchAll(entry)].map(([, pid]) => Number(pid));
+}
+
+// A frozen driver outlives the Maestro the watchdog stopped, and the next run waits on it.
+function stopDriver(device, onAndroid) {
+  if (onAndroid) {
+    const stopped = ANDROID_DRIVERS.map(
+      (id) => adbOut(androidTools(), ['shell', 'am', 'force-stop', id]) !== null,
+    );
+    if (!stopped.every(Boolean)) console.error(`\nCould not stop Maestro's driver on ${device}`);
+    return;
+  }
+  const pids = driverPids(capture('xcrun', ['simctl', 'spawn', device, 'launchctl', 'list']) ?? '');
+  if (!pids.length) console.error(`\nNo Maestro driver found on ${device} to stop`);
+  for (const pid of pids) {
+    if (!run('kill', ['-KILL', String(pid)], { optional: true }))
+      console.error(`\nCould not stop Maestro's driver (pid ${pid}) on ${device}`);
+  }
+}
+
 function appRunning(device, onAndroid) {
   if (onAndroid) return Boolean(adbOut(androidTools(), ['shell', 'pidof', EXPO_GO_ANDROID]));
   return expoGoRunning(capture('xcrun', ['simctl', 'spawn', device, 'launchctl', 'list']) ?? '');
@@ -2081,6 +2109,7 @@ async function batch(args) {
   const begun = [];
   const heard = { at: Date.now() };
   const crashed = [];
+  const unstarted = new Map();
   const setLocale = async (locale) => {
     await apiState.move('up');
     await signedIn('/api/auth/locale', { method: 'PUT', body: { locale } });
@@ -2108,29 +2137,33 @@ async function batch(args) {
   };
   const test = async (flow, held) => {
     await apiState.move('up');
-    const from = begun.length;
-    heard.at = Date.now();
-    const stall = { ms: STALL_MS, heard };
-    await runAsync(
-      maestroBin() ?? 'maestro',
-      [
-        ...maestroTarget(device, onAndroid, CONFIG.driverPort),
-        'test',
-        '--debug-output',
-        out,
-        ...Object.entries(env).flatMap(([key, value]) => ['-e', `${key}=${value}`]),
-        flow,
-      ],
-      {
-        cwd: root,
-        env: onAndroid ? androidTools().env : {},
-        timeoutMs: runBudgetMs(held.length),
-        stall,
-      },
-    );
-    const after = afterRun(held, { begun, from, passed, stalled: stall.stalled });
-    if (after.crashed) crashed.push(after.crashed);
-    return after;
+    return runHeld(held, {
+      begun,
+      passed,
+      crashed,
+      unstarted,
+      heard,
+      device,
+      onAndroid,
+      run: (stall) =>
+        runAsync(
+          maestroBin() ?? 'maestro',
+          [
+            ...maestroTarget(device, onAndroid, CONFIG.driverPort),
+            'test',
+            '--debug-output',
+            out,
+            ...Object.entries(env).flatMap(([key, value]) => ['-e', `${key}=${value}`]),
+            flow,
+          ],
+          {
+            cwd: root,
+            env: onAndroid ? androidTools().env : {},
+            timeoutMs: runBudgetMs(held.length),
+            stall,
+          },
+        ),
+    });
   };
 
   const started = Date.now();
@@ -2172,7 +2205,8 @@ async function batch(args) {
     `\nBatch ${name}${cold ? ', each check alone and cold' : ''}: ` +
       `${ids.length - failed.length} passed, ${failed.length} failed, in ${Math.floor(seconds / 60)}m${seconds % 60}s`,
   );
-  for (const line of batchSummary(ids, { passed, begun, crashed })) console.log(`  ${line}`);
+  for (const line of batchSummary(ids, { passed, begun, crashed, unstarted }))
+    console.log(`  ${line}`);
   console.log(`Evidence in ${out}`);
   if (failed.length) {
     const failures = runs.filter(({ check, language }) => !passed.has(checkId(check, language)));
@@ -2181,6 +2215,24 @@ async function batch(args) {
       console.log(`  ${hint}`);
     process.exitCode = 1;
   }
+}
+
+export async function runHeld(
+  held,
+  { begun, passed, crashed, unstarted, heard, device, onAndroid, run, stop = stopDriver },
+) {
+  const from = begun.length;
+  heard.at = Date.now();
+  const stall = { ms: STALL_MS, heard };
+  await run(stall);
+  if (stall.stalled) stop(device, onAndroid);
+  const after = afterRun(held, { begun, from, passed, stalled: stall.stalled });
+  if (after.crashed) crashed.push(after.crashed);
+  if (begun.length === from) {
+    for (const { check, language } of held)
+      unstarted.set(checkId(check, language), stall.stalled ? 'stalled' : 'ended');
+  }
+  return after;
 }
 
 export const MAX_RESUMES = 3;
@@ -2192,20 +2244,25 @@ export async function resumeBatch(rest, resume) {
 
 // Checks are optional, so a run that ends before the last check it held, or that the watchdog
 // stopped, lost its driver. It blames the last check it began if that one did not pass, and
-// resumes past it.
+// resumes past it. A run the watchdog stopped before its first check resumes it all.
 export function afterRun(held, { begun, from, passed, stalled = false }) {
   const current = begun.slice(from).at(-1);
   const rest = held.filter(({ check, language }) => !begun.includes(checkId(check, language)));
-  if (!current) return { crashed: null, rest: [] };
+  if (!current) return { crashed: null, rest: stalled ? rest : [] };
   const lost = rest.length > 0 || stalled;
   return { crashed: lost && !passed.has(current) ? current : null, rest };
 }
 
-export function batchSummary(ids, { passed, begun, crashed }) {
+const UNSTARTED = {
+  stalled: "not run: Maestro's driver stopped answering before the first check, while signing in",
+  ended: 'not run: Maestro ended before the first check, while signing in (its output says why)',
+};
+
+export function batchSummary(ids, { passed, begun, crashed, unstarted = new Map() }) {
   return ids.map((id) => {
     if (passed.has(id)) return `✓ ${id}`;
     if (crashed.includes(id)) return `✗ ${id}: Maestro's driver stopped answering (a driver crash)`;
-    if (!begun.includes(id)) return `✗ ${id}: not run`;
+    if (!begun.includes(id)) return `✗ ${id}: ${UNSTARTED[unstarted.get(id)] ?? 'not run'}`;
     return `✗ ${id}`;
   });
 }
