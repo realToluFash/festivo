@@ -37,6 +37,6 @@ appId: host.exp.Exponent
       ORG: ${EMPTY_ORG}
 - openLink: ${METRO_URL}/--/events
 - extendedWaitUntil:
-    visible: '{{t:eventsScreen.noneTitle}}'
+    visible: '{{t:eventsScreen.firstRunTitle}}'
     timeout: 20000
 - takeScreenshot: empty
