@@ -85,6 +85,8 @@ import {
   simulatorFor,
   TESTERS,
   testerOf,
+  experienceResumed,
+  openUntilShown,
 } from './qa-env.mjs';
 
 // A port left at its development default is two stacks fighting over it, and a
@@ -636,6 +638,68 @@ describe('a flow on Android', () => {
       "'exp://127.0.0.1:28081/--/it'\\''s'",
       'host.exp.exponent',
     ]);
+  });
+
+  it('tells an open experience from Expo Go on its Home or launcher', () => {
+    const resumed = (activity) =>
+      `  ResumedActivity: ActivityRecord{2af8410 u0 ${activity} t2150}\n` +
+      `  topResumedActivity=ActivityRecord{874cd8c u0 ${activity} t2150}\n`;
+    expect(experienceResumed(resumed('host.exp.exponent/.experience.ExperienceActivity'))).toBe(
+      true,
+    );
+    expect(
+      experienceResumed(
+        '    mResumedActivity: ActivityRecord{874cd8c u0 host.exp.exponent/.experience.ExperienceActivity t2150}\n',
+      ),
+    ).toBe(true);
+    expect(experienceResumed(resumed('host.exp.exponent/.experience.HomeActivity'))).toBe(false);
+    expect(experienceResumed(resumed('host.exp.exponent/.LauncherActivity'))).toBe(false);
+    expect(
+      experienceResumed(
+        '  * Hist  #0: ActivityRecord{874cd8c u0 host.exp.exponent/.experience.ExperienceActivity t2150}\n' +
+          resumed('host.exp.exponent/.experience.HomeActivity'),
+      ),
+    ).toBe(false);
+    expect(experienceResumed('')).toBe(false);
+  });
+
+  it('sends a link Expo Go dropped again, and an opened one only once', async () => {
+    const opening = (shownAfter) => {
+      const sent = [];
+      let checked = 0;
+      return {
+        sent,
+        options: {
+          send: () => sent.push(checked),
+          shown: () => ++checked > shownAfter,
+          wait: async () => {},
+        },
+      };
+    };
+
+    const opened = opening(0);
+    expect(await openUntilShown(opened.options)).toBe(1);
+    expect(opened.sent).toEqual([0]);
+
+    const dropped = opening(7);
+    expect(await openUntilShown(dropped.options)).toBe(2);
+    expect(dropped.sent).toEqual([0, 5]);
+
+    const never = opening(Infinity);
+    expect(await openUntilShown(never.options)).toBe(3);
+    expect(never.sent).toEqual([0, 5, 10]);
+  });
+
+  it('stops at the first send am start refuses', async () => {
+    await expect(
+      openUntilShown({
+        send: () => {
+          throw new Error('could not open exp://x: Error: Activity not started');
+        },
+        shown: () => false,
+        wait: async () => {},
+      }),
+    ).rejects.toThrow(/could not open/);
   });
 
   it('brings the flows it runs, rewritten, where its paths expect them', () => {

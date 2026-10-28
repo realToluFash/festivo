@@ -398,10 +398,38 @@ export function openIntent(url) {
   ];
 }
 
+export function experienceResumed(activities) {
+  const app = EXPO_GO_ANDROID.replaceAll('.', '\\.');
+  return new RegExp(
+    `^\\s*(?:topResumedActivity|mResumedActivity)[=:].*\\s${app}/(?:${app})?\\.experience\\.ExperienceActivity\\s`,
+    'm',
+  ).test(activities);
+}
+
+// Expo Go drops a link sent before its kernel has loaded, as it is just after launchApp
+// cold-starts it, and stays on Home (sc-18603). Under the helper's ten seconds in all.
+export async function openUntilShown({ send, shown, wait = pause, sends = 3, checks = 5 }) {
+  for (let sent = 0; sent < sends; sent++) {
+    send();
+    for (let check = 0; check < checks; check++) {
+      await wait(500);
+      if (shown()) return sent + 1;
+    }
+  }
+  return sends;
+}
+
 // am start says Error on stdout and still exits 0.
 function openOnEmulator(url) {
-  const said = adbOut(androidTools(), openIntent(url));
-  if (said === null || /^Error/m.test(said)) throw new Error(`could not open ${url}: ${said}`);
+  const tools = androidTools();
+  return openUntilShown({
+    send: () => {
+      const said = adbOut(tools, openIntent(url));
+      if (said === null || /^Error/m.test(said)) throw new Error(`could not open ${url}: ${said}`);
+    },
+    shown: () =>
+      experienceResumed(adbOut(tools, ['shell', 'dumpsys', 'activity', 'activities']) ?? ''),
+  });
 }
 
 export function branchForStory(id, remoteBranches) {
@@ -1899,7 +1927,7 @@ export function startHelper({
         const path = url.searchParams.get('path') ?? '';
         if (path && !path.startsWith('/'))
           throw new Error(`open what? /open?path=/--/… gave ${path}`);
-        open(`${CONFIG.urls.metro}${path}`);
+        await open(`${CONFIG.urls.metro}${path}`);
         return reply(200, { opened: path });
       }
       if (url.pathname === '/passed') {
