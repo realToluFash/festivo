@@ -23,6 +23,7 @@ export function Notice({
   announce = false,
   answer,
   takesFocus = false,
+  readMs,
   wordsRef,
 }: {
   tone: NoticeTone;
@@ -41,6 +42,8 @@ export function Notice({
   answer?: unknown;
   /** The answer takes screen reader focus to the words, which focus reads, in place of reading them out (sc-11032). */
   takesFocus?: boolean;
+  /** How long after the answer focus moves to the words, as `useFocusOnAnswer` takes it. */
+  readMs?: number;
   /** Its words as one item, without the action, for screen reader focus to be moved to. */
   wordsRef?: Ref<View> | undefined;
 }) {
@@ -51,7 +54,7 @@ export function Notice({
       : null,
     { answer },
   );
-  const { shown, read } = useFocusOnAnswer(takesFocus ? answer : undefined);
+  const { shown, read } = useFocusOnAnswer(takesFocus ? answer : undefined, undefined, readMs);
   const wordsAsOne = announce || takesFocus || wordsRef != null;
   const surface = {
     quiet: styles.quiet,
