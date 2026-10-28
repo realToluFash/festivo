@@ -1705,8 +1705,8 @@ function startHelper({ email, secret, token, passed, begun, heard, device, onAnd
   });
 }
 
-// Maestro hangs rather than exits when its driver dies, so a run gets a budget, and a batch
-// whose flows stop calling the harness for STALL_MS is stopped sooner.
+// A dead driver either ends Maestro at once or hangs it. For the hang a run gets a budget, and a
+// batch whose flows stop calling the harness for STALL_MS is stopped sooner.
 export const runBudgetMs = (runs) => (5 + 2 * runs) * 60_000;
 export const STALL_MS = 5 * 60_000;
 
@@ -1805,7 +1805,7 @@ async function batch(args) {
     ORG_NAME: ACCOUNT_ORGANISATION,
     ...rest,
   };
-  const test = async (flow, runs) => {
+  const test = async (flow, held) => {
     const from = begun.length;
     heard.at = Date.now();
     const stall = { ms: STALL_MS, heard };
@@ -1819,14 +1819,14 @@ async function batch(args) {
         ...Object.entries(env).flatMap(([key, value]) => ['-e', `${key}=${value}`]),
         flow,
       ],
-      { cwd: root, env: onAndroid ? androidTools().env : {}, timeoutMs: runBudgetMs(runs), stall },
+      {
+        cwd: root,
+        env: onAndroid ? androidTools().env : {},
+        timeoutMs: runBudgetMs(held.length),
+        stall,
+      },
     );
-    const after = afterRun(batchRuns(checks, languages), {
-      begun,
-      from,
-      passed,
-      stalled: stall.stalled,
-    });
+    const after = afterRun(held, { begun, from, passed, stalled: stall.stalled });
     if (after.crashed) crashed.push(after.crashed);
     return after;
   };
@@ -1838,13 +1838,13 @@ async function batch(args) {
         for (const check of checks) {
           if (named)
             await api('/api/auth/locale', { method: 'PUT', token, body: { locale: language } });
-          await test(join(flows, `_cold.${checkId(check, language)}.yaml`), 1);
+          await test(join(flows, `_cold.${checkId(check, language)}.yaml`), [{ check, language }]);
         }
       }
     } else {
       if (named)
         await api('/api/auth/locale', { method: 'PUT', token, body: { locale: languages[0] } });
-      const first = await test(join(flows, '_batch.yaml'), checks.length * languages.length);
+      const first = await test(join(flows, '_batch.yaml'), batchRuns(checks, languages));
       // After a driver crash the checks it never reached run in a fresh Maestro.
       await resumeBatch(first.rest, async (rest, attempt) => {
         const flow = join(flows, `_rest.${attempt}.yaml`);
@@ -1856,7 +1856,7 @@ async function batch(args) {
             token,
             body: { locale: rest[0].language },
           });
-        return test(flow, rest.length);
+        return test(flow, rest);
       });
     }
   } finally {
@@ -1893,12 +1893,15 @@ export async function resumeBatch(rest, resume) {
     ({ rest } = await resume(rest, attempt));
 }
 
-// A run that stalls blames the last check it began itself, and is resumed only past that check.
-export function afterRun(runs, { begun, from, passed, stalled }) {
+// Checks are optional, so a run that ends before the last check it held, or that the watchdog
+// stopped, lost its driver. It blames the last check it began if that one did not pass, and
+// resumes past it.
+export function afterRun(held, { begun, from, passed, stalled = false }) {
   const current = begun.slice(from).at(-1);
-  if (!stalled || !current || passed.has(current)) return { crashed: null, rest: [] };
-  const rest = runs.filter(({ check, language }) => !begun.includes(checkId(check, language)));
-  return { crashed: current, rest };
+  const rest = held.filter(({ check, language }) => !begun.includes(checkId(check, language)));
+  if (!current) return { crashed: null, rest: [] };
+  const lost = rest.length > 0 || stalled;
+  return { crashed: lost && !passed.has(current) ? current : null, rest };
 }
 
 export function batchSummary(ids, { passed, begun, crashed }) {
