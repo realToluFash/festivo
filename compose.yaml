@@ -161,6 +161,7 @@ services:
         condition: service_healthy
       mercure:
         condition: service_healthy
+    restart: unless-stopped
 
   # Sends the notifications that are due (sc-104). It waits for the schema
   # rather than crash-looping on a database not yet migrated, so the stack
