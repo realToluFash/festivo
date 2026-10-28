@@ -15,14 +15,14 @@ import { tokens } from '../../../src/theme/tokens.ts';
 export default function EventDates() {
   const { t } = useTranslation();
   const { kind } = useLayout();
-  const { id = '', from } = useLocalSearchParams<{ id?: string; from?: string }>();
+  const { id = '' } = useLocalSearchParams<{ id?: string }>();
   const navigation = useNavigation();
   const now = useServerNow();
   const phone = kind === 'phone';
   const back = () => {
     const { routes, index } = navigation.getState() ?? { routes: [], index: 0 };
 
-    if (upFromDates(routes, index, from) === 'back') router.back();
+    if (upFromDates(routes, index, id) === 'back') router.back();
     else router.replace(`/events/${encodeURIComponent(id)}`);
   };
 

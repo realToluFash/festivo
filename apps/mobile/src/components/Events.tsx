@@ -6,13 +6,12 @@ import {
   formatEventRange,
   shownPhase,
 } from '@soirely/domain';
-import { router, useRoute } from 'expo-router';
+import { router } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
-import { eventDatesHref } from '../kit/eventDates.ts';
 import { PHASE_WORD } from '../kit/makeLive.ts';
 import { useLoadedAt, useServerNow } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
@@ -186,7 +185,6 @@ export function EventPage({
   const { t } = useTranslation();
   const now = useServerNow();
   const phase = useShownPhase(event, now);
-  const route = useRoute();
   const said = useRef({ id: event.id, phase });
 
   // A change of phase on an open page is said politely, never on arrival (WCAG 2.2 §4.1.3).
@@ -253,7 +251,7 @@ export function EventPage({
         kind={kind}
         event={event}
         now={now}
-        onAllDates={() => router.push(eventDatesHref(event.id, route.key))}
+        onAllDates={() => router.push(`/events/${encodeURIComponent(event.id)}/dates`)}
       />
     </View>
   );

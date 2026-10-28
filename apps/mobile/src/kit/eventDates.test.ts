@@ -1,31 +1,39 @@
 import { describe, expect, it } from 'vitest';
 
-import { eventDatesHref, upFromDates } from './eventDates.ts';
+import { SHOWN_EVENT, upFromDates } from './eventDates.ts';
 
-const stack = (...keys: string[]) => keys.map((key) => ({ key }));
+const home = { params: {} };
+const showing = (eventId: string | undefined) => ({ params: { [SHOWN_EVENT]: eventId } });
+const dates = (eventId: string) => ({ params: { id: eventId } });
 
 describe('‹ Event on All dates (sc-18776)', () => {
   it('goes back to the event whose Coming up opened it', () => {
-    expect(upFromDates(stack('home', 'events-1', 'dates-1'), 2, 'events-1')).toBe('back');
+    expect(upFromDates([home, showing('ev-1'), dates('ev-1')], 2, 'ev-1')).toBe('back');
+  });
+
+  it('goes back when a link opened it over the same event', () => {
+    const linkedEvent = { params: { id: 'ev-1', [SHOWN_EVENT]: 'ev-1' } };
+
+    expect(upFromDates([home, linkedEvent, dates('ev-1')], 2, 'ev-1')).toBe('back');
   });
 
   it('opens the event when a link opened it over Home', () => {
-    expect(upFromDates(stack('home', 'dates-1'), 1, undefined)).toBe('open');
+    expect(upFromDates([home, dates('ev-1')], 1, 'ev-1')).toBe('open');
   });
 
   it('opens the event when a link opened it over a different event', () => {
-    expect(upFromDates(stack('home', 'events-2', 'dates-1'), 2, undefined)).toBe('open');
+    expect(upFromDates([home, showing('ev-2'), dates('ev-1')], 2, 'ev-1')).toBe('open');
+  });
+
+  it('opens the event when Events behind it shows only the list', () => {
+    expect(upFromDates([home, showing(undefined), dates('ev-1')], 2, 'ev-1')).toBe('open');
   });
 
   it('opens the event when nothing is behind it', () => {
-    expect(upFromDates(stack('dates-1'), 0, undefined)).toBe('open');
+    expect(upFromDates([dates('ev-1')], 0, 'ev-1')).toBe('open');
   });
 
-  it('opens the event when its opener is no longer directly behind', () => {
-    expect(upFromDates(stack('events-1', 'home', 'dates-1'), 2, 'events-1')).toBe('open');
-  });
-
-  it('carries the opener in the link', () => {
-    expect(eventDatesHref('ev 1', 'events-1')).toBe('/events/ev%201/dates?from=events-1');
+  it('opens the event when it is shown further back, not directly behind', () => {
+    expect(upFromDates([showing('ev-1'), home, dates('ev-1')], 2, 'ev-1')).toBe('open');
   });
 });

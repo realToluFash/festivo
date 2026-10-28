@@ -1,15 +1,20 @@
 export type UpFromDates = 'back' | 'open';
 
-/** All dates for an event, carrying the key of the screen whose Coming up opened it. */
-export function eventDatesHref(eventId: string, openedFrom: string): string {
-  return `/events/${encodeURIComponent(eventId)}/dates?from=${encodeURIComponent(openedFrom)}`;
-}
+/** The route param through which Events says which event it shows, for All dates to read. */
+export const SHOWN_EVENT = 'shown';
 
-/** ‹ Event is the way up, not history (sc-18776): back only to the screen that opened All dates, when it is directly behind; otherwise the event is opened in All dates' place. */
+/** ‹ Event is the way up, not history (sc-18776): back only when the screen directly behind shows this event; otherwise the event is opened in All dates' place. */
 export function upFromDates(
-  routes: readonly { key: string }[],
+  routes: readonly { params?: unknown }[],
   index: number,
-  openedFrom: string | undefined,
+  eventId: string,
 ): UpFromDates {
-  return openedFrom != null && index > 0 && routes[index - 1]?.key === openedFrom ? 'back' : 'open';
+  const behind = index > 0 ? routes[index - 1]?.params : undefined;
+
+  return typeof behind === 'object' &&
+    behind != null &&
+    SHOWN_EVENT in behind &&
+    behind[SHOWN_EVENT] === eventId
+    ? 'back'
+    : 'open';
 }
