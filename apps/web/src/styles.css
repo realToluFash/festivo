@@ -4397,11 +4397,16 @@ button.members-row {
   gap: var(--spaceSm) var(--spaceMd);
 }
 
+/* While the dates fail there is no All dates link, but its box stays, so the head keeps its height in every locale. */
+.coming-up-link-held {
+  visibility: hidden;
+}
+
 /* Held at the height of the event's own two milestones, so the panels below do not move between states. */
 .coming-up-rows {
   display: flex;
   flex-direction: column;
-  min-height: 140px;
+  min-height: 148px;
 }
 
 .timeline-list {
@@ -4547,7 +4552,7 @@ button.members-row {
 
 @media (width <= 40rem) {
   .coming-up-rows {
-    min-height: 178px;
+    min-height: 179px;
   }
 
   .timeline-failed .button {

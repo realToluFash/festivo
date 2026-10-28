@@ -85,13 +85,18 @@ export function ComingUp({ event, now: tick }: { event: OrganisationEvent; now: 
         <h2 id="coming-up-title" ref={heading} tabIndex={-1}>
           {t('timeline.comingUp')}
         </h2>
-        {load.kind === 'loaded' && (
+        {load.kind === 'failed' ? (
+          <span className="link-button coming-up-link-held" aria-hidden="true">
+            {t('timeline.allDates')}
+          </span>
+        ) : (
           <Link className="link-button" to={`/app/events/${encodeURIComponent(event.id)}/dates`}>
             {t('timeline.allDates')}
           </Link>
         )}
       </div>
-      <div className="coming-up-rows" aria-busy={load.kind === 'loading'}>
+      <div className="coming-up-rows">
+        {load.kind === 'loading' && <DatesLoading />}
         {load.kind === 'failed' && <DatesFailed announced={retried} onRetry={retry} />}
         {load.kind === 'loaded' && shown.length === 0 && (
           <p className="timeline-inset timeline-finished">
@@ -134,7 +139,7 @@ export function AllDates({
 
   return (
     <>
-      {load.kind === 'loading' && <p className="muted">{t('timeline.loading')}</p>}
+      {load.kind === 'loading' && <DatesLoading />}
       {load.kind === 'failed' && <DatesFailed announced={retried} onRetry={retry} />}
       {load.kind === 'loaded' && (
         <>
@@ -163,6 +168,17 @@ export function AllDates({
         </>
       )}
     </>
+  );
+}
+
+function DatesLoading() {
+  const { t } = useTranslation();
+
+  return (
+    <p className="timeline-inset" role="status">
+      <span className="pending-spinner" aria-hidden="true" />
+      {t('timeline.loading')}
+    </p>
   );
 }
 

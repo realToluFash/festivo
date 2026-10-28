@@ -10,7 +10,7 @@ import {
 } from '@soirely/domain';
 import { type EventStatus, type OrganisationEvent } from '@soirely/api-client';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -101,7 +101,13 @@ export function ComingUp({
         <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
           {t('timeline.comingUp')}
         </Text>
-        {load.kind === 'loaded' && (
+        {load.kind === 'failed' ? (
+          <View style={styles.linkHeld} {...HIDDEN}>
+            <Text size={tokens.typeButton.size} weight="semibold">
+              {t('timeline.allDates')}
+            </Text>
+          </View>
+        ) : (
           <QuietButton
             label={t('timeline.allDates')}
             onPress={onAllDates}
@@ -110,6 +116,7 @@ export function ComingUp({
         )}
       </View>
       <View style={kind === 'phone' ? styles.rowsPhone : styles.rows}>
+        {load.kind === 'loading' && <DatesLoading testID="timeline.comingUp.loading" />}
         {load.kind === 'failed' && (
           <DatesFailed announced={retried} onRetry={retry} testID="timeline.comingUp.retry" />
         )}
@@ -154,11 +161,7 @@ export function AllDates({
 
   return (
     <View style={cardFrame(kind)} testID="timeline.allDates.page">
-      {load.kind === 'loading' && (
-        <Text size={tokens.typeBodyPhone.size} muted>
-          {t('timeline.loading')}
-        </Text>
-      )}
+      {load.kind === 'loading' && <DatesLoading testID="timeline.allDates.loading" />}
       {load.kind === 'failed' && (
         <DatesFailed announced={retried} onRetry={retry} testID="timeline.allDates.retry" />
       )}
@@ -191,6 +194,19 @@ export function AllDates({
           </View>
         </>
       )}
+    </View>
+  );
+}
+
+function DatesLoading({ testID }: { testID: string }) {
+  const { t } = useTranslation();
+
+  return (
+    <View style={styles.inset} testID={testID}>
+      <ActivityIndicator color={tokens.colorAccent} {...HIDDEN} />
+      <Text size={tokens.typeBodyPhone.size} muted style={styles.insetWords}>
+        {t('timeline.loading')}
+      </Text>
     </View>
   );
 }
@@ -304,6 +320,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: tokens.spaceSm,
   },
+  // While the dates fail there is no All dates button, but its box stays, so the head keeps its height.
+  linkHeld: { minHeight: tokens.sizeHit, justifyContent: 'center', opacity: 0 },
   // Held at the height of the event's own two milestones, so the panels below do not move between states.
   rows: { minHeight: 140 },
   rowsPhone: { minHeight: 178 },
