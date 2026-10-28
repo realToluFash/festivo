@@ -29,15 +29,8 @@ final class WorkerStopTest extends MessagingTestCase
         // The stack's notification-worker beats on the default file, which would say this worker is polling before it is.
         $heartbeat = $root . '/var/notifications-worker-' . SecureRandom\string(12) . '.heartbeat';
         $worker = self::start($heartbeat, []);
-        $deadline = \microtime(true) + 30;
-
-        do {
-            Async\sleep(Duration::milliseconds(200));
-            \clearstatcache();
-        } while (\microtime(true) < $deadline && \proc_get_status($worker)['running'] && !\file_exists($heartbeat));
-
+        $status = self::await($worker, 200, static fn (): bool => \file_exists($heartbeat));
         $polling = \file_exists($heartbeat);
-        $status = \proc_get_status($worker);
 
         if (!$status['running']) {
             \proc_close($worker);
@@ -79,14 +72,7 @@ final class WorkerStopTest extends MessagingTestCase
 
         try {
             $worker = self::start($heartbeat, [RecordingEmailSender::GATE => $gate]);
-            $deadline = \microtime(true) + 30;
-
-            do {
-                Async\sleep(Duration::milliseconds(20));
-                \clearstatcache();
-            } while (\microtime(true) < $deadline && \proc_get_status($worker)['running'] && !\file_exists($gate . '.called'));
-
-            $status = \proc_get_status($worker);
+            $status = self::await($worker, 20, static fn (): bool => \file_exists($gate . '.called'));
 
             if (!$status['running']) {
                 \proc_close($worker);
@@ -165,6 +151,27 @@ final class WorkerStopTest extends MessagingTestCase
         self::assertNotFalse($worker);
 
         return $worker;
+    }
+
+    /**
+     * PHP keeps only the exit code after the first call that sees the child gone, so the status is that call's.
+     *
+     * @param resource         $worker
+     * @param callable(): bool $ready
+     *
+     * @return array{running: bool, exitcode: int, signaled: bool, termsig: int, ...}
+     */
+    private static function await(mixed $worker, int $milliseconds, callable $ready): array
+    {
+        $deadline = \microtime(true) + 30;
+
+        do {
+            Async\sleep(Duration::milliseconds($milliseconds));
+            \clearstatcache();
+            $status = \proc_get_status($worker);
+        } while (\microtime(true) < $deadline && $status['running'] && !$ready());
+
+        return $status;
     }
 
     /**
