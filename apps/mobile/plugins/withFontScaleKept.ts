@@ -137,13 +137,14 @@ const OVERRIDE = `
   }
 `;
 
-const SIZE_CHANGES = ['fontScale', 'density'];
+// Android's own text views draw bold text again on the change, and React Native's text ignores the setting, so a weight change needs nothing laid out.
+const TEXT_CHANGES = ['fontScale', 'density', 'fontWeightAdjustment'];
 
-/** The activity's configChanges with font size and display size among them, so Android hands either change to the app instead of recreating it. */
-export function withSizeChangesHandled(configChanges: string | undefined): string {
+/** The activity's configChanges with font size, display size and bold text among them, so Android hands each change to the app instead of recreating it. */
+export function withTextChangesHandled(configChanges: string | undefined): string {
   const changes = (configChanges ?? '').split('|').filter(Boolean);
 
-  return [...changes, ...SIZE_CHANGES.filter((change) => !changes.includes(change))].join('|');
+  return [...changes, ...TEXT_CHANGES.filter((change) => !changes.includes(change))].join('|');
 }
 
 /** MainActivity.kt, passing a configuration change on to JavaScript at once. */
@@ -162,11 +163,11 @@ export function withFontScaleForwarded(source: string): string {
     .replace(/\n}\s*$/, `\n${OVERRIDE}}\n`);
 }
 
-/** Android keeps the open screen through a font-size or display-size change, as iOS does through a font-size change, rather than starting the app over. */
+/** Android keeps the open screen through a font-size, display-size or bold-text change, as iOS does through a font-size change, rather than starting the app over. */
 export const withFontScaleKept: ConfigPlugin = (config) => {
   config = withAndroidManifest(config, (manifest) => {
     const activity = AndroidConfig.Manifest.getMainActivityOrThrow(manifest.modResults);
-    activity.$['android:configChanges'] = withSizeChangesHandled(
+    activity.$['android:configChanges'] = withTextChangesHandled(
       activity.$['android:configChanges'],
     );
 
