@@ -1,0 +1,17 @@
+# Settings > Organisation, read-only under both rules for a role that could change the details: Google or Apple first, then two-factor, each with its link.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible: '{{t:orgGeneral.intro}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'organisation.turnOn'
+    timeout: 20000
+- assertVisible:
+    id: 'organisation.link'
+- takeScreenshot: sc16265-both-lines
+- assertNotVisible:
+    id: 'organisation.save'
+- assertNotVisible: 'Your role.*'
