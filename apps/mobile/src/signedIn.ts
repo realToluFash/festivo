@@ -17,6 +17,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 
 import { api } from './api.ts';
 import { currentLocale } from './i18n/index.ts';
+import { leaveThen } from './leaveHeld.ts';
 import { tokens } from './tokens.ts';
 
 const REMEMBERED = 'soirely.organisation';
@@ -157,17 +158,6 @@ export function rememberOrganisation(id: string): Promise<void> {
   return AsyncStorage.setItem(REMEMBERED, id).catch(() => {});
 }
 
-let switchHeld: ((go: () => void) => void) | null = null;
-
-/** A screen with unsaved work asks before the organisation changes under it, and calls `go` to switch anyway. */
-export function holdSwitches(ask: (go: () => void) => void): () => void {
-  switchHeld = ask;
-
-  return () => {
-    if (switchHeld === ask) switchHeld = null;
-  };
-}
-
 export function switchOrganisation(id: string, landed?: () => void): boolean {
   const organisation = state.organisations.find((membership) => membership.id === id);
   if (organisation == null) return false;
@@ -179,8 +169,7 @@ export function switchOrganisation(id: string, landed?: () => void): boolean {
     landed?.();
   };
 
-  if (switchHeld == null) go();
-  else switchHeld(go);
+  leaveThen(go);
 
   return true;
 }

@@ -61,7 +61,7 @@ import { coverRefusalOf } from '../kit/coverUpload.ts';
 import { markCoverRefused } from '../kit/eventSaved.ts';
 import { useLoadedAt, useServerNow } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
-import { holdSwitches } from '../signedIn.ts';
+import { holdLeaving } from '../leaveHeld.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
@@ -211,11 +211,11 @@ export function EventForm({
     setCover(null);
   }
 
-  // The frame's switcher would remount or unmount the form, so it asks as leaving does.
+  // The frame's destinations and its switcher leave the form without removing it, so they ask here (sc-3595).
   useEffect(
     () =>
       dirty
-        ? holdSwitches((go) => {
+        ? holdLeaving((go) => {
             leaveAction.current = go;
             setAsking('leave');
           })
