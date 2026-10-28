@@ -2,6 +2,8 @@
 appId: host.exp.Exponent
 ---
 - runFlow: ../open-switcher.yaml
-- assertVisible:
-    id: 'switcher.create'
+- scrollUntilVisible:
+    element: '{{t:switcher.heading}}'
+    direction: UP
+    timeout: 30000
 - takeScreenshot: switcher

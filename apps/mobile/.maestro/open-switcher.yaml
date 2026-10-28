@@ -5,7 +5,8 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'home.switchOrganisation'
 - extendedWaitUntil:
-    visible: '{{t:any:switcher.heading}}'
+    visible:
+      id: 'switcher.heading'
     timeout: 30000
 - takeScreenshot: mobile-switcher
 # Create an organisation closes the list, so it can sit below the fold.

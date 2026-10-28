@@ -720,7 +720,11 @@ function Switcher({
         />
         <View style={styles.sheetFrame}>
           <ScrollView contentContainerStyle={styles.sheet}>
-            <Title size={tokens.typeTitleDialog.size} accessibilityRole="header">
+            <Title
+              size={tokens.typeTitleDialog.size}
+              accessibilityRole="header"
+              testID="switcher.heading"
+            >
               {t('switcher.heading')}
             </Title>
             {organisations.map((organisation) => {
