@@ -1,4 +1,5 @@
-# Settings > Organisation, opened with the API stopped, then deleted once it is back: the typed name still deletes. Deletes the batch's organisation, so run it last or alone. sc-16866.
+# Settings > Organisation, opened with the API stopped, then deleted once it is back: the typed name still deletes. sc-16866.
+# It deletes the account's organisation: run it alone, in one language, then register a fresh account with `node scripts/qa-account.mjs`.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/organisation
