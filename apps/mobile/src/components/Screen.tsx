@@ -16,6 +16,7 @@ import {
   Keyboard,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  Platform,
   type RefreshControlProps,
   ScrollView,
   type StyleProp,
@@ -35,6 +36,7 @@ import {
   scrollInsets,
   shownEnd,
 } from '../kit/keyboard.ts';
+import { focusBackMs } from '../kit/focusBack.ts';
 import { stepOpeners } from '../kit/stepOpeners.ts';
 import { tokens } from '../theme/tokens.ts';
 import { focusedField, watchFocusedField } from './focusedField.ts';
@@ -280,22 +282,24 @@ function bringIntoView(
   });
 }
 
-/** Brings `shown` wholly into sight, and again once it has settled, then moves screen reader focus to `read`; returns what cancels the second step. */
+/** Brings `shown` wholly into sight, and again once it has settled, and moves screen reader focus to `read` after `readMs`; returns what cancels the steps still to come. */
 function settleOnto(
   scroll: ScreenScrollView | null,
   shown: () => ScreenReaderTarget | null,
   read: () => ScreenReaderTarget | null,
   animated: boolean,
+  readMs = SETTLED_MS,
 ): () => void {
   bringIntoView(scroll, shown(), animated);
 
-  const focus = setTimeout(() => {
-    // Content that shrinks around the line as it mounts can stop the first scroll short (sc-9382).
-    bringIntoView(scroll, shown(), animated);
-    moveScreenReaderFocus(read());
-  }, SETTLED_MS);
+  // Content that shrinks around the line as it mounts can stop the first scroll short (sc-9382).
+  const settled = setTimeout(() => bringIntoView(scroll, shown(), animated), SETTLED_MS);
+  const focus = setTimeout(() => moveScreenReaderFocus(read()), readMs);
 
-  return () => clearTimeout(focus);
+  return () => {
+    clearTimeout(settled);
+    clearTimeout(focus);
+  };
 }
 
 export interface BroughtIntoView {
@@ -333,6 +337,7 @@ export interface FocusedOnAnswer<Read extends ScreenReaderTarget> {
 export function useFocusOnAnswer<Read extends ScreenReaderTarget = View>(
   answer: unknown,
   readRef?: RefObject<Read | null>,
+  readMs = SETTLED_MS,
 ): FocusedOnAnswer<Read> {
   const scroll = useContext(ScreenScroll);
   const shown = useRef<View>(null);
@@ -353,6 +358,7 @@ export function useFocusOnAnswer<Read extends ScreenReaderTarget = View>(
         () => shown.current ?? read.current,
         () => read.current,
         false,
+        readMs,
       );
     });
 
@@ -360,7 +366,7 @@ export function useFocusOnAnswer<Read extends ScreenReaderTarget = View>(
       gone = true;
       cancel();
     };
-  }, [answer, read, scroll]);
+  }, [answer, read, scroll, readMs]);
 
   return { shown, read };
 }
@@ -388,7 +394,7 @@ export function useFocusBackToOpener(
     }),
     [closed, fallback, openers],
   );
-  useFocusOnAnswer(closed, target);
+  useFocusOnAnswer(closed, target, focusBackMs(Platform.OS, SETTLED_MS));
 
   return openers.ref;
 }
