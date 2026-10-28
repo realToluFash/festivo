@@ -86,6 +86,8 @@ import {
   TESTERS,
   testerOf,
   experienceResumed,
+  lastBundleRun,
+  reloadUntilRun,
   openUntilShown,
 } from './qa-env.mjs';
 
@@ -663,6 +665,54 @@ describe('a flow on Android', () => {
     expect(experienceResumed('')).toBe(false);
   });
 
+  it('reads when the app last started from logcat', () => {
+    const run = (at) =>
+      `${at}  4743  4743 I ReactNativeJS: Running "main" with {"rootTag":1,"initialProps":{}}\n`;
+    expect(lastBundleRun('')).toBe(0);
+    expect(lastBundleRun('--------- beginning of main\n')).toBe(0);
+    expect(
+      lastBundleRun(
+        run('1793215144.427') +
+          '1793215150.001  4743  4743 I ReactNativeJS: Running application\n' +
+          run('1793215204.427'),
+      ),
+    ).toBe(1793215204.427);
+  });
+
+  it('answers a reload once the app has run again, or when its time is up', async () => {
+    const reloading = (ranAfterPolls) => {
+      let at = 0;
+      let polls = 0;
+      let reloaded = false;
+      return {
+        options: {
+          reload: async () => {
+            reloaded = true;
+          },
+          lastRun: () => (reloaded && polls >= ranAfterPolls ? 200 : 100),
+          wait: async (ms) => {
+            polls++;
+            at += ms;
+          },
+          now: () => at,
+        },
+        at: () => at,
+      };
+    };
+
+    const quick = reloading(2);
+    expect(await reloadUntilRun(quick.options)).toBe(true);
+    expect(quick.at()).toBe(500);
+
+    const already = reloading(0);
+    expect(await reloadUntilRun(already.options)).toBe(true);
+    expect(already.at()).toBe(250);
+
+    const never = reloading(Infinity);
+    expect(await reloadUntilRun(never.options)).toBe(false);
+    expect(never.at()).toBeLessThanOrEqual(8000);
+  });
+
   const clocked = ({ shownAfter = Infinity, sendCost = 0, checkCost = 0 } = {}) => {
     let at = 0;
     const sent = [];
@@ -1054,7 +1104,7 @@ describe('the API a batch holds', () => {
 });
 
 describe('the batch helper', () => {
-  const helperFor = async (container, open) => {
+  const helperFor = async (container, open, options = {}) => {
     const { control, ran } = dockerDouble(container);
     const languages = [];
     const begun = [];
@@ -1068,6 +1118,7 @@ describe('the batch helper', () => {
       begun,
       heard: { at: 0 },
       open: open ?? ((url) => ran.push(`open ${url}`)),
+      ...options,
       port: 0,
     });
     const ask = async (path) => {
@@ -1128,6 +1179,22 @@ describe('the batch helper', () => {
       expect(await ask('/open?path=%2F--%2Fevents%2F7')).toEqual({
         error: expect.stringMatching(/^could not open exp:\/\/.+\/--\/events\/7: Error/),
       });
+    } finally {
+      server.close();
+    }
+  });
+
+  it('on Android, answers a reload once the app has run again', async () => {
+    const { server, ask, ran } = await helperFor('running', undefined, {
+      onAndroid: true,
+      reload: async () => {
+        ran.push('reload until run');
+        return true;
+      },
+    });
+    try {
+      expect(await ask('/reload')).toEqual({ reloaded: true });
+      expect(ran).toEqual(['reload until run']);
     } finally {
       server.close();
     }

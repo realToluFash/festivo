@@ -1819,6 +1819,42 @@ async function reloadApp() {
   });
 }
 
+// The epoch second of the app's last start in `adb logcat -v epoch`, 0 before its first.
+export function lastBundleRun(logcat) {
+  const runs = [...logcat.matchAll(/^\s*(\d+\.\d+)\s.*ReactNativeJS: Running "main"/gm)];
+  return runs.length ? Number(runs[runs.length - 1][1]) : 0;
+}
+
+// A link sent while Expo Go still tears the old bundle down loses the new one, and the
+// experience stays on Expo Go's spinner (sc-18797), so on Android a reload is over once the
+// app runs again. Under the helper's ten seconds; a slower start is reset.yaml's to wait out.
+export async function reloadUntilRun({
+  reload,
+  lastRun,
+  wait = pause,
+  now = Date.now,
+  within = 8000,
+  poll = 250,
+}) {
+  const before = lastRun();
+  const deadline = now() + within;
+  await reload();
+  for (let left = deadline - now(); left > poll; left = deadline - now()) {
+    await wait(poll);
+    if (lastRun() > before) return true;
+  }
+  return false;
+}
+
+function reloadOnEmulator() {
+  const tools = androidTools();
+  return reloadUntilRun({
+    reload: reloadApp,
+    lastRun: () =>
+      lastBundleRun(adbOut(tools, ['logcat', '-d', '-v', 'epoch', '-s', 'ReactNativeJS:I']) ?? ''),
+  });
+}
+
 export function expoGoRunning(launchctlList) {
   return new RegExp(
     `^\\d+\\s+\\S+\\s+UIKitApplication:${EXPO_GO.replaceAll('.', '\\.')}\\[`,
@@ -1895,6 +1931,7 @@ export function startHelper({
   device,
   onAndroid,
   open = openOnEmulator,
+  reload = reloadOnEmulator,
   port = CONFIG.helperPort,
 }) {
   const server = createServer(async (request, response) => {
@@ -1914,7 +1951,9 @@ export function startHelper({
         return reply(200, { code: await nextCode(email, secret) });
       }
       if (url.pathname === '/reload') {
-        await reloadApp();
+        if (!onAndroid) await reloadApp();
+        else if (!(await reload()))
+          console.error('\nThe app did not run again within 8s of a reload');
         return reply(200, { reloaded: true });
       }
       if (url.pathname === '/running') {
