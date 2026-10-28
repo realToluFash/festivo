@@ -50,7 +50,7 @@
     "typeAndPlace": "{{type}} · {{place}}",
     "dateAway": "{{date}} · {{distance}}",
     "startedToday": "Aujourd’hui · a commencé à {{time}} {{timeZone}}",
-    "startedOn": "Started {{date}} · {{time}} {{timeZone}}",
+    "startedOn": "A commencé le {{date}} · {{time}} {{timeZone}}",
     "calledOffOn": "Annulé le {{date}}",
     "showMore": "Afficher plus",
     "moreShown_one": "{{count, number}} événement terminé supplémentaire affiché.",

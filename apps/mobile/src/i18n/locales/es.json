@@ -1455,7 +1455,7 @@
     "typeAndPlace": "{{type}} · {{place}}",
     "dateAway": "{{date}} · {{distance}}",
     "startedToday": "Hoy · empezó a las {{time}} {{timeZone}}",
-    "startedOn": "Started {{date}} · {{time}} {{timeZone}}",
+    "startedOn": "Empezó el {{date}} · {{time}} {{timeZone}}",
     "calledOffOn": "Cancelado el {{date}}",
     "nextUp": "Lo próximo: {{title}}",
     "showMore": "Mostrar más",
