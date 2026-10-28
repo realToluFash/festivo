@@ -17,6 +17,8 @@ appId: host.exp.Exponent
     id: 'signIn.password'
 - eraseText: 120
 - inputText: ${PASSWORD}
+# A phone's soft keyboard can sit over the button, and the tap then lands on a key.
+- hideKeyboard
 - tapOn:
     id: 'signIn.submit'
 - runFlow:
