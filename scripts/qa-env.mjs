@@ -1893,15 +1893,15 @@ async function batch(args) {
   const apiState = composeApi(root);
   await apiState.move('up');
   const named = languages[0] !== 'any';
-  const account = named ? apiSession(email, password, secret) : null;
-  const before = named ? (await account('/api/auth/me', { method: 'GET' })).locale : null;
+  const signedIn = named ? apiSession(email, password, secret) : null;
+  const before = named ? (await signedIn('/api/auth/me', { method: 'GET' })).locale : null;
   const passed = new Set();
   const begun = [];
   const heard = { at: Date.now() };
   const crashed = [];
   const setLocale = async (locale) => {
     await apiState.move('up');
-    await account('/api/auth/locale', { method: 'PUT', body: { locale } });
+    await signedIn('/api/auth/locale', { method: 'PUT', body: { locale } });
   };
   const helper = await startHelper({
     email,
