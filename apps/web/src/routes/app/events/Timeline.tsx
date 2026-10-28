@@ -85,7 +85,11 @@ export function ComingUp({ event, now: tick }: { event: OrganisationEvent; now: 
         <h2 id="coming-up-title" ref={heading} tabIndex={-1}>
           {t('timeline.comingUp')}
         </h2>
-        {load.kind !== 'failed' && (
+        {load.kind === 'failed' ? (
+          <span className="link-button coming-up-link-held" aria-hidden="true">
+            {t('timeline.allDates')}
+          </span>
+        ) : (
           <Link className="link-button" to={`/app/events/${encodeURIComponent(event.id)}/dates`}>
             {t('timeline.allDates')}
           </Link>

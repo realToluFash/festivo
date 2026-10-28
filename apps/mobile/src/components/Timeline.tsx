@@ -101,7 +101,13 @@ export function ComingUp({
         <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
           {t('timeline.comingUp')}
         </Text>
-        {load.kind !== 'failed' && (
+        {load.kind === 'failed' ? (
+          <View style={styles.linkHeld} {...HIDDEN}>
+            <Text size={tokens.typeButton.size} weight="semibold">
+              {t('timeline.allDates')}
+            </Text>
+          </View>
+        ) : (
           <QuietButton
             label={t('timeline.allDates')}
             onPress={onAllDates}
@@ -314,6 +320,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: tokens.spaceSm,
   },
+  // While the dates fail there is no All dates button, but its box stays, so the head keeps its height.
+  linkHeld: { minHeight: tokens.sizeHit, justifyContent: 'center', opacity: 0 },
   // Held at the height of the event's own two milestones, so the panels below do not move between states.
   rows: { minHeight: 140 },
   rowsPhone: { minHeight: 178 },
