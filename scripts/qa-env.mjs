@@ -407,16 +407,31 @@ export function experienceResumed(activities) {
 }
 
 // Expo Go drops a link sent before its kernel has loaded, as it is just after launchApp
-// cold-starts it, and stays on Home (sc-18603). Under the helper's ten seconds in all.
-export async function openUntilShown({ send, shown, wait = pause, sends = 3, checks = 5 }) {
-  for (let sent = 0; sent < sends; sent++) {
-    send();
-    for (let check = 0; check < checks; check++) {
-      await wait(500);
-      if (shown()) return sent + 1;
+// cold-starts it, and stays on Home (sc-18603). The deadline counts the adb calls too, so the
+// answer beats the helper's ten seconds.
+export async function openUntilShown({
+  send,
+  shown,
+  wait = pause,
+  now = Date.now,
+  within = 8000,
+  every = 2500,
+  poll = 500,
+}) {
+  const deadline = now() + within;
+  send();
+  let sent = 1;
+  let last = now();
+  for (let left = deadline - now(); left > poll; left = deadline - now()) {
+    await wait(poll);
+    if (shown()) return sent;
+    if (now() - last >= every && deadline - now() > poll) {
+      send();
+      sent++;
+      last = now();
     }
   }
-  return sends;
+  return sent;
 }
 
 // am start says Error on stdout and still exits 0.

@@ -663,31 +663,52 @@ describe('a flow on Android', () => {
     expect(experienceResumed('')).toBe(false);
   });
 
-  it('sends a link Expo Go dropped again, and an opened one only once', async () => {
-    const opening = (shownAfter) => {
-      const sent = [];
-      let checked = 0;
-      return {
-        sent,
-        options: {
-          send: () => sent.push(checked),
-          shown: () => ++checked > shownAfter,
-          wait: async () => {},
+  const clocked = ({ shownAfter = Infinity, sendCost = 0, checkCost = 0 } = {}) => {
+    let at = 0;
+    const sent = [];
+    const checked = [];
+    return {
+      sent,
+      checked,
+      options: {
+        send: () => {
+          sent.push(at);
+          at += sendCost;
         },
-      };
+        shown: () => {
+          checked.push(at);
+          at += checkCost;
+          return checked.length > shownAfter;
+        },
+        wait: async (ms) => {
+          at += ms;
+        },
+        now: () => at,
+      },
+      at: () => at,
     };
+  };
 
-    const opened = opening(0);
+  it('sends a link Expo Go dropped again, and an opened one only once', async () => {
+    const opened = clocked({ shownAfter: 0 });
     expect(await openUntilShown(opened.options)).toBe(1);
     expect(opened.sent).toEqual([0]);
 
-    const dropped = opening(7);
+    const dropped = clocked({ shownAfter: 7 });
     expect(await openUntilShown(dropped.options)).toBe(2);
-    expect(dropped.sent).toEqual([0, 5]);
+    expect(dropped.sent).toEqual([0, 2500]);
 
-    const never = opening(Infinity);
+    const never = clocked();
     expect(await openUntilShown(never.options)).toBe(3);
-    expect(never.sent).toEqual([0, 5, 10]);
+    expect(never.sent).toEqual([0, 2500, 5000]);
+    expect(never.at()).toBe(7500);
+  });
+
+  it('answers by its deadline when each adb call is slow', async () => {
+    const slow = clocked({ sendCost: 300, checkCost: 700 });
+    await openUntilShown(slow.options);
+    expect([...slow.sent, ...slow.checked].every((at) => at < 8000)).toBe(true);
+    expect(slow.at()).toBeLessThan(9000);
   });
 
   it('stops at the first send am start refuses', async () => {
@@ -1033,7 +1054,7 @@ describe('the API a batch holds', () => {
 });
 
 describe('the batch helper', () => {
-  const helperFor = async (container) => {
+  const helperFor = async (container, open) => {
     const { control, ran } = dockerDouble(container);
     const languages = [];
     const begun = [];
@@ -1046,7 +1067,7 @@ describe('the batch helper', () => {
       passed: new Set(),
       begun,
       heard: { at: 0 },
-      open: (url) => ran.push(`open ${url}`),
+      open: open ?? ((url) => ran.push(`open ${url}`)),
       port: 0,
     });
     const ask = async (path) => {
@@ -1092,6 +1113,21 @@ describe('the batch helper', () => {
         expect.stringMatching(/^open exp:\/\/.+\/--\/events\/7$/),
         expect.stringMatching(/^open exp:\/\/[^/]+$/),
       ]);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('fails to open when am start refuses a later send', async () => {
+    const refused = async (url) => {
+      await new Promise((done) => setTimeout(done, 1));
+      throw new Error(`could not open ${url}: Error: Activity not started`);
+    };
+    const { server, ask } = await helperFor('running', refused);
+    try {
+      expect(await ask('/open?path=%2F--%2Fevents%2F7')).toEqual({
+        error: expect.stringMatching(/^could not open exp:\/\/.+\/--\/events\/7: Error/),
+      });
     } finally {
       server.close();
     }
