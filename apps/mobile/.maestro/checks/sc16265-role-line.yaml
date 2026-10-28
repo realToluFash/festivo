@@ -9,7 +9,9 @@ appId: host.exp.Exponent
     element:
       id: 'organisation.language.readOnly'
     timeout: 20000
-- scroll
+- scrollUntilVisible:
+    element: '{{t:orgGeneral.readOnly}}'
+    timeout: 20000
 - takeScreenshot: sc16265-role-line
 - assertNotVisible:
     id: 'organisation.link'

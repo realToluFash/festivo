@@ -14,4 +14,4 @@ appId: host.exp.Exponent
     id: 'organisation.link'
 - assertNotVisible:
     id: 'organisation.save'
-- assertNotVisible: 'Your role.*'
+- assertNotVisible: '{{t:orgGeneral.readOnly}}'

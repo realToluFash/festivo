@@ -10,8 +10,10 @@ appId: host.exp.Exponent
       id: 'organisation.turnOn'
     timeout: 20000
 - assertVisible:
-    id: 'organisation.link'
+    id: 'organisation.turnOn'
+    below:
+      id: 'organisation.link'
 - takeScreenshot: sc16265-both-lines
 - assertNotVisible:
     id: 'organisation.save'
-- assertNotVisible: 'Your role.*'
+- assertNotVisible: '{{t:orgGeneral.readOnly}}'
