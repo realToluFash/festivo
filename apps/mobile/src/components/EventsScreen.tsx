@@ -20,8 +20,10 @@ import { takeCoverRefused, takeSaved } from '../kit/eventSaved.ts';
 import {
   type Opened,
   type Selection,
+  hasNoEvents,
   openedOf,
   openedWithoutAsking,
+  pageless,
   selectionIn,
 } from '../kit/eventsOpen.ts';
 import { useLayout } from '../layout/useLayout.ts';
@@ -310,7 +312,7 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
             {t('eventsScreen.refreshing')}
           </Text>
         )}
-        {load.unfinished.length === 0 && load.pastTotal === 0 ? (
+        {hasNoEvents(load) ? (
           <NoEvents kind={kind} onCreate={creates ? newEvent : undefined} />
         ) : (
           <>
@@ -362,6 +364,7 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
           ))
         }
         pageInFront={inFront}
+        pageless={pageless(load, inFront)}
         pageKey={open ?? ''}
         back={{
           label: t('eventsScreen.back'),
