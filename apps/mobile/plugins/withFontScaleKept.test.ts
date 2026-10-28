@@ -45,51 +45,54 @@ describe('withFontScaleForwarded', () => {
     expect(forwarded.trimEnd().endsWith('  }\n}')).toBe(true);
   });
 
-  it('measures text against the activity, whose font scale is already the new one', () => {
+  it("reads the sizes again on the activity's change", () => {
     expect(forwarded).toMatch(
-      /super\.onConfigurationChanged\(newConfig\)\n\s+DisplayMetricsHolder\.initDisplayMetrics\(this\)\n/,
+      /override fun onConfigurationChanged\(newConfig: Configuration\) \{\n\s+super\.onConfigurationChanged\(newConfig\)\n\s+takeSizeChanges\(\)\n/,
     );
   });
 
-  it('remembers the scale and density the activity was created with', () => {
+  it("reads the sizes again on the application's change, which may reach the activity's resources first", () => {
     expect(forwarded).toMatch(
-      /override fun onPostCreate\(savedInstanceState: Bundle\?\) \{\n\s+super\.onPostCreate\(savedInstanceState\)\n\s+lastFontScale = resources\.configuration\.fontScale\n\s+lastDensityDpi = resources\.configuration\.densityDpi\n/,
+      /override fun onConfigurationChanged\(applicationConfig: Configuration\) \{\n\s+takeSizeChanges\(\)\n/,
     );
   });
 
-  it('lays the root view out again when the configured scale moved', () => {
+  it('measures text against the activity, before anything is laid out again', () => {
     expect(forwarded).toMatch(
-      /if \(newConfig\.fontScale != lastFontScale\) \{\n\s+reactDelegate\?\.reactRootView\?\.requestLayout\(\)/,
+      /private fun takeSizeChanges\(\) \{\n\s+val activityConfig = resources\.configuration\n\s+DisplayMetricsHolder\.initDisplayMetrics\(this\)\n/,
     );
   });
 
-  it('sends the safe-area frame again when the configured density moved, then remembers both', () => {
+  it('remembers the scale and density the activity was created with, then listens to the application', () => {
     expect(forwarded).toMatch(
-      /if \(newConfig\.densityDpi != lastDensityDpi\) \{\n\s+reactDelegate\?\.reactRootView\?\.let \{ resendSafeAreaFrames\(it\) \}\n\s+\}\n\s+lastFontScale = newConfig\.fontScale\n\s+lastDensityDpi = newConfig\.densityDpi\n/,
+      /override fun onPostCreate\(savedInstanceState: Bundle\?\) \{\n\s+super\.onPostCreate\(savedInstanceState\)\n\s+lastFontScale = resources\.configuration\.fontScale\n\s+lastDensityDpi = resources\.configuration\.densityDpi\n\s+application\.registerComponentCallbacks\(applicationChanges\)\n/,
+    );
+  });
+
+  it("lays the root view out again when the activity's scale moved", () => {
+    expect(forwarded).toMatch(
+      /if \(activityConfig\.fontScale != lastFontScale\) \{\n\s+reactDelegate\?\.reactRootView\?\.requestLayout\(\)\n\s+forwardPending = true/,
+    );
+  });
+
+  it("sends the safe-area frame again when the activity's density moved, then remembers both", () => {
+    expect(forwarded).toMatch(
+      /if \(activityConfig\.densityDpi != lastDensityDpi\) \{\n\s+reactDelegate\?\.reactRootView\?\.let \{ resendSafeAreaFrames\(it\) \}\n\s+forwardPending = true\n\s+\}\n\s+lastFontScale = activityConfig\.fontScale\n\s+lastDensityDpi = activityConfig\.densityDpi\n/,
     );
     expect(forwarded).toContain('getDeclaredField("mLastFrame")');
     expect(forwarded).toMatch(/lastFrame\?\.set\(view, null\)\n\s+view\.invalidate\(\)/);
     expect(forwarded).toContain('check(lastFrame != null || !BuildConfig.DEBUG)');
   });
 
-  it("forwards once the application has the activity's current scale and density, and stops listening only then", () => {
+  it("forwards a pending change once the application has the activity's scale and density", () => {
     expect(forwarded).toMatch(
-      /if \(applicationConfig\.fontScale != resources\.configuration\.fontScale \|\|\n\s+applicationConfig\.densityDpi != resources\.configuration\.densityDpi\n\s+\) \{\n\s+return false/,
-    );
-    expect(forwarded).toContain(
-      'if (!forwardOnceApplicationCaughtUp() && applicationWait == null) {',
-    );
-    expect(forwarded).toMatch(
-      /override fun onConfigurationChanged\(applicationConfig: Configuration\) \{\n\s+forwardOnceApplicationCaughtUp\(\)\n\s+\}/,
-    );
-    expect(forwarded).toMatch(
-      /return false\n\s+\}\n\s+stopWaitingForApplication\(\)\n\s+forwardSizes\(\)/,
+      /if \(forwardPending &&\n\s+applicationConfig\.fontScale == activityConfig\.fontScale &&\n\s+applicationConfig\.densityDpi == activityConfig\.densityDpi\n\s+\) \{\n\s+forwardPending = false\n\s+forwardSizes\(\)/,
     );
   });
 
-  it('stops listening when the activity is destroyed', () => {
+  it('stops listening to the application when the activity is destroyed', () => {
     expect(forwarded).toMatch(
-      /override fun onDestroy\(\) \{\n\s+stopWaitingForApplication\(\)\n\s+super\.onDestroy\(\)/,
+      /override fun onDestroy\(\) \{\n\s+application\.unregisterComponentCallbacks\(applicationChanges\)\n\s+super\.onDestroy\(\)/,
     );
   });
 
