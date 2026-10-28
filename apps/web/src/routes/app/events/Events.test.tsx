@@ -2341,7 +2341,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
       name: 'Somebody else changed this event while you had it open.',
     });
     expect(
-      within(refused).getByText("It's called off now. The page shows what it is now."),
+      within(refused).getByText("It's been called off. The page shows what it is now."),
     ).toBeDefined();
     expect(within(refused).queryByText('This event is already over.')).toBeNull();
   });
@@ -2532,7 +2532,7 @@ describe('Pause and Resume (sc-3586)', () => {
           concludedAt: '2026-10-28T09:00:00+00:00',
         }),
       'Somebody else changed this event while you had it open.',
-      "It's called off now. The page shows what it is now.",
+      "It's been called off. The page shows what it is now.",
     ],
   ])('says %s, and focus is on the title', async (_, reloaded, said, now) => {
     signedIn();
@@ -2596,7 +2596,7 @@ describe('Pause and Resume (sc-3586)', () => {
       name: 'Somebody else changed this event while you had it open.',
     });
     expect(
-      within(refused).getByText("It's called off now. The page shows what it is now."),
+      within(refused).getByText("It's been called off. The page shows what it is now."),
     ).toBeDefined();
     expect(
       within(refused).queryByText("It's finished now. The page shows what it is now."),
