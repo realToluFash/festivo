@@ -59,6 +59,7 @@ import {
   MAX_RESUMES,
   renewingSession,
   resumeBatch,
+  runHeld,
   maestroTarget,
   parseTarget,
   passwordAutoFillFiles,
@@ -1390,6 +1391,52 @@ describe('the driver a frozen run leaves on the simulator', () => {
           '-\t-9\tUIKitApplication:dev.mobile.maestro-driver-iosUITests.xctrunner[1b02][rb-legacy]',
       ),
     ).toEqual([38266]);
+  });
+});
+
+describe('one Maestro run of a batch', () => {
+  const held = ['home', 'settings'].map((check) => ({ check, language: 'any' }));
+  const runOf = ({ checks, stalls }) => {
+    const begun = [];
+    const stops = [];
+    const unstarted = new Map();
+    const options = {
+      begun,
+      passed: new Set(),
+      crashed: [],
+      unstarted,
+      heard: { at: 0 },
+      device: 'SIM-1',
+      onAndroid: false,
+      run: async (stall) => {
+        begun.push(...checks);
+        stall.stalled = stalls;
+      },
+      stop: (device, onAndroid) => stops.push({ device, onAndroid, begun: begun.length }),
+    };
+    return { options, stops, unstarted };
+  };
+
+  it('stops the driver of a run the watchdog stopped, once and on its device, before resuming', async () => {
+    const { options, stops } = runOf({ checks: ['home'], stalls: true });
+    expect(await runHeld(held, options)).toEqual({ crashed: 'home', rest: held.slice(1) });
+    expect(stops).toEqual([{ device: 'SIM-1', onAndroid: false, begun: 1 }]);
+  });
+
+  it('leaves the driver of a run that ended on its own', async () => {
+    const { options, stops } = runOf({ checks: ['home'], stalls: false });
+    await runHeld(held, options);
+    expect(stops).toEqual([]);
+  });
+
+  it('says whether a run lost before its first check stalled or ended', async () => {
+    const stalled = runOf({ checks: [], stalls: true });
+    expect(await runHeld(held, stalled.options)).toEqual({ crashed: null, rest: held });
+    expect([...stalled.unstarted.values()]).toEqual(['stalled', 'stalled']);
+
+    const ended = runOf({ checks: [], stalls: false });
+    expect(await runHeld(held, ended.options)).toEqual({ crashed: null, rest: [] });
+    expect([...ended.unstarted.values()]).toEqual(['ended', 'ended']);
   });
 });
 

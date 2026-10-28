@@ -1876,11 +1876,18 @@ export function driverPids(launchctlList) {
 // A frozen driver outlives the Maestro the watchdog stopped, and the next run waits on it.
 function stopDriver(device, onAndroid) {
   if (onAndroid) {
-    for (const id of ANDROID_DRIVERS) adbOut(androidTools(), ['shell', 'am', 'force-stop', id]);
+    const stopped = ANDROID_DRIVERS.map(
+      (id) => adbOut(androidTools(), ['shell', 'am', 'force-stop', id]) !== null,
+    );
+    if (!stopped.every(Boolean)) console.error(`\nCould not stop Maestro's driver on ${device}`);
     return;
   }
-  const list = capture('xcrun', ['simctl', 'spawn', device, 'launchctl', 'list']) ?? '';
-  for (const pid of driverPids(list)) run('kill', ['-KILL', String(pid)], { optional: true });
+  const pids = driverPids(capture('xcrun', ['simctl', 'spawn', device, 'launchctl', 'list']) ?? '');
+  if (!pids.length) console.error(`\nNo Maestro driver found on ${device} to stop`);
+  for (const pid of pids) {
+    if (!run('kill', ['-KILL', String(pid)], { optional: true }))
+      console.error(`\nCould not stop Maestro's driver (pid ${pid}) on ${device}`);
+  }
 }
 
 function appRunning(device, onAndroid) {
@@ -2130,34 +2137,33 @@ async function batch(args) {
   };
   const test = async (flow, held) => {
     await apiState.move('up');
-    const from = begun.length;
-    heard.at = Date.now();
-    const stall = { ms: STALL_MS, heard };
-    await runAsync(
-      maestroBin() ?? 'maestro',
-      [
-        ...maestroTarget(device, onAndroid, CONFIG.driverPort),
-        'test',
-        '--debug-output',
-        out,
-        ...Object.entries(env).flatMap(([key, value]) => ['-e', `${key}=${value}`]),
-        flow,
-      ],
-      {
-        cwd: root,
-        env: onAndroid ? androidTools().env : {},
-        timeoutMs: runBudgetMs(held.length),
-        stall,
-      },
-    );
-    if (stall.stalled) stopDriver(device, onAndroid);
-    const after = afterRun(held, { begun, from, passed, stalled: stall.stalled });
-    if (after.crashed) crashed.push(after.crashed);
-    if (begun.length === from) {
-      for (const { check, language } of held)
-        unstarted.set(checkId(check, language), stall.stalled ? 'stalled' : 'ended');
-    }
-    return after;
+    return runHeld(held, {
+      begun,
+      passed,
+      crashed,
+      unstarted,
+      heard,
+      device,
+      onAndroid,
+      run: (stall) =>
+        runAsync(
+          maestroBin() ?? 'maestro',
+          [
+            ...maestroTarget(device, onAndroid, CONFIG.driverPort),
+            'test',
+            '--debug-output',
+            out,
+            ...Object.entries(env).flatMap(([key, value]) => ['-e', `${key}=${value}`]),
+            flow,
+          ],
+          {
+            cwd: root,
+            env: onAndroid ? androidTools().env : {},
+            timeoutMs: runBudgetMs(held.length),
+            stall,
+          },
+        ),
+    });
   };
 
   const started = Date.now();
@@ -2209,6 +2215,24 @@ async function batch(args) {
       console.log(`  ${hint}`);
     process.exitCode = 1;
   }
+}
+
+export async function runHeld(
+  held,
+  { begun, passed, crashed, unstarted, heard, device, onAndroid, run, stop = stopDriver },
+) {
+  const from = begun.length;
+  heard.at = Date.now();
+  const stall = { ms: STALL_MS, heard };
+  await run(stall);
+  if (stall.stalled) stop(device, onAndroid);
+  const after = afterRun(held, { begun, from, passed, stalled: stall.stalled });
+  if (after.crashed) crashed.push(after.crashed);
+  if (begun.length === from) {
+    for (const { check, language } of held)
+      unstarted.set(checkId(check, language), stall.stalled ? 'stalled' : 'ended');
+  }
+  return after;
 }
 
 export const MAX_RESUMES = 3;
