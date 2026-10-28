@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { withFontScaleForwarded, withFontScaleHandled } from './withFontScaleKept.ts';
+import { withFontScaleForwarded, withSizeChangesHandled } from './withFontScaleKept.ts';
 
 const ACTIVITY = `package com.soirely.app
 import android.os.Bundle
@@ -10,19 +10,20 @@ class MainActivity : ReactActivity() {
 }
 `;
 
-describe('withFontScaleHandled', () => {
-  it('adds fontScale to the changes the template handles', () => {
-    expect(withFontScaleHandled('keyboard|orientation|screenSize')).toBe(
-      'keyboard|orientation|screenSize|fontScale',
+describe('withSizeChangesHandled', () => {
+  it('adds fontScale and density to the changes the template handles', () => {
+    expect(withSizeChangesHandled('keyboard|orientation|screenSize|smallestScreenSize')).toBe(
+      'keyboard|orientation|screenSize|smallestScreenSize|fontScale|density',
     );
   });
 
-  it('leaves fontScale once when it is already there', () => {
-    expect(withFontScaleHandled('fontScale|locale')).toBe('fontScale|locale');
+  it('leaves each once when it is already there', () => {
+    expect(withSizeChangesHandled('fontScale|locale')).toBe('fontScale|locale|density');
+    expect(withSizeChangesHandled('density|fontScale')).toBe('density|fontScale');
   });
 
-  it('handles fontScale alone when the activity names nothing', () => {
-    expect(withFontScaleHandled(undefined)).toBe('fontScale');
+  it('handles the two alone when the activity names nothing', () => {
+    expect(withSizeChangesHandled(undefined)).toBe('fontScale|density');
   });
 });
 
@@ -31,41 +32,58 @@ describe('withFontScaleForwarded', () => {
 
   it('imports what the override names, under the package line', () => {
     expect(forwarded).toMatch(
-      /^package com\.soirely\.app\nimport android\.content\.ComponentCallbacks\nimport android\.content\.res\.Configuration\nimport com\.facebook\.react\.bridge\.LifecycleEventListener\nimport com\.facebook\.react\.uimanager\.DisplayMetricsHolder\nimport com\.facebook\.react\.uimanager\.PixelUtil\n/,
+      /^package com\.soirely\.app\nimport android\.content\.ComponentCallbacks\nimport android\.content\.res\.Configuration\nimport android\.view\.View\nimport android\.view\.ViewGroup\nimport com\.facebook\.react\.bridge\.LifecycleEventListener\nimport com\.facebook\.react\.uimanager\.DisplayMetricsHolder\nimport com\.th3rdwave\.safeareacontext\.SafeAreaProvider\n/,
     );
   });
 
   it('passes the change on to DeviceInfo inside the class', () => {
     expect(forwarded).toContain('super.onConfigurationChanged(newConfig)');
     expect(forwarded).toContain('getNativeModule("DeviceInfo") as? LifecycleEventListener');
-    expect(forwarded).toContain('deviceInfo?.onHostResume()');
+    expect(forwarded).toMatch(
+      /deviceInfo\?\.onHostResume\(\)\n\s+reactDelegate\?\.reactRootView\?\.requestLayout\(\)/,
+    );
     expect(forwarded.trimEnd().endsWith('  }\n}')).toBe(true);
   });
 
   it('measures text against the activity, whose font scale is already the new one', () => {
     expect(forwarded).toMatch(
-      /super\.onConfigurationChanged\(newConfig\)\n\s+val measuredScale = PixelUtil\.toPixelFromSP\(1\.0\)\n\s+DisplayMetricsHolder\.initDisplayMetrics\(this\)\n/,
+      /super\.onConfigurationChanged\(newConfig\)\n\s+DisplayMetricsHolder\.initDisplayMetrics\(this\)\n/,
     );
   });
 
-  it('lays the root view out again when the measured scale moved', () => {
+  it('remembers the scale and density the activity was created with', () => {
     expect(forwarded).toMatch(
-      /if \(PixelUtil\.toPixelFromSP\(1\.0\) != measuredScale\) \{\n\s+reactDelegate\?\.reactRootView\?\.requestLayout\(\)/,
+      /override fun onPostCreate\(savedInstanceState: Bundle\?\) \{\n\s+super\.onPostCreate\(savedInstanceState\)\n\s+lastFontScale = resources\.configuration\.fontScale\n\s+lastDensityDpi = resources\.configuration\.densityDpi\n/,
     );
   });
 
-  it("forwards once the application has the activity's current scale, and stops listening only then", () => {
-    expect(forwarded).toContain(
-      'if (application.resources.configuration.fontScale != resources.configuration.fontScale) {',
+  it('lays the root view out again when the configured scale moved', () => {
+    expect(forwarded).toMatch(
+      /if \(newConfig\.fontScale != lastFontScale\) \{\n\s+reactDelegate\?\.reactRootView\?\.requestLayout\(\)/,
+    );
+  });
+
+  it('sends the safe-area frame again when the configured density moved, then remembers both', () => {
+    expect(forwarded).toMatch(
+      /if \(newConfig\.densityDpi != lastDensityDpi\) \{\n\s+reactDelegate\?\.reactRootView\?\.let \{ resendSafeAreaFrames\(it\) \}\n\s+\}\n\s+lastFontScale = newConfig\.fontScale\n\s+lastDensityDpi = newConfig\.densityDpi\n/,
+    );
+    expect(forwarded).toContain('getDeclaredField("mLastFrame")');
+    expect(forwarded).toMatch(/lastFrame\?\.set\(view, null\)\n\s+view\.invalidate\(\)/);
+    expect(forwarded).toContain('check(lastFrame != null || !BuildConfig.DEBUG)');
+  });
+
+  it("forwards once the application has the activity's current scale and density, and stops listening only then", () => {
+    expect(forwarded).toMatch(
+      /if \(applicationConfig\.fontScale != resources\.configuration\.fontScale \|\|\n\s+applicationConfig\.densityDpi != resources\.configuration\.densityDpi\n\s+\) \{\n\s+return false/,
     );
     expect(forwarded).toContain(
-      'if (!forwardOnceApplicationCaughtUp() && fontScaleWait == null) {',
+      'if (!forwardOnceApplicationCaughtUp() && applicationWait == null) {',
     );
     expect(forwarded).toMatch(
       /override fun onConfigurationChanged\(applicationConfig: Configuration\) \{\n\s+forwardOnceApplicationCaughtUp\(\)\n\s+\}/,
     );
     expect(forwarded).toMatch(
-      /return false\n\s+\}\n\s+stopWaitingForApplication\(\)\n\s+forwardFontScale\(\)/,
+      /return false\n\s+\}\n\s+stopWaitingForApplication\(\)\n\s+forwardSizes\(\)/,
     );
   });
 
@@ -89,5 +107,13 @@ describe('withFontScaleForwarded', () => {
       '\n  override fun onDestroy() {\n    super.onDestroy()\n  }\n}\n',
     );
     expect(() => withFontScaleForwarded(destroying)).toThrow(/already handles/);
+  });
+
+  it('refuses an activity that already overrides onPostCreate', () => {
+    const created = ACTIVITY.replace(
+      '\n}\n',
+      '\n  override fun onPostCreate(savedInstanceState: Bundle?) {\n    super.onPostCreate(savedInstanceState)\n  }\n}\n',
+    );
+    expect(() => withFontScaleForwarded(created)).toThrow(/already handles/);
   });
 });

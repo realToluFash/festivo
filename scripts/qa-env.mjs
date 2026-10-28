@@ -1688,8 +1688,71 @@ function appRunning(device, onAndroid) {
   return expoGoRunning(capture('xcrun', ['simctl', 'spawn', device, 'launchctl', 'list']) ?? '');
 }
 
-// Under ten seconds an answer: batch/helper.js asks again while this says wait.
-function startHelper({ email, secret, account, passed, begun, heard, device, onAndroid }) {
+export const API_STATES = ['up', 'paused', 'stopped'];
+
+export function apiMoves(from, to) {
+  if (from === to) return [];
+  const up = {
+    paused: [['unpause', 'api']],
+    stopped: [['up', '-d', '--wait', '--no-recreate', 'api']],
+  };
+  if (to === 'up') return up[from];
+  if (from !== 'up') return [...up[from], ...apiMoves('up', to)];
+  return [[to === 'paused' ? 'pause' : 'stop', 'api']];
+}
+
+export const apiStateOf = (containerState) =>
+  ({ running: 'up', paused: 'paused' })[containerState.trim()] ?? 'stopped';
+
+// A check holds Event View's reads by pausing the API once the list has loaded. Each move waits
+// for the one before it. The state is read from Docker on the first move and after a failed one,
+// since a killed batch or a half-done move leaves the container in a state nobody recorded.
+export function apiControl({ run, read }) {
+  let state;
+  let moving = Promise.resolve();
+  const move = (to) => {
+    const next = moving.then(async () => {
+      state ??= apiStateOf(await read());
+      for (const args of apiMoves(state, to)) {
+        if (!(await run(args))) {
+          state = undefined;
+          throw new Error(`docker compose ${args.join(' ')} failed`);
+        }
+        state = args[0] === 'pause' ? 'paused' : args[0] === 'stop' ? 'stopped' : 'up';
+      }
+    });
+    moving = next.catch(() => {});
+    return next;
+  };
+  return { move, state: () => state };
+}
+
+const composeApi = (root) =>
+  apiControl({
+    run: (args) => runAsync('docker', ['compose', ...args], { cwd: root }),
+    read: () =>
+      capture('docker', ['compose', 'ps', '-a', 'api', '--format', '{{.State}}'], { cwd: root }) ??
+      '',
+  });
+
+const within = (ms, promise) =>
+  Promise.race([promise.then(() => true), pause(ms).then(() => false)]);
+
+// Under ten seconds an answer: batch/helper.js asks again while this says wait. A check that
+// failed while it held the API leaves it held, its last move perhaps still running, so whatever
+// uses the API next queues an 'up' behind it.
+export function startHelper({
+  email,
+  secret,
+  setLocale,
+  apiState,
+  passed,
+  begun,
+  heard,
+  device,
+  onAndroid,
+  port = CONFIG.helperPort,
+}) {
   const server = createServer(async (request, response) => {
     heard.at = Date.now();
     const url = new URL(request.url ?? '/', 'http://helper');
@@ -1715,10 +1778,19 @@ function startHelper({ email, secret, account, passed, begun, heard, device, onA
       }
       if (url.pathname === '/language') {
         const locale = url.searchParams.get('to');
-        await account('/api/auth/locale', { method: 'PUT', body: { locale } });
+        if (!(await within(8000, apiState.move('up')))) return reply(200, { wait: true });
+        await setLocale(locale);
         return reply(200, { language: locale });
       }
+      if (url.pathname === '/api') {
+        const to = url.searchParams.get('to');
+        if (!API_STATES.includes(to))
+          throw new Error(`no API state ${to}: ${API_STATES.join(', ')}`);
+        if (!(await within(8000, apiState.move(to)))) return reply(200, { wait: true });
+        return reply(200, { api: to });
+      }
       if (url.pathname === '/started') {
+        if (!(await within(8000, apiState.move('up')))) return reply(200, { wait: true });
         begun.push(url.searchParams.get('check'));
         return reply(200, {});
       }
@@ -1733,7 +1805,7 @@ function startHelper({ email, secret, account, passed, begun, heard, device, onA
   });
   return new Promise((ready, failed) => {
     server.once('error', failed);
-    server.listen(CONFIG.helperPort, '127.0.0.1', () => ready(server));
+    server.listen(port, '127.0.0.1', () => ready(server));
   });
 }
 
@@ -1810,6 +1882,8 @@ async function batch(args) {
     onAndroid,
   });
 
+  const apiState = composeApi(root);
+  await apiState.move('up');
   const named = languages[0] !== 'any';
   const account = named ? apiSession(email, password, secret) : null;
   const before = named ? (await account('/api/auth/me', { method: 'GET' })).locale : null;
@@ -1817,10 +1891,15 @@ async function batch(args) {
   const begun = [];
   const heard = { at: Date.now() };
   const crashed = [];
+  const setLocale = async (locale) => {
+    await apiState.move('up');
+    await account('/api/auth/locale', { method: 'PUT', body: { locale } });
+  };
   const helper = await startHelper({
     email,
     secret,
-    account,
+    setLocale,
+    apiState,
     passed,
     begun,
     heard,
@@ -1838,6 +1917,7 @@ async function batch(args) {
     ...rest,
   };
   const test = async (flow, held) => {
+    await apiState.move('up');
     const from = begun.length;
     heard.at = Date.now();
     const stall = { ms: STALL_MS, heard };
@@ -1868,33 +1948,29 @@ async function batch(args) {
     if (cold) {
       for (const language of languages) {
         for (const check of checks) {
-          if (named)
-            await account('/api/auth/locale', { method: 'PUT', body: { locale: language } });
+          if (named) await setLocale(language);
           await test(join(flows, `_cold.${checkId(check, language)}.yaml`), [{ check, language }]);
         }
       }
     } else {
-      if (named)
-        await account('/api/auth/locale', { method: 'PUT', body: { locale: languages[0] } });
+      if (named) await setLocale(languages[0]);
       const first = await test(join(flows, '_batch.yaml'), batchRuns(checks, languages));
       // After a driver crash the checks it never reached run in a fresh Maestro.
       await resumeBatch(first.rest, async (rest, attempt) => {
         const flow = join(flows, `_rest.${attempt}.yaml`);
         const written = batchFlow({ runs: rest });
         writeFileSync(flow, onAndroid ? forAndroid(written) : written);
-        if (named)
-          await account('/api/auth/locale', {
-            method: 'PUT',
-            body: { locale: rest[0].language },
-          });
+        if (named) await setLocale(rest[0].language);
         return test(flow, rest);
       });
     }
   } finally {
     helper.close();
+    await apiState
+      .move('up')
+      .catch((error) => console.error(`\nThe API is still held: ${error.message}`));
     // The app follows the account's language when it next opens, and later flows expect English.
-    if (named)
-      await account('/api/auth/locale', { method: 'PUT', body: { locale: before ?? 'en' } });
+    if (named) await setLocale(before ?? 'en');
   }
   const seconds = Math.round((Date.now() - started) / 1000);
 
