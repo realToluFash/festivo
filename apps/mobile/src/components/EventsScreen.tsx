@@ -7,7 +7,7 @@ import {
   serverClock,
   withPastPage,
 } from '@soirely/domain';
-import { Redirect, router, useFocusEffect, useNavigation } from 'expo-router';
+import { Redirect, router, useFocusEffect } from 'expo-router';
 import { type RefCallback, useCallback, useEffect, useState } from 'react';
 import { AppState, RefreshControl, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -16,7 +16,6 @@ import { api } from '../api.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { offersDelete } from '../kit/eventDelete.ts';
 import { takeCoverRefused, takeSaved } from '../kit/eventSaved.ts';
-import { backFromLinkedList } from '../kit/systemBack.ts';
 import {
   type Opened,
   type Selection,
@@ -37,7 +36,7 @@ import { ReadOut } from './ReadOut.tsx';
 import { FocusBack, type StepClosed, stepClosed } from './Screen.tsx';
 import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
-import { useSystemBack } from './systemBack.ts';
+import { useSystemBack } from './useSystemBack.ts';
 
 type Load =
   { kind: 'loading' } | { kind: 'failed' } | ({ kind: 'loaded'; refreshing: boolean } & HomeLoad);
@@ -63,7 +62,6 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
   );
   const phone = kind === 'phone';
   const landscape = kind === 'tabletLandscape';
-  const navigation = useNavigation();
 
   const [held, setHeld] = useState<{ in: string | undefined; load: Load }>({
     in: organisationId,
@@ -220,15 +218,9 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     organisation,
   );
 
-  useSystemBack(linked != null && !landscape && open == null, () => {
-    const stack = navigation.getState();
-    const to = backFromLinkedList(
-      stack == null ? [] : stack.routes.slice(0, stack.index).map((route) => route.name),
-    );
-
-    if (to === 'home') router.replace(DESTINATION_HREF.home);
-    else router.dismiss(to.close);
-  });
+  useSystemBack(linked != null && !landscape && open == null, () =>
+    router.dismissTo(DESTINATION_HREF.home),
+  );
 
   if (organisation != null && !reads && open == null) {
     return <Redirect href={DESTINATION_HREF.home} />;
