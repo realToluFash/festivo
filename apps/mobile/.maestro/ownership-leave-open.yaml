@@ -1,6 +1,14 @@
 # Settings > Organisation > Ownership and leaving: "Leave ‹organisation›?" open, not yet sent.
 # On a signed-in phone, as a member who is not the only owner. sc-12511.
 #
+# A second member, made through the api (sc-12999):
+#   1. qa-env account --ready for it; --json stops it at "A few details".
+#   2. As the owner, POST /api/orgs/{organisationId}/members/invite {email, roleId}, with
+#      roleId from GET /api/orgs/{organisationId}/roles; without roleId it answers 422.
+#   3. As the second account, POST /api/invitations/{invitationId}/accept.
+#   4. Its membershipId from GET /api/orgs/{organisationId}/members, then
+#      ownership-transfer-ready MEMBERSHIP=… TYPED=<owner's password>.
+#
 #   node .qa/bin/qa-env.mjs maestro ownership-leave-open --android
 appId: host.exp.Exponent
 ---
