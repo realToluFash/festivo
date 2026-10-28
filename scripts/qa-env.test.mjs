@@ -23,6 +23,7 @@ import {
   batchRuns,
   afterRun,
   batchSummary,
+  driverPids,
   bundlerEnv,
   checkId,
   codeStep,
@@ -1361,6 +1362,35 @@ describe('the list a batch ends with', () => {
       '✓ members',
     ]);
   });
+
+  it('says why no check ran when the driver was lost while signing in', () => {
+    expect(
+      batchSummary(['home', 'settings'], {
+        passed: new Set(),
+        begun: [],
+        crashed: [],
+        unstarted: new Map([
+          ['home', 'stalled'],
+          ['settings', 'ended'],
+        ]),
+      }),
+    ).toEqual([
+      "✗ home: not run: Maestro's driver stopped answering before the first check, while signing in",
+      '✗ settings: not run: Maestro ended before the first check, while signing in (its output says why)',
+    ]);
+  });
+});
+
+describe('the driver a frozen run leaves on the simulator', () => {
+  it('is found by its pid, and no other app is', () => {
+    expect(
+      driverPids(
+        '38266\t0\tUIKitApplication:dev.mobile.maestro-driver-iosUITests.xctrunner[2a09][rb-legacy]\n' +
+          '36010\t0\tUIKitApplication:host.exp.Exponent[7454][rb-legacy]\n' +
+          '-\t-9\tUIKitApplication:dev.mobile.maestro-driver-iosUITests.xctrunner[1b02][rb-legacy]',
+      ),
+    ).toEqual([38266]);
+  });
 });
 
 describe('what a Maestro run that lost its driver leaves to resume', () => {
@@ -1416,6 +1446,13 @@ describe('what a Maestro run that lost its driver leaves to resume', () => {
         stalled: true,
       }),
     ).toEqual({ crashed: 'members', rest: [] });
+  });
+
+  it('resumes every check of a run the watchdog stopped before its first', () => {
+    expect(afterRun(runs, { begun: [], from: 0, passed: new Set(), stalled: true })).toEqual({
+      crashed: null,
+      rest: runs,
+    });
   });
 
   it('stops resuming after the cap when every resume crashes on the same check', async () => {
