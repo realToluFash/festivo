@@ -67,16 +67,33 @@ appId: host.exp.Exponent
       id: 'events.page'
     timeout: 20000
 - takeScreenshot: opened
-- tapOn:
-    text: 'Events'
-    index: 0
+- runFlow:
+    when:
+      visible:
+        id: 'frame.back'
+    commands:
+      - tapOn:
+          id: 'frame.back'
+- runFlow:
+    when:
+      visible:
+        id: 'events.back'
+    commands:
+      - tapOn:
+          id: 'events.back'
 - waitForAnimationToEnd
 - takeScreenshot: back-kept
+- assertVisible:
+    id: 'events.tab.past'
+    selected: true
 - openLink: ${METRO_URL}/--/
 - tapOn:
     id: 'frame.events'
 - waitForAnimationToEnd
 - takeScreenshot: home-and-back-kept
+- assertVisible:
+    id: 'events.tab.past'
+    selected: true
 - runFlow:
     file: ../switch-organisation.yaml
     env:
@@ -93,3 +110,6 @@ appId: host.exp.Exponent
       id: 'events.tab.upcoming'
     timeout: 30000
 - takeScreenshot: switched-reset
+- assertVisible:
+    id: 'events.tab.upcoming'
+    selected: true
