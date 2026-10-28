@@ -341,9 +341,28 @@ export function expoGoApk(versions, expoRange) {
 }
 
 // Android's package is lower case, and every flow, an old commit's included, names iOS's.
+// Maestro's openLink names no package, and an emulator can hand exp:// to Expo Go's own home
+// rather than the experience, so the harness opens the link instead (sc-3594).
 export function forAndroid(flow) {
-  return flow.replace(/\bhost\.exp\.Exponent\b/g, EXPO_GO_ANDROID);
+  return flow
+    .replace(/\bhost\.exp\.Exponent\b/g, EXPO_GO_ANDROID)
+    .replace(
+      /^(\s*)- openLink: \$\{METRO_URL\}(\S*)$/gm,
+      (_, indent, path) =>
+        `${indent}- evalScript: \${(function (r) { if (!r.ok) ` +
+        `throw new Error('the harness could not open ' + ${scriptOf(path)} + ', ' + r.body); ` +
+        `return r.body; })(http.get(HELPER_URL + '/open?path=' + ` +
+        `encodeURIComponent(${scriptOf(path)})))}`,
+    );
 }
+
+// A link's ${VAR}s become the script's own variables, which Maestro already defines.
+const scriptOf = (link) =>
+  link
+    .split(/\$\{([^}]+)\}/)
+    .map((part, i) => (i % 2 ? `(${part})` : `'${part.replaceAll("'", "\\'")}'`))
+    .filter((part) => part !== "''")
+    .join(' + ') || "''";
 
 // The whole directory, so a flow's runFlow and runScript paths still resolve, rewritten too.
 export function androidFlows(source, target) {
@@ -375,6 +394,25 @@ export function linkIntent(url) {
     '-d',
     `'${url.replaceAll("'", "'\\''")}'`,
   ];
+}
+
+export function openIntent(url) {
+  return [
+    'shell',
+    'am',
+    'start',
+    '-a',
+    'android.intent.action.VIEW',
+    '-d',
+    `'${url.replaceAll("'", "'\\''")}'`,
+    EXPO_GO_ANDROID,
+  ];
+}
+
+// am start says Error on stdout and still exits 0.
+function openOnEmulator(url) {
+  const said = adbOut(androidTools(), openIntent(url));
+  if (said === null || /^Error/m.test(said)) throw new Error(`could not open ${url}: ${said}`);
 }
 
 export function branchForStory(id, remoteBranches) {
@@ -1434,6 +1472,9 @@ async function maestro(args) {
   const device = maestroDevice(args);
 
   const env = [`METRO_URL=${CONFIG.urls.metro}`, `MAILPIT_URL=${CONFIG.urls.mailpit}`, ...vars];
+  // An Android flow's links are opened by the harness: forAndroid.
+  const helper = onAndroid ? await startHelper({ heard: { at: 0 }, device, onAndroid }) : null;
+  if (helper) env.push(`HELPER_URL=http://127.0.0.1:${CONFIG.helperPort}`);
   const out = join(root, '.qa', flow);
   spawnSync('rm', ['-rf', out]);
   mkdirSync(out, { recursive: true });
@@ -1458,6 +1499,7 @@ async function maestro(args) {
     ],
     { cwd: root, env: onAndroid ? androidTools().env : {}, timeoutMs: runBudgetMs(1) },
   );
+  helper?.close();
   spawnSync('sh', ['-c', `find "${out}" -mindepth 2 -name '*.png' -exec cp {} "${out}/" \\;`]);
   console.log(`\nEvidence in ${out}`);
   if (!ok) process.exitCode = 1;
@@ -1793,6 +1835,7 @@ export function startHelper({
   heard,
   device,
   onAndroid,
+  open = openOnEmulator,
   port = CONFIG.helperPort,
 }) {
   const server = createServer(async (request, response) => {
@@ -1835,6 +1878,13 @@ export function startHelper({
         if (!(await within(8000, apiState.move('up')))) return reply(200, { wait: true });
         begun.push(url.searchParams.get('check'));
         return reply(200, {});
+      }
+      if (url.pathname === '/open') {
+        const path = url.searchParams.get('path') ?? '';
+        if (path && !path.startsWith('/'))
+          throw new Error(`open what? /open?path=/--/… gave ${path}`);
+        open(`${CONFIG.urls.metro}${path}`);
+        return reply(200, { opened: path });
       }
       if (url.pathname === '/passed') {
         passed.add(url.searchParams.get('check'));
