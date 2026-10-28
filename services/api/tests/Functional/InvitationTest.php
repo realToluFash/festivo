@@ -399,6 +399,37 @@ final class InvitationTest extends ApiTestCase
     }
 
     #[Test]
+    public function anOwnerInvitesAnOwnerOnlyWithARecentProof(): void
+    {
+        [$organisation, $owner] = $this->organisation();
+
+        $refused = $this->as($owner)->invite($organisation, 'kemi@example.com', SeededRole::Owner);
+        self::assertSame(403, $this->statusCode(), Json\encode($refused));
+        self::assertSame(ErrorCode::ProofRequired->type(), $refused['type']);
+        self::assertSame([], self::em()->getRepository(Invitation::class)->findBy(['email' => 'kemi@example.com']));
+
+        $proof = $this->as($owner)->call('POST', '/api/auth/proof', ['password' => self::INVITER_PASSWORD])['proof'] ?? null;
+        $this->as($owner)->invite($organisation, 'kemi@example.com', SeededRole::Owner, $proof);
+        self::assertSame(201, $this->statusCode());
+        $this->as($owner)->invite($organisation, 'bisi@example.com', SeededRole::Owner, $proof);
+        self::assertSame(201, $this->statusCode());
+    }
+
+    #[Test]
+    public function anotherAccountsProofInvitesNoOwner(): void
+    {
+        [$organisation, $owner] = $this->organisation();
+        $stranger = self::inviter('tunde@elsewhere.events', 'Tunde Bello');
+        $proof = $this->as($stranger)->call('POST', '/api/auth/proof', ['password' => self::INVITER_PASSWORD])['proof'] ?? null;
+
+        $body = $this->as($owner)->invite($organisation, 'kemi@example.com', SeededRole::Owner, $proof);
+
+        self::assertSame(403, $this->statusCode(), Json\encode($body));
+        self::assertSame(ErrorCode::ProofRequired->type(), $body['type']);
+        self::assertSame([], self::em()->getRepository(Invitation::class)->findBy(['email' => 'kemi@example.com']));
+    }
+
+    #[Test]
     public function aRoleFromAnotherOrganisationIsNotOneToInviteTo(): void
     {
         [$organisation, $owner] = $this->organisation();
@@ -608,11 +639,12 @@ final class InvitationTest extends ApiTestCase
     }
 
     /** @return array<string, mixed> */
-    private function invite(Organisation $organisation, string $email, SeededRole $as): array
+    private function invite(Organisation $organisation, string $email, SeededRole $as, mixed $proof = null): array
     {
         return $this->call('POST', '/api/orgs/' . $organisation->getId()->toRfc4122() . '/members/invite', [
             'email' => $email,
             'roleId' => $this->role($organisation, $as)->getId()->toRfc4122(),
+            'proof' => $proof,
         ]);
     }
 
