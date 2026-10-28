@@ -19,8 +19,8 @@ appId: host.exp.Exponent
     visible:
       id: 'ownership.delete.retry'
     timeout: 30000
-- assertVisible: '{{t:ownership.deleteUncounted}}'
-- assertNotVisible: '{{t:ownership.deleteLoading}}'
+- assertVisible: '.*{{t:ownership.deleteUncounted}}.*'
+- assertNotVisible: '.*{{t:ownership.deleteLoading}}.*'
 - waitForAnimationToEnd
 - takeScreenshot: failed
 - tapOn:
@@ -29,7 +29,7 @@ appId: host.exp.Exponent
     visible:
       id: 'ownership.delete.retry'
     timeout: 30000
-- assertVisible: '{{t:ownership.deleteUncounted}}'
+- assertVisible: '.*{{t:ownership.deleteUncounted}}.*'
 - takeScreenshot: failed-again
 - runScript:
     file: ../batch/helper.js
@@ -42,8 +42,8 @@ appId: host.exp.Exponent
       id: 'ownership.delete.retry'
     timeout: 30000
 - extendedWaitUntil:
-    notVisible: '{{t:ownership.deleteLoading}}'
+    notVisible: '.*{{t:ownership.deleteLoading}}.*'
     timeout: 15000
-- assertNotVisible: '{{t:ownership.deleteUncounted}}'
+- assertNotVisible: '.*{{t:ownership.deleteUncounted}}.*'
 - waitForAnimationToEnd
 - takeScreenshot: counted
