@@ -6,5 +6,5 @@ appId: host.exp.Exponent
     appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/
 - extendedWaitUntil:
-    visible: '{{t:any:settings.signedInAs}}|{{t:any:status.title}}|{{t:any:signIn.title}}'
+    visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}'
     timeout: 60000
