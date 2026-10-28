@@ -49,6 +49,7 @@ import {
   forAndroid,
   linkIntent,
   MAX_RESUMES,
+  renewingSession,
   resumeBatch,
   maestroTarget,
   parseTarget,
@@ -1144,5 +1145,76 @@ describe('the database, from a checkout', () => {
     const commands = databaseCommands(console_, [], false);
     expect(commands.filter(([first]) => first === 'compose')).toEqual([]);
     expect(commands).toHaveLength(3);
+  });
+});
+
+describe('renewingSession', () => {
+  const refused = () => Object.assign(new Error('answered 401'), { status: 401 });
+  const tokens = (n) => ({ accessToken: `access-${n}`, refreshToken: `refresh-${n}` });
+
+  it('signs in once and reuses the token while it is accepted', async () => {
+    let opened = 0;
+    const session = renewingSession({
+      open: async () => tokens(++opened),
+      refresh: async () => {},
+    });
+    await session(async (token) => token);
+    expect(await session(async (token) => token)).toBe('access-1');
+    expect(opened).toBe(1);
+  });
+
+  it('renews with the refresh token on a 401 and asks once more', async () => {
+    const presented = [];
+    const session = renewingSession({
+      open: async () => tokens(1),
+      refresh: async (refreshToken) => (presented.push(refreshToken), tokens(2)),
+    });
+    await session(async (token) => token);
+    const answer = await session(async (token) => {
+      if (token === 'access-1') throw refused();
+      return token;
+    });
+    expect(answer).toBe('access-2');
+    expect(presented).toEqual(['refresh-1']);
+  });
+
+  it('signs in again when the refresh is refused', async () => {
+    let opened = 0;
+    const session = renewingSession({
+      open: async () => tokens(++opened),
+      refresh: async () => {
+        throw refused();
+      },
+    });
+    const answer = await session(async (token) => {
+      if (token === 'access-1') throw refused();
+      return token;
+    });
+    expect(answer).toBe('access-2');
+  });
+
+  it('shares one renewal between calls refused at the same time', async () => {
+    let refreshed = 0;
+    const session = renewingSession({
+      open: async () => tokens(1),
+      refresh: async () => (refreshed++, tokens(2)),
+    });
+    const call = () =>
+      session(async (token) => {
+        if (token === 'access-1') throw refused();
+        return token;
+      });
+    expect(await Promise.all([call(), call()])).toEqual(['access-2', 'access-2']);
+    expect(refreshed).toBe(1);
+  });
+
+  it('passes any other failure through', async () => {
+    const session = renewingSession({ open: async () => tokens(1), refresh: async () => {} });
+    const broken = Object.assign(new Error('answered 500'), { status: 500 });
+    await expect(
+      session(async () => {
+        throw broken;
+      }),
+    ).rejects.toBe(broken);
   });
 });

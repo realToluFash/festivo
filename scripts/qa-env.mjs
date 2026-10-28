@@ -1601,9 +1601,11 @@ async function api(path, { method = 'POST', body, token } = {}) {
   });
   const answer = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(
+    const error = new Error(
       `${path} answered ${response.status}: ${answer?.detail ?? answer?.title ?? response.statusText}`,
     );
+    error.status = response.status;
+    throw error;
   }
   return answer;
 }
@@ -1624,16 +1626,41 @@ async function nextCode(email, secret) {
   return totp(secret, step);
 }
 
-async function apiSession(email, password, secret) {
+async function signIn(email, password, secret) {
   const answer = await api('/api/auth/login', { body: { email, password } });
-  if (typeof answer.twoFactorChallenge !== 'string') return answer.accessToken;
+  if (typeof answer.twoFactorChallenge !== 'string') return answer;
   if (!secret) throw new Error(`${email} has two-factor on: pass TOTP_SECRET=…`);
   const code = await nextCode(email, secret);
-  return (
-    await api('/api/auth/two-factor/verify', {
-      body: { challenge: answer.twoFactorChallenge, code },
-    })
-  ).accessToken;
+  return api('/api/auth/two-factor/verify', {
+    body: { challenge: answer.twoFactorChallenge, code },
+  });
+}
+
+// A cold batch outlives an access token: a 401 renews the session and asks once more (sc-17974).
+export function renewingSession({ open, refresh }) {
+  let current = null;
+  return async (request) => {
+    current ??= open();
+    const held = current;
+    const { accessToken } = await held;
+    try {
+      return await request(accessToken);
+    } catch (error) {
+      if (error.status !== 401) throw error;
+      // A refresh token presented twice ends the whole session, so callers share one renewal.
+      if (current === held)
+        current = held.then(({ refreshToken }) => refresh(refreshToken)).catch(open);
+      return request((await current).accessToken);
+    }
+  };
+}
+
+function apiSession(email, password, secret) {
+  const session = renewingSession({
+    open: () => signIn(email, password, secret),
+    refresh: (refreshToken) => api('/api/auth/refresh', { body: { refreshToken } }),
+  });
+  return (path, options) => session((token) => api(path, { ...options, token }));
 }
 
 async function reloadApp() {
@@ -1662,7 +1689,7 @@ function appRunning(device, onAndroid) {
 }
 
 // Under ten seconds an answer: batch/helper.js asks again while this says wait.
-function startHelper({ email, secret, token, passed, begun, heard, device, onAndroid }) {
+function startHelper({ email, secret, account, passed, begun, heard, device, onAndroid }) {
   const server = createServer(async (request, response) => {
     heard.at = Date.now();
     const url = new URL(request.url ?? '/', 'http://helper');
@@ -1688,7 +1715,7 @@ function startHelper({ email, secret, token, passed, begun, heard, device, onAnd
       }
       if (url.pathname === '/language') {
         const locale = url.searchParams.get('to');
-        await api('/api/auth/locale', { method: 'PUT', token, body: { locale } });
+        await account('/api/auth/locale', { method: 'PUT', body: { locale } });
         return reply(200, { language: locale });
       }
       if (url.pathname === '/started') {
@@ -1784,8 +1811,8 @@ async function batch(args) {
   });
 
   const named = languages[0] !== 'any';
-  const token = named ? await apiSession(email, password, secret) : null;
-  const before = named ? (await api('/api/auth/me', { method: 'GET', token })).locale : null;
+  const account = named ? apiSession(email, password, secret) : null;
+  const before = named ? (await account('/api/auth/me', { method: 'GET' })).locale : null;
   const passed = new Set();
   const begun = [];
   const heard = { at: Date.now() };
@@ -1793,7 +1820,7 @@ async function batch(args) {
   const helper = await startHelper({
     email,
     secret,
-    token,
+    account,
     passed,
     begun,
     heard,
@@ -1842,13 +1869,13 @@ async function batch(args) {
       for (const language of languages) {
         for (const check of checks) {
           if (named)
-            await api('/api/auth/locale', { method: 'PUT', token, body: { locale: language } });
+            await account('/api/auth/locale', { method: 'PUT', body: { locale: language } });
           await test(join(flows, `_cold.${checkId(check, language)}.yaml`), [{ check, language }]);
         }
       }
     } else {
       if (named)
-        await api('/api/auth/locale', { method: 'PUT', token, body: { locale: languages[0] } });
+        await account('/api/auth/locale', { method: 'PUT', body: { locale: languages[0] } });
       const first = await test(join(flows, '_batch.yaml'), batchRuns(checks, languages));
       // After a driver crash the checks it never reached run in a fresh Maestro.
       await resumeBatch(first.rest, async (rest, attempt) => {
@@ -1856,9 +1883,8 @@ async function batch(args) {
         const written = batchFlow({ runs: rest });
         writeFileSync(flow, onAndroid ? forAndroid(written) : written);
         if (named)
-          await api('/api/auth/locale', {
+          await account('/api/auth/locale', {
             method: 'PUT',
-            token,
             body: { locale: rest[0].language },
           });
         return test(flow, rest);
@@ -1868,7 +1894,7 @@ async function batch(args) {
     helper.close();
     // The app follows the account's language when it next opens, and later flows expect English.
     if (named)
-      await api('/api/auth/locale', { method: 'PUT', token, body: { locale: before ?? 'en' } });
+      await account('/api/auth/locale', { method: 'PUT', body: { locale: before ?? 'en' } });
   }
   const seconds = Math.round((Date.now() - started) / 1000);
 
