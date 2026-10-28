@@ -46,13 +46,19 @@ and turns off the retry, for a button whose request is held.
 
 Signing in, each on its own outcome:
 
-| Flow                   | Needs                                        | Leaves the app on                     |
-| ---------------------- | -------------------------------------------- | ------------------------------------- |
-| `sign-in-unverified`   | `EMAIL`, `PASSWORD` of an unverified account | the verification gate                 |
-| `verify-email`         | the same                                     | past the gate, with the newest code   |
-| `verify-email-refused` | the same                                     | the gate, a new code on its countdown |
-| `sign-in-locked`       | `EMAIL`, a fresh address                     | sign-in, past the limit               |
-| `signed-out-elsewhere` | a session ended from another client          | sign-in, with "You were signed out"   |
+| Flow                   | Needs                                         | Leaves the app on                             |
+| ---------------------- | --------------------------------------------- | --------------------------------------------- |
+| `register-check-email` | `NAME`, `EMAIL` (a fresh address), `PASSWORD` | Check your email, after a sign-up on Register |
+| `verify-email`         | the same                                      | A few details, verified with the newest code  |
+| `verify-email-refused` | the same                                      | Check your email, a new code counting down    |
+| `sign-in-locked`       | `EMAIL`, a fresh address                      | sign-in, past the limit                       |
+| `signed-out-elsewhere` | a session ended from another client           | sign-in, with "You were signed out"           |
+
+Every new account starts from a sign-up (sc-512), so the verify-email flows register `EMAIL`
+themselves through `register-check-email`, which switches the app to English first. The address
+must be fresh: one an account already holds is sent no code, and `verify-email` fails.
+`sign-in-locked` and `signed-out-elsewhere` match English text, so the phone must be in English
+first (`sign-in-screen-english`).
 
 `verify-email` reads the code from Mailpit with `scripts/latest-code.js`.
 
