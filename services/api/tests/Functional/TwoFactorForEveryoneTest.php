@@ -30,6 +30,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Iter;
 use Psl\Json;
+use Psl\Regex;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
@@ -96,7 +97,8 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
         $mails = $this->mails();
         self::assertSame(['bisi@ire.events'], Vec\map($mails, static fn (Email $mail): string => $mail->getTo()[0]->getAddress()));
         $deadline = Type\shape(['at' => Type\string(), 'written' => Type\string()], true)->coerce($body['twoFactorDeadline'] ?? null);
-        self::assertSame('Ìrè Events requires two-factor from ' . $deadline['written'], $mails[0]->getSubject());
+        self::assertStringContainsString('Ìrè Events', (string) $mails[0]->getSubject());
+        self::assertStringContainsString($deadline['written'], (string) $mails[0]->getSubject());
         self::assertSame(
             new Clock()->now()->modify('+7 days')->format('Y-m-d H:i'),
             new DateTimeImmutable($deadline['at'])->setTimezone(new Clock()->now()->getTimezone())->format('Y-m-d H:i'),
@@ -123,7 +125,8 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
 
         $mails = $this->mails();
         self::assertCount(1, $mails);
-        self::assertSame('Ìrè Events requires two-factor from ' . $written, $mails[0]->getSubject());
+        self::assertStringContainsString('Ìrè Events', (string) $mails[0]->getSubject());
+        self::assertStringContainsString($written, (string) $mails[0]->getSubject());
         $paragraphs = Str\split((string) $mails[0]->getTextBody(), "\n\n");
         self::assertSame([
             "Ìrè Events now requires two-factor for everyone in it. You have until {$written} to turn it on. After that, you can't open anything in Ìrè Events until it's on. Your other organisations and your access to single events are not affected.",
@@ -491,12 +494,20 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
         return ['twoFactorDue' => $mine['twoFactorDue']];
     }
 
-    /** @return list<Email> */
+    /**
+     * The due emails, known by the shape of their subject in the catalogue rather than by its words.
+     *
+     * @return list<Email>
+     */
     private function mails(): array
     {
+        $markers = ['{organisation}' => "\u{1}", '{deadline}' => "\u{2}"];
+        $template = self::service(UserMailer::class)->line('signInRules.twoFactorDue.subject', 'en', $markers);
+        $subject = '~^' . Str\replace_every(\preg_quote($template, '~'), ["\u{1}" => '.+', "\u{2}" => '.+']) . '$~u';
+
         return Vec\map(Vec\filter(
             self::getMailerMessages(),
-            static fn (object $message): bool => $message instanceof Email && Str\contains((string) $message->getSubject(), ' requires two-factor from '),
+            static fn (object $message): bool => $message instanceof Email && Regex\matches((string) $message->getSubject(), $subject),
         ), static fn (object $message): Email => Type\instance_of(Email::class)->coerce($message));
     }
 
