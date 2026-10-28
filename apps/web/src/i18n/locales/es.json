@@ -1085,8 +1085,8 @@
     "sectionSignInRules": "Normas de inicio de sesión"
   },
   "membersScreen": {
-    "proveOwner_one": "To make somebody an owner of {{organisation}}, confirm it's you. You won't be asked again for a minute.",
-    "proveOwner_other": "To make somebody an owner of {{organisation}}, confirm it's you. You won't be asked again for {{count, number}} minutes.",
+    "proveOwner_one": "Para dar a alguien el rol de Propietario de {{organisation}}, confirme que es usted. No se lo volveremos a pedir en un minuto.",
+    "proveOwner_other": "Para dar a alguien el rol de Propietario de {{organisation}}, confirme que es usted. No se lo volveremos a pedir en {{count, number}} minutos.",
     "title": "Miembros",
     "loading": "Cargando miembros…",
     "failedLoad": "No se han podido cargar los miembros. Compruebe la conexión y vuelva a intentarlo.",
@@ -1735,7 +1735,7 @@
     "title": "Propiedad y salida",
     "transfer": "Transferir la propiedad",
     "transferNote": "Ceda {{organisation}} a otro miembro. Antes se le pedirá la contraseña.",
-    "transferNoteProvider": "Hand {{organisation}} to another member. Asks you to confirm with {{provider}} first.",
+    "transferNoteProvider": "Ceda {{organisation}} a otro miembro. Antes se le pedirá que confirme con {{provider}}.",
     "transferBody": "Quien reciba el rol Propietario podrá cambiar la facturación, los miembros, los roles y esta configuración, y eliminar {{organisation}}. Usted pasará a tener el rol Administrador.",
     "newOwner": "Transferir a",
     "ownerBlank": "Elija a quién transferir la propiedad.",
