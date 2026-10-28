@@ -1711,7 +1711,9 @@ const composeApi = (root) =>
 const within = (ms, promise) =>
   Promise.race([promise.then(() => true), pause(ms).then(() => false)]);
 
-// Under ten seconds an answer: batch/helper.js asks again while this says wait.
+// Under ten seconds an answer: batch/helper.js asks again while this says wait. A check that
+// failed while it held the API leaves it held, its last move perhaps still running, so whatever
+// uses the API next queues an 'up' behind it.
 export function startHelper({
   email,
   secret,
@@ -1749,6 +1751,7 @@ export function startHelper({
       }
       if (url.pathname === '/language') {
         const locale = url.searchParams.get('to');
+        if (!(await within(8000, apiState.move('up')))) return reply(200, { wait: true });
         await setLocale(locale);
         return reply(200, { language: locale });
       }
@@ -1759,8 +1762,6 @@ export function startHelper({
         if (!(await within(8000, apiState.move(to)))) return reply(200, { wait: true });
         return reply(200, { api: to });
       }
-      // A check that failed while it held the API leaves it held for the next, and its last move
-      // may still be running: this one queues behind it.
       if (url.pathname === '/started') {
         if (!(await within(8000, apiState.move('up')))) return reply(200, { wait: true });
         begun.push(url.searchParams.get('check'));
@@ -1863,10 +1864,14 @@ async function batch(args) {
   const begun = [];
   const heard = { at: Date.now() };
   const crashed = [];
+  const setLocale = async (locale) => {
+    await apiState.move('up');
+    await api('/api/auth/locale', { method: 'PUT', token, body: { locale } });
+  };
   const helper = await startHelper({
     email,
     secret,
-    setLocale: (locale) => api('/api/auth/locale', { method: 'PUT', token, body: { locale } }),
+    setLocale,
     apiState,
     passed,
     begun,
@@ -1885,6 +1890,7 @@ async function batch(args) {
     ...rest,
   };
   const test = async (flow, held) => {
+    await apiState.move('up');
     const from = begun.length;
     heard.at = Date.now();
     const stall = { ms: STALL_MS, heard };
@@ -1915,26 +1921,19 @@ async function batch(args) {
     if (cold) {
       for (const language of languages) {
         for (const check of checks) {
-          if (named)
-            await api('/api/auth/locale', { method: 'PUT', token, body: { locale: language } });
+          if (named) await setLocale(language);
           await test(join(flows, `_cold.${checkId(check, language)}.yaml`), [{ check, language }]);
         }
       }
     } else {
-      if (named)
-        await api('/api/auth/locale', { method: 'PUT', token, body: { locale: languages[0] } });
+      if (named) await setLocale(languages[0]);
       const first = await test(join(flows, '_batch.yaml'), batchRuns(checks, languages));
       // After a driver crash the checks it never reached run in a fresh Maestro.
       await resumeBatch(first.rest, async (rest, attempt) => {
         const flow = join(flows, `_rest.${attempt}.yaml`);
         const written = batchFlow({ runs: rest });
         writeFileSync(flow, onAndroid ? forAndroid(written) : written);
-        if (named)
-          await api('/api/auth/locale', {
-            method: 'PUT',
-            token,
-            body: { locale: rest[0].language },
-          });
+        if (named) await setLocale(rest[0].language);
         return test(flow, rest);
       });
     }
@@ -1944,8 +1943,7 @@ async function batch(args) {
       .move('up')
       .catch((error) => console.error(`\nThe API is still held: ${error.message}`));
     // The app follows the account's language when it next opens, and later flows expect English.
-    if (named)
-      await api('/api/auth/locale', { method: 'PUT', token, body: { locale: before ?? 'en' } });
+    if (named) await setLocale(before ?? 'en');
   }
   const seconds = Math.round((Date.now() - started) / 1000);
 

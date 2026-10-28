@@ -879,7 +879,10 @@ describe('the batch helper', () => {
     const languages = [];
     const begun = [];
     const server = await startHelper({
-      setLocale: async (locale) => languages.push(locale),
+      setLocale: async (locale) => {
+        languages.push(locale);
+        ran.push(`locale ${locale}`);
+      },
       apiState: control,
       passed: new Set(),
       begun,
@@ -901,6 +904,17 @@ describe('the batch helper', () => {
       expect(ran).toEqual(['pause api', 'unpause api']);
       expect(control.state()).toBe('up');
       expect(begun).toEqual(['settings']);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('brings a held API back before it switches the language', async () => {
+    const { server, ask, ran } = await helperFor('running');
+    try {
+      expect(await ask('/api?to=paused')).toEqual({ api: 'paused' });
+      expect(await ask('/language?to=es')).toEqual({ language: 'es' });
+      expect(ran).toEqual(['pause api', 'unpause api', 'locale es']);
     } finally {
       server.close();
     }
