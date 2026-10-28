@@ -47,6 +47,7 @@ const OVERRIDE = `
 
     @Suppress("DEPRECATION")
     private fun readMetricsIfMoved() {
+      DisplayMetricsHolder.initDisplayMetricsIfNotInitialized(context)
       val activityMetrics = resources.displayMetrics
       val reactMetrics = DisplayMetricsHolder.getScreenDisplayMetrics()
       if (reactMetrics.scaledDensity != activityMetrics.scaledDensity ||

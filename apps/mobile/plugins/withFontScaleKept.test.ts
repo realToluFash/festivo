@@ -63,7 +63,7 @@ describe('withFontScaleForwarded', () => {
     );
   });
 
-  it("puts the root view in a parent that reads the metrics again before it is measured or laid out, when they no longer match the activity's", () => {
+  it("puts the root view in a parent that reads the metrics again before it is measured or laid out, when they no longer match the activity's, and fills them first on a cold start", () => {
     expect(forwarded).toMatch(
       /override fun setContentView\(view: View\?\) \{\n\s+super\.setContentView\(\n\s+view\?\.let \{\n\s+MetricsReadFirst\(this\)\.apply \{\n\s+addView\(it, ViewGroup\.LayoutParams\.MATCH_PARENT, ViewGroup\.LayoutParams\.MATCH_PARENT\)/,
     );
@@ -72,6 +72,9 @@ describe('withFontScaleForwarded', () => {
     );
     expect(forwarded).toMatch(
       /override fun onLayout\([^)]*\) \{\n\s+readMetricsIfMoved\(\)\n\s+super\.onLayout/,
+    );
+    expect(forwarded).toMatch(
+      /private fun readMetricsIfMoved\(\) \{\n\s+DisplayMetricsHolder\.initDisplayMetricsIfNotInitialized\(context\)\n\s+val activityMetrics = resources\.displayMetrics\n\s+val reactMetrics = DisplayMetricsHolder\.getScreenDisplayMetrics\(\)/,
     );
     expect(forwarded).toMatch(
       /if \(reactMetrics\.scaledDensity != activityMetrics\.scaledDensity \|\|\n\s+reactMetrics\.densityDpi != activityMetrics\.densityDpi\n\s+\) \{\n\s+DisplayMetricsHolder\.initDisplayMetrics\(context\)/,
