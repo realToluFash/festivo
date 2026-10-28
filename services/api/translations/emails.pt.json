@@ -117,7 +117,7 @@
     "signInRules.rule.noTwoFactor": "Quem pode gerir membros, funções, faturação ou segurança deixa de precisar da autenticação de dois fatores para o fazer.",
     "signInRules.rule.everyoneTwoFactor": "A autenticação de dois fatores é obrigatória para todos. Os membros que não a tenham ativada têm 7 dias para o fazer.",
     "signInRules.rule.noEveryoneTwoFactor": "A autenticação de dois fatores deixou de ser obrigatória para todos.",
-    "signInRules.twoFactorDue.subject": "Autenticação de dois fatores até {deadline}: {organisation}",
+    "signInRules.twoFactorDue.subject": "Até {deadline}: autenticação de dois fatores em {organisation}",
     "signInRules.twoFactorDue.body": "{organisation} passou a exigir a autenticação de dois fatores a todas as pessoas da organização. Tem até {deadline} para a ativar. Depois disso, não pode abrir nada em {organisation} enquanto não a ativar. As suas outras organizações e o seu acesso a eventos individuais não são afetados.",
     "signInRules.twoFactorDue.explain": "A autenticação de dois fatores pede um código de uma aplicação de autenticação quando inicia sessão, para que uma palavra-passe roubada não chegue por si só. Basta ativá-la uma vez e fica válida para todas as organizações que a exijam.",
     "signInRules.twoFactorDue.facts": "Organização: {organisation}\nData-limite: {deadline}\nA sua conta: {address}",

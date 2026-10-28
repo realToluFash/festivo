@@ -560,10 +560,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   « Next up » est « Prochaine étape », comme `timeline.nextUp`, et l’état vide des événements à
   venir le reprend. Le décompte annoncé dit « supplémentaire(s) », « d’événements » au `many`.
   `moreFailed` reprend la seconde phrase de l’échec de chargement de son écran, comme en anglais.
-- **27 Oct 2026. The two-factor-due subject opens on the feature and the deadline**
-  (`emails:signInRules.twoFactorDue.subject`, sc-15219) : « Double authentification avant le
-  {deadline} : {organisation} », the organisation last so a 390 px inbox shows the date
-  (qa2, #15218). « avant le » takes the weekday `{deadline}` opens on.
+- **28 Oct 2026. The two-factor-due subject opens on the deadline**
+  (`emails:signInRules.twoFactorDue.subject`, sc-15219) : « Avant le {deadline} : double
+  authentification dans {organisation} ». With the feature first a 390 px inbox lost the time
+  (qa2, #18836); « Avant le » takes 9 characters, so the date and time show at 360 px. A
+  subject whose news is a deadline opens on it; the rest keep the feature first.
 - **27 oct. 2026. La page des informations nomme la règle, pas le rôle** (sc-16443 pour
   sc-16265, `orgGeneral.readOnlyUntil*`, `refusedByRule`). Chaque ligne reprend la règle dans
   les mots du bandeau (`signInRules.unlinkedBody`, `gateBody`, « n’accepte que » sans « plus »)
