@@ -1050,7 +1050,7 @@
     "title": "Propiedad y salida",
     "transfer": "Transferir la propiedad",
     "transferNote": "Ceda {{organisation}} a otro miembro. Antes se le pedirá la contraseña.",
-    "transferNoteProvider": "Hand {{organisation}} to another member. Asks you to confirm with {{provider}} first.",
+    "transferNoteProvider": "Ceda {{organisation}} a otro miembro. Antes se le pedirá que confirme con {{provider}}.",
     "transferBody": "Quien reciba el rol Propietario podrá cambiar la facturación, los miembros, los roles y esta configuración, y eliminar {{organisation}}. Usted pasará a tener el rol Administrador.",
     "newOwner": "Transferir a",
     "ownerBlank": "Elija a quién transferir la propiedad.",
