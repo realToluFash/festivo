@@ -1050,7 +1050,7 @@
     "title": "Propriété et départ",
     "transfer": "Transférer la propriété",
     "transferNote": "Confiez {{organisation}} à un autre membre. Votre mot de passe vous sera d’abord demandé.",
-    "transferNoteProvider": "Hand {{organisation}} to another member. Asks you to confirm with {{provider}} first.",
+    "transferNoteProvider": "Confiez {{organisation}} à un autre membre. Vous devrez d’abord confirmer votre identité avec {{provider}}.",
     "transferBody": "La personne qui recevra le rôle Propriétaire pourra modifier la facturation, les membres, les rôles et ces paramètres, et supprimer {{organisation}}. Vous aurez le rôle Administrateur.",
     "newOwner": "Transférer à",
     "ownerBlank": "Choisissez la personne qui deviendra propriétaire.",
