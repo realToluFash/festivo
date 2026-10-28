@@ -147,6 +147,84 @@ class Claims(unittest.TestCase):
 
 
 
+class Batches(unittest.TestCase):
+    def setUp(self):
+        self.db = store.connect(":memory:")
+
+    def inbox(self, *stories, role="qa", more=()):
+        store.record(self.db, [dict(item(f"inbox:{role}:sc-{n}", [role], kind="inbox"),
+                                    story_id=n) for n in stories] + list(more), NOW)
+
+    def ids(self, worker="qa"):
+        return [row["id"] for row in store.held(self.db, "qa", NOW, worker)]
+
+    def test_unset_or_one_claims_one_inbox_item_as_before(self):
+        self.inbox(1, 2, 3)
+        store.claim(self.db, "qa", NOW, worker="qa")
+        self.assertEqual(self.ids(), [1])
+        store.release(self.db, 1)
+        store.claim(self.db, "qa", NOW, worker="qa", batch=1)
+        self.assertEqual(self.ids(), [1])
+
+    def test_a_batch_takes_the_roles_next_inbox_items_in_queue_order_up_to_its_size(self):
+        self.inbox(1, 2, 3, 4)
+        self.db.execute("update work set priority = 10 where id = 3")
+        top = store.claim(self.db, "qa", NOW, worker="qa", batch=3)
+        self.assertEqual(top["id"], 3)
+        self.assertEqual(self.ids(), [3, 1, 2])
+        self.assertEqual(store.held_by(self.db, "qa", NOW, "qa")["id"], 3)
+        self.assertEqual([row["status"] for row in store.waiting(self.db, "qa")], ["open"])
+
+    def test_other_work_is_never_batched_nor_joins_a_batch(self):
+        self.inbox(2, 3, more=[dict(item("qa:story:sc-1", ["qa"]), priority=1)])
+        store.claim(self.db, "qa", NOW, worker="qa", batch=5)
+        self.assertEqual(self.ids(), [3])
+        store.finish(self.db, 3, now=NOW)
+        store.claim(self.db, "qa", NOW, worker="qa", batch=5)
+        self.assertEqual(self.ids(), [1, 2])
+
+    def test_a_batch_skips_a_story_another_worker_holds_or_another_machine_claimed(self):
+        self.inbox(1, 2, 3, 4, role="pm",
+                   more=[dict(item("story:sc-2", ["pm"]), story_id=2, priority=1)])
+        store.claim(self.db, "pm", NOW, worker="pm", workers=2)
+        store.claim(self.db, "pm", NOW, worker="pm-2", workers=2, batch=5,
+                    skip={("pm", "sc-3")})
+        self.assertEqual([row["story_id"] for row in store.held(self.db, "pm", NOW, "pm-2")],
+                         [1, 4])
+
+    def test_a_solo_item_or_one_picked_out_runs_alone(self):
+        self.inbox(1, 2, 3)
+        self.db.execute("update work set solo = 1 where id = 2")
+        store.claim(self.db, "qa", NOW, worker="qa", batch=5,
+                    alone=lambda row: row["story_id"] == 3)
+        self.assertEqual(self.ids(), [1])
+        store.finish(self.db, 1, now=NOW)
+        store.claim(self.db, "qa", NOW, worker="qa", batch=5)
+        self.assertEqual(self.ids(), [2])
+
+    def test_a_worker_holding_a_batch_counts_once_against_the_roles_workers(self):
+        self.inbox(1, 2, 3, role="pm")
+        store.claim(self.db, "pm", NOW, worker="pm", workers=2, batch=2)
+        self.assertIsNotNone(store.claim(self.db, "pm", NOW, worker="pm-2", workers=2))
+
+    def test_an_item_handed_back_is_open_and_stays_solo_until_done(self):
+        self.inbox(1, 2)
+        store.claim(self.db, "qa", NOW, worker="qa", batch=2)
+        store.hand_back(self.db, 2)
+        row = store.item(self.db, 2)
+        self.assertEqual((row["status"], row["claimed_by"], row["solo"]), ("open", None, 1))
+        self.assertEqual(self.ids(), [1])
+
+    def test_a_queue_from_before_batches_gains_the_solo_column(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, "queue.db")
+            old = store.connect(path)
+            old.execute("alter table work drop column solo")
+            old.close()
+            self.assertIn("solo", {row["name"] for row in
+                                   store.connect(path).execute("pragma table_info(work)")})
+
+
 class FormerLinguists(unittest.TestCase):
     def test_what_the_locale_roles_dealt_with_and_noted_is_the_linguists(self):
         db = store.connect(":memory:")

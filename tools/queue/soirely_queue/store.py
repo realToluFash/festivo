@@ -32,7 +32,8 @@ create table if not exists work (
   lease_until real,
   first_seen real not null,
   done_at real,
-  note text
+  note text,
+  solo integer not null default 0
 );
 create index if not exists work_open on work (status, priority, first_seen);
 create table if not exists runs (role text primary key, last_done real);
@@ -64,8 +65,9 @@ create table if not exists moves (
 LEASE_MINUTES = 90
 
 
-def connect(path):
-    db = sqlite3.connect(path, timeout=30, isolation_level=None)
+def connect(path, threads=False):
+    """`threads`: the caller passes the connection between threads, one at a time."""
+    db = sqlite3.connect(path, timeout=30, isolation_level=None, check_same_thread=not threads)
     db.row_factory = sqlite3.Row
     db.execute("pragma journal_mode = wal")
     db.executescript(SCHEMA)
@@ -74,6 +76,8 @@ def connect(path):
         db.execute("alter table work add column rank integer not null default 0")
     if "worker" not in columns:
         db.execute("alter table work add column worker text")
+    if "solo" not in columns:
+        db.execute("alter table work add column solo integer not null default 0")
     if not get_meta(db, "linguists_merged"):
         db.execute("begin immediate")
         merge_linguists(db)
@@ -180,13 +184,20 @@ def record(db, items, now=None):
 
 
 def held_by(db, role, now=None, worker=None):
-    """The item the role holds; with `worker`, the one that worker holds. A worker is named
-    for its role, or `pm-2` and on for a role that runs more than one."""
+    """The item the role holds; with `worker`, the one that worker holds, the top of its
+    batch. A worker is named for its role, or `pm-2` and on for a role that runs more than
+    one."""
+    rows = held(db, role, now, worker)
+    return rows[0] if rows else None
+
+
+def held(db, role, now=None, worker=None):
+    """Every item the worker holds, in queue order: one, or an inbox batch."""
     now = now or time.time()
     return db.execute("select * from work where status = 'claimed' and claimed_by = ? "
                       "and lease_until >= ? and coalesce(worker, claimed_by) = "
-                      "coalesce(?, worker, claimed_by) order by id",
-                      (role, now, worker)).fetchone()
+                      "coalesce(?, worker, claimed_by) "
+                      "order by priority, rank, first_seen, id", (role, now, worker)).fetchall()
 
 
 def waiting(db, role):
@@ -200,17 +211,23 @@ def claim_key(row):
     return f"sc-{row['story_id']}" if row["story_id"] else row["kind"]
 
 
-def claim(db, role, now=None, kinds=None, skip=(), worker=None, workers=1):
+def claim(db, role, now=None, kinds=None, skip=(), worker=None, workers=1, batch=1,
+          alone=lambda row: False):
     """The role's top open item, or None. One claim per worker, at most `workers` per role,
     one per pool item, and never two on one story or one pull request. `kinds` limits it to some kinds of
-    work; `skip` holds the (pool, claim key) pairs taken on another machine."""
+    work; `skip` holds the (pool, claim key) pairs taken on another machine.
+
+    With `batch` from 2, a top `inbox` item brings the role's next open `inbox` items with
+    it, up to `batch` in all, each on a story of its own. An item marked solo, or that
+    `alone` picks out, is neither batched nor joins a batch."""
     now = now or time.time()
     db.execute("begin immediate")
     try:
         held = db.execute("select coalesce(worker, claimed_by) as worker, story_id, pr from work "
                           "where status = 'claimed' and claimed_by = ? and lease_until >= ?",
                           (role, now)).fetchall()
-        if len(held) >= workers or (worker or role) in {row["worker"] for row in held}:
+        holders = {row["worker"] for row in held}
+        if len(holders) >= workers or (worker or role) in holders:
             db.execute("commit")
             return None
         busy = {row["story_id"] for row in held if row["story_id"]}
@@ -223,9 +240,22 @@ def claim(db, role, now=None, kinds=None, skip=(), worker=None, workers=1):
             db.execute("commit")
             return None
         top = rows[0]
-        db.execute("update work set status = 'claimed', claimed_by = ?, worker = ?, "
-                   "lease_until = ? where id = ?",
-                   (role, worker, now + LEASE_MINUTES * 60, top["id"]))
+        taken = [top]
+
+        def batched(row):
+            return row["kind"] == "inbox" and not row["solo"] and not alone(row)
+
+        if batch > 1 and batched(top):
+            stories = {top["story_id"]}
+            for row in rows[1:]:
+                if len(taken) >= batch:
+                    break
+                if batched(row) and (row["story_id"] is None or row["story_id"] not in stories):
+                    taken.append(row)
+                    stories.add(row["story_id"])
+        db.executemany("update work set status = 'claimed', claimed_by = ?, worker = ?, "
+                       "lease_until = ? where id = ?",
+                       [(role, worker, now + LEASE_MINUTES * 60, row["id"]) for row in taken])
         db.execute("commit")
         return db.execute("select * from work where id = ?", (top["id"],)).fetchone()
     except BaseException:
@@ -253,6 +283,12 @@ def finish(db, work_id, note=None, now=None):
 def release(db, work_id):
     db.execute("update work set status = 'open', claimed_by = null, worker = null, "
                "lease_until = null where id = ? and status = 'claimed'", (work_id,))
+
+
+def hand_back(db, work_id):
+    """Back to the queue unclaimed, to be claimed by itself until it is done."""
+    db.execute("update work set status = 'open', claimed_by = null, worker = null, "
+               "lease_until = null, solo = 1 where id = ? and status = 'claimed'", (work_id,))
 
 
 def mark_run(db, role, now=None):

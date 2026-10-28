@@ -1,9 +1,9 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
+import { changedWords } from '@soirely/domain';
 import { type RefObject, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
-import { CHANGED_WORDS } from './eventWords.ts';
 
 export type Confirming<C> = { kind: 'confirm'; pending: boolean; failed: boolean } & C;
 
@@ -51,7 +51,7 @@ export function useLifecycleAction<C extends object>({
   const changed: Refusal = {
     reload: true,
     then: (latest) => {
-      const [title, line] = CHANGED_WORDS[latest.phase];
+      const [title, line] = changedWords(latest);
 
       return { title: t(title), lines: [t(line)] };
     },

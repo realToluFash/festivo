@@ -567,3 +567,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   un nom d’événement dont on ignore le genre. Les deux-points, avec U+00A0 avant, plutôt que le « Annulation de »
   convenu avec le pm : « de » devant un nom qui commence par une voyelle ou un article
   (« de Anniversaire », « de Le Gala ») se lirait mal, et le code ne peut pas élider.
+- **27 oct. 2026. Un décompte de suppression qui échoue** (`ownership.deleteUncounted`,
+  `ownership.deleteRetry`, web et app, sc-16928 pour sc-16866). « Impossible de calculer son
+  contenu », comme « Calcul de son contenu… » (`deleteLoading`). « Si vous la supprimez », puis
+  « restaurer » et « l’assistance Soirely », comme `deleteWindow`, avec un délai fixe
+  « pendant 30 jours ». Le bouton est « Réessayer », comme ailleurs.

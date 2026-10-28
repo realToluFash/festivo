@@ -1,6 +1,17 @@
-import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useContext,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from 'react';
 import {
   Keyboard,
+  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -9,7 +20,7 @@ import {
   View,
 } from 'react-native';
 
-import { codeProps, FIELD_DEFAULTS, fieldText, nextPin } from '../kit/fields.ts';
+import { codeProps, FIELD_DEFAULTS, fieldName, fieldText, nextPin } from '../kit/fields.ts';
 import { faced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { fieldFocused, fieldLeft } from './focusedField.ts';
@@ -21,6 +32,13 @@ import { useMarkSide } from './markSide.ts';
 
 /** 16 is the smallest size iOS Safari will not zoom into on focus. */
 export const CONTROL_TEXT_SIZE = 16;
+
+const FieldLabel = createContext<string | undefined>(undefined);
+
+/** The nativeID of the label of the Field a control sits in, which names the control on Android. */
+export function useFieldLabel(): string | undefined {
+  return useContext(FieldLabel);
+}
 
 /** A label, the control, its error under it, then any help: the order every form uses. */
 export function Field({
@@ -47,6 +65,7 @@ export function Field({
   children: ReactNode;
 }) {
   const field = useRef<View>(null);
+  const labelID = useId();
   const { read: helpRead } = useFocusOnAnswer<TextHandle>(helpAnswer);
   useEffect(() => {
     const mounted = field.current;
@@ -63,7 +82,7 @@ export function Field({
       style={styles.field}
     >
       <View style={styles.labelRow}>
-        <Text size={tokens.typeButton.size} weight="semibold">
+        <Text size={tokens.typeButton.size} weight="semibold" nativeID={labelID}>
           {label}
         </Text>
         {pill != null && (
@@ -86,7 +105,7 @@ export function Field({
           </Pressable>
         )}
       </View>
-      {children}
+      <FieldLabel value={labelID}>{children}</FieldLabel>
       {error != null && <FieldError message={error} actions={errorActions} answer={errorAnswer} />}
       {(typeof help === 'string' ? [help] : (help ?? [])).map((line, index) => (
         <Text
@@ -221,11 +240,16 @@ export function TextField({
   ...rest
 }: TextFieldProps) {
   const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
+  const labelID = useFieldLabel();
 
   return (
     <TextInput
       {...FIELD_DEFAULTS}
       {...rest}
+      {...fieldName(Platform.OS, rest.accessibilityLabel, {
+        labelID,
+        placeholder: rest.placeholder,
+      })}
       value={value}
       {...holding}
       ref={ref}
@@ -250,12 +274,17 @@ export function CodeField({
   ...rest
 }: CodeFieldProps) {
   const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
+  const labelID = useFieldLabel();
 
   return (
     <TextInput
       {...codeProps(takesRecoveryCode)}
       autoComplete="sms-otp"
       {...rest}
+      {...fieldName(Platform.OS, rest.accessibilityLabel, {
+        labelID,
+        placeholder: rest.placeholder,
+      })}
       value={value}
       {...holding}
       ref={ref}

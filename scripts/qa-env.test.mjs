@@ -916,7 +916,7 @@ describe('the list a batch ends with', () => {
   });
 });
 
-describe('what a stalled Maestro run leaves to resume', () => {
+describe('what a Maestro run that lost its driver leaves to resume', () => {
   const runs = ['home', 'settings', 'roles', 'members'].map((check) => ({
     check,
     language: 'any',
@@ -924,35 +924,51 @@ describe('what a stalled Maestro run leaves to resume', () => {
 
   it('blames the check the driver died in and resumes past it', () => {
     expect(
+      afterRun(runs, { begun: ['home', 'settings'], from: 0, passed: new Set(['home']) }),
+    ).toEqual({ crashed: 'settings', rest: runs.slice(2) });
+  });
+
+  it('resumes past a check that passed before the driver died, blaming nobody', () => {
+    expect(
       afterRun(runs, {
         begun: ['home', 'settings'],
         from: 0,
-        passed: new Set(['home']),
-        stalled: true,
+        passed: new Set(['home', 'settings']),
       }),
-    ).toEqual({ crashed: 'settings', rest: runs.slice(2) });
+    ).toEqual({ crashed: null, rest: runs.slice(2) });
   });
 
   it('stops when a resumed run reaches no new check, blaming nobody', () => {
     expect(
-      afterRun(runs.slice(2), {
-        begun: ['home', 'settings'],
-        from: 2,
+      afterRun(runs.slice(2), { begun: ['home', 'settings'], from: 2, passed: new Set(['home']) }),
+    ).toEqual({ crashed: null, rest: [] });
+  });
+
+  it('resumes nothing after a run that reached its last check, even one that failed', () => {
+    expect(
+      afterRun(runs, {
+        begun: ['home', 'settings', 'roles', 'members'],
+        from: 0,
         passed: new Set(['home']),
-        stalled: true,
       }),
     ).toEqual({ crashed: null, rest: [] });
   });
 
-  it('resumes nothing after a run that ended without stalling', () => {
+  it('lists a cold check that failed on its own as a plain failure, not a crash', () => {
+    expect(
+      afterRun([runs[1]], { begun: ['home', 'settings'], from: 1, passed: new Set(['home']) }),
+    ).toEqual({ crashed: null, rest: [] });
+  });
+
+  it('blames the last check of a run the watchdog stopped, resuming nothing', () => {
     expect(
       afterRun(runs, {
-        begun: ['home', 'settings'],
+        begun: ['home', 'settings', 'roles', 'members'],
         from: 0,
         passed: new Set(['home']),
-        stalled: false,
+        stalled: true,
       }),
-    ).toEqual({ crashed: null, rest: [] });
+    ).toEqual({ crashed: 'members', rest: [] });
   });
 
   it('stops resuming after the cap when every resume crashes on the same check', async () => {

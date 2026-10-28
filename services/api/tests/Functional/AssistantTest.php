@@ -11,15 +11,17 @@ use App\Domain\User\UserRegistrar;
 use App\Entity\AssistantInteraction;
 use App\Enum\ErrorCode;
 use App\Tests\ApiTestCase;
+use App\Tests\Double\RefusingRateLimiterFactory;
 use App\Tests\Traits\OnboardsAccounts;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use LogicException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
 use Psl\Vec;
 use Symfony\Component\RateLimiter\RateLimiterFactory;
-use Symfony\Component\RateLimiter\Storage\InMemoryStorage;
 
 /**
  * The endpoint, every branch, against the stand-in.
@@ -404,33 +406,31 @@ final class AssistantTest extends ApiTestCase
     }
 
     /**
-     * The endpoint consults the budget, and refuses when it is gone.
-     *
-     * The limiter is swapped for one with a budget of a single request, already
-     * spent. It cannot be exhausted through the browser instead: the configured
-     * pool is tagged `kernel.reset`, so Symfony clears it between requests and
-     * the budget is full every time however many are sent. That the configured
-     * numbers are real is a separate test, below.
+     * The limiter is swapped for one with nothing left: the configured pool is tagged `kernel.reset`, so its
+     * budget is full again on every request. That the configured numbers are real is the test below.
      */
     #[Test]
-    public function aSpentBudgetRefusesTheRequestBeforeTheProviderIsAsked(): void
+    #[DataProvider('refusalsInTwoLanguages')]
+    public function aSpentBudgetRefusesTheRequestBeforeTheProviderIsAsked(string $language, string $expected): void
     {
-        $spent = new RateLimiterFactory(
-            ['id' => 'assistant_chat', 'policy' => 'token_bucket', 'limit' => 1, 'rate' => ['interval' => '1 hour']],
-            // The test's own storage, not the container's — a pool the
-            // framework resets cannot hold a budget across a request.
-            new InMemoryStorage(),
-        );
-        $spent->create('127.0.0.1')->consume();
+        self::getContainer()->set('limiter.assistant_chat', new RefusingRateLimiterFactory(new DateTimeImmutable('2099-10-26 14:34:10 UTC')));
 
-        self::getContainer()->set('limiter.assistant_chat', $spent);
-
-        $this->chat(['context' => 'organiser', 'messages' => [['role' => 'user', 'content' => 'hello']]]);
+        $body = $this->chat([], ['HTTP_ACCEPT_LANGUAGE' => $language]);
 
         self::assertResponseStatusCodeSame(429);
+        self::assertSame(ErrorCode::TooManyAttempts->type(), $body['type']);
+        self::assertGreaterThan(0, (int) $this->client->getResponse()->headers->get('Retry-After'));
+        self::assertSame($expected, $body['detail']);
         // Nothing recorded: the refusal happens before the provider is asked,
         // so there is no turn to record.
         self::assertSame(0, $this->interactionCount());
+    }
+
+    /** @return iterable<string, array{0: string, 1: string}> */
+    public static function refusalsInTwoLanguages(): iterable
+    {
+        yield 'en' => ['en', 'Too many assistant requests. Try again at 14:35 UTC.'];
+        yield 'fr' => ['fr', 'Trop de requêtes à l’assistant. Réessayez à 14:35 UTC.'];
     }
 
     /**
@@ -450,8 +450,7 @@ final class AssistantTest extends ApiTestCase
             ++$accepted;
         }
 
-        self::assertGreaterThan(0, $accepted, 'The budget refused the first request');
-        self::assertLessThan(500, $accepted, 'The budget cannot be exhausted');
+        self::assertSame(20, $accepted);
     }
 
     /**

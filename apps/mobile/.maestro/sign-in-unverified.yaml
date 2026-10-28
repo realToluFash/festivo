@@ -1,0 +1,43 @@
+# Signing in an unverified account lands on the verification gate. sc-56.
+# Run on its own, or as the first step of the verify-email flows.
+#
+#   node .qa/bin/qa-env.mjs maestro sign-in-unverified EMAIL=… PASSWORD=…
+#
+# The account is registered and not yet verified, as request-link-register.yaml leaves one.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 60000
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- eraseText: 120
+- inputText: ${PASSWORD}
+- tapOn:
+    id: 'signIn.password.reveal'
+- takeScreenshot: mobile-sign-in-unverified-filled
+- tapOn:
+    id: 'signIn.submit'
+# The dialog can arrive seconds after the gate has rendered, so wait for it.
+- extendedWaitUntil:
+    visible: 'Save Password?'
+    timeout: 8000
+    optional: true
+- runFlow:
+    when:
+      visible: 'Save Password?'
+    commands:
+      - tapOn: 'Not Now'
+- extendedWaitUntil:
+    visible:
+      id: 'verifyEmail.code'
+    timeout: 30000

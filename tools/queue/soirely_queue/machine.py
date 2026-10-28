@@ -18,8 +18,8 @@ from . import roles
 HERE = pathlib.Path(__file__).resolve().parent
 EXAMPLE = HERE.parent / "agents.example.json"
 MODELS = HERE.parent / "models.json"
-SETTINGS = ("model", "effort", "memoryMax", "maxRuntime", "maxBudgetUsd", "wakeEvery",
-            "workers")
+SETTINGS = ("model", "effort", "inboxEffort", "inboxBatch", "memoryMax", "maxRuntime",
+            "maxBudgetUsd", "wakeEvery", "workers")
 SIZE = re.compile(r"^\d+[KMG]$")
 RUNTIME = re.compile(r"^(\d+)(m|h)$")
 # Claude Code's own default folder, which keeps its account file beside it, not inside.
@@ -108,6 +108,82 @@ def expand(value):
     return pathlib.Path(value).expanduser() if value else None
 
 
+def nvm_node():
+    """The bin folder of nvm's `default` node, or None. Read from nvm's files, since neither
+    the manager nor launchd ever sources nvm, so its PATH holds no node to go by."""
+    folder = pathlib.Path(os.environ.get("NVM_DIR") or "~/.nvm").expanduser()
+    try:
+        installed = [found.name for found in (folder / "versions" / "node").iterdir()
+                     if (found / "bin" / "node").exists()]
+    except OSError:
+        return None
+    wanted = "default"
+    # An alias may name another (default -> lts/jod -> v22.x), as nvm's own lookup follows.
+    for _ in range(5):
+        alias = folder / "alias" / wanted
+        if not alias.is_file():
+            break
+        wanted = alias.read_text().strip()
+    if wanted == "default" or not wanted:
+        return None
+    wanted = "" if wanted in ("node", "stable") else wanted.lstrip("v")
+    matching = [name for name in installed if not wanted or name.lstrip("v") == wanted
+                or name.lstrip("v").startswith(wanted + ".")]
+    if not matching:
+        return None
+    newest = max(matching, key=version_key)
+    return folder / "versions" / "node" / newest / "bin"
+
+
+def version_key(name):
+    return tuple(int(part) if part.isdigit() else 0 for part in name.lstrip("v").split("."))
+
+
+def wanted_node(config):
+    """The node the main checkout's `.nvmrc` asks for, when it names a version number."""
+    main = checkout(config, "dev")
+    try:
+        wanted = (main / ".nvmrc").read_text().strip().lstrip("v")
+    except (OSError, TypeError):
+        return None
+    return wanted if re.fullmatch(r"\d+(\.\d+)*", wanted) else None
+
+
+def node_version(node):
+    try:
+        stamp = pathlib.Path(node).resolve().stat().st_mtime
+    except OSError:
+        return None
+    return _node_version(str(node), stamp)
+
+
+@functools.lru_cache(maxsize=8)
+def _node_version(node, stamp):
+    try:
+        said = subprocess.run([node, "--version"], capture_output=True, text=True,
+                              timeout=10).stdout.strip().lstrip("v")
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return said if re.fullmatch(r"\d+(\.\d+)*", said) else None
+
+
+def node_behind(config, node):
+    """A warning when the node a worker runs is older than the main checkout's `.nvmrc`."""
+    wanted = wanted_node(config)
+    found = node_version(node) if wanted else None
+    if not found or version_key(found) >= version_key(wanted):
+        return None
+    return (f"workers run node {found}, older than the {wanted} that .nvmrc asks for: "
+            f"nvm install {wanted} && nvm alias default {wanted}")
+
+
+def tool_folders():
+    """What a worker's PATH carries ahead of the tools found by name: nvm's default node,
+    first so that no other node shadows it, and Maestro, which only a shell profile adds."""
+    found = [nvm_node(), pathlib.Path("~/.maestro/bin").expanduser()]
+    return [str(folder) for folder in found if folder and folder.is_dir()]
+
+
 def workspace(config):
     return expand(config.get("workspace"))
 
@@ -183,6 +259,19 @@ def settings(config, role):
     return merged
 
 
+def effort_for(values, kind):
+    """A comment run takes `inboxEffort` where it is set, and the role's `effort` where it is
+    not. Every other kind of work takes `effort`."""
+    if kind != "inbox":
+        return values["effort"]
+    return values.get("inboxEffort") or values["effort"]
+
+
+def inbox_batch(values):
+    """How many `inbox` items one run claims: `inboxBatch`, or one where it is unset."""
+    return values.get("inboxBatch") or 1
+
+
 def slice_memory(config):
     """`sliceMemoryMax`, or 16G when it is unset or not a size, which `check` reports."""
     value = config.get("sliceMemoryMax")
@@ -207,6 +296,10 @@ def setting_problems(values, known, where):
     elif model in known and effort not in known[model]["efforts"]:
         problems.append(f"{where}: effort {effort!r} is not one {model} takes: "
                         f"{', '.join(known[model]['efforts'])}")
+    inbox = values.get("inboxEffort")
+    if inbox is not None and model in known and inbox not in known[model]["efforts"]:
+        problems.append(f"{where}: inboxEffort {inbox!r} is not one {model} takes: "
+                        f"{', '.join(known[model]['efforts'])}")
     memory = values.get("memoryMax")
     if memory is not None and not SIZE.match(str(memory)):
         problems.append(f"{where}: memoryMax {memory!r} is not a size such as 3G")
@@ -220,6 +313,9 @@ def setting_problems(values, known, where):
     if workers is not None and (isinstance(workers, bool) or not isinstance(workers, int)
                                 or workers < 1):
         problems.append(f"{where}: workers {workers!r} is not a whole number from 1")
+    batch = values.get("inboxBatch")
+    if batch is not None and (isinstance(batch, bool) or not isinstance(batch, int) or batch < 1):
+        problems.append(f"{where}: inboxBatch {batch!r} is not a whole number from 1")
     budget = values.get("maxBudgetUsd")
     if budget is not None and (isinstance(budget, bool) or not isinstance(budget, (int, float))
                                or budget <= 0):

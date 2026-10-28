@@ -4,7 +4,6 @@ import {
   type StyleProp,
   StyleSheet,
   View,
-  useWindowDimensions,
   type ViewStyle,
 } from 'react-native';
 
@@ -15,6 +14,7 @@ import {
   settingsListGivesWay,
   useLayout,
   useSideListWidth,
+  useWindowFrame,
 } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { bodyEdges } from './bodyEdges.ts';
@@ -33,7 +33,7 @@ export interface ListAndPageSpacing {
 }
 
 export interface ListAndPageProps {
-  heading: ReactNode;
+  heading?: ReactNode;
   /** Beside the heading on a tablet on its side, and nowhere otherwise. */
   besideHeading?: ReactNode;
   list: ReactNode;
@@ -62,7 +62,7 @@ export function useListAndPageLayout(
   spacing: ListAndPageSpacing,
   beside: SectionBeside,
 ): { kind: LayoutKind; givesWay: boolean } {
-  const window = useWindowDimensions();
+  const window = useWindowFrame();
   const list = listBeside(spacing);
 
   return {
@@ -99,7 +99,7 @@ export function ListAndPage({
       scroll={false}
       contentStyle={landscape ? spacing.landscape : styles.bare}
     >
-      {landscape && (
+      {landscape && (heading || besideHeading) && (
         <View style={styles.head}>
           <View style={styles.fill}>{heading}</View>
           {besideHeading}

@@ -1,11 +1,11 @@
 import { type EventStatus, type OrganisationEvent } from '@soirely/api-client';
-import { type EventPhase, eventAllows } from '@soirely/domain';
+import { type EventPhase, changedWords, eventAllows } from '@soirely/domain';
 import { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { CHANGED_WORDS, type PauseRefusal, pauseRefusalOf } from '../kit/makeLive.ts';
+import { type PauseRefusal, pauseRefusalOf } from '../kit/makeLive.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
@@ -62,7 +62,7 @@ export function PauseButton({
         }
         lines={
           asking?.kind === 'changed'
-            ? CHANGED_WORDS[event.phase].map((line) => t(line))
+            ? changedWords(event).map((line) => t(line))
             : [
                 t('eventPause.body'),
                 t('eventPause.nothingLost'),
@@ -135,10 +135,10 @@ export function PausedRow({
       <Notice
         tone="attention"
         mark={PAUSE_BARS}
-        body={changed ? t(CHANGED_WORDS[event.phase][0]) : t('eventPause.notice')}
+        body={changed ? t(changedWords(event)[0]) : t('eventPause.notice')}
         detail={
           changed
-            ? t(CHANGED_WORDS[event.phase][1])
+            ? t(changedWords(event)[1])
             : state === 'failed'
               ? t('eventPause.resumeFailed')
               : null

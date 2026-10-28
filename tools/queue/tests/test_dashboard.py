@@ -1,6 +1,8 @@
 """`sq web`: the snapshot it serves, and the page and JSON it answers with."""
 
+import http.client
 import io
+import socket
 import json
 import pathlib
 import tempfile
@@ -12,7 +14,7 @@ import urllib.request
 from contextlib import redirect_stdout
 from unittest import mock
 
-from soirely_queue import dashboard, runlog, runner, sessions, store
+from soirely_queue import dashboard, remote, runlog, runner, sessions, store
 
 from tests.test_runner import FakePlatform, config, work
 
@@ -195,6 +197,57 @@ class Snapshot(unittest.TestCase):
         self.assertEqual(roles["dev2"]["sessions"], [])
         self.assertEqual(view["recent"][0]["session"], session)
 
+    def test_a_machine_whose_workers_have_no_node_says_so_once(self):
+        self.platform.search_path = lambda: "/nowhere"
+        with mock.patch("shutil.which", return_value=None):
+            warned = [w for w in self.snap()["warnings"] if "no node" in w]
+        self.assertEqual(len(warned), 1)
+        with mock.patch("shutil.which", return_value="/nvm/v22/bin/node"):
+            self.assertFalse([w for w in self.snap()["warnings"] if "no node" in w])
+
+    def node(self, version):
+        node = pathlib.Path(self.root) / "bin" / version / "node"
+        node.parent.mkdir(parents=True)
+        node.write_text(f"#!/bin/sh\necho v{version}\n")
+        node.chmod(0o755)
+        return str(node)
+
+    def nvmrc(self, version):
+        main = pathlib.Path(self.root) / "festivo"
+        main.mkdir(exist_ok=True)
+        (main / ".nvmrc").write_text(version + "\n")
+
+    def node_warnings(self, node):
+        self.platform.search_path = lambda: "/nowhere"
+        with mock.patch("shutil.which", return_value=node):
+            return [w for w in self.snap()["warnings"] if "node" in w]
+
+    def test_a_worker_node_older_than_the_nvmrc_is_named_with_both_versions(self):
+        self.nvmrc("22.18")
+        self.assertEqual(self.node_warnings(self.node("20.19.0")),
+                         ["workers run node 20.19.0, older than the 22.18 that .nvmrc asks for: "
+                          "nvm install 22.18 && nvm alias default 22.18"])
+        self.assertEqual(self.node_warnings(None),
+                         ["workers have no node: install nvm with a default alias "
+                          "(nvm alias default 22.18), or node on the PATH"])
+
+    def test_a_node_at_or_above_the_nvmrc_or_no_nvmrc_gives_no_version_warning(self):
+        old = self.node("20.19.0")
+        self.assertEqual(self.node_warnings(old), [])
+        self.nvmrc("22.18")
+        self.assertEqual(self.node_warnings(self.node("22.18.0")), [])
+        self.assertEqual(self.node_warnings(self.node("24.1.0")), [])
+        self.nvmrc("lts/jod")
+        self.assertEqual(self.node_warnings(old), [])
+
+    def test_the_other_machines_page_names_are_listed_and_a_missing_token_is_a_warning(self):
+        self.settings["peers"] = {"tolu-linux": "http://10.0.0.5:8765"}
+        with mock.patch.dict("os.environ", {remote.TOKEN: ""}):
+            view = self.snap()
+        self.assertEqual(view["peers"], ["tolu-linux"])
+        self.assertIn(f"peers are listed but {remote.TOKEN} is not set, so they cannot be read",
+                      view["warnings"])
+
     def test_a_failed_run_is_marked(self):
         runlog.append(self.home, "ops", {"at": NOW, "role": "ops", "exit": "1",
                                          "stopped": "exit-code", "report": "ended"})
@@ -253,3 +306,92 @@ class Serve(unittest.TestCase):
             urllib.request.urlopen(url + "session.json?id=other")
         self.assertEqual(refused.exception.code, 404)
         self.assertEqual(asked, ["known", "other"])
+
+
+SECRET = "t" * remote.TOKEN_MIN
+
+
+class ServeElsewhere(unittest.TestCase):
+    """As another machine on the network sees it: every client is treated as remote."""
+
+    def start(self, **kwargs):
+        said, ready = [], threading.Event()
+
+        def say(line):
+            said.append(line)
+            ready.set()
+
+        patch = mock.patch.object(remote, "loopback", return_value=False)
+        patch.start()
+        self.addCleanup(patch.stop)
+        threading.Thread(target=dashboard.serve, daemon=True, args=(lambda now: {"m": 1}, 0),
+                         kwargs=dict({"open_page": False, "say": say, "secret": SECRET},
+                                     **kwargs)).start()
+        self.assertTrue(ready.wait(5))
+        return said
+
+    def get(self, said, path, headers=None):
+        port = int(said[0].split()[2].rsplit(":", 1)[1].strip("/"))
+        connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        self.addCleanup(connection.close)
+        connection.request("GET", path, headers=headers or {})
+        return connection.getresponse()
+
+    def test_without_a_token_it_will_not_listen_beyond_this_machine(self):
+        said = []
+        dashboard.serve(lambda now: {}, 0, open_page=False, say=said.append, host="0.0.0.0",
+                        secret="short")
+        self.assertIn("will not listen on 0.0.0.0", said[0])
+
+    def test_another_machine_is_refused_without_the_token_and_served_with_it(self):
+        said = self.start()
+        self.assertEqual(self.get(said, "/status.json").status, 401)
+        answer = self.get(said, "/status.json", {"Authorization": f"Bearer {SECRET}"})
+        self.assertEqual(json.loads(answer.read()), {"m": 1})
+
+    def test_the_token_in_the_address_becomes_a_cookie_and_leaves_the_address(self):
+        said = self.start()
+        answer = self.get(said, f"/?token={SECRET}")
+        self.assertEqual((answer.status, answer.getheader("Location")), (303, "/"))
+        cookie = answer.getheader("Set-Cookie")
+        self.assertIn("HttpOnly", cookie)
+        self.assertEqual(self.get(said, "/", {"Cookie": cookie.split(";")[0]}).status, 200)
+
+    def test_a_peers_json_is_read_through_this_machine_and_an_unknown_peer_is_not_found(self):
+        asked = []
+
+        def fetch(base, path, secret):
+            asked.append((base, path, secret))
+            return 502, b'{"error": "it did not answer"}'
+
+        said = self.start(peers=lambda: {"tolu-linux": "http://10.0.0.5:8765"}, fetch=fetch)
+        bearer = {"Authorization": f"Bearer {SECRET}"}
+        answer = self.get(said, "/m/tolu-linux/session.json?id=abc", bearer)
+        self.assertEqual((answer.status, json.loads(answer.read())),
+                         (502, {"error": "it did not answer"}))
+        self.assertEqual(asked, [("http://10.0.0.5:8765", "session.json?id=abc", SECRET)])
+        self.assertEqual(self.get(said, "/m/other/status.json", bearer).status, 404)
+        said = self.start(peers=lambda: {"tolu mac": "http://10.0.0.6:8765"}, fetch=fetch)
+        self.assertEqual(self.get(said, "/m/tolu%20mac/status.json", bearer).status, 502)
+        self.assertEqual(asked[-1][0], "http://10.0.0.6:8765")
+
+    def test_a_slow_peer_or_an_idle_connection_holds_up_no_one_else(self):
+        answering = threading.Event()
+
+        def fetch(base, path, secret):
+            answering.wait(5)
+            return 200, b"{}"
+
+        said = self.start(peers=lambda: {"slow": "http://10.0.0.5:8765"}, fetch=fetch)
+        port = int(said[0].split()[2].rsplit(":", 1)[1].strip("/"))
+        idle = socket.create_connection(("127.0.0.1", port))
+        self.addCleanup(idle.close)
+        bearer = {"Authorization": f"Bearer {SECRET}"}
+        slow = threading.Thread(target=self.get, args=(said, "/m/slow/status.json", bearer))
+        slow.start()
+        started = time.monotonic()
+        self.assertEqual(self.get(said, "/status.json", bearer).status, 200)
+        self.assertLess(time.monotonic() - started, 2)
+        answering.set()
+        slow.join(5)
+        self.assertEqual(self.get(said, "/m/tolu-linux/../status.json", bearer).status, 404)

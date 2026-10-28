@@ -1,6 +1,7 @@
 import type { ExpoConfig } from 'expo/config';
 
 import { withFontScaleKept } from './plugins/withFontScaleKept.ts';
+import { withLaunchScreenColour } from './plugins/withLaunchScreenColour.ts';
 import { tokens } from './src/theme/tokens.ts';
 
 /**
@@ -118,4 +119,4 @@ const config: ExpoConfig = {
   },
 };
 
-export default withFontScaleKept(config);
+export default withLaunchScreenColour(withFontScaleKept(config), { pageColour: tokens.colorPage });

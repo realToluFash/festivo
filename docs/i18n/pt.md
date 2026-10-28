@@ -532,3 +532,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **27 Oct 2026. O marco de um evento cancelado** (sc-16725 para sc-16709,
   `messages:timeline.event_called_off`). "Cancelamento de {name}", um substantivo, para não
   concordar com um nome de evento cujo género o código não conhece.
+- **27 Oct 2026. Uma contagem de eliminação que falha** (`ownership.deleteUncounted`,
+  `ownership.deleteRetry`, web e app, sc-16928 para sc-16866). "Não foi possível contar o que
+  contém", com o verbo de `deleteLoading`. "Se a eliminar … são eliminados na mesma", e
+  "restaurá-la", como `deleteWindow`, com o prazo fixo "durante 30 dias". O botão é "Tentar
+  novamente", como no ecrã Eventos.
