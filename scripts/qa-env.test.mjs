@@ -31,6 +31,7 @@ import {
   composeBatch,
   localise,
   parseBatch,
+  readyReport,
   REBUILD,
   rerunHints,
   runAsync,
@@ -1560,5 +1561,25 @@ describe('renewingSession', () => {
         throw broken;
       }),
     ).rejects.toBe(broken);
+  });
+});
+
+describe('the account --ready reports', () => {
+  const made = { email: 'a@qa.test', password: 'pw', accessToken: 'tok', sessionId: 'sess' };
+
+  it('names the session it signed in with', () => {
+    const report = readyReport({ ...made, secret: null });
+
+    expect(report).toMatch(/accessToken {2}tok\n/);
+    expect(report).toMatch(/sessionId {4}sess\n/);
+    expect(report).not.toContain('TOTP_SECRET');
+  });
+
+  it('adds the two-factor secret when it turned two-factor on', () => {
+    const report = readyReport({ ...made, secret: 'S3CR3T' });
+
+    expect(report).toContain('two-factor on');
+    expect(report).toContain('TOTP_SECRET  S3CR3T');
+    expect(report).toContain('EMAIL=a@qa.test PASSWORD=pw TOTP_SECRET=S3CR3T');
   });
 });

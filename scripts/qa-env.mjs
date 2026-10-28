@@ -2165,7 +2165,7 @@ async function account(args) {
     env: { ...process.env, ...env },
   });
   if (made === null) throw new Error('scripts/qa-account.mjs registered no account');
-  const { email, password, name, accessToken: token } = JSON.parse(made);
+  const { email, password, name, accessToken: token, sessionId } = JSON.parse(made);
   await api('/api/auth/complete-profile', {
     method: 'PATCH',
     token,
@@ -2176,18 +2176,28 @@ async function account(args) {
       timezone: 'Europe/London',
     },
   });
-  const lines = [`  email        ${email}`, `  password     ${password}`];
   let secret = null;
   if (twoFactor) {
     ({ secret } = await api('/api/auth/two-factor/enrol', { token }));
     const code = await nextCode(email, secret);
     await api('/api/auth/two-factor/activate', { token, body: { code } });
-    lines.push(`  TOTP_SECRET  ${secret}`);
   }
-  console.log(
-    `\n▸ registered, profile complete, owning QA Organisation${twoFactor ? ', two-factor on' : ''}` +
-      `\n\n${lines.join('\n')}\n\nbatch <name> <check>… EMAIL=${email} PASSWORD=${password}` +
-      `${secret ? ` TOTP_SECRET=${secret}` : ''}\n`,
+  console.log(readyReport({ email, password, secret, accessToken: token, sessionId }));
+}
+
+// The session it signed in with is printed, so a flow can end it from outside the phone.
+export function readyReport({ email, password, secret, accessToken, sessionId }) {
+  const lines = [
+    `  email        ${email}`,
+    `  password     ${password}`,
+    ...(secret ? [`  TOTP_SECRET  ${secret}`] : []),
+    `  accessToken  ${accessToken}`,
+    `  sessionId    ${sessionId}`,
+  ];
+  return (
+    `\n▸ registered, profile complete, owning QA Organisation${secret ? ', two-factor on' : ''}` +
+    `\n\n${lines.join('\n')}\n\nbatch <name> <check>… EMAIL=${email} PASSWORD=${password}` +
+    `${secret ? ` TOTP_SECRET=${secret}` : ''}\n`
   );
 }
 
