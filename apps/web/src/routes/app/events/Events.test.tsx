@@ -332,6 +332,27 @@ describe('Events Home (sc-3594)', () => {
     expect(screen.getByRole('heading', { name: 'Happening now' })).toBeDefined();
   });
 
+  it('names the day a Happening now event started when that was before today in its zone', async () => {
+    signedIn();
+    answering({
+      'GET /api/orgs/org_1/events': listed([
+        live('Weekend', {
+          phase: 'happening_now',
+          startsAt: '2026-10-31T09:00:00+01:00',
+          endsAt: '2026-11-02T02:00:00+01:00',
+          timeZone: 'Europe/Madrid',
+          milestones: [starts('Weekend ends', '2026-11-02T02:00:00+01:00')],
+        }),
+      ]),
+    });
+    at('/app/events');
+
+    const now = (await screen.findByRole('heading', { name: 'Happening now' })).parentElement!;
+    expect(spaced(within(now).getByRole('listitem').textContent)).toBe(
+      'Happening nowWeekendWeddingNext up Weekend endsStarted Saturday, Oct 31 · 09:00 Europe/Madrid',
+    );
+  });
+
   it('leaves Happening now out when nothing is, and Next up out with no milestone ahead', async () => {
     signedIn();
     answering({ 'GET /api/orgs/org_1/events': listed([live('Later')]) });

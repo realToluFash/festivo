@@ -46,6 +46,7 @@ import {
   COMPOSE_PROJECT,
   emulatorAbi,
   emulatorFor,
+  emulatorGpu,
   expoGoApk,
   expoGoRunning,
   expoSdkMajor,
@@ -238,6 +239,17 @@ describe('the emulator android opens', () => {
     [['--tablet'], { open: 'tablet', shut: 'phone' }],
   ])('%j opens one and shuts the other', (args, expected) => {
     expect(emulatorFor(args)).toEqual(expected);
+  });
+});
+
+describe('the GPU mode an emulator starts with', () => {
+  it.each([
+    ['linux', {}, 'swangle_indirect'],
+    ['darwin', {}, 'host'],
+    ['linux', { SOIRELY_QA_EMULATOR_GPU: 'host' }, 'host'],
+    ['darwin', { SOIRELY_QA_EMULATOR_GPU: 'swiftshader_indirect' }, 'swiftshader_indirect'],
+  ])('on %s with %j is %s', (platform, env, expected) => {
+    expect(emulatorGpu(platform, env)).toBe(expected);
   });
 });
 

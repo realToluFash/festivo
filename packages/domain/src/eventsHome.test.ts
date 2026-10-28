@@ -221,31 +221,83 @@ describe('the tab chosen', () => {
 });
 
 describe('cardDate', () => {
-  const live = event('Gala');
+  const live = { ...event('Gala'), timeZone: 'Europe/Madrid' };
+  const NOW = new Date('2026-11-14T12:00:00Z');
 
   it('reads the start with its distance while it is ahead', () => {
-    expect(cardDate(live, 'live')).toEqual({ kind: 'dateAway', startsAt: live.startsAt });
+    expect(cardDate(live, 'live', NOW)).toEqual({ kind: 'dateAway', startsAt: live.startsAt });
   });
 
   it('reads when it started while it is happening', () => {
-    expect(cardDate(live, 'happening_now')).toEqual({
+    expect(cardDate(live, 'happening_now', NOW)).toEqual({
       kind: 'startedToday',
       startsAt: live.startsAt,
     });
   });
 
-  it('reads when it was called off', () => {
-    const calledOff = event('Gala', { status: 'ended', concludedAt: '2026-09-30T10:00:00+02:00' });
+  it('reads the day it started once that day is over in its zone', () => {
+    const lagos = { ...live, startsAt: '2026-10-27T11:13:00+01:00', timeZone: 'Africa/Lagos' };
 
-    expect(cardDate(calledOff, 'finished')).toEqual({
+    expect(cardDate(lagos, 'happening_now', new Date('2026-10-27T22:59:00Z'))).toEqual({
+      kind: 'startedToday',
+      startsAt: lagos.startsAt,
+    });
+    expect(cardDate(lagos, 'happening_now', new Date('2026-10-27T23:00:00Z'))).toEqual({
+      kind: 'startedOn',
+      startsAt: lagos.startsAt,
+    });
+  });
+
+  it('reads a start at 23:59 the day before as that day, and one at 00:00 as today', () => {
+    const now = new Date('2026-10-28T09:00:00+01:00');
+    const lateEvening = {
+      ...live,
+      startsAt: '2026-10-27T23:59:00+01:00',
+      timeZone: 'Africa/Lagos',
+    };
+    const midnight = { ...lateEvening, startsAt: '2026-10-28T00:00:00+01:00' };
+
+    expect(cardDate(lateEvening, 'happening_now', now).kind).toBe('startedOn');
+    expect(cardDate(midnight, 'happening_now', now).kind).toBe('startedToday');
+  });
+
+  it('counts the date in the event’s zone, not the reader’s', () => {
+    const lagos = { ...live, startsAt: '2026-10-27T22:00:00+01:00', timeZone: 'Africa/Lagos' };
+    const stillTheSameDayInNewYork = new Date('2026-10-28T01:00:00+01:00');
+
+    expect(cardDate(lagos, 'happening_now', stillTheSameDayInNewYork).kind).toBe('startedOn');
+
+    const auckland = {
+      ...live,
+      startsAt: '2026-10-28T08:00:00+13:00',
+      timeZone: 'Pacific/Auckland',
+    };
+    const stillTheDayBeforeInLondon = new Date('2026-10-28T09:00:00+13:00');
+
+    expect(cardDate(auckland, 'happening_now', stillTheDayBeforeInLondon).kind).toBe(
+      'startedToday',
+    );
+  });
+
+  it('reads when it was called off', () => {
+    const calledOff = {
+      ...live,
+      status: 'ended' as const,
+      concludedAt: '2026-09-30T10:00:00+02:00',
+    };
+
+    expect(cardDate(calledOff, 'finished', NOW)).toEqual({
       kind: 'calledOffOn',
       concludedAt: '2026-09-30T10:00:00+02:00',
     });
   });
 
   it('reads the start of one that ended after it began', () => {
-    const ended = event('Gala', { status: 'ended', concludedAt: '2026-11-14T23:00:00+01:00' });
+    const ended = { ...live, status: 'ended' as const, concludedAt: '2026-11-14T23:00:00+01:00' };
 
-    expect(cardDate(ended, 'finished')).toEqual({ kind: 'dateAway', startsAt: ended.startsAt });
+    expect(cardDate(ended, 'finished', NOW)).toEqual({
+      kind: 'dateAway',
+      startsAt: ended.startsAt,
+    });
   });
 });

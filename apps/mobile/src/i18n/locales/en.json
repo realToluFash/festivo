@@ -1422,6 +1422,7 @@
     "typeAndPlace": "{{type}} · {{place}}",
     "dateAway": "{{date}} · {{distance}}",
     "startedToday": "Today · started {{time}} {{timeZone}}",
+    "startedOn": "Started {{date}} · {{time}} {{timeZone}}",
     "calledOffOn": "Called off on {{date}}",
     "nextUp": "Next up: {{title}}",
     "showMore": "Show more",

@@ -49,6 +49,7 @@
     "typeAndPlace": "{{type}} · {{place}}",
     "dateAway": "{{date}} · {{distance}}",
     "startedToday": "Today · started {{time}} {{timeZone}}",
+    "startedOn": "Started {{date}} · {{time}} {{timeZone}}",
     "calledOffOn": "Called off on {{date}}",
     "showMore": "Show more",
     "moreShown_one": "{{count, number}} more finished event shown.",
