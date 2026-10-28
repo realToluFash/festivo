@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { withPageColourBehind } from './withLaunchScreenColour.ts';
@@ -67,5 +71,19 @@ describe('withPageColourBehind', () => {
 
   it('refuses a colour that is not #RRGGBB', () => {
     expect(() => withPageColourBehind(templateStoryboard(), 'F5F6F8')).toThrow(/#RRGGBB/);
+  });
+});
+
+describe('withLaunchScreenColour', () => {
+  it('edits the storyboard under the mod name expo-splash-screen provides', () => {
+    const splashScreen = dirname(
+      createRequire(import.meta.url).resolve('expo-splash-screen/package.json'),
+    );
+    const provider = readFileSync(
+      join(splashScreen, 'plugin/build/withIosSplashScreenStoryboard.js'),
+      'utf8',
+    );
+
+    expect(provider).toContain("'splashScreenStoryboard'");
   });
 });
