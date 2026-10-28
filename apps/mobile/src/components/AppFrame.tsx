@@ -55,6 +55,7 @@ import { type TextHandle, Text } from './Text.tsx';
 import { Title, useWholeWords } from './Title.tsx';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
+import { useSystemBack } from './useSystemBack.ts';
 
 type Opening = (opener: RefObject<View | null>) => void;
 
@@ -117,12 +118,13 @@ export function AppFrame({
   aboutTheAccount?: boolean;
   /** A heading in the body takes screen reader focus after a tapped switch of organisation, in place of the title (sc-11032). */
   bodyTakesSwitch?: boolean;
-  /** On a phone, the page this one was opened from, as Security's "Settings". */
-  back?: { label: string; onPress: () => void } | undefined;
+  /** On a phone, the page this one was opened from, as Security's "Settings"; with `systemBack`, Android's Back runs it too. */
+  back?: { label: string; onPress: () => void; systemBack?: boolean } | undefined;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
+  useSystemBack(back?.systemBack === true, () => back?.onPress());
   const [choosing, setChoosing] = useState(false);
   const [creating, setCreating] = useState(false);
   const pill = useRef<View>(null);

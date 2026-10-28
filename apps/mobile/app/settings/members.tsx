@@ -22,7 +22,7 @@ import {
 } from '../../src/components/ListAndPage.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
 import { type StepClosed, stepClosed, useFocusOnAnswer } from '../../src/components/Screen.tsx';
-import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
+import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { SheetsAtRoot } from '../../src/components/Sheet.tsx';
 import { type TextHandle, Text } from '../../src/components/Text.tsx';
 import { cardFrame } from '../../src/components/cardFrame.ts';
@@ -47,6 +47,7 @@ const LOADING: Load = { kind: 'loading' };
 /** Settings > Members, `MembersApp-*` (sc-3404): who is in the organisation, a role change and a removal. */
 export default function MembersScreen() {
   const { t } = useTranslation();
+  const backToSettings = useBackToSettings();
   const { kind, givesWay } = useListAndPageLayout(SPACING, 'settingsList');
   const { organisation } = useSignedIn();
   const organisationId = organisation?.id;
