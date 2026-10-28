@@ -6,6 +6,7 @@ namespace App\Domain\User\Controller;
 
 use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Domain\User\Http\IssuedTokensResponse;
+use App\Domain\User\Model\IssuedTokens;
 use App\Domain\User\TokenIssuer;
 use App\Entity\RefreshToken;
 use App\Enum\ErrorCode;
@@ -51,29 +52,14 @@ final class TokenController
 
         $token = $this->find($this->presented($request, $body, $delivery) ?? throw $this->refuse());
 
-        if (null !== $token->getRevokedAt()) {
-            $this->tokenIssuer->revokeChain($token);
-            $this->entityManager->flush();
+        // Returned rather than thrown, so the transaction keeps the chain it ended on the way to the refusal.
+        $issued = $this->entityManager->wrapInTransaction(fn (): IssuedTokens|ApiException => $this->rotate($token, $request));
 
-            $this->logger->warning('Refresh token replayed; chain revoked', [
-                'chain' => $token->getChainId()->toRfc4122(),
-                'user' => $token->getUser()->getId()->toRfc4122(),
-            ]);
-
-            throw $this->refuse();
+        if ($issued instanceof ApiException) {
+            throw $issued;
         }
 
-        if (!$token->isUsable()) {
-            throw $this->refuse();
-        }
-
-        $this->endIfIdle($token);
-        $this->endIfPasswordRefused($token);
-
-        $tokens = $this->tokenIssuer->rotate($token, $request);
-        $this->entityManager->flush();
-
-        return new IssuedTokensResponse($tokens, $delivery, $request);
+        return new IssuedTokensResponse($issued, $delivery, $request);
     }
 
     #[Route('/api/auth/logout', name: 'auth_logout', methods: ['POST'])]
@@ -93,27 +79,52 @@ final class TokenController
             return $response;
         }
 
-        // A refresh still on the wire may already have rotated the token presented here.
-        $this->tokenIssuer->revokeChain($this->find($plain));
-        $this->entityManager->flush();
+        $token = $this->find($plain);
+
+        $this->entityManager->wrapInTransaction(function () use ($token): void {
+            $this->tokenIssuer->holdChain($token);
+            $this->tokenIssuer->revokeChain($token);
+        });
 
         return $response;
     }
 
+    private function rotate(#[SensitiveParameter] RefreshToken $token, Request $request): IssuedTokens|ApiException
+    {
+        $this->tokenIssuer->holdChain($token);
+
+        if (null !== $token->getRevokedAt()) {
+            // A chain with nothing live left was ended by a sign-out, not robbed.
+            if (0 < $this->tokenIssuer->revokeChain($token)) {
+                $this->logger->warning('Refresh token replayed; chain revoked', [
+                    'chain' => $token->getChainId()->toRfc4122(),
+                    'user' => $token->getUser()->getId()->toRfc4122(),
+                ]);
+            }
+
+            return $this->refuse();
+        }
+
+        if (!$token->isUsable()) {
+            return $this->refuse();
+        }
+
+        return $this->endIfIdle($token) ?? $this->endIfPasswordRefused($token) ?? $this->tokenIssuer->rotate($token, $request);
+    }
+
     /** A token is issued at each use, so its age is how long the session has gone unused. */
-    private function endIfIdle(#[SensitiveParameter] RefreshToken $token): void
+    private function endIfIdle(#[SensitiveParameter] RefreshToken $token): ?ApiException
     {
         $user = $token->getUser();
         $limit = $this->signInRules->inactivityLimit($user);
 
         if (null === $limit || $token->getCreatedAt() > $this->clock->now()->sub(new DateInterval(Str\format('P%dD', $limit->days)))) {
-            return;
+            return null;
         }
 
         $this->tokenIssuer->revokeChain($token);
-        $this->entityManager->flush();
 
-        throw new ApiException(
+        return new ApiException(
             ErrorCode::SessionTimedOut,
             'sign_in.idle_timeout',
             [],
@@ -129,18 +140,17 @@ final class TokenController
     }
 
     /** A session a password opened ends once the rule turns that password away, as the next sign-in would (sc-69). */
-    private function endIfPasswordRefused(#[SensitiveParameter] RefreshToken $token): void
+    private function endIfPasswordRefused(#[SensitiveParameter] RefreshToken $token): ?ApiException
     {
         $refusal = null === $token->getSignedInWith() ? $this->signInRules->passwordRefusal($token->getUser()) : null;
 
         if (null === $refusal) {
-            return;
+            return null;
         }
 
         $this->tokenIssuer->revokeChain($token);
-        $this->entityManager->flush();
 
-        throw $refusal;
+        return $refusal;
     }
 
     /** @return array{refreshToken?: string, refreshTokenIn?: RefreshTokenDelivery} */

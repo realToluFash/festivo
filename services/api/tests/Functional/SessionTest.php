@@ -10,12 +10,15 @@ use App\Entity\RefreshToken;
 use App\Enum\ErrorCode;
 use App\Repository\RefreshTokenRepository;
 use App\Tests\ApiTestCase;
+use App\Tests\Double\RecordingLogger;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
 use Psl\Regex;
 use Psl\SecureRandom;
+use Psl\Vec;
+use Psr\Log\LogLevel;
 use SensitiveParameter;
 
 final class SessionTest extends ApiTestCase
@@ -166,6 +169,39 @@ final class SessionTest extends ApiTestCase
 
         self::em()->clear();
         self::assertNotNull($this->find($second['refreshToken'])?->getRevokedAt());
+    }
+
+    #[Test]
+    public function aRefreshHoldingTheChainSeesTheSignOutThatEndedItUnderIt(): void
+    {
+        ['refreshToken' => $token] = $this->signIn('raced@example.com');
+        $loaded = $this->find($token);
+        self::assertNotNull($loaded);
+        $issuer = self::service(TokenIssuer::class);
+
+        $issuer->revokeChain($loaded);
+        self::assertNull($loaded->getRevokedAt(), 'the refresh read its token before the sign-out landed');
+
+        $issuer->holdChain($loaded);
+
+        self::assertNotNull($loaded->getRevokedAt());
+    }
+
+    #[Test]
+    public function aRefreshThatLosesToASignOutIsNotReportedAsATheft(): void
+    {
+        $this->client->disableReboot();
+        $logger = new RecordingLogger();
+        self::getContainer()->set('logger', $logger);
+        ['refreshToken' => $token] = $this->signIn('lost-race@example.com');
+
+        $this->client->request('POST', '/api/auth/logout', server: [
+            'CONTENT_TYPE' => 'application/json',
+        ], content: Json\encode(['refreshToken' => $token]));
+        $this->refresh($token);
+
+        self::assertSame(401, $this->client->getResponse()->getStatusCode());
+        self::assertSame([], Vec\filter($logger->records, static fn (array $record): bool => LogLevel::WARNING === $record['level']));
     }
 
     #[Test]
