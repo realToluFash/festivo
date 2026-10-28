@@ -93,9 +93,8 @@ final class TokenController
             return $response;
         }
 
-        $token = $this->find($plain);
-
-        $this->tokenIssuer->end($token);
+        // A refresh still on the wire may already have rotated the token presented here.
+        $this->tokenIssuer->revokeChain($this->find($plain));
         $this->entityManager->flush();
 
         return $response;

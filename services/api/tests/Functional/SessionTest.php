@@ -134,7 +134,7 @@ final class SessionTest extends ApiTestCase
     }
 
     #[Test]
-    public function signingOutRevokesOneTokenAndNotTheChain(): void
+    public function signingOutRevokesTheTokenItPresents(): void
     {
         ['refreshToken' => $first] = $this->signIn('signout@example.com');
         $second = $this->refresh($first);
@@ -150,6 +150,22 @@ final class SessionTest extends ApiTestCase
 
         $this->refresh($second['refreshToken']);
         self::assertSame(401, $this->client->getResponse()->getStatusCode());
+    }
+
+    #[Test]
+    public function signingOutWithATokenARefreshRotatedAwayEndsTheSession(): void
+    {
+        ['refreshToken' => $first] = $this->signIn('rotated@example.com');
+        $second = $this->refresh($first);
+
+        $this->client->request('POST', '/api/auth/logout', server: [
+            'CONTENT_TYPE' => 'application/json',
+        ], content: Json\encode(['refreshToken' => $first]));
+
+        self::assertSame(204, $this->client->getResponse()->getStatusCode());
+
+        self::em()->clear();
+        self::assertNotNull($this->find($second['refreshToken'])?->getRevokedAt());
     }
 
     #[Test]
