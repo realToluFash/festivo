@@ -95,7 +95,7 @@ export function ComingUp({ event, now: tick }: { event: OrganisationEvent; now: 
           </Link>
         )}
       </div>
-      <div className="coming-up-rows" aria-busy={load.kind === 'loading'}>
+      <div className="coming-up-rows">
         {load.kind === 'loading' && <DatesLoading />}
         {load.kind === 'failed' && <DatesFailed announced={retried} onRetry={retry} />}
         {load.kind === 'loaded' && shown.length === 0 && (
