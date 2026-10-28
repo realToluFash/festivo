@@ -4550,18 +4550,8 @@ button.members-row {
   font: var(--typeSmall);
 }
 
+/* On a phone the pills leave the date line for their own, as in the app, so a far-off date in another zone and the longer fr and pt words wrap within the rows' floor rather than past it. */
 @media (width <= 40rem) {
-  .coming-up-rows {
-    min-height: 179px;
-  }
-
-  .timeline-failed .button {
-    width: 100%;
-  }
-}
-
-/* At 320 the pills leave the date line for their own, so the longer fr and pt words wrap rather than cut. */
-@media (width <= 22.5rem) {
   .coming-up-rows {
     min-height: 236px;
   }
@@ -4578,5 +4568,9 @@ button.members-row {
 
   .timeline-marks {
     justify-content: flex-start;
+  }
+
+  .timeline-failed .button {
+    width: 100%;
   }
 }

@@ -431,11 +431,17 @@ function CardDate({
   const { t } = useTranslation();
   const locale = dateLocale();
 
-  const date = cardDate(event, phase);
+  const date = cardDate(event, phase, now);
 
   switch (date.kind) {
     case 'startedToday':
       return t('events.startedToday', {
+        time: formatEventClock(date.startsAt, event.timeZone, locale),
+        timeZone: event.timeZone,
+      });
+    case 'startedOn':
+      return t('events.startedOn', {
+        date: formatEventWeekday(date.startsAt, event.timeZone, locale),
         time: formatEventClock(date.startsAt, event.timeZone, locale),
         timeZone: event.timeZone,
       });

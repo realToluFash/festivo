@@ -1,11 +1,7 @@
 # Create an organisation, from the switcher's row.
 appId: host.exp.Exponent
 ---
-- openLink: ${METRO_URL}/--/
-- tapOn:
-    id: 'home.switchOrganisation'
-- tapOn:
-    id: 'switcher.create'
+- runFlow: ../open-create-organisation.yaml
 - extendedWaitUntil:
     visible: '{{t:createOrganisation.title}}'
     timeout: 30000

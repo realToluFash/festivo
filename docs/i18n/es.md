@@ -49,6 +49,10 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **28 Oct 2026. El evento que empezó otro día** (sc-17870 para sc-17853, `events.startedOn` web y
+  `eventsScreen.startedOn` app). «Empezó el {{date}} · {{time}} {{timeZone}}», en pareja con
+  `startedToday` («Hoy · empezó a las…»). `{{date}}` abre con el día de la semana («martes, 27 oct»),
+  así que lleva «el», como «desde el {{date}}».
 - **27 Oct 2026. Duplicar un evento** (sc-15883 para sc-3593, `web:eventDuplicate.*`). «Duplicar»
   y «Crear borrador»; el evento nuevo es «la copia» hasta que existe. El panel dice «Lo que se
   copia» / «Lo que no se copia», porque un participio solo tendría que concordar con cada fila.

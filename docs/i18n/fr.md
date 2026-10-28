@@ -54,6 +54,10 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **28 Oct 2026. L’événement commencé un autre jour** (sc-17870 pour sc-17853, `events.startedOn`
+  web et `eventsScreen.startedOn` app). « A commencé le {{date}} · {{time}} {{timeZone}} », en
+  paire avec `startedToday` (« Aujourd’hui · a commencé à… »). `{{date}}` est « mardi 27 oct. »,
+  qui prend « le » ; le point de l’abréviation précède le « · », jamais une fin de phrase.
 - **27 Oct 2026. Dupliquer un événement** (sc-15883 pour sc-3593, `web:eventDuplicate.*`).
   « Dupliquer » et « Créer le brouillon » ; le nouvel événement est « la copie » tant qu’il
   n’existe pas. Le panneau dit « Ce qui est copié » / « Ce qui n’est pas copié », car un
