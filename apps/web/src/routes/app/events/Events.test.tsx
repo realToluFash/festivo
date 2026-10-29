@@ -4164,6 +4164,19 @@ describe('Hosted by, in Edit details (sc-6713)', () => {
     expect(within(hostSection()).getByRole('button', { name: 'Remove Host 1' })).toBeDefined();
   });
 
+  it('leaves focus in the last row added when Add a host is pressed again and again up to six', async () => {
+    signedIn();
+    serving({ hosts: [] });
+    await editing();
+
+    for (let i = 0; i < 6; i += 1) {
+      fireEvent.click(within(hostSection()).getByRole('button', { name: 'Add a host' }));
+    }
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Host 6')));
+    expect(within(hostSection()).queryByRole('button', { name: 'Add a host' })).toBeNull();
+  });
+
   it('sends the names as typed and trimmed, in their order, with the tag it read', async () => {
     signedIn();
     const sent = serving({ hosts: [] });
