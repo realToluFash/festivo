@@ -1,4 +1,4 @@
-import configPlugins, { type ConfigPlugin } from 'expo/config-plugins.js';
+import configPlugins, { type ConfigPlugin } from 'expo/config-plugins';
 
 import { TEXT_SCALE_LAID_OUT } from '../src/components/textScaleLaidOutEvent.ts';
 

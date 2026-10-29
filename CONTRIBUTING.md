@@ -53,6 +53,11 @@ the same Wi-Fi can reach it, and runs Metro there. It prints the Expo Go build f
 the `exp://` address to enter, where email and SMS codes land, and the firewall rule to open
 when nothing loads. Run it from `../soirely-ops`, never a checkout with a branch in progress.
 
+The App Store's Expo Go opens a project only when Expo Go and the CLI are signed in to the
+same Expo account. Sign the CLI in once with `npx expo login` in `apps/mobile`, or put an
+access token for that account in `EXPO_TOKEN` in the environment `just phone` runs in. Sign
+Expo Go in from its own Profile tab. Android and the simulators need no account.
+
 None of these run in CI, deliberately: they need a simulator, a browser and a person — or
 an agent in QA mode. `.claude/skills/soirely-qa-tester` is what a pass does with them, how
 the report is written, and where it is posted.
