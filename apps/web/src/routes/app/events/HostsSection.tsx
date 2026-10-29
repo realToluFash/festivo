@@ -10,7 +10,7 @@ import {
   movedHost,
   removedHost,
 } from '@soirely/domain';
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { offButton } from '../../../offButton.ts';
@@ -40,7 +40,7 @@ export function HostsSection({
   const nextKey = useRef(Math.max(0, ...rows.map((row) => row.key)) + 1);
   const keepLast = keepsLastHost(saved, rows.length);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const next = focusNext.current;
     focusNext.current = null;
 
