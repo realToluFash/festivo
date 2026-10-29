@@ -1,0 +1,34 @@
+# sc-18978: another member's role changed to Owner (${MEMBER_ID}) opens Confirm it's you with membersScreen.proveOwner, which names the organisation and the minutes. Needs an owner signed in to ${ORGANISATION}, and MEMBER_ID of another member who is not an owner.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible: '{{t:membersScreen.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: members.row.${MEMBER_ID}
+    timeout: 20000
+- tapOn:
+    id: members.row.${MEMBER_ID}
+- scrollUntilVisible:
+    element:
+      id: members.role.owner
+    timeout: 20000
+- tapOn:
+    id: members.role.owner
+- scrollUntilVisible:
+    element:
+      id: members.role.save
+    timeout: 20000
+- tapOn:
+    id: members.role.save
+- extendedWaitUntil:
+    visible:
+      id: members.role.prove.continue
+    timeout: 20000
+- scrollUntilVisible:
+    element: '.*${ORGANISATION}, .* 5 .*'
+    direction: UP
+    timeout: 20000
+- takeScreenshot: member-role-owner-prove

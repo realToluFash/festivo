@@ -1,0 +1,8 @@
+# sc-18978: an owner with no password and a Google sign-in reads ownership.transferNoteProvider under Transfer ownership in Settings > Organisation. Needs that owner signed in to ${ORGANISATION}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- scrollUntilVisible:
+    element: '.*${ORGANISATION} .*Google.*'
+    timeout: 30000
+- takeScreenshot: ownership-transfer-note-provider
