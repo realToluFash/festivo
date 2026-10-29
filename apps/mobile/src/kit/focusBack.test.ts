@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   focusBackMs,
+  INPUT_FOCUS_TAKEN_MS,
   stepCloseSteps,
   TALKBACK_FOCUS_BACK_MS,
   TALKBACK_FOCUS_TAKEN_MS,
@@ -29,10 +30,11 @@ describe('focus going back to a step’s opener', () => {
 });
 
 describe('a step closing back to its opener', () => {
-  it('on Android with TalkBack on, puts the keys down, shows the opener, focuses it, and only then takes the step away (sc-18588)', () => {
+  it('on Android with TalkBack on, shows the opener, gives it input focus before the keys go down, focuses it, and only then takes the step away (sc-18588, sc-18587)', () => {
     expect(stepCloseSteps('android', true)).toEqual([
-      { do: 'putKeysDown' },
       { do: 'showOpener' },
+      { do: 'takeInputFocus', atMs: INPUT_FOCUS_TAKEN_MS },
+      { do: 'putKeysDown' },
       { do: 'focusOpener', atMs: TALKBACK_FOCUS_BACK_MS, into: 'outOfSight' },
       { do: 'finish', focusBack: false, atMs: TALKBACK_FOCUS_BACK_MS + TALKBACK_FOCUS_TAKEN_MS },
     ]);
