@@ -26,12 +26,12 @@ import { useReadOut } from './ReadOut.tsx';
 import {
   SETTLED_MS,
   type StepClosed,
-  stepClosed,
   useAboveKeyboard,
   useFocusBackToOpener,
   useFocusOnAnswer,
   useRoomAboveKeyboard,
   useScrolledToTop,
+  useStepClose,
 } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
@@ -62,6 +62,14 @@ export function TimeZoneCard({
   const [saved, setSaved] = useState<string | null>(null);
   const [closed, setClosed] = useState<StepClosed | undefined>(undefined);
   const opener = useFocusBackToOpener(editing ? undefined : closed);
+  const {
+    opener: changeOpener,
+    closing,
+    close,
+  } = useStepClose(opener, 'change', (back) => {
+    setClosed(back);
+    setEditing(false);
+  });
   const frame = cardFrame(kind);
 
   useEffect(() => {
@@ -101,10 +109,7 @@ export function TimeZoneCard({
             setEditing(false);
             setSaved(zoneLabel(zone));
           }}
-          onCancel={() => {
-            setClosed(stepClosed('change'));
-            setEditing(false);
-          }}
+          onCancel={close}
         />
       ) : (
         <>
@@ -128,17 +133,19 @@ export function TimeZoneCard({
               readMs={focusBackMs(Platform.OS, SETTLED_MS, 'step')}
             />
           )}
-          <SecondaryButton
-            ref={opener('change')}
-            label={t('timeZone.change')}
-            onPress={() => {
-              setSaved(null);
-              setClosed(undefined);
-              setEditing(true);
-            }}
-            testID="timeZone.change"
-          />
         </>
+      )}
+      {(!editing || closing) && (
+        <SecondaryButton
+          ref={changeOpener}
+          label={t('timeZone.change')}
+          onPress={() => {
+            setSaved(null);
+            setClosed(undefined);
+            setEditing(true);
+          }}
+          testID="timeZone.change"
+        />
       )}
     </View>
   );
