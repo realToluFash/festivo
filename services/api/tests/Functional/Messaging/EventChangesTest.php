@@ -190,7 +190,7 @@ final class EventChangesTest extends MessagingTestCase
 
         $lines = Vec\reverse(Str\split($this->email($this->bola)->body, "\n"));
 
-        self::assertStringStartsWith('You get this because you are on Gala at ', $lines[1]);
+        self::assertStringStartsWith("You're getting this because you are on Gala at ", $lines[1]);
         self::assertMatchesRegularExpression('#^Notification settings: \S+/app/account/notifications$#', $lines[0]);
     }
 
