@@ -3,8 +3,6 @@ appId: host.exp.Exponent
 ---
 - runFlow:
     file: developer-menu-sheet.yaml
-    env:
-      SCREENS: 'Go home'
 - runFlow:
     when:
       visible: 'Go home'

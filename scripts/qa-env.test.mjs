@@ -1795,20 +1795,22 @@ describe('the flows a batch runs', () => {
       }
       expect(readFileSync(join(target, 'batch/reopen.yaml'), 'utf8')).not.toContain('{{t:');
       const sheet = "'This is the developer menu.*'";
-      expect(readFileSync(join(target, 'developer-menu-sheet.yaml'), 'utf8')).toContain(
-        "text: '${SCREENS}|This is the developer menu.*'",
-      );
+      const decision = readFileSync(join(target, 'developer-menu-sheet.yaml'), 'utf8');
+      expect(decision.match(/when:\s+(?:not)?[vV]isible: .*/g)).toEqual([
+        `when:\n      notVisible: ${sheet}`,
+      ]);
+      expect(decision).not.toMatch(/copyTextFrom|SCREENS|point:/);
       expect(readFileSync(join(target, 'batch/developer-menu.yaml'), 'utf8')).toContain(
         "visible: '${SETTLED}|This is the developer menu.*'",
       );
       for (const flow of ['batch/developer-menu.yaml', 'expo-go-menu.yaml']) {
         const text = readFileSync(join(target, flow), 'utf8');
-        expect(text).toMatch(/file: (\.\.\/)?developer-menu-sheet\.yaml\s+env:\s+SCREENS: /);
+        expect(text).toMatch(/file: (\.\.\/)?developer-menu-sheet\.yaml\n/);
         expect(text).not.toContain(sheet);
       }
-      for (const flow of ['batch/developer-menu.yaml', 'developer-menu-sheet.yaml']) {
-        expect(readFileSync(join(target, flow), 'utf8')).not.toMatch(/when:\s+(not)?[vV]isible/);
-      }
+      expect(readFileSync(join(target, 'batch/developer-menu.yaml'), 'utf8')).not.toMatch(
+        /when:\s+(not)?[vV]isible/,
+      );
       const settled = (flow) =>
         new RegExp(
           `^(?:${readFileSync(join(target, `batch/${flow}.yaml`), 'utf8')

@@ -10,5 +10,3 @@ appId: host.exp.Exponent
     optional: true
 - runFlow:
     file: ../developer-menu-sheet.yaml
-    env:
-      SCREENS: ${SETTLED}
