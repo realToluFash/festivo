@@ -45,6 +45,7 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 const {
   markPushAsked,
   pushAskDue,
+  pushBlockedHere,
   pushedPlace,
   registerAppPush,
   showPushInForeground,
@@ -114,6 +115,20 @@ describe("the app's push (sc-3980)", () => {
 
     notifications.getPermissionsAsync.mockResolvedValueOnce({ granted: true, status: 'granted' });
     expect(await pushAskDue()).toBe(false);
+  });
+
+  it('calls push blocked only once the phone has refused it', async () => {
+    notifications.getPermissionsAsync.mockResolvedValueOnce({ granted: false, status: 'denied' });
+    expect(await pushBlockedHere()).toBe(true);
+
+    notifications.getPermissionsAsync.mockResolvedValueOnce({ granted: true, status: 'granted' });
+    expect(await pushBlockedHere()).toBe(false);
+
+    notifications.getPermissionsAsync.mockResolvedValueOnce({
+      granted: false,
+      status: 'undetermined',
+    });
+    expect(await pushBlockedHere()).toBe(false);
   });
 
   it('registers the token once Turn on is allowed, and nothing after a block', async () => {

@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
+import { pushBlockedHere } from '../appPush.ts';
 import { currentLocale } from '../i18n/index.ts';
 import {
   type Channel,
@@ -30,6 +31,7 @@ export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
   const [grid, setGrid] = useState<SettingsGrid>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [tap, setTap] = useState<object | undefined>(undefined);
+  const [blocked, setBlocked] = useState(false);
   const locale = currentLocale();
 
   useEffect(() => {
@@ -42,6 +44,19 @@ export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
       current = false;
     };
   }, [attempt]);
+
+  useEffect(() => {
+    let current = true;
+    void pushBlockedHere()
+      .catch(() => false)
+      .then((refused) => {
+        if (current) setBlocked(refused);
+      });
+
+    return () => {
+      current = false;
+    };
+  }, []);
 
   useReadOut(grid.status === 'loaded' && grid.saved ? t('notificationSettings.saved') : null, {
     answer: tap,
@@ -88,6 +103,15 @@ export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
 
   return (
     <View style={cardFrame(kind)} testID="notificationSettings">
+      {blocked && (
+        <Text
+          size={tokens.typeBody.size}
+          accessibilityRole="text"
+          testID="notificationSettings.pushBlocked"
+        >
+          {t('notificationSettings.pushBlocked')}
+        </Text>
+      )}
       <View
         style={styles.row}
         accessibilityElementsHidden

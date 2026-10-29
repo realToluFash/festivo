@@ -1647,6 +1647,7 @@
     "emailNotSaved": "Couldn't save the email switch. Try again.",
     "couldNotLoad": "Couldn't load your notification settings.",
     "tryAgain": "Try again",
+    "pushBlocked": "Push is off on this device, so pushes won't reach you here. Turn it on in your phone's settings.",
     "quietHours": "Between {{start}} and {{end}} your time, only Event day pushes come through.",
     "category": {
       "guest_replies": "Guest replies",

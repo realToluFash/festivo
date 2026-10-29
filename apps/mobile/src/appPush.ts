@@ -32,6 +32,15 @@ export async function pushAskDue(): Promise<boolean> {
   return (await AsyncStorage.getItem(ASKED).catch(() => null)) == null;
 }
 
+/** Push was refused on this phone: the settings grid says so, since its switches cannot reach it. Not yet asked is not refused. */
+export async function pushBlockedHere(): Promise<boolean> {
+  if (!Device.isDevice) return false;
+
+  const { status } = await Notifications.getPermissionsAsync();
+
+  return status === 'denied';
+}
+
 /** Per device: the card shows on the first opening of the bell, and never again here. */
 export async function markPushAsked(): Promise<void> {
   await AsyncStorage.setItem(ASKED, new Date().toISOString()).catch(() => {});
