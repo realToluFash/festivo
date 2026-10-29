@@ -5,3 +5,14 @@ appId: host.exp.Exponent
     appId: host.exp.Exponent
     stopApp: true
 - openLink: ${METRO_URL}/--/sign-in
+# On iOS the cold launch lands on the app root under the developer menu: close it and open Sign in again.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: 'Go home|Sign in'
+          timeout: 90000
+      - waitForAnimationToEnd
+      - runFlow: expo-go-menu.yaml
+      - openLink: ${METRO_URL}/--/sign-in

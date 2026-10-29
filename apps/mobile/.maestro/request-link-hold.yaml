@@ -5,11 +5,28 @@ appId: host.exp.Exponent
 - launchApp:
     appId: host.exp.Exponent
     stopApp: true
+# On iOS a fresh launch opens Expo Go's developer menu over the first screen: land on Sign in and close it first.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - openLink: ${METRO_URL}/--/sign-in
+      - extendedWaitUntil:
+          visible: 'Continue|Service status|Sign in'
+          timeout: 90000
+      - waitForAnimationToEnd
+      - runFlow: expo-go-menu.yaml
 - openLink: ${METRO_URL}/--/join/${TOKEN}
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - waitForAnimationToEnd
+      - runFlow: expo-go-menu.yaml
 - extendedWaitUntil:
     visible:
       id: 'requestToJoin.${BUTTON}'
-    timeout: 60000
+    timeout: 90000
 - takeScreenshot: request-link-hold-page
 - tapOn:
     id: 'requestToJoin.${BUTTON}'
