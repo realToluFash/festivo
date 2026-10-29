@@ -1823,7 +1823,16 @@ describe('the flows a batch runs', () => {
           expect(line.replace('{{email}}', 'other@soirely.test')).toMatch(homeSettled);
           expect(line.replace('{{email}}', 'other@soirely.test')).toMatch(someoneSignedIn);
         }
+        expect(catalogues[code].completeProfile.title).toMatch(homeSettled);
       }
+      const onDetails = new RegExp(
+        `^(?:${[...signOut.matchAll(/when:\s+visible: '(.*)'\s+file: (.*)/g)][0][1].replaceAll("''", "'")})$`,
+      );
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        expect(catalogues[code].completeProfile.title).toMatch(onDetails);
+      }
+      expect(signOut).toContain('file: ../sign-out-from-complete-profile.yaml');
+      expect(existsSync(join(target, 'sign-out-from-complete-profile.yaml'))).toBe(true);
       expect(readFileSync(join(target, 'batch/reopen.yaml'), 'utf8')).not.toContain('{{t:');
       const sheet = "'This is the developer menu.*'";
       const decision = readFileSync(join(target, 'developer-menu-sheet.yaml'), 'utf8');
