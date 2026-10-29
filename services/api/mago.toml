@@ -324,6 +324,15 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_us
 namespace = "App\\Integrations\\Meta\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user"]
 
+# Push's two providers (sc-3980). Each sees the port it implements and nothing else of ours.
+[[guard.perimeter.rules]]
+namespace = "App\\Integrations\\WebPush\\"
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_messaging", "Minishlink\\**"]
+
+[[guard.perimeter.rules]]
+namespace = "App\\Integrations\\Expo\\"
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_messaging"]
+
 # The OpenID providers. It sees the port it implements and nothing else of ours.
 [[guard.perimeter.rules]]
 namespace = "App\\Integrations\\OpenIdConnect\\"

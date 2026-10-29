@@ -27,7 +27,7 @@ final class StalledProviderTest extends TestCase
         $address = \stream_socket_get_name($server, false) ?: self::fail('No address.');
         $previous = \ini_get('default_socket_timeout');
         // @mago-expect lint:no-ini-set the worker's own setting, which is what is under test
-        \ini_set('default_socket_timeout', WorkNotificationsCommand::SOCKET_TIMEOUT);
+        \ini_set('default_socket_timeout', (string) WorkNotificationsCommand::PROVIDER_CALL_LIMIT);
         $sender = new EmailSender(new Mailer(Transport::fromDsn('smtp://' . $address)), 'Soirely <hello@soirely.test>');
         $started = \microtime(true);
 

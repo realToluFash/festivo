@@ -345,7 +345,7 @@ final class NotificationWorker
         $payloads = [self::dict($row['payload']), ...Vec\map($collapsed, static fn (array $sibling): array => self::dict($sibling['payload']))];
 
         try {
-            $providerId = $sender->send(Uuid::fromString($id), $recipient, $type->category(), $type->render($channel, $recipient, $payloads));
+            $providerId = $sender->send(Uuid::fromString($id), $recipient, $type->category(), $type->render($channel, $recipient, $payloads), $type->collapseKey());
         } catch (Unreachable $unreachable) {
             if (!$this->forgetIfCancelled($id)) {
                 $this->finishDelivery($id, NotificationDeliveryStatus::Failed, $unreachable->getMessage(), attempted: true);

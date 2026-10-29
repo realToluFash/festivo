@@ -34,7 +34,7 @@ final class RecordingEmailSender implements ChannelSenderInterface
         return NotificationChannel::Email;
     }
 
-    public function send(Uuid $deliveryId, Recipient $recipient, NotificationCategory $category, RenderedNotification $notification): ?string
+    public function send(Uuid $deliveryId, Recipient $recipient, NotificationCategory $category, RenderedNotification $notification, ?string $collapseKey = null): ?string
     {
         ++$this->calls;
         $gate = \getenv(self::GATE);
@@ -62,7 +62,7 @@ final class RecordingEmailSender implements ChannelSenderInterface
     private static function awaitAnswer(string $gate): void
     {
         \touch($gate . '.called');
-        $until = \microtime(true) + (float) WorkNotificationsCommand::SOCKET_TIMEOUT;
+        $until = \microtime(true) + WorkNotificationsCommand::PROVIDER_CALL_LIMIT;
 
         while (!\file_exists($gate . '.answer')) {
             if (\microtime(true) >= $until) {

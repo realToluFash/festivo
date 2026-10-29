@@ -110,7 +110,7 @@ final class InAppNotificationsTest extends MessagingTestCase
         $address = \stream_socket_get_name($server, false) ?: self::fail('No address.');
         $previous = \ini_get('default_socket_timeout');
         // @mago-expect lint:no-ini-set the worker's own setting, which is what bounds the hung call
-        \ini_set('default_socket_timeout', WorkNotificationsCommand::SOCKET_TIMEOUT);
+        \ini_set('default_socket_timeout', (string) WorkNotificationsCommand::PROVIDER_CALL_LIMIT);
         self::sender()->through = new EmailSender(new Mailer(Transport::fromDsn('smtp://' . $address)), 'Soirely <hello@soirely.test>');
 
         try {

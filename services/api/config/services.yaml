@@ -88,6 +88,19 @@ services:
             $from: '%env(SMS_FROM)%'
     App\Domain\User\Interfaces\TextMessageSenderInterface: '@App\Integrations\Twilio\TwilioTextMessageSender'
 
+    # Push's two providers (sc-3980), each given the notification worker's per-call limit.
+    App\Integrations\WebPush\VapidWebPush:
+        arguments:
+            $subject: '%env(VAPID_SUBJECT)%'
+            $publicKey: '%env(VAPID_PUBLIC_KEY)%'
+            $privateKey: '%env(VAPID_PRIVATE_KEY)%'
+            $timeout: !php/const App\Domain\Messaging\Command\WorkNotificationsCommand::PROVIDER_CALL_LIMIT
+    App\Integrations\Expo\ExpoPushService:
+        arguments:
+            $apiBase: '%env(EXPO_PUSH_API_BASE)%'
+            $accessToken: '%env(EXPO_ACCESS_TOKEN)%'
+            $timeout: !php/const App\Domain\Messaging\Command\WorkNotificationsCommand::PROVIDER_CALL_LIMIT
+
     # Phone codes by WhatsApp first (sc-750). The order is configuration: switch WhatsApp off, or list the
     # countries that stay SMS-only, without a release.
     App\Integrations\Meta\WhatsAppCloudSender:

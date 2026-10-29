@@ -38,7 +38,7 @@ final readonly class InAppSender implements ChannelSenderInterface
         return NotificationChannel::InApp;
     }
 
-    public function send(Uuid $deliveryId, Recipient $recipient, NotificationCategory $category, RenderedNotification $notification): ?string
+    public function send(Uuid $deliveryId, Recipient $recipient, NotificationCategory $category, RenderedNotification $notification, ?string $collapseKey = null): ?string
     {
         $delivery = Type\shape([
             'event_id' => Type\nullable(Type\string()),
