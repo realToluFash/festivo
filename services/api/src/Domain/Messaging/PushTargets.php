@@ -57,7 +57,7 @@ final readonly class PushTargets
     {
         $rows = $this->connection->fetchAllAssociative(
             <<<'SQL'
-                SELECT t.id, t.kind, t.address, t.public_key, t.auth_secret
+                SELECT t.id, t.user_id, t.kind, t.address, t.public_key, t.auth_secret
                 FROM push_targets t
                 WHERE t.user_id = :user
                   AND EXISTS (
@@ -72,6 +72,7 @@ final readonly class PushTargets
 
         return Vec\map($rows, static fn (array $row): PushTarget => new PushTarget(
             Type\string()->coerce($row['id']),
+            Type\string()->coerce($row['user_id']),
             PushTargetKind::from(Type\string()->coerce($row['kind'])),
             Type\string()->coerce($row['address']),
             Type\nullable(Type\string())->coerce($row['public_key']),

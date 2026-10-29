@@ -12,6 +12,7 @@ final readonly class PushTarget
 {
     public function __construct(
         public string $id,
+        public string $userId,
         public PushTargetKind $kind,
         #[SensitiveParameter]
         public string $address,

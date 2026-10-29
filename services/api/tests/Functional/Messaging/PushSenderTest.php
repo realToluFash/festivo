@@ -64,7 +64,7 @@ final class PushSenderTest extends ApiTestCase
         self::assertSame('https://exp.test/--/api/v2/push/send', $this->requests[0]['url']);
         self::assertSame((float) WorkNotificationsCommand::PROVIDER_CALL_LIMIT, $this->requests[0]['options']['max_duration']);
         self::assertSame(
-            [['to' => self::TOKEN, 'title' => 'Ada replied', 'body' => 'Going', 'data' => ['place' => '/events/1'], 'collapseId' => 'rsvp:event-1', 'threadId' => 'rsvp:event-1', 'tag' => 'rsvp:event-1']],
+            [['to' => self::TOKEN, 'title' => 'Ada replied', 'body' => 'Going', 'data' => ['place' => '/events/1', 'recipient' => $this->member->getId()->toRfc4122()], 'collapseId' => 'rsvp:event-1', 'threadId' => 'rsvp:event-1', 'tag' => 'rsvp:event-1']],
             Json\decode(Type\string()->coerce($this->requests[0]['options']['body'])),
         );
     }

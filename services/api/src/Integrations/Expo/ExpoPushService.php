@@ -40,7 +40,8 @@ final readonly class ExpoPushService implements PushServiceInterface
             'to' => $target->address,
             'title' => $notification->subject,
             'body' => $notification->body,
-            'data' => ['place' => $notification->place],
+            // The app drops a tap on a push sent to somebody else who signed out on this phone.
+            'data' => ['place' => $notification->place, 'recipient' => $target->userId],
             'collapseId' => $collapseKey,
             'threadId' => $collapseKey,
             'tag' => $collapseKey,
