@@ -499,11 +499,15 @@ describe('a way back in Two-factor authentication is off while its request runs 
 
 describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter says the name cannot fix it', () => {
   // sc-9471: a field disabled while saving lost its focus, so a server refusal closed the keyboard and a client one did not.
+  // sc-20208: Confirm it's you, Sign out everywhere else and Two-factor.
   // sc-20209 carries it to adding and checking an address or a number, and to A few details.
   const HELD_FORMS = [
+    'ConfirmItsYou.tsx',
     'CreateOrganisation.tsx',
+    'DevicesCard.tsx',
     'PasswordCard.tsx',
     'TimeZoneCard.tsx',
+    'TwoFactorCard.tsx',
     'ContactsCard.tsx',
     'CodeForm.tsx',
     'PhoneEntry.tsx',
@@ -544,9 +548,26 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
         .map((line, index) => ({ line, at: `${file}:${index + 1}` }))
         .filter(({ line }) => /Keyboard\.dismiss\(|\.current\?\.blur\(\)/u.test(line))
         .filter(({ line }) => !line.includes('dropsKeysAfter('))
+        .filter(({ line }) => line.trim() !== 'useEffect(() => Keyboard.dismiss(), []);')
         .map(({ at }) => at),
-      'Drop the keys only through dropsKeysAfter: sc-9442 is the one exception to sc-9471.',
+      'Drop the keys only through dropsKeysAfter, or as a step a success opens mounts: sc-9442 is the one exception to sc-9471.',
     ).toEqual([]);
+  });
+});
+
+describe('a submit with the keys down keeps them down (sc-20208)', () => {
+  it.each([
+    ['ConfirmItsYou.tsx', 1],
+    ['DevicesCard.tsx', 1],
+    ['TwoFactorCard.tsx', 3],
+  ])('%s lets go of a focused field before each request starts', (file, requests) => {
+    const lines = readFileSync(join('src', 'components', file), 'utf8').split('\n');
+    const starts = lines.flatMap((line, index) =>
+      /^\s*set(Checking|Working)\(true\);/u.test(line) ? [index] : [],
+    );
+
+    expect(starts).toHaveLength(requests);
+    expect(starts.filter((index) => lines[index - 1]?.trim() !== 'keysStayDown();')).toEqual([]);
   });
 });
 
