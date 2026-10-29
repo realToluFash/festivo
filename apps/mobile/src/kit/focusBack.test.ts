@@ -30,13 +30,13 @@ describe('focus going back to a step’s opener', () => {
 });
 
 describe('a step closing back to its opener', () => {
-  it('on Android with TalkBack on, shows the opener, gives it input focus before the keys go down, focuses it, and only then takes the step away (sc-18588, sc-18587)', () => {
+  it('on Android with TalkBack on, shows the opener, gives it input focus before the keys go down, settles it without a second move of TalkBack’s focus, and only then takes the step away (sc-18588, sc-18587)', () => {
     expect(stepCloseSteps('android', true)).toEqual([
       { do: 'showOpener' },
       { do: 'takeInputFocus', atMs: INPUT_FOCUS_TAKEN_MS },
       { do: 'putKeysDown' },
-      { do: 'focusOpener', atMs: TALKBACK_FOCUS_BACK_MS, into: 'outOfSight' },
-      { do: 'finish', focusBack: false, atMs: TALKBACK_FOCUS_BACK_MS + TALKBACK_FOCUS_TAKEN_MS },
+      { do: 'settleOpener', into: 'outOfSight', read: false },
+      { do: 'finish', focusBack: false, atMs: TALKBACK_FOCUS_TAKEN_MS },
     ]);
   });
 

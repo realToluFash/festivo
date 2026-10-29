@@ -479,14 +479,14 @@ export function useStepClose(
             );
             break;
           }
-          if (step.do === 'focusOpener') {
+          if (step.do === 'settleOpener') {
             cancels.push(
               settleOnto(
                 scroll,
                 () => view.current,
-                () => view.current,
+                () => (step.read ? view.current : null),
                 false,
-                step.atMs,
+                SETTLED_MS,
                 step.into,
               ),
             );
