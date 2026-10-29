@@ -1,3 +1,4 @@
+import json
 import pathlib
 import shutil
 import subprocess
@@ -87,6 +88,45 @@ class Prepare(unittest.TestCase):
         main, note = checkout.prepare(self.role, "lead")
         self.assertIsNone(note)
         self.assertEqual(git(self.role, "rev-parse", "HEAD"), main)
+
+    def build_stack(self):
+        built = git(self.role, "rev-parse", "--short", "HEAD")
+        (self.role / ".qa").mkdir(exist_ok=True)
+        (self.role / ".qa/state.json").write_text(json.dumps({"head": built}))
+        return built
+
+    def test_a_tester_whose_checkout_moved_is_told_which_build_its_stack_runs(self):
+        built = self.build_stack()
+        self.commit(self.origin, "b.txt", "two")
+        main, note = checkout.prepare(self.role, "qa2")
+        self.assertEqual(note, checkout.STALE_STACK.format(built=built, head=main[:7]))
+
+    def test_the_build_named_is_the_stack_s_not_where_the_checkout_last_was(self):
+        built = self.build_stack()
+        self.commit(self.origin, "b.txt", "two")
+        checkout.prepare(self.role, "qa2")
+        self.commit(self.origin, "c.txt", "three")
+        main, note = checkout.prepare(self.role, "qa2")
+        self.assertEqual(note, checkout.STALE_STACK.format(built=built, head=main[:7]))
+
+    def test_a_tester_is_told_on_every_run_while_its_stack_is_stale(self):
+        built = self.build_stack()
+        self.commit(self.origin, "b.txt", "two")
+        checkout.prepare(self.role, "qa2")
+        main, note = checkout.prepare(self.role, "qa2")
+        self.assertEqual(note, checkout.STALE_STACK.format(built=built, head=main[:7]))
+
+    def test_a_tester_whose_stack_runs_its_checkout_hears_nothing_of_it(self):
+        self.commit(self.origin, "b.txt", "two")
+        checkout.prepare(self.role, "qa2")
+        self.build_stack()
+        _, note = checkout.prepare(self.role, "qa2")
+        self.assertIsNone(note)
+
+    def test_a_tester_that_never_built_a_stack_hears_nothing_of_it(self):
+        self.commit(self.origin, "b.txt", "two")
+        _, note = checkout.prepare(self.role, "qa2")
+        self.assertIsNone(note)
 
     def test_a_further_worker_gets_a_worktree_of_the_role_s_checkout_once(self):
         second = self.role.with_name("role-2")
