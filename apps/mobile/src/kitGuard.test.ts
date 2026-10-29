@@ -499,11 +499,23 @@ describe('a way back in Two-factor authentication is off while its request runs 
 
 describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter says the name cannot fix it', () => {
   // sc-9471: a field disabled while saving lost its focus, so a server refusal closed the keyboard and a client one did not.
-  const HELD_FORMS = ['CreateOrganisation.tsx', 'PasswordCard.tsx', 'TimeZoneCard.tsx'];
+  // sc-20209 carries it to adding and checking an address or a number, and to A few details.
+  const HELD_FORMS = [
+    'CreateOrganisation.tsx',
+    'PasswordCard.tsx',
+    'TimeZoneCard.tsx',
+    'ContactsCard.tsx',
+    'CodeForm.tsx',
+    'PhoneEntry.tsx',
+    'phone.tsx',
+    'complete-profile.tsx',
+  ];
 
   it.each(HELD_FORMS)('%s holds its fields rather than disabling them', (file) => {
-    const form = sources(['src/components']).find(({ path }) => path.endsWith(`/${file}`));
-    const fields = KIT_FIELDS.flatMap((name) => selfClosing(name, form?.text ?? ''));
+    const form = sources(['src/components', 'app']).find(({ path }) => path.endsWith(`/${file}`));
+    const fields = [...KIT_FIELDS, 'PhoneEntry'].flatMap((name) =>
+      selfClosing(name, form?.text ?? ''),
+    );
 
     expect(fields.length, `fields in ${file}`).toBeGreaterThan(0);
     expect(
@@ -548,6 +560,27 @@ describe('a Password submit with the keys down keeps them down (sc-13408)', () =
     expect(starts).toHaveLength(3);
     expect(starts.filter((index) => lines[index - 1]?.trim() !== 'keysStayDown();')).toEqual([]);
   });
+});
+
+describe('a submit with the keys down keeps them down (sc-20209)', () => {
+  it.each([
+    // Adding's, and not the row actions above it, which have no field.
+    ['src/components/ContactsCard.tsx', /^\s*setSending\(true\);/u, 1, 'function Adding('],
+    ['app/verify-email.tsx', /^\s*setStatus\(\{ kind: 'verifying' \}\);/u, 1],
+    ['app/verify-phone.tsx', /^\s*setStatus\(\{ kind: 'verifying' \}\);/u, 1],
+    ['app/phone.tsx', /^\s*setSending\(true\);/u, 1],
+    ['app/complete-profile.tsx', /^\s*setSaving\(true\);/u, 2],
+  ] satisfies [string, RegExp, number, string?][])(
+    '%s lets go of a focused field before each request starts',
+    (file, start, count, from: string = '') => {
+      const text = readFileSync(join(...file.split('/')), 'utf8');
+      const lines = text.slice(text.indexOf(from)).split('\n');
+      const starts = lines.flatMap((line, index) => (start.test(line) ? [index] : []));
+
+      expect(starts).toHaveLength(count);
+      expect(starts.filter((index) => lines[index - 1]?.trim() !== 'keysStayDown();')).toEqual([]);
+    },
+  );
 });
 
 describe('a Cancel is off while the change beside it runs (sc-12545)', () => {
