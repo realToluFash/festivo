@@ -11,7 +11,9 @@
     "mobile:settings.rolesBack",
     "mobile:rolesScreen.title",
     "web:eventTypes.baby_shower",
-    "mobile:eventTypes.baby_shower"
+    "mobile:eventTypes.baby_shower",
+    "web:notificationSettings.push",
+    "mobile:notificationSettings.push"
   ],
   "fr": [
     "web:nav.menu",
