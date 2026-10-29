@@ -53,6 +53,8 @@ import {
   emulatorFor,
   emulatorGpu,
   expoGoApk,
+  expoGoFits,
+  expoGoIosClient,
   expoGoRunning,
   expoSdkMajor,
   forAndroid,
@@ -629,6 +631,36 @@ describe('Expo Go for Android', () => {
 
   it('is an error for an SDK Expo has no client for', () => {
     expect(() => expoGoApk(versions, '~58.0.0')).toThrow(/SDK 58/);
+  });
+});
+
+describe('Expo Go for iOS', () => {
+  const versions = {
+    sdkVersions: {
+      '58.0.0': {
+        iosClientUrl: 'https://x/Expo-Go-58.0.2.tar.gz',
+        iosClientVersion: '58.0.2',
+      },
+    },
+  };
+
+  it("is kept only when its major is the app's SDK", () => {
+    expect(expoGoFits('58.0.2', '~58.0.0')).toBe(true);
+    expect(expoGoFits('57.0.9', '~58.0.0')).toBe(false);
+    expect(expoGoFits('5.8.0', '~58.0.0')).toBe(false);
+  });
+
+  it('is replaced when none is installed or its version is unreadable', () => {
+    expect(expoGoFits(null, '~58.0.0')).toBe(false);
+    expect(expoGoFits('', '~58.0.0')).toBe(false);
+  });
+
+  it("is the simulator client for the app's SDK", () => {
+    expect(expoGoIosClient(versions, '~58.0.0')).toEqual({
+      url: 'https://x/Expo-Go-58.0.2.tar.gz',
+      version: '58.0.2',
+    });
+    expect(() => expoGoIosClient(versions, '~57.0.0')).toThrow(/iOS for SDK 57/);
   });
 });
 
