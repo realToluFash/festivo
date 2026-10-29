@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { api } from '../api.ts';
 import { followAccount } from '../accountLanguage.ts';
 import { setLanguage } from '../i18n/index.ts';
 import { __setSessionState, type Session } from '../session.ts';
@@ -195,6 +196,31 @@ describe('the application tree', () => {
     at('/app');
 
     await waitFor(() => expect(screen.getByRole('status').textContent).toMatch(/signed out/i));
+  });
+
+  it('says they were signed out, not Check your email, for a sign-up held before somebody signed in (sc-19634)', async () => {
+    sessionStorage.setItem(
+      'soirely.registration',
+      JSON.stringify({ registration: 'the-handle', email: 'ada@example.com' }),
+    );
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          accessToken: 'fresh',
+          refreshExpiresAt: '2026-11-14T00:00:00+00:00',
+          sessionId: '018f3a4c-7b2e-7c3d-9e1f-2a3b4c5d6e7f',
+          account: ADA_ACCOUNT,
+        }),
+        { status: 200 },
+      ),
+    );
+    await api.signIn('bola@example.com', 'a decent passphrase');
+    __setSessionState({ status: 'signedOut', ended: true });
+
+    at('/app');
+
+    await waitFor(() => expect(screen.getByRole('status').textContent).toMatch(/signed out/i));
+    expect(screen.queryByRole('heading', { level: 1, name: 'Check your email' })).toBeNull();
   });
 
   it('keeps the session when a reload cannot reach the API, and comes back with it', async () => {

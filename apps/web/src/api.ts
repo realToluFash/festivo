@@ -10,6 +10,7 @@ import { ApiClient } from '@soirely/api-client';
 
 import { config } from './config.ts';
 import { currentLocale } from './i18n/index.ts';
+import { dropRegistration } from './pendingRegistration.ts';
 import { tokens } from './tokens.ts';
 
 /** An event rather than a call, because the session store reads this module. */
@@ -26,6 +27,8 @@ export const api = new ApiClient({
   onSignedOut: (why) => {
     window.dispatchEvent(new CustomEvent(SIGNED_OUT, { detail: why }));
   },
+  // Held for getting back to a code with no session (sc-512); a session in this tab means they went another way.
+  onSignedIn: dropRegistration,
   onGate: () => {
     window.dispatchEvent(new Event(GATED));
   },

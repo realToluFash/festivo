@@ -15,6 +15,7 @@ import { currentLocale } from './i18n/index.ts';
 import { installId } from './installId.ts';
 import { landingFor } from './landing.ts';
 import { ruleRefusal, signInRoute } from './kit/signInRules.ts';
+import { dropRegistration } from './pendingRegistration.ts';
 import { signedOutHold } from './signedOutHold.ts';
 import { tokens } from './tokens.ts';
 
@@ -30,6 +31,8 @@ export const api = new ApiClient({
   // Stated rather than defaulted: the web client states the opposite deliberately.
   refreshTokenIn: 'body',
   onSignedOut: (why) => hold.onSignedOut(why),
+  // Held for getting back to a code with no session (sc-512); a session on this device means they went another way.
+  onSignedIn: dropRegistration,
   // A refusal names the gate but not whether the email or a phone is unproved, so ask the account.
   onGate: () => {
     void api
