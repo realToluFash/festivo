@@ -29,6 +29,14 @@ export function faceStyle(flat: TextStyle, mono = false): TextStyle {
   return { ...rest, fontFamily: faceFor(fontWeight, mono) };
 }
 
+/** A field's face, its weight and slant stated on Android as React Native reads them from the span over text it hands the field: unstated, the field keeps that span, and its face drops the weight Bold text adds. */
+export function inputFaceStyle(flat: TextStyle, mono: boolean, os: string): TextStyle {
+  const faced = faceStyle(flat, mono);
+  if (!loaded || os !== 'android') return faced;
+
+  return { ...faced, fontWeight: 'normal', fontStyle: flat.fontStyle ?? 'normal' };
+}
+
 export function faceFor(asked: string | number | undefined, mono = false): string {
   const wanted = numeric(asked);
   const files: Record<number, string> = mono ? MONO : SANS;

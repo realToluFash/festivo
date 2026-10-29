@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { MONO, SANS, faceFor, faceStyle, facesLoaded } from './faceFor.ts';
+import { MONO, SANS, faceFor, faceStyle, facesLoaded, inputFaceStyle } from './faceFor.ts';
 
 describe('a weight draws from its own file', () => {
   it('gives each of the four design weights a different Instrument Sans file', () => {
@@ -53,6 +53,33 @@ describe('a style reaches the platform with its face', () => {
     expect(faceStyle({ fontWeight: '700' })).toEqual({ fontFamily: 'InstrumentSans-Bold' });
     expect(faceStyle({ fontWeight: '700' }, true)).toEqual({ fontFamily: 'JetBrainsMono-Bold' });
     expect(faceStyle({})).toEqual({ fontFamily: 'InstrumentSans-Regular' });
+  });
+});
+
+describe("a field's style reaches the platform with its face", () => {
+  it('states a regular upright weight on Android, which the span over handed text reads, whatever file the weight chose', () => {
+    facesLoaded();
+
+    expect(inputFaceStyle({ fontSize: 16 }, false, 'android')).toEqual({
+      fontFamily: 'InstrumentSans-Regular',
+      fontSize: 16,
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+    });
+    expect(inputFaceStyle({ fontWeight: '700' }, false, 'android')).toEqual({
+      fontFamily: 'InstrumentSans-Bold',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+    });
+  });
+
+  it('leaves the iPhone and the web as faced() has them', () => {
+    expect(inputFaceStyle({ fontWeight: '700' }, false, 'ios')).toEqual(
+      faceStyle({ fontWeight: '700' }),
+    );
+    expect(inputFaceStyle({ fontSize: 16 }, true, 'web')).toEqual(
+      faceStyle({ fontSize: 16 }, true),
+    );
   });
 });
 
