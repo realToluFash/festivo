@@ -473,9 +473,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **17 Oct 2026. An API detail with a bare number takes it without agreement**
   (`messages:proof.required`): "nos últimos {minutes} minutos". The API catalogue has no
   plural, so the number is always 5 and the sentence is written for it.
-- **17 Oct 2026. A provider in prose takes the article, in a button it does not**
-  (`waysCard.proofExpired_*`): "continue novamente com o {{provider}}", beside the button
-  "Continuar com {{provider}}". "Carry on" is "prosseguir", so it does not repeat "continuar".
+- **17 Oct 2026, corrected 29 Oct. A provider in prose never takes a bare article**
+  (`waysCard.proofExpired_*`): the article differs, "a Apple" but "o Google", and one string
+  serves both. Write "a sua conta {{provider}}" or "uma conta {{provider}}" instead, as
+  `ownership.transferNoteProvider` ("Antes, terá de confirmar com a sua conta {{provider}}.",
+  sc-18978). A button has no article: "Continuar com {{provider}}". The older strings with
+  "o {{provider}}" are still to be rewritten. "Carry on" is "prosseguir", so it does not repeat "continuar".
 - **17 Oct 2026. The app's switcher and roles copy the web's** (`switcher.*`, `roles.*`), so
   both clients say the same; `switcher.close` is "Fechar", as `recovery.dismiss`.
 - **17 Oct 2026. "You're signed in" is "Tem sessão iniciada"** (`home.signedIn`,
