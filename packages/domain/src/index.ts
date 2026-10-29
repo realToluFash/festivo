@@ -40,3 +40,4 @@ export * from './hosts.ts';
 export * from './hostWords.ts';
 export * from './timeline.ts';
 export * from './eventsHome.ts';
+export * from './notificationFeed.ts';

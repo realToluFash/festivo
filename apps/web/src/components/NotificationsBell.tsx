@@ -1,4 +1,11 @@
-import type { NotificationCategory, NotificationItem } from '@soirely/api-client';
+import type { NotificationItem } from '@soirely/api-client';
+import {
+  feedAllRead,
+  feedWithArrival,
+  feedWithMute,
+  feedWithPage,
+  feedWithRead,
+} from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -9,13 +16,6 @@ import { currentLocale } from '../i18n/index.ts';
 import { useLiveNotifications } from '../liveNotifications.ts';
 import { offButton } from '../offButton.ts';
 import { MuteSwitch } from './MuteSwitch.tsx';
-
-const MUTABLE: ReadonlySet<NotificationCategory> = new Set([
-  'guest_replies',
-  'messages',
-  'event_changes',
-  'money',
-]);
 
 type Feed =
   | { status: 'loading' }
@@ -57,17 +57,11 @@ export function NotificationsBell({ userId }: { userId: string }) {
   }, [load]);
 
   useLiveNotifications(userId, (item) => {
-    setFeed((current) => {
-      if (current.status !== 'loaded' || current.items.some((shown) => shown.id === item.id)) {
-        return current;
-      }
-
-      return {
-        ...current,
-        items: [item, ...current.items],
-        unread: current.unread + (item.read ? 0 : 1),
-      };
-    });
+    setFeed((current) =>
+      current.status === 'loaded'
+        ? { ...feedWithArrival(current, item), status: 'loaded' }
+        : current,
+    );
     setSaid(
       item.eventName == null
         ? t('notifications.arrived', { title: item.title })
@@ -121,13 +115,7 @@ export function NotificationsBell({ userId }: { userId: string }) {
     if (!item.read) {
       setFeed((current) =>
         current.status === 'loaded'
-          ? {
-              ...current,
-              items: current.items.map((shown) =>
-                shown.id === item.id ? { ...shown, read: true } : shown,
-              ),
-              unread: Math.max(current.unread - 1, 0),
-            }
+          ? { ...feedWithRead(current, item.id), status: 'loaded' }
           : current,
       );
       void api.readNotification(item.id).then(
@@ -153,14 +141,7 @@ export function NotificationsBell({ userId }: { userId: string }) {
   function mutedEvent(eventId: string, muted: boolean): void {
     setFeed((current) =>
       current.status === 'loaded'
-        ? {
-            ...current,
-            items: current.items.map((shown) =>
-              shown.eventId === eventId && MUTABLE.has(shown.category)
-                ? { ...shown, muted }
-                : shown,
-            ),
-          }
+        ? { ...feedWithMute(current, eventId, muted), status: 'loaded' }
         : current,
     );
   }
@@ -168,7 +149,7 @@ export function NotificationsBell({ userId }: { userId: string }) {
   async function readAll(): Promise<void> {
     if (feed.status !== 'loaded' || feed.unread === 0) return;
 
-    setFeed({ ...feed, items: feed.items.map((item) => ({ ...item, read: true })), unread: 0 });
+    setFeed({ ...feedAllRead(feed), status: 'loaded' });
     setSaid(t('notifications.allRead'));
     try {
       const left = await api.readAllNotifications();
@@ -182,20 +163,13 @@ export function NotificationsBell({ userId }: { userId: string }) {
     setMore('loading');
     api.notifications(after).then(
       (page) => {
-        const known = new Set(shown.map((item) => item.id));
-        const added = page.items.filter((item) => !known.has(item.id));
+        const { added } = feedWithPage({ items: shown, unread: 0, next: after }, page);
 
-        setFeed((current) => {
-          if (current.status !== 'loaded') return current;
-
-          const present = new Set(current.items.map((item) => item.id));
-
-          return {
-            ...current,
-            items: [...current.items, ...added.filter((item) => !present.has(item.id))],
-            next: page.next,
-          };
-        });
+        setFeed((current) =>
+          current.status === 'loaded'
+            ? { ...feedWithPage(current, page).feed, status: 'loaded' }
+            : current,
+        );
         const first = added[0];
         if (page.next == null && first != null) firstAdded.current = first.id;
         setSaid(t('notifications.moreShown', { count: page.items.length }));
