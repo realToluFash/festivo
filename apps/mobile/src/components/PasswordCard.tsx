@@ -25,7 +25,6 @@ import { Notice } from './Notice.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import { PasswordRule } from './PasswordRule.tsx';
 import {
-  FocusHolder,
   type StepClosed,
   stepClosed,
   useAboveKeyboard,
@@ -80,10 +79,9 @@ export function PasswordCard({
   const opener = useFocusBackToOpener(stage.kind === 'atRest' ? stage.closed : undefined);
   const {
     opener: changeOpener,
-    holder: changeHolder,
     closing,
     close,
-  } = useStepClose(opener, 'change', (closed) =>
+  } = useStepClose(opener, 'change', 'opener', (closed) =>
     setStage({ kind: 'atRest', signedOut: null, added: null, closed }),
   );
   const frame = cardFrame(kind);
@@ -131,7 +129,7 @@ export function PasswordCard({
 
   return (
     <View style={frame}>
-      {stage.kind !== 'changing' ? (
+      {(stage.kind !== 'changing' || closing) && (
         <>
           <Title text={t('passwordCard.title')} />
           {stage.kind === 'atRest' && (stage.signedOut != null || stage.added != null) && (
@@ -150,20 +148,6 @@ export function PasswordCard({
           <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
             {t('passwordCard.intro')}
           </Text>
-        </>
-      ) : (
-        <Changing
-          email={email}
-          onChanged={(signedOut) => {
-            setStage({ kind: 'atRest', signedOut, added: null });
-            onChanged?.();
-          }}
-          onCancel={close}
-        />
-      )}
-      {(stage.kind !== 'changing' || closing) && (
-        <>
-          <FocusHolder holder={changeHolder} />
           <SecondaryButton
             ref={changeOpener}
             label={t('passwordCard.change')}
@@ -172,16 +156,29 @@ export function PasswordCard({
           />
         </>
       )}
+      {stage.kind === 'changing' && (
+        <Changing
+          email={email}
+          closing={closing}
+          onChanged={(signedOut) => {
+            setStage({ kind: 'atRest', signedOut, added: null });
+            onChanged?.();
+          }}
+          onCancel={close}
+        />
+      )}
     </View>
   );
 }
 
 function Changing({
   email,
+  closing,
   onChanged,
   onCancel,
 }: {
   email: string;
+  closing: boolean;
   onChanged: (signedOut: number) => void;
   onCancel: () => void;
 }) {
@@ -193,7 +190,7 @@ function Changing({
   const [lengthMet, setLengthMet] = useState(false);
   const [saving, setSaving] = useState(false);
   const [refusal, setRefusal] = useState<PasswordRefusal | null>(null);
-  const aboveKeyboard = useAboveKeyboard();
+  const aboveKeyboard = useAboveKeyboard(closing);
   const checks = useFormChecks(
     ['currentPassword', 'newPassword'] as const,
     (field, value) =>
