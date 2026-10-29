@@ -604,6 +604,14 @@ describe('Your password stays on screen when the transfer asks for a code (sc-96
       /\bpending\b/u,
     );
   });
+
+  it('in OwnershipCard.tsx, freed again once the code step proof lapses', () => {
+    const text = readFileSync(join('src', 'components', 'OwnershipCard.tsx'), 'utf8');
+
+    expect(text, 'A lapse gated on vouched alone keeps the password held.').toMatch(
+      /keptProofRanOut\(error, transferSentKept\(vouched, pending\)\)/u,
+    );
+  });
 });
 
 describe('a submit with the keys down keeps them down (sc-13408, sc-9674)', () => {

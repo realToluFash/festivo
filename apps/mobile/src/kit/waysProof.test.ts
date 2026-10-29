@@ -10,6 +10,7 @@ import {
   keptProofRanOut,
   provingRefusal,
   signedInWith,
+  transferSentKept,
   tripRefused,
   unlinkProofLapsed,
 } from './waysProof.ts';
@@ -91,6 +92,14 @@ describe('proving it is you, from Security', () => {
     expect(keptProofRanOut(refusal('proof_required', 403), true)).toBe(true);
     expect(keptProofRanOut(refusal('proof_required', 403), false)).toBe(false);
     expect(keptProofRanOut(refusal('two_factor_code_invalid', 422, 'p-1'), true)).toBe(false);
+  });
+
+  it('counts a password kept for its code as sent, so a lapse frees Your password (sc-9674)', () => {
+    const lapsed = refusal('proof_required', 403);
+
+    expect(keptProofRanOut(lapsed, transferSentKept(null, 'p-1'))).toBe(true);
+    expect(keptProofRanOut(lapsed, transferSentKept({ proof: null }, null))).toBe(true);
+    expect(keptProofRanOut(lapsed, transferSentKept(null, null))).toBe(false);
   });
 });
 

@@ -20,7 +20,13 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
 import { refusalTitle } from '../kit/refusal.ts';
-import { keptProof, keptProofRanOut, signedInWith, tripRefused } from '../kit/waysProof.ts';
+import {
+  keptProof,
+  keptProofRanOut,
+  signedInWith,
+  transferSentKept,
+  tripRefused,
+} from '../kit/waysProof.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { reloadSignedIn, useSignedIn } from '../signedIn.ts';
@@ -324,7 +330,7 @@ function Transfer({
         return;
       }
 
-      if (keptProofRanOut(error, vouched != null)) {
+      if (keptProofRanOut(error, transferSentKept(vouched, pending))) {
         setVouched(null);
         setPending(null);
         setCodeAsked(false);
