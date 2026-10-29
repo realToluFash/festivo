@@ -1,7 +1,8 @@
 import { type Account, type PhoneCodeRoute, phoneAwaitingCode } from '@soirely/api-client';
 import { cleanCode, codeProblem, codeWording, formatPhone } from '@soirely/domain';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { TextInputInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
@@ -13,6 +14,7 @@ import {
 } from '../src/components/BackToAccount.tsx';
 import { Footnote, PrimaryButton, SecondaryButton } from '../src/components/Buttons.tsx';
 import { CodeForm } from '../src/components/CodeForm.tsx';
+import { focusChecked, keysStayDown } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { OnboardingSteps } from '../src/components/OnboardingSteps.tsx';
 import { type CodeStatus, codeRefusal, openingStatus, retryAfter } from '../src/kit/code.ts';
@@ -29,6 +31,7 @@ export default function VerifyPhone() {
   const [status, setStatus] = useState<Status>({ kind: 'entering' });
   const [cooldown, setCooldown] = useState(0);
   const [codeError, setCodeError] = useState<string | null>(null);
+  const codeInput = useRef<TextInputInstance>(null);
   const [route, setRoute] = useState<PhoneCodeRoute | null>(null);
   // A new one with each failed tap, so the same words are read out again.
   const [textingFailed, setTextingFailed] = useState<object | null>(null);
@@ -112,11 +115,13 @@ export default function VerifyPhone() {
             ? t('verifyPhone.codeBlankWhatsApp')
             : t('verifyPhone.codeBlank'),
       );
+      focusChecked(codeInput);
 
       return;
     }
 
     setCodeError(null);
+    keysStayDown();
     setStatus({ kind: 'verifying' });
 
     try {
@@ -224,6 +229,7 @@ export default function VerifyPhone() {
           onLeft={() => {}}
           onVerify={(code) => void verify(code)}
           onResend={() => void resend()}
+          inputRef={codeInput}
           codeLabel={wording.fromWhatsApp ? t('verifyPhone.codeLabelWhatsApp') : undefined}
         >
           {wording.offerText && (

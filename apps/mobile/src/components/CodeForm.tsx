@@ -103,7 +103,7 @@ export function CodeForm({
             <CodeField
               ref={input}
               wrong={error != null}
-              editable={!verifying}
+              submitting={verifying}
               returnKeyType="done"
               onChangeText={(text) => {
                 typed.current = text;
@@ -111,7 +111,10 @@ export function CodeForm({
                 onTyped(text);
               }}
               onBlur={() => onLeft(typed.current)}
-              onSubmitEditing={() => onVerify(typed.current)}
+              onSubmitEditing={() => {
+                if (!verifying) onVerify(typed.current);
+              }}
+              submitBehavior="submit"
               accessibilityLabel={codeLabel ?? t(`${copy}.codeLabel`)}
               testID={`${copy}.code`}
             />
