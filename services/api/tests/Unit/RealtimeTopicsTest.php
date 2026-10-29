@@ -69,7 +69,8 @@ final class RealtimeTopicsTest extends TestCase
                 continue;
             }
 
-            if (Str\contains($contents, 'Symfony\\Component\\Mercure\\')) {
+            // API Platform publishes a resource marked `mercure:` on its IRI, a topic RealtimeTopic never declared.
+            if (Str\contains($contents, 'Symfony\\Component\\Mercure\\') || Regex\matches($contents, '/\bmercure\s*:/')) {
                 $offenders[] = $relative;
             }
         }
