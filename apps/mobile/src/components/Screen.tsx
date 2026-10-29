@@ -467,7 +467,15 @@ export function useStepClose(
           }
           if (step.do === 'putKeysDown') {
             cancels.push(
-              putKeysDownThen(() => runFrom(steps.slice(at + 1)), SETTLED_MS, field.current),
+              putKeysDownThen(
+                () => {
+                  // Fabric merges the flag into every later clone of the opener, so it would take focus again on each update.
+                  view.current?.setNativeProps({ hasTVPreferredFocus: false });
+                  runFrom(steps.slice(at + 1));
+                },
+                SETTLED_MS,
+                field.current,
+              ),
             );
             break;
           }
