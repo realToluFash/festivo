@@ -1,4 +1,4 @@
-# Android only. sc-18776: Expo Go stopped, then ${EV}'s All dates by link as the first screen; ‹ Event (BACK) opens the event; system back twice.
+# Android only. sc-18776: Expo Go stopped, then EV's All dates by link as the first screen; ‹ Event (BACK) opens the event; system back twice. Pass EV (an event's id), BACK and ORIENT; BACK is frame.back on a phone, timeline.allDates.back on a tablet.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
@@ -25,3 +25,5 @@ appId: host.exp.Exponent
 - back
 - waitForAnimationToEnd
 - takeScreenshot: back2
+- assertNotVisible:
+    id: 'timeline.allDates.page'

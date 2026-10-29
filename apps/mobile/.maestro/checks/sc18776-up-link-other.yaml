@@ -1,4 +1,4 @@
-# Android only. sc-18776: ${EV}'s All dates by link over the event OTHER (EV itself for the same event); ‹ Event (BACK) opens EV; system back twice.
+# Android only. sc-18776: EV's All dates by link over another event, OTHER; ‹ Event (BACK) opens EV, not OTHER; system back twice. Pass EV and OTHER (two events' ids), EV_NAME and OTHER_NAME (their names), BACK and ORIENT; BACK is frame.back on a phone, timeline.allDates.back on a tablet.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
@@ -23,6 +23,14 @@ appId: host.exp.Exponent
     visible:
       id: 'events.page'
     timeout: 20000
+- assertVisible:
+    text: '${EV_NAME}'
+    childOf:
+      id: 'events.page'
+- assertNotVisible:
+    text: '${OTHER_NAME}'
+    childOf:
+      id: 'events.page'
 - assertNotVisible:
     id: 'timeline.allDates.page'
 

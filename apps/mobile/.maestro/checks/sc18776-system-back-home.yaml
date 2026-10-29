@@ -1,4 +1,4 @@
-# Android only. sc-18776 regression: ${EV}'s All dates by link over Home; the system back still leads to Home.
+# Android only. sc-18776 regression: EV's All dates by link over Home; the system back still leads to Home. Pass EV (an event's id) and ORIENT.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}

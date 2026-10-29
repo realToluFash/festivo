@@ -1,4 +1,4 @@
-# Android only. sc-18776: ${EV}'s All dates by link over Home with the API paused (loading, or failed); ‹ Event still opens the event.
+# Android only. sc-18776: EV's All dates by link over Home with the API paused (loading, or failed); ‹ Event still opens the event. Pass EV (an event's id), BACK and ORIENT; BACK is frame.back on a phone, timeline.allDates.back on a tablet.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}

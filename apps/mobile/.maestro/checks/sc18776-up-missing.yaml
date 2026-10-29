@@ -1,4 +1,4 @@
-# Android only. sc-18776: All dates of an event that does not exist (MISSING) by link over Home; ‹ Event opens its page, This event is not available.
+# Android only. sc-18776: All dates of an event that does not exist by link over Home; ‹ Event opens its page, This event is not available. Pass MISSING (an id no event has), BACK and ORIENT; BACK is frame.back on a phone, timeline.allDates.back on a tablet.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}

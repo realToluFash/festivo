@@ -1,11 +1,11 @@
-# Android only. sc-18776: EV's All dates by link while EV itself shows (pass OTHER=EV); ‹ Event (BACK) goes back to it; system back twice.
+# Android only. sc-18776: EV's All dates by link while EV itself shows; ‹ Event (BACK) steps back to it rather than opening a second copy, so the first system back leaves EV. Pass EV (an event's id), EV_NAME (its name), BACK and ORIENT; BACK is frame.back on a phone, timeline.allDates.back on a tablet.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
 - waitForAnimationToEnd
 - runFlow: ../return-home.yaml
 
-- openLink: ${METRO_URL}/--/events/${OTHER}
+- openLink: ${METRO_URL}/--/events/${EV}
 - extendedWaitUntil:
     visible:
       id: 'events.page'
@@ -23,6 +23,10 @@ appId: host.exp.Exponent
     visible:
       id: 'events.page'
     timeout: 20000
+- assertVisible:
+    text: '${EV_NAME}'
+    childOf:
+      id: 'events.page'
 - assertNotVisible:
     id: 'timeline.allDates.page'
 
@@ -30,6 +34,10 @@ appId: host.exp.Exponent
 - back
 - waitForAnimationToEnd
 - takeScreenshot: back1
+- assertNotVisible:
+    text: '${EV_NAME}'
+    childOf:
+      id: 'events.page'
 - assertNotVisible:
     id: 'timeline.allDates.page'
 - back

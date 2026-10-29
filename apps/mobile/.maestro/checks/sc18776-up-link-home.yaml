@@ -1,4 +1,4 @@
-# Android only. sc-18776: ${EV}'s All dates by link over Home; ‹ Event (BACK) opens the event, not Home; system back twice.
+# Android only. sc-18776: EV's All dates by link over Home; ‹ Event (BACK) opens the event, not Home; system back twice. Pass EV (an event's id), BACK and ORIENT; BACK is frame.back on a phone, timeline.allDates.back on a tablet.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
