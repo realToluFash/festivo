@@ -1,0 +1,17 @@
+# Signed out, open a request link and tap BUTTON (signIn or register) to hold it, then stop on that screen. sc-19752.
+# Pass TOKEN and BUTTON. Leaves the app open: request-link-held-*.yaml take it from memory, or after stopApp from the device.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/join/${TOKEN}
+- extendedWaitUntil:
+    visible:
+      id: 'requestToJoin.${BUTTON}'
+    timeout: 60000
+- takeScreenshot: request-link-hold-page
+- tapOn:
+    id: 'requestToJoin.${BUTTON}'
+- waitForAnimationToEnd
+- takeScreenshot: request-link-held
