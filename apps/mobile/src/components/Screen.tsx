@@ -494,7 +494,13 @@ export function useStepClose(
   useEffect(() => {
     if (!closing) return;
 
-    return run(afterShown.current);
+    // Not cancelled when `finish` ends the closing: the opener's settle has to run after the step has gone (sc-9382).
+    const before = cancel.current;
+    const stop = run(afterShown.current);
+    cancel.current = () => {
+      before();
+      stop();
+    };
   }, [closing, run]);
 
   const close = useCallback(() => {
