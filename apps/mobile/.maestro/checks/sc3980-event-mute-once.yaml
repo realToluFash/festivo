@@ -1,0 +1,17 @@
+# Mute this event on ${EVENT_ID}, turned on once from the event's page and left on (sc-3980).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- scrollUntilVisible:
+    element:
+      id: events.mute
+    timeout: 30000
+# The switch is events.mute.switch; events.mute is the whole card.
+- tapOn:
+    id: events.mute.switch
+- extendedWaitUntil:
+    visible:
+      id: events.mute.switch
+      checked: true
+    timeout: 8000
+- takeScreenshot: event-mute-turned-on

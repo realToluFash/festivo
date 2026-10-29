@@ -1,0 +1,18 @@
+# The feed and badge follow a Mark all read made in another session of the same member, with no reload (sc-3980).
+# The bell's count is a formatted placeholder, so its label is matched in all four languages.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil:
+    visible:
+      id: frame.bell
+      text: '(?:Notifications|Notificaciones|Notificações), [0-9]+ (?:unread|sin leer|non lues?|por ler)'
+    timeout: 30000
+- takeScreenshot: live-before
+# Another session of the same member marks every item read meanwhile (POST /api/notifications/read-all).
+- extendedWaitUntil:
+    visible:
+      id: frame.bell
+      text: '(?:Notifications|Notificaciones|Notificações)'
+    timeout: 90000
+- takeScreenshot: live-after
