@@ -36,12 +36,23 @@ import {
   scrollInsets,
   shownEnd,
 } from '../kit/keyboard.ts';
-import { type FocusBackFrom, focusBackMs } from '../kit/focusBack.ts';
+import {
+  type FocusBackFrom,
+  focusBackMs,
+  type StepCloseStep,
+  stepCloseSteps,
+} from '../kit/focusBack.ts';
 import { stepOpeners } from '../kit/stepOpeners.ts';
 import { tokens } from '../theme/tokens.ts';
 import { focusedField, watchFocusedField } from './focusedField.ts';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
-import { LIFT, keyboardTopNow, settledLift, watchKeyboardTop } from './keyboardWatch.ts';
+import {
+  LIFT,
+  keyboardTopNow,
+  settledLift,
+  putKeysDownThen,
+  watchKeyboardTop,
+} from './keyboardWatch.ts';
 
 type InnerViewRef = ScrollView & { getInnerViewRef(): View | null };
 
@@ -398,6 +409,115 @@ export function useFocusBackToOpener(
   useFocusOnAnswer(closed, target, focusBackMs(Platform.OS, SETTLED_MS, from));
 
   return openers.ref;
+}
+
+export interface StepClose {
+  /** The opener's ref, in place of `opener(key)`. */
+  opener: RefCallback<View>;
+  /** The step is closing in order, and its opener shows beside it until focus has reached it. */
+  closing: boolean;
+  close(): void;
+}
+
+/** Closes a step back to the opener `to` names, in the steps `stepCloseSteps` gives; `finish` takes the step away, with what `useFocusBackToOpener` moves focus back from, or nothing when focus is already there (sc-18588). */
+export function useStepClose(
+  opener: (key: string) => RefCallback<View>,
+  to: string,
+  finish: (closed: StepClosed | undefined) => void,
+): StepClose {
+  const scroll = useContext(ScreenScroll);
+  const [closing, setClosing] = useState(false);
+  const started = useRef(false);
+  const view = useRef<View | null>(null);
+  const finishNow = useRef(finish);
+  const afterShown = useRef<readonly StepCloseStep[]>([]);
+  const cancel = useRef(() => {});
+  const named = opener(to);
+  const ref = useCallback(
+    (shown: View | null) => {
+      named(shown);
+      view.current = shown;
+    },
+    [named],
+  );
+
+  useEffect(() => {
+    finishNow.current = finish;
+  });
+
+  const run = useCallback(
+    (all: readonly StepCloseStep[]): (() => void) => {
+      const cancels: (() => void)[] = [];
+
+      function runFrom(steps: readonly StepCloseStep[]): void {
+        for (const [at, step] of steps.entries()) {
+          if (step.do === 'putKeysDown') {
+            cancels.push(putKeysDownThen(() => runFrom(steps.slice(at + 1)), SETTLED_MS));
+            break;
+          }
+          if (step.do === 'showOpener') {
+            afterShown.current = steps.slice(at + 1);
+            setClosing(true);
+            break;
+          }
+          if (step.do === 'focusOpener') {
+            cancels.push(
+              settleOnto(
+                scroll,
+                () => view.current,
+                () => view.current,
+                false,
+                step.atMs,
+              ),
+            );
+            continue;
+          }
+
+          const done = setTimeout(() => {
+            started.current = false;
+            setClosing(false);
+            finishNow.current(step.focusBack ? stepClosed(to) : undefined);
+          }, step.atMs);
+          cancels.push(() => clearTimeout(done));
+        }
+      }
+
+      runFrom(all);
+
+      return () => cancels.forEach((stop) => stop());
+    },
+    [scroll, to],
+  );
+
+  useEffect(() => () => cancel.current(), []);
+
+  useEffect(() => {
+    if (!closing) return;
+
+    // Not cancelled when `finish` ends the closing: the opener's settle has to run after the step has gone (sc-9382).
+    const before = cancel.current;
+    const stop = run(afterShown.current);
+    cancel.current = () => {
+      before();
+      stop();
+    };
+  }, [closing, run]);
+
+  const close = useCallback(() => {
+    if (started.current) return;
+    started.current = true;
+
+    let gone = false;
+    cancel.current = () => {
+      gone = true;
+    };
+    void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
+      if (gone) return;
+      cancel.current = run(stepCloseSteps(Platform.OS, on));
+    });
+  }, [run]);
+
+  return { opener: ref, closing, close };
 }
 
 /** Focus back to the row a page was opened from, as `useFocusBackToOpener` on a `page` return; rendered inside a list's ScrollColumn so the row comes into view. */

@@ -7,4 +7,16 @@ appId: host.exp.Exponent
     id: ${ID}
 - eraseText: 120
 - inputText: ${TYPED}
-- hideKeyboard
+# On iOS Return, which sends nothing from this field and puts the keyboard away:
+# hideKeyboard fails on an iPhone (sc-19584). On Android Enter can type into the field
+# (sc-18648), so it hides the keyboard.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - pressKey: Enter
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard

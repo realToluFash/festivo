@@ -1,0 +1,12 @@
+# Signs out from Complete your profile, which the batch's sign-out.yaml does not reach. sc-18648.
+appId: host.exp.Exponent
+---
+- scrollUntilVisible:
+    element:
+      id: 'completeProfile.signOut'
+- tapOn:
+    id: 'completeProfile.signOut'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 30000

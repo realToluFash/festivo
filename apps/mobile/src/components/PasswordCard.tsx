@@ -24,13 +24,24 @@ import { CodeField, Field, focusChecked, keysStayDown } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import { PasswordRule } from './PasswordRule.tsx';
-import { type StepClosed, stepClosed, useAboveKeyboard, useFocusBackToOpener } from './Screen.tsx';
+import {
+  type StepClosed,
+  stepClosed,
+  useAboveKeyboard,
+  useFocusBackToOpener,
+  useStepClose,
+} from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 const PROVIDER_NAMES: Record<string, string> = { google: 'Google', apple: 'Apple' };
 
 type Stage =
-  | { kind: 'atRest'; signedOut: number | null; added: string | null; closed?: StepClosed }
+  | {
+      kind: 'atRest';
+      signedOut: number | null;
+      added: string | null;
+      closed?: StepClosed | undefined;
+    }
   | { kind: 'changing' }
   | { kind: 'setting' };
 
@@ -66,6 +77,13 @@ export function PasswordCard({
     onSetting?.(next.kind === 'setting');
   };
   const opener = useFocusBackToOpener(stage.kind === 'atRest' ? stage.closed : undefined);
+  const {
+    opener: changeOpener,
+    closing,
+    close,
+  } = useStepClose(opener, 'change', (closed) =>
+    setStage({ kind: 'atRest', signedOut: null, added: null, closed }),
+  );
   const frame = cardFrame(kind);
   const first = providers[0]?.provider;
   const provider = first == null ? '' : (PROVIDER_NAMES[first] ?? first);
@@ -130,12 +148,6 @@ export function PasswordCard({
           <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
             {t('passwordCard.intro')}
           </Text>
-          <SecondaryButton
-            ref={opener('change')}
-            label={t('passwordCard.change')}
-            onPress={() => setStage({ kind: 'changing' })}
-            testID="password.change"
-          />
         </>
       ) : (
         <Changing
@@ -144,9 +156,15 @@ export function PasswordCard({
             setStage({ kind: 'atRest', signedOut, added: null });
             onChanged?.();
           }}
-          onCancel={() =>
-            setStage({ kind: 'atRest', signedOut: null, added: null, closed: stepClosed('change') })
-          }
+          onCancel={close}
+        />
+      )}
+      {(stage.kind !== 'changing' || closing) && (
+        <SecondaryButton
+          ref={changeOpener}
+          label={t('passwordCard.change')}
+          onPress={() => setStage({ kind: 'changing' })}
+          testID="password.change"
         />
       )}
     </View>
