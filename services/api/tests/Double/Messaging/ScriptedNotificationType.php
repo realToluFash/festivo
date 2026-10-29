@@ -18,6 +18,7 @@ use DateTimeImmutable;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
+use Symfony\Component\Uid\Uuid;
 
 /** A registered type that exists only in the suite: no real type has merged yet, and the machine is tested on these. */
 final readonly class ScriptedNotificationType implements NotificationTypeInterface
@@ -81,7 +82,12 @@ final readonly class ScriptedNotificationType implements NotificationTypeInterfa
         return $this->collapseKey;
     }
 
-    public function isStillDue(array $payload): bool
+    public function thread(array $payload): ?string
+    {
+        return null;
+    }
+
+    public function isStillDue(array $payload, ?Uuid $recipient = null): bool
     {
         $this->meanwhile?->happen();
 

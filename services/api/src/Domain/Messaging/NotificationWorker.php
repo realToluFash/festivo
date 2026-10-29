@@ -420,7 +420,7 @@ final class NotificationWorker
             return $verdict;
         }
 
-        if (!$type->isStillDue(self::dict($row['payload']))) {
+        if (!$type->isStillDue(self::dict($row['payload']), Uuid::fromString(Type\string()->coerce($row['recipient_id'])))) {
             $this->finishDelivery($id, NotificationDeliveryStatus::Cancelled, 'no longer due');
 
             return EventVerdict::Cancel;
@@ -467,7 +467,8 @@ final class NotificationWorker
             return EventVerdict::Hold;
         }
 
-        $item = $this->connection->fetchAssociative(
+        $thread = $type->thread(self::dict($row['payload']));
+        $item = null !== $thread ? $this->threadItem($row, $thread) : $this->connection->fetchAssociative(
             <<<'SQL'
                 SELECT i.id IS NOT NULL AS present, i.read_at IS NOT NULL AS read
                 FROM notification_deliveries d
@@ -499,6 +500,23 @@ final class NotificationWorker
         }
 
         return EventVerdict::Send;
+    }
+
+    /**
+     * The member's latest item in the thread: a push goes only while it is unread, as it then reads (sc-13214).
+     *
+     * @param array<string, mixed> $row
+     *
+     * @return array{present: bool, read: bool}
+     */
+    private function threadItem(array $row, string $thread): array
+    {
+        $item = $this->connection->fetchAssociative(
+            'SELECT read_at IS NOT NULL AS read FROM notification_items WHERE user_id = :recipient AND thread = :thread ORDER BY read_at IS NOT NULL, created_at DESC LIMIT 1',
+            ['recipient' => $row['recipient_id'], 'thread' => $thread],
+        );
+
+        return ['present' => false !== $item, 'read' => false !== $item && Type\bool()->coerce($item['read'])];
     }
 
     /**

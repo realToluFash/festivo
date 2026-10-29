@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Domain\Event\Command;
 
 use App\Deletion\Restorer;
+use App\Domain\Messaging\EventChanges\EventChangeRecorder;
 use App\Entity\Event;
 use App\Enum\DeletedKind;
+use Doctrine\ORM\EntityManagerInterface;
 use Psl\Str;
 use RuntimeException;
 use Symfony\Component\Console\Attribute\Argument;
@@ -24,6 +26,8 @@ final readonly class RestoreEventCommand
 {
     public function __construct(
         private Restorer $restorer,
+        private EntityManagerInterface $entityManager,
+        private EventChangeRecorder $eventChangeRecorder,
     ) {
     }
 
@@ -41,7 +45,15 @@ final readonly class RestoreEventCommand
         }
 
         try {
-            $restored = $this->restorer->restore(DeletedKind::Event, Uuid::fromString($event), $agent);
+            $restored = $this->entityManager->getConnection()->transactional(function () use ($event, $agent): object {
+                $restored = $this->restorer->restore(DeletedKind::Event, Uuid::fromString($event), $agent);
+
+                if ($restored instanceof Event) {
+                    $this->eventChangeRecorder->restored($restored);
+                }
+
+                return $restored;
+            });
         } catch (RuntimeException $e) {
             $io->error($e->getMessage());
 
