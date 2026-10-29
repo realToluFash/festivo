@@ -194,7 +194,7 @@ describe('the bell (sc-3980)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Mark all read' }));
 
-    expect(await screen.findByText("Couldn't mark them all read. Try again.")).toBeTruthy();
+    expect(await screen.findByText('Could not mark them all read. Try again.')).toBeTruthy();
     expect(screen.queryByText('All read.')).toBeNull();
     expect(screen.getByRole('button', { name: 'Notifications, 1 unread' })).toBeTruthy();
     expect(screen.getByText('Unread')).toBeTruthy();
@@ -291,16 +291,16 @@ describe('the bell (sc-3980)', () => {
       }),
     );
 
-    expect(await screen.findByText("Couldn't load whether this event is muted.")).toBeTruthy();
+    expect(await screen.findByText('Could not check whether this event is muted.')).toBeTruthy();
     const mute = screen.getByRole('switch', { name: 'Mute this event' }) as HTMLInputElement;
     expect(mute.disabled).toBe(true);
-    expect(screen.queryByText("Couldn't save. Try again.")).toBeNull();
+    expect(screen.queryByText('Not saved. Try again.')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
     await waitFor(() => expect(mute.checked).toBe(true));
     expect(mute.disabled).toBe(false);
-    expect(screen.queryByText("Couldn't load whether this event is muted.")).toBeNull();
+    expect(screen.queryByText('Could not check whether this event is muted.')).toBeNull();
   });
 
   it('an item whose event is gone has no More', async () => {

@@ -1630,9 +1630,9 @@
     "switch": "Mute this event",
     "on": "On",
     "off": "Off",
-    "notLoaded": "Couldn't load whether this event is muted.",
+    "notLoaded": "Could not check whether this event is muted.",
     "tryAgain": "Try again",
-    "notSaved": "Couldn't save. Try again.",
+    "notSaved": "Not saved. Try again.",
     "settings": "Notification settings"
   },
   "notificationSettings": {
@@ -1643,8 +1643,8 @@
     "off": "Off",
     "switchName": "{{category}} {{channel}}",
     "saved": "Saved.",
-    "pushNotSaved": "Couldn't save the push switch. Try again.",
-    "emailNotSaved": "Couldn't save the email switch. Try again.",
+    "pushNotSaved": "The push switch was not saved. Try again.",
+    "emailNotSaved": "The email switch was not saved. Try again.",
     "couldNotLoad": "Your notification settings did not load.",
     "tryAgain": "Try again",
     "pushBlocked": "Push is off on this device, so pushes won't reach you here. Turn it on in your device's settings.",

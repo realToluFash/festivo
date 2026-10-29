@@ -154,7 +154,7 @@ describe('Mute this event on the event page (sc-3980)', () => {
     fireEvent.click(toggle);
 
     const said = await within(card()).findByRole('alert');
-    expect(said.textContent).toContain("Couldn't save. Try again.");
+    expect(said.textContent).toContain('Not saved. Try again.');
     expect(toggle.getAttribute('aria-describedby')).toBe(said.id);
     expect((toggle as HTMLInputElement).checked).toBe(false);
   });
@@ -192,7 +192,7 @@ describe('Mute this event on the event page (sc-3980)', () => {
     refuse(json({ title: 'Down' }, 503));
 
     expect((await within(card()).findByRole('alert')).textContent).toContain(
-      "Couldn't save. Try again.",
+      'Not saved. Try again.',
     );
     expect((toggle as HTMLInputElement).checked).toBe(false);
     expect(toggle.getAttribute('aria-busy')).toBe('false');
@@ -207,14 +207,14 @@ describe('Mute this event on the event page (sc-3980)', () => {
     });
     const toggle = within(card()).getByRole('switch', { name: 'Mute this event' });
 
-    await within(card()).findByText("Couldn't load whether this event is muted.");
+    await within(card()).findByText('Could not check whether this event is muted.');
     expect((toggle as HTMLInputElement).disabled).toBe(true);
-    expect(within(card()).queryByText("Couldn't save. Try again.")).toBeNull();
+    expect(within(card()).queryByText('Not saved. Try again.')).toBeNull();
 
     fireEvent.click(within(card()).getByRole('button', { name: 'Try again' }));
 
     await waitFor(() => expect((toggle as HTMLInputElement).checked).toBe(true));
     expect((toggle as HTMLInputElement).disabled).toBe(false);
-    expect(within(card()).queryByText("Couldn't load whether this event is muted.")).toBeNull();
+    expect(within(card()).queryByText('Could not check whether this event is muted.')).toBeNull();
   });
 });
