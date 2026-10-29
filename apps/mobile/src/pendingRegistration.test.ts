@@ -52,6 +52,22 @@ function answering(status: number, body: unknown) {
   );
 }
 
+/** `/api/auth/me` refused until the session refreshes, so a call after it has refreshed once. */
+function refreshingOnce() {
+  let refreshed = false;
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+    if (String(input).includes('/auth/refresh')) {
+      refreshed = true;
+      return new Response(JSON.stringify(SIGNED_IN), { status: 200 });
+    }
+    return refreshed
+      ? new Response(JSON.stringify(B), { status: 200 })
+      : new Response(JSON.stringify({ status: 401 }), { status: 401 });
+  });
+
+  return () => refreshed;
+}
+
 /** A fresh launch: what was kept on the device, read again. */
 async function launch() {
   vi.resetModules();
@@ -125,7 +141,10 @@ describe('a sign-up held on the device when somebody signs in (sc-19634)', () =>
     await api.signIn('bola@example.com', 'a decent passphrase');
 
     await holdRegistration(A);
+    const refreshed = refreshingOnce();
+    await api.me();
 
+    expect(refreshed()).toBe(true);
     expect(await (await launch()).heldRegistration()).toEqual(A);
   });
 });

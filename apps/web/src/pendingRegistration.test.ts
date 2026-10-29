@@ -38,6 +38,22 @@ const SIGNED_IN = {
   account: B,
 };
 
+/** `/api/auth/me` refused until the session refreshes, so a call after it has refreshed once. */
+function refreshingOnce() {
+  let refreshed = false;
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+    if (String(input).includes('/auth/refresh')) {
+      refreshed = true;
+      return new Response(JSON.stringify(SIGNED_IN), { status: 200 });
+    }
+    return refreshed
+      ? new Response(JSON.stringify(B), { status: 200 })
+      : new Response(JSON.stringify({ status: 401 }), { status: 401 });
+  });
+
+  return () => refreshed;
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
   dropRegistration();
@@ -87,7 +103,10 @@ describe('a sign-up held in this tab when somebody signs in (sc-19634)', () => {
     await api.signIn('bola@example.com', 'a decent passphrase');
 
     holdRegistration(A);
+    const refreshed = refreshingOnce();
+    await api.me();
 
+    expect(refreshed()).toBe(true);
     expect(heldRegistration()).toEqual(A);
   });
 });
