@@ -248,7 +248,8 @@ for _tester in TESTERS:
 
 # A role that labels may only touch these labels; the product manager may touch any.
 OWN_LABELS = {**{d: {label} for d, label in DEVELOPERS.items()}, "cd": {"idea"},
-              **{t: {"qa passed", "qa failed", "needs qa", TESTERS_LABELS[t]} for t in TESTERS},
+              **{t: {"qa passed", "qa failed", "needs qa", "manual qa", TESTERS_LABELS[t]}
+                 for t in TESTERS},
               "l10n": {"translation"}, "ops": {OPS_LABEL, "needs qa"}}
 
 CATALOGUES = [
