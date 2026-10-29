@@ -8,6 +8,7 @@ use App\Domain\Messaging\Interfaces\PushServiceInterface;
 use App\Domain\Messaging\Model\PushTarget;
 use App\Domain\Messaging\Model\RenderedNotification;
 use App\Enum\PushTargetKind;
+use GuzzleHttp\HandlerStack;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
 use Psl\Json;
@@ -27,6 +28,7 @@ final readonly class VapidWebPush implements PushServiceInterface
         #[SensitiveParameter]
         private string $privateKey,
         private int $timeout,
+        private ?HandlerStack $handler = null,
     ) {
     }
 
@@ -68,7 +70,7 @@ final readonly class VapidWebPush implements PushServiceInterface
             ['VAPID' => ['subject' => $this->subject, 'publicKey' => $this->publicKey, 'privateKey' => $this->privateKey]],
             [],
             $this->timeout,
-            ['connect_timeout' => $this->timeout],
+            null === $this->handler ? ['connect_timeout' => $this->timeout] : ['connect_timeout' => $this->timeout, 'handler' => $this->handler],
         );
     }
 

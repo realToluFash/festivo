@@ -327,7 +327,7 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_us
 # Push's two providers (sc-3980). Each sees the port it implements and nothing else of ours.
 [[guard.perimeter.rules]]
 namespace = "App\\Integrations\\WebPush\\"
-permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_messaging", "Minishlink\\**"]
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_messaging", "Minishlink\\**", "GuzzleHttp\\HandlerStack"]
 
 [[guard.perimeter.rules]]
 namespace = "App\\Integrations\\Expo\\"
