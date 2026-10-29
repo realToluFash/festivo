@@ -4,9 +4,9 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { announceMute } from '../eventMutes.ts';
+import { announceMute, useMutes } from '../eventMutes.ts';
 import { SECTION_HREF } from '../kit/appNav.ts';
-import { type MuteState, readMute, saveMute } from '../kit/eventMute.ts';
+import { type MuteState, heardMute, readMute, saveMute } from '../kit/eventMute.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Footnote } from './Buttons.tsx';
@@ -44,6 +44,11 @@ export function MuteEventSwitch({ eventId, testID }: { eventId: string; testID: 
   const [mute, setMute] = useState<MuteState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [tap, setTap] = useState<object | undefined>(undefined);
+
+  useMutes((changed, saved) => {
+    const heard = heardMute(eventId, changed, saved);
+    if (heard != null) setMute(heard);
+  });
 
   useEffect(() => {
     let current = true;

@@ -41,3 +41,10 @@ export async function saveMute(
     return { state: { status: 'loaded', muted: !next, saving: false, unsaved: true }, saved: null };
   }
 }
+
+/** Another copy of the switch saved: this one follows when it is the same event, and stays as it is otherwise. */
+export function heardMute(eventId: string, changed: string, saved: EventMute): MuteState | null {
+  return changed === eventId
+    ? { status: 'loaded', muted: saved.muted, saving: false, unsaved: false }
+    : null;
+}
