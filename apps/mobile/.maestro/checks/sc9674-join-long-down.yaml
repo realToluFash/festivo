@@ -25,7 +25,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: requestToJoin.ask
 - extendedWaitUntil:
-    visible: 'Keep your message to 500 characters or fewer.*'
+    visible: '(?:Keep your message to 500 characters or fewer|Acorte su mensaje a 500 caracteres como máximo|Raccourcissez votre message à 500 caractères maximum|Encurte a mensagem para um máximo de 500 caracteres).*'
     timeout: 10000
 - waitForAnimationToEnd
 - takeScreenshot: checked

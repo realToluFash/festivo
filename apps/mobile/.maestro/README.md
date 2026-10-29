@@ -80,6 +80,10 @@ A check is written like a flow, and also:
   from `apps/mobile/src/i18n/locales/en.json`, in single quotes. The harness writes each
   language's string in. `{{t:any:key}}` matches any of the four, and `{{t:key|email}}` puts the
   account's address where the string has `{{email}}`.
+  A server message has no `{{t:}}` key, and a key with a formatted placeholder such as
+  `{{count, number}}` is not filled in, so match those in all four languages, values written
+  in: `'(?:That code did not work|Ese código no ha funcionado|…).*'`, from
+  `services/api/translations/messages.*.json` or the app's locale files.
 - **`takeScreenshot: <name>`, on one line.** The harness prefixes the check and language, so
   `settings` in a Spanish batch lands in `.qa/<batch>/settings.es-settings.png`.
 

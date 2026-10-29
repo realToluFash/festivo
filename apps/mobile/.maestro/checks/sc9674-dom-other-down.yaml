@@ -36,7 +36,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: companyDomains.add
 - extendedWaitUntil:
-    visible: 'Add a domain your own address is at.*'
+    visible: '(?:Add a domain your own address is at|Añada el dominio de su propia dirección|Ajoutez le domaine de votre propre adresse|Adicione o domínio do seu próprio endereço).*'
     timeout: 45000
 - waitForAnimationToEnd:
     timeout: 3000

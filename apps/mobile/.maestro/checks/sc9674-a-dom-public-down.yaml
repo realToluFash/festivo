@@ -51,7 +51,7 @@ appId: host.exp.Exponent
     env:
       ASK: /api?to=up
 - extendedWaitUntil:
-    visible: 'You cannot use a public email domain.*'
+    visible: '(?:You cannot use a public email domain|No puede usar un dominio de correo electrónico público|Vous ne pouvez pas utiliser un domaine de messagerie public|Não pode usar um domínio de e-mail público).*'
     timeout: 45000
 - waitForAnimationToEnd:
     timeout: 3000
