@@ -680,6 +680,8 @@ export interface ClientOptions {
   device?: () => string | null;
   /** Called when refresh fails and the session is over, with the API's reason when it gave one, such as `session_timed_out`. */
   onSignedOut?: (why?: Problem) => void;
+  /** Called once a sign-in has stored a session, by any way in; never by a refresh, a challenge or a refusal. */
+  onSignedIn?: () => void | Promise<void>;
   /** Called when the API refuses a request because the account is behind an onboarding gate. */
   onGate?: (gate: Gate) => void;
   fetch?: typeof fetch;
@@ -2468,6 +2470,7 @@ export class ApiClient {
 
     this.session += 1;
     await this.options.tokens?.save(tokens);
+    await this.options.onSignedIn?.();
 
     return { tokens, account, linked: body.linked === true };
   }

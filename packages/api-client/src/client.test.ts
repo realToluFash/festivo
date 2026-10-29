@@ -2129,6 +2129,93 @@ describe('a second factor', () => {
   });
 });
 
+describe('a sign-in that stores a session says so (sc-19634)', () => {
+  function signingIn(answer: () => Response) {
+    const onSignedIn = vi.fn();
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('old', 'old-refresh'),
+      onSignedIn,
+      fetch: async () => answer(),
+    });
+
+    return { client, onSignedIn };
+  }
+
+  test('a password sign-in says so once its tokens are saved', async () => {
+    const { client, onSignedIn } = signingIn(() => issued({ account: ACCOUNT }));
+
+    await client.signIn('ada@example.com', 'a decent passphrase');
+
+    expect(onSignedIn).toHaveBeenCalledTimes(1);
+  });
+
+  test('a provider sign-in and a passed second factor say so too', async () => {
+    const { client, onSignedIn } = signingIn(() => issued({ account: ACCOUNT }));
+
+    await client.signInWithProvider('google', 'id-token', 'nonce');
+    await client.verifyTwoFactor('the-challenge', { code: '123456' });
+
+    expect(onSignedIn).toHaveBeenCalledTimes(2);
+  });
+
+  test('a challenge, a refusal and an unreachable API do not', async () => {
+    const answers = [
+      () =>
+        json(
+          {
+            twoFactorChallenge: 'the-challenge',
+            challengeExpiresAt: '2026-10-17T12:05:00+00:00',
+            email: 'ada@example.com',
+          },
+          202,
+        ),
+      () => problem(401, 'invalid_credentials'),
+      () => problem(429, 'too_many_attempts'),
+    ];
+
+    for (const answer of answers) {
+      const { client, onSignedIn } = signingIn(answer);
+      await client.signIn('ada@example.com', 'a decent passphrase').catch(() => null);
+      expect(onSignedIn).not.toHaveBeenCalled();
+    }
+
+    const onSignedIn = vi.fn();
+    const unreachable = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store(null, null),
+      onSignedIn,
+      fetch: async () => {
+        throw new TypeError('Failed to fetch');
+      },
+    });
+    await expect(unreachable.signIn('ada@example.com', 'a decent passphrase')).rejects.toThrow();
+    expect(onSignedIn).not.toHaveBeenCalled();
+  });
+
+  test('a refreshed session is not a sign-in', async () => {
+    let refreshed = false;
+    const onSignedIn = vi.fn();
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('expired', 'good-refresh'),
+      onSignedIn,
+      fetch: async (input) => {
+        if (String(input).includes('/auth/refresh')) {
+          refreshed = true;
+          return issued();
+        }
+        return refreshed ? json({ ok: true }) : problem(401, 'unauthenticated');
+      },
+    });
+
+    await client.get('/api/a');
+
+    expect(refreshed).toBe(true);
+    expect(onSignedIn).not.toHaveBeenCalled();
+  });
+});
+
 describe('getting back in without the second factor', () => {
   const WAITING = {
     status: 'waiting',
