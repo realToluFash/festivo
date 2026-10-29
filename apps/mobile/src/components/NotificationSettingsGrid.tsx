@@ -1,16 +1,18 @@
-import { quietHoursIn, settingFlipped, settingRows, usageThresholdsIn } from '@soirely/domain';
+import { quietHoursIn, settingRows, usageThresholdsIn } from '@soirely/domain';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { pushBlockedHere } from '../appPush.ts';
+import { followPushBlocked } from '../appPush.ts';
 import { currentLocale } from '../i18n/index.ts';
 import {
   type Channel,
   type SettingsGrid,
+  isSaving,
   readSettings,
   saveSetting,
+  settingSaving,
 } from '../kit/notificationSettings.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -42,18 +44,7 @@ export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
     };
   }, [attempt]);
 
-  useEffect(() => {
-    let current = true;
-    void pushBlockedHere()
-      .catch(() => false)
-      .then((refused) => {
-        if (current) setBlocked(refused);
-      });
-
-    return () => {
-      current = false;
-    };
-  }, []);
+  useEffect(() => followPushBlocked(setBlocked), []);
 
   useReadOut(grid.status === 'loaded' && grid.saved ? t('notificationSettings.saved') : null, {
     answer: tap,
@@ -85,12 +76,7 @@ export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
     channel: Channel,
     on: boolean,
   ): void => {
-    setGrid({
-      status: 'loaded',
-      settings: settingFlipped(grid.settings, category, channel, on),
-      saved: false,
-      unsaved: null,
-    });
+    setGrid((current) => settingSaving(current, category, channel, on));
     void saveSetting(api, category, channel, on).then((apply) => {
       setGrid(apply);
       setTap({});
@@ -154,6 +140,7 @@ export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
                     })}
                     hint={note}
                     disabled={!setting[channel].switchable}
+                    busy={isSaving(grid, { category: setting.category, channel })}
                     onChange={(on) => change(setting.category, channel, on)}
                     testID={`notificationSettings.${setting.category}.${channel}`}
                   />

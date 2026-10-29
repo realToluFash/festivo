@@ -9,9 +9,15 @@ export type SettingsGrid =
   | {
       status: 'loaded';
       settings: NotificationSetting[];
+      saving: readonly SettingSwitch[];
       saved: boolean;
-      unsaved: { category: NotificationCategory; channel: Channel } | null;
+      unsaved: SettingSwitch | null;
     };
+
+export interface SettingSwitch {
+  category: NotificationCategory;
+  channel: Channel;
+}
 
 export interface SwitchesNotifications {
   notificationSettings(): Promise<NotificationSetting[]>;
@@ -27,6 +33,7 @@ export async function readSettings(client: SwitchesNotifications): Promise<Setti
     return {
       status: 'loaded',
       settings: await client.notificationSettings(),
+      saving: [],
       saved: false,
       unsaved: null,
     };
@@ -35,26 +42,66 @@ export async function readSettings(client: SwitchesNotifications): Promise<Setti
   }
 }
 
-/** The grid that comes back is the server's; a failed save puts back only its own switch, on the grid as it is by then. */
+function same(one: SettingSwitch, other: SettingSwitch): boolean {
+  return one.category === other.category && one.channel === other.channel;
+}
+
+export function isSaving(grid: SettingsGrid, setting: SettingSwitch): boolean {
+  return grid.status === 'loaded' && grid.saving.some((saving) => same(saving, setting));
+}
+
+/** A switch is busy while its own save is out, so a second tap cannot race it. */
+export function settingSaving(
+  grid: SettingsGrid,
+  category: NotificationCategory,
+  channel: Channel,
+  on: boolean,
+): SettingsGrid {
+  if (grid.status !== 'loaded') return grid;
+
+  return {
+    status: 'loaded',
+    settings: settingFlipped(grid.settings, category, channel, on),
+    saving: [...grid.saving, { category, channel }],
+    saved: false,
+    unsaved: null,
+  };
+}
+
+/** A save's answer moves its own switch only, on the grid as it is by then: another switch saving meanwhile keeps what it shows. */
 export async function saveSetting(
   client: SwitchesNotifications,
   category: NotificationCategory,
   channel: Channel,
   on: boolean,
 ): Promise<(current: SettingsGrid) => SettingsGrid> {
+  const own = { category, channel };
+  let saved: boolean | null;
   try {
     const settings = await client.setNotificationSetting(category, channel, on);
-
-    return () => ({ status: 'loaded', settings, saved: true, unsaved: null });
+    saved = settings.find((setting) => setting.category === category)?.[channel].on ?? on;
   } catch {
-    return (current) =>
-      current.status === 'loaded'
-        ? {
-            status: 'loaded',
-            settings: settingFlipped(current.settings, category, channel, !on),
-            saved: false,
-            unsaved: { category, channel },
-          }
-        : current;
+    saved = null;
   }
+
+  return (current) => {
+    if (current.status !== 'loaded') return current;
+    const saving = current.saving.filter((other) => !same(other, own));
+
+    return saved == null
+      ? {
+          status: 'loaded',
+          settings: settingFlipped(current.settings, category, channel, !on),
+          saving,
+          saved: false,
+          unsaved: own,
+        }
+      : {
+          status: 'loaded',
+          settings: settingFlipped(current.settings, category, channel, saved),
+          saving,
+          saved: true,
+          unsaved: current.unsaved != null && same(current.unsaved, own) ? null : current.unsaved,
+        };
+  };
 }

@@ -23,12 +23,24 @@ const tapped = vi.hoisted(() => ({
 const router = vi.hoisted(() => ({ push: vi.fn() }));
 const effects = vi.hoisted(() => ({ cleanups: [] as (() => void)[] }));
 const stored = vi.hoisted(() => new Map<string, string>());
+const appState = vi.hoisted(() => ({
+  listener: null as ((state: string) => void) | null,
+  remove: vi.fn(),
+}));
 
 vi.mock('./api.ts', () => ({ api }));
 vi.mock('./config.ts', () => ({ config: settings }));
 vi.mock('expo-device', () => device);
 vi.mock('expo-notifications', () => notifications);
 vi.mock('expo-router', () => ({ router }));
+vi.mock('react-native', () => ({
+  AppState: {
+    addEventListener: (_: string, listener: (state: string) => void) => {
+      appState.listener = listener;
+      return { remove: appState.remove };
+    },
+  },
+}));
 vi.mock('react', () => ({
   useEffect: (effect: () => (() => void) | undefined) => {
     const cleanup = effect();
@@ -43,9 +55,9 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 }));
 
 const {
+  followPushBlocked,
   markPushAsked,
   pushAskDue,
-  pushBlockedHere,
   pushedPlace,
   registerAppPush,
   showPushInForeground,
@@ -125,17 +137,54 @@ describe("the app's push (sc-3980)", () => {
   });
 
   it('calls push blocked only once the phone has refused it', async () => {
+    const said: boolean[] = [];
+    for (const status of ['denied', 'granted', 'undetermined']) {
+      notifications.getPermissionsAsync.mockResolvedValueOnce({
+        granted: status === 'granted',
+        status,
+      });
+      const before = said.length;
+      const stop = followPushBlocked((blocked) => said.push(blocked));
+      await vi.waitFor(() => expect(said).toHaveLength(before + 1));
+      stop();
+    }
+
+    expect(said).toEqual([true, false, false]);
+  });
+
+  it('reads push again on the way back to the app, and registers the token once it is allowed', async () => {
+    const said: boolean[] = [];
     notifications.getPermissionsAsync.mockResolvedValueOnce({ granted: false, status: 'denied' });
-    expect(await pushBlockedHere()).toBe(true);
+    const stop = followPushBlocked((blocked) => said.push(blocked));
+    await vi.waitFor(() => expect(said).toEqual([true]));
 
-    notifications.getPermissionsAsync.mockResolvedValueOnce({ granted: true, status: 'granted' });
-    expect(await pushBlockedHere()).toBe(false);
+    notifications.getPermissionsAsync.mockResolvedValueOnce({ granted: false, status: 'denied' });
+    appState.listener?.('background');
+    appState.listener?.('active');
+    await vi.waitFor(() => expect(said).toEqual([true, true]));
+    expect(api.registerPushTarget).not.toHaveBeenCalled();
 
-    notifications.getPermissionsAsync.mockResolvedValueOnce({
-      granted: false,
-      status: 'undetermined',
-    });
-    expect(await pushBlockedHere()).toBe(false);
+    appState.listener?.('active');
+    await vi.waitFor(() => expect(said).toEqual([true, true, false]));
+    await vi.waitFor(() =>
+      expect(api.registerPushTarget).toHaveBeenCalledWith({
+        kind: 'expo',
+        address: 'ExponentPushToken[abc]',
+      }),
+    );
+
+    stop();
+    expect(appState.remove).toHaveBeenCalled();
+  });
+
+  it('registers no token on the way back when push was already allowed', async () => {
+    const said: boolean[] = [];
+    followPushBlocked((blocked) => said.push(blocked));
+    await vi.waitFor(() => expect(said).toEqual([false]));
+    appState.listener?.('active');
+    await vi.waitFor(() => expect(said).toEqual([false, false]));
+
+    expect(api.registerPushTarget).not.toHaveBeenCalled();
   });
 
   it('registers the token once Turn on is allowed, and nothing after a block', async () => {

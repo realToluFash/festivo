@@ -3,6 +3,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { useEffect } from 'react';
+import { AppState } from 'react-native';
 
 import { api } from './api.ts';
 import { config } from './config.ts';
@@ -32,12 +33,40 @@ export async function pushAskDue(): Promise<boolean> {
   return (await AsyncStorage.getItem(ASKED).catch(() => null)) == null;
 }
 
-export async function pushBlockedHere(): Promise<boolean> {
-  if (!Device.isDevice) return false;
+async function pushPermission(): Promise<{ blocked: boolean; granted: boolean }> {
+  if (!Device.isDevice) return { blocked: false, granted: false };
 
-  const { status } = await Notifications.getPermissionsAsync();
+  const { status, granted } = await Notifications.getPermissionsAsync();
 
-  return status === 'denied';
+  return { blocked: status === 'denied', granted };
+}
+
+/** Read again each time the app comes back, so push allowed in the phone's settings registers its token then rather than at the next cold start. */
+export function followPushBlocked(onBlocked: (blocked: boolean) => void): () => void {
+  let stopped = false;
+  let granted: boolean | null = null;
+
+  const check = (): void => {
+    void pushPermission().then(
+      (now) => {
+        if (stopped) return;
+        if (now.granted && granted === false) void registerAppPush().catch(() => {});
+        granted = now.granted;
+        onBlocked(now.blocked);
+      },
+      () => undefined,
+    );
+  };
+
+  check();
+  const back = AppState.addEventListener('change', (state) => {
+    if (state === 'active') check();
+  });
+
+  return () => {
+    stopped = true;
+    back.remove();
+  };
 }
 
 /** Per device: the card shows on the first opening of the bell, and never again here. */

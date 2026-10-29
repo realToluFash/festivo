@@ -5,6 +5,21 @@ export type MuteState =
   | { status: 'failed' }
   | { status: 'loaded'; muted: boolean; saving: boolean; unsaved: boolean };
 
+/** The state held with the event it was read for, so a switch moved to another event never shows the last one's. */
+export interface HeldMute {
+  eventId: string;
+  state: MuteState;
+}
+
+export function shownMute(held: HeldMute, eventId: string): MuteState {
+  return held.eventId === eventId ? held.state : { status: 'loading' };
+}
+
+/** An answer for an event no longer shown is dropped. */
+export function answeredMute(held: HeldMute, eventId: string, state: MuteState): HeldMute {
+  return held.eventId === eventId ? { eventId, state } : held;
+}
+
 export interface MutesEvents {
   eventMuted(eventId: string): Promise<boolean>;
   muteEvent(eventId: string, muted: boolean): Promise<EventMute>;

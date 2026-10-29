@@ -6,7 +6,15 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { announceMute, useMutes } from '../eventMutes.ts';
 import { SECTION_HREF } from '../kit/appNav.ts';
-import { type MuteState, heardMute, readMute, saveMute } from '../kit/eventMute.ts';
+import {
+  type HeldMute,
+  type MuteState,
+  answeredMute,
+  heardMute,
+  readMute,
+  saveMute,
+  shownMute,
+} from '../kit/eventMute.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Footnote } from './Buttons.tsx';
@@ -41,7 +49,9 @@ export function MuteEventCard({ kind, eventId }: { kind: LayoutKind; eventId: st
 /** The one Mute this event switch, on the event's page and in a bell item's More. */
 export function MuteEventSwitch({ eventId, testID }: { eventId: string; testID: string }) {
   const { t } = useTranslation();
-  const [mute, setMute] = useState<MuteState>({ status: 'loading' });
+  const [held, setHeld] = useState<HeldMute>({ eventId, state: { status: 'loading' } });
+  const mute = shownMute(held, eventId);
+  const setMute = (state: MuteState): void => setHeld({ eventId, state });
   const [attempt, setAttempt] = useState(0);
   const [tap, setTap] = useState<object | undefined>(undefined);
 
@@ -53,7 +63,7 @@ export function MuteEventSwitch({ eventId, testID }: { eventId: string; testID: 
   useEffect(() => {
     let current = true;
     void readMute(api, eventId).then((read) => {
-      if (current) setMute(read);
+      if (current) setHeld({ eventId, state: read });
     });
 
     return () => {
@@ -64,7 +74,7 @@ export function MuteEventSwitch({ eventId, testID }: { eventId: string; testID: 
   const change = (next: boolean): void => {
     setMute({ status: 'loaded', muted: next, saving: true, unsaved: false });
     void saveMute(api, eventId, next).then(({ state, saved }) => {
-      setMute(state);
+      setHeld((current) => answeredMute(current, eventId, state));
       if (saved == null) setTap({});
       else announceMute(eventId, saved);
     });
