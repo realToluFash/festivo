@@ -1,0 +1,46 @@
+# Android only. sc-18776: ${EV}'s All dates from its Coming up; ‹ Event (BACK) returns to it; system back twice.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd
+- runFlow: ../return-home.yaml
+
+- tapOn:
+    id: 'frame.events'
+- tapOn:
+    id: 'events.tab.drafts'
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EV}'
+    timeout: 30000
+- tapOn:
+    id: 'events.row.${EV}'
+- scrollUntilVisible:
+    element:
+      id: 'timeline.allDates'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'timeline.allDates'
+- extendedWaitUntil:
+    visible:
+      id: 'timeline.row'
+    timeout: 15000
+- takeScreenshot: dates
+- tapOn:
+    id: ${BACK}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- takeScreenshot: up
+- back
+- waitForAnimationToEnd
+- takeScreenshot: back1
+- assertNotVisible:
+    id: 'timeline.allDates.page'
+- back
+- waitForAnimationToEnd
+- takeScreenshot: back2
+- assertNotVisible:
+    id: 'timeline.allDates.page'

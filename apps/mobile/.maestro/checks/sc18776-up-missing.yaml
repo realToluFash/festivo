@@ -1,0 +1,29 @@
+# Android only. sc-18776: All dates of an event that does not exist (MISSING) by link over Home; ‹ Event opens its page, This event is not available.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd
+- runFlow: ../return-home.yaml
+
+- openLink: ${METRO_URL}/--/events/${MISSING}/dates
+- waitForAnimationToEnd
+- takeScreenshot: dates
+- tapOn:
+    id: ${BACK}
+- extendedWaitUntil:
+    visible:
+      id: 'events.notFound'
+    timeout: 20000
+- assertVisible:
+    id: 'events.backToEvents'
+- takeScreenshot: up
+- back
+- waitForAnimationToEnd
+- takeScreenshot: back1
+- assertNotVisible:
+    id: 'timeline.allDates.page'
+- back
+- waitForAnimationToEnd
+- takeScreenshot: back2
+- assertNotVisible:
+    id: 'timeline.allDates.page'

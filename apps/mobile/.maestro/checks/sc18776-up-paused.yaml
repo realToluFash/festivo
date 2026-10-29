@@ -1,0 +1,44 @@
+# Android only. sc-18776: ${EV}'s All dates by link over Home with the API paused (loading, or failed); ‹ Event still opens the event.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd
+- runFlow: ../return-home.yaml
+
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- openLink: ${METRO_URL}/--/events/${EV}/dates
+- extendedWaitUntil:
+    visible:
+      id: 'timeline.allDates.loading'
+    timeout: 30000
+- takeScreenshot: dates
+- tapOn:
+    id: ${BACK}
+- waitForAnimationToEnd
+- takeScreenshot: up-held
+- assertNotVisible:
+    id: 'timeline.allDates.page'
+- assertNotVisible:
+    id: 'home.openSettings'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- takeScreenshot: up
+- back
+- waitForAnimationToEnd
+- takeScreenshot: back1
+- assertNotVisible:
+    id: 'timeline.allDates.page'
+- back
+- waitForAnimationToEnd
+- takeScreenshot: back2
+- assertNotVisible:
+    id: 'timeline.allDates.page'

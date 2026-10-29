@@ -1,0 +1,27 @@
+# Android only. sc-18776: Expo Go stopped, then ${EV}'s All dates by link as the first screen; ‹ Event (BACK) opens the event; system back twice.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd
+- stopApp
+- openLink: ${METRO_URL}/--/events/${EV}/dates
+- extendedWaitUntil:
+    visible:
+      id: 'timeline.row'
+    timeout: 90000
+- takeScreenshot: dates
+- tapOn:
+    id: ${BACK}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- takeScreenshot: up
+- back
+- waitForAnimationToEnd
+- takeScreenshot: back1
+- assertNotVisible:
+    id: 'timeline.allDates.page'
+- back
+- waitForAnimationToEnd
+- takeScreenshot: back2

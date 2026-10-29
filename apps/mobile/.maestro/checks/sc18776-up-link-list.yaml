@@ -1,0 +1,40 @@
+# Android only. sc-18776: ${EV}'s All dates by link over Events showing the list; ‹ Event (BACK) opens EV; system back twice.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd
+- runFlow: ../return-home.yaml
+
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.drafts'
+    timeout: 30000
+- takeScreenshot: behind
+- openLink: ${METRO_URL}/--/events/${EV}/dates
+- extendedWaitUntil:
+    visible:
+      id: 'timeline.row'
+    timeout: 30000
+- takeScreenshot: dates
+- tapOn:
+    id: ${BACK}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- assertNotVisible:
+    id: 'timeline.allDates.page'
+
+- takeScreenshot: up
+- back
+- waitForAnimationToEnd
+- takeScreenshot: back1
+- assertNotVisible:
+    id: 'timeline.allDates.page'
+- back
+- waitForAnimationToEnd
+- takeScreenshot: back2
+- assertNotVisible:
+    id: 'timeline.allDates.page'

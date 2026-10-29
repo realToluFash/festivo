@@ -1,0 +1,18 @@
+# Android only. sc-18776 regression: ${EV}'s All dates by link over Home; the system back still leads to Home.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd
+- runFlow: ../return-home.yaml
+- openLink: ${METRO_URL}/--/events/${EV}/dates
+- extendedWaitUntil:
+    visible:
+      id: 'timeline.row'
+    timeout: 30000
+- takeScreenshot: dates
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 15000
+- takeScreenshot: after-back
