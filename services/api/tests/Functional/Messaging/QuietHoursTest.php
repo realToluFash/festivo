@@ -153,6 +153,59 @@ final class QuietHoursTest extends MessagingTestCase
     }
 
     #[Test]
+    public function theReleaseRunTwiceSendsOnce(): void
+    {
+        $this->holdOvernight('test.push.money', 'bill');
+
+        self::at('2026-10-30 08:00');
+        self::runUntilIdle();
+        self::runUntilIdle();
+        self::at('2026-10-30 08:05');
+        self::runUntilIdle();
+
+        self::assertCount(1, self::pushes()->sent);
+        self::assertSame('sent', self::scalar("SELECT status FROM notification_deliveries WHERE channel = 'push'"));
+    }
+
+    #[Test]
+    public function aSecondWorkerLeavesTheReleaseToTheWorkerThatClaimedIt(): void
+    {
+        $this->holdOvernight('test.push.money', 'bill');
+
+        self::at('2026-10-30 08:00');
+        self::connection()->executeStatement(
+            "UPDATE notification_deliveries SET claimed_at = :now, claimed_until = :lease WHERE channel = 'push'",
+            ['now' => self::now(), 'lease' => self::now()->modify('+60 seconds')],
+            ['now' => Types::DATETIME_IMMUTABLE, 'lease' => Types::DATETIME_IMMUTABLE],
+        );
+        self::runUntilIdle();
+
+        self::assertSame([], self::pushes()->sent);
+        self::assertSame('pending', self::scalar("SELECT status FROM notification_deliveries WHERE channel = 'push'"));
+
+        self::at('2026-10-30 08:01:01');
+        self::runUntilIdle();
+        self::runUntilIdle();
+
+        self::assertCount(1, self::pushes()->sent);
+    }
+
+    #[Test]
+    public function heldPushesForOneItemReleasedTwiceGoAsOne(): void
+    {
+        self::at('2026-10-29 23:00');
+        $this->schedule('test.push.collapsing', 'reply:1', ['line' => 'Bola is going']);
+        $this->schedule('test.push.collapsing', 'reply:2', ['line' => 'Chidi is going']);
+        self::runUntilIdle();
+
+        self::at('2026-10-30 08:00');
+        self::runUntilIdle();
+        self::runUntilIdle();
+
+        self::assertCount(1, self::pushes()->sent);
+    }
+
+    #[Test]
     public function aPushSwitchedOffInTheNightSendsNothing(): void
     {
         $this->holdOvernight('test.push.money', 'bill');
