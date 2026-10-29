@@ -2,6 +2,8 @@ import type { ViewInstance } from 'react-native';
 
 let focused: ViewInstance | null = null;
 const watchers = new Set<() => void>();
+let checking = false;
+const checkWatchers = new Set<(field: ViewInstance) => void>();
 
 /** The Field whose control has focus: its label, control and error, which a lift keeps in sight. */
 export function focusedField(): ViewInstance | null {
@@ -11,6 +13,10 @@ export function focusedField(): ViewInstance | null {
 export function fieldFocused(field: ViewInstance | null): void {
   focused = field;
   watchers.forEach((moved) => moved());
+  if (checking && field != null) {
+    checking = false;
+    checkWatchers.forEach((checked) => checked(field));
+  }
 }
 
 export function fieldLeft(field: ViewInstance | null): void {
@@ -22,4 +28,21 @@ export function watchFocusedField(moved: () => void): () => void {
   watchers.add(moved);
 
   return () => watchers.delete(moved);
+}
+
+/** A client check is moving focus to a field: the Field it lands in is handed to each `watchCheckedField`. With `landed`, focus is already there and no focus event is coming. */
+export function fieldChecked(landed: boolean): void {
+  if (!landed) {
+    checking = true;
+    return;
+  }
+  const field = focused;
+  if (field != null) checkWatchers.forEach((checked) => checked(field));
+}
+
+/** Calls `checked` with the Field a client check moved focus to (sc-20721). Returns the unsubscribe. */
+export function watchCheckedField(checked: (field: ViewInstance) => void): () => void {
+  checkWatchers.add(checked);
+
+  return () => checkWatchers.delete(checked);
 }

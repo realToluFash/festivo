@@ -39,6 +39,7 @@ import {
   offsetAboveKeyboard,
   scrollInsets,
   settledOffset,
+  shownAboveKeys,
   shownEnd,
 } from '../kit/keyboard.ts';
 import {
@@ -50,7 +51,7 @@ import {
 } from '../kit/focusBack.ts';
 import { stepOpeners } from '../kit/stepOpeners.ts';
 import { tokens } from '../theme/tokens.ts';
-import { focusedField, watchFocusedField } from './focusedField.ts';
+import { focusedField, watchCheckedField, watchFocusedField } from './focusedField.ts';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import {
   LIFT,
@@ -271,11 +272,17 @@ export function useScrolledToTop(): RefObject<ViewInstance | null> {
 // VoiceOver drops a focus asked for while a sheet is still sliding away, and the scroll has to land first.
 export const SETTLED_MS = 500;
 
+interface Sight {
+  when?: IntoView;
+  /** The sight ends at the keys while they are up. */
+  aboveKeys?: boolean;
+}
+
 function bringIntoView(
   scroll: ScreenScrollView | null,
   line: ScreenReaderTarget | null,
   animated: boolean,
-  when: IntoView = 'wholly',
+  { when = 'wholly', aboveKeys = false }: Sight = {},
 ): void {
   const view = scroll?.ref.current;
   const content = view?.getInnerViewRef();
@@ -283,29 +290,78 @@ function bringIntoView(
   if (scroll == null || view == null || content == null || scrollHost == null || line == null)
     return;
 
-  line.measureLayout(content, (_x, contentY, _w, height) => {
-    scrollHost.measureInWindow((_sx, _sy, _sw, shown) => {
-      const at = { contentY, height, offset: scroll.offset.current, shown, margin: tokens.spaceLg };
-      const y = settledOffset(at, when);
-      if (y != null) view.scrollTo({ y, animated });
-    });
-  });
+  // A field in another screen's scroll fails to measure here, and that screen brings it.
+  line.measureLayout(
+    content,
+    (_x, contentY, _w, height) => {
+      scrollHost.measureInWindow((_sx, y, _sw, scrollHeight) => {
+        const keyboardTop = aboveKeys ? keyboardTopNow(scroll.origin.current) : null;
+        const shown = shownAboveKeys(keyboardTop, { y, height: scrollHeight });
+        const at = {
+          contentY,
+          height,
+          offset: scroll.offset.current,
+          shown,
+          margin: tokens.spaceLg,
+        };
+        const to = settledOffset(at, when);
+        if (to != null) view.scrollTo({ y: to, animated });
+      });
+    },
+    () => {},
+  );
 }
 
-/** Brings `shown` wholly into sight, and again as far as `settledInto` once it has settled, and moves screen reader focus to `read` after `readMs`; returns what cancels the steps still to come. */
+/** The Field a client check focuses comes wholly into view above the keys, again once they are up and its error has grown it (sc-20721). */
+function useCheckedFieldInView(scroll: ScreenScrollView): void {
+  useEffect(() => {
+    let cancel = () => {};
+    const unwatch = watchCheckedField((field) => {
+      cancel();
+      const bring = () => bringIntoView(scroll, field, true, { aboveKeys: true });
+      const unsettled = settleOnto(
+        scroll,
+        () => field,
+        () => null,
+        true,
+        SETTLED_MS,
+        {
+          aboveKeys: true,
+        },
+      );
+      // Keys that rise for the field, and Android's avoiding view shrinking under them, cover it afresh.
+      const shown = Keyboard.addListener('keyboardDidShow', bring);
+      scroll.resized.add(bring);
+      const done = setTimeout(() => cancel(), 2 * SETTLED_MS);
+      cancel = () => {
+        unsettled();
+        shown.remove();
+        scroll.resized.delete(bring);
+        clearTimeout(done);
+      };
+    });
+
+    return () => {
+      cancel();
+      unwatch();
+    };
+  }, [scroll]);
+}
+
+/** Brings `shown` wholly into sight, and again as far as `when` once it has settled, and moves screen reader focus to `read` after `readMs`; returns what cancels the steps still to come. */
 function settleOnto(
   scroll: ScreenScrollView | null,
   shown: () => ScreenReaderTarget | null,
   read: () => ScreenReaderTarget | null,
   animated: boolean,
   readMs = SETTLED_MS,
-  settledInto: IntoView = 'wholly',
+  { when = 'wholly', aboveKeys = false }: Sight = {},
 ): () => void {
-  bringIntoView(scroll, shown(), animated);
+  bringIntoView(scroll, shown(), animated, { aboveKeys });
 
   // Content that shrinks around the line as it mounts can stop the first scroll short (sc-9382).
   const settled = setTimeout(
-    () => bringIntoView(scroll, shown(), animated, settledInto),
+    () => bringIntoView(scroll, shown(), animated, { when, aboveKeys }),
     SETTLED_MS,
   );
   const focus = setTimeout(() => moveScreenReaderFocus(read()), readMs);
@@ -509,7 +565,7 @@ export function useStepClose(
                 () => view.current,
                 false,
                 SETTLED_MS,
-                step.into,
+                { when: step.into },
               ),
             );
             continue;
@@ -598,6 +654,7 @@ function useScreenScrollView() {
   useEffect(() => {
     origin.current = windowOrigin;
   }, [windowOrigin]);
+  useCheckedFieldInView(screenScroll);
 
   const follow = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     offset.current = event.nativeEvent.contentOffset.y;

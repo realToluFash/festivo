@@ -23,6 +23,13 @@ export function shownEnd(keyboardTop: number, scrollView: Rect): number {
   return Math.min(keyboardTop, scrollView.y + scrollView.height);
 }
 
+/** The height of the scroll view left in sight: down to the keys while they are up. */
+export function shownAboveKeys(keyboardTop: number | null, scrollView: Rect): number {
+  return keyboardTop == null
+    ? scrollView.height
+    : Math.max(0, shownEnd(keyboardTop, scrollView) - scrollView.y);
+}
+
 export interface DockRoom {
   /** The height between the scroll view's top and the keyboard. */
   room: number;
