@@ -1,3 +1,5 @@
+import { formatDay, formatTimeOfDay } from './datetime.ts';
+
 /** The shape `@soirely/api-client` reads as `NotificationItem`; only what the feed needs. */
 export interface FeedItem {
   id: string;
@@ -77,4 +79,24 @@ export function feedWithMute<Item extends FeedItem>(
         : item,
     ),
   };
+}
+
+/** "at 14:05" today, the locale's date before today. */
+export function whenShown(
+  createdAt: string,
+  now: Date,
+  locale: string,
+): { today: true; time: string } | { today: false; date: string } {
+  const at = new Date(createdAt);
+
+  return at.toDateString() === now.toDateString()
+    ? { today: true, time: formatTimeOfDay(at, locale) }
+    : { today: false, date: formatDay(at, locale) };
+}
+
+/** 1 to 99, then the locale's "99+", and none at 0. */
+export function badgeOf(unread: number, overNinetyNine: string): string | null {
+  if (unread <= 0) return null;
+
+  return unread > 99 ? overNinetyNine : String(unread);
 }

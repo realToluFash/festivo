@@ -11,37 +11,3 @@ export function appPlace(place: string | null): string | null {
 
   return null;
 }
-
-/** "at 14:05" today, the locale's date before today. */
-const formats = new Map<string, { time: Intl.DateTimeFormat; date: Intl.DateTimeFormat }>();
-
-/** Made once a locale, since every row of the feed asks on every render. */
-function formatsFor(locale: string): { time: Intl.DateTimeFormat; date: Intl.DateTimeFormat } {
-  const made = formats.get(locale) ?? {
-    time: new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }),
-    date: new Intl.DateTimeFormat(locale, { weekday: 'long', month: 'short', day: 'numeric' }),
-  };
-  formats.set(locale, made);
-
-  return made;
-}
-
-export function whenShown(
-  createdAt: string,
-  now: Date,
-  locale: string,
-): { today: true; time: string } | { today: false; date: string } {
-  const at = new Date(createdAt);
-  const { time, date } = formatsFor(locale);
-
-  return at.toDateString() === now.toDateString()
-    ? { today: true, time: time.format(at) }
-    : { today: false, date: date.format(at) };
-}
-
-/** 1 to 99, then the locale's "99+", and none at 0. */
-export function badgeOf(unread: number, overNinetyNine: string): string | null {
-  if (unread <= 0) return null;
-
-  return unread > 99 ? overNinetyNine : String(unread);
-}

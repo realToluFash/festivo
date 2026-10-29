@@ -6,6 +6,7 @@ import {
   feedWithMute,
   feedWithPage,
   feedWithRead,
+  whenShown,
 } from '@soirely/domain';
 import { router } from 'expo-router';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
@@ -24,7 +25,7 @@ import { useMutes } from '../eventMutes.ts';
 import { markPushAsked, pushAskDue, turnOnAppPush } from '../appPush.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { SECTION_HREF } from '../kit/appNav.ts';
-import { appPlace, whenShown } from '../kit/notificationPlace.ts';
+import { appPlace } from '../kit/notificationPlace.ts';
 import { arrivalsSeen, countedSince, setUnread, useArrivals } from '../notificationsUnread.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Footnote, PrimaryButton, QuietButton } from './Buttons.tsx';

@@ -1,9 +1,9 @@
+import { badgeOf } from '@soirely/domain';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
-import { badgeOf } from '../kit/notificationPlace.ts';
 import { useUnread } from '../notificationsUnread.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Text } from './Text.tsx';

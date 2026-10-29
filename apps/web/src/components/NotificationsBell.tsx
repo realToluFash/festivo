@@ -1,11 +1,13 @@
 import type { NotificationItem } from '@soirely/api-client';
 import {
+  badgeOf,
   feedAllRead,
   feedWithArrival,
   feedWithMissed,
   feedWithMute,
   feedWithPage,
   feedWithRead,
+  whenShown,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
@@ -160,6 +162,7 @@ export function NotificationsBell({ userId }: { userId: string }) {
   }, [open]);
 
   const unread = feed.status === 'loaded' ? feed.unread : 0;
+  const badge = badgeOf(unread, t('notifications.overNinetyNine'));
 
   async function openItem(item: NotificationItem): Promise<void> {
     if (!item.read) {
@@ -240,9 +243,9 @@ export function NotificationsBell({ userId }: { userId: string }) {
         onClick={openBell}
       >
         <BellMark />
-        {unread > 0 && (
+        {badge != null && (
           <span className="notifications-badge" aria-hidden="true">
-            {unread > 99 ? t('notifications.overNinetyNine') : unread}
+            {badge}
           </span>
         )}
       </button>
@@ -408,25 +411,9 @@ export function NotificationsBell({ userId }: { userId: string }) {
 }
 
 function when(createdAt: string, t: TFunction): string {
-  const at = new Date(createdAt);
-  const today = new Date();
-  const locale = currentLocale();
+  const shown = whenShown(createdAt, new Date(), currentLocale());
 
-  if (at.toDateString() === today.toDateString()) {
-    return t('notifications.atTime', {
-      time: new Intl.DateTimeFormat(locale, {
-        hour: '2-digit',
-        minute: '2-digit',
-        hourCycle: 'h23',
-      }).format(at),
-    });
-  }
-
-  return new Intl.DateTimeFormat(locale, {
-    weekday: 'long',
-    month: 'short',
-    day: 'numeric',
-  }).format(at);
+  return shown.today ? t('notifications.atTime', { time: shown.time }) : shown.date;
 }
 
 function BellMark({ slashed = false }: { slashed?: boolean }) {

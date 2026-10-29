@@ -3,12 +3,14 @@ import { describe, expect, test } from 'vitest';
 import {
   type FeedItem,
   type LoadedFeed,
+  badgeOf,
   feedAllRead,
   feedWithArrival,
   feedWithMissed,
   feedWithMute,
   feedWithPage,
   feedWithRead,
+  whenShown,
 } from './notificationFeed.ts';
 
 function item(id: string, overrides: Partial<FeedItem> = {}): FeedItem {
@@ -77,5 +79,30 @@ describe('the bell feed (sc-3980)', () => {
     );
 
     expect(after.items.map((shown) => shown.muted)).toEqual([true, false, false]);
+  });
+});
+
+describe('the time on a bell item', () => {
+  test('is the time today, on a 24-hour clock', () => {
+    expect(whenShown('2026-10-29T14:05:00', new Date('2026-10-29T18:00:00'), 'en')).toEqual({
+      today: true,
+      time: '14:05',
+    });
+  });
+
+  test("is the locale's date before today", () => {
+    expect(whenShown('2026-10-20T09:00:00', new Date('2026-10-29T18:00:00'), 'en')).toEqual({
+      today: false,
+      date: 'Tuesday, Oct 20',
+    });
+  });
+});
+
+describe('the badge', () => {
+  test('counts 1 to 99, then 99+, and shows nothing at 0', () => {
+    expect(badgeOf(0, '99+')).toBeNull();
+    expect(badgeOf(1, '99+')).toBe('1');
+    expect(badgeOf(99, '99+')).toBe('99');
+    expect(badgeOf(100, '99+')).toBe('99+');
   });
 });
