@@ -1604,6 +1604,22 @@ describe('the flows a batch runs', () => {
           expect(line.replace('{{email}}', 'other@soirely.test')).not.toMatch(signedIn);
         }
       }
+      const signOut = readFileSync(join(target, 'batch/sign-out.yaml'), 'utf8');
+      const someoneSignedIn = new RegExp(
+        `^(?:${signOut.match(/when:\s+visible: '(.*)'/)[1].replaceAll("''", "'")})$`,
+      );
+      const homeSettled = new RegExp(
+        `^(?:${signOut.match(/extendedWaitUntil:\s+visible: '(.*)'/)[1].replaceAll("''", "'")})$`,
+      );
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        for (const line of [
+          catalogues[code].settings.signedInAs,
+          catalogues[code].noOrganisation.signedInAs,
+        ]) {
+          expect(line.replace('{{email}}', 'other@soirely.test')).toMatch(homeSettled);
+          expect(line.replace('{{email}}', 'other@soirely.test')).toMatch(someoneSignedIn);
+        }
+      }
       expect(readFileSync(join(target, 'batch/reopen.yaml'), 'utf8')).not.toContain('{{t:');
       const reset = readFileSync(join(target, 'batch/reset.yaml'), 'utf8');
       expect(reset).toContain('ASK: /running');
