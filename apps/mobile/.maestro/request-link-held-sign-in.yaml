@@ -1,4 +1,4 @@
-# After request-link-hold.yaml: reopen the app and sign in with EMAIL and PASSWORD, from Sign in. sc-19752.
+# After request-link-hold.yaml: reopen the app and sign in with EMAIL and PASSWORD, from Sign in, and land on the held request. sc-19752.
 # Pass EMAIL, PASSWORD and STOP (true: the app was force-quit since the hold, so the device's copy is taken).
 appId: host.exp.Exponent
 ---
@@ -18,12 +18,32 @@ appId: host.exp.Exponent
     id: 'signIn.password'
 - eraseText: 120
 - inputText: ${PASSWORD}
-- hideKeyboard
-- tapOn:
-    id: 'signIn.submit'
+# The Go key on iOS and a tap on Android, as batch/sign-in-form.yaml does.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - pressKey: Enter
+      - runFlow:
+          when:
+            visible: 'Save Password?'
+          commands:
+            - tapOn: 'Not Now'
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+      - tapOn:
+          id: 'signIn.submit'
 - extendedWaitUntil:
     notVisible:
       id: 'signIn.submit'
+    timeout: 30000
+# Only the request page has this id: Home, a dead link or A few details means the held link was lost.
+- extendedWaitUntil:
+    visible:
+      id: 'requestToJoin.ask'
     timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: request-link-held-signed-in

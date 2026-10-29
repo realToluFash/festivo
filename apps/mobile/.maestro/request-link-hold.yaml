@@ -2,9 +2,7 @@
 # Pass TOKEN and BUTTON. Leaves the app open: request-link-held-*.yaml take it from memory, or after stopApp from the device.
 appId: host.exp.Exponent
 ---
-- launchApp:
-    appId: host.exp.Exponent
-    stopApp: true
+- runFlow: request-link-reopen.yaml
 - openLink: ${METRO_URL}/--/join/${TOKEN}
 - extendedWaitUntil:
     visible:
