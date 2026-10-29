@@ -73,15 +73,31 @@ export function pushedPlace(response: Notifications.NotificationResponse): strin
 
 let frames = 0;
 let taps: { remove: () => void } | null = null;
+let signedInAs: string | undefined;
+let held: Notifications.NotificationResponse | null = null;
 
+/** A push names who it was sent to, so one left in the tray by an account that signed out here opens nothing. */
 function openPushed(response: Notifications.NotificationResponse): void {
   if (response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
+  if (signedInAs == null) {
+    held = response;
+    return;
+  }
   Notifications.clearLastNotificationResponse();
+  if (response.notification.request.content.data?.recipient !== signedInAs) return;
   router.push(pushedPlace(response));
 }
 
-/** In the signed-in frame, so a tap that launched the app opens once there is a session; every screen has a frame, and they share one listener. */
-export function usePushTaps(): void {
+/** In the signed-in frame, so a tap that launched the app opens once the account is known; every screen has a frame, and they share one listener. */
+export function usePushTaps(userId: string | undefined): void {
+  useEffect(() => {
+    signedInAs = userId;
+    if (userId == null || held == null) return;
+    const launchedBy = held;
+    held = null;
+    openPushed(launchedBy);
+  }, [userId]);
+
   useEffect(() => {
     frames += 1;
     if (frames === 1) {

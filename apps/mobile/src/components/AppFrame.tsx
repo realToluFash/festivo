@@ -144,7 +144,7 @@ export function AppFrame({
   const [backRow] = useState(() => backRowHiding(setBackHidden));
   useEffect(() => backRow.stop, [backRow]);
   const signedIn = useSignedIn();
-  usePushTaps();
+  usePushTaps(signedIn.account?.id);
   const waiting = useWaitingInvitations();
   const offer = useDomainOffer();
   const count = waitingInvitations(waiting.invitations, waiting.outcomes);

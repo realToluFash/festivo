@@ -53,8 +53,15 @@ const {
   usePushTaps,
 } = await import('./appPush.ts');
 
-function tap(place: unknown, actionIdentifier = notifications.DEFAULT_ACTION_IDENTIFIER) {
-  return { actionIdentifier, notification: { request: { content: { data: { place } } } } };
+function tap(
+  place: unknown,
+  actionIdentifier = notifications.DEFAULT_ACTION_IDENTIFIER,
+  recipient = 'u1',
+) {
+  return {
+    actionIdentifier,
+    notification: { request: { content: { data: { place, recipient } } } },
+  };
 }
 
 function unmountAll(): void {
@@ -165,8 +172,8 @@ describe("the app's push (sc-3980)", () => {
   });
 
   it('routes a tap once, however many frames are on the stack, and stops with the last', () => {
-    usePushTaps();
-    usePushTaps();
+    usePushTaps('u1');
+    usePushTaps('u1');
 
     expect(notifications.addNotificationResponseReceivedListener).toHaveBeenCalledTimes(1);
     tapped.listener?.(tap('/app/events/e1'));
@@ -181,13 +188,35 @@ describe("the app's push (sc-3980)", () => {
 
   it('opens the push that launched the app, once, and ignores its other actions', () => {
     notifications.getLastNotificationResponse.mockReturnValueOnce(tap('/app/events/e2'));
-    usePushTaps();
+    usePushTaps('u1');
 
     expect(router.push).toHaveBeenCalledWith('/events/e2');
     expect(notifications.clearLastNotificationResponse).toHaveBeenCalledTimes(1);
 
     tapped.listener?.(tap('/app/events/e3', 'expo.modules.notifications.actions.DISMISSED'));
     expect(router.push).toHaveBeenCalledTimes(1);
+    unmountAll();
+  });
+
+  it('drops a tap on a push sent to somebody else, and clears it', () => {
+    notifications.getLastNotificationResponse.mockReturnValueOnce(
+      tap('/app/events/e2', undefined, 'someone-else'),
+    );
+    usePushTaps('u1');
+
+    expect(router.push).not.toHaveBeenCalled();
+    expect(notifications.clearLastNotificationResponse).toHaveBeenCalledTimes(1);
+    unmountAll();
+  });
+
+  it('holds the push that launched the app until the account is known', () => {
+    notifications.getLastNotificationResponse.mockReturnValueOnce(tap('/app/events/e4'));
+    usePushTaps(undefined);
+    expect(router.push).not.toHaveBeenCalled();
+    unmountAll();
+
+    usePushTaps('u1');
+    expect(router.push).toHaveBeenCalledWith('/events/e4');
     unmountAll();
   });
 });
