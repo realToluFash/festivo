@@ -283,6 +283,38 @@ def minutes(runtime):
     return int(number) * (60 if unit == "h" else 1)
 
 
+def manual_testers(config):
+    """The people who test, by `@mention name`: each with the machine that holds their stack
+    and their Shortcut member id."""
+    found = (config or {}).get("manualTesters")
+    return found if isinstance(found, dict) else {}
+
+
+# The people's stack: QA tester 4 in scripts/qa-env.mjs, served on this machine's address.
+PERSON_STACK = "soirely-qa4"
+
+
+def person_stack(config):
+    return (workspace(config) or pathlib.Path("~/Projects").expanduser()) / PERSON_STACK
+
+
+def manual_problems(config):
+    found = (config or {}).get("manualTesters")
+    if found is None:
+        return []
+    if not isinstance(found, dict):
+        return [f"manualTesters in {path()} is not an object of @name: {{machine, member}}"]
+    problems = []
+    for name, entry in found.items():
+        if not roles.person(name) or not re.fullmatch(roles.NAME, name):
+            problems.append(f"manualTesters: {name!r} is not an @ and a Shortcut mention name")
+        elif not isinstance(entry, dict) or not entry.get("machine"):
+            problems.append(f"manualTesters: {name} names no machine for their stack")
+        elif entry.get("member") is not None and not isinstance(entry["member"], str):
+            problems.append(f"manualTesters: {name}'s member is not a Shortcut member id")
+    return problems
+
+
 def setting_problems(values, known, where):
     problems = []
     model, effort = values.get("model"), values.get("effort")

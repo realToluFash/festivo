@@ -23,6 +23,8 @@ RETEST_MINUTES = 30
 # A story labelled `ops` is infra work ops filed for itself: ops builds it, the lead reviews
 # it, and no other role's queue lists it.
 OPS_LABEL = "ops"
+# A story a person tests, on a real phone or by eye: no agent tester claims it.
+MANUAL = "manual qa"
 
 
 def developer_of(labels):
@@ -130,15 +132,17 @@ LOCALES = ("en", "es", "fr", "pt")
 # The four linguists became one; their tags and signatures still mean it.
 FORMER = {locale: "l10n" for locale in LOCALES}
 
-HEADER = re.compile(r"^\s*((?:\[[a-z0-9]+\]\s*)+)\(from ([a-z0-9]+)\)")
-AUTHOR = re.compile(r"\(from ([a-z0-9]+)\)")
+# A person who tests is named as Shortcut mentions them, `@` and their mention name.
+NAME = r"(?:[a-z0-9]+|@[A-Za-z0-9._-]+)"
+HEADER = re.compile(rf"^\s*((?:\[{NAME}\]\s*)+)\(from ({NAME})\)")
+AUTHOR = re.compile(rf"\(from ({NAME})\)")
 
 
 def header(text):
     first = (text or "").split("\n", 1)[0]
     match = HEADER.match(first)
     if match:
-        return {"to": re.findall(r"\[([a-z0-9]+)\]", match.group(1)), "from": match.group(2)}
+        return {"to": re.findall(rf"\[({NAME})\]", match.group(1)), "from": match.group(2)}
     author = AUTHOR.search(first)
     return {"to": [], "from": author.group(1)} if author else None
 
@@ -155,6 +159,10 @@ def addressees(text, labels):
 def author(text):
     parsed = header(text)
     return FORMER.get(parsed["from"], parsed["from"]) if parsed else None
+
+
+def person(name):
+    return bool(name) and name.startswith("@")
 
 
 # Every role that opens pull requests merges its own, once the lead has passed it.
@@ -198,6 +206,7 @@ MAY = {
     "to-draw": ("ux",),
     "drawn": ("ux",),
     "report": TESTERS,
+    "plan": TESTERS,
     "unclaim": TESTERS,
     "pr-create": BUILDERS,
     "review": ("lead",),
@@ -245,7 +254,8 @@ for _tester in TESTERS:
 
 # A role that labels may only touch these labels; the product manager may touch any.
 OWN_LABELS = {**{d: {label} for d, label in DEVELOPERS.items()}, "cd": {"idea"},
-              **{t: {"qa passed", "qa failed", "needs qa", TESTERS_LABELS[t]} for t in TESTERS},
+              **{t: {"qa passed", "qa failed", "needs qa", MANUAL, TESTERS_LABELS[t]}
+                 for t in TESTERS},
               "l10n": {"translation"}, "ops": {OPS_LABEL, "needs qa"}}
 
 CATALOGUES = [
@@ -293,6 +303,20 @@ def last_tester(story):
 def claimant(claim):
     """The name a `QA claim:` comment gives."""
     return claim["text"].split(":", 1)[1].split(",")[0].strip()
+
+
+PLANNED = re.compile(r"plan by ([a-z0-9]+)")
+
+
+def planned_for(story):
+    """`(person, tester)`: the person the latest claim names, and the tester that wrote their
+    plan; `(None, None)` when no person holds it."""
+    claim = last_claim(story)
+    who = claimant(claim) if claim else None
+    if not person(who):
+        return None, None
+    found = PLANNED.search(claim["text"])
+    return who, found.group(1) if found else None
 
 
 def may(role, command):

@@ -52,7 +52,7 @@ Two more, narrower:
 piece of work, and no waiting on anyone.
 
 **Start with your inbox**: `sq qa next` hands you a comment waiting on you before anything
-else (the `role-comments` routine), with tagged comments and replies to the ones you asked. Tester 1 also answers a bare `[qa]` that names no tester.
+else (the `role-comments` routine), then a person's test plan (section 11), with tagged comments and replies to the ones you asked. Tester 1 also answers a bare `[qa]` that names no tester.
 Resolve those, then pick the work below. **Sign every comment and report as yourself**,
 `(from qa2)`, so a reply finds the tester who did the work.
 
@@ -570,3 +570,56 @@ anything.
 
 Then tell the user, in two or three lines: pass or fail, the count, the one thing most
 worth their attention, and the story link.
+
+## 11. A person's test plan
+
+People test too. Each is listed in `agents.json` under `manualTesters` by their Shortcut
+mention, `@name`, with the machine that holds their stack. They test whole stories, on
+their own phone and laptop, and they are new to planning a pass, so a tester writes the
+plan for them. **A story is kept for a person** when it is labelled `manual qa`, when they
+own it in Shortcut, or when the latest `QA claim:` names them. sq never offers you one to
+test and `claim` refuses it.
+
+**A `plan` item** reaches a tester on the machine that holds their stack. It comes before
+any new story, but never stops a pass you are in. You test nothing on it:
+
+1. **Their stack, not yours.** The people's stack is tester 4, `~/Projects/soirely-qa4`,
+   served on the machine's network address so their phone and laptop reach it. Use its own
+   harness, `node ~/Projects/soirely-qa4/.qa/bin/qa-env.mjs`: `checkout sc-N` for the
+   story's merge, `account …` for every account the plan uses, then `phone`. `phone`
+   restarts their bundler, which keeps running after your run, and prints the web, Expo
+   Go and Mailpit addresses and the QR code's file.
+2. **The plan.** Work it out as you would your own (section 3), then write it so somebody
+   who has never planned a pass can follow it without asking:
+   - **Open it.** Expo Go: scan the attached QR code with the phone's camera. Web: the
+     address. Sign-in codes and emails: the Mailpit address. Their phone or laptop must be
+     on the same Wi-Fi as the machine. On an iPhone, Expo Go must be signed in to the
+     same Expo account as the machine's CLI; on Android, they install the build `phone`
+     prints.
+   - **Accounts.** Each one the plan uses, its email and password, and what it already
+     has: an organisation, an event, two-factor on.
+   - **Steps.** One numbered block per AC bullet, in the AC's order and quoting it.
+     Each step is one action ("tap **Save**") followed by **Expect:** what the screen shows.
+     Name the exact button, field and wording. Never write "check that it works".
+   - **Edge cases.** The ones the AC implies (section 3), as steps in the same form.
+   - **Layouts and language.** Which layouts to look at on which device, and the one
+     non-English language to switch to (section 6), with where to switch it.
+   - **Screenshots.** Which steps need one, and that every FAIL needs one.
+   - **Reporting.** The report goes on the story in the format of section 7, starting
+     `[qa] (from @name)`. They move the story to Passsed QA or Failed QA themselves.
+     Questions go in a comment starting `[qa] (from @name)`.
+3. **Post it** with `sq qa plan sc-N --for @name --files ~/Projects/soirely-qa4/.qa/expo-go-qr.png < plan.md`.
+   It mentions them, shows the QR code in the comment, adds them as an owner, and posts the
+   `QA claim:` in their name with `plan by <you>`. From then on the story and its retests
+   are theirs, and their questions on it come to you.
+
+**Their questions.** A comment from them reaches the tester that wrote the plan, with or
+without a header. Answer in its thread with `sq qa comment sc-N --reply-to <id>`, which
+addresses them by `@name`. Answer plainly and say what they should see. If the answer
+changes the plan, post the corrected steps in the same thread.
+
+**Handing a story over.** A story whose AC can only be checked by a person, on a real
+phone (camera, push, Face ID, a payment sheet, the Keychain across a reinstall, a real
+network drop, how fast it feels), is theirs: if you hold one, label it
+`sq qa label sc-N --add "manual qa"` and give it back with `sq qa unclaim sc-N --text
+"<why it needs a person>"`. Its plan is then written like any other.

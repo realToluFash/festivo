@@ -6,7 +6,7 @@ import re
 import socket
 import time
 
-from . import github, local, machine, store, sync
+from . import github, local, machine, remote, store, sync
 from . import roles as R
 from . import text as T
 from . import work as W
@@ -166,12 +166,15 @@ def comment(c, a):
             raise Refused(f"no comment #{a.reply_to} on sc-{story['id']}")
         # Shortcut threads one level deep, so a reply to a reply goes on the thread's root.
         parent = replied["parent"] or replied["id"]
-        if not to and not a.untagged and R.author(replied["text"]):
-            to = [R.author(replied["text"])]
+        asker = W.sender(replied, machine.manual_testers(remote.config()))
+        if not to and not a.untagged and asker:
+            to = [asker]
     if not to and not a.untagged:
         raise Refused("say who it is for: --to pm,ux (a reply defaults to the asker), "
                       "or --untagged for a record or a confirmation that wakes nobody")
-    unknown = [t for t in to if t not in R.ROLES and t != "dev" and t not in R.LOCALES]
+    people = machine.manual_testers(remote.config())
+    unknown = [t for t in to if t not in R.ROLES and t != "dev" and t not in R.LOCALES
+               and t not in people]
     if unknown:
         raise Refused(f"no role {', '.join(unknown)}")
     if to and story.get("archived"):
@@ -363,6 +366,10 @@ def claim(c, a):
         set_labels(c, story["id"], add=R.OWN_LABELS[c.role])
         set_state(c, story, "In Progress")
     else:
+        kept = W.kept_for(story, machine.manual_testers(remote.config()))
+        if kept or R.MANUAL in story["labels"]:
+            raise Refused(f"sc-{story['id']} is kept for {kept or 'a person who tests'}"
+                          " (manual qa, owner, or their plan's claim): pick another")
         takeover = ""
         if story["state"] == "In QA":
             last = R.last_claim(story)
@@ -431,6 +438,35 @@ def report(c, a):
     return (f"reported #{posted['id']} on sc-{story['id']}"
             f"{with_files(a.files)}; "
             f"it is now {'Passsed QA' if passed else 'Failed QA'}")
+
+
+PLANNABLE = ("Ready For QA", "In QA")
+
+
+def plan(c, a):
+    """A tester writes a person's test plan. It reaches them as a mention, its images shown
+    in it, and a claim in their name keeps the story theirs, its retest included."""
+    guard(c, "plan")
+    story = c.story(a.story)
+    people = machine.manual_testers(remote.config())
+    if a.for_ not in people:
+        raise Refused(f"{a.for_} is not one of the people who test (manualTesters in "
+                      f"agents.json): {', '.join(people) or 'nobody is listed'}")
+    if story["done"] or story["state"] not in PLANNABLE:
+        raise Refused(f"sc-{story['id']} is {story['state']}: a plan is for a story in "
+                      f"{' or '.join(PLANNABLE)}")
+    shown = []
+    if a.files:
+        uploaded = c.shortcut.upload(story["id"], a.files) or []
+        shown = [f"![{f.get('name') or 'image'}]({f['url']})" for f in uploaded if f.get("url")]
+    posted = post(c, story, [a.for_], "\n\n".join([a.text.strip(), *shown]))
+    c.shortcut.comment(story["id"], f"{R.CLAIMED} {a.for_}, plan by {c.role}")
+    member = people[a.for_].get("member")
+    if member and member not in story.get("owners", []):
+        c.shortcut.update(story["id"], owner_ids=[*story.get("owners", []), member])
+    c.refresh(story["id"])
+    return (f"posted the plan #{posted['id']} for {a.for_} on sc-{story['id']}"
+            f"{with_files(a.files)}; the story is theirs, and their questions come to you")
 
 
 # Writing stories and epics

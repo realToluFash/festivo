@@ -374,6 +374,48 @@ through its own server, so the browser holds one token and talks to one address.
 - It is plain HTTP on a trusted network, as Docker's own ports here are. Over anything else,
   put it behind a tunnel.
 
+## People who test
+
+A person on the QA team tests whole stories from a plan a tester writes for them
+(`.claude/skills/soirely-qa-tester`, section 11). List each one on **every** machine, so
+no machine's testers take a story kept for them:
+
+```json
+"manualTesters": {
+  "@their-mention-name": { "machine": "tolu-mac", "member": "<Shortcut member id>" }
+}
+```
+
+- **The key** is their Shortcut mention name with an `@`. It is how they sign
+  (`[qa] (from @name)`) and how the testers address them.
+- **`machine`** holds their stack, by the name `sq status` shows. Only that machine's
+  testers write their plans.
+- **`member`** is their Shortcut member id. With it, a story they make themselves owner of
+  is kept for them and gets a plan, and a comment they post with no header still reaches
+  the tester that wrote their plan. Without it, only `manual qa` and a plan's claim keep a
+  story for them.
+
+Names stay in `agents.json`, never in the repository, which is public. `sq status` and
+`sq web` name a malformed entry.
+
+**Their stack** is QA tester 4, `soirely-qa4`, on that machine's network address (or
+`SOIRELY_QA_ADDRESS`), with every port up 40000. Set it up once:
+
+```sh
+node scripts/qa-env.mjs --tester 4 setup
+node ~/Projects/soirely-qa4/.qa/bin/qa-env.mjs phone
+```
+
+`phone` starts their bundler, which outlives the command (`phone --stop` ends it), and
+writes the Expo Go QR code to `~/Projects/soirely-qa4/.qa/expo-go-qr.png`. Their phone needs
+the same Wi-Fi and Expo Go for the app's Expo SDK. On an iPhone, the App Store's Expo Go opens
+the project only when it and this machine's CLI are signed in to the same Expo account (as for
+`just phone`, CONTRIBUTING.md): sign the CLI in once with `npx expo login` in
+`~/Projects/soirely-qa4/apps/mobile`, or set `EXPO_TOKEN` where the workers run, and sign their
+Expo Go in from its Profile tab. On Android, `phone` prints the Expo Go build to install. The first time, macOS asks to let the
+stack accept incoming connections. On Linux with `ufw`, open the ports the plan names. Keep
+the machine's address fixed in the router, since every plan's links name it.
+
 ## Permission asks
 
 Some agents will need a command that their permission rules do not yet allow. Asks go to

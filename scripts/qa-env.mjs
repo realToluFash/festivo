@@ -17,11 +17,12 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { homedir } from 'node:os';
+import { homedir, networkInterfaces } from 'node:os';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { crc32, deflateSync } from 'node:zlib';
 
 export const DEVELOPMENT_PORTS = {
   POSTGRES_PORT: 5432,
@@ -40,6 +41,24 @@ export const DEVELOPMENT_PORTS = {
 };
 
 export const TESTERS = [1, 2, 3];
+// Tester 4 is the people's stack: a person who tests reaches it from their own phone and
+// laptop, on this machine's network address, and only the runs that write their plans touch it.
+export const PEOPLE = 4;
+// The same rules as scripts/phone.mjs; this file is copied alone into a tester's .qa/bin.
+const NOT_THE_LAN = /^(docker|br-|bridge|veth|vmnet|virbr|tun|tap|utun|wg|lo|awdl|llw|anpi)/;
+const PRIVATE = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/;
+
+export function lanAddress(interfaces = networkInterfaces(), env = process.env) {
+  if (env.SOIRELY_QA_ADDRESS) return env.SOIRELY_QA_ADDRESS;
+  for (const [name, addresses] of Object.entries(interfaces)) {
+    if (NOT_THE_LAN.test(name)) continue;
+    const found = (addresses ?? []).find(
+      (a) => a.family === 'IPv4' && !a.internal && PRIVATE.test(a.address),
+    );
+    if (found) return found.address;
+  }
+  throw new Error("no network address for the people's stack: set SOIRELY_QA_ADDRESS");
+}
 
 // 127.0.0.1, not localhost: a cookie ignores the port, so a QA browser on localhost
 // would overwrite a developer's session. One host for web and API keeps SameSite.
@@ -80,6 +99,7 @@ export function stackConfig(project, offset, address = '127.0.0.1') {
   };
   // Expo reads these when the bundler starts, not from the stack's .env.
   const app = {
+    ...(address === '127.0.0.1' ? {} : { REACT_NATIVE_PACKAGER_HOSTNAME: address }),
     EXPO_PUBLIC_API_URL: urls.api,
     EXPO_PUBLIC_GOOGLE_AUTHORIZE_URL: `${urls.oidc}/google/authorize`,
     EXPO_PUBLIC_GOOGLE_TOKEN_URL: `${urls.oidc}/google/token`,
@@ -90,11 +110,14 @@ export function stackConfig(project, offset, address = '127.0.0.1') {
 }
 
 // Tester n is its own compose project and worktree, soirely-qa<n>, with every port up n×10000.
-export function qaConfig(tester = 1) {
-  if (!TESTERS.includes(tester)) throw new Error(`no QA tester ${tester}: one of ${TESTERS}`);
+export function qaConfig(tester = 1, address = tester === PEOPLE ? lanAddress() : undefined) {
+  if (![...TESTERS, PEOPLE].includes(tester)) {
+    throw new Error(`no QA tester ${tester}: one of ${[...TESTERS, PEOPLE]}`);
+  }
   const { project, ports, urls, overrides, app } = stackConfig(
     tester === 1 ? 'soirely-qa' : `soirely-qa${tester}`,
     tester * 10000,
+    address,
   );
   // Two test owners signing in with Google must be two accounts, not the sandbox's one user.
   overrides.OIDC_CONFIG = 'interactive.json';
@@ -592,7 +615,9 @@ function setup() {
   }
 
   step('The simulators');
-  if (capture('xcrun', ['--version']) === null) {
+  if (CONFIG.tester === PEOPLE) {
+    console.log('  none: a person tests on their own phone');
+  } else if (capture('xcrun', ['--version']) === null) {
     console.log('  no Xcode here');
   } else {
     for (const sim of Object.values(CONFIG.simulators)) {
@@ -605,8 +630,10 @@ function setup() {
     }
   }
 
-  step('The emulators');
-  createEmulators();
+  if (CONFIG.tester !== PEOPLE) {
+    step('The emulators');
+    createEmulators();
+  }
 
   checkout(['main']);
 }
@@ -2414,6 +2441,106 @@ export function readyReport({ email, password, secret, accessToken, sessionId })
   );
 }
 
+// A QR code as a PNG: black modules on white, `scale` pixels each, inside the quiet zone
+// scanners need.
+export function qrPng(modules, scale = 8, margin = 4) {
+  const n = Math.sqrt(modules.length);
+  const side = (n + 2 * margin) * scale;
+  const rows = Buffer.alloc(side * (side + 1), 255);
+  for (let y = 0; y < side; y++) {
+    rows[y * (side + 1)] = 0;
+    for (let x = 0; x < side; x++) {
+      const [mx, my] = [Math.floor(x / scale) - margin, Math.floor(y / scale) - margin];
+      if (mx >= 0 && my >= 0 && mx < n && my < n && modules[my * n + mx] & 1) {
+        rows[y * (side + 1) + 1 + x] = 0;
+      }
+    }
+  }
+  const chunk = (type, data) => {
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(data.length);
+    const body = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+    const sum = Buffer.alloc(4);
+    sum.writeUInt32BE(crc32(body));
+    return Buffer.concat([length, body, sum]);
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(side, 0);
+  header.writeUInt32BE(side, 4);
+  header[8] = 8;
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', header),
+    chunk('IDAT', deflateSync(rows)),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
+}
+
+function stopPhoneBundler(root) {
+  const pidFile = join(root, '.qa/phone-bundler.pid');
+  if (!existsSync(pidFile)) return;
+  try {
+    process.kill(-Number(readFileSync(pidFile, 'utf8')), 'SIGTERM');
+  } catch (error) {
+    if (error.code !== 'ESRCH') throw error;
+  }
+  rmSync(pidFile, { force: true });
+}
+
+// The people's bundler outlives the run that starts it, so a person keeps testing after it.
+async function phone(args) {
+  if (CONFIG.tester !== PEOPLE) {
+    throw new Error(`phone serves the people's stack, tester ${PEOPLE}; this is ${CONFIG.tester}`);
+  }
+  const root = qaWorktree();
+  assertQaStack(root);
+  stopPhoneBundler(root);
+  if (args.includes('--stop')) return;
+  startAppServices(root);
+  mkdirSync(join(root, '.qa'), { recursive: true });
+  const log = openSync(join(root, '.qa/phone-bundler.log'), 'w');
+  const [command, cargs] = capped('4G', 'npx', [
+    'expo',
+    'start',
+    '--port',
+    String(CONFIG.ports.METRO_PORT),
+  ]);
+  const metro = spawn(command, cargs, {
+    cwd: join(root, 'apps/mobile'),
+    detached: true,
+    stdio: ['ignore', log, log],
+    env: bundlerEnv(process.env, CONFIG.app),
+  });
+  metro.unref();
+  writeFileSync(join(root, '.qa/phone-bundler.pid'), String(metro.pid));
+  const statusUrl = `http://127.0.0.1:${CONFIG.ports.METRO_PORT}/status`;
+  for (let i = 0; i < 120; i++) {
+    const answer = await fetch(statusUrl).then(
+      (r) => r.text(),
+      () => '',
+    );
+    if (answer.includes('running')) break;
+    await pause(1000);
+  }
+  const { toQR } = await import(pathToFileURL(join(root, 'node_modules/toqr/dist/toqr.mjs')).href);
+  const qr = join(root, '.qa/expo-go-qr.png');
+  writeFileSync(qr, qrPng(toQR(CONFIG.urls.metro)));
+  const apk = await fetch('https://api.expo.dev/v2/versions')
+    .then((r) => r.json())
+    .then((versions) => expoGoApk(versions, mobileExpoRange(root)))
+    .catch(() => null);
+  console.log(`
+The people's stack, for a phone and laptop on this network:
+  Web          ${CONFIG.urls.web}
+  App          ${CONFIG.urls.metro}   (Expo Go: scan ${qr})
+  Mailpit      ${CONFIG.urls.mailpit}
+  Expo Go      iPhone: the App Store's, signed in to the same Expo account as this machine's
+               CLI. Android: ${apk ? `${apk.version}, ${apk.url}` : 'the build for this SDK'}`);
+  console.log(`
+The bundler keeps running after this command; \`phone --stop\` ends it. Its log is
+${join(root, '.qa/phone-bundler.log')}.`);
+}
+
 function chrome() {
   run('open', [
     '-na',
@@ -2440,6 +2567,7 @@ const COMMANDS = {
   hierarchy,
   account,
   chrome,
+  phone,
 };
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

@@ -3,7 +3,7 @@ opens the one it chooses with `sq <role> story sc-<n>`."""
 
 import time
 
-from . import machine, store
+from . import machine, remote, store
 from . import roles as R
 from . import text as T
 from . import views as V
@@ -81,9 +81,11 @@ def developer(p, db, stories):
 
 
 def tester(p, db, stories):
-    ready = sorted(untaken(db, p.role, W.queued(p.role, stories)), key=lambda s: s["updated_at"] or "")
+    people = machine.manual_testers(remote.config())
+    ready = sorted(untaken(db, p.role, W.queued(p.role, stories, people=people)),
+                   key=lambda s: s["updated_at"] or "")
     stuck = [s for s in stories if s["state"] == "In QA" and not s["done"]
-             and R.can_test(p.role, s, machine.has_xcode)]
+             and R.can_test(p.role, s, machine.has_xcode) and not W.for_a_person(s, people)]
     p.add(f"Ready For QA ({len(ready)}), oldest first:")
     p.add(*[line(s) for s in ready])
     if stuck:

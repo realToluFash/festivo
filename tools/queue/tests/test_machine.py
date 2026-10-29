@@ -290,3 +290,16 @@ class WorkerTools(unittest.TestCase):
         maestro = pathlib.Path(self.folder.name) / ".maestro" / "bin"
         maestro.mkdir(parents=True)
         self.assertEqual(machine.tool_folders(), [node, str(maestro)])
+
+
+class ManualTesters(unittest.TestCase):
+    def test_each_person_is_an_at_name_with_a_machine(self):
+        good = {"manualTesters": {"@sam-tests": {"machine": "tolu-mac", "member": "m-1"}}}
+        self.assertEqual(machine.manual_problems(good), [])
+        self.assertEqual(machine.manual_testers(good), good["manualTesters"])
+        self.assertEqual(machine.manual_problems({}), [])
+        bad = {"manualTesters": {"sam": {"machine": "tolu-mac"}, "@kim": {}}}
+        problems = machine.manual_problems(bad)
+        self.assertIn("'sam' is not an @", problems[0])
+        self.assertIn("@kim names no machine", problems[1])
+        self.assertIn("not an object", machine.manual_problems({"manualTesters": []})[0])

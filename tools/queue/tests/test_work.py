@@ -1061,3 +1061,72 @@ class HeldByBlockers(unittest.TestCase):
 
     def test_a_story_with_no_blocker_is_offered_as_before(self):
         self.assertIn(1, self.offered([self.held()]))
+
+
+PERSON = "@sam-tests"
+PEOPLE = {PERSON: {"machine": "tolu-mac", "member": "m-1"}}
+PLANNED = f"QA claim: {PERSON}, plan by qa3"
+
+
+class People(unittest.TestCase):
+    def test_a_person_signs_and_is_addressed_by_mention(self):
+        self.assertEqual(roles.header(f"[qa] (from {PERSON})\nStep 4 shows nothing."),
+                         {"to": ["qa"], "from": PERSON})
+        self.assertEqual(roles.addressees(f"[{PERSON}] (from qa3)\nThe plan.", []), [PERSON])
+
+    def test_a_story_kept_for_a_person_is_offered_to_no_agent_tester(self):
+        owned = {**story(1, state="Ready For QA"), "owners": ["m-1"]}
+        labelled = story(2, state="Ready For QA", labels=["manual qa"])
+        claimed = story(3, state="Ready For QA", comments=[comment(1, PLANNED)])
+        items = work.queue_items([owned, labelled, claimed], people=PEOPLE)
+        self.assertEqual([i for i in items if i["kind"] == "story"], [])
+        self.assertEqual(work.queue_items([labelled]), [])
+
+    def test_an_owner_who_is_not_listed_keeps_nothing(self):
+        owned = {**story(state="Ready For QA"), "owners": ["someone-else"]}
+        self.assertEqual(len(work.queue_items([owned], people=PEOPLE)), 1)
+
+    def test_a_kept_story_gets_one_plan_on_the_machine_holding_their_stack(self):
+        owned = {**story(state="Ready For QA"), "owners": ["m-1"]}
+        items = work.plan_items([owned], PEOPLE, "tolu-mac")
+        self.assertEqual([(i["kind"], i["pool"], i["priority"]) for i in items],
+                         [("plan", "qa", work.PLAN)])
+        self.assertLess(work.PLAN, work.QUEUE)
+        self.assertEqual(work.plan_items([owned], PEOPLE, "tolu-linux"), [])
+
+    def test_a_manual_qa_story_is_planned_for_the_first_listed_person(self):
+        labelled = story(state="Ready For QA", labels=["manual qa"])
+        self.assertIn(PERSON, work.plan_items([labelled], PEOPLE, "tolu-mac")[0]["reason"])
+
+    def test_once_planned_it_is_not_planned_again(self):
+        planned = {**story(state="In QA", comments=[comment(1, PLANNED)]), "owners": ["m-1"]}
+        self.assertEqual(work.plan_items([planned], PEOPLE, "tolu-mac"), [])
+
+    def test_a_released_claim_leaves_the_story_open_to_agents_again(self):
+        released = story(state="Ready For QA", comments=[
+            comment(1, PLANNED), comment(2, f"QA claim released: {PERSON}, ill")])
+        self.assertEqual(len(work.queue_items([released], people=PEOPLE)), 1)
+
+    def test_their_qa_question_goes_to_the_tester_that_wrote_the_plan(self):
+        asked = comment(2, f"[qa] (from {PERSON})\nStep 4 shows nothing.")
+        kept = story(state="In QA", comments=[comment(1, PLANNED), asked])
+        items = work.inbox_items([kept], people=PEOPLE)
+        self.assertEqual([i["roles"] for i in items], [["qa3"]])
+
+    def test_a_comment_from_their_account_with_no_header_still_reaches_the_planner(self):
+        bare = {**comment(2, "Where do I find the code?"), "author": "m-1"}
+        kept = story(state="In QA", comments=[comment(1, PLANNED), bare])
+        self.assertEqual([i["roles"] for i in work.inbox_items([kept], people=PEOPLE)],
+                         [["qa3"]])
+        self.assertEqual(work.inbox_items([kept]), [])
+
+    def test_the_planners_reply_closes_their_question(self):
+        asked = comment(2, f"[qa] (from {PERSON})\nStep 4 shows nothing.")
+        answer = comment(3, f"[{PERSON}] (from qa3)\nScroll down.", parent=2)
+        kept = story(state="In QA", comments=[comment(1, PLANNED), asked, answer])
+        self.assertEqual(work.inbox_items([kept], people=PEOPLE), [])
+
+    def test_their_qa_on_a_story_with_no_plan_goes_to_qa(self):
+        asked = comment(1, f"[qa] (from {PERSON})\nIs sc-1 mine?")
+        self.assertEqual([i["roles"] for i in work.inbox_items(
+            [story(state="Ready For QA", comments=[asked])], people=PEOPLE)], [["qa"]])

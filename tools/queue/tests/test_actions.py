@@ -41,6 +41,8 @@ class FakeShortcut:
             self.raw[story_id]["labels"] = fields["labels"]
         if "description" in fields:
             self.raw[story_id]["description"] = fields["description"]
+        if "owner_ids" in fields:
+            self.raw[story_id]["owner_ids"] = fields["owner_ids"]
         self.raw[story_id]["updated_at"] = self.raw[story_id].get("updated_at", 0) + 1
         return self.raw[story_id]
 
@@ -72,6 +74,8 @@ class FakeShortcut:
 
     def upload(self, story_id, paths):
         self.uploads.append((story_id, list(paths)))
+        return [{"name": str(path).rsplit("/", 1)[-1], "url": f"https://files/{path}"}
+                for path in paths]
 
 
 def slim(raw):
@@ -80,7 +84,9 @@ def slim(raw):
             "state": STATES[str(raw["workflow_state_id"])], "moved_at": raw["moved_at"],
             "labels": sorted(label["name"] for label in raw["labels"]),
             "comments": [{"id": c["id"], "parent": c["parent_id"], "at": c["created_at"],
-                          "text": c["text"]} for c in raw["comments"]],
+                          "text": c["text"], "author": c.get("author_id")}
+                         for c in raw["comments"]],
+            "owners": raw.get("owner_ids", []),
             "description": raw["description"], "tasks": [],
             "links": [{"verb": x["verb"], "subject": x["subject_id"], "object": x["object_id"]}
                       for x in raw.get("story_links", [])],
@@ -131,6 +137,10 @@ class Base(unittest.TestCase):
         stack = mock.patch("soirely_queue.local.stack_problem", return_value=None)
         stack.start()
         self.addCleanup(stack.stop)
+        # Nor reads this machine's agents.json; one about the people who test patches this.
+        config = mock.patch("soirely_queue.remote.config", return_value={})
+        config.start()
+        self.addCleanup(config.stop)
 
     def as_(self, role):
         return FakeContext(self.db, role, self.fake)
@@ -1668,3 +1678,64 @@ class FinishedStories(Base):
                 mock.patch("soirely_queue.sync.sync_github"):
             actions.pr_close(self.as_("dev2"), args(pr=9, text="sc-1 is archived"))
         close.assert_called_once_with(9, "sc-1 is archived (from dev2)")
+
+
+PERSON = "@sam-tests"
+PEOPLE = {"manualTesters": {PERSON: {"machine": "tolu-mac", "member": "m-1"}}}
+
+
+class People(Base):
+    def setUp(self):
+        super().setUp()
+        config = mock.patch("soirely_queue.remote.config", return_value=PEOPLE)
+        config.start()
+        self.addCleanup(config.stop)
+
+    def test_a_tester_never_claims_a_story_kept_for_a_person(self):
+        self.fake.add(1, "Ready For QA", ["manual qa"])
+        self.fake.add(2, "Ready For QA")
+        self.fake.raw[2]["owner_ids"] = ["m-1"]
+        for story in ("sc-1", "sc-2"):
+            with self.assertRaisesRegex(actions.Refused, "kept for"):
+                actions.claim(self.as_("qa"), args(story=story))
+        self.assertEqual((self.state(1), self.state(2)), ("Ready For QA", "Ready For QA"))
+
+    def test_nor_takes_over_a_persons_claim_however_old(self):
+        self.fake.add(1, "In QA")
+        self.fake.comment(1, f"QA claim: {PERSON}, plan by qa3")
+        with self.assertRaisesRegex(actions.Refused, f"kept for {PERSON}"):
+            actions.claim(self.as_("qa"), args(story="sc-1"))
+
+    def test_a_plan_mentions_them_shows_the_qr_code_and_claims_in_their_name(self):
+        self.fake.add(1, "Ready For QA", ["manual qa"])
+        out = actions.plan(self.as_("qa3"), args(story="sc-1", for_=PERSON,
+                                                 files=["/x/expo-go-qr.png"], text="1. Open."))
+        posted, claim = self.fake.comments
+        self.assertTrue(posted[1].startswith(f"[{PERSON}] (from qa3)\n1. Open."))
+        self.assertIn("![expo-go-qr.png](https://files//x/expo-go-qr.png)", posted[1])
+        self.assertEqual(claim, (1, f"QA claim: {PERSON}, plan by qa3"))
+        self.assertEqual(self.fake.raw[1]["owner_ids"], ["m-1"])
+        self.assertEqual(self.state(1), "Ready For QA")
+        self.assertIn("their questions come to you", out)
+
+    def test_a_plan_is_only_for_a_listed_person_and_a_story_in_qa(self):
+        self.fake.add(1, "Ready For QA")
+        with self.assertRaisesRegex(actions.Refused, "not one of the people who test"):
+            actions.plan(self.as_("qa"), args(story="sc-1", for_="@nobody", files=None,
+                                              text="x"))
+        self.fake.add(2, "In Review")
+        with self.assertRaisesRegex(actions.Refused, "In Review"):
+            actions.plan(self.as_("qa"), args(story="sc-2", for_=PERSON, files=None,
+                                              text="x"))
+        with self.assertRaisesRegex(actions.Refused, "may not plan"):
+            actions.plan(self.as_("dev"), args(story="sc-1", for_=PERSON, files=None,
+                                               text="x"))
+
+    def test_a_reply_to_their_question_addresses_them(self):
+        self.fake.add(1, "In QA")
+        self.fake.comment(1, f"QA claim: {PERSON}, plan by qa3")
+        asked = self.fake.comment(1, "Where is the code?")
+        asked["author_id"] = "m-1"
+        actions.comment(self.as_("qa3"), args(story="sc-1", to=None, reply_to=asked["id"],
+                                              files=None, untagged=False, text="In Mailpit."))
+        self.assertEqual(self.fake.comments[-1][1], f"[{PERSON}] (from qa3)\nIn Mailpit.")

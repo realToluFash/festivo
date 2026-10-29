@@ -72,6 +72,9 @@ import {
   QA_OVERRIDES,
   QA_PORTS,
   qaConfig,
+  qrPng,
+  lanAddress,
+  PEOPLE,
   APP_SERVICES,
   launchVideo,
   iosBundle,
@@ -942,8 +945,9 @@ describe('the three QA testers', () => {
     expect(testerOf('/Users/x/Projects/soirely')).toBeNull();
   });
 
-  it('stop at three', () => {
-    expect(() => qaConfig(4)).toThrow(/no QA tester 4/);
+  it('stop at three agents and the people stack', () => {
+    expect(qaConfig(4, '192.168.1.164').project).toBe('soirely-qa4');
+    expect(() => qaConfig(5)).toThrow(/no QA tester 5/);
   });
 });
 
@@ -1959,5 +1963,41 @@ describe('the account --ready reports', () => {
     expect(report).toContain('two-factor on');
     expect(report).toContain('TOTP_SECRET  S3CR3T');
     expect(report).toContain('EMAIL=a@qa.test PASSWORD=pw TOTP_SECRET=S3CR3T');
+  });
+});
+
+// The people's stack is reached from a person's own phone, so 127.0.0.1 would be the phone.
+describe("the people's stack", () => {
+  const interfaces = {
+    lo0: [{ family: 'IPv4', address: '127.0.0.1', internal: true }],
+    docker0: [{ family: 'IPv4', address: '172.17.0.1', internal: false }],
+    en0: [
+      { family: 'IPv6', address: 'fe80::1', internal: false },
+      { family: 'IPv4', address: '192.168.1.164', internal: false },
+    ],
+  };
+
+  it("is served on the machine's network address, not Docker's or the loopback", () => {
+    expect(lanAddress(interfaces, {})).toBe('192.168.1.164');
+    expect(lanAddress(interfaces, { SOIRELY_QA_ADDRESS: '10.0.0.5' })).toBe('10.0.0.5');
+    expect(() => lanAddress({ lo0: interfaces.lo0 }, {})).toThrow(/SOIRELY_QA_ADDRESS/);
+  });
+
+  it('gives the phone and the bundler that address, on ports of its own', () => {
+    const { project, urls, app, ports } = qaConfig(PEOPLE, '192.168.1.164');
+    expect(project).toBe('soirely-qa4');
+    expect(urls.metro).toBe(`exp://192.168.1.164:${ports.METRO_PORT}`);
+    expect(app.EXPO_PUBLIC_API_URL).toBe(`http://192.168.1.164:${ports.API_PORT}`);
+    expect(app.REACT_NATIVE_PACKAGER_HOSTNAME).toBe('192.168.1.164');
+    expect(Math.max(...Object.values(ports))).toBeLessThan(65536);
+    for (const tester of TESTERS)
+      expect(qaConfig(tester).app).not.toHaveProperty('REACT_NATIVE_PACKAGER_HOSTNAME');
+  });
+
+  it('draws the Expo Go QR code as a PNG with a quiet zone', () => {
+    const png = qrPng(new Uint8Array([1, 0, 0, 1]), 2, 1);
+    expect([...png.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    expect(png.readUInt32BE(16)).toBe(8);
+    expect(png.readUInt32BE(20)).toBe(8);
   });
 });

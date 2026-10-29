@@ -154,6 +154,7 @@ def slim(raw, states, epics):
         "updated_at": raw.get("updated_at"),
         "done": bool(raw.get("completed") or raw.get("archived")),
         "archived": bool(raw.get("archived")),
+        "owners": raw.get("owner_ids") or [],
         "description": raw.get("description") or "",
         "tasks": [{"id": t["id"], "text": t["description"], "done": t["complete"]}
                   for t in raw.get("tasks", [])],
@@ -161,7 +162,7 @@ def slim(raw, states, epics):
                    "object": link.get("object_id")} for link in raw.get("story_links", [])],
         "comments": [
             {"id": c["id"], "parent": c.get("parent_id"), "at": c.get("created_at"),
-             "text": c.get("text") or ""}
+             "text": c.get("text") or "", "author": c.get("author_id")}
             for c in raw.get("comments", []) if not c.get("deleted")
         ],
     }

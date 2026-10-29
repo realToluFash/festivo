@@ -3,7 +3,7 @@ with, filled in. Anything more is one `sq <role> <read>` away."""
 
 import time
 
-from . import github, store
+from . import github, machine, store
 from . import roles as R
 from . import text as T
 from . import views as V
@@ -78,6 +78,24 @@ def inbox(p, db, row, story):
               f" (`{SQ} {p.role} story sc-{story['id']} --section <name>`)")
     next_lines(p, f"{SQ} {p.role} comment sc-{story['id']} --reply-to <id> --text \"…\"",
                f"{SQ} {p.role} done {row['id']} --note \"<one line>\"")
+
+
+def plan(p, db, row, story):
+    """A person tests this story from the plan this run writes; the run tests nothing."""
+    from . import remote
+    who = W.kept_for(story, machine.manual_testers(remote.config()))
+    harness = f"node {machine.person_stack(remote.config())}/.qa/bin/qa-env.mjs"
+    story_for(p, db, story, p.role)
+    p.add("", f"{who} tests sc-{story['id']} by hand, on their own phone and laptop, from the "
+              "plan you post. You test nothing yourself. Their stack is the people's stack, "
+              f"`{harness}` (never your own): check out the story's merge with "
+              f"`{harness} checkout sc-{story['id']}`, make the accounts and data the plan "
+              f"needs with `{harness} account …`, then `{harness} phone`, which restarts their "
+              "bundler and prints the web, Expo Go and Mailpit addresses and the QR code's "
+              "file. Write the plan as section 11 of the skill says, and attach the QR code.")
+    return next_lines(p, f"{SQ} {p.role} plan sc-{story['id']} --for {who} "
+                         "--files <qr.png> < plan.md",
+                      f"{SQ} {p.role} done {row['id']} --note \"<one line>\"")
 
 
 def review(p, db, row, story, pr, cache):
@@ -292,6 +310,8 @@ def render(p, db, row, cache):
                           f"{SQ} {p.role} unclaim sc-{story['id']} "
                           "--text \"<why it was not tested>\"",
                           f"{SQ} {p.role} done {row['id']} --note \"<one line>\"")
+    if kind == "plan":
+        return plan(p, db, row, story)
     if kind == "story":
         story_for(p, db, story, p.role)
         if p.role in R.DEVS + R.TESTERS and story["state"] in CLAIMABLE:

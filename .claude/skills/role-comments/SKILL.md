@@ -27,6 +27,12 @@ anybody reading the story later can see what was asked and what was decided.
 | `[cd]`   | `/soirely-creative`         | an idea: a better way to do a flow, a proposal's evidence         |
 | `[l10n]` | `/soirely-linguist`         | copy in any language: wording, a new string, a translation ticket |
 
+**People test too.** A person on the QA team signs as their Shortcut mention,
+`[qa] (from @name)`, and is addressed as `[@name]`, which Shortcut turns into a mention so
+they see it. Their `[qa]`, and a comment of theirs with no header at all, reaches the tester
+that wrote their plan on that story. `sq <role> comment sc-N --to @name` addresses them.
+`agents.json` lists them under `manualTesters`.
+
 **A QA report is answered to the tester who signed it**: `(from qa2)` gets `[qa2]`. A
 question for QA in general is `[qa]`. **A developer question goes to the developer whose
 label the story carries**: `devN` gets `[devN]`, and `dev1` or no label gets `[dev]`. A

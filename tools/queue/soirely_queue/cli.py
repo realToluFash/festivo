@@ -55,13 +55,15 @@ def refresh_work(db, now):
     last_sweeps = {row["pool"]: row["at"] for row in db.execute(
         "select pool, max(done_at) as at from work where kind = 'sweep' and status = 'done' "
         "group by pool")}
+    config = remote.config()
     items = work.derive(store.stories(db), store.prs(db), store.get_meta(db, "main_run"),
                         last_runs, busy_roles, now, store.handled(db), store.moves(db),
                         store.get_meta(db, "machine_checks"), store.get_meta(db, "epics"),
                         store.worked_on(db, "l10n"),
                         [row for row in store.waiting(db, "l10n") if row["kind"] == "unblocked"],
                         last_sweeps, store.get_meta(db, "released"),
-                        store.get_meta(db, "unlinked"))
+                        store.get_meta(db, "unlinked"), machine.manual_testers(config),
+                        machine.machine_name(config))
     store.record(db, items, now)
     return items
 
@@ -433,8 +435,8 @@ def cmd_history(s, a):
 # Writes
 
 
-TAKES_BODY = {actions.comment, actions.note, actions.to_draw, actions.report, actions.edit, actions.new_story,
-              actions.new_epic, actions.review, actions.pr_reply, actions.pr_create,
+TAKES_BODY = {actions.comment, actions.note, actions.to_draw, actions.report, actions.plan,
+              actions.edit, actions.new_story, actions.new_epic, actions.review, actions.pr_reply, actions.pr_create,
               actions.pr_close, actions.pr_edit, actions.unclaim}
 
 
@@ -524,8 +526,8 @@ DETAILS = {
                "epic's artifact URL, the screens and layouts to draw, the states each needs, "
                "and the decisions already made. Listing the story again replaces its prompt.",
     "drawn": "Take a story off the list to draw, once its artboard is linked on the story.",
-    "comment": "Post a tagged comment. --to takes roles, dev, and the language tags en, es, "
-               "fr and pt, which reach the linguist.",
+    "comment": "Post a tagged comment. --to takes roles, dev, the language tags en, es, "
+               "fr and pt, which reach the linguist, and a person who tests as @name.",
 }
 
 WRITES = [
@@ -555,6 +557,11 @@ WRITES = [
     ("report", actions.report, "QA report: upload files, comment, move to the result",
      lambda p: (p.add_argument("story"), p.add_argument("result", choices=["passed", "failed"]),
                 p.add_argument("--files", nargs="+"), body(p))),
+    ("plan", actions.plan, "post a person's test plan on a story kept for them",
+     lambda p: (p.add_argument("story"), p.add_argument("--for", dest="for_", required=True,
+                                                         help="the person, as @name"),
+                p.add_argument("--files", nargs="+", help="images shown in the plan, such "
+                                                          "as the Expo Go QR code"), body(p))),
     ("unclaim", actions.unclaim, "give back to Ready For QA a story you hold but cannot test",
      lambda p: (p.add_argument("story"), body(p))),
     ("edit", actions.edit, "replace a section, add a dated one, or --replace one line, "
