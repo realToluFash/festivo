@@ -36,12 +36,24 @@ import {
   scrollInsets,
   shownEnd,
 } from '../kit/keyboard.ts';
-import { type FocusBackFrom, focusBackMs } from '../kit/focusBack.ts';
+import {
+  type FocusBackFrom,
+  focusBackMs,
+  stepCloseWay,
+  TALKBACK_FOCUS_BACK_MS,
+  TALKBACK_FOCUS_TAKEN_MS,
+} from '../kit/focusBack.ts';
 import { stepOpeners } from '../kit/stepOpeners.ts';
 import { tokens } from '../theme/tokens.ts';
 import { focusedField, watchFocusedField } from './focusedField.ts';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
-import { LIFT, keyboardTopNow, settledLift, watchKeyboardTop } from './keyboardWatch.ts';
+import {
+  LIFT,
+  keyboardTopNow,
+  settledLift,
+  watchKeyboardTop,
+  whenKeysDown,
+} from './keyboardWatch.ts';
 
 type InnerViewRef = ScrollView & { getInnerViewRef(): View | null };
 
@@ -398,6 +410,79 @@ export function useFocusBackToOpener(
   useFocusOnAnswer(closed, target, focusBackMs(Platform.OS, SETTLED_MS, from));
 
   return openers.ref;
+}
+
+export interface StepClose {
+  /** The opener's ref, in place of `opener(key)`. */
+  opener: RefCallback<View>;
+  /** The step is closing in order, and its opener shows beside it until focus has reached it. */
+  closing: boolean;
+  close(): void;
+}
+
+/** Closes a step back to the opener `to` names, the way `stepCloseWay` says; `finish` takes the step away, with what `useFocusBackToOpener` moves focus back from, or nothing when focus is already there (sc-18588). */
+export function useStepClose(
+  opener: (key: string) => RefCallback<View>,
+  to: string,
+  finish: (closed: StepClosed | undefined) => void,
+): StepClose {
+  const [closing, setClosing] = useState(false);
+  const started = useRef(false);
+  const view = useRef<View | null>(null);
+  const finishNow = useRef(finish);
+  const cancel = useRef(() => {});
+  const named = opener(to);
+  const ref = useCallback(
+    (shown: View | null) => {
+      named(shown);
+      view.current = shown;
+    },
+    [named],
+  );
+
+  useEffect(() => {
+    finishNow.current = finish;
+  });
+
+  useEffect(() => () => cancel.current(), []);
+
+  useEffect(() => {
+    if (!closing) return;
+
+    const focus = setTimeout(() => moveScreenReaderFocus(view.current), TALKBACK_FOCUS_BACK_MS);
+    const done = setTimeout(() => {
+      started.current = false;
+      setClosing(false);
+      finishNow.current(undefined);
+    }, TALKBACK_FOCUS_BACK_MS + TALKBACK_FOCUS_TAKEN_MS);
+
+    return () => {
+      clearTimeout(focus);
+      clearTimeout(done);
+    };
+  }, [closing]);
+
+  const close = useCallback(() => {
+    if (started.current) return;
+    started.current = true;
+
+    let gone = false;
+    cancel.current = () => {
+      gone = true;
+    };
+    void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
+      if (gone) return;
+      if (stepCloseWay(Platform.OS, on) === 'atOnce') {
+        started.current = false;
+        finishNow.current(stepClosed(to));
+        return;
+      }
+
+      cancel.current = whenKeysDown(() => setClosing(true), SETTLED_MS);
+    });
+  }, [to]);
+
+  return { opener: ref, closing, close };
 }
 
 /** Focus back to the row a page was opened from, as `useFocusBackToOpener` on a `page` return; rendered inside a list's ScrollColumn so the row comes into view. */

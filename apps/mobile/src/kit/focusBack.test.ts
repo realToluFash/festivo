@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { focusBackMs, TALKBACK_FOCUS_BACK_MS } from './focusBack.ts';
+import { focusBackMs, stepCloseWay, TALKBACK_FOCUS_BACK_MS } from './focusBack.ts';
 
 const TALKBACK_OWN_FOCUS_SOONEST_MS = 140;
 
@@ -20,5 +20,19 @@ describe('focus going back to a step’s opener', () => {
 
   it('never waits on Android past the scroll', () => {
     expect(focusBackMs('android', 20, 'step')).toBe(20);
+  });
+});
+
+describe('a step closing back to its opener', () => {
+  it('closes in order on Android with TalkBack on, so its focus never rests on a view that has gone (sc-18588)', () => {
+    expect(stepCloseWay('android', true)).toBe('inOrder');
+  });
+
+  it('closes at once with no screen reader, which has no focus to lose', () => {
+    expect(stepCloseWay('android', false)).toBe('atOnce');
+  });
+
+  it('closes at once on iOS, where VoiceOver waits for the move it is asked for', () => {
+    expect(stepCloseWay('ios', true)).toBe('atOnce');
   });
 });
