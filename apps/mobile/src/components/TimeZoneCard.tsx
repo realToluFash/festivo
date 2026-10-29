@@ -60,6 +60,7 @@ export function TimeZoneCard({
   const [zones, setZones] = useState<TimeZoneOption[]>([]);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
+  const [savedFocused, setSavedFocused] = useState(false);
   const [closed, setClosed] = useState<StepClosed | undefined>(undefined);
   const opener = useFocusBackToOpener(editing ? undefined : closed);
   const {
@@ -70,6 +71,16 @@ export function TimeZoneCard({
     setClosed(back);
     setEditing(false);
   });
+  // Saving closes in the same order as Cancel, with the line in the opener's place, so TalkBack's focus is on the line before Save goes (sc-18587).
+  const {
+    opener: savedLine,
+    closing: savedClosing,
+    close: closeSaved,
+  } = useStepClose(opener, 'saved', (back) => {
+    setSavedFocused(back == null);
+    setEditing(false);
+  });
+  const savedGiven = savedFocused || savedClosing;
   const frame = cardFrame(kind);
 
   useEffect(() => {
@@ -106,8 +117,8 @@ export function TimeZoneCard({
           now={label}
           onSaved={async (zone) => {
             await onSaved();
-            setEditing(false);
             setSaved(zoneLabel(zone));
+            closeSaved();
           }}
           onCancel={close}
         />
@@ -123,17 +134,18 @@ export function TimeZoneCard({
               </Text>
             )}
           </View>
-          {saved != null && (
-            <Notice
-              tone="done"
-              mark={tokens.marks.done.glyph}
-              body={t('timeZone.saved', { zone: saved })}
-              answer={saved}
-              takesFocus
-              readMs={focusBackMs(Platform.OS, SETTLED_MS, 'step')}
-            />
-          )}
         </>
+      )}
+      {saved != null && (!editing || savedClosing) && (
+        <Notice
+          tone="done"
+          mark={tokens.marks.done.glyph}
+          body={t('timeZone.saved', { zone: saved })}
+          answer={savedGiven ? undefined : saved}
+          takesFocus={!savedGiven}
+          readMs={focusBackMs(Platform.OS, SETTLED_MS, 'step')}
+          wordsRef={savedGiven ? savedLine : undefined}
+        />
       )}
       {(!editing || closing) && (
         <SecondaryButton
@@ -141,6 +153,7 @@ export function TimeZoneCard({
           label={t('timeZone.change')}
           onPress={() => {
             setSaved(null);
+            setSavedFocused(false);
             setClosed(undefined);
             setEditing(true);
           }}
