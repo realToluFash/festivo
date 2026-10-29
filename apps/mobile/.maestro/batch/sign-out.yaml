@@ -1,13 +1,16 @@
 # Signs whoever is signed in out, from Settings. Nobody signed in, it does nothing.
+#
+# openLink does not remount a Home that session.yaml has scrolled down to its Signed in as
+# line, so that line counts as signed in as well as the card's heading. sc-18454.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/
 - extendedWaitUntil:
-    visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}'
+    visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}|{{t:any:status.title}}|{{t:any:signIn.title}}'
     timeout: 60000
 - runFlow:
     when:
-      visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}'
+      visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}'
     commands:
       - openLink: ${METRO_URL}/--/settings
       - scrollUntilVisible:
