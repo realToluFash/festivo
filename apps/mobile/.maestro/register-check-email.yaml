@@ -18,20 +18,13 @@ appId: host.exp.Exponent
     id: 'register.email'
 - eraseText: 120
 - inputText: ${EMAIL}
-- hideKeyboard
-- scrollUntilVisible:
-    element:
-      id: 'register.password'
-- tapOn:
-    id: 'register.password'
+# The Next and Go keys, not taps: hideKeyboard fails on an iPhone, and a tap with the
+# keyboard up can land on a key (sc-18534, as sc-19359 for Sign in).
+- pressKey: Enter
 - eraseText: 120
 - inputText: ${PASSWORD}
-- scrollUntilVisible:
-    element:
-      id: 'register.submit'
 - takeScreenshot: mobile-register-filled
-- tapOn:
-    id: 'register.submit'
+- pressKey: Enter
 # The dialog can arrive seconds after the next screen has rendered, so wait for it.
 - extendedWaitUntil:
     visible: 'Save Password?'
