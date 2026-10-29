@@ -1,0 +1,65 @@
+# sc-19104, iPad: each Settings section chosen shows beside the Settings list.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-settings.yaml
+- takeScreenshot: choose-section
+- scrollUntilVisible:
+    element:
+      id: 'settings.account'
+    timeout: 20000
+- tapOn:
+    id: 'settings.account'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'settings.account'
+- takeScreenshot: account-beside
+- scrollUntilVisible:
+    element:
+      id: 'settings.security'
+    timeout: 20000
+- tapOn:
+    id: 'settings.security'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'settings.account'
+- takeScreenshot: security-beside
+- scrollUntilVisible:
+    element:
+      id: 'settings.organisation'
+    timeout: 20000
+- tapOn:
+    id: 'settings.organisation'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'settings.account'
+- takeScreenshot: organisation-beside
+- scrollUntilVisible:
+    element:
+      id: 'settings.members'
+    timeout: 20000
+- tapOn:
+    id: 'settings.members'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'settings.account'
+- takeScreenshot: members-beside
+- scrollUntilVisible:
+    element:
+      id: 'settings.roles'
+    timeout: 20000
+- tapOn:
+    id: 'settings.roles'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'settings.account'
+- takeScreenshot: roles-beside
+- scrollUntilVisible:
+    element:
+      id: 'settings.signInRules'
+    timeout: 20000
+- tapOn:
+    id: 'settings.signInRules'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'settings.account'
+- takeScreenshot: signInRules-beside
