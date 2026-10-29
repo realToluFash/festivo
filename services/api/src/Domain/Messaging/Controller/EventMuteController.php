@@ -20,7 +20,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 
-/** Mute this event (sc-3980), the caller's own: the event's Settings and the bell's More are this one switch. */
+/** Mute this event (sc-3980), the caller's own: the card on the event's page and the bell's More are this one switch. */
 final readonly class EventMuteController
 {
     public function __construct(
