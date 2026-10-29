@@ -59,7 +59,7 @@ appId: host.exp.Exponent
     id: 'eventForm.leave.go'
 - extendedWaitUntil:
     visible:
-      id: 'settings.signOut'
+      id: 'settings.account'
     timeout: 20000
 - assertNotVisible:
     id: 'eventForm.name'
