@@ -219,7 +219,6 @@ export function parseTarget(arg) {
   return { kind: 'branch', name: value.replace(/^origin\//, '') };
 }
 
-// One of a tester's simulators runs at a time: the phone unless --ipad asks otherwise.
 export function commitTarget(sha, { verify }) {
   if (verify(`${sha}^{commit}`) === null) {
     throw new Error(`no commit ${sha} in the QA worktree after fetching origin`);
@@ -227,6 +226,7 @@ export function commitTarget(sha, { verify }) {
   return { ref: sha, label: sha };
 }
 
+// One of a tester's simulators runs at a time: the phone unless --ipad asks otherwise.
 export function simulatorFor(args) {
   return args.includes('--ipad')
     ? { open: 'ipad', shut: 'phone' }
