@@ -69,7 +69,7 @@ interface ScreenScrollView {
   origin: { current: number };
   /** The offset the native scroll view last reported. */
   offset: RefObject<number>;
-  /** Keeps the content at least its height now and `more`, until the next drag or the keys come up again. */
+  /** Keeps the content at least its height now and `more`, until a scroll brings the page's end back inside that height or the keys come up again. */
   hold(more: number): void;
 }
 
@@ -652,13 +652,17 @@ function useScreenScrollView() {
   const scrollView = useRef<ScrollViewInstance>(null);
   const offset = useRef(0);
   const contentHeight = useRef(0);
+  const unheldHeight = useRef(0);
   const [held, setHeld] = useState<number | null>(null);
   const [screenScroll] = useState<ScreenScrollView>(() => ({
     ref: scrollView,
     resized: new Set(),
     origin,
     offset,
-    hold: (more) => setHeld(contentHeight.current + more),
+    hold: (more) => {
+      unheldHeight.current = contentHeight.current;
+      setHeld(contentHeight.current + more);
+    },
   }));
   useEffect(() => {
     origin.current = windowOrigin;
@@ -672,7 +676,10 @@ function useScreenScrollView() {
   }, [held]);
 
   const follow = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    offset.current = event.nativeEvent.contentOffset.y;
+    const { contentOffset, layoutMeasurement } = event.nativeEvent;
+    offset.current = contentOffset.y;
+    const end = Math.max(unheldHeight.current, layoutMeasurement.height);
+    if (held != null && contentOffset.y + layoutMeasurement.height <= end + 1) setHeld(null);
   };
 
   return {
@@ -681,7 +688,6 @@ function useScreenScrollView() {
       ref: scrollView,
       onLayout: () => screenScroll.resized.forEach((resized) => resized()),
       onScroll: follow,
-      onScrollBeginDrag: () => setHeld(null),
       onScrollEndDrag: follow,
       onMomentumScrollEnd: follow,
       onContentSizeChange: (_width: number, height: number) => {
@@ -736,7 +742,6 @@ export function ScrollColumn({
           }
         }}
         onScrollBeginDrag={() => {
-          scrollProps.onScrollBeginDrag();
           left.current = null;
         }}
         onContentSizeChange={(width, height) => {
