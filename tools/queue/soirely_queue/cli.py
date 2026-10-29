@@ -45,6 +45,15 @@ def open_db(threads=False):
     return store.connect(str(home() / "queue.db"), threads=threads)
 
 
+def people():
+    """The people who test, and this machine's name, for their plans."""
+    try:
+        config = machine.load()
+    except machine.ConfigError:
+        return {}, None
+    return machine.manual_testers(config), machine.machine_name(config)
+
+
 def refresh_work(db, now):
     # A role's own pick or sweep does not make it busy, or the next refresh would retire it.
     busy = {row["roles"] for row in db.execute(
@@ -61,7 +70,7 @@ def refresh_work(db, now):
                         store.worked_on(db, "l10n"),
                         [row for row in store.waiting(db, "l10n") if row["kind"] == "unblocked"],
                         last_sweeps, store.get_meta(db, "released"),
-                        store.get_meta(db, "unlinked"))
+                        store.get_meta(db, "unlinked"), *people())
     store.record(db, items, now)
     return items
 

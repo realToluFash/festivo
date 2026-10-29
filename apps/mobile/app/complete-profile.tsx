@@ -26,7 +26,7 @@ import {
   SecondaryButton,
 } from '../src/components/Buttons.tsx';
 import { CountryPicker, focusPicker } from '../src/components/CountryPicker.tsx';
-import { Field, TextField } from '../src/components/Field.tsx';
+import { Field, focusChecked, keysStayDown, TextField } from '../src/components/Field.tsx';
 import { InvitationRows } from '../src/components/InvitationRows.tsx';
 import { LinkedNotice } from '../src/components/LinkedNotice.tsx';
 import { Notice } from '../src/components/Notice.tsx';
@@ -272,11 +272,12 @@ function FoundOrganisation() {
 
     if (Object.keys(checked).length > 0) {
       setErrors(checked);
-      if (checked.organisationName != null) nameInput.current?.focus();
+      if (checked.organisationName != null) focusChecked(nameInput);
       else focusPicker(countryPicker);
       return;
     }
 
+    keysStayDown();
     setSaving(true);
     setFailed(null);
 
@@ -324,7 +325,7 @@ function FoundOrganisation() {
         <TextField
           ref={nameInput}
           wrong={errors.organisationName != null}
-          editable={!saving}
+          submitting={saving}
           value={name}
           maxLength={ORGANISATION_NAME_MAXIMUM}
           onChangeText={(text) => {
@@ -443,6 +444,7 @@ function Details({
   const offers = offered?.offers ?? [];
   const showOffers = needsOne && offers.length > 0 && !own;
   const asksForOrganisation = needsOne && !showOffers;
+  const afterName = asksForOrganisation ? organisationInput : phoneInput;
 
   async function save(askToJoin: string | null = null): Promise<void> {
     if (saving || answering) return;
@@ -486,10 +488,11 @@ function Details({
           : checked.organisationName != null
             ? organisationInput
             : phoneInput;
-      first.current?.focus();
+      focusChecked(first);
       return;
     }
 
+    keysStayDown();
     setSaving(true);
     setFailed(null);
     setUnavailable(null);
@@ -553,7 +556,7 @@ function Details({
         <TextField
           ref={nameInput}
           wrong={errors.name != null}
-          editable={!saving}
+          submitting={saving}
           value={name}
           onChangeText={(text) => {
             setName(text);
@@ -564,9 +567,7 @@ function Details({
           autoCapitalize="words"
           returnKeyType="next"
           submitBehavior="submit"
-          onSubmitEditing={() =>
-            (asksForOrganisation ? organisationInput : phoneInput).current?.focus()
-          }
+          onSubmitEditing={() => afterName.current?.focus()}
           accessibilityLabel={t('completeProfile.name')}
           testID="completeProfile.name"
         />
@@ -697,7 +698,7 @@ function Details({
             <TextField
               ref={organisationInput}
               wrong={errors.organisationName != null}
-              editable={!saving}
+              submitting={saving}
               value={organisationName}
               maxLength={ORGANISATION_NAME_MAXIMUM}
               onChangeText={(text) => {
@@ -745,7 +746,7 @@ function Details({
         help={t('completeProfile.mobileHelp')}
         country={phoneCountryCode}
         error={errors.phoneNumber ?? errors.phoneCountryCode}
-        disabled={saving}
+        submitting={saving}
         onCountry={(code) => {
           setPhone(pickPhoneCountry(code));
           setErrors((previous) => ({

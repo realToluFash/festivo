@@ -11,6 +11,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runInNewContext } from 'node:vm';
+import { inflateSync } from 'node:zlib';
 
 import { describe, expect, it } from 'vitest';
 
@@ -71,7 +72,10 @@ import {
   playImage,
   QA_OVERRIDES,
   QA_PORTS,
+  LAN,
+  lanAddress,
   qaConfig,
+  qrPng,
   APP_SERVICES,
   launchVideo,
   iosBundle,
@@ -244,6 +248,64 @@ describe('the QA .env against compose.yaml', () => {
       email: 'guest@example.org',
       email_verified: true,
     });
+  });
+});
+
+describe('the stack a person tests on', () => {
+  it('serves every address on the network address, on ports no other stack holds', () => {
+    const { project, urls, app, ports } = qaConfig(LAN, '192.168.1.40');
+
+    expect(project).toBe('soirely-qa-lan');
+    expect(urls.web).toBe(`http://192.168.1.40:${ports.WEB_PORT}`);
+    expect(urls.metro).toBe(`exp://192.168.1.40:${ports.METRO_PORT}`);
+    expect(app.EXPO_PUBLIC_API_URL).toBe(`http://192.168.1.40:${ports.API_PORT}`);
+    expect(app.REACT_NATIVE_PACKAGER_HOSTNAME).toBe('192.168.1.40');
+    const taken = new Set(TESTERS.flatMap((tester) => Object.values(qaConfig(tester).ports)));
+    for (const port of Object.values(ports)) {
+      expect(taken.has(port)).toBe(false);
+      expect(port).toBeLessThan(65536);
+    }
+  });
+
+  it('makes no simulators or emulators: the person brings the phone', () => {
+    expect(qaConfig(LAN, '192.168.1.40').simulated).toBe(false);
+    expect(TESTERS.every((tester) => qaConfig(tester).simulated)).toBe(true);
+  });
+
+  it('takes QA_LAN_ADDRESS, else the private IPv4 address a phone reaches', () => {
+    const interfaces = {
+      lo: [{ family: 'IPv4', internal: true, address: '127.0.0.1' }],
+      docker0: [{ family: 'IPv4', internal: false, address: '172.17.0.1' }],
+      'br-0a1b2c': [{ family: 'IPv4', internal: false, address: '172.18.0.1' }],
+      wlan0: [
+        { family: 'IPv6', internal: false, address: 'fe80::1' },
+        { family: 'IPv4', internal: false, address: '192.168.1.40' },
+      ],
+    };
+
+    expect(lanAddress({ QA_LAN_ADDRESS: '10.0.0.9' }, interfaces)).toBe('10.0.0.9');
+    expect(lanAddress({}, interfaces)).toBe('192.168.1.40');
+    expect(() => lanAddress({}, { lo: interfaces.lo })).toThrow(/QA_LAN_ADDRESS/);
+  });
+
+  it('draws the Expo Go QR code as a PNG a person can scan', () => {
+    const modules = Uint8Array.from([1, 0, 0, 1]);
+    const png = qrPng(modules, 2, 1);
+    const side = (2 + 2 * 1) * 2;
+
+    expect(png.subarray(1, 4).toString('latin1')).toBe('PNG');
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([side, side]);
+    const idat = png.indexOf('IDAT', 0, 'latin1');
+    const rows = inflateSync(png.subarray(idat + 4, idat + png.readUInt32BE(idat - 4) + 4));
+    const pixel = (x, y) => rows[y * (side + 1) + 1 + x];
+    expect([pixel(0, 0), pixel(2, 2), pixel(4, 2), pixel(4, 4), pixel(2, 4)]).toEqual([
+      255, 0, 255, 0, 255,
+    ]);
+  });
+
+  it('is the tester of its own worktree', () => {
+    expect(testerOf('/home/me/soirely-qa-lan')).toBe(LAN);
+    expect(testerOf('/home/me/soirely-qa2')).toBe(2);
   });
 });
 

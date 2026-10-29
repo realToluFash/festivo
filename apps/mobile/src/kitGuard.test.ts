@@ -515,6 +515,7 @@ const keysDropped = (file: string, text: string) =>
 describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter says the name cannot fix it', () => {
   // sc-9471: a field disabled while saving lost its focus, so a server refusal closed the keyboard and a client one did not.
   // sc-20208: Confirm it's you, Sign out everywhere else and Two-factor.
+  // sc-20209 carries it to adding and checking an address or a number, and to A few details.
   const HELD_FORMS = [
     'ConfirmItsYou.tsx',
     'CreateOrganisation.tsx',
@@ -525,11 +526,20 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
     'OrganisationDetails.tsx',
     'CompanyDomainsCard.tsx',
     'OwnershipCard.tsx',
+    'ContactsCard.tsx',
+    'CodeForm.tsx',
+    'PhoneEntry.tsx',
+    'phone.tsx',
+    'complete-profile.tsx',
+    'verify-email.tsx',
+    'verify-phone.tsx',
   ];
 
   it.each(HELD_FORMS)('%s holds its fields rather than disabling them', (file) => {
-    const form = sources(['src/components']).find(({ path }) => path.endsWith(`/${file}`));
-    const fields = KIT_FIELDS.flatMap((name) => selfClosing(name, form?.text ?? ''));
+    const form = sources(['src/components', 'app']).find(({ path }) => path.endsWith(`/${file}`));
+    const fields = [...KIT_FIELDS, 'PhoneEntry', 'CodeForm'].flatMap((name) =>
+      selfClosing(name, form?.text ?? ''),
+    );
 
     expect(fields.length, `fields in ${file}`).toBeGreaterThan(0);
     expect(
@@ -538,7 +548,8 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
     ).toEqual([]);
     expect(
       fields
-        .filter((tag) => tag.markup.includes('onSubmitEditing={() => void'))
+        .filter((tag) => /\bonSubmitEditing=/u.test(tag.markup))
+        .filter((tag) => !/onSubmitEditing=\{\(\) => \w+\.current\?\.focus\(\)\}/u.test(tag.markup))
         .filter((tag) => !tag.markup.includes('submitBehavior="submit"'))
         .map((tag) => `${file}:${tag.line}`),
       'A field that submits the form keeps its focus on return.',
@@ -653,6 +664,58 @@ describe('a submit with the keys down keeps them down (sc-13408, sc-9674)', () =
   });
 });
 
+describe('a refused code focuses its field through focusChecked (sc-20209)', () => {
+  it('on Check your email, from its checks', () => {
+    expect(readFileSync(join('app', 'verify-email.tsx'), 'utf8')).toMatch(
+      /\(\) => focusChecked\(codeInput\),/u,
+    );
+  });
+
+  it('on Check your messages, before the code check returns', () => {
+    expect(readFileSync(join('app', 'verify-phone.tsx'), 'utf8')).toMatch(
+      /if \(problem != null\) \{[^}]*\);\s*focusChecked\(codeInput\);\s*return;/u,
+    );
+  });
+});
+
+describe('a second return key while the request runs sends nothing (sc-20209)', () => {
+  it.each([
+    ['src/components/ContactsCard.tsx', /^\s*setSending\(true\);/u, 'sending', 2],
+    ['app/phone.tsx', /^\s*setSending\(true\);/u, 'sending', 1],
+    ['app/complete-profile.tsx', /^\s*setSaving\(true\);/u, 'saving', 2],
+  ] satisfies [string, RegExp, string, number][])(
+    '%s returns before each request while one runs',
+    (file, start, flag, count) => {
+      const lines = readFileSync(join(...file.split('/')), 'utf8').split('\n');
+      const unguarded = lines.flatMap((line, index) => {
+        if (!start.test(line)) return [];
+        const header = lines.findLastIndex(
+          (above, at) => at < index && /^\s*(async )?function \w+\(/u.test(above),
+        );
+
+        return new RegExp(`^\\s*if \\(${flag}\\b.*\\) return;$`, 'u').test(lines[header + 1] ?? '')
+          ? [{ guarded: true }]
+          : [{ guarded: false, at: `${file}:${index + 1}` }];
+      });
+
+      expect(unguarded).toHaveLength(count);
+      expect(unguarded.filter(({ guarded }) => !guarded)).toEqual([]);
+    },
+  );
+
+  it('CodeForm.tsx, for Check your email and Check your messages', () => {
+    const field = selfClosing(
+      'CodeField',
+      readFileSync(join('src', 'components', 'CodeForm.tsx'), 'utf8'),
+    );
+
+    expect(field).toHaveLength(1);
+    expect(field[0]?.markup).toMatch(
+      /onSubmitEditing=\{\(\) => \{\s*if \(!verifying\) onVerify\(/u,
+    );
+  });
+});
+
 describe('a submit with the keys down keeps them down (sc-20208)', () => {
   it.each([
     ['ConfirmItsYou.tsx', 1],
@@ -679,6 +742,27 @@ describe('a Password submit with the keys down keeps them down (sc-13408)', () =
     expect(starts).toHaveLength(3);
     expect(starts.filter((index) => lines[index - 1]?.trim() !== 'keysStayDown();')).toEqual([]);
   });
+});
+
+describe('a submit with the keys down keeps them down (sc-20209)', () => {
+  it.each([
+    // Adding's, and not the row actions above it, which have no field.
+    ['src/components/ContactsCard.tsx', /^\s*setSending\(true\);/u, 1, 'function Adding('],
+    ['app/verify-email.tsx', /^\s*setStatus\(\{ kind: 'verifying' \}\);/u, 1],
+    ['app/verify-phone.tsx', /^\s*setStatus\(\{ kind: 'verifying' \}\);/u, 1],
+    ['app/phone.tsx', /^\s*setSending\(true\);/u, 1],
+    ['app/complete-profile.tsx', /^\s*setSaving\(true\);/u, 2],
+  ] satisfies [string, RegExp, number, string?][])(
+    '%s lets go of a focused field before each request starts',
+    (file, start, count, from: string = '') => {
+      const text = readFileSync(join(...file.split('/')), 'utf8');
+      const lines = text.slice(text.indexOf(from)).split('\n');
+      const starts = lines.flatMap((line, index) => (start.test(line) ? [index] : []));
+
+      expect(starts).toHaveLength(count);
+      expect(starts.filter((index) => lines[index - 1]?.trim() !== 'keysStayDown();')).toEqual([]);
+    },
+  );
 });
 
 describe('a Cancel is off while the change beside it runs (sc-12545)', () => {

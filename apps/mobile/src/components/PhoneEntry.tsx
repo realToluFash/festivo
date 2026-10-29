@@ -13,7 +13,7 @@ export function PhoneEntry({
   help,
   country,
   error,
-  disabled,
+  submitting,
   ref,
   pickerRef,
   onCountry,
@@ -26,7 +26,8 @@ export function PhoneEntry({
   help: string;
   country: string;
   error: string | null | undefined;
-  disabled: boolean;
+  /** A submit runs: the picker is off and the number held. */
+  submitting: boolean;
   ref?: Ref<TextInputInstance> | undefined;
   pickerRef?: Ref<ViewInstance> | undefined;
   onCountry: (code: string) => void;
@@ -44,7 +45,7 @@ export function PhoneEntry({
             label={t('verifyPhone.countryLabel')}
             value={country}
             onChange={onCountry}
-            disabled={disabled}
+            disabled={submitting}
             withCallingCode
             pickerRef={pickerRef}
             testID={`${testID}.country`}
@@ -54,13 +55,14 @@ export function PhoneEntry({
           ref={ref}
           style={styles.number}
           wrong={error != null}
-          editable={!disabled}
+          submitting={submitting}
           keyboardType="phone-pad"
           textContentType="telephoneNumber"
           autoComplete="tel"
           returnKeyType="done"
           onChangeText={onNumber}
           onSubmitEditing={onSubmit}
+          submitBehavior="submit"
           accessibilityLabel={label}
           testID={`${testID}.number`}
         />
