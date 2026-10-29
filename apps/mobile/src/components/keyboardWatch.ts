@@ -1,4 +1,4 @@
-import { Keyboard, Platform } from 'react-native';
+import { codegenNativeCommands, type HostInstance, Keyboard, Platform } from 'react-native';
 
 import { keyboardInWindow, keyboardLift } from '../kit/keyboard.ts';
 
@@ -51,8 +51,16 @@ export function settledLift(liftNow: () => void): SettledLift {
   };
 }
 
-/** Puts the keys down and calls `then` once they are and the scroll they move has landed after `settledMs`, or at once with them already down. Returns what cancels the call still to come. */
-export function putKeysDownThen(then: () => void, settledMs: number): () => void {
+const textInput = codegenNativeCommands<{ blur(field: HostInstance): void }>({
+  supportedCommands: ['blur'],
+});
+
+/** Puts the keys down and calls `then` once they are and the scroll they move has landed after `settledMs`, or at once with them already down. With `field`, the one that raised them, they go down without moving input focus: once the field has given focus up, its blur only hides the keys, where Keyboard.dismiss no longer counts it as focused (sc-18587). Returns what cancels the call still to come. */
+export function putKeysDownThen(
+  then: () => void,
+  settledMs: number,
+  field?: HostInstance | null,
+): () => void {
   if (!Keyboard.isVisible()) {
     then();
     return () => {};
@@ -62,7 +70,8 @@ export function putKeysDownThen(then: () => void, settledMs: number): () => void
   // Keys that never say they went down do not hold the close for ever.
   const unheard = setTimeout(land, settledMs);
   const hidden = Keyboard.addListener('keyboardDidHide', land);
-  Keyboard.dismiss();
+  if (field == null) Keyboard.dismiss();
+  else textInput.blur(field);
 
   function land(): void {
     hidden.remove();

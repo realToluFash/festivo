@@ -13,6 +13,7 @@ import {
 } from 'react';
 import {
   AccessibilityInfo,
+  type HostInstance,
   Keyboard,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -22,6 +23,7 @@ import {
   type ScrollViewInstance,
   type StyleProp,
   StyleSheet,
+  TextInput,
   View,
   type ViewInstance,
   type ViewStyle,
@@ -429,6 +431,7 @@ export function useStepClose(
   const [closing, setClosing] = useState(false);
   const started = useRef(false);
   const view = useRef<ViewInstance | null>(null);
+  const field = useRef<HostInstance | null>(null);
   const finishNow = useRef(finish);
   const afterShown = useRef<readonly StepCloseStep[]>([]);
   const cancel = useRef(() => {});
@@ -451,13 +454,21 @@ export function useStepClose(
 
       function runFrom(steps: readonly StepCloseStep[]): void {
         for (const [at, step] of steps.entries()) {
-          if (step.do === 'putKeysDown') {
-            cancels.push(putKeysDownThen(() => runFrom(steps.slice(at + 1)), SETTLED_MS));
-            break;
-          }
           if (step.do === 'showOpener') {
             afterShown.current = steps.slice(at + 1);
             setClosing(true);
+            break;
+          }
+          if (step.do === 'takeInputFocus') {
+            view.current?.setNativeProps({ hasTVPreferredFocus: true });
+            const taken = setTimeout(() => runFrom(steps.slice(at + 1)), step.atMs);
+            cancels.push(() => clearTimeout(taken));
+            break;
+          }
+          if (step.do === 'putKeysDown') {
+            cancels.push(
+              putKeysDownThen(() => runFrom(steps.slice(at + 1)), SETTLED_MS, field.current),
+            );
             break;
           }
           if (step.do === 'focusOpener') {
@@ -507,6 +518,7 @@ export function useStepClose(
   const close = useCallback(() => {
     if (started.current) return;
     started.current = true;
+    field.current = TextInput.State.currentlyFocusedInput() ?? null;
 
     let gone = false;
     cancel.current = () => {
