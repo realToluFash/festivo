@@ -661,7 +661,7 @@
     "nameBlank": "Indique el nombre de la organización.",
     "currencyBlank": "Elija una moneda.",
     "contactBlank": "Indique un correo electrónico de contacto.",
-    "contactInvalid": "Eso no parece un correo electrónico. Compruebe que tiene una @ y un dominio.",
+    "contactInvalid": "Eso no parece una dirección de correo electrónico. Compruebe que tiene una @ y un dominio.",
     "readOnly": "Su función, {{role}}, puede ver estos datos pero no cambiarlos. Los propietarios sí pueden.",
     "readOnlyUntilLinked": "{{organisation}} solo admite el inicio de sesión con Google o Apple. Hasta que vincule una de las dos, puede ver estos datos pero no cambiarlos.",
     "readOnlyUntilTwoFactor": "{{organisation}} pide la verificación en dos pasos a quienes pueden gestionar miembros, roles, facturación o seguridad. Hasta que la active, puede ver estos datos pero no cambiarlos.",
@@ -702,7 +702,7 @@
   },
   "forms": {
     "emailBlank": "Introduzca su dirección de correo electrónico.",
-    "emailShape": "Eso no parece una dirección de correo. Compruebe que tiene una @ y un dominio.",
+    "emailShape": "Eso no parece una dirección de correo electrónico. Compruebe que tiene una @ y un dominio.",
     "countryBlank": "Elija un país."
   },
   "oauth": {

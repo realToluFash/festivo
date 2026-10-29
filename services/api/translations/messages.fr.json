@@ -77,7 +77,7 @@
     "invitations.revoked": "Cette invitation a été retirée.",
     "invitations.expired": "Cette invitation a expiré. Demandez à la personne à l’origine de l’invitation de vous en envoyer une nouvelle.",
     "validation.invite_email_required": "Saisissez son adresse e-mail.",
-    "validation.invite_email_invalid": "Cette adresse e-mail ne semble pas valide. Vérifiez qu’elle contient un @ et un domaine.",
+    "validation.invite_email_invalid": "Cela ne ressemble pas à une adresse e-mail. Vérifiez qu’elle contient un @ et un domaine.",
     "members.own_membership": "Vous ne pouvez ni modifier votre propre rôle ni vous retirer de l’organisation. Une autre personne ayant le rôle Propriétaire ou Administrateur le peut, ou vous pouvez quitter l’organisation depuis Général.",
     "members.request_answered": "Cette demande a déjà reçu une réponse, ou a été retirée faute de réponse à temps.",
     "members.approve_not_owner": "Approuvez d’abord la demande, puis attribuez-lui le rôle Propriétaire dans Membres.",
