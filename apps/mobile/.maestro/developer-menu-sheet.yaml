@@ -1,0 +1,19 @@
+# Expo Go's first-run developer-menu sheet, where it is up: its Continue, never a coordinate.
+# Decided by notVisible on the sheet alone. It returns within half a second when the sheet is
+# absent, where a visible lookup or a copy waits out seven seconds, and a copy over the sheet
+# or the screens beneath it returns a covered menu row ahead of the sheet. The batch and the
+# request-link flows both call this. sc-19752, sc-20534.
+appId: host.exp.Exponent
+---
+- evalScript: ${output.developerMenuSheet = true}
+- runFlow:
+    when:
+      notVisible: 'This is the developer menu.*'
+    commands:
+      - evalScript: ${output.developerMenuSheet = false}
+- runFlow:
+    when:
+      true: ${output.developerMenuSheet}
+    commands:
+      - tapOn: 'Continue'
+      - waitForAnimationToEnd

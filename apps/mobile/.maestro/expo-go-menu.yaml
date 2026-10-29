@@ -2,10 +2,7 @@
 appId: host.exp.Exponent
 ---
 - runFlow:
-    when:
-      visible: 'This is the developer menu.*'
-    commands:
-      - tapOn: 'Continue'
+    file: developer-menu-sheet.yaml
 - runFlow:
     when:
       visible: 'Go home'

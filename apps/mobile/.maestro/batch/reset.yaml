@@ -16,10 +16,10 @@ appId: host.exp.Exponent
     notVisible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}'
     timeout: 10000
     optional: true
-- extendedWaitUntil:
-    visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}'
-    timeout: 60000
-    optional: true
+- runFlow:
+    file: developer-menu.yaml
+    env:
+      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}'
 # The first reload after signing in can close Expo Go rather than reload it. Asked of the
 # harness, since a notVisible condition waits out seven seconds from the last command.
 - runScript:
