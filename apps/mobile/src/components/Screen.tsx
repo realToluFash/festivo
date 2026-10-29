@@ -46,7 +46,6 @@ import {
   focusBackMs,
   type StepCloseStep,
   stepCloseSteps,
-  type StepOpener,
 } from '../kit/focusBack.ts';
 import { stepOpeners } from '../kit/stepOpeners.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -417,19 +416,18 @@ export function useFocusBackToOpener(
 export interface StepClose {
   /** The opener's ref, in place of `opener(key)`. */
   opener: RefCallback<ViewInstance>;
-  /** For a `line` opener, the ref of a view TalkBack does not read, shown while the line is, which holds input focus in the line's place. */
+  /** The ref of a `FocusHolder` shown while the opener is, which holds input focus in the opener's place. */
   holder: RefObject<ViewInstance | null>;
   /** The step is closing in order, and its opener shows beside it until focus has reached it. */
   closing: boolean;
   close(): void;
 }
 
-/** Closes a step back to the `kind` of opener `to` names, in the steps `stepCloseSteps` gives; `finish` takes the step away, with what `useFocusBackToOpener` moves focus back from, or nothing when focus is already there (sc-18588). A `line` close needs `holder` rendered beside the line: without it nothing takes input focus, and blurring the field hands focus to the header's back row (sc-18587). */
+/** Closes a step back to the opener `to` names, a control or a line of words, in the steps `stepCloseSteps` gives; `finish` takes the step away, with what `useFocusBackToOpener` moves focus back from, or nothing when focus is already there (sc-18588). The close needs `holder` rendered beside the opener: without it nothing takes input focus, and blurring the field hands focus to the header's back row (sc-18587). */
 export function useStepClose(
   opener: (key: string) => RefCallback<ViewInstance>,
   to: string,
   finish: (closed: StepClosed | undefined) => void,
-  kind: StepOpener = 'control',
 ): StepClose {
   const scroll = useContext(ScreenScroll);
   const [closing, setClosing] = useState(false);
@@ -466,7 +464,7 @@ export function useStepClose(
             break;
           }
           if (step.do === 'takeInputFocus') {
-            inputFocus.current = step.to === 'holder' ? holder.current : view.current;
+            inputFocus.current = holder.current;
             inputFocus.current?.setNativeProps({ hasTVPreferredFocus: true });
             const taken = setTimeout(() => runFrom(steps.slice(at + 1)), step.atMs);
             cancels.push(() => clearTimeout(taken));
@@ -491,7 +489,7 @@ export function useStepClose(
               settleOnto(
                 scroll,
                 () => view.current,
-                () => (step.read ? view.current : null),
+                () => view.current,
                 false,
                 SETTLED_MS,
                 step.into,
@@ -541,11 +539,18 @@ export function useStepClose(
     };
     void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
       if (gone) return;
-      cancel.current = run(stepCloseSteps(Platform.OS, on, kind, SETTLED_MS));
+      cancel.current = run(stepCloseSteps(Platform.OS, on, SETTLED_MS));
     });
-  }, [run, kind]);
+  }, [run]);
 
   return { opener: ref, holder, closing, close };
+}
+
+/** Holds input focus in a closing step's opener's place, where TalkBack does not read it; rendered beside the opener, with `useStepClose`'s `holder`. */
+export function FocusHolder({ holder }: { holder: RefObject<ViewInstance | null> }) {
+  return (
+    <View ref={holder} style={styles.holder} collapsable={false} importantForAccessibility="no" />
+  );
 }
 
 /** Focus back to the row a page was opened from, as `useFocusBackToOpener` on a `page` return; rendered inside a list's ScrollColumn so the row comes into view. */
@@ -785,6 +790,8 @@ export function Screen({
 }
 
 const styles = StyleSheet.create({
+  // Android gives no input focus to a view without a size.
+  holder: { position: 'absolute', width: 1, height: 1 },
   root: { flex: 1, backgroundColor: tokens.colorPage },
   fill: { flex: 1 },
   content: { padding: tokens.spaceXxl, gap: tokens.spaceXl },

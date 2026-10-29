@@ -24,6 +24,7 @@ import { Field, focusChecked, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import {
+  FocusHolder,
   SETTLED_MS,
   type StepClosed,
   useAboveKeyboard,
@@ -65,6 +66,7 @@ export function TimeZoneCard({
   const opener = useFocusBackToOpener(editing ? undefined : closed);
   const {
     opener: changeOpener,
+    holder: changeHolder,
     closing,
     close,
   } = useStepClose(opener, 'change', (back) => {
@@ -77,15 +79,10 @@ export function TimeZoneCard({
     holder: savedHolder,
     closing: savedClosing,
     close: closeSaved,
-  } = useStepClose(
-    opener,
-    'saved',
-    (back) => {
-      setSavedFocused(back == null);
-      setEditing(false);
-    },
-    'line',
-  );
+  } = useStepClose(opener, 'saved', (back) => {
+    setSavedFocused(back == null);
+    setEditing(false);
+  });
   const savedGiven = savedFocused || savedClosing;
   const frame = cardFrame(kind);
 
@@ -144,12 +141,7 @@ export function TimeZoneCard({
       )}
       {saved != null && (!editing || savedClosing) && (
         <>
-          <View
-            ref={savedHolder}
-            style={styles.holder}
-            collapsable={false}
-            importantForAccessibility="no"
-          />
+          <FocusHolder holder={savedHolder} />
           <Notice
             tone="done"
             mark={tokens.marks.done.glyph}
@@ -162,17 +154,20 @@ export function TimeZoneCard({
         </>
       )}
       {(!editing || closing) && (
-        <SecondaryButton
-          ref={changeOpener}
-          label={t('timeZone.change')}
-          onPress={() => {
-            setSaved(null);
-            setSavedFocused(false);
-            setClosed(undefined);
-            setEditing(true);
-          }}
-          testID="timeZone.change"
-        />
+        <>
+          <FocusHolder holder={changeHolder} />
+          <SecondaryButton
+            ref={changeOpener}
+            label={t('timeZone.change')}
+            onPress={() => {
+              setSaved(null);
+              setSavedFocused(false);
+              setClosed(undefined);
+              setEditing(true);
+            }}
+            testID="timeZone.change"
+          />
+        </>
       )}
     </View>
   );
@@ -361,8 +356,6 @@ function Choosing({
 
 const styles = StyleSheet.create({
   group: { gap: tokens.spaceXxs },
-  // Android gives no input focus to a view without a size.
-  holder: { position: 'absolute', width: 1, height: 1 },
   choosing: { gap: tokens.spaceLg },
   secondary: { color: tokens.colorInkSecondary },
   list: {
