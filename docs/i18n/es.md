@@ -49,6 +49,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **29 Oct 2026. El aviso de que un evento ha cambiado** (sc-21005 para sc-13214,
+  `messages+intl-icu:eventChanges.*`: la campana, el push y el correo). El título es el acto en
+  pretérito perfecto con el nombre completo, «{name} ha pausado el evento», y nada concuerda con
+  el nombre; "changed" es «ha modificado», porque «ha cambiado el evento» se lee como cambiar un
+  evento por otro. Cada línea abre con lo nuevo, «Nueva fecha: {new} (antes: {old}).», sin
+  artículo ante una hora; un lugar que aparece es «Lugar confirmado», y uno que se quita, «Lugar
+  por confirmar», como la página del evento. El asunto es el estado en masculino, por «evento»:
+  «En pausa: {event}», «Reanudado: {event}». «Support» se nombra entero, «el servicio de
+  asistencia de Soirely». Los demás: «También lo ha modificado {name}.», con «de personas más»
+  en `many`. El pie dice «forma parte de {event}» y cita «Cambios en eventos».
 - **29 Oct 2026. Las notificaciones: la campana, Silenciar este evento y la configuración**
   (sc-14815 para sc-3980, `notifications.*`, `eventMute.*`, `notificationSettings.*` web y app,
   `messages:notifications.*`). El canal es «Push» en la columna y «notificaciones push» en una
