@@ -87,6 +87,7 @@ describe('shared root configuration runs everything', () => {
     ['the eslint config', 'eslint.config.mjs'],
     ['the compose stack', 'compose.yaml'],
     ['what each event state allows', 'event-states.json'],
+    ['the hours only Event day pushes come through', 'quiet-hours.json'],
     ['a script', 'scripts/test-db.mjs'],
     ['the workflow itself', '.github/workflows/pull-request.yml'],
   ])('%s', (_name, path) => {
