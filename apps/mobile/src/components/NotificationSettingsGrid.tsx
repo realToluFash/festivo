@@ -1,3 +1,4 @@
+import { quietHoursIn, settingFlipped, settingRows, usageThresholdsIn } from '@soirely/domain';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -8,12 +9,8 @@ import { currentLocale } from '../i18n/index.ts';
 import {
   type Channel,
   type SettingsGrid,
-  flipped,
-  quietHours,
   readSettings,
-  rows,
   saveSetting,
-  usageThresholds,
 } from '../kit/notificationSettings.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -88,15 +85,14 @@ export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
     channel: Channel,
     on: boolean,
   ): void => {
-    const before = grid.settings;
     setGrid({
       status: 'loaded',
-      settings: flipped(before, category, channel, on),
+      settings: settingFlipped(grid.settings, category, channel, on),
       saved: false,
       unsaved: null,
     });
-    void saveSetting(api, before, category, channel, on).then((saved) => {
-      setGrid(saved);
+    void saveSetting(api, category, channel, on).then((apply) => {
+      setGrid(apply);
       setTap({});
     });
   };
@@ -131,9 +127,9 @@ export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
           </Text>
         ))}
       </View>
-      {rows(grid.settings).map((setting, index) => {
+      {settingRows(grid.settings).map((setting, index) => {
         const name = t(`notificationSettings.category.${setting.category}`);
-        const note = t(`notificationSettings.note.${setting.category}`, usageThresholds(locale));
+        const note = t(`notificationSettings.note.${setting.category}`, usageThresholdsIn(locale));
         const failed = grid.unsaved?.category === setting.category ? grid.unsaved.channel : null;
 
         return (
@@ -180,7 +176,7 @@ export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
         );
       })}
       <Text size={tokens.typeBody.size} muted>
-        {t('notificationSettings.quietHours', quietHours(locale))}
+        {t('notificationSettings.quietHours', quietHoursIn(locale))}
       </Text>
     </View>
   );

@@ -1,30 +1,26 @@
 import type { NotificationCategory, NotificationSetting } from '@soirely/api-client';
+import {
+  NOTIFICATION_CATEGORY_ORDER,
+  type SettingChannel,
+  quietHoursIn,
+  settingFlipped,
+  usageThresholdsIn,
+} from '@soirely/domain';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { currentLocale } from '../../../i18n/index.ts';
 import { AccountSections } from '../../../components/AccountSections.tsx';
+import { FieldError } from '../../../components/FieldError.tsx';
 import { Pending } from '../../../components/Pending.tsx';
 
-type Channel = 'push' | 'email';
+type Channel = SettingChannel;
 
 type Grid =
   | { status: 'loading' }
   | { status: 'failed' }
   | { status: 'loaded'; settings: NotificationSetting[] };
-
-const ORDER: readonly NotificationCategory[] = [
-  'guest_replies',
-  'messages',
-  'event_day',
-  'event_changes',
-  'money',
-  'account_security',
-];
-
-const QUIET_HOURS = { start: 21, end: 8 };
-const USAGE_THRESHOLDS = { low: 0.8, high: 1 };
 
 /** Notification settings (sc-3980): six categories against Push and Email, each switch saved as it changes. */
 export function NotificationSettings() {
@@ -55,24 +51,20 @@ export function NotificationSettings() {
   async function change(category: NotificationCategory, channel: Channel, on: boolean) {
     if (grid.status !== 'loaded') return;
 
-    const before = grid.settings;
     setUnsaved(undefined);
     setSaid('');
-    setGrid({
-      status: 'loaded',
-      settings: before.map((setting) =>
-        setting.category === category
-          ? { ...setting, [channel]: { ...setting[channel], on } }
-          : setting,
-      ),
-    });
+    setGrid({ status: 'loaded', settings: settingFlipped(grid.settings, category, channel, on) });
 
     try {
       const settings = await api.setNotificationSetting(category, channel, on);
       setGrid({ status: 'loaded', settings });
       setSaid(t('notificationSettings.saved'));
     } catch {
-      setGrid({ status: 'loaded', settings: before });
+      setGrid((current) =>
+        current.status === 'loaded'
+          ? { status: 'loaded', settings: settingFlipped(current.settings, category, channel, !on) }
+          : current,
+      );
       setUnsaved({ category, channel });
     }
   }
@@ -135,12 +127,13 @@ export function NotificationSettings() {
               </tr>
             </thead>
             <tbody>
-              {ORDER.map((category) => {
+              {NOTIFICATION_CATEGORY_ORDER.map((category) => {
                 const setting = grid.settings.find((row) => row.category === category);
                 if (setting == null) return null;
 
                 const name = t(`notificationSettings.category.${category}`);
                 const noteId = `notification-note-${category}`;
+                const errorId = `notification-error-${category}`;
                 const failed = unsaved?.category === category ? unsaved.channel : null;
 
                 return (
@@ -148,16 +141,20 @@ export function NotificationSettings() {
                     <th scope="row">
                       <span className="notification-settings-name">{name}</span>
                       <span id={noteId} className="notification-settings-note">
-                        {t(`notificationSettings.note.${category}`, usageThresholds())}
+                        {t(
+                          `notificationSettings.note.${category}`,
+                          usageThresholdsIn(currentLocale()),
+                        )}
                       </span>
                       {failed != null && (
-                        <span className="field-error">
-                          {t(
+                        <FieldError
+                          id={errorId}
+                          message={t(
                             failed === 'push'
                               ? 'notificationSettings.pushNotSaved'
                               : 'notificationSettings.emailNotSaved',
                           )}
-                        </span>
+                        />
                       )}
                     </th>
                     {(['push', 'email'] as const).map((channel) => (
@@ -172,7 +169,7 @@ export function NotificationSettings() {
                               category: name,
                               channel: t(`notificationSettings.${channel}`),
                             })}
-                            aria-describedby={noteId}
+                            aria-describedby={failed === channel ? `${noteId} ${errorId}` : noteId}
                             onChange={(event) =>
                               void change(category, channel, event.currentTarget.checked)
                             }
@@ -191,26 +188,11 @@ export function NotificationSettings() {
             </tbody>
           </table>
 
-          <p className="muted">{t('notificationSettings.quietHours', quietHours())}</p>
+          <p className="muted">
+            {t('notificationSettings.quietHours', quietHoursIn(currentLocale()))}
+          </p>
         </section>
       )}
     </div>
   );
-}
-
-function quietHours(): { start: string; end: string } {
-  const time = new Intl.DateTimeFormat(currentLocale(), {
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  });
-  const at = (hour: number) => time.format(new Date(2000, 0, 1, hour));
-
-  return { start: at(QUIET_HOURS.start), end: at(QUIET_HOURS.end) };
-}
-
-function usageThresholds(): { low: string; high: string } {
-  const percent = new Intl.NumberFormat(currentLocale(), { style: 'percent' });
-
-  return { low: percent.format(USAGE_THRESHOLDS.low), high: percent.format(USAGE_THRESHOLDS.high) };
 }

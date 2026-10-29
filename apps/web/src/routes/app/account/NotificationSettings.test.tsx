@@ -24,7 +24,7 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-function settings(put: () => Response) {
+function settings(put: () => Response | Promise<Response>) {
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) =>
     init?.method === 'PUT' ? put() : json({ categories: CATEGORIES }),
   );
@@ -88,11 +88,44 @@ describe('Notification settings (sc-3980)', () => {
 
     fireEvent.click(await screen.findByRole('switch', { name: 'Event changes Push' }));
 
-    expect(await screen.findByText("Couldn't save the push switch. Try again.")).toBeTruthy();
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      "Couldn't save the push switch. Try again.",
+    );
     await waitFor(() =>
       expect(
         (screen.getByRole('switch', { name: 'Event changes Push' }) as HTMLInputElement).checked,
       ).toBe(true),
     );
+    expect(
+      screen.getByRole('switch', { name: 'Event changes Push' }).getAttribute('aria-describedby'),
+    ).toBe('notification-note-event_changes notification-error-event_changes');
+  });
+
+  it('a failed save puts back only its own switch, not one saved meanwhile', async () => {
+    let refuse: (answer: Response) => void = () => undefined;
+    const answers = [
+      new Promise<Response>((resolve) => (refuse = resolve)),
+      Promise.resolve(
+        json({
+          categories: CATEGORIES.map((row) =>
+            row.category === 'messages' ? { ...row, email: { on: false, switchable: true } } : row,
+          ),
+        }),
+      ),
+    ];
+    settings(() => answers.shift() ?? Promise.reject(new Error('one too many')));
+
+    fireEvent.click(await screen.findByRole('switch', { name: 'Event changes Push' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Messages Email' }));
+    expect(await screen.findByText('Saved.')).toBeTruthy();
+    refuse(json({ title: 'No.' }, 500));
+
+    expect(await screen.findByText("Couldn't save the push switch. Try again.")).toBeTruthy();
+    expect(
+      (screen.getByRole('switch', { name: 'Event changes Push' }) as HTMLInputElement).checked,
+    ).toBe(true);
+    expect(
+      (screen.getByRole('switch', { name: 'Messages Email' }) as HTMLInputElement).checked,
+    ).toBe(false);
   });
 });

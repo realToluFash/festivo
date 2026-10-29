@@ -1,15 +1,13 @@
 import type { NotificationSetting } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
+import { settingFlipped } from '@soirely/domain';
+
 import {
-  CATEGORY_ORDER,
+  type SettingsGrid,
   type SwitchesNotifications,
-  flipped,
-  quietHours,
   readSettings,
-  rows,
   saveSetting,
-  usageThresholds,
 } from './notificationSettings.ts';
 
 const on = { on: true, switchable: true };
@@ -33,17 +31,7 @@ function client(answers: Partial<SwitchesNotifications>): SwitchesNotifications 
 }
 
 describe('Notification settings in the app', () => {
-  it('lists the six categories with Event changes right after Event day', () => {
-    expect(rows(grid).map((row) => row.category)).toEqual(CATEGORY_ORDER);
-    expect(CATEGORY_ORDER).toEqual([
-      'guest_replies',
-      'messages',
-      'event_day',
-      'event_changes',
-      'money',
-      'account_security',
-    ]);
-  });
+  const loaded: SettingsGrid = { status: 'loaded', settings: grid, saved: false, unsaved: null };
 
   it('did not load when the read fails', async () => {
     const state = await readSettings(
@@ -53,18 +41,10 @@ describe('Notification settings in the app', () => {
     expect(state).toEqual({ status: 'failed' });
   });
 
-  it('moves only the switch tapped', () => {
-    const next = flipped(grid, 'money', 'push', true);
-
-    expect(next.find((row) => row.category === 'money')?.push.on).toBe(true);
-    expect(next.find((row) => row.category === 'money')?.email.on).toBe(true);
-    expect(next.find((row) => row.category === 'messages')?.push.on).toBe(false);
-  });
-
   it('takes the grid the server saved, and says it saved', async () => {
     const sent: unknown[] = [];
-    const saved = flipped(grid, 'event_changes', 'push', false);
-    const state = await saveSetting(
+    const saved = settingFlipped(grid, 'event_changes', 'push', false);
+    const apply = await saveSetting(
       client({
         setNotificationSetting: (...args) => {
           sent.push(args);
@@ -72,36 +52,39 @@ describe('Notification settings in the app', () => {
           return Promise.resolve(saved);
         },
       }),
-      grid,
       'event_changes',
       'push',
       false,
     );
 
     expect(sent).toEqual([['event_changes', 'push', false]]);
-    expect(state).toEqual({ status: 'loaded', settings: saved, saved: true, unsaved: null });
+    expect(apply(loaded)).toEqual({
+      status: 'loaded',
+      settings: saved,
+      saved: true,
+      unsaved: null,
+    });
   });
 
-  it('puts the switch back and names it when the save fails', async () => {
-    const state = await saveSetting(
+  it('puts back only its own switch when the save fails, and names it', async () => {
+    const apply = await saveSetting(
       client({ setNotificationSetting: () => Promise.reject(new Error('down')) }),
-      grid,
       'event_changes',
       'push',
       false,
     );
+    const meanwhile = settingFlipped(
+      settingFlipped(grid, 'event_changes', 'push', false),
+      'messages',
+      'email',
+      false,
+    );
 
-    expect(state).toEqual({
+    expect(apply({ ...loaded, settings: meanwhile })).toEqual({
       status: 'loaded',
-      settings: grid,
+      settings: settingFlipped(grid, 'messages', 'email', false),
       saved: false,
       unsaved: { category: 'event_changes', channel: 'push' },
     });
-  });
-
-  it('writes quiet hours and usage levels in the locale', () => {
-    expect(quietHours('en')).toEqual({ start: '21:00', end: '08:00' });
-    expect(usageThresholds('en')).toEqual({ low: '80%', high: '100%' });
-    expect(usageThresholds('fr').low).toMatch(/^80\s?%$/u);
   });
 });
