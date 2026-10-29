@@ -4,10 +4,4 @@ appId: host.exp.Exponent
 - runFlow:
     file: developer-menu-sheet.yaml
 - runFlow:
-    when:
-      visible: 'Go home'
-    commands:
-      # The menu's close button, beside its Go home row, as it sat on Soirely QA iPhone in the sc-19752 pass.
-      - tapOn:
-          point: '90%,49%'
-      - waitForAnimationToEnd
+    file: developer-menu-close.yaml
