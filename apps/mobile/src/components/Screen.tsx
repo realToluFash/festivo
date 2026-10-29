@@ -452,6 +452,22 @@ export function useStepClose(
     finishNow.current = finish;
   });
 
+  // A field that has since given input focus up leaves the keys up, which only its own blur puts down (sc-18588).
+  const raisedBy = useRef<HostInstance | null>(null);
+  useEffect(() => {
+    const shown = Keyboard.addListener('keyboardDidShow', () => {
+      raisedBy.current = TextInput.State.currentlyFocusedInput() ?? raisedBy.current;
+    });
+    const hidden = Keyboard.addListener('keyboardDidHide', () => {
+      raisedBy.current = null;
+    });
+
+    return () => {
+      shown.remove();
+      hidden.remove();
+    };
+  }, []);
+
   const run = useCallback(
     (all: readonly StepCloseStep[]): (() => void) => {
       const cancels: (() => void)[] = [];
@@ -531,7 +547,7 @@ export function useStepClose(
   const close = useCallback(() => {
     if (started.current) return;
     started.current = true;
-    field.current = TextInput.State.currentlyFocusedInput() ?? null;
+    field.current = TextInput.State.currentlyFocusedInput() ?? raisedBy.current;
 
     let gone = false;
     cancel.current = () => {
