@@ -612,6 +612,20 @@ describe('Your password stays on screen when the transfer asks for a code (sc-96
       /keptProofRanOut\(error, transferSentKept\(vouched, pending\)\)/u,
     );
   });
+
+  it('in OwnershipCard.tsx, saying so on the password path, where no lapse notice shows', () => {
+    const text = readFileSync(join('src', 'components', 'OwnershipCard.tsx'), 'utf8');
+    const start = text.indexOf('if (keptProofRanOut(error,');
+    const lapse = start < 0 ? '' : text.slice(start, text.indexOf('return;', start));
+
+    expect(lapse, 'the lapse branch').not.toBe('');
+    expect(text, 'The lapse notice names a provider.').toMatch(
+      /expired != null && provider != null/u,
+    );
+    expect(lapse, 'A lapse that sets nothing leaves a password owner no word why.').toMatch(
+      /if \(provider == null\) setRefused\(\{ field: null, message: error\.problem\.title \}\)/u,
+    );
+  });
 });
 
 describe('a submit with the keys down keeps them down (sc-13408, sc-9674)', () => {

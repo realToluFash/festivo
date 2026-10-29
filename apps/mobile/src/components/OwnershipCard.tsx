@@ -336,6 +336,7 @@ function Transfer({
         setCodeAsked(false);
         setCode('');
         setExpired({});
+        if (provider == null) setRefused({ field: null, message: error.problem.title });
 
         return;
       }
