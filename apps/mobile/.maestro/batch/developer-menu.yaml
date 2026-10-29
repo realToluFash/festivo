@@ -8,4 +8,7 @@ appId: host.exp.Exponent
     visible: '${SETTLED}|This is the developer menu.*'
     timeout: 60000
     optional: true
-- runFlow: ../developer-menu-sheet.yaml
+- runFlow:
+    file: ../developer-menu-sheet.yaml
+    env:
+      SCREENS: ${SETTLED}

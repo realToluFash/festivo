@@ -1,11 +1,19 @@
 # Expo Go's first-run developer-menu sheet, where it is up: its Continue, never a coordinate.
-# The batch and the request-link flows both call this, so a reworded sheet changes one flow.
+# Copied, not looked for: a lookup that finds nothing waits out seven seconds from the last
+# command, so the caller names the ${SCREENS} that are up when the sheet is not, and the copy
+# returns at once with whichever is. The batch and the request-link flows both call this.
 # sc-19752, sc-20534.
 appId: host.exp.Exponent
 ---
+- copyTextFrom:
+    text: '${SCREENS}|This is the developer menu.*'
+    optional: true
 - runFlow:
     when:
-      visible: 'This is the developer menu.*'
+      true: ${/^This is the developer menu/.test(maestro.copiedText)}
     commands:
-      - tapOn: 'Continue'
+      # Optional, since a copy that found nothing leaves the last one's text.
+      - tapOn:
+          text: 'Continue'
+          optional: true
       - waitForAnimationToEnd
