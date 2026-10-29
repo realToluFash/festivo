@@ -46,6 +46,9 @@ class Header(unittest.TestCase):
         for label in ("dev3", "dev4"):
             self.assertEqual(roles.addressees("[dev] (from lead)\n", [label]), [label])
 
+    def test_a_bare_dev_tag_on_an_ops_story_goes_to_ops(self):
+        self.assertEqual(roles.addressees("[dev] (from lead)\n", ["ops"]), ["ops"])
+
     def test_a_former_locale_tag_or_signature_means_the_linguist(self):
         self.assertEqual(roles.addressees("[fr] [pm] (from qa2)\n", []), ["l10n", "pm"])
         self.assertEqual(roles.author("[qa] (from pt)\nDone."), "l10n")

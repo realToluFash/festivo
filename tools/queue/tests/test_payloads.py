@@ -72,6 +72,19 @@ class Conflict(unittest.TestCase):
         self.assertNotIn("lead", said)
 
 
+class Review(unittest.TestCase):
+    def render(self, labels):
+        p = Lines("lead")
+        with mock.patch.multiple(payloads.V, header=mock.DEFAULT, notes=mock.DEFAULT,
+                                 description=mock.DEFAULT, comments=mock.DEFAULT):
+            payloads.review(p, None, {"id": 5}, ticket(labels=labels), None, {})
+        return " ".join(p.lines)
+
+    def test_with_no_pr_it_asks_whoever_builds_the_story(self):
+        self.assertIn("--to ops`", self.render(("ops",)))
+        self.assertIn("--to dev2`", self.render(("dev2",)))
+
+
 if __name__ == "__main__":
     unittest.main()
 
