@@ -10,7 +10,7 @@ import {
   whenShown,
 } from '@soirely/domain';
 import { router } from 'expo-router';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { type RefObject, memo, useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -26,6 +26,7 @@ import { useMutes } from '../eventMutes.ts';
 import { markPushAsked, pushAskDue, turnOnAppPush } from '../appPush.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { SECTION_HREF } from '../kit/appNav.ts';
+import { feedWithReadUndone, markAllRead, readSettled } from '../kit/notificationFeed.ts';
 import { appPlace } from '../kit/notificationPlace.ts';
 import { arrivalsSeen, countedSince, setUnread, useArrivals } from '../notificationsUnread.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -35,25 +36,24 @@ import { Notice } from './Notice.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Sheet } from './Sheet.tsx';
-import { Text } from './Text.tsx';
+import { Text, type TextHandle } from './Text.tsx';
 
 type Feed =
   | { status: 'loading' }
   | { status: 'failed' }
   | { status: 'loaded'; items: NotificationItem[]; unread: number; next: string | null };
 
-/** `NotificationsBell-*` in the app (sc-3980): the feed, live, with its push ask, Mark all read and Show more. */
-export function NotificationsFeed() {
+/** `NotificationsBell-*` in the app (sc-3980): the feed, live, with its push ask, Mark all read and Show more; `heading` is the frame's title. */
+export function NotificationsFeed({ heading }: { heading: RefObject<TextHandle | null> }) {
   const { t } = useTranslation();
   const [feed, setFeed] = useState<Feed>({ status: 'loading' });
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
   const [more, setMore] = useState<'idle' | 'loading' | 'failed'>('idle');
   const [asking, setAsking] = useState(false);
   const [said, setSaid] = useState<{ words: string } | null>(null);
-  const heading = useRef<ViewInstance>(null);
 
   const fetchFeed = useCallback((): void => {
-    api.notifications().then(
+    readSettled(() => api.notifications(), arrivalsSeen).then(
       (loaded) => {
         setFeed({
           status: 'loaded',
@@ -85,13 +85,8 @@ export function NotificationsFeed() {
   }, [fetchFeed]);
 
   const reread = (): void => {
-    const seen = arrivalsSeen();
-    api.notifications().then(
+    readSettled(() => api.notifications(), arrivalsSeen).then(
       (page) => {
-        if (arrivalsSeen() !== seen) {
-          reread();
-          return;
-        }
         setFeed((current) =>
           current.status === 'loaded'
             ? {
@@ -160,7 +155,12 @@ export function NotificationsFeed() {
             current.status === 'loaded' ? { ...current, unread: answer.unreadCount } : current,
           );
         },
-        () => undefined,
+        () =>
+          setFeed((current) =>
+            current.status === 'loaded'
+              ? { ...feedWithReadUndone(current, item.id), status: 'loaded' }
+              : current,
+          ),
       );
     }
 
@@ -185,15 +185,17 @@ export function NotificationsFeed() {
     if (feed.status !== 'loaded' || feed.unread === 0) return;
 
     setFeed({ ...feedAllRead(feed), status: 'loaded' });
-    setSaid({ words: t('notifications.allRead') });
     const seen = arrivalsSeen();
-    try {
-      const left = await api.readAllNotifications();
-      if (!countedSince(seen, left)) return;
-      setFeed((current) => (current.status === 'loaded' ? { ...current, unread: left } : current));
-    } catch {
+    const outcome = await markAllRead(api);
+    setSaid({ words: t(outcome.said) });
+    if (!('left' in outcome)) {
       load();
+      return;
     }
+
+    const { left } = outcome;
+    if (!countedSince(seen, left)) return;
+    setFeed((current) => (current.status === 'loaded' ? { ...current, unread: left } : current));
   }
 
   function showMore(after: string): void {
@@ -233,26 +235,12 @@ export function NotificationsFeed() {
       ListHeaderComponent={
         <>
           <View style={styles.header}>
-            <View ref={heading} accessible focusable style={styles.fill}>
-              <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
-                {t('notifications.heading')}
-              </Text>
-            </View>
-            <Pressable
-              style={styles.textButton}
+            <QuietButton
+              label={t('notifications.markAllRead')}
               onPress={() => void readAll()}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: unread === 0 }}
+              off={unread === 0}
               testID="notifications.markAllRead"
-            >
-              <Text
-                size={tokens.typeButton.size}
-                weight="semibold"
-                style={unread === 0 ? styles.secondaryInk : styles.accent}
-              >
-                {t('notifications.markAllRead')}
-              </Text>
-            </Pressable>
+            />
           </View>
 
           {asking && (
@@ -496,7 +484,7 @@ const styles = StyleSheet.create({
   },
   part: { gap: tokens.spaceLg, paddingVertical: tokens.spaceSm },
   between: { height: tokens.spaceLg },
-  header: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
+  header: { flexDirection: 'row', justifyContent: 'flex-end' },
   fill: { flex: 1 },
   textButton: {
     minHeight: tokens.sizeHit,
@@ -505,7 +493,6 @@ const styles = StyleSheet.create({
     gap: tokens.spaceXs,
   },
   accent: { color: tokens.colorAccentText },
-  secondaryInk: { color: tokens.colorInkSecondary },
   ask: {
     gap: tokens.spaceSm,
     padding: tokens.spaceLg,

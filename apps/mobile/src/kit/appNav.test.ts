@@ -148,3 +148,20 @@ describe('Events titles itself once, in the frame header (sc-17559)', () => {
     expect(split).toMatch(/\{landscape && \(heading \|\| besideHeading\) && \(/u);
   });
 });
+
+describe('The bell titles itself once, in the frame header (sc-3980)', () => {
+  it('gives the feed no heading of its own on any layout', () => {
+    const feed = source(join(SRC, 'components', 'NotificationsFeed.tsx'));
+
+    expect(feed).not.toMatch(/notifications\.heading/u);
+  });
+
+  it('moves focus after the push ask to the frame title, which is a header', () => {
+    const screen = source(join(APP, 'notifications.tsx'));
+    const feed = source(join(SRC, 'components', 'NotificationsFeed.tsx'));
+
+    expect(screen).toMatch(/title=\{t\('notifications\.heading'\)\}\s*titleRef=\{title\}/u);
+    expect(screen).toMatch(/<NotificationsFeed heading=\{title\} \/>/u);
+    expect(feed).toMatch(/moveScreenReaderFocus\(heading\.current\)/u);
+  });
+});
