@@ -6,9 +6,11 @@ import {
   type LayoutRectangle,
   Platform,
   ScrollView,
+  type ScrollViewInstance,
   StyleSheet,
-  type TextInput,
+  type TextInputInstance,
   View,
+  type ViewInstance,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -44,7 +46,7 @@ export function CreateOrganisation({
 }: {
   open: boolean;
   email: string;
-  opener: RefObject<View | null>;
+  opener: RefObject<ViewInstance | null>;
   onCreated: (created: Membership) => void;
   onCancel: () => void;
 }) {
@@ -82,7 +84,7 @@ export function CreateOrganisation({
 
 /** Keeps the name field, and its notices while they fit, in the body's sight as the body shrinks or they grow, again each time the keys move. */
 function useFocusInSight(keysUp: boolean, inSight: boolean) {
-  const body = useRef<ScrollView>(null);
+  const body = useRef<ScrollViewInstance>(null);
   const bodyHeight = useRef<number | null>(null);
   const group = useRef<LayoutRectangle | null>(null);
   const field = useRef<LayoutRectangle | null>(null);
@@ -169,8 +171,8 @@ function Form({
   const [limited, setLimited] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [saving, setSaving] = useState(false);
-  const nameInput = useRef<TextInput>(null);
-  const countryPicker = useRef<View>(null);
+  const nameInput = useRef<TextInputInstance>(null);
+  const countryPicker = useRef<ViewInstance>(null);
   const checks = useFormChecks(
     NEW_ORGANISATION_FIELDS,
     (field, value) => newOrganisationMessage(field, value, t),

@@ -2,7 +2,7 @@ import { ApiError } from '@soirely/api-client';
 import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInput, View } from 'react-native';
+import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
@@ -110,8 +110,8 @@ function Credentials({
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
-  const email = useRef<TextInput>(null);
-  const password = useRef<TextInput>(null);
+  const email = useRef<TextInputInstance>(null);
+  const password = useRef<TextInputInstance>(null);
 
   // Read once: the field is uncontrolled, and a later status must not clear what was typed.
   const [keptEmail] = useState(() =>
@@ -141,7 +141,7 @@ function Credentials({
   const providerOnly = refusal?.kind === 'providerOnly';
   const locked = status.kind === 'rateLimited';
   // Where the tap's button went, its answer takes focus (sc-11173).
-  useFocusOnAnswer<TextInput>(
+  useFocusOnAnswer<TextInputInstance>(
     status.kind === 'ready' && status.another ? status : undefined,
     email,
   );

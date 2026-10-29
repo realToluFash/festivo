@@ -1,7 +1,7 @@
 import { ApiError, type CompanyDomains, type Membership } from '@soirely/api-client';
 import { companyDomainProblem, domainOf, normaliseDomain, removalAnswers } from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInput, View } from 'react-native';
+import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -39,7 +39,7 @@ export function CompanyDomainsCard({
   const [notRemoved, setNotRemoved] = useState<object | null>(null);
   const [closed, setClosed] = useState<StepClosed | undefined>(undefined);
   const opener = useFocusBackToOpener(closed);
-  const input = useRef<TextInput>(null);
+  const input = useRef<TextInputInstance>(null);
 
   useEffect(() => {
     let current = true;

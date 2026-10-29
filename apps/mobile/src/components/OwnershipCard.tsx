@@ -8,7 +8,13 @@ import {
 import { PROOF_MINUTES, confirmWith, roleName, typedNameMatches } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type Ref, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -180,7 +186,7 @@ function Row({
   title: string;
   note: string;
   action: string;
-  opener: Ref<View>;
+  opener: Ref<ViewInstance>;
   onPress: () => void;
   testID: string;
 }) {
@@ -234,9 +240,9 @@ function Transfer({
   const [refused, setRefused] = useState<{ field: TransferField | null; message: string } | null>(
     null,
   );
-  const ownerRow = useRef<View>(null);
-  const passwordInput = useRef<TextInput>(null);
-  const codeInput = useRef<TextInput>(null);
+  const ownerRow = useRef<ViewInstance>(null);
+  const passwordInput = useRef<TextInputInstance>(null);
+  const codeInput = useRef<TextInputInstance>(null);
   const chosen = candidates.find((one) => one.id === picked) ?? null;
   const name = organisation.name;
 
@@ -625,7 +631,7 @@ function Delete({
   const [busy, setBusy] = useState(false);
   const [mismatch, setMismatch] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
-  const input = useRef<TextInput>(null);
+  const input = useRef<TextInputInstance>(null);
   const aboveKeyboard = useAboveKeyboard();
   const name = organisation.name;
   const matches = typedNameMatches(typed, name);

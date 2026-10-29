@@ -28,7 +28,13 @@ import {
 } from '@soirely/domain';
 import { type TFunction, getFixedT } from 'i18next';
 import { type ReactNode, type Ref, useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -84,7 +90,7 @@ export function RoleList({
   roles: OrganisationRole[];
   open: string | null;
   /** Each row's ref, for focus to go back to the row whose page was left (sc-11173). */
-  opener?: ((key: string) => Ref<View>) | undefined;
+  opener?: ((key: string) => Ref<ViewInstance>) | undefined;
   onOpen: (id: string) => void;
 }) {
   const { t } = useTranslation();
@@ -188,8 +194,8 @@ export function RolePage({
   const startingGrant = role?.permissions ?? [];
   const [discarded, setDiscarded] = useState<object | undefined>(undefined);
   const nameAnswer = phone ? answer : (discarded ?? answer);
-  const { read: nameInput } = useFocusOnAnswer<TextInput>(naming ? nameAnswer : undefined);
-  const { read: removeButton } = useFocusOnAnswer<View>(removeAnswer);
+  const { read: nameInput } = useFocusOnAnswer<TextInputInstance>(naming ? nameAnswer : undefined);
+  const { read: removeButton } = useFocusOnAnswer<ViewInstance>(removeAnswer);
   const { ref: nameAboveKeyboard, onLayout: liftName } = useAboveKeyboard();
   const [nameHeight, setNameHeight] = useState(0);
   const [grant, setGrant] = useState<string[]>(startingGrant);
@@ -515,7 +521,7 @@ function Holders({ holders, onMore }: { holders: readonly RoleHolder[]; onMore: 
   const { t } = useTranslation();
   const [all, setAll] = useState(false);
   const { shown, more } = shownHolders(holders, all);
-  const firstRevealed = useRef<View>(null);
+  const firstRevealed = useRef<ViewInstance>(null);
 
   useEffect(() => {
     if (!all) return;
@@ -704,7 +710,7 @@ export function RemoveRole({
   onRemoved: (roles: OrganisationRole[]) => void;
 }) {
   const { t } = useTranslation();
-  const firstChoice = useRef<View>(null);
+  const firstChoice = useRef<ViewInstance>(null);
   const [replacement, setReplacement] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
   const [refused, setRefused] = useState<object>();

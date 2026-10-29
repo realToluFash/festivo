@@ -1,6 +1,6 @@
 import { NOTHING_SEEN, type VenueDraft, addressLookup } from '@soirely/domain';
 import { type RefObject, useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -27,8 +27,8 @@ export function VenueFields({
   errors: EventErrors;
   busy: boolean;
   timeZone: string;
-  nameInput: RefObject<TextInput | null>;
-  addressInput: RefObject<TextInput | null>;
+  nameInput: RefObject<TextInputInstance | null>;
+  addressInput: RefObject<TextInputInstance | null>;
   onVenue: (change: Partial<VenueDraft>) => void;
   /** Left out where the zone can't change, and then nothing is offered. */
   onUseZone?: (zone: string) => void;

@@ -2,7 +2,7 @@ import type { Membership } from '@soirely/api-client';
 import { formatDay } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type Ref, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
@@ -22,7 +22,7 @@ export function SignInRulesNotices({
 }: {
   organisation: Membership;
   /** Each notice's words by its place on Home, for focus to land on the one after a closed notice. */
-  place?: ((at: NoticePlace) => Ref<View>) | undefined;
+  place?: ((at: NoticePlace) => Ref<ViewInstance>) | undefined;
   /** A notice was closed with its own button, so focus goes to the item after it (sc-11173). */
   onClosed?: ((at: NoticePlace) => void) | undefined;
 }) {

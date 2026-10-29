@@ -1,5 +1,5 @@
 import type { Ref } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { tokens } from '../theme/tokens.ts';
 import type { FieldAction } from './Field.tsx';
@@ -45,7 +45,7 @@ export function Notice({
   /** How long after the answer focus moves to the words, as `useFocusOnAnswer` takes it. */
   readMs?: number;
   /** Its words as one item, without the action, for screen reader focus to be moved to. */
-  wordsRef?: Ref<View> | undefined;
+  wordsRef?: Ref<ViewInstance> | undefined;
 }) {
   const markSide = useMarkSide(tokens.sizePill);
   useReadOut(

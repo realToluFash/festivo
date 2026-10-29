@@ -1,5 +1,5 @@
 import { type Ref, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { takeLinkedNotice } from '../providerSignIn.ts';
@@ -13,7 +13,7 @@ export function LinkedNotice({
   onDismissed,
 }: {
   /** Its words, for focus to land on when a notice above it closes. */
-  wordsRef?: Ref<View> | undefined;
+  wordsRef?: Ref<ViewInstance> | undefined;
   /** Dismiss was tapped, so focus goes to the item after it (sc-11173). */
   onDismissed?: () => void;
 } = {}) {

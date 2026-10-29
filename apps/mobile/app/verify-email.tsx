@@ -7,7 +7,7 @@ import {
 import { cleanCode, codeProblem } from '@soirely/domain';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import type { TextInput } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
@@ -39,7 +39,7 @@ export default function VerifyEmail() {
   const [status, setStatus] = useState<Status>({ kind: 'entering' });
   const [cooldown, setCooldown] = useState(0);
   const [address, setAddress] = useState('');
-  const codeInput = useRef<TextInput>(null);
+  const codeInput = useRef<TextInputInstance>(null);
   const checks = useFormChecks(
     ['code'] as const,
     (_field, value) => {

@@ -13,7 +13,7 @@ import {
 import { getCalendars, getLocales } from 'expo-localization';
 import { router } from 'expo-router';
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, type TextInput, View } from 'react-native';
+import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
@@ -66,8 +66,8 @@ export default function CompleteProfile() {
   const [founding, setFounding] = useState(false);
   // The tap that brought the step showing, for its heading to take screen reader focus.
   const [tapped, setTapped] = useState<object | undefined>(undefined);
-  const providerWords = useRef<View>(null);
-  const nameInput = useRef<TextInput>(null);
+  const providerWords = useRef<ViewInstance>(null);
+  const nameInput = useRef<TextInputInstance>(null);
   // Dismiss on the linked notice hands focus to the item after it (sc-11173).
   const [linkedClosed, setLinkedClosed] = useState<StepClosed | undefined>(undefined);
   const afterLinked = useMemo<RefObject<ScreenReaderTarget | null>>(
@@ -260,8 +260,8 @@ function FoundOrganisation() {
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState<object | null>(null);
-  const nameInput = useRef<TextInput>(null);
-  const countryPicker = useRef<View>(null);
+  const nameInput = useRef<TextInputInstance>(null);
+  const countryPicker = useRef<ViewInstance>(null);
 
   async function found(): Promise<void> {
     if (saving) return;
@@ -367,7 +367,7 @@ function Details({
   onAsked,
 }: {
   account: Account;
-  nameInput: RefObject<TextInput | null>;
+  nameInput: RefObject<TextInputInstance | null>;
   onAsked: (account: Account) => void;
 }) {
   const { t } = useTranslation();
@@ -393,9 +393,9 @@ function Details({
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState<object | null>(null);
-  const organisationInput = useRef<TextInput>(null);
-  const phoneInput = useRef<TextInput>(null);
-  const countryPicker = useRef<View>(null);
+  const organisationInput = useRef<TextInputInstance>(null);
+  const phoneInput = useRef<TextInputInstance>(null);
+  const countryPicker = useRef<ViewInstance>(null);
 
   // Read once, when the screen opens asking for an organisation; the rows stay until the person leaves (sc-3353).
   const loaded = useInvitationsOnOpen(account.needsOrganisation);
@@ -421,7 +421,7 @@ function Details({
   const [unavailable, setUnavailable] = useState<object | null>(null);
   // Start my own organisation brings the organisation fields in its place, so focus goes to the first (sc-11173).
   const [startedOwn, setStartedOwn] = useState<object | undefined>(undefined);
-  useFocusOnAnswer<TextInput>(startedOwn, organisationInput);
+  useFocusOnAnswer<TextInputInstance>(startedOwn, organisationInput);
 
   useEffect(() => {
     if (!account.needsOrganisation) return;

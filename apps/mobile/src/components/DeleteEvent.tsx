@@ -1,7 +1,14 @@
 import { type EventDeletion, type OrganisationEvent } from '@soirely/api-client';
 import { typedNameMatches } from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, type TextInput, View } from 'react-native';
+import {
+  ScrollView,
+  type ScrollViewInstance,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -29,7 +36,7 @@ export function DeleteEventSection({
   onDeleted: (event: OrganisationEvent) => void;
 }) {
   const { t } = useTranslation();
-  const opener = useRef<View>(null);
+  const opener = useRef<ViewInstance>(null);
   const [opening, setOpening] = useState(false);
   const [openFailed, setOpenFailed] = useState<string | null>(null);
   const [deletion, setDeletion] = useState<EventDeletion | null>(null);
@@ -107,8 +114,8 @@ function Confirm({
   const { t } = useTranslation();
   const name = event.name;
   const title = useRef<TextHandle>(null);
-  const body = useRef<ScrollView>(null);
-  const input = useRef<TextInput>(null);
+  const body = useRef<ScrollViewInstance>(null);
+  const input = useRef<TextInputInstance>(null);
   const typed = useRef('');
   const typing = useRef(false);
   const fieldShownByRefusal = useRef(false);

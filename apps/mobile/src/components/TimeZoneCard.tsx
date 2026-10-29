@@ -6,9 +6,9 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  type TextInput,
-  View,
+  type TextInputInstance,
   useWindowDimensions,
+  View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -183,7 +183,7 @@ function Choosing({
   const [picked, setPicked] = useState<TimeZoneOption | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const input = useRef<TextInput>(null);
+  const input = useRef<TextInputInstance>(null);
   // A zone picked from the list takes the list's place, so focus goes to the field now holding it.
   useFocusOnAnswer(picked ?? undefined, input);
   const aboveKeyboard = useAboveKeyboard();

@@ -2,7 +2,7 @@ import { type Membership, primaryEmailAddress } from '@soirely/api-client';
 import { roleName } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type Ref, type RefObject, useMemo, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { DESTINATION_HREF } from '../kit/appNav.ts';
@@ -39,7 +39,7 @@ function HomeBody() {
   const { kind } = useLayout();
   const { account, organisation } = useSignedIn();
   const openSwitcher = useOpenSwitcher();
-  const switchButton = useRef<View>(null);
+  const switchButton = useRef<ViewInstance>(null);
   const { place, heading, onClosed } = useNextAfterClosed();
 
   return (
@@ -88,7 +88,7 @@ function HomeBody() {
 
 /** A notice closed with its own button hands focus to the next notice under it, or to the heading when none is left (sc-11173). */
 function useNextAfterClosed() {
-  const [places] = useState(() => stepOpeners<View>());
+  const [places] = useState(() => stepOpeners<ViewInstance>());
   const heading = useRef<TextHandle>(null);
   const [last, setLast] = useState<{ at: NoticePlace } | null>(null);
   const next = useMemo<RefObject<ScreenReaderTarget | null>>(
@@ -106,7 +106,7 @@ function useNextAfterClosed() {
 
   return {
     heading,
-    place: (at: NoticePlace): Ref<View> => places.ref(at),
+    place: (at: NoticePlace): Ref<ViewInstance> => places.ref(at),
     onClosed: (at: NoticePlace) => setLast({ at }),
   };
 }
