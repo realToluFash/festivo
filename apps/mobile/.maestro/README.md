@@ -107,6 +107,14 @@ Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each co
   Mailpit, the same, through `${MAILPIT_URL}`.
 - **Pass data in**, with `-e`: an account comes from `node scripts/qa-account.mjs`, so no
   flow holds credentials.
+- **On iOS, Return gets past a text field, never `hideKeyboard`**, which stops a flow on
+  an iPhone with "Couldn't hide the keyboard". Press `pressKey: Enter`: Return moves to the
+  next field, sends the form where the field's Return sends it, and puts the keyboard away
+  where it sends nothing. On Android, Enter can type into the field instead (sc-18648), so
+  a flow uses `hideKeyboard` and then the tap. Split the two by platform, as
+  `batch/sign-in-form.yaml` does. The one exception is a check whose outcome is the
+  keyboard put away by hand: `checks/sc13408-change-dismiss.yaml` and
+  `checks/sc13408-choose-dismiss.yaml`.
 - **Expo Go is the app**, so `appId` is `host.exp.Exponent` and the flow opens the project
   with `openLink`. A standalone build would use `com.soirely.app` and `launchApp`. On Android
   the package is `host.exp.exponent`, in lower case. Write iOS's: `qa-env.mjs maestro --android`
