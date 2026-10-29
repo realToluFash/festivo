@@ -54,6 +54,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **29 Oct 2026. Les notifications : la cloche, la mise en sourdine et les paramètres**
+  (sc-14815 pour sc-3980, `notifications.*`, `eventMute.*`, `notificationSettings.*` web et
+  app, `messages:notifications.*`). Le canal est « Push » en colonne et « notifications push »
+  dans une phrase. Mute est « Mettre cet événement en sourdine », et la marque d’une
+  notification « En sourdine », invariable, à côté de « Non lue ». Les catégories sont des noms
+  propres : « Réponses des invités », « Messages », « Jour de l’événement » (pas « Jour J »,
+  trop familier dans une liste de réglages), « Modifications d’événements », « Facturation »
+  (Money : paiements, utilisation et factures) et « Compte et sécurité » ; citées dans une
+  phrase, entre guillemets. Les échecs suivent la maison (« … n’ont pas pu être chargées. »,
+  « Non enregistré. ») et disent déjà le sens fixé par l’anglais du 29 oct.
 - **28 Oct 2026. L’événement commencé un autre jour** (sc-17870 pour sc-17853, `events.startedOn`
   web et `eventsScreen.startedOn` app). « A commencé le {{date}} · {{time}} {{timeZone}} », en
   paire avec `startedToday` (« Aujourd’hui · a commencé à… »). `{{date}}` est « mardi 27 oct. »,
