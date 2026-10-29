@@ -54,7 +54,7 @@ describe('the Field a client check on a picker hands over (sc-21232)', () => {
     store.watchCheckedField(checked);
     const type = field('type');
 
-    store.pickerChecked(type);
+    store.fieldChecked(true, type);
     store.fieldFocused(field('name'));
 
     expect(checked).toHaveBeenCalledExactlyOnceWith(type);
