@@ -248,11 +248,13 @@ export function focusRefused(field: RefObject<TextInputInstance | null>): void {
 
 /** To the field a client check names, with the keyboard up on it and the field brought into view above it. */
 export function focusChecked(field: RefObject<TextInputInstance | null>): void {
-  const focused = field.current?.isFocused() === true;
+  const input = field.current;
+  if (input == null) return;
+  const focused = input.isFocused();
   // Android's back gesture hides the keys and leaves the field focused, and focus() skips a focused field.
-  if (focused && !Keyboard.isVisible()) field.current?.blur();
+  if (focused && !Keyboard.isVisible()) input.blur();
   fieldChecked(focused && Keyboard.isVisible());
-  field.current?.focus();
+  input.focus();
 }
 
 /** At a submit the client checks passed: keys hidden over a focused field stay hidden while it runs and after it. */
