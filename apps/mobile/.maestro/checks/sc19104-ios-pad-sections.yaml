@@ -12,6 +12,8 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - assertVisible:
     id: 'settings.account'
+- assertVisible:
+    id: 'timeZone.change'
 - takeScreenshot: account-beside
 - scrollUntilVisible:
     element:
@@ -22,6 +24,8 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - assertVisible:
     id: 'settings.account'
+- assertVisible:
+    id: 'password.change|password.set'
 - takeScreenshot: security-beside
 - scrollUntilVisible:
     element:
@@ -32,6 +36,7 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - assertVisible:
     id: 'settings.account'
+- assertVisible: '{{t:orgGeneral.intro}}'
 - takeScreenshot: organisation-beside
 - scrollUntilVisible:
     element:
@@ -42,6 +47,8 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - assertVisible:
     id: 'settings.account'
+- assertVisible:
+    id: 'members.filter.active'
 - takeScreenshot: members-beside
 - scrollUntilVisible:
     element:
@@ -52,6 +59,8 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - assertVisible:
     id: 'settings.account'
+- assertVisible:
+    id: 'roles.role.owner'
 - takeScreenshot: roles-beside
 - scrollUntilVisible:
     element:
@@ -62,4 +71,5 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - assertVisible:
     id: 'settings.account'
+- assertVisible: '{{t:signInRules.readIntro}}'
 - takeScreenshot: signInRules-beside

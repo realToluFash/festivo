@@ -5,7 +5,7 @@ appId: com.soirely.app
     id: 'members.row.*'
 - extendedWaitUntil:
     visible:
-      id: 'members.goToOrganisation|member.*'
+      id: 'members.goToOrganisation|members.role.*'
     timeout: 15000
 - waitForAnimationToEnd
 - takeScreenshot: member-page

@@ -116,10 +116,3 @@ appId: host.exp.Exponent
 - assertVisible:
     id: 'settings.account'
 - takeScreenshot: signInRules-back-list
-- tapOn:
-    id: 'frame.home'
-- extendedWaitUntil:
-    visible:
-      id: 'home.openSettings'
-    timeout: 15000
-- takeScreenshot: settings-tab-home
