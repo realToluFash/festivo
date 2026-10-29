@@ -1,0 +1,35 @@
+# Roles, a held role's remove panel, with Remove pressed before a replacement is chosen. ROLE_ID names the role.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/roles
+- extendedWaitUntil:
+    visible:
+      id: roles.role.owner
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: roles.role.${ROLE_ID}
+- tapOn:
+    id: roles.role.${ROLE_ID}
+- scrollUntilVisible:
+    element:
+      id: roles.remove
+- tapOn:
+    id: roles.remove
+- extendedWaitUntil:
+    visible:
+      id: roles.replacement.owner
+    timeout: 10000
+- takeScreenshot: role-remove-panel
+- scrollUntilVisible:
+    element:
+      id: roles.remove.confirm
+- tapOn:
+    id: roles.remove.confirm
+- extendedWaitUntil:
+    visible: '{{t:rolesScreen.removeNoReplacement}}'
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: roles.remove.confirm
+- takeScreenshot: role-remove-no-replacement

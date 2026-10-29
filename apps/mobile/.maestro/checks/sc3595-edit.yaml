@@ -1,0 +1,89 @@
+# sc-3595: in ${ORG}, ${EVENT_ID}'s page opens Edit details with its values; Cancel after a change asks Leave without saving?, and Keep editing keeps it; ELSEWHERE_NAME saved meanwhile by another session makes Save changes answer 412, whose Show the latest asks and then shows that version; a new name saved returns to the page with Saved.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page.edit'
+    timeout: 30000
+- takeScreenshot: page
+- tapOn:
+    id: 'events.page.edit'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 20000
+- takeScreenshot: opened
+- tapOn:
+    id: 'eventForm.name'
+- inputText: ' mine'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.cancel'
+    direction: UP
+- tapOn:
+    id: 'eventForm.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.leave.keep'
+    timeout: 10000
+- takeScreenshot: leave-prompt
+- tapOn:
+    id: 'eventForm.leave.keep'
+- waitForAnimationToEnd
+- takeScreenshot: kept
+- runScript:
+    file: ../scripts/change-event-elsewhere.js
+- assertTrue:
+    condition: ${output.changed == 200}
+    label: 'Changed elsewhere, answered ${output.changed}'
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+- tapOn:
+    id: 'eventForm.send'
+- waitForAnimationToEnd
+- takeScreenshot: after-save-412
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.showLatest'
+    direction: UP
+- takeScreenshot: changed-elsewhere
+- tapOn:
+    id: 'eventForm.showLatest'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.latest.go'
+    timeout: 10000
+- takeScreenshot: latest-ask
+- tapOn:
+    id: 'eventForm.latest.go'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.name'
+    direction: UP
+- takeScreenshot: latest-shown
+- tapOn:
+    id: 'eventForm.name'
+- eraseText: 120
+- inputText: ${SAVED_NAME}
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+- tapOn:
+    id: 'eventForm.send'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- takeScreenshot: saved

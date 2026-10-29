@@ -1,0 +1,35 @@
+# A check finds its screen as a person opening it would. `openLink` reaches a route
+# without remounting it, so the bundle is reloaded instead: every screen remounts, the
+# session is kept, and Expo Go is not relaunched.
+appId: host.exp.Exponent
+---
+# A check that turned the iPad and failed before turning it back leaves it turned.
+- setOrientation: PORTRAIT
+- runScript:
+    file: helper.js
+    env:
+      ASK: /reload
+# Home, whatever link Expo Go reopens the experience at.
+- openLink: ${METRO_URL}/--/
+# Gone first, or the screen from before the reload passes the wait below.
+- extendedWaitUntil:
+    notVisible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}'
+    timeout: 10000
+    optional: true
+- extendedWaitUntil:
+    visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}'
+    timeout: 60000
+    optional: true
+# The first reload after signing in can close Expo Go rather than reload it. Asked of the
+# harness, since a notVisible condition waits out seven seconds from the last command.
+- runScript:
+    file: helper.js
+    env:
+      ASK: /running
+- runFlow:
+    when:
+      true: ${!output.helper.running}
+    file: reopen.yaml
+- extendedWaitUntil:
+    visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}'
+    timeout: 10000

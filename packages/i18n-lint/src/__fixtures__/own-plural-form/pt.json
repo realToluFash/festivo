@@ -1,0 +1,6 @@
+{
+  "guests_one": "{{count}} convidado",
+  "guests_other": "{{count}} convidados",
+  "greeting": "Olá",
+  "greeting_many": "Olá a todos"
+}
