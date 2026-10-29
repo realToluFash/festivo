@@ -1,8 +1,9 @@
-import type { NotificationItem } from '@soirely/api-client';
+import type { NotificationItem, NotificationRead } from '@soirely/api-client';
 import {
   badgeOf,
   feedAllRead,
   feedWithArrival,
+  feedWithLiveRead,
   feedWithMissed,
   feedWithMute,
   feedWithPage,
@@ -64,7 +65,7 @@ export function NotificationsBell({ userId }: { userId: string }) {
     void load();
   }, [load]);
 
-  useLiveNotifications(userId, arrived, reread);
+  useLiveNotifications(userId, { onItem: arrived, onRead: readElsewhere, onGap: reread });
 
   function arrived(item: NotificationItem): void {
     arrivals.current += 1;
@@ -80,9 +81,24 @@ export function NotificationsBell({ userId }: { userId: string }) {
     );
   }
 
+  function readElsewhere(read: NotificationRead): void {
+    arrivals.current += 1;
+    setFeed((current) =>
+      current.status === 'loaded'
+        ? { ...feedWithLiveRead(current, read), status: 'loaded' }
+        : current,
+    );
+  }
+
+  /** A page worked out before the latest arrival misses it, so it is read again rather than taken. */
   function reread(): void {
+    const seen = arrivals.current;
     api.notifications().then(
-      (page) =>
+      (page) => {
+        if (arrivals.current !== seen) {
+          reread();
+          return;
+        }
         setFeed((current) =>
           current.status === 'loaded'
             ? {
@@ -90,7 +106,8 @@ export function NotificationsBell({ userId }: { userId: string }) {
                 status: 'loaded',
               }
             : current,
-        ),
+        );
+      },
       () => undefined,
     );
   }

@@ -1,4 +1,10 @@
-import { asNotificationItem, type NotificationItem, realtimeTopic } from '@soirely/api-client';
+import {
+  asNotificationItem,
+  asNotificationRead,
+  type NotificationItem,
+  type NotificationRead,
+  realtimeTopic,
+} from '@soirely/api-client';
 import { useEffect, useRef } from 'react';
 
 import { api } from './api.ts';
@@ -7,16 +13,19 @@ import { config } from './config.ts';
 const RENEW_BEFORE_MS = 60_000;
 const RETRY_MS = 5_000;
 
-/** The token goes in the URL, as EventSource sends no header; every line after the first follows a gap, renewed or not. */
-export function useLiveNotifications(
-  userId: string,
-  onItem: (item: NotificationItem) => void,
-  onGap: () => void,
-): void {
-  const latest = useRef({ onItem, onGap });
+export interface LiveNotifications {
+  onItem: (item: NotificationItem) => void;
+  onRead: (read: NotificationRead) => void;
+  /** At every line that opens: what was published before it, the first one included, never arrives. */
+  onGap: () => void;
+}
+
+/** The token goes in the URL, as EventSource sends no header. */
+export function useLiveNotifications(userId: string, live: LiveNotifications): void {
+  const latest = useRef(live);
 
   useEffect(() => {
-    latest.current = { onItem, onGap };
+    latest.current = live;
   });
 
   useEffect(() => {
@@ -26,7 +35,6 @@ export function useLiveNotifications(
     let source: EventSource | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let stopped = false;
-    let opened = false;
 
     const connect = async (): Promise<void> => {
       let subscription;
@@ -44,14 +52,8 @@ export function useLiveNotifications(
 
       source?.close();
       source = new EventSource(url);
-      source.onopen = () => {
-        if (opened) latest.current.onGap();
-        opened = true;
-      };
-      source.onmessage = (message: MessageEvent<string>) => {
-        const item = parsed(message.data);
-        if (item != null) latest.current.onItem(item);
-      };
+      source.onopen = () => latest.current.onGap();
+      source.onmessage = (message: MessageEvent<string>) => heard(message.data, latest.current);
       source.onerror = () => {
         if (source?.readyState !== EventSource.CLOSED || stopped) return;
         clearTimeout(timer);
@@ -73,10 +75,19 @@ export function useLiveNotifications(
   }, [userId]);
 }
 
-function parsed(data: string): NotificationItem | null {
+function heard(data: string, live: LiveNotifications): void {
+  let raw: unknown;
   try {
-    return asNotificationItem(JSON.parse(data));
+    raw = JSON.parse(data);
   } catch {
-    return null;
+    return;
   }
+
+  const read = asNotificationRead(raw);
+  if (read != null) {
+    live.onRead(read);
+    return;
+  }
+  const item = asNotificationItem(raw);
+  if (item != null) live.onItem(item);
 }
