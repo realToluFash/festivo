@@ -325,14 +325,17 @@ def setting_problems(values, known, where):
 
 def manual_testers(config=None):
     """`manualTesters`: each person who tests, by Shortcut mention name, with the machine
-    their stack runs on and their Shortcut member id. Empty when the file has none."""
+    their stack runs on and their Shortcut member id. Empty when the file has none; an entry
+    that is not an object is left out, and `tester_problems` names it."""
     if config is None:
         try:
             config = load()
         except ConfigError:
             return {}
     testers = config.get("manualTesters")
-    return testers if isinstance(testers, dict) else {}
+    if not isinstance(testers, dict):
+        return {}
+    return {name: entry for name, entry in testers.items() if isinstance(entry, dict)}
 
 
 def tester_problems(config):
@@ -389,7 +392,6 @@ def check(config, known=None, logged_in=account):
         if value is not None and (isinstance(value, bool) or not isinstance(value, (int, float))
                                   or value < 0):
             errors.append(f"{name} is {value!r} in {path()}: a number, or null")
-    errors += tester_problems(config)
     limit = config.get("sliceMemoryMax")
     if limit is not None and not SIZE.match(str(limit)):
         errors.append(f"sliceMemoryMax is {limit!r} in {path()}: a size such as 28G, or null")
