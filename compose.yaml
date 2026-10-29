@@ -50,8 +50,8 @@ services:
       # subscribe with the other. One shared key would let any subscriber
       # publish, which on this product means any guest's browser could forge a
       # service-floor update.
-      MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_PUBLISHER_KEY:-dev-publisher-key-change-me}
-      MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_SUBSCRIBER_KEY:-dev-subscriber-key-change-me}
+      MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_PUBLISHER_KEY:-dev-publisher-key-change-me-in-production}
+      MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_SUBSCRIBER_KEY:-dev-subscriber-key-change-me-in-production}
       MERCURE_EXTRA_DIRECTIVES: |
         cors_origins ${MERCURE_CORS_ORIGINS:-http://localhost:5173 http://localhost:8081 http://localhost:19006}
         subscriptions
@@ -106,6 +106,11 @@ services:
       WHATSAPP_CODE_TEMPLATE: ${WHATSAPP_CODE_TEMPLATE:-soirely_code}
       WHATSAPP_WEBHOOK_VERIFY_TOKEN: ${WHATSAPP_WEBHOOK_VERIFY_TOKEN:-development-verify-token}
       WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-development-app-secret}
+      EXPO_PUSH_API_BASE: ${EXPO_PUSH_API_BASE:-http://smocker:8080/expo}
+      EXPO_ACCESS_TOKEN: ${EXPO_ACCESS_TOKEN:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:support@soirely.com}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-BBpYfItL5wn_y4dZQoAxhKNxQup_zKeE5dUv3zoDguW0AC4cono-vAc8oqOMJfhYH2f7FUUznnupcaK4l_yyV_g}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-sbAmiJbBNzz1IjLSMxtnbf8NDlZPnh4ew19FjP4XbZA}
       OAUTH_GOOGLE_ISSUERS: ${OAUTH_GOOGLE_ISSUERS:-http://localhost:8089/google,http://oidc:8080/google}
       OAUTH_GOOGLE_JWKS_URI: ${OAUTH_GOOGLE_JWKS_URI:-http://oidc:8080/google/jwks}
       OAUTH_GOOGLE_CLIENT_IDS: ${OAUTH_GOOGLE_CLIENT_IDS:-soirely-web,soirely-app}
@@ -128,6 +133,7 @@ services:
       MERCURE_PUBLISH_URL: ${MERCURE_PUBLISH_URL}
       MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL}
       MERCURE_PUBLISHER_KEY: ${MERCURE_PUBLISHER_KEY}
+      MERCURE_SUBSCRIBER_KEY: ${MERCURE_SUBSCRIBER_KEY}
       # The assistant. Defaults to the in-process stand-in, so the stack comes
       # up assisted without a provider account and nothing here is billable.
       ASSISTANT_ENABLED: ${ASSISTANT_ENABLED:-true}

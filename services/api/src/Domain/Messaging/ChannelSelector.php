@@ -25,10 +25,14 @@ final readonly class ChannelSelector
      *
      * @return list<NotificationChannel>
      */
-    public function select(NotificationAudienceKind $kind, Uuid $recipientId, NotificationCategory $category, array $offered): array
+    public function select(NotificationAudienceKind $kind, Uuid $recipientId, NotificationCategory $category, array $offered, bool $eventMuted): array
     {
         if (NotificationAudienceKind::Guest === $kind) {
             return Vec\filter($offered, static fn (NotificationChannel $channel): bool => NotificationChannel::Push !== $channel);
+        }
+
+        if ($eventMuted && $category->heldByMute()) {
+            return Vec\filter($offered, static fn (NotificationChannel $channel): bool => NotificationChannel::InApp === $channel);
         }
 
         $chosen = Vec\filter($offered, fn (NotificationChannel $channel): bool => match ($channel) {

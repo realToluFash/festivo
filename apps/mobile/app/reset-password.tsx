@@ -2,14 +2,14 @@ import { type Account, ApiError, awaiting } from '@soirely/api-client';
 import { meetsPasswordLength } from '@soirely/domain';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInput, View } from 'react-native';
+import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { followAccount } from '../src/accountLanguage.ts';
 import { api } from '../src/api.ts';
 import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { Footnote, PrimaryButton } from '../src/components/Buttons.tsx';
-import { Field } from '../src/components/Field.tsx';
+import { Field, focusChecked, keysStayDown } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { PasswordField } from '../src/components/PasswordField.tsx';
 import { PasswordRule } from '../src/components/PasswordRule.tsx';
@@ -38,11 +38,11 @@ export default function ResetPassword() {
   const [lengthMet, setLengthMet] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
   const typed = useRef('');
-  const passwordInput = useRef<TextInput>(null);
+  const passwordInput = useRef<TextInputInstance>(null);
   const checks = useFormChecks(
     ['password'] as const,
     (_field, value) => (value === '' ? t('recovery.passwordBlank') : null),
-    () => passwordInput.current?.focus(),
+    () => focusChecked(passwordInput),
   );
 
   useEffect(() => {
@@ -69,11 +69,12 @@ export default function ResetPassword() {
 
     // The rule is stated before submit, so a short password is never sent.
     if (!meetsPasswordLength(typed.current)) {
-      passwordInput.current?.focus();
+      focusChecked(passwordInput);
       return;
     }
 
     const email = status.email;
+    keysStayDown();
     setStatus({ kind: 'saving', email });
 
     try {
@@ -208,7 +209,6 @@ export default function ResetPassword() {
             ref={passwordInput}
             wrong={error != null}
             submitting={saving}
-            editable={!saving}
             autoComplete="new-password"
             textContentType="newPassword"
             onChangeText={(text) => {
@@ -219,6 +219,7 @@ export default function ResetPassword() {
             }}
             onBlur={() => checks.left('password', typed.current)}
             returnKeyType="done"
+            submitBehavior="submit"
             onSubmitEditing={() => void submit()}
             accessibilityLabel={t('recovery.newPassword')}
             testID="recovery.password"

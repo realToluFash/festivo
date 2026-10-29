@@ -2,6 +2,7 @@ import { type Ref, useSyncExternalStore } from 'react';
 import {
   Text as RNText,
   StyleSheet,
+  type TextInstance,
   type TextProps as RNTextProps,
   useWindowDimensions,
 } from 'react-native';
@@ -31,7 +32,7 @@ export interface TextProps extends Omit<RNTextProps, 'onPress' | 'onLongPress'> 
   ref?: Ref<TextHandle> | undefined;
 }
 
-export type TextHandle = RNText;
+export type TextHandle = TextInstance;
 
 export function Text({
   weight = 'regular',

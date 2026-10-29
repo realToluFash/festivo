@@ -4,11 +4,7 @@ export function formatDay(moment: string | Date, locale: string): string {
 
   if (date == null) return '';
 
-  return new Intl.DateTimeFormat(locale, {
-    weekday: 'long',
-    month: 'short',
-    day: 'numeric',
-  }).format(date);
+  return formatsFor(locale).day.format(date);
 }
 
 export function formatTimeOfDay(moment: string | Date, locale: string): string {
@@ -16,11 +12,20 @@ export function formatTimeOfDay(moment: string | Date, locale: string): string {
 
   if (date == null) return '';
 
-  return new Intl.DateTimeFormat(locale, {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date);
+  return formatsFor(locale).time.format(date);
+}
+
+const formats = new Map<string, { day: Intl.DateTimeFormat; time: Intl.DateTimeFormat }>();
+
+/** Made once a locale, since a list asks for every row on every render. */
+function formatsFor(locale: string): { day: Intl.DateTimeFormat; time: Intl.DateTimeFormat } {
+  const made = formats.get(locale) ?? {
+    day: new Intl.DateTimeFormat(locale, { weekday: 'long', month: 'short', day: 'numeric' }),
+    time: new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hour12: false }),
+  };
+  formats.set(locale, made);
+
+  return made;
 }
 
 /** In the reader's own zone, where their calendar turns over. */

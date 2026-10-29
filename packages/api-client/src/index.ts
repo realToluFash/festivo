@@ -10,3 +10,4 @@ export * from './client.ts';
 export * from './problem.ts';
 export * from './oauth.ts';
 export * from './proofRefusal.ts';
+export * from './topics.ts';

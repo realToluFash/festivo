@@ -16,14 +16,21 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Linking, StyleSheet, type TextInput, View } from 'react-native';
+import { Linking, StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
 import { heldChallenge } from '../src/challenge.ts';
 import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from '../src/components/Buttons.tsx';
-import { CodeField, Field, FieldError } from '../src/components/Field.tsx';
+import {
+  CodeField,
+  Field,
+  FieldError,
+  focusChecked,
+  focusRefused,
+  keysStayDown,
+} from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { useFocusOnAnswer } from '../src/components/Screen.tsx';
 import { readOut } from '../src/components/ReadOut.tsx';
@@ -591,8 +598,8 @@ function Codes({
   const number = state.phone == null ? '' : formatPhone(state.phone);
   const fields: RecoveryField[] = hasPhone ? ['emailCode', 'phoneCode'] : ['emailCode'];
   const typed = useRef<Record<RecoveryField, string>>({ emailCode: '', phoneCode: '' });
-  const emailInput = useRef<TextInput>(null);
-  const inputs = { emailCode: emailInput, phoneCode: useRef<TextInput>(null) };
+  const emailInput = useRef<TextInputInstance>(null);
+  const inputs = { emailCode: emailInput, phoneCode: useRef<TextInputInstance>(null) };
   const [errors, setErrors] = useState<Partial<Record<RecoveryField, string>>>({});
   const [asking, setAsking] = useState(false);
   // New with each tap that fails, or that finds the codes spent, so the same words are read out again.
@@ -659,10 +666,11 @@ function Codes({
     const first = fields.find((field) => found[field] != null);
 
     if (first != null) {
-      inputs[first].current?.focus();
+      focusChecked(inputs[first]);
       return;
     }
 
+    keysStayDown();
     setAsking(true);
     setFailed(null);
     setResentInPlace(undefined);
@@ -695,7 +703,7 @@ function Codes({
 
       if (marked != null) {
         setErrors(Object.fromEntries(marked.map((field) => [field, wrong[field]])));
-        if (marked[0] != null) inputs[marked[0]].current?.focus();
+        if (marked[0] != null) focusRefused(inputs[marked[0]]);
         return;
       }
 
@@ -765,7 +773,7 @@ function Codes({
   }
 
   const spent = codes?.state === 'expired' || codes?.state === 'exhausted';
-  useFocusOnAnswer<TextInput>(spent ? undefined : resentInPlace, emailInput);
+  useFocusOnAnswer<TextInputInstance>(spent ? undefined : resentInPlace, emailInput);
 
   return (
     <AuthFrame
@@ -838,12 +846,13 @@ function Codes({
               <CodeField
                 ref={inputs[field]}
                 wrong={errors[field] != null}
-                editable={!asking}
+                submitting={asking}
                 onChangeText={(text) => {
                   typed.current = { ...typed.current, [field]: text };
                   setErrors((now) => ({ ...now, [field]: undefined }));
                 }}
                 returnKeyType={index === fields.length - 1 ? 'go' : 'next'}
+                submitBehavior="submit"
                 onSubmitEditing={() =>
                   index === fields.length - 1 ? void submit() : inputs.phoneCode.current?.focus()
                 }

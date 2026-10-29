@@ -55,8 +55,13 @@ describe('a single-surface change runs that surface and no other', () => {
     ['the regions the domain reads', 'services/api/src/Domain/Organisation/Regions.php'],
     ['the domain refusals the cards read', 'services/api/src/Enum/DomainRefusal.php'],
     ['the event types the domain lists', 'services/api/src/Enum/EventType.php'],
+    ['the topics the api-client copy is generated from', 'services/api/src/Enum/RealtimeTopic.php'],
   ])('%s runs the packages', (_name, path) => {
     expect(changedSurfaces([path]).packages).toBe(true);
+  });
+
+  it('the generated topics run the API, which checks them against RealtimeTopic', () => {
+    expect(changedSurfaces(['packages/api-client/src/topics.ts']).api).toBe(true);
   });
 });
 

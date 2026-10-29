@@ -17,6 +17,7 @@ const ACCOUNT = {
   waitingFor: null,
   verified: true,
   complete: true,
+  userId: 'u1',
   needsOrganisation: false,
   hasPassword: true,
   emailAddresses: [{ id: 'a1', address: 'folake@ire.events', verified: true, primary: true }],

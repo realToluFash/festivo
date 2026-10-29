@@ -2,7 +2,7 @@ import { type OrganisationEvent } from '@soirely/api-client';
 import { changedWords } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -36,7 +36,7 @@ export function DraftRow({
   onChange: (event: OrganisationEvent) => void;
 }) {
   const { t } = useTranslation();
-  const makeLive = useRef<View>(null);
+  const makeLive = useRef<ViewInstance>(null);
   const { asking, ask, tell, go, close } = useLifecycleAction<object, MakeLiveRefusal>({
     event,
     onChange,

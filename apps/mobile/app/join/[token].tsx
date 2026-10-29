@@ -8,13 +8,19 @@ import {
 } from '@soirely/domain';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Keyboard, StyleSheet, type TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Keyboard,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api, meAtLaunch } from '../../src/api.ts';
 import { AuthFrame, AuthHeading } from '../../src/components/AuthFrame.tsx';
 import { PrimaryButton, SecondaryButton } from '../../src/components/Buttons.tsx';
-import { Field, TextField } from '../../src/components/Field.tsx';
+import { Field, focusChecked, keysStayDown, TextField } from '../../src/components/Field.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
 import { ReadOut } from '../../src/components/ReadOut.tsx';
 import { Text } from '../../src/components/Text.tsx';
@@ -221,20 +227,21 @@ function Ask({
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<object | null>(null);
   const [refused, setRefused] = useState<string | null>(null);
-  const input = useRef<TextInput>(null);
+  const input = useRef<TextInputInstance>(null);
   const checks = useFormChecks(
     ['message'] as const,
     (_, value) =>
       Array.from(value.trim()).length > REQUEST_MESSAGE_MAXIMUM
         ? t('requestToJoin.messageLong', { count: REQUEST_MESSAGE_MAXIMUM })
         : null,
-    () => input.current?.focus(),
+    () => focusChecked(input),
   );
   const error = checks.errors.message ?? refused;
 
   async function ask(): Promise<void> {
     if (busy || !checks.passes({ message })) return;
 
+    keysStayDown();
     setBusy(true);
     setFailed(null);
 
@@ -328,7 +335,7 @@ function Ask({
         <TextField
           ref={input}
           wrong={error != null}
-          editable={!busy}
+          submitting={busy}
           value={message}
           multiline
           numberOfLines={4}

@@ -132,6 +132,15 @@ story or pull request, read fresh rather than from the last sync, and says why i
 - **Nothing is stranded.** An open pull request with no story, or untouched for 24 hours,
   is listed in ops' `stranded` item, at most once a day, with the step it waits on. Ops
   tags that role on the story, or closes the pull request with the reason.
+- **A person tests too.** Each entry in `manualTesters` (agents.json) is a person on the QA
+  team. A header may name one, `[qa] (from @name)` or `[@name] (from qa3)`, and a comment
+  their account writes with no header is theirs, for `[qa]`. Their `[qa]` goes to the tester
+  whose plan carries their `QA claim: @name`. A story they own in Ready For QA or In QA, or
+  one reaching Ready For QA labelled `manual qa`, is one `plan` item for the testers of the
+  machine their stack runs on, taken after comments and before a new story; no agent tester
+  is offered such a story, or one under a person's claim, to test. Their one stack,
+  `soirely-qa-lan`, runs latest `main` with its data kept, moved only when a plan is
+  written, and each plan gives them the accounts it needs.
 - **`store.py`** holds the claims. A role holds one item at a time, a pooled item (Ready For
   QA, unlabelled Ready For Dev) goes to one role only, and a claim lapses after 90 minutes.
 

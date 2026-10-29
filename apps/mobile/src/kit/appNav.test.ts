@@ -88,7 +88,7 @@ describe('"Sign out" on the Settings list', () => {
 describe('the Settings list', () => {
   it('has Organisation, Members and Sign-in rules rows below Security, under their own heading', () => {
     expect(settingsGroups({ permissions: ['members.read'] })).toEqual([
-      { heading: 'yourAccount', sections: ['account', 'security'] },
+      { heading: 'yourAccount', sections: ['account', 'security', 'notifications'] },
       { heading: 'organisationHeading', sections: ['organisation', 'members', 'signInRules'] },
     ]);
   });
@@ -109,7 +109,7 @@ describe('the Settings list', () => {
 
   it('leaves the Organisation rows out while the account is in no organisation', () => {
     expect(settingsGroups(null)).toEqual([
-      { heading: 'yourAccount', sections: ['account', 'security'] },
+      { heading: 'yourAccount', sections: ['account', 'security', 'notifications'] },
     ]);
   });
 
@@ -146,5 +146,22 @@ describe('Events titles itself once, in the frame header (sc-17559)', () => {
     const split = source(join(SRC, 'components', 'ListAndPage.tsx'));
 
     expect(split).toMatch(/\{landscape && \(heading \|\| besideHeading\) && \(/u);
+  });
+});
+
+describe('The bell titles itself once, in the frame header (sc-3980)', () => {
+  it('gives the feed no heading of its own on any layout', () => {
+    const feed = source(join(SRC, 'components', 'NotificationsFeed.tsx'));
+
+    expect(feed).not.toMatch(/notifications\.heading/u);
+  });
+
+  it('moves focus after the push ask to the frame title, which is a header', () => {
+    const screen = source(join(APP, 'notifications.tsx'));
+    const feed = source(join(SRC, 'components', 'NotificationsFeed.tsx'));
+
+    expect(screen).toMatch(/title=\{t\('notifications\.heading'\)\}\s*titleRef=\{title\}/u);
+    expect(screen).toMatch(/<NotificationsFeed heading=\{title\} \/>/u);
+    expect(feed).toMatch(/moveScreenReaderFocus\(heading\.current\)/u);
   });
 });

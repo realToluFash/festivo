@@ -210,6 +210,7 @@ carry on from the worktree.
 cd ~/Projects/soirely-qa<n>
 node .qa/bin/qa-env.mjs checkout 36          # the PR under test: fetch, check out, rebuild, fresh database
 node .qa/bin/qa-env.mjs checkout sc-55       # or by story, when one remote branch names it
+node .qa/bin/qa-env.mjs checkout e58c423     # or a commit, such as main before a merge
 node .qa/bin/qa-env.mjs status               # what is checked out, and whether it answers
 node .qa/bin/qa-env.mjs account --json       # a throwaway account, on this stack
 ```
@@ -547,6 +548,81 @@ posted, so do not post them again:
 
 Never move a story to **Done** — that is the user's, after a merge — and never merge
 anything.
+
+## A plan for a person
+
+A person on the QA team tests whole stories too, on their own phone and laptop, and they are
+new to writing test plans. `manualTesters` in `agents.json` lists them by Shortcut mention
+name, such as `@tester-one`, with the machine their stack runs on. A story they own,
+or one reaching Ready For QA labelled `manual qa`, is theirs: sq never offers it to you to
+test, and comes to you as a `plan` item instead. A plan comes after your inbox and before a
+new story, and never by stopping a pass you are in.
+
+**Writing the plan.** Plan; do not test, and do not claim the story.
+
+1. **Their stack runs latest `main`, never a story's merge commit.** It is one stack for
+   every story they have open, and a story reaches Ready For QA only once merged, so `main`
+   holds them all. It is served on the machine's network address (`QA_LAN_ADDRESS`), so
+   their phone and laptop reach it. From your checkout:
+   - No `~/Projects/soirely-qa-lan` yet: `node scripts/qa-env.mjs --tester lan setup`, once.
+     It starts from an empty database.
+   - `git -C ~/Projects/soirely-qa-lan fetch -q origin`, then compare
+     `git -C ~/Projects/soirely-qa-lan rev-parse --short HEAD origin/main`. When they
+     differ, `node scripts/qa-env.mjs --tester lan checkout --keep-data`: no target is
+     `main`. When they match, leave the stack as it is: no checkout and no rebuild.
+   - Always `--keep-data`. A checkout without it drops the database, and with it the
+     accounts a plan they are still working through gave them.
+   - The story's merge commit must be in it:
+     `git -C ~/Projects/soirely-qa-lan merge-base --is-ancestor <merge commit> HEAD`. When
+     it is not, write no plan, and ask `[ops]` on the story why `main` lacks it.
+   - The stack moves only here, when you write a plan. A checkout restarts the API and,
+     with step 3, the bundler under them for a few minutes, even mid-pass: note the time
+     it finished for the comment.
+2. **Make every account the plan needs, new for this plan**, with the harness in their
+   worktree, which step 1 left at latest `main` like the API it talks to:
+   `node ~/Projects/soirely-qa-lan/scripts/qa-env.mjs --tester lan account` (`--ready` for a
+   complete profile owning an organisation, `--two-factor` when the AC needs it). Never its
+   `.qa/bin` copy, which nothing brings forward, nor your own worktree's, which may be at
+   an older commit. One per part the AC names (the organiser, the member they invite, the
+   guest), with the data each step starts from already made. Never hand them an account
+   from another plan, or one that two of their stories share.
+3. **The bundler for their phone.** After a checkout,
+   `node ~/Projects/soirely-qa-lan/scripts/qa-env.mjs --tester lan serve` restarts the
+   bundler, left running after your run ends, and prints the Expo Go link and the path of
+   its QR code image. Without a checkout, re-run it only when the bundler does not answer:
+   the Expo Go link with `http://` for `exp://`, plus `/status`, answers
+   `packager-status:running`. The QR code stays at
+   `~/Projects/soirely-qa-lan/.qa/expo-go-qr.png`.
+4. Post **one comment** to them, `sq qa comment sc-N --to @name`, a beginner can follow
+   without asking:
+   - **What it runs**: `main` at its short commit, from
+     `git -C ~/Projects/soirely-qa-lan rev-parse --short HEAD`, so a FAIL is traced to the
+     code it ran. When step 1 moved the stack, the time it restarted: a step of another
+     plan that failed in those minutes is re-run, not reported as a FAIL.
+   - **Where to open it**: the web address, the Expo Go link `serve` printed and its QR code
+     attached with `--files`, and Mailpit's address for emails.
+   - **The accounts**, one line each, ready to copy: what it is for (which steps, on which
+     device), the email, the password, and, for a two-factor account, its `TOTP_SECRET` as
+     the setup key to add to an authenticator app by "enter a setup key". Say where any
+     code the steps ask for arrives (Mailpit's address, or Smocker's for an SMS), and that
+     these are test accounts on their stack only. A step that needs an account they do not
+     have is a plan they cannot finish.
+   - **Each AC line as numbered steps**: what to tap or type, then "You should see: …" in
+     the words the screen uses. One step per action.
+   - **The edge cases the AC implies** (section 3), as steps of the same shape.
+   - **The layouts and the one locale** to check, and how to switch to each.
+   - **The screenshots to attach**: which step, and what must be in the frame.
+   - **How to report**: a comment starting `[qa] (from @name)`, `PASS` or `FAIL` per step.
+   - The last line, alone: `QA claim: @name`. It marks the story theirs, so a Failed QA
+     retest goes back to them, and their `[qa]` comments to you.
+5. `sq qa done`. Their questions come back to you as inbox items: answer each in its
+   thread, plainly, with the exact step and what they should see. Never take the pass over.
+
+**Handing a story you claimed to a person.** When only a person can test it (a real
+phone's camera, a payment card, a call to a real number), add `manual qa` with
+`sq qa label sc-N --add "manual qa"`, then give it back with
+`sq qa unclaim sc-N --text "<why a person has to test it>"`. It goes back to Ready For QA,
+and a plan item follows.
 
 ## 9. Re-testing after a fix
 

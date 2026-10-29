@@ -42,7 +42,7 @@
     "validation.contact_address_required": "Enter a contact email address.",
     "validation.country_invalid": "Choose a country.",
     "validation.currency_invalid": "Choose a currency.",
-    "validation.email_invalid": "Enter an email address.",
+    "validation.email_invalid": "That does not look like an email address. Check it has an @ and a domain.",
     "validation.invalid_shape": "This field cannot take that value. Check it and try again.",
     "validation.request_shape": "The request does not have the expected shape.",
     "validation.event_end_before_start": "The end is before the start. Choose a later end.",
@@ -203,6 +203,8 @@
     "validation.cover_photo_required": "Choose a photo for the cover.",
     "validation.cover_upload_missing": "The photo did not upload. Try again.",
     "event.delete_name_mismatch": "Type {name} exactly as shown to delete it.",
+    "notifications.not_switchable": "Account and security emails cannot be switched off.",
+    "notifications.push_target_refused": "This device cannot take notifications from Soirely.",
     "timeline.event_starts": "{name} starts",
     "timeline.event_ends": "{name} ends",
     "timeline.event_called_off": "{name} called off"

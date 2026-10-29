@@ -2,13 +2,13 @@ import { ApiError } from '@soirely/api-client';
 import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInput, View } from 'react-native';
+import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
 import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { Footnote, PrimaryButton, QuietButton } from '../src/components/Buttons.tsx';
-import { Field, TextField } from '../src/components/Field.tsx';
+import { Field, focusChecked, keysStayDown, TextField } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { useFocusOnAnswer } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
@@ -110,8 +110,8 @@ function Credentials({
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
-  const email = useRef<TextInput>(null);
-  const password = useRef<TextInput>(null);
+  const email = useRef<TextInputInstance>(null);
+  const password = useRef<TextInputInstance>(null);
 
   // Read once: the field is uncontrolled, and a later status must not clear what was typed.
   const [keptEmail] = useState(() =>
@@ -123,12 +123,18 @@ function Credentials({
     ['email', 'password'] as const,
     (field, value) =>
       field === 'email' ? emailMessage(value, t) : value === '' ? t('signIn.passwordBlank') : null,
-    (field) => (field === 'email' ? email : password).current?.focus(),
+    (field) => focusChecked(field === 'email' ? email : password),
   );
 
   const submit = (): void => {
-    if (!checks.passes(typed.current)) return;
+    if (
+      status.kind === 'signingIn' ||
+      status.kind === 'rateLimited' ||
+      !checks.passes(typed.current)
+    )
+      return;
 
+    keysStayDown();
     onSubmit(typed.current.email.trim(), typed.current.password);
   };
 
@@ -141,7 +147,7 @@ function Credentials({
   const providerOnly = refusal?.kind === 'providerOnly';
   const locked = status.kind === 'rateLimited';
   // Where the tap's button went, its answer takes focus (sc-11173).
-  useFocusOnAnswer<TextInput>(
+  useFocusOnAnswer<TextInputInstance>(
     status.kind === 'ready' && status.another ? status : undefined,
     email,
   );
@@ -243,7 +249,7 @@ function Credentials({
             <TextField
               ref={email}
               wrong={checks.errors.email != null}
-              editable={!busy}
+              submitting={busy}
               defaultValue={keptEmail}
               keyboardType="email-address"
               autoComplete="email"
@@ -288,7 +294,6 @@ function Credentials({
               ref={password}
               wrong={status.kind === 'refused' || checks.errors.password != null}
               submitting={busy}
-              editable={!busy}
               autoComplete="current-password"
               textContentType="password"
               onChangeText={(text) => {
@@ -297,6 +302,7 @@ function Credentials({
               }}
               onBlur={() => checks.left('password', typed.current.password)}
               returnKeyType="go"
+              submitBehavior="submit"
               onSubmitEditing={submit}
               accessibilityLabel={t('signIn.password')}
               testID="signIn.password"

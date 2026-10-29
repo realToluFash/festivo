@@ -28,20 +28,24 @@ The base URL comes from configuration, never a literal. It is read by
 | Variable                  | What it is                                                  |
 | ------------------------- | ----------------------------------------------------------- |
 | `EXPO_PUBLIC_API_URL`     | Where the API is **from the device**                        |
+| `EXPO_PUBLIC_MERCURE_URL` | Where the Mercure hub is **from the device**                |
 | `EXPO_PUBLIC_ENVIRONMENT` | A name, so a support conversation can establish which build |
 
-**On a simulator or emulator** nothing needs setting — the fallback is
-`http://localhost:8080`, which reaches the host machine.
+**On a simulator or emulator** nothing needs setting — the fallbacks are
+`http://localhost:8080` and `http://localhost:3000/.well-known/mercure`, which
+reach the host machine.
 
 **On a real device** `localhost` is the phone itself, so it reaches nothing. The
-phone and the computer must be on the same network, and the variable has to be
-the computer's address on it:
+phone and the computer must be on the same network, and the variables have to
+be the computer's address on it:
 
 ```sh
 # macOS — the address on the current Wi-Fi network
 ipconfig getifaddr en0
 
-EXPO_PUBLIC_API_URL=http://192.168.1.50:8080 npm run start --workspace @soirely/mobile
+EXPO_PUBLIC_API_URL=http://192.168.1.50:8080 \
+  EXPO_PUBLIC_MERCURE_URL=http://192.168.1.50:3000/.well-known/mercure \
+  npm run start --workspace @soirely/mobile
 ```
 
 The home screen says out loud when nothing configured the URL, because the

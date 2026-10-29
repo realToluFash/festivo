@@ -323,6 +323,42 @@ def setting_problems(values, known, where):
     return problems
 
 
+def manual_testers(config=None):
+    """`manualTesters`: each person who tests, by Shortcut mention name, with the machine
+    their stack runs on and their Shortcut member id. Empty when the file has none; an entry
+    that is not an object is left out, and `tester_problems` names it."""
+    if config is None:
+        try:
+            config = load()
+        except ConfigError:
+            return {}
+    testers = config.get("manualTesters")
+    if not isinstance(testers, dict):
+        return {}
+    return {name: entry for name, entry in testers.items() if isinstance(entry, dict)}
+
+
+def tester_problems(config):
+    """What is wrong with each `manualTesters` entry, one line each."""
+    testers = config.get("manualTesters")
+    if testers is None:
+        return []
+    where = f"manualTesters in {path()}"
+    if not isinstance(testers, dict):
+        return [f"{where} is not an object of \"@name\": {{\"machine\", \"member\"}}"]
+    problems = []
+    for name, entry in testers.items():
+        if not roles.PERSON.fullmatch(name):
+            problems.append(f"{where}: {name!r} is not a Shortcut mention name such as @name")
+        if not isinstance(entry, dict):
+            problems.append(f"{where}: {name} is not an object with machine and member")
+            continue
+        for key in ("machine", "member"):
+            if not isinstance(entry.get(key), str) or not entry[key].strip():
+                problems.append(f"{where}: {name} has no {key}")
+    return problems
+
+
 def check(config, known=None, logged_in=account):
     """`(errors, refused, ready)`: errors stop every role, refused names each role that
     cannot run and why, ready holds each runnable role's merged settings."""

@@ -58,6 +58,7 @@ function signedIn(): void {
     complete: true,
     awaiting: null,
     providers: [],
+    userId: 'u1',
     needsOrganisation: false,
     hasPassword: true,
     organisation: null,

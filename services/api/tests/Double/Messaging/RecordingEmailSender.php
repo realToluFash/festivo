@@ -8,6 +8,7 @@ use App\Domain\Messaging\Command\WorkNotificationsCommand;
 use App\Domain\Messaging\Interfaces\ChannelSenderInterface;
 use App\Domain\Messaging\Model\Recipient;
 use App\Domain\Messaging\Model\RenderedNotification;
+use App\Enum\NotificationCategory;
 use App\Enum\NotificationChannel;
 use RuntimeException;
 use Symfony\Component\Uid\Uuid;
@@ -25,12 +26,15 @@ final class RecordingEmailSender implements ChannelSenderInterface
 
     public int $failuresLeft = 0;
 
+    /** A real sender to hand each send to, for a test about what a provider does. */
+    public ?ChannelSenderInterface $through = null;
+
     public function channel(): NotificationChannel
     {
         return NotificationChannel::Email;
     }
 
-    public function send(Uuid $deliveryId, Recipient $recipient, RenderedNotification $notification): ?string
+    public function send(Uuid $deliveryId, Recipient $recipient, NotificationCategory $category, RenderedNotification $notification, ?string $collapseKey = null): ?string
     {
         ++$this->calls;
         $gate = \getenv(self::GATE);
@@ -45,6 +49,10 @@ final class RecordingEmailSender implements ChannelSenderInterface
             throw new RuntimeException('550 the provider said no');
         }
 
+        if (null !== $this->through) {
+            return $this->through->send($deliveryId, $recipient, $category, $notification);
+        }
+
         $this->sent[] = ['delivery' => $deliveryId->toRfc4122(), 'recipient' => $recipient, 'notification' => $notification];
 
         return 'provider-' . $deliveryId->toRfc4122();
@@ -54,7 +62,7 @@ final class RecordingEmailSender implements ChannelSenderInterface
     private static function awaitAnswer(string $gate): void
     {
         \touch($gate . '.called');
-        $until = \microtime(true) + (float) WorkNotificationsCommand::SOCKET_TIMEOUT;
+        $until = \microtime(true) + WorkNotificationsCommand::PROVIDER_CALL_LIMIT;
 
         while (!\file_exists($gate . '.answer')) {
             if (\microtime(true) >= $until) {

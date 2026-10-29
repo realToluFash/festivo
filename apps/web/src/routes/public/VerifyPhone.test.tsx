@@ -23,6 +23,7 @@ function account(phoneNumbers: unknown[] = [PHONE]) {
     timezone: null,
     verified: false,
     complete: false,
+    userId: 'u1',
     needsOrganisation: true,
     hasPassword: true,
     emailAddresses: [{ id: 'a1', address: 'folake@ire.events', verified: true, primary: true }],
@@ -300,6 +301,7 @@ describe('verifying a number added from Settings > Account', () => {
     ...account([{ ...PHONE, verified: true }, ALTERNATIVE]),
     verified: true,
     complete: true,
+    userId: 'u1',
     needsOrganisation: false,
   };
 

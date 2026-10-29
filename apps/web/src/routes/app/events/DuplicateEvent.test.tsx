@@ -50,6 +50,7 @@ function live(overrides: Record<string, unknown> = {}) {
 
 function signedIn(organisation = IRE): void {
   const session: Session = {
+    userId: 'u1',
     name: 'Folake Adeyemi',
     email: 'folake@ire.events',
     verified: true,

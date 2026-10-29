@@ -1,0 +1,19 @@
+# sc-19212: on a tablet on its side, Events of ${ORG} (no events) for a role without Create events: the first run at full width, the ask-an-owner notice, no Create an event.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.firstRun'
+    timeout: 30000
+- waitForAnimationToEnd
+- assertVisible: '{{t:eventsScreen.firstRunAskOwner}}'
+- assertNotVisible:
+    id: 'events.none.new'
+- assertNotVisible: '{{t:eventsScreen.choose}}.*'
+- takeScreenshot: member

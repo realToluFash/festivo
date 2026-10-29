@@ -97,6 +97,8 @@ jobs:
       # generated token file rather than spreading through the stylesheet.
       - run: npm run lint:css
       - run: npm run format:check
+      # A Mercure topic written by hand in a client, rather than built from the generated copy.
+      - run: npm run lint:topics
       # Lints this workflow, including shellcheck over every `run:` block.
       - run: npm run lint:actions
       # And tests the change filter above. It always runs, because a filter that
@@ -264,6 +266,9 @@ jobs:
 
       - name: Tests
         run: npm run test:api
+
+      - name: The clients' topics match the API's
+        run: npm run check-topics --workspace @soirely/api-client
 
       - name: PHP formatting
         run: npm run lint:php

@@ -2,7 +2,7 @@ import { ApiError, type LinkedProvider } from '@soirely/api-client';
 import { cleanCode, codeProblem, formatCountdown, meetsPasswordLength } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInput, View } from 'react-native';
+import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -25,6 +25,7 @@ import { Notice } from './Notice.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import { PasswordRule } from './PasswordRule.tsx';
 import {
+  FocusHolder,
   type StepClosed,
   stepClosed,
   useAboveKeyboard,
@@ -79,6 +80,7 @@ export function PasswordCard({
   const opener = useFocusBackToOpener(stage.kind === 'atRest' ? stage.closed : undefined);
   const {
     opener: changeOpener,
+    holder: changeHolder,
     closing,
     close,
   } = useStepClose(opener, 'change', (closed) =>
@@ -160,12 +162,15 @@ export function PasswordCard({
         />
       )}
       {(stage.kind !== 'changing' || closing) && (
-        <SecondaryButton
-          ref={changeOpener}
-          label={t('passwordCard.change')}
-          onPress={() => setStage({ kind: 'changing' })}
-          testID="password.change"
-        />
+        <>
+          <FocusHolder holder={changeHolder} />
+          <SecondaryButton
+            ref={changeOpener}
+            label={t('passwordCard.change')}
+            onPress={() => setStage({ kind: 'changing' })}
+            testID="password.change"
+          />
+        </>
       )}
     </View>
   );
@@ -183,8 +188,8 @@ function Changing({
   const { t } = useTranslation();
   const current = useRef('');
   const next = useRef('');
-  const currentInput = useRef<TextInput>(null);
-  const nextInput = useRef<TextInput>(null);
+  const currentInput = useRef<TextInputInstance>(null);
+  const nextInput = useRef<TextInputInstance>(null);
   const [lengthMet, setLengthMet] = useState(false);
   const [saving, setSaving] = useState(false);
   const [refusal, setRefusal] = useState<PasswordRefusal | null>(null);
@@ -358,8 +363,8 @@ function Setting({
   // What Password remounts with after an expired code sends the card back to the code.
   const [kept, setKept] = useState('');
   const [expired, setExpired] = useState<object | undefined>(undefined);
-  const codeInput = useRef<TextInput>(null);
-  const passwordInput = useRef<TextInput>(null);
+  const codeInput = useRef<TextInputInstance>(null);
+  const passwordInput = useRef<TextInputInstance>(null);
   const aboveKeyboard = useAboveKeyboard();
   const codeChecks = useFormChecks(
     ['code'] as const,

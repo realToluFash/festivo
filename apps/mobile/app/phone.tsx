@@ -9,7 +9,7 @@ import {
 import { getLocales } from 'expo-localization';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInput, View } from 'react-native';
+import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
@@ -18,6 +18,7 @@ import { PrimaryButton, QuietButton } from '../src/components/Buttons.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { OnboardingSteps } from '../src/components/OnboardingSteps.tsx';
 import { focusPicker } from '../src/components/CountryPicker.tsx';
+import { focusChecked, keysStayDown } from '../src/components/Field.tsx';
 import { PhoneEntry } from '../src/components/PhoneEntry.tsx';
 import { phoneProblemMessage } from '../src/phoneProblem.ts';
 import { tokens } from '../src/theme/tokens.ts';
@@ -106,10 +107,12 @@ function NumberForm({
   const [number, setNumber] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const numberInput = useRef<TextInput>(null);
-  const countryPicker = useRef<View>(null);
+  const numberInput = useRef<TextInputInstance>(null);
+  const countryPicker = useRef<ViewInstance>(null);
 
   async function send(): Promise<void> {
+    if (sending) return;
+
     const found = phoneLengthProblem(number, country);
     const problem = phoneProblemMessage(found, country, t);
 
@@ -119,12 +122,13 @@ function NumberForm({
       if (refusedPhoneField(found) === 'country') {
         focusPicker(countryPicker);
       } else {
-        numberInput.current?.focus();
+        focusChecked(numberInput);
       }
 
       return;
     }
 
+    keysStayDown();
     setSending(true);
 
     try {
@@ -150,7 +154,7 @@ function NumberForm({
         help={t('verifyPhone.numberHelp')}
         country={country}
         error={error}
-        disabled={sending}
+        submitting={sending}
         onCountry={(code) => {
           setCountry(code);
           setError(null);

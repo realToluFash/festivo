@@ -2,7 +2,7 @@ import type { OrganisationRole, RolesCatalogue } from '@soirely/api-client';
 import { roleHolds, roleName } from '@soirely/domain';
 import { Redirect } from 'expo-router';
 import { type RefCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../src/api.ts';
@@ -177,7 +177,7 @@ export default function RolesScreen() {
       </View>
     ) : null;
 
-  const newRole = (opener?: RefCallback<View>) => (
+  const newRole = (opener?: RefCallback<ViewInstance>) => (
     <View style={!phone && styles.start}>
       {phone ? (
         <SecondaryButton
@@ -197,7 +197,7 @@ export default function RolesScreen() {
     </View>
   );
 
-  const list = (opener: (key: string) => RefCallback<View>) =>
+  const list = (opener: (key: string) => RefCallback<ViewInstance>) =>
     organisation != null && catalogue != null ? (
       <RoleList
         kind={kind}

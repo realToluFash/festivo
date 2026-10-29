@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  fieldToBlur,
   focusBackMs,
+  INPUT_FOCUS_TAKEN_MS,
   stepCloseSteps,
   TALKBACK_FOCUS_BACK_MS,
   TALKBACK_FOCUS_TAKEN_MS,
@@ -29,20 +31,41 @@ describe('focus going back to a step’s opener', () => {
 });
 
 describe('a step closing back to its opener', () => {
-  it('on Android with TalkBack on, puts the keys down, shows the opener, focuses it, and only then takes the step away (sc-18588)', () => {
-    expect(stepCloseSteps('android', true)).toEqual([
-      { do: 'putKeysDown' },
+  const SETTLED_MS = 500;
+
+  it('on Android with TalkBack on, gives input focus to a holder TalkBack does not read before the keys go down, and moves TalkBack’s focus to the opener once their scroll has landed, before the step goes (sc-18588, sc-18587)', () => {
+    expect(stepCloseSteps('android', true, SETTLED_MS)).toEqual([
       { do: 'showOpener' },
-      { do: 'focusOpener', atMs: TALKBACK_FOCUS_BACK_MS },
-      { do: 'finish', focusBack: false, atMs: TALKBACK_FOCUS_BACK_MS + TALKBACK_FOCUS_TAKEN_MS },
+      { do: 'takeInputFocus', atMs: INPUT_FOCUS_TAKEN_MS, to: 'holder' },
+      { do: 'putKeysDown' },
+      { do: 'settleOpener', into: 'outOfSight' },
+      { do: 'finish', focusBack: false, atMs: SETTLED_MS + TALKBACK_FOCUS_TAKEN_MS },
     ]);
   });
 
   it('closes at once with no screen reader, which has no focus to lose', () => {
-    expect(stepCloseSteps('android', false)).toEqual([{ do: 'finish', focusBack: true, atMs: 0 }]);
+    expect(stepCloseSteps('android', false, SETTLED_MS)).toEqual([
+      { do: 'finish', focusBack: true, atMs: 0 },
+    ]);
   });
 
   it('closes at once on iOS, where VoiceOver waits for the move it is asked for', () => {
-    expect(stepCloseSteps('ios', true)).toEqual([{ do: 'finish', focusBack: true, atMs: 0 }]);
+    expect(stepCloseSteps('ios', true, SETTLED_MS)).toEqual([
+      { do: 'finish', focusBack: true, atMs: 0 },
+    ]);
+  });
+});
+
+describe('the field a closing step blurs to put the keys down', () => {
+  it('is the one holding input focus', () => {
+    expect(fieldToBlur('new password', 'current password')).toBe('new password');
+  });
+
+  it('is the one that raised the keys once it has given input focus up, which leaves them up (sc-18588)', () => {
+    expect(fieldToBlur(null, 'current password')).toBe('current password');
+  });
+
+  it('is none when no field raised the keys', () => {
+    expect(fieldToBlur(null, null)).toBeNull();
   });
 });

@@ -25,6 +25,8 @@ export default [
       '**/ios/**',
       '**/android/**',
       '.agents/**',
+      // QA pass scratch, gitignored: never in CI, so a local run must skip it too.
+      '.qa/**',
       'services/api/var/**',
       // Vendored by Symfony's `assets:install`, which runs on every composer
       // install. Git already ignores them; eslint does not read .gitignore, so

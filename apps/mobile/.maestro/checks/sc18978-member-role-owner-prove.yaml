@@ -17,10 +17,15 @@ appId: host.exp.Exponent
     timeout: 20000
 - tapOn:
     id: members.role.owner
-- scrollUntilVisible:
-    element:
-      id: members.role.save
-    timeout: 20000
+- repeat:
+    while:
+      notVisible:
+        id: members.role.save
+    times: 10
+    commands:
+      - swipe:
+          start: 85%, 80%
+          end: 85%, 30%
 - tapOn:
     id: members.role.save
 - extendedWaitUntil:

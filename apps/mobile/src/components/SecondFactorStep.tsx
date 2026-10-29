@@ -2,7 +2,7 @@ import { type SecondFactor } from '@soirely/api-client';
 import { cleanCode, formatTimeOfDay } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInput, View } from 'react-native';
+import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
@@ -10,7 +10,7 @@ import { type CodeMode, codeRefusal, typedCodeProblem } from '../kit/twoFactor.t
 import { tokens } from '../theme/tokens.ts';
 import { AuthFrame, AuthHeading } from './AuthFrame.tsx';
 import { Footnote, PrimaryButton, QuietButton } from './Buttons.tsx';
-import { CodeField, Field, TextField } from './Field.tsx';
+import { CodeField, Field, focusChecked, keysStayDown, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
 
@@ -47,7 +47,7 @@ export function SecondFactorStep({
   const [status, setStatus] = useState<Status>({ kind: 'ready' });
   const [blank, setBlank] = useState<string | null>(null);
   const typed = useRef('');
-  const input = useRef<TextInput>(null);
+  const input = useRef<TextInputInstance>(null);
 
   const checking = status.kind === 'checking';
   const liftsAt = status.kind === 'paused' ? status.liftsAt : null;
@@ -82,10 +82,11 @@ export function SecondFactorStep({
     const problem = typedCodeProblem(mode, typed.current);
     setBlank(problem == null ? null : t(problem));
     if (problem != null) {
-      input.current?.focus();
+      focusChecked(input);
       return;
     }
 
+    keysStayDown();
     setStatus({ kind: 'checking' });
 
     try {
@@ -121,13 +122,14 @@ export function SecondFactorStep({
   const sharedInput = {
     ref: input,
     wrong: error != null,
-    editable: !checking,
+    submitting: checking,
     onChangeText: (text: string) => {
       typed.current = text;
       setBlank(null);
       if (status.kind === 'wrong') setStatus({ kind: 'ready' });
     },
     returnKeyType: 'go' as const,
+    submitBehavior: 'submit' as const,
     onSubmitEditing: () => void submit(),
     testID: 'twoFactor.code',
   };

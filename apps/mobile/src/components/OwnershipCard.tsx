@@ -8,20 +8,32 @@ import {
 import { PROOF_MINUTES, confirmWith, roleName, typedNameMatches } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type Ref, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
 import { refusalTitle } from '../kit/refusal.ts';
-import { keptProof, keptProofRanOut, signedInWith, tripRefused } from '../kit/waysProof.ts';
+import {
+  keptProof,
+  keptProofRanOut,
+  signedInWith,
+  transferSentKept,
+  tripRefused,
+} from '../kit/waysProof.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { reloadSignedIn, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
-import { CodeField, Field, FieldError, TextField } from './Field.tsx';
+import { CodeField, Field, FieldError, focusChecked, keysStayDown, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { PasswordField } from './PasswordField.tsx';
@@ -180,7 +192,7 @@ function Row({
   title: string;
   note: string;
   action: string;
-  opener: Ref<View>;
+  opener: Ref<ViewInstance>;
   onPress: () => void;
   testID: string;
 }) {
@@ -234,9 +246,9 @@ function Transfer({
   const [refused, setRefused] = useState<{ field: TransferField | null; message: string } | null>(
     null,
   );
-  const ownerRow = useRef<View>(null);
-  const passwordInput = useRef<TextInput>(null);
-  const codeInput = useRef<TextInput>(null);
+  const ownerRow = useRef<ViewInstance>(null);
+  const passwordInput = useRef<TextInputInstance>(null);
+  const codeInput = useRef<TextInputInstance>(null);
   const chosen = candidates.find((one) => one.id === picked) ?? null;
   const name = organisation.name;
 
@@ -252,8 +264,8 @@ function Transfer({
       return codeAsked && value.trim() === '' ? t('ownership.codeBlank') : null;
     },
     (field) => {
-      if (field === 'password') passwordInput.current?.focus();
-      if (field === 'code') codeInput.current?.focus();
+      if (field === 'password') focusChecked(passwordInput);
+      if (field === 'code') focusChecked(codeInput);
     },
   );
 
@@ -294,6 +306,7 @@ function Transfer({
     if (busy || !checks.passes({ owner: picked ?? '', password, code }) || chosen == null) return;
     if (provider != null && vouched == null) return;
 
+    keysStayDown();
     setBusy(true);
     setRefused(null);
 
@@ -317,12 +330,13 @@ function Transfer({
         return;
       }
 
-      if (keptProofRanOut(error, vouched != null)) {
+      if (keptProofRanOut(error, transferSentKept(vouched, pending))) {
         setVouched(null);
         setPending(null);
         setCodeAsked(false);
         setCode('');
         setExpired({});
+        if (provider == null) setRefused({ field: null, message: error.problem.title });
 
         return;
       }
@@ -398,7 +412,7 @@ function Transfer({
         />
       )}
 
-      {provider == null && pending == null && (
+      {provider == null && (
         <Field
           label={t('ownership.password')}
           error={passwordError}
@@ -409,8 +423,7 @@ function Transfer({
             accessibilityLabel={t('ownership.password')}
             value={password}
             wrong={passwordError != null}
-            submitting={busy}
-            editable={!busy}
+            submitting={busy || pending != null}
             autoComplete="current-password"
             textContentType="password"
             onChangeText={(typed) => {
@@ -455,7 +468,7 @@ function Transfer({
             value={code}
             wrong={codeError != null}
             takesRecoveryCode
-            editable={!busy}
+            submitting={busy}
             onChangeText={(typed) => {
               setCode(typed);
               if (refused?.field === 'code') setRefused(null);
@@ -625,7 +638,7 @@ function Delete({
   const [busy, setBusy] = useState(false);
   const [mismatch, setMismatch] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
-  const input = useRef<TextInput>(null);
+  const input = useRef<TextInputInstance>(null);
   const aboveKeyboard = useAboveKeyboard();
   const name = organisation.name;
   const matches = typedNameMatches(typed, name);
@@ -649,11 +662,12 @@ function Delete({
 
     if (!matches) {
       setMismatch(t('ownership.deleteMismatch', { organisation: name }));
-      input.current?.focus();
+      focusChecked(input);
 
       return;
     }
 
+    keysStayDown();
     setBusy(true);
     setFailed(null);
 
@@ -732,7 +746,7 @@ function Delete({
             accessibilityLabel={t('ownership.deleteType', { organisation: name })}
             value={typed}
             wrong={mismatch != null}
-            editable={!busy}
+            submitting={busy}
             autoCapitalize="none"
             autoCorrect={false}
             autoComplete="off"

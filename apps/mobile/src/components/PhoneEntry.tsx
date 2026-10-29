@@ -1,5 +1,5 @@
 import type { Ref } from 'react';
-import { StyleSheet, type TextInput, View } from 'react-native';
+import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { tokens } from '../theme/tokens.ts';
@@ -13,7 +13,7 @@ export function PhoneEntry({
   help,
   country,
   error,
-  disabled,
+  submitting,
   ref,
   pickerRef,
   onCountry,
@@ -26,9 +26,10 @@ export function PhoneEntry({
   help: string;
   country: string;
   error: string | null | undefined;
-  disabled: boolean;
-  ref?: Ref<TextInput> | undefined;
-  pickerRef?: Ref<View> | undefined;
+  /** A submit runs: the picker is off and the number held. */
+  submitting: boolean;
+  ref?: Ref<TextInputInstance> | undefined;
+  pickerRef?: Ref<ViewInstance> | undefined;
   onCountry: (code: string) => void;
   onNumber: (typed: string) => void;
   onSubmit: () => void;
@@ -44,7 +45,7 @@ export function PhoneEntry({
             label={t('verifyPhone.countryLabel')}
             value={country}
             onChange={onCountry}
-            disabled={disabled}
+            disabled={submitting}
             withCallingCode
             pickerRef={pickerRef}
             testID={`${testID}.country`}
@@ -54,13 +55,14 @@ export function PhoneEntry({
           ref={ref}
           style={styles.number}
           wrong={error != null}
-          editable={!disabled}
+          submitting={submitting}
           keyboardType="phone-pad"
           textContentType="telephoneNumber"
           autoComplete="tel"
           returnKeyType="done"
           onChangeText={onNumber}
           onSubmitEditing={onSubmit}
+          submitBehavior="submit"
           accessibilityLabel={label}
           testID={`${testID}.number`}
         />

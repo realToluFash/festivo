@@ -418,7 +418,8 @@
     "title": "Su cuenta",
     "sections": "Secciones de la cuenta",
     "sectionAccount": "Cuenta",
-    "sectionSecurity": "Seguridad"
+    "sectionSecurity": "Seguridad",
+    "sectionNotifications": "Notificaciones"
   },
   "devices": {
     "title": "Dispositivos con sesión abierta",
@@ -661,7 +662,7 @@
     "nameBlank": "Indique el nombre de la organización.",
     "currencyBlank": "Elija una moneda.",
     "contactBlank": "Indique un correo electrónico de contacto.",
-    "contactInvalid": "Eso no parece un correo electrónico. Compruebe que tiene una @ y un dominio.",
+    "contactInvalid": "Eso no parece una dirección de correo electrónico. Compruebe que tiene una @ y un dominio.",
     "readOnly": "Su función, {{role}}, puede ver estos datos pero no cambiarlos. Los propietarios sí pueden.",
     "readOnlyUntilLinked": "{{organisation}} solo admite el inicio de sesión con Google o Apple. Hasta que vincule una de las dos, puede ver estos datos pero no cambiarlos.",
     "readOnlyUntilTwoFactor": "{{organisation}} pide la verificación en dos pasos a quienes pueden gestionar miembros, roles, facturación o seguridad. Hasta que la active, puede ver estos datos pero no cambiarlos.",
@@ -702,7 +703,7 @@
   },
   "forms": {
     "emailBlank": "Introduzca su dirección de correo electrónico.",
-    "emailShape": "Eso no parece una dirección de correo. Compruebe que tiene una @ y un dominio.",
+    "emailShape": "Eso no parece una dirección de correo electrónico. Compruebe que tiene una @ y un dominio.",
     "countryBlank": "Elija un país."
   },
   "oauth": {
@@ -903,8 +904,10 @@
     "signedInWith": "Sesión iniciada con {{provider}}",
     "proveLink_one": "Para vincular {{provider}}, confirme que es usted. No se lo volveremos a pedir en un minuto.",
     "proveLink_other": "Para vincular {{provider}}, confirme que es usted. No se lo volveremos a pedir en {{count, number}} minutos.",
+    "proveLink_many": "Para vincular {{provider}}, confirme que es usted. No se lo volveremos a pedir en {{count, number}} de minutos.",
     "proveUnlink_one": "Para desvincular {{provider}}, confirme que es usted. No se lo volveremos a pedir en un minuto.",
     "proveUnlink_other": "Para desvincular {{provider}}, confirme que es usted. No se lo volveremos a pedir en {{count, number}} minutos.",
+    "proveUnlink_many": "Para desvincular {{provider}}, confirme que es usted. No se lo volveremos a pedir en {{count, number}} de minutos.",
     "yourPassword": "Su contraseña",
     "passwordBlank": "Introduzca su contraseña.",
     "passwordWrong": "Esa no es su contraseña. Inténtelo de nuevo o restablézcala por correo.",
@@ -913,6 +916,7 @@
     "codeHelp": "De su aplicación de autenticación, o uno de sus códigos de recuperación.",
     "codeKeepsSignIn_one": "Si se equivoca de código, no tendrá que volver a {{provider}}. Su inicio de sesión con {{provider}} es válido durante un minuto.",
     "codeKeepsSignIn_other": "Si se equivoca de código, no tendrá que volver a {{provider}}. Su inicio de sesión con {{provider}} es válido durante {{count, number}} minutos.",
+    "codeKeepsSignIn_many": "Si se equivoca de código, no tendrá que volver a {{provider}}. Su inicio de sesión con {{provider}} es válido durante {{count, number}} de minutos.",
     "codeWrong": "Ese código no ha funcionado. Revise su aplicación e inténtelo de nuevo.",
     "linkNote": "A continuación se abrirá {{provider}} para que elija la cuenta que quiere vincular. Su dirección no tiene que coincidir con {{email}}.",
     "proveWithProvider": "Usted inicia sesión con {{provider}}, así que confirme con {{provider}}.",
@@ -1959,6 +1963,79 @@
     "youWithdrewTold": "Ha retirado su solicitud. Se avisa por correo electrónico a todas las personas a las que se informó.",
     "withdrawEnded": "Esta solicitud ya ha terminado.",
     "withdrawNotClaimant": "Solo la persona que inició esta solicitud puede retirarla."
+  },
+  "notifications": {
+    "bell": "Notificaciones",
+    "bellUnread_one": "Notificaciones, {{count, number}} sin leer",
+    "bellUnread_other": "Notificaciones, {{count, number}} sin leer",
+    "bellUnread_many": "Notificaciones, {{count, number}} sin leer",
+    "overNinetyNine": "99+",
+    "heading": "Notificaciones",
+    "markAllRead": "Marcar todas como leídas",
+    "allRead": "Todas marcadas como leídas.",
+    "allReadNotSaved": "No se han podido marcar todas como leídas. Vuelva a intentarlo.",
+    "unread": "No leída",
+    "muted": "Silenciada",
+    "loading": "Cargando las notificaciones",
+    "couldNotLoad": "No se han podido cargar sus notificaciones.",
+    "tryAgain": "Reintentar",
+    "empty": "Aún no hay nada. Aquí aparecerán las respuestas, los cambios y los recordatorios de sus eventos.",
+    "eventGone": "Este evento ya no está disponible.",
+    "showMore": "Mostrar más",
+    "moreShown_one": "Se muestra {{count, number}} notificación más.",
+    "moreShown_other": "Se muestran {{count, number}} notificaciones más.",
+    "moreShown_many": "Se muestran {{count, number}} de notificaciones más.",
+    "moreFailed": "No se han podido cargar más notificaciones. Vuelva a intentarlo en un momento.",
+    "arrived": "Nueva notificación: {{title}}",
+    "arrivedAt": "Nueva notificación: {{title}} · {{event}}",
+    "whereWhen": "{{event}} · {{when}}",
+    "atTime": "hoy, {{time}}",
+    "settings": "Configuración de notificaciones",
+    "more": "Más opciones para {{title}}, {{event}}",
+    "muteEvent": "Silenciar este evento",
+    "muteNotLoaded": "No se ha podido comprobar si este evento está silenciado.",
+    "muteNotSaved": "No se ha guardado. Vuelva a intentarlo.",
+    "pushAsk": {
+      "title": "¿Activar las notificaciones push?",
+      "reason": "Entérese en este dispositivo de las respuestas, los cambios y los días de evento, aunque Soirely esté cerrado.",
+      "turnOn": "Activar",
+      "notNow": "Ahora no"
+    }
+  },
+  "eventMute": {
+    "heading": "Solo para usted",
+    "note": "No afecta a nadie más de este evento."
+  },
+  "notificationSettings": {
+    "title": "Configuración de notificaciones",
+    "push": "Push",
+    "email": "Correo electrónico",
+    "on": "Activado",
+    "off": "Desactivado",
+    "switchName": "{{category}}, {{channel}}",
+    "saved": "Guardado.",
+    "pushNotSaved": "No se ha guardado el cambio de las notificaciones push. Vuelva a intentarlo.",
+    "emailNotSaved": "No se ha guardado el cambio del correo electrónico. Vuelva a intentarlo.",
+    "couldNotLoad": "No se ha podido cargar su configuración de notificaciones.",
+    "tryAgain": "Reintentar",
+    "pushBlocked": "Las notificaciones push están desactivadas en este navegador, así que aquí no le llegarán. Actívelas en la configuración del navegador.",
+    "quietHours": "De {{start}} a {{end}} (su hora local), solo llegan las notificaciones push de «Día del evento».",
+    "category": {
+      "guest_replies": "Respuestas de los invitados",
+      "messages": "Mensajes",
+      "event_day": "Día del evento",
+      "event_changes": "Cambios en eventos",
+      "money": "Facturación",
+      "account_security": "Cuenta y seguridad"
+    },
+    "note": {
+      "guest_replies": "Las respuestas de los invitados y sus cambios, las necesidades que añaden y sus preguntas.",
+      "messages": "Un envío que no llegó a todos, quedó retenido por falta de créditos o se canceló, y los créditos a punto de agotarse.",
+      "event_day": "Cambios en su turno o en su hora de convocatoria, o en el evento durante las 24 horas previas.",
+      "event_changes": "Cuando otra persona cambia si se celebra, cuándo o dónde un evento en el que usted participa.",
+      "money": "Pagos pendientes, uso al {{low}} y al {{high}}, pagos fallidos y facturas.",
+      "account_security": "Inicios de sesión, su contraseña, la verificación en dos pasos, la propiedad y los accesos. El correo electrónico no se puede desactivar."
+    }
   },
   "timeline": {
     "comingUp": "Próximas fechas",

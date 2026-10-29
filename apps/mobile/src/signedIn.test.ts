@@ -13,6 +13,7 @@ const router = vi.hoisted(() => ({ replace: vi.fn() }));
 const shown = vi.hoisted(() => ({ language: 'en' }));
 
 vi.mock('./api.ts', () => ({ api }));
+vi.mock('./appPush.ts', () => ({ registerAppPush: async () => {} }));
 vi.mock('./i18n/index.ts', () => ({ currentLocale: () => shown.language }));
 vi.mock('./tokens.ts', () => ({ tokens: { clear: vi.fn() } }));
 vi.mock('expo-router', () => ({ router }));

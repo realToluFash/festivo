@@ -16,6 +16,7 @@ function signedInWith(organisations: Membership[]): void {
   __setSessionState({
     status: 'signedIn',
     session: {
+      userId: 'u1',
       name: 'Folake Adeyemi',
       email: 'folake@ire.events',
       verified: true,

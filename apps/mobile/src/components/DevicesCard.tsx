@@ -7,7 +7,7 @@ import {
 } from '@soirely/api-client';
 import { formatDay, formatTimeOfDay, othersOf, thisDeviceFirst } from '@soirely/domain';
 import { type Ref, useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInput, View } from 'react-native';
+import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -26,7 +26,7 @@ import { currentSessionId } from '../tokens.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
-import { CodeField, Field } from './Field.tsx';
+import { CodeField, Field, focusChecked, keysStayDown } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { PasswordField } from './PasswordField.tsx';
@@ -300,7 +300,7 @@ function Row({
 }: {
   device: DeviceSession;
   here: boolean;
-  opener: Ref<View>;
+  opener: Ref<ViewInstance>;
   onCheck: () => void;
   onEndHere: () => void;
 }) {
@@ -410,8 +410,8 @@ function EverywhereElse({
   const provider = hasPassword ? null : (providers[0]?.provider ?? null);
   const password = useRef('');
   const code = useRef('');
-  const passwordInput = useRef<TextInput>(null);
-  const codeInput = useRef<TextInput>(null);
+  const passwordInput = useRef<TextInputInstance>(null);
+  const codeInput = useRef<TextInputInstance>(null);
   const returned = useRef<ProviderSignInAttempt | null>(null);
   const [codeAsked, setCodeAsked] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
@@ -429,7 +429,7 @@ function EverywhereElse({
         : codeAsked && value.trim() === ''
           ? t('devices.everywhereCodeBlank')
           : null,
-    (field) => (field === 'password' ? passwordInput : codeInput).current?.focus(),
+    (field) => focusChecked(field === 'password' ? passwordInput : codeInput),
   );
 
   useEffect(() => {
@@ -453,6 +453,7 @@ function EverywhereElse({
     if (working || refusal?.kind === 'limited') return;
     if (!checks.passes({ password: password.current, code: code.current })) return;
 
+    keysStayDown();
     setWorking(true);
     setRefusal(null);
 
@@ -565,7 +566,6 @@ function EverywhereElse({
             ref={passwordInput}
             wrong={passwordError != null}
             submitting={working}
-            editable={!working}
             autoComplete="current-password"
             textContentType="password"
             onChangeText={(text) => {
@@ -576,6 +576,7 @@ function EverywhereElse({
             onBlur={() => checks.left('password', password.current)}
             returnKeyType={codeAsked ? 'next' : 'done'}
             onSubmitEditing={() => (codeAsked ? codeInput.current?.focus() : void submit())}
+            submitBehavior="submit"
             accessibilityLabel={t('devices.everywherePassword')}
             testID="devices.everywhere.password"
           />
@@ -599,7 +600,7 @@ function EverywhereElse({
               ref={codeInput}
               takesRecoveryCode
               wrong={codeError != null}
-              editable={!working}
+              submitting={working}
               autoComplete="one-time-code"
               textContentType="oneTimeCode"
               onChangeText={(text) => {
@@ -610,6 +611,7 @@ function EverywhereElse({
               onBlur={() => checks.left('code', code.current)}
               returnKeyType="done"
               onSubmitEditing={() => void submit()}
+              submitBehavior="submit"
               accessibilityLabel={t('devices.everywhereCode')}
               testID="devices.everywhere.code"
             />

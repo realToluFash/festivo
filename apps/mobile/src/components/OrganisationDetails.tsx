@@ -16,7 +16,13 @@ import {
 } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { type TFunction } from 'i18next';
 
@@ -37,7 +43,7 @@ import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { CountryPicker, focusPicker } from './CountryPicker.tsx';
-import { Field, TextField } from './Field.tsx';
+import { Field, focusChecked, focusRefused, keysStayDown, TextField } from './Field.tsx';
 import { ListPicker } from './ListPicker.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
@@ -61,15 +67,15 @@ export function EditableDetails({
   const [refusal, setRefusal] = useState(NO_REFUSAL);
   const [status, setStatus] = useState<Status>('editing');
   const [newLanguage, setNewLanguage] = useState<string | null>(null);
-  const nameInput = useRef<TextInput>(null);
-  const contactInput = useRef<TextInput>(null);
-  const countryPicker = useRef<View>(null);
-  const currencyPicker = useRef<View>(null);
-  const timezonePicker = useRef<View>(null);
-  const languagePicker = useRef<View>(null);
+  const nameInput = useRef<TextInputInstance>(null);
+  const contactInput = useRef<TextInputInstance>(null);
+  const countryPicker = useRef<ViewInstance>(null);
+  const currencyPicker = useRef<ViewInstance>(null);
+  const timezonePicker = useRef<ViewInstance>(null);
+  const languagePicker = useRef<ViewInstance>(null);
   const focus = (field: OrganisationField) => {
-    if (field === 'name') nameInput.current?.focus();
-    else if (field === 'contactAddress') contactInput.current?.focus();
+    if (field === 'name') focusChecked(nameInput);
+    else if (field === 'contactAddress') focusChecked(contactInput);
     else
       focusPicker(
         {
@@ -91,7 +97,8 @@ export function EditableDetails({
   );
 
   useEffect(() => {
-    if (refusal.focus != null) focus(refusal.focus.field);
+    if (refusal.focus != null)
+      focusRefused(refusal.focus.field === 'name' ? nameInput : contactInput);
   }, [refusal.focus]);
 
   const currencies = useMemo(
@@ -125,6 +132,7 @@ export function EditableDetails({
   async function save(): Promise<void> {
     if (busy || !checks.passes(values)) return;
 
+    keysStayDown();
     setStatus('saving');
 
     const outcome = await saveOrganisation(
@@ -177,7 +185,7 @@ export function EditableDetails({
             onBlur={() => checks.left('name', values.name)}
             onSubmitEditing={() => contactInput.current?.focus()}
             wrong={errors.name != null}
-            editable={!busy}
+            submitting={busy}
             maxLength={ORGANISATION_NAME_MAXIMUM}
             autoComplete="organization"
             textContentType="organizationName"
@@ -204,7 +212,7 @@ export function EditableDetails({
             onChangeText={(value) => change('contactAddress', value)}
             onBlur={() => checks.left('contactAddress', values.contactAddress)}
             wrong={errors.contactAddress != null}
-            editable={!busy}
+            submitting={busy}
             keyboardType="email-address"
             autoComplete="email"
             textContentType="emailAddress"

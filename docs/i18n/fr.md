@@ -54,6 +54,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **29 Oct 2026. Les notifications : la cloche, la mise en sourdine et les paramètres**
+  (sc-14815 pour sc-3980, `notifications.*`, `eventMute.*`, `notificationSettings.*` web et
+  app, `messages:notifications.*`). Le canal est « Push » en colonne et « notifications push »
+  dans une phrase. Mute est « Mettre cet événement en sourdine », et la marque d’une
+  notification « En sourdine », invariable, à côté de « Non lue ». Les catégories sont des noms
+  propres : « Réponses des invités », « Messages », « Jour de l’événement » (pas « Jour J »,
+  trop familier dans une liste de réglages), « Modifications d’événements », « Facturation »
+  (Money : paiements, utilisation et factures) et « Compte et sécurité » ; citées dans une
+  phrase, entre guillemets. Les échecs suivent la maison (« … n’ont pas pu être chargées. »,
+  « Non enregistré. ») et disent déjà le sens fixé par l’anglais du 29 oct.
 - **28 Oct 2026. L’événement commencé un autre jour** (sc-17870 pour sc-17853, `events.startedOn`
   web et `eventsScreen.startedOn` app). « A commencé le {{date}} · {{time}} {{timeZone}} », en
   paire avec `startedToday` (« Aujourd’hui · a commencé à… »). `{{date}}` est « mardi 27 oct. »,
@@ -153,10 +163,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   mute h, between the count and what it counts: « 1 000 000 de personnes », « d’événements »,
   « vos {{count}} d’autres appareils », « et {{count}} d’autres ». Where no noun follows the count
   (« les {{count}} seront déconnectés », « Déconnecter les {{count}} »), `_many` is `_other` as
-  it stands. Every new count family gets its `_many`,
-  except the proof window's lines (`waysCard.proveLink_*`, `proveUnlink_*`, `codeKeepsSignIn_*`):
-  they count PROOF_MINUTES, a constant that is never a million, and the app's test holds them to
-  `_one` and `_other`.
+  it stands. Every count family gets its `_many`,
+  the proof window's lines (`waysCard.proveLink_*`, `proveUnlink_*`, `codeKeepsSignIn_*`)
+  included since sc-3980: « pendant {{count, number}} de minutes » (sc-20444).
 - **25 Oct 2026. Settings > Members on the web, the invitation link and the invitation email**
   (`web:membersScreen.*`, `web:join.*`, `invitations.*` web and app, `emails:invitation.*`,
   `messages:invitations.*`, sc-2922). The web twins of the app’s Members keys are the app’s
@@ -581,3 +590,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   contenu », comme « Calcul de son contenu… » (`deleteLoading`). « Si vous la supprimez », puis
   « restaurer » et « l’assistance Soirely », comme `deleteWindow`, avec un délai fixe
   « pendant 30 jours ». Le bouton est « Réessayer », comme ailleurs.
+- **29 oct. 2026. Une adresse e-mail mal saisie est refusée en une seule phrase**
+  (`forms.emailShape`, `orgGeneral.contactInvalid`, `membersScreen.emailShape`, web et app, et
+  `validation.email_invalid`, `validation.contact_address_invalid`,
+  `validation.invite_email_invalid`, sc-20577) : « Cela ne ressemble pas à une adresse e-mail.
+  Vérifiez qu’elle contient un @ et un domaine. » L’anglais est le même partout, le français
+  aussi ; « Cette adresse e-mail ne semble pas valide », sur le champ d’invitation, était l’exception.

@@ -49,6 +49,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **29 Oct 2026. Las notificaciones: la campana, Silenciar este evento y la configuración**
+  (sc-14815 para sc-3980, `notifications.*`, `eventMute.*`, `notificationSettings.*` web y app,
+  `messages:notifications.*`). El canal es «Push» en la columna y «notificaciones push» en una
+  frase; nunca «avisos». Mute es «Silenciar este evento», y la marca de una notificación,
+  «Silenciada», como «No leída», porque concuerda con notificación. Las categorías son nombres
+  propios: «Respuestas de los invitados», «Mensajes», «Día del evento», «Cambios en eventos»,
+  «Facturación» (Money: pagos, uso y facturas, donde «Dinero» suena a cartera) y «Cuenta y
+  seguridad»; citadas en una frase van entre comillas. Una hora sola se escribe sin artículo
+  («hoy, {{time}}», «De {{start}} a {{end}}»), porque «a las» falla a la 1:00. Los fallos dicen
+  ya el sentido que fijó el inglés del 29 Oct, aunque cuatro líneas inglesas esperan a [dev].
 - **28 Oct 2026. El evento que empezó otro día** (sc-17870 para sc-17853, `events.startedOn` web y
   `eventsScreen.startedOn` app). «Empezó el {{date}} · {{time}} {{timeZone}}», en pareja con
   `startedToday` («Hoy · empezó a las…»). `{{date}}` abre con el día de la semana («martes, 27 oct»),
@@ -140,10 +150,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   million, i18next picks `_many`. It is `_other` with «de» between the count and the noun it
   counts, «1 000 000 de personas», «las {{count}} de sesiones», as the waiting email already
   does. Where no noun follows the count («y {{count}} más», «en los {{count}}», «Puede añadir
-  {{count}} más»), `_many` is `_other` as it stands. Every new count family gets its `_many`,
-  except the proof window's lines (`waysCard.proveLink_*`, `proveUnlink_*`, `codeKeepsSignIn_*`):
-  they count PROOF_MINUTES, a constant that is never a million, and the app's test holds them to
-  `_one` and `_other`.
+  {{count}} más»), `_many` is `_other` as it stands. Every count family gets its `_many`,
+  the proof window's lines (`waysCard.proveLink_*`, `proveUnlink_*`, `codeKeepsSignIn_*`)
+  included since sc-3980: «durante {{count, number}} de minutos», «en {{count, number}} de minutos» (sc-20444).
 - **25 Oct 2026. Settings > Members on the web, the invitation link and the invitation email**
   (`web:membersScreen.*`, `web:join.*`, `invitations.*` web and app, `emails:invitation.*`,
   `messages:invitations.*`, sc-2922). The web twins of the app's Members keys are the app's
@@ -522,3 +531,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `ownership.deleteRetry`, web y app, sc-16928 para sc-16866). «No se ha podido calcular lo que
   contiene», con el verbo de `deleteLoading`. Restaurar es «restaurarla», como `deleteWindow`,
   y el plazo fijo «durante 30 días». El botón es «Reintentar», como el de la pantalla Eventos.
+- **29 Oct 2026. Una dirección de correo mal escrita se rechaza con una sola frase**
+  (`forms.emailShape`, `orgGeneral.contactInvalid`, `membersScreen.emailShape`, web y app, y
+  `validation.email_invalid`, `validation.contact_address_invalid`,
+  `validation.invite_email_invalid`, sc-20577): «Eso no parece una dirección de correo
+  electrónico. Compruebe que tiene una @ y un dominio.» El inglés de todas es el mismo, así que
+  el español también; se descartaron «un correo electrónico» (es un mensaje, no una dirección) y
+  «una dirección de correo» (el glosario dice _correo electrónico_).

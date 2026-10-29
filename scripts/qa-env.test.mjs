@@ -11,6 +11,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runInNewContext } from 'node:vm';
+import { inflateSync } from 'node:zlib';
 
 import { describe, expect, it } from 'vitest';
 
@@ -27,6 +28,7 @@ import {
   driverBuilds,
   driverPids,
   bundlerEnv,
+  commitTarget,
   checkId,
   codeStep,
   databaseCommands,
@@ -53,6 +55,8 @@ import {
   emulatorFor,
   emulatorGpu,
   expoGoApk,
+  expoGoFits,
+  expoGoIosClient,
   expoGoRunning,
   expoSdkMajor,
   forAndroid,
@@ -69,7 +73,10 @@ import {
   playImage,
   QA_OVERRIDES,
   QA_PORTS,
+  LAN,
+  lanAddress,
   qaConfig,
+  qrPng,
   APP_SERVICES,
   launchVideo,
   iosBundle,
@@ -245,6 +252,64 @@ describe('the QA .env against compose.yaml', () => {
   });
 });
 
+describe('the stack a person tests on', () => {
+  it('serves every address on the network address, on ports no other stack holds', () => {
+    const { project, urls, app, ports } = qaConfig(LAN, '192.168.1.40');
+
+    expect(project).toBe('soirely-qa-lan');
+    expect(urls.web).toBe(`http://192.168.1.40:${ports.WEB_PORT}`);
+    expect(urls.metro).toBe(`exp://192.168.1.40:${ports.METRO_PORT}`);
+    expect(app.EXPO_PUBLIC_API_URL).toBe(`http://192.168.1.40:${ports.API_PORT}`);
+    expect(app.REACT_NATIVE_PACKAGER_HOSTNAME).toBe('192.168.1.40');
+    const taken = new Set(TESTERS.flatMap((tester) => Object.values(qaConfig(tester).ports)));
+    for (const port of Object.values(ports)) {
+      expect(taken.has(port)).toBe(false);
+      expect(port).toBeLessThan(65536);
+    }
+  });
+
+  it('makes no simulators or emulators: the person brings the phone', () => {
+    expect(qaConfig(LAN, '192.168.1.40').simulated).toBe(false);
+    expect(TESTERS.every((tester) => qaConfig(tester).simulated)).toBe(true);
+  });
+
+  it('takes QA_LAN_ADDRESS, else the private IPv4 address a phone reaches', () => {
+    const interfaces = {
+      lo: [{ family: 'IPv4', internal: true, address: '127.0.0.1' }],
+      docker0: [{ family: 'IPv4', internal: false, address: '172.17.0.1' }],
+      'br-0a1b2c': [{ family: 'IPv4', internal: false, address: '172.18.0.1' }],
+      wlan0: [
+        { family: 'IPv6', internal: false, address: 'fe80::1' },
+        { family: 'IPv4', internal: false, address: '192.168.1.40' },
+      ],
+    };
+
+    expect(lanAddress({ QA_LAN_ADDRESS: '10.0.0.9' }, interfaces)).toBe('10.0.0.9');
+    expect(lanAddress({}, interfaces)).toBe('192.168.1.40');
+    expect(() => lanAddress({}, { lo: interfaces.lo })).toThrow(/QA_LAN_ADDRESS/);
+  });
+
+  it('draws the Expo Go QR code as a PNG a person can scan', () => {
+    const modules = Uint8Array.from([1, 0, 0, 1]);
+    const png = qrPng(modules, 2, 1);
+    const side = (2 + 2 * 1) * 2;
+
+    expect(png.subarray(1, 4).toString('latin1')).toBe('PNG');
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([side, side]);
+    const idat = png.indexOf('IDAT', 0, 'latin1');
+    const rows = inflateSync(png.subarray(idat + 4, idat + png.readUInt32BE(idat - 4) + 4));
+    const pixel = (x, y) => rows[y * (side + 1) + 1 + x];
+    expect([pixel(0, 0), pixel(2, 2), pixel(4, 2), pixel(4, 4), pixel(2, 4)]).toEqual([
+      255, 0, 255, 0, 255,
+    ]);
+  });
+
+  it('is the tester of its own worktree', () => {
+    expect(testerOf('/home/me/soirely-qa-lan')).toBe(LAN);
+    expect(testerOf('/home/me/soirely-qa2')).toBe(2);
+  });
+});
+
 describe('the bundler environment', () => {
   it('starts Metro without a file watcher, for the QA app', () => {
     const env = bundlerEnv({ PATH: '/bin', CI: '' }, { EXPO_PUBLIC_API_URL: 'http://api' });
@@ -266,9 +331,39 @@ describe('what checkout was asked for', () => {
     ['SC-55', { kind: 'story', id: 'sc-55' }],
     ['feature/sc-55/sign-in', { kind: 'branch', name: 'feature/sc-55/sign-in' }],
     ['origin/main', { kind: 'branch', name: 'main' }],
+    ['e58c423', { kind: 'commit', sha: 'e58c423' }],
+    ['E58C4234ABCDEF', { kind: 'commit', sha: 'e58c4234abcdef' }],
+    ['1234567', { kind: 'pr', number: 1234567 }],
+    ['deadbee/fix', { kind: 'branch', name: 'deadbee/fix' }],
     [undefined, { kind: 'branch', name: 'main' }],
   ])('%s', (arg, expected) => {
     expect(parseTarget(arg)).toEqual(expected);
+  });
+});
+
+describe('a commit checkout asks for', () => {
+  it('stops on a hash the fetched remote does not have, naming it', () => {
+    expect(() =>
+      commitTarget('deadbee', { verify: () => null, remoteBranchesWith: () => '' }),
+    ).toThrow(/deadbee/);
+  });
+
+  it('stops on a hash only the local object store still holds, as after a force-push', () => {
+    const verify = () => 'e58c4234abcdef';
+    expect(() => commitTarget('e58c423', { verify, remoteBranchesWith: () => '' })).toThrow(
+      /no branch on origin holds e58c423/,
+    );
+  });
+
+  it('checks out a hash it has, and names it by that hash', () => {
+    const asked = [];
+    const verify = (rev) => (asked.push(rev), 'e58c4234abcdef');
+    const remoteBranchesWith = () => '  origin/feature/sc-1/x\n';
+    expect(commitTarget('e58c423', { verify, remoteBranchesWith })).toEqual({
+      ref: 'e58c423',
+      label: 'e58c423',
+    });
+    expect(asked).toEqual(['e58c423^{commit}']);
   });
 });
 
@@ -629,6 +724,36 @@ describe('Expo Go for Android', () => {
 
   it('is an error for an SDK Expo has no client for', () => {
     expect(() => expoGoApk(versions, '~58.0.0')).toThrow(/SDK 58/);
+  });
+});
+
+describe('Expo Go for iOS', () => {
+  const versions = {
+    sdkVersions: {
+      '58.0.0': {
+        iosClientUrl: 'https://x/Expo-Go-58.0.2.tar.gz',
+        iosClientVersion: '58.0.2',
+      },
+    },
+  };
+
+  it("is kept only when its major is the app's SDK", () => {
+    expect(expoGoFits('58.0.2', '~58.0.0')).toBe(true);
+    expect(expoGoFits('57.0.9', '~58.0.0')).toBe(false);
+    expect(expoGoFits('5.8.0', '~58.0.0')).toBe(false);
+  });
+
+  it('is replaced when none is installed or its version is unreadable', () => {
+    expect(expoGoFits(null, '~58.0.0')).toBe(false);
+    expect(expoGoFits('', '~58.0.0')).toBe(false);
+  });
+
+  it("is the simulator client for the app's SDK", () => {
+    expect(expoGoIosClient(versions, '~58.0.0')).toEqual({
+      url: 'https://x/Expo-Go-58.0.2.tar.gz',
+      version: '58.0.2',
+    });
+    expect(() => expoGoIosClient(versions, '~57.0.0')).toThrow(/iOS for SDK 57/);
   });
 });
 
@@ -1700,7 +1825,49 @@ describe('the flows a batch runs', () => {
         }
       }
       expect(readFileSync(join(target, 'batch/reopen.yaml'), 'utf8')).not.toContain('{{t:');
+      const sheet = "'This is the developer menu.*'";
+      const decision = readFileSync(join(target, 'developer-menu-sheet.yaml'), 'utf8');
+      expect(decision.match(/when:\s+(?:not)?[vV]isible: .*/g)).toEqual([
+        `when:\n      notVisible: ${sheet}`,
+      ]);
+      expect(decision).toMatch(
+        /true: \$\{output\.developerMenuSheet\}\s+commands:\s+- tapOn: 'Continue'/,
+      );
+      expect(decision).not.toMatch(/copyTextFrom|SCREENS|point:/);
+      expect(decision).toMatch(/- tapOn: 'Continue'[\s\S]*file: developer-menu-close\.yaml\n/);
+      const close = readFileSync(join(target, 'developer-menu-close.yaml'), 'utf8');
+      expect(close).toMatch(/visible: 'Go home'\s+commands:\s+- tapOn: 'Close'/);
+      expect(close).toMatch(/notVisible: 'Go home'/);
+      expect(close).not.toContain('point:');
+      const menu = readFileSync(join(target, 'expo-go-menu.yaml'), 'utf8');
+      expect(menu).toContain('file: developer-menu-close.yaml');
+      expect(menu).not.toMatch(/point:|tapOn/);
+      expect(readFileSync(join(target, 'batch/developer-menu.yaml'), 'utf8')).toContain(
+        "visible: '${SETTLED}|This is the developer menu.*'",
+      );
+      for (const flow of ['batch/developer-menu.yaml', 'expo-go-menu.yaml']) {
+        const text = readFileSync(join(target, flow), 'utf8');
+        expect(text).toMatch(/file: (\.\.\/)?developer-menu-sheet\.yaml\n/);
+        expect(text).not.toContain(sheet);
+      }
+      expect(readFileSync(join(target, 'batch/developer-menu.yaml'), 'utf8')).not.toMatch(
+        /when:\s+(not)?[vV]isible/,
+      );
+      const settled = (flow) =>
+        new RegExp(
+          `^(?:${readFileSync(join(target, `batch/${flow}.yaml`), 'utf8')
+            .match(/file: developer-menu\.yaml\s+env:\s+SETTLED: '(.*)'/)[1]
+            .replaceAll("''", "'")})$`,
+        );
+      for (const flow of ['session', 'sign-out', 'reopen']) {
+        for (const code of ['en', 'es', 'fr', 'pt']) {
+          expect(catalogues[code].signIn.title).toMatch(settled(flow));
+        }
+      }
       const reset = readFileSync(join(target, 'batch/reset.yaml'), 'utf8');
+      expect(reset.match(/file: developer-menu\.yaml\s+env:\s+SETTLED: '(.*)'/)[1]).toBe(
+        reset.match(/notVisible: '(.*)'/)[1],
+      );
       expect(reset).toContain('ASK: /running');
       expect(reset).not.toMatch(/when:\s+(not)?[vV]isible/);
       expect(readdirSync(join(target, 'batch')).filter((f) => f.includes('save-password'))).toEqual(

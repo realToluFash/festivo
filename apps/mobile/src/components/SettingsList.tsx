@@ -1,7 +1,14 @@
 import { primaryEmailAddress } from '@soirely/api-client';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Fragment, type ReactNode, useRef } from 'react';
-import { type LayoutRectangle, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  type LayoutRectangle,
+  Pressable,
+  ScrollView,
+  type ScrollViewInstance,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -48,7 +55,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
   const { account, organisation } = useSignedIn();
   const width = useSideListWidth(SETTINGS_LIST_WIDTH);
   const phone = kind === 'phone';
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   // Each section mounts the list afresh at its top, so the open row is brought into view once.
   const seen = useRef<{ viewport?: number; row?: LayoutRectangle; revealed?: boolean }>({});
   const reveal = (next: { viewport?: number; row?: LayoutRectangle }) => {
@@ -66,6 +73,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
   const line: Record<SettingsSection, string> = {
     account: t('settings.accountLine'),
     security: t('settings.securityLine'),
+    notifications: t('settings.notificationsLine'),
     organisation: t('settings.organisationLine', { name: organisation?.name ?? '' }),
     members: t('settings.membersLine', { name: organisation?.name ?? '' }),
     roles: t('settings.rolesLine', { name: organisation?.name ?? '' }),

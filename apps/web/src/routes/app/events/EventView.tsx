@@ -18,6 +18,7 @@ import { CalledOffNotice, EndButton } from './EndEvent.tsx';
 import { EventCoverImage } from './EventCoverImage.tsx';
 import { PHASE_WORD } from './eventWords.ts';
 import { DraftRow, StatusPill } from './MakeLive.tsx';
+import { MuteEvent } from './MuteEvent.tsx';
 import { PauseButton, PausedRow } from './PauseEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { typeLabel } from './eventTypes.ts';
@@ -284,6 +285,7 @@ function EventPage({
           </Link>
           {can(session, 'events.create') && <DuplicateEvent event={event} />}
         </div>
+        <MuteEvent eventId={event.id} />
         {can(session, 'events.create') && <DeleteEvent event={event} />}
       </section>
       <ComingUp event={event} now={now} />

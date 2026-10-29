@@ -418,7 +418,8 @@
     "title": "Votre compte",
     "sections": "Sections du compte",
     "sectionAccount": "Compte",
-    "sectionSecurity": "Sécurité"
+    "sectionSecurity": "Sécurité",
+    "sectionNotifications": "Notifications"
   },
   "devices": {
     "title": "Appareils connectés",
@@ -903,8 +904,10 @@
     "signedInWith": "Connexion avec {{provider}} réussie",
     "proveLink_one": "Pour associer {{provider}}, confirmez que c’est bien vous. Cela ne vous sera pas redemandé pendant une minute.",
     "proveLink_other": "Pour associer {{provider}}, confirmez que c’est bien vous. Cela ne vous sera pas redemandé pendant {{count, number}} minutes.",
+    "proveLink_many": "Pour associer {{provider}}, confirmez que c’est bien vous. Cela ne vous sera pas redemandé pendant {{count, number}} de minutes.",
     "proveUnlink_one": "Pour dissocier {{provider}}, confirmez que c’est bien vous. Cela ne vous sera pas redemandé pendant une minute.",
     "proveUnlink_other": "Pour dissocier {{provider}}, confirmez que c’est bien vous. Cela ne vous sera pas redemandé pendant {{count, number}} minutes.",
+    "proveUnlink_many": "Pour dissocier {{provider}}, confirmez que c’est bien vous. Cela ne vous sera pas redemandé pendant {{count, number}} de minutes.",
     "yourPassword": "Votre mot de passe",
     "passwordBlank": "Saisissez votre mot de passe.",
     "passwordWrong": "Ce n’est pas votre mot de passe. Réessayez, ou réinitialisez-le par e-mail.",
@@ -913,6 +916,7 @@
     "codeHelp": "De votre application d’authentification, ou l’un de vos codes de récupération.",
     "codeKeepsSignIn_one": "Un code incorrect ne vous renvoie pas vers {{provider}}. Votre connexion avec {{provider}} reste valable une minute.",
     "codeKeepsSignIn_other": "Un code incorrect ne vous renvoie pas vers {{provider}}. Votre connexion avec {{provider}} reste valable {{count, number}} minutes.",
+    "codeKeepsSignIn_many": "Un code incorrect ne vous renvoie pas vers {{provider}}. Votre connexion avec {{provider}} reste valable {{count, number}} de minutes.",
     "codeWrong": "Ce code n’a pas fonctionné. Vérifiez votre application et réessayez.",
     "linkNote": "{{provider}} va ensuite s’ouvrir pour que vous choisissiez le compte à associer. Son adresse n’a pas besoin de correspondre à {{email}}.",
     "proveWithProvider": "Vous vous connectez avec {{provider}}, confirmez donc avec {{provider}}.",
@@ -1206,7 +1210,7 @@
     "whoToInvite": "Qui inviter",
     "role": "Rôle",
     "emailBlank": "Saisissez son adresse e-mail.",
-    "emailShape": "Cette adresse e-mail ne semble pas valide. Vérifiez qu’elle contient un @ et un domaine, comme amara.o@gmail.com.",
+    "emailShape": "Cela ne ressemble pas à une adresse e-mail. Vérifiez qu’elle contient un @ et un domaine, comme amara.o@gmail.com.",
     "roleMeans": {
       "owner": "Tout, y compris la facturation et la suppression de l’organisation.",
       "administrator": "Tout dans les événements, plus les membres et les rôles. Pas la facturation.",
@@ -1959,6 +1963,79 @@
     "youWithdrewTold": "Vous avez retiré votre demande. Toutes les personnes qui en avaient été informées reçoivent un e-mail.",
     "withdrawEnded": "Cette demande a déjà pris fin.",
     "withdrawNotClaimant": "Seule la personne qui a fait cette demande peut la retirer."
+  },
+  "notifications": {
+    "bell": "Notifications",
+    "bellUnread_one": "Notifications, {{count, number}} non lue",
+    "bellUnread_other": "Notifications, {{count, number}} non lues",
+    "bellUnread_many": "Notifications, {{count, number}} non lues",
+    "overNinetyNine": "99+",
+    "heading": "Notifications",
+    "markAllRead": "Tout marquer comme lu",
+    "allRead": "Tout est marqué comme lu.",
+    "allReadNotSaved": "Les notifications n’ont pas pu être marquées comme lues. Réessayez.",
+    "unread": "Non lue",
+    "muted": "En sourdine",
+    "loading": "Chargement des notifications",
+    "couldNotLoad": "Vos notifications n’ont pas pu être chargées.",
+    "tryAgain": "Réessayer",
+    "empty": "Rien pour l’instant. Les réponses, les modifications et les rappels de vos événements s’afficheront ici.",
+    "eventGone": "Cet événement n’est plus disponible.",
+    "showMore": "Afficher plus",
+    "moreShown_one": "{{count, number}} notification supplémentaire affichée.",
+    "moreShown_other": "{{count, number}} notifications supplémentaires affichées.",
+    "moreShown_many": "{{count, number}} de notifications supplémentaires affichées.",
+    "moreFailed": "Les notifications suivantes n’ont pas pu être chargées. Réessayez dans un instant.",
+    "arrived": "Nouvelle notification : {{title}}",
+    "arrivedAt": "Nouvelle notification : {{title}} · {{event}}",
+    "whereWhen": "{{event}} · {{when}}",
+    "atTime": "à {{time}}",
+    "settings": "Paramètres de notification",
+    "more": "Plus d’options pour {{title}}, {{event}}",
+    "muteEvent": "Mettre cet événement en sourdine",
+    "muteNotLoaded": "Impossible de vérifier si cet événement est en sourdine.",
+    "muteNotSaved": "Non enregistré. Réessayez.",
+    "pushAsk": {
+      "title": "Activer les notifications push ?",
+      "reason": "Recevez sur cet appareil les réponses, les modifications et les alertes du jour de l’événement, même lorsque Soirely est fermé.",
+      "turnOn": "Activer",
+      "notNow": "Pas maintenant"
+    }
+  },
+  "eventMute": {
+    "heading": "Uniquement pour vous",
+    "note": "Les autres personnes de cet événement ne sont pas concernées."
+  },
+  "notificationSettings": {
+    "title": "Paramètres de notification",
+    "push": "Push",
+    "email": "E-mail",
+    "on": "Activé",
+    "off": "Désactivé",
+    "switchName": "{{category}}, {{channel}}",
+    "saved": "Enregistré.",
+    "pushNotSaved": "Le réglage des notifications push n’a pas été enregistré. Réessayez.",
+    "emailNotSaved": "Le réglage des e-mails n’a pas été enregistré. Réessayez.",
+    "couldNotLoad": "Vos paramètres de notification n’ont pas pu être chargés.",
+    "tryAgain": "Réessayer",
+    "pushBlocked": "Les notifications push sont désactivées dans ce navigateur : elles ne vous parviendront pas ici. Activez-les dans les paramètres du navigateur.",
+    "quietHours": "De {{start}} à {{end}} (votre heure locale), seules les notifications push « Jour de l’événement » vous parviennent.",
+    "category": {
+      "guest_replies": "Réponses des invités",
+      "messages": "Messages",
+      "event_day": "Jour de l’événement",
+      "event_changes": "Modifications d’événements",
+      "money": "Facturation",
+      "account_security": "Compte et sécurité"
+    },
+    "note": {
+      "guest_replies": "Les réponses des invités et leurs modifications, les besoins qu’ils ajoutent et leurs questions.",
+      "messages": "Un envoi qui n’a pas atteint tout le monde, a été retenu faute de crédits ou a été annulé, et des crédits qui s’épuisent.",
+      "event_day": "Un changement de votre service ou de votre heure de convocation, ou de l’événement dans les 24 heures qui le précèdent.",
+      "event_changes": "Quand quelqu’un d’autre modifie la tenue, la date ou le lieu d’un événement auquel vous participez.",
+      "money": "Paiements à venir, utilisation à {{low}} et à {{high}}, paiements refusés et factures.",
+      "account_security": "Connexions, votre mot de passe, la double authentification, la propriété et les accès. Les e-mails ne peuvent pas être désactivés."
+    }
   },
   "timeline": {
     "comingUp": "Prochaines dates",

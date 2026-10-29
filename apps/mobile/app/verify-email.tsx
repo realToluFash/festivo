@@ -7,7 +7,7 @@ import {
 import { cleanCode, codeProblem } from '@soirely/domain';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import type { TextInput } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
@@ -20,6 +20,7 @@ import {
 } from '../src/components/BackToAccount.tsx';
 import { Footnote, PrimaryButton } from '../src/components/Buttons.tsx';
 import { CodeForm } from '../src/components/CodeForm.tsx';
+import { focusChecked, keysStayDown } from '../src/components/Field.tsx';
 import { OnboardingSteps } from '../src/components/OnboardingSteps.tsx';
 import { type CodeStatus, codeRefusal, openingStatus, retryAfter } from '../src/kit/code.ts';
 import { useFormChecks } from '../src/kit/formChecks.ts';
@@ -39,7 +40,7 @@ export default function VerifyEmail() {
   const [status, setStatus] = useState<Status>({ kind: 'entering' });
   const [cooldown, setCooldown] = useState(0);
   const [address, setAddress] = useState('');
-  const codeInput = useRef<TextInput>(null);
+  const codeInput = useRef<TextInputInstance>(null);
   const checks = useFormChecks(
     ['code'] as const,
     (_field, value) => {
@@ -49,7 +50,7 @@ export default function VerifyEmail() {
 
       return problem === 'blank' ? t('verifyEmail.codeBlank') : t('verifyEmail.codeShort');
     },
-    () => codeInput.current?.focus(),
+    () => focusChecked(codeInput),
   );
 
   /** A spent code opens on its banner, so the screen never invites a try it knows is refused. */
@@ -136,6 +137,7 @@ export default function VerifyEmail() {
     // Neither an empty code nor a short one is sent, so neither costs an attempt.
     if (!checks.passes({ code: typed })) return;
 
+    keysStayDown();
     setStatus({ kind: 'verifying' });
 
     try {

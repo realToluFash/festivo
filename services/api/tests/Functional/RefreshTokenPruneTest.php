@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\Messaging\PushTargets;
 use App\Domain\User\RefreshTokenPruner;
 use App\Domain\User\TokenIssuer;
 use App\Domain\User\UserRegistrar;
 use App\Entity\RefreshToken;
+use App\Enum\PushTargetKind;
 use App\Repository\RefreshTokenRepository;
 use App\Tests\ApiTestCase;
+use Doctrine\DBAL\Connection;
 use LogicException;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
@@ -35,6 +38,31 @@ final class RefreshTokenPruneTest extends ApiTestCase
         $this->prune();
 
         self::assertNull($this->find($token));
+    }
+
+    /** Its push target holds an endpoint and a secret that nothing would ever send to again (sc-3980). */
+    #[Test]
+    public function aSessionThatLapsedUnusedTakesItsPushTargetWithIt(): void
+    {
+        $lapsed = self::service(UserRegistrar::class)->register('lapsed@example.com', 'Lapsed', self::PASSWORD)->user;
+        $live = self::service(UserRegistrar::class)->register('live@example.com', 'Live', self::PASSWORD)->user;
+        $lapsedSession = self::service(TokenIssuer::class)->issueFor($lapsed)->sessionId;
+        $liveSession = self::service(TokenIssuer::class)->issueFor($live)->sessionId;
+        self::em()->flush();
+        $pushTargets = self::service(PushTargets::class);
+        $pushTargets->register($lapsed->getId(), $lapsedSession, PushTargetKind::Expo, 'ExponentPushToken[lapsed]');
+        $pushTargets->register($live->getId(), $liveSession, PushTargetKind::Expo, 'ExponentPushToken[live]');
+        self::service(Connection::class)->executeStatement(
+            "UPDATE refresh_tokens SET expires_at = now() - interval '1 day' WHERE chain_id = :chain",
+            ['chain' => $lapsedSession->toRfc4122()],
+        );
+
+        $this->prune();
+
+        self::assertSame(
+            ['ExponentPushToken[live]'],
+            self::service(Connection::class)->fetchFirstColumn('SELECT address FROM push_targets ORDER BY address'),
+        );
     }
 
     #[Test]

@@ -2,7 +2,7 @@ import type { Membership, PausedOrganisation } from '@soirely/api-client';
 import { pausedReasonKey, pausedSwitch } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type RefObject, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { SECTION_HREF } from '../kit/appNav.ts';
@@ -26,10 +26,10 @@ export function AccessPaused({
   paused: PausedOrganisation;
   others: readonly Membership[];
   onSwitch: (to: Membership) => void;
-  onChoose: (opener: RefObject<View | null>) => void;
+  onChoose: (opener: RefObject<ViewInstance | null>) => void;
 }) {
   const { t } = useTranslation();
-  const switchButton = useRef<View>(null);
+  const switchButton = useRef<ViewInstance>(null);
   const { kind } = useLayout();
   const { suspension } = paused;
   const named = { organisation: paused.name, domain: suspension.domain ?? '' };

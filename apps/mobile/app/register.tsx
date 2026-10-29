@@ -1,7 +1,7 @@
 import { meetsPasswordLength } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 
@@ -9,7 +9,7 @@ import { api } from '../src/api.ts';
 import { holdRegistration } from '../src/pendingRegistration.ts';
 import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { Footnote, PrimaryButton } from '../src/components/Buttons.tsx';
-import { Field, TextField } from '../src/components/Field.tsx';
+import { Field, focusChecked, keysStayDown, TextField } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { PasswordField } from '../src/components/PasswordField.tsx';
 import { PasswordRule } from '../src/components/PasswordRule.tsx';
@@ -140,9 +140,9 @@ function Form({
 }) {
   const { t } = useTranslation();
   const [lengthMet, setLengthMet] = useState(false);
-  const name = useRef<TextInput>(null);
-  const email = useRef<TextInput>(null);
-  const password = useRef<TextInput>(null);
+  const name = useRef<TextInputInstance>(null);
+  const email = useRef<TextInputInstance>(null);
+  const password = useRef<TextInputInstance>(null);
 
   // Uncontrolled: a `value` prop re-renders between keystrokes and drops characters.
   const typed = useRef({ name: '', email: '', password: '' });
@@ -158,7 +158,7 @@ function Form({
 
       return field === 'name' ? t('register.nameBlank') : t('register.passwordBlank');
     },
-    (field) => ({ name, email, password })[field].current?.focus(),
+    (field) => focusChecked({ name, email, password }[field]),
   );
 
   const submit = (): void => {
@@ -167,10 +167,11 @@ function Form({
 
     // The rule is stated before submit, so a short password is never sent.
     if (!meetsPasswordLength(typed.current.password)) {
-      password.current?.focus();
+      focusChecked(password);
       return;
     }
 
+    keysStayDown();
     onSubmit(typed.current.name.trim(), typed.current.email.trim(), typed.current.password);
   };
 
@@ -200,7 +201,7 @@ function Form({
         <TextField
           ref={name}
           wrong={checks.errors.name != null || fields.name != null}
-          editable={!busy}
+          submitting={busy}
           autoComplete="name"
           textContentType="name"
           autoCapitalize="words"
@@ -224,7 +225,7 @@ function Form({
         <TextField
           ref={email}
           wrong={checks.errors.email != null || fields.email != null}
-          editable={!busy}
+          submitting={busy}
           keyboardType="email-address"
           autoComplete="email"
           textContentType="emailAddress"
@@ -250,7 +251,6 @@ function Form({
           ref={password}
           wrong={checks.errors.password != null || fields.password != null}
           submitting={busy}
-          editable={!busy}
           autoComplete="new-password"
           textContentType="newPassword"
           onChangeText={(text) => {
@@ -260,6 +260,7 @@ function Form({
           }}
           onBlur={() => checks.left('password', typed.current.password)}
           returnKeyType="done"
+          submitBehavior="submit"
           onSubmitEditing={submit}
           accessibilityLabel={t('register.password')}
           testID="register.password"

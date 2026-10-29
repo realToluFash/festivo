@@ -41,6 +41,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **29 Oct 2026. As notificações: o sino, Silenciar este evento e as definições** (sc-14815
+  para sc-3980, `notifications.*`, `eventMute.*`, `notificationSettings.*` web e app,
+  `messages:notifications.*`). O canal é "Push" na coluna e "notificações push" numa frase.
+  Mute é "Silenciar este evento", e a marca de uma notificação "Silenciada", ao lado de "Por
+  ler", que concordam com notificação. As categorias são nomes próprios: "Respostas dos
+  convidados", "Mensagens", "Dia do evento", "Alterações aos eventos", "Faturação" (Money:
+  pagamentos, utilização e faturas) e "Conta e segurança"; citadas numa frase, entre «». Uma
+  hora sozinha vai sem artigo ("hoje, {{time}}", "Entre {{start}} e {{end}}"), porque "às"
+  falha à 01:00. As falhas dizem já o sentido fixado pelo inglês de 29 Oct.
 - **28 Oct 2026. O evento que começou noutro dia** (sc-17870 para sc-17853, `events.startedOn`
   web e `eventsScreen.startedOn` app). "Início: {{date}} · {{time}} {{timeZone}}". `{{date}}` abre
   com o dia da semana ("terça-feira, 27/10"), que não aceita "a" e com que "na"/"no" não pode
@@ -126,10 +135,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   million, i18next picks `_many`. It is `_other` with "de" between the count and the noun it
   counts, "1 000 000 de pessoas", "os {{count}} de lugares", as the waiting email already does.
   Where no noun follows the count ("e mais {{count}}", "todos os {{count}}", "Pode adicionar mais
-  {{count}}"), `_many` is `_other` as it stands. Every new count family gets its `_many`,
-  except the proof window's lines (`waysCard.proveLink_*`, `proveUnlink_*`, `codeKeepsSignIn_*`):
-  they count PROOF_MINUTES, a constant that is never a million, and the app's test holds them to
-  `_one` and `_other`.
+  {{count}}"), `_many` is `_other` as it stands. Every count family gets its `_many`, the
+  proof window's lines (`waysCard.proveLink_*`, `proveUnlink_*`, `codeKeepsSignIn_*`) included
+  since sc-3980: "durante {{count, number}} de minutos" (sc-20444).
 - **25 Oct 2026. Settings > Members on the web, the invitation link and the invitation email**
   (`web:membersScreen.*`, `web:join.*`, `invitations.*` web and app, `emails:invitation.*`,
   `messages:invitations.*`, sc-2922). The web twins of the app's Members keys are the app's
@@ -343,9 +351,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   as options and lower case in a sentence ("são enviados em inglês"). A refused save is "Nada
   foi guardado." and the server's `permission_required` words unchanged.
 - **21 Oct 2026. The re-proof's step two after a provider sign-in** (`waysCard.signedInWith`,
-  `codeKeepsSignIn_*`, sc-2908). The status box is "Sessão iniciada com o {{provider}}", with
-  no full stop. Under the code field: "Se errar o código, não tem de voltar ao {{provider}}. O
-  início de sessão com o {{provider}} é válido durante {{count}} minutos." A condition on the
+  `codeKeepsSignIn_*`, sc-2908, reworded 29 Oct). The status box is "Sessão iniciada com a
+  conta {{provider}}", with no full stop. Under the code field: "Se errar o código, não tem de
+  voltar à sua conta {{provider}}. O início de sessão com a conta {{provider}} é válido
+  durante {{count}} minutos." Every slot the English has stays, so the second mention is "a conta
+  {{provider}}", not "ela". A condition on the
   person, because "não o faz voltar" would have to agree (o/a). A window is "é válido durante".
 - **19 Oct 2026. Sign-in rules are "Regras de início de sessão"** (`signInRules.*`, web and
   app, and `emails:signInRules.*`, sc-3030). A member held back by one "pode consultar tudo,
@@ -460,9 +470,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `devices.signInAgain`. Confirming identity is "confirme que é você", as `waysCard.proveLink`;
   rejected "que é o próprio", which agrees with a man.
 - **17 Oct 2026. The email-address refusal is one sentence everywhere** (`orgGeneral.contactInvalid`
-  and `forms.emailShape`, web and app): "Isso não parece um endereço de e-mail. Confirme que tem
-  um @ e um domínio." The English of all four keys is the same, so the Portuguese is too;
-  "Verifique se tem" was the odd one out.
+  and `forms.emailShape`, web and app; `membersScreen.emailShape` and the API's
+  `validation.email_invalid`, `validation.contact_address_invalid` and
+  `validation.invite_email_invalid` since sc-20577): "Isso não parece um endereço de e-mail.
+  Confirme que tem um @ e um domínio." The English of every one is the same, so the Portuguese
+  is too; "Verifique se tem" was the odd one out.
 - **17 Oct 2026. A settings section's line names its contents with "Em … estão"**
   (`settings.chooseLine`, `settings.chooseLineWithOrganisation`): "Em Organização estão as
   definições de {{name}}." A search field's placeholder is "Pesquisar" plus the plural noun
@@ -473,9 +485,17 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **17 Oct 2026. An API detail with a bare number takes it without agreement**
   (`messages:proof.required`): "nos últimos {minutes} minutos". The API catalogue has no
   plural, so the number is always 5 and the sentence is written for it.
-- **17 Oct 2026. A provider in prose takes the article, in a button it does not**
-  (`waysCard.proofExpired_*`): "continue novamente com o {{provider}}", beside the button
-  "Continuar com {{provider}}". "Carry on" is "prosseguir", so it does not repeat "continuar".
+- **17 Oct 2026, corrected 29 Oct. A provider in prose never takes a bare article**
+  (`waysCard.proofExpired_*`): the article differs, "a Apple" but "o Google", and one string
+  serves both. Write "a sua conta {{provider}}" or "uma conta {{provider}}" instead, as
+  `ownership.transferNoteProvider` ("Antes, terá de confirmar com a sua conta {{provider}}.",
+  sc-18978). A button has no article: "Continuar com {{provider}}", and so does a
+  title that repeats one, "Desassociar {{provider}}". Every string is rewritten this way
+  (sc-20444): "a sua conta {{provider}}" in a sentence, "a conta {{provider}}" in a short
+  label or bullet, and what agrees with it is feminine ("associada", "desassociada",
+  "removida", "com ela"). Where the provider acted ("{{provider}} confirmed it is you"), the
+  sentence is "Identidade confirmada através da sua conta {{provider}}"; where it opens,
+  "abre-se uma janela {{provider}}". "Carry on" is "prosseguir", so it does not repeat "continuar".
 - **17 Oct 2026. The app's switcher and roles copy the web's** (`switcher.*`, `roles.*`), so
   both clients say the same; `switcher.close` is "Fechar", as `recovery.dismiss`.
 - **17 Oct 2026. "You're signed in" is "Tem sessão iniciada"** (`home.signedIn`,

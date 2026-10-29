@@ -20,6 +20,8 @@ The code is `App\Domain\Messaging`.
 | `app:notifications:work`    | the worker process, one container (sc-5930)                                                  |
 | `app:notifications:check`   | the alert check, every minute from `config/crontab`                                          |
 | `EventActionNotices`        | who hears of each `EventAction`: a type, the story that will add one, or nothing by decision |
+| `PushSender`                | push to each live device a member registered, through Web Push or Expo                       |
+| `push_targets`              | the devices that take push: one row per browser subscription or Expo token                   |
 
 ## Registering a type
 
@@ -28,8 +30,7 @@ nothing else can be scheduled, and scheduling an unregistered name throws.
 
 - **`name()`** is stored on every row, so it is never renamed once something has been sent.
 - **`channels()`** may only name a channel the registry has a sender for.
-  `NotificationRegistryTest` fails otherwise. Today only email has one; in-app and push come
-  with sc-3980.
+  `NotificationRegistryTest` fails otherwise. Email, in-app and push each have one.
 - **`eventRule()`** says how the type treats a paused, finished or deleted event
   (`NotificationEventRule`, epic 36 §9). Only `DeletionNotice` goes while an event is deleted, and
   `AfterConclusion` goes after an event that took place, never one called off.
@@ -119,13 +120,16 @@ between is handled as they are then.
   read (Symfony Mailer's `SocketStream`). That setting does not reach a client that sets its
   own timeout: `TwilioTextMessageSender` and `WhatsAppCloudSender` set 10 s for the
   request path, so the sender sc-3946 or sc-3950 adds for this worker must pass the
-  worker's limit explicitly. A call that times out is a failed attempt.
+  worker's limit explicitly, as push's two providers are given
+  `WorkNotificationsCommand::PROVIDER_CALL_LIMIT`. A call that times out is a failed attempt.
 - **Retries**: five attempts, 4, 8, 16 and 32 minutes apart with ±25% jitter, then
   **Failed** with the provider's reason.
 - **At least once, said honestly.** The unique idempotency key stops a second delivery row.
   A worker that dies between the provider accepting and the row being marked can send
   twice; the delivery id is passed as the provider's idempotency key where it takes one.
-  SMTP takes none, so it is the email's `Message-ID`.
+  SMTP takes none, so it is the email's `Message-ID`. Neither push provider takes one, so
+  the type's `collapseKey()` goes as theirs (below): a retry replaces the message it
+  repeats, and a double send stays possible.
 - **Paused events** hold automatic rows (`held = 'paused'`) and recheck them every minute;
   they go on resume unless too late.
 - **Deleted events** hold their rows (`held = 'deleted'`) until a restore; see
@@ -136,6 +140,33 @@ between is handled as they are then.
 - **Heartbeat**: `var/notifications-worker.heartbeat` (`--heartbeat` overrides it; tests
   use their own file), touched on every poll. The container is unhealthy when it is older
   than the health window.
+
+## Push
+
+Push rides along with another channel and never goes to a guest (`ChannelSelector`). It has
+one sender, `PushSender`, and two providers behind `PushServiceInterface`:
+
+| Kind   | Provider                                          | Adapter                             |
+| ------ | ------------------------------------------------- | ----------------------------------- |
+| `web`  | Web Push with VAPID (minishlink/web-push, bcmath) | `Integrations\WebPush\VapidWebPush` |
+| `expo` | the Expo push service, over `symfony/http-client` | `Integrations\Expo\ExpoPushService` |
+
+- **The store** is `push_targets`: one row per member and device, unique on its address
+  (the Web Push endpoint or the Expo token), with the session that registered it. A device
+  registers with `PUT /api/auth/push-targets`; registering an address again moves it to
+  whoever did. A Web Push endpoint is taken only on the browsers' push services, since the
+  worker posts to it.
+- **It is forgotten** when the provider says the device has gone (Web Push 404 or 410, an
+  Expo ticket's `DeviceNotRegistered`), when its session ends (`SessionsEnded`, from every
+  way a session ends), and with the account, by the foreign key. A session that runs out
+  unused is never sent to. Expo's receipts are not polled: no story runs its own sweep.
+- **Collapse**: `collapseKey()` is the Web Push `Topic` (hashed to its 32 characters) and
+  Expo's `collapseId`, `threadId` and `tag`.
+- **One attempt** sends to every live device. It succeeds if any took it, and fails to be
+  retried only when none did; a member with no live device is **Failed** at once, as email
+  is with no address.
+- **An address is a bearer credential**: it is never logged, and no recorded reason quotes
+  one.
 
 ## The alert
 

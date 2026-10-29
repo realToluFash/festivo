@@ -6,9 +6,9 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  type TextInput,
-  View,
+  type TextInputInstance,
   useWindowDimensions,
+  View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -24,6 +24,7 @@ import { Field, focusChecked, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import {
+  FocusHolder,
   SETTLED_MS,
   type StepClosed,
   useAboveKeyboard,
@@ -65,15 +66,17 @@ export function TimeZoneCard({
   const opener = useFocusBackToOpener(editing ? undefined : closed);
   const {
     opener: changeOpener,
+    holder: changeHolder,
     closing,
     close,
   } = useStepClose(opener, 'change', (back) => {
     setClosed(back);
     setEditing(false);
   });
-  // Saving closes in the same order as Cancel, with the line in the opener's place, so TalkBack's focus is on the line before Save goes (sc-18587).
+  // Saving closes with the line in the opener's place, so TalkBack's focus is on the line before Save goes (sc-18587).
   const {
     opener: savedLine,
+    holder: savedHolder,
     closing: savedClosing,
     close: closeSaved,
   } = useStepClose(opener, 'saved', (back) => {
@@ -137,28 +140,34 @@ export function TimeZoneCard({
         </>
       )}
       {saved != null && (!editing || savedClosing) && (
-        <Notice
-          tone="done"
-          mark={tokens.marks.done.glyph}
-          body={t('timeZone.saved', { zone: saved })}
-          answer={savedGiven ? undefined : saved}
-          takesFocus={!savedGiven}
-          readMs={focusBackMs(Platform.OS, SETTLED_MS, 'step')}
-          wordsRef={savedGiven ? savedLine : undefined}
-        />
+        <>
+          <FocusHolder holder={savedHolder} />
+          <Notice
+            tone="done"
+            mark={tokens.marks.done.glyph}
+            body={t('timeZone.saved', { zone: saved })}
+            answer={savedGiven ? undefined : saved}
+            takesFocus={!savedGiven}
+            readMs={focusBackMs(Platform.OS, SETTLED_MS, 'step')}
+            wordsRef={savedGiven ? savedLine : undefined}
+          />
+        </>
       )}
       {(!editing || closing) && (
-        <SecondaryButton
-          ref={changeOpener}
-          label={t('timeZone.change')}
-          onPress={() => {
-            setSaved(null);
-            setSavedFocused(false);
-            setClosed(undefined);
-            setEditing(true);
-          }}
-          testID="timeZone.change"
-        />
+        <>
+          <FocusHolder holder={changeHolder} />
+          <SecondaryButton
+            ref={changeOpener}
+            label={t('timeZone.change')}
+            onPress={() => {
+              setSaved(null);
+              setSavedFocused(false);
+              setClosed(undefined);
+              setEditing(true);
+            }}
+            testID="timeZone.change"
+          />
+        </>
       )}
     </View>
   );
@@ -183,7 +192,7 @@ function Choosing({
   const [picked, setPicked] = useState<TimeZoneOption | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const input = useRef<TextInput>(null);
+  const input = useRef<TextInputInstance>(null);
   // A zone picked from the list takes the list's place, so focus goes to the field now holding it.
   useFocusOnAnswer(picked ?? undefined, input);
   const aboveKeyboard = useAboveKeyboard();

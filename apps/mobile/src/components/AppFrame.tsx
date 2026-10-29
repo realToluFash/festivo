@@ -1,11 +1,12 @@
 import { type Membership, primaryEmailAddress } from '@soirely/api-client';
 import { roleName, waitingInvitations } from '@soirely/domain';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import {
   type ReactNode,
   type Ref,
   type RefObject,
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -18,13 +19,15 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  View,
   useWindowDimensions,
+  View,
+  type ViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
+import { usePushTaps } from '../appPush.ts';
 import { type WaitingInvitations, useWaitingInvitations } from '../invitations.ts';
 import { type DomainOffer, useDomainOffer } from '../joinOffers.ts';
 import { DESTINATION_HREF, type Destination, destinations } from '../kit/appNav.ts';
@@ -42,6 +45,7 @@ import { joinOrganisation, switchOrganisation, useSignedIn } from '../signedIn.t
 import { FrameSwitch, switchByTap, useFrameSwitch } from '../tappedSwitch.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useTwoFactorStanding } from '../twoFactorStanding.ts';
+import { BellButton } from './BellButton.tsx';
 import { CreateOrganisation } from './CreateOrganisation.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { useFocusBack } from './Sheet.tsx';
@@ -57,7 +61,7 @@ import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 import { useSystemBack } from './useSystemBack.ts';
 
-type Opening = (opener: RefObject<View | null>) => void;
+type Opening = (opener: RefObject<ViewInstance | null>) => void;
 
 const OpenSwitcher = createContext<Opening | undefined>(undefined);
 
@@ -125,29 +129,39 @@ export function AppFrame({
   const { t } = useTranslation();
   const { kind } = useLayout();
   useSystemBack(back?.systemBack === true, () => back?.onPress());
+  // As the screen goes, by either Back, its header back is where TalkBack puts its focus, and says it with no name (sc-20554).
+  const [inFront, setInFront] = useState(true);
+  useFocusEffect(
+    useCallback(() => {
+      setInFront(true);
+
+      return () => setInFront(false);
+    }, []),
+  );
   const [choosing, setChoosing] = useState(false);
   const [creating, setCreating] = useState(false);
-  const pill = useRef<View>(null);
+  const pill = useRef<ViewInstance>(null);
   const ownTitle = useRef<TextHandle>(null);
   const frameTitle = titleRef ?? ownTitle;
   // Create an organisation's sheet takes focus from the switcher, and hands it back itself (sc-8606).
   const [toSheet, setToSheet] = useState(false);
-  const [switcherFrom, setSwitcherFrom] = useState<RefObject<View | null> | null>(null);
-  const [creatingFrom, setCreatingFrom] = useState<RefObject<View | null> | null>(null);
+  const [switcherFrom, setSwitcherFrom] = useState<RefObject<ViewInstance | null> | null>(null);
+  const [creatingFrom, setCreatingFrom] = useState<RefObject<ViewInstance | null> | null>(null);
   const [created, setCreated] = useState<{ name: string; takesFocus: boolean } | null>(null);
-  const createdWords = useRef<View>(null);
+  const createdWords = useRef<ViewInstance>(null);
   const switched = created == null ? null : t('switcher.switched', { name: created.name });
   const [backHidden, setBackHidden] = useState(false);
   const [backRow] = useState(() => backRowHiding(setBackHidden));
   useEffect(() => backRow.stop, [backRow]);
   const signedIn = useSignedIn();
+  usePushTaps(signedIn.account?.id);
   const waiting = useWaitingInvitations();
   const offer = useDomainOffer();
   const count = waitingInvitations(waiting.invitations, waiting.outcomes);
   // It opens with one organisation too, because it ends with "Create an organisation" (sc-390).
   const openSwitcher =
     signedIn.organisation != null || waiting.invitations.length > 0 || offer.organisation != null
-      ? (opener: RefObject<View | null>) => {
+      ? (opener: RefObject<ViewInstance | null>) => {
           setCreated(null);
           setSwitcherFrom(opener);
           setToSheet(false);
@@ -166,7 +180,7 @@ export function AppFrame({
     }),
     [toSheet, switcherFrom, frameTitle],
   );
-  const startOrganisation = (opener: RefObject<View | null>) => {
+  const startOrganisation = (opener: RefObject<ViewInstance | null>) => {
     setCreated(null);
     setCreatingFrom(opener);
     setCreating(true);
@@ -190,7 +204,10 @@ export function AppFrame({
         : null;
 
   return (
-    <View style={[styles.root, kind === 'tabletLandscape' && styles.row]}>
+    <View
+      style={[styles.root, kind === 'tabletLandscape' && styles.row]}
+      importantForAccessibility={inFront ? 'auto' : 'no-hide-descendants'}
+    >
       {kind === 'tabletLandscape' && (
         <Rail
           current={current}
@@ -315,7 +332,7 @@ function FrameHeader({
   organisation: Membership | null;
   waiting: number;
   onSwitch: (() => void) | undefined;
-  pill: Ref<View>;
+  pill: Ref<ViewInstance>;
 }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -333,6 +350,7 @@ function FrameHeader({
         <Text size={tokens.typeBody.size} muted>
           {email}
         </Text>
+        <BellButton />
       </View>
     );
   }
@@ -368,9 +386,14 @@ function FrameHeader({
             );
           })}
         </View>
-        <Title size={tokens.typeTitlePage.size} accessibilityRole="header" ref={read}>
-          {title}
-        </Title>
+        <View style={styles.titleRow}>
+          <View style={styles.fill}>
+            <Title size={tokens.typeTitlePage.size} accessibilityRole="header" ref={read}>
+              {title}
+            </Title>
+          </View>
+          <BellButton />
+        </View>
       </View>
     );
   }
@@ -383,13 +406,18 @@ function FrameHeader({
       {back != null && !backHidden && (
         <BackButton label={back.label} onPress={back.onPress} testID="frame.back" />
       )}
-      <Title
-        size={back == null ? tokens.typeTitlePage.size : tokens.typeTitlePhone.size}
-        accessibilityRole="header"
-        ref={read}
-      >
-        {title}
-      </Title>
+      <View style={styles.titleRow}>
+        <View style={styles.fill}>
+          <Title
+            size={back == null ? tokens.typeTitlePage.size : tokens.typeTitlePhone.size}
+            accessibilityRole="header"
+            ref={read}
+          >
+            {title}
+          </Title>
+        </View>
+        <BellButton />
+      </View>
     </View>
   );
 }
@@ -482,7 +510,7 @@ function Rail({
   organisation: Membership | null;
   waiting: number;
   onSwitch: (() => void) | undefined;
-  pill: Ref<View>;
+  pill: Ref<ViewInstance>;
 }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -585,7 +613,7 @@ function OrgPill({
   waiting: number;
   onSwitch: (() => void) | undefined;
   railed?: boolean;
-  ref: Ref<View>;
+  ref: Ref<ViewInstance>;
 }) {
   const { t } = useTranslation();
   const large = useAccessibilitySizes();
@@ -981,6 +1009,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: tokens.colorHeaderBorder,
   },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   phoneHeader: {
     gap: tokens.spaceLg,
     paddingHorizontal: tokens.spaceXxl,
