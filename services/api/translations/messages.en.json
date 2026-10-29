@@ -42,7 +42,7 @@
     "validation.contact_address_required": "Enter a contact email address.",
     "validation.country_invalid": "Choose a country.",
     "validation.currency_invalid": "Choose a currency.",
-    "validation.email_invalid": "Enter an email address.",
+    "validation.email_invalid": "That does not look like an email address. Check it has an @ and a domain.",
     "validation.invalid_shape": "This field cannot take that value. Check it and try again.",
     "validation.request_shape": "The request does not have the expected shape.",
     "validation.event_end_before_start": "The end is before the start. Choose a later end.",
