@@ -235,6 +235,21 @@ def main_red(p, db, row):
                f"{SQ} ops done {row['id']} --note \"<one line>\"")
 
 
+def plan(p, db, row, story):
+    story_for(p, db, story, p.role)
+    person = W.planned_for(row["fingerprint"])
+    p.add("", f"Write {person}'s test plan (soirely-qa-tester, \"A plan for a person\"). "
+              "Check out the story's merge commit on their stack (`node scripts/qa-env.mjs "
+              "--tester lan setup`, then `checkout`), make the accounts and data with the QA "
+              "script, start the app for their phone with `node scripts/qa-env.mjs --tester "
+              "lan serve`, then post the plan as one comment with the QR code it wrote "
+              "attached, its claim the last line. Do not test it yourself, and do not claim it.")
+    p.add("", "Next:", f"  {SQ} {p.role} comment sc-{story['id']} --to {person} "
+                       "--files <the QR code serve wrote> <<'PLAN'",
+          "…", "", f"QA claim: {person}", "PLAN",
+          f"  {SQ} {p.role} done {row['id']} --note \"<one line>\"")
+
+
 def render(p, db, row, cache):
     """The payload for a claimed work item."""
     from . import digests
@@ -292,6 +307,8 @@ def render(p, db, row, cache):
                           f"{SQ} {p.role} unclaim sc-{story['id']} "
                           "--text \"<why it was not tested>\"",
                           f"{SQ} {p.role} done {row['id']} --note \"<one line>\"")
+    if kind == "plan":
+        return plan(p, db, row, story)
     if kind == "story":
         story_for(p, db, story, p.role)
         if p.role in R.DEVS + R.TESTERS and story["state"] in CLAIMABLE:

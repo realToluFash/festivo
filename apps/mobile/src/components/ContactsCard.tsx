@@ -29,7 +29,7 @@ import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { ConfirmItsYou } from './ConfirmItsYou.tsx';
-import { Field, FieldError, TextField } from './Field.tsx';
+import { Field, FieldError, focusChecked, keysStayDown, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PhoneEntry } from './PhoneEntry.tsx';
 import {
@@ -481,7 +481,7 @@ function Adding({
       email
         ? emailMessage(value, t)
         : phoneProblemMessage(phoneLengthProblem(value, country), country, t),
-    () => field.current?.focus(),
+    () => focusChecked(field),
   );
   const error = checks.errors.value ?? refused;
 
@@ -489,6 +489,7 @@ function Adding({
     if (sending || !checks.passes({ value: typed.current })) return;
 
     const value = typed.current.trim();
+    keysStayDown();
     setSending(true);
 
     try {
@@ -508,7 +509,7 @@ function Adding({
           <TextField
             ref={field}
             wrong={error != null}
-            editable={!sending}
+            submitting={sending}
             autoFocus
             keyboardType="email-address"
             textContentType="emailAddress"
@@ -524,6 +525,7 @@ function Adding({
             }}
             onBlur={() => checks.left('value', typed.current)}
             onSubmitEditing={() => void send()}
+            submitBehavior="submit"
             accessibilityLabel={t('contacts.emailLabel')}
             testID="contacts.email.field"
           />
@@ -535,7 +537,7 @@ function Adding({
           help={t('contacts.phoneHelp')}
           country={country}
           error={error}
-          disabled={sending}
+          submitting={sending}
           onCountry={(code) => {
             setCountry(code);
             setRefused(null);

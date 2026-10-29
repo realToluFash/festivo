@@ -16,6 +16,7 @@ STATES = {"1": "To Do", "2": "In Progress", "3": "In Review", "4": "Ready For QA
 IDS = {name: int(i) for i, name in STATES.items()}
 HEAD = "a" * 40
 OLD = "b" * 40
+PEOPLE = {"@tester-one": {"machine": "stack-mac", "member": "member-1"}}
 
 
 class FakeShortcut:
@@ -79,8 +80,10 @@ def slim(raw):
             "epic_id": raw.get("epic_id"),
             "state": STATES[str(raw["workflow_state_id"])], "moved_at": raw["moved_at"],
             "labels": sorted(label["name"] for label in raw["labels"]),
+            "owners": raw.get("owner_ids") or [],
             "comments": [{"id": c["id"], "parent": c["parent_id"], "at": c["created_at"],
-                          "text": c["text"]} for c in raw["comments"]],
+                          "author": c.get("author_id"), "text": c["text"]}
+                         for c in raw["comments"]],
             "description": raw["description"], "tasks": [],
             "links": [{"verb": x["verb"], "subject": x["subject_id"], "object": x["object_id"]}
                       for x in raw.get("story_links", [])],
@@ -181,6 +184,15 @@ class Writes(Base):
         self.assertEqual(self.state(1), "In QA")
         self.assertEqual(self.fake.comments, [(1, "QA claim: qa2")])
         self.assertIn("qa2", self.labels(1))
+
+    def test_a_tester_never_claims_a_story_a_person_owns(self):
+        self.fake.add(1, "Ready For QA")
+        self.fake.raw[1]["owner_ids"] = ["member-1"]
+        with mock.patch.object(actions.machine, "manual_testers", return_value=PEOPLE), \
+                self.assertRaisesRegex(actions.Refused, "kept for a person who tests"):
+            actions.claim(self.as_("qa2"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "Ready For QA")
+        self.assertEqual(self.fake.comments, [])
 
     def test_a_tester_without_xcode_never_claims_a_story_that_needs_ios(self):
         self.fake.add(1, "Ready For QA", ["needs ios"])
@@ -819,6 +831,24 @@ class Replies(Base):
         self.assertEqual(self.fake.uploads, [(1, ["a.png", "b.png"])])
         self.assertTrue(said.endswith("with 2 files"))
         self.assertEqual(self.fake.raw[1]["comments"][-1]["parent_id"], self.asked["id"])
+
+    def test_a_comment_reaches_a_person_who_tests_by_mention_name(self):
+        with mock.patch.object(actions.machine, "manual_testers", return_value=PEOPLE):
+            actions.comment(self.as_("qa2"), args(story="sc-1", to="@tester-one",
+                                                  untagged=False, reply_to=None, files=None,
+                                                  text="Your plan."))
+        self.assertTrue(self.fake.raw[1]["comments"][-1]["text"]
+                        .startswith("[@tester-one] (from qa2)\n"))
+
+    def test_a_reply_to_a_person_s_plain_comment_goes_back_to_them(self):
+        asked = self.fake.comment(1, "Step 3 shows no guest list.")
+        asked["author_id"] = "member-1"
+        with mock.patch.object(actions.machine, "manual_testers", return_value=PEOPLE):
+            actions.comment(self.as_("qa2"), args(story="sc-1", to=None, untagged=False,
+                                                  reply_to=asked["id"], files=None,
+                                                  text="Pull to refresh first."))
+        self.assertTrue(self.fake.raw[1]["comments"][-1]["text"]
+                        .startswith("[@tester-one] (from qa2)\n"))
 
     def test_a_plain_comment_uploads_nothing(self):
         said = actions.comment(self.as_("dev2"), args(story="sc-1", to="pm", untagged=False,

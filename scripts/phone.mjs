@@ -6,11 +6,7 @@ import { networkInterfaces } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { roleConfig, roleOf, startStack, writeEnv } from './dev-env.mjs';
-import { DEVELOPMENT_PORTS, expoGoApk, stackConfig } from './qa-env.mjs';
-
-const PRIVATE = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/;
-// Docker, VMware, VPN, bridge and Apple peer-to-peer interfaces carry addresses no phone reaches.
-const VIRTUAL = /^(docker|br-|bridge|veth|vmnet|virbr|tun|tap|utun|wg|lo|awdl|llw|anpi)/;
+import { DEVELOPMENT_PORTS, expoGoApk, networkAddress, stackConfig } from './qa-env.mjs';
 
 export function parseEnv(text) {
   const env = {};
@@ -26,18 +22,6 @@ export function wifiDevices(hardwarePorts) {
   return [...hardwarePorts.matchAll(/Hardware Port: (?:Wi-Fi|AirPort)\nDevice: (\S+)/g)].map(
     (match) => match[1],
   );
-}
-
-export function lanAddress(interfaces, wifi = []) {
-  const candidates = Object.entries(interfaces)
-    .filter(([name]) => !VIRTUAL.test(name))
-    .flatMap(([name, addresses]) =>
-      (addresses ?? [])
-        .filter((a) => a.family === 'IPv4' && !a.internal && PRIVATE.test(a.address))
-        .map((a) => ({ name, address: a.address })),
-    );
-  const wireless = candidates.find(({ name }) => wifi.includes(name) || /^wl/.test(name));
-  return (wireless ?? candidates[0])?.address ?? null;
 }
 
 // Every other override follows the phone, so a key added to stackConfig needs nothing here.
@@ -145,7 +129,7 @@ function address() {
     process.platform === 'darwin'
       ? (spawnSync('networksetup', ['-listallhardwareports'], { encoding: 'utf8' }).stdout ?? '')
       : '';
-  const found = lanAddress(networkInterfaces(), wifiDevices(ports));
+  const found = networkAddress(networkInterfaces(), wifiDevices(ports));
   if (!found)
     throw new Error('no address on a private network: pass one, `just phone 192.168.1.20`');
   return found;
