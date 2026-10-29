@@ -62,7 +62,7 @@ export function SecondaryButton({
   label: string;
   onPress: () => void;
   off?: boolean;
-  /** Under a primary button, as wide and as tall as it. */
+  /** Full width at the primary button's height, whether under a primary or alone. */
   stacked?: boolean;
   /** When the visible label leans on its row, as "Unlink" does beside "Google". */
   accessibilityLabel?: string;
