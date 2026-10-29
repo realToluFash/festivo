@@ -155,6 +155,17 @@ describe('the checks catch what they are for', () => {
     ]);
   });
 
+  it("notices a plural family missing a form the locale's rules ask for", () => {
+    const incomplete = pluralFamilies(
+      surfaceFor('packages/i18n-lint/src/__fixtures__/missing-many'),
+    );
+
+    expect(incomplete).toEqual([
+      { locale: 'fr', present: 'guests_one', missing: 'guests_many' },
+      { locale: 'fr', present: 'guests_other', missing: 'guests_many' },
+    ]);
+  });
+
   it('notices a shared word one copy reads differently, or lacks', () => {
     const copy = (name: string, under: string): WordCopy => ({
       name,

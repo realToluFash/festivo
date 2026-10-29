@@ -32,6 +32,7 @@ final readonly class ScriptedNotificationType implements NotificationTypeInterfa
         private array $channels = [NotificationChannel::Email],
         private NotificationAudienceKind $audienceKind = NotificationAudienceKind::Member,
         private ?Meanwhile $meanwhile = null,
+        private NotificationCategory $category = NotificationCategory::Money,
     ) {
     }
 
@@ -47,7 +48,7 @@ final readonly class ScriptedNotificationType implements NotificationTypeInterfa
 
     public function category(): NotificationCategory
     {
-        return NotificationCategory::Money;
+        return $this->category;
     }
 
     public function priority(): NotificationPriority
@@ -89,9 +90,13 @@ final readonly class ScriptedNotificationType implements NotificationTypeInterfa
 
     public function render(NotificationChannel $channel, Recipient $recipient, array $payloads): RenderedNotification
     {
+        $lines = Vec\map($payloads, static fn (array $payload): string => Type\string()->coerce($payload['line'] ?? ''));
+
         return new RenderedNotification(
             $this->name,
-            Str\join(Vec\map($payloads, static fn (array $payload): string => Type\string()->coerce($payload['line'] ?? '')), "\n"),
+            Str\join($lines, "\n"),
+            Vec\filter($lines, static fn (string $line): bool => '' !== $line),
+            Type\nullable(Type\string())->coerce($payloads[0]['place'] ?? null),
         );
     }
 }

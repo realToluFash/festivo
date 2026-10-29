@@ -4,10 +4,17 @@ declare(strict_types=1);
 
 namespace App\Domain\User;
 
+use App\Domain\User\Model\SessionsEnded;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
+use Psl\Iter;
+use Psl\Type;
+use Psl\Vec;
 use Psr\Clock\ClockInterface;
+use Symfony\Component\Uid\Uuid;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /** Expiry alone decides: an unexpired revoked row is what tells a replay from an unknown token. */
 final readonly class RefreshTokenPruner
@@ -18,6 +25,7 @@ final readonly class RefreshTokenPruner
     public function __construct(
         private Connection $connection,
         private ClockInterface $clock,
+        private EventDispatcherInterface $eventDispatcher,
     ) {
     }
 
@@ -38,7 +46,7 @@ final readonly class RefreshTokenPruner
         $deleted = 0;
 
         do {
-            $batch = (int) $this->connection->executeStatement(
+            $chains = Type\vec(Type\string())->coerce($this->connection->fetchFirstColumn(
                 <<<'SQL'
                     DELETE FROM refresh_tokens
                     WHERE id IN (
@@ -48,14 +56,40 @@ final readonly class RefreshTokenPruner
                         LIMIT :batch
                         FOR UPDATE SKIP LOCKED
                     )
+                    RETURNING chain_id
                     SQL,
                 ['now' => $now, 'batch' => $batchSize],
                 ['now' => Types::DATETIME_IMMUTABLE, 'batch' => ParameterType::INTEGER],
-            );
+            ));
 
+            $batch = Iter\count($chains);
             $deleted += $batch;
+            $this->endEmptied(Vec\unique($chains));
         } while ($batch === $batchSize);
 
         return $deleted;
+    }
+
+    /**
+     * A session that lapsed unused ends here, so what other scopes keep for it goes too.
+     *
+     * @param list<string> $chains
+     */
+    private function endEmptied(array $chains): void
+    {
+        if ([] === $chains) {
+            return;
+        }
+
+        $kept = Type\vec(Type\string())->coerce($this->connection->fetchFirstColumn(
+            'SELECT DISTINCT chain_id FROM refresh_tokens WHERE chain_id IN (:chains)',
+            ['chains' => $chains],
+            ['chains' => ArrayParameterType::STRING],
+        ));
+        $emptied = Vec\filter($chains, static fn (string $chain): bool => !Iter\contains($kept, $chain));
+
+        if ([] !== $emptied) {
+            $this->eventDispatcher->dispatch(new SessionsEnded(...Vec\map($emptied, Uuid::fromString(...))));
+        }
     }
 }

@@ -6,6 +6,7 @@ namespace App\Domain\Messaging\Interfaces;
 
 use App\Domain\Messaging\Model\Recipient;
 use App\Domain\Messaging\Model\RenderedNotification;
+use App\Enum\NotificationCategory;
 use App\Enum\NotificationChannel;
 use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 use Symfony\Component\Uid\Uuid;
@@ -20,11 +21,12 @@ interface ChannelSenderInterface
     public function channel(): NotificationChannel;
 
     /**
-     * @param Uuid $deliveryId passed to the provider as its idempotency key, where it takes one
+     * @param Uuid    $deliveryId  passed to the provider as its idempotency key, where it takes one
+     * @param ?string $collapseKey the type's, for a provider that replaces one message with the next sharing it
      *
      * @return ?string the provider's id for the message
      *
      * @throws Throwable whose message is recorded as the provider's reason
      */
-    public function send(Uuid $deliveryId, Recipient $recipient, RenderedNotification $notification): ?string;
+    public function send(Uuid $deliveryId, Recipient $recipient, NotificationCategory $category, RenderedNotification $notification, ?string $collapseKey = null): ?string;
 }

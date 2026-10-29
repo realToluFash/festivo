@@ -1,7 +1,7 @@
 import { type Membership, type RequestLink } from '@soirely/api-client';
 import { setStringAsync } from 'expo-clipboard';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -11,6 +11,7 @@ import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { Notice } from './Notice.tsx';
+import { OnOffSwitch } from './OnOffSwitch.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { type StepClosed, stepClosed, useFocusBackToOpener } from './Screen.tsx';
 import { Text } from './Text.tsx';
@@ -106,25 +107,15 @@ export function RequestLinkCard({
         >
           {t('requestLink.title')}
         </Text>
-        <Pressable
-          accessibilityRole="switch"
-          accessibilityLabel={t('requestLink.switchLabel')}
-          accessibilityState={{ checked: link.on, disabled: busy, busy: busy && !confirming }}
+        <OnOffSwitch
+          on={link.on}
+          words={{ on: t('requestLink.on'), off: t('requestLink.off') }}
+          label={t('requestLink.switchLabel')}
           disabled={busy}
-          onPress={toggle}
-          hitSlop={tokens.spaceSm}
-          style={[styles.switch, link.on && styles.switchOn]}
+          busy={busy && !confirming}
+          onChange={toggle}
           testID="requestLink.switch"
-        >
-          <View style={[styles.dot, link.on ? styles.dotOn : styles.dotOff]} />
-          <Text
-            size={tokens.typeButton.size}
-            weight="semibold"
-            style={link.on ? styles.inkOn : styles.inkOff}
-          >
-            {link.on ? t('requestLink.on') : t('requestLink.off')}
-          </Text>
-        </Pressable>
+        />
       </View>
       <Text size={tokens.typeBodyPhone.size} muted>
         {t('requestLink.intro', { organisation: organisation.name })}
@@ -227,22 +218,6 @@ export function RequestLinkCard({
 const styles = StyleSheet.create({
   heading: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   title: { flex: 1 },
-  switch: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceXs,
-    minHeight: tokens.sizeHit,
-    paddingHorizontal: tokens.spaceLg,
-    borderRadius: tokens.radiusPill,
-    borderWidth: 1,
-    borderColor: tokens.colorInsetBorder,
-  },
-  switchOn: { backgroundColor: tokens.colorAccentTint },
-  dot: { width: 10, height: 10, borderRadius: 5 },
-  dotOn: { backgroundColor: tokens.colorAccent },
-  dotOff: { borderWidth: 1.5, borderColor: tokens.colorMarkEmpty },
-  inkOn: { color: tokens.colorAccentText },
-  inkOff: { color: tokens.colorInkSecondary },
   link: { gap: tokens.spaceSm },
   url: {
     padding: tokens.spaceLg,

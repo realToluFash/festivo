@@ -10,9 +10,11 @@
   },
   "scripts": {
     "generate": "node scripts/generate.mjs",
+    "generate:topics": "node scripts/generate-topics.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "check-current": "node scripts/check-current.mjs"
+    "check-current": "node scripts/check-current.mjs",
+    "check-topics": "node scripts/generate-topics.mjs --check"
   },
   "dependencies": {
     "@soirely/domain": "*"

@@ -17,6 +17,7 @@ services:
         bind:
             string $appEnv: '%kernel.environment%'
             string $mailFrom: '%env(MAIL_FROM)%'
+            string $mercureSubscriberKey: '%env(MERCURE_SUBSCRIBER_KEY)%'
 
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name
@@ -86,6 +87,19 @@ services:
             $authToken: '%env(SMS_AUTH_TOKEN)%'
             $from: '%env(SMS_FROM)%'
     App\Domain\User\Interfaces\TextMessageSenderInterface: '@App\Integrations\Twilio\TwilioTextMessageSender'
+
+    # Push's two providers (sc-3980), each given the notification worker's per-call limit.
+    App\Integrations\WebPush\VapidWebPush:
+        arguments:
+            $subject: '%env(VAPID_SUBJECT)%'
+            $publicKey: '%env(VAPID_PUBLIC_KEY)%'
+            $privateKey: '%env(VAPID_PRIVATE_KEY)%'
+            $timeout: !php/const App\Domain\Messaging\Command\WorkNotificationsCommand::PROVIDER_CALL_LIMIT
+    App\Integrations\Expo\ExpoPushService:
+        arguments:
+            $apiBase: '%env(EXPO_PUSH_API_BASE)%'
+            $accessToken: '%env(EXPO_ACCESS_TOKEN)%'
+            $timeout: !php/const App\Domain\Messaging\Command\WorkNotificationsCommand::PROVIDER_CALL_LIMIT
 
     # Phone codes by WhatsApp first (sc-750). The order is configuration: switch WhatsApp off, or list the
     # countries that stay SMS-only, without a release.
@@ -204,8 +218,7 @@ services:
 
     App\Domain\Event\Interfaces\ActiveEventsLimitInterface: '@App\Domain\Event\UnlimitedActiveEvents'
 
-    # Epic 36's product defaults until sc-3980 stores each member's own; that story swaps this line.
-    App\Domain\Messaging\Interfaces\NotificationPreferencesInterface: '@App\Domain\Messaging\ProductDefaultPreferences'
+    App\Domain\Messaging\Interfaces\NotificationPreferencesInterface: '@App\Domain\Messaging\StoredNotificationPreferences'
 
 when@test:
     services:
@@ -214,6 +227,9 @@ when@test:
             public: true
             autoconfigure: true
         App\Domain\Messaging\Channel\EmailSender: '@App\Tests\Double\Messaging\RecordingEmailSender'
+        App\Tests\Double\Messaging\RecordingHub:
+            public: true
+        Symfony\Component\Mercure\HubInterface: '@App\Tests\Double\Messaging\RecordingHub'
         App\Tests\Double\Messaging\Meanwhile:
             public: true
         test.notification.notice:
@@ -256,6 +272,19 @@ when@test:
                 {
                     $name: 'test.host_message',
                     $eventRule: !php/enum App\Enum\NotificationEventRule::HostMessage,
+                }
+        test.notification.bell:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                {
+                    $name: 'test.bell',
+                    $channels:
+                        [
+                            !php/enum App\Enum\NotificationChannel::InApp,
+                            !php/enum App\Enum\NotificationChannel::Email,
+                        ],
+                    $category: !php/enum App\Enum\NotificationCategory::EventChanges,
                 }
         test.notification.guest:
             class: App\Tests\Double\Messaging\ScriptedNotificationType

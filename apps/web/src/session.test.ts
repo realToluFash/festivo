@@ -130,6 +130,7 @@ describe('the organisations after a language change (sc-9267)', () => {
         complete: true,
         awaiting: null,
         providers: [],
+        userId: 'u1',
         needsOrganisation: false,
         hasPassword: true,
         organisation,

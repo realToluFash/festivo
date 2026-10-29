@@ -46,16 +46,16 @@ describe('the proof window, counted from PROOF_MINUTES (sc-2197)', () => {
   });
 
   it.each([
-    ['en', en],
-    ['es', es],
-    ['fr', fr],
-    ['pt', pt],
-  ])('keeps no number in the window lines in %s', (_, catalogue) => {
+    ['en', en, 6],
+    ['es', es, 9],
+    ['fr', fr, 9],
+    ['pt', pt, 9],
+  ])('keeps no number in the window lines in %s', (_, catalogue, forms) => {
     const lines = Object.entries(catalogue.waysCard).filter(([key]) =>
       /^(proveLink|proveUnlink|codeKeepsSignIn)_/.test(key),
     );
 
-    expect(lines).toHaveLength(6);
+    expect(lines).toHaveLength(forms);
     for (const [key, line] of lines) expect(line, key).not.toMatch(/\d/);
   });
 });

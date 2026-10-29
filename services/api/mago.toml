@@ -164,6 +164,7 @@ doctrine = ["App\\Doctrine\\**"]
 health = ["App\\Health\\**"]
 locale = ["App\\Locale\\**"]
 storage = ["App\\Storage\\**"]
+realtime = ["App\\Realtime\\**"]
 translation = ["App\\Translation\\**"]
 repository = ["App\\Repository\\**"]
 
@@ -202,6 +203,10 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:health", 
 [[guard.perimeter.rules]]
 namespace = "App\\Locale\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:locale"]
+
+[[guard.perimeter.rules]]
+namespace = "App\\Realtime\\"
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:realtime"]
 
 [[guard.perimeter.rules]]
 namespace = "App\\Storage\\"
@@ -281,7 +286,7 @@ permit = [
 
 # Messaging is the one machine every scope tells people through (sc-104). It reads members as the
 # organisation scope keeps them, through the access layer's grants, and a person's language as the
-# user scope chooses it (AccountLanguage).
+# user scope chooses it (AccountLanguage). The bell publishes its items on a declared topic (sc-3980).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Messaging\\"
 permit = [
@@ -291,6 +296,7 @@ permit = [
     "@layer:domain_messaging",
     "@layer:domain_user",
     "@layer:repository",
+    "@layer:realtime",
 ]
 
 # ── Integrations ────────────────────────────────────────────────────────────────
@@ -317,6 +323,15 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_us
 [[guard.perimeter.rules]]
 namespace = "App\\Integrations\\Meta\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user"]
+
+# Push's two providers (sc-3980). Each sees the port it implements and nothing else of ours.
+[[guard.perimeter.rules]]
+namespace = "App\\Integrations\\WebPush\\"
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_messaging", "Minishlink\\**", "GuzzleHttp\\HandlerStack"]
+
+[[guard.perimeter.rules]]
+namespace = "App\\Integrations\\Expo\\"
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_messaging"]
 
 # The OpenID providers. It sees the port it implements and nothing else of ours.
 [[guard.perimeter.rules]]

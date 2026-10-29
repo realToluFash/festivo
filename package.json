@@ -13,6 +13,7 @@
     "lint:php": "node scripts/php-tool.mjs php-cs-fixer check",
     "lint:actions": "node scripts/lint-actions.mjs",
     "lint:comments": "node scripts/check-comments.mjs",
+    "lint:topics": "node scripts/check-topic-strings.mjs",
     "lint:api": "docker compose exec -T api php vendor/bin/mago lint",
     "analyse:api": "docker compose exec -T api php vendor/bin/mago analyze",
     "guard:api": "docker compose exec -T api php vendor/bin/mago guard && node scripts/check-migrations.mjs",

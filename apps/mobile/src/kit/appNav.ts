@@ -22,11 +22,12 @@ export function destinations(
 }
 
 export type SettingsSection =
-  'account' | 'security' | 'organisation' | 'members' | 'roles' | 'signInRules';
+  'account' | 'security' | 'notifications' | 'organisation' | 'members' | 'roles' | 'signInRules';
 
 export const SECTION_HREF = {
   account: '/settings/account',
   security: '/settings/security',
+  notifications: '/settings/notifications',
   organisation: '/settings/organisation',
   members: '/settings/members',
   roles: '/settings/roles',
@@ -58,7 +59,10 @@ export interface SettingsGroup {
 export function settingsGroups(
   organisation: { permissions: readonly string[] } | null,
 ): readonly SettingsGroup[] {
-  const yours: SettingsGroup = { heading: 'yourAccount', sections: ['account', 'security'] };
+  const yours: SettingsGroup = {
+    heading: 'yourAccount',
+    sections: ['account', 'security', 'notifications'],
+  };
   if (organisation == null) return [yours];
 
   return [

@@ -84,6 +84,7 @@ const config: ExpoConfig = {
     'expo-web-browser',
     'expo-apple-authentication',
     'expo-system-ui',
+    'expo-notifications',
     // The system's photo picker needs no library access, so nothing asks for it or for the camera.
     [
       'expo-image-picker',
@@ -107,12 +108,15 @@ const config: ExpoConfig = {
     // what it falls back to and why that is safe only on a simulator.
     apiUrl: process.env.EXPO_PUBLIC_API_URL,
     environment: process.env.EXPO_PUBLIC_ENVIRONMENT ?? 'development',
+    mercureUrl: process.env.EXPO_PUBLIC_MERCURE_URL,
     // Google's endpoints and the app's client id; absent, src/config.ts uses the local sandbox.
     googleAuthorizeUrl: process.env.EXPO_PUBLIC_GOOGLE_AUTHORIZE_URL,
     googleTokenUrl: process.env.EXPO_PUBLIC_GOOGLE_TOKEN_URL,
     googleClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
     appleAuthorizeUrl: process.env.EXPO_PUBLIC_APPLE_AUTHORIZE_URL,
     appleTokenUrl: process.env.EXPO_PUBLIC_APPLE_TOKEN_URL,
+    // The Expo push token is issued per EAS project (sc-19684); absent, the app registers no push.
+    eas: { projectId: process.env.EAS_PROJECT_ID },
     appleClientId: process.env.EXPO_PUBLIC_APPLE_CLIENT_ID,
     appleServicesId: process.env.EXPO_PUBLIC_APPLE_SERVICES_ID,
     appleAppLink: process.env.EXPO_PUBLIC_APPLE_APP_LINK,

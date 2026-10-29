@@ -6,6 +6,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
+import { showPushInForeground } from '../src/appPush.ts';
 import { WindowOrigin } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { initI18n } from '../src/i18n/index.ts';
@@ -14,6 +15,7 @@ import { FONT_FACES, facesLoaded } from '../src/theme/fonts.ts';
 import { tokens } from '../src/theme/tokens.ts';
 
 void SplashScreen.preventAutoHideAsync();
+showPushInForeground();
 
 /**
  * The root. Localisation, the bundled faces, and the install identifier every sign-in carries, are awaited before anything renders, behind the splash.

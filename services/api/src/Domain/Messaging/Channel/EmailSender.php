@@ -8,6 +8,7 @@ use App\Domain\Messaging\Exception\Unreachable;
 use App\Domain\Messaging\Interfaces\ChannelSenderInterface;
 use App\Domain\Messaging\Model\Recipient;
 use App\Domain\Messaging\Model\RenderedNotification;
+use App\Enum\NotificationCategory;
 use App\Enum\NotificationChannel;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Address;
@@ -28,7 +29,7 @@ final readonly class EmailSender implements ChannelSenderInterface
         return NotificationChannel::Email;
     }
 
-    public function send(Uuid $deliveryId, Recipient $recipient, RenderedNotification $notification): ?string
+    public function send(Uuid $deliveryId, Recipient $recipient, NotificationCategory $category, RenderedNotification $notification, ?string $collapseKey = null): ?string
     {
         $address = $recipient->emailAddress ?? throw new Unreachable('No email address.');
         $messageId = $deliveryId->toRfc4122() . '@notifications.soirely';

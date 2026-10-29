@@ -369,3 +369,22 @@ the client may ask for a different size within that.
 Including dev. Symfony's default is an HTML error page, which a mobile client parses as
 nothing at all — so the one case a client most needs to understand would be the one it
 cannot read, and its error path would never be exercised until production.
+
+## Realtime topics
+
+Every Mercure topic is declared once, in `App\Enum\RealtimeTopic` (sc-3980). The clients
+build a topic only with `realtimeTopic()` from `@soirely/api-client`, whose
+`src/topics.ts` is generated from that enum (`npm run generate:topics -w
+@soirely/api-client`, with the stack up).
+
+- **Publishing** goes through `App\Realtime\RealtimePublisher`, and always privately: a
+  test fails when anything else in `src/` reaches the Mercure component. A plain
+  controller's command publishes this way too, since `mercure: true` only covers a
+  resource's own writes.
+- **Subscribing:** `POST /api/realtime/subscriptions` gives the signed-in member a
+  15-minute token, signed with the hub's subscriber key, naming only their own topics. A
+  private update reaches no other token. A screen that adds a topic adds it to the enum
+  and to that token's claim, with a test that nobody else is given it.
+- **Checks:** the API job regenerates `topics.ts` and fails when it differs
+  (`check-topics`), and the repository job fails on a topic written out by hand anywhere
+  in the clients or packages (`lint:topics`).

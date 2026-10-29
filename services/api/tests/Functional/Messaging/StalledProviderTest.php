@@ -9,6 +9,7 @@ use App\Domain\Messaging\Command\WorkNotificationsCommand;
 use App\Domain\Messaging\Model\Recipient;
 use App\Domain\Messaging\Model\RenderedNotification;
 use App\Enum\NotificationAudienceKind;
+use App\Enum\NotificationCategory;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Mailer\Exception\TransportException;
@@ -26,12 +27,12 @@ final class StalledProviderTest extends TestCase
         $address = \stream_socket_get_name($server, false) ?: self::fail('No address.');
         $previous = \ini_get('default_socket_timeout');
         // @mago-expect lint:no-ini-set the worker's own setting, which is what is under test
-        \ini_set('default_socket_timeout', WorkNotificationsCommand::SOCKET_TIMEOUT);
+        \ini_set('default_socket_timeout', (string) WorkNotificationsCommand::PROVIDER_CALL_LIMIT);
         $sender = new EmailSender(new Mailer(Transport::fromDsn('smtp://' . $address)), 'Soirely <hello@soirely.test>');
         $started = \microtime(true);
 
         try {
-            $sender->send(Uuid::v7(), new Recipient(NotificationAudienceKind::Member, Uuid::v7(), 'Ada', 'en', 'ada@example.test'), new RenderedNotification('Code', '123456'));
+            $sender->send(Uuid::v7(), new Recipient(NotificationAudienceKind::Member, Uuid::v7(), 'Ada', 'en', 'ada@example.test'), NotificationCategory::AccountSecurity, new RenderedNotification('Code', '123456'));
             self::fail('A silent provider was taken for a sent message.');
         } catch (TransportException) {
             self::assertLessThan(5.0, \microtime(true) - $started);

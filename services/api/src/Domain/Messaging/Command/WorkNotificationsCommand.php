@@ -22,8 +22,8 @@ final class WorkNotificationsCommand extends Command implements SignalableComman
 {
     public const string NAME = 'app:notifications:work';
 
-    /** Each provider call's limit, well inside the 5 seconds an urgent row is promised. Only this process sets it. */
-    public const string SOCKET_TIMEOUT = '3';
+    /** Each provider call's limit in seconds, inside the 5 an urgent row is promised. A client with its own timeout is given it; only this process sets the socket's. */
+    public const int PROVIDER_CALL_LIMIT = 3;
 
     private bool $stopping = false;
 
@@ -49,7 +49,7 @@ final class WorkNotificationsCommand extends Command implements SignalableComman
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         // @mago-expect lint:no-ini-set the per-call limit is this process's alone, and a web request keeps PHP's default
-        \ini_set('default_socket_timeout', self::SOCKET_TIMEOUT);
+        \ini_set('default_socket_timeout', (string) self::PROVIDER_CALL_LIMIT);
 
         $once = Type\bool()->coerce($input->getOption('once'));
         $deadline = \microtime(true) + self::number($input->getOption('time-limit'));

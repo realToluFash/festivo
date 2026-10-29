@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\User;
 
 use App\Domain\User\Model\IssuedTokens;
+use App\Domain\User\Model\SessionsEnded;
 use App\Entity\RefreshToken;
 use App\Entity\User;
 use App\Enum\IdentityProvider;
@@ -23,6 +24,7 @@ use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 final readonly class TokenIssuer
 {
@@ -38,6 +40,7 @@ final readonly class TokenIssuer
         private JWTTokenManagerInterface $jwtTokenManager,
         private EntityManagerInterface $entityManager,
         private RevokedSessions $revokedSessions,
+        private EventDispatcherInterface $eventDispatcher,
         #[Autowire(param: 'app.refresh_token_ttl')]
         private int $refreshTokenTtl,
     ) {
@@ -65,7 +68,7 @@ final readonly class TokenIssuer
         }
 
         $session->setRevokedAt(new DateTimeImmutable());
-        $this->revokedSessions->add($session->getChainId());
+        $this->ended($session->getChainId());
     }
 
     /** Until the transaction ends: a sign-out landing mid-refresh would otherwise miss the token that refresh issues. */
@@ -99,7 +102,7 @@ final readonly class TokenIssuer
             ->setParameter('chain', $token->getChainId(), UuidType::NAME)
             ->execute();
 
-        $this->revokedSessions->add($token->getChainId());
+        $this->ended($token->getChainId());
 
         return Type\int()->coerce($revoked);
     }
@@ -210,7 +213,7 @@ final readonly class TokenIssuer
             $chains,
             static fn (mixed $chain): Uuid => Uuid::fromString(Type\string()->coerce($chain)),
         );
-        $this->revokedSessions->add(...$ended);
+        $this->ended(...$ended);
 
         return $ended;
     }
@@ -222,5 +225,12 @@ final readonly class TokenIssuer
         }
 
         return Str\slice($userAgent, 0, self::USER_AGENT_LENGTH);
+    }
+
+    /** A session that ends takes its access tokens with it, and whatever another scope keeps for it (a device's push). */
+    private function ended(Uuid ...$chains): void
+    {
+        $this->revokedSessions->add(...$chains);
+        $this->eventDispatcher->dispatch(new SessionsEnded(...$chains));
     }
 }

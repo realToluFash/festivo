@@ -4,6 +4,7 @@ import { PageArrival } from '../components/PageArrival.tsx';
 
 import { Account } from './app/account/Account.tsx';
 import { Security } from './app/account/Security.tsx';
+import { NotificationSettings } from './app/account/NotificationSettings.tsx';
 import { AppLayout } from './app/AppLayout.tsx';
 import { Dashboard } from './app/Dashboard.tsx';
 import { EditEvent } from './app/events/EditEvent.tsx';
@@ -85,6 +86,7 @@ export const routes = [
           { path: 'guests', element: <Dashboard /> },
           { path: 'account', element: <Account /> },
           { path: 'account/security', element: <Security /> },
+          { path: 'account/notifications', element: <NotificationSettings /> },
           { path: 'settings', element: <General /> },
           { path: 'settings/members', element: <Members /> },
           { path: 'settings/roles', element: <Roles /> },

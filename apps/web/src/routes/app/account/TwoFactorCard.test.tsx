@@ -260,6 +260,7 @@ describe('while an organisation requires two-factor of everyone (sc-609)', () =>
         complete: true,
         awaiting: null,
         providers: [],
+        userId: 'u1',
         needsOrganisation: false,
         hasPassword: true,
         organisation,

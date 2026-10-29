@@ -20,6 +20,8 @@ import { GATED, SIGNED_OUT, api } from './api.ts';
 import { currentLocale } from './i18n/index.ts';
 
 export interface Session {
+  /** The account's id, which names its own realtime topics. */
+  userId: string;
   name: string;
   email: string;
   verified: boolean;
@@ -309,6 +311,7 @@ function sessionFrom(
   const remembered = recalled();
 
   return {
+    userId: account.id,
     name: account.name,
     email: primaryEmailAddress(account) ?? '',
     verified: account.verified,

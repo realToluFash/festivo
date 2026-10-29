@@ -169,10 +169,10 @@ export function slotParity(surface: Surface, reference = 'en'): SlotMismatch[] {
   return mismatches;
 }
 
-const PAIRED_FORM = new Map([
-  ['one', 'other'],
-  ['other', 'one'],
-]);
+/** The forms i18next picks from in this locale: es, fr and pt use `_many` for large round numbers, 1 000 000 in French. */
+function pluralCategoriesOf(locale: string): readonly string[] {
+  return new Intl.PluralRules(locale).resolvedOptions().pluralCategories;
+}
 
 export interface IncompletePlural {
   locale: string;
@@ -186,23 +186,25 @@ export interface IncompletePlural {
  *
  * Checked in BOTH directions. `_other` alone is the same bug wearing the other
  * hat, and it is the more likely one: somebody writes the general case first.
+ * And against the locale's own rules, so a family missing `_many` in es, fr or
+ * pt is caught too (sc-3980).
  */
 export function pluralFamilies(surface: Surface): IncompletePlural[] {
   const incomplete: IncompletePlural[] = [];
 
   for (const locale of LOCALES) {
     const keys = keysOf(load(surface, locale));
+    const categories = new Set(['one', 'other', ...pluralCategoriesOf(locale)]);
 
     for (const key of keys) {
       const form = pluralForm(key);
-      if (form == null) continue;
+      if (form == null || (form.category !== 'one' && form.category !== 'other')) continue;
 
-      const counterpart = PAIRED_FORM.get(form.category);
-      if (counterpart == null) continue;
-
-      const expected = `${form.base}_${counterpart}`;
-      if (!keys.includes(expected)) {
-        incomplete.push({ locale, present: key, missing: expected });
+      for (const category of categories) {
+        const expected = `${form.base}_${category}`;
+        if (category !== form.category && !keys.includes(expected)) {
+          incomplete.push({ locale, present: key, missing: expected });
+        }
       }
     }
   }

@@ -15,6 +15,7 @@ const ACCOUNT = {
   timezone: null,
   verified: true,
   complete: false,
+  userId: 'u1',
   needsOrganisation: true,
   hasPassword: true,
   emailAddresses: [
