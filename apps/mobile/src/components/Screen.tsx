@@ -15,6 +15,7 @@ import {
   AccessibilityInfo,
   type HostInstance,
   Keyboard,
+  type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Platform,
@@ -46,6 +47,7 @@ import {
   type FocusBackFrom,
   fieldToBlur,
   focusBackMs,
+  holdEnds,
   type StepCloseStep,
   stepCloseSteps,
 } from '../kit/focusBack.ts';
@@ -69,6 +71,8 @@ interface ScreenScrollView {
   origin: { current: number };
   /** The offset the native scroll view last reported. */
   offset: RefObject<number>;
+  /** Keeps the content at least its height now and `more`, until a scroll, a drag or TalkBack's own, brings the view's end back inside the content's real end, or the keys come up again. */
+  hold(more: number): void;
 }
 
 const ScreenScroll = createContext<ScreenScrollView | null>(null);
@@ -531,6 +535,10 @@ export function useStepClose(
 
       function runFrom(steps: readonly StepCloseStep[]): void {
         for (const [at, step] of steps.entries()) {
+          if (step.do === 'holdScroll') {
+            scroll?.hold(Keyboard.metrics()?.height ?? 0);
+            continue;
+          }
           if (step.do === 'showOpener') {
             afterShown.current = steps.slice(at + 1);
             setClosing(true);
@@ -645,19 +653,35 @@ function useScreenScrollView() {
   const origin = useRef(windowOrigin);
   const scrollView = useRef<ScrollViewInstance>(null);
   const offset = useRef(0);
+  const contentHeight = useRef(0);
+  const [held, setHeld] = useState<number | null>(null);
   const [screenScroll] = useState<ScreenScrollView>(() => ({
     ref: scrollView,
     resized: new Set(),
     origin,
     offset,
+    hold: (more) => setHeld(contentHeight.current + more),
   }));
   useEffect(() => {
     origin.current = windowOrigin;
   }, [windowOrigin]);
   useCheckedFieldInView(screenScroll);
+  useEffect(() => {
+    if (held == null) return;
+    const shown = Keyboard.addListener('keyboardDidShow', () => setHeld(null));
+
+    return () => shown.remove();
+  }, [held]);
 
   const follow = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    offset.current = event.nativeEvent.contentOffset.y;
+    const { contentOffset, layoutMeasurement } = event.nativeEvent;
+    offset.current = contentOffset.y;
+    if (
+      held != null &&
+      holdEnds(contentOffset.y, layoutMeasurement.height, contentHeight.current)
+    ) {
+      setHeld(null);
+    }
   };
 
   return {
@@ -668,6 +692,10 @@ function useScreenScrollView() {
       onScroll: follow,
       onScrollEndDrag: follow,
       onMomentumScrollEnd: follow,
+    },
+    heldStyle: held == null ? undefined : { minHeight: held },
+    onContentLayout: (event: LayoutChangeEvent) => {
+      contentHeight.current = event.nativeEvent.layout.height;
     },
   };
 }
@@ -687,7 +715,7 @@ export function ScrollColumn({
   /** Out of the layout behind another column; back in, it shows where it was left. */
   away?: boolean;
 }) {
-  const { screenScroll, scrollProps } = useScreenScrollView();
+  const { screenScroll, scrollProps, heldStyle, onContentLayout } = useScreenScrollView();
   const docked = useContext(Dock)?.docked ?? false;
   const left = useRef<number | null>(null);
   const restore = () => {
@@ -720,12 +748,14 @@ export function ScrollColumn({
         }}
         onContentSizeChange={restore}
         style={style}
-        contentContainerStyle={contentContainerStyle}
+        contentContainerStyle={[styles.grow, heldStyle]}
         refreshControl={refreshControl}
         keyboardShouldPersistTaps="handled"
         {...scrollInsets(LIFT, docked)}
       >
-        {children}
+        <View onLayout={onContentLayout} style={contentContainerStyle}>
+          {children}
+        </View>
       </ScrollView>
     </ScreenScroll.Provider>
   );
@@ -767,7 +797,7 @@ export function Screen({
   contentStyle,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
-  const { screenScroll, scrollProps } = useScreenScrollView();
+  const { screenScroll, scrollProps, heldStyle, onContentLayout } = useScreenScrollView();
   const avoider = useRef<ViewInstance>(null);
   const keyboardTop = useRef<number | null>(null);
   const [keysCover, setKeysCover] = useState(0);
@@ -818,14 +848,16 @@ export function Screen({
     <ScrollView
       {...scrollProps}
       style={styles.fill}
-      contentContainerStyle={[styles.content, contentStyle]}
+      contentContainerStyle={[styles.grow, heldStyle]}
       // So the first tap after typing hits the control rather than only
       // dismissing the keyboard, which otherwise makes every button in a
       // form need pressing twice.
       keyboardShouldPersistTaps="handled"
       {...scrollInsets(LIFT, docked != null)}
     >
-      {children}
+      <View onLayout={onContentLayout} style={[styles.content, contentStyle]}>
+        {children}
+      </View>
     </ScrollView>
   ) : (
     <View style={[styles.fill, styles.content, contentStyle]}>{children}</View>
@@ -868,5 +900,7 @@ const styles = StyleSheet.create({
   holder: { position: 'absolute', width: 1, height: 1 },
   root: { flex: 1, backgroundColor: tokens.colorPage },
   fill: { flex: 1 },
+  // The content's own view, without the hold's minHeight, measures where the page really ends.
+  grow: { flexGrow: 1 },
   content: { padding: tokens.spaceXxl, gap: tokens.spaceXl },
 });

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   fieldToBlur,
   focusBackMs,
+  holdEnds,
   INPUT_FOCUS_TAKEN_MS,
   stepCloseSteps,
   TALKBACK_FOCUS_BACK_MS,
@@ -33,8 +34,9 @@ describe('focus going back to a step’s opener', () => {
 describe('a step closing back to its opener', () => {
   const SETTLED_MS = 500;
 
-  it('on Android with TalkBack on, gives input focus to a holder TalkBack does not read before the keys go down, and moves TalkBack’s focus to the opener once their scroll has landed, before the step goes (sc-18588, sc-18587)', () => {
+  it('on Android with TalkBack on, holds the scroll where it is, gives input focus to a holder TalkBack does not read before the keys go down, and moves TalkBack’s focus to the opener once their scroll has landed, before the step goes (sc-18588, sc-18587)', () => {
     expect(stepCloseSteps('android', true, SETTLED_MS)).toEqual([
+      { do: 'holdScroll' },
       { do: 'showOpener' },
       { do: 'takeInputFocus', atMs: INPUT_FOCUS_TAKEN_MS, to: 'holder' },
       { do: 'putKeysDown' },
@@ -67,5 +69,22 @@ describe('the field a closing step blurs to put the keys down', () => {
 
   it('is none when no field raised the keys', () => {
     expect(fieldToBlur(null, null)).toBeNull();
+  });
+});
+
+describe('a scroll hold letting go', () => {
+  const VIEW = 600;
+
+  it('waits while the view’s end is past the content’s real end, where letting go would clamp the scroll (sc-18587)', () => {
+    expect(holdEnds(500, VIEW, 1000)).toBe(false);
+  });
+
+  it('lets go once the view’s end is back inside the content’s real end', () => {
+    expect(holdEnds(400, VIEW, 1000)).toBe(true);
+  });
+
+  it('lets go on content shorter than the view once the scroll is back at the top', () => {
+    expect(holdEnds(0, VIEW, 300)).toBe(true);
+    expect(holdEnds(50, VIEW, 300)).toBe(false);
   });
 });
