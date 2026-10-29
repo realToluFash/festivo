@@ -19,5 +19,7 @@ appId: host.exp.Exponent
     visible:
       id: 'events.back'
     timeout: 20000
+- assertVisible:
+    id: 'events.page'
 - waitForAnimationToEnd
 - takeScreenshot: upright-opened

@@ -14,7 +14,11 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - assertVisible: '{{t:eventsScreen.choose}}.*'
 - assertVisible:
+    id: 'events.tab.upcoming'
+- assertVisible:
     id: 'events.tab.drafts'
+- assertVisible:
+    id: 'events.tab.past'
 - takeScreenshot: side-list
 - tapOn:
     id: 'events.tab.drafts'
