@@ -1794,22 +1794,31 @@ describe('the flows a batch runs', () => {
         }
       }
       expect(readFileSync(join(target, 'batch/reopen.yaml'), 'utf8')).not.toContain('{{t:');
-      const developerMenu = readFileSync(join(target, 'batch/developer-menu.yaml'), 'utf8');
-      const settledOrSheet = new RegExp(
-        `^(?:${developerMenu.match(/extendedWaitUntil:\s+visible: '(.*)'/)[1].replaceAll("''", "'")})$`,
+      const sheet = "'This is the developer menu.*'";
+      expect(readFileSync(join(target, 'developer-menu-sheet.yaml'), 'utf8')).toContain(sheet);
+      expect(readFileSync(join(target, 'batch/developer-menu.yaml'), 'utf8')).toContain(
+        "visible: '${SETTLED}|This is the developer menu.*'",
       );
-      expect('This is the developer menu. It gives you access to useful tools.').toMatch(
-        settledOrSheet,
-      );
-      for (const code of ['en', 'es', 'fr', 'pt']) {
-        expect(catalogues[code].signIn.title).toMatch(settledOrSheet);
+      for (const flow of ['batch/developer-menu.yaml', 'expo-go-menu.yaml']) {
+        const text = readFileSync(join(target, flow), 'utf8');
+        expect(text).toMatch(/runFlow: (\.\.\/)?developer-menu-sheet\.yaml/);
+        expect(text).not.toContain(sheet);
       }
-      for (const flow of ['session', 'sign-out', 'reopen', 'reset']) {
-        expect(readFileSync(join(target, `batch/${flow}.yaml`), 'utf8')).toContain(
-          '- runFlow: developer-menu.yaml',
+      const settled = (flow) =>
+        new RegExp(
+          `^(?:${readFileSync(join(target, `batch/${flow}.yaml`), 'utf8')
+            .match(/file: developer-menu\.yaml\s+env:\s+SETTLED: '(.*)'/)[1]
+            .replaceAll("''", "'")})$`,
         );
+      for (const flow of ['session', 'sign-out', 'reopen']) {
+        for (const code of ['en', 'es', 'fr', 'pt']) {
+          expect(catalogues[code].signIn.title).toMatch(settled(flow));
+        }
       }
       const reset = readFileSync(join(target, 'batch/reset.yaml'), 'utf8');
+      expect(reset.match(/file: developer-menu\.yaml\s+env:\s+SETTLED: '(.*)'/)[1]).toBe(
+        reset.match(/notVisible: '(.*)'/)[1],
+      );
       expect(reset).toContain('ASK: /running');
       expect(reset).not.toMatch(/when:\s+(not)?[vV]isible/);
       expect(readdirSync(join(target, 'batch')).filter((f) => f.includes('save-password'))).toEqual(

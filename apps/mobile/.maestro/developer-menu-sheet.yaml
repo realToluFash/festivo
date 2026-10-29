@@ -1,0 +1,11 @@
+# Expo Go's first-run developer-menu sheet, where it is up: its Continue, never a coordinate.
+# The batch and the request-link flows both call this, so a reworded sheet changes one flow.
+# sc-19752, sc-20534.
+appId: host.exp.Exponent
+---
+- runFlow:
+    when:
+      visible: 'This is the developer menu.*'
+    commands:
+      - tapOn: 'Continue'
+      - waitForAnimationToEnd
