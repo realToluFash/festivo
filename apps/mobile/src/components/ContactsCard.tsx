@@ -14,7 +14,7 @@ import {
 } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInput, View } from 'react-native';
+import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
@@ -470,7 +470,7 @@ function Adding({
   const { t } = useTranslation();
   const email = kind === 'email';
   const typed = useRef('');
-  const field = useRef<TextInput>(null);
+  const field = useRef<TextInputInstance>(null);
   const aboveKeyboard = useAboveKeyboard();
   const [country, setCountry] = useState(initialCountry);
   const [refused, setRefused] = useState<string | null>(null);

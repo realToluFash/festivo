@@ -1,5 +1,14 @@
 import { type Ref, useId, useState } from 'react';
-import { FlatList, Modal, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import {
+  FlatList,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -46,7 +55,7 @@ export function ListPicker({
   /** Drawn and announced as a field that can't change, not as one that is only busy. */
   readOnly?: boolean;
   /** For moving screen-reader focus here when it is the field refused first. */
-  pickerRef?: Ref<View> | undefined;
+  pickerRef?: Ref<ViewInstance> | undefined;
   testID: string;
 }) {
   const { t } = useTranslation();

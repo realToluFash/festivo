@@ -1,6 +1,6 @@
 import { formatCountdown } from '@soirely/domain';
 import { type ReactNode, type RefObject, useRef, useState } from 'react';
-import { StyleSheet, type TextInput, View } from 'react-native';
+import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { type CodeStatus, asksForCode } from '../kit/code.ts';
@@ -35,18 +35,21 @@ export function CodeForm({
   onLeft: (code: string) => void;
   onVerify: (code: string) => void;
   onResend: () => void;
-  inputRef?: RefObject<TextInput | null> | undefined;
+  inputRef?: RefObject<TextInputInstance | null> | undefined;
   children?: ReactNode;
 }) {
   const { t } = useTranslation();
   const typed = useRef('');
   const verifying = status.kind === 'verifying';
   const answer = 'opened' in status ? undefined : status;
-  const ownInput = useRef<TextInput>(null);
+  const ownInput = useRef<TextInputInstance>(null);
   const input = inputRef ?? ownInput;
   // Send a new code in the code's place brings the field back, or a failure, in its place (sc-11173).
   const [resentInPlace, setResentInPlace] = useState<object | undefined>(undefined);
-  useFocusOnAnswer<TextInput>(status.kind === 'entering' ? resentInPlace : undefined, input);
+  useFocusOnAnswer<TextInputInstance>(
+    status.kind === 'entering' ? resentInPlace : undefined,
+    input,
+  );
 
   return (
     <View style={styles.form}>

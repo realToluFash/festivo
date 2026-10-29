@@ -1,7 +1,7 @@
 import { primaryEmailAddress } from '@soirely/api-client';
 import { router } from 'expo-router';
 import { type RefObject, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { useWaitingInvitations } from '../invitations.ts';
@@ -29,7 +29,7 @@ export function NoOrganisation({
   const { account } = useSignedIn();
   const waiting = useWaitingInvitations();
   const startOrganisation = useStartOrganisation();
-  const startButton = useRef<View>(null);
+  const startButton = useRef<ViewInstance>(null);
   const email = account == null ? '' : (primaryEmailAddress(account) ?? '');
   const listed = waiting.invitations.length > 0;
   const StartButton = listed ? SecondaryButton : PrimaryButton;

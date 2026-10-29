@@ -6,6 +6,7 @@ import {
   Pressable,
   StyleSheet,
   TextInput,
+  type TextInputInstance,
   type TextInputProps,
   View,
 } from 'react-native';
@@ -34,7 +35,7 @@ export function PasswordField({
   wrong?: boolean;
   submitting?: boolean;
   testID: string;
-  ref?: Ref<TextInput> | undefined;
+  ref?: Ref<TextInputInstance> | undefined;
 }) {
   const { t } = useTranslation();
   const [revealed, setRevealed] = useState(false);

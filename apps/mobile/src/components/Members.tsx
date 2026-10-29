@@ -21,7 +21,7 @@ import {
   roleName,
 } from '@soirely/domain';
 import { type Ref, type RefObject, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -371,7 +371,7 @@ function MemberRow({
   member: OrganisationMember;
   first: boolean;
   open: boolean;
-  opener: Ref<View>;
+  opener: Ref<ViewInstance>;
   onOpen: () => void;
 }) {
   const { t } = useTranslation();

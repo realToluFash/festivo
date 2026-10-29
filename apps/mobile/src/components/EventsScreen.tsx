@@ -9,7 +9,7 @@ import {
 } from '@soirely/domain';
 import { Redirect, router, useFocusEffect, useNavigation } from 'expo-router';
 import { type RefCallback, useCallback, useEffect, useState } from 'react';
-import { AppState, RefreshControl, StyleSheet, View } from 'react-native';
+import { AppState, RefreshControl, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -286,7 +286,7 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
   const pageName = shown?.name ?? null;
   const newEvent = () => router.push('/events/new');
 
-  const list = (opener: (key: string) => RefCallback<View>) =>
+  const list = (opener: (key: string) => RefCallback<ViewInstance>) =>
     !reads ? null : load.kind === 'loading' ? (
       <Waiting words={t('eventsScreen.loading')} />
     ) : load.kind === 'failed' ? (

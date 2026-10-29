@@ -9,7 +9,7 @@ import {
 import { getLocales } from 'expo-localization';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInput, View } from 'react-native';
+import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
@@ -106,8 +106,8 @@ function NumberForm({
   const [number, setNumber] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const numberInput = useRef<TextInput>(null);
-  const countryPicker = useRef<View>(null);
+  const numberInput = useRef<TextInputInstance>(null);
+  const countryPicker = useRef<ViewInstance>(null);
 
   async function send(): Promise<void> {
     const found = phoneLengthProblem(number, country);

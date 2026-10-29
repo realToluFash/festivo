@@ -19,9 +19,11 @@ import {
   Platform,
   type RefreshControlProps,
   ScrollView,
+  type ScrollViewInstance,
   type StyleProp,
   StyleSheet,
   View,
+  type ViewInstance,
   type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -54,10 +56,8 @@ import {
   watchKeyboardTop,
 } from './keyboardWatch.ts';
 
-type InnerViewRef = ScrollView & { getInnerViewRef(): View | null };
-
 interface ScreenScrollView {
-  ref: RefObject<ScrollView | null>;
+  ref: RefObject<ScrollViewInstance | null>;
   /** Called when the scroll view itself resizes, which a child's onLayout does not see. */
   resized: Set<() => void>;
   /** Where a view at the screen's top measures in the window. */
@@ -95,7 +95,7 @@ const Origin = createContext(0);
 
 // At the app's root, not a Screen's: under the frame's header a Screen's root starts lower.
 export function WindowOrigin({ children }: { children: ReactNode }) {
-  const probe = useRef<View>(null);
+  const probe = useRef<ViewInstance>(null);
   const [origin, setOrigin] = useState<number | null>(null);
 
   return (
@@ -110,7 +110,7 @@ export function WindowOrigin({ children }: { children: ReactNode }) {
 }
 
 export interface AboveKeyboard {
-  ref: RefObject<View | null>;
+  ref: RefObject<ViewInstance | null>;
   onLayout: () => void;
 }
 
@@ -120,11 +120,11 @@ export interface AboveKeyboard {
 // native one, so after the keys' own scroll to the field it can find the button uncovered.
 function liftAboveKeyboard(
   scroll: ScreenScrollView | null,
-  group: View | null,
+  group: ViewInstance | null,
   keyboardTop: number | null,
 ): void {
   const view = scroll?.ref.current;
-  const content = (view as InnerViewRef | null | undefined)?.getInnerViewRef();
+  const content = view?.getInnerViewRef();
   const scrollHost = view?.getNativeScrollRef();
   if (scroll == null || view == null || content == null || scrollHost == null) return;
   if (group == null || keyboardTop == null) return;
@@ -168,7 +168,7 @@ function liftAboveKeyboard(
 /** For a field and the button under it, spread on their View. It lifts again when an error grows the group. */
 export function useAboveKeyboard(): AboveKeyboard {
   const scroll = useContext(ScreenScroll);
-  const ref = useRef<View>(null);
+  const ref = useRef<ViewInstance>(null);
   const keyboardTop = useRef<number | null>(keyboardTopNow(scroll?.origin.current ?? 0));
 
   useEffect(() => {
@@ -237,14 +237,13 @@ export function AboveKeys({ children, inset, field }: AboveKeysProps) {
 }
 
 /** Brings the view to the top of the screen once it mounts, whatever the scroll it mounted into. */
-export function useScrolledToTop(): RefObject<View | null> {
+export function useScrolledToTop(): RefObject<ViewInstance | null> {
   const scroll = useContext(ScreenScroll);
-  const top = useRef<View>(null);
+  const top = useRef<ViewInstance>(null);
 
   useEffect(() => {
     const scrollUp = () => {
-      // RN declares getInnerViewRef in ScrollView.js but not in its .d.ts; measureLayout needs that element.
-      const content = (scroll?.ref.current as InnerViewRef | null | undefined)?.getInnerViewRef();
+      const content = scroll?.ref.current?.getInnerViewRef();
       if (top.current == null || content == null) return;
       top.current.measureLayout(content, (_x, y) => {
         scroll?.ref.current?.scrollTo({ y: Math.max(0, y - tokens.spaceLg), animated: true });
@@ -274,7 +273,7 @@ function bringIntoView(
   animated: boolean,
 ): void {
   const view = scroll?.ref.current;
-  const content = (view as InnerViewRef | null | undefined)?.getInnerViewRef();
+  const content = view?.getInnerViewRef();
   const scrollHost = view?.getNativeScrollRef();
   if (scroll == null || view == null || content == null || scrollHost == null || line == null)
     return;
@@ -314,15 +313,15 @@ function settleOnto(
 }
 
 export interface BroughtIntoView {
-  shown: RefObject<View | null>;
-  read: RefObject<View | null>;
+  shown: RefObject<ViewInstance | null>;
+  read: RefObject<ViewInstance | null>;
 }
 
 /** Brings `shown` wholly into sight once it mounts, unless it already is, then moves screen reader focus to `read` (`readRef` when given). */
-export function useBroughtIntoView(readRef?: RefObject<View | null>): BroughtIntoView {
+export function useBroughtIntoView(readRef?: RefObject<ViewInstance | null>): BroughtIntoView {
   const scroll = useContext(ScreenScroll);
-  const ref = useRef<View>(null);
-  const ownRead = useRef<View>(null);
+  const ref = useRef<ViewInstance>(null);
+  const ownRead = useRef<ViewInstance>(null);
   const read = readRef ?? ownRead;
 
   useEffect(
@@ -340,18 +339,18 @@ export function useBroughtIntoView(readRef?: RefObject<View | null>): BroughtInt
 }
 
 export interface FocusedOnAnswer<Read extends ScreenReaderTarget> {
-  shown: RefObject<View | null>;
+  shown: RefObject<ViewInstance | null>;
   read: RefObject<Read | null>;
 }
 
 /** With a screen reader on, once a tap's `answer` shows, brings `shown` (or `read`, with nothing on `shown`) wholly into sight and moves focus to `read` (`readRef` when given), and again with each new answer; with `answer` undefined, or no screen reader, nothing moves (sc-11032). */
-export function useFocusOnAnswer<Read extends ScreenReaderTarget = View>(
+export function useFocusOnAnswer<Read extends ScreenReaderTarget = ViewInstance>(
   answer: unknown,
   readRef?: RefObject<Read | null>,
   readMs = SETTLED_MS,
 ): FocusedOnAnswer<Read> {
   const scroll = useContext(ScreenScroll);
-  const shown = useRef<View>(null);
+  const shown = useRef<ViewInstance>(null);
   const ownRead = useRef<Read>(null);
   const read = readRef ?? ownRead;
 
@@ -396,8 +395,8 @@ export function useFocusBackToOpener(
   closed: StepClosed | undefined,
   fallback?: RefObject<ScreenReaderTarget | null>,
   from: FocusBackFrom = 'step',
-): (key: string) => RefCallback<View> {
-  const [openers] = useState(() => stepOpeners<View>());
+): (key: string) => RefCallback<ViewInstance> {
+  const [openers] = useState(() => stepOpeners<ViewInstance>());
   const target = useMemo<RefObject<ScreenReaderTarget | null>>(
     () => ({
       get current() {
@@ -413,7 +412,7 @@ export function useFocusBackToOpener(
 
 export interface StepClose {
   /** The opener's ref, in place of `opener(key)`. */
-  opener: RefCallback<View>;
+  opener: RefCallback<ViewInstance>;
   /** The step is closing in order, and its opener shows beside it until focus has reached it. */
   closing: boolean;
   close(): void;
@@ -421,20 +420,20 @@ export interface StepClose {
 
 /** Closes a step back to the opener `to` names, in the steps `stepCloseSteps` gives; `finish` takes the step away, with what `useFocusBackToOpener` moves focus back from, or nothing when focus is already there (sc-18588). */
 export function useStepClose(
-  opener: (key: string) => RefCallback<View>,
+  opener: (key: string) => RefCallback<ViewInstance>,
   to: string,
   finish: (closed: StepClosed | undefined) => void,
 ): StepClose {
   const scroll = useContext(ScreenScroll);
   const [closing, setClosing] = useState(false);
   const started = useRef(false);
-  const view = useRef<View | null>(null);
+  const view = useRef<ViewInstance | null>(null);
   const finishNow = useRef(finish);
   const afterShown = useRef<readonly StepCloseStep[]>([]);
   const cancel = useRef(() => {});
   const named = opener(to);
   const ref = useCallback(
-    (shown: View | null) => {
+    (shown: ViewInstance | null) => {
       named(shown);
       view.current = shown;
     },
@@ -528,7 +527,7 @@ export function FocusBack({
 }: {
   closed: StepClosed | undefined;
   fallback?: RefObject<ScreenReaderTarget | null>;
-  children: (opener: (key: string) => RefCallback<View>) => ReactNode;
+  children: (opener: (key: string) => RefCallback<ViewInstance>) => ReactNode;
 }) {
   return children(useFocusBackToOpener(closed, fallback, 'page'));
 }
@@ -537,7 +536,7 @@ export function FocusBack({
 function useScreenScrollView() {
   const windowOrigin = useContext(Origin);
   const origin = useRef(windowOrigin);
-  const scrollView = useRef<ScrollView>(null);
+  const scrollView = useRef<ScrollViewInstance>(null);
   const offset = useRef(0);
   const [screenScroll] = useState<ScreenScrollView>(() => ({
     ref: scrollView,
@@ -661,7 +660,7 @@ export function Screen({
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const { screenScroll, scrollProps } = useScreenScrollView();
-  const avoider = useRef<View>(null);
+  const avoider = useRef<ViewInstance>(null);
   const keyboardTop = useRef<number | null>(null);
   const [keysCover, setKeysCover] = useState(0);
   const [room, setRoom] = useState<number | null>(null);

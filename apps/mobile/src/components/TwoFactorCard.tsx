@@ -3,7 +3,14 @@ import { cleanCode, formatTimeOfDay, keyInGroups, lockLiftsAt } from '@soirely/d
 import { setStringAsync } from 'expo-clipboard';
 import { type TFunction } from 'i18next';
 import { type Ref, type RefObject, useEffect, useRef, useState } from 'react';
-import { Keyboard, Pressable, StyleSheet, type TextInput, View } from 'react-native';
+import {
+  Keyboard,
+  Pressable,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
@@ -246,7 +253,7 @@ function AtRest({
 }: {
   status: TwoFactorStatus;
   title: RefObject<TextHandle | null>;
-  opener: (key: string) => Ref<View>;
+  opener: (key: string) => Ref<ViewInstance>;
   refusedBy: Refusal | null;
   onTurnOn: () => void;
   onTurnOff: () => void;
@@ -356,7 +363,7 @@ function SettingUp({
 }) {
   const { t } = useTranslation();
   const typed = useRef('');
-  const input = useRef<TextInput>(null);
+  const input = useRef<TextInputInstance>(null);
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const aboveKeyboard = useAboveKeyboard();
@@ -546,7 +553,7 @@ function TurningOff({
 }) {
   const { t } = useTranslation();
   const typed = useRef('');
-  const input = useRef<TextInput>(null);
+  const input = useRef<TextInputInstance>(null);
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
 
@@ -632,7 +639,7 @@ function NewCodes({
 }) {
   const { t } = useTranslation();
   const typed = useRef('');
-  const input = useRef<TextInput>(null);
+  const input = useRef<TextInputInstance>(null);
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
 

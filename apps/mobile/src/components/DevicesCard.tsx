@@ -7,7 +7,7 @@ import {
 } from '@soirely/api-client';
 import { formatDay, formatTimeOfDay, othersOf, thisDeviceFirst } from '@soirely/domain';
 import { type Ref, useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInput, View } from 'react-native';
+import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -300,7 +300,7 @@ function Row({
 }: {
   device: DeviceSession;
   here: boolean;
-  opener: Ref<View>;
+  opener: Ref<ViewInstance>;
   onCheck: () => void;
   onEndHere: () => void;
 }) {
@@ -410,8 +410,8 @@ function EverywhereElse({
   const provider = hasPassword ? null : (providers[0]?.provider ?? null);
   const password = useRef('');
   const code = useRef('');
-  const passwordInput = useRef<TextInput>(null);
-  const codeInput = useRef<TextInput>(null);
+  const passwordInput = useRef<TextInputInstance>(null);
+  const codeInput = useRef<TextInputInstance>(null);
   const returned = useRef<ProviderSignInAttempt | null>(null);
   const [codeAsked, setCodeAsked] = useState(false);
   const [confirmed, setConfirmed] = useState(false);

@@ -6,7 +6,7 @@ import {
 } from '@soirely/api-client';
 import { PROOF_MINUTES } from '@soirely/domain';
 import { type ReactNode, useRef, useState } from 'react';
-import { StyleSheet, type TextInput, View } from 'react-native';
+import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -62,8 +62,8 @@ export function ConfirmItsYou({
   const { t } = useTranslation();
   const password = useRef('');
   const code = useRef('');
-  const passwordInput = useRef<TextInput>(null);
-  const codeInput = useRef<TextInput>(null);
+  const passwordInput = useRef<TextInputInstance>(null);
+  const codeInput = useRef<TextInputInstance>(null);
   // With a provider, the code is asked for when it returns, never before the trip (a code lapses in 30 seconds).
   const [codeAsked, setCodeAsked] = useState(codeBeforeTrip(via, twoFactorOn));
   const returned = useRef<ProviderSignInAttempt | null>(null);

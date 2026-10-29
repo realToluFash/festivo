@@ -48,10 +48,10 @@ export const FONT_FACES = {
  * Text and every field put their style through this.
  */
 export function faced(style: StyleProp<TextStyle>, mono = false): TextStyle {
-  return faceStyle(StyleSheet.flatten(style), mono);
+  return faceStyle(StyleSheet.flatten(style) ?? {}, mono);
 }
 
 /** faced() for a TextInput, which every field puts its style through. */
 export function inputFaced(style: StyleProp<TextStyle>, mono = false): TextStyle {
-  return inputFaceStyle(StyleSheet.flatten(style), mono, Platform.OS);
+  return inputFaceStyle(StyleSheet.flatten(style) ?? {}, mono, Platform.OS);
 }

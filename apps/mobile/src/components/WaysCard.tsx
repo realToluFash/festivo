@@ -7,7 +7,7 @@ import {
 } from '@soirely/api-client';
 import { proveWith, providerRows, remainingWay, type ProviderRow } from '@soirely/domain';
 import { type Ref, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -267,7 +267,7 @@ function Row({
   onLink: () => void;
   onUnlink: () => void;
   onSetPassword: () => void;
-  opener: (key: string) => Ref<View>;
+  opener: (key: string) => Ref<ViewInstance>;
 }) {
   const { t } = useTranslation();
   const name = PROVIDER_NAMES[row.provider];

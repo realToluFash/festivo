@@ -10,7 +10,15 @@ import {
 } from '@soirely/domain';
 import { launchImageLibraryAsync } from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, type TextInput, View } from 'react-native';
+import {
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -64,8 +72,8 @@ export function CoverField({
   const [refusal, setRefusal] = useState<CoverRefusal | null>(null);
   const [opened, setOpened] = useState<{ photo: PickedPhoto | null } | null>(null);
   const [removed, setRemoved] = useState(false);
-  const coverButton = useRef<View>(null);
-  const uploadButton = useRef<View>(null);
+  const coverButton = useRef<ViewInstance>(null);
+  const uploadButton = useRef<ViewInstance>(null);
   const shownType = type === '' ? 'other' : type;
 
   async function choose(): Promise<void> {
@@ -197,7 +205,7 @@ function CoverDialog({
     photo == null ? { width: 0, height: 0 } : { width: photo.width, height: photo.height },
   );
   const kept = useRef(false);
-  const describe = useRef<TextInput>(null);
+  const describe = useRef<TextInputInstance>(null);
 
   const preview: Cover | null =
     photo == null
