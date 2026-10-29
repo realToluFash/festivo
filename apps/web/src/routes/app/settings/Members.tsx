@@ -10,6 +10,7 @@ import {
 import {
   type MemberFilter,
   type MemberStanding,
+  PROOF_MINUTES,
   approvalRoles,
   emailProblem,
   formatDay,
@@ -39,6 +40,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { ConfirmItsYou } from '../../../components/ConfirmItsYou.tsx';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { OwnerClaimBanner } from '../../../components/OwnerClaimBanner.tsx';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
@@ -46,6 +48,12 @@ import { useFormChecks } from '../../../formChecks.ts';
 import { offButton } from '../../../offButton.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
 import { dateLocale, useShownLanguage } from '../../../i18n/index.ts';
+import {
+  type ReturnPurpose,
+  dropProviderReturn,
+  heldProviderReturn,
+} from '../../../providerSignIn.ts';
+import { type Proving, dropProof, heldProof, howToProve } from '../../../recentProof.ts';
 import { can, useSession } from '../../../session.ts';
 import { focusStep, useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { Forbidden } from '../Forbidden.tsx';
@@ -175,8 +183,21 @@ function MembersLoaded({
   headingRef: RefObject<HTMLHeadingElement | null>;
   onChange: (list: MembersList) => void;
 }) {
-  const [view, setView] = useState<View>({ kind: 'list', flash: null });
+  // Back from Google or Apple, started by Confirm it's you before making an owner: once, on arrival.
+  const [returned] = useState(() => backToMakeOwner());
+  const [view, setView] = useState<View>(() =>
+    returned == null
+      ? { kind: 'list', flash: null }
+      : 'member' in returned.purpose.to
+        ? { kind: 'member', id: returned.purpose.to.member }
+        : { kind: 'invite', ...returned.purpose.to, roleId: returned.purpose.roleId },
+  );
   const member = view.kind === 'member' ? list.members.find((one) => one.id === view.id) : null;
+
+  // Removed only once committed: React may abandon a render and run the initializer again.
+  useEffect(() => {
+    if (returned != null) dropProviderReturn();
+  }, [returned]);
   const land = useFocusOnceShown();
   const inviteButton = useRef<HTMLButtonElement>(null);
   const flashNotice = useRef<HTMLDivElement>(null);
@@ -195,6 +216,8 @@ function MembersLoaded({
         roles={grantableRoles(roles, organisation)}
         email={view.email}
         roleId={view.roleId}
+        again={again}
+        returned={returned}
         onCancel={() =>
           backToList(() =>
             again == null
@@ -228,6 +251,13 @@ function MembersLoaded({
         withheld={withheldRoles(roles, organisation)}
         manages={manages}
         caller={list.members.find((one) => one.self)?.user.id ?? null}
+        returned={
+          returned != null &&
+          'member' in returned.purpose.to &&
+          returned.purpose.to.member === member.id
+            ? returned
+            : null
+        }
         onChanged={onChange}
         onAnswered={(changed, answered) => {
           onChange(changed);
@@ -631,6 +661,7 @@ function MemberDetail({
   withheld,
   manages,
   caller,
+  returned,
   onChanged,
   onAnswered,
   onBack,
@@ -643,6 +674,7 @@ function MemberDetail({
   withheld: OrganisationRole[];
   manages: boolean;
   caller: string | null;
+  returned: OwnerReturn | null;
   onChanged: (list: MembersList) => void;
   onAnswered: (list: MembersList, answered: Answered) => void;
   onBack: () => void;
@@ -894,6 +926,7 @@ function MemberDetail({
             organisation={organisation}
             member={member}
             roles={roles}
+            returned={returned}
             onChanged={onChanged}
             onChangedElsewhere={changedElsewhere}
           />
@@ -1533,17 +1566,24 @@ function RolePicker({
   organisation,
   member,
   roles,
+  returned,
   onChanged,
   onChangedElsewhere,
 }: {
   organisation: Membership;
   member: OrganisationMember;
   roles: OrganisationRole[];
+  returned: OwnerReturn | null;
   onChanged: (list: MembersList) => void;
   onChangedElsewhere: () => void;
 }) {
   const { t } = useTranslation();
-  const [picked, setPicked] = useState(member.role.id);
+  const [picked, setPicked] = useState(returned?.purpose.roleId ?? member.role.id);
+  const [proving, setProving] = useState<Proving | null>(() => provingOnReturn(returned));
+  // Google's or Apple's sign-in is single-use: sent once, never again by a second Confirm it's you.
+  const [fromTrip, setFromTrip] = useState(() =>
+    returned != null && 'signIn' in returned ? returned.signIn : null,
+  );
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
@@ -1562,18 +1602,41 @@ function RolePicker({
       ];
   const role = offered.find((one) => one.id === picked);
   const changed = picked !== member.role.id && role != null;
+  const toOwner = role?.seededAs === 'owner';
 
-  async function save(): Promise<void> {
-    if (!changed) return;
-
+  async function confirmFirst(): Promise<void> {
     setBusy(true);
-    setFailed(null);
 
     try {
-      await api.changeMemberRole(organisation.id, member.id, picked);
+      setProving(await howToProve());
+    } catch {
+      setFailed(t('membersScreen.actionFailed'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function save(proved?: string): Promise<void> {
+    if (!changed) return;
+
+    // Making an owner asks for a recent proof (sc-18930); one held from the last five minutes stands.
+    const proof = toOwner ? (proved ?? heldProof()) : null;
+    setFailed(null);
+    if (toOwner && proof == null) return confirmFirst();
+
+    setProving(null);
+    setBusy(true);
+
+    try {
+      await api.changeMemberRole(organisation.id, member.id, picked, proof ?? undefined);
       setDone(t('membersScreen.roleChanged', { name: member.user.name, role: roleName(t, role) }));
       onChanged(await api.members(organisation.id));
     } catch (error) {
+      if (toOwner && error instanceof ApiError && error.is('proof_required')) {
+        dropProof();
+        setBusy(false);
+        return confirmFirst();
+      }
       if (error instanceof ApiError && error.status === 409) {
         onChangedElsewhere();
       } else {
@@ -1585,6 +1648,29 @@ function RolePicker({
       setBusy(false);
     }
   }
+
+  if (proving != null)
+    return (
+      <ConfirmItsYou
+        idPrefix="role-prove"
+        intro={t('membersScreen.proveOwner', {
+          organisation: organisation.name,
+          count: PROOF_MINUTES,
+        })}
+        via={proving.via}
+        twoFactorOn={proving.twoFactorOn}
+        returned={fromTrip}
+        purpose={{ kind: 'makeOwner', roleId: picked, to: { member: member.id } }}
+        onProved={(proof) => {
+          setFromTrip(null);
+          void save(proof);
+        }}
+        onCancel={() => {
+          setFromTrip(null);
+          setProving(null);
+        }}
+      />
+    );
 
   return (
     <>
@@ -1647,6 +1733,8 @@ function Invite({
   roles,
   email,
   roleId,
+  again,
+  returned,
   onCancel,
   onSent,
 }: {
@@ -1654,6 +1742,8 @@ function Invite({
   roles: OrganisationRole[];
   email: string;
   roleId: string | null;
+  again: string | null;
+  returned: OwnerReturn | null;
   onCancel: () => void;
   onSent: (invitation: SentInvitation, flash: string) => void;
 }) {
@@ -1666,7 +1756,13 @@ function Invite({
   const [busy, setBusy] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
+  const [draft, setDraft] = useState(email);
+  const [proving, setProving] = useState<Proving | null>(() => provingOnReturn(returned));
+  const [fromTrip, setFromTrip] = useState(() =>
+    returned != null && 'signIn' in returned ? returned.signIn : null,
+  );
   const role = roles.find((one) => one.id === picked);
+  const toOwner = role?.seededAs === 'owner';
   const check = useCallback(
     (_field: 'email', value: string) => {
       const problem = emailProblem(value);
@@ -1684,6 +1780,19 @@ function Invite({
 
   useLayoutEffect(() => focusStep(heading.current), []);
 
+  async function confirmFirst(typed: string): Promise<void> {
+    setDraft(typed);
+    setBusy(true);
+
+    try {
+      setProving(await howToProve());
+    } catch {
+      setFailed(t('membersScreen.sendFailed'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function send(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (busy) return;
@@ -1692,16 +1801,37 @@ function Invite({
 
     if (!checks.passes({ email: typed }) || role == null) return;
 
-    setBusy(true);
+    await deliver(typed);
+  }
+
+  async function deliver(typed: string, proved?: string): Promise<void> {
+    if (role == null) return;
+
+    const proof = toOwner ? (proved ?? heldProof()) : null;
     setRefused(null);
     setFailed(null);
+    if (toOwner && proof == null) return confirmFirst(typed);
+
+    setProving(null);
+    setDraft(typed);
+    setBusy(true);
     const land = focusWhereSent();
 
     try {
-      const invitation = await api.inviteMember(organisation.id, typed.trim(), role.id);
+      const invitation = await api.inviteMember(
+        organisation.id,
+        typed.trim(),
+        role.id,
+        proof ?? undefined,
+      );
       onSent(invitation, t('membersScreen.sent', { email: invitation.email }));
     } catch (error) {
       setBusy(false);
+
+      if (toOwner && error instanceof ApiError && error.is('proof_required')) {
+        dropProof();
+        return confirmFirst(typed);
+      }
 
       if (
         error instanceof ApiError &&
@@ -1729,80 +1859,124 @@ function Invite({
       </h1>
       <p className="muted">{organisation.name}</p>
 
-      {failed != null && (
-        <div className="notice notice-broken" role="alert">
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <p>{failed}</p>
-        </div>
-      )}
-
-      <form className="card settings-form" noValidate onSubmit={(event) => void send(event)}>
-        <h2>{t('membersScreen.whoToInvite')}</h2>
-        <div className="field">
-          <label htmlFor="invite-email">{t('register.email')}</label>
-          <input
-            className={emailError != null ? 'input input-wrong' : 'input'}
-            id="invite-email"
-            name="email"
-            type="email"
-            inputMode="email"
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            defaultValue={email}
-            {...offField(busy)}
-            aria-invalid={emailError != null}
-            aria-describedby={emailError != null ? 'invite-email-error' : undefined}
-            onBlur={(event) => checks.left('email', event.target.value)}
-            onChange={(event) => {
-              setRefused(null);
-              checks.edited('email', event.target.value);
+      {proving != null && role != null ? (
+        <section className="card settings-form" aria-labelledby="invite-prove-title">
+          <ConfirmItsYou
+            idPrefix="invite-prove"
+            intro={t('membersScreen.proveOwner', {
+              organisation: organisation.name,
+              count: PROOF_MINUTES,
+            })}
+            via={proving.via}
+            twoFactorOn={proving.twoFactorOn}
+            returned={fromTrip}
+            purpose={{ kind: 'makeOwner', roleId: role.id, to: { email: draft, again } }}
+            onProved={(proof) => {
+              setFromTrip(null);
+              void deliver(draft, proof);
+            }}
+            onCancel={() => {
+              setFromTrip(null);
+              setProving(null);
             }}
           />
-          {emailError != null && <FieldError id="invite-email-error" message={emailError} />}
-        </div>
-
-        <fieldset className="members-roles">
-          <legend>{t('membersScreen.role')}</legend>
-          {roles.map((one) => (
-            <label key={one.id} className="members-role">
-              <input
-                type="radio"
-                name="role"
-                value={one.id}
-                checked={picked === one.id}
-                disabled={busy}
-                onChange={() => setPicked(one.id)}
-              />
-              <span className="members-role-text">
-                <span className="members-row-name">{roleName(t, one)}</span>
-                {one.seededAs != null && (
-                  <span className="muted">{t(`membersScreen.roleMeans.${one.seededAs}`)}</span>
-                )}
+        </section>
+      ) : (
+        <>
+          {failed != null && (
+            <div className="notice notice-broken" role="alert">
+              <span className="mark mark-broken" aria-hidden="true">
+                ✕
               </span>
-            </label>
-          ))}
-        </fieldset>
+              <p>{failed}</p>
+            </div>
+          )}
 
-        <p className="muted">
-          {t('membersScreen.inviteNote', {
-            organisation: organisation.name,
-            role: role == null ? '' : roleName(t, role),
-          })}
-        </p>
+          <form className="card settings-form" noValidate onSubmit={(event) => void send(event)}>
+            <h2>{t('membersScreen.whoToInvite')}</h2>
+            <div className="field">
+              <label htmlFor="invite-email">{t('register.email')}</label>
+              <input
+                className={emailError != null ? 'input input-wrong' : 'input'}
+                id="invite-email"
+                name="email"
+                type="email"
+                inputMode="email"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                defaultValue={draft}
+                {...offField(busy)}
+                aria-invalid={emailError != null}
+                aria-describedby={emailError != null ? 'invite-email-error' : undefined}
+                onBlur={(event) => checks.left('email', event.target.value)}
+                onChange={(event) => {
+                  setRefused(null);
+                  checks.edited('email', event.target.value);
+                }}
+              />
+              {emailError != null && <FieldError id="invite-email-error" message={emailError} />}
+            </div>
 
-        <div className="actions">
-          <button className="button button-primary" type="submit" aria-busy={busy}>
-            {t('membersScreen.send')}
-          </button>
-          <button className="button" type="button" onClick={onCancel}>
-            {t('membersScreen.cancel')}
-          </button>
-        </div>
-      </form>
+            <fieldset className="members-roles">
+              <legend>{t('membersScreen.role')}</legend>
+              {roles.map((one) => (
+                <label key={one.id} className="members-role">
+                  <input
+                    type="radio"
+                    name="role"
+                    value={one.id}
+                    checked={picked === one.id}
+                    disabled={busy}
+                    onChange={() => setPicked(one.id)}
+                  />
+                  <span className="members-role-text">
+                    <span className="members-row-name">{roleName(t, one)}</span>
+                    {one.seededAs != null && (
+                      <span className="muted">{t(`membersScreen.roleMeans.${one.seededAs}`)}</span>
+                    )}
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+
+            <p className="muted">
+              {t('membersScreen.inviteNote', {
+                organisation: organisation.name,
+                role: role == null ? '' : roleName(t, role),
+              })}
+            </p>
+
+            <div className="actions">
+              <button className="button button-primary" type="submit" aria-busy={busy}>
+                {t('membersScreen.send')}
+              </button>
+              <button className="button" type="button" onClick={onCancel}>
+                {t('membersScreen.cancel')}
+              </button>
+            </div>
+          </form>
+        </>
+      )}
     </div>
   );
+}
+
+type OwnerReturn = NonNullable<ReturnType<typeof backToMakeOwner>>;
+
+/** What Google or Apple brought back to a Confirm it's you this screen started, if it was one. */
+function backToMakeOwner() {
+  const returned = heldProviderReturn(['makeOwner']);
+
+  return returned != null && returned.purpose.kind === 'makeOwner'
+    ? { ...returned, purpose: returned.purpose as Extract<ReturnPurpose, { kind: 'makeOwner' }> }
+    : null;
+}
+
+/** Back from the provider, Confirm it's you opens at once and sends what came back; the API asks for a code if it needs one. */
+function provingOnReturn(returned: OwnerReturn | null): Proving | null {
+  return returned != null && 'signIn' in returned
+    ? { via: returned.provider, twoFactorOn: false }
+    : null;
 }

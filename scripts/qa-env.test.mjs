@@ -23,6 +23,7 @@ import {
   batchRuns,
   afterRun,
   batchSummary,
+  driverPids,
   bundlerEnv,
   checkId,
   codeStep,
@@ -58,6 +59,7 @@ import {
   MAX_RESUMES,
   renewingSession,
   resumeBatch,
+  runHeld,
   maestroTarget,
   parseTarget,
   passwordAutoFillFiles,
@@ -86,6 +88,8 @@ import {
   TESTERS,
   testerOf,
   experienceResumed,
+  lastBundleRun,
+  reloadUntilRun,
   openUntilShown,
 } from './qa-env.mjs';
 
@@ -663,6 +667,54 @@ describe('a flow on Android', () => {
     expect(experienceResumed('')).toBe(false);
   });
 
+  it('reads when the app last started from logcat', () => {
+    const run = (at) =>
+      `${at}  4743  4743 I ReactNativeJS: Running "main" with {"rootTag":1,"initialProps":{}}\n`;
+    expect(lastBundleRun('')).toBe(0);
+    expect(lastBundleRun('--------- beginning of main\n')).toBe(0);
+    expect(
+      lastBundleRun(
+        run('1793215144.427') +
+          '1793215150.001  4743  4743 I ReactNativeJS: Running application\n' +
+          run('1793215204.427'),
+      ),
+    ).toBe(1793215204.427);
+  });
+
+  it('answers a reload once the app has run again, or when its time is up', async () => {
+    const reloading = (ranAfterPolls) => {
+      let at = 0;
+      let polls = 0;
+      let reloaded = false;
+      return {
+        options: {
+          reload: async () => {
+            reloaded = true;
+          },
+          lastRun: () => (reloaded && polls >= ranAfterPolls ? 200 : 100),
+          wait: async (ms) => {
+            polls++;
+            at += ms;
+          },
+          now: () => at,
+        },
+        at: () => at,
+      };
+    };
+
+    const quick = reloading(2);
+    expect(await reloadUntilRun(quick.options)).toBe(true);
+    expect(quick.at()).toBe(500);
+
+    const already = reloading(0);
+    expect(await reloadUntilRun(already.options)).toBe(true);
+    expect(already.at()).toBe(250);
+
+    const never = reloading(Infinity);
+    expect(await reloadUntilRun(never.options)).toBe(false);
+    expect(never.at()).toBeLessThanOrEqual(8000);
+  });
+
   const clocked = ({ shownAfter = Infinity, sendCost = 0, checkCost = 0 } = {}) => {
     let at = 0;
     const sent = [];
@@ -1054,7 +1106,7 @@ describe('the API a batch holds', () => {
 });
 
 describe('the batch helper', () => {
-  const helperFor = async (container, open) => {
+  const helperFor = async (container, open, options = {}) => {
     const { control, ran } = dockerDouble(container);
     const languages = [];
     const begun = [];
@@ -1068,6 +1120,7 @@ describe('the batch helper', () => {
       begun,
       heard: { at: 0 },
       open: open ?? ((url) => ran.push(`open ${url}`)),
+      ...options,
       port: 0,
     });
     const ask = async (path) => {
@@ -1128,6 +1181,22 @@ describe('the batch helper', () => {
       expect(await ask('/open?path=%2F--%2Fevents%2F7')).toEqual({
         error: expect.stringMatching(/^could not open exp:\/\/.+\/--\/events\/7: Error/),
       });
+    } finally {
+      server.close();
+    }
+  });
+
+  it('on Android, answers a reload once the app has run again', async () => {
+    const { server, ask, ran } = await helperFor('running', undefined, {
+      onAndroid: true,
+      reload: async () => {
+        ran.push('reload until run');
+        return true;
+      },
+    });
+    try {
+      expect(await ask('/reload')).toEqual({ reloaded: true });
+      expect(ran).toEqual(['reload until run']);
     } finally {
       server.close();
     }
@@ -1294,6 +1363,81 @@ describe('the list a batch ends with', () => {
       '✓ members',
     ]);
   });
+
+  it('says why no check ran when the driver was lost while signing in', () => {
+    expect(
+      batchSummary(['home', 'settings'], {
+        passed: new Set(),
+        begun: [],
+        crashed: [],
+        unstarted: new Map([
+          ['home', 'stalled'],
+          ['settings', 'ended'],
+        ]),
+      }),
+    ).toEqual([
+      "✗ home: not run: Maestro's driver stopped answering before the first check, while signing in",
+      '✗ settings: not run: Maestro ended before the first check, while signing in (its output says why)',
+    ]);
+  });
+});
+
+describe('the driver a frozen run leaves on the simulator', () => {
+  it('is found by its pid, and no other app is', () => {
+    expect(
+      driverPids(
+        '38266\t0\tUIKitApplication:dev.mobile.maestro-driver-iosUITests.xctrunner[2a09][rb-legacy]\n' +
+          '36010\t0\tUIKitApplication:host.exp.Exponent[7454][rb-legacy]\n' +
+          '-\t-9\tUIKitApplication:dev.mobile.maestro-driver-iosUITests.xctrunner[1b02][rb-legacy]',
+      ),
+    ).toEqual([38266]);
+  });
+});
+
+describe('one Maestro run of a batch', () => {
+  const held = ['home', 'settings'].map((check) => ({ check, language: 'any' }));
+  const runOf = ({ checks, stalls }) => {
+    const begun = [];
+    const stops = [];
+    const unstarted = new Map();
+    const options = {
+      begun,
+      passed: new Set(),
+      crashed: [],
+      unstarted,
+      heard: { at: 0 },
+      device: 'SIM-1',
+      onAndroid: false,
+      run: async (stall) => {
+        begun.push(...checks);
+        stall.stalled = stalls;
+      },
+      stop: (device, onAndroid) => stops.push({ device, onAndroid, begun: begun.length }),
+    };
+    return { options, stops, unstarted };
+  };
+
+  it('stops the driver of a run the watchdog stopped, once and on its device, before resuming', async () => {
+    const { options, stops } = runOf({ checks: ['home'], stalls: true });
+    expect(await runHeld(held, options)).toEqual({ crashed: 'home', rest: held.slice(1) });
+    expect(stops).toEqual([{ device: 'SIM-1', onAndroid: false, begun: 1 }]);
+  });
+
+  it('leaves the driver of a run that ended on its own', async () => {
+    const { options, stops } = runOf({ checks: ['home'], stalls: false });
+    await runHeld(held, options);
+    expect(stops).toEqual([]);
+  });
+
+  it('says whether a run lost before its first check stalled or ended', async () => {
+    const stalled = runOf({ checks: [], stalls: true });
+    expect(await runHeld(held, stalled.options)).toEqual({ crashed: null, rest: held });
+    expect([...stalled.unstarted.values()]).toEqual(['stalled', 'stalled']);
+
+    const ended = runOf({ checks: [], stalls: false });
+    expect(await runHeld(held, ended.options)).toEqual({ crashed: null, rest: [] });
+    expect([...ended.unstarted.values()]).toEqual(['ended', 'ended']);
+  });
 });
 
 describe('what a Maestro run that lost its driver leaves to resume', () => {
@@ -1349,6 +1493,13 @@ describe('what a Maestro run that lost its driver leaves to resume', () => {
         stalled: true,
       }),
     ).toEqual({ crashed: 'members', rest: [] });
+  });
+
+  it('resumes every check of a run the watchdog stopped before its first', () => {
+    expect(afterRun(runs, { begun: [], from: 0, passed: new Set(), stalled: true })).toEqual({
+      crashed: null,
+      rest: runs,
+    });
   });
 
   it('stops resuming after the cap when every resume crashes on the same check', async () => {
@@ -1451,6 +1602,22 @@ describe('the flows a batch runs', () => {
         ]) {
           expect(line.replace('{{email}}', 'qa@soirely.test')).toMatch(signedIn);
           expect(line.replace('{{email}}', 'other@soirely.test')).not.toMatch(signedIn);
+        }
+      }
+      const signOut = readFileSync(join(target, 'batch/sign-out.yaml'), 'utf8');
+      const someoneSignedIn = new RegExp(
+        `^(?:${signOut.match(/when:\s+visible: '(.*)'/)[1].replaceAll("''", "'")})$`,
+      );
+      const homeSettled = new RegExp(
+        `^(?:${signOut.match(/extendedWaitUntil:\s+visible: '(.*)'/)[1].replaceAll("''", "'")})$`,
+      );
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        for (const line of [
+          catalogues[code].settings.signedInAs,
+          catalogues[code].noOrganisation.signedInAs,
+        ]) {
+          expect(line.replace('{{email}}', 'other@soirely.test')).toMatch(homeSettled);
+          expect(line.replace('{{email}}', 'other@soirely.test')).toMatch(someoneSignedIn);
         }
       }
       expect(readFileSync(join(target, 'batch/reopen.yaml'), 'utf8')).not.toContain('{{t:');

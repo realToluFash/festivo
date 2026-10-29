@@ -1,5 +1,7 @@
 import configPlugins, { type ConfigPlugin } from 'expo/config-plugins.js';
 
+import { TEXT_SCALE_LAID_OUT } from '../src/components/textScaleLaidOutEvent.ts';
+
 const { AndroidConfig, withAndroidManifest, withMainActivity } = configPlugins;
 
 const IMPORTS = [
@@ -19,6 +21,7 @@ const IMPORTS = [
 // Android may give the activity's resources a new scale with the application's change, before the activity's own callback: a layout in between caches the old size under the new scale, and asking for a layout again finds nothing changed and keeps it.
 // So the metrics are read again from the activity on either change, and the root view is laid out when the scale the activity last saw has moved.
 // Android can also apply a new scale to the activity's resources and lay the window out before either callback, so the root view sits in a parent that reads the metrics again first whenever they no longer match the activity's.
+// JavaScript's next commit puts back the texts it last laid out, so one made before the root view's layout at the new scale keeps the old size. The root view is measured whenever the scale moved, and once that layout is in, JavaScript is told to make its texts again.
 // React Native tells JavaScript about a new font scale only on resume, and DeviceInfo reads both scale and density from the application, so the forward waits until the application has the activity's current ones, however many changes it is behind, then lays out again for the root view to send the new dimensions.
 // DeviceInfo is internal to React Native, so a debug build fails here on the first upgrade that renames it or drops the interface.
 // The safe-area frame, which picks the tablet layout, is sent only when it moves in pixels, and a display-size change keeps the window's pixels, so its last frame is forgotten to send it again at the new density.
@@ -34,10 +37,22 @@ const OVERRIDE = `
   private var lastDensityDpi = 0
   private var forwardPending = false
 
-  private class MetricsReadFirst(context: Context) : FrameLayout(context) {
+  private class MetricsReadFirst(
+    context: Context,
+    private val laidOutAtNewScale: () -> Unit,
+  ) : FrameLayout(context) {
+    private var laidOutFontScale = Float.NaN
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
       readMetricsIfMoved()
+      val fontScale = resources.configuration.fontScale
+      val newScale = fontScale != laidOutFontScale
+      if (newScale) getChildAt(0)?.forceLayout()
       super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+      if (newScale) {
+        if (!laidOutFontScale.isNaN()) laidOutAtNewScale()
+        laidOutFontScale = fontScale
+      }
     }
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
@@ -61,7 +76,9 @@ const OVERRIDE = `
   override fun setContentView(view: View?) {
     super.setContentView(
       view?.let {
-        MetricsReadFirst(this).apply {
+        MetricsReadFirst(this) {
+          reactHost?.currentReactContext?.emitDeviceEvent("${TEXT_SCALE_LAID_OUT}")
+        }.apply {
           addView(it, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         }
       },
@@ -137,13 +154,14 @@ const OVERRIDE = `
   }
 `;
 
-const SIZE_CHANGES = ['fontScale', 'density'];
+// Android's own text views draw bold text again on the change, and React Native's text ignores the setting, so a weight change needs nothing laid out.
+const TEXT_CHANGES = ['fontScale', 'density', 'fontWeightAdjustment'];
 
-/** The activity's configChanges with font size and display size among them, so Android hands either change to the app instead of recreating it. */
-export function withSizeChangesHandled(configChanges: string | undefined): string {
+/** The activity's configChanges with font size, display size and bold text among them, so Android hands each change to the app instead of recreating it. */
+export function withTextChangesHandled(configChanges: string | undefined): string {
   const changes = (configChanges ?? '').split('|').filter(Boolean);
 
-  return [...changes, ...SIZE_CHANGES.filter((change) => !changes.includes(change))].join('|');
+  return [...changes, ...TEXT_CHANGES.filter((change) => !changes.includes(change))].join('|');
 }
 
 /** MainActivity.kt, passing a configuration change on to JavaScript at once. */
@@ -162,11 +180,11 @@ export function withFontScaleForwarded(source: string): string {
     .replace(/\n}\s*$/, `\n${OVERRIDE}}\n`);
 }
 
-/** Android keeps the open screen through a font-size or display-size change, as iOS does through a font-size change, rather than starting the app over. */
+/** Android keeps the open screen through a font-size, display-size or bold-text change, as iOS does through a font-size change, rather than starting the app over. */
 export const withFontScaleKept: ConfigPlugin = (config) => {
   config = withAndroidManifest(config, (manifest) => {
     const activity = AndroidConfig.Manifest.getMainActivityOrThrow(manifest.modResults);
-    activity.$['android:configChanges'] = withSizeChangesHandled(
+    activity.$['android:configChanges'] = withTextChangesHandled(
       activity.$['android:configChanges'],
     );
 

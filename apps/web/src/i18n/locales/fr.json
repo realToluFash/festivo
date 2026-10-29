@@ -1086,6 +1086,8 @@
     "sectionSignInRules": "Règles de connexion"
   },
   "membersScreen": {
+    "proveOwner_one": "Pour donner à quelqu’un le rôle de Propriétaire de {{organisation}}, confirmez que c’est bien vous. Cela ne vous sera pas redemandé pendant une minute.",
+    "proveOwner_other": "Pour donner à quelqu’un le rôle de Propriétaire de {{organisation}}, confirmez que c’est bien vous. Cela ne vous sera pas redemandé pendant {{count, number}} minutes.",
     "title": "Membres",
     "loading": "Chargement des membres…",
     "failedLoad": "Impossible de charger les membres. Vérifiez votre connexion et réessayez.",
@@ -1734,6 +1736,7 @@
     "title": "Propriété et départ",
     "transfer": "Transférer la propriété",
     "transferNote": "Confiez {{organisation}} à un autre membre. Votre mot de passe vous sera d’abord demandé.",
+    "transferNoteProvider": "Confiez {{organisation}} à un autre membre. Vous devrez d’abord confirmer votre identité avec {{provider}}.",
     "transferBody": "La personne qui recevra le rôle Propriétaire pourra modifier la facturation, les membres, les rôles et ces paramètres, et supprimer {{organisation}}. Vous aurez le rôle Administrateur.",
     "newOwner": "Transférer à",
     "ownerBlank": "Choisissez la personne qui deviendra propriétaire.",
@@ -2023,11 +2026,11 @@
   },
   "timeline": {
     "comingUp": "Prochaines dates",
-    "allDates": "Calendrier complet",
-    "loading": "Chargement du calendrier…",
+    "allDates": "Toutes les dates",
+    "loading": "Chargement des dates…",
     "intro": "Toutes les dates de cet événement, dans l’ordre chronologique. Les heures sont celles du fuseau {{timeZone}}, le fuseau de l’événement.",
     "finished": "Plus rien à venir : toutes les dates de cet événement sont passées.",
-    "failed": "Le calendrier n’a pas pu être chargé.",
+    "failed": "Les dates n’ont pas pu être chargées.",
     "retry": "Réessayer",
     "momentInZone": "{{moment}} ({{timeZone}})",
     "now": "maintenant",

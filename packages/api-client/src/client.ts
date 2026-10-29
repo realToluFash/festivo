@@ -1888,15 +1888,16 @@ export class ApiClient {
     return list;
   }
 
-  /** Refused `already_a_member`, `grant_not_held`, or a violation on `email` or `roleId`. Sending again replaces the link. */
+  /** Refused `already_a_member`, `grant_not_held`, `proof_required` into Owner, or a violation on `email` or `roleId`. Sending again replaces the link. */
   async inviteMember(
     organisationId: string,
     email: string,
     roleId: string,
+    proof?: string,
   ): Promise<SentInvitation> {
     const body = await this.post<{ invitation?: unknown }>(
       `/api/orgs/${encodeURIComponent(organisationId)}/members/invite`,
-      { email, roleId },
+      proof == null ? { email, roleId } : { email, roleId, proof },
     );
 
     return this.sentInvitation(body?.invitation);
@@ -1911,15 +1912,16 @@ export class ApiClient {
     return this.sentInvitation(body?.invitation);
   }
 
-  /** Refused `conflict` for the caller's own, `grant_not_held`, or `last_owner`. Takes effect on their next request. */
+  /** Refused `conflict` for the caller's own, `grant_not_held`, `last_owner`, or `proof_required` into Owner. Takes effect on their next request. */
   async changeMemberRole(
     organisationId: string,
     membershipId: string,
     roleId: string,
+    proof?: string,
   ): Promise<void> {
     await this.patch<unknown>(
       `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}`,
-      { roleId },
+      proof == null ? { roleId } : { roleId, proof },
     );
   }
 

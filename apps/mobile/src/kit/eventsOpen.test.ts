@@ -1,7 +1,7 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { openedOf, openedWithoutAsking, selectionIn } from './eventsOpen.ts';
+import { hasNoEvents, openedOf, openedWithoutAsking, pageless, selectionIn } from './eventsOpen.ts';
 
 const gala: OrganisationEvent = {
   id: 'evt_gala',
@@ -89,5 +89,35 @@ describe('the event open, before asking the API', () => {
 
   it('asks the API for a role that reads events', () => {
     expect(openedWithoutAsking(true, { permissions: ['events.read'] })).toBeNull();
+  });
+});
+
+describe('the pane beside the list on a tablet on its side', () => {
+  const none = { kind: 'loaded', unfinished: [], pastTotal: 0 } as const;
+  const listed = { kind: 'loaded', unfinished: [gala], pastTotal: 0 } as const;
+  const onlyPast = { kind: 'loaded', unfinished: [], pastTotal: 1 } as const;
+
+  it('is not shown for an organisation with no events', () => {
+    expect(hasNoEvents(none)).toBe(true);
+    expect(pageless(none, false)).toBe(true);
+  });
+
+  it("is not shown while the failed card takes the list's place", () => {
+    expect(pageless({ kind: 'failed' }, false)).toBe(true);
+  });
+
+  it('shows beside the loading line', () => {
+    expect(pageless({ kind: 'loading' }, false)).toBe(false);
+  });
+
+  it('shows once there are events to choose from, past ones included', () => {
+    expect(pageless(listed, false)).toBe(false);
+    expect(hasNoEvents(onlyPast)).toBe(false);
+    expect(pageless(onlyPast, false)).toBe(false);
+  });
+
+  it('shows while an event is open in it, whatever the list shows', () => {
+    expect(pageless(none, true)).toBe(false);
+    expect(pageless({ kind: 'failed' }, true)).toBe(false);
   });
 });

@@ -11,7 +11,7 @@ import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import { SecondaryButton } from '../../src/components/Buttons.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
 import { Screen } from '../../src/components/Screen.tsx';
-import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
+import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { Text } from '../../src/components/Text.tsx';
 import { cardFrame } from '../../src/components/cardFrame.ts';
 import { dateLocale, useShownLanguage } from '../../src/i18n/index.ts';
@@ -30,6 +30,7 @@ type Load =
 /** Settings > Sign-in rules, `PolicySignIn-*` state `policy_changes`: what changed, then what holds (sc-69). */
 export default function SignInRules() {
   const { t } = useTranslation();
+  const backToSettings = useBackToSettings();
   const { kind } = useLayout();
   const { organisation } = useSignedIn();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });

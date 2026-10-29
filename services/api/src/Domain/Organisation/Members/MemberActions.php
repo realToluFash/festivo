@@ -10,6 +10,7 @@ use App\Domain\Organisation\DomainJoining\JoinOfferFinder;
 use App\Domain\Organisation\OwnerClaims\OwnerClaimHandler;
 use App\Domain\Organisation\Roles\RoleAssignment;
 use App\Domain\Organisation\Roles\RoleManager;
+use App\Domain\User\SignInMethods\RecentProof;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
@@ -25,6 +26,7 @@ use App\Repository\MembershipRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
+use SensitiveParameter;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -49,6 +51,7 @@ final readonly class MemberActions
         private TeamSeats $teamSeats,
         private AfterResponse $afterResponse,
         private MemberAccessMailer $memberAccessMailer,
+        private RecentProof $recentProof,
     ) {
     }
 
@@ -99,10 +102,10 @@ final readonly class MemberActions
         });
     }
 
-    /** Nobody moves a member out of a role they could not grant, or into one: only an owner touches an owner. A suspended member keeps the role restore brings back (sc-9549). */
-    public function changeRole(Membership $membership, Role $role, User $by): void
+    /** Nobody moves a member out of a role they could not grant, or into one: only an owner touches an owner, and makes one only with a recent proof (sc-18930). A suspended member keeps the role restore brings back (sc-9549). */
+    public function changeRole(Membership $membership, Role $role, User $by, #[SensitiveParameter] ?string $proof = null): void
     {
-        $this->underLock($membership, function () use ($membership, $role, $by): void {
+        $this->underLock($membership, function () use ($membership, $role, $by, $proof): void {
             $before = $membership->getRole();
             $this->roleManager->mayGrant($membership->getOrganisation(), $by, $before);
             $this->roleManager->mayGrant($membership->getOrganisation(), $by, $role);
@@ -113,6 +116,10 @@ final readonly class MemberActions
 
             if ($before->getId()->equals($role->getId())) {
                 return;
+            }
+
+            if ($role->isOwner()) {
+                $this->recentProof->require($by, $proof);
             }
 
             $this->roleAssignment->assign($membership, $role);

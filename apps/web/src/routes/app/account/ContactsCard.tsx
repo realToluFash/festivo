@@ -7,6 +7,7 @@ import {
 import {
   CONTACTS_MOST,
   contactActions,
+  confirmWith,
   contactsLeft,
   formatPhone,
   formatTimeOfDay,
@@ -102,7 +103,7 @@ export function ContactsCards({ onPrimaryChanged }: { onPrimaryChanged: () => Pr
   if (account == null || twoFactorOn == null) return null;
 
   const confirming: Confirming = {
-    via: account.hasPassword ? 'password' : (account.providers[0]?.provider ?? null),
+    via: confirmWith(account.hasPassword, account.providers),
     twoFactorOn,
     returned:
       returned != null && 'signIn' in returned && returned.purpose.kind === 'makePrimary'

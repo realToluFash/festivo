@@ -1,4 +1,4 @@
-import { type Ref } from 'react';
+import { type Ref, useSyncExternalStore } from 'react';
 import {
   Text as RNText,
   StyleSheet,
@@ -8,6 +8,7 @@ import {
 
 import { WEIGHTS, faced, type WeightName } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
+import { subscribeTextLaidOut, textLayoutsAtNewScale } from './textLaidOut.ts';
 
 /**
  * Text with a weight, and without the two shapes that crash on web.
@@ -41,11 +42,13 @@ export function Text({
   ...rest
 }: TextProps) {
   const { fontScale } = useWindowDimensions();
+  const laidOut = useSyncExternalStore(subscribeTextLaidOut, textLayoutsAtNewScale);
 
   return (
     <RNText
       // Native measures text again when the text size changes, but lays out nothing around it: a new text is laid out from the root down.
-      key={fontScale}
+      // JavaScript's next commit puts back the texts it last laid out, so on Android a text made before the root has the new scale keeps the old size; it is made again once the root has it.
+      key={`${fontScale}:${laidOut}`}
       style={faced(
         [
           styles.base,

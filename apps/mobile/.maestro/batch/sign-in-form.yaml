@@ -17,8 +17,13 @@ appId: host.exp.Exponent
     id: 'signIn.password'
 - eraseText: 120
 - inputText: ${PASSWORD}
-- tapOn:
-    id: 'signIn.submit'
+# The password field's Go key, not a tap: on an iPad hideKeyboard can scroll the form
+# instead, and the tap lands where the button was (sc-19359). No retry.
+- pressKey: Enter
+- extendedWaitUntil:
+    notVisible:
+      id: 'signIn.submit'
+    timeout: 30000
 - runFlow:
     when:
       visible:

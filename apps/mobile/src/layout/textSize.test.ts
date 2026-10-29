@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   breakableEmail,
+  drawnLine,
   fitWidest,
   nameLines,
   railWidth,
+  rowsFloor,
   sideListWidth,
   titleSize,
   wordsIn,
@@ -84,4 +86,43 @@ describe('breakableEmail', () => {
       'camille.moreau@​traiteur-lumiere.fr',
     );
   });
+});
+
+describe('drawnLine', () => {
+  it('keeps the fraction on iOS', () => {
+    expect(drawnLine(18.85, 1.2, null)).toBeCloseTo(22.62);
+  });
+
+  it.each([
+    [18.85, 1, 2.625, 50],
+    [19.5, 1, 2.625, 52],
+    [18.85, 1, 3, 57],
+    [19.5, 1.3, 3, 77],
+  ])(
+    'rounds a %s line at scale %s up to a whole pixel at density %s: %s px',
+    (height, scale, density, pixels) => {
+      expect(drawnLine(height, scale, density) * density).toBeCloseTo(pixels);
+    },
+  );
+});
+
+describe('rowsFloor', () => {
+  // Two rows of a date, a title and an owner pill with its padding, the gaps and padding of each row, and the divider between them.
+  const twoRows = (small: number, title: number) =>
+    (small * 2 + title + 10 * 2 + 4 * 2 + 4 * 2) * 2 + 1;
+
+  it('is the height of two rows on iOS', () => {
+    expect(rowsFloor(1, null)).toBeCloseTo(twoRows(18.85, 19.5));
+    expect(rowsFloor(1.5, null)).toBeCloseTo(twoRows(18.85 * 1.5, 19.5 * 1.5));
+  });
+
+  it.each([2.625, 3])(
+    'is the height of two rows as Android draws them at density %s',
+    (density) => {
+      expect(rowsFloor(1, density)).toBeCloseTo(
+        twoRows(Math.ceil(18.85 * density) / density, Math.ceil(19.5 * density) / density),
+      );
+      expect(rowsFloor(1, density)).toBeGreaterThan(rowsFloor(1, null));
+    },
+  );
 });

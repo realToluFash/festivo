@@ -1086,6 +1086,8 @@
     "sectionSignInRules": "Regras de início de sessão"
   },
   "membersScreen": {
+    "proveOwner_one": "Para dar a alguém a função de Proprietário de {{organisation}}, confirme que é você. Não voltamos a pedir durante um minuto.",
+    "proveOwner_other": "Para dar a alguém a função de Proprietário de {{organisation}}, confirme que é você. Não voltamos a pedir durante {{count, number}} minutos.",
     "title": "Membros",
     "loading": "A carregar membros…",
     "failedLoad": "Não foi possível carregar os membros. Verifique a ligação e tente novamente.",
@@ -1734,6 +1736,7 @@
     "title": "Propriedade e saída",
     "transfer": "Transferir a propriedade",
     "transferNote": "Entregue {{organisation}} a outro membro. Antes, é pedida a sua palavra-passe.",
+    "transferNoteProvider": "Entregue {{organisation}} a outro membro. Antes, terá de confirmar com o {{provider}}.",
     "transferBody": "Quem receber a função Proprietário pode alterar a faturação, os membros, as funções e estas definições, e eliminar {{organisation}}. A sua função passa a ser Administrador.",
     "newOwner": "Transferir para",
     "ownerBlank": "Escolha para quem transferir a propriedade.",
@@ -2023,11 +2026,11 @@
   },
   "timeline": {
     "comingUp": "Próximas datas",
-    "allDates": "Calendário completo",
-    "loading": "A carregar o calendário…",
+    "allDates": "Todas as datas",
+    "loading": "A carregar as datas…",
     "intro": "Todas as datas deste evento, por ordem cronológica. As horas estão no fuso horário {{timeZone}}, o do evento.",
     "finished": "Já não há nada pela frente. Todas as datas deste evento já passaram.",
-    "failed": "Não foi possível carregar o calendário.",
+    "failed": "Não foi possível carregar as datas.",
     "retry": "Tentar novamente",
     "momentInZone": "{{moment}} ({{timeZone}})",
     "now": "agora",

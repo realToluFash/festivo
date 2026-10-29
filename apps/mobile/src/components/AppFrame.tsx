@@ -55,6 +55,7 @@ import { type TextHandle, Text } from './Text.tsx';
 import { Title, useWholeWords } from './Title.tsx';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
+import { useSystemBack } from './useSystemBack.ts';
 
 type Opening = (opener: RefObject<View | null>) => void;
 
@@ -117,12 +118,13 @@ export function AppFrame({
   aboutTheAccount?: boolean;
   /** A heading in the body takes screen reader focus after a tapped switch of organisation, in place of the title (sc-11032). */
   bodyTakesSwitch?: boolean;
-  /** On a phone, the page this one was opened from, as Security's "Settings". */
-  back?: { label: string; onPress: () => void } | undefined;
+  /** On a phone, the page this one was opened from, as Security's "Settings"; with `systemBack`, Android's Back runs it too. */
+  back?: { label: string; onPress: () => void; systemBack?: boolean } | undefined;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
+  useSystemBack(back?.systemBack === true, () => back?.onPress());
   const [choosing, setChoosing] = useState(false);
   const [creating, setCreating] = useState(false);
   const pill = useRef<View>(null);
@@ -694,7 +696,7 @@ function Switcher({
   );
   useFocusBackToOpener(offerClosed, afterOffer);
   useFocusBack(open, opener);
-  // Android's window runs behind the bars and the cutout, so the card keeps its margin from them, not from the edge.
+  // The modal runs behind the bars, the cutout and the home indicator, so the card keeps its margin from them, not from the edge.
   const fit =
     Platform.OS === 'android'
       ? {
@@ -704,8 +706,14 @@ function Switcher({
           paddingLeft: insets.left + tokens.spaceXxl,
           paddingRight: insets.right + tokens.spaceXxl,
         }
-      : // Sized from the window: on an iPhone on its side the modal can keep its upright height (sc-10118).
-        { width, height };
+      : {
+          // Even on both sides, so a short card stays centred on the screen rather than in the safe area.
+          paddingVertical: Math.max(insets.top, insets.bottom) + tokens.spaceXxl,
+          paddingHorizontal: Math.max(insets.left, insets.right) + tokens.spaceXxl,
+          // Sized from the window: on an iPhone on its side the modal can keep its upright height (sc-10118).
+          width,
+          height,
+        };
 
   return (
     <Modal
@@ -1108,7 +1116,6 @@ const styles = StyleSheet.create({
   },
   scrim: {
     justifyContent: 'center',
-    padding: tokens.spaceXxl,
     backgroundColor: tokens.scrimDialog,
   },
   sheetFrame: {

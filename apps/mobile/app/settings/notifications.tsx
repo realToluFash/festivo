@@ -5,7 +5,7 @@ import { AppFrame } from '../../src/components/AppFrame.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import { NotificationSettingsGrid } from '../../src/components/NotificationSettingsGrid.tsx';
 import { Screen } from '../../src/components/Screen.tsx';
-import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
+import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { Text } from '../../src/components/Text.tsx';
 import { type LayoutKind, useLayout } from '../../src/layout/useLayout.ts';
 import { tokens } from '../../src/theme/tokens.ts';
@@ -13,6 +13,7 @@ import { tokens } from '../../src/theme/tokens.ts';
 /** Settings > Notifications in the app (sc-3980), under Your account. */
 export default function Notifications() {
   const { t } = useTranslation();
+  const backToSettings = useBackToSettings();
   const { kind } = useLayout();
   const phone = kind === 'phone';
 

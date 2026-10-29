@@ -495,7 +495,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   verificación en dos pasos» ran past one line of a 360dp inbox row and hid the state.
 - **27 Oct 2026. An event's dates are «el calendario», never «el programa»** (`timeline.*`,
   sc-15756). «Programa» is the organiser's Schedule (epic 33); the list of an event's dates is
-  «Calendario completo», its panel «Próximas fechas». The owner pill «You» is «A su cargo»,
+  «Todas las fechas» (sc-19010, after the English became All dates; «calendario» alone is the organisation's Calendar), its panel «Próximas fechas»; «Cargando las fechas…», «No se han podido cargar las fechas.» The owner pill «You» is «A su cargo»,
   because a bare «Usted» reads as a form field. Distances follow the date: «hoy», «dentro de
   3 días», «hace 2 días». The API titles put the verb first: «Empieza {name}», «Termina {name}».
 - **27 Oct 2026. Las pestañas de Eventos y sus estados vacíos** (sc-15981 para sc-3594,

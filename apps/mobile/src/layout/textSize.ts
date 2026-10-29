@@ -1,3 +1,5 @@
+import { tokens } from '../theme/tokens.ts';
+
 // iOS's eighth step of Larger Text draws text 1.79 times, its ninth 2.14, and Android's largest 2.
 const ACCESSIBILITY_SCALE = 1.7;
 const NINTH_STEP_SCALE = 2;
@@ -53,4 +55,27 @@ export function sideListWidth(width: number, contentWidth: number, fontScale: nu
 /** An email as drawn, free to break after its @ when it is wider than its line. Its accessibility label stays the address. */
 export function breakableEmail(email: string): string {
   return email.replace('@', '@​');
+}
+
+export const SMALL_LINE = tokens.typeSmall.size * tokens.typeSmall.lineHeight;
+export const TITLE_LINE = tokens.typeRowTitle.size * tokens.typeRowTitle.lineHeight;
+
+/** A line as the text view draws it: Android rounds each line up to a whole pixel (`CustomLineHeightSpan`), iOS keeps the fraction. */
+export function drawnLine(
+  lineHeight: number,
+  fontScale: number,
+  pixelRatio: number | null,
+): number {
+  const scaled = lineHeight * fontScale;
+
+  return pixelRatio == null ? scaled : Math.ceil(scaled * pixelRatio) / pixelRatio;
+}
+
+/** The height of two upcoming rows, held while loading, failed or Finished so the panels below do not move; worked from the lines the rows are set in, not measured on one screen. */
+export function rowsFloor(fontScale: number, pixelRatio: number | null): number {
+  const line = (height: number) => drawnLine(height, fontScale, pixelRatio);
+  const lines = line(SMALL_LINE) * 2 + line(TITLE_LINE);
+  const row = lines + tokens.spaceMd * 2 + tokens.spaceXxs * 2 + tokens.spaceXxs * 2;
+
+  return row * 2 + 1;
 }
