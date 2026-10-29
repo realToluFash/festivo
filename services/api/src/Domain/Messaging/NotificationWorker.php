@@ -6,6 +6,7 @@ namespace App\Domain\Messaging;
 
 use App\Domain\Messaging\Exception\Unreachable;
 use App\Domain\Messaging\Interfaces\AudienceResolverInterface;
+use App\Domain\Messaging\Interfaces\NotificationPreferencesInterface;
 use App\Domain\Messaging\Interfaces\NotificationTypeInterface;
 use App\Domain\Messaging\Model\Audience;
 use App\Domain\Messaging\Model\EventState;
@@ -54,6 +55,7 @@ final class NotificationWorker
         private readonly NotificationRegistry $notificationRegistry,
         private readonly ChannelSelector $channelSelector,
         private readonly EventMuteRepository $eventMuteRepository,
+        private readonly NotificationPreferencesInterface $notificationPreferences,
         private readonly ClockInterface $clock,
         private readonly LoggerInterface $logger,
         #[AutowireIterator(AudienceResolverInterface::TAG)]
@@ -424,6 +426,78 @@ final class NotificationWorker
             return EventVerdict::Cancel;
         }
 
+        return NotificationChannel::Push->value === $row['channel'] ? $this->checkPush($type, $row, $eventId, $sendBy, $now) : EventVerdict::Send;
+    }
+
+    /**
+     * The selector is asked again at send time, since a night's or a pause's hold gives the member hours to change their mind or read the item (sc-20494).
+     *
+     * @param array<string, mixed> $row
+     */
+    private function checkPush(NotificationTypeInterface $type, array $row, ?string $eventId, ?DateTimeImmutable $sendBy, DateTimeImmutable $now): EventVerdict
+    {
+        $id = Type\string()->coerce($row['id']);
+        $recipientId = Uuid::fromString(Type\string()->coerce($row['recipient_id']));
+        $category = $type->category();
+        $kind = NotificationAudienceKind::from(Type\string()->coerce($row['recipient_kind']));
+        $muted = null !== $eventId && NotificationAudienceKind::Member === $kind && [] !== $this->eventMuteRepository->findMutedAmong($eventId, [$recipientId]);
+
+        if (!Iter\contains($this->channelSelector->select($kind, $recipientId, $category, $type->channels(), $muted), NotificationChannel::Push)) {
+            $this->finishDelivery($id, NotificationDeliveryStatus::Cancelled, match (true) {
+                $muted && $category->heldByMute() => 'event muted',
+                !$this->notificationPreferences->allows($recipientId, $category, NotificationChannel::Push) => 'push switched off',
+                default => 'push would be the only way they hear',
+            });
+
+            return EventVerdict::Cancel;
+        }
+
+        $zone = Type\nullable(Type\string())->coerce($this->connection->fetchOne('SELECT timezone FROM users WHERE id = :id', ['id' => $recipientId->toRfc4122()]) ?: null);
+        $morning = QuietHours::releaseAt($category, $now, $zone);
+
+        if (null !== $morning) {
+            // A second past the limit, so the morning's check finds it too late rather than holding it again.
+            $wakeAt = null !== $sendBy && $sendBy < $morning ? $sendBy->add(new DateInterval('PT1S')) : $morning;
+            $this->connection->executeStatement(
+                'UPDATE notification_deliveries SET held = :held, next_attempt_at = :wake, claimed_until = NULL WHERE id = :id',
+                ['held' => NotificationHold::QuietHours->value, 'wake' => $wakeAt, 'id' => $id],
+                ['wake' => Types::DATETIME_IMMUTABLE],
+            );
+
+            return EventVerdict::Hold;
+        }
+
+        $item = $this->connection->fetchAssociative(
+            <<<'SQL'
+                SELECT i.id IS NOT NULL AS present, i.read_at IS NOT NULL AS read
+                FROM notification_deliveries d
+                LEFT JOIN notification_items i ON i.id = COALESCE(d.collapsed_into, d.id)
+                WHERE d.type = :type AND d.source_id = :source AND d.recipient_kind = :kind AND d.recipient_id = :recipient
+                  AND d.channel = :inApp AND d.status = :sent
+                SQL,
+            [
+                'type' => $row['type'],
+                'source' => $row['source_id'],
+                'kind' => $row['recipient_kind'],
+                'recipient' => $row['recipient_id'],
+                'inApp' => NotificationChannel::InApp->value,
+                'sent' => NotificationDeliveryStatus::Sent->value,
+            ],
+        );
+
+        $gone = match (true) {
+            false === $item => null,
+            !Type\bool()->coerce($item['present']) => 'its item has gone',
+            Type\bool()->coerce($item['read']) => 'its item was read',
+            default => null,
+        };
+
+        if (null !== $gone) {
+            $this->finishDelivery($id, NotificationDeliveryStatus::Cancelled, $gone);
+
+            return EventVerdict::Cancel;
+        }
+
         return EventVerdict::Send;
     }
 
@@ -584,7 +658,7 @@ final class NotificationWorker
     {
         $row = $this->connection->fetchAssociative(
             <<<'SQL'
-                SELECT d.id, d.type, d.event_id, d.recipient_kind, d.recipient_id, d.channel, d.send_by, d.attempts, s.organisation_id, s.audience, s.payload
+                SELECT d.id, d.type, d.source_id, d.event_id, d.recipient_kind, d.recipient_id, d.channel, d.send_by, d.attempts, s.organisation_id, s.audience, s.payload
                 FROM notification_deliveries d
                 JOIN scheduled_notifications s ON s.id = d.scheduled_notification_id
                 WHERE d.id = :id

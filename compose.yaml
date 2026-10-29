@@ -80,6 +80,7 @@ services:
       APP_ENV: ${APP_ENV:-dev}
       LOCALES_FILE: /locales.json
       EVENT_STATES_FILE: /event-states.json
+      QUIET_HOURS_FILE: /quiet-hours.json
       ADDRESS_ENDPOINT: ${ADDRESS_ENDPOINT}
       ADDRESS_USER_AGENT: ${ADDRESS_USER_AGENT}
       STORAGE_ENDPOINT: ${STORAGE_ENDPOINT}
@@ -158,6 +159,8 @@ services:
       - ./locales.json:/locales.json:ro
       # What each event state allows, which the clients read too (sc-3584).
       - ./event-states.json:/event-states.json:ro
+      # The hours only Event day pushes come through, which the clients' footer reads too (sc-20494).
+      - ./quiet-hours.json:/quiet-hours.json:ro
     ports:
       - '${API_PORT:-8080}:80'
     depends_on:
