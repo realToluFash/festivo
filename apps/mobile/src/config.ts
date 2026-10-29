@@ -23,6 +23,7 @@ interface Extra {
   appleClientId?: string;
   appleServicesId?: string;
   appleAppLink?: string;
+  eas?: { projectId?: string };
 }
 
 const extra = (Constants.expoConfig?.extra ?? {}) as Extra;
@@ -51,4 +52,5 @@ export const config = {
     /** The verified https App Link Apple's form_post comes back by; unset, Android keeps the sandbox path. */
     appLink: extra.appleAppLink === '' ? undefined : extra.appleAppLink,
   },
+  easProjectId: extra.eas?.projectId === '' ? undefined : extra.eas?.projectId,
 } as const;

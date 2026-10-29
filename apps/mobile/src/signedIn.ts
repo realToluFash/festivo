@@ -16,6 +16,7 @@ import i18next from 'i18next';
 import { useEffect, useSyncExternalStore } from 'react';
 
 import { api } from './api.ts';
+import { registerAppPush } from './appPush.ts';
 import { currentLocale } from './i18n/index.ts';
 import { leaveThen } from './leaveHeld.ts';
 import { tokens } from './tokens.ts';
@@ -138,6 +139,7 @@ function load(): Promise<boolean> {
         pausedIn: choosePaused(paused, id, organisations.length),
         invitations,
       });
+      void registerAppPush().catch(() => {});
       // The account's language, followed at launch while this read was on its way (sc-9267).
       if (currentLocale() !== askedIn) void rereadOrganisations();
 
