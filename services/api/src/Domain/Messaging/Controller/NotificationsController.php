@@ -59,21 +59,18 @@ final readonly class NotificationsController
     {
         $user = $this->user();
         $item = $this->item($user, $id);
-        $this->notificationReadMarker->markRead($item);
+        $unread = $this->notificationReadMarker->markRead($user, $item);
 
         return new JsonResponse([
             'item' => $this->notificationItemSerialiser->items($user, [$item])[0],
-            'unreadCount' => $this->notificationItemRepository->countUnreadFor($user, $this->since()),
+            'unreadCount' => $unread,
         ]);
     }
 
     #[Route('/api/notifications/read-all', name: 'notifications_read_all', methods: ['POST'])]
     public function readAll(): JsonResponse
     {
-        $user = $this->user();
-        $this->notificationReadMarker->markAllRead($user);
-
-        return new JsonResponse(['unreadCount' => $this->notificationItemRepository->countUnreadFor($user, $this->since())]);
+        return new JsonResponse(['unreadCount' => $this->notificationReadMarker->markAllRead($this->user())]);
     }
 
     private function since(): DateTimeImmutable

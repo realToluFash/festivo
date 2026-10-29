@@ -11,11 +11,16 @@ use App\Domain\Messaging\NotificationWorker;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
 use App\Entity\Event;
+use App\Entity\Membership;
 use App\Entity\Organisation;
+use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\EventType;
+use App\Enum\MembershipStatus;
 use App\Enum\Permission;
+use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
+use App\Tests\Double\Messaging\RecordingHub;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -98,13 +103,31 @@ final class NotificationsApiTest extends ApiTestCase
     }
 
     #[Test]
-    public function markAllReadLeavesNothingUnread(): void
+    public function markAllReadLeavesNothingUnreadAndLeavesAnotherMembersItemsAlone(): void
     {
+        $member = self::service(UserRegistrar::class)->register('tomi@ire.events', 'Tomi', self::PASSWORD)->user;
+        self::onboard($member, withOrganisation: false);
+        $this->join($member);
         $this->notify('one', null);
         $this->notify('two', null);
 
         self::assertSame(['unreadCount' => 0], $this->as($this->owner, 'POST', '/api/notifications/read-all'));
         self::assertSame([true, true], Vec\map(self::items($this->as($this->owner, 'GET', '/api/notifications')), static fn (array $item): mixed => $item['read']));
+        self::assertSame(2, $this->as($member, 'GET', '/api/notifications')['unreadCount']);
+    }
+
+    #[Test]
+    public function aReadIsPublishedToTheMembersOtherBellsWithTheCountLeft(): void
+    {
+        $this->notify('one', null);
+        $this->notify('two', null);
+        $id = Type\string()->coerce(self::items($this->as($this->owner, 'GET', '/api/notifications'))[0]['id']);
+
+        $this->as($this->owner, 'POST', '/api/notifications/' . $id . '/read');
+        self::assertSame(['readId' => $id, 'unreadCount' => 1], $this->lastPublished());
+
+        $this->as($this->owner, 'POST', '/api/notifications/read-all');
+        self::assertSame(['readAll' => true, 'unreadCount' => 0], $this->lastPublished());
     }
 
     #[Test]
@@ -261,6 +284,24 @@ final class NotificationsApiTest extends ApiTestCase
         while ($steps < 100 && self::service(NotificationWorker::class)->step()) {
             ++$steps;
         }
+    }
+
+    private function join(User $user): void
+    {
+        $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
+        $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => SeededRole::ReadOnly]) ?? self::fail('no role');
+        self::em()->persist(new Membership($organisation, $user, $role, MembershipStatus::Active, new DateTimeImmutable()));
+        self::em()->flush();
+    }
+
+    /** @return array<string, mixed> */
+    private function lastPublished(): array
+    {
+        $update = Iter\last(self::service(RecordingHub::class)->published) ?? self::fail('nothing published');
+        self::assertSame(['users/' . $this->owner->getId()->toRfc4122() . '/notifications'], $update->getTopics());
+        self::assertTrue($update->isPrivate());
+
+        return Type\dict(Type\string(), Type\mixed())->coerce(Json\decode($update->getData()));
     }
 
     private function event(): Event
