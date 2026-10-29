@@ -146,6 +146,7 @@ def slim(raw, states, epics):
         "url": raw.get("app_url"),
         "state": states.get(str(raw.get("workflow_state_id"))),
         "labels": sorted(label["name"] for label in raw.get("labels", [])),
+        "owners": raw.get("owner_ids") or [],
         "epic": epic["name"] if isinstance(epic, dict) else epic,
         "epic_id": raw.get("epic_id"),
         "type": raw.get("story_type"),
@@ -161,7 +162,7 @@ def slim(raw, states, epics):
                    "object": link.get("object_id")} for link in raw.get("story_links", [])],
         "comments": [
             {"id": c["id"], "parent": c.get("parent_id"), "at": c.get("created_at"),
-             "text": c.get("text") or ""}
+             "author": c.get("author_id"), "text": c.get("text") or ""}
             for c in raw.get("comments", []) if not c.get("deleted")
         ],
     }
