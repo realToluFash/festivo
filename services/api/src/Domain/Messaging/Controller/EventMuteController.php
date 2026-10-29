@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\Messaging\Controller;
 
 use App\Domain\Messaging\EventMuter;
-use App\Domain\Messaging\Http\NotificationItemSerialiser;
 use App\Entity\Event;
 use App\Entity\User;
 use App\Enum\ErrorCode;
@@ -51,7 +50,7 @@ final readonly class EventMuteController
 
     private function answer(bool $muted): JsonResponse
     {
-        return new JsonResponse(['muted' => $muted, 'markedWhenMuted' => NotificationItemSerialiser::markedWhenMuted()]);
+        return new JsonResponse(['muted' => $muted]);
     }
 
     private function event(string $id): Event

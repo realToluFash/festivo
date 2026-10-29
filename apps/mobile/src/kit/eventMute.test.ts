@@ -38,7 +38,7 @@ describe('Mute this event', () => {
       client({
         muteEvent: (eventId, muted) => {
           sent.push([eventId, muted]);
-          return Promise.resolve({ muted, markedWhenMuted: ['messages'] });
+          return Promise.resolve({ muted });
         },
       }),
       'e1',
@@ -48,7 +48,7 @@ describe('Mute this event', () => {
     expect(sent).toEqual([['e1', true]]);
     expect(state).toEqual({
       state: { status: 'loaded', muted: true, saving: false, unsaved: false },
-      saved: { muted: true, markedWhenMuted: ['messages'] },
+      saved: { muted: true },
     });
   });
 

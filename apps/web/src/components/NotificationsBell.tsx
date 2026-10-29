@@ -5,7 +5,6 @@ import {
   feedWithArrival,
   feedWithLiveRead,
   feedWithMissed,
-  feedWithMute,
   feedWithPage,
   feedWithRead,
   whenShown,
@@ -16,7 +15,6 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 
 import { api } from '../api.ts';
-import { useMutes } from '../eventMutes.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { useLiveNotifications } from '../liveNotifications.ts';
 import { offButton } from '../offButton.ts';
@@ -207,14 +205,6 @@ export function NotificationsBell({ userId }: { userId: string }) {
       await navigate(item.place);
     }
   }
-
-  useMutes((eventId, mute) =>
-    setFeed((current) =>
-      current.status === 'loaded'
-        ? { ...feedWithMute(current, eventId, mute), status: 'loaded' }
-        : current,
-    ),
-  );
 
   async function readAll(): Promise<void> {
     if (feed.status !== 'loaded' || feed.unread === 0) return;

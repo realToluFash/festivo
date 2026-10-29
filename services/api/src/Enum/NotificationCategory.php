@@ -13,4 +13,10 @@ enum NotificationCategory: string
     case EventChanges = 'event_changes';
     case Money = 'money';
     case AccountSecurity = 'account_security';
+
+    /** Mute this event keeps the bell and holds back the rest, except what cannot wait. */
+    public function heldByMute(): bool
+    {
+        return self::EventDay !== $this && self::AccountSecurity !== $this;
+    }
 }

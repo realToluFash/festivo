@@ -9,7 +9,9 @@ use App\Domain\Messaging\Command\WorkNotificationsCommand;
 use App\Domain\Messaging\EventMuter;
 use App\Domain\Messaging\Model\Audience;
 use App\Domain\Messaging\Model\Trigger;
+use App\Entity\User;
 use App\Enum\Permission;
+use App\Enum\SeededRole;
 use App\Tests\Double\Messaging\Meanwhile;
 use App\Tests\Double\Messaging\RecordingHub;
 use DateTimeImmutable;
@@ -75,6 +77,27 @@ final class InAppNotificationsTest extends MessagingTestCase
         self::assertSame(['in_app'], Type\vec(Type\string())->coerce(self::connection()->fetchFirstColumn('SELECT channel FROM notification_deliveries')));
         self::assertSame([], self::sender()->sent);
         self::assertTrue(Type\dict(Type\string(), Type\mixed())->coerce(Json\decode(self::hub()->published[0]->getData()))['muted']);
+    }
+
+    #[Test]
+    public function aMuteIsOnlyItsOwnersAndLeavesTheOtherMembersDeliveriesAsTheyWere(): void
+    {
+        $event = $this->event();
+        $other = $this->member('other', SeededRole::Administrator);
+        self::service(EventMuter::class)->set($this->owner, $event, true);
+        self::scheduler()->schedule('test.bell', 'bell:1', 'bell-1', Trigger::at(new DateTimeImmutable('-1 minute')), $this->everyone(), [], $event);
+
+        self::runUntilIdle();
+
+        $channels = static fn (User $member): array => Type\vec(Type\string())->coerce(self::connection()->fetchFirstColumn(
+            'SELECT channel FROM notification_deliveries WHERE recipient_id = :member ORDER BY channel',
+            ['member' => $member->getId()->toRfc4122()],
+        ));
+        $marked = static fn (User $member): mixed => self::scalar('SELECT muted FROM notification_items WHERE user_id = :member', ['member' => $member->getId()->toRfc4122()]);
+        self::assertSame(['in_app'], $channels($this->owner));
+        self::assertSame(['email', 'in_app'], $channels($other));
+        self::assertSame([true, false], [$marked($this->owner), $marked($other)]);
+        self::assertSame(['OTHER'], self::sentTo());
     }
 
     /** sc-104's Urgent first, with the in-app item it has no sender for (sc-3980 tests bullet). */

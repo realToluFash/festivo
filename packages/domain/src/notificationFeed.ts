@@ -81,22 +81,6 @@ export function feedWithLiveRead<Item extends FeedItem>(
   return { ...followed, unread: read.unreadCount };
 }
 
-/** Mute this event is one switch per event, so every item of that event follows it at once, in the categories the server marks. */
-export function feedWithMute<Item extends FeedItem>(
-  feed: LoadedFeed<Item>,
-  eventId: string,
-  mute: { muted: boolean; markedWhenMuted: readonly string[] },
-): LoadedFeed<Item> {
-  return {
-    ...feed,
-    items: feed.items.map((item) =>
-      item.eventId === eventId && mute.markedWhenMuted.includes(item.category)
-        ? { ...item, muted: mute.muted }
-        : item,
-    ),
-  };
-}
-
 /** "at 14:05" today, the locale's date before today. */
 export function whenShown(
   createdAt: string,

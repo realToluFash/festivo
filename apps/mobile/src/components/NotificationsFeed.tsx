@@ -4,7 +4,6 @@ import {
   feedWithArrival,
   feedWithLiveRead,
   feedWithMissed,
-  feedWithMute,
   feedWithPage,
   feedWithRead,
   whenShown,
@@ -22,7 +21,6 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { useMutes } from '../eventMutes.ts';
 import { markPushAsked, pushAskDue, turnOnAppPush } from '../appPush.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { SECTION_HREF } from '../kit/appNav.ts';
@@ -172,14 +170,6 @@ export function NotificationsFeed({ heading }: { heading: RefObject<TextHandle |
     const place = appPlace(item.place);
     if (place != null) router.push(place);
   }
-
-  useMutes((eventId, mute) =>
-    setFeed((current) =>
-      current.status === 'loaded'
-        ? { ...feedWithMute(current, eventId, mute), status: 'loaded' }
-        : current,
-    ),
-  );
 
   async function readAll(): Promise<void> {
     if (feed.status !== 'loaded' || feed.unread === 0) return;

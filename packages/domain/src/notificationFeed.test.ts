@@ -8,7 +8,6 @@ import {
   feedWithArrival,
   feedWithLiveRead,
   feedWithMissed,
-  feedWithMute,
   feedWithPage,
   feedWithRead,
   whenShown,
@@ -92,16 +91,6 @@ describe('the bell feed (sc-3980)', () => {
     const all = feedWithLiveRead(loaded, { id: null, unreadCount: 0 });
     expect(all.items.map((shown) => shown.read)).toEqual([true, true]);
     expect(all.unread).toBe(0);
-  });
-
-  test("muting an event marks its items in the server's categories, and not another event's", () => {
-    const after = feedWithMute(
-      feed([item('a'), item('day', { category: 'event_day' }), item('other', { eventId: 'e2' })]),
-      'e1',
-      { muted: true, markedWhenMuted: ['messages'] },
-    );
-
-    expect(after.items.map((shown) => shown.muted)).toEqual([true, false, false]);
   });
 });
 

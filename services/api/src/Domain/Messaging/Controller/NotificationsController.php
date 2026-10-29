@@ -48,7 +48,7 @@ final readonly class NotificationsController
         $last = Iter\last($items);
 
         return new JsonResponse([
-            'items' => $this->notificationItemSerialiser->items($user, $items),
+            'items' => $this->notificationItemSerialiser->items($items),
             'unreadCount' => $this->notificationItemRepository->countUnreadFor($user, $this->since()),
             'next' => self::PAGE === Iter\count($items) && null !== $last ? $last->getId()->toRfc4122() : null,
         ]);
@@ -62,7 +62,7 @@ final readonly class NotificationsController
         $unread = $this->notificationReadMarker->markRead($user, $item);
 
         return new JsonResponse([
-            'item' => $this->notificationItemSerialiser->items($user, [$item])[0],
+            'item' => $this->notificationItemSerialiser->items([$item])[0],
             'unreadCount' => $unread,
         ]);
     }

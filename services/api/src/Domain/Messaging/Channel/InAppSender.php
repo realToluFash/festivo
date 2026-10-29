@@ -67,13 +67,14 @@ final readonly class InAppSender implements ChannelSenderInterface
             null === $delivery['event_id'] ? null : Uuid::fromString($delivery['event_id']),
             $delivery['event_name'],
             $notification->place,
+            $delivery['muted'] && $category->heldByMute(),
             $this->clock->now(),
         );
 
         $this->connection->executeStatement(
             <<<'SQL'
-                INSERT INTO notification_items (id, user_id, category, title, lines, event_id, event_name, place, read_at, created_at)
-                VALUES (:id, :user, :category, :title, :lines, :event, :eventName, :place, NULL, :createdAt)
+                INSERT INTO notification_items (id, user_id, category, title, lines, event_id, event_name, place, muted, read_at, created_at)
+                VALUES (:id, :user, :category, :title, :lines, :event, :eventName, :place, :muted, NULL, :createdAt)
                 ON CONFLICT (id) DO NOTHING
                 SQL,
             [
@@ -85,15 +86,16 @@ final readonly class InAppSender implements ChannelSenderInterface
                 'event' => $item->getEventId()?->toRfc4122(),
                 'eventName' => $item->getEventName(),
                 'place' => $item->getPlace(),
+                'muted' => $item->isMuted(),
                 'createdAt' => $item->getCreatedAt(),
             ],
-            ['createdAt' => Types::DATETIME_IMMUTABLE],
+            ['muted' => Types::BOOLEAN, 'createdAt' => Types::DATETIME_IMMUTABLE],
         );
 
         $this->realtimePublisher->publish(
             RealtimeTopic::UserNotifications,
             $recipient->id->toRfc4122(),
-            NotificationItemSerialiser::item($item, $delivery['muted'], $delivery['event_available']),
+            NotificationItemSerialiser::item($item, $delivery['event_available']),
         );
 
         return null;

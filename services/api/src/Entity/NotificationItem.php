@@ -45,6 +45,10 @@ class NotificationItem
     #[ORM\Column(type: Types::STRING, length: 500, nullable: true)]
     private ?string $place;
 
+    /** Its push and email were held by Mute this event when it was delivered; a later change of the mute leaves it as it was. */
+    #[ORM\Column(type: Types::BOOLEAN)]
+    private bool $muted;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $readAt = null;
 
@@ -61,6 +65,7 @@ class NotificationItem
         ?Uuid $eventId,
         ?string $eventName,
         ?string $place,
+        bool $muted,
         DateTimeImmutable $createdAt,
     ) {
         $this->id = $id;
@@ -71,6 +76,7 @@ class NotificationItem
         $this->eventId = $eventId;
         $this->eventName = $eventName;
         $this->place = $place;
+        $this->muted = $muted;
         $this->createdAt = $createdAt;
     }
 
@@ -113,6 +119,11 @@ class NotificationItem
     public function getPlace(): ?string
     {
         return $this->place;
+    }
+
+    public function isMuted(): bool
+    {
+        return $this->muted;
     }
 
     public function getReadAt(): ?DateTimeImmutable

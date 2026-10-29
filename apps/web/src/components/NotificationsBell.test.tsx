@@ -200,12 +200,11 @@ describe('the bell (sc-3980)', () => {
     expect(screen.getByText('Unread')).toBeTruthy();
   });
 
-  it('More mutes the event, marks its items Muted, and Escape goes back to More', async () => {
+  it('More mutes the event, leaves the items already delivered unmarked, and Escape goes back to More', async () => {
     const sent = answering({
       'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
       'GET /api/events/e1/mute': () => json({ muted: false }),
-      'PUT /api/events/e1/mute': () =>
-        json({ muted: true, markedWhenMuted: ['event_changes', 'messages'] }),
+      'PUT /api/events/e1/mute': () => json({ muted: true }),
     });
     bell();
 
@@ -219,8 +218,9 @@ describe('the bell (sc-3980)', () => {
     await waitFor(() => expect((mute as HTMLInputElement).disabled).toBe(false));
     fireEvent.click(mute);
 
-    expect(await screen.findByText('Muted')).toBeTruthy();
-    expect(sent).toContain('PUT /api/events/e1/mute');
+    await waitFor(() => expect(sent).toContain('PUT /api/events/e1/mute'));
+    await waitFor(() => expect((mute as HTMLInputElement).checked).toBe(true));
+    expect(screen.queryByText('Muted')).toBeNull();
 
     mute.focus();
     fireEvent.keyDown(document, { key: 'Escape' });
@@ -234,8 +234,7 @@ describe('the bell (sc-3980)', () => {
     answering({
       'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
       'GET /api/events/e1/mute': () => json({ muted: false }),
-      'PUT /api/events/e1/mute': () =>
-        json({ muted: true, markedWhenMuted: ['event_changes', 'messages'] }),
+      'PUT /api/events/e1/mute': () => json({ muted: true }),
     });
     const router = createMemoryRouter(
       [

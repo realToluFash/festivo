@@ -131,10 +131,9 @@ export interface NotificationRead {
   unreadCount: number;
 }
 
-/** Mute this event's saved state, with the categories whose items carry the Muted mark: the bell follows the server's rule. */
+/** Mute this event's saved state. Items already delivered keep the Muted mark they were delivered with. */
 export interface EventMute {
   muted: boolean;
-  markedWhenMuted: string[];
 }
 
 export interface NotificationSetting {
@@ -1200,19 +1199,12 @@ export class ApiClient {
   }
 
   async muteEvent(eventId: string, muted: boolean): Promise<EventMute> {
-    const body = await this.put<{ muted?: unknown; markedWhenMuted?: unknown }>(
+    const body = await this.put<{ muted?: unknown }>(
       `/api/events/${encodeURIComponent(eventId)}/mute`,
       { muted },
     );
 
-    return {
-      muted: body.muted === true,
-      markedWhenMuted: Array.isArray(body.markedWhenMuted)
-        ? body.markedWhenMuted.filter(
-            (category): category is string => typeof category === 'string',
-          )
-        : [],
-    };
+    return { muted: body.muted === true };
   }
 
   /** The VAPID public key this browser subscribes with (sc-3980). */

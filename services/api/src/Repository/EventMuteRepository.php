@@ -27,18 +27,6 @@ final class EventMuteRepository extends ServiceEntityRepository
         return $this->findOneBy(['user' => $user, 'event' => $event]);
     }
 
-    /** @return list<string> the events this person muted */
-    public function findMutedEventIds(User $user): array
-    {
-        return Vec\map(
-            Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($this->getEntityManager()->getConnection()->fetchAllAssociative(
-                'SELECT event_id FROM event_mutes WHERE user_id = :user',
-                ['user' => $user->getId()->toRfc4122()],
-            )),
-            static fn (array $row): string => Type\string()->coerce($row['event_id']),
-        );
-    }
-
     /**
      * @param list<Uuid> $userIds
      *

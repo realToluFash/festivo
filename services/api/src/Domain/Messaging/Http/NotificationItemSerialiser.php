@@ -5,47 +5,38 @@ declare(strict_types=1);
 namespace App\Domain\Messaging\Http;
 
 use App\Entity\NotificationItem;
-use App\Entity\User;
-use App\Enum\NotificationCategory;
-use App\Repository\EventMuteRepository;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Psl\Iter;
 use Psl\Type;
 use Psl\Vec;
 
-/** The bell's item shape (sc-3980 Design, #7475 and #13415): the client derives nothing, so `muted` and `eventAvailable` are answered here. */
+/** The bell's item shape (sc-3980 Design, #7475 and #13415): the client derives nothing, so `eventAvailable` is answered here. */
 final readonly class NotificationItemSerialiser
 {
-    /** Event day and Account & security still push from a muted event, so nothing was held back and there is nothing to mark. */
-    private const array PUSHED_WHEN_MUTED = [NotificationCategory::EventDay, NotificationCategory::AccountSecurity];
-
     public function __construct(
-        private EventMuteRepository $eventMuteRepository,
         private Connection $connection,
     ) {
     }
 
     /**
-     * @param list<NotificationItem> $items all the same member's
+     * @param list<NotificationItem> $items
      *
      * @return list<array{id: string, category: string, title: string, lines: list<string>, eventId: ?string, eventName: ?string, eventAvailable: bool, muted: bool, place: ?string, read: bool, createdAt: string}>
      */
-    public function items(User $user, array $items): array
+    public function items(array $items): array
     {
         $eventIds = Vec\unique(Vec\filter_nulls(Vec\map($items, static fn (NotificationItem $item): ?string => $item->getEventId()?->toRfc4122())));
-        $muted = [] === $eventIds ? [] : $this->eventMuteRepository->findMutedEventIds($user);
         $available = $this->availableEvents($eventIds);
 
         return Vec\map($items, static fn (NotificationItem $item): array => self::item(
             $item,
-            Iter\contains($muted, $item->getEventId()?->toRfc4122()),
             Iter\contains($available, $item->getEventId()?->toRfc4122()),
         ));
     }
 
     /** @return array{id: string, category: string, title: string, lines: list<string>, eventId: ?string, eventName: ?string, eventAvailable: bool, muted: bool, place: ?string, read: bool, createdAt: string} */
-    public static function item(NotificationItem $item, bool $eventMuted, bool $eventAvailable): array
+    public static function item(NotificationItem $item, bool $eventAvailable): array
     {
         return [
             'id' => $item->getId()->toRfc4122(),
@@ -55,20 +46,11 @@ final readonly class NotificationItemSerialiser
             'eventId' => $item->getEventId()?->toRfc4122(),
             'eventName' => $item->getEventName(),
             'eventAvailable' => null !== $item->getEventId() && $eventAvailable,
-            'muted' => $eventMuted && !Iter\contains(self::PUSHED_WHEN_MUTED, $item->getCategory()),
+            'muted' => $item->isMuted(),
             'place' => $item->getPlace(),
             'read' => null !== $item->getReadAt(),
             'createdAt' => $item->getCreatedAt()->format(\DATE_ATOM),
         ];
-    }
-
-    /** @return list<string> */
-    public static function markedWhenMuted(): array
-    {
-        return Vec\map(
-            Vec\filter(NotificationCategory::cases(), static fn (NotificationCategory $category): bool => !Iter\contains(self::PUSHED_WHEN_MUTED, $category)),
-            static fn (NotificationCategory $category): string => $category->value,
-        );
     }
 
     /**

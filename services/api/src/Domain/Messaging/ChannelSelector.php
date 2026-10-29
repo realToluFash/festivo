@@ -31,8 +31,7 @@ final readonly class ChannelSelector
             return Vec\filter($offered, static fn (NotificationChannel $channel): bool => NotificationChannel::Push !== $channel);
         }
 
-        // Mute this event keeps the bell and holds back the rest; Event day is never held, since it is what cannot wait.
-        if ($eventMuted && NotificationCategory::EventDay !== $category && NotificationCategory::AccountSecurity !== $category) {
+        if ($eventMuted && $category->heldByMute()) {
             return Vec\filter($offered, static fn (NotificationChannel $channel): bool => NotificationChannel::InApp === $channel);
         }
 

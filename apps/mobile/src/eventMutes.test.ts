@@ -17,7 +17,7 @@ describe('Mute this event is one switch (sc-3980)', () => {
     const page = switchFor('e1');
     const other = switchFor('e2');
 
-    announceMute('e1', { muted: true, markedWhenMuted: ['messages'] });
+    announceMute('e1', { muted: true });
 
     expect(page.state()).toEqual({ status: 'loaded', muted: true, saving: false, unsaved: false });
     expect(other.state()).toEqual({
@@ -34,7 +34,7 @@ describe('Mute this event is one switch (sc-3980)', () => {
     const page = switchFor('e1');
     page.stop();
 
-    announceMute('e1', { muted: true, markedWhenMuted: [] });
+    announceMute('e1', { muted: true });
 
     expect(page.state()).toMatchObject({ muted: false });
   });
