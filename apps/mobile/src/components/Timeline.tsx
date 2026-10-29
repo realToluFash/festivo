@@ -138,7 +138,12 @@ export function ComingUp({
       >
         {load.kind === 'loading' && <DatesLoading testID="timeline.comingUp.loading" />}
         {load.kind === 'failed' && (
-          <DatesFailed announced={retried} onRetry={retry} testID="timeline.comingUp.retry" />
+          <DatesFailed
+            announced={retried}
+            onRetry={retry}
+            wide={kind === 'phone'}
+            testID="timeline.comingUp.retry"
+          />
         )}
         {load.kind === 'loaded' && shown.length === 0 && (
           <View style={styles.inset} testID="timeline.finished">
@@ -235,10 +240,12 @@ function DatesLoading({ testID }: { testID: string }) {
 function DatesFailed({
   announced,
   onRetry,
+  wide = false,
   testID,
 }: {
   announced: boolean;
   onRetry: () => void;
+  wide?: boolean;
   testID: string;
 }) {
   const { t } = useTranslation();
@@ -251,7 +258,12 @@ function DatesFailed({
         body={t('timeline.failed')}
         announce={announced}
       />
-      <SecondaryButton label={t('timeline.retry')} onPress={onRetry} testID={testID} />
+      <SecondaryButton
+        label={t('timeline.retry')}
+        onPress={onRetry}
+        stacked={wide}
+        testID={testID}
+      />
     </View>
   );
 }
