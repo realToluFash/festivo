@@ -69,6 +69,8 @@ interface ScreenScrollView {
   origin: { current: number };
   /** The offset the native scroll view last reported. */
   offset: RefObject<number>;
+  /** Keeps the content at least its height now and `more`, until the next drag or the keys come up again. */
+  hold(more: number): void;
 }
 
 const ScreenScroll = createContext<ScreenScrollView | null>(null);
@@ -531,6 +533,10 @@ export function useStepClose(
 
       function runFrom(steps: readonly StepCloseStep[]): void {
         for (const [at, step] of steps.entries()) {
+          if (step.do === 'holdScroll') {
+            scroll?.hold(Keyboard.metrics()?.height ?? 0);
+            continue;
+          }
           if (step.do === 'showOpener') {
             afterShown.current = steps.slice(at + 1);
             setClosing(true);
@@ -645,16 +651,25 @@ function useScreenScrollView() {
   const origin = useRef(windowOrigin);
   const scrollView = useRef<ScrollViewInstance>(null);
   const offset = useRef(0);
+  const contentHeight = useRef(0);
+  const [held, setHeld] = useState<number | null>(null);
   const [screenScroll] = useState<ScreenScrollView>(() => ({
     ref: scrollView,
     resized: new Set(),
     origin,
     offset,
+    hold: (more) => setHeld(contentHeight.current + more),
   }));
   useEffect(() => {
     origin.current = windowOrigin;
   }, [windowOrigin]);
   useCheckedFieldInView(screenScroll);
+  useEffect(() => {
+    if (held == null) return;
+    const shown = Keyboard.addListener('keyboardDidShow', () => setHeld(null));
+
+    return () => shown.remove();
+  }, [held]);
 
   const follow = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     offset.current = event.nativeEvent.contentOffset.y;
@@ -666,9 +681,14 @@ function useScreenScrollView() {
       ref: scrollView,
       onLayout: () => screenScroll.resized.forEach((resized) => resized()),
       onScroll: follow,
+      onScrollBeginDrag: () => setHeld(null),
       onScrollEndDrag: follow,
       onMomentumScrollEnd: follow,
+      onContentSizeChange: (_width: number, height: number) => {
+        contentHeight.current = height;
+      },
     },
+    heldStyle: held == null ? undefined : { minHeight: held },
   };
 }
 
@@ -687,7 +707,7 @@ export function ScrollColumn({
   /** Out of the layout behind another column; back in, it shows where it was left. */
   away?: boolean;
 }) {
-  const { screenScroll, scrollProps } = useScreenScrollView();
+  const { screenScroll, scrollProps, heldStyle } = useScreenScrollView();
   const docked = useContext(Dock)?.docked ?? false;
   const left = useRef<number | null>(null);
   const restore = () => {
@@ -716,11 +736,15 @@ export function ScrollColumn({
           }
         }}
         onScrollBeginDrag={() => {
+          scrollProps.onScrollBeginDrag();
           left.current = null;
         }}
-        onContentSizeChange={restore}
+        onContentSizeChange={(width, height) => {
+          scrollProps.onContentSizeChange(width, height);
+          restore();
+        }}
         style={style}
-        contentContainerStyle={contentContainerStyle}
+        contentContainerStyle={[contentContainerStyle, heldStyle]}
         refreshControl={refreshControl}
         keyboardShouldPersistTaps="handled"
         {...scrollInsets(LIFT, docked)}
@@ -767,7 +791,7 @@ export function Screen({
   contentStyle,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
-  const { screenScroll, scrollProps } = useScreenScrollView();
+  const { screenScroll, scrollProps, heldStyle } = useScreenScrollView();
   const avoider = useRef<ViewInstance>(null);
   const keyboardTop = useRef<number | null>(null);
   const [keysCover, setKeysCover] = useState(0);
@@ -818,7 +842,7 @@ export function Screen({
     <ScrollView
       {...scrollProps}
       style={styles.fill}
-      contentContainerStyle={[styles.content, contentStyle]}
+      contentContainerStyle={[styles.content, contentStyle, heldStyle]}
       // So the first tap after typing hits the control rather than only
       // dismissing the keyboard, which otherwise makes every button in a
       // form need pressing twice.

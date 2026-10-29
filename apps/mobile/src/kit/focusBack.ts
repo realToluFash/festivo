@@ -19,8 +19,9 @@ export function focusBackMs(os: string, settledMs: number, from: FocusBackFrom):
 /** How long the holder is given to take input focus from the field before the keys go down. */
 export const INPUT_FOCUS_TAKEN_MS = TALKBACK_FOCUS_BACK_MS;
 
-/** A step in closing a step back to its opener. `takeInputFocus` gives input focus `to` the opener or to a holder TalkBack does not read, and waits `atMs` for it to land; `putKeysDown` waits until the keys are down and the scroll they move has landed; each later `atMs` counts from there, or from the close when nothing waits. `settleOpener` brings the opener `into` sight and moves screen reader focus to it once the scroll has landed. `finish` takes the step away, and with `focusBack` sends focus after it to the opener. */
+/** A step in closing a step back to its opener. `holdScroll` keeps the screen's content at its height and the keys' height until the next drag or the keys come up again, so neither the keys going down nor the step going pulls the scroll back: at the end of the page that pull carries the focused button under the keys still showing, and TalkBack follows it as a manual scroll onto the field (sc-18587). `takeInputFocus` gives input focus `to` the opener or to a holder TalkBack does not read, and waits `atMs` for it to land; `putKeysDown` waits until the keys are down and the scroll they move has landed; each later `atMs` counts from there, or from the close when nothing waits. `settleOpener` brings the opener `into` sight and moves screen reader focus to it once the scroll has landed. `finish` takes the step away, and with `focusBack` sends focus after it to the opener. */
 export type StepCloseStep =
+  | { do: 'holdScroll' }
   | { do: 'showOpener' }
   | { do: 'takeInputFocus'; atMs: number; to: 'opener' | 'holder' }
   | { do: 'putKeysDown' }
@@ -36,6 +37,7 @@ export function stepCloseSteps(
   if (os !== 'android' || !screenReaderOn) return [{ do: 'finish', focusBack: true, atMs: 0 }];
 
   return [
+    { do: 'holdScroll' },
     { do: 'showOpener' },
     { do: 'takeInputFocus', atMs: INPUT_FOCUS_TAKEN_MS, to: 'holder' },
     { do: 'putKeysDown' },
