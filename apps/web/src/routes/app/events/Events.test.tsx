@@ -4177,6 +4177,25 @@ describe('Hosted by, in Edit details (sc-6713)', () => {
     expect(within(hostSection()).queryByRole('button', { name: 'Add a host' })).toBeNull();
   });
 
+  it('puts focus in the new row when Add a host is pressed the moment it shows', async () => {
+    signedIn();
+    serving({ status: 'live', phase: 'live', hosts: [] });
+    let pressed = false;
+    const watcher = new MutationObserver(() => {
+      const add = document.getElementById('event-host-add');
+      if (add != null && !pressed) {
+        pressed = true;
+        add.click();
+      }
+    });
+    watcher.observe(document.body, { childList: true, subtree: true });
+    await editing();
+    await waitFor(() => expect(pressed).toBe(true));
+    watcher.disconnect();
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Host 1')));
+  });
+
   it('sends the names as typed and trimmed, in their order, with the tag it read', async () => {
     signedIn();
     const sent = serving({ hosts: [] });
