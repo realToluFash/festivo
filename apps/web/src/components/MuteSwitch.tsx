@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
+import { FieldError } from './FieldError.tsx';
 
 type Mute =
   | { status: 'loading' }
@@ -19,6 +20,8 @@ export function MuteSwitch({
   const { t } = useTranslation();
   const [mute, setMute] = useState<Mute>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const errorId = useId();
+  const unsaved = mute.status === 'loaded' && mute.unsaved;
 
   useEffect(() => {
     let current = true;
@@ -55,13 +58,13 @@ export function MuteSwitch({
           role="switch"
           checked={mute.status === 'loaded' && mute.muted}
           disabled={mute.status !== 'loaded'}
+          aria-describedby={unsaved ? errorId : undefined}
           onChange={(event) => void change(event.currentTarget.checked)}
         />
         <span>{t('notifications.muteEvent')}</span>
       </label>
       {mute.status === 'failed' && (
-        <div className="field-error" role="alert">
-          <p>{t('notifications.muteNotLoaded')}</p>
+        <FieldError id={`${errorId}-load`} message={t('notifications.muteNotLoaded')}>
           <button
             type="button"
             className="link-button"
@@ -72,11 +75,9 @@ export function MuteSwitch({
           >
             {t('notifications.tryAgain')}
           </button>
-        </div>
+        </FieldError>
       )}
-      {mute.status === 'loaded' && mute.unsaved && (
-        <p className="field-error">{t('notifications.muteNotSaved')}</p>
-      )}
+      {unsaved && <FieldError id={errorId} message={t('notifications.muteNotSaved')} />}
     </>
   );
 }

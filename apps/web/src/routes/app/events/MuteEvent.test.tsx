@@ -153,7 +153,9 @@ describe('Mute this event on the event page (sc-3980)', () => {
 
     fireEvent.click(toggle);
 
-    await within(card()).findByText("Couldn't save. Try again.");
+    const said = await within(card()).findByRole('alert');
+    expect(said.textContent).toContain("Couldn't save. Try again.");
+    expect(toggle.getAttribute('aria-describedby')).toBe(said.id);
     expect((toggle as HTMLInputElement).checked).toBe(false);
   });
 
