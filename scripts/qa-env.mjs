@@ -1095,7 +1095,6 @@ async function bundlerUp(seconds = 120) {
   return false;
 }
 
-// One byte per module, as toqr gives it, drawn black on a white quiet zone.
 export function qrPng(modules, scale = 8, margin = 4) {
   const size = Math.sqrt(modules.length);
   const side = (size + 2 * margin) * scale;
@@ -1128,9 +1127,8 @@ export function qrPng(modules, scale = 8, margin = 4) {
   ]);
 }
 
-// A person's phone opens the app from this bundler, so it outlives the plan run that starts
-// it and needs no simulator. Each serve restarts it: with no file watcher, it would go on
-// serving the commit it started on.
+// Outlives the plan run, for a person's phone. Restarted each time: with no file watcher,
+// it would go on serving the commit it started on.
 async function serve() {
   const root = qaWorktree();
   assertQaStack(root);
