@@ -46,20 +46,22 @@ export function NotificationsBell({ userId }: { userId: string }) {
   const heading = useRef<HTMLHeadingElement>(null);
   const headingId = useId();
 
-  const load = useCallback(
-    (): Promise<void> =>
-      api.notifications().then(
-        (loaded) =>
-          setFeed({
-            status: 'loaded',
-            items: loaded.items,
-            unread: loaded.unreadCount,
-            next: loaded.next,
-          }),
-        () => setFeed({ status: 'failed' }),
-      ),
-    [],
-  );
+  const load = useCallback(function load(): Promise<void> {
+    const seen = arrivals.current;
+
+    return api.notifications().then(
+      (loaded) => {
+        if (arrivals.current !== seen) return load();
+        setFeed({
+          status: 'loaded',
+          items: loaded.items,
+          unread: loaded.unreadCount,
+          next: loaded.next,
+        });
+      },
+      () => setFeed({ status: 'failed' }),
+    );
+  }, []);
 
   useEffect(() => {
     void load();
@@ -217,13 +219,17 @@ export function NotificationsBell({ userId }: { userId: string }) {
   async function readAll(): Promise<void> {
     if (feed.status !== 'loaded' || feed.unread === 0) return;
 
+    const before = feed;
     setFeed({ ...feedAllRead(feed), status: 'loaded' });
-    setSaid(t('notifications.allRead'));
+    setSaid('');
     const seen = arrivals.current;
     try {
       countedSince(seen, await api.readAllNotifications());
+      setSaid(t('notifications.allRead'));
     } catch {
-      void load();
+      setSaid(t('notifications.allReadNotSaved'));
+      if (arrivals.current === seen) setFeed(before);
+      else void load();
     }
   }
 

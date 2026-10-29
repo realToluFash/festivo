@@ -1925,6 +1925,7 @@
     "heading": "Notifications",
     "markAllRead": "Mark all read",
     "allRead": "All read.",
+    "allReadNotSaved": "Couldn't mark them all read. Try again.",
     "unread": "Unread",
     "muted": "Muted",
     "loading": "Loading notifications",

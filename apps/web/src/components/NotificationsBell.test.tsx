@@ -161,6 +161,45 @@ describe('the bell (sc-3980)', () => {
     expect(sent).toContain('POST /api/notifications/read-all');
     expect(screen.getByRole('button', { name: 'Notifications' })).toBeTruthy();
   });
+  it('Mark all read says All read only once the answer is in', async () => {
+    let answer: (response: Response) => void = () => undefined;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) =>
+      init?.method === 'POST' && new URL(String(input)).pathname === '/api/notifications/read-all'
+        ? new Promise<Response>((resolve) => (answer = resolve))
+        : json({ items: [item()], unreadCount: 1, next: null }),
+    );
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark all read' }));
+    await waitFor(() =>
+      expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+        expect.stringContaining('/api/notifications/read-all'),
+        expect.anything(),
+      ),
+    );
+    expect(screen.queryByText('All read.')).toBeNull();
+
+    answer(json({ unreadCount: 0 }));
+
+    expect(await screen.findByText('All read.')).toBeTruthy();
+  });
+
+  it('Mark all read that does not save says so and puts the unread back', async () => {
+    answering({
+      'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
+    });
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark all read' }));
+
+    expect(await screen.findByText("Couldn't mark them all read. Try again.")).toBeTruthy();
+    expect(screen.queryByText('All read.')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Notifications, 1 unread' })).toBeTruthy();
+    expect(screen.getByText('Unread')).toBeTruthy();
+  });
+
   it('More mutes the event, marks its items Muted, and Escape goes back to More', async () => {
     const sent = answering({
       'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),

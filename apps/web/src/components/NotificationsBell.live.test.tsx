@@ -182,6 +182,21 @@ describe("the web bell's live line (sc-3980)", () => {
     expect(screen.getByRole('button', { name: 'Notifications, 2 unread' })).toBeTruthy();
   });
 
+  it('an item that arrives while the feed first loads is still counted', async () => {
+    let stale: (response: Response) => void = () => undefined;
+    feedAnswers(
+      () => new Promise<Response>((resolve) => (stale = resolve)),
+      async () => json(page([item('b'), item('a')])),
+    );
+    bell();
+    const source = await line();
+
+    source.publish(item('b'));
+    await act(async () => stale(json(page([item('a')]))));
+
+    expect(await screen.findByRole('button', { name: 'Notifications, 2 unread' })).toBeTruthy();
+  });
+
   it('connects again after the line closes, and the new line reads page one again', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     feedAnswers(async () => json(page([item('a')])));
