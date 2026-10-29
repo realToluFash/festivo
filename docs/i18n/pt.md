@@ -345,8 +345,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **21 Oct 2026. The re-proof's step two after a provider sign-in** (`waysCard.signedInWith`,
   `codeKeepsSignIn_*`, sc-2908, reworded 29 Oct). The status box is "Sessão iniciada com a
   conta {{provider}}", with no full stop. Under the code field: "Se errar o código, não tem de
-  voltar à sua conta {{provider}}. O início de sessão com ela é válido durante {{count}}
-  minutos." A condition on the
+  voltar à sua conta {{provider}}. O início de sessão com a conta {{provider}} é válido
+  durante {{count}} minutos." Every slot the English has stays, so the second mention is "a conta
+  {{provider}}", not "ela". A condition on the
   person, because "não o faz voltar" would have to agree (o/a). A window is "é válido durante".
 - **19 Oct 2026. Sign-in rules are "Regras de início de sessão"** (`signInRules.*`, web and
   app, and `emails:signInRules.*`, sc-3030). A member held back by one "pode consultar tudo,

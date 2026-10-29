@@ -227,7 +227,7 @@
     "signOut": "Encerrar sessão",
     "optional": "Opcional",
     "mobileHelp": "É assim que o contactamos na noite do evento se algo correr mal. Se indicar um, enviamos-lhe um código por SMS para o confirmar.",
-    "providerConfirmed": "Sessão iniciada com a sua conta {{provider}}, que já confirmou {{email}}, por isso não há nenhum código a introduzir."
+    "providerConfirmed": "Sessão iniciada com a sua conta {{provider}}. A conta {{provider}} já confirmou {{email}}, por isso não há nenhum código a introduzir."
   },
   "forms": {
     "emailBlank": "Introduza o seu endereço de e-mail.",
@@ -447,11 +447,11 @@
     "code": "Código",
     "codeBlank": "Introduza um código da sua aplicação, ou um código de recuperação.",
     "codeHelp": "Da sua aplicação de autenticação, ou um dos seus códigos de recuperação.",
-    "codeKeepsSignIn_one": "Se errar o código, não tem de voltar à sua conta {{provider}}. O início de sessão com ela é válido durante um minuto.",
-    "codeKeepsSignIn_other": "Se errar o código, não tem de voltar à sua conta {{provider}}. O início de sessão com ela é válido durante {{count, number}} minutos.",
+    "codeKeepsSignIn_one": "Se errar o código, não tem de voltar à sua conta {{provider}}. O início de sessão com a conta {{provider}} é válido durante um minuto.",
+    "codeKeepsSignIn_other": "Se errar o código, não tem de voltar à sua conta {{provider}}. O início de sessão com a conta {{provider}} é válido durante {{count, number}} minutos.",
     "codeWrong": "Esse código não funcionou. Verifique a sua aplicação e tente novamente.",
     "linkNote": "A seguir, abre-se uma janela {{provider}} para escolher a conta a associar. O endereço não tem de corresponder a {{email}}.",
-    "proveWithProvider": "Inicia sessão com a sua conta {{provider}}, por isso confirme com ela.",
+    "proveWithProvider": "Inicia sessão com a sua conta {{provider}}, por isso confirme com a conta {{provider}}.",
     "continueWith": "Continuar com {{provider}}",
     "continue": "Continuar",
     "checking": "A verificar…",
@@ -628,7 +628,7 @@
     "everywhereCodeBlank": "Introduza um código da sua aplicação ou um código de recuperação.",
     "everywherePasswordWrong": "Essa não é a sua palavra-passe. Tente novamente ou reponha-a por e-mail.",
     "everywhereCodeWrong": "Esse código não funcionou. Introduza o código que a sua aplicação mostra agora ou um código de recuperação ainda não usado.",
-    "everywhereProvider": "Inicia sessão com a sua conta {{provider}}, por isso confirme com ela.",
+    "everywhereProvider": "Inicia sessão com a sua conta {{provider}}, por isso confirme com a conta {{provider}}.",
     "everywhereContinueWith": "Continuar com {{provider}}",
     "everywhereProviderConfirmed": "Identidade confirmada através da sua conta {{provider}}. Introduza o código para prosseguir.",
     "everywhereProviderFailed": "A sua conta {{provider}} não confirmou que é você, por isso nenhuma sessão foi encerrada. Tente novamente.",
