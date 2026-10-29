@@ -46,6 +46,7 @@ import {
   focusBackMs,
   type StepCloseStep,
   stepCloseSteps,
+  type StepOpener,
 } from '../kit/focusBack.ts';
 import { stepOpeners } from '../kit/stepOpeners.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -416,21 +417,26 @@ export function useFocusBackToOpener(
 export interface StepClose {
   /** The opener's ref, in place of `opener(key)`. */
   opener: RefCallback<ViewInstance>;
+  /** For a `line` opener, the ref of a view TalkBack does not read, shown while the line is, which holds input focus in the line's place. */
+  holder: RefObject<ViewInstance | null>;
   /** The step is closing in order, and its opener shows beside it until focus has reached it. */
   closing: boolean;
   close(): void;
 }
 
-/** Closes a step back to the opener `to` names, in the steps `stepCloseSteps` gives; `finish` takes the step away, with what `useFocusBackToOpener` moves focus back from, or nothing when focus is already there (sc-18588). */
+/** Closes a step back to the `kind` of opener `to` names, in the steps `stepCloseSteps` gives; `finish` takes the step away, with what `useFocusBackToOpener` moves focus back from, or nothing when focus is already there (sc-18588). */
 export function useStepClose(
   opener: (key: string) => RefCallback<ViewInstance>,
   to: string,
   finish: (closed: StepClosed | undefined) => void,
+  kind: StepOpener = 'control',
 ): StepClose {
   const scroll = useContext(ScreenScroll);
   const [closing, setClosing] = useState(false);
   const started = useRef(false);
   const view = useRef<ViewInstance | null>(null);
+  const holder = useRef<ViewInstance | null>(null);
+  const inputFocus = useRef<ViewInstance | null>(null);
   const field = useRef<HostInstance | null>(null);
   const finishNow = useRef(finish);
   const afterShown = useRef<readonly StepCloseStep[]>([]);
@@ -460,7 +466,8 @@ export function useStepClose(
             break;
           }
           if (step.do === 'takeInputFocus') {
-            view.current?.setNativeProps({ hasTVPreferredFocus: true });
+            inputFocus.current = step.to === 'holder' ? holder.current : view.current;
+            inputFocus.current?.setNativeProps({ hasTVPreferredFocus: true });
             const taken = setTimeout(() => runFrom(steps.slice(at + 1)), step.atMs);
             cancels.push(() => clearTimeout(taken));
             break;
@@ -469,8 +476,8 @@ export function useStepClose(
             cancels.push(
               putKeysDownThen(
                 () => {
-                  // Fabric merges the flag into every later clone of the opener, so it would take focus again on each update.
-                  view.current?.setNativeProps({ hasTVPreferredFocus: false });
+                  // Fabric merges the flag into every later clone of the view, so it would take focus again on each update.
+                  inputFocus.current?.setNativeProps({ hasTVPreferredFocus: false });
                   runFrom(steps.slice(at + 1));
                 },
                 SETTLED_MS,
@@ -534,11 +541,11 @@ export function useStepClose(
     };
     void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
       if (gone) return;
-      cancel.current = run(stepCloseSteps(Platform.OS, on));
+      cancel.current = run(stepCloseSteps(Platform.OS, on, kind, SETTLED_MS));
     });
-  }, [run]);
+  }, [run, kind]);
 
-  return { opener: ref, closing, close };
+  return { opener: ref, holder, closing, close };
 }
 
 /** Focus back to the row a page was opened from, as `useFocusBackToOpener` on a `page` return; rendered inside a list's ScrollColumn so the row comes into view. */
