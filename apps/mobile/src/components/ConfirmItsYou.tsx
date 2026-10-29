@@ -29,7 +29,7 @@ import { holdProof } from '../recentProof.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, QuietButton } from './Buttons.tsx';
-import { CodeField, Field } from './Field.tsx';
+import { CodeField, Field, focusChecked, keysStayDown } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import { useAboveKeyboard } from './Screen.tsx';
@@ -86,12 +86,13 @@ export function ConfirmItsYou({
         : codeAsked && value.trim() === ''
           ? t('waysCard.codeBlank')
           : null,
-    (field) => (field === 'password' ? passwordInput : codeInput).current?.focus(),
+    (field) => focusChecked(field === 'password' ? passwordInput : codeInput),
   );
 
   async function submit(): Promise<void> {
     if (checking || !checks.passes({ password: password.current, code: code.current })) return;
 
+    keysStayDown();
     setChecking(true);
     setRefusal(null);
     setExpired(null);
@@ -194,7 +195,6 @@ export function ConfirmItsYou({
             ref={passwordInput}
             wrong={passwordError != null}
             submitting={checking}
-            editable={!checking}
             autoComplete="current-password"
             textContentType="password"
             onChangeText={(text) => {
@@ -205,6 +205,7 @@ export function ConfirmItsYou({
             onBlur={() => checks.left('password', password.current)}
             returnKeyType={codeAsked ? 'next' : 'done'}
             onSubmitEditing={() => (codeAsked ? codeInput.current?.focus() : void submit())}
+            submitBehavior="submit"
             accessibilityLabel={t('waysCard.yourPassword')}
             testID={`${idPrefix}.password`}
           />
@@ -222,7 +223,7 @@ export function ConfirmItsYou({
               ref={codeInput}
               takesRecoveryCode
               wrong={codeError != null}
-              editable={!checking}
+              submitting={checking}
               autoComplete="one-time-code"
               textContentType="oneTimeCode"
               onChangeText={(text) => {
@@ -233,6 +234,7 @@ export function ConfirmItsYou({
               onBlur={() => checks.left('code', code.current)}
               returnKeyType="done"
               onSubmitEditing={() => void submit()}
+              submitBehavior="submit"
               accessibilityLabel={t('waysCard.code')}
               testID={`${idPrefix}.code`}
             />
