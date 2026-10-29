@@ -61,6 +61,7 @@ export function OnOffSwitch({
               style={styles.reserved}
               accessibilityElementsHidden
               importantForAccessibility="no-hide-descendants"
+              accessible={false}
             >
               {lit ? words.off : words.on}
             </Text>
