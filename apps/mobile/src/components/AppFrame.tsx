@@ -1,11 +1,12 @@
 import { type Membership, primaryEmailAddress } from '@soirely/api-client';
 import { roleName, waitingInvitations } from '@soirely/domain';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import {
   type ReactNode,
   type Ref,
   type RefObject,
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -126,6 +127,15 @@ export function AppFrame({
   const { t } = useTranslation();
   const { kind } = useLayout();
   useSystemBack(back?.systemBack === true, () => back?.onPress());
+  // As the screen goes, by either Back, its header back is where TalkBack puts its focus, and says it with no name (sc-20554).
+  const [inFront, setInFront] = useState(true);
+  useFocusEffect(
+    useCallback(() => {
+      setInFront(true);
+
+      return () => setInFront(false);
+    }, []),
+  );
   const [choosing, setChoosing] = useState(false);
   const [creating, setCreating] = useState(false);
   const pill = useRef<ViewInstance>(null);
@@ -191,7 +201,10 @@ export function AppFrame({
         : null;
 
   return (
-    <View style={[styles.root, kind === 'tabletLandscape' && styles.row]}>
+    <View
+      style={[styles.root, kind === 'tabletLandscape' && styles.row]}
+      importantForAccessibility={inFront ? 'auto' : 'no-hide-descendants'}
+    >
       {kind === 'tabletLandscape' && (
         <Rail
           current={current}
