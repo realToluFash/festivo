@@ -108,6 +108,7 @@ const config: ExpoConfig = {
     // what it falls back to and why that is safe only on a simulator.
     apiUrl: process.env.EXPO_PUBLIC_API_URL,
     environment: process.env.EXPO_PUBLIC_ENVIRONMENT ?? 'development',
+    mercureUrl: process.env.EXPO_PUBLIC_MERCURE_URL,
     // Google's endpoints and the app's client id; absent, src/config.ts uses the local sandbox.
     googleAuthorizeUrl: process.env.EXPO_PUBLIC_GOOGLE_AUTHORIZE_URL,
     googleTokenUrl: process.env.EXPO_PUBLIC_GOOGLE_TOKEN_URL,

@@ -1,5 +1,5 @@
 import type { NotificationItem } from '@soirely/api-client';
-import { feedAllRead, feedWithPage, feedWithRead } from '@soirely/domain';
+import { feedAllRead, feedWithArrival, feedWithPage, feedWithRead } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
@@ -10,7 +10,7 @@ import { markPushAsked, pushAskDue, turnOnAppPush } from '../appPush.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { SECTION_HREF } from '../kit/appNav.ts';
 import { appPlace, whenShown } from '../kit/notificationPlace.ts';
-import { setUnread } from '../notificationsUnread.ts';
+import { setUnread, useArrivals } from '../notificationsUnread.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Footnote, PrimaryButton, QuietButton } from './Buttons.tsx';
 import { Notice } from './Notice.tsx';
@@ -22,7 +22,7 @@ type Feed =
   | { status: 'failed' }
   | { status: 'loaded'; items: NotificationItem[]; unread: number; next: string | null };
 
-/** `NotificationsBell-*` in the app (sc-3980): the feed, its push ask, Mark all read and Show more. */
+/** `NotificationsBell-*` in the app (sc-3980): the feed, live, with its push ask, Mark all read and Show more. */
 export function NotificationsFeed() {
   const { t } = useTranslation();
   const [feed, setFeed] = useState<Feed>({ status: 'loading' });
@@ -63,6 +63,25 @@ export function NotificationsFeed() {
       () => undefined,
     );
   }, [fetchFeed]);
+
+  useArrivals((arrival) => {
+    if (arrival === 'reread') {
+      fetchFeed();
+      return;
+    }
+    const { item } = arrival;
+    setFeed((current) =>
+      current.status === 'loaded'
+        ? { ...feedWithArrival(current, item), status: 'loaded' }
+        : current,
+    );
+    setSaid({
+      words:
+        item.eventName == null
+          ? t('notifications.arrived', { title: item.title })
+          : t('notifications.arrivedAt', { title: item.title, event: item.eventName }),
+    });
+  });
 
   useReadOut(said?.words ?? null, { answer: said });
 

@@ -15,6 +15,7 @@ import Constants from 'expo-constants';
 interface Extra {
   apiUrl?: string;
   environment?: string;
+  mercureUrl?: string;
   googleAuthorizeUrl?: string;
   googleTokenUrl?: string;
   googleClientId?: string;
@@ -29,12 +30,16 @@ interface Extra {
 const extra = (Constants.expoConfig?.extra ?? {}) as Extra;
 
 const DEVELOPMENT_FALLBACK = 'http://localhost:8080';
+/** Compose's Mercure hub, reached from a simulator as the API is. */
+const DEVELOPMENT_MERCURE = 'http://localhost:3000/.well-known/mercure';
 /** The local sign-in sandbox (compose service `oidc`), reached from a simulator as the API is. */
 const SANDBOX = 'http://localhost:8089';
 
 export const config = {
   apiBaseUrl: (extra.apiUrl ?? DEVELOPMENT_FALLBACK).replace(/\/$/, ''),
   environment: extra.environment ?? 'development',
+  /** Where the bell's live updates come from (sc-3980). */
+  mercureUrl: extra.mercureUrl ?? DEVELOPMENT_MERCURE,
   /** True when nothing configured the URL, so a screen can say so out loud. */
   usingFallbackApiUrl: extra.apiUrl == null || extra.apiUrl === '',
   google: {

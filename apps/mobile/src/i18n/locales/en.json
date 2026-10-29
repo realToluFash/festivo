@@ -1699,6 +1699,8 @@
     "heading": "Notifications",
     "markAllRead": "Mark all read",
     "allRead": "All read.",
+    "arrived": "New notification: {{title}}",
+    "arrivedAt": "New notification: {{title}} · {{event}}",
     "unread": "Unread",
     "muted": "Muted",
     "loading": "Loading notifications",
