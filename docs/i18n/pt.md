@@ -343,9 +343,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   as options and lower case in a sentence ("são enviados em inglês"). A refused save is "Nada
   foi guardado." and the server's `permission_required` words unchanged.
 - **21 Oct 2026. The re-proof's step two after a provider sign-in** (`waysCard.signedInWith`,
-  `codeKeepsSignIn_*`, sc-2908). The status box is "Sessão iniciada com o {{provider}}", with
-  no full stop. Under the code field: "Se errar o código, não tem de voltar ao {{provider}}. O
-  início de sessão com o {{provider}} é válido durante {{count}} minutos." A condition on the
+  `codeKeepsSignIn_*`, sc-2908, reworded 29 Oct). The status box is "Sessão iniciada com a
+  conta {{provider}}", with no full stop. Under the code field: "Se errar o código, não tem de
+  voltar à sua conta {{provider}}. O início de sessão com a conta {{provider}} é válido
+  durante {{count}} minutos." Every slot the English has stays, so the second mention is "a conta
+  {{provider}}", not "ela". A condition on the
   person, because "não o faz voltar" would have to agree (o/a). A window is "é válido durante".
 - **19 Oct 2026. Sign-in rules are "Regras de início de sessão"** (`signInRules.*`, web and
   app, and `emails:signInRules.*`, sc-3030). A member held back by one "pode consultar tudo,
@@ -473,9 +475,17 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **17 Oct 2026. An API detail with a bare number takes it without agreement**
   (`messages:proof.required`): "nos últimos {minutes} minutos". The API catalogue has no
   plural, so the number is always 5 and the sentence is written for it.
-- **17 Oct 2026. A provider in prose takes the article, in a button it does not**
-  (`waysCard.proofExpired_*`): "continue novamente com o {{provider}}", beside the button
-  "Continuar com {{provider}}". "Carry on" is "prosseguir", so it does not repeat "continuar".
+- **17 Oct 2026, corrected 29 Oct. A provider in prose never takes a bare article**
+  (`waysCard.proofExpired_*`): the article differs, "a Apple" but "o Google", and one string
+  serves both. Write "a sua conta {{provider}}" or "uma conta {{provider}}" instead, as
+  `ownership.transferNoteProvider` ("Antes, terá de confirmar com a sua conta {{provider}}.",
+  sc-18978). A button has no article: "Continuar com {{provider}}", and so does a
+  title that repeats one, "Desassociar {{provider}}". Every string is rewritten this way
+  (sc-20444): "a sua conta {{provider}}" in a sentence, "a conta {{provider}}" in a short
+  label or bullet, and what agrees with it is feminine ("associada", "desassociada",
+  "removida", "com ela"). Where the provider acted ("{{provider}} confirmed it is you"), the
+  sentence is "Identidade confirmada através da sua conta {{provider}}"; where it opens,
+  "abre-se uma janela {{provider}}". "Carry on" is "prosseguir", so it does not repeat "continuar".
 - **17 Oct 2026. The app's switcher and roles copy the web's** (`switcher.*`, `roles.*`), so
   both clients say the same; `switcher.close` is "Fechar", as `recovery.dismiss`.
 - **17 Oct 2026. "You're signed in" is "Tem sessão iniciada"** (`home.signedIn`,

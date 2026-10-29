@@ -559,18 +559,53 @@ new story, and never by stopping a pass you are in.
 
 **Writing the plan.** Plan; do not test, and do not claim the story.
 
-1. On the person's stack, from your checkout: `node scripts/qa-env.mjs --tester lan setup`,
-   then `checkout` of the story's merge commit, as in section 4. It is served on the
-   machine's network address (`QA_LAN_ADDRESS`), so their phone and laptop reach it.
-2. Make the accounts and data each step needs with the QA script, as you would for yourself.
-3. `node scripts/qa-env.mjs --tester lan serve` starts the app's bundler for their phone,
-   left running after your run ends, and prints the Expo Go link and the path of its QR
-   code image.
+1. **Their stack runs latest `main`, never a story's merge commit.** It is one stack for
+   every story they have open, and a story reaches Ready For QA only once merged, so `main`
+   holds them all. It is served on the machine's network address (`QA_LAN_ADDRESS`), so
+   their phone and laptop reach it. From your checkout:
+   - No `~/Projects/soirely-qa-lan` yet: `node scripts/qa-env.mjs --tester lan setup`, once.
+     It starts from an empty database.
+   - `git -C ~/Projects/soirely-qa-lan fetch -q origin`, then compare
+     `git -C ~/Projects/soirely-qa-lan rev-parse --short HEAD origin/main`. When they
+     differ, `node scripts/qa-env.mjs --tester lan checkout --keep-data`: no target is
+     `main`. When they match, leave the stack as it is: no checkout and no rebuild.
+   - Always `--keep-data`. A checkout without it drops the database, and with it the
+     accounts a plan they are still working through gave them.
+   - The story's merge commit must be in it:
+     `git -C ~/Projects/soirely-qa-lan merge-base --is-ancestor <merge commit> HEAD`. When
+     it is not, write no plan, and ask `[ops]` on the story why `main` lacks it.
+   - The stack moves only here, when you write a plan. A checkout restarts the API and,
+     with step 3, the bundler under them for a few minutes, even mid-pass: note the time
+     it finished for the comment.
+2. **Make every account the plan needs, new for this plan**, with the harness in their
+   worktree, which step 1 left at latest `main` like the API it talks to:
+   `node ~/Projects/soirely-qa-lan/scripts/qa-env.mjs --tester lan account` (`--ready` for a
+   complete profile owning an organisation, `--two-factor` when the AC needs it). Never its
+   `.qa/bin` copy, which nothing brings forward, nor your own worktree's, which may be at
+   an older commit. One per part the AC names (the organiser, the member they invite, the
+   guest), with the data each step starts from already made. Never hand them an account
+   from another plan, or one that two of their stories share.
+3. **The bundler for their phone.** After a checkout,
+   `node ~/Projects/soirely-qa-lan/scripts/qa-env.mjs --tester lan serve` restarts the
+   bundler, left running after your run ends, and prints the Expo Go link and the path of
+   its QR code image. Without a checkout, re-run it only when the bundler does not answer:
+   the Expo Go link with `http://` for `exp://`, plus `/status`, answers
+   `packager-status:running`. The QR code stays at
+   `~/Projects/soirely-qa-lan/.qa/expo-go-qr.png`.
 4. Post **one comment** to them, `sq qa comment sc-N --to @name`, a beginner can follow
    without asking:
+   - **What it runs**: `main` at its short commit, from
+     `git -C ~/Projects/soirely-qa-lan rev-parse --short HEAD`, so a FAIL is traced to the
+     code it ran. When step 1 moved the stack, the time it restarted: a step of another
+     plan that failed in those minutes is re-run, not reported as a FAIL.
    - **Where to open it**: the web address, the Expo Go link `serve` printed and its QR code
      attached with `--files`, and Mailpit's address for emails.
-   - **The accounts**: each one's email and password, and what it is for.
+   - **The accounts**, one line each, ready to copy: what it is for (which steps, on which
+     device), the email, the password, and, for a two-factor account, its `TOTP_SECRET` as
+     the setup key to add to an authenticator app by "enter a setup key". Say where any
+     code the steps ask for arrives (Mailpit's address, or Smocker's for an SMS), and that
+     these are test accounts on their stack only. A step that needs an account they do not
+     have is a plan they cannot finish.
    - **Each AC line as numbered steps**: what to tap or type, then "You should see: …" in
      the words the screen uses. One step per action.
    - **The edge cases the AC implies** (section 3), as steps of the same shape.

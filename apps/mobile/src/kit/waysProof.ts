@@ -92,6 +92,11 @@ export function keptProofRanOut(error: unknown, sentKept: boolean): boolean {
   return sentKept && error instanceof ApiError && error.is('proof_required');
 }
 
+/** Whether the transfer sent a proof the API kept: a provider's sign-in, or a password's once a code was asked (sc-9674). */
+export function transferSentKept(vouched: object | null, pending: string | null): boolean {
+  return vouched != null || pending != null;
+}
+
 /** The server counted Unlink's proof as lapsed, however the phone's clock saw it: back to Confirm it's you (sc-12545). */
 export function unlinkProofLapsed(error: unknown): boolean {
   return error instanceof ApiError && error.is('proof_required');

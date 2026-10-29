@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../src/api.ts';
 import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { Footnote, PrimaryButton, SecondaryButton } from '../src/components/Buttons.tsx';
-import { Field, TextField } from '../src/components/Field.tsx';
+import { Field, focusChecked, keysStayDown, TextField } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { dateLocale } from '../src/i18n/index.ts';
@@ -34,7 +34,7 @@ export default function ForgotPassword() {
   const checks = useFormChecks(
     ['email'] as const,
     (_field, value) => emailMessage(value, t),
-    () => emailInput.current?.focus(),
+    () => focusChecked(emailInput),
   );
 
   async function send(email: string, again: boolean): Promise<void> {
@@ -55,6 +55,7 @@ export default function ForgotPassword() {
     if (!checks.passes({ email })) return;
 
     setKept(typed.current);
+    keysStayDown();
     void send(email, false);
   }
 
@@ -123,7 +124,7 @@ export default function ForgotPassword() {
           <TextField
             ref={emailInput}
             wrong={checks.errors.email != null}
-            editable={status.kind !== 'sending'}
+            submitting={status.kind === 'sending'}
             keyboardType="email-address"
             autoComplete="email"
             textContentType="emailAddress"
@@ -135,6 +136,7 @@ export default function ForgotPassword() {
             }}
             onBlur={() => checks.left('email', typed.current)}
             returnKeyType="send"
+            submitBehavior="submit"
             onSubmitEditing={submit}
             accessibilityLabel={t('recovery.email')}
             testID="recovery.email"

@@ -20,14 +20,20 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
 import { refusalTitle } from '../kit/refusal.ts';
-import { keptProof, keptProofRanOut, signedInWith, tripRefused } from '../kit/waysProof.ts';
+import {
+  keptProof,
+  keptProofRanOut,
+  signedInWith,
+  transferSentKept,
+  tripRefused,
+} from '../kit/waysProof.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { reloadSignedIn, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
-import { CodeField, Field, FieldError, TextField } from './Field.tsx';
+import { CodeField, Field, FieldError, focusChecked, keysStayDown, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { PasswordField } from './PasswordField.tsx';
@@ -258,8 +264,8 @@ function Transfer({
       return codeAsked && value.trim() === '' ? t('ownership.codeBlank') : null;
     },
     (field) => {
-      if (field === 'password') passwordInput.current?.focus();
-      if (field === 'code') codeInput.current?.focus();
+      if (field === 'password') focusChecked(passwordInput);
+      if (field === 'code') focusChecked(codeInput);
     },
   );
 
@@ -300,6 +306,7 @@ function Transfer({
     if (busy || !checks.passes({ owner: picked ?? '', password, code }) || chosen == null) return;
     if (provider != null && vouched == null) return;
 
+    keysStayDown();
     setBusy(true);
     setRefused(null);
 
@@ -323,12 +330,13 @@ function Transfer({
         return;
       }
 
-      if (keptProofRanOut(error, vouched != null)) {
+      if (keptProofRanOut(error, transferSentKept(vouched, pending))) {
         setVouched(null);
         setPending(null);
         setCodeAsked(false);
         setCode('');
         setExpired({});
+        if (provider == null) setRefused({ field: null, message: error.problem.title });
 
         return;
       }
@@ -404,7 +412,7 @@ function Transfer({
         />
       )}
 
-      {provider == null && pending == null && (
+      {provider == null && (
         <Field
           label={t('ownership.password')}
           error={passwordError}
@@ -415,8 +423,7 @@ function Transfer({
             accessibilityLabel={t('ownership.password')}
             value={password}
             wrong={passwordError != null}
-            submitting={busy}
-            editable={!busy}
+            submitting={busy || pending != null}
             autoComplete="current-password"
             textContentType="password"
             onChangeText={(typed) => {
@@ -461,7 +468,7 @@ function Transfer({
             value={code}
             wrong={codeError != null}
             takesRecoveryCode
-            editable={!busy}
+            submitting={busy}
             onChangeText={(typed) => {
               setCode(typed);
               if (refused?.field === 'code') setRefused(null);
@@ -655,11 +662,12 @@ function Delete({
 
     if (!matches) {
       setMismatch(t('ownership.deleteMismatch', { organisation: name }));
-      input.current?.focus();
+      focusChecked(input);
 
       return;
     }
 
+    keysStayDown();
     setBusy(true);
     setFailed(null);
 
@@ -738,7 +746,7 @@ function Delete({
             accessibilityLabel={t('ownership.deleteType', { organisation: name })}
             value={typed}
             wrong={mismatch != null}
-            editable={!busy}
+            submitting={busy}
             autoCapitalize="none"
             autoCorrect={false}
             autoComplete="off"
