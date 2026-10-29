@@ -10,7 +10,7 @@ import { type CodeMode, codeRefusal, typedCodeProblem } from '../kit/twoFactor.t
 import { tokens } from '../theme/tokens.ts';
 import { AuthFrame, AuthHeading } from './AuthFrame.tsx';
 import { Footnote, PrimaryButton, QuietButton } from './Buttons.tsx';
-import { CodeField, Field, TextField } from './Field.tsx';
+import { CodeField, Field, focusChecked, keysStayDown, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
 
@@ -82,10 +82,11 @@ export function SecondFactorStep({
     const problem = typedCodeProblem(mode, typed.current);
     setBlank(problem == null ? null : t(problem));
     if (problem != null) {
-      input.current?.focus();
+      focusChecked(input);
       return;
     }
 
+    keysStayDown();
     setStatus({ kind: 'checking' });
 
     try {
@@ -121,13 +122,14 @@ export function SecondFactorStep({
   const sharedInput = {
     ref: input,
     wrong: error != null,
-    editable: !checking,
+    submitting: checking,
     onChangeText: (text: string) => {
       typed.current = text;
       setBlank(null);
       if (status.kind === 'wrong') setStatus({ kind: 'ready' });
     },
     returnKeyType: 'go' as const,
+    submitBehavior: 'submit' as const,
     onSubmitEditing: () => void submit(),
     testID: 'twoFactor.code',
   };
