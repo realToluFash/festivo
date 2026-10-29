@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { MuteSwitch } from './MuteSwitch.tsx';
 import { NotificationsBell } from './NotificationsBell.tsx';
 
 function json(body: unknown): Response {
@@ -80,6 +81,7 @@ describe('the bell (sc-3980)', () => {
     bell();
 
     const button = await screen.findByRole('button', { name: 'Notifications' });
+    expect(button.querySelector('.notifications-badge')).toBeNull();
     fireEvent.click(button);
 
     expect(await screen.findByText(/Nothing yet/)).toBeTruthy();
@@ -187,6 +189,49 @@ describe('the bell (sc-3980)', () => {
     await waitFor(() => expect(document.activeElement).toBe(more));
     expect(screen.queryByRole('switch', { name: 'Mute this event' })).toBeNull();
     expect(screen.getByRole('heading', { name: 'Notifications' })).toBeTruthy();
+  });
+
+  it("a mute from More shows on the event page's own switch, which is the same switch", async () => {
+    answering({
+      'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
+      'GET /api/events/e1/mute': () => json({ muted: false }),
+      'PUT /api/events/e1/mute': () =>
+        json({ muted: true, markedWhenMuted: ['event_changes', 'messages'] }),
+    });
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/app',
+          element: (
+            <>
+              <NotificationsBell userId="u1" />
+              <section aria-label="Just for you">
+                <MuteSwitch eventId="e1" />
+              </section>
+            </>
+          ),
+        },
+      ],
+      { initialEntries: ['/app'] },
+    );
+    render(<RouterProvider router={router} />);
+
+    const page = within(screen.getByRole('region', { name: 'Just for you' }));
+    const pageSwitch = (await page.findByRole('switch')) as HTMLInputElement;
+    await waitFor(() => expect(pageSwitch.disabled).toBe(false));
+    expect(pageSwitch.checked).toBe(false);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'More for Ada Obi changed the event, Ada & Tomi' }),
+    );
+    const more = (await screen.findAllByRole('switch', { name: 'Mute this event' })).find(
+      (shown) => shown !== pageSwitch,
+    ) as HTMLInputElement;
+    await waitFor(() => expect(more.disabled).toBe(false));
+    fireEvent.click(more);
+
+    await waitFor(() => expect(pageSwitch.checked).toBe(true));
   });
 
   it('More says when the mute state did not load, and Try again reads it again', async () => {

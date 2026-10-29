@@ -2,7 +2,7 @@ import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { announceMute } from '../eventMutes.ts';
+import { announceMute, useMutes } from '../eventMutes.ts';
 import { FieldError } from './FieldError.tsx';
 
 type Mute =
@@ -17,6 +17,10 @@ export function MuteSwitch({ eventId }: { eventId: string }) {
   const [attempt, setAttempt] = useState(0);
   const errorId = useId();
   const unsaved = mute.status === 'loaded' && mute.unsaved;
+
+  useMutes((changed, saved) => {
+    if (changed === eventId) setMute({ status: 'loaded', muted: saved.muted, unsaved: false });
+  });
 
   useEffect(() => {
     let current = true;
