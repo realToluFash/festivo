@@ -125,7 +125,12 @@ export function AppFrame({
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
-  useSystemBack(back?.systemBack === true, () => back?.onPress());
+  // Leaving by Android's Back, the going screen's header back is where TalkBack puts its focus, and says it with no name (sc-20554).
+  const [leaving, setLeaving] = useState(false);
+  useSystemBack(back?.systemBack === true, () => {
+    setLeaving(true);
+    back?.onPress();
+  });
   const [choosing, setChoosing] = useState(false);
   const [creating, setCreating] = useState(false);
   const pill = useRef<ViewInstance>(null);
@@ -191,7 +196,10 @@ export function AppFrame({
         : null;
 
   return (
-    <View style={[styles.root, kind === 'tabletLandscape' && styles.row]}>
+    <View
+      style={[styles.root, kind === 'tabletLandscape' && styles.row]}
+      importantForAccessibility={leaving ? 'no-hide-descendants' : 'auto'}
+    >
       {kind === 'tabletLandscape' && (
         <Rail
           current={current}
