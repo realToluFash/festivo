@@ -5,6 +5,7 @@ import { feedWithReadUndone, markAllRead, readSettled } from './notificationFeed
 
 const item = (id: string, read: boolean) => ({
   id,
+  createdAt: '2026-10-29T10:00:00Z',
   category: 'messages',
   eventId: null,
   muted: false,
