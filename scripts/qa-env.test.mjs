@@ -343,13 +343,26 @@ describe('what checkout was asked for', () => {
 
 describe('a commit checkout asks for', () => {
   it('stops on a hash the fetched remote does not have, naming it', () => {
-    expect(() => commitTarget('deadbee', { verify: () => null })).toThrow(/deadbee/);
+    expect(() =>
+      commitTarget('deadbee', { verify: () => null, remoteBranchesWith: () => '' }),
+    ).toThrow(/deadbee/);
+  });
+
+  it('stops on a hash only the local object store still holds, as after a force-push', () => {
+    const verify = () => 'e58c4234abcdef';
+    expect(() => commitTarget('e58c423', { verify, remoteBranchesWith: () => '' })).toThrow(
+      /no branch on origin holds e58c423/,
+    );
   });
 
   it('checks out a hash it has, and names it by that hash', () => {
     const asked = [];
     const verify = (rev) => (asked.push(rev), 'e58c4234abcdef');
-    expect(commitTarget('e58c423', { verify })).toEqual({ ref: 'e58c423', label: 'e58c423' });
+    const remoteBranchesWith = () => '  origin/feature/sc-1/x\n';
+    expect(commitTarget('e58c423', { verify, remoteBranchesWith })).toEqual({
+      ref: 'e58c423',
+      label: 'e58c423',
+    });
     expect(asked).toEqual(['e58c423^{commit}']);
   });
 });

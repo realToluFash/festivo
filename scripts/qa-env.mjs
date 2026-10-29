@@ -219,9 +219,12 @@ export function parseTarget(arg) {
   return { kind: 'branch', name: value.replace(/^origin\//, '') };
 }
 
-export function commitTarget(sha, { verify }) {
+export function commitTarget(sha, { verify, remoteBranchesWith }) {
   if (verify(`${sha}^{commit}`) === null) {
     throw new Error(`no commit ${sha} in the QA worktree after fetching origin`);
+  }
+  if (!remoteBranchesWith(sha)?.trim()) {
+    throw new Error(`no branch on origin holds ${sha}; was it force-pushed away?`);
   }
   return { ref: sha, label: sha };
 }
@@ -740,6 +743,8 @@ function checkout(args) {
   } else if (target.kind === 'commit') {
     ({ ref, label } = commitTarget(target.sha, {
       verify: (rev) => capture('git', ['rev-parse', '--verify', '--quiet', rev], { cwd: root }),
+      remoteBranchesWith: (rev) =>
+        capture('git', ['branch', '-r', '--contains', rev], { cwd: root }),
     }));
   } else {
     const name =
