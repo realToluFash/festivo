@@ -1,0 +1,34 @@
+# Your organisations: picking QA Org 02 switches to it, then back to QA Organisation. sc-18957.
+# Each row reads as one merged label, so a row is tapped by its organisation's name.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'frame.organisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn: 'QA Org 02.*'
+- extendedWaitUntil:
+    notVisible:
+      id: 'switcher.heading'
+    timeout: 10000
+- assertVisible: 'QA Org 02.*'
+- takeScreenshot: switched
+- tapOn:
+    id: 'frame.organisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn: 'QA Organisation, .*'
+- extendedWaitUntil:
+    notVisible:
+      id: 'switcher.heading'
+    timeout: 10000
+- assertVisible: 'QA Organisation.*'
+- takeScreenshot: switched-back

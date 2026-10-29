@@ -1,0 +1,21 @@
+# Your organisations closes on a tap on the scrim, read as Close. sc-18957.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'frame.organisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: '{{t:switcher.close}}'
+- tapOn:
+    point: '50%,8%'
+- extendedWaitUntil:
+    notVisible:
+      id: 'switcher.heading'
+    timeout: 10000
+- takeScreenshot: closed
+- runFlow: ../open-create-organisation.yaml
+- takeScreenshot: create-sheet

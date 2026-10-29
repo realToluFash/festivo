@@ -1,0 +1,41 @@
+# sc18957-switcher-scroll, with the phone on its side (LANDSCAPE_LEFT). sc-18957.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: 'Save Password?'
+    commands:
+      - tapOn: 'Not Now'
+- tapOn:
+    id: 'frame.organisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: '{{t:switcher.heading}}'
+- takeScreenshot: top
+- swipe:
+    start: '50%,70%'
+    end: '50%,45%'
+    duration: 800
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: middle
+- scrollUntilVisible:
+    element:
+      id: 'switcher.create'
+    direction: DOWN
+    centerElement: false
+    timeout: 30000
+- swipe:
+    start: '50%,70%'
+    end: '50%,30%'
+    duration: 600
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: foot
+- setOrientation: PORTRAIT
