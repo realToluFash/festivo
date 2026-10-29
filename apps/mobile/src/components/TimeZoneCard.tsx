@@ -66,10 +66,9 @@ export function TimeZoneCard({
   const opener = useFocusBackToOpener(editing ? undefined : closed);
   const {
     opener: changeOpener,
-    holder: changeHolder,
     closing,
     close,
-  } = useStepClose(opener, 'change', (back) => {
+  } = useStepClose(opener, 'change', 'opener', (back) => {
     setClosed(back);
     setEditing(false);
   });
@@ -79,7 +78,7 @@ export function TimeZoneCard({
     holder: savedHolder,
     closing: savedClosing,
     close: closeSaved,
-  } = useStepClose(opener, 'saved', (back) => {
+  } = useStepClose(opener, 'saved', 'holder', (back) => {
     setSavedFocused(back == null);
     setEditing(false);
   });
@@ -154,20 +153,17 @@ export function TimeZoneCard({
         </>
       )}
       {(!editing || closing) && (
-        <>
-          <FocusHolder holder={changeHolder} />
-          <SecondaryButton
-            ref={changeOpener}
-            label={t('timeZone.change')}
-            onPress={() => {
-              setSaved(null);
-              setSavedFocused(false);
-              setClosed(undefined);
-              setEditing(true);
-            }}
-            testID="timeZone.change"
-          />
-        </>
+        <SecondaryButton
+          ref={changeOpener}
+          label={t('timeZone.change')}
+          onPress={() => {
+            setSaved(null);
+            setSavedFocused(false);
+            setClosed(undefined);
+            setEditing(true);
+          }}
+          testID="timeZone.change"
+        />
       )}
     </View>
   );

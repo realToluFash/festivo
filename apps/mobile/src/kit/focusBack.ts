@@ -19,30 +19,40 @@ export function focusBackMs(os: string, settledMs: number, from: FocusBackFrom):
 /** How long the holder is given to take input focus from the field before the keys go down. */
 export const INPUT_FOCUS_TAKEN_MS = TALKBACK_FOCUS_BACK_MS;
 
-/** A step in closing a step back to its opener. `holdScroll` keeps the screen's content at its height and the keys' height until a scroll, a drag or TalkBack's own, brings the view's end back inside the content's real end (`holdEnds`), or the keys come up again, so neither the keys going down nor the step going pulls the scroll back: at the end of the page that pull carries the focused button under the keys still showing, and TalkBack follows it as a manual scroll onto the field (sc-18587). `takeInputFocus` gives input focus `to` the opener or to a holder TalkBack does not read, and waits `atMs` for it to land; `putKeysDown` waits until the keys are down and the scroll they move has landed; each later `atMs` counts from there, or from the close when nothing waits. `settleOpener` brings the opener `into` sight and moves screen reader focus to it once the scroll has landed. `finish` takes the step away, and with `focusBack` sends focus after it to the opener. */
+/** What takes input focus from the field as a step closes: the opener itself, a control TalkBack says as it takes it, or a holder TalkBack does not read, beside an opener that cannot take it, a line of words. */
+export type InputFocusTo = 'opener' | 'holder';
+
+/** A step in closing a step back to its opener. `holdScroll` keeps the screen's content at its height and the keys' height until a scroll, a drag or TalkBack's own, brings the view's end back inside the content's real end (`holdEnds`), or the keys come up again, so neither the keys going down nor the step going pulls the scroll back: at the end of the page that pull carries the focused button under the keys still showing, and TalkBack follows it as a manual scroll onto the field (sc-18587). `takeInputFocus` gives input focus `to` the opener or to a holder TalkBack does not read, and waits `atMs` for it to land; `putKeysDown` waits until the keys are down and the scroll they move has landed; each later `atMs` counts from there, or from the close when nothing waits. `settleOpener` brings the opener `into` sight, and with `read` moves screen reader focus to it once the scroll has landed. `finish` takes the step away, and with `focusBack` sends focus after it to the opener. */
 export type StepCloseStep =
   | { do: 'holdScroll' }
   | { do: 'showOpener' }
-  | { do: 'takeInputFocus'; atMs: number; to: 'opener' | 'holder' }
+  | { do: 'takeInputFocus'; atMs: number; to: InputFocusTo }
   | { do: 'putKeysDown' }
-  | { do: 'settleOpener'; into: IntoView }
+  | { do: 'settleOpener'; into: IntoView; read: boolean }
   | { do: 'finish'; focusBack: boolean; atMs: number };
 
-/** How a step closes back to its opener on `os`, against `settledMs` for a scroll to land. At once: the step goes, and focus follows it to the opener. In order, on Android with TalkBack on: the opener shows beside the step, a holder takes input focus from the field, the keys go down, TalkBack's focus moves to the opener once their scroll has landed, and only then does the step go, so TalkBack's focus is never left on a view that has gone. Blurring the field while it holds input focus would hand that focus to the first focusable view, the header's back row, which TalkBack follows (sc-18587). An opener given input focus is said by TalkBack, and said again by any move after (sc-18588), and the scroll as the keys go down drags TalkBack's focus off it onto the words beside it, so the holder TalkBack does not read takes input focus and the opener is read once, after the scroll (sc-18587, sc-18588). */
+/** How a step closes back to its opener on `os`, against `settledMs` for a scroll to land. At once: the step goes, and focus follows it to the opener. In order, on Android with TalkBack on: the scroll is held, the opener shows beside the step, input focus goes `to` the opener or its holder, the keys go down, and only then does the step go, so TalkBack's focus is never left on a view that has gone. Blurring the field while it holds input focus would hand that focus to the first focusable view, the header's back row, which TalkBack follows (sc-18587). An opener that takes input focus is said by TalkBack as it does, and any move after says it again (sc-18588), so nothing moves TalkBack's focus to it later; a holder takes it for a line of words, which is read once the keys' scroll has landed (sc-18587). */
 export function stepCloseSteps(
   os: string,
   screenReaderOn: boolean,
   settledMs: number,
+  to: InputFocusTo,
 ): StepCloseStep[] {
   if (os !== 'android' || !screenReaderOn) return [{ do: 'finish', focusBack: true, atMs: 0 }];
+
+  const holder = to === 'holder';
 
   return [
     { do: 'holdScroll' },
     { do: 'showOpener' },
-    { do: 'takeInputFocus', atMs: INPUT_FOCUS_TAKEN_MS, to: 'holder' },
+    { do: 'takeInputFocus', atMs: INPUT_FOCUS_TAKEN_MS, to },
     { do: 'putKeysDown' },
-    { do: 'settleOpener', into: 'outOfSight' },
-    { do: 'finish', focusBack: false, atMs: settledMs + TALKBACK_FOCUS_TAKEN_MS },
+    { do: 'settleOpener', into: 'outOfSight', read: holder },
+    {
+      do: 'finish',
+      focusBack: false,
+      atMs: holder ? settledMs + TALKBACK_FOCUS_TAKEN_MS : TALKBACK_FOCUS_TAKEN_MS,
+    },
   ];
 }
 

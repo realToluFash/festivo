@@ -25,7 +25,6 @@ import { Notice } from './Notice.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import { PasswordRule } from './PasswordRule.tsx';
 import {
-  FocusHolder,
   type StepClosed,
   stepClosed,
   useAboveKeyboard,
@@ -80,10 +79,9 @@ export function PasswordCard({
   const opener = useFocusBackToOpener(stage.kind === 'atRest' ? stage.closed : undefined);
   const {
     opener: changeOpener,
-    holder: changeHolder,
     closing,
     close,
-  } = useStepClose(opener, 'change', (closed) =>
+  } = useStepClose(opener, 'change', 'opener', (closed) =>
     setStage({ kind: 'atRest', signedOut: null, added: null, closed }),
   );
   const frame = cardFrame(kind);
@@ -162,15 +160,12 @@ export function PasswordCard({
         />
       )}
       {(stage.kind !== 'changing' || closing) && (
-        <>
-          <FocusHolder holder={changeHolder} />
-          <SecondaryButton
-            ref={changeOpener}
-            label={t('passwordCard.change')}
-            onPress={() => setStage({ kind: 'changing' })}
-            testID="password.change"
-          />
-        </>
+        <SecondaryButton
+          ref={changeOpener}
+          label={t('passwordCard.change')}
+          onPress={() => setStage({ kind: 'changing' })}
+          testID="password.change"
+        />
       )}
     </View>
   );
