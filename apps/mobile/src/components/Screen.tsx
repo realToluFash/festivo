@@ -484,7 +484,7 @@ export function useStepClose(
               settleOnto(
                 scroll,
                 () => view.current,
-                () => null,
+                () => (step.read ? view.current : null),
                 false,
                 SETTLED_MS,
                 step.into,

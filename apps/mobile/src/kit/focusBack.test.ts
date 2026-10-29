@@ -35,7 +35,7 @@ describe('a step closing back to its opener', () => {
       { do: 'showOpener' },
       { do: 'takeInputFocus', atMs: INPUT_FOCUS_TAKEN_MS },
       { do: 'putKeysDown' },
-      { do: 'settleOpener', into: 'outOfSight' },
+      { do: 'settleOpener', into: 'outOfSight', read: false },
       { do: 'finish', focusBack: false, atMs: TALKBACK_FOCUS_TAKEN_MS },
     ]);
   });
