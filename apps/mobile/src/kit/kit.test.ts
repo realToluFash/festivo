@@ -30,6 +30,7 @@ import {
   outOfSight,
   scrollInsets,
   searchBesideTitle,
+  settledOffset,
   shortWhileTyping,
   shownEnd,
   titleScrollsWhileTyping,
@@ -267,6 +268,19 @@ describe("a closed step's opener is scrolled under TalkBack's focus only once it
     expect(outOfSight({ ...opener, contentY: 300, offset: 200 })).toBe(false);
     expect(outOfSight({ ...opener, contentY: 180, offset: 200 })).toBe(false);
     expect(outOfSight({ ...opener, contentY: 780, offset: 200 })).toBe(false);
+  });
+
+  it('stays put while any part of it shows, where a wholly pass would scroll it', () => {
+    const partly = { ...opener, contentY: 180, offset: 200, margin: 16 };
+
+    expect(settledOffset(partly, 'outOfSight')).toBeNull();
+    expect(settledOffset(partly, 'wholly')).toBe(164);
+  });
+
+  it('comes back into sight once it has wholly left it', () => {
+    expect(settledOffset({ ...opener, contentY: 900, offset: 300, margin: 16 }, 'outOfSight')).toBe(
+      364,
+    );
   });
 });
 

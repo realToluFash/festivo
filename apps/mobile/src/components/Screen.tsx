@@ -33,10 +33,10 @@ import {
   groupInWindow,
   keysOver,
   liftNeeded,
+  type IntoView,
   offsetAboveKeyboard,
-  offsetIntoView,
-  outOfSight,
   scrollInsets,
+  settledOffset,
   shownEnd,
 } from '../kit/keyboard.ts';
 import {
@@ -268,9 +268,6 @@ export function useScrolledToTop(): RefObject<ViewInstance | null> {
 // VoiceOver drops a focus asked for while a sheet is still sliding away, and the scroll has to land first.
 export const SETTLED_MS = 500;
 
-/** How far a pass brings a line into sight: `wholly`, or only back into sight once it has wholly left it. */
-type IntoView = 'wholly' | 'outOfSight';
-
 function bringIntoView(
   scroll: ScreenScrollView | null,
   line: ScreenReaderTarget | null,
@@ -285,10 +282,8 @@ function bringIntoView(
 
   line.measureLayout(content, (_x, contentY, _w, height) => {
     scrollHost.measureInWindow((_sx, _sy, _sw, shown) => {
-      const at = { contentY, height, offset: scroll.offset.current, shown };
-      if (when === 'outOfSight' && !outOfSight(at)) return;
-
-      const y = offsetIntoView({ ...at, margin: tokens.spaceLg });
+      const at = { contentY, height, offset: scroll.offset.current, shown, margin: tokens.spaceLg };
+      const y = settledOffset(at, when);
       if (y != null) view.scrollTo({ y, animated });
     });
   });
@@ -473,7 +468,7 @@ export function useStepClose(
                 () => view.current,
                 false,
                 step.atMs,
-                'outOfSight',
+                step.into,
               ),
             );
             continue;

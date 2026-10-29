@@ -1,3 +1,5 @@
+import type { IntoView } from './keyboard.ts';
+
 /** Long enough for the opener to reach TalkBack's tree, which drops a hover on a view it has not yet seen (sc-9950), and short of the focus TalkBack puts back on its own. */
 export const TALKBACK_FOCUS_BACK_MS = 50;
 
@@ -18,7 +20,7 @@ export function focusBackMs(os: string, settledMs: number, from: FocusBackFrom):
 export type StepCloseStep =
   | { do: 'putKeysDown' }
   | { do: 'showOpener' }
-  | { do: 'focusOpener'; atMs: number }
+  | { do: 'focusOpener'; atMs: number; into: IntoView }
   | { do: 'finish'; focusBack: boolean; atMs: number };
 
 /** How a step closes back to its opener on `os`. At once: the step goes, and focus follows it to the opener. In order, on Android with TalkBack on: the keys go down, the opener shows beside the step and takes focus, and only then does the step go, so TalkBack's focus is never left on a view that has gone (sc-18588). */
@@ -28,7 +30,7 @@ export function stepCloseSteps(os: string, screenReaderOn: boolean): StepCloseSt
   return [
     { do: 'putKeysDown' },
     { do: 'showOpener' },
-    { do: 'focusOpener', atMs: TALKBACK_FOCUS_BACK_MS },
+    { do: 'focusOpener', atMs: TALKBACK_FOCUS_BACK_MS, into: 'outOfSight' },
     { do: 'finish', focusBack: false, atMs: TALKBACK_FOCUS_BACK_MS + TALKBACK_FOCUS_TAKEN_MS },
   ];
 }

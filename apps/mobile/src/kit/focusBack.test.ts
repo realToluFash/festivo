@@ -33,7 +33,7 @@ describe('a step closing back to its opener', () => {
     expect(stepCloseSteps('android', true)).toEqual([
       { do: 'putKeysDown' },
       { do: 'showOpener' },
-      { do: 'focusOpener', atMs: TALKBACK_FOCUS_BACK_MS },
+      { do: 'focusOpener', atMs: TALKBACK_FOCUS_BACK_MS, into: 'outOfSight' },
       { do: 'finish', focusBack: false, atMs: TALKBACK_FOCUS_BACK_MS + TALKBACK_FOCUS_TAKEN_MS },
     ]);
   });

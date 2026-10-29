@@ -156,6 +156,16 @@ export function outOfSight({ contentY, height, offset, shown }: Omit<InScroll, '
   return contentY + height <= offset || contentY >= offset + shown;
 }
 
+/** How far a pass brings a view into sight: `wholly`, or only back into sight once it has wholly left it. */
+export type IntoView = 'wholly' | 'outOfSight';
+
+/** The scroll offset a pass brings a view to, as offsetIntoView, except that an `outOfSight` pass leaves a view with any part in sight where it is, under TalkBack's focus (sc-18588); null when it stays put. */
+export function settledOffset(at: InScroll, when: IntoView): number | null {
+  if (when === 'outOfSight' && !outOfSight(at)) return null;
+
+  return offsetIntoView(at);
+}
+
 /** Where the focused field sits inside the scroll content, as the last part of its group. */
 export interface Focused {
   contentY: number;
