@@ -71,15 +71,21 @@ export function TimeZoneCard({
     setClosed(back);
     setEditing(false);
   });
-  // Saving closes in the same order as Cancel, with the line in the opener's place, so TalkBack's focus is on the line before Save goes (sc-18587).
+  // Saving closes with the line in the opener's place, so TalkBack's focus is on the line before Save goes (sc-18587).
   const {
     opener: savedLine,
+    holder: savedHolder,
     closing: savedClosing,
     close: closeSaved,
-  } = useStepClose(opener, 'saved', (back) => {
-    setSavedFocused(back == null);
-    setEditing(false);
-  });
+  } = useStepClose(
+    opener,
+    'saved',
+    (back) => {
+      setSavedFocused(back == null);
+      setEditing(false);
+    },
+    'line',
+  );
   const savedGiven = savedFocused || savedClosing;
   const frame = cardFrame(kind);
 
@@ -137,15 +143,23 @@ export function TimeZoneCard({
         </>
       )}
       {saved != null && (!editing || savedClosing) && (
-        <Notice
-          tone="done"
-          mark={tokens.marks.done.glyph}
-          body={t('timeZone.saved', { zone: saved })}
-          answer={savedGiven ? undefined : saved}
-          takesFocus={!savedGiven}
-          readMs={focusBackMs(Platform.OS, SETTLED_MS, 'step')}
-          wordsRef={savedGiven ? savedLine : undefined}
-        />
+        <>
+          <View
+            ref={savedHolder}
+            style={styles.holder}
+            collapsable={false}
+            importantForAccessibility="no"
+          />
+          <Notice
+            tone="done"
+            mark={tokens.marks.done.glyph}
+            body={t('timeZone.saved', { zone: saved })}
+            answer={savedGiven ? undefined : saved}
+            takesFocus={!savedGiven}
+            readMs={focusBackMs(Platform.OS, SETTLED_MS, 'step')}
+            wordsRef={savedGiven ? savedLine : undefined}
+          />
+        </>
       )}
       {(!editing || closing) && (
         <SecondaryButton
@@ -347,6 +361,8 @@ function Choosing({
 
 const styles = StyleSheet.create({
   group: { gap: tokens.spaceXxs },
+  // Android gives no input focus to a view without a size.
+  holder: { position: 'absolute', width: 1, height: 1 },
   choosing: { gap: tokens.spaceLg },
   secondary: { color: tokens.colorInkSecondary },
   list: {
