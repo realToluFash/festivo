@@ -130,15 +130,18 @@ LOCALES = ("en", "es", "fr", "pt")
 # The four linguists became one; their tags and signatures still mean it.
 FORMER = {locale: "l10n" for locale in LOCALES}
 
-HEADER = re.compile(r"^\s*((?:\[[a-z0-9]+\]\s*)+)\(from ([a-z0-9]+)\)")
-AUTHOR = re.compile(r"\(from ([a-z0-9]+)\)")
+# A role, or a person who tests (`manualTesters` in agents.json) by their Shortcut mention name.
+NAME = r"(?:@[a-z0-9][a-z0-9_.-]*|[a-z0-9]+)"
+HEADER = re.compile(rf"^\s*((?:\[{NAME}\]\s*)+)\(from ({NAME})\)")
+AUTHOR = re.compile(rf"\(from ({NAME})\)")
+PERSON = re.compile(r"@[a-z0-9][a-z0-9_.-]*")
 
 
 def header(text):
     first = (text or "").split("\n", 1)[0]
     match = HEADER.match(first)
     if match:
-        return {"to": re.findall(r"\[([a-z0-9]+)\]", match.group(1)), "from": match.group(2)}
+        return {"to": re.findall(rf"\[({NAME})\]", match.group(1)), "from": match.group(2)}
     author = AUTHOR.search(first)
     return {"to": [], "from": author.group(1)} if author else None
 
@@ -245,7 +248,8 @@ for _tester in TESTERS:
 
 # A role that labels may only touch these labels; the product manager may touch any.
 OWN_LABELS = {**{d: {label} for d, label in DEVELOPERS.items()}, "cd": {"idea"},
-              **{t: {"qa passed", "qa failed", "needs qa", TESTERS_LABELS[t]} for t in TESTERS},
+              **{t: {"qa passed", "qa failed", "needs qa", "manual qa", TESTERS_LABELS[t]}
+                 for t in TESTERS},
               "l10n": {"translation"}, "ops": {OPS_LABEL, "needs qa"}}
 
 CATALOGUES = [
@@ -273,12 +277,21 @@ def linguist_files():
 CLAIMED, RELEASED = "QA claim:", "QA claim released:"
 
 
+def claim_line(text):
+    """The `QA claim:` a comment makes: its first line, or the last line of a plan."""
+    lines = (text or "").strip().split("\n")
+    for line in (lines[0], lines[-1]):
+        if line.startswith(CLAIMED):
+            return line
+    return None
+
+
 def last_claim(story):
     """The latest `QA claim:` comment, or None once a release came after it."""
     for comment in reversed(story.get("comments") or []):
         if comment["text"].startswith(RELEASED):
             return None
-        if comment["text"].startswith(CLAIMED):
+        if claim_line(comment["text"]):
             return comment
     return None
 
@@ -292,7 +305,48 @@ def last_tester(story):
 
 def claimant(claim):
     """The name a `QA claim:` comment gives."""
-    return claim["text"].split(":", 1)[1].split(",")[0].strip()
+    return claim_line(claim["text"]).split(":", 1)[1].split(",")[0].strip()
+
+
+MANUAL_QA = "manual qa"
+
+
+def is_person(name):
+    return bool(name) and name.startswith("@")
+
+
+def person_of(member, testers):
+    """The listed tester whose Shortcut account wrote a comment, or None."""
+    for name, entry in (testers or {}).items():
+        if member and entry.get("member") == member:
+            return name
+    return None
+
+
+def owner_of(story, testers):
+    """The listed tester who owns the story, or None."""
+    owners = set(story.get("owners") or [])
+    for name, entry in (testers or {}).items():
+        if entry.get("member") in owners:
+            return name
+    return None
+
+
+def kept_for_person(story, testers):
+    """A story a person tests, so no agent tester takes it: labelled `manual qa`, owned by
+    a listed tester, or under a person's claim."""
+    claim = last_claim(story)
+    return (MANUAL_QA in set(story.get("labels") or []) or bool(owner_of(story, testers))
+            or bool(claim and is_person(claimant(claim))))
+
+
+def planner(story):
+    """The tester that wrote the plan behind a person's latest claim on the story."""
+    claim = last_claim(story)
+    if not claim or not is_person(claimant(claim)):
+        return None
+    by = author(claim["text"])
+    return by if by in TESTERS else None
 
 
 def may(role, command):

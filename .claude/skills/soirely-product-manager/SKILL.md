@@ -160,6 +160,11 @@ they are where AC fails:
   Add it at grooming, or when you read the AC of a story already in Ready For QA. A story
   that takes either platform ("an iPhone 17 Pro or, on a host without Xcode, an Android
   phone") gets no label.
+- **Label `manual qa` a story only a person can test**: a real phone's camera or
+  notifications, a real payment card, a call or text to a real number, or something a
+  person has to judge by eye on a real device. It is kept for the people on the QA team
+  (`manualTesters`), and a tester writes them a plan. Anything a simulator or the browser
+  driver can verify gets no label, so the agent testers keep it.
 - **Close with a regression bullet** naming what must keep working untouched.
 - **Never invent a field name or a label.** Search the codebase for the real one. If it does
   not exist, that is a question, not a guess.

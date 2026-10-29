@@ -548,6 +548,46 @@ posted, so do not post them again:
 Never move a story to **Done** — that is the user's, after a merge — and never merge
 anything.
 
+## A plan for a person
+
+A person on the QA team tests whole stories too, on their own phone and laptop, and they are
+new to writing test plans. `manualTesters` in `agents.json` lists them by Shortcut mention
+name, such as `@tester-one`, with the machine their stack runs on. A story they own,
+or one reaching Ready For QA labelled `manual qa`, is theirs: sq never offers it to you to
+test, and comes to you as a `plan` item instead. A plan comes after your inbox and before a
+new story, and never by stopping a pass you are in.
+
+**Writing the plan.** Plan; do not test, and do not claim the story.
+
+1. On the person's stack, from your checkout: `node scripts/qa-env.mjs --tester lan setup`,
+   then `checkout` of the story's merge commit, as in section 4. It is served on the
+   machine's network address (`QA_LAN_ADDRESS`), so their phone and laptop reach it.
+2. Make the accounts and data each step needs with the QA script, as you would for yourself.
+3. `node scripts/qa-env.mjs --tester lan serve` starts the app's bundler for their phone,
+   left running after your run ends, and prints the Expo Go link and the path of its QR
+   code image.
+4. Post **one comment** to them, `sq qa comment sc-N --to @name`, a beginner can follow
+   without asking:
+   - **Where to open it**: the web address, the Expo Go link `serve` printed and its QR code
+     attached with `--files`, and Mailpit's address for emails.
+   - **The accounts**: each one's email and password, and what it is for.
+   - **Each AC line as numbered steps**: what to tap or type, then "You should see: …" in
+     the words the screen uses. One step per action.
+   - **The edge cases the AC implies** (section 3), as steps of the same shape.
+   - **The layouts and the one locale** to check, and how to switch to each.
+   - **The screenshots to attach**: which step, and what must be in the frame.
+   - **How to report**: a comment starting `[qa] (from @name)`, `PASS` or `FAIL` per step.
+   - The last line, alone: `QA claim: @name`. It marks the story theirs, so a Failed QA
+     retest goes back to them, and their `[qa]` comments to you.
+5. `sq qa done`. Their questions come back to you as inbox items: answer each in its
+   thread, plainly, with the exact step and what they should see. Never take the pass over.
+
+**Handing a story you claimed to a person.** When only a person can test it (a real
+phone's camera, a payment card, a call to a real number), add `manual qa` with
+`sq qa label sc-N --add "manual qa"`, then give it back with
+`sq qa unclaim sc-N --text "<why a person has to test it>"`. It goes back to Ready For QA,
+and a plan item follows.
+
 ## 9. Re-testing after a fix
 
 - **A new comment, never an edit.** The old report is the record of what was broken.

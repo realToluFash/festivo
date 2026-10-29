@@ -2,7 +2,7 @@
 already has is printed again."""
 
 from . import roles as R
-from . import store
+from . import machine, store
 from . import text as T
 from . import work as W
 
@@ -63,7 +63,8 @@ def comments(p, story, mode="involving", author=None, since=None, always_ids=())
     """`involving`: threads with a comment to or from the role in full, the rest as one
     line each. `open`: only threads with a comment open for the role. `all`: every thread."""
     handled = store.handled(p.db)
-    open_ids = {c["id"] for c in W.open_for(p.role, story, handled)}
+    testers = machine.manual_testers()
+    open_ids = {c["id"] for c in W.open_for(p.role, story, handled, testers)}
     shown, others = 0, []
     for items in W.threads(story):
         if since:
@@ -77,7 +78,7 @@ def comments(p, story, mode="involving", author=None, since=None, always_ids=())
                 continue
         # A tester tests what the lead told any tester to look at.
         peers = R.TESTERS if p.role in R.TESTERS else (p.role,)
-        involved = any(W.involves(peer, items, story["labels"]) for peer in peers)
+        involved = any(W.involves(peer, items, story, testers) for peer in peers)
         if mode == "open" and not any(c["id"] in open_ids for c in items):
             continue
         if mode == "involving" and not involved and not author \

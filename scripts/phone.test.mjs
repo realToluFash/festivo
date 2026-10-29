@@ -3,23 +3,15 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { renderDevEnv, roleConfig } from './dev-env.mjs';
-import {
-  envSource,
-  firewallAdvice,
-  KEPT,
-  lanAddress,
-  parseEnv,
-  phoneConfig,
-  wifiDevices,
-} from './phone.mjs';
-import { stackConfig } from './qa-env.mjs';
+import { envSource, firewallAdvice, KEPT, parseEnv, phoneConfig, wifiDevices } from './phone.mjs';
+import { networkAddress, stackConfig } from './qa-env.mjs';
 
 const v4 = (address, internal = false) => ({ family: 'IPv4', address, internal });
 
 describe('the address the phone reaches', () => {
   it('is the Wi-Fi one on Linux, past Docker, VMware, a VPN and a wired port', () => {
     expect(
-      lanAddress({
+      networkAddress({
         lo: [v4('127.0.0.1', true)],
         docker0: [v4('172.17.0.1')],
         vmnet8: [v4('172.16.65.1')],
@@ -42,7 +34,7 @@ describe('the address the phone reaches', () => {
     ].join('\n');
     expect(wifiDevices(hardwarePorts)).toEqual(['en1']);
     expect(
-      lanAddress(
+      networkAddress(
         {
           bridge100: [v4('192.168.64.1')],
           awdl0: [v4('169.254.1.1')],
@@ -56,11 +48,13 @@ describe('the address the phone reaches', () => {
   });
 
   it('skips a Mac’s shared-network bridge when Wi-Fi has no address', () => {
-    expect(lanAddress({ bridge100: [v4('192.168.64.1')], en0: [v4('10.0.0.5')] })).toBe('10.0.0.5');
+    expect(networkAddress({ bridge100: [v4('192.168.64.1')], en0: [v4('10.0.0.5')] })).toBe(
+      '10.0.0.5',
+    );
   });
 
   it('is none when only public or virtual addresses exist', () => {
-    expect(lanAddress({ eth0: [v4('203.0.113.4')], docker0: [v4('172.17.0.1')] })).toBeNull();
+    expect(networkAddress({ eth0: [v4('203.0.113.4')], docker0: [v4('172.17.0.1')] })).toBeNull();
   });
 });
 

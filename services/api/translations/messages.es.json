@@ -42,7 +42,7 @@
     "validation.contact_address_required": "Indique un correo electrónico de contacto.",
     "validation.country_invalid": "Elija un país.",
     "validation.currency_invalid": "Elija una moneda.",
-    "validation.email_invalid": "Introduzca una dirección de correo electrónico.",
+    "validation.email_invalid": "Eso no parece una dirección de correo. Compruebe que tiene una @ y un dominio.",
     "validation.invalid_shape": "Este campo no admite ese valor. Revíselo y vuelva a intentarlo.",
     "validation.request_shape": "Los datos enviados no tienen el formato esperado.",
     "validation.event_end_before_start": "El evento termina antes de empezar. Elija un final posterior.",
