@@ -1,5 +1,6 @@
 # Signed out, open a request link and create an account, then force-quit at the code screen. sc-562.
 # Pass TOKEN, NAME, EMAIL and PASSWORD. request-link-register-dead.yaml carries on (sc-11741).
+# iPhone only: on Android the Enter can type into the field instead of submitting (sc-18648).
 appId: host.exp.Exponent
 ---
 - launchApp:
