@@ -1,4 +1,4 @@
-# sc-18978: another member's role changed to Owner (${MEMBER_ID}) opens Confirm it's you with membersScreen.proveOwner, which names the organisation and the minutes. Needs an owner signed in to ${ORGANISATION}, and MEMBER_ID of another member who is not an owner.
+# sc-18978: another member's role changed to Owner (${MEMBER_ID}) opens Confirm it's you with membersScreen.proveOwner, which names the organisation and the minutes. Needs an owner signed in to ${ORG_NAME}, and MEMBER_ID of another member who is not an owner.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/members
@@ -28,7 +28,7 @@ appId: host.exp.Exponent
       id: members.role.prove.continue
     timeout: 20000
 - scrollUntilVisible:
-    element: '.*${ORGANISATION}, .* 5 .*'
+    element: '.*${ORG_NAME}, .* 5 .*'
     direction: UP
     timeout: 20000
 - takeScreenshot: member-role-owner-prove
