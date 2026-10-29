@@ -22,6 +22,7 @@ import { Footnote, PrimaryButton, QuietButton } from './Buttons.tsx';
 import { MuteEventSwitch } from './MuteEventCard.tsx';
 import { Notice } from './Notice.tsx';
 import { useReadOut } from './ReadOut.tsx';
+import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Sheet } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 
@@ -100,7 +101,7 @@ export function NotificationsFeed() {
   async function answerPush(turnOn: boolean): Promise<void> {
     if (turnOn) await turnOnAppPush().catch(() => undefined);
     setAsking(false);
-    heading.current?.focus?.();
+    moveScreenReaderFocus(heading.current);
   }
 
   function openItem(item: NotificationItem): void {
