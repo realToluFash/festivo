@@ -1,0 +1,26 @@
+# Settings > Account > Email addresses > Add an email address: an address the app's check passes and the API refuses (a..b@ire.events), and the refusal under the field. Adds nothing. sc-20223.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible: '{{t:account.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'contacts.email.add'
+    timeout: 30000
+- tapOn:
+    id: 'contacts.email.add'
+- tapOn:
+    id: 'contacts.email.field'
+- inputText: 'a..b@ire.events'
+- hideKeyboard
+- tapOn:
+    id: 'contacts.email.send'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'contacts.email.send'
+    timeout: 10000
+- assertVisible: '{{t:forms.emailShape}}'
+- takeScreenshot: refused
