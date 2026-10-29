@@ -35,6 +35,7 @@ import {
   liftNeeded,
   offsetAboveKeyboard,
   offsetIntoView,
+  outOfSight,
   scrollInsets,
   shownEnd,
 } from '../kit/keyboard.ts';
@@ -267,10 +268,14 @@ export function useScrolledToTop(): RefObject<ViewInstance | null> {
 // VoiceOver drops a focus asked for while a sheet is still sliding away, and the scroll has to land first.
 export const SETTLED_MS = 500;
 
+/** How far a pass brings a line into sight: `wholly`, or only back into sight once it has wholly left it. */
+type IntoView = 'wholly' | 'outOfSight';
+
 function bringIntoView(
   scroll: ScreenScrollView | null,
   line: ScreenReaderTarget | null,
   animated: boolean,
+  when: IntoView = 'wholly',
 ): void {
   const view = scroll?.ref.current;
   const content = view?.getInnerViewRef();
@@ -280,30 +285,31 @@ function bringIntoView(
 
   line.measureLayout(content, (_x, contentY, _w, height) => {
     scrollHost.measureInWindow((_sx, _sy, _sw, shown) => {
-      const y = offsetIntoView({
-        contentY,
-        height,
-        offset: scroll.offset.current,
-        shown,
-        margin: tokens.spaceLg,
-      });
+      const at = { contentY, height, offset: scroll.offset.current, shown };
+      if (when === 'outOfSight' && !outOfSight(at)) return;
+
+      const y = offsetIntoView({ ...at, margin: tokens.spaceLg });
       if (y != null) view.scrollTo({ y, animated });
     });
   });
 }
 
-/** Brings `shown` wholly into sight, and again once it has settled, and moves screen reader focus to `read` after `readMs`; returns what cancels the steps still to come. */
+/** Brings `shown` wholly into sight, and again as far as `settledInto` once it has settled, and moves screen reader focus to `read` after `readMs`; returns what cancels the steps still to come. */
 function settleOnto(
   scroll: ScreenScrollView | null,
   shown: () => ScreenReaderTarget | null,
   read: () => ScreenReaderTarget | null,
   animated: boolean,
   readMs = SETTLED_MS,
+  settledInto: IntoView = 'wholly',
 ): () => void {
   bringIntoView(scroll, shown(), animated);
 
   // Content that shrinks around the line as it mounts can stop the first scroll short (sc-9382).
-  const settled = setTimeout(() => bringIntoView(scroll, shown(), animated), SETTLED_MS);
+  const settled = setTimeout(
+    () => bringIntoView(scroll, shown(), animated, settledInto),
+    SETTLED_MS,
+  );
   const focus = setTimeout(() => moveScreenReaderFocus(read()), readMs);
 
   return () => {
@@ -467,6 +473,7 @@ export function useStepClose(
                 () => view.current,
                 false,
                 step.atMs,
+                'outOfSight',
               ),
             );
             continue;

@@ -151,6 +151,11 @@ export function offsetIntoView({
   return Math.max(0, Math.min(contentY + height + margin - shown, contentY - margin));
 }
 
+/** Whether no part of a view is in sight. TalkBack's focus rests on a view partly in sight, and a scroll under it moves that focus on (sc-18588). */
+export function outOfSight({ contentY, height, offset, shown }: Omit<InScroll, 'margin'>): boolean {
+  return contentY + height <= offset || contentY >= offset + shown;
+}
+
 /** Where the focused field sits inside the scroll content, as the last part of its group. */
 export interface Focused {
   contentY: number;

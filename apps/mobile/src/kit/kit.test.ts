@@ -27,6 +27,7 @@ import {
   offsetAboveKeyboard,
   offsetIntoView,
   offsetToFocus,
+  outOfSight,
   scrollInsets,
   searchBesideTitle,
   shortWhileTyping,
@@ -251,6 +252,21 @@ describe('a line that appears off screen is brought wholly into sight (sc-9382)'
 
   it('keeps its top in sight when it is taller than the screen', () => {
     expect(offsetIntoView({ ...line, height: 900, contentY: 1000, offset: 0 })).toBe(984);
+  });
+});
+
+describe("a closed step's opener is scrolled under TalkBack's focus only once it is out of sight (sc-18588)", () => {
+  const opener = { height: 48, shown: 600 };
+
+  it('is out of sight wholly above or wholly below the screen', () => {
+    expect(outOfSight({ ...opener, contentY: 100, offset: 148 })).toBe(true);
+    expect(outOfSight({ ...opener, contentY: 900, offset: 300 })).toBe(true);
+  });
+
+  it('is in sight wholly on screen, or with any part of it showing', () => {
+    expect(outOfSight({ ...opener, contentY: 300, offset: 200 })).toBe(false);
+    expect(outOfSight({ ...opener, contentY: 180, offset: 200 })).toBe(false);
+    expect(outOfSight({ ...opener, contentY: 780, offset: 200 })).toBe(false);
   });
 });
 
