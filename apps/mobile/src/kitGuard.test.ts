@@ -499,45 +499,63 @@ describe('a way back in Two-factor authentication is off while its request runs 
 
 describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter says the name cannot fix it', () => {
   // sc-9471: a field disabled while saving lost its focus, so a server refusal closed the keyboard and a client one did not.
-  // sc-20208: Confirm it's you, Sign out everywhere else and Two-factor.
+  // sc-20208: Confirm it's you, Sign out everywhere else and Two-factor. sc-20210: the signed-out forms.
   const HELD_FORMS = [
-    'ConfirmItsYou.tsx',
-    'CreateOrganisation.tsx',
-    'DevicesCard.tsx',
-    'PasswordCard.tsx',
-    'TimeZoneCard.tsx',
-    'TwoFactorCard.tsx',
+    'src/components/ConfirmItsYou.tsx',
+    'src/components/CreateOrganisation.tsx',
+    'src/components/DevicesCard.tsx',
+    'src/components/PasswordCard.tsx',
+    'src/components/TimeZoneCard.tsx',
+    'src/components/TwoFactorCard.tsx',
+    'src/components/SecondFactorStep.tsx',
+    'app/sign-in.tsx',
+    'app/register.tsx',
+    'app/forgot-password.tsx',
+    'app/reset-password.tsx',
+    'app/lost-two-factor.tsx',
   ];
 
   it.each(HELD_FORMS)('%s holds its fields rather than disabling them', (file) => {
-    const form = sources(['src/components']).find(({ path }) => path.endsWith(`/${file}`));
-    const fields = KIT_FIELDS.flatMap((name) => selfClosing(name, form?.text ?? ''));
+    const text = readFileSync(join(...file.split('/')), 'utf8');
+    const lines = text.split('\n').map((line, index) => ({ line, at: `${file}:${index + 1}` }));
+    const fields = KIT_FIELDS.flatMap((name) => selfClosing(name, text));
 
     expect(fields.length, `fields in ${file}`).toBeGreaterThan(0);
     expect(
-      fields.filter((tag) => /\beditable=/u.test(tag.markup)).map((tag) => `${file}:${tag.line}`),
+      fields
+        .filter((tag) => /\beditable=/u.test(tag.markup))
+        // A field nobody types in, such as Sign in's address beside the provider buttons, is read-only from the start.
+        .filter(
+          (tag) => !tag.markup.includes('editable={false}') || tag.markup.includes('onChangeText='),
+        )
+        .map((tag) => `${file}:${tag.line}`),
       'Pass submitting={saving}: editable={false} drops the focus and the keyboard.',
     ).toEqual([]);
+    expect(text, 'Pass submitting: editable: false drops the focus and the keyboard.').not.toMatch(
+      /\beditable:/u,
+    );
     expect(
       fields
-        .filter((tag) => tag.markup.includes('onSubmitEditing={() => void'))
+        .filter((tag) =>
+          /\bsubmit\b|\bvoid\b/u.test(propValue(tag.markup, 'onSubmitEditing') ?? ''),
+        )
         .filter((tag) => !tag.markup.includes('submitBehavior="submit"'))
         .map((tag) => `${file}:${tag.line}`),
       'A field that submits the form keeps its focus on return.',
     ).toEqual([]);
     expect(
-      (form?.text ?? '')
-        .split('\n')
-        .map((line, index) => ({ line, at: `${file}:${index + 1}` }))
+      !text.includes('onSubmitEditing:') || text.includes("submitBehavior: 'submit'"),
+      'Props that submit the form on return keep its focus.',
+    ).toBe(true);
+    expect(
+      lines
         .filter(({ line }) => /\.current\?\.focus\(\)/u.test(line))
-        .filter(({ line }) => !line.includes('onSubmitEditing='))
+        .filter(({ line }) => !/onSubmitEditing=|\? void submit\(\) :/u.test(line))
         .map(({ at }) => at),
       'A refusal focuses through focusChecked or focusRefused: focus() skips a field Android left focused with the keys hidden.',
     ).toEqual([]);
     expect(
-      (form?.text ?? '')
-        .split('\n')
-        .map((line, index) => ({ line, at: `${file}:${index + 1}` }))
+      lines
         .filter(({ line }) => /Keyboard\.dismiss\(|\.current\?\.blur\(\)/u.test(line))
         .filter(({ line }) => !line.includes('dropsKeysAfter('))
         .filter(({ line }) => line.trim() !== 'useEffect(() => Keyboard.dismiss(), []);')
@@ -547,37 +565,62 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
   });
 });
 
-describe('the signed-out forms hold their fields while a request runs (sc-20210)', () => {
+describe('a signed-out submit sends one request, and none with the keys down opening them (sc-20210)', () => {
+  // Where each submit starts its request, and what its first return waits on: the request, and a 429 where one locks the button.
   const SIGNED_OUT = [
-    'app/sign-in.tsx',
-    'app/register.tsx',
-    'app/forgot-password.tsx',
-    'app/reset-password.tsx',
-    'app/lost-two-factor.tsx',
-    'src/components/SecondFactorStep.tsx',
-  ];
+    [
+      'app/sign-in.tsx',
+      /^\s*onSubmit\(/u,
+      ["status.kind === 'signingIn'", "status.kind === 'rateLimited'"],
+    ],
+    ['app/register.tsx', /^\s*onSubmit\(/u, ['busy', 'locked']],
+    ['app/forgot-password.tsx', /^\s*void send\(/u, ["status.kind === 'sending'"]],
+    [
+      'app/reset-password.tsx',
+      /^\s*setStatus\(\{ kind: 'saving'/u,
+      ["status.kind !== 'ready' && status.kind !== 'failed'"],
+    ],
+    ['app/lost-two-factor.tsx', /^\s*setAsking\(true\);/u, ['asking']],
+    [
+      'src/components/SecondFactorStep.tsx',
+      /^\s*setStatus\(\{ kind: 'checking' \}\);/u,
+      ['checking', "status.kind === 'paused'"],
+    ],
+  ] as const;
 
-  it.each(SIGNED_OUT)('%s turns no field off and lets go of hidden keys at each send', (file) => {
-    const text = readFileSync(join(...file.split('/')), 'utf8');
-    const fields = KIT_FIELDS.flatMap((name) => selfClosing(name, text));
+  it.each(SIGNED_OUT)('%s lets go of a focused field before its request starts', (file, start) => {
+    const lines = readFileSync(join(...file.split('/')), 'utf8').split('\n');
+    const starts = lines.flatMap((line, index) => (start.test(line) ? [index] : []));
 
-    expect(
-      fields
-        .filter((tag) => /\beditable=\{!/u.test(tag.markup))
-        .map((tag) => `${file}:${tag.line}`),
-      'Pass submitting: editable={false} drops the focus and the keyboard.',
-    ).toEqual([]);
-    expect(text).not.toMatch(/\beditable: !/u);
-    expect(text).toContain('keysStayDown();');
-    expect(
-      text
-        .split('\n')
-        .map((line, index) => ({ line, at: `${file}:${index + 1}` }))
-        .filter(({ line }) => /\.current\?\.focus\(\)/u.test(line))
-        .filter(({ line }) => !/onSubmitEditing=|\? void submit\(\) :/u.test(line))
-        .map(({ at }) => at),
-      'A check focuses through focusChecked, a server refusal through focusRefused.',
-    ).toEqual([]);
+    expect(starts).toHaveLength(1);
+    expect(starts.filter((index) => lines[index - 1]?.trim() !== 'keysStayDown();')).toEqual([]);
+  });
+
+  it.each(SIGNED_OUT)(
+    '%s sends nothing while its request runs or a 429 holds it',
+    (file, _start, waits) => {
+      const text = readFileSync(join(...file.split('/')), 'utf8');
+      const guard =
+        /(?:const submit = \(\): void => \{|function submit\(\): (?:void|Promise<void>) \{)([\s\S]*?)\breturn;/u.exec(
+          text,
+        )?.[1];
+
+      expect(guard, `submit in ${file}`).toBeDefined();
+      expect(waits.filter((wait) => !guard?.includes(wait))).toEqual([]);
+    },
+  );
+
+  it('on Create your account, while busy and locked mean the request and the 429', () => {
+    const text = readFileSync(join('app', 'register.tsx'), 'utf8');
+
+    expect(text).toContain("const busy = status.kind === 'submitting';");
+    expect(text).toContain("const locked = status.kind === 'rateLimited';");
+  });
+
+  it('on Two-factor, while checking means the request', () => {
+    const text = readFileSync(join('src', 'components', 'SecondFactorStep.tsx'), 'utf8');
+
+    expect(text).toContain("const checking = status.kind === 'checking';");
   });
 });
 
