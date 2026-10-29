@@ -5,6 +5,7 @@
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/
+- runFlow: developer-menu.yaml
 - extendedWaitUntil:
     visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}|{{t:any:status.title}}|{{t:any:signIn.title}}'
     timeout: 60000

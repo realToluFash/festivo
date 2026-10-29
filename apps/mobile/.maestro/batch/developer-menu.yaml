@@ -1,0 +1,15 @@
+# Expo Go's first-run developer-menu sheet can open over the app on a launch or a reload, and
+# hides every screen the batch waits for. Waits for the app or the sheet, and taps the sheet's
+# Continue when it is the sheet. sc-20534.
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}|{{t:any:status.title}}|{{t:any:signIn.title}}|This is the developer menu.*'
+    timeout: 60000
+    optional: true
+- runFlow:
+    when:
+      visible: 'This is the developer menu.*'
+    commands:
+      - tapOn: 'Continue'
+      - waitForAnimationToEnd

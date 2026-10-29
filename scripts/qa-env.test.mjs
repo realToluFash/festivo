@@ -1794,6 +1794,21 @@ describe('the flows a batch runs', () => {
         }
       }
       expect(readFileSync(join(target, 'batch/reopen.yaml'), 'utf8')).not.toContain('{{t:');
+      const developerMenu = readFileSync(join(target, 'batch/developer-menu.yaml'), 'utf8');
+      const settledOrSheet = new RegExp(
+        `^(?:${developerMenu.match(/extendedWaitUntil:\s+visible: '(.*)'/)[1].replaceAll("''", "'")})$`,
+      );
+      expect('This is the developer menu. It gives you access to useful tools.').toMatch(
+        settledOrSheet,
+      );
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        expect(catalogues[code].signIn.title).toMatch(settledOrSheet);
+      }
+      for (const flow of ['session', 'sign-out', 'reopen', 'reset']) {
+        expect(readFileSync(join(target, `batch/${flow}.yaml`), 'utf8')).toContain(
+          '- runFlow: developer-menu.yaml',
+        );
+      }
       const reset = readFileSync(join(target, 'batch/reset.yaml'), 'utf8');
       expect(reset).toContain('ASK: /running');
       expect(reset).not.toMatch(/when:\s+(not)?[vV]isible/);
