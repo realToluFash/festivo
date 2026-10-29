@@ -52,7 +52,7 @@ export function settledLift(liftNow: () => void): SettledLift {
 }
 
 /** Puts the keys down and calls `then` once they are and the scroll they move has landed after `settledMs`, or at once with them already down. Returns what cancels the call still to come. */
-export function whenKeysDown(then: () => void, settledMs: number): () => void {
+export function putKeysDownThen(then: () => void, settledMs: number): () => void {
   if (!Keyboard.isVisible()) {
     then();
     return () => {};

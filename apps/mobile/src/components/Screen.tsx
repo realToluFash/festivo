@@ -39,9 +39,8 @@ import {
 import {
   type FocusBackFrom,
   focusBackMs,
-  stepCloseWay,
-  TALKBACK_FOCUS_BACK_MS,
-  TALKBACK_FOCUS_TAKEN_MS,
+  type StepCloseStep,
+  stepCloseSteps,
 } from '../kit/focusBack.ts';
 import { stepOpeners } from '../kit/stepOpeners.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -51,8 +50,8 @@ import {
   LIFT,
   keyboardTopNow,
   settledLift,
+  putKeysDownThen,
   watchKeyboardTop,
-  whenKeysDown,
 } from './keyboardWatch.ts';
 
 type InnerViewRef = ScrollView & { getInnerViewRef(): View | null };
@@ -420,16 +419,18 @@ export interface StepClose {
   close(): void;
 }
 
-/** Closes a step back to the opener `to` names, the way `stepCloseWay` says; `finish` takes the step away, with what `useFocusBackToOpener` moves focus back from, or nothing when focus is already there (sc-18588). */
+/** Closes a step back to the opener `to` names, in the steps `stepCloseSteps` gives; `finish` takes the step away, with what `useFocusBackToOpener` moves focus back from, or nothing when focus is already there (sc-18588). */
 export function useStepClose(
   opener: (key: string) => RefCallback<View>,
   to: string,
   finish: (closed: StepClosed | undefined) => void,
 ): StepClose {
+  const scroll = useContext(ScreenScroll);
   const [closing, setClosing] = useState(false);
   const started = useRef(false);
   const view = useRef<View | null>(null);
   const finishNow = useRef(finish);
+  const afterShown = useRef<readonly StepCloseStep[]>([]);
   const cancel = useRef(() => {});
   const named = opener(to);
   const ref = useCallback(
@@ -444,23 +445,57 @@ export function useStepClose(
     finishNow.current = finish;
   });
 
+  const run = useCallback(
+    (all: readonly StepCloseStep[]): (() => void) => {
+      const cancels: (() => void)[] = [];
+
+      function runFrom(steps: readonly StepCloseStep[]): void {
+        for (const [at, step] of steps.entries()) {
+          if (step.do === 'putKeysDown') {
+            cancels.push(putKeysDownThen(() => runFrom(steps.slice(at + 1)), SETTLED_MS));
+            break;
+          }
+          if (step.do === 'showOpener') {
+            afterShown.current = steps.slice(at + 1);
+            setClosing(true);
+            break;
+          }
+          if (step.do === 'focusOpener') {
+            cancels.push(
+              settleOnto(
+                scroll,
+                () => view.current,
+                () => view.current,
+                false,
+                step.atMs,
+              ),
+            );
+            continue;
+          }
+
+          const done = setTimeout(() => {
+            started.current = false;
+            setClosing(false);
+            finishNow.current(step.focusBack ? stepClosed(to) : undefined);
+          }, step.atMs);
+          cancels.push(() => clearTimeout(done));
+        }
+      }
+
+      runFrom(all);
+
+      return () => cancels.forEach((stop) => stop());
+    },
+    [scroll, to],
+  );
+
   useEffect(() => () => cancel.current(), []);
 
   useEffect(() => {
     if (!closing) return;
 
-    const focus = setTimeout(() => moveScreenReaderFocus(view.current), TALKBACK_FOCUS_BACK_MS);
-    const done = setTimeout(() => {
-      started.current = false;
-      setClosing(false);
-      finishNow.current(undefined);
-    }, TALKBACK_FOCUS_BACK_MS + TALKBACK_FOCUS_TAKEN_MS);
-
-    return () => {
-      clearTimeout(focus);
-      clearTimeout(done);
-    };
-  }, [closing]);
+    return run(afterShown.current);
+  }, [closing, run]);
 
   const close = useCallback(() => {
     if (started.current) return;
@@ -472,15 +507,9 @@ export function useStepClose(
     };
     void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
       if (gone) return;
-      if (stepCloseWay(Platform.OS, on) === 'atOnce') {
-        started.current = false;
-        finishNow.current(stepClosed(to));
-        return;
-      }
-
-      cancel.current = whenKeysDown(() => setClosing(true), SETTLED_MS);
+      cancel.current = run(stepCloseSteps(Platform.OS, on));
     });
-  }, [to]);
+  }, [run]);
 
   return { opener: ref, closing, close };
 }

@@ -14,9 +14,21 @@ export function focusBackMs(os: string, settledMs: number, from: FocusBackFrom):
     : settledMs;
 }
 
-/** How a step closes back to its opener. `atOnce`: the step goes, and focus follows it to the opener. `inOrder`: the keys go down, the opener shows beside the step and takes focus, and only then does the step go, so TalkBack's focus is never left on a view that has gone. TalkBack puts such a focus back itself, wherever it chooses, and says it: on the card's heading when the keys went down with it, and on the opener a second time when it beat the move there (sc-18588). */
-export type StepCloseWay = 'atOnce' | 'inOrder';
+/** A step in closing a step back to its opener. `putKeysDown` waits until the keys are down and the scroll they move has landed; each `atMs` counts from the opener showing, or from the close when it never shows. `finish` takes the step away, and with `focusBack` sends focus after it to the opener. */
+export type StepCloseStep =
+  | { do: 'putKeysDown' }
+  | { do: 'showOpener' }
+  | { do: 'focusOpener'; atMs: number }
+  | { do: 'finish'; focusBack: boolean; atMs: number };
 
-export function stepCloseWay(os: string, screenReaderOn: boolean): StepCloseWay {
-  return os === 'android' && screenReaderOn ? 'inOrder' : 'atOnce';
+/** How a step closes back to its opener on `os`. At once: the step goes, and focus follows it to the opener. In order, on Android with TalkBack on: the keys go down, the opener shows beside the step and takes focus, and only then does the step go, so TalkBack's focus is never left on a view that has gone (sc-18588). */
+export function stepCloseSteps(os: string, screenReaderOn: boolean): StepCloseStep[] {
+  if (os !== 'android' || !screenReaderOn) return [{ do: 'finish', focusBack: true, atMs: 0 }];
+
+  return [
+    { do: 'putKeysDown' },
+    { do: 'showOpener' },
+    { do: 'focusOpener', atMs: TALKBACK_FOCUS_BACK_MS },
+    { do: 'finish', focusBack: false, atMs: TALKBACK_FOCUS_BACK_MS + TALKBACK_FOCUS_TAKEN_MS },
+  ];
 }
