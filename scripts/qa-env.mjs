@@ -1908,7 +1908,7 @@ async function stopDriver(device, onAndroid) {
   for (const deadline = Date.now() + DRIVER_GONE_MS; Date.now() < deadline;) {
     const still = left();
     if (!still.runners.length && !still.builds.length) return;
-    await new Promise((wait) => setTimeout(wait, 1000));
+    await pause(1000);
   }
   console.error(
     `\nMaestro's old driver on ${device} is still there after ${DRIVER_GONE_MS / 1000} s`,
