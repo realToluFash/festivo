@@ -148,7 +148,6 @@ export function TimeZoneCard({
             ref={savedHolder}
             style={styles.holder}
             collapsable={false}
-            focusable
             importantForAccessibility="no"
           />
           <Notice
