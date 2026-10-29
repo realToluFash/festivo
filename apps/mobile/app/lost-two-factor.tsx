@@ -23,7 +23,14 @@ import { api } from '../src/api.ts';
 import { heldChallenge } from '../src/challenge.ts';
 import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from '../src/components/Buttons.tsx';
-import { CodeField, Field, FieldError } from '../src/components/Field.tsx';
+import {
+  CodeField,
+  Field,
+  FieldError,
+  focusChecked,
+  focusRefused,
+  keysStayDown,
+} from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { useFocusOnAnswer } from '../src/components/Screen.tsx';
 import { readOut } from '../src/components/ReadOut.tsx';
@@ -659,10 +666,11 @@ function Codes({
     const first = fields.find((field) => found[field] != null);
 
     if (first != null) {
-      inputs[first].current?.focus();
+      focusChecked(inputs[first]);
       return;
     }
 
+    keysStayDown();
     setAsking(true);
     setFailed(null);
     setResentInPlace(undefined);
@@ -695,7 +703,7 @@ function Codes({
 
       if (marked != null) {
         setErrors(Object.fromEntries(marked.map((field) => [field, wrong[field]])));
-        if (marked[0] != null) inputs[marked[0]].current?.focus();
+        if (marked[0] != null) focusRefused(inputs[marked[0]]);
         return;
       }
 
@@ -838,12 +846,13 @@ function Codes({
               <CodeField
                 ref={inputs[field]}
                 wrong={errors[field] != null}
-                editable={!asking}
+                submitting={asking}
                 onChangeText={(text) => {
                   typed.current = { ...typed.current, [field]: text };
                   setErrors((now) => ({ ...now, [field]: undefined }));
                 }}
                 returnKeyType={index === fields.length - 1 ? 'go' : 'next'}
+                submitBehavior="submit"
                 onSubmitEditing={() =>
                   index === fields.length - 1 ? void submit() : inputs.phoneCode.current?.focus()
                 }

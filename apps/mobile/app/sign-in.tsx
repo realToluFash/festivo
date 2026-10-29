@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../src/api.ts';
 import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { Footnote, PrimaryButton, QuietButton } from '../src/components/Buttons.tsx';
-import { Field, TextField } from '../src/components/Field.tsx';
+import { Field, focusChecked, keysStayDown, TextField } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { useFocusOnAnswer } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
@@ -123,12 +123,13 @@ function Credentials({
     ['email', 'password'] as const,
     (field, value) =>
       field === 'email' ? emailMessage(value, t) : value === '' ? t('signIn.passwordBlank') : null,
-    (field) => (field === 'email' ? email : password).current?.focus(),
+    (field) => focusChecked(field === 'email' ? email : password),
   );
 
   const submit = (): void => {
-    if (!checks.passes(typed.current)) return;
+    if (status.kind === 'signingIn' || !checks.passes(typed.current)) return;
 
+    keysStayDown();
     onSubmit(typed.current.email.trim(), typed.current.password);
   };
 
@@ -243,7 +244,7 @@ function Credentials({
             <TextField
               ref={email}
               wrong={checks.errors.email != null}
-              editable={!busy}
+              submitting={busy}
               defaultValue={keptEmail}
               keyboardType="email-address"
               autoComplete="email"
@@ -288,7 +289,6 @@ function Credentials({
               ref={password}
               wrong={status.kind === 'refused' || checks.errors.password != null}
               submitting={busy}
-              editable={!busy}
               autoComplete="current-password"
               textContentType="password"
               onChangeText={(text) => {
@@ -297,6 +297,7 @@ function Credentials({
               }}
               onBlur={() => checks.left('password', typed.current.password)}
               returnKeyType="go"
+              submitBehavior="submit"
               onSubmitEditing={submit}
               accessibilityLabel={t('signIn.password')}
               testID="signIn.password"

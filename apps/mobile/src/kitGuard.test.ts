@@ -538,6 +538,40 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
   });
 });
 
+describe('the signed-out forms hold their fields while a request runs (sc-20210)', () => {
+  const SIGNED_OUT = [
+    'app/sign-in.tsx',
+    'app/register.tsx',
+    'app/forgot-password.tsx',
+    'app/reset-password.tsx',
+    'app/lost-two-factor.tsx',
+    'src/components/SecondFactorStep.tsx',
+  ];
+
+  it.each(SIGNED_OUT)('%s turns no field off and lets go of hidden keys at each send', (file) => {
+    const text = readFileSync(join(...file.split('/')), 'utf8');
+    const fields = KIT_FIELDS.flatMap((name) => selfClosing(name, text));
+
+    expect(
+      fields
+        .filter((tag) => /\beditable=\{!/u.test(tag.markup))
+        .map((tag) => `${file}:${tag.line}`),
+      'Pass submitting: editable={false} drops the focus and the keyboard.',
+    ).toEqual([]);
+    expect(text).not.toMatch(/\beditable: !/u);
+    expect(text).toContain('keysStayDown();');
+    expect(
+      text
+        .split('\n')
+        .map((line, index) => ({ line, at: `${file}:${index + 1}` }))
+        .filter(({ line }) => /\.current\?\.focus\(\)/u.test(line))
+        .filter(({ line }) => !/onSubmitEditing=|\? void submit\(\) :/u.test(line))
+        .map(({ at }) => at),
+      'A check focuses through focusChecked, a server refusal through focusRefused.',
+    ).toEqual([]);
+  });
+});
+
 describe('a Password submit with the keys down keeps them down (sc-13408)', () => {
   it('lets go of a focused field before each request starts', () => {
     const lines = readFileSync(join('src', 'components', 'PasswordCard.tsx'), 'utf8').split('\n');
