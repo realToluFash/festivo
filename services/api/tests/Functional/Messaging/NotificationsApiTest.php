@@ -216,7 +216,7 @@ final class NotificationsApiTest extends ApiTestCase
 
         $this->as($stranger, 'PUT', '/api/events/' . $this->event()->getId()->toRfc4122() . '/mute', ['muted' => true]);
 
-        self::assertContains($this->statusCode(), [403, 404]);
+        self::assertSame(404, $this->statusCode());
         self::assertSame(0, Type\int()->coerce(self::connection()->fetchOne('SELECT COUNT(*) FROM event_mutes')));
     }
 
