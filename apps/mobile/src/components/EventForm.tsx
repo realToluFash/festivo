@@ -28,7 +28,6 @@ import {
   withCurrent,
 } from '@soirely/domain';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import { useNavigation } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
 import {
   type ReactNode,
@@ -108,7 +107,6 @@ export function EventForm({
   onLatest: (latest: TaggedEvent) => void;
 }) {
   const { t } = useTranslation();
-  const navigation = useNavigation();
   const locale = currentLocale();
   const editing = opened != null;
   const [from] = useState<EventTyped>(() =>
@@ -124,7 +122,7 @@ export function EventForm({
   const [status, setStatus] = useState<Status>('editing');
   const [asking, setAsking] = useState<Asking>(null);
   const [fetchingLatest, setFetchingLatest] = useState(false);
-  const leaving = useRef(false);
+  const [leaving, setLeaving] = useState(false);
   const leaveAction = useRef<(() => void) | null>(null);
   const [cover, setCover] = useState<EventCoverPhoto | null>(opened?.event.cover ?? null);
   const staged = useRef<string | null>(null);
@@ -168,15 +166,19 @@ export function EventForm({
       );
   }, [focusOn]);
 
-  // A save or a create leaves before the state saying so has rendered, so the ref decides.
-  usePreventRemove(dirty, ({ data }) => {
-    if (leaving.current) {
-      navigation.dispatch(data.action);
-      return;
-    }
-    leaveAction.current = () => navigation.dispatch(data.action);
+  const held = dirty && !leaving;
+
+  // The guard comes down before the form leaves: an action it prevents and dispatches again loops (sc-20824).
+  const lift = usePreventRemove(held, ({ repeat }) => {
+    leaveAction.current = repeat;
     setAsking('leave');
   });
+
+  function leave(go: (() => void) | null): void {
+    setLeaving(true);
+    lift();
+    go?.();
+  }
 
   useEffect(
     () => () => {
@@ -221,13 +223,13 @@ export function EventForm({
   // The frame's destinations and its switcher ask here, and a destination left this way takes the form off the stack (sc-3595).
   useEffect(
     () =>
-      dirty
+      held
         ? holdLeaving((go) => {
             leaveAction.current = go;
             setAsking('leave');
           })
         : undefined,
-    [dirty],
+    [held],
   );
 
   const types = useMemo(
@@ -338,12 +340,10 @@ export function EventForm({
             .catch((error: unknown) => markCoverRefused(created.id, coverRefusalOf(error, t)));
 
         setStatus('created');
-        leaving.current = true;
-        onCreated(created.id);
+        leave(() => onCreated(created.id));
       } else if (opened != null) {
         await api.updateEvent(opened.event.id, changesOf(opened.event, typed), opened.tag);
-        leaving.current = true;
-        onSaved('saved');
+        leave(() => onSaved('saved'));
       }
     } catch (error) {
       const outcome = sendOutcome(error, t, hosts);
@@ -364,7 +364,6 @@ export function EventForm({
 
     try {
       const latest = await api.taggedEvent(opened.event.id);
-      leaving.current = true;
       onLatest(latest);
     } catch {
       setFetchingLatest(false);
@@ -584,8 +583,7 @@ export function EventForm({
         pending={false}
         onGo={() => {
           setAsking(null);
-          leaving.current = true;
-          leaveAction.current?.();
+          leave(leaveAction.current);
         }}
         onKeep={() => setAsking(null)}
         testID="eventForm.leave"
