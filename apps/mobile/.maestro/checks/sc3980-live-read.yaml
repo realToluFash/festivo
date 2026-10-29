@@ -1,4 +1,5 @@
 # The feed and badge follow a Mark all read made in another session of the same member, with no reload (sc-3980).
+# That session is scripts/mark-all-read-elsewhere.js, so the batch passes API_URL and WEB_URL as well as EMAIL and PASSWORD.
 # The bell's count is a formatted placeholder, so its label is matched in all four languages.
 appId: host.exp.Exponent
 ---
@@ -9,7 +10,11 @@ appId: host.exp.Exponent
       text: '(?:Notifications|Notificaciones|Notificações), [0-9]+ (?:unread|sin leer|non lues?|por ler)'
     timeout: 30000
 - takeScreenshot: live-before
-# Another session of the same member marks every item read meanwhile (POST /api/notifications/read-all).
+- runScript:
+    file: ../scripts/mark-all-read-elsewhere.js
+- assertTrue:
+    condition: ${output.readAll == 200}
+    label: 'Marked all read elsewhere, answered ${output.readAll}'
 - extendedWaitUntil:
     visible:
       id: frame.bell
