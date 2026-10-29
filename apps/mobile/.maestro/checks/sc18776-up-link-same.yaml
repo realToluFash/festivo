@@ -1,4 +1,4 @@
-# Android only. sc-18776: EV's All dates by link while EV itself shows; ‹ Event (BACK) steps back to it rather than opening a second copy, so the first system back leaves EV. Pass EV (an event's id), EV_NAME (its name), BACK and ORIENT; BACK is frame.back on a phone, timeline.allDates.back on a tablet.
+# Android only. sc-18776: EV's All dates by link while EV itself shows; ‹ Event (BACK) steps back to it rather than opening a second copy, so the first system back leaves EV; that second-copy check only bites with ORIENT landscape on a tablet, since on a phone or an upright tablet the first back closes the page to the list and the second dismisses to Home past any copy. Pass EV (an event's id), EV_NAME (its name), BACK and ORIENT; BACK is frame.back on a phone, timeline.allDates.back on a tablet.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
