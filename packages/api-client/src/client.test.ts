@@ -6,6 +6,7 @@ import {
   ApiClient,
   type IssuedTokens,
   type TokenStore,
+  asNotificationRead,
   awaiting,
   phoneAwaitingCode,
   primaryEmailAddress,
@@ -3266,5 +3267,24 @@ describe("an event's venue (sc-3589)", () => {
       timeZone: 'Africa/Lagos',
     });
     expect(sent).toEqual(['GET /api/addresses/node%3A3589']);
+  });
+});
+
+describe("a read on the bell's topic (sc-3980)", () => {
+  test('is one item, or every item, with the count left', () => {
+    expect(asNotificationRead({ readId: 'n1', unreadCount: 2 })).toEqual({
+      id: 'n1',
+      unreadCount: 2,
+    });
+    expect(asNotificationRead({ readAll: true, unreadCount: 0 })).toEqual({
+      id: null,
+      unreadCount: 0,
+    });
+  });
+
+  test('is not an item published on the same topic', () => {
+    expect(
+      asNotificationRead({ id: 'n1', title: 'Hi', read: false, createdAt: '2026-10-29' }),
+    ).toBeNull();
   });
 });

@@ -54,15 +54,31 @@ export function feedWithPage<Item extends FeedItem>(
   return { feed: { ...feed, items: [...feed.items, ...added], next: page.next }, added };
 }
 
-/** After a gap in the live line, page one read again: what was published meanwhile joins the top, the pages loaded stay, and the count is the server's. */
+/** After a gap in the live line, page one read again: what was published meanwhile joins the top, a row read elsewhere meanwhile says so, the pages loaded stay, and the count is the server's. */
 export function feedWithMissed<Item extends FeedItem>(
   feed: LoadedFeed<Item>,
   page: { items: Item[]; unread: number },
 ): LoadedFeed<Item> {
   const shown = new Set(feed.items.map((item) => item.id));
   const missed = page.items.filter((item) => !shown.has(item.id));
+  const again = new Map(page.items.map((item) => [item.id, item.read]));
+  const items = feed.items.map((item) => {
+    const read = again.get(item.id);
 
-  return { ...feed, items: [...missed, ...feed.items], unread: page.unread };
+    return read == null || read === item.read ? item : { ...item, read };
+  });
+
+  return { ...feed, items: [...missed, ...items], unread: page.unread };
+}
+
+/** A read made in another of the member's sessions: the rows follow it, and the count is the one the server published with it. */
+export function feedWithLiveRead<Item extends FeedItem>(
+  feed: LoadedFeed<Item>,
+  read: { id: string | null; unreadCount: number },
+): LoadedFeed<Item> {
+  const followed = read.id == null ? feedAllRead(feed) : feedWithRead(feed, read.id);
+
+  return { ...followed, unread: read.unreadCount };
 }
 
 /** Mute this event is one switch per event, so every item of that event follows it at once, in the categories the server marks. */

@@ -6,6 +6,7 @@ import {
   badgeOf,
   feedAllRead,
   feedWithArrival,
+  feedWithLiveRead,
   feedWithMissed,
   feedWithMute,
   feedWithPage,
@@ -69,6 +70,28 @@ describe('the bell feed (sc-3980)', () => {
     expect(after.items.map((shown) => shown.id)).toEqual(['new', 'b', 'a', 'older']);
     expect(after.unread).toBe(4);
     expect(after.next).toBe('c2');
+  });
+
+  test('after a gap, a row read in another session meanwhile shows read', () => {
+    const after = feedWithMissed(feed([item('b'), item('a'), item('older')]), {
+      items: [item('b', { read: true }), item('a', { read: true })],
+      unread: 1,
+    });
+
+    expect(after.items.map((shown) => shown.read)).toEqual([true, true, false]);
+    expect(after.unread).toBe(1);
+  });
+
+  test("a read published from another session reads the row, and the count is the server's", () => {
+    const loaded = feed([item('b'), item('a')]);
+
+    const one = feedWithLiveRead(loaded, { id: 'a', unreadCount: 7 });
+    expect(one.items.map((shown) => shown.read)).toEqual([false, true]);
+    expect(one.unread).toBe(7);
+
+    const all = feedWithLiveRead(loaded, { id: null, unreadCount: 0 });
+    expect(all.items.map((shown) => shown.read)).toEqual([true, true]);
+    expect(all.unread).toBe(0);
   });
 
   test("muting an event marks its items in the server's categories, and not another event's", () => {

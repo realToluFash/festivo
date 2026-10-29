@@ -96,7 +96,6 @@ export interface RecoveryOpening {
   open: { recovery: string; state: RecoveryState } | null;
 }
 
-/** One request on an owner's card: never a code, only what was proved and when. */
 export type NotificationCategory =
   'guest_replies' | 'messages' | 'event_day' | 'event_changes' | 'money' | 'account_security';
 
@@ -126,6 +125,12 @@ export interface NotificationFeed {
   next: string | null;
 }
 
+/** A read made in one of the member's sessions, published to the others: one item, or every item when `id` is null. */
+export interface NotificationRead {
+  id: string | null;
+  unreadCount: number;
+}
+
 /** Mute this event's saved state, with the categories whose items carry the Muted mark: the bell follows the server's rule. */
 export interface EventMute {
   muted: boolean;
@@ -143,6 +148,7 @@ export interface RealtimeSubscription {
   expiresAt: string;
 }
 
+/** One request on an owner's card: never a code, only what was proved and when. */
 export interface RecoveryRequest {
   id: string;
   name: string;
@@ -3784,6 +3790,19 @@ export function asNotificationItem(raw: unknown): NotificationItem | null {
     read: candidate.read === true,
     createdAt: candidate.createdAt,
   };
+}
+
+export function asNotificationRead(raw: unknown): NotificationRead | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const candidate = raw as Record<string, unknown>;
+  if (typeof candidate.unreadCount !== 'number') return null;
+  if (candidate.readAll === true) return { id: null, unreadCount: candidate.unreadCount };
+  if (typeof candidate.readId === 'string') {
+    return { id: candidate.readId, unreadCount: candidate.unreadCount };
+  }
+
+  return null;
 }
 
 function notificationItems(raw: unknown): NotificationItem[] {
