@@ -10,6 +10,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { runInNewContext } from 'node:vm';
 
 import { describe, expect, it } from 'vitest';
 
@@ -205,6 +206,42 @@ describe('the QA .env against compose.yaml', () => {
       expect(overrides.OAUTH_APPLE_ISSUERS.split(',')).toContain(`${sandbox}apple`);
       expect(app.EXPO_PUBLIC_API_URL).toBe(`http://127.0.0.1:${ports.API_PORT}`);
     }
+  });
+
+  it('signs in whoever the tester types, so two owners are two accounts', () => {
+    for (const tester of TESTERS) {
+      const name = qaConfig(tester).overrides.OIDC_CONFIG;
+      const sandbox = JSON.parse(
+        readFileSync(new URL(`../infra/oidc/${name}`, import.meta.url), 'utf8'),
+      );
+
+      expect(sandbox.interactiveLogin).toBe(true);
+      expect(sandbox.loginPagePath).toBe('/config/login.html');
+    }
+    expect(compose).toContain('JSON_CONFIG_PATH: /config/${OIDC_CONFIG:-oidc.json}');
+  });
+
+  it('gives each typed name the verified email a first provider sign-in needs', () => {
+    const page = readFileSync(new URL('../infra/oidc/login.html', import.meta.url), 'utf8');
+    const script = page.match(/<script>([\s\S]*?)<\/script>/)[1];
+    const signIn = (typed) => {
+      const form = { username: { value: typed }, claims: { value: '' } };
+      let submit;
+      runInNewContext(script, {
+        document: {
+          querySelector: () => ({ addEventListener: (_, handler) => (submit = handler) }),
+        },
+      });
+      submit({ target: form });
+      return JSON.parse(form.claims.value);
+    };
+
+    expect(signIn('owner-a')).toEqual({ email: 'owner-a@example.com', email_verified: true });
+    expect(signIn(' owner b ')).toEqual({ email: 'owner-b@example.com', email_verified: true });
+    expect(signIn('guest@example.org')).toEqual({
+      email: 'guest@example.org',
+      email_verified: true,
+    });
   });
 });
 

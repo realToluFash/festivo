@@ -96,6 +96,8 @@ export function qaConfig(tester = 1) {
     tester === 1 ? 'soirely-qa' : `soirely-qa${tester}`,
     tester * 10000,
   );
+  // Two test owners signing in with Google must be two accounts, not the sandbox's one user.
+  overrides.OIDC_CONFIG = 'interactive.json';
   const label = tester === 1 ? 'Soirely QA' : `Soirely QA${tester}`;
   const simulators = {
     phone: { name: `${label} iPhone`, type: 'iPhone 17 Pro' },
