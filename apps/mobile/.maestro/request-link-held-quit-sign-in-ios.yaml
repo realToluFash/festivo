@@ -1,0 +1,82 @@
+# Signed out, hold a request link from its Sign in, force-quit Expo Go, then sign in: the held link comes only from the Keychain. sc-19752.
+# Pass TOKEN, EMAIL and PASSWORD. iPhone: no hideKeyboard (sc-19584).
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible: 'Continue|Service status|Sign in'
+    timeout: 90000
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: 'This is the developer menu.*'
+    commands:
+      - tapOn: 'Continue'
+- openLink: ${METRO_URL}/--/join/${TOKEN}
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: 'Go home'
+    commands:
+      - tapOn:
+          point: '90%,49%'
+      - waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'requestToJoin.signIn'
+    timeout: 90000
+- takeScreenshot: ios-join-signed-out
+- tapOn:
+    id: 'requestToJoin.signIn'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 30000
+- takeScreenshot: ios-held-sign-in
+- stopApp: host.exp.Exponent
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible: 'Go home|Sign in'
+    timeout: 90000
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: 'Go home'
+    commands:
+      - tapOn:
+          point: '90%,49%'
+      - waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 90000
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- eraseText: 120
+- inputText: ${PASSWORD}
+- pressKey: Enter
+- runFlow:
+    when:
+      visible: 'Save Password?'
+    commands:
+      - tapOn: 'Not Now'
+- extendedWaitUntil:
+    notVisible:
+      id: 'signIn.email'
+    timeout: 30000
+- extendedWaitUntil:
+    visible: 'Ask to join.*|Home|This link does not work.*'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: ios-quit-signed-in
