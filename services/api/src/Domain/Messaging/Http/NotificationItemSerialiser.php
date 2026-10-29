@@ -62,11 +62,7 @@ final readonly class NotificationItemSerialiser
         ];
     }
 
-    /**
-     * What a muted event's items are marked in, so the bell follows a mute without a rule of its own.
-     *
-     * @return list<string>
-     */
+    /** @return list<string> */
     public static function markedWhenMuted(): array
     {
         return Vec\map(
