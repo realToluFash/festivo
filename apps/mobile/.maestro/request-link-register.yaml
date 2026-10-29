@@ -21,11 +21,8 @@ appId: host.exp.Exponent
 - inputText: ${EMAIL}
 - pressKey: Enter
 - inputText: ${PASSWORD}
-- scrollUntilVisible:
-    element:
-      id: 'register.submit'
-- tapOn:
-    id: 'register.submit'
+# The Go key, not a tap on Create account: the tap sends nothing with the keyboard up (sc-18534).
+- pressKey: Enter
 - extendedWaitUntil:
     visible:
       id: 'verifyEmail.code'

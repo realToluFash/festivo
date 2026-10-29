@@ -5,7 +5,7 @@
 # No `env:` block: a default there shadows the value passed with -e.
 appId: host.exp.Exponent
 ---
-- runFlow: sign-in-screen-language.yaml
+- runFlow: sign-in-screen-english.yaml
 - waitForAnimationToEnd:
     timeout: 5000
 - swipe:
