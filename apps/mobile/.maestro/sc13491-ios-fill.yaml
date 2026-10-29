@@ -1,0 +1,28 @@
+# iPhone, Expo Go: Sign in in LANGUAGE, an address and a password typed, Password shown. sc-13491.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 90000
+- scrollUntilVisible:
+    element: '${LANGUAGE}'
+- tapOn: '${LANGUAGE}'
+- scrollUntilVisible:
+    element:
+      id: 'signIn.email'
+    direction: UP
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- eraseText: 120
+- inputText: ${PASSWORD}
+- tapOn:
+    id: 'signIn.password.reveal'
