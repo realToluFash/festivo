@@ -330,6 +330,10 @@ describe('what checkout was asked for', () => {
     ['SC-55', { kind: 'story', id: 'sc-55' }],
     ['feature/sc-55/sign-in', { kind: 'branch', name: 'feature/sc-55/sign-in' }],
     ['origin/main', { kind: 'branch', name: 'main' }],
+    ['e58c423', { kind: 'commit', sha: 'e58c423' }],
+    ['E58C4234ABCDEF', { kind: 'commit', sha: 'e58c4234abcdef' }],
+    ['1234567', { kind: 'pr', number: 1234567 }],
+    ['deadbee/fix', { kind: 'branch', name: 'deadbee/fix' }],
     [undefined, { kind: 'branch', name: 'main' }],
   ])('%s', (arg, expected) => {
     expect(parseTarget(arg)).toEqual(expected);

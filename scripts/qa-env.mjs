@@ -213,6 +213,9 @@ export function parseTarget(arg) {
   if (pr) return { kind: 'pr', number: Number(pr[1]) };
   const story = /^sc-(\d+)$/i.exec(value);
   if (story) return { kind: 'story', id: `sc-${story[1]}` };
+  if (/^[0-9a-f]{7,40}$/i.test(value) && /[a-f]/i.test(value)) {
+    return { kind: 'commit', sha: value.toLowerCase() };
+  }
   return { kind: 'branch', name: value.replace(/^origin\//, '') };
 }
 
@@ -727,6 +730,16 @@ function checkout(args) {
     git(['fetch', '--quiet', 'origin', pr.headRefName], root);
     ref = pr.headRefOid;
     label = `#${target.number} (${pr.headRefName})`;
+  } else if (target.kind === 'commit') {
+    if (
+      capture('git', ['rev-parse', '--verify', '--quiet', `${target.sha}^{commit}`], {
+        cwd: root,
+      }) === null
+    ) {
+      throw new Error(`no commit ${target.sha} in the QA worktree after fetching origin`);
+    }
+    ref = target.sha;
+    label = target.sha;
   } else {
     const name =
       target.kind === 'story'
