@@ -73,6 +73,10 @@ export function EditableDetails({
   const currencyPicker = useRef<ViewInstance>(null);
   const timezonePicker = useRef<ViewInstance>(null);
   const languagePicker = useRef<ViewInstance>(null);
+  const countryField = useRef<ViewInstance>(null);
+  const currencyField = useRef<ViewInstance>(null);
+  const timezoneField = useRef<ViewInstance>(null);
+  const languageField = useRef<ViewInstance>(null);
   const focus = (field: OrganisationField) => {
     if (field === 'name') focusChecked(nameInput);
     else if (field === 'contactAddress') focusChecked(contactInput);
@@ -83,6 +87,12 @@ export function EditableDetails({
           currency: currencyPicker,
           timezone: timezonePicker,
           locale: languagePicker,
+        }[field],
+        {
+          countryCode: countryField,
+          currency: currencyField,
+          timezone: timezoneField,
+          locale: languageField,
         }[field],
       );
   };
@@ -195,7 +205,7 @@ export function EditableDetails({
             testID="organisation.name"
           />
         </Field>
-        <Field label={t('orgGeneral.country')} error={errors.countryCode}>
+        <Field ref={countryField} label={t('orgGeneral.country')} error={errors.countryCode}>
           <CountryPicker
             label={t('orgGeneral.country')}
             value={values.countryCode}
@@ -223,7 +233,7 @@ export function EditableDetails({
             testID="organisation.contact"
           />
         </Field>
-        <Field label={t('orgGeneral.currency')} error={errors.currency}>
+        <Field ref={currencyField} label={t('orgGeneral.currency')} error={errors.currency}>
           <ListPicker
             label={t('orgGeneral.currency')}
             placeholder={t('orgGeneral.currencyPlaceholder')}
@@ -236,7 +246,7 @@ export function EditableDetails({
             testID="organisation.currency"
           />
         </Field>
-        <Field label={t('orgGeneral.timezone')} error={errors.timezone}>
+        <Field ref={timezoneField} label={t('orgGeneral.timezone')} error={errors.timezone}>
           <ListPicker
             label={t('orgGeneral.timezone')}
             searchLabel={t('orgGeneral.searchTimezone')}
@@ -252,6 +262,7 @@ export function EditableDetails({
         <Notice tone="quiet" mark={tokens.marks.info.glyph} body={t('orgGeneral.defaultsNote')} />
 
         <Field
+          ref={languageField}
           label={t('orgGeneral.language')}
           error={errors.locale}
           help={t('orgGeneral.languageHint')}

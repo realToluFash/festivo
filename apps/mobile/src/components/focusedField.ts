@@ -30,13 +30,12 @@ export function watchFocusedField(moved: () => void): () => void {
   return () => watchers.delete(moved);
 }
 
-/** A client check is moving focus to a field: the Field it lands in is handed to each `watchCheckedField`. With `landed`, focus is already there and no focus event is coming. */
-export function fieldChecked(landed: boolean): void {
+/** A check is moving focus to a field: the Field it lands in is handed to each `watchCheckedField`. With `landed`, focus is already there and no focus event is coming; a picker, which takes none, passes its own `field`. */
+export function fieldChecked(landed: boolean, field: ViewInstance | null = focused): void {
   if (!landed) {
     checking = true;
     return;
   }
-  const field = focused;
   if (field != null) checkWatchers.forEach((checked) => checked(field));
 }
 
