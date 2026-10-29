@@ -1158,6 +1158,7 @@
   "membersScreen": {
     "proveOwner_one": "Pour donner à quelqu’un le rôle de Propriétaire de {{organisation}}, confirmez que c’est bien vous. Cela ne vous sera pas redemandé pendant une minute.",
     "proveOwner_other": "Pour donner à quelqu’un le rôle de Propriétaire de {{organisation}}, confirmez que c’est bien vous. Cela ne vous sera pas redemandé pendant {{count, number}} minutes.",
+    "proveOwner_many": "Pour donner à quelqu’un le rôle de Propriétaire de {{organisation}}, confirmez que c’est bien vous. Cela ne vous sera pas redemandé pendant {{count, number}} de minutes.",
     "title": "Membres",
     "loading": "Chargement des membres…",
     "failedLoad": "Impossible de charger les membres. Vérifiez votre connexion et réessayez.",
