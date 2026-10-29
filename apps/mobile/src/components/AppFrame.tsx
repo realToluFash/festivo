@@ -1,11 +1,12 @@
 import { type Membership, primaryEmailAddress } from '@soirely/api-client';
 import { roleName, waitingInvitations } from '@soirely/domain';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import {
   type ReactNode,
   type Ref,
   type RefObject,
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -125,12 +126,16 @@ export function AppFrame({
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
-  // Leaving by Android's Back, the going screen's header back is where TalkBack puts its focus, and says it with no name (sc-20554).
-  const [leaving, setLeaving] = useState(false);
-  useSystemBack(back?.systemBack === true, () => {
-    setLeaving(true);
-    back?.onPress();
-  });
+  useSystemBack(back?.systemBack === true, () => back?.onPress());
+  // As the screen goes, by either Back, its header back is where TalkBack puts its focus, and says it with no name (sc-20554).
+  const [inFront, setInFront] = useState(true);
+  useFocusEffect(
+    useCallback(() => {
+      setInFront(true);
+
+      return () => setInFront(false);
+    }, []),
+  );
   const [choosing, setChoosing] = useState(false);
   const [creating, setCreating] = useState(false);
   const pill = useRef<ViewInstance>(null);
@@ -198,7 +203,7 @@ export function AppFrame({
   return (
     <View
       style={[styles.root, kind === 'tabletLandscape' && styles.row]}
-      importantForAccessibility={leaving ? 'no-hide-descendants' : 'auto'}
+      importantForAccessibility={inFront ? 'auto' : 'no-hide-descendants'}
     >
       {kind === 'tabletLandscape' && (
         <Rail
