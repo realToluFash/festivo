@@ -82,6 +82,20 @@ class Testers(unittest.TestCase):
         self.assertEqual(len(listed), 1)
         self.assertIn("story 2", listed[0])
 
+    def test_in_qa_names_an_agent_s_claim_and_leaves_out_a_person_s_plan(self):
+        plan = "[@tester-one] (from qa2)\nAccounts: host@example.com\n1. Sign in\nQA claim: @tester-one"
+        stuck = [dict(ready(1), state="In QA", comments=[{"text": plan, "at": "2026-10-29T10:00"}]),
+                 dict(ready(2), state="In QA",
+                      comments=[{"text": "QA claim: qa3", "at": "2026-10-29T11:05"}])]
+        p = Digest("qa2")
+        with mock.patch.object(digests, "untaken", side_effect=lambda db, role, s: s), \
+                mock.patch.object(digests.machine, "manual_testers", return_value={}):
+            digests.tester(p, None, stuck)
+        listed = [line for line in p.lines if "story " in line]
+        self.assertEqual(len(listed), 1)
+        self.assertIn("story 2", listed[0])
+        self.assertIn("QA claim: qa3 at 11:05", listed[0])
+
     def test_a_story_a_person_owns_is_not_offered_to_an_agent_tester(self):
         owned = dict(ready(1), state="Ready For QA", owners=["member-1"], comments=[],
                      updated_at="t0")

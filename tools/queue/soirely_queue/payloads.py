@@ -240,10 +240,12 @@ def plan(p, db, row, story):
     person = W.planned_for(row["fingerprint"])
     p.add("", f"Write {person}'s test plan (soirely-qa-tester, \"A plan for a person\"). "
               "Check out the story's merge commit on their stack (`node scripts/qa-env.mjs "
-              "setup --tester lan`), make the accounts and data with the QA script, then post "
-              "the plan as one comment, its claim the last line. Do not test it yourself, and "
-              "do not claim it.")
-    p.add("", "Next:", f"  {SQ} {p.role} comment sc-{story['id']} --to {person} <<'PLAN'",
+              "--tester lan setup`, then `checkout`), make the accounts and data with the QA "
+              "script, start the app for their phone with `node scripts/qa-env.mjs --tester "
+              "lan serve`, then post the plan as one comment with the QR code it wrote "
+              "attached, its claim the last line. Do not test it yourself, and do not claim it.")
+    p.add("", "Next:", f"  {SQ} {p.role} comment sc-{story['id']} --to {person} "
+                       "--files <the QR code serve wrote> <<'PLAN'",
           "…", "", f"QA claim: {person}", "PLAN",
           f"  {SQ} {p.role} done {row['id']} --note \"<one line>\"")
 

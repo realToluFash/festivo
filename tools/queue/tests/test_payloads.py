@@ -127,6 +127,7 @@ class Plan(unittest.TestCase):
             payloads.plan(p, None, row, story)
         said = "\n".join(p.lines)
         self.assertIn("Write @tester-one's test plan", said)
-        self.assertIn("comment sc-9 --to @tester-one <<'PLAN'", said)
+        self.assertIn("comment sc-9 --to @tester-one --files", said)
+        self.assertIn("qa-env.mjs --tester lan serve", said)
         self.assertIn("\nQA claim: @tester-one\nPLAN\n", said)
         self.assertNotIn("\\n", said)
