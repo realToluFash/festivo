@@ -1,0 +1,40 @@
+# Security: Unlink Google with the password, its confirmation, and the notice after. sc-20444.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- scrollUntilVisible:
+    element:
+      id: 'ways.google.unlink'
+    timeout: 30000
+    centerElement: true
+- tapOn:
+    id: 'ways.google.unlink'
+- scrollUntilVisible:
+    element:
+      id: 'ways.password'
+    direction: UP
+    timeout: 15000
+    centerElement: true
+- takeScreenshot: prove-unlink
+- tapOn:
+    id: 'ways.password'
+- inputText: ${PW}
+- hideKeyboard
+- tapOn:
+    id: 'ways.continue'
+- scrollUntilVisible:
+    element:
+      id: 'ways.unlink'
+    centerElement: true
+- takeScreenshot: confirm-unlink
+- tapOn:
+    id: 'ways.unlink'
+- extendedWaitUntil:
+    visible:
+      id: 'ways.google.link'
+    timeout: 15000
+- scrollUntilVisible:
+    element: '.*desassociada.*'
+    direction: UP
+    centerElement: true
+- takeScreenshot: unlinked
