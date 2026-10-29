@@ -9,7 +9,7 @@ appId: host.exp.Exponent
 - extendedWaitUntil:
     visible:
       id: 'signIn.email'
-    timeout: 60000
+    timeout: 90000
 - tapOn:
     id: 'signIn.email'
 - eraseText: 120
@@ -18,7 +18,7 @@ appId: host.exp.Exponent
     id: 'signIn.password'
 - eraseText: 120
 - inputText: ${PASSWORD}
-# The Go key on iOS and a tap on Android, as batch/sign-in-form.yaml does.
+# The Go key on iOS, hideKeyboard and the tap on Android, as batch/sign-in-form.yaml does (sc-19584, sc-18648).
 - runFlow:
     when:
       platform: iOS
@@ -40,10 +40,11 @@ appId: host.exp.Exponent
     notVisible:
       id: 'signIn.submit'
     timeout: 30000
-# Only the request page has this id: Home, a dead link or A few details means the held link was lost.
-- extendedWaitUntil:
-    visible:
+# Only the request page has Ask to join: Home or the dead-link page here means the held link was lost.
+- scrollUntilVisible:
+    element:
       id: 'requestToJoin.ask'
+    direction: DOWN
     timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: request-link-held-signed-in

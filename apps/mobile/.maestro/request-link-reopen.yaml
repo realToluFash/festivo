@@ -1,28 +1,18 @@
 # Force-quit Expo Go and reopen the app on Sign in, so a held link can only come from the device's store. sc-19752.
-# A cold launch can put Expo Go's first-run notice and then its developer menu over the app: both are closed. sc-20415.
 appId: host.exp.Exponent
 ---
 - launchApp:
     appId: host.exp.Exponent
     stopApp: true
 - openLink: ${METRO_URL}/--/sign-in
-- extendedWaitUntil:
-    visible: 'This is the developer menu.*|Go home|{{t:any:signIn.title}}'
-    timeout: 90000
-- waitForAnimationToEnd
+# On iOS the cold launch lands on the app root under the developer menu: close it and open Sign in again.
 - runFlow:
     when:
-      visible: 'This is the developer menu.*'
+      platform: iOS
     commands:
-      - tapOn: 'Continue'
+      - extendedWaitUntil:
+          visible: 'Go home|Sign in'
+          timeout: 90000
       - waitForAnimationToEnd
-# The developer menu is a half-height sheet with no id on its close button, the cross at the
-# right of the sheet's header, level with the middle of an iPhone's screen.
-- runFlow:
-    when:
-      visible: 'Go home'
-    commands:
-      - tapOn:
-          point: '90%,49%'
-      - waitForAnimationToEnd
-- openLink: ${METRO_URL}/--/sign-in
+      - runFlow: expo-go-menu.yaml
+      - openLink: ${METRO_URL}/--/sign-in

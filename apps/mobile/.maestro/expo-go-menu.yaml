@@ -1,0 +1,16 @@
+# Close Expo Go's developer menu where a fresh launch opened it over the app. iOS. sc-19752.
+appId: host.exp.Exponent
+---
+- runFlow:
+    when:
+      visible: 'This is the developer menu.*'
+    commands:
+      - tapOn: 'Continue'
+- runFlow:
+    when:
+      visible: 'Go home'
+    commands:
+      # The menu's close button, beside its Go home row, as it sat on Soirely QA iPhone in the sc-19752 pass.
+      - tapOn:
+          point: '90%,49%'
+      - waitForAnimationToEnd
