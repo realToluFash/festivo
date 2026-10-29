@@ -9,7 +9,7 @@ import { fieldName } from '../kit/fields.ts';
 import { searchBesideTitle } from '../kit/keyboard.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { useLayout } from '../layout/useLayout.ts';
-import { faced } from '../theme/fonts.ts';
+import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useHeld } from './Field.tsx';
 import { LIFT } from './keyboardWatch.ts';
@@ -75,7 +75,7 @@ export function ListPicker({
         </Text>
       )}
       <TextInput
-        style={faced(styles.search)}
+        style={inputFaced(styles.search)}
         {...searching}
         placeholder={searchLabel}
         placeholderTextColor={tokens.colorInkTertiary}

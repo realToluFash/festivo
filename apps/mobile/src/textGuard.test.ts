@@ -95,7 +95,7 @@ describe('no onPress on a Text', () => {
   });
 });
 
-describe('every TextInput takes its face from faced()', () => {
+describe('every TextInput takes its face from inputFaced()', () => {
   it('holds across every screen and component', () => {
     const offenders = sources().flatMap(({ path, text }) =>
       unfacedInputAt(strip(text)).map((line) => `${path}:${line}`),
@@ -103,11 +103,11 @@ describe('every TextInput takes its face from faced()', () => {
 
     expect(
       offenders,
-      'A TextInput draws in the platform font unless its style goes through faced().',
+      'A TextInput draws in the platform font, and on Android drops Bold text once its text is handed again, unless its style goes through inputFaced().',
     ).toEqual([]);
   });
 
-  it('finds an input whose style skips faced(), written across lines', () => {
+  it('finds an input whose style skips inputFaced(), written across lines', () => {
     const raw = `
       <TextInput
         value={value}
@@ -116,14 +116,15 @@ describe('every TextInput takes its face from faced()', () => {
 
     expect(unfacedInputAt(strip(raw))).not.toEqual([]);
     expect(unfacedInputAt(strip('<TextInput value={value} />'))).not.toEqual([]);
+    expect(unfacedInputAt(strip('<TextInput style={faced([styles.input])} />'))).not.toEqual([]);
   });
 
-  it('does not fire on an input styled through faced()', () => {
-    expect(unfacedInputAt(strip('<TextInput style={faced([styles.input])} />'))).toEqual([]);
+  it('does not fire on an input styled through inputFaced()', () => {
+    expect(unfacedInputAt(strip('<TextInput style={inputFaced([styles.input])} />'))).toEqual([]);
   });
 });
 
-/** Lines where a `<TextInput` opens without `style={faced(`. */
+/** Lines where a `<TextInput` opens without `style={inputFaced(`. */
 function unfacedInputAt(text: string): number[] {
   const found: number[] = [];
   const pattern = /(?<![A-Za-z0-9_])<TextInput(?![A-Za-z0-9_])/g;
@@ -133,7 +134,8 @@ function unfacedInputAt(text: string): number[] {
     const end = text.indexOf('/>', match.index);
     const tag = end === -1 ? text.slice(match.index) : text.slice(match.index, end);
 
-    if (!/\bstyle=\{faced\(/.test(tag)) found.push(text.slice(0, match.index).split('\n').length);
+    if (!/\bstyle=\{inputFaced\(/.test(tag))
+      found.push(text.slice(0, match.index).split('\n').length);
   }
 
   return found;

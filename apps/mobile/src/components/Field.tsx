@@ -31,7 +31,7 @@ import {
   type Typing,
   valueHanded,
 } from '../kit/fields.ts';
-import { faced } from '../theme/fonts.ts';
+import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { fieldFocused, fieldLeft } from './focusedField.ts';
 import { useReadOut } from './ReadOut.tsx';
@@ -279,7 +279,7 @@ export function TextField({
       })}
       {...holding}
       ref={ref}
-      style={faced([styles.input, wrong && styles.wrong, style])}
+      style={inputFaced([styles.input, wrong && styles.wrong, style])}
       aria-invalid={wrong}
     />
   );
@@ -313,7 +313,7 @@ export function CodeField({
       })}
       {...holding}
       ref={ref}
-      style={faced([styles.code, wrong && styles.wrong, style])}
+      style={inputFaced([styles.code, wrong && styles.wrong, style])}
       aria-invalid={wrong}
     />
   );
