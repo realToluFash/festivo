@@ -7,15 +7,16 @@ import { config } from './config.ts';
 const RENEW_BEFORE_MS = 60_000;
 const RETRY_MS = 5_000;
 
-/** EventSource cannot send a header, so the subscriber token goes in the URL, renewed before it lapses. */
+/** The token goes in the URL, as EventSource sends no header; every line after the first follows a gap, renewed or not. */
 export function useLiveNotifications(
   userId: string,
   onItem: (item: NotificationItem) => void,
+  onGap: () => void,
 ): void {
-  const latest = useRef(onItem);
+  const latest = useRef({ onItem, onGap });
 
   useEffect(() => {
-    latest.current = onItem;
+    latest.current = { onItem, onGap };
   });
 
   useEffect(() => {
@@ -25,6 +26,7 @@ export function useLiveNotifications(
     let source: EventSource | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let stopped = false;
+    let opened = false;
 
     const connect = async (): Promise<void> => {
       let subscription;
@@ -42,9 +44,13 @@ export function useLiveNotifications(
 
       source?.close();
       source = new EventSource(url);
+      source.onopen = () => {
+        if (opened) latest.current.onGap();
+        opened = true;
+      };
       source.onmessage = (message: MessageEvent<string>) => {
         const item = parsed(message.data);
-        if (item != null) latest.current(item);
+        if (item != null) latest.current.onItem(item);
       };
       source.onerror = () => {
         if (source?.readyState !== EventSource.CLOSED || stopped) return;

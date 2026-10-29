@@ -60,6 +60,17 @@ export function feedWithPage<Item extends FeedItem>(
   return { feed: { ...feed, items: [...feed.items, ...added], next: page.next }, added };
 }
 
+/** After a gap in the live line, page one read again: what was published meanwhile joins the top, the pages loaded stay, and the count is the server's. */
+export function feedWithMissed<Item extends FeedItem>(
+  feed: LoadedFeed<Item>,
+  page: { items: Item[]; unread: number },
+): LoadedFeed<Item> {
+  const shown = new Set(feed.items.map((item) => item.id));
+  const missed = page.items.filter((item) => !shown.has(item.id));
+
+  return { ...feed, items: [...missed, ...feed.items], unread: page.unread };
+}
+
 /** Mute this event is one switch per event, so every item of that event follows it at once. */
 export function feedWithMute<Item extends FeedItem>(
   feed: LoadedFeed<Item>,

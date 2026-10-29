@@ -13,6 +13,7 @@ const arrivals = new Set<(arrival: Arrival) => void>();
 /** The hub publishes an item again after a refused attempt, so each is counted once. */
 const counted = new Set<string>();
 let following: { userId: string; bells: number; stop: () => void } | null = null;
+let arrivalsSoFar = 0;
 
 /** The bell's count, shared by the frame's bell and the feed, so reading an item there counts it down here. */
 export function setUnread(count: number): void {
@@ -20,9 +21,22 @@ export function setUnread(count: number): void {
   listeners.forEach((listener) => listener());
 }
 
+/** A count the server worked out before the latest arrival is one short, so it is dropped and the local count stands. */
+export function countedSince(seen: number, count: number): boolean {
+  if (seen !== arrivalsSoFar) return false;
+  setUnread(count);
+
+  return true;
+}
+
+export function arrivalsSeen(): number {
+  return arrivalsSoFar;
+}
+
 function reread(): void {
+  const seen = arrivalsSoFar;
   void api.notifications().then(
-    (feed) => setUnread(feed.unreadCount),
+    (feed) => countedSince(seen, feed.unreadCount),
     () => undefined,
   );
 }
@@ -30,6 +44,7 @@ function reread(): void {
 function arrived(item: NotificationItem): void {
   if (counted.has(item.id)) return;
   counted.add(item.id);
+  arrivalsSoFar += 1;
   if (!item.read) setUnread(unread + 1);
   arrivals.forEach((listener) => listener({ item }));
 }

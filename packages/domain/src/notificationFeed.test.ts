@@ -5,6 +5,7 @@ import {
   type LoadedFeed,
   feedAllRead,
   feedWithArrival,
+  feedWithMissed,
   feedWithMute,
   feedWithPage,
   feedWithRead,
@@ -57,6 +58,15 @@ describe('the bell feed (sc-3980)', () => {
     expect(after.items.map((shown) => shown.id)).toEqual(['live', 'a', 'b']);
     expect(added.map((shown) => shown.id)).toEqual(['b']);
     expect(after.next).toBeNull();
+  });
+
+  test('a gap reread adds what was missed on top and keeps every page loaded', () => {
+    const loaded = feed([item('b'), item('a'), item('older')], 'c2');
+    const after = feedWithMissed(loaded, { items: [item('new'), item('b'), item('a')], unread: 4 });
+
+    expect(after.items.map((shown) => shown.id)).toEqual(['new', 'b', 'a', 'older']);
+    expect(after.unread).toBe(4);
+    expect(after.next).toBe('c2');
   });
 
   test("muting an event marks its items, but not its Event day ones or another event's", () => {

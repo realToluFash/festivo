@@ -2,6 +2,7 @@ import type { NotificationItem } from '@soirely/api-client';
 import {
   feedAllRead,
   feedWithArrival,
+  feedWithMissed,
   feedWithMute,
   feedWithPage,
   feedWithRead,
@@ -35,6 +36,7 @@ export function NotificationsBell({ userId }: { userId: string }) {
   const [more, setMore] = useState<'idle' | 'loading' | 'failed'>('idle');
   const [asking, setAsking] = useState(false);
   const firstAdded = useRef<string | null>(null);
+  const arrivals = useRef(0);
   const container = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -59,7 +61,10 @@ export function NotificationsBell({ userId }: { userId: string }) {
     void load();
   }, [load]);
 
-  useLiveNotifications(userId, (item) => {
+  useLiveNotifications(userId, arrived, reread);
+
+  function arrived(item: NotificationItem): void {
+    arrivals.current += 1;
     setFeed((current) =>
       current.status === 'loaded'
         ? { ...feedWithArrival(current, item), status: 'loaded' }
@@ -70,7 +75,28 @@ export function NotificationsBell({ userId }: { userId: string }) {
         ? t('notifications.arrived', { title: item.title })
         : t('notifications.arrivedAt', { title: item.title, event: item.eventName }),
     );
-  });
+  }
+
+  function reread(): void {
+    api.notifications().then(
+      (page) =>
+        setFeed((current) =>
+          current.status === 'loaded'
+            ? {
+                ...feedWithMissed(current, { items: page.items, unread: page.unreadCount }),
+                status: 'loaded',
+              }
+            : current,
+        ),
+      () => undefined,
+    );
+  }
+
+  /** A count the server worked out before the latest arrival is one short, so it is dropped and the local count stands. */
+  function countedSince(seen: number, count: number): void {
+    if (arrivals.current !== seen) return;
+    setFeed((current) => (current.status === 'loaded' ? { ...current, unread: count } : current));
+  }
 
   useEffect(() => {
     void subscribeWebPush().catch(() => undefined);
@@ -141,11 +167,9 @@ export function NotificationsBell({ userId }: { userId: string }) {
           ? { ...feedWithRead(current, item.id), status: 'loaded' }
           : current,
       );
+      const seen = arrivals.current;
       void api.readNotification(item.id).then(
-        (answer) =>
-          setFeed((current) =>
-            current.status === 'loaded' ? { ...current, unread: answer.unreadCount } : current,
-          ),
+        (answer) => countedSince(seen, answer.unreadCount),
         () => undefined,
       );
     }
@@ -174,9 +198,9 @@ export function NotificationsBell({ userId }: { userId: string }) {
 
     setFeed({ ...feedAllRead(feed), status: 'loaded' });
     setSaid(t('notifications.allRead'));
+    const seen = arrivals.current;
     try {
-      const left = await api.readAllNotifications();
-      setFeed((current) => (current.status === 'loaded' ? { ...current, unread: left } : current));
+      countedSince(seen, await api.readAllNotifications());
     } catch {
       void load();
     }

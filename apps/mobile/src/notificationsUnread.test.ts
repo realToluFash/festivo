@@ -26,7 +26,8 @@ vi.mock('react', () => ({
   useSyncExternalStore: (_subscribe: unknown, snapshot: () => number) => snapshot(),
 }));
 
-const { setUnread, useArrivals, useUnread } = await import('./notificationsUnread.ts');
+const { arrivalsSeen, countedSince, setUnread, useArrivals, useUnread } =
+  await import('./notificationsUnread.ts');
 
 const item = {
   id: 'n1',
@@ -86,5 +87,18 @@ describe("the bell's count, live (sc-3980)", () => {
     await vi.waitFor(() => expect(useUnread()).toBe(3));
 
     expect(arrivals).toHaveBeenCalledWith('reread');
+  });
+
+  it('drops a count the server worked out before the latest arrival', () => {
+    useUnread();
+    setUnread(2);
+    const seen = arrivalsSeen();
+
+    live.followed[0]?.handlers.onItem({ ...item, id: 'n9' });
+    expect(countedSince(seen, 1)).toBe(false);
+    expect(useUnread()).toBe(3);
+
+    expect(countedSince(arrivalsSeen(), 2)).toBe(true);
+    expect(useUnread()).toBe(2);
   });
 });

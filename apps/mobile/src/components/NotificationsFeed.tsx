@@ -2,6 +2,7 @@ import type { NotificationItem } from '@soirely/api-client';
 import {
   feedAllRead,
   feedWithArrival,
+  feedWithMissed,
   feedWithMute,
   feedWithPage,
   feedWithRead,
@@ -16,7 +17,7 @@ import { markPushAsked, pushAskDue, turnOnAppPush } from '../appPush.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { SECTION_HREF } from '../kit/appNav.ts';
 import { appPlace, whenShown } from '../kit/notificationPlace.ts';
-import { setUnread, useArrivals } from '../notificationsUnread.ts';
+import { arrivalsSeen, countedSince, setUnread, useArrivals } from '../notificationsUnread.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Footnote, PrimaryButton, QuietButton } from './Buttons.tsx';
 import { MuteEventSwitch } from './MuteEventCard.tsx';
@@ -75,7 +76,18 @@ export function NotificationsFeed() {
 
   useArrivals((arrival) => {
     if (arrival === 'reread') {
-      fetchFeed();
+      api.notifications().then(
+        (page) =>
+          setFeed((current) =>
+            current.status === 'loaded'
+              ? {
+                  ...feedWithMissed(current, { items: page.items, unread: page.unreadCount }),
+                  status: 'loaded',
+                }
+              : current,
+          ),
+        () => undefined,
+      );
       return;
     }
     const { item } = arrival;
@@ -111,11 +123,14 @@ export function NotificationsFeed() {
           ? { ...feedWithRead(current, item.id), status: 'loaded' }
           : current,
       );
+      const seen = arrivalsSeen();
       void api.readNotification(item.id).then(
-        (answer) =>
+        (answer) => {
+          if (!countedSince(seen, answer.unreadCount)) return;
           setFeed((current) =>
             current.status === 'loaded' ? { ...current, unread: answer.unreadCount } : current,
-          ),
+          );
+        },
         () => undefined,
       );
     }
@@ -142,8 +157,10 @@ export function NotificationsFeed() {
 
     setFeed({ ...feedAllRead(feed), status: 'loaded' });
     setSaid({ words: t('notifications.allRead') });
+    const seen = arrivalsSeen();
     try {
       const left = await api.readAllNotifications();
+      if (!countedSince(seen, left)) return;
       setFeed((current) => (current.status === 'loaded' ? { ...current, unread: left } : current));
     } catch {
       load();

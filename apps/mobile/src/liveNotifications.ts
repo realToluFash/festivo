@@ -9,7 +9,7 @@ const RETRY_MS = 5_000;
 
 export interface LiveNotifications {
   onItem: (item: NotificationItem) => void;
-  /** After a dropped line comes back: what was published meanwhile never arrives, so it is read again. */
+  /** After every line but the first, renewed or come back: what was published between two lines never arrives. */
   onGap: () => void;
 }
 
