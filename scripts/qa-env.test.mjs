@@ -71,6 +71,8 @@ import {
   playImage,
   QA_OVERRIDES,
   QA_PORTS,
+  LAN,
+  lanAddress,
   qaConfig,
   APP_SERVICES,
   launchVideo,
@@ -244,6 +246,48 @@ describe('the QA .env against compose.yaml', () => {
       email: 'guest@example.org',
       email_verified: true,
     });
+  });
+});
+
+describe('the stack a person tests on', () => {
+  it('serves every address on the network address, on ports no other stack holds', () => {
+    const { project, urls, app, ports } = qaConfig(LAN, '192.168.1.40');
+
+    expect(project).toBe('soirely-qa-lan');
+    expect(urls.web).toBe(`http://192.168.1.40:${ports.WEB_PORT}`);
+    expect(urls.metro).toBe(`exp://192.168.1.40:${ports.METRO_PORT}`);
+    expect(app.EXPO_PUBLIC_API_URL).toBe(`http://192.168.1.40:${ports.API_PORT}`);
+    expect(app.REACT_NATIVE_PACKAGER_HOSTNAME).toBe('192.168.1.40');
+    const taken = new Set(TESTERS.flatMap((tester) => Object.values(qaConfig(tester).ports)));
+    for (const port of Object.values(ports)) {
+      expect(taken.has(port)).toBe(false);
+      expect(port).toBeLessThan(65536);
+    }
+  });
+
+  it('makes no simulators or emulators: the person brings the phone', () => {
+    expect(qaConfig(LAN, '192.168.1.40').simulated).toBe(false);
+    expect(TESTERS.every((tester) => qaConfig(tester).simulated)).toBe(true);
+  });
+
+  it('takes QA_LAN_ADDRESS, else the first private IPv4 address', () => {
+    const interfaces = {
+      lo: [{ family: 'IPv4', internal: true, address: '127.0.0.1' }],
+      docker0: [{ family: 'IPv4', internal: false, address: '8.8.8.8' }],
+      wlan0: [
+        { family: 'IPv6', internal: false, address: 'fe80::1' },
+        { family: 'IPv4', internal: false, address: '192.168.1.40' },
+      ],
+    };
+
+    expect(lanAddress({ QA_LAN_ADDRESS: '10.0.0.9' }, interfaces)).toBe('10.0.0.9');
+    expect(lanAddress({}, interfaces)).toBe('192.168.1.40');
+    expect(() => lanAddress({}, { lo: interfaces.lo })).toThrow(/QA_LAN_ADDRESS/);
+  });
+
+  it('is the tester of its own worktree', () => {
+    expect(testerOf('/home/me/soirely-qa-lan')).toBe(LAN);
+    expect(testerOf('/home/me/soirely-qa2')).toBe(2);
   });
 });
 

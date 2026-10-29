@@ -17,7 +17,7 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { homedir } from 'node:os';
+import { homedir, networkInterfaces } from 'node:os';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -40,6 +40,26 @@ export const DEVELOPMENT_PORTS = {
 };
 
 export const TESTERS = [1, 2, 3];
+
+// The stack a person on the QA team tests on, from their own phone and laptop: soirely-qa-lan,
+// served on the machine's network address. Only a plan run touches it.
+export const LAN = 'lan';
+const LAN_OFFSET = 55000;
+
+// QA_LAN_ADDRESS when it is set, else the machine's first private IPv4 address.
+export function lanAddress(env = process.env, interfaces = networkInterfaces()) {
+  if (env.QA_LAN_ADDRESS) return env.QA_LAN_ADDRESS;
+  const found = Object.values(interfaces)
+    .flat()
+    .find(
+      (entry) =>
+        entry?.family === 'IPv4' &&
+        !entry.internal &&
+        /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(entry.address),
+    );
+  if (!found) throw new Error('no private network address: set QA_LAN_ADDRESS');
+  return found.address;
+}
 
 // 127.0.0.1, not localhost: a cookie ignores the port, so a QA browser on localhost
 // would overwrite a developer's session. One host for web and API keeps SameSite.
@@ -90,15 +110,23 @@ export function stackConfig(project, offset, address = '127.0.0.1') {
 }
 
 // Tester n is its own compose project and worktree, soirely-qa<n>, with every port up n×10000.
-export function qaConfig(tester = 1) {
-  if (!TESTERS.includes(tester)) throw new Error(`no QA tester ${tester}: one of ${TESTERS}`);
+export function qaConfig(tester = 1, address = undefined) {
+  const lan = tester === LAN;
+  if (!lan && !TESTERS.includes(tester)) {
+    throw new Error(`no QA tester ${tester}: one of ${TESTERS}, ${LAN}`);
+  }
   const { project, ports, urls, overrides, app } = stackConfig(
-    tester === 1 ? 'soirely-qa' : `soirely-qa${tester}`,
-    tester * 10000,
+    lan ? 'soirely-qa-lan' : tester === 1 ? 'soirely-qa' : `soirely-qa${tester}`,
+    lan ? LAN_OFFSET : tester * 10000,
+    lan ? (address ?? lanAddress()) : '127.0.0.1',
   );
+  // The person brings the phone: setup makes none of its simulators or emulators, and their ports stay unused.
+  const slot = lan ? TESTERS.length + 1 : tester;
+  // Expo names this address in the QR code, so the person's phone reaches Metro.
+  if (lan) app.REACT_NATIVE_PACKAGER_HOSTNAME = new URL(urls.api).hostname;
   // Two test owners signing in with Google must be two accounts, not the sandbox's one user.
   overrides.OIDC_CONFIG = 'interactive.json';
-  const label = tester === 1 ? 'Soirely QA' : `Soirely QA${tester}`;
+  const label = lan ? 'Soirely QA LAN' : tester === 1 ? 'Soirely QA' : `Soirely QA${tester}`;
   const simulators = {
     phone: { name: `${label} iPhone`, type: 'iPhone 17 Pro' },
     ipad: { name: `${label} iPad`, type: 'iPad Pro 13-inch (M5)' },
@@ -109,9 +137,10 @@ export function qaConfig(tester = 1) {
     tablet: { name: `${avd}_Tablet`, device: 'pixel_tablet' },
   };
   // Inside 5554–5584, the only consoles adb finds, and clear of 5554, where one started by hand lands.
-  const emulatorPort = 5570 + 2 * tester;
+  const emulatorPort = 5570 + 2 * slot;
   return {
     tester,
+    simulated: !lan,
     project,
     ports,
     urls,
@@ -120,10 +149,10 @@ export function qaConfig(tester = 1) {
     simulators,
     emulators,
     emulatorPort,
-    chromePort: 9221 + tester,
+    chromePort: 9221 + slot,
     // Maestro's iOS driver answers every run on its port; 22087, its default, is left to a run by hand.
-    driverPort: 22087 + tester,
-    helperPort: 22190 + tester,
+    driverPort: 22087 + slot,
+    helperPort: 22190 + slot,
   };
 }
 
@@ -512,8 +541,9 @@ export function composeServices(cwd) {
 export const REBUILD = ['compose', 'up', '-d', '--build', '--remove-orphans'];
 
 export function testerOf(worktree) {
-  const match = /^soirely-qa(\d*)$/.exec(basename(worktree));
-  return match ? Number(match[1] || 1) : null;
+  const match = /^soirely-qa(\d*|-lan)$/.exec(basename(worktree));
+  if (!match) return null;
+  return match[1] === '-lan' ? LAN : Number(match[1] || 1);
 }
 
 let CONFIG = qaConfig(INSTALLED ? (testerOf(resolve(HERE, '../..')) ?? 1) : 1);
@@ -589,6 +619,11 @@ function setup() {
   const settings = join(main, '.claude/settings.local.json');
   if (existsSync(settings) && !existsSync(join(root, '.claude/settings.local.json'))) {
     copyFileSync(settings, join(root, '.claude/settings.local.json'));
+  }
+
+  if (!CONFIG.simulated) {
+    checkout(['main']);
+    return;
   }
 
   step('The simulators');
@@ -2446,7 +2481,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const argv = process.argv.slice(2);
   const flag = argv.indexOf('--tester');
   if (flag !== -1) {
-    const asked = Number(argv[flag + 1]);
+    const asked = argv[flag + 1] === LAN ? LAN : Number(argv[flag + 1]);
     if (INSTALLED && asked !== CONFIG.tester) {
       console.error(`this harness belongs to tester ${CONFIG.tester}, not ${argv[flag + 1]}`);
       process.exit(2);
