@@ -136,3 +136,12 @@ Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each co
 - **On a tablet, a section's title is also a row in the split list** beside every settings
   page, so a wait that ends on `{{t:settings.organisation}}` ends on the list, not the page.
   Wait on a line only the page has, such as its intro or a field's `testID`.
+- **On a tablet, swipe the detail pane to scroll a settings page.** A page-wide
+  `scrollUntilVisible` does not move it, and can pass with the line never on screen. Swipe
+  at 85% across in a `repeat` until it shows, then `assertVisible` it, as
+  `checks/sc18978-ownership-transfer-note-provider-tablet.yaml` does.
+- **An Android tablet whose natural orientation is landscape swaps `setOrientation`.**
+  Soirely_QA2_Tablet's rotation 0 is 2560x1600, so `PORTRAIT` gives landscape and
+  `LANDSCAPE_LEFT` portrait, and a batch there runs in landscape. A check meant for one
+  orientation on it sets it with `adb shell wm user-rotation lock 0` (landscape) or `lock 1`
+  (portrait).
