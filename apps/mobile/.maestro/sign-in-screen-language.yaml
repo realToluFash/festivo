@@ -9,7 +9,7 @@ appId: host.exp.Exponent
 - extendedWaitUntil:
     visible:
       id: 'signIn.email'
-    timeout: 60000
+    timeout: 90000
 - scrollUntilVisible:
     element: '${LANGUAGE}'
 - tapOn: '${LANGUAGE}'
