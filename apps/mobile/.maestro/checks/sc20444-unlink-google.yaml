@@ -19,9 +19,20 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'ways.password'
 - inputText: ${PW}
-- hideKeyboard
-- tapOn:
-    id: 'ways.continue'
+# On iOS the password field's Return submits the prove step; hideKeyboard can scroll an
+# iPad's form so the tap misses (sc-19359). On Android Enter can type into the field.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - pressKey: Enter
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+      - tapOn:
+          id: 'ways.continue'
 - scrollUntilVisible:
     element:
       id: 'ways.unlink'
@@ -34,7 +45,7 @@ appId: host.exp.Exponent
       id: 'ways.google.link'
     timeout: 15000
 - scrollUntilVisible:
-    element: '.*desassociada.*'
+    element: '{{t:waysCard.unlinkedDone}}'
     direction: UP
     centerElement: true
 - takeScreenshot: unlinked
