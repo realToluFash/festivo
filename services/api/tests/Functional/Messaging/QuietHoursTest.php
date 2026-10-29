@@ -173,11 +173,7 @@ final class QuietHoursTest extends MessagingTestCase
         $this->holdOvernight('test.push.money', 'bill');
 
         self::at('2026-10-30 08:00');
-        self::connection()->executeStatement(
-            "UPDATE notification_deliveries SET claimed_at = :now, claimed_until = :lease WHERE channel = 'push'",
-            ['now' => self::now(), 'lease' => self::now()->modify('+60 seconds')],
-            ['now' => Types::DATETIME_IMMUTABLE, 'lease' => Types::DATETIME_IMMUTABLE],
-        );
+        $this->claimedByAnotherWorkerFor60Seconds();
         self::runUntilIdle();
 
         self::assertSame([], self::pushes()->sent);
@@ -200,6 +196,7 @@ final class QuietHoursTest extends MessagingTestCase
 
         self::at('2026-10-30 08:00');
         self::runUntilIdle();
+        self::at('2026-10-30 08:05');
         self::runUntilIdle();
 
         self::assertCount(1, self::pushes()->sent);
@@ -323,11 +320,7 @@ final class QuietHoursTest extends MessagingTestCase
         $this->holdOvernight('test.push.money', 'bill');
 
         self::at('2026-10-30 06:30');
-        self::connection()->executeStatement(
-            "UPDATE notification_deliveries SET claimed_at = :now, claimed_until = :lease WHERE channel = 'push'",
-            ['now' => self::now(), 'lease' => self::now()->modify('+60 seconds')],
-            ['now' => Types::DATETIME_IMMUTABLE, 'lease' => Types::DATETIME_IMMUTABLE],
-        );
+        $this->claimedByAnotherWorkerFor60Seconds();
         $this->member->setTimezone('Asia/Tokyo');
         self::em()->flush();
         self::runUntilIdle();
@@ -372,6 +365,15 @@ final class QuietHoursTest extends MessagingTestCase
 
         self::assertSame($items, self::itemCount());
         self::assertSame([], self::pushes()->sent);
+    }
+
+    private function claimedByAnotherWorkerFor60Seconds(): void
+    {
+        self::connection()->executeStatement(
+            "UPDATE notification_deliveries SET claimed_at = :now, claimed_until = :lease WHERE channel = 'push'",
+            ['now' => self::now(), 'lease' => self::now()->modify('+60 seconds')],
+            ['now' => Types::DATETIME_IMMUTABLE, 'lease' => Types::DATETIME_IMMUTABLE],
+        );
     }
 
     private function assertNothingAt0800(string $why): void
