@@ -175,8 +175,8 @@ function liftAboveKeyboard(
   });
 }
 
-/** For a field and the button under it, spread on their View. It lifts again when an error grows the group. */
-export function useAboveKeyboard(): AboveKeyboard {
+/** For a field and the button under it, spread on their View. It lifts again when an error grows the group, unless `still`: a step closing under its opener moves down, and a lift then would scroll under TalkBack's focus (sc-18588). */
+export function useAboveKeyboard(still = false): AboveKeyboard {
   const scroll = useContext(ScreenScroll);
   const ref = useRef<ViewInstance>(null);
   const keyboardTop = useRef<number | null>(keyboardTopNow(scroll?.origin.current ?? 0));
@@ -208,7 +208,9 @@ export function useAboveKeyboard(): AboveKeyboard {
 
   return {
     ref,
-    onLayout: () => liftAboveKeyboard(scroll, ref.current, keyboardTop.current),
+    onLayout: () => {
+      if (!still) liftAboveKeyboard(scroll, ref.current, keyboardTop.current);
+    },
   };
 }
 
@@ -478,20 +480,35 @@ export function useFocusBackToOpener(
 export interface StepClose {
   /** The opener's ref, in place of `opener(key)`. */
   opener: RefCallback<ViewInstance>;
-  /** The ref of a `FocusHolder` shown while the opener is, which holds input focus in the place of an opener that cannot take it. */
-  holder: RefObject<ViewInstance | null>;
-  /** The step is closing in order, and its opener shows beside it until focus has reached it. */
+  /** The step is closing in order, and its opener shows above it until focus has reached it, so nothing above the opener moves when the step goes (sc-18588). */
   closing: boolean;
   close(): void;
 }
 
-/** Closes a step back to the opener `to` names in the steps `stepCloseSteps` gives, with input focus going `inputFocusTo` the opener, a control, or to `holder` beside a line of words; `finish` takes the step away, with what `useFocusBackToOpener` moves focus back from, or nothing when focus is already there (sc-18588). A line of words needs `holder` rendered beside it: without it nothing takes input focus, and blurring the field hands focus to the header's back row (sc-18587). */
+export interface HeldStepClose extends StepClose {
+  /** Holds input focus in the place of a line of words, which cannot take it; rendered beside the line while it shows. */
+  holder: ReactElement;
+}
+
+/** Closes a step back to the opener `to` names in the steps `stepCloseSteps` gives, with input focus going `inputFocusTo` the opener, a control, or to the `holder` it returns, beside a line of words; `finish` takes the step away, with what `useFocusBackToOpener` moves focus back from, or nothing when focus is already there (sc-18588). Without the holder rendered nothing takes input focus, and blurring the field hands focus to the header's back row (sc-18587). */
+export function useStepClose(
+  opener: (key: string) => RefCallback<ViewInstance>,
+  to: string,
+  inputFocusTo: 'opener',
+  finish: (closed: StepClosed | undefined) => void,
+): StepClose;
+export function useStepClose(
+  opener: (key: string) => RefCallback<ViewInstance>,
+  to: string,
+  inputFocusTo: 'holder',
+  finish: (closed: StepClosed | undefined) => void,
+): HeldStepClose;
 export function useStepClose(
   opener: (key: string) => RefCallback<ViewInstance>,
   to: string,
   inputFocusTo: InputFocusTo,
   finish: (closed: StepClosed | undefined) => void,
-): StepClose {
+): StepClose | HeldStepClose {
   const scroll = useContext(ScreenScroll);
   const [closing, setClosing] = useState(false);
   const started = useRef(false);
@@ -626,11 +643,15 @@ export function useStepClose(
     });
   }, [run, inputFocusTo]);
 
-  return { opener: ref, holder, closing, close };
+  const held = useMemo(() => <FocusHolder holder={holder} />, []);
+
+  return inputFocusTo === 'holder'
+    ? { opener: ref, holder: held, closing, close }
+    : { opener: ref, closing, close };
 }
 
-/** Holds input focus in the place of a closing step's opener that cannot take it, where TalkBack does not read it; rendered beside the opener, with `useStepClose`'s `holder`. */
-export function FocusHolder({ holder }: { holder: RefObject<ViewInstance | null> }) {
+/** Holds input focus where TalkBack does not read it. */
+function FocusHolder({ holder }: { holder: RefObject<ViewInstance | null> }) {
   return (
     <View ref={holder} style={styles.holder} collapsable={false} importantForAccessibility="no" />
   );

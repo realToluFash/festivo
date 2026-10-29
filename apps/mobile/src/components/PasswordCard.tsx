@@ -129,7 +129,7 @@ export function PasswordCard({
 
   return (
     <View style={frame}>
-      {stage.kind !== 'changing' ? (
+      {(stage.kind !== 'changing' || closing) && (
         <>
           <Title text={t('passwordCard.title')} />
           {stage.kind === 'atRest' && (stage.signedOut != null || stage.added != null) && (
@@ -148,23 +148,23 @@ export function PasswordCard({
           <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
             {t('passwordCard.intro')}
           </Text>
+          <SecondaryButton
+            ref={changeOpener}
+            label={t('passwordCard.change')}
+            onPress={() => setStage({ kind: 'changing' })}
+            testID="password.change"
+          />
         </>
-      ) : (
+      )}
+      {stage.kind === 'changing' && (
         <Changing
           email={email}
+          closing={closing}
           onChanged={(signedOut) => {
             setStage({ kind: 'atRest', signedOut, added: null });
             onChanged?.();
           }}
           onCancel={close}
-        />
-      )}
-      {(stage.kind !== 'changing' || closing) && (
-        <SecondaryButton
-          ref={changeOpener}
-          label={t('passwordCard.change')}
-          onPress={() => setStage({ kind: 'changing' })}
-          testID="password.change"
         />
       )}
     </View>
@@ -173,10 +173,12 @@ export function PasswordCard({
 
 function Changing({
   email,
+  closing,
   onChanged,
   onCancel,
 }: {
   email: string;
+  closing: boolean;
   onChanged: (signedOut: number) => void;
   onCancel: () => void;
 }) {
@@ -188,7 +190,7 @@ function Changing({
   const [lengthMet, setLengthMet] = useState(false);
   const [saving, setSaving] = useState(false);
   const [refusal, setRefusal] = useState<PasswordRefusal | null>(null);
-  const aboveKeyboard = useAboveKeyboard();
+  const aboveKeyboard = useAboveKeyboard(closing);
   const checks = useFormChecks(
     ['currentPassword', 'newPassword'] as const,
     (field, value) =>

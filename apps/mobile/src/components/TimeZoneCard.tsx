@@ -24,7 +24,6 @@ import { Field, focusChecked, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import {
-  FocusHolder,
   SETTLED_MS,
   type StepClosed,
   useAboveKeyboard,
@@ -112,35 +111,21 @@ export function TimeZoneCard({
         {t('timeZone.intro')}
       </Text>
 
-      {editing ? (
-        <Choosing
-          phone={kind === 'phone'}
-          zones={zones}
-          now={label}
-          onSaved={async (zone) => {
-            await onSaved();
-            setSaved(zoneLabel(zone));
-            closeSaved();
-          }}
-          onCancel={close}
-        />
-      ) : (
-        <>
-          <View style={styles.group}>
-            <Text size={tokens.typeRowTitle.size} weight="semibold">
-              {label ?? t('timeZone.unset')}
+      {(!editing || closing || savedClosing) && (
+        <View style={styles.group}>
+          <Text size={tokens.typeRowTitle.size} weight="semibold">
+            {label ?? t('timeZone.unset')}
+          </Text>
+          {timezone != null && (
+            <Text size={tokens.typeSmall.size} style={styles.secondary}>
+              {timezone.replace(/_/g, ' ')}
             </Text>
-            {timezone != null && (
-              <Text size={tokens.typeSmall.size} style={styles.secondary}>
-                {timezone.replace(/_/g, ' ')}
-              </Text>
-            )}
-          </View>
-        </>
+          )}
+        </View>
       )}
       {saved != null && (!editing || savedClosing) && (
         <>
-          <FocusHolder holder={savedHolder} />
+          {savedHolder}
           <Notice
             tone="done"
             mark={tokens.marks.done.glyph}
@@ -165,6 +150,20 @@ export function TimeZoneCard({
           testID="timeZone.change"
         />
       )}
+      {editing && (
+        <Choosing
+          phone={kind === 'phone'}
+          zones={zones}
+          now={label}
+          closing={closing || savedClosing}
+          onSaved={async (zone) => {
+            await onSaved();
+            setSaved(zoneLabel(zone));
+            closeSaved();
+          }}
+          onCancel={close}
+        />
+      )}
     </View>
   );
 }
@@ -174,12 +173,14 @@ function Choosing({
   phone,
   zones,
   now,
+  closing,
   onSaved,
   onCancel,
 }: {
   phone: boolean;
   zones: readonly TimeZoneOption[];
   now: string | null;
+  closing: boolean;
   onSaved: (zone: TimeZoneOption) => Promise<void>;
   onCancel: () => void;
 }) {
@@ -191,7 +192,7 @@ function Choosing({
   const input = useRef<TextInputInstance>(null);
   // A zone picked from the list takes the list's place, so focus goes to the field now holding it.
   useFocusOnAnswer(picked ?? undefined, input);
-  const aboveKeyboard = useAboveKeyboard();
+  const aboveKeyboard = useAboveKeyboard(closing);
   const room = useRoomAboveKeyboard();
   // With no on-screen keyboard (a hardware one), nothing lifts, so the card is brought up on opening.
   const top = useScrolledToTop();
