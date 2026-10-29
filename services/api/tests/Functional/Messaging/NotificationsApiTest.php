@@ -38,6 +38,8 @@ final class NotificationsApiTest extends ApiTestCase
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
 
+    private const array MARKED = ['guest_replies', 'messages', 'event_changes', 'money'];
+
     private User $owner;
 
     private Organisation $organisation;
@@ -219,14 +221,14 @@ final class NotificationsApiTest extends ApiTestCase
     {
         $event = $this->event();
         $path = '/api/events/' . $event->getId()->toRfc4122() . '/mute';
-        self::assertSame(['muted' => false], $this->as($this->owner, 'GET', $path));
+        self::assertSame(['muted' => false, 'markedWhenMuted' => self::MARKED], $this->as($this->owner, 'GET', $path));
 
-        self::assertSame(['muted' => true], $this->as($this->owner, 'PUT', $path, ['muted' => true]));
-        self::assertSame(['muted' => true], $this->as($this->owner, 'GET', $path));
+        self::assertSame(['muted' => true, 'markedWhenMuted' => self::MARKED], $this->as($this->owner, 'PUT', $path, ['muted' => true]));
+        self::assertSame(['muted' => true, 'markedWhenMuted' => self::MARKED], $this->as($this->owner, 'GET', $path));
         $this->notify('muted', $event);
 
         self::assertTrue(self::items($this->as($this->owner, 'GET', '/api/notifications'))[0]['muted']);
-        self::assertSame(['muted' => false], $this->as($this->owner, 'PUT', $path, ['muted' => false]));
+        self::assertSame(['muted' => false, 'markedWhenMuted' => self::MARKED], $this->as($this->owner, 'PUT', $path, ['muted' => false]));
         self::assertFalse(self::items($this->as($this->owner, 'GET', '/api/notifications'))[0]['muted']);
     }
 

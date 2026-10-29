@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Messaging\Controller;
 
 use App\Domain\Messaging\EventMuter;
+use App\Domain\Messaging\Http\NotificationItemSerialiser;
 use App\Entity\Event;
 use App\Entity\User;
 use App\Enum\ErrorCode;
@@ -35,7 +36,7 @@ final readonly class EventMuteController
     #[InEvent(Permission::EventsRead)]
     public function show(string $eventId): JsonResponse
     {
-        return new JsonResponse(['muted' => null !== $this->eventMuteRepository->findOneFor($this->user(), $this->event($eventId))]);
+        return $this->answer(null !== $this->eventMuteRepository->findOneFor($this->user(), $this->event($eventId)));
     }
 
     #[Route('/api/events/{eventId}/mute', name: 'events_mute_set', methods: ['PUT'])]
@@ -45,7 +46,12 @@ final readonly class EventMuteController
         $muted = Input::body($request, Type\shape(['muted' => Type\bool()]))['muted'];
         $this->eventMuter->set($this->user(), $this->event($eventId), $muted);
 
-        return new JsonResponse(['muted' => $muted]);
+        return $this->answer($muted);
+    }
+
+    private function answer(bool $muted): JsonResponse
+    {
+        return new JsonResponse(['muted' => $muted, 'markedWhenMuted' => NotificationItemSerialiser::markedWhenMuted()]);
     }
 
     private function event(string $id): Event

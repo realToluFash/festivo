@@ -17,6 +17,9 @@ use Psl\Vec;
 /** The bell's item shape (sc-3980 Design, #7475 and #13415): the client derives nothing, so `muted` and `eventAvailable` are answered here. */
 final readonly class NotificationItemSerialiser
 {
+    /** Event day and Account & security still push from a muted event, so nothing was held back and there is nothing to mark. */
+    private const array PUSHED_WHEN_MUTED = [NotificationCategory::EventDay, NotificationCategory::AccountSecurity];
+
     public function __construct(
         private EventMuteRepository $eventMuteRepository,
         private Connection $connection,
@@ -52,12 +55,24 @@ final readonly class NotificationItemSerialiser
             'eventId' => $item->getEventId()?->toRfc4122(),
             'eventName' => $item->getEventName(),
             'eventAvailable' => null !== $item->getEventId() && $eventAvailable,
-            // Event day still pushes when muted, so nothing was held back and there is nothing to mark.
-            'muted' => $eventMuted && !Iter\contains([NotificationCategory::EventDay, NotificationCategory::AccountSecurity], $item->getCategory()),
+            'muted' => $eventMuted && !Iter\contains(self::PUSHED_WHEN_MUTED, $item->getCategory()),
             'place' => $item->getPlace(),
             'read' => null !== $item->getReadAt(),
             'createdAt' => $item->getCreatedAt()->format(\DATE_ATOM),
         ];
+    }
+
+    /**
+     * What a muted event's items are marked in, so the bell follows a mute without a rule of its own.
+     *
+     * @return list<string>
+     */
+    public static function markedWhenMuted(): array
+    {
+        return Vec\map(
+            Vec\filter(NotificationCategory::cases(), static fn (NotificationCategory $category): bool => !Iter\contains(self::PUSHED_WHEN_MUTED, $category)),
+            static fn (NotificationCategory $category): string => $category->value,
+        );
     }
 
     /**
