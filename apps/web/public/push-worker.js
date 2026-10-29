@@ -1,5 +1,9 @@
 // Web Push for the bell (sc-3980). The API sends { title, body, place }; a click opens the place.
 
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener('push', (event) => {
   const message = event.data?.json() ?? {};
 
@@ -16,12 +20,14 @@ self.addEventListener('notificationclick', (event) => {
   const place = new URL(event.notification.data?.place ?? '/', self.location.origin).href;
 
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+    self.clients.matchAll({ type: 'window' }).then((windows) => {
       const open = windows.find((client) => new URL(client.url).origin === self.location.origin);
+      if (open == null) return self.clients.openWindow(place);
 
-      return open == null
-        ? self.clients.openWindow(place)
-        : open.navigate(place).then((client) => (client ?? open).focus());
+      return open
+        .navigate(place)
+        .then((client) => (client ?? open).focus())
+        .catch(() => self.clients.openWindow(place));
     }),
   );
 });
