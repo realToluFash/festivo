@@ -581,3 +581,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   contenu », comme « Calcul de son contenu… » (`deleteLoading`). « Si vous la supprimez », puis
   « restaurer » et « l’assistance Soirely », comme `deleteWindow`, avec un délai fixe
   « pendant 30 jours ». Le bouton est « Réessayer », comme ailleurs.
+- **29 oct. 2026. Une adresse e-mail mal saisie est refusée en une seule phrase**
+  (`forms.emailShape`, `orgGeneral.contactInvalid`, `membersScreen.emailShape`, web et app, et
+  `validation.email_invalid`, `validation.contact_address_invalid`,
+  `validation.invite_email_invalid`, sc-20577) : « Cela ne ressemble pas à une adresse e-mail.
+  Vérifiez qu’elle contient un @ et un domaine. » L’anglais est le même partout, le français
+  aussi ; « Cette adresse e-mail ne semble pas valide », sur le champ d’invitation, était l’exception.

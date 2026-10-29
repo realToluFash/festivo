@@ -522,3 +522,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `ownership.deleteRetry`, web y app, sc-16928 para sc-16866). «No se ha podido calcular lo que
   contiene», con el verbo de `deleteLoading`. Restaurar es «restaurarla», como `deleteWindow`,
   y el plazo fijo «durante 30 días». El botón es «Reintentar», como el de la pantalla Eventos.
+- **29 Oct 2026. Una dirección de correo mal escrita se rechaza con una sola frase**
+  (`forms.emailShape`, `orgGeneral.contactInvalid`, `membersScreen.emailShape`, web y app, y
+  `validation.email_invalid`, `validation.contact_address_invalid`,
+  `validation.invite_email_invalid`, sc-20577): «Eso no parece una dirección de correo
+  electrónico. Compruebe que tiene una @ y un dominio.» El inglés de todas es el mismo, así que
+  el español también; se descartaron «un correo electrónico» (es un mensaje, no una dirección) y
+  «una dirección de correo» (el glosario dice _correo electrónico_).
