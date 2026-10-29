@@ -22,6 +22,7 @@ import { basename, dirname, extname, join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
+import { crc32, deflateSync } from 'node:zlib';
 
 export const DEVELOPMENT_PORTS = {
   POSTGRES_PORT: 5432,
@@ -46,19 +47,27 @@ export const TESTERS = [1, 2, 3];
 export const LAN = 'lan';
 const LAN_OFFSET = 55000;
 
-// QA_LAN_ADDRESS when it is set, else the machine's first private IPv4 address.
+const PRIVATE = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/;
+// Docker, VMware, VPN, bridge and Apple peer-to-peer interfaces carry addresses no phone reaches.
+const VIRTUAL = /^(docker|br-|bridge|veth|vmnet|virbr|tun|tap|utun|wg|lo|awdl|llw|anpi)/;
+
+export function networkAddress(interfaces, wifi = []) {
+  const candidates = Object.entries(interfaces)
+    .filter(([name]) => !VIRTUAL.test(name))
+    .flatMap(([name, addresses]) =>
+      (addresses ?? [])
+        .filter((a) => a.family === 'IPv4' && !a.internal && PRIVATE.test(a.address))
+        .map((a) => ({ name, address: a.address })),
+    );
+  const wireless = candidates.find(({ name }) => wifi.includes(name) || /^wl/.test(name));
+  return (wireless ?? candidates[0])?.address ?? null;
+}
+
 export function lanAddress(env = process.env, interfaces = networkInterfaces()) {
   if (env.QA_LAN_ADDRESS) return env.QA_LAN_ADDRESS;
-  const found = Object.values(interfaces)
-    .flat()
-    .find(
-      (entry) =>
-        entry?.family === 'IPv4' &&
-        !entry.internal &&
-        /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(entry.address),
-    );
+  const found = networkAddress(interfaces);
   if (!found) throw new Error('no private network address: set QA_LAN_ADDRESS');
-  return found.address;
+  return found;
 }
 
 // 127.0.0.1, not localhost: a cookie ignores the port, so a QA browser on localhost
@@ -1069,16 +1078,114 @@ async function startBundler(root, env = process.env) {
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => stop(signal));
   process.on('exit', () => stop('SIGTERM'));
 
+  await bundlerUp();
+  return metro;
+}
+
+async function bundlerUp(seconds = 120) {
   const statusUrl = `http://127.0.0.1:${CONFIG.ports.METRO_PORT}/status`;
-  for (let i = 0; i < 120; i++) {
+  for (let i = 0; i < seconds; i++) {
     const answer = await fetch(statusUrl).then(
       (r) => r.text(),
       () => '',
     );
-    if (answer.includes('running')) break;
+    if (answer.includes('running')) return true;
     await pause(1000);
   }
-  return metro;
+  return false;
+}
+
+// One byte per module, as toqr gives it, drawn black on a white quiet zone.
+export function qrPng(modules, scale = 8, margin = 4) {
+  const size = Math.sqrt(modules.length);
+  const side = (size + 2 * margin) * scale;
+  const rows = Buffer.alloc(side * (side + 1), 255);
+  for (let y = 0; y < side; y++) {
+    rows[y * (side + 1)] = 0;
+    for (let x = 0; x < side; x++) {
+      const [mx, my] = [Math.floor(x / scale) - margin, Math.floor(y / scale) - margin];
+      const dark = mx >= 0 && my >= 0 && mx < size && my < size && modules[my * size + mx];
+      if (dark) rows[y * (side + 1) + 1 + x] = 0;
+    }
+  }
+  const chunk = (type, data) => {
+    const body = Buffer.concat([Buffer.from(type, 'latin1'), data]);
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(data.length);
+    const check = Buffer.alloc(4);
+    check.writeUInt32BE(crc32(body));
+    return Buffer.concat([length, body, check]);
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(side, 0);
+  header.writeUInt32BE(side, 4);
+  header[8] = 8;
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', header),
+    chunk('IDAT', deflateSync(rows)),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
+}
+
+// A person's phone opens the app from this bundler, so it outlives the plan run that starts
+// it and needs no simulator. Each serve restarts it: with no file watcher, it would go on
+// serving the commit it started on.
+async function serve() {
+  const root = qaWorktree();
+  assertQaStack(root);
+  const unit = `${CONFIG.project}-metro`;
+  const pidFile = join(root, '.qa/metro.pid');
+  const port = String(CONFIG.ports.METRO_PORT);
+  const env = bundlerEnv({ PATH: process.env.PATH, HOME: homedir() }, CONFIG.app);
+  const npx = join(dirname(process.execPath), 'npx');
+
+  step('The bundler, left running');
+  if (usesSystemd()) {
+    run('systemctl', ['--user', 'stop', unit], { optional: true });
+    run('systemd-run', [
+      '--user',
+      `--unit=${unit}`,
+      '--collect',
+      '--quiet',
+      '-p',
+      'MemoryMax=4G',
+      `--working-directory=${join(root, 'apps/mobile')}`,
+      ...Object.entries(env).map(([key, value]) => `--setenv=${key}=${value}`),
+      npx,
+      'expo',
+      'start',
+      '--port',
+      port,
+    ]);
+  } else {
+    if (existsSync(pidFile)) {
+      try {
+        process.kill(-Number(readFileSync(pidFile, 'utf8')), 'SIGTERM');
+      } catch (error) {
+        if (error.code !== 'ESRCH') throw error;
+      }
+    }
+    const log = openSync(join(root, '.qa/metro.log'), 'a');
+    const metro = spawn(npx, ['expo', 'start', '--port', port], {
+      cwd: join(root, 'apps/mobile'),
+      detached: true,
+      stdio: ['ignore', log, log],
+      env: { ...process.env, ...env },
+    });
+    writeFileSync(pidFile, String(metro.pid));
+    metro.unref();
+  }
+  if (!(await bundlerUp())) {
+    const logs = usesSystemd() ? `journalctl --user -u ${unit}` : join(root, '.qa/metro.log');
+    throw new Error(`the bundler did not answer on port ${port}: see ${logs}`);
+  }
+
+  const { toQR } = await import('toqr');
+  const qr = join(root, '.qa/expo-go-qr.png');
+  writeFileSync(qr, qrPng(toQR(CONFIG.urls.metro)));
+  const stop = usesSystemd() ? `systemctl --user stop ${unit}` : `kill -- -$(cat ${pidFile})`;
+  console.log(`\nExpo Go: ${CONFIG.urls.metro}\nQR code: ${qr}\nTo stop it: ${stop}`);
 }
 
 const LAUNCH_RECORDING = '/sdcard/soirely-launch.mp4';
@@ -2466,6 +2573,7 @@ const COMMANDS = {
   setup,
   checkout,
   status,
+  serve,
   ios,
   android,
   release,
