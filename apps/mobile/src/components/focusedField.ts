@@ -40,6 +40,11 @@ export function fieldChecked(landed: boolean): void {
   if (field != null) checkWatchers.forEach((checked) => checked(field));
 }
 
+/** A client check moved screen reader focus to a picker, which takes no focus event: its Field is handed to each `watchCheckedField` (sc-21232). */
+export function pickerChecked(field: ViewInstance | null): void {
+  if (field != null) checkWatchers.forEach((checked) => checked(field));
+}
+
 /** Calls `checked` with the Field a client check moved focus to (sc-20721). Returns the unsubscribe. */
 export function watchCheckedField(checked: (field: ViewInstance) => void): () => void {
   checkWatchers.add(checked);

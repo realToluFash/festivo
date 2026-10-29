@@ -46,3 +46,17 @@ describe('the Field a client check hands over (sc-20721)', () => {
     expect(checked).toHaveBeenCalledOnce();
   });
 });
+
+describe('the Field a client check on a picker hands over (sc-21232)', () => {
+  it('hands that Field at once, with no focus event to wait for, and leaves a later focus be', async () => {
+    const store = await freshStore();
+    const checked = vi.fn();
+    store.watchCheckedField(checked);
+    const type = field('type');
+
+    store.pickerChecked(type);
+    store.fieldFocused(field('name'));
+
+    expect(checked).toHaveBeenCalledExactlyOnceWith(type);
+  });
+});

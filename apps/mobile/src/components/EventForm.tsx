@@ -145,6 +145,11 @@ export function EventForm({
   const endPicker = useRef<ViewInstance>(null);
   const zonePicker = useRef<ViewInstance>(null);
   const currencyPicker = useRef<ViewInstance>(null);
+  const typeField = useRef<ViewInstance>(null);
+  const startField = useRef<ViewInstance>(null);
+  const endField = useRef<ViewInstance>(null);
+  const zoneField = useRef<ViewInstance>(null);
+  const currencyField = useRef<ViewInstance>(null);
   const [focusOn, setFocusOn] = useState<{ field: EventFormField } | null>(null);
 
   useEffect(() => {
@@ -162,6 +167,13 @@ export function EventForm({
           endsAt: endPicker,
           timeZone: zonePicker,
           currency: currencyPicker,
+        }[field],
+        {
+          type: typeField,
+          startsAt: startField,
+          endsAt: endField,
+          timeZone: zoneField,
+          currency: currencyField,
         }[field],
       );
   }, [focusOn]);
@@ -437,7 +449,7 @@ export function EventForm({
           />
         </Field>
 
-        <Field label={t('eventForm.type')} error={errors.type}>
+        <Field ref={typeField} label={t('eventForm.type')} error={errors.type}>
           <ListPicker
             label={t('eventForm.type')}
             placeholder={t('eventForm.typePlaceholder')}
@@ -489,6 +501,7 @@ export function EventForm({
           disabled={busy}
           readOnly={over}
           pickerRef={startPicker}
+          fieldRef={startField}
           testID="eventForm.start"
           onPick={(date, time) =>
             changeDraft('startsAt', {
@@ -509,6 +522,7 @@ export function EventForm({
           disabled={busy}
           readOnly={over}
           pickerRef={endPicker}
+          fieldRef={endField}
           testID="eventForm.end"
           onPick={(date, time) => {
             if (date !== draft.endDate) setEndChosen(true);
@@ -527,7 +541,7 @@ export function EventForm({
           {...(over ? {} : { onUseZone: (zone: string) => change('timeZone', { timeZone: zone }) })}
         />
 
-        <Field label={t('eventForm.timeZone')} error={errors.timeZone}>
+        <Field ref={zoneField} label={t('eventForm.timeZone')} error={errors.timeZone}>
           <ListPicker
             label={t('eventForm.timeZone')}
             searchLabel={t('orgGeneral.searchTimezone')}
@@ -542,6 +556,7 @@ export function EventForm({
         </Field>
 
         <Field
+          ref={currencyField}
           label={t('eventForm.currency')}
           error={errors.currency}
           help={editing ? undefined : t('eventForm.defaultsHint', { name: organisation.name })}
@@ -662,6 +677,7 @@ function Moment({
   disabled,
   readOnly,
   pickerRef,
+  fieldRef,
   testID,
   onPick,
 }: {
@@ -674,6 +690,7 @@ function Moment({
   disabled: boolean;
   readOnly: boolean;
   pickerRef: RefObject<ViewInstance | null>;
+  fieldRef: RefObject<ViewInstance | null>;
   testID: string;
   onPick: (date: string, time: string) => void;
 }) {
@@ -712,7 +729,7 @@ function Moment({
   const timeWords = time === '' ? t('eventForm.time') : formatWallClock(time, locale);
 
   return (
-    <View style={styles.momentGroup}>
+    <View ref={fieldRef} style={styles.momentGroup}>
       <View style={styles.momentHead}>
         <Text size={tokens.typeButton.size} weight="semibold">
           {label}

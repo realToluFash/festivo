@@ -63,6 +63,7 @@ export function Field({
   help,
   helpAnswer,
   children,
+  ref,
 }: {
   label: string;
   pill?: string | undefined;
@@ -75,15 +76,18 @@ export function Field({
   /** What a tap set for the help to answer it, where the tap's button went: its first line takes focus (sc-11173). */
   helpAnswer?: unknown;
   children: ReactNode;
+  /** The whole Field, which a client check failing on its picker brings into view. */
+  ref?: RefObject<ViewInstance | null> | undefined;
 }) {
-  const field = useRef<ViewInstance>(null);
+  const own = useRef<ViewInstance>(null);
+  const field = ref ?? own;
   const labelID = useId();
   const { read: helpRead } = useFocusOnAnswer<TextHandle>(helpAnswer);
   useEffect(() => {
     const mounted = field.current;
 
     return () => fieldLeft(mounted);
-  }, []);
+  }, [field]);
 
   // A control's focus and blur bubble up to here.
   return (
