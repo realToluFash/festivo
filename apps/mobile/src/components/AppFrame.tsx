@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
+import { usePushTaps } from '../appPush.ts';
 import { type WaitingInvitations, useWaitingInvitations } from '../invitations.ts';
 import { type DomainOffer, useDomainOffer } from '../joinOffers.ts';
 import { DESTINATION_HREF, type Destination, destinations } from '../kit/appNav.ts';
@@ -143,6 +144,7 @@ export function AppFrame({
   const [backRow] = useState(() => backRowHiding(setBackHidden));
   useEffect(() => backRow.stop, [backRow]);
   const signedIn = useSignedIn();
+  usePushTaps();
   const waiting = useWaitingInvitations();
   const offer = useDomainOffer();
   const count = waitingInvitations(waiting.invitations, waiting.outcomes);

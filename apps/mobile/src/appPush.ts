@@ -1,9 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+import { router } from 'expo-router';
+import { useEffect } from 'react';
 
 import { api } from './api.ts';
 import { config } from './config.ts';
+import { appPlace } from './kit/notificationPlace.ts';
 
 const ASKED = 'soirely.pushAsked';
 
@@ -38,4 +41,51 @@ export async function markPushAsked(): Promise<void> {
 export async function turnOnAppPush(): Promise<void> {
   const { granted } = await Notifications.requestPermissionsAsync();
   if (granted) await registerAppPush();
+}
+
+/** A push that arrives with the app open still shows, quietly: the bell counts the same item. */
+export function showPushInForeground(): void {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    }),
+  });
+}
+
+/** The server sends the web's path; a place the app has no screen for opens the bell. */
+export function pushedPlace(response: Notifications.NotificationResponse): string {
+  const place: unknown = response.notification.request.content.data?.place;
+
+  return appPlace(typeof place === 'string' ? place : null) ?? '/notifications';
+}
+
+let frames = 0;
+let taps: { remove: () => void } | null = null;
+
+function openPushed(response: Notifications.NotificationResponse): void {
+  if (response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
+  Notifications.clearLastNotificationResponse();
+  router.push(pushedPlace(response));
+}
+
+/** In the signed-in frame, so a tap that launched the app opens once there is a session; every screen has a frame, and they share one listener. */
+export function usePushTaps(): void {
+  useEffect(() => {
+    frames += 1;
+    if (frames === 1) {
+      const launchedBy = Notifications.getLastNotificationResponse();
+      if (launchedBy != null) openPushed(launchedBy);
+      taps = Notifications.addNotificationResponseReceivedListener(openPushed);
+    }
+
+    return () => {
+      frames -= 1;
+      if (frames > 0) return;
+      taps?.remove();
+      taps = null;
+    };
+  }, []);
 }
