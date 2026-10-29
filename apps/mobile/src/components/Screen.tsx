@@ -37,8 +37,10 @@ import {
   liftNeeded,
   type IntoView,
   offsetAboveKeyboard,
+  offsetIntoView,
   scrollInsets,
   settledOffset,
+  shownAboveKeys,
   shownEnd,
 } from '../kit/keyboard.ts';
 import {
@@ -50,7 +52,7 @@ import {
 } from '../kit/focusBack.ts';
 import { stepOpeners } from '../kit/stepOpeners.ts';
 import { tokens } from '../theme/tokens.ts';
-import { focusedField, watchFocusedField } from './focusedField.ts';
+import { focusedField, watchCheckedField, watchFocusedField } from './focusedField.ts';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import {
   LIFT,
@@ -290,6 +292,63 @@ function bringIntoView(
       if (y != null) view.scrollTo({ y, animated });
     });
   });
+}
+
+/** Brings a field wholly into the sight left above the keys; a field already there stays put. */
+function fieldIntoView(scroll: ScreenScrollView, field: ViewInstance): void {
+  const view = scroll.ref.current;
+  const content = view?.getInnerViewRef();
+  const scrollHost = view?.getNativeScrollRef();
+  if (view == null || content == null || scrollHost == null) return;
+
+  // A field in another screen's scroll fails to measure here, and that screen brings it.
+  field.measureLayout(
+    content,
+    (_x, contentY, _w, height) => {
+      scrollHost.measureInWindow((_sx, y, _sw, scrollHeight) => {
+        const keyboardTop = keyboardTopNow(scroll.origin.current);
+        const shown = shownAboveKeys(keyboardTop, { y, height: scrollHeight });
+        const at = {
+          contentY,
+          height,
+          offset: scroll.offset.current,
+          shown,
+          margin: tokens.spaceLg,
+        };
+        const to = offsetIntoView(at);
+        if (to != null) view.scrollTo({ y: to, animated: true });
+      });
+    },
+    () => {},
+  );
+}
+
+/** The Field a client check focuses comes wholly into view above the keys, again once they are up and its error has grown it (sc-20721). */
+function useCheckedFieldInView(scroll: ScreenScrollView): void {
+  useEffect(() => {
+    let cancel = () => {};
+    const unwatch = watchCheckedField((field) => {
+      cancel();
+      const bring = () => fieldIntoView(scroll, field);
+      bring();
+      // Keys that rise for the field, and Android's avoiding view shrinking under them, cover it afresh.
+      const shown = Keyboard.addListener('keyboardDidShow', bring);
+      scroll.resized.add(bring);
+      const settled = setTimeout(bring, SETTLED_MS);
+      const done = setTimeout(() => cancel(), 2 * SETTLED_MS);
+      cancel = () => {
+        shown.remove();
+        scroll.resized.delete(bring);
+        clearTimeout(settled);
+        clearTimeout(done);
+      };
+    });
+
+    return () => {
+      cancel();
+      unwatch();
+    };
+  }, [scroll]);
 }
 
 /** Brings `shown` wholly into sight, and again as far as `settledInto` once it has settled, and moves screen reader focus to `read` after `readMs`; returns what cancels the steps still to come. */
@@ -576,6 +635,7 @@ function useScreenScrollView() {
   useEffect(() => {
     origin.current = windowOrigin;
   }, [windowOrigin]);
+  useCheckedFieldInView(screenScroll);
 
   const follow = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     offset.current = event.nativeEvent.contentOffset.y;

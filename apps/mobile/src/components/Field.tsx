@@ -35,7 +35,7 @@ import {
 } from '../kit/fields.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
-import { fieldFocused, fieldLeft } from './focusedField.ts';
+import { fieldChecked, fieldFocused, fieldLeft } from './focusedField.ts';
 import { useReadOut } from './ReadOut.tsx';
 import { useFocusOnAnswer } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
@@ -246,10 +246,12 @@ export function focusRefused(field: RefObject<TextInputInstance | null>): void {
   moveScreenReaderFocus(field.current);
 }
 
-/** To the field a client check names, with the keyboard up on it. */
+/** To the field a client check names, with the keyboard up on it and the field brought into view above it. */
 export function focusChecked(field: RefObject<TextInputInstance | null>): void {
+  const focused = field.current?.isFocused() === true;
   // Android's back gesture hides the keys and leaves the field focused, and focus() skips a focused field.
-  if (field.current?.isFocused() === true && !Keyboard.isVisible()) field.current.blur();
+  if (focused && !Keyboard.isVisible()) field.current?.blur();
+  fieldChecked(focused && Keyboard.isVisible());
   field.current?.focus();
 }
 
