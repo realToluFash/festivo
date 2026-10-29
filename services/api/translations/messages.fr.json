@@ -203,8 +203,8 @@
     "validation.cover_photo_required": "Choisissez une photo de couverture.",
     "validation.cover_upload_missing": "La photo n’a pas pu être importée. Réessayez.",
     "event.delete_name_mismatch": "Saisissez {name} exactement comme indiqué pour le supprimer.",
-    "notifications.not_switchable": "Account and security emails cannot be switched off.",
-    "notifications.push_target_refused": "This device can't take notifications from Soirely.",
+    "notifications.not_switchable": "Les e-mails « Compte et sécurité » ne peuvent pas être désactivés.",
+    "notifications.push_target_refused": "Cet appareil ne peut pas recevoir de notifications de Soirely.",
     "timeline.event_starts": "{name} commence",
     "timeline.event_ends": "{name} se termine",
     "timeline.event_called_off": "Annulation : {name}"

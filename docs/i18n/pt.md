@@ -41,6 +41,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **29 Oct 2026. As notificações: o sino, Silenciar este evento e as definições** (sc-14815
+  para sc-3980, `notifications.*`, `eventMute.*`, `notificationSettings.*` web e app,
+  `messages:notifications.*`). O canal é "Push" na coluna e "notificações push" numa frase.
+  Mute é "Silenciar este evento", e a marca de uma notificação "Silenciada", ao lado de "Por
+  ler", que concordam com notificação. As categorias são nomes próprios: "Respostas dos
+  convidados", "Mensagens", "Dia do evento", "Alterações aos eventos", "Faturação" (Money:
+  pagamentos, utilização e faturas) e "Conta e segurança"; citadas numa frase, entre «». Uma
+  hora sozinha vai sem artigo ("hoje, {{time}}", "Entre {{start}} e {{end}}"), porque "às"
+  falha à 01:00. As falhas dizem já o sentido fixado pelo inglês de 29 Oct.
 - **28 Oct 2026. O evento que começou noutro dia** (sc-17870 para sc-17853, `events.startedOn`
   web e `eventsScreen.startedOn` app). "Início: {{date}} · {{time}} {{timeZone}}". `{{date}}` abre
   com o dia da semana ("terça-feira, 27/10"), que não aceita "a" e com que "na"/"no" não pode

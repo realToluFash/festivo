@@ -1645,9 +1645,9 @@
     "saved": "Saved.",
     "pushNotSaved": "Couldn't save the push switch. Try again.",
     "emailNotSaved": "Couldn't save the email switch. Try again.",
-    "couldNotLoad": "Couldn't load your notification settings.",
+    "couldNotLoad": "Your notification settings did not load.",
     "tryAgain": "Try again",
-    "pushBlocked": "Push is off on this device, so pushes won't reach you here. Turn it on in your phone's settings.",
+    "pushBlocked": "Push is off on this device, so pushes won't reach you here. Turn it on in your device's settings.",
     "quietHours": "Between {{start}} and {{end}} your time, only Event day pushes come through.",
     "category": {
       "guest_replies": "Guest replies",
@@ -1659,11 +1659,11 @@
     },
     "note": {
       "guest_replies": "Guests' replies and changes, the needs they add, and their questions.",
-      "messages": "A send that didn't reach everyone, was held for credits or was cancelled, and credits running low.",
+      "messages": "A send that did not reach everyone, was held for credits or was cancelled, and credits running low.",
       "event_day": "Your shift or call time changed, or the event changed in its last 24 hours.",
       "event_changes": "When someone else changes whether, when or where an event you are on takes place.",
       "money": "Payments due, usage at {{low}} and {{high}}, failed payments and invoices.",
-      "account_security": "Sign-ins, your password, two-factor, ownership and access. Email can't be switched off."
+      "account_security": "Sign-ins, your password, two-factor, ownership and access. Email cannot be switched off."
     }
   },
   "timeline": {
@@ -1707,7 +1707,7 @@
     "more": "More for {{title}}, {{event}}",
     "moreDone": "Done",
     "loading": "Loading notifications",
-    "couldNotLoad": "Couldn't load your notifications.",
+    "couldNotLoad": "Your notifications did not load.",
     "tryAgain": "Try again",
     "empty": "Nothing yet. Replies, changes and reminders for your events show up here.",
     "eventGone": "This event is no longer available.",

@@ -49,6 +49,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **29 Oct 2026. Las notificaciones: la campana, Silenciar este evento y la configuración**
+  (sc-14815 para sc-3980, `notifications.*`, `eventMute.*`, `notificationSettings.*` web y app,
+  `messages:notifications.*`). El canal es «Push» en la columna y «notificaciones push» en una
+  frase; nunca «avisos». Mute es «Silenciar este evento», y la marca de una notificación,
+  «Silenciada», como «No leída», porque concuerda con notificación. Las categorías son nombres
+  propios: «Respuestas de los invitados», «Mensajes», «Día del evento», «Cambios en eventos»,
+  «Facturación» (Money: pagos, uso y facturas, donde «Dinero» suena a cartera) y «Cuenta y
+  seguridad»; citadas en una frase van entre comillas. Una hora sola se escribe sin artículo
+  («hoy, {{time}}», «De {{start}} a {{end}}»), porque «a las» falla a la 1:00. Los fallos dicen
+  ya el sentido que fijó el inglés del 29 Oct, aunque cuatro líneas inglesas esperan a [dev].
 - **28 Oct 2026. El evento que empezó otro día** (sc-17870 para sc-17853, `events.startedOn` web y
   `eventsScreen.startedOn` app). «Empezó el {{date}} · {{time}} {{timeZone}}», en pareja con
   `startedToday` («Hoy · empezó a las…»). `{{date}}` abre con el día de la semana («martes, 27 oct»),

@@ -64,6 +64,20 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **29 Oct 2026. Notifications: the bell, Mute this event and Notification settings** (sc-14815
+  for sc-3980, `notifications.*`, `eventMute.*`, `notificationSettings.*` web and app,
+  `messages:notifications.*`). Settled as sc-3980 wrote it, except the failures. A load failure
+  is the house "… did not load." ("Your notifications did not load."); the API's refusals and
+  Account & security's note say "cannot", one sentence with `not_switchable`. The push-blocked
+  line explains, so it keeps "won't"; the app's says "your device's settings", since it also
+  runs on an iPad. Four web lines wait on [dev], because tests match their English, and their
+  app twins wait with them so both clients read alike: `allReadNotSaved` should read "Could not
+  mark them all read. Try again.", `muteNotSaved`/`eventMute.notSaved` "Not saved. Try again.",
+  `muteNotLoaded`/`eventMute.notLoaded` "Could not check whether this event is muted.", and
+  `pushNotSaved`/`emailNotSaved` "The push switch was not saved. Try again." (email likewise).
+  es, fr and pt are written to the settled meaning already. The categories are proper labels,
+  capitalised in running text ("only Event day pushes"); "Mute this event" is the switch, and
+  its state "Muted". "Push" is the channel, a "push" one alert.
 - **27 Oct 2026. Duplicating an event** (sc-15883 for sc-3593, `web:eventDuplicate.*`). Settled
   as sc-3593 wrote it; `DuplicateEvent.test.tsx` pins it. The act is "Duplicate", the button that
   confirms it "Create draft", and the new event is "the copy" until it exists, then "Draft". The
