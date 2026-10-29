@@ -2,16 +2,22 @@
 #
 # openLink does not remount a Home that session.yaml has scrolled down to its Signed in as
 # line, so that line counts as signed in as well as the card's heading. sc-18454.
+# An account left on onboarding's A few details cannot reach Settings, and signs out there
+# first: that screen's Signed in as line matches the Settings branch too. sc-21193.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/
 - runFlow:
     file: developer-menu.yaml
     env:
-      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}|{{t:any:status.title}}|{{t:any:signIn.title}}'
+      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}|{{t:any:completeProfile.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}'
 - extendedWaitUntil:
-    visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}|{{t:any:status.title}}|{{t:any:signIn.title}}'
+    visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}|{{t:any:completeProfile.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}'
     timeout: 60000
+- runFlow:
+    when:
+      visible: '{{t:any:completeProfile.title}}'
+    file: ../sign-out-from-complete-profile.yaml
 - runFlow:
     when:
       visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}'

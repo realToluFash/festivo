@@ -1810,7 +1810,7 @@ describe('the flows a batch runs', () => {
       }
       const signOut = readFileSync(join(target, 'batch/sign-out.yaml'), 'utf8');
       const someoneSignedIn = new RegExp(
-        `^(?:${signOut.match(/when:\s+visible: '(.*)'/)[1].replaceAll("''", "'")})$`,
+        `^(?:${signOut.match(/when:\s+visible: '(.*)'\s+commands:/)[1].replaceAll("''", "'")})$`,
       );
       const homeSettled = new RegExp(
         `^(?:${signOut.match(/extendedWaitUntil:\s+visible: '(.*)'/)[1].replaceAll("''", "'")})$`,
@@ -1823,7 +1823,19 @@ describe('the flows a batch runs', () => {
           expect(line.replace('{{email}}', 'other@soirely.test')).toMatch(homeSettled);
           expect(line.replace('{{email}}', 'other@soirely.test')).toMatch(someoneSignedIn);
         }
+        expect(catalogues[code].completeProfile.title).toMatch(homeSettled);
       }
+      const onDetails = new RegExp(
+        `^(?:${signOut.match(/when:\s+visible: '(.*)'\s+file: \.\.\/sign-out-from-complete-profile\.yaml/)[1].replaceAll("''", "'")})$`,
+      );
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        expect(catalogues[code].completeProfile.title).toMatch(onDetails);
+        expect(catalogues[code].completeProfile.title).not.toMatch(someoneSignedIn);
+      }
+      const detailsAt = signOut.indexOf('file: ../sign-out-from-complete-profile.yaml');
+      expect(detailsAt).toBeGreaterThan(-1);
+      expect(detailsAt).toBeLessThan(signOut.indexOf('openLink: ${METRO_URL}/--/settings'));
+      expect(existsSync(join(target, 'sign-out-from-complete-profile.yaml'))).toBe(true);
       expect(readFileSync(join(target, 'batch/reopen.yaml'), 'utf8')).not.toContain('{{t:');
       const sheet = "'This is the developer menu.*'";
       const decision = readFileSync(join(target, 'developer-menu-sheet.yaml'), 'utf8');
