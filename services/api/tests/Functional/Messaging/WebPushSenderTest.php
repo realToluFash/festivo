@@ -118,12 +118,26 @@ final class WebPushSenderTest extends ApiTestCase
         self::assertSame(1, self::service(Connection::class)->fetchOne('SELECT count(*) FROM push_targets'));
     }
 
-    private function registerBrowser(): void
+    #[Test]
+    public function aDeviceWhoseKeyCannotBeUsedLeavesTheOthersToBeTried(): void
+    {
+        $this->registerBrowser('https://fcm.googleapis.com/fcm/send/a-laptop-with-a-bad-key', ['p', 'a']);
+        $this->registerBrowser();
+
+        $providerId = $this->sender(new Response(201, ['Location' => 'https://fcm.googleapis.com/m/1']))->send(...$this->message(null));
+
+        self::assertSame('https://fcm.googleapis.com/m/1', $providerId);
+        self::assertCount(1, $this->requests);
+        self::assertSame(self::ENDPOINT, (string) $this->requests[0]->getUri());
+    }
+
+    /** @param ?array{string, string} $keys */
+    private function registerBrowser(string $endpoint = self::ENDPOINT, ?array $keys = null): void
     {
         $session = self::service(TokenIssuer::class)->issueFor($this->member)->sessionId;
         self::em()->flush();
-        [$publicKey, $authSecret] = self::browserKeys();
-        self::service(PushTargets::class)->register($this->member->getId(), $session, PushTargetKind::Web, self::ENDPOINT, $publicKey, $authSecret);
+        [$publicKey, $authSecret] = $keys ?? self::browserKeys();
+        self::service(PushTargets::class)->register($this->member->getId(), $session, PushTargetKind::Web, $endpoint, $publicKey, $authSecret);
     }
 
     /** @return array{string, string} the p256dh point and the auth secret, URL-safe base64 as a browser hands them over */

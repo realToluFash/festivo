@@ -22,6 +22,11 @@ final class PushTargetsTest extends ApiTestCase
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
 
+    /** An uncompressed P-256 point and a 16-byte secret, as a browser hands them over. */
+    private const string P256DH = 'BAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0-P0A';
+
+    private const string AUTH = 'AAECAwQFBgcICQoLDA0ODw';
+
     private const string ENDPOINT = 'https://fcm.googleapis.com/fcm/send/abc123';
 
     /** @mago-expect lint:no-literal-password a made-up token */
@@ -46,15 +51,14 @@ final class PushTargetsTest extends ApiTestCase
         $laptop = $this->signIn('both@example.com');
         $phone = $this->signIn('both@example.com');
 
-        $this->request($laptop, 'PUT', ['kind' => 'web', 'address' => self::ENDPOINT, 'keys' => ['p256dh' => 'p', 'auth' => 'a']]);
+        $this->request($laptop, 'PUT', ['kind' => 'web', 'address' => self::ENDPOINT, 'keys' => ['p256dh' => self::P256DH, 'auth' => self::AUTH]]);
         self::assertSame(204, $this->client->getResponse()->getStatusCode());
         $this->request($phone, 'PUT', ['kind' => 'expo', 'address' => self::TOKEN]);
         self::assertSame(204, $this->client->getResponse()->getStatusCode());
 
-        // @mago-expect lint:no-literal-password made-up keys
         self::assertSame(
             [
-                ['kind' => 'web', 'address' => self::ENDPOINT, 'session_id' => $laptop['sessionId'], 'public_key' => 'p', 'auth_secret' => 'a'],
+                ['kind' => 'web', 'address' => self::ENDPOINT, 'session_id' => $laptop['sessionId'], 'public_key' => self::P256DH, 'auth_secret' => self::AUTH],
                 ['kind' => 'expo', 'address' => self::TOKEN, 'session_id' => $phone['sessionId'], 'public_key' => null, 'auth_secret' => null],
             ],
             $this->targets(),
@@ -67,7 +71,7 @@ final class PushTargetsTest extends ApiTestCase
         $this->account('out@example.com');
         $laptop = $this->signIn('out@example.com');
         $phone = $this->signIn('out@example.com');
-        $this->request($laptop, 'PUT', ['kind' => 'web', 'address' => self::ENDPOINT, 'keys' => ['p256dh' => 'p', 'auth' => 'a']]);
+        $this->request($laptop, 'PUT', ['kind' => 'web', 'address' => self::ENDPOINT, 'keys' => ['p256dh' => self::P256DH, 'auth' => self::AUTH]]);
         $this->request($phone, 'PUT', ['kind' => 'expo', 'address' => self::TOKEN]);
 
         $this->client->request('POST', '/api/auth/logout', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode([
@@ -97,9 +101,12 @@ final class PushTargetsTest extends ApiTestCase
     /** @return iterable<string, array{array<string, mixed>}> */
     public static function refused(): iterable
     {
-        yield 'a host that is no push service' => [['kind' => 'web', 'address' => 'https://169.254.169.254/latest', 'keys' => ['p256dh' => 'p', 'auth' => 'a']]];
-        yield 'a push service over http' => [['kind' => 'web', 'address' => 'http://fcm.googleapis.com/fcm/send/abc', 'keys' => ['p256dh' => 'p', 'auth' => 'a']]];
-        yield 'a host that only ends like one' => [['kind' => 'web', 'address' => 'https://evilfcm.googleapis.com.example/x', 'keys' => ['p256dh' => 'p', 'auth' => 'a']]];
+        yield 'a host that is no push service' => [['kind' => 'web', 'address' => 'https://169.254.169.254/latest', 'keys' => ['p256dh' => self::P256DH, 'auth' => self::AUTH]]];
+        yield 'a push service over http' => [['kind' => 'web', 'address' => 'http://fcm.googleapis.com/fcm/send/abc', 'keys' => ['p256dh' => self::P256DH, 'auth' => self::AUTH]]];
+        yield 'a host that only ends like one' => [['kind' => 'web', 'address' => 'https://evilfcm.googleapis.com.example/x', 'keys' => ['p256dh' => self::P256DH, 'auth' => self::AUTH]]];
+        yield 'a key that is no P-256 point' => [['kind' => 'web', 'address' => self::ENDPOINT, 'keys' => ['p256dh' => 'p', 'auth' => self::AUTH]]];
+        yield 'a secret that is not 16 bytes' => [['kind' => 'web', 'address' => self::ENDPOINT, 'keys' => ['p256dh' => self::P256DH, 'auth' => 'a']]];
+        yield 'a key that is not base64' => [['kind' => 'web', 'address' => self::ENDPOINT, 'keys' => ['p256dh' => '!!!', 'auth' => self::AUTH]]];
         yield 'a subscription without its keys' => [['kind' => 'web', 'address' => self::ENDPOINT]];
         yield 'no Expo token' => [['kind' => 'expo', 'address' => 'not-a-token']];
     }

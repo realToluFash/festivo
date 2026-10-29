@@ -8,7 +8,9 @@ use App\Domain\Messaging\Interfaces\PushServiceInterface;
 use App\Domain\Messaging\Model\PushTarget;
 use App\Domain\Messaging\Model\RenderedNotification;
 use App\Enum\PushTargetKind;
+use ErrorException;
 use GuzzleHttp\HandlerStack;
+use InvalidArgumentException;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
 use Psl\Json;
@@ -39,15 +41,21 @@ final readonly class VapidWebPush implements PushServiceInterface
 
     public function push(PushTarget $target, RenderedNotification $notification, ?string $collapseKey): ?string
     {
-        $report = $this->client()->sendOneNotification(
-            Subscription::create([
-                'endpoint' => $target->address,
-                'keys' => ['p256dh' => $target->publicKey ?? '', 'auth' => $target->authSecret ?? ''],
-                'contentEncoding' => 'aes128gcm',
-            ]),
-            Json\encode(['title' => $notification->subject, 'body' => $notification->body, 'place' => $notification->place]),
-            null === $collapseKey ? [] : ['topic' => self::topic($collapseKey)],
-        );
+        $client = $this->client();
+
+        try {
+            $report = $client->sendOneNotification(
+                Subscription::create([
+                    'endpoint' => $target->address,
+                    'keys' => ['p256dh' => $target->publicKey ?? '', 'auth' => $target->authSecret ?? ''],
+                    'contentEncoding' => 'aes128gcm',
+                ]),
+                Json\encode(['title' => $notification->subject, 'body' => $notification->body, 'place' => $notification->place]),
+                null === $collapseKey ? [] : ['topic' => self::topic($collapseKey)],
+            );
+        } catch (InvalidArgumentException|ErrorException $unusable) {
+            throw new RuntimeException('Web Push could not encrypt for this device.', previous: $unusable);
+        }
 
         if ($report->isSubscriptionExpired()) {
             return null;

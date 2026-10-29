@@ -12,10 +12,13 @@ use App\Enum\PushTargetKind;
 use App\Http\Access\Policy\Authenticated;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
+use Psl\Encoding;
+use Psl\Encoding\Base64;
 use Psl\Iter;
 use Psl\Regex;
 use Psl\Str;
 use Psl\Type;
+use SensitiveParameter;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -31,6 +34,10 @@ final readonly class PushTargetsController
     private const array WEB_PUSH_HOSTS = ['fcm.googleapis.com', 'updates.push.services.mozilla.com', 'push.apple.com', 'notify.windows.com'];
 
     private const int ADDRESS_LENGTH = 2048;
+
+    private const int PUBLIC_KEY_BYTES = 65;
+
+    private const int AUTH_SECRET_BYTES = 16;
 
     public function __construct(
         private Security $security,
@@ -60,7 +67,7 @@ final readonly class PushTargetsController
         $session = $this->callerSession->chain() ?? throw new ApiException(ErrorCode::Unauthenticated, 'access.sign_in');
         $keys = $body['keys'] ?? null;
         $acceptable = Str\length($body['address']) <= self::ADDRESS_LENGTH && match ($body['kind']) {
-            PushTargetKind::Web => null !== $keys && self::isWebPushEndpoint($body['address']),
+            PushTargetKind::Web => null !== $keys && self::isWebPushEndpoint($body['address']) && self::isWebPushKeys($keys['p256dh'], $keys['auth']),
             PushTargetKind::Expo => null === $keys && Regex\matches($body['address'], '/^Expo(nent)?PushToken\[[^\]]+\]$/'),
         };
 
@@ -75,6 +82,24 @@ final readonly class PushTargetsController
         $this->pushTargets->register($this->user()->getId(), $session, $body['kind'], $body['address'], $keys['p256dh'] ?? null, $keys['auth'] ?? null);
 
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+    }
+
+    /** What the browser's encryption needs: an uncompressed P-256 point and a 16-byte secret, base64url. */
+    private static function isWebPushKeys(string $publicKey, #[SensitiveParameter] string $authSecret): bool
+    {
+        $point = self::decoded($publicKey);
+
+        return null !== $point && self::PUBLIC_KEY_BYTES === Str\Byte\length($point) && Str\Byte\starts_with($point, "\x04")
+            && self::AUTH_SECRET_BYTES === Str\Byte\length(self::decoded($authSecret) ?? '');
+    }
+
+    private static function decoded(#[SensitiveParameter] string $base64Url): ?string
+    {
+        try {
+            return Base64\decode(Str\trim_right($base64Url, '='), Base64\Variant::UrlSafe, false);
+        } catch (Encoding\Exception\ExceptionInterface) {
+            return null;
+        }
     }
 
     private static function isWebPushEndpoint(string $address): bool
