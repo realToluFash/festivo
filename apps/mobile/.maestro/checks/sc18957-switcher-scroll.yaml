@@ -1,4 +1,4 @@
-# Your organisations from the frame: its top, part way down, and its foot. sc-18957.
+# Your organisations from the frame: its top, part way down, and its foot. sc-18957. Needs an account whose organisations overflow the card, as qa3 ran it: 11 organisations and an invitation upright, 3 and an invitation on its side. With fewer the card fits, nothing scrolls, and middle and foot repeat top.
 appId: host.exp.Exponent
 ---
 - runFlow:
