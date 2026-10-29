@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  fieldToBlur,
   focusBackMs,
   INPUT_FOCUS_TAKEN_MS,
   stepCloseSteps,
@@ -35,7 +36,7 @@ describe('a step closing back to its opener', () => {
   it('on Android with TalkBack on, gives input focus to a holder TalkBack does not read before the keys go down, and moves TalkBack’s focus to the opener once their scroll has landed, before the step goes (sc-18588, sc-18587)', () => {
     expect(stepCloseSteps('android', true, SETTLED_MS)).toEqual([
       { do: 'showOpener' },
-      { do: 'takeInputFocus', atMs: INPUT_FOCUS_TAKEN_MS },
+      { do: 'takeInputFocus', atMs: INPUT_FOCUS_TAKEN_MS, to: 'holder' },
       { do: 'putKeysDown' },
       { do: 'settleOpener', into: 'outOfSight' },
       { do: 'finish', focusBack: false, atMs: SETTLED_MS + TALKBACK_FOCUS_TAKEN_MS },
@@ -52,5 +53,19 @@ describe('a step closing back to its opener', () => {
     expect(stepCloseSteps('ios', true, SETTLED_MS)).toEqual([
       { do: 'finish', focusBack: true, atMs: 0 },
     ]);
+  });
+});
+
+describe('the field a closing step blurs to put the keys down', () => {
+  it('is the one holding input focus', () => {
+    expect(fieldToBlur('new password', 'current password')).toBe('new password');
+  });
+
+  it('is the one that raised the keys once it has given input focus up, which leaves them up (sc-18588)', () => {
+    expect(fieldToBlur(null, 'current password')).toBe('current password');
+  });
+
+  it('is none when no field raised the keys', () => {
+    expect(fieldToBlur(null, null)).toBeNull();
   });
 });

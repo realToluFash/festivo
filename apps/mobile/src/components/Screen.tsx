@@ -43,6 +43,7 @@ import {
 } from '../kit/keyboard.ts';
 import {
   type FocusBackFrom,
+  fieldToBlur,
   focusBackMs,
   type StepCloseStep,
   stepCloseSteps,
@@ -480,7 +481,7 @@ export function useStepClose(
             break;
           }
           if (step.do === 'takeInputFocus') {
-            inputFocus.current = holder.current;
+            inputFocus.current = step.to === 'holder' ? holder.current : view.current;
             inputFocus.current?.setNativeProps({ hasTVPreferredFocus: true });
             const taken = setTimeout(() => runFrom(steps.slice(at + 1)), step.atMs);
             cancels.push(() => clearTimeout(taken));
@@ -547,7 +548,7 @@ export function useStepClose(
   const close = useCallback(() => {
     if (started.current) return;
     started.current = true;
-    field.current = TextInput.State.currentlyFocusedInput() ?? raisedBy.current;
+    field.current = fieldToBlur(TextInput.State.currentlyFocusedInput(), raisedBy.current);
 
     let gone = false;
     cancel.current = () => {

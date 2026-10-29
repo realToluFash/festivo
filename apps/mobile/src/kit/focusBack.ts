@@ -19,10 +19,10 @@ export function focusBackMs(os: string, settledMs: number, from: FocusBackFrom):
 /** How long the holder is given to take input focus from the field before the keys go down. */
 export const INPUT_FOCUS_TAKEN_MS = TALKBACK_FOCUS_BACK_MS;
 
-/** A step in closing a step back to its opener. `takeInputFocus` gives input focus to a holder TalkBack does not read and waits `atMs` for it to land; `putKeysDown` waits until the keys are down and the scroll they move has landed; each later `atMs` counts from there, or from the close when nothing waits. `settleOpener` brings the opener `into` sight and moves screen reader focus to it once the scroll has landed. `finish` takes the step away, and with `focusBack` sends focus after it to the opener. */
+/** A step in closing a step back to its opener. `takeInputFocus` gives input focus `to` the opener or to a holder TalkBack does not read, and waits `atMs` for it to land; `putKeysDown` waits until the keys are down and the scroll they move has landed; each later `atMs` counts from there, or from the close when nothing waits. `settleOpener` brings the opener `into` sight and moves screen reader focus to it once the scroll has landed. `finish` takes the step away, and with `focusBack` sends focus after it to the opener. */
 export type StepCloseStep =
   | { do: 'showOpener' }
-  | { do: 'takeInputFocus'; atMs: number }
+  | { do: 'takeInputFocus'; atMs: number; to: 'opener' | 'holder' }
   | { do: 'putKeysDown' }
   | { do: 'settleOpener'; into: IntoView }
   | { do: 'finish'; focusBack: boolean; atMs: number };
@@ -37,9 +37,17 @@ export function stepCloseSteps(
 
   return [
     { do: 'showOpener' },
-    { do: 'takeInputFocus', atMs: INPUT_FOCUS_TAKEN_MS },
+    { do: 'takeInputFocus', atMs: INPUT_FOCUS_TAKEN_MS, to: 'holder' },
     { do: 'putKeysDown' },
     { do: 'settleOpener', into: 'outOfSight' },
     { do: 'finish', focusBack: false, atMs: settledMs + TALKBACK_FOCUS_TAKEN_MS },
   ];
+}
+
+/** The field whose blur puts the keys down when a step closes: the one holding input focus now, or else the one that raised the keys, which leaves them up once it has given input focus up (sc-18588). */
+export function fieldToBlur<Field>(
+  focusedNow: Field | null | undefined,
+  raisedTheKeys: Field | null,
+): Field | null {
+  return focusedNow ?? raisedTheKeys;
 }
