@@ -1,5 +1,6 @@
 # Signed out, open a request link and create an account, then force-quit at the code screen. sc-562.
 # Pass TOKEN, NAME, EMAIL and PASSWORD. request-link-register-dead.yaml carries on (sc-11741).
+# iPhone only: on Android the Enter can type into the field instead of submitting (sc-18648).
 appId: host.exp.Exponent
 ---
 - launchApp:
@@ -21,11 +22,8 @@ appId: host.exp.Exponent
 - inputText: ${EMAIL}
 - pressKey: Enter
 - inputText: ${PASSWORD}
-- scrollUntilVisible:
-    element:
-      id: 'register.submit'
-- tapOn:
-    id: 'register.submit'
+# The Go key, not a tap on Create account: the tap sends nothing with the keyboard up (sc-18534).
+- pressKey: Enter
 - extendedWaitUntil:
     visible:
       id: 'verifyEmail.code'
