@@ -513,11 +513,13 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
     'PhoneEntry.tsx',
     'phone.tsx',
     'complete-profile.tsx',
+    'verify-email.tsx',
+    'verify-phone.tsx',
   ];
 
   it.each(HELD_FORMS)('%s holds its fields rather than disabling them', (file) => {
     const form = sources(['src/components', 'app']).find(({ path }) => path.endsWith(`/${file}`));
-    const fields = [...KIT_FIELDS, 'PhoneEntry'].flatMap((name) =>
+    const fields = [...KIT_FIELDS, 'PhoneEntry', 'CodeForm'].flatMap((name) =>
       selfClosing(name, form?.text ?? ''),
     );
 
@@ -528,7 +530,8 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
     ).toEqual([]);
     expect(
       fields
-        .filter((tag) => tag.markup.includes('onSubmitEditing={() => void'))
+        .filter((tag) => /\bonSubmitEditing=/u.test(tag.markup))
+        .filter((tag) => !/onSubmitEditing=\{\(\) => \w+\.current\?\.focus\(\)\}/u.test(tag.markup))
         .filter((tag) => !tag.markup.includes('submitBehavior="submit"'))
         .map((tag) => `${file}:${tag.line}`),
       'A field that submits the form keeps its focus on return.',
@@ -552,6 +555,58 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
         .map(({ at }) => at),
       'Drop the keys only through dropsKeysAfter, or as a step a success opens mounts: sc-9442 is the one exception to sc-9471.',
     ).toEqual([]);
+  });
+});
+
+describe('a refused code focuses its field through focusChecked (sc-20209)', () => {
+  it('on Check your email, from its checks', () => {
+    expect(readFileSync(join('app', 'verify-email.tsx'), 'utf8')).toMatch(
+      /\(\) => focusChecked\(codeInput\),/u,
+    );
+  });
+
+  it('on Check your messages, before the code check returns', () => {
+    expect(readFileSync(join('app', 'verify-phone.tsx'), 'utf8')).toMatch(
+      /if \(problem != null\) \{[^}]*\);\s*focusChecked\(codeInput\);\s*return;/u,
+    );
+  });
+});
+
+describe('a second return key while the request runs sends nothing (sc-20209)', () => {
+  it.each([
+    ['src/components/ContactsCard.tsx', /^\s*setSending\(true\);/u, 'sending', 2],
+    ['app/phone.tsx', /^\s*setSending\(true\);/u, 'sending', 1],
+    ['app/complete-profile.tsx', /^\s*setSaving\(true\);/u, 'saving', 2],
+  ] satisfies [string, RegExp, string, number][])(
+    '%s returns before each request while one runs',
+    (file, start, flag, count) => {
+      const lines = readFileSync(join(...file.split('/')), 'utf8').split('\n');
+      const unguarded = lines.flatMap((line, index) => {
+        if (!start.test(line)) return [];
+        const header = lines.findLastIndex(
+          (above, at) => at < index && /^\s*(async )?function \w+\(/u.test(above),
+        );
+
+        return new RegExp(`^\\s*if \\(${flag}\\b.*\\) return;$`, 'u').test(lines[header + 1] ?? '')
+          ? [{ guarded: true }]
+          : [{ guarded: false, at: `${file}:${index + 1}` }];
+      });
+
+      expect(unguarded).toHaveLength(count);
+      expect(unguarded.filter(({ guarded }) => !guarded)).toEqual([]);
+    },
+  );
+
+  it('CodeForm.tsx, for Check your email and Check your messages', () => {
+    const field = selfClosing(
+      'CodeField',
+      readFileSync(join('src', 'components', 'CodeForm.tsx'), 'utf8'),
+    );
+
+    expect(field).toHaveLength(1);
+    expect(field[0]?.markup).toMatch(
+      /onSubmitEditing=\{\(\) => \{\s*if \(!verifying\) onVerify\(/u,
+    );
   });
 });
 
