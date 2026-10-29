@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { TEXT_SCALE_LAID_OUT } from '../src/components/textScaleLaidOutEvent.ts';
 import { withFontScaleForwarded, withTextChangesHandled } from './withFontScaleKept.ts';
 
 const ACTIVITY = `package com.soirely.app
@@ -69,8 +70,9 @@ describe('withFontScaleForwarded', () => {
 
   it("puts the root view in a parent that reads the metrics again before it is measured or laid out, when they no longer match the activity's, and fills them first on a cold start", () => {
     expect(forwarded).toMatch(
-      /override fun setContentView\(view: View\?\) \{\n\s+super\.setContentView\(\n\s+view\?\.let \{\n\s+MetricsReadFirst\(this\) \{\n\s+reactHost\?\.currentReactContext\?\.emitDeviceEvent\("soirelyTextScaleLaidOut"\)\n\s+\}\.apply \{\n\s+addView\(it, ViewGroup\.LayoutParams\.MATCH_PARENT, ViewGroup\.LayoutParams\.MATCH_PARENT\)/,
+      /override fun setContentView\(view: View\?\) \{\n\s+super\.setContentView\(\n\s+view\?\.let \{\n\s+MetricsReadFirst\(this\) \{\n\s+reactHost\?\.currentReactContext\?\.emitDeviceEvent\("[^"]+"\)\n\s+\}\.apply \{\n\s+addView\(it, ViewGroup\.LayoutParams\.MATCH_PARENT, ViewGroup\.LayoutParams\.MATCH_PARENT\)/,
     );
+    expect(forwarded.match(/emitDeviceEvent\("([^"]+)"\)/)?.[1]).toBe(TEXT_SCALE_LAID_OUT);
     expect(forwarded).toMatch(
       /override fun onMeasure\(widthMeasureSpec: Int, heightMeasureSpec: Int\) \{\n\s+readMetricsIfMoved\(\)\n/,
     );

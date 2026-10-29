@@ -1,7 +1,6 @@
 import { DeviceEventEmitter, Platform } from 'react-native';
 
-/** Sent by MainActivity once the root view has been laid out at a new font scale (plugins/withFontScaleKept.ts). */
-const TEXT_SCALE_LAID_OUT = 'soirelyTextScaleLaidOut';
+import { TEXT_SCALE_LAID_OUT } from './textScaleLaidOutEvent.ts';
 
 let layouts = 0;
 let listening = false;

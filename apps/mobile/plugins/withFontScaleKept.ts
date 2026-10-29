@@ -1,5 +1,7 @@
 import configPlugins, { type ConfigPlugin } from 'expo/config-plugins.js';
 
+import { TEXT_SCALE_LAID_OUT } from '../src/components/textScaleLaidOutEvent.ts';
+
 const { AndroidConfig, withAndroidManifest, withMainActivity } = configPlugins;
 
 const IMPORTS = [
@@ -75,7 +77,7 @@ const OVERRIDE = `
     super.setContentView(
       view?.let {
         MetricsReadFirst(this) {
-          reactHost?.currentReactContext?.emitDeviceEvent("soirelyTextScaleLaidOut")
+          reactHost?.currentReactContext?.emitDeviceEvent("${TEXT_SCALE_LAID_OUT}")
         }.apply {
           addView(it, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         }
