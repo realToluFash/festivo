@@ -142,6 +142,9 @@ Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each co
   `checks/sc18978-ownership-transfer-note-provider-tablet.yaml` does.
 - **An Android tablet whose natural orientation is landscape swaps `setOrientation`.**
   Soirely_QA2_Tablet's rotation 0 is 2560x1600, so `PORTRAIT` gives landscape and
-  `LANDSCAPE_LEFT` portrait, and a batch there runs in landscape. A check meant for one
-  orientation on it sets it with `adb shell wm user-rotation lock 0` (landscape) or `lock 1`
-  (portrait).
+  `LANDSCAPE_LEFT` portrait, and a batch there runs in landscape. In a batch, pass the
+  swapped value to the checks that take one: `ORIENT=LANDSCAPE_LEFT` for portrait. Do not
+  lock the rotation with `adb shell wm user-rotation lock N` there: `setOrientation` writes
+  the same setting, so `batch/reset.yaml`, run before every check, and any check's
+  `setOrientation: ${ORIENT}` override it. The lock holds only in a `--cold` run or a single
+  check with no `setOrientation`.
