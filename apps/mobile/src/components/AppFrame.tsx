@@ -42,6 +42,7 @@ import { joinOrganisation, switchOrganisation, useSignedIn } from '../signedIn.t
 import { FrameSwitch, switchByTap, useFrameSwitch } from '../tappedSwitch.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useTwoFactorStanding } from '../twoFactorStanding.ts';
+import { BellButton } from './BellButton.tsx';
 import { CreateOrganisation } from './CreateOrganisation.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { useFocusBack } from './Sheet.tsx';
@@ -333,6 +334,7 @@ function FrameHeader({
         <Text size={tokens.typeBody.size} muted>
           {email}
         </Text>
+        <BellButton />
       </View>
     );
   }
@@ -368,9 +370,14 @@ function FrameHeader({
             );
           })}
         </View>
-        <Title size={tokens.typeTitlePage.size} accessibilityRole="header" ref={read}>
-          {title}
-        </Title>
+        <View style={styles.titleRow}>
+          <View style={styles.fill}>
+            <Title size={tokens.typeTitlePage.size} accessibilityRole="header" ref={read}>
+              {title}
+            </Title>
+          </View>
+          <BellButton />
+        </View>
       </View>
     );
   }
@@ -383,13 +390,18 @@ function FrameHeader({
       {back != null && !backHidden && (
         <BackButton label={back.label} onPress={back.onPress} testID="frame.back" />
       )}
-      <Title
-        size={back == null ? tokens.typeTitlePage.size : tokens.typeTitlePhone.size}
-        accessibilityRole="header"
-        ref={read}
-      >
-        {title}
-      </Title>
+      <View style={styles.titleRow}>
+        <View style={styles.fill}>
+          <Title
+            size={back == null ? tokens.typeTitlePage.size : tokens.typeTitlePhone.size}
+            accessibilityRole="header"
+            ref={read}
+          >
+            {title}
+          </Title>
+        </View>
+        <BellButton />
+      </View>
     </View>
   );
 }
@@ -981,6 +993,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: tokens.colorHeaderBorder,
   },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   phoneHeader: {
     gap: tokens.spaceLg,
     paddingHorizontal: tokens.spaceXxl,

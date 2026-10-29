@@ -1730,5 +1730,35 @@
     "key_you": "Algo que debe hacer usted",
     "key_automatic": "Soirely se encarga por usted",
     "backToEvent": "Evento"
+  },
+  "notifications": {
+    "bell": "Notifications",
+    "bellUnread_one": "Notifications, {{count}} unread",
+    "bellUnread_other": "Notifications, {{count}} unread",
+    "overNinetyNine": "99+",
+    "heading": "Notifications",
+    "markAllRead": "Mark all read",
+    "allRead": "All read.",
+    "unread": "Unread",
+    "muted": "Muted",
+    "loading": "Loading notifications",
+    "couldNotLoad": "Couldn't load your notifications.",
+    "tryAgain": "Try again",
+    "empty": "Nothing yet. Replies, changes and reminders for your events show up here.",
+    "eventGone": "This event is no longer available.",
+    "showMore": "Show more",
+    "moreShown_one": "{{count, number}} more notification shown.",
+    "moreShown_other": "{{count, number}} more notifications shown.",
+    "moreFailed": "More notifications did not load. Try again in a moment.",
+    "whereWhen": "{{event}} · {{when}}",
+    "atTime": "at {{time}}",
+    "settings": "Notification settings",
+    "pushAsk": {
+      "title": "Turn on push?",
+      "reason": "Hear about replies, changes and event days on this device, even with Soirely closed.",
+      "turnOn": "Turn on",
+      "notNow": "Not now"
+    },
+    "back": "Back"
   }
 }
