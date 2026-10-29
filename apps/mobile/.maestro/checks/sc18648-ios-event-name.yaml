@@ -1,4 +1,4 @@
-# sc-18648 on an iPhone: ' Ball' typed onto the name of ${EVENT_ID} lands as typed, and the event saves.
+# sc-18648 on an iPhone: ' Ball' typed onto the name of ${EVENT_ID} lands as typed, and the event saves. Pass EVENT_ID, a fresh event per run, and NAME, its name as it stands.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit
@@ -9,7 +9,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'eventForm.name'
 - inputText: ' Ball'
-- assertVisible: 'Galaxy Ball'
+- assertVisible: '${NAME} Ball'
 - takeScreenshot: ios-event-name-typed
 - hideKeyboard
 - scrollUntilVisible:
