@@ -6,7 +6,12 @@ appId: host.exp.Exponent
     element:
       id: events.mute
     timeout: 30000
-# The switch is events.mute.switch; events.mute is the whole card.
+# The switch is events.mute.switch; events.mute is the whole card. It is disabled while the mute loads.
+- extendedWaitUntil:
+    visible:
+      id: events.mute.switch
+      enabled: true
+    timeout: 8000
 - runFlow:
     when:
       visible:
