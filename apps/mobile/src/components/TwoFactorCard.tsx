@@ -22,7 +22,7 @@ import { tokens } from '../theme/tokens.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
-import { CodeField, Field, TextField } from './Field.tsx';
+import { CodeField, Field, focusChecked, keysStayDown, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import {
@@ -374,10 +374,11 @@ function SettingUp({
     const problem = typedCodeProblem('app', typed.current);
     if (problem != null) {
       setError(t(problem));
-      input.current?.focus();
+      focusChecked(input);
       return;
     }
 
+    keysStayDown();
     setChecking(true);
 
     try {
@@ -417,13 +418,14 @@ function SettingUp({
           <CodeField
             ref={input}
             wrong={error != null}
-            editable={!checking}
+            submitting={checking}
             onChangeText={(text) => {
               typed.current = text;
               setError(null);
             }}
             returnKeyType="done"
             onSubmitEditing={() => void submit()}
+            submitBehavior="submit"
             accessibilityLabel={t('twoFactorCard.enterCode')}
             testID="twoFactor.setupCode"
           />
@@ -562,10 +564,11 @@ function TurningOff({
 
     if (typed.current.trim() === '') {
       setError(t('twoFactorCard.offBlank'));
-      input.current?.focus();
+      focusChecked(input);
       return;
     }
 
+    keysStayDown();
     setChecking(true);
 
     try {
@@ -597,7 +600,7 @@ function TurningOff({
         <TextField
           ref={input}
           wrong={error != null}
-          editable={!checking}
+          submitting={checking}
           autoCapitalize="none"
           autoComplete="one-time-code"
           onChangeText={(text) => {
@@ -606,6 +609,7 @@ function TurningOff({
           }}
           returnKeyType="done"
           onSubmitEditing={() => void submit()}
+          submitBehavior="submit"
           accessibilityLabel={t('twoFactor.code')}
           testID="twoFactor.offCode"
         />
@@ -648,10 +652,11 @@ function NewCodes({
 
     if (typed.current.trim() === '') {
       setError(t('twoFactorCard.offBlank'));
-      input.current?.focus();
+      focusChecked(input);
       return;
     }
 
+    keysStayDown();
     setChecking(true);
 
     try {
@@ -675,7 +680,7 @@ function NewCodes({
         <TextField
           ref={input}
           wrong={error != null}
-          editable={!checking}
+          submitting={checking}
           autoCapitalize="none"
           autoComplete="one-time-code"
           onChangeText={(text) => {
@@ -684,6 +689,7 @@ function NewCodes({
           }}
           returnKeyType="done"
           onSubmitEditing={() => void submit()}
+          submitBehavior="submit"
           accessibilityLabel={t('twoFactor.code')}
           testID="twoFactor.newCodesCode"
         />
