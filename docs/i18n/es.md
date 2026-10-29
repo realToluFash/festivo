@@ -49,6 +49,10 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **28 Oct 2026. El evento que empezó otro día** (sc-17870 para sc-17853, `events.startedOn` web y
+  `eventsScreen.startedOn` app). «Empezó el {{date}} · {{time}} {{timeZone}}», en pareja con
+  `startedToday` («Hoy · empezó a las…»). `{{date}}` abre con el día de la semana («martes, 27 oct»),
+  así que lleva «el», como «desde el {{date}}».
 - **27 Oct 2026. Duplicar un evento** (sc-15883 para sc-3593, `web:eventDuplicate.*`). «Duplicar»
   y «Crear borrador»; el evento nuevo es «la copia» hasta que existe. El panel dice «Lo que se
   copia» / «Lo que no se copia», porque un participio solo tendría que concordar con cada fila.
@@ -491,7 +495,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   verificación en dos pasos» ran past one line of a 360dp inbox row and hid the state.
 - **27 Oct 2026. An event's dates are «el calendario», never «el programa»** (`timeline.*`,
   sc-15756). «Programa» is the organiser's Schedule (epic 33); the list of an event's dates is
-  «Calendario completo», its panel «Próximas fechas». The owner pill «You» is «A su cargo»,
+  «Todas las fechas» (sc-19010, after the English became All dates; «calendario» alone is the organisation's Calendar), its panel «Próximas fechas»; «Cargando las fechas…», «No se han podido cargar las fechas.» The owner pill «You» is «A su cargo»,
   because a bare «Usted» reads as a form field. Distances follow the date: «hoy», «dentro de
   3 días», «hace 2 días». The API titles put the verb first: «Empieza {name}», «Termina {name}».
 - **27 Oct 2026. Las pestañas de Eventos y sus estados vacíos** (sc-15981 para sc-3594,
@@ -500,6 +504,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   {{date}}». "Next up" es «Lo próximo», como `timeline.nextUp`. El botón mientras carga dice
   «Cargando más…», no «Mostrando más…». `moreFailed` repite la segunda frase del fallo de carga
   de su propia pantalla, como en inglés.
+- **28 Oct 2026. The two-factor-due subject opens on the deadline**
+  (`emails:signInRules.twoFactorDue.subject`, sc-15219): «Antes del {deadline}: verificación en
+  dos pasos en {organisation}». «Verificación en dos pasos» before the date took 36 characters
+  and a 390 px inbox cut inside the weekday (qa2, #18836); «Antes del» takes 10, so the date and
+  time show at 360 px. A subject whose news is a deadline opens on it; the rest keep the feature
+  first (sc-14100).
 - **27 Oct 2026. La página de datos nombra la regla, no la función** (sc-16443 para sc-16265,
   `orgGeneral.readOnlyUntil*`, `refusedByRule`). Cada línea abre con la regla en las palabras
   del aviso (`signInRules.unlinkedBody`, `gateBody`, sin «ahora») y cierra con las de

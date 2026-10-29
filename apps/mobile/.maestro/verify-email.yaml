@@ -1,9 +1,10 @@
-# Verifying with the code from the newest email, on an unverified account. sc-56.
+# A sign-up verified with the code from the newest email, its registration email's. sc-56, sc-18534.
+# EMAIL must be fresh: a taken address is sent no code, so the run fails.
 #
-#   node .qa/bin/qa-env.mjs maestro verify-email EMAIL=… PASSWORD=…
+#   node .qa/bin/qa-env.mjs maestro verify-email NAME=… EMAIL=… PASSWORD=…
 appId: host.exp.Exponent
 ---
-- runFlow: sign-in-unverified.yaml
+- runFlow: register-check-email.yaml
 - runScript: scripts/latest-code.js
 - tapOn:
     id: 'verifyEmail.code'
@@ -18,10 +19,8 @@ appId: host.exp.Exponent
 - takeScreenshot: mobile-verify-email-done
 - tapOn:
     id: 'verifyEmail.continue'
-# Continue goes on to Complete your profile or Home, depending on the account.
 - extendedWaitUntil:
-    notVisible:
-      id: 'verifyEmail.continue'
+    visible: 'A few details'
     timeout: 15000
 - waitForAnimationToEnd
 - takeScreenshot: mobile-verify-email-continued

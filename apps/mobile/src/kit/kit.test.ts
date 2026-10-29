@@ -7,8 +7,12 @@ import {
   fieldName,
   type FieldText,
   fieldText,
+  keyTyped,
+  nextGiven,
   nextPin,
   passwordProps,
+  type Typing,
+  valueHanded,
 } from './fields.ts';
 import {
   barFits,
@@ -531,10 +535,22 @@ describe('a field on Android is named by what it shows, so TalkBack reads what i
     });
   });
 
-  it('is named by its placeholder when it shows no label', () => {
-    expect(fieldName('android', 'Search countries', { placeholder: 'Search countries' })).toEqual({
-      accessibilityLabel: undefined,
-    });
+  it('is named by an unseen copy of its placeholder once it holds text', () => {
+    expect(
+      fieldName('android', 'Search countries', {
+        placeholder: 'Search countries',
+        filled: { held: true, nameID: 'r2' },
+      }),
+    ).toEqual({ accessibilityLabel: undefined, accessibilityLabelledBy: 'r2' });
+  });
+
+  it('is named by its placeholder alone while empty, so the name is said once', () => {
+    expect(
+      fieldName('android', 'Search countries', {
+        placeholder: 'Search countries',
+        filled: { held: false, nameID: 'r2' },
+      }),
+    ).toEqual({ accessibilityLabel: undefined });
   });
 
   it('keeps its content description when it shows no name at all', () => {
@@ -547,5 +563,70 @@ describe('a field on Android is named by what it shows, so TalkBack reads what i
     expect(fieldName('ios', 'Event name', { labelID: 'r1' })).toEqual({
       accessibilityLabel: 'Event name',
     });
+  });
+});
+
+describe('a key typed on Android leaves the field its text, so TalkBack says only the key (sc-18648)', () => {
+  const opened: Typing = { typed: 'Gal', pinned: 'Gal', given: undefined };
+  const handed = (value: string, typing: Typing) => {
+    const next = nextGiven('android', value, typing);
+    const field = {
+      held: false,
+      value: valueHanded('android', value, next.given),
+      defaultValue: undefined,
+      typed: next.typed,
+      pinned: next.pinned,
+    };
+
+    return fieldText(field);
+  };
+
+  it('hands back no text for a key, its value being what was typed', () => {
+    const typedX = { ...opened, typed: 'Galx' };
+
+    expect(nextGiven('android', 'Galx', typedX)).toBe(typedX);
+    expect(handed('Galx', typedX)).toEqual({ defaultValue: 'Gal' });
+  });
+
+  it('opens holding the value the screen filled it with', () => {
+    expect(handed('Gal', opened)).toEqual({ defaultValue: 'Gal' });
+  });
+
+  it('is handed a value that is not what was typed, so an added domain empties the field', () => {
+    const typed = { typed: 'example.com', pinned: '', given: undefined };
+
+    expect(nextGiven('android', '', typed)).toEqual({ typed: '', pinned: '', given: '' });
+    expect(handed('', typed)).toEqual({ value: '' });
+  });
+
+  it('is uncontrolled again after the key that follows a value it was handed', () => {
+    const emptied = nextGiven('android', '', {
+      typed: 'example.com',
+      pinned: '',
+      given: undefined,
+    });
+    const next = keyTyped(emptied, 'e');
+
+    expect(next.given).toBeUndefined();
+    expect(valueHanded('android', 'e', next.given)).toBeUndefined();
+    expect(nextGiven('android', 'e', next)).toBe(next);
+  });
+
+  it('keeps what was typed through a text-size change', () => {
+    const next = nextGiven('android', 'Galx', { ...opened, typed: 'Galx' });
+    const field = {
+      held: false,
+      value: valueHanded('android', 'Galx', next.given),
+      defaultValue: undefined,
+      typed: next.typed,
+      pinned: next.pinned,
+    };
+
+    expect(nextPin(field, 1.3, 1).pinned).toBe('Galx');
+  });
+
+  it('is handed its value on every render on iOS, where VoiceOver says only the key', () => {
+    expect(nextGiven('ios', 'Gal', { ...opened, typed: 'Ga' })).toEqual({ ...opened, typed: 'Ga' });
+    expect(valueHanded('ios', 'Galx', undefined)).toBe('Galx');
   });
 });

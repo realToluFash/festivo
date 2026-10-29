@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { proofStands, proveWith, providerRows, remainingWay } from './signInMethods.ts';
+import {
+  confirmWith,
+  proofStands,
+  proveWith,
+  providerRows,
+  remainingWay,
+} from './signInMethods.ts';
 
 const GOOGLE = { provider: 'google' as const, email: 'folake.adeyemi@gmail.com' };
 const APPLE = { provider: 'apple' as const, email: null };
@@ -66,5 +72,20 @@ describe('confirming it is you', () => {
     expect(proofStands('2026-10-17T12:05:00+00:00', now)).toBe(true);
     expect(proofStands('2026-10-17T12:00:05+00:00', now)).toBe(false);
     expect(proofStands(null, now)).toBe(false);
+  });
+});
+
+describe('confirming it is you with nothing acted on', () => {
+  it('asks for the password whenever there is one', () => {
+    expect(confirmWith(true, [GOOGLE])).toBe('password');
+  });
+
+  it('otherwise offers the provider linked first', () => {
+    expect(confirmWith(false, [APPLE, GOOGLE])).toBe('apple');
+    expect(confirmWith(false, [GOOGLE, APPLE])).toBe('google');
+  });
+
+  it('offers nothing to an account with no way to prove it', () => {
+    expect(confirmWith(false, [])).toBeNull();
   });
 });

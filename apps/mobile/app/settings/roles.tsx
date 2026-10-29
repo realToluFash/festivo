@@ -21,7 +21,7 @@ import {
   stepClosed,
   useFocusOnAnswer,
 } from '../../src/components/Screen.tsx';
-import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
+import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { Text, type TextHandle } from '../../src/components/Text.tsx';
 import { cardFrame } from '../../src/components/cardFrame.ts';
 import { DESTINATION_HREF } from '../../src/kit/appNav.ts';
@@ -41,6 +41,7 @@ const LOADING: Load = { kind: 'loading' };
 /** Settings > Roles, `Roles-Phone` and `Roles-Tablet*` (sc-1931): sc-66's roles screen, in the app. */
 export default function RolesScreen() {
   const { t } = useTranslation();
+  const backToSettings = useBackToSettings();
   const { kind, givesWay } = useListAndPageLayout(SPACING, 'settingsList');
   const { organisation } = useSignedIn();
   const organisationId = organisation?.id;

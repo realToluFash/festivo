@@ -16,6 +16,7 @@ import {
   memberRowLine,
   memberStanding,
   memberStatusWord,
+  PROOF_MINUTES,
   ownRoleLine,
   roleName,
 } from '@soirely/domain';
@@ -34,6 +35,7 @@ import {
   withTurnedDown,
 } from '../kit/membersAfterWrite.ts';
 import { refusalFor, refusalTitle } from '../kit/refusal.ts';
+import { type Proving, dropProof, heldProof, howToProve } from '../recentProof.ts';
 import { breakableEmail } from '../layout/textSize.ts';
 import { type LayoutKind, useAccessibilitySizes } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -46,6 +48,7 @@ import { Notice } from './Notice.tsx';
 import { OwnerClaimBanner } from './OwnerClaimBanner.tsx';
 import { GlyphMark, type Mark } from './StatusMark.tsx';
 import { AnswerHeading } from './AnswerHeading.tsx';
+import { ConfirmItsYou } from './ConfirmItsYou.tsx';
 import {
   type StepClosed,
   stepClosed,
@@ -204,7 +207,7 @@ export function MemberList({
   const [filter, setFilter] = useState<MemberFilter>('all');
   const [closedFor, setClosedFor] = useState(closed);
   const [back, setBack] = useState(closed);
-  const opener = useFocusBackToOpener(back, title);
+  const opener = useFocusBackToOpener(back, title, 'page');
   if (closedFor !== closed) {
     setClosedFor(closed);
     setBack(closed);
@@ -940,16 +943,40 @@ function RolePicker({
     : [{ ...member.role, fixed: false, removable: false, permissions: [], holders: 0 }, ...roles];
   const role = offered.find((one) => one.id === picked);
   const changed = picked !== member.role.id && role != null;
+  const toOwner = role?.seededAs === 'owner';
+  // Making an owner asks for a recent proof (sc-18930); one held from the last five minutes stands.
+  const [proving, setProving] = useState<Proving | null>(null);
 
-  async function save(): Promise<void> {
-    if (!changed) return;
-
+  async function confirmFirst(): Promise<void> {
     setBusy(true);
-    setFailed(null);
 
     try {
-      await api.changeMemberRole(organisation.id, member.id, picked);
+      setProving(await howToProve());
+    } catch {
+      setFailed(t('membersScreen.actionFailed'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function save(proved?: string): Promise<void> {
+    if (!changed) return;
+
+    const proof = toOwner ? (proved ?? heldProof()) : null;
+    setFailed(null);
+    if (toOwner && proof == null) return confirmFirst();
+
+    setProving(null);
+    setBusy(true);
+
+    try {
+      await api.changeMemberRole(organisation.id, member.id, picked, proof ?? undefined);
     } catch (error) {
+      if (toOwner && error instanceof ApiError && error.is('proof_required')) {
+        dropProof();
+        setBusy(false);
+        return confirmFirst();
+      }
       if (error instanceof ApiError && error.status === 409) {
         await onChangedElsewhere();
       } else {
@@ -965,6 +992,22 @@ function RolePicker({
     );
     setBusy(false);
   }
+
+  if (proving != null)
+    return (
+      <ConfirmItsYou
+        idPrefix="members.role.prove"
+        answer={proving}
+        intro={t('membersScreen.proveOwner', {
+          organisation: organisation.name,
+          count: PROOF_MINUTES,
+        })}
+        via={proving.via}
+        twoFactorOn={proving.twoFactorOn}
+        onProved={(proof) => void save(proof)}
+        onCancel={() => setProving(null)}
+      />
+    );
 
   return (
     <>

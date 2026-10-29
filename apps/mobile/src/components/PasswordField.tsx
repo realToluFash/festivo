@@ -12,7 +12,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { fieldName, passwordProps } from '../kit/fields.ts';
-import { faced } from '../theme/fonts.ts';
+import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { fieldStyles, useFieldLabel, useHeld } from './Field.tsx';
 import { Text } from './Text.tsx';
@@ -67,10 +67,9 @@ export function PasswordField({
           placeholder: rest.placeholder,
         })}
         {...passwordProps(revealed)}
-        value={value}
         {...holding}
         ref={ref}
-        style={faced([fieldStyles.input, styles.withReveal, wrong && fieldStyles.wrong])}
+        style={inputFaced([fieldStyles.input, styles.withReveal, wrong && fieldStyles.wrong])}
         aria-invalid={wrong}
         testID={testID}
         onSubmitEditing={(event) => {

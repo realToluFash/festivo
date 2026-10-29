@@ -9,6 +9,8 @@ appId: host.exp.Exponent
 - scrollUntilVisible:
     element:
       id: 'events.pause'
+- assertVisible:
+    id: 'events.end'
 - takeScreenshot: happening-pause-offered
 - tapOn:
     id: 'events.pause'

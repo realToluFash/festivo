@@ -1,0 +1,13 @@
+# sc-17853: the Happening now cards on Events Home, read for "Today · started" and "Started {date}".
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      text: 'Lagos Arts Week'
+    timeout: 30000
+- takeScreenshot: happening-top
+- scroll
+- takeScreenshot: happening-middle
+- scroll
+- takeScreenshot: happening-bottom

@@ -536,6 +536,18 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
   });
 });
 
+describe('a Password submit with the keys down keeps them down (sc-13408)', () => {
+  it('lets go of a focused field before each request starts', () => {
+    const lines = readFileSync(join('src', 'components', 'PasswordCard.tsx'), 'utf8').split('\n');
+    const starts = lines.flatMap((line, index) =>
+      /^\s*set(Saving|Busy)\(true\);/u.test(line) ? [index] : [],
+    );
+
+    expect(starts).toHaveLength(3);
+    expect(starts.filter((index) => lines[index - 1]?.trim() !== 'keysStayDown();')).toEqual([]);
+  });
+});
+
 describe('a Cancel is off while the change beside it runs (sc-12545)', () => {
   const offWhile = (file: string, busy: string) =>
     selfClosing('QuietButton', readFileSync(join('src', 'components', file), 'utf8'))
@@ -613,6 +625,25 @@ describe('a screen is a composition of the kit', () => {
     );
 
     expect(offenders).toEqual([]);
+  });
+});
+
+describe('every numbered step shares one mark (sc-18140)', () => {
+  it('draws the step circle only in StepMark.tsx', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ path }) => !path.endsWith('/StepMark.tsx'))
+      .filter(({ text }) => drawsStepCircle(text))
+      .map(({ path }) => path);
+
+    expect(
+      offenders,
+      'Use <StepMark step={…} state={…} /> from src/components/StepMark.tsx.',
+    ).toEqual([]);
+  });
+
+  it('notices a step circle drawn in place', () => {
+    expect(drawsStepCircle('  const markSide = useMarkSide(tokens.space3xl);')).toBe(true);
+    expect(drawsStepCircle('  const markSide = useMarkSide(tokens.sizeMark);')).toBe(false);
   });
 });
 
@@ -751,6 +782,10 @@ function escapesAnswered(text: string): number {
         (propValue(markup, 'collapsable') === '{false}' ||
           /\baccessibilityViewIsModal(?!=\{false\})\b/u.test(markup)),
     ).length;
+}
+
+function drawsStepCircle(text: string): boolean {
+  return /useMarkSide\(tokens\.space3xl\)/u.test(text);
 }
 
 /** A width or height fixed at the side of a mark or a pill, which the glyph or word inside outgrows. */

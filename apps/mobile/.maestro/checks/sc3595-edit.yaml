@@ -23,9 +23,12 @@ appId: host.exp.Exponent
     id: 'eventForm.name'
 - inputText: ' mine'
 - hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.cancel'
+    direction: UP
 - tapOn:
-    text: '{{t:eventEdit.cancel}}'
-    index: 0
+    id: 'eventForm.cancel'
 - extendedWaitUntil:
     visible:
       id: 'eventForm.leave.keep'

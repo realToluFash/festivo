@@ -7,20 +7,23 @@ import {
   serverClock,
   withPastPage,
 } from '@soirely/domain';
-import { Redirect, router, useFocusEffect } from 'expo-router';
+import { Redirect, router, useFocusEffect, useNavigation } from 'expo-router';
 import { type RefCallback, useCallback, useEffect, useState } from 'react';
 import { AppState, RefreshControl, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
+import { SHOWN_EVENT } from '../kit/eventDates.ts';
 import { offersDelete } from '../kit/eventDelete.ts';
 import { takeCoverRefused, takeSaved } from '../kit/eventSaved.ts';
 import {
   type Opened,
   type Selection,
+  hasNoEvents,
   openedOf,
   openedWithoutAsking,
+  pageless,
   selectionIn,
 } from '../kit/eventsOpen.ts';
 import { useLayout } from '../layout/useLayout.ts';
@@ -36,6 +39,7 @@ import { ReadOut } from './ReadOut.tsx';
 import { FocusBack, type StepClosed, stepClosed } from './Screen.tsx';
 import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
+import { useSystemBack } from './useSystemBack.ts';
 
 type Load =
   { kind: 'loading' } | { kind: 'failed' } | ({ kind: 'loaded'; refreshing: boolean } & HomeLoad);
@@ -82,6 +86,13 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     setClosed(back);
   };
   const toList = () => select(null, open == null ? undefined : stepClosed(`row.${open}`));
+  const navigation = useNavigation<{
+    setParams(params: { [SHOWN_EVENT]: string | undefined }): void;
+  }>();
+
+  useEffect(() => {
+    navigation.setParams({ [SHOWN_EVENT]: open ?? undefined });
+  }, [navigation, open]);
 
   // The rows stay in place while they reload; a failed load gives way to loading.
   const reload = useCallback(() => {
@@ -217,6 +228,10 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     organisation,
   );
 
+  useSystemBack(linked != null && !landscape && open == null, () =>
+    router.dismissTo(DESTINATION_HREF.home),
+  );
+
   if (organisation != null && !reads && open == null) {
     return <Redirect href={DESTINATION_HREF.home} />;
   }
@@ -297,7 +312,7 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
             {t('eventsScreen.refreshing')}
           </Text>
         )}
-        {load.unfinished.length === 0 && load.pastTotal === 0 ? (
+        {hasNoEvents(load) ? (
           <NoEvents kind={kind} onCreate={creates ? newEvent : undefined} />
         ) : (
           <>
@@ -349,6 +364,7 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
           ))
         }
         pageInFront={inFront}
+        pageless={pageless(load, inFront)}
         pageKey={open ?? ''}
         back={{
           label: t('eventsScreen.back'),

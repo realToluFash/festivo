@@ -41,6 +41,10 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **28 Oct 2026. O evento que começou noutro dia** (sc-17870 para sc-17853, `events.startedOn`
+  web e `eventsScreen.startedOn` app). "Início: {{date}} · {{time}} {{timeZone}}". `{{date}}` abre
+  com o dia da semana ("terça-feira, 27/10"), que não aceita "a" e com que "na"/"no" não pode
+  concordar, por isso é um rótulo, pela regra do dia da semana (19 Oct), e não "Começou {{date}}".
 - **27 Oct 2026. Duplicar um evento** (sc-15883 para sc-3593, `web:eventDuplicate.*`). "Duplicar"
   e "Criar rascunho"; o evento novo é "a cópia" até existir. O painel diz "O que é copiado" / "O
   que não é copiado", porque um particípio sozinho teria de concordar com cada linha. Length é
@@ -512,7 +516,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   de dois fatores foi desativada" ran past one line of a 360dp inbox row.
 - **27 Oct 2026. An event's dates are "o calendário", never "o programa"** (`timeline.*`,
   sc-15756). "Programa" is the organiser's Schedule (epic 33); the list of an event's dates is
-  "Calendário completo", its panel "Próximas datas". The owner pill "You" is "A seu cargo",
+  "Todas as datas" (sc-19010, after the English became All dates; "calendário" alone is the organisation's Calendar), its panel "Próximas datas"; "A carregar as datas…", "Não foi possível carregar as datas." The owner pill "You" is "A seu cargo",
   since "Você" is Brazilian. Distances follow the date: "hoje", "daqui a 3 dias", "há 2 dias".
   The API titles keep the name as subject, "{name} começa", "{name} termina", so no article
   has to agree with it.
@@ -523,6 +527,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   carrega diz "A carregar mais…". A contagem anunciada concorda o verbo: "Foi mostrado mais 1 …",
   "Foram mostrados mais …", com "de eventos" em `many`; 0 é `other`. `moreFailed` repete a
   segunda frase da falha de carregamento do seu ecrã, como em inglês.
+- **28 Oct 2026. The two-factor-due subject opens on the deadline**
+  (`emails:signInRules.twoFactorDue.subject`, sc-15219): "Até {deadline}: autenticação de dois
+  fatores em {organisation}". With the feature first a 390 px inbox cut inside the weekday
+  (qa2, #18836); "Até" takes 4 characters, so the date and time show at 360 px. "até" needs no
+  article before the weekday. A subject whose news is a deadline opens on it; the rest keep the
+  feature first (sc-14100).
 - **27 Oct 2026. A página de dados nomeia a regra, não a função** (sc-16443 para sc-16265,
   `orgGeneral.readOnlyUntil*`, `refusedByRule`). Cada linha abre com a regra nas palavras do
   aviso (`signInRules.unlinkedBody`, `gateBody`; "só aceita", porque aqui a regra não é nova) e

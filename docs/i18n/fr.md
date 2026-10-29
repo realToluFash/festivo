@@ -54,6 +54,10 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **28 Oct 2026. L’événement commencé un autre jour** (sc-17870 pour sc-17853, `events.startedOn`
+  web et `eventsScreen.startedOn` app). « A commencé le {{date}} · {{time}} {{timeZone}} », en
+  paire avec `startedToday` (« Aujourd’hui · a commencé à… »). `{{date}}` est « mardi 27 oct. »,
+  qui prend « le » ; le point de l’abréviation précède le « · », jamais une fin de phrase.
 - **27 Oct 2026. Dupliquer un événement** (sc-15883 pour sc-3593, `web:eventDuplicate.*`).
   « Dupliquer » et « Créer le brouillon » ; le nouvel événement est « la copie » tant qu’il
   n’existe pas. Le panneau dit « Ce qui est copié » / « Ce qui n’est pas copié », car un
@@ -547,7 +551,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **26 Oct 2026. The beyond-grant line names access** (`membersScreen.beyondGrant`, sc-13089). « … vous ne pouvez donc modifier ni son rôle ni son accès » : after « cette personne », « son accès » is hers; it rules out restoring on the suspension cards.
 - **27 Oct 2026. An event's dates are « le calendrier », never « le programme »** (`timeline.*`,
   sc-15756). « Programme » is the organiser's Schedule (epic 33); the list of an event's dates
-  is « Calendrier complet », its panel « Prochaines dates ». Distances follow the date :
+  is « Toutes les dates » (sc-19010, after the English became All dates; « calendrier » alone is the organisation's Calendar), its panel « Prochaines dates » ; « Chargement des dates… », « Les dates n’ont pas pu être chargées. » Distances follow the date :
   « aujourd’hui », « dans 3 jours », « il y a 2 jours ». The API titles keep the name as
   subject, « {name} commence », « {name} se termine », so no « de » has to elide before it.
 - **27 Oct 2026. Les onglets de l’accueil Événements et leurs états vides** (sc-15981 pour
@@ -556,6 +560,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   « Next up » est « Prochaine étape », comme `timeline.nextUp`, et l’état vide des événements à
   venir le reprend. Le décompte annoncé dit « supplémentaire(s) », « d’événements » au `many`.
   `moreFailed` reprend la seconde phrase de l’échec de chargement de son écran, comme en anglais.
+- **28 Oct 2026. The two-factor-due subject opens on the deadline**
+  (`emails:signInRules.twoFactorDue.subject`, sc-15219) : « Avant le {deadline} : double
+  authentification dans {organisation} ». With the feature first a 390 px inbox lost the time
+  (qa2, #18836); « Avant le » takes 9 characters, so the date and time show at 360 px. A
+  subject whose news is a deadline opens on it; the rest keep the feature first.
 - **27 oct. 2026. La page des informations nomme la règle, pas le rôle** (sc-16443 pour
   sc-16265, `orgGeneral.readOnlyUntil*`, `refusedByRule`). Chaque ligne reprend la règle dans
   les mots du bandeau (`signInRules.unlinkedBody`, `gateBody`, « n’accepte que » sans « plus »)

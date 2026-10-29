@@ -332,6 +332,27 @@ describe('Events Home (sc-3594)', () => {
     expect(screen.getByRole('heading', { name: 'Happening now' })).toBeDefined();
   });
 
+  it('names the day a Happening now event started when that was before today in its zone', async () => {
+    signedIn();
+    answering({
+      'GET /api/orgs/org_1/events': listed([
+        live('Weekend', {
+          phase: 'happening_now',
+          startsAt: '2026-10-31T09:00:00+01:00',
+          endsAt: '2026-11-02T02:00:00+01:00',
+          timeZone: 'Europe/Madrid',
+          milestones: [starts('Weekend ends', '2026-11-02T02:00:00+01:00')],
+        }),
+      ]),
+    });
+    at('/app/events');
+
+    const now = (await screen.findByRole('heading', { name: 'Happening now' })).parentElement!;
+    expect(spaced(within(now).getByRole('listitem').textContent)).toBe(
+      'Happening nowWeekendWeddingNext up Weekend endsStarted Saturday, Oct 31 · 09:00 Europe/Madrid',
+    );
+  });
+
   it('leaves Happening now out when nothing is, and Next up out with no milestone ahead', async () => {
     signedIn();
     answering({ 'GET /api/orgs/org_1/events': listed([live('Later')]) });
@@ -3356,52 +3377,6 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
     expect(sent.filter(({ line }) => line.startsWith('PUT /api/events'))).toEqual([]);
   });
 
-  it('a JPEG the frame cannot show before its upload finishes stays unsaved once the upload does, and Use this photo keeps the saved cover', async () => {
-    signedIn();
-    vi.stubGlobal(
-      'Image',
-      class {
-        naturalWidth = 2400;
-        naturalHeight = 1600;
-        onload: (() => void) | null = null;
-        set src(_: string) {
-          queueMicrotask(() => this.onload?.());
-        }
-      },
-    );
-    let release: (() => void) | null = null;
-    const sent = serving(PHOTO, {
-      'PUT /upload/1': () =>
-        new Promise((resolve) => {
-          release = () => resolve(new Response(null, { status: 200 }));
-        }),
-    });
-    await editing();
-
-    fireEvent.change(document.getElementById('cover-file')!, {
-      target: { files: [new File(['x'], 'arch.jpg', { type: 'image/jpeg' })] },
-    });
-    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
-    await waitFor(() => expect(release).not.toBeNull());
-    fireEvent.error(dialog.querySelector('.cover-frame img')!);
-    expect(await within(dialog).findByText('The photo did not upload. Try again.')).toBeDefined();
-
-    release!();
-    await waitFor(() =>
-      expect(sent.filter(({ line }) => line === 'PUT /upload/1')).toHaveLength(1),
-    );
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(within(dialog).getByText('The photo did not upload. Try again.')).toBeDefined();
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
-    await waitFor(() =>
-      expect(sent.find(({ line }) => line === 'PUT /api/events/ev_1/cover')?.body).toEqual({
-        position: PHOTO.position,
-        description: PHOTO.description,
-      }),
-    );
-  });
-
   it('a file named .jpg that is not a readable photo is refused while Cover photo is open', async () => {
     signedIn();
     const line = 'That file is not a photo we can use. Choose a JPEG, PNG, WebP or HEIC.';
@@ -3873,6 +3848,248 @@ describe('Cover photo chooses its own photo, and a refused one never reaches the
   });
 });
 
+describe('Every pick is held under Uploading… until the server has read it (sc-17978)', () => {
+  const PHOTO = {
+    position: 30,
+    description: 'Adaeze and Tunde under the arch',
+    sizes: [
+      { width: 640, url: 'http://store.test/c/small.webp' },
+      { width: 1280, url: 'http://store.test/c/medium.webp' },
+    ],
+  };
+  const DAMAGED = 'That file is not a photo we can use. Choose a JPEG, PNG, WebP or HEIC.';
+
+  /** Each preview waits for `answer(name)`; the server refuses a file named damaged. */
+  function serving(cover: unknown) {
+    const waiting = new Map<string, () => void>();
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
+
+      if (line === 'POST /api/orgs/org_1/event-cover-uploads') {
+        const { filename } = body as { filename: string };
+        return json(
+          {
+            upload: {
+              url: `http://store.test/upload/${filename}`,
+              key: `event_cover/org_1/2026/10/${filename}`,
+              content_type: 'image/jpeg',
+            },
+          },
+          201,
+        );
+      }
+      if (line.startsWith('PUT /upload/')) return new Response(null, { status: 200 });
+      if (line === 'POST /api/orgs/org_1/event-cover-uploads/preview') {
+        const name = (body as { uploadKey: string }).uploadKey.split('/').pop()!;
+        await new Promise<void>((resolve) => waiting.set(name, resolve));
+        return name.includes('damaged')
+          ? problem(422, 'validation_failed', {
+              violations: [{ propertyPath: 'file', message: DAMAGED, code: 'validation_failed' }],
+            })
+          : json({ preview: 'data:image/webp;base64,UklGRg==' });
+      }
+      if (line === 'DELETE /api/orgs/org_1/event-cover-uploads')
+        return new Response(null, { status: 204 });
+
+      return new Response(JSON.stringify({ event: event({ cover }) }), {
+        headers: { ETag: '"1"' },
+      });
+    });
+
+    async function answer(name: string): Promise<void> {
+      await waitFor(() => expect(waiting.has(name)).toBe(true));
+      waiting.get(name)!();
+    }
+
+    return { waiting, answer };
+  }
+
+  function jpeg(name: string): File {
+    return new File(['x'], name, { type: 'image/jpeg' });
+  }
+
+  function pickInDialog(chosen: File): void {
+    fireEvent.change(document.getElementById('cover-dialog-file')!, {
+      target: { files: [chosen] },
+    });
+  }
+
+  async function changing(): Promise<HTMLElement> {
+    at('/app/events/ev_1/edit');
+    await screen.findByRole('heading', { level: 1, name: 'Edit details' });
+    fireEvent.click(screen.getByRole('button', { name: 'Change photo' }));
+
+    return screen.findByRole('dialog', { name: 'Cover photo' });
+  }
+
+  function expectHeld(dialog: HTMLElement): void {
+    expect(within(dialog).getByText('Uploading…')).toBeDefined();
+    expect(dialog.querySelector('.cover-frame img')).toBeNull();
+    expect(dialog.querySelector('.cover-frame .cover-default-wedding')).not.toBeNull();
+    expect(within(dialog).getByLabelText('Photo position').getAttribute('aria-disabled')).toBe(
+      'true',
+    );
+    expect(
+      within(dialog).getByRole('button', { name: 'Use this photo' }).getAttribute('aria-disabled'),
+    ).toBe('true');
+  }
+
+  beforeEach(() => {
+    URL.createObjectURL = (chosen: Blob) => `blob:${(chosen as File).name}`;
+    URL.revokeObjectURL = () => undefined;
+    vi.stubGlobal(
+      'Image',
+      class {
+        naturalWidth = 2400;
+        naturalHeight = 1600;
+        onload: (() => void) | null = null;
+        set src(_: string) {
+          queueMicrotask(() => this.onload?.());
+        }
+      },
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('a good JPEG held at the server shows the default with nothing to position, then shows at the middle, keeping what was described', async () => {
+    signedIn();
+    const { answer } = serving(PHOTO);
+    const dialog = await changing();
+
+    pickInDialog(jpeg('garden.jpg'));
+    await waitFor(() => expect(within(dialog).getByText('Uploading…')).toBeDefined());
+    expectHeld(dialog);
+    const slider = within(dialog).getByLabelText('Photo position') as HTMLInputElement;
+    fireEvent.change(slider, { target: { value: '80' } });
+    expect(slider.value).toBe('50');
+    fireEvent.change(within(dialog).getByLabelText(/Describe the image/), {
+      target: { value: 'The garden at dusk' },
+    });
+
+    await answer('garden.jpg');
+
+    await waitFor(() =>
+      expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe('blob:garden.jpg'),
+    );
+    expect(within(dialog).queryByText('Uploading…')).toBeNull();
+    expect(slider.getAttribute('aria-disabled')).toBe('false');
+    expect(slider.value).toBe('50');
+    expect(document.activeElement).toBe(slider);
+    expect((within(dialog).getByLabelText(/Describe the image/) as HTMLTextAreaElement).value).toBe(
+      'The garden at dusk',
+    );
+  });
+
+  it('a damaged JPEG is never in the frame between the pick and its refusal', async () => {
+    signedIn();
+    const { answer } = serving(PHOTO);
+    const dialog = await changing();
+
+    pickInDialog(jpeg('damaged.jpg'));
+    await waitFor(() => expect(within(dialog).getByText('Uploading…')).toBeDefined());
+    expectHeld(dialog);
+
+    await answer('damaged.jpg');
+
+    expect(await within(dialog).findByText(DAMAGED)).toBeDefined();
+    expect(within(dialog).queryByText('Uploading…')).toBeNull();
+    expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(PHOTO.sizes[0]!.url);
+  });
+
+  it('a second pick while the first uploads keeps the default until the second has been read', async () => {
+    signedIn();
+    const { waiting, answer } = serving(PHOTO);
+    const dialog = await changing();
+
+    pickInDialog(jpeg('first.jpg'));
+    await waitFor(() => expect(within(dialog).getByText('Uploading…')).toBeDefined());
+    pickInDialog(jpeg('second.jpg'));
+    await waitFor(() => expect(waiting.has('second.jpg')).toBe(true));
+
+    await answer('first.jpg');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expectHeld(dialog);
+
+    await answer('second.jpg');
+
+    await waitFor(() =>
+      expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe('blob:second.jpg'),
+    );
+    expect(within(dialog).queryByText('Uploading…')).toBeNull();
+  });
+
+  /** The browser sizes the named file only when told to, so the first pick can answer meanwhile. */
+  function sizingLater(name: string, width: number): () => void {
+    let size: () => void = () => undefined;
+    vi.stubGlobal(
+      'Image',
+      class {
+        naturalWidth = 2400;
+        naturalHeight = 1600;
+        onload: (() => void) | null = null;
+        set src(url: string) {
+          if (url === `blob:${name}`) {
+            this.naturalWidth = width;
+            size = () => this.onload?.();
+          } else queueMicrotask(() => this.onload?.());
+        }
+      },
+    );
+
+    return () => size();
+  }
+
+  it('the first pick answering while the browser sizes the second never shows', async () => {
+    signedIn();
+    const { answer } = serving(PHOTO);
+    const size = sizingLater('second.jpg', 2400);
+    const dialog = await changing();
+
+    pickInDialog(jpeg('first.jpg'));
+    await waitFor(() => expect(within(dialog).getByText('Uploading…')).toBeDefined());
+    pickInDialog(jpeg('second.jpg'));
+    await answer('first.jpg');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expectHeld(dialog);
+
+    size();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expectHeld(dialog);
+    await answer('second.jpg');
+
+    await waitFor(() =>
+      expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe('blob:second.jpg'),
+    );
+  });
+
+  it('a second pick refused before it uploads shows the first, read while the second was sized', async () => {
+    signedIn();
+    const { waiting, answer } = serving(PHOTO);
+    const size = sizingLater('small.jpg', 10);
+    const dialog = await changing();
+
+    pickInDialog(jpeg('first.jpg'));
+    await waitFor(() => expect(within(dialog).getByText('Uploading…')).toBeDefined());
+    pickInDialog(jpeg('small.jpg'));
+    await answer('first.jpg');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expectHeld(dialog);
+
+    size();
+
+    await waitFor(() =>
+      expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe('blob:first.jpg'),
+    );
+    expect(within(dialog).queryByText('Uploading…')).toBeNull();
+    expect(waiting.has('small.jpg')).toBe(false);
+  });
+});
+
 describe('Hosted by, in Edit details (sc-6713)', () => {
   type Sent = { line: string; body: unknown; ifMatch: string | null };
 
@@ -4297,6 +4514,29 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     expect(within(panel).queryByText('The dates did not load.')).toBeNull();
   });
 
+  it('says Loading the dates… in Coming up until the dates arrive, with All dates linked', async () => {
+    clockAt('2026-10-11T08:00:00Z');
+    signedIn();
+    let arrive = (): void => undefined;
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () =>
+        new Promise<Response>((resolve) => {
+          arrive = () => resolve(json(MADRID));
+        }),
+    });
+    at('/app/events/ev_1');
+
+    const panel = await comingUp();
+
+    expect(within(panel).getByRole('status').textContent).toBe('Loading the dates…');
+    expect(within(panel).getByRole('link', { name: 'All dates' })).toBeDefined();
+    arrive();
+
+    await waitFor(() => expect(within(panel).getAllByRole('listitem')).toHaveLength(4));
+    expect(within(panel).queryByText('Loading the dates…')).toBeNull();
+  });
+
   it('lists every milestone in All dates under its zone, named once, Passed and Next up as words', async () => {
     clockAt('2026-10-11T08:00:00Z');
     signedIn();
@@ -4325,7 +4565,7 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     expect(within(page).getByText('Something you need to do')).toBeDefined();
   });
 
-  it('reads the dates again on Call off, and the called-off moment is never Next up (sc-16709)', async () => {
+  it('reads the dates again on Call off, and the called-off moment is never Next up, even stamped a second ahead of the clock (sc-16709)', async () => {
     clockAt('2030-10-13T09:00:00Z');
     signedIn();
     const ahead = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
@@ -4368,7 +4608,7 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     const panel = await comingUp();
     await waitFor(() => expect(rows(panel)).toHaveLength(1));
 
-    vi.setSystemTime(new Date('2030-10-13T09:00:05.500Z'));
+    vi.setSystemTime(new Date('2030-10-13T09:00:04.200Z'));
     fireEvent.click(screen.getByRole('button', { name: 'Call off' }));
     const dialog = await screen.findByRole('dialog', { name: 'Call off Adaeze and Tunde?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Call off' }));

@@ -10,16 +10,23 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { runInNewContext } from 'node:vm';
 
 import { describe, expect, it } from 'vitest';
 
 import {
   allowCleartext,
+  apiControl,
+  apiMoves,
+  apiStateOf,
   batchCheck,
   batchFlow,
   batchRuns,
   afterRun,
   batchSummary,
+  driverBuilds,
+  driverPids,
+  bundlerEnv,
   checkId,
   codeStep,
   databaseCommands,
@@ -27,10 +34,12 @@ import {
   composeBatch,
   localise,
   parseBatch,
+  readyReport,
   REBUILD,
   rerunHints,
   runAsync,
   runBudgetMs,
+  startHelper,
   STEP_MS,
   totp,
   androidFlows,
@@ -42,13 +51,17 @@ import {
   COMPOSE_PROJECT,
   emulatorAbi,
   emulatorFor,
+  emulatorGpu,
   expoGoApk,
   expoGoRunning,
   expoSdkMajor,
   forAndroid,
+  openIntent,
   linkIntent,
   MAX_RESUMES,
+  renewingSession,
   resumeBatch,
+  runHeld,
   maestroTarget,
   parseTarget,
   passwordAutoFillFiles,
@@ -60,6 +73,11 @@ import {
   APP_SERVICES,
   launchVideo,
   iosBundle,
+  clearIosRelease,
+  uninstallHeld,
+  UNINSTALL_BOOTS,
+  iosReleases,
+  recordIosRelease,
   releaseApk,
   releaseApp,
   releasePlatform,
@@ -71,6 +89,10 @@ import {
   simulatorFor,
   TESTERS,
   testerOf,
+  experienceResumed,
+  lastBundleRun,
+  reloadUntilRun,
+  openUntilShown,
 } from './qa-env.mjs';
 
 // A port left at its development default is two stacks fighting over it, and a
@@ -185,6 +207,55 @@ describe('the QA .env against compose.yaml', () => {
       expect(app.EXPO_PUBLIC_API_URL).toBe(`http://127.0.0.1:${ports.API_PORT}`);
     }
   });
+
+  it('signs in whoever the tester types, so two owners are two accounts', () => {
+    for (const tester of TESTERS) {
+      const name = qaConfig(tester).overrides.OIDC_CONFIG;
+      const sandbox = JSON.parse(
+        readFileSync(new URL(`../infra/oidc/${name}`, import.meta.url), 'utf8'),
+      );
+
+      expect(sandbox.interactiveLogin).toBe(true);
+      expect(sandbox.loginPagePath).toBe('/config/login.html');
+    }
+    expect(compose).toContain('JSON_CONFIG_PATH: /config/${OIDC_CONFIG:-oidc.json}');
+  });
+
+  it('gives each typed name the verified email a first provider sign-in needs', () => {
+    const page = readFileSync(new URL('../infra/oidc/login.html', import.meta.url), 'utf8');
+    const script = page.match(/<script>([\s\S]*?)<\/script>/)[1];
+    const signIn = (typed) => {
+      const form = { username: { value: typed }, claims: { value: '' } };
+      let submit;
+      runInNewContext(script, {
+        document: {
+          querySelector: () => ({ addEventListener: (_, handler) => (submit = handler) }),
+        },
+      });
+      submit({ target: form });
+      return JSON.parse(form.claims.value);
+    };
+
+    expect(signIn('owner-a')).toEqual({ email: 'owner-a@example.com', email_verified: true });
+    expect(signIn(' owner b ')).toEqual({ email: 'owner-b@example.com', email_verified: true });
+    expect(signIn('guest@example.org')).toEqual({
+      email: 'guest@example.org',
+      email_verified: true,
+    });
+  });
+});
+
+describe('the bundler environment', () => {
+  it('starts Metro without a file watcher, for the QA app', () => {
+    const env = bundlerEnv({ PATH: '/bin', CI: '' }, { EXPO_PUBLIC_API_URL: 'http://api' });
+
+    expect(env).toEqual({
+      PATH: '/bin',
+      EXPO_PUBLIC_API_URL: 'http://api',
+      EXPO_PUBLIC_ENVIRONMENT: 'qa',
+      CI: '1',
+    });
+  });
 });
 
 describe('what checkout was asked for', () => {
@@ -234,6 +305,17 @@ describe('the emulator android opens', () => {
     [['--tablet'], { open: 'tablet', shut: 'phone' }],
   ])('%j opens one and shuts the other', (args, expected) => {
     expect(emulatorFor(args)).toEqual(expected);
+  });
+});
+
+describe('the GPU mode an emulator starts with', () => {
+  it.each([
+    ['linux', {}, 'swangle_indirect'],
+    ['darwin', {}, 'host'],
+    ['linux', { SOIRELY_QA_EMULATOR_GPU: 'host' }, 'host'],
+    ['darwin', { SOIRELY_QA_EMULATOR_GPU: 'swiftshader_indirect' }, 'swiftshader_indirect'],
+  ])('on %s with %j is %s', (platform, env, expected) => {
+    expect(emulatorGpu(platform, env)).toBe(expected);
   });
 });
 
@@ -351,6 +433,48 @@ describe('a release build', () => {
       ['-insert', 'restrictedBool.allowPasswordAutoFill', '-dictionary', files[0]],
       ['-replace', 'restrictedBool.allowPasswordAutoFill.value', '-bool', 'NO', files[0]],
     ]);
+  });
+
+  it('keeps a release recorded on one simulator when the other is cleared', () => {
+    const root = mkdtempSync(join(tmpdir(), 'qa-'));
+    const recorded = join(root, '.qa/release/ios-release-on');
+    mkdirSync(join(root, '.qa/release'), { recursive: true });
+    recordIosRelease(root, 'phone');
+    recordIosRelease(root, 'ipad');
+    recordIosRelease(root, 'phone');
+    expect(iosReleases(root)).toEqual(['phone', 'ipad']);
+    clearIosRelease(root, 'ipad');
+    expect(iosReleases(root)).toEqual(['phone']);
+    clearIosRelease(root, 'phone');
+    expect(existsSync(recorded)).toBe(false);
+    writeFileSync(recorded, 'phone');
+    expect(iosReleases(root)).toEqual(['phone']);
+    rmSync(root, { recursive: true });
+  });
+
+  it('clears an iOS release only once a boot finds it gone', () => {
+    const calls = [];
+    const device = (present, up = () => true) => ({
+      boot: () => calls.push('boot') && up(),
+      installed: () => present.shift(),
+      uninstall: () => calls.push('uninstall'),
+      shut: () => calls.push('shut'),
+    });
+    expect(uninstallHeld(device([true, true, false]))).toBe(true);
+    expect(calls).toEqual(['boot', 'uninstall', 'shut', 'boot', 'uninstall', 'shut', 'boot']);
+    calls.length = 0;
+    expect(uninstallHeld(device(Array(UNINSTALL_BOOTS).fill(true)))).toBe(false);
+    expect(calls.filter((call) => call === 'boot')).toHaveLength(UNINSTALL_BOOTS);
+  });
+
+  it('keeps an iOS release recorded when the device does not boot', () => {
+    const device = {
+      boot: () => false,
+      installed: () => false,
+      uninstall: () => {},
+      shut: () => {},
+    };
+    expect(uninstallHeld(device)).toBe(false);
   });
 
   it('installs the bundle the app config names', () => {
@@ -525,6 +649,168 @@ describe('a flow on Android', () => {
   it('is left alone otherwise', () => {
     expect(forAndroid(flow)).toContain("'host.exp.Exponents'");
     expect(forAndroid(forAndroid(flow))).toBe(forAndroid(flow));
+  });
+
+  it('has the harness open its links, variables and all, and stop where it cannot', () => {
+    const links = [
+      '- openLink: ${METRO_URL}',
+      '- openLink: ${METRO_URL}/--/',
+      '    - openLink: ${METRO_URL}/--/join/${output.link}',
+    ].join('\n');
+    const step = (indent, path) =>
+      `${indent}- evalScript: \${(function (r) { if (!r.ok) ` +
+      `throw new Error('the harness could not open ' + ${path} + ', ' + r.body); ` +
+      `return r.body; })(http.get(HELPER_URL + '/open?path=' + encodeURIComponent(${path})))}`;
+    expect(forAndroid(links).split('\n')).toEqual([
+      step('', "''"),
+      step('', "'/--/'"),
+      step('    ', "'/--/join/' + (output.link)"),
+    ]);
+    expect(forAndroid(forAndroid(links))).toBe(forAndroid(links));
+  });
+
+  it("opens a link in Expo Go's package, not whichever app takes exp://", () => {
+    expect(openIntent("exp://127.0.0.1:28081/--/it's")).toEqual([
+      'shell',
+      'am',
+      'start',
+      '-a',
+      'android.intent.action.VIEW',
+      '-d',
+      "'exp://127.0.0.1:28081/--/it'\\''s'",
+      'host.exp.exponent',
+    ]);
+  });
+
+  it('tells an open experience from Expo Go on its Home or launcher', () => {
+    const resumed = (activity) =>
+      `  ResumedActivity: ActivityRecord{2af8410 u0 ${activity} t2150}\n` +
+      `  topResumedActivity=ActivityRecord{874cd8c u0 ${activity} t2150}\n`;
+    expect(experienceResumed(resumed('host.exp.exponent/.experience.ExperienceActivity'))).toBe(
+      true,
+    );
+    expect(
+      experienceResumed(
+        '    mResumedActivity: ActivityRecord{874cd8c u0 host.exp.exponent/.experience.ExperienceActivity t2150}\n',
+      ),
+    ).toBe(true);
+    expect(experienceResumed(resumed('host.exp.exponent/.experience.HomeActivity'))).toBe(false);
+    expect(experienceResumed(resumed('host.exp.exponent/.LauncherActivity'))).toBe(false);
+    expect(
+      experienceResumed(
+        '  * Hist  #0: ActivityRecord{874cd8c u0 host.exp.exponent/.experience.ExperienceActivity t2150}\n' +
+          resumed('host.exp.exponent/.experience.HomeActivity'),
+      ),
+    ).toBe(false);
+    expect(experienceResumed('')).toBe(false);
+  });
+
+  it('reads when the app last started from logcat', () => {
+    const run = (at) =>
+      `${at}  4743  4743 I ReactNativeJS: Running "main" with {"rootTag":1,"initialProps":{}}\n`;
+    expect(lastBundleRun('')).toBe(0);
+    expect(lastBundleRun('--------- beginning of main\n')).toBe(0);
+    expect(
+      lastBundleRun(
+        run('1793215144.427') +
+          '1793215150.001  4743  4743 I ReactNativeJS: Running application\n' +
+          run('1793215204.427'),
+      ),
+    ).toBe(1793215204.427);
+  });
+
+  it('answers a reload once the app has run again, or when its time is up', async () => {
+    const reloading = (ranAfterPolls) => {
+      let at = 0;
+      let polls = 0;
+      let reloaded = false;
+      return {
+        options: {
+          reload: async () => {
+            reloaded = true;
+          },
+          lastRun: () => (reloaded && polls >= ranAfterPolls ? 200 : 100),
+          wait: async (ms) => {
+            polls++;
+            at += ms;
+          },
+          now: () => at,
+        },
+        at: () => at,
+      };
+    };
+
+    const quick = reloading(2);
+    expect(await reloadUntilRun(quick.options)).toBe(true);
+    expect(quick.at()).toBe(500);
+
+    const already = reloading(0);
+    expect(await reloadUntilRun(already.options)).toBe(true);
+    expect(already.at()).toBe(250);
+
+    const never = reloading(Infinity);
+    expect(await reloadUntilRun(never.options)).toBe(false);
+    expect(never.at()).toBeLessThanOrEqual(8000);
+  });
+
+  const clocked = ({ shownAfter = Infinity, sendCost = 0, checkCost = 0 } = {}) => {
+    let at = 0;
+    const sent = [];
+    const checked = [];
+    return {
+      sent,
+      checked,
+      options: {
+        send: () => {
+          sent.push(at);
+          at += sendCost;
+        },
+        shown: () => {
+          checked.push(at);
+          at += checkCost;
+          return checked.length > shownAfter;
+        },
+        wait: async (ms) => {
+          at += ms;
+        },
+        now: () => at,
+      },
+      at: () => at,
+    };
+  };
+
+  it('sends a link Expo Go dropped again, and an opened one only once', async () => {
+    const opened = clocked({ shownAfter: 0 });
+    expect(await openUntilShown(opened.options)).toBe(1);
+    expect(opened.sent).toEqual([0]);
+
+    const dropped = clocked({ shownAfter: 7 });
+    expect(await openUntilShown(dropped.options)).toBe(2);
+    expect(dropped.sent).toEqual([0, 2500]);
+
+    const never = clocked();
+    expect(await openUntilShown(never.options)).toBe(3);
+    expect(never.sent).toEqual([0, 2500, 5000]);
+    expect(never.at()).toBe(7500);
+  });
+
+  it('answers by its deadline when each adb call is slow', async () => {
+    const slow = clocked({ sendCost: 300, checkCost: 700 });
+    await openUntilShown(slow.options);
+    expect([...slow.sent, ...slow.checked].every((at) => at < 8000)).toBe(true);
+    expect(slow.at()).toBeLessThan(9000);
+  });
+
+  it('stops at the first send am start refuses', async () => {
+    await expect(
+      openUntilShown({
+        send: () => {
+          throw new Error('could not open exp://x: Error: Activity not started');
+        },
+        shown: () => false,
+        wait: async () => {},
+      }),
+    ).rejects.toThrow(/could not open/);
   });
 
   it('brings the flows it runs, rewritten, where its paths expect them', () => {
@@ -776,6 +1062,207 @@ describe('a check in a batch', () => {
   });
 });
 
+describe('the API a check holds', () => {
+  it('pauses, stops and brings back only the api service', () => {
+    expect(apiMoves('up', 'paused')).toEqual([['pause', 'api']]);
+    expect(apiMoves('up', 'stopped')).toEqual([['stop', 'api']]);
+    expect(apiMoves('paused', 'up')).toEqual([['unpause', 'api']]);
+    expect(apiMoves('stopped', 'up')).toEqual([['up', '-d', '--wait', '--no-recreate', 'api']]);
+  });
+
+  it('goes through up between paused and stopped, since a paused container is not stopped', () => {
+    expect(apiMoves('paused', 'stopped')).toEqual([
+      ['unpause', 'api'],
+      ['stop', 'api'],
+    ]);
+    expect(apiMoves('stopped', 'paused')).toEqual([
+      ['up', '-d', '--wait', '--no-recreate', 'api'],
+      ['pause', 'api'],
+    ]);
+  });
+
+  it('does nothing when the API is already there', () => {
+    for (const state of ['up', 'paused', 'stopped']) expect(apiMoves(state, state)).toEqual([]);
+  });
+
+  it("reads the container's state from Docker", () => {
+    expect(apiStateOf('running\n')).toBe('up');
+    expect(apiStateOf('paused')).toBe('paused');
+    expect(apiStateOf('exited')).toBe('stopped');
+    expect(apiStateOf('')).toBe('stopped');
+  });
+});
+
+function dockerDouble(container, { failing = [] } = {}) {
+  const ran = [];
+  const control = apiControl({
+    read: async () => container,
+    run: async (args) => {
+      ran.push(args.join(' '));
+      return !failing.includes(args[0]);
+    },
+  });
+  return { control, ran };
+}
+
+describe('the API a batch holds', () => {
+  it('starts from what Docker says, not from up', async () => {
+    const { control, ran } = dockerDouble('paused');
+    await control.move('up');
+    expect(ran).toEqual(['unpause api']);
+    expect(control.state()).toBe('up');
+  });
+
+  it('tracks the state across queued moves', async () => {
+    const { control, ran } = dockerDouble('running');
+    await Promise.all([control.move('paused'), control.move('stopped'), control.move('up')]);
+    expect(ran).toEqual(['pause api', 'unpause api', 'stop api', 'up -d --wait --no-recreate api']);
+    expect(control.state()).toBe('up');
+  });
+
+  it('brings the API up from each state', async () => {
+    for (const [container, moves] of [
+      ['running', []],
+      ['paused', ['unpause api']],
+      ['exited', ['up -d --wait --no-recreate api']],
+    ]) {
+      const { control, ran } = dockerDouble(container);
+      await control.move('up');
+      expect(ran).toEqual(moves);
+      expect(control.state()).toBe('up');
+    }
+  });
+
+  it('reads Docker again after a move that failed, and the next move still runs', async () => {
+    const { control, ran } = dockerDouble('running', { failing: ['stop'] });
+    await expect(control.move('stopped')).rejects.toThrow('docker compose stop api failed');
+    expect(control.state()).toBeUndefined();
+    await control.move('paused');
+    expect(ran).toEqual(['stop api', 'pause api']);
+    expect(control.state()).toBe('paused');
+  });
+});
+
+describe('the batch helper', () => {
+  const helperFor = async (container, open, options = {}) => {
+    const { control, ran } = dockerDouble(container);
+    const languages = [];
+    const begun = [];
+    const server = await startHelper({
+      setLocale: async (locale) => {
+        languages.push(locale);
+        ran.push(`locale ${locale}`);
+      },
+      apiState: control,
+      passed: new Set(),
+      begun,
+      heard: { at: 0 },
+      open: open ?? ((url) => ran.push(`open ${url}`)),
+      ...options,
+      port: 0,
+    });
+    const ask = async (path) => {
+      const response = await fetch(`http://127.0.0.1:${server.address().port}${path}`);
+      return response.json();
+    };
+    return { server, ask, control, ran, languages, begun };
+  };
+
+  it('holds the API for a check, and brings it back when the next check starts', async () => {
+    const { server, ask, control, ran, begun } = await helperFor('running');
+    try {
+      expect(await ask('/api?to=paused')).toEqual({ api: 'paused' });
+      expect(await ask('/started?check=settings')).toEqual({});
+      expect(ran).toEqual(['pause api', 'unpause api']);
+      expect(control.state()).toBe('up');
+      expect(begun).toEqual(['settings']);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('brings a held API back before it switches the language', async () => {
+    const { server, ask, ran } = await helperFor('running');
+    try {
+      expect(await ask('/api?to=paused')).toEqual({ api: 'paused' });
+      expect(await ask('/language?to=es')).toEqual({ language: 'es' });
+      expect(ran).toEqual(['pause api', 'unpause api', 'locale es']);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('opens the bundler or a path under it, and refuses anything else', async () => {
+    const { server, ask, ran } = await helperFor('running');
+    try {
+      expect(await ask('/open?path=%2F--%2Fevents%2F7')).toEqual({ opened: '/--/events/7' });
+      expect(await ask('/open?path=')).toEqual({ opened: '' });
+      expect(await ask('/open?path=https%3A%2F%2Fexample.com')).toEqual({
+        error: 'open what? /open?path=/--/… gave https://example.com',
+      });
+      expect(ran).toEqual([
+        expect.stringMatching(/^open exp:\/\/.+\/--\/events\/7$/),
+        expect.stringMatching(/^open exp:\/\/[^/]+$/),
+      ]);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('fails to open when am start refuses a later send', async () => {
+    const refused = async (url) => {
+      await new Promise((done) => setTimeout(done, 1));
+      throw new Error(`could not open ${url}: Error: Activity not started`);
+    };
+    const { server, ask } = await helperFor('running', refused);
+    try {
+      expect(await ask('/open?path=%2F--%2Fevents%2F7')).toEqual({
+        error: expect.stringMatching(/^could not open exp:\/\/.+\/--\/events\/7: Error/),
+      });
+    } finally {
+      server.close();
+    }
+  });
+
+  it('on Android, answers a reload once the app has run again', async () => {
+    const { server, ask, ran } = await helperFor('running', undefined, {
+      onAndroid: true,
+      reload: async () => {
+        ran.push('reload until run');
+        return true;
+      },
+    });
+    try {
+      expect(await ask('/reload')).toEqual({ reloaded: true });
+      expect(ran).toEqual(['reload until run']);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('refuses a state it does not know', async () => {
+    const { server, ask, ran } = await helperFor('running');
+    try {
+      expect(await ask('/api?to=gone')).toEqual({
+        error: 'no API state gone: up, paused, stopped',
+      });
+      expect(ran).toEqual([]);
+    } finally {
+      server.close();
+    }
+  });
+
+  it("switches the account's language", async () => {
+    const { server, ask, languages } = await helperFor('running');
+    try {
+      expect(await ask('/language?to=es')).toEqual({ language: 'es' });
+      expect(languages).toEqual(['es']);
+    } finally {
+      server.close();
+    }
+  });
+});
+
 describe('a batch flow', () => {
   it('keeps the loaded bundle, signs in once, and runs every check in every language', () => {
     const flow = batchFlow({ checks: ['home', 'settings'], languages: ['en', 'es'], cold: false });
@@ -914,6 +1401,115 @@ describe('the list a batch ends with', () => {
       '✓ members',
     ]);
   });
+
+  it('says why no check ran when the driver was lost while signing in', () => {
+    expect(
+      batchSummary(['home', 'settings'], {
+        passed: new Set(),
+        begun: [],
+        crashed: [],
+        unstarted: new Map([
+          ['home', 'stalled'],
+          ['settings', 'ended'],
+        ]),
+      }),
+    ).toEqual([
+      "✗ home: not run: Maestro's driver stopped answering before the first check, while signing in",
+      '✗ settings: not run: Maestro ended before the first check, while signing in (its output says why)',
+    ]);
+  });
+});
+
+describe('the driver a frozen run leaves on the simulator', () => {
+  it('is found by its pid, and no other app is', () => {
+    expect(
+      driverPids(
+        '38266\t0\tUIKitApplication:dev.mobile.maestro-driver-iosUITests.xctrunner[2a09][rb-legacy]\n' +
+          '36010\t0\tUIKitApplication:host.exp.Exponent[7454][rb-legacy]\n' +
+          '-\t-9\tUIKitApplication:dev.mobile.maestro-driver-iosUITests.xctrunner[1b02][rb-legacy]',
+      ),
+    ).toEqual([38266]);
+  });
+
+  it("finds Maestro's xcodebuild for that simulator, and no other build", () => {
+    expect(
+      driverBuilds(
+        '  4120 /usr/bin/xcodebuild test-without-building -xctestrun /tmp/maestro-driver-ios-config.xctestrun -destination id=SIM-1\n' +
+          '  4121 /usr/bin/xcodebuild test-without-building -xctestrun /tmp/maestro-driver-ios-config.xctestrun -destination id=SIM-2\n' +
+          '  4122 /usr/bin/xcodebuild -workspace Soirely.xcworkspace -destination id=SIM-1\n' +
+          '  4123 /bin/zsh',
+        'SIM-1',
+      ),
+    ).toEqual([4120]);
+  });
+});
+
+describe('one Maestro run of a batch', () => {
+  const held = ['home', 'settings'].map((check) => ({ check, language: 'any' }));
+  const runOf = ({ checks, stalls }) => {
+    const begun = [];
+    const stops = [];
+    const unstarted = new Map();
+    const options = {
+      begun,
+      passed: new Set(),
+      crashed: [],
+      unstarted,
+      heard: { at: 0 },
+      device: 'SIM-1',
+      onAndroid: false,
+      run: async (stall) => {
+        begun.push(...checks);
+        stall.stalled = stalls;
+      },
+      stop: (device, onAndroid) => stops.push({ device, onAndroid, begun: begun.length }),
+    };
+    return { options, stops, unstarted };
+  };
+
+  it('stops the driver of a run the watchdog stopped, once and on its device, before resuming', async () => {
+    const { options, stops } = runOf({ checks: ['home'], stalls: true });
+    expect(await runHeld(held, options)).toEqual({ crashed: 'home', rest: held.slice(1) });
+    expect(stops).toEqual([{ device: 'SIM-1', onAndroid: false, begun: 1 }]);
+  });
+
+  it('leaves the driver of a run that ended on its own', async () => {
+    const { options, stops } = runOf({ checks: ['home'], stalls: false });
+    await runHeld(held, options);
+    expect(stops).toEqual([]);
+  });
+
+  it('starts nothing more until the stopped driver is gone', async () => {
+    const { options } = runOf({ checks: ['home'], stalls: true });
+    let gone = false;
+    options.stop = async () => {
+      await new Promise((wait) => setTimeout(wait, 10));
+      gone = true;
+    };
+    await runHeld(held, options);
+    expect(gone).toBe(true);
+  });
+
+  it('resumes again after a stall when the resume ends before its first check', async () => {
+    const watchdog = { stopped: false };
+    const stalled = runOf({ checks: ['home'], stalls: true });
+    await runHeld(held, { ...stalled.options, watchdog });
+
+    const ended = runOf({ checks: [], stalls: false });
+    const rest = held.slice(1);
+    expect(await runHeld(rest, { ...ended.options, watchdog })).toEqual({ crashed: null, rest });
+    expect([...ended.unstarted.values()]).toEqual(['ended']);
+  });
+
+  it('says whether a run lost before its first check stalled or ended', async () => {
+    const stalled = runOf({ checks: [], stalls: true });
+    expect(await runHeld(held, stalled.options)).toEqual({ crashed: null, rest: held });
+    expect([...stalled.unstarted.values()]).toEqual(['stalled', 'stalled']);
+
+    const ended = runOf({ checks: [], stalls: false });
+    expect(await runHeld(held, ended.options)).toEqual({ crashed: null, rest: [] });
+    expect([...ended.unstarted.values()]).toEqual(['ended', 'ended']);
+  });
 });
 
 describe('what a Maestro run that lost its driver leaves to resume', () => {
@@ -969,6 +1565,20 @@ describe('what a Maestro run that lost its driver leaves to resume', () => {
         stalled: true,
       }),
     ).toEqual({ crashed: 'members', rest: [] });
+  });
+
+  it('resumes every check of a run the watchdog stopped before its first', () => {
+    expect(afterRun(runs, { begun: [], from: 0, passed: new Set(), stalled: true })).toEqual({
+      crashed: null,
+      rest: runs,
+    });
+  });
+
+  it('resumes every check of a run that ended before its first, once the watchdog has stopped one', () => {
+    expect(afterRun(runs, { begun: [], from: 0, passed: new Set(), afterStall: true })).toEqual({
+      crashed: null,
+      rest: runs,
+    });
   });
 
   it('stops resuming after the cap when every resume crashes on the same check', async () => {
@@ -1059,7 +1669,36 @@ describe('the flows a batch runs', () => {
       expect(readFileSync(join(target, '_checks/sign-in-rules.fr.yaml'), 'utf8')).toContain(
         "'Règles de connexion|Règles de connexion de .*'",
       );
-      expect(readFileSync(join(target, 'batch/session.yaml'), 'utf8')).not.toContain('{{t:');
+      const session = readFileSync(join(target, 'batch/session.yaml'), 'utf8');
+      expect(session).not.toContain('{{t:');
+      const signedIn = new RegExp(
+        `^(?:${[...session.matchAll(/notVisible: '(.*)'/g)].at(-1)[1].replaceAll("''", "'")})$`,
+      );
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        for (const line of [
+          catalogues[code].settings.signedInAs,
+          catalogues[code].noOrganisation.signedInAs,
+        ]) {
+          expect(line.replace('{{email}}', 'qa@soirely.test')).toMatch(signedIn);
+          expect(line.replace('{{email}}', 'other@soirely.test')).not.toMatch(signedIn);
+        }
+      }
+      const signOut = readFileSync(join(target, 'batch/sign-out.yaml'), 'utf8');
+      const someoneSignedIn = new RegExp(
+        `^(?:${signOut.match(/when:\s+visible: '(.*)'/)[1].replaceAll("''", "'")})$`,
+      );
+      const homeSettled = new RegExp(
+        `^(?:${signOut.match(/extendedWaitUntil:\s+visible: '(.*)'/)[1].replaceAll("''", "'")})$`,
+      );
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        for (const line of [
+          catalogues[code].settings.signedInAs,
+          catalogues[code].noOrganisation.signedInAs,
+        ]) {
+          expect(line.replace('{{email}}', 'other@soirely.test')).toMatch(homeSettled);
+          expect(line.replace('{{email}}', 'other@soirely.test')).toMatch(someoneSignedIn);
+        }
+      }
       expect(readFileSync(join(target, 'batch/reopen.yaml'), 'utf8')).not.toContain('{{t:');
       const reset = readFileSync(join(target, 'batch/reset.yaml'), 'utf8');
       expect(reset).toContain('ASK: /running');
@@ -1132,5 +1771,161 @@ describe('the database, from a checkout', () => {
     const commands = databaseCommands(console_, [], false);
     expect(commands.filter(([first]) => first === 'compose')).toEqual([]);
     expect(commands).toHaveLength(3);
+  });
+});
+
+describe('renewingSession', () => {
+  const refused = () => Object.assign(new Error('answered 401'), { status: 401 });
+  const tokens = (n) => ({ accessToken: `access-${n}`, refreshToken: `refresh-${n}` });
+
+  it('signs in once and reuses the token while it is accepted', async () => {
+    let opened = 0;
+    const session = renewingSession({
+      open: async () => tokens(++opened),
+      refresh: async () => {},
+    });
+    await session(async (token) => token);
+    expect(await session(async (token) => token)).toBe('access-1');
+    expect(opened).toBe(1);
+  });
+
+  it('renews with the refresh token on a 401 and asks once more', async () => {
+    const presented = [];
+    const session = renewingSession({
+      open: async () => tokens(1),
+      refresh: async (refreshToken) => (presented.push(refreshToken), tokens(2)),
+    });
+    await session(async (token) => token);
+    const answer = await session(async (token) => {
+      if (token === 'access-1') throw refused();
+      return token;
+    });
+    expect(answer).toBe('access-2');
+    expect(presented).toEqual(['refresh-1']);
+  });
+
+  it('signs in again when the refresh is refused', async () => {
+    let opened = 0;
+    const session = renewingSession({
+      open: async () => tokens(++opened),
+      refresh: async () => {
+        throw refused();
+      },
+    });
+    const answer = await session(async (token) => {
+      if (token === 'access-1') throw refused();
+      return token;
+    });
+    expect(answer).toBe('access-2');
+  });
+
+  it('shares one renewal between calls refused at the same time', async () => {
+    let refreshed = 0;
+    const session = renewingSession({
+      open: async () => tokens(1),
+      refresh: async () => (refreshed++, tokens(2)),
+    });
+    const call = () =>
+      session(async (token) => {
+        if (token === 'access-1') throw refused();
+        return token;
+      });
+    expect(await Promise.all([call(), call()])).toEqual(['access-2', 'access-2']);
+    expect(refreshed).toBe(1);
+  });
+
+  it('signs in fresh on the next call when a renewal fails', async () => {
+    let opened = 0;
+    const session = renewingSession({
+      open: async () => {
+        opened += 1;
+        if (opened === 2) throw new Error('network blip');
+        return tokens(opened);
+      },
+      refresh: async () => {
+        throw refused();
+      },
+    });
+    const call = () =>
+      session(async (token) => {
+        if (token === 'access-1') throw refused();
+        return token;
+      });
+    await expect(call()).rejects.toThrow('network blip');
+    expect(await call()).toBe('access-3');
+  });
+
+  it('signs in again for a call refused after another renewal failed', async () => {
+    let opened = 0;
+    const session = renewingSession({
+      open: async () => {
+        opened += 1;
+        if (opened === 2) throw new Error('network blip');
+        return tokens(opened);
+      },
+      refresh: async () => {
+        throw refused();
+      },
+    });
+    let answerSecond;
+    const secondAnswered = new Promise((resolve) => (answerSecond = resolve));
+    const first = session(async (token) => {
+      if (token === 'access-1') throw refused();
+      return token;
+    });
+    const second = session(async (token) => {
+      if (token === 'access-1') {
+        await secondAnswered;
+        throw refused();
+      }
+      return token;
+    });
+    await expect(first).rejects.toThrow('network blip');
+    answerSecond();
+    expect(await second).toBe('access-3');
+  });
+
+  it('signs in again on the next call when the first sign-in fails', async () => {
+    let opened = 0;
+    const session = renewingSession({
+      open: async () => {
+        opened += 1;
+        if (opened === 1) throw new Error('network blip');
+        return tokens(opened);
+      },
+      refresh: async () => {},
+    });
+    await expect(session(async (token) => token)).rejects.toThrow('network blip');
+    expect(await session(async (token) => token)).toBe('access-2');
+  });
+
+  it('passes any other failure through', async () => {
+    const session = renewingSession({ open: async () => tokens(1), refresh: async () => {} });
+    const broken = Object.assign(new Error('answered 500'), { status: 500 });
+    await expect(
+      session(async () => {
+        throw broken;
+      }),
+    ).rejects.toBe(broken);
+  });
+});
+
+describe('the account --ready reports', () => {
+  const made = { email: 'a@qa.test', password: 'pw', accessToken: 'tok', sessionId: 'sess' };
+
+  it('names the session it signed in with', () => {
+    const report = readyReport({ ...made, secret: null });
+
+    expect(report).toMatch(/accessToken {2}tok\n/);
+    expect(report).toMatch(/sessionId {4}sess\n/);
+    expect(report).not.toContain('TOTP_SECRET');
+  });
+
+  it('adds the two-factor secret when it turned two-factor on', () => {
+    const report = readyReport({ ...made, secret: 'S3CR3T' });
+
+    expect(report).toContain('two-factor on');
+    expect(report).toContain('TOTP_SECRET  S3CR3T');
+    expect(report).toContain('EMAIL=a@qa.test PASSWORD=pw TOTP_SECRET=S3CR3T');
   });
 });

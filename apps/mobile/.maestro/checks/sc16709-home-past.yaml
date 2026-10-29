@@ -1,0 +1,11 @@
+# sc-16709: Events Home's Past tab: the called-off card says Called off on its date, and no finished card has a Next up line.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- tapOn:
+    id: 'events.tab.past'
+- extendedWaitUntil:
+    visible: '{{t:eventsScreen.calledOffOn}}'
+    timeout: 15000
+- takeScreenshot: home-past
+- assertNotVisible: '{{t:eventsScreen.nextUp}}'

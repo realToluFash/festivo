@@ -360,17 +360,20 @@ describe('a refresh answered after the session changed hands (sc-16226)', () => 
     expect(onSignedOut).not.toHaveBeenCalled();
   });
 
-  test('a sign-out waits for the refresh on the wire and ends the chain it rotated to', async () => {
+  test('a sign-out does not wait for a refresh that is never answered', async () => {
     const { client, tokens, onSignedOut, asked, answer, signOutBody } = held();
 
     const earlier = client.get('/api/events').catch(() => undefined);
     await asked;
-    const signingOut = client.signOut();
+    await client.signOut();
+
+    expect(signOutBody()).toMatchObject({ refreshToken: 'ada-refresh' });
+    expect(tokens.access()).toBeNull();
+    expect(tokens.refresh()).toBeNull();
+
     answer(issued({ accessToken: 'ada-fresh', refreshToken: 'ada-next' }));
-    await signingOut;
     await earlier;
 
-    expect(signOutBody()).toMatchObject({ refreshToken: 'ada-next' });
     expect(tokens.access()).toBeNull();
     expect(tokens.refresh()).toBeNull();
     expect(onSignedOut).not.toHaveBeenCalled();
@@ -2123,6 +2126,93 @@ describe('a second factor', () => {
     expect(sent).toMatchObject({ challenge: 'the-challenge', recoveryCode: 'abcd-efgh' });
     expect(signedIn.account.id).toBe(ACCOUNT.id);
     expect(tokens.saved).toMatchObject({ accessToken: 'fresh' });
+  });
+});
+
+describe('a sign-in that stores a session says so (sc-19634)', () => {
+  function signingIn(answer: () => Response) {
+    const onSignedIn = vi.fn();
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('old', 'old-refresh'),
+      onSignedIn,
+      fetch: async () => answer(),
+    });
+
+    return { client, onSignedIn };
+  }
+
+  test('a password sign-in says so once its tokens are saved', async () => {
+    const { client, onSignedIn } = signingIn(() => issued({ account: ACCOUNT }));
+
+    await client.signIn('ada@example.com', 'a decent passphrase');
+
+    expect(onSignedIn).toHaveBeenCalledTimes(1);
+  });
+
+  test('a provider sign-in and a passed second factor say so too', async () => {
+    const { client, onSignedIn } = signingIn(() => issued({ account: ACCOUNT }));
+
+    await client.signInWithProvider('google', 'id-token', 'nonce');
+    await client.verifyTwoFactor('the-challenge', { code: '123456' });
+
+    expect(onSignedIn).toHaveBeenCalledTimes(2);
+  });
+
+  test('a challenge, a refusal and an unreachable API do not', async () => {
+    const answers = [
+      () =>
+        json(
+          {
+            twoFactorChallenge: 'the-challenge',
+            challengeExpiresAt: '2026-10-17T12:05:00+00:00',
+            email: 'ada@example.com',
+          },
+          202,
+        ),
+      () => problem(401, 'invalid_credentials'),
+      () => problem(429, 'too_many_attempts'),
+    ];
+
+    for (const answer of answers) {
+      const { client, onSignedIn } = signingIn(answer);
+      await client.signIn('ada@example.com', 'a decent passphrase').catch(() => null);
+      expect(onSignedIn).not.toHaveBeenCalled();
+    }
+
+    const onSignedIn = vi.fn();
+    const unreachable = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store(null, null),
+      onSignedIn,
+      fetch: async () => {
+        throw new TypeError('Failed to fetch');
+      },
+    });
+    await expect(unreachable.signIn('ada@example.com', 'a decent passphrase')).rejects.toThrow();
+    expect(onSignedIn).not.toHaveBeenCalled();
+  });
+
+  test('a refreshed session is not a sign-in', async () => {
+    let refreshed = false;
+    const onSignedIn = vi.fn();
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('expired', 'good-refresh'),
+      onSignedIn,
+      fetch: async (input) => {
+        if (String(input).includes('/auth/refresh')) {
+          refreshed = true;
+          return issued();
+        }
+        return refreshed ? json({ ok: true }) : problem(401, 'unauthenticated');
+      },
+    });
+
+    await client.get('/api/a');
+
+    expect(refreshed).toBe(true);
+    expect(onSignedIn).not.toHaveBeenCalled();
   });
 });
 

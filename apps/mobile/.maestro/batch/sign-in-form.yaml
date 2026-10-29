@@ -17,8 +17,25 @@ appId: host.exp.Exponent
     id: 'signIn.password'
 - eraseText: 120
 - inputText: ${PASSWORD}
-- tapOn:
-    id: 'signIn.submit'
+# On iOS the password field's Go key, not a tap: on an iPad hideKeyboard can scroll the
+# form instead, and the tap lands where the button was (sc-19359). On Android Enter can
+# type into the field instead of submitting (sc-18648), so it taps. No retry.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - pressKey: Enter
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+      - tapOn:
+          id: 'signIn.submit'
+- extendedWaitUntil:
+    notVisible:
+      id: 'signIn.submit'
+    timeout: 30000
 - runFlow:
     when:
       visible:
@@ -26,6 +43,6 @@ appId: host.exp.Exponent
     file: ../sign-in-two-factor.yaml
 - scrollUntilVisible:
     element:
-      text: '{{t:any:settings.signedInAs|email}}'
+      text: '{{t:any:settings.signedInAs|email}}|{{t:any:noOrganisation.signedInAs|email}}'
     direction: DOWN
     timeout: 30000

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { setLanguage } from '../../../i18n/index.ts';
+import { holdProof } from '../../../recentProof.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { breaksAnywhere } from '../../../test-wrapping.ts';
@@ -244,6 +245,7 @@ async function historyOf(name: string) {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  sessionStorage.clear();
 });
 
 describe('Settings > Members', () => {
@@ -2042,5 +2044,212 @@ describe('where focus goes once a click on Members is answered (sc-11369)', () =
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     const heading = await screen.findByRole('heading', { level: 1, name: 'Members' });
     await waitFor(() => expect(document.activeElement).toBe(heading));
+  });
+});
+
+describe('making somebody an owner asks for a recent proof (sc-18930)', () => {
+  const ME = {
+    id: 'u_folake',
+    name: 'Folake Adeyemi',
+    businessName: null,
+    countryCode: null,
+    organisationCountry: 'NG',
+    locale: 'en',
+    timezone: 'Africa/Lagos',
+    waitingFor: null,
+    verified: true,
+    complete: true,
+    needsOrganisation: false,
+    hasPassword: true,
+    providers: [],
+    emailAddresses: [{ id: 'e1', address: 'folake@ire.events', verified: true, primary: true }],
+    phoneNumbers: [],
+  };
+  const PROVING = {
+    'GET /api/auth/me': () => json(ME),
+    'GET /api/auth/two-factor': () => json({ on: false, recoveryCodesLeft: 0 }),
+    'POST /api/auth/proof': () =>
+      json({ proof: 'p-1', expiresAt: new Date(Date.now() + 300_000).toISOString() }),
+  };
+  const INTRO =
+    "To make somebody an owner of Ìrè Events, confirm it's you. You won't be asked again for 5 minutes.";
+  const SENT = () =>
+    json(
+      {
+        invitation: { ...LIST.invitations[0], id: 'inv_3', email: 'kemi@ire.events', role: OWNER },
+      },
+      201,
+    );
+
+  function inviteAsOwner(): void {
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'kemi@ire.events' } });
+    fireEvent.click(screen.getByRole('radio', { name: /Owner/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }));
+  }
+
+  it('confirms it is you before an Owner invitation is sent, then sends it with no second press', async () => {
+    signedIn();
+    const sent = answering({ ...READS, ...PROVING, 'POST /api/orgs/org_1/members/invite': SENT });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Invite somebody' }));
+    inviteAsOwner();
+
+    expect(await screen.findByText(INTRO)).toBeDefined();
+    expect(sent.some((one) => one.line === 'POST /api/orgs/org_1/members/invite')).toBe(false);
+    fireEvent.change(screen.getByLabelText('Your password'), {
+      target: { value: 'a decent passphrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    expect(await screen.findByText('Invitation sent to kemi@ire.events.')).toBeDefined();
+    expect(sent.find((one) => one.line === 'POST /api/orgs/org_1/members/invite')?.body).toEqual({
+      email: 'kemi@ire.events',
+      roleId: 'role_1',
+      proof: 'p-1',
+    });
+  });
+
+  it('returns to the form as it was on Cancel, with nothing sent', async () => {
+    signedIn();
+    const sent = answering({ ...READS, ...PROVING });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Invite somebody' }));
+    inviteAsOwner();
+    await screen.findByText(INTRO);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('kemi@ire.events');
+    expect((screen.getByRole('radio', { name: /Owner/ }) as HTMLInputElement).checked).toBe(true);
+    expect(sent.some((one) => one.line.startsWith('POST /api/orgs'))).toBe(false);
+  });
+
+  it('asks nothing more while the proof this tab holds stands', async () => {
+    holdProof({ proof: 'held', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+    signedIn();
+    const sent = answering({ ...READS, 'POST /api/orgs/org_1/members/invite': SENT });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Invite somebody' }));
+    inviteAsOwner();
+
+    expect(await screen.findByText('Invitation sent to kemi@ire.events.')).toBeDefined();
+    expect(sent.find((one) => one.line === 'POST /api/orgs/org_1/members/invite')?.body).toEqual({
+      email: 'kemi@ire.events',
+      roleId: 'role_1',
+      proof: 'held',
+    });
+  });
+
+  it('asks again when the API finds the held proof has lapsed', async () => {
+    holdProof({ proof: 'stale', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+    signedIn();
+    answering({
+      ...READS,
+      ...PROVING,
+      'POST /api/orgs/org_1/members/invite': () =>
+        json(
+          {
+            type: 'https://soirely.com/errors/proof_required',
+            title: 'Confirm it is you',
+            status: 403,
+          },
+          403,
+        ),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Invite somebody' }));
+    inviteAsOwner();
+
+    expect(await screen.findByText(INTRO)).toBeDefined();
+  });
+
+  it('confirms it is you before Change their role to Owner', async () => {
+    signedIn();
+    const sent = answering({
+      ...READS,
+      ...PROVING,
+      'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)),
+      'PATCH /api/orgs/org_1/members/m_bisi': () => new Response(null, { status: 204 }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /Owner/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Change their role to Owner' }));
+
+    expect(await screen.findByText(INTRO)).toBeDefined();
+    expect(sent.some((one) => one.line.startsWith('PATCH'))).toBe(false);
+    fireEvent.change(screen.getByLabelText('Your password'), {
+      target: { value: 'a decent passphrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await waitFor(() =>
+      expect(sent.find((one) => one.line === 'PATCH /api/orgs/org_1/members/m_bisi')?.body).toEqual(
+        { roleId: 'role_1', proof: 'p-1' },
+      ),
+    );
+  });
+
+  it('finishes the invitation the form held, back from Google', async () => {
+    sessionStorage.setItem(
+      'soirely.provider.returned',
+      JSON.stringify({
+        provider: 'google',
+        purpose: {
+          kind: 'makeOwner',
+          roleId: 'role_1',
+          to: { email: 'kemi@ire.events', again: null },
+        },
+        signIn: { code: 'the-code', codeVerifier: 'v', redirectUri: 'r', nonce: 'n' },
+      }),
+    );
+    signedIn();
+    const sent = answering({ ...READS, ...PROVING, 'POST /api/orgs/org_1/members/invite': SENT });
+    open();
+
+    expect(await screen.findByText('Invitation sent to kemi@ire.events.')).toBeDefined();
+    expect(sent.find((one) => one.line === 'POST /api/auth/proof')?.body).toEqual(
+      expect.objectContaining({ provider: 'google' }),
+    );
+    expect(sent.find((one) => one.line === 'POST /api/orgs/org_1/members/invite')?.body).toEqual({
+      email: 'kemi@ire.events',
+      roleId: 'role_1',
+      proof: 'p-1',
+    });
+    expect(sessionStorage.getItem('soirely.provider.returned')).toBeNull();
+  });
+
+  it('finishes the role change the member page held, back from Google', async () => {
+    sessionStorage.setItem(
+      'soirely.provider.returned',
+      JSON.stringify({
+        provider: 'google',
+        purpose: { kind: 'makeOwner', roleId: 'role_1', to: { member: 'm_bisi' } },
+        signIn: { code: 'the-code', codeVerifier: 'v', redirectUri: 'r', nonce: 'n' },
+      }),
+    );
+    signedIn();
+    const sent = answering({
+      ...READS,
+      ...PROVING,
+      'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)),
+      'PATCH /api/orgs/org_1/members/m_bisi': () => new Response(null, { status: 204 }),
+    });
+    open();
+
+    await waitFor(() =>
+      expect(sent.find((one) => one.line === 'PATCH /api/orgs/org_1/members/m_bisi')?.body).toEqual(
+        { roleId: 'role_1', proof: 'p-1' },
+      ),
+    );
+    expect(sent.find((one) => one.line === 'POST /api/auth/proof')?.body).toEqual(
+      expect.objectContaining({ provider: 'google' }),
+    );
+    expect(sent.filter((one) => one.line === 'POST /api/auth/proof')).toHaveLength(1);
+    expect(sessionStorage.getItem('soirely.provider.returned')).toBeNull();
   });
 });

@@ -117,7 +117,7 @@
     "signInRules.rule.noTwoFactor": "Les personnes qui peuvent gérer les membres, les rôles, la facturation ou la sécurité n’ont plus besoin de la double authentification pour le faire.",
     "signInRules.rule.everyoneTwoFactor": "La double authentification est obligatoire pour tous. Les membres qui ne l’ont pas activée ont 7 jours pour le faire.",
     "signInRules.rule.noEveryoneTwoFactor": "La double authentification n’est plus obligatoire pour tous.",
-    "signInRules.twoFactorDue.subject": "{organisation} exige la double authentification à partir du {deadline}",
+    "signInRules.twoFactorDue.subject": "Avant le {deadline} : double authentification dans {organisation}",
     "signInRules.twoFactorDue.body": "{organisation} exige désormais la double authentification de toutes les personnes qui en font partie. Vous avez jusqu’au {deadline} pour l’activer. Passé ce délai, vous ne pourrez plus rien ouvrir dans {organisation} tant que vous ne l’aurez pas activée. Vos autres organisations et vos accès à des événements précis ne sont pas concernés.",
     "signInRules.twoFactorDue.explain": "La double authentification demande un code d’une application d’authentification à chaque connexion : un mot de passe volé ne suffit donc pas à lui seul. Vous ne l’activez qu’une fois, et elle vaut pour toutes les organisations qui l’exigent.",
     "signInRules.twoFactorDue.facts": "Organisation : {organisation}\nDate limite : {deadline}\nVotre compte : {address}",

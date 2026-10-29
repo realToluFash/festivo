@@ -7,6 +7,7 @@ namespace App\Domain\Organisation\Invitations;
 use App\Audit\Auditor;
 use App\Domain\Organisation\Roles\RoleManager;
 use App\Domain\User\EmailAddressNormaliser;
+use App\Domain\User\SignInMethods\RecentProof;
 use App\Domain\User\TokenIssuer;
 use App\Entity\Invitation;
 use App\Entity\Organisation;
@@ -40,6 +41,7 @@ final readonly class InvitationSender
         private MembershipRepository $membershipRepository,
         private EmailAddressRepository $emailAddressRepository,
         private RoleManager $roleManager,
+        private RecentProof $recentProof,
         private InvitationMailer $invitationMailer,
         private AfterResponse $afterResponse,
         private Auditor $auditor,
@@ -48,11 +50,15 @@ final readonly class InvitationSender
     ) {
     }
 
-    /** Re-inviting an address with one pending replaces its token rather than adding a second row. */
-    public function invite(Organisation $organisation, string $email, Role $role, User $by, ?Request $request = null): Invitation
+    /** Re-inviting an address with one pending replaces its token rather than adding a second row. Into Owner, it asks for `$by`'s recent proof (sc-18930). */
+    public function invite(Organisation $organisation, string $email, Role $role, User $by, ?Request $request = null, #[SensitiveParameter] ?string $proof = null): Invitation
     {
         $address = $this->address($email);
         $this->roleManager->mayGrant($organisation, $by, $role);
+
+        if ($role->isOwner()) {
+            $this->recentProof->require($by, $proof);
+        }
 
         $member = $this->membershipRepository->findOneByAddress($organisation, $address);
 

@@ -24,6 +24,7 @@ import { DraftRow } from './MakeLive.tsx';
 import { PauseButton, PausedRow } from './PauseEvent.tsx';
 import { Notice } from './Notice.tsx';
 import { readOut } from './ReadOut.tsx';
+import { StepMark } from './StepMark.tsx';
 import { Text } from './Text.tsx';
 import { ComingUp } from './Timeline.tsx';
 import { cardFrame } from './cardFrame.ts';
@@ -99,6 +100,12 @@ function EventType({ event, size }: { event: OrganisationEvent; size: number }) 
   );
 }
 
+const FIRST_RUN_STEPS = [
+  'eventsScreen.firstRunStepName',
+  'eventsScreen.firstRunStepDefaults',
+  'eventsScreen.firstRunStepOpen',
+] as const;
+
 export function NoEvents({
   kind,
   onCreate,
@@ -110,16 +117,29 @@ export function NoEvents({
   const { t } = useTranslation();
 
   return (
-    <View style={cardFrame(kind)}>
+    <View style={[cardFrame(kind), styles.across]} testID="events.firstRun">
       <Text size={tokens.typeRowTitle.size} weight="semibold" accessibilityRole="header">
-        {t('eventsScreen.noneTitle')}
+        {t('eventsScreen.firstRunTitle')}
       </Text>
-      <Text size={tokens.typeBody.size} muted>
-        {onCreate == null ? t('eventsScreen.noneWillShow') : t('eventsScreen.noneCreate')}
-      </Text>
-      {onCreate != null && (
+      <View role="list" style={styles.stack}>
+        {FIRST_RUN_STEPS.map((step, index) => (
+          <View key={step} role="listitem" style={styles.firstRunStep}>
+            <StepMark step={index + 1} state="later" />
+            <Text size={tokens.typeBody.size} style={styles.stepText}>
+              {t(step)}
+            </Text>
+          </View>
+        ))}
+      </View>
+      {onCreate == null ? (
+        <Notice
+          tone="quiet"
+          mark={tokens.marks.info.glyph}
+          body={t('eventsScreen.firstRunAskOwner')}
+        />
+      ) : (
         <PrimaryButton
-          label={t('eventsScreen.newEvent')}
+          label={t('eventsScreen.firstRunCreate')}
           onPress={onCreate}
           testID="events.none.new"
         />
@@ -260,6 +280,9 @@ export function EventNotFound({ onBack }: { onBack: () => void }) {
 
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
+  across: { maxWidth: '100%' },
+  firstRunStep: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
+  stepText: { flex: 1 },
   cards: { gap: tokens.spaceLg },
   pageHead: { gap: tokens.spaceXs },
   stateWord: { color: tokens.colorInkSecondary },

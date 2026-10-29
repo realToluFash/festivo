@@ -13,7 +13,7 @@ import { EditableDetails, ReadOnlyDetails } from '../../src/components/Organisat
 import { OwnershipCard } from '../../src/components/OwnershipCard.tsx';
 import { RequestLinkCard } from '../../src/components/RequestLinkCard.tsx';
 import { Screen } from '../../src/components/Screen.tsx';
-import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
+import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { Text } from '../../src/components/Text.tsx';
 import { type LayoutKind, useLayout } from '../../src/layout/useLayout.ts';
 import { replaceOrganisation, useSignedIn } from '../../src/signedIn.ts';
@@ -22,6 +22,7 @@ import { tokens } from '../../src/theme/tokens.ts';
 /** Settings > Organisation, `AppSettings-*` state `org`: the web's General, for the organisation the switcher is in. */
 export default function Organisation() {
   const { t } = useTranslation();
+  const backToSettings = useBackToSettings();
   const { kind } = useLayout();
   const { organisation } = useSignedIn();
   const phone = kind === 'phone';

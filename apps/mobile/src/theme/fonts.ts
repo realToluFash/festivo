@@ -1,6 +1,6 @@
-import { StyleSheet, type StyleProp, type TextStyle } from 'react-native';
+import { Platform, StyleSheet, type StyleProp, type TextStyle } from 'react-native';
 
-import { MONO, SANS, faceStyle } from './faceFor.ts';
+import { MONO, SANS, faceStyle, inputFaceStyle } from './faceFor.ts';
 
 export { facesLoaded } from './faceFor.ts';
 
@@ -49,4 +49,9 @@ export const FONT_FACES = {
  */
 export function faced(style: StyleProp<TextStyle>, mono = false): TextStyle {
   return faceStyle(StyleSheet.flatten(style), mono);
+}
+
+/** faced() for a TextInput, which every field puts its style through. */
+export function inputFaced(style: StyleProp<TextStyle>, mono = false): TextStyle {
+  return inputFaceStyle(StyleSheet.flatten(style), mono, Platform.OS);
 }

@@ -1,5 +1,5 @@
 import { primaryEmailAddress } from '@soirely/api-client';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Fragment, type ReactNode, useRef } from 'react';
 import { type LayoutRectangle, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +10,7 @@ import {
   type SettingsSection,
   settingsGroups,
 } from '../kit/appNav.ts';
+import { OPENED_IN_PLACE_OF_SETTINGS, sectionTakesBack } from '../kit/systemBack.ts';
 import { breakableEmail } from '../layout/textSize.ts';
 import {
   type LayoutKind,
@@ -104,7 +105,12 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
             open === section && styles.sectionOpen,
           ]}
           onPress={() =>
-            phone ? router.push(SECTION_HREF[section]) : router.replace(SECTION_HREF[section])
+            phone
+              ? router.push(SECTION_HREF[section])
+              : router.replace({
+                  pathname: SECTION_HREF[section],
+                  params: { from: OPENED_IN_PLACE_OF_SETTINGS },
+                })
           }
           accessibilityRole="button"
           accessibilityState={{ selected: open === section }}
@@ -190,9 +196,16 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
   );
 }
 
-// A tablet opens a section in place of the last, so a window shrunk to a phone may have no Settings under it.
-export function backToSettings(label: string) {
-  return { label, onPress: () => router.dismissTo(DESTINATION_HREF.settings) };
+// A tablet opens a section in place of the last, so a window shrunk to a phone may have no Settings under it, for the header's back or Android's (sc-19104).
+export function useBackToSettings() {
+  const { from } = useLocalSearchParams<{ from?: string }>();
+  const systemBack = sectionTakesBack(from);
+
+  return (label: string) => ({
+    label,
+    onPress: () => router.dismissTo(DESTINATION_HREF.settings),
+    systemBack,
+  });
 }
 
 /** What a tablet shows beside the list before a section is chosen. */

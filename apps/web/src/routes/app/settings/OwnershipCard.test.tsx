@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { browser } from '../../../providerSignIn.ts';
+import { holdProof } from '../../../recentProof.ts';
 import { __setSessionState, switchOrganisation, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
 import { breaksAnywhere } from '../../../test-wrapping.ts';
@@ -37,21 +39,24 @@ const MEMBERS = {
   invitations: [],
 };
 
-function signedIn(organisation = IRE, others: Membership[] = []): void {
+function signedIn(
+  organisation = IRE,
+  others: Membership[] = [],
+  ways: Pick<Session, 'hasPassword' | 'providers'> = { hasPassword: true, providers: [] },
+): void {
   const session: Session = {
     name: 'Folake Adeyemi',
     email: 'folake@ire.events',
     verified: true,
     complete: true,
     awaiting: null,
-    providers: [],
     needsOrganisation: false,
-    hasPassword: true,
     organisation,
     organisations: [organisation, ...others],
     organisationCountry: null,
     timezone: null,
     waitingFor: null,
+    ...ways,
   };
 
   __setSessionState({ status: 'signedIn', session });
@@ -111,8 +116,16 @@ const DELETION = {
   restoreCloses: 'Monday, Nov 16 at 14:20 WAT',
 };
 
+function problem(code: string, status: number, members: Record<string, string> = {}): Response {
+  return new Response(
+    JSON.stringify({ type: `https://soirely.com/errors/${code}`, title: code, status, ...members }),
+    { status, headers: { 'Content-Type': 'application/problem+json' } },
+  );
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
+  sessionStorage.clear();
 });
 
 describe('Settings > General, ownership and leaving', () => {
@@ -792,5 +805,289 @@ describe('The way back is off while its request runs (sc-12511)', () => {
     expectOff(keep, false);
     fireEvent.click(keep);
     expect(screen.queryByLabelText('Type Ìrè Events to confirm')).toBeNull();
+  });
+});
+
+describe('Transfer ownership for an owner with no password (sc-18959)', () => {
+  const GOOGLE_ONLY = {
+    hasPassword: false,
+    providers: [{ provider: 'google' as const, email: 'folake@gmail.com' }],
+  };
+  const SIGN_IN = { code: 'the-code', codeVerifier: 'v', redirectUri: 'r', nonce: 'n' };
+  const STANDS = () => new Date(Date.now() + 300_000).toISOString();
+
+  function backFrom(returned: object): void {
+    sessionStorage.setItem(
+      'soirely.provider.returned',
+      JSON.stringify({
+        provider: 'google',
+        purpose: { kind: 'transfer', organisation: 'org_1', owner: 'm_bisi' },
+        ...returned,
+      }),
+    );
+  }
+
+  it('says the transfer asks for Google, and offers Continue with Google in place of the password', async () => {
+    signedIn(IRE, [], GOOGLE_ONLY);
+    answering({ 'GET /api/orgs/org_1/members': () => json(MEMBERS) });
+    settings();
+
+    expect(
+      await screen.findByText(
+        'Hand Ìrè Events to another member. Asks you to confirm with Google first.',
+      ),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Transfer ownership' }));
+
+    expect(screen.queryByLabelText('Your password')).toBeNull();
+    expect(
+      screen.getByText('You sign in with Google, so confirm with Google instead.'),
+    ).toBeDefined();
+    expect(
+      screen.getByText('So that nobody who picks up this device can give Ìrè Events away.'),
+    ).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeDefined();
+  });
+
+  it("offers Apple when it was linked first, as Confirm it's you does", async () => {
+    signedIn(IRE, [], {
+      hasPassword: false,
+      providers: [
+        { provider: 'apple', email: null },
+        { provider: 'google', email: 'folake@gmail.com' },
+      ],
+    });
+    answering({ 'GET /api/orgs/org_1/members': () => json(MEMBERS) });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Transfer ownership' }));
+
+    expect(screen.getByRole('button', { name: 'Continue with Apple' })).toBeDefined();
+  });
+
+  it('opens nothing until the new owner is chosen, then leaves for Google with them kept', async () => {
+    signedIn(IRE, [], GOOGLE_ONLY);
+    answering({ 'GET /api/orgs/org_1/members': () => json(MEMBERS) });
+    const leave = vi.spyOn(browser, 'leaveFor').mockImplementation(() => {});
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Transfer ownership' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue with Google' }));
+
+    expect(screen.getByText('Choose who becomes the owner.')).toBeDefined();
+    expect(leave).not.toHaveBeenCalled();
+
+    fireEvent.click(await screen.findByRole('radio', { name: /Bisi Adeyemi/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue with Google' }));
+
+    await waitFor(() => expect(leave).toHaveBeenCalledOnce());
+    expect(new URL(leave.mock.calls[0]![0]).searchParams.get('max_age')).toBe('0');
+    expect(JSON.parse(sessionStorage.getItem('soirely.google.attempt') ?? '{}').purpose).toEqual({
+      kind: 'transfer',
+      organisation: 'org_1',
+      owner: 'm_bisi',
+    });
+  });
+
+  it('back from Google, transfers nothing until Make ‹name› the owner is pressed', async () => {
+    signedIn(IRE, [], GOOGLE_ONLY);
+    backFrom({ signIn: SIGN_IN });
+    const sent = answering({
+      'GET /api/orgs/org_1/members': () => json(MEMBERS),
+      'POST /api/auth/proof': () => json({ proof: 'p_g', expiresAt: STANDS() }),
+      'POST /api/orgs/org_1/ownership': () => new Response(null, { status: 204 }),
+      'GET /api/auth/me': () => json({}),
+    });
+    settings();
+
+    expect(await screen.findByText('Signed in with Google')).toBeDefined();
+    expect(sessionStorage.getItem('soirely.provider.returned')).toBeNull();
+    expect(
+      ((await screen.findByRole('radio', { name: /Bisi Adeyemi/ })) as HTMLInputElement).checked,
+    ).toBe(true);
+    expect(sent.find((one) => one.line === 'POST /api/auth/proof')?.body).toEqual({
+      provider: 'google',
+      providerSignIn: SIGN_IN,
+    });
+    expect(sent.some((one) => one.line === 'POST /api/orgs/org_1/ownership')).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Make Bisi Adeyemi the owner' }));
+
+    await waitFor(() =>
+      expect(sent.find((one) => one.line === 'POST /api/orgs/org_1/ownership')?.body).toEqual({
+        membershipId: 'm_bisi',
+        proof: 'p_g',
+      }),
+    );
+  });
+
+  it('comes back from Google to Settings with Transfer ownership open and the owner chosen', async () => {
+    signedIn(IRE, [], GOOGLE_ONLY);
+    sessionStorage.setItem(
+      'soirely.google.attempt',
+      JSON.stringify({
+        state: 's',
+        nonce: 'n',
+        codeVerifier: 'v',
+        purpose: { kind: 'transfer', organisation: 'org_1', owner: 'm_bisi' },
+      }),
+    );
+    window.history.replaceState(null, '', '/oauth/google?state=s&code=the-code');
+    const sent = answering({
+      'GET /api/orgs/org_1/members': () => json(MEMBERS),
+      'POST /api/auth/proof': () => json({ proof: 'p_g', expiresAt: STANDS() }),
+    });
+    render(
+      <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/oauth/google'] })} />,
+    );
+
+    expect(await screen.findByText('Signed in with Google')).toBeDefined();
+    expect(
+      ((await screen.findByRole('radio', { name: /Bisi Adeyemi/ })) as HTMLInputElement).checked,
+    ).toBe(true);
+    expect(screen.getByRole('button', { name: 'Make Bisi Adeyemi the owner' })).toBeDefined();
+    expect(sent.find((one) => one.line === 'POST /api/auth/proof')?.body).toEqual({
+      provider: 'google',
+      providerSignIn: {
+        code: 'the-code',
+        codeVerifier: 'v',
+        redirectUri: `${window.location.origin}/oauth/google`,
+        nonce: 'n',
+      },
+    });
+  });
+
+  it('asks for the code after Google when two-factor is on, and a wrong one transfers nothing', async () => {
+    signedIn(IRE, [], GOOGLE_ONLY);
+    backFrom({ signIn: SIGN_IN });
+    const proofs = [
+      () =>
+        problem('two_factor_required', 403, {
+          pendingProof: 'kept-1',
+          providerEmail: 'folake@gmail.com',
+        }),
+      () => problem('two_factor_code_invalid', 422, { pendingProof: 'kept-1' }),
+      () => json({ proof: 'p_g', expiresAt: STANDS() }),
+    ];
+    const sent = answering({
+      'GET /api/orgs/org_1/members': () => json(MEMBERS),
+      'POST /api/auth/proof': () => proofs.shift()!(),
+      'POST /api/orgs/org_1/ownership': () => new Response(null, { status: 204 }),
+      'GET /api/auth/me': () => json({}),
+    });
+    settings();
+
+    fireEvent.change(await screen.findByLabelText(/^Code from your authenticator/), {
+      target: { value: '000000' },
+    });
+    expect(screen.getByText('Signed in with Google')).toBeDefined();
+    fireEvent.click(await screen.findByRole('button', { name: 'Make Bisi Adeyemi the owner' }));
+
+    expect(await screen.findByText('two_factor_code_invalid')).toBeDefined();
+    expect(sent.some((one) => one.line === 'POST /api/orgs/org_1/ownership')).toBe(false);
+
+    fireEvent.change(screen.getByLabelText(/^Code from your authenticator/), {
+      target: { value: '123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Make Bisi Adeyemi the owner' }));
+
+    await waitFor(() =>
+      expect(sent.find((one) => one.line === 'POST /api/orgs/org_1/ownership')?.body).toEqual({
+        membershipId: 'm_bisi',
+        proof: 'p_g',
+      }),
+    );
+    expect(sent.filter((one) => one.line === 'POST /api/auth/proof').at(-1)?.body).toEqual({
+      pendingProof: 'kept-1',
+      code: '123456',
+    });
+  });
+
+  it('says another Google account is not the one linked, the new owner still chosen', async () => {
+    signedIn(IRE, [], GOOGLE_ONLY);
+    backFrom({ signIn: SIGN_IN });
+    const sent = answering({
+      'GET /api/orgs/org_1/members': () => json(MEMBERS),
+      'POST /api/auth/proof': () => problem('invalid_credentials', 401),
+    });
+    settings();
+
+    expect(
+      await screen.findByText(
+        "That Google account isn't the one linked here, or it was signed in too long ago. Try again.",
+      ),
+    ).toBeDefined();
+    expect(
+      ((await screen.findByRole('radio', { name: /Bisi Adeyemi/ })) as HTMLInputElement).checked,
+    ).toBe(true);
+    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeDefined();
+    expect(sent.some((one) => one.line === 'POST /api/orgs/org_1/ownership')).toBe(false);
+  });
+
+  it('says Google did not finish when it was closed, the new owner still chosen', async () => {
+    signedIn(IRE, [], GOOGLE_ONLY);
+    backFrom({ failed: 'cancelled' });
+    const sent = answering({ 'GET /api/orgs/org_1/members': () => json(MEMBERS) });
+    settings();
+
+    expect(
+      await screen.findByText("Google didn't finish, so nothing changed. Try again."),
+    ).toBeDefined();
+    expect(
+      ((await screen.findByRole('radio', { name: /Bisi Adeyemi/ })) as HTMLInputElement).checked,
+    ).toBe(true);
+    expect(sent.some((one) => one.line.startsWith('POST'))).toBe(false);
+  });
+
+  it('returns to Continue with Google when its five minutes ran out before the press', async () => {
+    signedIn(IRE, [], GOOGLE_ONLY);
+    backFrom({ signIn: SIGN_IN });
+    answering({
+      'GET /api/orgs/org_1/members': () => json(MEMBERS),
+      'POST /api/auth/proof': () => json({ proof: 'p_g', expiresAt: STANDS() }),
+      'POST /api/orgs/org_1/ownership': () => problem('proof_required', 403),
+    });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Make Bisi Adeyemi the owner' }));
+
+    expect(
+      await screen.findByText(
+        'Your Google sign-in was more than 5 minutes ago, so nothing has changed yet. Continue with Google again to carry on.',
+      ),
+    ).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeDefined();
+    expect(screen.queryByText('Signed in with Google')).toBeNull();
+    expect((screen.getByRole('radio', { name: /Bisi Adeyemi/ }) as HTMLInputElement).checked).toBe(
+      true,
+    );
+  });
+
+  it("asks afresh though Confirm it's you was passed a moment ago", async () => {
+    signedIn(IRE, [], GOOGLE_ONLY);
+    holdProof({ proof: 'held', expiresAt: STANDS() });
+    answering({ 'GET /api/orgs/org_1/members': () => json(MEMBERS) });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Transfer ownership' }));
+
+    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeDefined();
+  });
+
+  it('opens nothing back from a trip started in another organisation', async () => {
+    signedIn(IRE, [], GOOGLE_ONLY);
+    sessionStorage.setItem(
+      'soirely.provider.returned',
+      JSON.stringify({
+        provider: 'google',
+        purpose: { kind: 'transfer', organisation: 'org_2', owner: 'm_bisi' },
+        signIn: SIGN_IN,
+      }),
+    );
+    const sent = answering({ 'GET /api/orgs/org_1/members': () => json(MEMBERS) });
+    settings();
+
+    expect(await screen.findByRole('button', { name: 'Transfer ownership' })).toBeDefined();
+    expect(sent.some((one) => one.line.startsWith('POST'))).toBe(false);
   });
 });

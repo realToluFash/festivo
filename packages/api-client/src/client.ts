@@ -680,6 +680,8 @@ export interface ClientOptions {
   device?: () => string | null;
   /** Called when refresh fails and the session is over, with the API's reason when it gave one, such as `session_timed_out`. */
   onSignedOut?: (why?: Problem) => void;
+  /** Called once a sign-in has stored a session, by any way in; never by a refresh, a challenge or a refusal. */
+  onSignedIn?: () => void | Promise<void>;
   /** Called when the API refuses a request because the account is behind an onboarding gate. */
   onGate?: (gate: Gate) => void;
   fetch?: typeof fetch;
@@ -1772,15 +1774,16 @@ export class ApiClient {
     return list;
   }
 
-  /** Refused `already_a_member`, `grant_not_held`, or a violation on `email` or `roleId`. Sending again replaces the link. */
+  /** Refused `already_a_member`, `grant_not_held`, `proof_required` into Owner, or a violation on `email` or `roleId`. Sending again replaces the link. */
   async inviteMember(
     organisationId: string,
     email: string,
     roleId: string,
+    proof?: string,
   ): Promise<SentInvitation> {
     const body = await this.post<{ invitation?: unknown }>(
       `/api/orgs/${encodeURIComponent(organisationId)}/members/invite`,
-      { email, roleId },
+      proof == null ? { email, roleId } : { email, roleId, proof },
     );
 
     return this.sentInvitation(body?.invitation);
@@ -1795,15 +1798,16 @@ export class ApiClient {
     return this.sentInvitation(body?.invitation);
   }
 
-  /** Refused `conflict` for the caller's own, `grant_not_held`, or `last_owner`. Takes effect on their next request. */
+  /** Refused `conflict` for the caller's own, `grant_not_held`, `last_owner`, or `proof_required` into Owner. Takes effect on their next request. */
   async changeMemberRole(
     organisationId: string,
     membershipId: string,
     roleId: string,
+    proof?: string,
   ): Promise<void> {
     await this.patch<unknown>(
       `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}`,
-      { roleId },
+      proof == null ? { roleId } : { roleId, proof },
     );
   }
 
@@ -2229,9 +2233,8 @@ export class ApiClient {
     await this.delete(`/api/auth/sessions/${encodeURIComponent(id)}`);
   }
 
+  /** Never waits on a refresh in flight: the API ends the whole session from whichever of its tokens arrives. */
   async signOut(): Promise<void> {
-    // A refresh in flight rotates the token this sign-out has to end.
-    await this.refreshing?.done.catch(() => false);
     this.session += 1;
     this.signingOut += 1;
 
@@ -2467,6 +2470,7 @@ export class ApiClient {
 
     this.session += 1;
     await this.options.tokens?.save(tokens);
+    await this.options.onSignedIn?.();
 
     return { tokens, account, linked: body.linked === true };
   }

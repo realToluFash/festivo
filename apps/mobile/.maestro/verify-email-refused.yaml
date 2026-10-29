@@ -1,10 +1,10 @@
-# A wrong code, then a new one asked for, on the verification gate. sc-56.
+# A wrong code, then a new one asked for, on Check your email after a sign-up. sc-56, sc-18534.
 # The refusal and the countdown are matched in English: neither has a testID of its own.
 #
-#   node .qa/bin/qa-env.mjs maestro verify-email-refused EMAIL=… PASSWORD=…   an unverified account
+#   node .qa/bin/qa-env.mjs maestro verify-email-refused NAME=… EMAIL=… PASSWORD=…   EMAIL fresh
 appId: host.exp.Exponent
 ---
-- runFlow: sign-in-unverified.yaml
+- runFlow: register-check-email.yaml
 - takeScreenshot: mobile-verify-email
 - tapOn:
     id: 'verifyEmail.code'
@@ -27,7 +27,7 @@ appId: host.exp.Exponent
 - extendedWaitUntil:
     visible:
       id: 'verifyEmail.resendSoon'
-      text: 'Send a new code in .*'
+      text: 'Send a new code in (1:00|0:[0-5][0-9])'
     timeout: 15000
 - assertNotVisible: 'That code does not match.*'
 - takeScreenshot: mobile-verify-email-countdown

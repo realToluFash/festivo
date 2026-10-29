@@ -28,6 +28,8 @@ import { useTranslation } from 'react-i18next';
 import { type WaitingInvitations, useWaitingInvitations } from '../invitations.ts';
 import { type DomainOffer, useDomainOffer } from '../joinOffers.ts';
 import { DESTINATION_HREF, type Destination, destinations } from '../kit/appNav.ts';
+import { backRowHiding } from '../kit/backRow.ts';
+import { leaveThen } from '../leaveHeld.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { railWidth } from '../layout/textSize.ts';
 import {
@@ -53,6 +55,7 @@ import { type TextHandle, Text } from './Text.tsx';
 import { Title, useWholeWords } from './Title.tsx';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
+import { useSystemBack } from './useSystemBack.ts';
 
 type Opening = (opener: RefObject<View | null>) => void;
 
@@ -74,7 +77,7 @@ export function useStartOrganisation(): OrganisationStart | undefined {
 
 const HideBack = createContext<((hidden: boolean) => void) | undefined>(undefined);
 
-/** While `hidden`, the phone header keeps its title and drops the back row (sc-3132). */
+/** While `hidden`, the phone header keeps its title and drops the back row (sc-3132); it comes back a moment after, as `backRowHiding` holds it. */
 export function useHeaderWithoutBack(hidden: boolean): void {
   const hide = useContext(HideBack);
 
@@ -115,12 +118,13 @@ export function AppFrame({
   aboutTheAccount?: boolean;
   /** A heading in the body takes screen reader focus after a tapped switch of organisation, in place of the title (sc-11032). */
   bodyTakesSwitch?: boolean;
-  /** On a phone, the page this one was opened from, as Security's "Settings". */
-  back?: { label: string; onPress: () => void } | undefined;
+  /** On a phone, the page this one was opened from, as Security's "Settings"; with `systemBack`, Android's Back runs it too. */
+  back?: { label: string; onPress: () => void; systemBack?: boolean } | undefined;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
+  useSystemBack(back?.systemBack === true, () => back?.onPress());
   const [choosing, setChoosing] = useState(false);
   const [creating, setCreating] = useState(false);
   const pill = useRef<View>(null);
@@ -134,6 +138,8 @@ export function AppFrame({
   const createdWords = useRef<View>(null);
   const switched = created == null ? null : t('switcher.switched', { name: created.name });
   const [backHidden, setBackHidden] = useState(false);
+  const [backRow] = useState(() => backRowHiding(setBackHidden));
+  useEffect(() => backRow.stop, [backRow]);
   const signedIn = useSignedIn();
   const waiting = useWaitingInvitations();
   const offer = useDomainOffer();
@@ -227,7 +233,7 @@ export function AppFrame({
             ))}
           <OpenSwitcher.Provider value={openSwitcher}>
             <StartOrganisation.Provider value={startOrganisation}>
-              <HideBack.Provider value={setBackHidden}>
+              <HideBack.Provider value={backRow.hide}>
                 {standIn === 'paused' && signedIn.pausedIn != null ? (
                   <AccessPaused
                     paused={signedIn.pausedIn}
@@ -345,7 +351,7 @@ function FrameHeader({
               <Pressable
                 key={destination}
                 style={[styles.pill, on && styles.pillOn]}
-                onPress={() => router.navigate(DESTINATION_HREF[destination])}
+                onPress={() => goTo(destination)}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: on }}
                 testID={`frame.${destination}`}
@@ -375,19 +381,7 @@ function FrameHeader({
         <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
       )}
       {back != null && !backHidden && (
-        <Pressable
-          style={styles.back}
-          onPress={back.onPress}
-          accessibilityRole="button"
-          testID="frame.back"
-        >
-          <Svg width={tokens.sizeMark} height={tokens.sizeMark} viewBox="0 0 24 24" fill="none">
-            <Path d="m15 18-6-6 6-6" {...STROKE} stroke={tokens.colorInk} />
-          </Svg>
-          <Text size={tokens.typeBodyPhone.size} weight="semibold">
-            {back.label}
-          </Text>
-        </Pressable>
+        <BackButton label={back.label} onPress={back.onPress} testID="frame.back" />
       )}
       <Title
         size={back == null ? tokens.typeTitlePage.size : tokens.typeTitlePhone.size}
@@ -398,6 +392,32 @@ function FrameHeader({
       </Title>
     </View>
   );
+}
+
+export function BackButton({
+  label,
+  onPress,
+  testID,
+}: {
+  label: string;
+  onPress: () => void;
+  testID: string;
+}) {
+  return (
+    <Pressable style={styles.back} onPress={onPress} accessibilityRole="button" testID={testID}>
+      <Svg width={tokens.sizeMark} height={tokens.sizeMark} viewBox="0 0 24 24" fill="none">
+        <Path d="m15 18-6-6 6-6" {...STROKE} stroke={tokens.colorInk} />
+      </Svg>
+      <Text size={tokens.typeBodyPhone.size} weight="semibold">
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function goTo(destination: Destination): void {
+  const href = DESTINATION_HREF[destination];
+  leaveThen((discarding) => (discarding ? router.dismissTo(href) : router.navigate(href)));
 }
 
 function TabBar({ current }: { current: Destination }) {
@@ -426,7 +446,7 @@ function TabBar({ current }: { current: Destination }) {
           <Pressable
             key={destination}
             style={styles.tab}
-            onPress={() => router.navigate(DESTINATION_HREF[destination])}
+            onPress={() => goTo(destination)}
             onLayout={
               index === 0 ? (event) => words.room(event.nativeEvent.layout.width) : undefined
             }
@@ -477,7 +497,7 @@ function Rail({
       <Pressable
         key={destination}
         style={[styles.railItem, on && styles.railItemOn]}
-        onPress={() => router.navigate(DESTINATION_HREF[destination])}
+        onPress={() => goTo(destination)}
         accessibilityRole="tab"
         accessibilityState={{ selected: on }}
         testID={`frame.${destination}`}
@@ -676,7 +696,7 @@ function Switcher({
   );
   useFocusBackToOpener(offerClosed, afterOffer);
   useFocusBack(open, opener);
-  // Android's window runs behind the bars and the cutout, so the card keeps its margin from them, not from the edge.
+  // The modal runs behind the bars, the cutout and the home indicator, so the card keeps its margin from them, not from the edge.
   const fit =
     Platform.OS === 'android'
       ? {
@@ -686,8 +706,14 @@ function Switcher({
           paddingLeft: insets.left + tokens.spaceXxl,
           paddingRight: insets.right + tokens.spaceXxl,
         }
-      : // Sized from the window: on an iPhone on its side the modal can keep its upright height (sc-10118).
-        { width, height };
+      : {
+          // Even on both sides, so a short card stays centred on the screen rather than in the safe area.
+          paddingVertical: Math.max(insets.top, insets.bottom) + tokens.spaceXxl,
+          paddingHorizontal: Math.max(insets.left, insets.right) + tokens.spaceXxl,
+          // Sized from the window: on an iPhone on its side the modal can keep its upright height (sc-10118).
+          width,
+          height,
+        };
 
   return (
     <Modal
@@ -711,7 +737,11 @@ function Switcher({
         />
         <View style={styles.sheetFrame}>
           <ScrollView contentContainerStyle={styles.sheet}>
-            <Title size={tokens.typeTitleDialog.size} accessibilityRole="header">
+            <Title
+              size={tokens.typeTitleDialog.size}
+              accessibilityRole="header"
+              testID="switcher.heading"
+            >
               {t('switcher.heading')}
             </Title>
             {organisations.map((organisation) => {
@@ -1086,7 +1116,6 @@ const styles = StyleSheet.create({
   },
   scrim: {
     justifyContent: 'center',
-    padding: tokens.spaceXxl,
     backgroundColor: tokens.scrimDialog,
   },
   sheetFrame: {
