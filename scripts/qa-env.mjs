@@ -110,6 +110,7 @@ export function stackConfig(project, offset, address = '127.0.0.1') {
   // Expo reads these when the bundler starts, not from the stack's .env.
   const app = {
     EXPO_PUBLIC_API_URL: urls.api,
+    EXPO_PUBLIC_MERCURE_URL: urls.mercure,
     EXPO_PUBLIC_GOOGLE_AUTHORIZE_URL: `${urls.oidc}/google/authorize`,
     EXPO_PUBLIC_GOOGLE_TOKEN_URL: `${urls.oidc}/google/token`,
     EXPO_PUBLIC_APPLE_AUTHORIZE_URL: `${urls.oidc}/apple/authorize`,
