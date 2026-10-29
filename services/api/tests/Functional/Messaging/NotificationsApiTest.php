@@ -21,12 +21,15 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\DBAL\Connection;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use LogicException;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Dict;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Type;
 use Psl\Vec;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
+use Symfony\Component\Console\Tester\CommandTester;
 
 final class NotificationsApiTest extends ApiTestCase
 {
@@ -121,6 +124,25 @@ final class NotificationsApiTest extends ApiTestCase
         self::connection()->executeStatement("UPDATE notification_items SET created_at = NOW() - INTERVAL '91 days'");
 
         self::assertSame(['items' => [], 'unreadCount' => 0, 'next' => null], $this->as($this->owner, 'GET', '/api/notifications'));
+    }
+
+    #[Test]
+    public function thePruneDeletesItemsOlderThanNinetyDaysAndKeepsTheRest(): void
+    {
+        $this->notify('old', null);
+        self::connection()->executeStatement("UPDATE notification_items SET created_at = NOW() - INTERVAL '91 days'");
+        $this->notify('recent', null);
+
+        $tester = new CommandTester(new Application(self::$kernel ?? throw new LogicException('No kernel.'))->find('app:prune-notification-items'));
+        $tester->execute(['--dry-run' => true]);
+        self::assertStringContainsString('Would delete 1 bell items.', $tester->getDisplay());
+        $tester->execute([]);
+        $tester->assertCommandIsSuccessful();
+
+        self::assertSame(
+            [true],
+            self::connection()->fetchFirstColumn("SELECT created_at > NOW() - INTERVAL '1 day' FROM notification_items"),
+        );
     }
 
     #[Test]

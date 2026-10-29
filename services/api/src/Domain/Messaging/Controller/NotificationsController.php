@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Messaging\Controller;
 
 use App\Domain\Messaging\Http\NotificationItemSerialiser;
+use App\Domain\Messaging\NotificationItemPruner;
 use App\Domain\Messaging\NotificationReadMarker;
 use App\Entity\NotificationItem;
 use App\Entity\User;
@@ -13,11 +14,9 @@ use App\Http\Access\Policy\Authenticated;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use App\Repository\NotificationItemRepository;
-use DateInterval;
 use DateTimeImmutable;
 use Psl\Iter;
 use Psl\Type;
-use Psr\Clock\ClockInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -28,8 +27,6 @@ use Symfony\Component\Uid\Uuid;
 #[Authenticated]
 final readonly class NotificationsController
 {
-    public const string KEPT = 'P90D';
-
     public const int PAGE = 30;
 
     public function __construct(
@@ -37,7 +34,7 @@ final readonly class NotificationsController
         private NotificationItemRepository $notificationItemRepository,
         private NotificationItemSerialiser $notificationItemSerialiser,
         private NotificationReadMarker $notificationReadMarker,
-        private ClockInterface $clock,
+        private NotificationItemPruner $notificationItemPruner,
     ) {
     }
 
@@ -81,7 +78,7 @@ final readonly class NotificationsController
 
     private function since(): DateTimeImmutable
     {
-        return $this->clock->now()->sub(new DateInterval(self::KEPT));
+        return $this->notificationItemPruner->keptSince();
     }
 
     /** Somebody else's item is not found, the same as one that never existed. */
