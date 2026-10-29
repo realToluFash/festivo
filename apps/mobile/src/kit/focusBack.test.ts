@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   fieldToBlur,
   focusBackMs,
+  holdEnds,
   INPUT_FOCUS_TAKEN_MS,
   stepCloseSteps,
   TALKBACK_FOCUS_BACK_MS,
@@ -68,5 +69,22 @@ describe('the field a closing step blurs to put the keys down', () => {
 
   it('is none when no field raised the keys', () => {
     expect(fieldToBlur(null, null)).toBeNull();
+  });
+});
+
+describe('a scroll hold letting go', () => {
+  const VIEW = 600;
+
+  it('waits while the view’s end is past the content’s real end, where letting go would clamp the scroll (sc-18587)', () => {
+    expect(holdEnds(500, VIEW, 1000)).toBe(false);
+  });
+
+  it('lets go once the view’s end is back inside the content’s real end', () => {
+    expect(holdEnds(400, VIEW, 1000)).toBe(true);
+  });
+
+  it('lets go on content shorter than the view once the scroll is back at the top', () => {
+    expect(holdEnds(0, VIEW, 300)).toBe(true);
+    expect(holdEnds(50, VIEW, 300)).toBe(false);
   });
 });

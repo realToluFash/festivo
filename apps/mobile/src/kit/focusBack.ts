@@ -19,7 +19,7 @@ export function focusBackMs(os: string, settledMs: number, from: FocusBackFrom):
 /** How long the holder is given to take input focus from the field before the keys go down. */
 export const INPUT_FOCUS_TAKEN_MS = TALKBACK_FOCUS_BACK_MS;
 
-/** A step in closing a step back to its opener. `holdScroll` keeps the screen's content at its height and the keys' height until the next drag or the keys come up again, so neither the keys going down nor the step going pulls the scroll back: at the end of the page that pull carries the focused button under the keys still showing, and TalkBack follows it as a manual scroll onto the field (sc-18587). `takeInputFocus` gives input focus `to` the opener or to a holder TalkBack does not read, and waits `atMs` for it to land; `putKeysDown` waits until the keys are down and the scroll they move has landed; each later `atMs` counts from there, or from the close when nothing waits. `settleOpener` brings the opener `into` sight and moves screen reader focus to it once the scroll has landed. `finish` takes the step away, and with `focusBack` sends focus after it to the opener. */
+/** A step in closing a step back to its opener. `holdScroll` keeps the screen's content at its height and the keys' height until a scroll, a drag or TalkBack's own, brings the view's end back inside the content's real end (`holdEnds`), or the keys come up again, so neither the keys going down nor the step going pulls the scroll back: at the end of the page that pull carries the focused button under the keys still showing, and TalkBack follows it as a manual scroll onto the field (sc-18587). `takeInputFocus` gives input focus `to` the opener or to a holder TalkBack does not read, and waits `atMs` for it to land; `putKeysDown` waits until the keys are down and the scroll they move has landed; each later `atMs` counts from there, or from the close when nothing waits. `settleOpener` brings the opener `into` sight and moves screen reader focus to it once the scroll has landed. `finish` takes the step away, and with `focusBack` sends focus after it to the opener. */
 export type StepCloseStep =
   | { do: 'holdScroll' }
   | { do: 'showOpener' }
@@ -44,6 +44,11 @@ export function stepCloseSteps(
     { do: 'settleOpener', into: 'outOfSight' },
     { do: 'finish', focusBack: false, atMs: settledMs + TALKBACK_FOCUS_TAKEN_MS },
   ];
+}
+
+/** Whether a scroll at `offset`, in a view `viewHeight` tall, has brought the view's end back inside content `contentHeight` tall as it is without the hold, so letting the hold go moves nothing in sight. Measured before the step went, the end would be the step's, and letting go past it clamps the scroll mid-drag by the step's height (sc-18587). */
+export function holdEnds(offset: number, viewHeight: number, contentHeight: number): boolean {
+  return offset + viewHeight <= Math.max(contentHeight, viewHeight) + 1;
 }
 
 /** The field whose blur puts the keys down when a step closes: the one holding input focus now, or else the one that raised the keys, which leaves them up once it has given input focus up (sc-18588). */
