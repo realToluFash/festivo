@@ -15,6 +15,7 @@ export function MuteSwitch({ eventId }: { eventId: string }) {
   const { t } = useTranslation();
   const [mute, setMute] = useState<Mute>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const [saving, setSaving] = useState(false);
   const errorId = useId();
   const unsaved = mute.status === 'loaded' && mute.unsaved;
 
@@ -39,6 +40,9 @@ export function MuteSwitch({ eventId }: { eventId: string }) {
   }, [eventId, attempt]);
 
   async function change(next: boolean): Promise<void> {
+    if (saving) return;
+
+    setSaving(true);
     setMute({ status: 'loaded', muted: next, unsaved: false });
     try {
       const saved = await api.muteEvent(eventId, next);
@@ -46,6 +50,8 @@ export function MuteSwitch({ eventId }: { eventId: string }) {
       announceMute(eventId, saved);
     } catch {
       setMute({ status: 'loaded', muted: !next, unsaved: true });
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -57,6 +63,8 @@ export function MuteSwitch({ eventId }: { eventId: string }) {
           role="switch"
           checked={mute.status === 'loaded' && mute.muted}
           disabled={mute.status !== 'loaded'}
+          aria-busy={saving}
+          aria-disabled={saving}
           aria-describedby={unsaved ? errorId : undefined}
           onChange={(event) => void change(event.currentTarget.checked)}
         />

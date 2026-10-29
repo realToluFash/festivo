@@ -29,6 +29,7 @@ export function NotificationSettings() {
   const [attempt, setAttempt] = useState(0);
   const [said, setSaid] = useState('');
   const [unsaved, setUnsaved] = useState<{ category: NotificationCategory; channel: Channel }>();
+  const [saving, setSaving] = useState<ReadonlySet<string>>(new Set());
   const blocked = typeof Notification !== 'undefined' && Notification.permission === 'denied';
 
   useEffect(() => {
@@ -49,24 +50,34 @@ export function NotificationSettings() {
   }, [attempt]);
 
   async function change(category: NotificationCategory, channel: Channel, on: boolean) {
-    if (grid.status !== 'loaded') return;
+    const key = `${category}.${channel}`;
+    if (grid.status !== 'loaded' || saving.has(key)) return;
 
+    setSaving((busy) => new Set(busy).add(key));
     setUnsaved(undefined);
     setSaid('');
     setGrid({ status: 'loaded', settings: settingFlipped(grid.settings, category, channel, on) });
 
+    let saved: boolean;
     try {
       const settings = await api.setNotificationSetting(category, channel, on);
-      setGrid({ status: 'loaded', settings });
+      saved = settings.find((row) => row.category === category)?.[channel].on ?? on;
       setSaid(t('notificationSettings.saved'));
     } catch {
-      setGrid((current) =>
-        current.status === 'loaded'
-          ? { status: 'loaded', settings: settingFlipped(current.settings, category, channel, !on) }
-          : current,
-      );
+      saved = !on;
       setUnsaved({ category, channel });
     }
+
+    setGrid((current) =>
+      current.status === 'loaded'
+        ? { status: 'loaded', settings: settingFlipped(current.settings, category, channel, saved) }
+        : current,
+    );
+    setSaving((busy) => {
+      const left = new Set(busy);
+      left.delete(key);
+      return left;
+    });
   }
 
   return (
@@ -165,6 +176,8 @@ export function NotificationSettings() {
                             role="switch"
                             checked={setting[channel].on}
                             disabled={!setting[channel].switchable}
+                            aria-busy={saving.has(`${category}.${channel}`)}
+                            aria-disabled={saving.has(`${category}.${channel}`)}
                             aria-label={t('notificationSettings.switchName', {
                               category: name,
                               channel: t(`notificationSettings.${channel}`),

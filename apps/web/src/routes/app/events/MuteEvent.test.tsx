@@ -159,6 +159,45 @@ describe('Mute this event on the event page (sc-3980)', () => {
     expect((toggle as HTMLInputElement).checked).toBe(false);
   });
 
+  it('stays busy while it saves, so a second change waits for the first answer', async () => {
+    signedIn(READER);
+    let refuse: (response: Response) => void = () => undefined;
+    const sent = await onTheEvent(
+      false,
+      () => json({}),
+      () => json({ muted: false }),
+    );
+    vi.mocked(fetch).mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      sent.push({ line, body: null });
+      if (line === 'PUT /api/events/ev_1/mute') {
+        return new Promise<Response>((resolve) => (refuse = resolve));
+      }
+      if (line === 'GET /api/events/ev_1/mute') return json({ muted: false });
+      return line === 'GET /api/events/ev_1' ? json({ event: EVENT }) : json({});
+    });
+    const toggle = within(card()).getByRole('switch', { name: 'Mute this event' });
+    await waitFor(() => expect((toggle as HTMLInputElement).disabled).toBe(false));
+
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-busy')).toBe('true');
+    const puts = () => sent.filter(({ line }) => line === 'PUT /api/events/ev_1/mute');
+    await waitFor(() => expect(puts()).toHaveLength(1));
+    fireEvent.click(toggle);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(puts()).toHaveLength(1);
+    expect((toggle as HTMLInputElement).checked).toBe(true);
+
+    refuse(json({ title: 'Down' }, 503));
+
+    expect((await within(card()).findByRole('alert')).textContent).toContain(
+      "Couldn't save. Try again.",
+    );
+    expect((toggle as HTMLInputElement).checked).toBe(false);
+    expect(toggle.getAttribute('aria-busy')).toBe('false');
+  });
+
   it('says when the switch did not load, and Try again reads it again', async () => {
     signedIn(READER);
     let reads = 0;

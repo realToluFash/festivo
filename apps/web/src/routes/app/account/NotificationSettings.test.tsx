@@ -38,7 +38,15 @@ function settings(put: () => Response | Promise<Response>) {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
+
+const PUSH_BLOCKED =
+  "Push is off in this browser, so pushes won't reach you here. Turn it on in your browser settings.";
+
+function permission(state: NotificationPermission): void {
+  vi.stubGlobal('Notification', { permission: state });
+}
 
 describe('Notification settings (sc-3980)', () => {
   it('names every switch by its row and column, and Account & security email stays on', async () => {
@@ -118,6 +126,9 @@ describe('Notification settings (sc-3980)', () => {
     fireEvent.click(await screen.findByRole('switch', { name: 'Event changes Push' }));
     fireEvent.click(screen.getByRole('switch', { name: 'Messages Email' }));
     expect(await screen.findByText('Saved.')).toBeTruthy();
+    expect(
+      (screen.getByRole('switch', { name: 'Event changes Push' }) as HTMLInputElement).checked,
+    ).toBe(false);
     refuse(json({ title: 'No.' }, 500));
 
     expect(await screen.findByText("Couldn't save the push switch. Try again.")).toBeTruthy();
@@ -127,5 +138,76 @@ describe('Notification settings (sc-3980)', () => {
     expect(
       (screen.getByRole('switch', { name: 'Messages Email' }) as HTMLInputElement).checked,
     ).toBe(false);
+  });
+
+  it('a switch stays busy while it saves and takes no second change until the answer', async () => {
+    let answer: (response: Response) => void = () => undefined;
+    let puts = 0;
+    settings(() => {
+      puts += 1;
+      return new Promise<Response>((resolve) => (answer = resolve));
+    });
+
+    const push = (await screen.findByRole('switch', {
+      name: 'Event changes Push',
+    })) as HTMLInputElement;
+    fireEvent.click(push);
+    expect(push.getAttribute('aria-busy')).toBe('true');
+    await waitFor(() => expect(puts).toBe(1));
+    fireEvent.click(push);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(puts).toBe(1);
+    expect(push.checked).toBe(false);
+
+    answer(
+      json({
+        categories: CATEGORIES.map((row) =>
+          row.category === 'event_changes'
+            ? { ...row, push: { on: false, switchable: true } }
+            : row,
+        ),
+      }),
+    );
+
+    expect(await screen.findByText('Saved.')).toBeTruthy();
+    expect(push.getAttribute('aria-busy')).toBe('false');
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('says push is blocked when the browser has denied it', async () => {
+    permission('denied');
+    settings(() => json({ categories: CATEGORIES }));
+
+    expect(await screen.findByText(PUSH_BLOCKED)).toBeTruthy();
+  });
+
+  it.each(['granted', 'default'] as const)(
+    'says nothing about push when the browser says %s',
+    async (state) => {
+      permission(state);
+      settings(() => json({ categories: CATEGORIES }));
+
+      await screen.findByRole('switch', { name: 'Event changes Push' });
+      expect(screen.queryByText(PUSH_BLOCKED)).toBeNull();
+    },
+  );
+
+  it('a Push switch still saves while push is blocked', async () => {
+    permission('denied');
+    settings(() =>
+      json({
+        categories: CATEGORIES.map((row) =>
+          row.category === 'messages' ? { ...row, push: { on: false, switchable: true } } : row,
+        ),
+      }),
+    );
+
+    const push = (await screen.findByRole('switch', { name: 'Messages Push' })) as HTMLInputElement;
+    expect(screen.getByText(PUSH_BLOCKED)).toBeTruthy();
+    fireEvent.click(push);
+
+    expect(await screen.findByText('Saved.')).toBeTruthy();
+    expect(push.checked).toBe(false);
   });
 });
