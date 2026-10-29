@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     gap: tokens.space5xl,
     padding: tokens.space6xl,
   },
-  brandRow: { height: tokens.sizeHit, justifyContent: 'center' },
+  brandRow: { minHeight: tokens.sizeHit, justifyContent: 'center' },
   brand: { letterSpacing: -0.4 },
   heading: { gap: tokens.spaceXs },
   title: { letterSpacing: -0.5 },
