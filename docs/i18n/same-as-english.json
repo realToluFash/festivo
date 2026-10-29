@@ -79,6 +79,8 @@
     "mobile:home.title",
     "mobile:layouts.itemCount_one",
     "web:rolesScreen.area.menu",
-    "mobile:rolesScreen.area.menu"
+    "mobile:rolesScreen.area.menu",
+    "web:notificationSettings.push",
+    "mobile:notificationSettings.push"
   ]
 }
