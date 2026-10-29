@@ -9,7 +9,7 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
-import { Field, TextField } from './Field.tsx';
+import { Field, focusChecked, focusRefused, keysStayDown, TextField } from './Field.tsx';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
@@ -78,10 +78,11 @@ export function CompanyDomainsCard({
             ? t('companyDomains.blank', { example })
             : t('companyDomains.shape', { example }),
       });
-      input.current?.focus();
+      focusChecked(input);
       return;
     }
 
+    keysStayDown();
     setBusy(true);
     setFlash(null);
     setNotRemoved(null);
@@ -100,7 +101,7 @@ export function CompanyDomainsCard({
           ? refusal.problem.violations?.find((one) => one.propertyPath === 'domain')
           : undefined;
       setError(violation ?? { message: t('companyDomains.failed') });
-      input.current?.focus();
+      focusRefused(input);
     } finally {
       setBusy(false);
     }
@@ -246,7 +247,7 @@ export function CompanyDomainsCard({
             <TextField
               ref={input}
               wrong={error != null}
-              editable={!busy}
+              submitting={busy}
               value={typed}
               placeholder={example}
               onChangeText={(text) => {
@@ -258,6 +259,7 @@ export function CompanyDomainsCard({
               autoComplete="off"
               keyboardType="url"
               returnKeyType="done"
+              submitBehavior="submit"
               onSubmitEditing={() => void add()}
               accessibilityLabel={t('companyDomains.addLabel')}
               testID="companyDomains.domain"

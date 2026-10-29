@@ -497,9 +497,31 @@ describe('a way back in Two-factor authentication is off while its request runs 
   });
 });
 
+const FOCUS_THROUGH =
+  'A refusal focuses through focusChecked or focusRefused: focus() skips a field Android left focused with the keys hidden.';
+
+const linesOf = (file: string, text: string) =>
+  text.split('\n').map((line, index) => ({ line, index, at: `${file}:${index + 1}` }));
+
+const bareFocus = (file: string, text: string) =>
+  linesOf(file, text)
+    .filter(({ line }) => /\.current\?\.focus\(\)/u.test(line))
+    .filter(({ line }) => !line.includes('onSubmitEditing='))
+    .map(({ at }) => at);
+
+const keysDropped = (file: string, text: string) =>
+  linesOf(file, text).filter(({ line }) => /Keyboard\.dismiss\(|\.current\?\.blur\(\)/u.test(line));
+
 describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter says the name cannot fix it', () => {
   // sc-9471: a field disabled while saving lost its focus, so a server refusal closed the keyboard and a client one did not.
-  const HELD_FORMS = ['CreateOrganisation.tsx', 'PasswordCard.tsx', 'TimeZoneCard.tsx'];
+  const HELD_FORMS = [
+    'CreateOrganisation.tsx',
+    'PasswordCard.tsx',
+    'TimeZoneCard.tsx',
+    'OrganisationDetails.tsx',
+    'CompanyDomainsCard.tsx',
+    'OwnershipCard.tsx',
+  ];
 
   it.each(HELD_FORMS)('%s holds its fields rather than disabling them', (file) => {
     const form = sources(['src/components']).find(({ path }) => path.endsWith(`/${file}`));
@@ -517,24 +539,89 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
         .map((tag) => `${file}:${tag.line}`),
       'A field that submits the form keeps its focus on return.',
     ).toEqual([]);
+    expect(bareFocus(file, form?.text ?? ''), FOCUS_THROUGH).toEqual([]);
     expect(
-      (form?.text ?? '')
-        .split('\n')
-        .map((line, index) => ({ line, at: `${file}:${index + 1}` }))
-        .filter(({ line }) => /\.current\?\.focus\(\)/u.test(line))
-        .filter(({ line }) => !line.includes('onSubmitEditing='))
-        .map(({ at }) => at),
-      'A refusal focuses through focusChecked or focusRefused: focus() skips a field Android left focused with the keys hidden.',
-    ).toEqual([]);
-    expect(
-      (form?.text ?? '')
-        .split('\n')
-        .map((line, index) => ({ line, at: `${file}:${index + 1}` }))
-        .filter(({ line }) => /Keyboard\.dismiss\(|\.current\?\.blur\(\)/u.test(line))
-        .filter(({ line }) => !line.includes('dropsKeysAfter('))
-        .map(({ at }) => at),
+      keysDropped(file, form?.text ?? '').filter(({ line }) => !line.includes('dropsKeysAfter(')),
       'Drop the keys only through dropsKeysAfter: sc-9442 is the one exception to sc-9471.',
     ).toEqual([]);
+  });
+
+  it.each([
+    ['OrganisationDetails.tsx', 'if (refusal.focus != null)', '}, [refusal.focus]);'],
+    ['CompanyDomainsCard.tsx', '} catch (refusal) {', '} finally {'],
+  ])('%s focuses a field a server refusal names without raising the keys', (file, from, to) => {
+    const text = readFileSync(join('src', 'components', file), 'utf8');
+    const start = text.indexOf(from);
+    const refused = start < 0 ? '' : text.slice(start, text.indexOf(to, start));
+
+    expect(refused, `the refusal path in ${file}`).not.toBe('');
+    expect(refused.match(/\bfocus\w*\(/gu), 'focusChecked and focus() raise hidden keys.').toEqual([
+      'focusRefused(',
+    ]);
+  });
+});
+
+describe('Ask to join holds its message rather than disabling it (sc-9674)', () => {
+  const JOIN = 'join/[token].tsx';
+  const text = readFileSync(join('app', 'join', '[token].tsx'), 'utf8');
+
+  it('in join/[token].tsx', () => {
+    const fields = selfClosing('TextField', text);
+
+    expect(fields).toHaveLength(1);
+    expect(fields.filter((tag) => /\beditable=/u.test(tag.markup))).toEqual([]);
+    expect(bareFocus(JOIN, text), FOCUS_THROUGH).toEqual([]);
+    expect(text.match(/\bfocusChecked\(input\)/gu), 'the Message check').toHaveLength(1);
+  });
+
+  it('drops the keys only when the link is dead, which no message can fix (sc-11741)', () => {
+    const lines = text.split('\n');
+
+    expect(keysDropped(JOIN, text).map(({ index }) => lines[index - 1]?.trim())).toEqual([
+      "if (problem.is('request_link_dead')) {",
+    ]);
+  });
+});
+
+describe('Your password stays on screen when the transfer asks for a code (sc-9674)', () => {
+  it('in OwnershipCard.tsx, whatever the pending proof', () => {
+    const text = readFileSync(join('src', 'components', 'OwnershipCard.tsx'), 'utf8');
+    const field = text.indexOf('testID="ownership.password"');
+    const shown = text
+      .slice(0, field)
+      .split('\n')
+      .findLast((line) => /^\s*\{.*&& \($/u.test(line));
+
+    expect(field, 'the password field').toBeGreaterThan(-1);
+    expect(shown, 'the condition that shows it').toBeDefined();
+    expect(shown, 'Hiding it once a code is asked drops the focus and the keys.').not.toMatch(
+      /\bpending\b/u,
+    );
+  });
+});
+
+describe('a submit with the keys down keeps them down (sc-13408, sc-9674)', () => {
+  it.each([
+    ['src/components/OrganisationDetails.tsx', /^\s*setStatus\('saving'\);/u, 1],
+    [
+      'src/components/CompanyDomainsCard.tsx',
+      /^\s*setBusy\(true\);\n\s*setFlash\(null\);\n(?:.*\n){4}\s*const domain/u,
+      1,
+    ],
+    [
+      'src/components/OwnershipCard.tsx',
+      /^\s*setBusy\(true\);\n\s*set(Refused|Failed)\(null\);\n\n\s*try \{\n\s*(const proof|await api\.deleteOrganisation)/u,
+      2,
+    ],
+    ['app/join/[token].tsx', /^\s*setBusy\(true\);/u, 1],
+  ])('%s lets go of a focused field before each send starts', (file, start, count) => {
+    const text = readFileSync(join(...file.split('/')), 'utf8');
+    const starts = [...text.matchAll(new RegExp(start.source, 'gmu'))].map((match) =>
+      text.slice(0, match.index).split('\n').slice(-2, -1)[0]?.trim(),
+    );
+
+    expect(starts).toHaveLength(count);
+    expect(starts.filter((before) => before !== 'keysStayDown();')).toEqual([]);
   });
 });
 

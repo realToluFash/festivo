@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { api, meAtLaunch } from '../../src/api.ts';
 import { AuthFrame, AuthHeading } from '../../src/components/AuthFrame.tsx';
 import { PrimaryButton, SecondaryButton } from '../../src/components/Buttons.tsx';
-import { Field, TextField } from '../../src/components/Field.tsx';
+import { Field, focusChecked, keysStayDown, TextField } from '../../src/components/Field.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
 import { ReadOut } from '../../src/components/ReadOut.tsx';
 import { Text } from '../../src/components/Text.tsx';
@@ -234,13 +234,14 @@ function Ask({
       Array.from(value.trim()).length > REQUEST_MESSAGE_MAXIMUM
         ? t('requestToJoin.messageLong', { count: REQUEST_MESSAGE_MAXIMUM })
         : null,
-    () => input.current?.focus(),
+    () => focusChecked(input),
   );
   const error = checks.errors.message ?? refused;
 
   async function ask(): Promise<void> {
     if (busy || !checks.passes({ message })) return;
 
+    keysStayDown();
     setBusy(true);
     setFailed(null);
 
@@ -334,7 +335,7 @@ function Ask({
         <TextField
           ref={input}
           wrong={error != null}
-          editable={!busy}
+          submitting={busy}
           value={message}
           multiline
           numberOfLines={4}
