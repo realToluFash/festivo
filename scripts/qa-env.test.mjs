@@ -23,6 +23,7 @@ import {
   batchRuns,
   afterRun,
   batchSummary,
+  driverBuilds,
   driverPids,
   bundlerEnv,
   checkId,
@@ -1392,6 +1393,18 @@ describe('the driver a frozen run leaves on the simulator', () => {
       ),
     ).toEqual([38266]);
   });
+
+  it("finds Maestro's xcodebuild for that simulator, and no other build", () => {
+    expect(
+      driverBuilds(
+        '  4120 /usr/bin/xcodebuild test-without-building -xctestrun /tmp/maestro-driver-ios-config.xctestrun -destination id=SIM-1\n' +
+          '  4121 /usr/bin/xcodebuild test-without-building -xctestrun /tmp/maestro-driver-ios-config.xctestrun -destination id=SIM-2\n' +
+          '  4122 /usr/bin/xcodebuild -workspace Soirely.xcworkspace -destination id=SIM-1\n' +
+          '  4123 /bin/zsh',
+        'SIM-1',
+      ),
+    ).toEqual([4120]);
+  });
 });
 
 describe('one Maestro run of a batch', () => {
@@ -1427,6 +1440,28 @@ describe('one Maestro run of a batch', () => {
     const { options, stops } = runOf({ checks: ['home'], stalls: false });
     await runHeld(held, options);
     expect(stops).toEqual([]);
+  });
+
+  it('starts nothing more until the stopped driver is gone', async () => {
+    const { options } = runOf({ checks: ['home'], stalls: true });
+    let gone = false;
+    options.stop = async () => {
+      await new Promise((wait) => setTimeout(wait, 10));
+      gone = true;
+    };
+    await runHeld(held, options);
+    expect(gone).toBe(true);
+  });
+
+  it('resumes again after a stall when the resume ends before its first check', async () => {
+    const watchdog = { stopped: false };
+    const stalled = runOf({ checks: ['home'], stalls: true });
+    await runHeld(held, { ...stalled.options, watchdog });
+
+    const ended = runOf({ checks: [], stalls: false });
+    const rest = held.slice(1);
+    expect(await runHeld(rest, { ...ended.options, watchdog })).toEqual({ crashed: null, rest });
+    expect([...ended.unstarted.values()]).toEqual(['ended']);
   });
 
   it('says whether a run lost before its first check stalled or ended', async () => {
@@ -1497,6 +1532,13 @@ describe('what a Maestro run that lost its driver leaves to resume', () => {
 
   it('resumes every check of a run the watchdog stopped before its first', () => {
     expect(afterRun(runs, { begun: [], from: 0, passed: new Set(), stalled: true })).toEqual({
+      crashed: null,
+      rest: runs,
+    });
+  });
+
+  it('resumes every check of a run that ended before its first, once the watchdog has stopped one', () => {
+    expect(afterRun(runs, { begun: [], from: 0, passed: new Set(), afterStall: true })).toEqual({
       crashed: null,
       rest: runs,
     });
