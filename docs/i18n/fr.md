@@ -28,7 +28,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Organisation              | Organisation            | Settled: section name, same word |
 | Sign in                   | Se connecter            |                                  |
 | Sign out                  | Déconnecter             |                                  |
-| Email                     | Adresse e-mail          |                                  |
+| Email                     | Adresse e-mail          | Settled 29 Oct: plain hyphen     |
 | Password                  | Mot de passe            |                                  |
 | Continue                  | Continuer               |                                  |
 | Cancel                    | Annuler                 |                                  |
@@ -43,6 +43,11 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Unverified                | À vérifier              | Settled 18 Oct: no agreement     |
 | Account mail              | Les e-mails du compte   | Settled 18 Oct                   |
 | Sign-in rules             | Règles de connexion     | Settled 19 Oct                   |
+
+- **« e-mail » keeps a plain hyphen (U+002D)**, never U+2011, even where it wraps as « e- » /
+  « mail » (sc-20577, #20957). A break at a hyphen is ordinary French typography; U+2011 is
+  missing from some fonts and email clients, breaks search, and outside GSM-7 sends an SMS as
+  UCS-2. A line that must not wrap is a `[dev]` layout question, not a character in the copy.
 
 ## Never translated
 
