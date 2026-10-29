@@ -2,6 +2,7 @@ import type { NotificationItem } from '@soirely/api-client';
 import {
   feedAllRead,
   feedWithArrival,
+  feedWithLiveRead,
   feedWithMissed,
   feedWithMute,
   feedWithPage,
@@ -83,19 +84,38 @@ export function NotificationsFeed() {
     );
   }, [fetchFeed]);
 
+  const reread = (): void => {
+    const seen = arrivalsSeen();
+    api.notifications().then(
+      (page) => {
+        if (arrivalsSeen() !== seen) {
+          reread();
+          return;
+        }
+        setFeed((current) =>
+          current.status === 'loaded'
+            ? {
+                ...feedWithMissed(current, { items: page.items, unread: page.unreadCount }),
+                status: 'loaded',
+              }
+            : current,
+        );
+      },
+      () => undefined,
+    );
+  };
+
   useArrivals((arrival) => {
     if (arrival === 'reread') {
-      api.notifications().then(
-        (page) =>
-          setFeed((current) =>
-            current.status === 'loaded'
-              ? {
-                  ...feedWithMissed(current, { items: page.items, unread: page.unreadCount }),
-                  status: 'loaded',
-                }
-              : current,
-          ),
-        () => undefined,
+      reread();
+      return;
+    }
+    if ('read' in arrival) {
+      const { read } = arrival;
+      setFeed((current) =>
+        current.status === 'loaded'
+          ? { ...feedWithLiveRead(current, read), status: 'loaded' }
+          : current,
       );
       return;
     }

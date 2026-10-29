@@ -1,4 +1,10 @@
-import { asNotificationItem, type NotificationItem, realtimeTopic } from '@soirely/api-client';
+import {
+  asNotificationItem,
+  asNotificationRead,
+  type NotificationItem,
+  type NotificationRead,
+  realtimeTopic,
+} from '@soirely/api-client';
 import EventSource from 'react-native-sse';
 
 import { api } from './api.ts';
@@ -9,7 +15,8 @@ const RETRY_MS = 5_000;
 
 export interface LiveNotifications {
   onItem: (item: NotificationItem) => void;
-  /** After every line but the first, renewed or come back: what was published between two lines never arrives. */
+  onRead: (read: NotificationRead) => void;
+  /** At every line that opens, the first one included: what was published before it never arrives. */
   onGap: () => void;
 }
 
@@ -24,7 +31,6 @@ export function followNotifications(userId: string, live: LiveNotifications): ()
   let source: EventSource | null = null;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let stopped = false;
-  let opened = false;
 
   const again = (after: number): void => {
     clearTimeout(timer);
@@ -48,14 +54,8 @@ export function followNotifications(userId: string, live: LiveNotifications): ()
     });
     source = current;
 
-    current.addEventListener('open', () => {
-      if (opened) live.onGap();
-      opened = true;
-    });
-    current.addEventListener('message', (message) => {
-      const item = parsed(message.data);
-      if (item != null) live.onItem(item);
-    });
+    current.addEventListener('open', () => live.onGap());
+    current.addEventListener('message', (message) => heard(message.data, live));
     current.addEventListener('error', () => {
       if (stopped || source !== current) return;
       current.close();
@@ -74,12 +74,21 @@ export function followNotifications(userId: string, live: LiveNotifications): ()
   };
 }
 
-function parsed(data: string | null): NotificationItem | null {
-  if (data == null) return null;
+function heard(data: string | null, live: LiveNotifications): void {
+  if (data == null) return;
 
+  let raw: unknown;
   try {
-    return asNotificationItem(JSON.parse(data));
+    raw = JSON.parse(data);
   } catch {
-    return null;
+    return;
   }
+
+  const read = asNotificationRead(raw);
+  if (read != null) {
+    live.onRead(read);
+    return;
+  }
+  const item = asNotificationItem(raw);
+  if (item != null) live.onItem(item);
 }

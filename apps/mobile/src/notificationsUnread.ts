@@ -1,11 +1,11 @@
-import type { NotificationItem } from '@soirely/api-client';
+import type { NotificationItem, NotificationRead } from '@soirely/api-client';
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 
 import { api } from './api.ts';
 import { followNotifications } from './liveNotifications.ts';
 import { useSignedIn } from './signedIn.ts';
 
-export type Arrival = { item: NotificationItem } | 'reread';
+export type Arrival = { item: NotificationItem } | { read: NotificationRead } | 'reread';
 
 let unread = 0;
 const listeners = new Set<() => void>();
@@ -14,6 +14,7 @@ const arrivals = new Set<(arrival: Arrival) => void>();
 const counted = new Set<string>();
 let following: { userId: string; bells: number; stop: () => void } | null = null;
 let arrivalsSoFar = 0;
+let lastUserId: string | null = null;
 
 /** The bell's count, shared by the frame's bell and the feed, so reading an item there counts it down here. */
 export function setUnread(count: number): void {
@@ -36,7 +37,9 @@ export function arrivalsSeen(): number {
 function reread(): void {
   const seen = arrivalsSoFar;
   void api.notifications().then(
-    (feed) => countedSince(seen, feed.unreadCount),
+    (feed) => {
+      if (!countedSince(seen, feed.unreadCount)) reread();
+    },
     () => undefined,
   );
 }
@@ -49,8 +52,26 @@ function arrived(item: NotificationItem): void {
   arrivals.forEach((listener) => listener({ item }));
 }
 
+/** A read in another of the member's sessions moves the count as an arrival does. */
+function readElsewhere(read: NotificationRead): void {
+  arrivalsSoFar += 1;
+  setUnread(read.unreadCount);
+  arrivals.forEach((listener) => listener({ read }));
+}
+
+/** Another account on this phone starts from nothing, and a count asked for the last one is dropped. */
+function forgetOtherAccount(userId: string): void {
+  if (lastUserId != null && lastUserId !== userId) {
+    counted.clear();
+    arrivalsSoFar += 1;
+    setUnread(0);
+  }
+  lastUserId = userId;
+}
+
 /** Every frame has a bell, so the bells share one line to the hub, open while any of them is on screen. */
 function follow(userId: string): () => void {
+  forgetOtherAccount(userId);
   if (following?.userId !== userId) {
     following?.stop();
     following = {
@@ -58,6 +79,7 @@ function follow(userId: string): () => void {
       bells: 0,
       stop: followNotifications(userId, {
         onItem: arrived,
+        onRead: readElsewhere,
         onGap: () => {
           reread();
           arrivals.forEach((listener) => listener('reread'));
