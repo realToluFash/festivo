@@ -27,7 +27,11 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'ownership.delete.name'
 - inputText: 'QA Organisatio'
-- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'ownership.delete.send'
+    timeout: 20000
+- waitForAnimationToEnd
 - tapOn:
     id: 'ownership.delete.send'
 - waitForAnimationToEnd
@@ -37,7 +41,11 @@ appId: host.exp.Exponent
     id: 'ownership.delete.name'
 - eraseText: 60
 - inputText: 'QA Organisation'
-- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'ownership.delete.send'
+    timeout: 20000
+- waitForAnimationToEnd
 - tapOn:
     id: 'ownership.delete.send'
 - extendedWaitUntil:
