@@ -1803,6 +1803,14 @@ describe('the flows a batch runs', () => {
         /true: \$\{output\.developerMenuSheet\}\s+commands:\s+- tapOn: 'Continue'/,
       );
       expect(decision).not.toMatch(/copyTextFrom|SCREENS|point:/);
+      expect(decision).toMatch(/- tapOn: 'Continue'[\s\S]*file: developer-menu-close\.yaml\n/);
+      const close = readFileSync(join(target, 'developer-menu-close.yaml'), 'utf8');
+      expect(close).toMatch(/visible: 'Go home'\s+commands:\s+- tapOn: 'Close'/);
+      expect(close).toMatch(/notVisible: 'Go home'/);
+      expect(close).not.toContain('point:');
+      const menu = readFileSync(join(target, 'expo-go-menu.yaml'), 'utf8');
+      expect(menu).toContain('file: developer-menu-close.yaml');
+      expect(menu).not.toMatch(/point:|tapOn/);
       expect(readFileSync(join(target, 'batch/developer-menu.yaml'), 'utf8')).toContain(
         "visible: '${SETTLED}|This is the developer menu.*'",
       );
