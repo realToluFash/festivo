@@ -6,7 +6,7 @@ appId: host.exp.Exponent
     element:
       id: events.mute
     timeout: 30000
-# The switch is events.mute.switch; events.mute is the whole card. It is disabled while the mute loads.
+# The switch is events.mute.switch; events.mute is the whole card. It is disabled while the mute loads or saves.
 - extendedWaitUntil:
     visible:
       id: events.mute.switch
@@ -24,6 +24,7 @@ appId: host.exp.Exponent
           visible:
             id: events.mute.switch
             checked: false
+            enabled: true
           timeout: 8000
 - tapOn:
     id: events.mute.switch
@@ -31,5 +32,6 @@ appId: host.exp.Exponent
     visible:
       id: events.mute.switch
       checked: true
+      enabled: true
     timeout: 8000
 - takeScreenshot: event-mute-turned-on
