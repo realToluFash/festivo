@@ -127,7 +127,12 @@ function Credentials({
   );
 
   const submit = (): void => {
-    if (status.kind === 'signingIn' || !checks.passes(typed.current)) return;
+    if (
+      status.kind === 'signingIn' ||
+      status.kind === 'rateLimited' ||
+      !checks.passes(typed.current)
+    )
+      return;
 
     keysStayDown();
     onSubmit(typed.current.email.trim(), typed.current.password);
