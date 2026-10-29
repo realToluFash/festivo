@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { TEXT_SCALE_LAID_OUT } from '../src/components/textScaleLaidOutEvent.ts';
 import { withFontScaleForwarded, withTextChangesHandled } from './withFontScaleKept.ts';
 
 const ACTIVITY = `package com.soirely.app
@@ -69,10 +70,11 @@ describe('withFontScaleForwarded', () => {
 
   it("puts the root view in a parent that reads the metrics again before it is measured or laid out, when they no longer match the activity's, and fills them first on a cold start", () => {
     expect(forwarded).toMatch(
-      /override fun setContentView\(view: View\?\) \{\n\s+super\.setContentView\(\n\s+view\?\.let \{\n\s+MetricsReadFirst\(this\)\.apply \{\n\s+addView\(it, ViewGroup\.LayoutParams\.MATCH_PARENT, ViewGroup\.LayoutParams\.MATCH_PARENT\)/,
+      /override fun setContentView\(view: View\?\) \{\n\s+super\.setContentView\(\n\s+view\?\.let \{\n\s+MetricsReadFirst\(this\) \{\n\s+reactHost\?\.currentReactContext\?\.emitDeviceEvent\("[^"]+"\)\n\s+\}\.apply \{\n\s+addView\(it, ViewGroup\.LayoutParams\.MATCH_PARENT, ViewGroup\.LayoutParams\.MATCH_PARENT\)/,
     );
+    expect(forwarded.match(/emitDeviceEvent\("([^"]+)"\)/)?.[1]).toBe(TEXT_SCALE_LAID_OUT);
     expect(forwarded).toMatch(
-      /override fun onMeasure\(widthMeasureSpec: Int, heightMeasureSpec: Int\) \{\n\s+readMetricsIfMoved\(\)\n\s+super\.onMeasure/,
+      /override fun onMeasure\(widthMeasureSpec: Int, heightMeasureSpec: Int\) \{\n\s+readMetricsIfMoved\(\)\n/,
     );
     expect(forwarded).toMatch(
       /override fun onLayout\([^)]*\) \{\n\s+readMetricsIfMoved\(\)\n\s+super\.onLayout/,
@@ -82,6 +84,12 @@ describe('withFontScaleForwarded', () => {
     );
     expect(forwarded).toMatch(
       /if \(reactMetrics\.scaledDensity != activityMetrics\.scaledDensity \|\|\n\s+reactMetrics\.densityDpi != activityMetrics\.densityDpi\n\s+\) \{\n\s+DisplayMetricsHolder\.initDisplayMetrics\(context\)/,
+    );
+  });
+
+  it('measures the root view again at a new scale, then tells JavaScript, but not on the first measure', () => {
+    expect(forwarded).toMatch(
+      /val newScale = fontScale != laidOutFontScale\n\s+if \(newScale\) getChildAt\(0\)\?\.forceLayout\(\)\n\s+super\.onMeasure\(widthMeasureSpec, heightMeasureSpec\)\n\s+if \(newScale\) \{\n\s+if \(!laidOutFontScale\.isNaN\(\)\) laidOutAtNewScale\(\)\n\s+laidOutFontScale = fontScale\n/,
     );
   });
 
