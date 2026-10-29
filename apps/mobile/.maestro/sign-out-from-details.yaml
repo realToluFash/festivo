@@ -1,0 +1,11 @@
+# Signs out from A few details, which a new account opens before its profile is complete. sc-19752.
+appId: host.exp.Exponent
+---
+- scrollUntilVisible:
+    element: 'Sign out'
+    direction: DOWN
+- tapOn: 'Sign out'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 30000

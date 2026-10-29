@@ -1,0 +1,7 @@
+# Force-quit Expo Go and reopen the app on Sign in, so a held link can only come from the device's store. sc-19752.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/sign-in

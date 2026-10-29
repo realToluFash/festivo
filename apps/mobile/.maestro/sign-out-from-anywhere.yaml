@@ -1,0 +1,15 @@
+# Signs out through Settings from any signed-in screen, Ask to join included, and ends on Sign in. sc-19752.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings
+- scrollUntilVisible:
+    element:
+      id: 'settings.signOut'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'settings.signOut'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 30000

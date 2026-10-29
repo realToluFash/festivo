@@ -1,0 +1,29 @@
+# After request-link-hold.yaml: reopen the app and sign in with EMAIL and PASSWORD, from Sign in. sc-19752.
+# Pass EMAIL, PASSWORD and STOP (true: the app was force-quit since the hold, so the device's copy is taken).
+appId: host.exp.Exponent
+---
+- runFlow:
+    when:
+      true: ${STOP == 'true'}
+    file: request-link-reopen.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 60000
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- eraseText: 120
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'signIn.submit'
+- extendedWaitUntil:
+    notVisible:
+      id: 'signIn.submit'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: request-link-held-signed-in
