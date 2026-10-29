@@ -1666,6 +1666,24 @@ describe('the bell (sc-3980)', () => {
       body: { category: 'money', channel: 'push', on: false },
     });
   });
+
+  test('a browser subscribes with the key it is given and registers what it got', async () => {
+    const { client, sent } = answering({ webPushKey: 'BKey' });
+    const target = {
+      kind: 'web',
+      address: 'https://fcm.googleapis.com/fcm/send/abc',
+      keys: { p256dh: 'p', auth: 'a' },
+    } as const;
+
+    expect(await client.webPushKey()).toBe('BKey');
+    await client.registerPushTarget(target);
+
+    expect(sent[1]).toEqual({
+      url: 'http://api.test/api/auth/push-targets',
+      method: 'PUT',
+      body: target,
+    });
+  });
 });
 
 describe('the health endpoint', () => {

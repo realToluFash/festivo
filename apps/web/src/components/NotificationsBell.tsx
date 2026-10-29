@@ -16,6 +16,7 @@ import { currentLocale } from '../i18n/index.ts';
 import { useLiveNotifications } from '../liveNotifications.ts';
 import { offButton } from '../offButton.ts';
 import { markPushAsked, pushAskDue } from '../pushAsk.ts';
+import { subscribeWebPush } from '../webPush.ts';
 import { MuteSwitch } from './MuteSwitch.tsx';
 
 type Feed =
@@ -72,6 +73,10 @@ export function NotificationsBell({ userId }: { userId: string }) {
   });
 
   useEffect(() => {
+    void subscribeWebPush().catch(() => undefined);
+  }, [userId]);
+
+  useEffect(() => {
     if (open) heading.current?.focus();
   }, [open]);
 
@@ -83,7 +88,10 @@ export function NotificationsBell({ userId }: { userId: string }) {
   }
 
   async function answerPush(turnOn: boolean): Promise<void> {
-    if (turnOn) await Notification.requestPermission().catch(() => undefined);
+    if (turnOn) {
+      const answer = await Notification.requestPermission().catch(() => undefined);
+      if (answer === 'granted') void subscribeWebPush().catch(() => undefined);
+    }
     setAsking(false);
     heading.current?.focus();
   }

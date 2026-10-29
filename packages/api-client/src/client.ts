@@ -100,6 +100,11 @@ export interface RecoveryOpening {
 export type NotificationCategory =
   'guest_replies' | 'messages' | 'event_day' | 'event_changes' | 'money' | 'account_security';
 
+/** A browser's Web Push subscription, or the app's Expo push token. */
+export type PushTarget =
+  | { kind: 'web'; address: string; keys: { p256dh: string; auth: string } }
+  | { kind: 'expo'; address: string };
+
 /** One bell item (sc-3980): `lines` are drawn one per row, as sent; `muted` and `eventAvailable` are the server's. */
 export interface NotificationItem {
   id: string;
@@ -1189,6 +1194,18 @@ export class ApiClient {
     );
 
     return body.muted === true;
+  }
+
+  /** The VAPID public key this browser subscribes with (sc-3980). */
+  async webPushKey(): Promise<string> {
+    const body = await this.get<{ webPushKey?: unknown }>('/api/auth/push-targets');
+
+    return typeof body.webPushKey === 'string' ? body.webPushKey : '';
+  }
+
+  /** This device's push, under the current session, so that signing out here ends it. */
+  async registerPushTarget(target: PushTarget): Promise<void> {
+    await this.put<unknown>('/api/auth/push-targets', target);
   }
 
   async realtimeSubscription(): Promise<RealtimeSubscription> {
