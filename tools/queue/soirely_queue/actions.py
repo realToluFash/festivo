@@ -154,6 +154,7 @@ def comment(c, a):
     guard(c, "comment")
     story = c.story(a.story, fresh=False)
     to = [t for t in (a.to or "").replace(",", " ").split() if t]
+    people = machine.manual_testers()
     if to and a.untagged:
         raise Refused("--untagged posts no tag: drop --to, or drop --untagged to address it")
     parent = None
@@ -166,14 +167,16 @@ def comment(c, a):
             raise Refused(f"no comment #{a.reply_to} on sc-{story['id']}")
         # Shortcut threads one level deep, so a reply to a reply goes on the thread's root.
         parent = replied["parent"] or replied["id"]
-        if not to and not a.untagged and R.author(replied["text"]):
-            to = [R.author(replied["text"])]
+        asker = R.author(replied["text"]) or R.person_of(replied.get("author"), people)
+        if not to and not a.untagged and asker:
+            to = [asker]
     if not to and not a.untagged:
         raise Refused("say who it is for: --to pm,ux (a reply defaults to the asker), "
                       "or --untagged for a record or a confirmation that wakes nobody")
-    unknown = [t for t in to if t not in R.ROLES and t != "dev" and t not in R.LOCALES]
+    unknown = [t for t in to if t not in R.ROLES and t != "dev" and t not in R.LOCALES
+               and t not in people]
     if unknown:
-        raise Refused(f"no role {', '.join(unknown)}")
+        raise Refused(f"no role {', '.join(unknown)}, nor a tester in manualTesters")
     if to and story.get("archived"):
         raise Refused(f"sc-{story['id']} is archived, so a comment there wakes nobody: ask on "
                       "the story that replaced it, or an open one")
@@ -364,6 +367,9 @@ def claim(c, a):
         set_state(c, story, "In Progress")
     else:
         takeover = ""
+        if R.kept_for_person(story, machine.manual_testers()):
+            raise Refused(f"sc-{story['id']} is kept for a person who tests: plan it for them "
+                          "when it comes to you as a plan, and leave the pass to them")
         if story["state"] == "In QA":
             last = R.last_claim(story)
             if last and R.last_tester(story) == c.role:

@@ -323,6 +323,39 @@ def setting_problems(values, known, where):
     return problems
 
 
+def manual_testers(config=None):
+    """`manualTesters`: each person who tests, by Shortcut mention name, with the machine
+    their stack runs on and their Shortcut member id. Empty when the file has none."""
+    if config is None:
+        try:
+            config = load()
+        except ConfigError:
+            return {}
+    testers = config.get("manualTesters")
+    return testers if isinstance(testers, dict) else {}
+
+
+def tester_problems(config):
+    """What is wrong with each `manualTesters` entry, one line each."""
+    testers = config.get("manualTesters")
+    if testers is None:
+        return []
+    where = f"manualTesters in {path()}"
+    if not isinstance(testers, dict):
+        return [f"{where} is not an object of \"@name\": {{\"machine\", \"member\"}}"]
+    problems = []
+    for name, entry in testers.items():
+        if not roles.PERSON.fullmatch(name):
+            problems.append(f"{where}: {name!r} is not a Shortcut mention name such as @name")
+        if not isinstance(entry, dict):
+            problems.append(f"{where}: {name} is not an object with machine and member")
+            continue
+        for key in ("machine", "member"):
+            if not isinstance(entry.get(key), str) or not entry[key].strip():
+                problems.append(f"{where}: {name} has no {key}")
+    return problems
+
+
 def check(config, known=None, logged_in=account):
     """`(errors, refused, ready)`: errors stop every role, refused names each role that
     cannot run and why, ready holds each runnable role's merged settings."""
@@ -356,6 +389,7 @@ def check(config, known=None, logged_in=account):
         if value is not None and (isinstance(value, bool) or not isinstance(value, (int, float))
                                   or value < 0):
             errors.append(f"{name} is {value!r} in {path()}: a number, or null")
+    errors += tester_problems(config)
     limit = config.get("sliceMemoryMax")
     if limit is not None and not SIZE.match(str(limit)):
         errors.append(f"sliceMemoryMax is {limit!r} in {path()}: a size such as 28G, or null")

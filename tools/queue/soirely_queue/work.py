@@ -26,15 +26,28 @@ def threads(story):
     return list(roots.values())
 
 
-def open_for(role, story, handled=frozenset()):
+def said(comment, story, testers=None):
+    """`(to, from)`: who a comment is for and who wrote it. One a listed tester's account
+    wrote with no header is theirs, for qa; and qa, from a person, is the tester that wrote
+    their plan."""
+    to, by = R.addressees(comment["text"], story["labels"]), R.author(comment["text"])
+    person = R.person_of(comment.get("author"), testers)
+    if person and by is None:
+        to, by = ["qa"], person
+    if R.is_person(by):
+        planner = R.planner(story) or "qa"
+        to = [planner if tag == "qa" else tag for tag in to]
+    return to, by
+
+
+def open_for(role, story, handled=frozenset(), testers=None):
     """Comments addressed to the role, with no later reply from it in their thread, that no
     finished run has already dealt with."""
     found = []
     for thread in threads(story):
         for index, comment in enumerate(thread):
-            if role not in R.addressees(comment["text"], story["labels"]):
-                continue
-            if R.author(comment["text"]) == role:
+            to, by = said(comment, story, testers)
+            if role not in to or by == role:
                 continue
             if any(R.author(later["text"]) == role for later in thread[index + 1:]):
                 continue
@@ -44,9 +57,9 @@ def open_for(role, story, handled=frozenset()):
     return found
 
 
-def involves(role, thread, labels):
-    return any(role in R.addressees(c["text"], labels) or R.author(c["text"]) == role
-               for c in thread)
+def involves(role, thread, story, testers=None):
+    return any(role in to or by == role
+               for to, by in (said(c, story, testers) for c in thread))
 
 
 def latest_verdict(pr):
@@ -132,7 +145,7 @@ def follow_up(story):
     return finished(story) or story["state"] in R.FOLLOWING_UP and not story.get("archived")
 
 
-def inbox_items(stories, handled=frozenset()):
+def inbox_items(stories, handled=frozenset(), testers=None):
     """A comment on a Done story wakes as on any other, if it came after the story was done:
     what was left open before then was settled by finishing it."""
     items = []
@@ -140,7 +153,7 @@ def inbox_items(stories, handled=frozenset()):
         if story.get("archived"):
             continue
         for role in R.ROLES:
-            waiting = open_for(role, story, handled)
+            waiting = open_for(role, story, handled, testers)
             if finished(story):
                 waiting = [c for c in waiting if (c["at"] or "") > (story["moved_at"] or "")]
             if waiting:
@@ -201,14 +214,17 @@ def builds(role):
     return role in R.DEVS or role == "ops"
 
 
-def queued(role, stories, epics=None, ios=None):
+def queued(role, stories, epics=None, ios=None, testers=None):
     config = R.ROLES[role]
     has_ios = machine.has_xcode if ios is None else lambda: ios
+    if testers is None and role in R.TESTERS:
+        testers = machine.manual_testers()
     by_id = {s["id"]: s for s in stories}
     return [story for story in stories
             if not story["done"] and story["state"] in config["queue"]
             and config["filter"](set(story["labels"]), story["state"])
             and R.can_test(role, story, has_ios)
+            and not (role in R.TESTERS and R.kept_for_person(story, testers))
             and not held_epic(story, epics)
             and not (builds(role) and holding(story, by_id))]
 
@@ -235,7 +251,7 @@ def epic_order(epics):
 
 
 def queue_items(stories, moves=None, now=None, epics=None, ios=None, released=None,
-                unlinked=None):
+                unlinked=None, testers=None):
     """A story entering a role's queue is work once, unless the role moved it there itself.
     One sitting there waits for a pick. A failed story back in Ready For QA is offered only
     to the tester who failed it, until its retest window closes."""
@@ -245,7 +261,7 @@ def queue_items(stories, moves=None, now=None, epics=None, ios=None, released=No
     merged = {}
     build_order = {s["id"]: i for i, s in enumerate(sorted(stories, key=epic_order(epics)))}
     for role, config in R.ROLES.items():
-        for story in queued(role, stories, epics, ios):
+        for story in queued(role, stories, epics, ios, testers):
             if moves.get((story["id"], story["state"], story["moved_at"])) == role:
                 continue
             pool = R.pool(role, story["state"], story["labels"])
@@ -287,6 +303,43 @@ def held_items(stories):
                                [tester], "held",
                                f"sc-{story['id']} is In QA under your claim with no report",
                                QUEUE - 1, story))
+    return items
+
+
+PLANNING = ("Ready For QA", "In QA")
+PLAN = QUEUE - 2
+
+
+def plan_fingerprint(story, person):
+    return f"qa:plan:sc-{story['id']}:{person}:{story['moved_at']}"
+
+
+def planned_for(fingerprint):
+    """The person a plan item is for: a mention name holds no colon, the moment after it may."""
+    return fingerprint.split(":")[3]
+
+
+def plan_items(stories, testers, here):
+    """A story a person on this machine is to test, owned by them in Ready For QA or In QA,
+    or reaching Ready For QA labelled `manual qa`: one plan for the testers to write, until
+    a plan claims it for them. Back in Ready For QA after that claim, it is planned again."""
+    items = []
+    for story in stories:
+        if story["done"] or story["state"] not in PLANNING:
+            continue
+        person = R.owner_of(story, testers)
+        if not person and R.MANUAL_QA in story["labels"] and story["state"] == "Ready For QA":
+            person = next(iter(testers or {}), None)
+        if not person or testers[person].get("machine") != here:
+            continue
+        claim = R.last_claim(story)
+        if claim and R.claimant(claim) == person and (
+                story["state"] == "In QA" or (claim["at"] or "") >= (story["moved_at"] or "")):
+            continue
+        items.append(_item(plan_fingerprint(story, person), "qa",
+                           list(R.TESTERS), "plan",
+                           f"sc-{story['id']} is {person}'s to test: write their plan", PLAN,
+                           story))
     return items
 
 
@@ -526,7 +579,8 @@ def main_items(main_run):
                   PULL_REQUEST)]
 
 
-def heartbeat_items(stories, last_runs, busy_roles, now, epics=None, last_sweeps=None):
+def heartbeat_items(stories, last_runs, busy_roles, now, epics=None, last_sweeps=None,
+                    testers=None):
     """After a quiet spell, a sweeping role sweeps and any other role with a queue picks. A
     role with `sweepEvery` picks too, and sweeps once that long has passed since its last."""
     items = []
@@ -541,8 +595,9 @@ def heartbeat_items(stories, last_runs, busy_roles, now, epics=None, last_sweeps
         swept = (last_sweeps or {}).get(role)
         if config.get("sweeps") and not (every and swept and now - swept < every * 60):
             kind, reason = "sweep", f"your sweep, {every or config['heartbeat']} minutes on"
-        elif queued(role, stories, epics):
-            kind, reason = "pick", f"{len(queued(role, stories, epics))} stories in your queue"
+        elif queued(role, stories, epics, testers=testers):
+            count = len(queued(role, stories, epics, testers=testers))
+            kind, reason = "pick", f"{count} stories in your queue"
         else:
             continue
         items.append(_item(f"{role}:{kind}:{int(now // period)}", role, [role], kind, reason,
@@ -638,12 +693,14 @@ def finishing_first(items, stories):
 
 def derive(stories, prs, main_run=None, last_runs=None, busy_roles=(), now=0,
            handled=frozenset(), moves=None, checks=None, epics=None, translated=None,
-           raised=(), last_sweeps=None, released=None, unlinked=None):
+           raised=(), last_sweeps=None, released=None, unlinked=None, testers=None, here=None):
     return finishing_first(
-        inbox_items(stories, handled) + developer_items(stories, prs)
+        inbox_items(stories, handled, testers) + developer_items(stories, prs)
         + unblocked_items(stories, prs, translated, raised)
-        + review_items(stories, prs) + held_items(stories)
-        + queue_items(stories, moves, now, epics, released=released, unlinked=unlinked)
+        + review_items(stories, prs) + held_items(stories) + plan_items(stories, testers, here)
+        + queue_items(stories, moves, now, epics, released=released, unlinked=unlinked,
+                      testers=testers)
         + main_items(main_run)
-        + heartbeat_items(stories, last_runs or {}, set(busy_roles), now, epics, last_sweeps)
+        + heartbeat_items(stories, last_runs or {}, set(busy_roles), now, epics, last_sweeps,
+                          testers)
         + machine_items(checks) + stranded_items(stories, prs, now), stories)

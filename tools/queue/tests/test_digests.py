@@ -82,6 +82,18 @@ class Testers(unittest.TestCase):
         self.assertEqual(len(listed), 1)
         self.assertIn("story 2", listed[0])
 
+    def test_a_story_a_person_owns_is_not_offered_to_an_agent_tester(self):
+        owned = dict(ready(1), state="Ready For QA", owners=["member-1"], comments=[],
+                     updated_at="t0")
+        free = dict(ready(2), state="Ready For QA", comments=[], updated_at="t1")
+        people = {"@tester-one": {"machine": "stack-mac", "member": "member-1"}}
+        p = Digest("qa")
+        with mock.patch.object(digests, "untaken", side_effect=lambda db, role, s: s), \
+                mock.patch.object(digests.machine, "manual_testers", return_value=people):
+            digests.tester(p, None, [owned, free])
+        self.assertNotIn("story 1", " ".join(p.lines))
+        self.assertEqual(p.lines[-1].split()[-1], "sc-2")
+
 
 def ticket(id_, state, moved_at="t1"):
     return dict(ready(id_), state=state, labels=["translation"], moved_at=moved_at, tasks=[],

@@ -43,6 +43,15 @@ class Checked(unittest.TestCase):
         self.assertEqual(ready["ops"]["model"], "claude-opus-5-5")
         self.assertEqual(ready["ops"]["effort"], "medium")
 
+    def test_a_malformed_manual_tester_is_named(self):
+        good = {"@tester-one": {"machine": "stack-mac", "member": "member-1"}}
+        self.assertEqual(machine.check({**config(self.root), "manualTesters": good})[0], [])
+        bad = {"tester-one": {"machine": "stack-mac"}}
+        errors = machine.check({**config(self.root), "manualTesters": bad})[0]
+        self.assertEqual(len(errors), 2)
+        self.assertIn("'tester-one' is not a Shortcut mention name", errors[0])
+        self.assertIn("tester-one has no member", errors[1])
+
     def test_a_role_overrides_only_what_it_names(self):
         changed = config(self.root, roles={"ops": {"effort": "high"}, "dev2": {}})
         ready = machine.check(changed)[2]

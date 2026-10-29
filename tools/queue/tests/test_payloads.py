@@ -114,3 +114,19 @@ class StrandedList(unittest.TestCase):
         self.assertIn("#355 98h idle · no story · fix: conflicts surface", said)
         self.assertIn("waits on: a story (no sc-N in its branch or title)", said)
         self.assertIn("sq ops pr-close <n>", said)
+
+
+class Plan(unittest.TestCase):
+    def test_the_person_comes_from_the_fingerprint_and_the_claim_is_the_body_s_last_line(self):
+        story = {"id": 9, "state": "Ready For QA", "labels": [],
+                 "moved_at": "2026-10-29T12:04:00Z"}
+        row = {"id": 5, "fingerprint": payloads.W.plan_fingerprint(story, "@tester-one"),
+               "reason": "reworded"}
+        p = Lines("qa2")
+        with mock.patch.object(payloads, "story_for"):
+            payloads.plan(p, None, row, story)
+        said = "\n".join(p.lines)
+        self.assertIn("Write @tester-one's test plan", said)
+        self.assertIn("comment sc-9 --to @tester-one <<'PLAN'", said)
+        self.assertIn("\nQA claim: @tester-one\nPLAN\n", said)
+        self.assertNotIn("\\n", said)
