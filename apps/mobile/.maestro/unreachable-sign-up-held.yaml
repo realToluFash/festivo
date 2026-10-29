@@ -16,12 +16,10 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'register.email'
 - inputText: ${EMAIL}
-- tapOn:
-    id: 'register.password'
+# The Next and Go keys, not taps: hideKeyboard fails on an iPhone (sc-18534).
+- pressKey: Enter
 - inputText: ${PASSWORD}
-- hideKeyboard
-- tapOn:
-    id: 'register.submit'
+- pressKey: Enter
 - extendedWaitUntil:
     visible:
       id: 'verifyEmail.code'
