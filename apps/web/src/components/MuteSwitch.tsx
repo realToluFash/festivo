@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
+import { announceMute } from '../eventMutes.ts';
 import { FieldError } from './FieldError.tsx';
 
 type Mute =
@@ -10,13 +11,7 @@ type Mute =
   | { status: 'loaded'; muted: boolean; unsaved: boolean };
 
 /** Mute this event (sc-3980), per person: the event page's card and the bell's More share it. */
-export function MuteSwitch({
-  eventId,
-  onMuted,
-}: {
-  eventId: string;
-  onMuted?: (muted: boolean) => void;
-}) {
+export function MuteSwitch({ eventId }: { eventId: string }) {
   const { t } = useTranslation();
   const [mute, setMute] = useState<Mute>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
@@ -42,9 +37,9 @@ export function MuteSwitch({
   async function change(next: boolean): Promise<void> {
     setMute({ status: 'loaded', muted: next, unsaved: false });
     try {
-      const muted = await api.muteEvent(eventId, next);
-      setMute({ status: 'loaded', muted, unsaved: false });
-      onMuted?.(muted);
+      const saved = await api.muteEvent(eventId, next);
+      setMute({ status: 'loaded', muted: saved.muted, unsaved: false });
+      announceMute(eventId, saved);
     } catch {
       setMute({ status: 'loaded', muted: !next, unsaved: true });
     }

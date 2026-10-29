@@ -13,6 +13,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View, type ViewInstance } fro
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
+import { useMutes } from '../eventMutes.ts';
 import { markPushAsked, pushAskDue, turnOnAppPush } from '../appPush.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { SECTION_HREF } from '../kit/appNav.ts';
@@ -144,13 +145,13 @@ export function NotificationsFeed() {
     if (place != null) router.push(place);
   }
 
-  function mutedEvent(eventId: string, muted: boolean): void {
+  useMutes((eventId, mute) =>
     setFeed((current) =>
       current.status === 'loaded'
-        ? { ...feedWithMute(current, eventId, muted), status: 'loaded' }
+        ? { ...feedWithMute(current, eventId, mute), status: 'loaded' }
         : current,
-    );
-  }
+    ),
+  );
 
   async function readAll(): Promise<void> {
     if (feed.status !== 'loaded' || feed.unread === 0) return;
@@ -314,7 +315,6 @@ export function NotificationsFeed() {
                   eventId={item.eventId}
                   eventName={item.eventName}
                   label={t('notifications.more', { title: item.title, event: item.eventName })}
-                  onMuted={(muted) => mutedEvent(item.eventId ?? '', muted)}
                   testID={`notifications.item.${item.id}.more`}
                 />
               )}
@@ -371,13 +371,11 @@ function MuteMore({
   eventId,
   eventName,
   label,
-  onMuted,
   testID,
 }: {
   eventId: string;
   eventName: string;
   label: string;
-  onMuted: (muted: boolean) => void;
   testID: string;
 }) {
   const { t } = useTranslation();
@@ -412,7 +410,7 @@ function MuteMore({
             <Text size={tokens.typeRowTitle.size} weight="bold" accessibilityRole="header">
               {eventName}
             </Text>
-            <MuteEventSwitch eventId={eventId} onMuted={onMuted} testID={`${testID}.mute`} />
+            <MuteEventSwitch eventId={eventId} testID={`${testID}.mute`} />
             <QuietButton
               label={t('notifications.moreDone')}
               onPress={close}

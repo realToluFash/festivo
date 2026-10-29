@@ -31,7 +31,7 @@ describe('Mute this event', () => {
       client({
         muteEvent: (eventId, muted) => {
           sent.push([eventId, muted]);
-          return Promise.resolve(muted);
+          return Promise.resolve({ muted, markedWhenMuted: ['messages'] });
         },
       }),
       'e1',
@@ -39,7 +39,10 @@ describe('Mute this event', () => {
     );
 
     expect(sent).toEqual([['e1', true]]);
-    expect(state).toEqual({ status: 'loaded', muted: true, saving: false, unsaved: false });
+    expect(state).toEqual({
+      state: { status: 'loaded', muted: true, saving: false, unsaved: false },
+      saved: { muted: true, markedWhenMuted: ['messages'] },
+    });
   });
 
   it('puts the switch back and says so when a change does not save', async () => {
@@ -49,6 +52,9 @@ describe('Mute this event', () => {
       true,
     );
 
-    expect(state).toEqual({ status: 'loaded', muted: false, saving: false, unsaved: true });
+    expect(state).toEqual({
+      state: { status: 'loaded', muted: false, saving: false, unsaved: true },
+      saved: null,
+    });
   });
 });

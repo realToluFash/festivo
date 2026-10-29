@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
+import { announceMute } from '../eventMutes.ts';
 import { SECTION_HREF } from '../kit/appNav.ts';
 import { type MuteState, readMute, saveMute } from '../kit/eventMute.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
@@ -38,15 +39,7 @@ export function MuteEventCard({ kind, eventId }: { kind: LayoutKind; eventId: st
 }
 
 /** The one Mute this event switch, on the event's page and in a bell item's More. */
-export function MuteEventSwitch({
-  eventId,
-  onMuted,
-  testID,
-}: {
-  eventId: string;
-  onMuted?: (muted: boolean) => void;
-  testID: string;
-}) {
+export function MuteEventSwitch({ eventId, testID }: { eventId: string; testID: string }) {
   const { t } = useTranslation();
   const [mute, setMute] = useState<MuteState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
@@ -65,10 +58,10 @@ export function MuteEventSwitch({
 
   const change = (next: boolean): void => {
     setMute({ status: 'loaded', muted: next, saving: true, unsaved: false });
-    void saveMute(api, eventId, next).then((saved) => {
-      setMute(saved);
-      if (saved.status === 'loaded' && saved.unsaved) setTap({});
-      if (saved.status === 'loaded' && !saved.unsaved) onMuted?.(saved.muted);
+    void saveMute(api, eventId, next).then(({ state, saved }) => {
+      setMute(state);
+      if (saved == null) setTap({});
+      else announceMute(eventId, saved);
     });
   };
 

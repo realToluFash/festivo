@@ -13,14 +13,6 @@ export interface LoadedFeed<Item extends FeedItem> {
   next: string | null;
 }
 
-/** Event day and Account & security items still push from a muted event, so they never carry the mark. */
-const MUTABLE: ReadonlySet<string> = new Set([
-  'guest_replies',
-  'messages',
-  'event_changes',
-  'money',
-]);
-
 /** A live item joins the top; one already shown is left as it is, and the page boundary does not move. */
 export function feedWithArrival<Item extends FeedItem>(
   feed: LoadedFeed<Item>,
@@ -71,16 +63,18 @@ export function feedWithMissed<Item extends FeedItem>(
   return { ...feed, items: [...missed, ...feed.items], unread: page.unread };
 }
 
-/** Mute this event is one switch per event, so every item of that event follows it at once. */
+/** Mute this event is one switch per event, so every item of that event follows it at once, in the categories the server marks. */
 export function feedWithMute<Item extends FeedItem>(
   feed: LoadedFeed<Item>,
   eventId: string,
-  muted: boolean,
+  mute: { muted: boolean; markedWhenMuted: readonly string[] },
 ): LoadedFeed<Item> {
   return {
     ...feed,
     items: feed.items.map((item) =>
-      item.eventId === eventId && MUTABLE.has(item.category) ? { ...item, muted } : item,
+      item.eventId === eventId && mute.markedWhenMuted.includes(item.category)
+        ? { ...item, muted: mute.muted }
+        : item,
     ),
   };
 }

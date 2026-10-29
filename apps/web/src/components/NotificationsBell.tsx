@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 
 import { api } from '../api.ts';
+import { useMutes } from '../eventMutes.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { useLiveNotifications } from '../liveNotifications.ts';
 import { offButton } from '../offButton.ts';
@@ -185,13 +186,13 @@ export function NotificationsBell({ userId }: { userId: string }) {
     }
   }
 
-  function mutedEvent(eventId: string, muted: boolean): void {
+  useMutes((eventId, mute) =>
     setFeed((current) =>
       current.status === 'loaded'
-        ? { ...feedWithMute(current, eventId, muted), status: 'loaded' }
+        ? { ...feedWithMute(current, eventId, mute), status: 'loaded' }
         : current,
-    );
-  }
+    ),
+  );
 
   async function readAll(): Promise<void> {
     if (feed.status !== 'loaded' || feed.unread === 0) return;
@@ -359,7 +360,6 @@ export function NotificationsBell({ userId }: { userId: string }) {
                     <MuteMenu
                       eventId={item.eventId}
                       label={t('notifications.more', { title: item.title, event: item.eventName })}
-                      onMuted={(muted) => mutedEvent(item.eventId ?? '', muted)}
                     />
                   )}
                   {gone.has(item.id) && (
@@ -440,15 +440,7 @@ function BellMark({ slashed = false }: { slashed?: boolean }) {
 }
 
 /** The item's More: the same Mute this event switch as the event's own page, per person. */
-function MuteMenu({
-  eventId,
-  label,
-  onMuted,
-}: {
-  eventId: string;
-  label: string;
-  onMuted: (muted: boolean) => void;
-}) {
+function MuteMenu({ eventId, label }: { eventId: string; label: string }) {
   const [open, setOpen] = useState(false);
   const more = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
@@ -488,7 +480,7 @@ function MuteMenu({
           aria-label={label}
           tabIndex={-1}
         >
-          <MuteSwitch eventId={eventId} onMuted={onMuted} />
+          <MuteSwitch eventId={eventId} />
         </div>
       )}
     </>

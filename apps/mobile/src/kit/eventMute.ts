@@ -1,3 +1,5 @@
+import type { EventMute } from '@soirely/api-client';
+
 export type MuteState =
   | { status: 'loading' }
   | { status: 'failed' }
@@ -5,7 +7,7 @@ export type MuteState =
 
 export interface MutesEvents {
   eventMuted(eventId: string): Promise<boolean>;
-  muteEvent(eventId: string, muted: boolean): Promise<boolean>;
+  muteEvent(eventId: string, muted: boolean): Promise<EventMute>;
 }
 
 /** Mute this event (sc-3980): a state that did not load leaves the switch off-limits, never guessed. */
@@ -22,20 +24,20 @@ export async function readMute(client: MutesEvents, eventId: string): Promise<Mu
   }
 }
 
-/** A change that did not save puts the switch back where it was. */
+/** A change that did not save puts the switch back where it was; one that did comes with what the bell marks. */
 export async function saveMute(
   client: MutesEvents,
   eventId: string,
   next: boolean,
-): Promise<MuteState> {
+): Promise<{ state: MuteState; saved: EventMute | null }> {
   try {
+    const saved = await client.muteEvent(eventId, next);
+
     return {
-      status: 'loaded',
-      muted: await client.muteEvent(eventId, next),
-      saving: false,
-      unsaved: false,
+      state: { status: 'loaded', muted: saved.muted, saving: false, unsaved: false },
+      saved,
     };
   } catch {
-    return { status: 'loaded', muted: !next, saving: false, unsaved: true };
+    return { state: { status: 'loaded', muted: !next, saving: false, unsaved: true }, saved: null };
   }
 }

@@ -69,11 +69,11 @@ describe('the bell feed (sc-3980)', () => {
     expect(after.next).toBe('c2');
   });
 
-  test("muting an event marks its items, but not its Event day ones or another event's", () => {
+  test("muting an event marks its items in the server's categories, and not another event's", () => {
     const after = feedWithMute(
       feed([item('a'), item('day', { category: 'event_day' }), item('other', { eventId: 'e2' })]),
       'e1',
-      true,
+      { muted: true, markedWhenMuted: ['messages'] },
     );
 
     expect(after.items.map((shown) => shown.muted)).toEqual([true, false, false]);

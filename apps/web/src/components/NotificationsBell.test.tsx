@@ -163,7 +163,8 @@ describe('the bell (sc-3980)', () => {
     const sent = answering({
       'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
       'GET /api/events/e1/mute': () => json({ muted: false }),
-      'PUT /api/events/e1/mute': () => json({ muted: true }),
+      'PUT /api/events/e1/mute': () =>
+        json({ muted: true, markedWhenMuted: ['event_changes', 'messages'] }),
     });
     bell();
 

@@ -126,6 +126,12 @@ export interface NotificationFeed {
   next: string | null;
 }
 
+/** Mute this event's saved state, with the categories whose items carry the Muted mark: the bell follows the server's rule. */
+export interface EventMute {
+  muted: boolean;
+  markedWhenMuted: string[];
+}
+
 export interface NotificationSetting {
   category: NotificationCategory;
   push: { on: boolean; switchable: boolean };
@@ -1187,13 +1193,20 @@ export class ApiClient {
     return body.muted === true;
   }
 
-  async muteEvent(eventId: string, muted: boolean): Promise<boolean> {
-    const body = await this.put<{ muted?: unknown }>(
+  async muteEvent(eventId: string, muted: boolean): Promise<EventMute> {
+    const body = await this.put<{ muted?: unknown; markedWhenMuted?: unknown }>(
       `/api/events/${encodeURIComponent(eventId)}/mute`,
       { muted },
     );
 
-    return body.muted === true;
+    return {
+      muted: body.muted === true,
+      markedWhenMuted: Array.isArray(body.markedWhenMuted)
+        ? body.markedWhenMuted.filter(
+            (category): category is string => typeof category === 'string',
+          )
+        : [],
+    };
   }
 
   /** The VAPID public key this browser subscribes with (sc-3980). */
