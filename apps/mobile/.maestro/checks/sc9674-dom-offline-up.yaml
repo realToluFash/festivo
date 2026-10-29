@@ -1,0 +1,52 @@
+# Add domain with the API stopped and the keys up: the error shows, keys stay up. sc-9674.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: companyDomains.add
+    centerElement: true
+- swipe:
+    start: '50%,40%'
+    end: '50%,60%'
+- waitForAnimationToEnd
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          id: companyDomains.domain
+      - eraseText: 80
+- inputText: 'example.org'
+- waitForAnimationToEnd
+- takeScreenshot: keys-up
+- assertVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- scrollUntilVisible:
+    element:
+      id: companyDomains.add
+    centerElement: true
+- tapOn:
+    id: companyDomains.add
+- waitForAnimationToEnd:
+    timeout: 15000
+- takeScreenshot: answered
+- assertVisible: '(?i)(shift|delete)'
+- scrollUntilVisible:
+    element:
+      id: companyDomains.domain
+    direction: UP
+    centerElement: true
+- waitForAnimationToEnd
+- takeScreenshot: refused
+- assertVisible: '(?i)(shift|delete)'
+- inputText: x
+- assertVisible:
+    id: companyDomains.domain
+    text: 'example.orgx'

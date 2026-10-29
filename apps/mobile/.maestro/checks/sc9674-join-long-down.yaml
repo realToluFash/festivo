@@ -1,0 +1,32 @@
+# Ask to join: 501 characters, keys hidden. The check opens the keys on Message. sc-9674.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/join/${TOKEN}
+- extendedWaitUntil:
+    visible:
+      id: requestToJoin.message
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: requestToJoin.message
+    centerElement: true
+- tapOn:
+    id: requestToJoin.message
+- inputText: 'abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijk'
+- tapOn:
+    point: '2%,45%'
+- waitForAnimationToEnd
+- takeScreenshot: keys-hidden
+- assertNotVisible: '(?i)(shift|delete)'
+- scrollUntilVisible:
+    element:
+      id: requestToJoin.ask
+    centerElement: true
+- tapOn:
+    id: requestToJoin.ask
+- extendedWaitUntil:
+    visible: 'Keep your message to 500 characters or fewer.*'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: checked
+- assertVisible: '(?i)(shift|delete)'

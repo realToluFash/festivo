@@ -1,0 +1,70 @@
+# Transfer ownership, two-factor on: right password, keys up. The code field appears, keys stay; a tap on it takes them there; a wrong code is refused with keys up. sc-9674.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: ownership.transfer
+    centerElement: true
+- tapOn:
+    id: ownership.transfer
+- scrollUntilVisible:
+    element:
+      id: ownership.owner.${MEMBER}
+    centerElement: true
+- tapOn:
+    id: ownership.owner.${MEMBER}
+- scrollUntilVisible:
+    element:
+      id: ownership.password
+    centerElement: true
+- tapOn:
+    id: ownership.password
+- inputText: ${PASSWORD}
+- waitForAnimationToEnd
+- takeScreenshot: keys-up
+- assertVisible: '(?i)(shift|delete)'
+- scrollUntilVisible:
+    element:
+      id: ownership.transfer.send
+    centerElement: true
+- tapOn:
+    id: ownership.transfer.send
+- extendedWaitUntil:
+    visible:
+      id: ownership.code
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: code-asked
+- assertVisible: '(?i)(shift|delete)'
+- inputText: q
+- tapOn:
+    id: ownership.password.reveal
+- assertVisible:
+    id: ownership.password
+    text: '${PASSWORD}'
+- scrollUntilVisible:
+    element:
+      id: ownership.code
+    centerElement: true
+- tapOn:
+    id: ownership.code
+- inputText: '000000'
+- waitForAnimationToEnd
+- takeScreenshot: code-typed
+- assertVisible: '(?i)(shift|delete)'
+- scrollUntilVisible:
+    element:
+      id: ownership.transfer.send
+    centerElement: true
+- tapOn:
+    id: ownership.transfer.send
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd
+- takeScreenshot: code-refused
+- assertVisible: '(?i)(shift|delete)'

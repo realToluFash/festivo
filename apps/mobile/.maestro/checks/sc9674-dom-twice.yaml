@@ -1,0 +1,48 @@
+# Add domain: soirely.test, held, Add domain tapped twice and return pressed. One domain added, the field emptied. sc-9674.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: companyDomains.add
+    centerElement: true
+- swipe:
+    start: '50%,40%'
+    end: '50%,60%'
+- waitForAnimationToEnd
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          id: companyDomains.domain
+      - eraseText: 80
+- inputText: 'soirely.test'
+- waitForAnimationToEnd
+- takeScreenshot: keys-up
+- assertVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- scrollUntilVisible:
+    element:
+      id: companyDomains.add
+    centerElement: true
+- tapOn:
+    id: companyDomains.add
+- tapOn:
+    id: companyDomains.add
+- pressKey: Enter
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    visible: 'soirely.test added.*'
+    timeout: 45000
+- waitForAnimationToEnd
+- takeScreenshot: added
