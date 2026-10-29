@@ -212,6 +212,9 @@ describe('the QA .env against compose.yaml', () => {
       expect(overrides.OAUTH_GOOGLE_ISSUERS.split(',')).toContain(`${sandbox}google`);
       expect(overrides.OAUTH_APPLE_ISSUERS.split(',')).toContain(`${sandbox}apple`);
       expect(app.EXPO_PUBLIC_API_URL).toBe(`http://127.0.0.1:${ports.API_PORT}`);
+      expect(app.EXPO_PUBLIC_MERCURE_URL).toBe(
+        `http://127.0.0.1:${ports.MERCURE_PORT}/.well-known/mercure`,
+      );
     }
   });
 
