@@ -36,7 +36,7 @@ import { EventsHome, type HomeLoad } from './EventsHome.tsx';
 import { type ListAndPageSpacing, ListAndPage, useListAndPageLayout } from './ListAndPage.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
-import { FocusBack, type StepClosed, stepClosed } from './Screen.tsx';
+import { FocusBack, type StepClosed, stepClosed, useScrolledToTop } from './Screen.tsx';
 import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { useSystemBack } from './useSystemBack.ts';
@@ -110,6 +110,9 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
       setCoverRefused(takeCoverRefused());
       setDeleted(null);
       reload();
+
+      // Gone while the page is covered, so the next save mounts Saved afresh and scrolls up to it.
+      return () => setSavedEvent(null);
     }, [reload]),
   );
 
@@ -244,11 +247,7 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
   const page =
     open == null ? null : shown != null ? (
       <View style={styles.stack}>
-        {savedEvent === open && (
-          <ReadOut words={t('eventEdit.saved')}>
-            <Notice tone="done" mark={tokens.marks.done.glyph} body={t('eventEdit.saved')} />
-          </ReadOut>
-        )}
+        {savedEvent === open && <Saved />}
         <EventPage
           kind={kind}
           event={shown}
@@ -380,6 +379,20 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
 /** An edit on the event's page, with the milestones the list read, until the next load reads both again. */
 function kept(listed: ListedEvent, changed: OrganisationEvent): ListedEvent {
   return listed.id === changed.id ? { ...changed, milestones: listed.milestones } : listed;
+}
+
+/** A save goes back to the page where it was scrolled, so Saved brings itself into sight (sc-21336). */
+function Saved() {
+  const { t } = useTranslation();
+  const top = useScrolledToTop();
+
+  return (
+    <View ref={top} collapsable={false}>
+      <ReadOut words={t('eventEdit.saved')}>
+        <Notice tone="done" mark={tokens.marks.done.glyph} body={t('eventEdit.saved')} />
+      </ReadOut>
+    </View>
+  );
 }
 
 function Waiting({ words }: { words: string }) {
