@@ -28,6 +28,7 @@ import {
   driverBuilds,
   driverPids,
   bundlerEnv,
+  commitTarget,
   checkId,
   codeStep,
   databaseCommands,
@@ -337,6 +338,19 @@ describe('what checkout was asked for', () => {
     [undefined, { kind: 'branch', name: 'main' }],
   ])('%s', (arg, expected) => {
     expect(parseTarget(arg)).toEqual(expected);
+  });
+});
+
+describe('a commit checkout asks for', () => {
+  it('stops on a hash the fetched remote does not have, naming it', () => {
+    expect(() => commitTarget('deadbee', { verify: () => null })).toThrow(/deadbee/);
+  });
+
+  it('checks out a hash it has, and names it by that hash', () => {
+    const asked = [];
+    const verify = (rev) => (asked.push(rev), 'e58c4234abcdef');
+    expect(commitTarget('e58c423', { verify })).toEqual({ ref: 'e58c423', label: 'e58c423' });
+    expect(asked).toEqual(['e58c423^{commit}']);
   });
 });
 

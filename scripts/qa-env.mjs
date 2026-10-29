@@ -220,6 +220,13 @@ export function parseTarget(arg) {
 }
 
 // One of a tester's simulators runs at a time: the phone unless --ipad asks otherwise.
+export function commitTarget(sha, { verify }) {
+  if (verify(`${sha}^{commit}`) === null) {
+    throw new Error(`no commit ${sha} in the QA worktree after fetching origin`);
+  }
+  return { ref: sha, label: sha };
+}
+
 export function simulatorFor(args) {
   return args.includes('--ipad')
     ? { open: 'ipad', shut: 'phone' }
@@ -731,15 +738,9 @@ function checkout(args) {
     ref = pr.headRefOid;
     label = `#${target.number} (${pr.headRefName})`;
   } else if (target.kind === 'commit') {
-    if (
-      capture('git', ['rev-parse', '--verify', '--quiet', `${target.sha}^{commit}`], {
-        cwd: root,
-      }) === null
-    ) {
-      throw new Error(`no commit ${target.sha} in the QA worktree after fetching origin`);
-    }
-    ref = target.sha;
-    label = target.sha;
+    ({ ref, label } = commitTarget(target.sha, {
+      verify: (rev) => capture('git', ['rev-parse', '--verify', '--quiet', rev], { cwd: root }),
+    }));
   } else {
     const name =
       target.kind === 'story'
