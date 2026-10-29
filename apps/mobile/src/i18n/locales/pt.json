@@ -1743,6 +1743,8 @@
     "arrivedAt": "New notification: {{title}} · {{event}}",
     "unread": "Unread",
     "muted": "Muted",
+    "more": "More for {{title}}, {{event}}",
+    "moreDone": "Done",
     "loading": "Loading notifications",
     "couldNotLoad": "Couldn't load your notifications.",
     "tryAgain": "Try again",

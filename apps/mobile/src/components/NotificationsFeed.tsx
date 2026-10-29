@@ -1,5 +1,11 @@
 import type { NotificationItem } from '@soirely/api-client';
-import { feedAllRead, feedWithArrival, feedWithPage, feedWithRead } from '@soirely/domain';
+import {
+  feedAllRead,
+  feedWithArrival,
+  feedWithMute,
+  feedWithPage,
+  feedWithRead,
+} from '@soirely/domain';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
@@ -13,8 +19,10 @@ import { appPlace, whenShown } from '../kit/notificationPlace.ts';
 import { setUnread, useArrivals } from '../notificationsUnread.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Footnote, PrimaryButton, QuietButton } from './Buttons.tsx';
+import { MuteEventSwitch } from './MuteEventCard.tsx';
 import { Notice } from './Notice.tsx';
 import { useReadOut } from './ReadOut.tsx';
+import { Sheet } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 
 type Feed =
@@ -118,6 +126,14 @@ export function NotificationsFeed() {
 
     const place = appPlace(item.place);
     if (place != null) router.push(place);
+  }
+
+  function mutedEvent(eventId: string, muted: boolean): void {
+    setFeed((current) =>
+      current.status === 'loaded'
+        ? { ...feedWithMute(current, eventId, muted), status: 'loaded' }
+        : current,
+    );
   }
 
   async function readAll(): Promise<void> {
@@ -234,46 +250,57 @@ export function NotificationsFeed() {
       {feed.status === 'loaded' &&
         feed.items.map((item) => (
           <View key={item.id} style={styles.row}>
-            <Pressable
-              style={styles.item}
-              onPress={() => openItem(item)}
-              accessibilityRole="button"
-              testID={`notifications.item.${item.id}`}
-            >
-              <Text size={tokens.typeBodyPhone.size} weight={item.read ? 'regular' : 'bold'}>
-                {item.title}
-              </Text>
-              {item.lines.map((line, index) => (
-                <Text key={index} size={tokens.typeBodyPhone.size}>
-                  {line}
+            <View style={styles.itemRow}>
+              <Pressable
+                style={[styles.item, styles.fill]}
+                onPress={() => openItem(item)}
+                accessibilityRole="button"
+                testID={`notifications.item.${item.id}`}
+              >
+                <Text size={tokens.typeBodyPhone.size} weight={item.read ? 'regular' : 'bold'}>
+                  {item.title}
                 </Text>
-              ))}
-              <Text size={tokens.typeSmall.size} muted>
-                {item.eventName == null
-                  ? when(item.createdAt)
-                  : t('notifications.whereWhen', {
-                      event: item.eventName,
-                      when: when(item.createdAt),
-                    })}
-              </Text>
-              {(!item.read || item.muted) && (
-                <View style={styles.marks}>
-                  {!item.read && (
-                    <View style={styles.mark}>
-                      <View style={styles.dot} />
-                      <Text size={tokens.typeSmall.size} weight="semibold">
-                        {t('notifications.unread')}
+                {item.lines.map((line, index) => (
+                  <Text key={index} size={tokens.typeBodyPhone.size}>
+                    {line}
+                  </Text>
+                ))}
+                <Text size={tokens.typeSmall.size} muted>
+                  {item.eventName == null
+                    ? when(item.createdAt)
+                    : t('notifications.whereWhen', {
+                        event: item.eventName,
+                        when: when(item.createdAt),
+                      })}
+                </Text>
+                {(!item.read || item.muted) && (
+                  <View style={styles.marks}>
+                    {!item.read && (
+                      <View style={styles.mark}>
+                        <View style={styles.dot} />
+                        <Text size={tokens.typeSmall.size} weight="semibold">
+                          {t('notifications.unread')}
+                        </Text>
+                      </View>
+                    )}
+                    {item.muted && (
+                      <Text size={tokens.typeSmall.size} muted>
+                        {t('notifications.muted')}
                       </Text>
-                    </View>
-                  )}
-                  {item.muted && (
-                    <Text size={tokens.typeSmall.size} muted>
-                      {t('notifications.muted')}
-                    </Text>
-                  )}
-                </View>
+                    )}
+                  </View>
+                )}
+              </Pressable>
+              {item.eventId != null && item.eventAvailable && item.eventName != null && (
+                <MuteMore
+                  eventId={item.eventId}
+                  eventName={item.eventName}
+                  label={t('notifications.more', { title: item.title, event: item.eventName })}
+                  onMuted={(muted) => mutedEvent(item.eventId ?? '', muted)}
+                  testID={`notifications.item.${item.id}.more`}
+                />
               )}
-            </Pressable>
+            </View>
             {gone.has(item.id) && (
               <Notice
                 tone="quiet"
@@ -321,6 +348,65 @@ export function NotificationsFeed() {
   }
 }
 
+/** The item's More (sc-3980): the event's own Mute this event switch, in the app's sheet. */
+function MuteMore({
+  eventId,
+  eventName,
+  label,
+  onMuted,
+  testID,
+}: {
+  eventId: string;
+  eventName: string;
+  label: string;
+  onMuted: (muted: boolean) => void;
+  testID: string;
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const opener = useRef<ViewInstance>(null);
+  const close = (): void => setOpen(false);
+
+  return (
+    <>
+      <Pressable
+        ref={opener}
+        style={styles.moreButton}
+        onPress={() => setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ expanded: open }}
+        testID={testID}
+      >
+        <Text size={tokens.typeRowTitle.size} weight="bold">
+          ⋯
+        </Text>
+      </Pressable>
+      <Sheet
+        open={open}
+        onClose={close}
+        scrimLabel={t('notifications.moreDone')}
+        opener={opener}
+        testID={`${testID}.sheet`}
+      >
+        {open && (
+          <View style={styles.sheet}>
+            <Text size={tokens.typeRowTitle.size} weight="bold" accessibilityRole="header">
+              {eventName}
+            </Text>
+            <MuteEventSwitch eventId={eventId} onMuted={onMuted} testID={`${testID}.mute`} />
+            <QuietButton
+              label={t('notifications.moreDone')}
+              onPress={close}
+              testID={`${testID}.done`}
+            />
+          </View>
+        )}
+      </Sheet>
+    </>
+  );
+}
+
 const styles = StyleSheet.create({
   feed: { gap: tokens.spaceLg },
   header: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
@@ -350,6 +436,14 @@ const styles = StyleSheet.create({
   },
   empty: { paddingVertical: tokens.spaceXl },
   row: { gap: tokens.spaceXs },
+  itemRow: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
+  moreButton: {
+    minWidth: tokens.sizeHit,
+    minHeight: tokens.sizeHit,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheet: { gap: tokens.spaceLg },
   item: {
     gap: tokens.spaceXxs,
     minHeight: tokens.sizeHit,
