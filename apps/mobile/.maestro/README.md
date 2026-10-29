@@ -114,7 +114,11 @@ Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each co
   a flow uses `hideKeyboard` and then the tap. Split the two by platform, as
   `batch/sign-in-form.yaml` does. The one exception is a check whose outcome is the
   keyboard put away by hand: `checks/sc13408-change-dismiss.yaml` and
-  `checks/sc13408-choose-dismiss.yaml`.
+  `checks/sc13408-choose-dismiss.yaml`, and the `sc9674-*` checks, whose outcome is what the
+  keys do after a refused send: on an iPhone they put the keys away with a tap on blank page,
+  `tapOn: point: '2%,45%'`, since `hideKeyboard` hangs there. That point is for a phone only: on a
+  tablet it lands in the settings split list and opens another section. Their Android copies,
+  `sc9674-a-*`, press `pressKey: back` instead.
 - **Expo Go is the app**, so `appId` is `host.exp.Exponent` and the flow opens the project
   with `openLink`. A standalone build would use `com.soirely.app` and `launchApp`. On Android
   the package is `host.exp.exponent`, in lower case. Write iOS's: `qa-env.mjs maestro --android`

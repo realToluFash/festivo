@@ -1,4 +1,4 @@
-# Add domain: soirely.test, held, Add domain tapped twice and return pressed. One domain added, the field emptied. sc-9674.
+# Add domain: soirely.test, held, Add domain tapped twice and return pressed. One domain added, the field emptied, and the domain removed again so the check reruns. sc-9674.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/organisation
@@ -42,7 +42,24 @@ appId: host.exp.Exponent
     env:
       ASK: /api?to=up
 - extendedWaitUntil:
-    visible: 'soirely.test added.*'
+    visible: '{{t:companyDomains.added}}'
     timeout: 45000
 - waitForAnimationToEnd
 - takeScreenshot: added
+- assertNotVisible: '.*{{t:companyDomains.failed}}.*'
+- assertNotVisible: '.*(?:is already on the list|ya está en la lista|figure déjà dans la liste|já está na lista).*'
+- assertNotVisible:
+    id: companyDomains.domain
+    text: 'soirely.test'
+- scrollUntilVisible:
+    element:
+      id: companyDomains.remove.soirely.test
+    direction: UP
+    centerElement: true
+- tapOn:
+    id: companyDomains.remove.soirely.test
+- tapOn:
+    id: companyDomains.confirm.soirely.test
+- extendedWaitUntil:
+    visible: '{{t:companyDomains.removed}}'
+    timeout: 30000

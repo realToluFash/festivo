@@ -31,7 +31,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: ownership.delete.send
 - extendedWaitUntil:
-    visible: 'Type .* exactly as shown to delete it.*'
+    visible: '{{t:ownership.deleteMismatch}}'
     timeout: 10000
 - waitForAnimationToEnd
 - takeScreenshot: checked

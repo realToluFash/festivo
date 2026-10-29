@@ -34,8 +34,11 @@ appId: host.exp.Exponent
     centerElement: true
 - tapOn:
     id: companyDomains.add
-- waitForAnimationToEnd:
-    timeout: 15000
+- scrollUntilVisible:
+    element: '.*{{t:companyDomains.failed}}.*'
+    direction: UP
+    timeout: 45000
+- waitForAnimationToEnd
 - takeScreenshot: answered
 - assertVisible: '(?i)(shift|delete)'
 - scrollUntilVisible:

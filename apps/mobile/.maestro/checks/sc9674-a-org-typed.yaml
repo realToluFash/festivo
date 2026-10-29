@@ -22,3 +22,4 @@ appId: host.exp.Exponent
     centerElement: true
 - waitForAnimationToEnd
 - assertVisible: '(?i)(shift|delete)'
+- takeScreenshot: typed

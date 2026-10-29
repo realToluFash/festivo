@@ -16,3 +16,4 @@ appId: host.exp.Exponent
 - inputText: 'example.org'
 - waitForAnimationToEnd
 - assertVisible: '(?i)(shift|delete)'
+- takeScreenshot: typed
