@@ -1,5 +1,4 @@
 import { router } from 'expo-router';
-import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { AppFrame } from '../src/components/AppFrame.tsx';
@@ -7,7 +6,6 @@ import { bodyEdges } from '../src/components/bodyEdges.ts';
 import { NotificationsFeed } from '../src/components/NotificationsFeed.tsx';
 import { Screen } from '../src/components/Screen.tsx';
 import { useLayout } from '../src/layout/useLayout.ts';
-import { tokens } from '../src/theme/tokens.ts';
 
 /** The bell's own screen, back to where it was opened from (sc-3980). */
 export default function Notifications() {
@@ -25,17 +23,9 @@ export default function Notifications() {
         systemBack: true,
       }}
     >
-      <Screen edges={bodyEdges(kind)} contentStyle={styles.content}>
+      <Screen edges={bodyEdges(kind)} scroll={false}>
         <NotificationsFeed />
       </Screen>
     </AppFrame>
   );
 }
-
-const styles = StyleSheet.create({
-  content: {
-    paddingTop: tokens.spaceXl,
-    paddingHorizontal: tokens.spaceXl,
-    paddingBottom: tokens.space3xl,
-  },
-});
