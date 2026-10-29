@@ -1873,8 +1873,20 @@ export function driverPids(launchctlList) {
   return [...launchctlList.matchAll(entry)].map(([, pid]) => Number(pid));
 }
 
+// Maestro's xcodebuild outlives the Maestro the watchdog stopped, and holds the simulator's runner.
+export function driverBuilds(ps, device) {
+  return ps.split('\n').flatMap((line) => {
+    const [, pid, command] = line.match(/^\s*(\d+)\s+(.*)$/) ?? [];
+    const ours = /\bxcodebuild\b/.test(command) && /maestro-driver/.test(command);
+    return ours && command.includes(device) ? [Number(pid)] : [];
+  });
+}
+
+export const DRIVER_GONE_MS = 30_000;
+
 // A frozen driver outlives the Maestro the watchdog stopped, and the next run waits on it.
-function stopDriver(device, onAndroid) {
+// The next Maestro starts only once the old runner and its xcodebuild are gone.
+async function stopDriver(device, onAndroid) {
   if (onAndroid) {
     const stopped = ANDROID_DRIVERS.map(
       (id) => adbOut(androidTools(), ['shell', 'am', 'force-stop', id]) !== null,
@@ -1882,12 +1894,25 @@ function stopDriver(device, onAndroid) {
     if (!stopped.every(Boolean)) console.error(`\nCould not stop Maestro's driver on ${device}`);
     return;
   }
-  const pids = driverPids(capture('xcrun', ['simctl', 'spawn', device, 'launchctl', 'list']) ?? '');
-  if (!pids.length) console.error(`\nNo Maestro driver found on ${device} to stop`);
-  for (const pid of pids) {
+  const left = () => ({
+    runners: driverPids(capture('xcrun', ['simctl', 'spawn', device, 'launchctl', 'list']) ?? ''),
+    builds: driverBuilds(capture('ps', ['-Ao', 'pid=,command=']) ?? '', device),
+  });
+  const { runners, builds } = left();
+  if (!runners.length) console.error(`\nNo Maestro driver found on ${device} to stop`);
+  for (const pid of builds) run('kill', ['-KILL', String(pid)], { optional: true });
+  for (const pid of runners) {
     if (!run('kill', ['-KILL', String(pid)], { optional: true }))
       console.error(`\nCould not stop Maestro's driver (pid ${pid}) on ${device}`);
   }
+  for (const deadline = Date.now() + DRIVER_GONE_MS; Date.now() < deadline;) {
+    const still = left();
+    if (!still.runners.length && !still.builds.length) return;
+    await pause(1000);
+  }
+  console.error(
+    `\nMaestro's old driver on ${device} is still there after ${DRIVER_GONE_MS / 1000} s`,
+  );
 }
 
 function appRunning(device, onAndroid) {
@@ -2110,6 +2135,7 @@ async function batch(args) {
   const heard = { at: Date.now() };
   const crashed = [];
   const unstarted = new Map();
+  const watchdog = { stopped: false };
   const setLocale = async (locale) => {
     await apiState.move('up');
     await signedIn('/api/auth/locale', { method: 'PUT', body: { locale } });
@@ -2143,6 +2169,7 @@ async function batch(args) {
       crashed,
       unstarted,
       heard,
+      watchdog,
       device,
       onAndroid,
       run: (stall) =>
@@ -2219,14 +2246,29 @@ async function batch(args) {
 
 export async function runHeld(
   held,
-  { begun, passed, crashed, unstarted, heard, device, onAndroid, run, stop = stopDriver },
+  {
+    begun,
+    passed,
+    crashed,
+    unstarted,
+    heard,
+    watchdog = { stopped: false },
+    device,
+    onAndroid,
+    run,
+    stop = stopDriver,
+  },
 ) {
   const from = begun.length;
+  const afterStall = watchdog.stopped;
   heard.at = Date.now();
   const stall = { ms: STALL_MS, heard };
   await run(stall);
-  if (stall.stalled) stop(device, onAndroid);
-  const after = afterRun(held, { begun, from, passed, stalled: stall.stalled });
+  if (stall.stalled) {
+    watchdog.stopped = true;
+    await stop(device, onAndroid);
+  }
+  const after = afterRun(held, { begun, from, passed, stalled: stall.stalled, afterStall });
   if (after.crashed) crashed.push(after.crashed);
   if (begun.length === from) {
     for (const { check, language } of held)
@@ -2244,11 +2286,12 @@ export async function resumeBatch(rest, resume) {
 
 // Checks are optional, so a run that ends before the last check it held, or that the watchdog
 // stopped, lost its driver. It blames the last check it began if that one did not pass, and
-// resumes past it. A run the watchdog stopped before its first check resumes it all.
-export function afterRun(held, { begun, from, passed, stalled = false }) {
+// resumes past it. A run the watchdog stopped before its first check resumes it all, and so does
+// any run of a batch the watchdog has stopped before, since its driver may still be going down.
+export function afterRun(held, { begun, from, passed, stalled = false, afterStall = false }) {
   const current = begun.slice(from).at(-1);
   const rest = held.filter(({ check, language }) => !begun.includes(checkId(check, language)));
-  if (!current) return { crashed: null, rest: stalled ? rest : [] };
+  if (!current) return { crashed: null, rest: stalled || afterStall ? rest : [] };
   const lost = rest.length > 0 || stalled;
   return { crashed: lost && !passed.has(current) ? current : null, rest };
 }

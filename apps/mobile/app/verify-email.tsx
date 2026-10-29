@@ -11,6 +11,7 @@ import type { TextInput } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
+import { nextAfterRegistration } from '../src/challenge.ts';
 import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import {
   BackToAccount,
@@ -22,8 +23,7 @@ import { CodeForm } from '../src/components/CodeForm.tsx';
 import { OnboardingSteps } from '../src/components/OnboardingSteps.tsx';
 import { type CodeStatus, codeRefusal, openingStatus, retryAfter } from '../src/kit/code.ts';
 import { useFormChecks } from '../src/kit/formChecks.ts';
-import { takeHeldLink } from '../src/heldLink.ts';
-import { type Landing, landingFor } from '../src/landing.ts';
+import { type Landing } from '../src/landing.ts';
 import { dropRegistration, heldRegistration } from '../src/pendingRegistration.ts';
 import { rereadAccount } from '../src/signedIn.ts';
 
@@ -146,9 +146,7 @@ export default function VerifyEmail() {
       } else {
         const { account } = await api.confirmRegistration(pending.registration, cleanCode(typed));
         await dropRegistration();
-        // Registered from a request link (sc-562): back to it, now that the address is proved.
-        const link = await takeHeldLink();
-        setNext(link == null ? landingFor(awaiting(account)) : `/join/${link}`);
+        setNext(await nextAfterRegistration(account));
       }
       setStatus({ kind: 'verified', tapped: true });
     } catch (error) {

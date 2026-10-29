@@ -1,4 +1,9 @@
-import { type SignInOutcome, type TwoFactorChallenge, awaiting } from '@soirely/api-client';
+import {
+  type Account,
+  type SignInOutcome,
+  type TwoFactorChallenge,
+  awaiting,
+} from '@soirely/api-client';
 
 import { followAccount } from './accountLanguage.ts';
 import { takeHeldLink } from './heldLink.ts';
@@ -40,4 +45,13 @@ export async function nextAfterSignIn(
   const link = landing === '/verify-email' ? null : await takeHeldLink();
 
   return link == null ? landing : `/join/${link}`;
+}
+
+/** Where a registration goes once its code is accepted: back to a request link it started from (sc-562), else where the account belongs. */
+export async function nextAfterRegistration(
+  account: Account,
+): Promise<Landing | `/join/${string}`> {
+  const link = await takeHeldLink();
+
+  return link == null ? landingFor(awaiting(account)) : `/join/${link}`;
 }
