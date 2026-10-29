@@ -1156,6 +1156,7 @@
   "membersScreen": {
     "proveOwner_one": "Para dar a alguien el rol de Propietario de {{organisation}}, confirme que es usted. No se lo volveremos a pedir en un minuto.",
     "proveOwner_other": "Para dar a alguien el rol de Propietario de {{organisation}}, confirme que es usted. No se lo volveremos a pedir en {{count, number}} minutos.",
+    "proveOwner_many": "Para dar a alguien el rol de Propietario de {{organisation}}, confirme que es usted. No se lo volveremos a pedir en {{count, number}} de minutos.",
     "title": "Miembros",
     "loading": "Cargando miembros…",
     "failedLoad": "No se han podido cargar los miembros. Compruebe la conexión y vuelva a intentarlo.",
