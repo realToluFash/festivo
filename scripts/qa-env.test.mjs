@@ -1799,6 +1799,9 @@ describe('the flows a batch runs', () => {
       expect(decision.match(/when:\s+(?:not)?[vV]isible: .*/g)).toEqual([
         `when:\n      notVisible: ${sheet}`,
       ]);
+      expect(decision).toMatch(
+        /true: \$\{output\.developerMenuSheet\}\s+commands:\s+- tapOn: 'Continue'/,
+      );
       expect(decision).not.toMatch(/copyTextFrom|SCREENS|point:/);
       expect(readFileSync(join(target, 'batch/developer-menu.yaml'), 'utf8')).toContain(
         "visible: '${SETTLED}|This is the developer menu.*'",
