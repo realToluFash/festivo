@@ -8,12 +8,14 @@ use App\Domain\Messaging\Http\NotificationItemSerialiser;
 use App\Domain\Messaging\Interfaces\ChannelSenderInterface;
 use App\Domain\Messaging\Model\Recipient;
 use App\Domain\Messaging\Model\RenderedNotification;
+use App\Domain\Messaging\NotificationItemPruner;
 use App\Entity\NotificationItem;
 use App\Entity\User;
 use App\Enum\NotificationCategory;
 use App\Enum\NotificationChannel;
 use App\Enum\RealtimeTopic;
 use App\Realtime\RealtimePublisher;
+use App\Repository\NotificationItemRepository;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
@@ -30,6 +32,8 @@ final readonly class InAppSender implements ChannelSenderInterface
         private EntityManagerInterface $entityManager,
         private RealtimePublisher $realtimePublisher,
         private ClockInterface $clock,
+        private NotificationItemRepository $notificationItemRepository,
+        private NotificationItemPruner $notificationItemPruner,
     ) {
     }
 
@@ -58,9 +62,15 @@ final readonly class InAppSender implements ChannelSenderInterface
             ['id' => $deliveryId->toRfc4122()],
         ));
 
+        if (null !== $notification->thread && '' === $notification->subject) {
+            $this->removeUnread($recipient, $notification->thread);
+
+            return null;
+        }
+
         $item = new NotificationItem(
             $deliveryId,
-            Type\instance_of(User::class)->coerce($this->entityManager->getReference(User::class, $recipient->id)),
+            $this->user($recipient),
             $category,
             $notification->subject,
             $notification->lines,
@@ -71,12 +81,24 @@ final readonly class InAppSender implements ChannelSenderInterface
             $this->clock->now(),
         );
 
-        $this->connection->executeStatement(
-            <<<'SQL'
-                INSERT INTO notification_items (id, user_id, category, title, lines, event_id, event_name, place, muted, read_at, created_at)
-                VALUES (:id, :user, :category, :title, :lines, :event, :eventName, :place, :muted, NULL, :createdAt)
-                ON CONFLICT (id) DO NOTHING
-                SQL,
+        // A thread's unread item takes the new words and rises to the top, keeping its id; a retry of the delivery that began it lands there too.
+        $written = $this->connection->fetchOne(
+            null === $notification->thread
+                ? <<<'SQL'
+                    INSERT INTO notification_items (id, user_id, category, title, lines, event_id, event_name, place, muted, read_at, thread, thread_from, created_at)
+                    VALUES (:id, :user, :category, :title, :lines, :event, :eventName, :place, :muted, NULL, NULL, NULL, :createdAt)
+                    ON CONFLICT (id) DO NOTHING
+                    RETURNING id
+                    SQL
+                : <<<'SQL'
+                    INSERT INTO notification_items (id, user_id, category, title, lines, event_id, event_name, place, muted, read_at, thread, thread_from, created_at)
+                    SELECT :id, :user, :category, :title, :lines, :event, :eventName, :place, :muted, NULL, :thread, :threadFrom, :createdAt
+                    WHERE NOT EXISTS (SELECT 1 FROM notification_items WHERE id = :id)
+                    ON CONFLICT (user_id, thread) WHERE ((read_at IS NULL) AND (thread IS NOT NULL))
+                    DO UPDATE SET category = EXCLUDED.category, title = EXCLUDED.title, lines = EXCLUDED.lines, event_name = EXCLUDED.event_name,
+                                  place = EXCLUDED.place, muted = EXCLUDED.muted, created_at = EXCLUDED.created_at
+                    RETURNING id
+                    SQL,
             [
                 'id' => $item->getId()->toRfc4122(),
                 'user' => $recipient->id->toRfc4122(),
@@ -87,17 +109,45 @@ final readonly class InAppSender implements ChannelSenderInterface
                 'eventName' => $item->getEventName(),
                 'place' => $item->getPlace(),
                 'muted' => $item->isMuted(),
+                'thread' => $notification->thread,
+                'threadFrom' => $notification->threadFrom,
                 'createdAt' => $item->getCreatedAt(),
             ],
             ['muted' => Types::BOOLEAN, 'createdAt' => Types::DATETIME_IMMUTABLE],
         );
 
-        $this->realtimePublisher->publish(
-            RealtimeTopic::UserNotifications,
-            $recipient->id->toRfc4122(),
-            NotificationItemSerialiser::item($item, $delivery['event_available']),
-        );
+        $published = NotificationItemSerialiser::item($item, $delivery['event_available']);
+
+        if (false !== $written) {
+            $published['id'] = Type\string()->coerce($written);
+        }
+
+        $this->realtimePublisher->publish(RealtimeTopic::UserNotifications, $recipient->id->toRfc4122(), $published);
 
         return null;
+    }
+
+    /** An unread item left with nothing in it disappears (sc-13214, AC 3), and the member's bells drop it. */
+    private function removeUnread(Recipient $recipient, string $thread): void
+    {
+        $removed = $this->connection->fetchOne(
+            'DELETE FROM notification_items WHERE user_id = :user AND thread = :thread AND read_at IS NULL RETURNING id',
+            ['user' => $recipient->id->toRfc4122(), 'thread' => $thread],
+        );
+
+        if (false === $removed) {
+            return;
+        }
+
+        $unread = $this->notificationItemRepository->countUnreadFor($this->user($recipient), $this->notificationItemPruner->keptSince());
+        $this->realtimePublisher->publish(RealtimeTopic::UserNotifications, $recipient->id->toRfc4122(), [
+            'removedId' => Type\string()->coerce($removed),
+            'unreadCount' => $unread,
+        ]);
+    }
+
+    private function user(Recipient $recipient): User
+    {
+        return Type\instance_of(User::class)->coerce($this->entityManager->getReference(User::class, $recipient->id));
     }
 }

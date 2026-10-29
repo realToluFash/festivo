@@ -36,8 +36,11 @@ nothing else can be scheduled, and scheduling an unregistered name throws.
   `AfterConclusion` goes after an event that took place, never one called off.
 - **`tooLateAt()`** is the moment after which the row is recorded **Not sent: too late**.
   It is computed once, when the row is scheduled, and stored.
-- **`isStillDue()`** is asked at send time with the payload. False records the row
-  cancelled. A payment reminder answers false once the payment is made.
+- **`isStillDue()`** is asked at send time with the payload: once for the row before its
+  fan-out, and again for each delivery with its recipient. False records the row, or the
+  delivery, cancelled. A payment reminder answers false once the payment is made.
+- **`thread()`** names the bell item a type's messages share, or null for an item of its
+  own. See [Threads](#threads).
 - **`collapseKey()`**: rows due together for one person on one channel that share a key go
   out as one message, rendered from every payload at once.
 - **`render()`** writes the message in the recipient's language.
@@ -167,6 +170,37 @@ one sender, `PushSender`, and two providers behind `PushServiceInterface`:
   is with no address.
 - **An address is a bearer credential**: it is never logged, and no recorded reason quotes
   one.
+
+## Threads
+
+A type with a `thread()` keeps one unread bell item per member and thread
+(`notification_items.thread`, unique while unread). An in-app send on a thread rewrites that
+item in place and moves it to the top, keeping its id; a send whose subject is empty takes
+the unread item away, and the member's clients are told `{removedId, unreadCount}`. Once
+read, the item stays as it was, and the next send starts a new one. `thread_from` is the
+point the item began, for a type that renders everything since. A push on a thread goes
+only while the member's item is there, and carries it.
+
+Event changes (sc-13214, `Domain\Messaging\EventChanges`) are the first: one thread per
+event, `event-changes:{eventId}`. `EventChangeRecorder` writes each change told to members
+to `event_changes`, from the editor, the lifecycle, the deleter and the restore command, and
+schedules four types:
+
+| Type                   | Channels            | When                                                    |
+| ---------------------- | ------------------- | ------------------------------------------------------- |
+| `event_changes.item`   | in-app              | at once, for each change                                |
+| `event_day.item`       | in-app              | at once, for each change on Event day                   |
+| `event_changes.notice` | in-app, email, push | 15 minutes after the last edit, or at once on an action |
+| `event_day.notice`     | in-app, email, push | the same; its email is off by default                   |
+
+Each pair splits by the member's summary: a change on Event day (from 24 hours before the
+earlier start to the later end) goes as `event_day`, which a mute does not silence. The
+notice's key is the event's, so a further edit within the 15 minutes moves it on and the
+window's start (`since`) is carried over. `EventChangeSummariser` reads what an item or a
+notice says: each field from its first value to its last, credited to its last setter,
+dropped when it reads the same on both sides or the member set it themselves, and every
+action by somebody else. A notice whose summary for a member comes to nothing is cancelled
+for that member, and their unread item is taken away.
 
 ## The alert
 

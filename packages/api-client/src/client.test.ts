@@ -3280,6 +3280,11 @@ describe("a read on the bell's topic (sc-3980)", () => {
       id: null,
       unreadCount: 0,
     });
+    expect(asNotificationRead({ removedId: 'n2', unreadCount: 1 })).toEqual({
+      id: 'n2',
+      unreadCount: 1,
+      removed: true,
+    });
   });
 
   test('is not an item published on the same topic', () => {

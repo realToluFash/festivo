@@ -125,10 +125,11 @@ export interface NotificationFeed {
   next: string | null;
 }
 
-/** A read made in one of the member's sessions, published to the others: one item, or every item when `id` is null. */
+/** A read made in one of the member's sessions, published to the others: one item, or every item when `id` is null. `removed` is an unread item taken away (sc-13214). */
 export interface NotificationRead {
   id: string | null;
   unreadCount: number;
+  removed?: boolean;
 }
 
 /** Mute this event's saved state. Items already delivered keep the Muted mark they were delivered with. */
@@ -3792,6 +3793,9 @@ export function asNotificationRead(raw: unknown): NotificationRead | null {
   if (candidate.readAll === true) return { id: null, unreadCount: candidate.unreadCount };
   if (typeof candidate.readId === 'string') {
     return { id: candidate.readId, unreadCount: candidate.unreadCount };
+  }
+  if (typeof candidate.removedId === 'string') {
+    return { id: candidate.removedId, unreadCount: candidate.unreadCount, removed: true };
   }
 
   return null;

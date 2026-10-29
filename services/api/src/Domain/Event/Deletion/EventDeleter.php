@@ -7,6 +7,7 @@ namespace App\Domain\Event\Deletion;
 use App\Audit\Auditor;
 use App\Deletion\RestoreWindow;
 use App\Deletion\TypedName;
+use App\Domain\Messaging\EventChanges\EventChangeRecorder;
 use App\Entity\Event;
 use App\Entity\User;
 use App\Enum\Actor;
@@ -27,6 +28,7 @@ final readonly class EventDeleter
         private Auditor $auditor,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
+        private EventChangeRecorder $eventChangeRecorder,
     ) {
     }
 
@@ -46,15 +48,18 @@ final readonly class EventDeleter
             ]]);
         }
 
-        $at = RestoreWindow::toTheSecond($this->clock->now());
-        $event->setDeletedAt($at);
-        $event->setDeletedBy($by->getId());
-        $this->auditor->record(self::DELETED, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), [
-            'name' => [$event->getName(), null],
-            'deletedAt' => [null, $at->format(\DATE_ATOM)],
-        ]);
-        $this->entityManager->flush();
+        return $this->entityManager->wrapInTransaction(function () use ($event, $by): DateTimeImmutable {
+            $at = RestoreWindow::toTheSecond($this->clock->now());
+            $event->setDeletedAt($at);
+            $event->setDeletedBy($by->getId());
+            $this->auditor->record(self::DELETED, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), [
+                'name' => [$event->getName(), null],
+                'deletedAt' => [null, $at->format(\DATE_ATOM)],
+            ]);
+            $this->eventChangeRecorder->deleted($event, $by, RestoreWindow::closesAt($at));
+            $this->entityManager->flush();
 
-        return $at;
+            return $at;
+        });
     }
 }
