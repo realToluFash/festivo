@@ -62,5 +62,5 @@
     "eventChanges.email.openInMaps": "Open in maps",
     "eventChanges.email.settings": "Notification settings",
     "eventChanges.email.link": "{label}: {url}",
-    "eventChanges.email.footer": "You get this because you are on {event} at {organisation}. To stop these emails, turn off Event changes email in Notification settings."
+    "eventChanges.email.footer": "You're getting this because you are on {event} at {organisation}. To stop these emails, turn off Event changes email in Notification settings."
 }
