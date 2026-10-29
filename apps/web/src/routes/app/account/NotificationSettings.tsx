@@ -133,8 +133,12 @@ export function NotificationSettings() {
             <thead>
               <tr>
                 <td />
-                <th scope="col">{t('notificationSettings.push')}</th>
-                <th scope="col">{t('notificationSettings.email')}</th>
+                <th scope="col" className="notification-settings-channel">
+                  {t('notificationSettings.push')}
+                </th>
+                <th scope="col" className="notification-settings-channel">
+                  {t('notificationSettings.email')}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -169,7 +173,7 @@ export function NotificationSettings() {
                       )}
                     </th>
                     {(['push', 'email'] as const).map((channel) => (
-                      <td key={channel}>
+                      <td key={channel} className="notification-settings-channel">
                         <label className="notification-switch">
                           <input
                             type="checkbox"
