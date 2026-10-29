@@ -97,7 +97,7 @@ describe('Notification settings (sc-3980)', () => {
     fireEvent.click(await screen.findByRole('switch', { name: 'Event changes Push' }));
 
     expect((await screen.findByRole('alert')).textContent).toContain(
-      "Couldn't save the push switch. Try again.",
+      'The push switch was not saved. Try again.',
     );
     await waitFor(() =>
       expect(
@@ -131,7 +131,7 @@ describe('Notification settings (sc-3980)', () => {
     ).toBe(false);
     refuse(json({ title: 'No.' }, 500));
 
-    expect(await screen.findByText("Couldn't save the push switch. Try again.")).toBeTruthy();
+    expect(await screen.findByText('The push switch was not saved. Try again.')).toBeTruthy();
     expect(
       (screen.getByRole('switch', { name: 'Event changes Push' }) as HTMLInputElement).checked,
     ).toBe(true);

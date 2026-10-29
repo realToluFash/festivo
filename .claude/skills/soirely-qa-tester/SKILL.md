@@ -210,6 +210,7 @@ carry on from the worktree.
 cd ~/Projects/soirely-qa<n>
 node .qa/bin/qa-env.mjs checkout 36          # the PR under test: fetch, check out, rebuild, fresh database
 node .qa/bin/qa-env.mjs checkout sc-55       # or by story, when one remote branch names it
+node .qa/bin/qa-env.mjs checkout e58c423     # or a commit, such as main before a merge
 node .qa/bin/qa-env.mjs status               # what is checked out, and whether it answers
 node .qa/bin/qa-env.mjs account --json       # a throwaway account, on this stack
 ```

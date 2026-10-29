@@ -213,7 +213,20 @@ export function parseTarget(arg) {
   if (pr) return { kind: 'pr', number: Number(pr[1]) };
   const story = /^sc-(\d+)$/i.exec(value);
   if (story) return { kind: 'story', id: `sc-${story[1]}` };
+  if (/^[0-9a-f]{7,40}$/i.test(value) && /[a-f]/i.test(value)) {
+    return { kind: 'commit', sha: value.toLowerCase() };
+  }
   return { kind: 'branch', name: value.replace(/^origin\//, '') };
+}
+
+export function commitTarget(sha, { verify, remoteBranchesWith }) {
+  if (verify(`${sha}^{commit}`) === null) {
+    throw new Error(`no commit ${sha} in the QA worktree after fetching origin`);
+  }
+  if (!remoteBranchesWith(sha)?.trim()) {
+    throw new Error(`no branch on origin holds ${sha}; was it force-pushed away?`);
+  }
+  return { ref: sha, label: sha };
 }
 
 // One of a tester's simulators runs at a time: the phone unless --ipad asks otherwise.
@@ -727,6 +740,12 @@ function checkout(args) {
     git(['fetch', '--quiet', 'origin', pr.headRefName], root);
     ref = pr.headRefOid;
     label = `#${target.number} (${pr.headRefName})`;
+  } else if (target.kind === 'commit') {
+    ({ ref, label } = commitTarget(target.sha, {
+      verify: (rev) => capture('git', ['rev-parse', '--verify', '--quiet', rev], { cwd: root }),
+      remoteBranchesWith: (rev) =>
+        capture('git', ['branch', '-r', '--contains', rev], { cwd: root }),
+    }));
   } else {
     const name =
       target.kind === 'story'

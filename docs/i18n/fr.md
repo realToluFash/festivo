@@ -163,10 +163,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   mute h, between the count and what it counts: « 1 000 000 de personnes », « d’événements »,
   « vos {{count}} d’autres appareils », « et {{count}} d’autres ». Where no noun follows the count
   (« les {{count}} seront déconnectés », « Déconnecter les {{count}} »), `_many` is `_other` as
-  it stands. Every new count family gets its `_many`,
-  except the proof window's lines (`waysCard.proveLink_*`, `proveUnlink_*`, `codeKeepsSignIn_*`):
-  they count PROOF_MINUTES, a constant that is never a million, and the app's test holds them to
-  `_one` and `_other`.
+  it stands. Every count family gets its `_many`,
+  the proof window's lines (`waysCard.proveLink_*`, `proveUnlink_*`, `codeKeepsSignIn_*`)
+  included since sc-3980: « pendant {{count, number}} de minutes » (sc-20444).
 - **25 Oct 2026. Settings > Members on the web, the invitation link and the invitation email**
   (`web:membersScreen.*`, `web:join.*`, `invitations.*` web and app, `emails:invitation.*`,
   `messages:invitations.*`, sc-2922). The web twins of the app’s Members keys are the app’s
