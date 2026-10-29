@@ -1206,7 +1206,7 @@
     "whoToInvite": "Quem convidar",
     "role": "Função",
     "emailBlank": "Introduza o endereço de e-mail desta pessoa.",
-    "emailShape": "Isso não parece um endereço de e-mail. Verifique se tem um @ e um domínio, como amara.o@gmail.com.",
+    "emailShape": "Isso não parece um endereço de e-mail. Confirme que tem um @ e um domínio, como amara.o@gmail.com.",
     "roleMeans": {
       "owner": "Tudo, incluindo a faturação e a eliminação da organização.",
       "administrator": "Tudo nos eventos, mais membros e funções. Sem faturação.",
