@@ -15,6 +15,7 @@ import { api } from '../api.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { useLiveNotifications } from '../liveNotifications.ts';
 import { offButton } from '../offButton.ts';
+import { markPushAsked, pushAskDue } from '../pushAsk.ts';
 import { MuteSwitch } from './MuteSwitch.tsx';
 
 type Feed =
@@ -31,6 +32,7 @@ export function NotificationsBell({ userId }: { userId: string }) {
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
   const [said, setSaid] = useState('');
   const [more, setMore] = useState<'idle' | 'loading' | 'failed'>('idle');
+  const [asking, setAsking] = useState(false);
   const firstAdded = useRef<string | null>(null);
   const container = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -72,6 +74,19 @@ export function NotificationsBell({ userId }: { userId: string }) {
   useEffect(() => {
     if (open) heading.current?.focus();
   }, [open]);
+
+  function openBell(): void {
+    const due = !open && pushAskDue();
+    if (due) markPushAsked();
+    setAsking(due);
+    setOpen(!open);
+  }
+
+  async function answerPush(turnOn: boolean): Promise<void> {
+    if (turnOn) await Notification.requestPermission().catch(() => undefined);
+    setAsking(false);
+    heading.current?.focus();
+  }
 
   useEffect(() => {
     if (firstAdded.current == null) return;
@@ -189,7 +204,7 @@ export function NotificationsBell({ userId }: { userId: string }) {
         aria-label={
           unread > 0 ? t('notifications.bellUnread', { count: unread }) : t('notifications.bell')
         }
-        onClick={() => setOpen((shown) => !shown)}
+        onClick={openBell}
       >
         <BellMark />
         {unread > 0 && (
@@ -218,6 +233,29 @@ export function NotificationsBell({ userId }: { userId: string }) {
               {t('notifications.markAllRead')}
             </button>
           </header>
+
+          {asking && (
+            <section className="notifications-push-ask" aria-labelledby={`${headingId}-push`}>
+              <h3 id={`${headingId}-push`}>{t('notifications.pushAsk.title')}</h3>
+              <p>{t('notifications.pushAsk.reason')}</p>
+              <div className="notifications-push-ask-actions">
+                <button
+                  type="button"
+                  className="button button-primary"
+                  onClick={() => void answerPush(true)}
+                >
+                  {t('notifications.pushAsk.turnOn')}
+                </button>
+                <button
+                  type="button"
+                  className="link-button"
+                  onClick={() => void answerPush(false)}
+                >
+                  {t('notifications.pushAsk.notNow')}
+                </button>
+              </div>
+            </section>
+          )}
 
           {feed.status === 'loading' && (
             <ul className="notifications-list" aria-busy="true">

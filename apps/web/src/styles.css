@@ -4886,3 +4886,30 @@ button.members-row {
   padding: var(--spaceSm) var(--spaceXl) var(--spaceLg);
   background: var(--colorInset);
 }
+
+.notifications-push-ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  margin: var(--spaceLg) var(--spaceXl) 0;
+  padding: var(--spaceLg);
+  border: var(--borderCard);
+  border-radius: var(--radiusCardDesktop);
+  background: var(--colorInset);
+}
+
+.notifications-push-ask h3,
+.notifications-push-ask p {
+  margin: 0;
+}
+
+.notifications-push-ask h3 {
+  font: var(--typeTitleSection);
+}
+
+.notifications-push-ask-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceLg);
+}

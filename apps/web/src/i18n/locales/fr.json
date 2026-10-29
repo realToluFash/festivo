@@ -1987,7 +1987,13 @@
     "more": "More for {{title}}, {{event}}",
     "muteEvent": "Mute this event",
     "muteNotLoaded": "Couldn't load whether this event is muted.",
-    "muteNotSaved": "Couldn't save. Try again."
+    "muteNotSaved": "Couldn't save. Try again.",
+    "pushAsk": {
+      "title": "Turn on push?",
+      "reason": "Hear about replies, changes and event days on this device, even with Soirely closed.",
+      "turnOn": "Turn on",
+      "notNow": "Not now"
+    }
   },
   "eventMute": {
     "heading": "Just for you",

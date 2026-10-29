@@ -328,3 +328,72 @@ describe('the bell (sc-3980)', () => {
     expect(screen.getByRole('button', { name: 'Show more' })).toBeTruthy();
   });
 });
+
+describe('the push ask', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    window.localStorage.clear();
+  });
+
+  function permission(state: NotificationPermission) {
+    const requestPermission = vi.fn(async () => 'granted' as NotificationPermission);
+    vi.stubGlobal('Notification', { permission: state, requestPermission });
+
+    return requestPermission;
+  }
+
+  it('shows on the first opening of the bell only, never on page load', async () => {
+    permission('default');
+    answering({ 'GET /api/notifications': () => json({ items: [], unreadCount: 0, next: null }) });
+    bell();
+
+    expect(screen.queryByText('Turn on push?')).toBeNull();
+
+    const bellButton = screen.getByRole('button', { name: 'Notifications' });
+    fireEvent.click(bellButton);
+    expect(await screen.findByRole('heading', { name: 'Turn on push?' })).toBeTruthy();
+
+    fireEvent.click(bellButton);
+    fireEvent.click(bellButton);
+    expect(screen.queryByText('Turn on push?')).toBeNull();
+  });
+
+  it('asks the browser on Turn on, then goes and moves focus to the heading', async () => {
+    const requestPermission = permission('default');
+    answering({ 'GET /api/notifications': () => json({ items: [], unreadCount: 0, next: null }) });
+    bell();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Turn on' }));
+
+    await waitFor(() => expect(screen.queryByText('Turn on push?')).toBeNull());
+    expect(requestPermission).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Notifications' }));
+  });
+
+  it('goes on Not now without asking the browser, and the feed is unchanged', async () => {
+    const requestPermission = permission('default');
+    answering({
+      'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
+    });
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Not now' }));
+
+    expect(screen.queryByText('Turn on push?')).toBeNull();
+    expect(requestPermission).not.toHaveBeenCalled();
+    expect(screen.getByText('Ada Obi changed the event')).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Notifications' }));
+  });
+
+  it.each(['granted', 'denied'] as const)('does not show once the browser says %s', (state) => {
+    permission(state);
+    answering({ 'GET /api/notifications': () => json({ items: [], unreadCount: 0, next: null }) });
+    bell();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+    expect(screen.queryByText('Turn on push?')).toBeNull();
+  });
+});
