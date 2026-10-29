@@ -1,6 +1,12 @@
-import { describe, expect, it, vi } from 'vitest';
+import { type Account } from '@soirely/api-client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { dropChallenge, heldChallenge, nextAfterSignIn } from './challenge.ts';
+import {
+  dropChallenge,
+  heldChallenge,
+  nextAfterRegistration,
+  nextAfterSignIn,
+} from './challenge.ts';
 import { holdLink } from './heldLink.ts';
 
 const kept = vi.hoisted(() => new Map<string, string>());
@@ -157,5 +163,79 @@ describe('where a sign-in goes next', () => {
 
     expect(await takeHeldLink()).toBe('ef'.repeat(16));
     expect(await takeHeldLink()).toBeNull();
+  });
+});
+
+const ACCOUNT: Account = {
+  id: 'acc_1',
+  name: 'Ada',
+  businessName: null,
+  countryCode: null,
+  organisationCountry: null,
+  locale: 'en',
+  timezone: null,
+  verified: true,
+  complete: true,
+  needsOrganisation: false,
+  hasPassword: true,
+  twoFactorSetupPrompt: false,
+  waitingFor: null,
+  emailAddresses: [],
+  phoneNumbers: [],
+  providers: [],
+};
+
+const HELD_AT = new Date('2026-10-29T09:00:00Z');
+const MINUTE = 60 * 1000;
+const LINK = 'ab'.repeat(16);
+
+const takes = {
+  'a sign-in': () =>
+    nextAfterSignIn({
+      tokens: { accessToken: 'a', refreshExpiresAt: '2026-11-29T09:00:00+00:00', sessionId: 's' },
+      account: ACCOUNT,
+      linked: false,
+    }),
+  'a code accepted on Check your email': () => nextAfterRegistration(ACCOUNT),
+};
+
+describe.each(Object.entries(takes))('a held request link, taken by %s (sc-19752)', (_, take) => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  async function heldAgo(minutes: number): Promise<void> {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(HELD_AT);
+    await holdLink(LINK);
+    vi.setSystemTime(HELD_AT.getTime() + minutes * MINUTE);
+  }
+
+  it('is followed 23 h 59 min after it was held', async () => {
+    await heldAgo(24 * 60 - 1);
+
+    expect(await take()).toBe(`/join/${LINK}`);
+  });
+
+  it('is dropped exactly 24 h after it was held', async () => {
+    await heldAgo(24 * 60);
+
+    expect(await take()).toBe('/');
+  });
+
+  it('is deleted from the device once lapsed, so a second take finds nothing', async () => {
+    await heldAgo(24 * 60);
+    await take();
+    vi.setSystemTime(HELD_AT);
+
+    expect(kept.has('soirely.requestLink')).toBe(false);
+    expect(await take()).toBe('/');
+  });
+
+  it('is dropped, and deleted, when an earlier build held it with no time beside it', async () => {
+    kept.set('soirely.requestLink', LINK);
+
+    expect(await take()).toBe('/');
+    expect(kept.has('soirely.requestLink')).toBe(false);
   });
 });
