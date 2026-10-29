@@ -1,7 +1,7 @@
 import { type EventStatus, type OrganisationEvent } from '@soirely/api-client';
 import { type EventPhase, changedWords, eventAllows } from '@soirely/domain';
 import { useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -29,7 +29,7 @@ export function PauseButton({
   onChange: (event: OrganisationEvent) => void;
 }) {
   const { t } = useTranslation();
-  const opener = useRef<View>(null);
+  const opener = useRef<ViewInstance>(null);
   const { asking, ask, go, close } = useLifecycleAction<object, PauseRefusal>({
     event,
     onChange,

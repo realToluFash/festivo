@@ -16,7 +16,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Linking, StyleSheet, type TextInput, View } from 'react-native';
+import { Linking, StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
@@ -591,8 +591,8 @@ function Codes({
   const number = state.phone == null ? '' : formatPhone(state.phone);
   const fields: RecoveryField[] = hasPhone ? ['emailCode', 'phoneCode'] : ['emailCode'];
   const typed = useRef<Record<RecoveryField, string>>({ emailCode: '', phoneCode: '' });
-  const emailInput = useRef<TextInput>(null);
-  const inputs = { emailCode: emailInput, phoneCode: useRef<TextInput>(null) };
+  const emailInput = useRef<TextInputInstance>(null);
+  const inputs = { emailCode: emailInput, phoneCode: useRef<TextInputInstance>(null) };
   const [errors, setErrors] = useState<Partial<Record<RecoveryField, string>>>({});
   const [asking, setAsking] = useState(false);
   // New with each tap that fails, or that finds the codes spent, so the same words are read out again.
@@ -765,7 +765,7 @@ function Codes({
   }
 
   const spent = codes?.state === 'expired' || codes?.state === 'exhausted';
-  useFocusOnAnswer<TextInput>(spent ? undefined : resentInPlace, emailInput);
+  useFocusOnAnswer<TextInputInstance>(spent ? undefined : resentInPlace, emailInput);
 
   return (
     <AuthFrame

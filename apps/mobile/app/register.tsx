@@ -1,7 +1,7 @@
 import { meetsPasswordLength } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 
@@ -140,9 +140,9 @@ function Form({
 }) {
   const { t } = useTranslation();
   const [lengthMet, setLengthMet] = useState(false);
-  const name = useRef<TextInput>(null);
-  const email = useRef<TextInput>(null);
-  const password = useRef<TextInput>(null);
+  const name = useRef<TextInputInstance>(null);
+  const email = useRef<TextInputInstance>(null);
+  const password = useRef<TextInputInstance>(null);
 
   // Uncontrolled: a `value` prop re-renders between keystrokes and drops characters.
   const typed = useRef({ name: '', email: '', password: '' });

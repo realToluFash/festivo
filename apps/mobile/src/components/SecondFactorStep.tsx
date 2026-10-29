@@ -2,7 +2,7 @@ import { type SecondFactor } from '@soirely/api-client';
 import { cleanCode, formatTimeOfDay } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInput, View } from 'react-native';
+import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
@@ -47,7 +47,7 @@ export function SecondFactorStep({
   const [status, setStatus] = useState<Status>({ kind: 'ready' });
   const [blank, setBlank] = useState<string | null>(null);
   const typed = useRef('');
-  const input = useRef<TextInput>(null);
+  const input = useRef<TextInputInstance>(null);
 
   const checking = status.kind === 'checking';
   const liftsAt = status.kind === 'paused' ? status.liftsAt : null;

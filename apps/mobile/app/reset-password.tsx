@@ -2,7 +2,7 @@ import { type Account, ApiError, awaiting } from '@soirely/api-client';
 import { meetsPasswordLength } from '@soirely/domain';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInput, View } from 'react-native';
+import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { followAccount } from '../src/accountLanguage.ts';
@@ -38,7 +38,7 @@ export default function ResetPassword() {
   const [lengthMet, setLengthMet] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
   const typed = useRef('');
-  const passwordInput = useRef<TextInput>(null);
+  const passwordInput = useRef<TextInputInstance>(null);
   const checks = useFormChecks(
     ['password'] as const,
     (_field, value) => (value === '' ? t('recovery.passwordBlank') : null),

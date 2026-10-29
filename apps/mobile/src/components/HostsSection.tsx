@@ -12,7 +12,13 @@ import {
   removedHost,
 } from '@soirely/domain';
 import { type Ref, type RefObject, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { type LayoutKind } from '../layout/useLayout.ts';
@@ -52,10 +58,10 @@ export function HostsSection({
   onLeave: (row: HostRow) => void;
 }) {
   const { t } = useTranslation();
-  const inputs = useRef(new Map<number, TextInput | null>());
-  const ups = useRef(new Map<number, View | null>());
-  const downs = useRef(new Map<number, View | null>());
-  const addButton = useRef<View>(null);
+  const inputs = useRef(new Map<number, TextInputInstance | null>());
+  const ups = useRef(new Map<number, ViewInstance | null>());
+  const downs = useRef(new Map<number, ViewInstance | null>());
+  const addButton = useRef<ViewInstance>(null);
   const focusNext = useRef<FocusNext>(null);
   const nextKey = useRef(Math.max(0, ...rows.map((row) => row.key)) + 1);
   const [arrival, setArrival] = useState(() => (arrive ? hostsArrival(rows) : null));
@@ -240,7 +246,10 @@ function describedBy(...lines: (string | undefined)[]): string | undefined {
 }
 
 /** Arrived from Make live with no hosts: Add a host is brought into sight and a screen reader lands on it. */
-function ArrivingAdd({ addRef, ...props }: AddHostProps & { addRef: RefObject<View | null> }) {
+function ArrivingAdd({
+  addRef,
+  ...props
+}: AddHostProps & { addRef: RefObject<ViewInstance | null> }) {
   const { shown, read } = useBroughtIntoView(addRef);
 
   return (
@@ -251,7 +260,7 @@ function ArrivingAdd({ addRef, ...props }: AddHostProps & { addRef: RefObject<Vi
 }
 
 interface AddHostProps {
-  addRef: Ref<View>;
+  addRef: Ref<ViewInstance>;
   off: boolean;
   onPress: () => void;
 }
@@ -284,7 +293,7 @@ function Round({
   onPress,
   testID,
 }: {
-  ref: Ref<View>;
+  ref: Ref<ViewInstance>;
   glyph: string;
   label: string;
   off: boolean;

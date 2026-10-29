@@ -15,9 +15,11 @@ import {
   Pressable,
   StyleSheet,
   TextInput,
+  type TextInputInstance,
   type TextInputProps,
   useWindowDimensions,
   View,
+  type ViewInstance,
 } from 'react-native';
 
 import {
@@ -31,7 +33,7 @@ import {
   type Typing,
   valueHanded,
 } from '../kit/fields.ts';
-import { faced } from '../theme/fonts.ts';
+import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { fieldFocused, fieldLeft } from './focusedField.ts';
 import { useReadOut } from './ReadOut.tsx';
@@ -74,7 +76,7 @@ export function Field({
   helpAnswer?: unknown;
   children: ReactNode;
 }) {
-  const field = useRef<View>(null);
+  const field = useRef<ViewInstance>(null);
   const labelID = useId();
   const { read: helpRead } = useFocusOnAnswer<TextHandle>(helpAnswer);
   useEffect(() => {
@@ -192,7 +194,7 @@ export function FieldError({
 export type TextFieldProps = TextInputProps & {
   wrong?: boolean;
   submitting?: boolean;
-  ref?: Ref<TextInput> | undefined;
+  ref?: Ref<TextInputInstance> | undefined;
 };
 
 /** Held while a submit runs: focused and the keyboard up, which `editable={false}` would drop, but nothing typed is taken. */
@@ -235,7 +237,7 @@ export function useHeld(
 }
 
 /** To the field a server refusal names: the keyboard moves there if it was up, and a server refusal never raises it. */
-export function focusRefused(field: RefObject<TextInput | null>): void {
+export function focusRefused(field: RefObject<TextInputInstance | null>): void {
   if (Keyboard.isVisible()) {
     field.current?.focus();
     return;
@@ -245,7 +247,7 @@ export function focusRefused(field: RefObject<TextInput | null>): void {
 }
 
 /** To the field a client check names, with the keyboard up on it. */
-export function focusChecked(field: RefObject<TextInput | null>): void {
+export function focusChecked(field: RefObject<TextInputInstance | null>): void {
   // Android's back gesture hides the keys and leaves the field focused, and focus() skips a focused field.
   if (field.current?.isFocused() === true && !Keyboard.isVisible()) field.current.blur();
   field.current?.focus();
@@ -279,7 +281,7 @@ export function TextField({
       })}
       {...holding}
       ref={ref}
-      style={faced([styles.input, wrong && styles.wrong, style])}
+      style={inputFaced([styles.input, wrong && styles.wrong, style])}
       aria-invalid={wrong}
     />
   );
@@ -313,7 +315,7 @@ export function CodeField({
       })}
       {...holding}
       ref={ref}
-      style={faced([styles.code, wrong && styles.wrong, style])}
+      style={inputFaced([styles.code, wrong && styles.wrong, style])}
       aria-invalid={wrong}
     />
   );

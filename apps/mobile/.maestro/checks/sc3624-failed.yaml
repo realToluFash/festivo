@@ -2,6 +2,8 @@
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events
+- tapOn:
+    id: 'events.tab.drafts'
 - scrollUntilVisible:
     element:
       id: 'events.row.${EV}'

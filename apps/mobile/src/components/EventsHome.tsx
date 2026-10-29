@@ -8,7 +8,7 @@ import {
   shownPhase,
 } from '@soirely/domain';
 import { type Ref } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
@@ -63,7 +63,7 @@ export function EventsHome({
   onTab: (tab: EventsTab) => void;
   open: string | null;
   onOpen: (id: string) => void;
-  opener?: ((key: string) => Ref<View>) | undefined;
+  opener?: ((key: string) => Ref<ViewInstance>) | undefined;
   more: 'idle' | 'loading' | 'failed';
   shown: string | null;
   onShowMore: () => void;
@@ -188,7 +188,7 @@ function Card({
   now: Date;
   selected: boolean;
   onOpen: (id: string) => void;
-  opener?: Ref<View> | undefined;
+  opener?: Ref<ViewInstance> | undefined;
 }) {
   const { t } = useTranslation();
   const next = nextUp(event.milestones, now, event.status === 'ended');

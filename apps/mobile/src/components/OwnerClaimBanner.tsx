@@ -8,7 +8,7 @@ import {
 } from '@soirely/domain';
 import { setStringAsync } from 'expo-clipboard';
 import { type RefObject, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -194,7 +194,7 @@ function OwnerClaimCard({
   const [kept, setKept] = useState<StepClosed | undefined>(undefined);
   const opener = useFocusBackToOpener(kept);
   const [withdrawing, setWithdrawing] = useState<'asking' | 'pending' | null>(null);
-  const withdrawButton = useRef<View>(null);
+  const withdrawButton = useRef<ViewInstance>(null);
   const withdrawOpener = useOpenerInSight(withdrawButton);
   const [withdrawRefused, setWithdrawRefused] = useState<string | null>(null);
   const comeForward = useComeForward();

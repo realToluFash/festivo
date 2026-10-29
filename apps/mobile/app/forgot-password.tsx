@@ -2,7 +2,7 @@ import { ApiError } from '@soirely/api-client';
 import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { StyleSheet, type TextInput, View } from 'react-native';
+import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
@@ -30,7 +30,7 @@ export default function ForgotPassword() {
   const typed = useRef('');
   // What the field remounts with after Check your email, as it was typed.
   const [kept, setKept] = useState('');
-  const emailInput = useRef<TextInput>(null);
+  const emailInput = useRef<TextInputInstance>(null);
   const checks = useFormChecks(
     ['email'] as const,
     (_field, value) => emailMessage(value, t),

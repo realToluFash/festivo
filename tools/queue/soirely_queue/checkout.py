@@ -1,6 +1,7 @@
 """Brings a role's checkout up to the latest `main` before its worker starts. Plain git, no
 model: it costs nothing, and it never throws away work."""
 
+import json
 import pathlib
 import re
 import subprocess
@@ -86,6 +87,18 @@ def ensure(base, path):
         raise Unprepared(f"git worktree add {path} failed: {made.stderr.strip()}")
 
 
+STALE_STACK = ("Your QA stack still runs the build of {built}, and your checkout is at {head}. "
+               "`node .qa/bin/qa-env.mjs checkout <ref>` rebuilds it before you test.")
+
+
+def stack_build(path):
+    """The commit `qa-env checkout` last built the stack from, or None if it never has."""
+    try:
+        return json.loads((pathlib.Path(path) / ".qa/state.json").read_text()).get("head")
+    except (OSError, ValueError):
+        return None
+
+
 def prepare(path, role, story=None, sleep=time.sleep):
     """Returns `(main_sha, note)`; the note is what the worker is told, or None."""
     fetch(path, sleep=sleep)
@@ -118,5 +131,9 @@ def prepare(path, role, story=None, sleep=time.sleep):
         note = "\n".join(filter(None, [note, (
             f"These untracked files differed from the copy main now has, {outcome}. Compare "
             "them before you rely on either: " + "; ".join(moved))]))
+    built = stack_build(path) if role in roles.TESTERS else None
+    head = git(path, "rev-parse", "HEAD").stdout.strip()
+    if built and not head.startswith(built):
+        stopped = "\n".join(filter(None, [stopped, STALE_STACK.format(built=built, head=head[:7])]))
     note = "\n".join(filter(None, [note, stopped])) or None
     return main, note

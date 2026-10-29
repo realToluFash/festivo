@@ -6,13 +6,14 @@ import {
   Pressable,
   StyleSheet,
   TextInput,
+  type TextInputInstance,
   type TextInputProps,
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { fieldName, passwordProps } from '../kit/fields.ts';
-import { faced } from '../theme/fonts.ts';
+import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { fieldStyles, useFieldLabel, useHeld } from './Field.tsx';
 import { Text } from './Text.tsx';
@@ -34,7 +35,7 @@ export function PasswordField({
   wrong?: boolean;
   submitting?: boolean;
   testID: string;
-  ref?: Ref<TextInput> | undefined;
+  ref?: Ref<TextInputInstance> | undefined;
 }) {
   const { t } = useTranslation();
   const [revealed, setRevealed] = useState(false);
@@ -69,7 +70,7 @@ export function PasswordField({
         {...passwordProps(revealed)}
         {...holding}
         ref={ref}
-        style={faced([fieldStyles.input, styles.withReveal, wrong && fieldStyles.wrong])}
+        style={inputFaced([fieldStyles.input, styles.withReveal, wrong && fieldStyles.wrong])}
         aria-invalid={wrong}
         testID={testID}
         onSubmitEditing={(event) => {

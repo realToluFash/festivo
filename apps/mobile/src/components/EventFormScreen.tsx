@@ -26,7 +26,7 @@ function eventHref(eventId: string): `/events/${string}` {
 }
 
 /** Cancel asks first while anything is typed; a form opened by a link has nothing behind it to go back to. */
-function leave(to: `/events${string}`): void {
+function leave(to: '/events' | `/events/${string}`): void {
   if (router.canGoBack()) router.back();
   else router.replace(to);
 }

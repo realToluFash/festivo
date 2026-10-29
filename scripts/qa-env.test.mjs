@@ -10,6 +10,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { runInNewContext } from 'node:vm';
 
 import { describe, expect, it } from 'vitest';
 
@@ -52,6 +53,8 @@ import {
   emulatorFor,
   emulatorGpu,
   expoGoApk,
+  expoGoFits,
+  expoGoIosClient,
   expoGoRunning,
   expoSdkMajor,
   forAndroid,
@@ -205,6 +208,42 @@ describe('the QA .env against compose.yaml', () => {
       expect(overrides.OAUTH_APPLE_ISSUERS.split(',')).toContain(`${sandbox}apple`);
       expect(app.EXPO_PUBLIC_API_URL).toBe(`http://127.0.0.1:${ports.API_PORT}`);
     }
+  });
+
+  it('signs in whoever the tester types, so two owners are two accounts', () => {
+    for (const tester of TESTERS) {
+      const name = qaConfig(tester).overrides.OIDC_CONFIG;
+      const sandbox = JSON.parse(
+        readFileSync(new URL(`../infra/oidc/${name}`, import.meta.url), 'utf8'),
+      );
+
+      expect(sandbox.interactiveLogin).toBe(true);
+      expect(sandbox.loginPagePath).toBe('/config/login.html');
+    }
+    expect(compose).toContain('JSON_CONFIG_PATH: /config/${OIDC_CONFIG:-oidc.json}');
+  });
+
+  it('gives each typed name the verified email a first provider sign-in needs', () => {
+    const page = readFileSync(new URL('../infra/oidc/login.html', import.meta.url), 'utf8');
+    const script = page.match(/<script>([\s\S]*?)<\/script>/)[1];
+    const signIn = (typed) => {
+      const form = { username: { value: typed }, claims: { value: '' } };
+      let submit;
+      runInNewContext(script, {
+        document: {
+          querySelector: () => ({ addEventListener: (_, handler) => (submit = handler) }),
+        },
+      });
+      submit({ target: form });
+      return JSON.parse(form.claims.value);
+    };
+
+    expect(signIn('owner-a')).toEqual({ email: 'owner-a@example.com', email_verified: true });
+    expect(signIn(' owner b ')).toEqual({ email: 'owner-b@example.com', email_verified: true });
+    expect(signIn('guest@example.org')).toEqual({
+      email: 'guest@example.org',
+      email_verified: true,
+    });
   });
 });
 
@@ -592,6 +631,36 @@ describe('Expo Go for Android', () => {
 
   it('is an error for an SDK Expo has no client for', () => {
     expect(() => expoGoApk(versions, '~58.0.0')).toThrow(/SDK 58/);
+  });
+});
+
+describe('Expo Go for iOS', () => {
+  const versions = {
+    sdkVersions: {
+      '58.0.0': {
+        iosClientUrl: 'https://x/Expo-Go-58.0.2.tar.gz',
+        iosClientVersion: '58.0.2',
+      },
+    },
+  };
+
+  it("is kept only when its major is the app's SDK", () => {
+    expect(expoGoFits('58.0.2', '~58.0.0')).toBe(true);
+    expect(expoGoFits('57.0.9', '~58.0.0')).toBe(false);
+    expect(expoGoFits('5.8.0', '~58.0.0')).toBe(false);
+  });
+
+  it('is replaced when none is installed or its version is unreadable', () => {
+    expect(expoGoFits(null, '~58.0.0')).toBe(false);
+    expect(expoGoFits('', '~58.0.0')).toBe(false);
+  });
+
+  it("is the simulator client for the app's SDK", () => {
+    expect(expoGoIosClient(versions, '~58.0.0')).toEqual({
+      url: 'https://x/Expo-Go-58.0.2.tar.gz',
+      version: '58.0.2',
+    });
+    expect(() => expoGoIosClient(versions, '~57.0.0')).toThrow(/iOS for SDK 57/);
   });
 });
 

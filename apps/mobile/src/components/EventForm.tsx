@@ -39,7 +39,14 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Platform, Pressable, StyleSheet, type TextInput, View } from 'react-native';
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -132,14 +139,14 @@ export function EventForm({
   const { draft, venue, timeZone, currency, hosts } = typed;
   const dirty = isDirty(typed, from) || (!editing && cover != null);
 
-  const nameInput = useRef<TextInput>(null);
-  const venueNameInput = useRef<TextInput>(null);
-  const venueAddressInput = useRef<TextInput>(null);
-  const typePicker = useRef<View>(null);
-  const startPicker = useRef<View>(null);
-  const endPicker = useRef<View>(null);
-  const zonePicker = useRef<View>(null);
-  const currencyPicker = useRef<View>(null);
+  const nameInput = useRef<TextInputInstance>(null);
+  const venueNameInput = useRef<TextInputInstance>(null);
+  const venueAddressInput = useRef<TextInputInstance>(null);
+  const typePicker = useRef<ViewInstance>(null);
+  const startPicker = useRef<ViewInstance>(null);
+  const endPicker = useRef<ViewInstance>(null);
+  const zonePicker = useRef<ViewInstance>(null);
+  const currencyPicker = useRef<ViewInstance>(null);
   const [focusOn, setFocusOn] = useState<{ field: EventFormField } | null>(null);
 
   useEffect(() => {
@@ -625,7 +632,7 @@ function Ask({
   testID: string;
 }) {
   const { t } = useTranslation();
-  const opener = useRef<View>(null);
+  const opener = useRef<ViewInstance>(null);
 
   return (
     <Sheet open={open} onClose={onKeep} opener={opener} testID={testID}>
@@ -668,7 +675,7 @@ function Moment({
   error: string | undefined;
   disabled: boolean;
   readOnly: boolean;
-  pickerRef: RefObject<View | null>;
+  pickerRef: RefObject<ViewInstance | null>;
   testID: string;
   onPick: (date: string, time: string) => void;
 }) {

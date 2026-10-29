@@ -2,7 +2,7 @@ import type { NotificationItem } from '@soirely/api-client';
 import { feedAllRead, feedWithPage, feedWithRead } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -30,7 +30,7 @@ export function NotificationsFeed() {
   const [more, setMore] = useState<'idle' | 'loading' | 'failed'>('idle');
   const [asking, setAsking] = useState(false);
   const [said, setSaid] = useState<{ words: string } | null>(null);
-  const heading = useRef<View>(null);
+  const heading = useRef<ViewInstance>(null);
 
   const fetchFeed = useCallback((): void => {
     api.notifications().then(

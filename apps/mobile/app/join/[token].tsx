@@ -8,7 +8,13 @@ import {
 } from '@soirely/domain';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Keyboard, StyleSheet, type TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Keyboard,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api, meAtLaunch } from '../../src/api.ts';
@@ -221,7 +227,7 @@ function Ask({
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<object | null>(null);
   const [refused, setRefused] = useState<string | null>(null);
-  const input = useRef<TextInput>(null);
+  const input = useRef<TextInputInstance>(null);
   const checks = useFormChecks(
     ['message'] as const,
     (_, value) =>

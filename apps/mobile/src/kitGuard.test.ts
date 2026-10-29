@@ -45,7 +45,9 @@ describe('every field carries the caret colour', () => {
         (tag) => !caretSet(tag.markup),
       ),
     ).toHaveLength(1);
-    expect(selfClosing('TextInput', 'const input = useRef<TextInput>(null);')).toHaveLength(0);
+    expect(selfClosing('TextInput', 'const input = useRef<TextInputInstance>(null);')).toHaveLength(
+      0,
+    );
     expect(
       selfClosing('TextInput', '<TextInput {...FIELD_DEFAULTS} style={x} />').filter(
         (tag) => !caretSet(tag.markup),
@@ -249,7 +251,7 @@ describe("every dialog closes by VoiceOver's escape (sc-11063)", () => {
   it('notices a Modal nothing escapes', () => {
     expect(modalsOpened('<Modal visible={open}>\n  <View />\n</Modal>')).toBe(1);
     expect(escapesAnswered('<Modal visible={open}>\n  <View />\n</Modal>')).toBe(0);
-    expect(modalsOpened("import { Modal } from 'react-native';")).toBe(0);
+    expect(modalsOpened("import { Modal, type TextInputInstance } from 'react-native';")).toBe(0);
   });
 
   // Fabric flattens a View that only lays out, and its escape goes with it.
@@ -759,7 +761,7 @@ function walk(directory: string): Source[] {
 
 /** A TextInput or CodeField is always self-closing here, so its markup runs to the next `/>`. */
 function selfClosing(name: string, text: string): { line: number; markup: string }[] {
-  // Not after an identifier, so a type argument such as useRef<TextInput> is not markup.
+  // Not after an identifier, so a type argument such as useRef<TextInputInstance> is not markup.
   return [...text.matchAll(new RegExp(`(?<![\\w.])<${name}\\b`, 'gu'))].map((match) => {
     const start = match.index;
     const end = text.indexOf('/>', start);

@@ -96,6 +96,8 @@ export function qaConfig(tester = 1) {
     tester === 1 ? 'soirely-qa' : `soirely-qa${tester}`,
     tester * 10000,
   );
+  // Two test owners signing in with Google must be two accounts, not the sandbox's one user.
+  overrides.OIDC_CONFIG = 'interactive.json';
   const label = tester === 1 ? 'Soirely QA' : `Soirely QA${tester}`;
   const simulators = {
     phone: { name: `${label} iPhone`, type: 'iPhone 17 Pro' },
@@ -322,12 +324,21 @@ export function expoSdkMajor(expoRange) {
   return /(\d+)\./.exec(expoRange)?.[1];
 }
 
-export function expoGoApk(versions, expoRange) {
+export const expoGoFits = (installed, expoRange) =>
+  Boolean(installed) && installed.split('.')[0] === expoSdkMajor(expoRange);
+
+function expoGoClient(versions, expoRange, platform, label) {
   const major = expoSdkMajor(expoRange);
   const sdk = (versions.data ?? versions).sdkVersions?.[`${major}.0.0`];
-  if (!sdk?.androidClientUrl) throw new Error(`no Expo Go for Android for SDK ${major}`);
-  return { url: sdk.androidClientUrl, version: sdk.androidClientVersion };
+  if (!sdk?.[`${platform}ClientUrl`]) throw new Error(`no Expo Go for ${label} for SDK ${major}`);
+  return { url: sdk[`${platform}ClientUrl`], version: sdk[`${platform}ClientVersion`] };
 }
+
+export const expoGoApk = (versions, expoRange) =>
+  expoGoClient(versions, expoRange, 'android', 'Android');
+
+export const expoGoIosClient = (versions, expoRange) =>
+  expoGoClient(versions, expoRange, 'ios', 'iOS');
 
 // Android's package is lower case, and every flow, an old commit's included, names iOS's.
 // Maestro's openLink names no package, and an emulator can hand exp:// to Expo Go's own home
@@ -851,14 +862,30 @@ function withoutPasswordAutoFill(udid) {
   }
 }
 
-function ensureExpoGo(udid) {
-  if (capture('xcrun', ['simctl', 'get_app_container', udid, EXPO_GO])) return true;
+const appVersion = (app) =>
+  capture('plutil', ['-extract', 'CFBundleShortVersionString', 'raw', join(app, 'Info.plist')]);
+
+// openurl never offers Expo Go an upgrade, so a client older than the app's SDK stays until replaced.
+async function ensureExpoGo(udid, expo) {
+  const installed = capture('xcrun', ['simctl', 'get_app_container', udid, EXPO_GO, 'app']);
+  if (installed && expoGoFits(appVersion(installed), expo)) return true;
+  if (installed) uninstallIos(udid, EXPO_GO);
   const list = JSON.parse(capture('xcrun', ['simctl', 'list', 'devices', 'booted', '-j']) ?? '{}');
   for (const device of Object.values(list.devices ?? {}).flat()) {
     const app = capture('xcrun', ['simctl', 'get_app_container', device.udid, EXPO_GO, 'app']);
-    if (app) return run('xcrun', ['simctl', 'install', udid, app], { optional: true });
+    if (app && expoGoFits(appVersion(app), expo))
+      return run('xcrun', ['simctl', 'install', udid, app], { optional: true });
   }
-  return false;
+  const versions = await fetch('https://api.expo.dev/v2/versions').then((r) => r.json());
+  const client = expoGoIosClient(versions, expo);
+  const archive = await cachedExpoGo(client);
+  const app = join(dirname(archive), `Expo-Go-${client.version}.app`);
+  if (!existsSync(app)) {
+    mkdirSync(`${app}.part`, { recursive: true });
+    run('tar', ['-xzf', archive, '-C', `${app}.part`]);
+    renameSync(`${app}.part`, app);
+  }
+  return run('xcrun', ['simctl', 'install', udid, app], { optional: true });
 }
 
 function installedIosRelease(root) {
@@ -940,20 +967,19 @@ async function ios(args) {
   shutSimulator(root, shut, id);
   // An offline release launch stopped these; a release build owns soirely:// while installed.
   startAppServices(root);
-  const devices = [open].map((key) => {
+  const expo = mobileExpoRange(root);
+  const devices = [];
+  for (const key of [open]) {
     const udid = simulatorId(CONFIG.simulators[key].name);
     if (!udid) throw new Error(`no ${CONFIG.simulators[key].name} simulator — run setup`);
     withoutPasswordAutoFill(udid);
     bootIos(udid);
     // The record stays: only a later boot that finds the app gone says the uninstall held.
     uninstallIos(udid, id);
-    if (!ensureExpoGo(udid)) {
-      throw new Error(
-        `Expo Go is on no booted simulator to copy from. Install it once with \`npx expo start --ios\` on any simulator, then rerun.`,
-      );
-    }
-    return udid;
-  });
+    if (!(await ensureExpoGo(udid, expo)))
+      throw new Error(`Expo Go for SDK ${expoSdkMajor(expo)} did not install on the ${key}`);
+    devices.push(udid);
+  }
   run('open', ['-a', 'Simulator'], { optional: true });
 
   const metro = await startBundler(root);
@@ -1104,25 +1130,30 @@ async function bootEmulator(tools, name) {
   throw new Error(`${name} did not boot within three minutes`);
 }
 
-async function ensureAndroidExpoGo(tools, root) {
-  const expo = JSON.parse(readFileSync(join(root, 'apps/mobile/package.json'), 'utf8')).dependencies
-    .expo;
-  const dumped = adbOut(tools, ['shell', 'dumpsys', 'package', EXPO_GO_ANDROID]) ?? '';
-  const installed = /versionName=(\S+)/.exec(dumped)?.[1];
-  if (installed && installed.split('.')[0] === expoSdkMajor(expo)) return false;
+const mobileExpoRange = (root) =>
+  JSON.parse(readFileSync(join(root, 'apps/mobile/package.json'), 'utf8')).dependencies.expo;
 
-  const versions = await fetch('https://api.expo.dev/v2/versions').then((r) => r.json());
-  const apk = expoGoApk(versions, expo);
+async function cachedExpoGo(client) {
   const cache = join(homedir(), '.cache/soirely/expo-go');
-  const file = join(cache, basename(new URL(apk.url).pathname));
+  const file = join(cache, basename(new URL(client.url).pathname));
   if (!existsSync(file)) {
-    console.log(`  downloading Expo Go ${apk.version}`);
+    console.log(`  downloading Expo Go ${client.version}`);
     mkdirSync(cache, { recursive: true });
-    const response = await fetch(apk.url);
+    const response = await fetch(client.url);
     if (!response.ok) throw new Error(`Expo Go download: HTTP ${response.status}`);
     await pipeline(Readable.fromWeb(response.body), createWriteStream(`${file}.part`));
     renameSync(`${file}.part`, file);
   }
+  return file;
+}
+
+async function ensureAndroidExpoGo(tools, root) {
+  const expo = mobileExpoRange(root);
+  const dumped = adbOut(tools, ['shell', 'dumpsys', 'package', EXPO_GO_ANDROID]) ?? '';
+  if (expoGoFits(/versionName=(\S+)/.exec(dumped)?.[1], expo)) return false;
+
+  const versions = await fetch('https://api.expo.dev/v2/versions').then((r) => r.json());
+  const file = await cachedExpoGo(expoGoApk(versions, expo));
   run(tools.adb, ['-s', emulatorSerial(), 'install', '-r', file], { env: tools.env });
   return true;
 }

@@ -1,5 +1,5 @@
 import type { Ref } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { tokens } from '../theme/tokens.ts';
 import { CONTROL_TEXT_SIZE } from './Field.tsx';
@@ -20,7 +20,7 @@ export function PrimaryButton({
   busy?: boolean;
   off?: boolean;
   accessibilityLabel?: string;
-  ref?: Ref<View> | undefined;
+  ref?: Ref<ViewInstance> | undefined;
   testID: string;
 }) {
   const inactive = busy || off;
@@ -62,11 +62,11 @@ export function SecondaryButton({
   label: string;
   onPress: () => void;
   off?: boolean;
-  /** Under a primary button, as wide and as tall as it. */
+  /** Full width at the primary button's height, whether under a primary or alone. */
   stacked?: boolean;
   /** When the visible label leans on its row, as "Unlink" does beside "Google". */
   accessibilityLabel?: string;
-  ref?: Ref<View> | undefined;
+  ref?: Ref<ViewInstance> | undefined;
   testID: string;
 }) {
   return (
@@ -102,7 +102,7 @@ export function QuietButton({
   label: string;
   onPress: () => void;
   off?: boolean;
-  ref?: Ref<View> | undefined;
+  ref?: Ref<ViewInstance> | undefined;
   testID: string;
 }) {
   return (

@@ -1,6 +1,6 @@
 import { callingCode, countryChoices } from '@soirely/domain';
 import { type Ref, type RefObject, useMemo } from 'react';
-import { Keyboard, type View } from 'react-native';
+import { Keyboard, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { currentLocale } from '../i18n/index.ts';
@@ -23,7 +23,7 @@ export function CountryPicker({
   /** For a phone: "+234 Nigeria", and only countries that can be dialled. */
   withCallingCode?: boolean;
   /** For moving screen-reader focus here when it is the field refused first. */
-  pickerRef?: Ref<View> | undefined;
+  pickerRef?: Ref<ViewInstance> | undefined;
   testID: string;
 }) {
   const { t } = useTranslation();
@@ -54,7 +54,7 @@ export function CountryPicker({
 }
 
 /** A refused Country is no text field: the keyboard closes and the screen reader lands on the picker. */
-export function focusPicker(picker: RefObject<View | null>): void {
+export function focusPicker(picker: RefObject<ViewInstance | null>): void {
   Keyboard.dismiss();
   moveScreenReaderFocus(picker.current);
 }

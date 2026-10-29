@@ -18,8 +18,9 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  View,
   useWindowDimensions,
+  View,
+  type ViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -58,7 +59,7 @@ import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 import { useSystemBack } from './useSystemBack.ts';
 
-type Opening = (opener: RefObject<View | null>) => void;
+type Opening = (opener: RefObject<ViewInstance | null>) => void;
 
 const OpenSwitcher = createContext<Opening | undefined>(undefined);
 
@@ -128,15 +129,15 @@ export function AppFrame({
   useSystemBack(back?.systemBack === true, () => back?.onPress());
   const [choosing, setChoosing] = useState(false);
   const [creating, setCreating] = useState(false);
-  const pill = useRef<View>(null);
+  const pill = useRef<ViewInstance>(null);
   const ownTitle = useRef<TextHandle>(null);
   const frameTitle = titleRef ?? ownTitle;
   // Create an organisation's sheet takes focus from the switcher, and hands it back itself (sc-8606).
   const [toSheet, setToSheet] = useState(false);
-  const [switcherFrom, setSwitcherFrom] = useState<RefObject<View | null> | null>(null);
-  const [creatingFrom, setCreatingFrom] = useState<RefObject<View | null> | null>(null);
+  const [switcherFrom, setSwitcherFrom] = useState<RefObject<ViewInstance | null> | null>(null);
+  const [creatingFrom, setCreatingFrom] = useState<RefObject<ViewInstance | null> | null>(null);
   const [created, setCreated] = useState<{ name: string; takesFocus: boolean } | null>(null);
-  const createdWords = useRef<View>(null);
+  const createdWords = useRef<ViewInstance>(null);
   const switched = created == null ? null : t('switcher.switched', { name: created.name });
   const [backHidden, setBackHidden] = useState(false);
   const [backRow] = useState(() => backRowHiding(setBackHidden));
@@ -148,7 +149,7 @@ export function AppFrame({
   // It opens with one organisation too, because it ends with "Create an organisation" (sc-390).
   const openSwitcher =
     signedIn.organisation != null || waiting.invitations.length > 0 || offer.organisation != null
-      ? (opener: RefObject<View | null>) => {
+      ? (opener: RefObject<ViewInstance | null>) => {
           setCreated(null);
           setSwitcherFrom(opener);
           setToSheet(false);
@@ -167,7 +168,7 @@ export function AppFrame({
     }),
     [toSheet, switcherFrom, frameTitle],
   );
-  const startOrganisation = (opener: RefObject<View | null>) => {
+  const startOrganisation = (opener: RefObject<ViewInstance | null>) => {
     setCreated(null);
     setCreatingFrom(opener);
     setCreating(true);
@@ -316,7 +317,7 @@ function FrameHeader({
   organisation: Membership | null;
   waiting: number;
   onSwitch: (() => void) | undefined;
-  pill: Ref<View>;
+  pill: Ref<ViewInstance>;
 }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -494,7 +495,7 @@ function Rail({
   organisation: Membership | null;
   waiting: number;
   onSwitch: (() => void) | undefined;
-  pill: Ref<View>;
+  pill: Ref<ViewInstance>;
 }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -597,7 +598,7 @@ function OrgPill({
   waiting: number;
   onSwitch: (() => void) | undefined;
   railed?: boolean;
-  ref: Ref<View>;
+  ref: Ref<ViewInstance>;
 }) {
   const { t } = useTranslation();
   const large = useAccessibilitySizes();
