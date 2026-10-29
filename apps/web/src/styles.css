@@ -4841,6 +4841,16 @@ button.members-row {
   overflow-wrap: anywhere;
 }
 
+/* As narrow as its widest word, so the category name takes the rest of the row. */
+.notification-settings-grid .notification-settings-channel {
+  width: 1%;
+}
+
+.notification-settings-grid thead .notification-settings-channel {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
 .notification-settings-name {
   font: var(--typeRowTitle);
 }
@@ -4854,7 +4864,30 @@ button.members-row {
   display: inline-flex;
   align-items: center;
   gap: var(--spaceXs);
+  min-width: 88px;
   min-height: var(--sizeHit);
+}
+
+.notification-switch span {
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+
+@media (width <= 40rem) {
+  .notification-settings-grid .notification-settings-channel {
+    padding-inline: var(--spaceXxs);
+    text-align: center;
+  }
+
+  .notification-settings-grid .notification-settings-channel:last-child {
+    padding-right: var(--spaceLg);
+  }
+
+  .notification-switch {
+    flex-direction: column;
+    justify-content: center;
+    min-width: var(--sizeHit);
+  }
 }
 
 .notification-row {
