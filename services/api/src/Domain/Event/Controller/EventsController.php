@@ -80,7 +80,7 @@ final readonly class EventsController
         ]);
     }
 
-    /** Start and end are local to `timeZone` (sc-1486); a zone or currency left out is the organisation's. */
+    /** Start and end are local to `timeZone` (sc-1486); a zone or currency left out is the organisation's. `hosts` takes the edit's list (sc-22143). */
     #[Route('/api/orgs/{organisationId}/events', name: 'events_create', methods: ['POST'])]
     #[InOrganisation(Permission::EventsCreate)]
     public function create(Request $request, string $organisationId): JsonResponse
@@ -93,6 +93,7 @@ final readonly class EventsController
             'timeZone' => Type\optional(Type\nullable(Type\string())),
             'currency' => Type\optional(Type\nullable(Type\string())),
             'venue' => Type\optional(self::venue()),
+            'hosts' => Type\optional(Type\vec(Type\string())),
         ]));
 
         $event = $this->eventCreator->create($this->organisation($organisationId), $this->user(), [
@@ -103,6 +104,7 @@ final readonly class EventsController
             'timeZone' => $body['timeZone'] ?? null,
             'currency' => $body['currency'] ?? null,
             'venue' => $body['venue'] ?? null,
+            'hosts' => $body['hosts'] ?? [],
         ]);
 
         return new JsonResponse(['event' => $this->eventSerialiser->event($event)], Response::HTTP_CREATED);
