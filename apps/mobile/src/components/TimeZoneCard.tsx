@@ -174,17 +174,20 @@ export function TimeZoneCard({
         </View>
       )}
       {saved != null && (!editing || opening || savedClosing) && (
-        <View>
+        // The line going as Change opens the step gives the same layout as an open with no line, where TalkBack keeps the field when Change goes; kept, its height left the field out of sight (sc-22392).
+        <View style={editing && !savedClosing ? styles.gone : undefined}>
           {savedHolder}
-          <Notice
-            tone="done"
-            mark={tokens.marks.done.glyph}
-            body={t('timeZone.saved', { zone: saved })}
-            answer={savedGiven ? undefined : saved}
-            takesFocus={!savedGiven}
-            readMs={focusBackMs(Platform.OS, SETTLED_MS, 'step')}
-            wordsRef={savedGiven ? savedLine : undefined}
-          />
+          {(!editing || savedClosing) && (
+            <Notice
+              tone="done"
+              mark={tokens.marks.done.glyph}
+              body={t('timeZone.saved', { zone: saved })}
+              answer={savedGiven ? undefined : saved}
+              takesFocus={!savedGiven}
+              readMs={focusBackMs(Platform.OS, SETTLED_MS, 'step')}
+              wordsRef={savedGiven ? savedLine : undefined}
+            />
+          )}
         </View>
       )}
       {(!editing || opening || closing) && (
@@ -440,6 +443,7 @@ function Choosing({
 
 const styles = StyleSheet.create({
   group: { gap: tokens.spaceXxs },
+  gone: { position: 'absolute' },
   choosing: { gap: tokens.spaceLg },
   secondary: { color: tokens.colorInkSecondary },
   list: {
