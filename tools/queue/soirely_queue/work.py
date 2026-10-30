@@ -133,6 +133,13 @@ def _item(fingerprint, pool, roles, kind, reason, priority, story=None, pr=None,
             "story_id": story["id"] if story else None, "pr": pr["number"] if pr else None}
 
 
+def open_ideas(stories):
+    """The creative director's ideas still waiting on the product manager's decision: the
+    cap and the digest count these, while the idea label stays on in every state."""
+    return [s for s in stories if "idea" in s["labels"] and s["state"] == "Backlog"
+            and not s.get("done") and not s.get("archived")]
+
+
 def finished(story):
     """Done but not archived: its comments and follow-up pull requests still wake roles, and
     it stays Done."""

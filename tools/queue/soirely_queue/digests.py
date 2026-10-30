@@ -178,7 +178,7 @@ def business_manager(p, db, stories):
 
 
 def creative(p, db, stories):
-    ideas = [s for s in stories if "idea" in s["labels"]]
+    ideas = W.open_ideas(stories)
     p.add(f"Your open ideas ({len(ideas)}, at most 3):", *[line(s) for s in ideas])
     friction = qa_outstanding(stories)
     if friction:
