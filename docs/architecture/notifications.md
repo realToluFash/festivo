@@ -140,6 +140,10 @@ between is handled as they are then.
   SMTP takes none, so it is the email's `Message-ID`. Neither push provider takes one, so
   the type's `collapseKey()` goes as theirs (below): a retry replaces the message it
   repeats, and a double send stays possible.
+- **A push steps aside for an earlier one in its thread.** For a type with a `thread()`, a
+  push delivery is cancelled when an earlier push to the same member in the same thread is
+  still waiting (held for the morning, say) or went after this one was written: that one
+  carries the item as it then reads, so this one would repeat it (sc-13214).
 - **Paused events** hold automatic rows (`held = 'paused'`) and recheck them every minute;
   they go on resume unless too late.
 - **Deleted events** hold their rows (`held = 'deleted'`) until a restore; see
@@ -201,9 +205,12 @@ schedules four types:
 | `event_day.notice`     | in-app, email, push | the same; its email is off by default                   |
 
 Each pair splits by the member's summary: a change on Event day (from 24 hours before the
-earlier start to the later end) goes as `event_day`, which a mute does not silence. The
-notice's key is the event's, so a further edit within the 15 minutes moves it on and the
-window's start (`since`) is carried over. `EventChangeSummariser` reads what an item or a
+earlier start to the later end) goes as `event_day`, which a mute does not silence. Each
+window keys on its start, `{type}:{eventId}:{memberId}:{since}`: a further edit while the
+window is still pending moves it on and carries `since` over, and an edit after it has fanned
+out opens a new window with a key of its own. Never fold the windows back onto one key per
+event and member: a later window's schedule would cancel an earlier one's push held for the
+morning (sc-13214). `EventChangeSummariser` reads what an item or a
 notice says: each field from its first value to its last, credited to its last setter,
 dropped when it reads the same on both sides or the member set it themselves, and every
 action by somebody else. A notice whose summary for a member comes to nothing is cancelled
