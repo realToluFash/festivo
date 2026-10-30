@@ -159,9 +159,10 @@
     "planLimit_many": "No se ha publicado. Su plan {{plan}} permite tener {{count, number}} de eventos publicados o en pausa a la vez.",
     "planLimitStays": "Este evento sigue como borrador. Finalice o cancele otro evento, o cambie de plan.",
     "close": "Cerrar",
-    "needsHostTitle": "Indique los anfitriones antes de invitar a nadie.",
-    "needsHostBody": "Los invitados ven los nombres de los anfitriones en su invitación. Este evento seguirá siendo un borrador hasta que tenga al menos un anfitrión.",
-    "addHosts": "Indicar los anfitriones"
+    "hostEmpty": "Enter who is hosting to make this event live.",
+    "hostExplainer": "Guests read this name on their invitation and their page. Write it the way you want guests to see it.",
+    "notSavedChanged": "Not saved. Somebody else changed this event since you opened it.",
+    "hostsNow": "Who is hosting now, as guests will see it:"
   },
   "eventEnd": {
     "callOff": "Cancelar el evento",
