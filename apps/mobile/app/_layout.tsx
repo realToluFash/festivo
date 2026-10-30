@@ -9,6 +9,7 @@ import { StatusBar } from 'expo-status-bar';
 import { showPushInForeground } from '../src/appPush.ts';
 import { WindowOrigin } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
+import { UpdateGate } from '../src/components/UpdateRequired.tsx';
 import { initI18n } from '../src/i18n/index.ts';
 import { loadInstallId } from '../src/installId.ts';
 import { FONT_FACES, facesLoaded } from '../src/theme/fonts.ts';
@@ -79,7 +80,9 @@ export default function RootLayout() {
           and the result is a gap nobody can find the source of. */}
       <ThemeProvider value={theme}>
         <WindowOrigin>
-          <Stack screenOptions={{ headerShown: false }} />
+          <UpdateGate>
+            <Stack screenOptions={{ headerShown: false }} />
+          </UpdateGate>
         </WindowOrigin>
       </ThemeProvider>
     </SafeAreaProvider>

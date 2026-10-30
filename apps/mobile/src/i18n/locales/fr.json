@@ -1801,5 +1801,10 @@
       "notNow": "Pas maintenant"
     },
     "back": "Retour"
+  },
+  "updateRequired": {
+    "title": "Update Soirely to carry on",
+    "body": "This version of Soirely no longer works. Updating keeps everything you have saved.",
+    "update": "Update"
   }
 }
