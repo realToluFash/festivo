@@ -160,10 +160,10 @@
     "planLimit_many": "Non publié. Votre forfait {{plan}} permet d’avoir {{count, number}} d’événements publiés ou en pause à la fois.",
     "planLimitStays": "Cet événement reste en brouillon. Terminez ou annulez un autre événement, ou changez de forfait.",
     "close": "Fermer",
-    "hostEmpty": "Enter who is hosting to make this event live.",
-    "hostExplainer": "Guests read this name on their invitation and their page. Write it the way you want guests to see it.",
-    "notSavedChanged": "Not saved. Somebody else changed this event since you opened it.",
-    "hostsNow": "Who is hosting now, as guests will see it:"
+    "hostEmpty": "Indiquez l’hôte pour publier cet événement.",
+    "hostExplainer": "Les invités lisent ce nom sur leur invitation et sur la page de l’événement. Écrivez-le tel que vous voulez qu’ils le voient.",
+    "notSavedChanged": "Non enregistré. Quelqu’un d’autre a modifié cet événement depuis que vous l’avez ouvert.",
+    "hostsNow": "Hôtes actuels, tels que les invités les verront :"
   },
   "eventEnd": {
     "callOff": "Annuler l’événement",

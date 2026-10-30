@@ -1599,10 +1599,10 @@
     "planLimit_many": "No se ha publicado. Su plan {{plan}} permite tener {{count, number}} de eventos publicados o en pausa a la vez.",
     "planLimitStays": "Este evento sigue como borrador. Finalice o cancele otro evento, o cambie de plan.",
     "close": "Cerrar",
-    "hostEmpty": "Enter who is hosting to make this event live.",
-    "hostExplainer": "Guests read this name on their invitation and their page. Write it the way you want guests to see it.",
-    "notSavedChanged": "Not saved. Somebody else changed this event since you opened it.",
-    "hostsNow": "Who is hosting now, as guests will see it:"
+    "hostEmpty": "Indique el anfitrión para publicar este evento.",
+    "hostExplainer": "Los invitados leen este nombre en su invitación y en la página del evento. Escríbalo tal como quiera que lo vean.",
+    "notSavedChanged": "No se ha guardado. Otra persona ha cambiado este evento desde que lo abrió.",
+    "hostsNow": "Anfitriones actuales, tal como los verán los invitados:"
   },
   "eventHosts": {
     "heading": "Anfitriones",

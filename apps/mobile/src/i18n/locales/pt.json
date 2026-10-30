@@ -1599,10 +1599,10 @@
     "planLimit_many": "Não foi publicado. O seu plano {{plan}} permite ter {{count, number}} de eventos publicados ou em pausa de cada vez.",
     "planLimitStays": "Este evento continua em rascunho. Termine ou cancele outro evento, ou mude de plano.",
     "close": "Fechar",
-    "hostEmpty": "Enter who is hosting to make this event live.",
-    "hostExplainer": "Guests read this name on their invitation and their page. Write it the way you want guests to see it.",
-    "notSavedChanged": "Not saved. Somebody else changed this event since you opened it.",
-    "hostsNow": "Who is hosting now, as guests will see it:"
+    "hostEmpty": "Indique o anfitrião para publicar este evento.",
+    "hostExplainer": "Os convidados leem este nome no convite e na página do evento. Escreva-o tal como quer que o vejam.",
+    "notSavedChanged": "Não foi guardado. Outra pessoa alterou este evento desde que o abriu.",
+    "hostsNow": "Anfitriões atuais, tal como os convidados os verão:"
   },
   "eventHosts": {
     "heading": "Anfitriões",
