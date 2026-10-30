@@ -174,17 +174,20 @@ export function TimeZoneCard({
         </View>
       )}
       {saved != null && (!editing || opening || savedClosing) && (
-        <View>
+        // The line going as Change opens the step gives the same layout as an open with no line, where TalkBack keeps the field when Change goes; kept, its height left the field out of sight (sc-22392).
+        <View style={editing && !savedClosing ? styles.gone : undefined}>
           {savedHolder}
-          <Notice
-            tone="done"
-            mark={tokens.marks.done.glyph}
-            body={t('timeZone.saved', { zone: saved })}
-            answer={savedGiven ? undefined : saved}
-            takesFocus={!savedGiven}
-            readMs={focusBackMs(Platform.OS, SETTLED_MS, 'step')}
-            wordsRef={savedGiven ? savedLine : undefined}
-          />
+          {(!editing || savedClosing) && (
+            <Notice
+              tone="done"
+              mark={tokens.marks.done.glyph}
+              body={t('timeZone.saved', { zone: saved })}
+              answer={savedGiven ? undefined : saved}
+              takesFocus={!savedGiven}
+              readMs={focusBackMs(Platform.OS, SETTLED_MS, 'step')}
+              wordsRef={savedGiven ? savedLine : undefined}
+            />
+          )}
         </View>
       )}
       {(!editing || opening || closing) && (
@@ -271,6 +274,8 @@ function Choosing({
   const [rowHeight, setRowHeight] = useState<number>(tokens.sizeHit);
   const { height } = useWindowDimensions();
   const short = shortWhileTyping({ os: Platform.OS, phone, height, keysUp: room != null });
+  // TalkBack reads the field as the step opens, before the keys are up, so the hint is there from the start (sc-22392).
+  const hinted = shortWhileTyping({ os: Platform.OS, phone, height, keysUp: true });
   useHeaderWithoutBack(short);
 
   const showingPicked = picked != null && typed === zoneLabel(picked);
@@ -337,7 +342,12 @@ function Choosing({
           onLayout={(event) => setGroupHeight(event.nativeEvent.layout.height)}
           style={styles.choosing}
         >
-          <Field label={t('timeZone.find')} error={error} help={short ? undefined : help}>
+          <Field
+            label={t('timeZone.find')}
+            error={error}
+            help={short ? undefined : help}
+            helpInHint={hinted}
+          >
             <TextField
               ref={input}
               wrong={error != null}
@@ -356,7 +366,7 @@ function Choosing({
               onSubmitEditing={() => void save()}
               submitBehavior="submit"
               accessibilityLabel={t('timeZone.find')}
-              accessibilityHint={short ? help : undefined}
+              accessibilityHint={hinted ? help : undefined}
               testID="timeZone.search"
             />
           </Field>
@@ -433,6 +443,7 @@ function Choosing({
 
 const styles = StyleSheet.create({
   group: { gap: tokens.spaceXxs },
+  gone: { position: 'absolute' },
   choosing: { gap: tokens.spaceLg },
   secondary: { color: tokens.colorInkSecondary },
   list: {
