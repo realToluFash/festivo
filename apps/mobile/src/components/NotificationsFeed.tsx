@@ -115,7 +115,7 @@ export function NotificationsFeed({ heading }: { heading: RefObject<TextHandle |
     const { item } = arrival;
     setFeed((current) =>
       current.status === 'loaded'
-        ? { ...feedWithArrival(current, item), status: 'loaded' }
+        ? { ...feedWithArrival(current, arrival), status: 'loaded' }
         : current,
     );
     setSaid({

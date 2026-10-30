@@ -35,6 +35,12 @@ final readonly class Audience
         return new self(NotificationAudienceKind::Member, $organisationId, permission: $permission, except: $except);
     }
 
+    /** One member, while they still hold the permission when it goes. */
+    public static function memberWithPermission(Uuid $organisationId, Permission $permission, Uuid $userId): self
+    {
+        return new self(NotificationAudienceKind::Member, $organisationId, permission: $permission, only: [$userId]);
+    }
+
     /** @param list<Uuid> $except */
     public static function membersWithRole(Uuid $organisationId, Uuid $roleId, array $except = []): self
     {

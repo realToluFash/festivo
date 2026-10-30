@@ -32,10 +32,8 @@ describe('focus going back to a step’s opener', () => {
 });
 
 describe('a step closing back to its opener', () => {
-  const SETTLED_MS = 500;
-
   it('on Android with TalkBack on, holds the scroll where it is and gives a control opener input focus, which TalkBack says once, with nothing moving its focus there again, before the keys go down and the step goes (sc-18588)', () => {
-    expect(stepCloseSteps('android', true, SETTLED_MS, 'opener')).toEqual([
+    expect(stepCloseSteps('android', true, 'opener')).toEqual([
       { do: 'holdScroll' },
       { do: 'showOpener' },
       { do: 'takeInputFocus', atMs: INPUT_FOCUS_TAKEN_MS, to: 'opener' },
@@ -46,24 +44,24 @@ describe('a step closing back to its opener', () => {
   });
 
   it('on Android with TalkBack on, gives input focus to a holder TalkBack does not read beside a line of words, and moves TalkBack’s focus to the line once the keys’ scroll has landed, before the step goes (sc-18587)', () => {
-    expect(stepCloseSteps('android', true, SETTLED_MS, 'holder')).toEqual([
+    expect(stepCloseSteps('android', true, 'holder')).toEqual([
       { do: 'holdScroll' },
       { do: 'showOpener' },
       { do: 'takeInputFocus', atMs: INPUT_FOCUS_TAKEN_MS, to: 'holder' },
       { do: 'putKeysDown' },
       { do: 'settleOpener', into: 'outOfSight', read: true },
-      { do: 'finish', focusBack: false, atMs: SETTLED_MS + TALKBACK_FOCUS_TAKEN_MS },
+      { do: 'finish', focusBack: false, atMs: TALKBACK_FOCUS_TAKEN_MS },
     ]);
   });
 
   it('closes at once with no screen reader, which has no focus to lose', () => {
-    expect(stepCloseSteps('android', false, SETTLED_MS, 'opener')).toEqual([
+    expect(stepCloseSteps('android', false, 'opener')).toEqual([
       { do: 'finish', focusBack: true, atMs: 0 },
     ]);
   });
 
   it('closes at once on iOS, where VoiceOver waits for the move it is asked for', () => {
-    expect(stepCloseSteps('ios', true, SETTLED_MS, 'opener')).toEqual([
+    expect(stepCloseSteps('ios', true, 'opener')).toEqual([
       { do: 'finish', focusBack: true, atMs: 0 },
     ]);
   });
@@ -71,15 +69,22 @@ describe('a step closing back to its opener', () => {
 
 describe('the field a closing step blurs to put the keys down', () => {
   it('is the one holding input focus', () => {
-    expect(fieldToBlur('new password', 'current password')).toBe('new password');
+    expect(fieldToBlur('new password', 'current password', 'current password')).toBe(
+      'new password',
+    );
   });
 
-  it('is the one that raised the keys once it has given input focus up, which leaves them up (sc-18588)', () => {
-    expect(fieldToBlur(null, 'current password')).toBe('current password');
+  it("is one of the step's own when JS knows of no field holding input focus, so the hide reaches the keys (sc-18588)", () => {
+    expect(fieldToBlur(null, 'current password', null)).toBe('current password');
+    expect(fieldToBlur(null, 'current password', 'time zone')).toBe('current password');
+  });
+
+  it('is the one that raised the keys once it has given input focus up, in a step with no field of its own', () => {
+    expect(fieldToBlur(null, null, 'time zone')).toBe('time zone');
   });
 
   it('is none when no field raised the keys', () => {
-    expect(fieldToBlur(null, null)).toBeNull();
+    expect(fieldToBlur(null, null, null)).toBeNull();
   });
 });
 

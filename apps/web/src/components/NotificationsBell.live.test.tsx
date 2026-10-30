@@ -126,7 +126,7 @@ describe("the web bell's live line (sc-3980)", () => {
     source.open();
     await screen.findByRole('button', { name: 'Notifications, 1 unread' });
 
-    source.publish(item('b'));
+    source.publish({ ...item('b'), unreadCount: 2 });
 
     expect(await screen.findByRole('button', { name: 'Notifications, 2 unread' })).toBeTruthy();
   });
@@ -143,6 +143,90 @@ describe("the web bell's live line (sc-3980)", () => {
 
     source.publish({ readAll: true, unreadCount: 0 });
     expect(await screen.findByRole('button', { name: 'Notifications' })).toBeTruthy();
+  });
+
+  it("a member's own rewrite takes the item's place, keeps the count and announces nothing (sc-21643)", async () => {
+    feedAnswers(async () =>
+      json(
+        page([
+          item('b'),
+          item('a', {
+            lines: [
+              'The date is now 13 Nov (was 12 Nov).',
+              'The venue is now Hall B (was Hall A).',
+            ],
+          }),
+        ]),
+      ),
+    );
+    const { container } = bell();
+    const source = await line();
+    source.open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 2 unread' }));
+    await screen.findByText('The date is now 13 Nov (was 12 Nov).');
+
+    source.publish({
+      updated: item('a', { lines: ['The venue is now Hall B (was Hall A).'] }),
+      unreadCount: 2,
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByText('The date is now 13 Nov (was 12 Nov).')).toBeNull(),
+    );
+    expect(screen.getAllByText(/^Item /).map((title) => title.textContent)).toEqual([
+      'Item b',
+      'Item a',
+    ]);
+    expect(screen.getAllByText('Unread')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: 'Notifications, 2 unread' })).toBeTruthy();
+    expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe('');
+  });
+
+  it("a member's own rewrite of an item not loaded adds nothing (sc-21643)", async () => {
+    feedAnswers(async () => json(page([item('b')])));
+    bell();
+    const source = await line();
+    source.open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    await screen.findByText('Item b');
+
+    source.publish({ updated: item('a'), unreadCount: 2 });
+
+    expect(await screen.findByRole('button', { name: 'Notifications, 2 unread' })).toBeTruthy();
+    expect(screen.queryByText('Item a')).toBeNull();
+  });
+
+  it("somebody else's change raising an unread item not loaded leaves the count as the server has it (sc-21785)", async () => {
+    feedAnswers(async () => json({ ...page([item('b')]), unreadCount: 91, next: 'b' }));
+    const { container } = bell();
+    const source = await line();
+    source.open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 91 unread' }));
+    await screen.findByText('Item b');
+
+    source.publish({ ...item('far'), unreadCount: 91 });
+
+    expect(await screen.findByText('Item far')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Notifications, 91 unread' })).toBeTruthy();
+    expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe(
+      'New notification: Item far',
+    );
+  });
+
+  it("somebody else's change raising an unread item shown leaves the count, and a new one adds one (sc-21785)", async () => {
+    feedAnswers(async () => json(page([item('b'), item('a')])));
+    bell();
+    const source = await line();
+    source.open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 2 unread' }));
+    await screen.findByText('Item b');
+
+    source.publish({ ...item('a', { title: 'Item a again' }), unreadCount: 2 });
+    expect(await screen.findByText('Item a again')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Notifications, 2 unread' })).toBeTruthy();
+
+    source.publish({ ...item('c'), unreadCount: 3 });
+    expect(await screen.findByRole('button', { name: 'Notifications, 3 unread' })).toBeTruthy();
   });
 
   it('reads page one again when a line opens, and takes the rows read elsewhere meanwhile', async () => {
@@ -175,7 +259,7 @@ describe("the web bell's live line (sc-3980)", () => {
 
     source.open();
     await waitFor(() => expect(vi.mocked(fetch)).toHaveBeenCalledTimes(3));
-    source.publish(item('b'));
+    source.publish({ ...item('b'), unreadCount: 2 });
     await act(async () => stale(json(page([item('a')]))));
 
     await waitFor(() => expect(vi.mocked(fetch)).toHaveBeenCalledTimes(4));
@@ -191,7 +275,7 @@ describe("the web bell's live line (sc-3980)", () => {
     bell();
     const source = await line();
 
-    source.publish(item('b'));
+    source.publish({ ...item('b'), unreadCount: 2 });
     await act(async () => stale(json(page([item('a')]))));
 
     expect(await screen.findByRole('button', { name: 'Notifications, 2 unread' })).toBeTruthy();

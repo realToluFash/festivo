@@ -79,19 +79,23 @@ describe("the bell's count, live (sc-3980)", () => {
     expect(live.followed[0]?.stop).toHaveBeenCalledTimes(1);
   });
 
-  it('counts an unread arrival once, however often the hub publishes it, and hands it to the feed', () => {
+  it("takes the server's count with each arrival, and hands every one to the feed, a second raise of the same item too (sc-21785)", () => {
     useUnread();
+    setUnread(91);
     const arrivals = vi.fn();
     useArrivals(arrivals);
     const handlers = live.followed[0]?.handlers;
+    const raised = { ...item, title: 'Ada Obi changed the event' };
 
-    handlers?.onItem(item);
-    handlers?.onItem(item);
-    handlers?.onItem({ ...item, id: 'n2', read: true });
+    handlers?.onItem({ item, unreadCount: 91 });
+    handlers?.onItem({ item: raised, unreadCount: 91 });
+    expect(shown()).toBe(91);
 
-    expect(useUnread()).toBe(1);
-    expect(arrivals).toHaveBeenCalledTimes(2);
-    expect(arrivals).toHaveBeenCalledWith({ item });
+    handlers?.onItem({ item: { ...item, id: 'n2' }, unreadCount: 92 });
+
+    expect(shown()).toBe(92);
+    expect(arrivals).toHaveBeenCalledTimes(3);
+    expect(arrivals).toHaveBeenNthCalledWith(2, { item: raised, unreadCount: 91 });
   });
 
   it('reads the count again after a gap, and has the feed read itself', async () => {
@@ -116,7 +120,7 @@ describe("the bell's count, live (sc-3980)", () => {
       .mockResolvedValueOnce({ unreadCount: 6 });
 
     live.followed[0]?.handlers.onGap();
-    live.followed[0]?.handlers.onItem({ ...item, id: 'n7' });
+    live.followed[0]?.handlers.onItem({ item: { ...item, id: 'n7' }, unreadCount: 4 });
     stale({ unreadCount: 3 });
     expect(shown()).toBe(4);
 
@@ -135,6 +139,21 @@ describe("the bell's count, live (sc-3980)", () => {
     expect(arrivals).toHaveBeenCalledWith({ read: { id: 'n1', unreadCount: 3 } });
   });
 
+  it("hands a member's own rewrite to the feed as a read, with the count unchanged (sc-21643)", () => {
+    useUnread();
+    setUnread(2);
+    const arrivals = vi.fn();
+    useArrivals(arrivals);
+    const updated = { ...item, lines: ['The venue is now Hall B (was Hall A).'] };
+
+    live.followed[0]?.handlers.onRead({ id: 'n1', unreadCount: 2, updated });
+
+    expect(shown()).toBe(2);
+    expect(arrivals).toHaveBeenCalledExactlyOnceWith({
+      read: { id: 'n1', unreadCount: 2, updated },
+    });
+  });
+
   it('starts from nothing when another account signs in on the phone', () => {
     useUnread();
     setUnread(12);
@@ -150,7 +169,7 @@ describe("the bell's count, live (sc-3980)", () => {
     setUnread(2);
     const seen = arrivalsSeen();
 
-    live.followed[0]?.handlers.onItem({ ...item, id: 'n9' });
+    live.followed[0]?.handlers.onItem({ item: { ...item, id: 'n9' }, unreadCount: 3 });
     expect(countedSince(seen, 1)).toBe(false);
     expect(useUnread()).toBe(3);
 

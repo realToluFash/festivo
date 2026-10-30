@@ -144,7 +144,7 @@ def product_manager(p, db, stories):
         for story, report, items in outstanding:
             p.add(f"  sc-{story['id']} #{report['id']}: "
                   + "; ".join(T.first_line(i, 90) for i in items[:3]))
-    ideas = [s for s in stories if "idea" in s["labels"] and s["state"] == "Backlog"]
+    ideas = W.open_ideas(stories)
     if ideas:
         p.add("", "Ideas waiting on a decision:", *[line(s) for s in ideas])
     owner = [s for s in ordered(stories) if s["state"] == R.WAITING]
@@ -178,7 +178,7 @@ def business_manager(p, db, stories):
 
 
 def creative(p, db, stories):
-    ideas = [s for s in stories if "idea" in s["labels"]]
+    ideas = W.open_ideas(stories)
     p.add(f"Your open ideas ({len(ideas)}, at most 3):", *[line(s) for s in ideas])
     friction = qa_outstanding(stories)
     if friction:

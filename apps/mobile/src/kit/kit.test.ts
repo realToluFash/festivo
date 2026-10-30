@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { tokens } from '../theme/tokens.ts';
 import {
@@ -21,6 +21,7 @@ import {
   groupInWindow,
   keyboardInWindow,
   keyboardLift,
+  keysDownThen,
   keysOver,
   liftNeeded,
   listRoom,
@@ -31,6 +32,7 @@ import {
   scrollInsets,
   searchBesideTitle,
   settledOffset,
+  settledOffsetKeeping,
   shortWhileTyping,
   shownAboveKeys,
   shownEnd,
@@ -311,6 +313,33 @@ describe("a closed step's opener is scrolled under TalkBack's focus only once it
     expect(settledOffset({ ...opener, contentY: 900, offset: 300, margin: 16 }, 'outOfSight')).toBe(
       364,
     );
+  });
+
+  it('scrolls back up only as far as keeps Cancel, under TalkBack’s focus, wholly in sight', () => {
+    const above = { ...opener, contentY: 400, offset: 800, margin: 16 };
+
+    expect(settledOffsetKeeping(above, 'outOfSight', { contentY: 950, height: 48 })).toBe(398);
+    expect(settledOffsetKeeping(above, 'outOfSight', { contentY: 900, height: 48 })).toBe(384);
+  });
+
+  it('scrolls back up as before when keeping Cancel in sight leaves the opener out of it', () => {
+    const above = { ...opener, contentY: 400, offset: 800, margin: 16 };
+
+    expect(settledOffsetKeeping(above, 'outOfSight', { contentY: 1000, height: 48 })).toBe(384);
+    expect(settledOffsetKeeping(above, 'outOfSight', { contentY: 1500, height: 48 })).toBe(384);
+  });
+
+  it('brings an opener below into sight as before, and with nothing to keep', () => {
+    const below = { ...opener, contentY: 900, offset: 300, margin: 16 };
+
+    expect(settledOffsetKeeping(below, 'outOfSight', { contentY: 400, height: 48 })).toBe(364);
+    expect(
+      settledOffsetKeeping(
+        { ...opener, contentY: 400, offset: 800, margin: 16 },
+        'outOfSight',
+        null,
+      ),
+    ).toBe(384);
   });
 });
 
@@ -688,5 +717,118 @@ describe('a key typed on Android leaves the field its text, so TalkBack says onl
   it('is handed its value on every render on iOS, where VoiceOver says only the key', () => {
     expect(nextGiven('ios', 'Gal', { ...opened, typed: 'Ga' })).toEqual({ ...opened, typed: 'Ga' });
     expect(valueHanded('ios', 'Galx', undefined)).toBe('Galx');
+  });
+});
+
+describe('a closing step puts the keys down through Gboard swapping them (sc-18588)', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  function keyboard(up: boolean) {
+    const keys = {
+      isUp: up,
+      hides: 0,
+      heard: new Set<() => void>(),
+      up: () => keys.isUp,
+      hide: () => {
+        keys.hides += 1;
+      },
+      onHidden: (hidden: () => void) => {
+        keys.heard.add(hidden);
+
+        return () => keys.heard.delete(hidden);
+      },
+      said(up: boolean) {
+        keys.isUp = up;
+        if (!up) keys.heard.forEach((hidden) => hidden());
+      },
+    };
+
+    return keys;
+  }
+
+  it('goes on once the keys have stayed down for the settle', () => {
+    const keys = keyboard(true);
+    const then = vi.fn();
+    keysDownThen(keys, then, 500);
+
+    vi.advanceTimersByTime(200);
+    keys.said(false);
+    vi.advanceTimersByTime(499);
+    expect(then).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(then).toHaveBeenCalledOnce();
+    expect(keys.hides).toBe(1);
+  });
+
+  it('hides the keys again when the swap says they went down and they came back up', () => {
+    const keys = keyboard(true);
+    const then = vi.fn();
+    keysDownThen(keys, then, 500);
+
+    vi.advanceTimersByTime(80);
+    keys.said(false);
+    vi.advanceTimersByTime(20);
+    keys.said(true);
+    vi.advanceTimersByTime(500);
+    expect(keys.hides).toBe(2);
+    expect(then).not.toHaveBeenCalled();
+
+    keys.said(false);
+    vi.advanceTimersByTime(500);
+    expect(then).toHaveBeenCalledOnce();
+  });
+
+  it('does not hold the close for keys that never go down', () => {
+    const keys = keyboard(true);
+    const then = vi.fn();
+    keysDownThen(keys, then, 500);
+
+    vi.advanceTimersByTime(1000);
+    expect(keys.hides).toBe(2);
+    expect(then).toHaveBeenCalledOnce();
+    expect(keys.heard.size).toBe(0);
+  });
+
+  it('goes on after the settle with the keys already down', () => {
+    const keys = keyboard(false);
+    const then = vi.fn();
+    keysDownThen(keys, then, 500);
+
+    expect(keys.hides).toBe(1);
+    vi.advanceTimersByTime(499);
+    expect(then).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(then).toHaveBeenCalledOnce();
+    expect(keys.hides).toBe(1);
+  });
+
+  it('hides the keys again when they were down at the call and the swap brought them back up', () => {
+    const keys = keyboard(false);
+    const then = vi.fn();
+    keysDownThen(keys, then, 500);
+
+    vi.advanceTimersByTime(100);
+    keys.said(true);
+    vi.advanceTimersByTime(400);
+    expect(keys.hides).toBe(2);
+    expect(then).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(200);
+    keys.said(false);
+    vi.advanceTimersByTime(499);
+    expect(then).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(then).toHaveBeenCalledOnce();
+  });
+
+  it('calls nothing once cancelled', () => {
+    const keys = keyboard(true);
+    const then = vi.fn();
+    keysDownThen(keys, then, 500)();
+
+    vi.advanceTimersByTime(2000);
+    expect(then).not.toHaveBeenCalled();
+    expect(keys.heard.size).toBe(0);
   });
 });

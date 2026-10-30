@@ -1,17 +1,15 @@
-import type { NotificationItem, NotificationRead } from '@soirely/api-client';
+import type { NotificationArrival, NotificationRead } from '@soirely/api-client';
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 
 import { api } from './api.ts';
 import { followNotifications } from './liveNotifications.ts';
 import { useSignedIn } from './signedIn.ts';
 
-export type Arrival = { item: NotificationItem } | { read: NotificationRead } | 'reread';
+export type Arrival = NotificationArrival | { read: NotificationRead } | 'reread';
 
 let unread = 0;
 const listeners = new Set<() => void>();
 const arrivals = new Set<(arrival: Arrival) => void>();
-/** The hub publishes an item again after a refused attempt, so each is counted once. */
-const counted = new Set<string>();
 let following: { userId: string; bells: number; stop: () => void } | null = null;
 let arrivalsSoFar = 0;
 let lastUserId: string | null = null;
@@ -44,12 +42,11 @@ function reread(): void {
   );
 }
 
-function arrived(item: NotificationItem): void {
-  if (counted.has(item.id)) return;
-  counted.add(item.id);
+/** A raise keeps the item's id (sc-13214), so each publish reaches the screen, and the count is the server's (sc-21785). */
+function arrived(arrival: NotificationArrival): void {
   arrivalsSoFar += 1;
-  if (!item.read) setUnread(unread + 1);
-  arrivals.forEach((listener) => listener({ item }));
+  setUnread(arrival.unreadCount);
+  arrivals.forEach((listener) => listener(arrival));
 }
 
 /** A read in another of the member's sessions moves the count as an arrival does. */
@@ -62,7 +59,6 @@ function readElsewhere(read: NotificationRead): void {
 /** Another account on this phone starts from nothing, and a count asked for the last one is dropped. */
 function forgetOtherAccount(userId: string): void {
   if (lastUserId != null && lastUserId !== userId) {
-    counted.clear();
     arrivalsSoFar += 1;
     setUnread(0);
   }

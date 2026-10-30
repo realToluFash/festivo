@@ -1,8 +1,14 @@
 import { ApiError, type LinkedProvider } from '@soirely/api-client';
 import { cleanCode, codeProblem, formatCountdown, meetsPasswordLength } from '@soirely/domain';
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInputInstance, View } from 'react-native';
+import { type RefCallback, type RefObject, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type HostInstance,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -80,6 +86,8 @@ export function PasswordCard({
   const {
     opener: changeOpener,
     closing,
+    closer,
+    field,
     close,
   } = useStepClose(opener, 'change', 'opener', (closed) =>
     setStage({ kind: 'atRest', signedOut: null, added: null, closed }),
@@ -165,6 +173,8 @@ export function PasswordCard({
             onChanged?.();
           }}
           onCancel={close}
+          closer={closer}
+          field={field}
         />
       )}
     </View>
@@ -176,17 +186,28 @@ function Changing({
   closing,
   onChanged,
   onCancel,
+  closer,
+  field,
 }: {
   email: string;
   closing: boolean;
   onChanged: (signedOut: number) => void;
   onCancel: () => void;
+  closer: RefObject<ViewInstance | null>;
+  field: RefCallback<HostInstance>;
 }) {
   const { t } = useTranslation();
   const current = useRef('');
   const next = useRef('');
   const currentInput = useRef<TextInputInstance>(null);
   const nextInput = useRef<TextInputInstance>(null);
+  const currentRef = useCallback(
+    (input: TextInputInstance | null) => {
+      currentInput.current = input;
+      field(input);
+    },
+    [field],
+  );
   const [lengthMet, setLengthMet] = useState(false);
   const [saving, setSaving] = useState(false);
   const [refusal, setRefusal] = useState<PasswordRefusal | null>(null);
@@ -268,7 +289,7 @@ function Changing({
         error={currentError}
       >
         <PasswordField
-          ref={currentInput}
+          ref={currentRef}
           wrong={currentError != null}
           submitting={saving}
           autoComplete="current-password"
@@ -327,6 +348,7 @@ function Changing({
       </View>
       <QuietButton
         label={t('passwordCard.cancel')}
+        ref={closer}
         onPress={onCancel}
         off={saving}
         testID="password.cancel"

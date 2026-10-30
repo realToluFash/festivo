@@ -1,7 +1,7 @@
 import {
-  asNotificationItem,
+  asNotificationArrival,
   asNotificationRead,
-  type NotificationItem,
+  type NotificationArrival,
   type NotificationRead,
   realtimeTopic,
 } from '@soirely/api-client';
@@ -14,7 +14,7 @@ const RENEW_BEFORE_MS = 60_000;
 const RETRY_MS = 5_000;
 
 export interface LiveNotifications {
-  onItem: (item: NotificationItem) => void;
+  onItem: (arrival: NotificationArrival) => void;
   onRead: (read: NotificationRead) => void;
   /** At every line that opens: what was published before it, the first one included, never arrives. */
   onGap: () => void;
@@ -88,6 +88,6 @@ function heard(data: string, live: LiveNotifications): void {
     live.onRead(read);
     return;
   }
-  const item = asNotificationItem(raw);
-  if (item != null) live.onItem(item);
+  const arrival = asNotificationArrival(raw);
+  if (arrival != null) live.onItem(arrival);
 }

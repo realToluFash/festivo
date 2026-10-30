@@ -35,6 +35,11 @@ screenshot. `shared-flows-chained-*` run them one after another, as a batch woul
 | `return-home`              | Home                             | none                         |
 | `switch-organisation`      | Home, in the organisation `ORG`  | none                         |
 
+`release-sign-in` is the one for a release build (`com.soirely.app`), where there is no
+Expo Go and no `return-home`: it launches the app, signs in as `EMAIL` with `PASSWORD` only if
+Home shows Sign in, and leaves the app on Home. Every `*-release-*` flow that needs a signed-in
+phone starts with it.
+
 `switch-organisation`'s `ORG` is the organisation's id, not its name: the switcher's rows are
 `switcher.<id>`.
 

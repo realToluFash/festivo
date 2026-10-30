@@ -125,11 +125,18 @@ export interface NotificationFeed {
   next: string | null;
 }
 
-/** A read made in one of the member's sessions, published to the others: one item, or every item when `id` is null. `removed` is an unread item taken away (sc-13214). */
+/** A read made in one of the member's sessions, published to the others: one item, or every item when `id` is null. `removed` is an unread item taken away (sc-13214), `updated` one the member's own change rewrote (sc-21643). */
 export interface NotificationRead {
   id: string | null;
   unreadCount: number;
   removed?: boolean;
+  updated?: NotificationItem;
+}
+
+/** An item published to the member's bells, new or raised (sc-13214), with the count a reload would show (sc-21785). */
+export interface NotificationArrival {
+  item: NotificationItem;
+  unreadCount: number;
 }
 
 /** Mute this event's saved state. Items already delivered keep the Muted mark they were delivered with. */
@@ -3797,8 +3804,18 @@ export function asNotificationRead(raw: unknown): NotificationRead | null {
   if (typeof candidate.removedId === 'string') {
     return { id: candidate.removedId, unreadCount: candidate.unreadCount, removed: true };
   }
+  const updated = asNotificationItem(candidate.updated);
+  if (updated != null) return { id: updated.id, unreadCount: candidate.unreadCount, updated };
 
   return null;
+}
+
+export function asNotificationArrival(raw: unknown): NotificationArrival | null {
+  const item = asNotificationItem(raw);
+  const unreadCount = (raw as { unreadCount?: unknown } | null)?.unreadCount;
+  if (item == null || typeof unreadCount !== 'number') return null;
+
+  return { item, unreadCount };
 }
 
 function notificationItems(raw: unknown): NotificationItem[] {

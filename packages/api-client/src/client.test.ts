@@ -6,6 +6,8 @@ import {
   ApiClient,
   type IssuedTokens,
   type TokenStore,
+  asNotificationArrival,
+  asNotificationItem,
   asNotificationRead,
   awaiting,
   phoneAwaitingCode,
@@ -3287,9 +3289,56 @@ describe("a read on the bell's topic (sc-3980)", () => {
     });
   });
 
+  test("is a member's own rewrite, carrying the item as stored, which is not an arrival", () => {
+    const stored = {
+      id: 'n3',
+      category: 'event_changes',
+      title: 'Ada Obi changed the event',
+      lines: ['The venue is now Hall B (was Hall A).'],
+      eventId: 'e1',
+      eventName: 'Gala',
+      eventAvailable: true,
+      muted: false,
+      place: '/events/e1',
+      read: false,
+      createdAt: '2026-11-02T10:00:00+00:00',
+    };
+
+    expect(asNotificationRead({ updated: stored, unreadCount: 1 })).toEqual({
+      id: 'n3',
+      unreadCount: 1,
+      updated: stored,
+    });
+    expect(asNotificationItem({ updated: stored, unreadCount: 1 })).toBeNull();
+  });
+
   test('is not an item published on the same topic', () => {
     expect(
       asNotificationRead({ id: 'n1', title: 'Hi', read: false, createdAt: '2026-10-29' }),
     ).toBeNull();
+  });
+});
+
+describe('a published arrival (sc-21785)', () => {
+  const published = {
+    id: 'n1',
+    category: 'event_changes',
+    title: 'Ada Obi changed the event',
+    lines: [],
+    read: false,
+    createdAt: '2026-11-02T10:05:00+00:00',
+    unreadCount: 92,
+  };
+
+  test("carries the server's count with the item", () => {
+    expect(asNotificationArrival(published)).toMatchObject({
+      item: { id: 'n1', title: 'Ada Obi changed the event' },
+      unreadCount: 92,
+    });
+    expect(asNotificationRead(published)).toBeNull();
+  });
+
+  test('is nothing without a count', () => {
+    expect(asNotificationArrival({ ...published, unreadCount: undefined })).toBeNull();
   });
 });

@@ -30,10 +30,10 @@ import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { CountryPicker, focusPicker } from './CountryPicker.tsx';
 import { Field, focusChecked, focusRefused, TextField } from './Field.tsx';
-import { type SettledLift, settledLift } from './keyboardWatch.ts';
+import { type SettledLift, settledLift, useKeysUp } from './keyboardWatch.ts';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
-import { Sheet, useKeysUp } from './Sheet.tsx';
+import { Sheet } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 
 /** `OrgSwitcher-*` states `create` to `create_limited` (sc-390): a dialog on a tablet, a sheet on a phone. */

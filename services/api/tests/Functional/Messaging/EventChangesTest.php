@@ -18,6 +18,7 @@ use App\Enum\NotificationCategory;
 use App\Enum\NotificationChannel;
 use App\Enum\SeededRole;
 use App\Http\EntityTag;
+use App\Tests\Double\Messaging\RecordingHub;
 use App\Tests\Double\Messaging\RecordingPushSender;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -31,6 +32,7 @@ use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Component\Mercure\Update;
 
 /** sc-13214: the members of an event hear when somebody else changes whether, when or where it happens. */
 final class EventChangesTest extends MessagingTestCase
@@ -200,6 +202,53 @@ final class EventChangesTest extends MessagingTestCase
     }
 
     #[Test]
+    public function aMembersOwnActionLeavesSomebodyElsesEditToSettleForThem(): void
+    {
+        $event = $this->liveEvent();
+        $this->edit($event, $this->bola, ['venue' => ['name' => 'Hall B', 'address' => null]]);
+        self::runUntilIdle();
+        $before = self::connection()->fetchAssociative('SELECT id, created_at FROM notification_items WHERE user_id = :user', ['user' => $this->ada->getId()->toRfc4122()]);
+
+        self::at('2026-11-02 10:02');
+        self::service(EventLifecycle::class)->pause($event, $this->ada);
+        self::runUntilIdle();
+
+        self::assertSame([$before], self::connection()->fetchAllAssociative('SELECT id, created_at FROM notification_items WHERE user_id = :user', ['user' => $this->ada->getId()->toRfc4122()]));
+        self::assertSame([[], []], [$this->emails($this->ada), $this->pushes($this->ada)]);
+        self::assertSame('Paused: Gala', $this->email($this->chidi)->subject);
+
+        self::at('2026-11-02 10:15');
+        self::runUntilIdle();
+
+        self::assertSame(['Changed: Gala'], Vec\map($this->emails($this->ada), static fn ($sent): string => $sent->subject));
+        self::assertCount(1, $this->pushes($this->ada));
+        self::assertCount(1, $this->emails($this->chidi), "Chidi had Bola's venue with the pause.");
+    }
+
+    #[Test]
+    public function aMembersOwnEditInsideSomebodyElsesWindowLeavesItsSettleWhereItWas(): void
+    {
+        $event = $this->liveEvent();
+        $this->edit($event, $this->bola, ['venue' => ['name' => 'Hall B', 'address' => null]]);
+        self::runUntilIdle();
+
+        self::at('2026-11-02 10:14');
+        $this->edit($event, $this->chidi, ['startsAt' => '2026-11-12T19:00:00']);
+        self::runUntilIdle();
+        self::at('2026-11-02 10:15');
+        self::runUntilIdle();
+
+        self::assertCount(1, $this->emails($this->chidi));
+        self::assertCount(1, $this->pushes($this->chidi));
+
+        self::at('2026-11-02 10:29');
+        self::runUntilIdle();
+
+        self::assertCount(1, $this->emails($this->chidi));
+        self::assertCount(1, $this->pushes($this->chidi));
+    }
+
+    #[Test]
     public function aMembersOwnChangeBackRewritesTheirUnreadItemWhereItWas(): void
     {
         $event = $this->liveEvent();
@@ -214,6 +263,61 @@ final class EventChangesTest extends MessagingTestCase
 
         self::assertSame([$before], self::connection()->fetchAllAssociative('SELECT id, created_at FROM notification_items WHERE user_id = :user', ['user' => $this->bola->getId()->toRfc4122()]));
         self::assertSame(['The venue is now Hall B (was Hall A).'], $this->items($this->bola)[0]['lines']);
+    }
+
+    #[Test]
+    public function aMembersOwnChangeBackSendsTheirBellsTheRewrittenItemAndTheSameCount(): void
+    {
+        $event = $this->liveEvent();
+        $this->edit($event, $this->ada, ['startsAt' => '2026-11-13T18:00:00', 'endsAt' => '2026-11-13T23:00:00']);
+        $this->edit($event, $this->ada, ['venue' => ['name' => 'Hall B', 'address' => null]]);
+        self::runUntilIdle();
+        $before = Type\shape(['id' => Type\string(), 'created_at' => Type\string()])->coerce(self::connection()->fetchAssociative('SELECT id, created_at FROM notification_items WHERE user_id = :user', ['user' => $this->bola->getId()->toRfc4122()]));
+        $this->hub()->published = [];
+
+        self::at('2026-11-02 10:05');
+        $this->edit($event, $this->bola, ['startsAt' => '2026-11-12T18:00:00', 'endsAt' => '2026-11-12T23:00:00']);
+        self::runUntilIdle();
+
+        $published = $this->published($this->bola);
+        self::assertCount(1, $published);
+        $updated = Type\shape(['updated' => Type\dict(Type\string(), Type\mixed()), 'unreadCount' => Type\int()])->coerce($published[0]);
+        self::assertSame(1, $updated['unreadCount']);
+        self::assertSame(
+            [$before['id'], 'Ada Obi changed the event', ['The venue is now Hall B (was Hall A).'], 'event_changes', false, false, new DateTimeImmutable($before['created_at'])->format(\DATE_ATOM)],
+            Vec\map(['id', 'title', 'lines', 'category', 'muted', 'read', 'createdAt'], static fn (string $field): mixed => $updated['updated'][$field]),
+        );
+    }
+
+    #[Test]
+    public function anotherMembersChangeSendsTheBellsTheCountAReloadShows(): void
+    {
+        $event = $this->liveEvent();
+        $this->edit($event, $this->ada, ['startsAt' => '2026-11-13T18:00:00', 'endsAt' => '2026-11-13T23:00:00']);
+        self::runUntilIdle();
+
+        self::at('2026-11-02 10:05');
+        $this->edit($event, $this->ada, ['venue' => ['name' => 'Hall B', 'address' => null]]);
+        self::runUntilIdle();
+
+        $sent = Vec\map($this->published($this->bola), static fn (array $published): array => Type\shape(['id' => Type\string(), 'unreadCount' => Type\int()], true)->coerce($published));
+        self::assertCount(2, $sent);
+        self::assertSame($sent[0]['id'], $sent[1]['id'], 'The second change raises the same item.');
+        self::assertSame([1, 1], Vec\map($sent, static fn (array $published): int => $published['unreadCount']));
+    }
+
+    #[Test]
+    public function aMembersOwnChangeWithNoUnreadItemSendsTheirBellsNothing(): void
+    {
+        $event = $this->liveEvent();
+        $this->edit($event, $this->ada, ['venue' => ['name' => 'Hall B', 'address' => null]]);
+        $this->settleAndRead();
+        $this->hub()->published = [];
+
+        $this->edit($event, $this->bola, ['startsAt' => '2026-11-13T18:00:00', 'endsAt' => '2026-11-13T23:00:00']);
+        self::runUntilIdle();
+
+        self::assertSame([], $this->published($this->bola));
     }
 
     #[Test]
@@ -661,6 +765,22 @@ final class EventChangesTest extends MessagingTestCase
     private function readAll(User $user): void
     {
         self::connection()->executeStatement('UPDATE notification_items SET read_at = created_at WHERE user_id = :user AND read_at IS NULL', ['user' => $user->getId()->toRfc4122()]);
+    }
+
+    /** @return list<array<string, mixed>> what the member's bells were sent, in order */
+    private function published(User $user): array
+    {
+        $topic = 'users/' . $user->getId()->toRfc4122() . '/notifications';
+
+        return Vec\map(
+            Vec\filter($this->hub()->published, static fn (Update $update): bool => [$topic] === $update->getTopics()),
+            static fn (Update $update): array => Type\dict(Type\string(), Type\mixed())->coerce(Json\decode($update->getData())),
+        );
+    }
+
+    private function hub(): RecordingHub
+    {
+        return self::service(RecordingHub::class);
     }
 
     /** @return list<array{title: string, lines: list<string>, category: string, muted: bool}> newest first */

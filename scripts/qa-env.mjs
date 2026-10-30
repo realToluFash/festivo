@@ -318,6 +318,29 @@ export function iosBundle(appConfig) {
   return id;
 }
 
+// Signed ad hoc, never unsigned: an unsigned .app has no application-identifier, so the Keychain
+// refuses the refresh token and a cold start signs the user out. Re-signing afterwards will not launch.
+export function iosReleaseBuildArgs(workspace, scheme, derived, arch = process.arch) {
+  return [
+    '-workspace',
+    workspace,
+    '-scheme',
+    scheme,
+    '-configuration',
+    'Release',
+    '-sdk',
+    'iphonesimulator',
+    '-destination',
+    'generic/platform=iOS Simulator',
+    '-derivedDataPath',
+    derived,
+    `ARCHS=${simulatorArch(arch)}`,
+    'CODE_SIGN_IDENTITY=-',
+    'CODE_SIGNING_REQUIRED=NO',
+    'build',
+  ];
+}
+
 export function xcodeWorkspace(names) {
   const found = names.filter((name) => name.endsWith('.xcworkspace'));
   if (found.length !== 1) {
@@ -1586,27 +1609,10 @@ function buildIosRelease(root, app) {
   ]);
 
   const derived = join(ios, 'build');
-  run(
-    'xcodebuild',
-    [
-      '-workspace',
-      workspace,
-      '-scheme',
-      scheme,
-      '-configuration',
-      'Release',
-      '-sdk',
-      'iphonesimulator',
-      '-destination',
-      'generic/platform=iOS Simulator',
-      '-derivedDataPath',
-      derived,
-      `ARCHS=${simulatorArch()}`,
-      'CODE_SIGNING_ALLOWED=NO',
-      'build',
-    ],
-    { cwd: ios, env: { ...env, NODE_ENV: 'production' } },
-  );
+  run('xcodebuild', iosReleaseBuildArgs(workspace, scheme, derived), {
+    cwd: ios,
+    env: { ...env, NODE_ENV: 'production' },
+  });
 
   mkdirSync(dirname(app), { recursive: true });
   rmSync(app, { recursive: true, force: true });

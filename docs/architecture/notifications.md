@@ -100,6 +100,13 @@ between is handled as they are then.
 - **Guests**: `Audience::guests($eventId, $conditions)` is accepted and stored. sc-3942
   adds its resolver with All guests and Choose guests, and sc-3957 adds the conditions to
   it; until sc-3942 merges such a row is recorded Failed.
+- **Event changes** are the exception. The push and email notices keep one window per
+  member, so a member's own change never moves the settle on what somebody else changed
+  (sc-13214). `EventChangeRecorder` resolves the members when it records the change and
+  writes two `scheduled_notifications` rows each, inside the request; `memberWithPermission`
+  still asks again when the row goes. So somebody who joins mid-window hears nothing from
+  before they joined, and every change costs about a dozen statements per member before
+  the request returns. The in-app items are still one row per change, resolved when sent.
 - **Channels** come from `ChannelSelector`, the one place that applies a member's
   preferences (sc-3980's store; epic 36's product defaults until then). In-app always goes;
   push only rides along with another channel and is never the only way somebody hears.

@@ -1,6 +1,7 @@
+import { useEffect, useState } from 'react';
 import { codegenNativeCommands, type HostInstance, Keyboard, Platform } from 'react-native';
 
-import { keyboardInWindow, keyboardLift } from '../kit/keyboard.ts';
+import { keyboardInWindow, keyboardLift, keysDownThen } from '../kit/keyboard.ts';
 
 export const LIFT = keyboardLift(Platform.OS);
 
@@ -31,6 +32,29 @@ export function watchKeyboardTop(
   };
 }
 
+/** Whether the keyboard is up, changing when the avoiding view starts to move. Android also says the keys showed when Gboard swaps them while up, and that changes nothing here: only false to true is the keys coming up (sc-18587). */
+export function useKeysUp(): boolean {
+  const [up, setUp] = useState(() => keyboardTopNow(0) != null);
+
+  useEffect(() => {
+    // iOS's avoiding view pads on the Will events and Android's on the Did ones.
+    const ios = Platform.OS === 'ios';
+    const shown = Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', () =>
+      setUp(true),
+    );
+    const hidden = Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', () =>
+      setUp(false),
+    );
+
+    return () => {
+      shown.remove();
+      hidden.remove();
+    };
+  }, []);
+
+  return up;
+}
+
 export interface SettledLift {
   lift(): void;
   cancel(): void;
@@ -55,33 +79,23 @@ const textInput = codegenNativeCommands<{ blur(field: HostInstance): void }>({
   supportedCommands: ['blur'],
 });
 
-/** Puts the keys down and calls `then` once they are and the scroll they move has landed after `settledMs`, or at once with them already down. With `field`, the one that raised them, they go down without moving input focus: once the field has given focus up, its blur only hides the keys, where Keyboard.dismiss no longer counts it as focused (sc-18587). Returns what cancels the call still to come. */
+/** Puts the keys down and calls `then` once they are and the scroll they move has landed after `settledMs`, as `keysDownThen`. With `field`, the one that raised them, they go down without moving input focus: once the field has given focus up, its blur only hides the keys, where Keyboard.dismiss no longer counts it as focused (sc-18587). Returns what cancels the call still to come. */
 export function putKeysDownThen(
   then: () => void,
   settledMs: number,
   field?: HostInstance | null,
 ): () => void {
-  if (!Keyboard.isVisible()) {
-    then();
-    return () => {};
-  }
+  return keysDownThen(
+    {
+      up: () => Keyboard.isVisible(),
+      hide: () => (field == null ? Keyboard.dismiss() : textInput.blur(field)),
+      onHidden: (hidden) => {
+        const listener = Keyboard.addListener('keyboardDidHide', hidden);
 
-  let settled: ReturnType<typeof setTimeout> | undefined;
-  // Keys that never say they went down do not hold the close for ever.
-  const unheard = setTimeout(land, settledMs);
-  const hidden = Keyboard.addListener('keyboardDidHide', land);
-  if (field == null) Keyboard.dismiss();
-  else textInput.blur(field);
-
-  function land(): void {
-    hidden.remove();
-    clearTimeout(unheard);
-    settled ??= setTimeout(then, settledMs);
-  }
-
-  return () => {
-    hidden.remove();
-    clearTimeout(unheard);
-    clearTimeout(settled);
-  };
+        return () => listener.remove();
+      },
+    },
+    then,
+    settledMs,
+  );
 }

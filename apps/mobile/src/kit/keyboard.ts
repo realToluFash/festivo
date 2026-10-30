@@ -173,6 +173,26 @@ export function settledOffset(at: InScroll, when: IntoView): number | null {
   return offsetIntoView(at);
 }
 
+/** Where a view sits inside the scroll content. */
+export interface InContent {
+  contentY: number;
+  height: number;
+}
+
+/** As settledOffset, except that a scroll back up stops where `kept`, the control TalkBack's focus is on, still shows wholly, when the view shows there at all: a scroll that carries the control out of sight is one TalkBack reads as a manual scroll away from its focus, which it moves on to a neighbour (sc-18588). */
+export function settledOffsetKeeping(
+  at: InScroll,
+  when: IntoView,
+  kept: InContent | null,
+): number | null {
+  const to = settledOffset(at, when);
+  if (to == null || kept == null || to >= at.offset) return to;
+
+  const keeping = Math.max(to, kept.contentY + kept.height - at.shown);
+
+  return outOfSight({ ...at, offset: keeping }) ? to : keeping;
+}
+
 /** Where the focused field sits inside the scroll content, as the last part of its group. */
 export interface Focused {
   contentY: number;
@@ -254,4 +274,42 @@ export function titleScrollsWhileTyping({ keysUp, ...turned }: SidewaysTyping): 
 /** Whether a sheet keeps its field in the body's sight: while typing, and on an iPhone on its side once the keys go down too, resting the body at its top (sc-9442). */
 export function fieldKeptInSight({ keysUp, ...turned }: SidewaysTyping): boolean {
   return keysUp || iPhoneOnItsSide(turned);
+}
+
+/** The keyboard as a close puts it down: whether it is up, what hides it, and its hidden event. */
+export interface Keys {
+  up(): boolean;
+  hide(): void;
+  onHidden(hidden: () => void): () => void;
+}
+
+/** Hides `keys` and calls `then` once they have stayed down `settledMs`. Gboard swapping a password's keys for the ones a button gets says they went down and came back up, and a hide asked in that swap is lost, so each hidden event starts the settle again and keys up at its end are hidden once more. Keys already down at the call may be in that swap too, so they wait the same settle (sc-18588). Returns what cancels the call still to come. */
+export function keysDownThen(keys: Keys, then: () => void, settledMs: number): () => void {
+  let asked = 0;
+  let settle: ReturnType<typeof setTimeout> | undefined;
+  const unwatch = keys.onHidden(wait);
+  ask();
+
+  function ask(): void {
+    asked += 1;
+    keys.hide();
+    // Keys that never say they went down do not hold the close for ever.
+    wait();
+  }
+
+  function wait(): void {
+    clearTimeout(settle);
+    settle = setTimeout(landed, settledMs);
+  }
+
+  function landed(): void {
+    if (keys.up() && asked < 2) return ask();
+    unwatch();
+    then();
+  }
+
+  return () => {
+    unwatch();
+    clearTimeout(settle);
+  };
 }

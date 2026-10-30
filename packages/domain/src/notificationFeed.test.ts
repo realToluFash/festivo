@@ -34,8 +34,8 @@ function feed(items: FeedItem[], next: string | null = null): LoadedFeed<FeedIte
 }
 
 describe('the bell feed (sc-3980)', () => {
-  test('a live item joins the top and counts up, without moving the page boundary', () => {
-    const after = feedWithArrival(feed([item('a')], 'cursor'), item('b'));
+  test('a live item joins the top with the count published with it, without moving the page boundary', () => {
+    const after = feedWithArrival(feed([item('a')], 'cursor'), { item: item('b'), unreadCount: 2 });
 
     expect(after.items.map((shown) => shown.id)).toEqual(['b', 'a']);
     expect(after.unread).toBe(2);
@@ -43,7 +43,7 @@ describe('the bell feed (sc-3980)', () => {
   });
 
   test('an item already shown is not added twice', () => {
-    const after = feedWithArrival(feed([item('a')]), item('a'));
+    const after = feedWithArrival(feed([item('a')]), { item: item('a'), unreadCount: 1 });
 
     expect(after.items.map((shown) => shown.id)).toEqual(['a']);
     expect(after.unread).toBe(1);
@@ -51,14 +51,22 @@ describe('the bell feed (sc-3980)', () => {
 
   test('a rewritten item replaces the one shown and moves to the top (sc-13214)', () => {
     const rewritten = item('a', { category: 'event_day' });
-    const after = feedWithArrival(
-      feed([item('b'), item('a'), item('c', { read: true })]),
-      rewritten,
-    );
+    const after = feedWithArrival(feed([item('b'), item('a'), item('c', { read: true })]), {
+      item: rewritten,
+      unreadCount: 2,
+    });
 
     expect(after.items.map((shown) => shown.id)).toEqual(['a', 'b', 'c']);
     expect(after.items[0]).toBe(rewritten);
     expect(after.unread).toBe(2);
+  });
+
+  test('a raised item past the loaded page leaves the count as the server has it (sc-21785)', () => {
+    const loaded = { ...feed([item('a'), item('b')], 'cursor'), unread: 91 };
+    const after = feedWithArrival(loaded, { item: item('far'), unreadCount: 91 });
+
+    expect(after.items.map((shown) => shown.id)).toEqual(['far', 'a', 'b']);
+    expect(after.unread).toBe(91);
   });
 
   test('opening an unread item reads it once', () => {
@@ -143,6 +151,43 @@ describe('the bell feed (sc-3980)', () => {
 
     expect(after.items.map((shown) => shown.id)).toEqual(['b']);
     expect(after.unread).toBe(1);
+  });
+
+  test("a rewrite by the member takes the item's place, keeping its time, and moves nothing else", () => {
+    const loaded = feed([at('c', 3), at('b', 2), at('a', 1)], 'cursor');
+
+    const after = feedWithLiveRead(loaded, {
+      id: 'b',
+      unreadCount: 3,
+      updated: at('b', 9, { category: 'event_changes', muted: true }),
+    });
+
+    expect(after.items.map((shown) => [shown.id, shown.category, shown.muted])).toEqual([
+      ['c', 'messages', false],
+      ['b', 'event_changes', true],
+      ['a', 'messages', false],
+    ]);
+    expect(after.items[1]?.createdAt).toBe('2026-10-29T10:02:00Z');
+    expect(after.unread).toBe(3);
+    expect(after.next).toBe('cursor');
+  });
+
+  test('a rewrite of an item shown as read leaves it read', () => {
+    const after = feedWithLiveRead(feed([item('a', { read: true })]), {
+      id: 'a',
+      unreadCount: 0,
+      updated: item('a', { category: 'event_changes' }),
+    });
+
+    expect(after.items).toEqual([item('a', { read: true, category: 'event_changes' })]);
+  });
+
+  test('a rewrite of an item not loaded adds nothing', () => {
+    const loaded = feed([item('b')], 'cursor');
+
+    const after = feedWithLiveRead(loaded, { id: 'a', unreadCount: 1, updated: item('a') });
+
+    expect(after.items).toEqual(loaded.items);
   });
 
   test("a read published from another session reads the row, and the count is the server's", () => {

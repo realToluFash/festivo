@@ -94,14 +94,32 @@ describe("the app's live bell (sc-3980)", () => {
     const stop = followNotifications('u1', { onItem, onRead, onGap: vi.fn() });
     await vi.advanceTimersByTimeAsync(0);
 
-    latest().listeners.get('message')?.({ data: JSON.stringify(item) });
+    latest().listeners.get('message')?.({ data: JSON.stringify({ ...item, unreadCount: 5 }) });
     latest().listeners.get('message')?.({ data: JSON.stringify({ readId: 'n1', unreadCount: 4 }) });
     latest().listeners.get('message')?.({ data: 'not json' });
     latest().listeners.get('message')?.({ data: null });
 
     expect(onItem).toHaveBeenCalledTimes(1);
-    expect(onItem.mock.calls[0]?.[0]).toMatchObject({ id: 'n1', title: '2 replies waiting' });
+    expect(onItem.mock.calls[0]?.[0]).toMatchObject({
+      item: { id: 'n1', title: '2 replies waiting' },
+      unreadCount: 5,
+    });
     expect(onRead).toHaveBeenCalledExactlyOnceWith({ id: 'n1', unreadCount: 4 });
+    stop();
+  });
+
+  it("hands on a member's own rewrite as a read, never as an arrival (sc-21643)", async () => {
+    const onItem = vi.fn();
+    const onRead = vi.fn();
+    const stop = followNotifications('u1', { onItem, onRead, onGap: vi.fn() });
+    await vi.advanceTimersByTimeAsync(0);
+
+    latest().listeners.get('message')?.({
+      data: JSON.stringify({ updated: item, unreadCount: 4 }),
+    });
+
+    expect(onItem).not.toHaveBeenCalled();
+    expect(onRead).toHaveBeenCalledExactlyOnceWith({ id: 'n1', unreadCount: 4, updated: item });
     stop();
   });
 
