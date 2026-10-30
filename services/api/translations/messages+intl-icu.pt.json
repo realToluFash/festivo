@@ -63,5 +63,5 @@
     "eventChanges.email.settings": "Definições de notificações",
     "eventChanges.email.link": "{label}: {url}",
     "eventChanges.email.footer": "Está a receber esta mensagem porque faz parte de {event}, em {organisation}. Para deixar de receber estes e-mails, desative o e-mail de «Alterações aos eventos» nas definições de notificações.",
-    "eventChanges.email.footerEventDay": "You're getting this because you are on {event} at {organisation}. To stop these emails, turn off Event day email in Notification settings."
+    "eventChanges.email.footerEventDay": "Está a receber esta mensagem porque faz parte de {event}, em {organisation}. Para deixar de receber estes e-mails, desative o e-mail de «Dia do evento» nas definições de notificações."
 }
