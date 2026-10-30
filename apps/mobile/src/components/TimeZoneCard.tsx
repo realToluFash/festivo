@@ -342,84 +342,92 @@ function Choosing({
           onLayout={(event) => setGroupHeight(event.nativeEvent.layout.height)}
           style={styles.choosing}
         >
-          <Field
-            label={t('timeZone.find')}
-            error={error}
-            help={short ? undefined : help}
-            helpInHint={hinted}
+          {/* A scroll of a save's close that carries Save off under TalkBack's focus would put that focus on the field before the line; never flattened, so hiding it does not remount the field (sc-18587). */}
+          <View
+            style={styles.choosing}
+            collapsable={false}
+            accessibilityElementsHidden={closing}
+            importantForAccessibility={closing ? 'no-hide-descendants' : 'auto'}
           >
-            <TextField
-              ref={input}
-              wrong={error != null}
-              submitting={saving}
-              autoFocus={opener == null}
-              onFocus={onFocused}
-              autoCapitalize="none"
-              placeholder={t('timeZone.placeholder')}
-              value={typed}
-              onChangeText={(text) => {
-                setTyped(text);
-                setPicked(null);
-                setError(null);
-              }}
-              returnKeyType="done"
-              onSubmitEditing={() => void save()}
-              submitBehavior="submit"
-              accessibilityLabel={t('timeZone.find')}
-              accessibilityHint={hinted ? help : undefined}
-              testID="timeZone.search"
-            />
-          </Field>
-
-          {matches.length > 0 && (
-            <ScrollView
-              style={[styles.list, { maxHeight: listMost }]}
-              onLayout={(event) => setListHeight(event.nativeEvent.layout.height)}
-              nestedScrollEnabled
-              keyboardShouldPersistTaps="handled"
+            <Field
+              label={t('timeZone.find')}
+              error={error}
+              help={short ? undefined : help}
+              helpInHint={hinted}
             >
-              {matches.map((zone, index) => (
-                <Pressable
-                  key={zone.id}
-                  onLayout={
-                    index === 0
-                      ? (event) => setRowHeight(event.nativeEvent.layout.height)
-                      : undefined
-                  }
-                  style={styles.option}
-                  accessibilityRole="button"
-                  onPress={() => {
-                    setPicked(zone);
-                    setTyped(zoneLabel(zone));
-                    setError(null);
-                  }}
-                  testID={`timeZone.option.${zone.id}`}
-                >
-                  <Text size={tokens.typeBodyPhone.size} accessible={closing ? false : undefined}>
-                    {zoneLabel(zone)}
-                  </Text>
-                  <Text
-                    size={tokens.typeSmall.size}
-                    style={styles.secondary}
-                    accessible={closing ? false : undefined}
+              <TextField
+                ref={input}
+                wrong={error != null}
+                submitting={saving}
+                autoFocus={opener == null}
+                onFocus={onFocused}
+                autoCapitalize="none"
+                placeholder={t('timeZone.placeholder')}
+                value={typed}
+                onChangeText={(text) => {
+                  setTyped(text);
+                  setPicked(null);
+                  setError(null);
+                }}
+                returnKeyType="done"
+                onSubmitEditing={() => void save()}
+                submitBehavior="submit"
+                accessibilityLabel={t('timeZone.find')}
+                accessibilityHint={hinted ? help : undefined}
+                testID="timeZone.search"
+              />
+            </Field>
+
+            {matches.length > 0 && (
+              <ScrollView
+                style={[styles.list, { maxHeight: listMost }]}
+                onLayout={(event) => setListHeight(event.nativeEvent.layout.height)}
+                nestedScrollEnabled
+                keyboardShouldPersistTaps="handled"
+              >
+                {matches.map((zone, index) => (
+                  <Pressable
+                    key={zone.id}
+                    onLayout={
+                      index === 0
+                        ? (event) => setRowHeight(event.nativeEvent.layout.height)
+                        : undefined
+                    }
+                    style={styles.option}
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setPicked(zone);
+                      setTyped(zoneLabel(zone));
+                      setError(null);
+                    }}
+                    testID={`timeZone.option.${zone.id}`}
                   >
-                    {rowDetail(zone)}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          )}
+                    <Text size={tokens.typeBodyPhone.size} accessible={closing ? false : undefined}>
+                      {zoneLabel(zone)}
+                    </Text>
+                    <Text
+                      size={tokens.typeSmall.size}
+                      style={styles.secondary}
+                      accessible={closing ? false : undefined}
+                    >
+                      {rowDetail(zone)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
 
-          {noneMatch && error == null && (
-            <Text
-              size={tokens.typeBodyPhone.size}
-              style={styles.secondary}
-              accessibilityRole="alert"
-              accessible={closing ? false : undefined}
-            >
-              {nothing}
-            </Text>
-          )}
+            {noneMatch && error == null && (
+              <Text
+                size={tokens.typeBodyPhone.size}
+                style={styles.secondary}
+                accessibilityRole="alert"
+                accessible={closing ? false : undefined}
+              >
+                {nothing}
+              </Text>
+            )}
+          </View>
 
           <PrimaryButton
             label={saving ? t('timeZone.saving') : t('timeZone.save')}

@@ -677,17 +677,7 @@ export function useStepClose(
               stopped = true;
             });
             bringIntoView(scroll, view.current, false, sight, () => {
-              if (stopped) return;
-              if (!step.read) return runFrom(steps.slice(at + 1));
-
-              // Content that shrinks around the line as it mounts can stop the first scroll short (sc-9382).
-              const settled = setTimeout(() => {
-                if (stopped) return;
-                bringIntoView(scroll, view.current, false, sight);
-                moveScreenReaderFocus(view.current);
-                runFrom(steps.slice(at + 1));
-              }, SETTLED_MS);
-              cancels.push(() => clearTimeout(settled));
+              if (!stopped) runFrom(steps.slice(at + 1));
             });
             break;
           }
