@@ -790,11 +790,35 @@ describe('a closing step puts the keys down through Gboard swapping them (sc-185
     expect(keys.heard.size).toBe(0);
   });
 
-  it('goes on at once with the keys already down', () => {
+  it('goes on after the settle with the keys already down', () => {
     const keys = keyboard(false);
     const then = vi.fn();
     keysDownThen(keys, then, 500);
 
+    expect(keys.hides).toBe(1);
+    vi.advanceTimersByTime(499);
+    expect(then).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(then).toHaveBeenCalledOnce();
+    expect(keys.hides).toBe(1);
+  });
+
+  it('hides the keys again when they were down at the call and the swap brought them back up', () => {
+    const keys = keyboard(false);
+    const then = vi.fn();
+    keysDownThen(keys, then, 500);
+
+    vi.advanceTimersByTime(100);
+    keys.said(true);
+    vi.advanceTimersByTime(400);
+    expect(keys.hides).toBe(2);
+    expect(then).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(200);
+    keys.said(false);
+    vi.advanceTimersByTime(499);
+    expect(then).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
     expect(then).toHaveBeenCalledOnce();
   });
 

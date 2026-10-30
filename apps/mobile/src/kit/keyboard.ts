@@ -283,14 +283,8 @@ export interface Keys {
   onHidden(hidden: () => void): () => void;
 }
 
-/** Hides `keys` and calls `then` once they have stayed down `settledMs`, or at once with them already down. Gboard swapping a password's keys for the ones a button gets says they went down and came back up, and a hide asked in that swap is lost, so each hidden event starts the settle again and keys up at its end are hidden once more (sc-18588). Returns what cancels the call still to come. */
+/** Hides `keys` and calls `then` once they have stayed down `settledMs`. Gboard swapping a password's keys for the ones a button gets says they went down and came back up, and a hide asked in that swap is lost, so each hidden event starts the settle again and keys up at its end are hidden once more. Keys already down at the call may be in that swap too, so they wait the same settle (sc-18588). Returns what cancels the call still to come. */
 export function keysDownThen(keys: Keys, then: () => void, settledMs: number): () => void {
-  if (!keys.up()) {
-    keys.hide();
-    then();
-    return () => {};
-  }
-
   let asked = 0;
   let settle: ReturnType<typeof setTimeout> | undefined;
   const unwatch = keys.onHidden(wait);
