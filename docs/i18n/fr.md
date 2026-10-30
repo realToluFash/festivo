@@ -59,6 +59,11 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **30 Oct 2026. La fin décalée avec le début** (sc-22161 pour sc-22144, `eventForm.endMoved`,
+  web et app). Seulement lu par le lecteur d’écran : « La fin a été décalée avec le début :
+  {{day}}, {{time}}. » « Fin » et « Début » comme les légendes du formulaire ; « décalée »
+  plutôt que « déplacée », car la durée est gardée. Le jour et l’heure suivent les deux-points,
+  sans « le » ni « à », et `formatDay` en « juil. » ne clôt donc pas la phrase.
 - **29 Oct 2026. L’avis qu’un événement a changé** (sc-21005 pour sc-13214,
   `messages+intl-icu:eventChanges.*` : la cloche, le push et l’e-mail). Le titre est l’acte au
   passé composé avec le nom complet, « {name} a mis l’événement en pause », auxiliaire avoir,

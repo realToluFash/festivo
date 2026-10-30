@@ -73,7 +73,7 @@
     "date": "Data",
     "time": "Hora",
     "endsHint": "Um evento pode prolongar-se para lá da meia-noite. Escolha o dia em que termina.",
-    "endMoved": "Ends moved with the start, to {{day}}, {{time}}.",
+    "endMoved": "O fim acompanhou o início: {{day}}, {{time}}.",
     "clocksSkip": "Em {{zone}}, a hora {{time}} do dia {{day}} não existe: nessa noite, os relógios são adiantados. Será guardada como {{savedAs}}.",
     "clocksSkipNextDay": "Em {{zone}}, a hora {{time}} do dia {{day}} não existe: nessa noite, os relógios são adiantados. Será guardada no dia {{savedDay}}, às {{savedAs}}.",
     "timeZone": "Fuso horário",
