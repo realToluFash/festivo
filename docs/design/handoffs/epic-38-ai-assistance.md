@@ -10,7 +10,7 @@ again. Either way, **this file carries only what is specific to this epic, and i
 enough on its own.**
 
 - **Epic:** https://app.shortcut.com/soirely/epic/38
-- **Artifact title to use:** `Soirely — AI assistance`
+- **Page to use:** `38 · AI assistance` in Soirely — Redesign
 
 ## What this area is
 

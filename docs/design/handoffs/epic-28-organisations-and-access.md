@@ -10,7 +10,7 @@ again. Either way, **this file carries only what is specific to this epic, and i
 enough on its own.**
 
 - **Epic:** https://app.shortcut.com/soirely/epic/28
-- **Artifact title to use:** `Soirely — Organisations and access`
+- **Page to use:** `28 · Organisations and access` in Soirely — Redesign
 
 ## What this area is
 

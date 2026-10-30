@@ -62,21 +62,22 @@ building anything.**
 
 ## Step two: build the missing screens
 
-**One artifact for the whole epic**, not one per story. Inside it, one artboard per screen,
-named for what it is (`SignIn.dc.html`, `GuestList.dc.html`). Several stories may share an
-artboard, and one story may need several.
+**Every epic lives in one artifact, Soirely — Redesign:
+https://claude.ai/artifact/5cRzwbgmEK6wqbxp4j1zqx**, one page per epic. Add your boards to
+your own epic's page, and add that page first when the epic has none. The owner set this on
+30 Oct 2026. Inside the page, one artboard per screen, named for what it is
+(`SignIn.dc.html`, `GuestList.dc.html`). Several stories may share an artboard, and one
+story may need several.
 
-### Making the artifact
+### Adding to the artifact
 
-1. `Artifact` with `action: "quickstart"` and `intent: "design"`. Pass
-   `design_systems: false` — **this project uses no Design System artifact.**
-2. Publish with the Design type's `type_url` from that result, the `title` your per-epic
-   file gives, **no files**, and `auto_open: "after_first_write"`. Its reply carries the
-   type's instructions. Follow them.
-3. **Never pass `type_url` again.** A second one creates a second artifact.
-4. Write `project/canvas.json` first, complete, with a `boards` entry and an `order` slot
-   for every artboard you intend to write. Then the entry artboard. Publish those two
-   together. Then the rest, publishing as you go.
+1. Read the artifact before changing it (`Artifact` with `action: "read"`), and update it
+   by its URL.
+2. **Never create an artifact with `type_url`**, for any epic. A second artifact splits the
+   design and the stories' links.
+3. Each epic's page has the id `e<epic number>` (`e26`, `e27`, `e29`) and the name
+   `<epic number> · <area>`, the area as that epic's handoff file titles it
+   (`27 · Accounts and sign-in`). Every board names its page.
 
 ### The house style, which is not negotiable
 
@@ -161,7 +162,7 @@ For each story:
 ```markdown
 # Design
 
-**Artboard:** `<name>.dc.html` · <artifact url>
+**Artboard:** `<name>.dc.html` · page `<epic number> · <area>` · <artifact url>
 
 **Layouts:** <desktop · tablet landscape · tablet portrait · phone>, and why that set.
 

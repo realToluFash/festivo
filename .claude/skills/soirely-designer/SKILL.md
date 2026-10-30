@@ -1,6 +1,6 @@
 ---
 name: soirely-designer
-description: Design mode. Sweeps the backlog every run for stories that need design, audits which of an epic's stories already have screens, draws the missing ones in the established design language as one artifact per epic, and links each story to the artboard that covers it — a proposal for review, never presented as the design. Use when asked to design a screen, to check what an epic's stories are missing, or when invoked as /soirely-designer.
+description: Design mode. Sweeps the backlog every run for stories that need design, audits which of an epic's stories already have screens, draws the missing ones in the established design language as a page per epic in one artifact, and links each story to the artboard that covers it — a proposal for review, never presented as the design. Use when asked to design a screen, to check what an epic's stories are missing, or when invoked as /soirely-designer.
 user-invocable: true
 ---
 
@@ -194,18 +194,23 @@ know is a count you have no way to know.
 
 ## 6. Publishing
 
-**One artifact for the whole epic**, not one per story. Inside it, one artboard per screen,
-named for what it is — `SignIn.dc.html`, `VerifyEmail-Phone.dc.html`.
+**Every epic lives in one artifact, Soirely — Redesign:
+https://claude.ai/artifact/5cRzwbgmEK6wqbxp4j1zqx**, one page per epic. The owner set this
+on 30 Oct 2026. Inside an epic's page, one artboard per screen, named for what it is —
+`SignIn.dc.html`, `VerifyEmail-Phone.dc.html`. Add your boards to your epic's page, and add
+the page first when the epic has none: id `e<epic number>`, name `<epic number> · <area>`,
+the area as the epic's handoff file titles it (`27 · Accounts and sign-in`).
 
-Three artifacts already exist, and every story they cover links to its own:
+Update it with `Artifact` using **`url` + `root` + `files`**. **Never create an artifact
+from `type_url`**, for any epic: a second artifact splits the design and the stories'
+links.
 
-- epic 27, Accounts and sign-in: **https://claude.ai/artifact/Y5GEeEUCtzd38NPaLRt48t**
-- epic 28, Organisations and access: **https://claude.ai/artifact/3PTd8uLPLCH3gUugouhTGZ**
-- epic 34, Staffing: **https://claude.ai/artifact/6Urq4HMJ8pH5jGEyTXCfcE**
+Three per-epic artifacts came before it and are superseded. They stay as they are, and
+nothing is drawn in them:
 
-Update one with `Artifact` using **`url` + `root` + `files`**. Do **not** create from
-`type_url` for an epic that has one — that makes a second artifact, and the stories link
-to the first. Create one only for an epic that has none.
+- epic 27, Accounts and sign-in: https://claude.ai/artifact/Y5GEeEUCtzd38NPaLRt48t
+- epic 28, Organisations and access: https://claude.ai/artifact/3PTd8uLPLCH3gUugouhTGZ
+- epic 34, Staffing: https://claude.ai/artifact/6Urq4HMJ8pH5jGEyTXCfcE
 
 Read it before you change it (`action: "read"`), and read
 https://claude.ai/artifact/2Swi2WCFoRNeqPRBngDpbK, the worked example for Budget and costs,
