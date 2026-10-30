@@ -544,6 +544,15 @@ export type StepHidden = Pick<
   'collapsable' | 'accessibilityElementsHidden' | 'importantForAccessibility'
 >;
 
+/** Hides a View's contents from screen readers while `closing`. Never flattened, so hiding it does not remount the field holding input focus. */
+export function stepHidden(closing: boolean): StepHidden {
+  return {
+    collapsable: false,
+    accessibilityElementsHidden: closing,
+    importantForAccessibility: closing ? 'no-hide-descendants' : 'auto',
+  };
+}
+
 export interface HeldStepClose extends StepClose {
   /** Holds input focus in the place of a line of words, which cannot take it, where TalkBack does not read it; rendered while the line shows, first in a View of its own with the line. The close turns scroll-to-focus off while it takes focus, so Save stays put (sc-18587). */
   holder: ReactElement;
@@ -748,12 +757,7 @@ export function useStepClose(
   }, [run, inputFocusTo]);
 
   const held = useMemo(() => <FocusHolder holder={holder} />, []);
-  // Never flattened, so hiding it does not remount the field holding input focus.
-  const hidden: StepHidden = {
-    collapsable: false,
-    accessibilityElementsHidden: closing,
-    importantForAccessibility: closing ? 'no-hide-descendants' : 'auto',
-  };
+  const hidden = stepHidden(closing);
 
   return inputFocusTo === 'holder'
     ? { opener: ref, holder: held, closing, closer, field: stepFieldRef, hidden, close }

@@ -27,6 +27,7 @@ import { useReadOut } from './ReadOut.tsx';
 import {
   SETTLED_MS,
   type StepClosed,
+  stepHidden,
   type StepHidden,
   useAboveKeyboard,
   useFocusBackToOpener,
@@ -342,13 +343,8 @@ function Choosing({
           onLayout={(event) => setGroupHeight(event.nativeEvent.layout.height)}
           style={styles.choosing}
         >
-          {/* A scroll of a save's close that carries Save off under TalkBack's focus would put that focus on the field before the line; never flattened, so hiding it does not remount the field (sc-18587). */}
-          <View
-            style={styles.choosing}
-            collapsable={false}
-            accessibilityElementsHidden={closing}
-            importantForAccessibility={closing ? 'no-hide-descendants' : 'auto'}
-          >
+          {/* A scroll of a save's close that carries Save off under TalkBack's focus would put that focus on the field before the line (sc-18587). */}
+          <View style={styles.choosing} {...stepHidden(closing)}>
             <Field
               label={t('timeZone.find')}
               error={error}

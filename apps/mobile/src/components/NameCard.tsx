@@ -21,6 +21,7 @@ import { Notice } from './Notice.tsx';
 import {
   SETTLED_MS,
   type StepClosed,
+  stepHidden,
   type StepHidden,
   useAboveKeyboard,
   useFocusBackToOpener,
@@ -234,29 +235,32 @@ function Editing({
     <>
       <View {...aboveKeyboard} {...hidden}>
         <View ref={top} style={styles.editing}>
-          <Field label={t('completeProfile.name')} error={error}>
-            <TextField
-              ref={input}
-              wrong={error != null}
-              submitting={saving}
-              autoFocus={opener == null}
-              onFocus={onFocused}
-              value={typed}
-              onChangeText={(text) => {
-                setTyped(text);
-                setError(null);
-              }}
-              autoComplete="name"
-              textContentType="name"
-              autoCapitalize="words"
-              maxLength={ACCOUNT_NAME_MAXIMUM}
-              returnKeyType="done"
-              onSubmitEditing={() => void save()}
-              submitBehavior="submit"
-              accessibilityLabel={t('completeProfile.name')}
-              testID="nameCard.field"
-            />
-          </Field>
+          {/* A scroll of a save's close that carries Save off under TalkBack's focus would put that focus on the field before the line (sc-18587). */}
+          <View {...stepHidden(closing)}>
+            <Field label={t('completeProfile.name')} error={error}>
+              <TextField
+                ref={input}
+                wrong={error != null}
+                submitting={saving}
+                autoFocus={opener == null}
+                onFocus={onFocused}
+                value={typed}
+                onChangeText={(text) => {
+                  setTyped(text);
+                  setError(null);
+                }}
+                autoComplete="name"
+                textContentType="name"
+                autoCapitalize="words"
+                maxLength={ACCOUNT_NAME_MAXIMUM}
+                returnKeyType="done"
+                onSubmitEditing={() => void save()}
+                submitBehavior="submit"
+                accessibilityLabel={t('completeProfile.name')}
+                testID="nameCard.field"
+              />
+            </Field>
+          </View>
 
           <PrimaryButton
             label={saving ? t('nameCard.saving') : t('nameCard.save')}
