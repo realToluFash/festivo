@@ -17,8 +17,9 @@ design's language**, and link each story to the artboard that covers it.
 
 Two things to hold onto throughout:
 
-- **The design is the language; the ticket is the content.** You are not inventing a look,
-  and you are not inventing product behaviour. Every screen you draw must be in the
+- **The design is the language; the ticket is the content.** The language is **[fd]**, the
+  approved design (see **The house style, which is not negotiable**). You are not inventing
+  a look, and you are not inventing product behaviour. Every screen you draw must be in the
   established visual language, and must show exactly what its story's AC says — no more.
 - **You are not the designer.** What you build is a proposal to be reviewed, and every
   ticket you touch has to say so. Do not present it as the design.
@@ -78,6 +79,15 @@ artboard, and one story may need several.
    together. Then the rest, publishing as you go.
 
 ### The house style, which is not negotiable
+
+The approved design is **[fd]**, the Claude Design project
+`b64da70f-d60f-4ad6-90a4-efe6d387caa8`
+(https://claude.ai/design/p/b64da70f-d60f-4ad6-90a4-efe6d387caa8). The owner approved it on
+30 Oct 2026 as the look for the whole app, now and going forward. Each screen starts from
+[fd]'s page for its area and extends it for what its story's AC needs; a screen with no page
+there is drawn in [fd]'s language. An epic, a story or a brief that asks for a new look, a
+direction or a restyle does not override it: that is the owner's call, asked on the story
+before anything is drawn.
 
 Take exact values from `docs/design/tokens.mjs`.
 
