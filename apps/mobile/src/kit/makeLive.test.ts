@@ -3,15 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { EVENT_PHASES } from '@soirely/domain';
 
-import {
-  PHASE_WORD,
-  addHostsHref,
-  draftRowOf,
-  endRefusalOf,
-  makeLiveOpens,
-  pauseRefusalOf,
-  refusalOf,
-} from './makeLive.ts';
+import { PHASE_WORD, draftRowOf, endRefusalOf, pauseRefusalOf, refusalOf } from './makeLive.ts';
 
 const STARTS = '2026-11-14T16:00:00+01:00';
 const ENDS = '2026-11-15T02:00:00+01:00';
@@ -58,18 +50,8 @@ describe('draftRowOf', () => {
 });
 
 describe('refusalOf', () => {
-  it('reads a 409 event_state_invalid as changed elsewhere', () => {
-    expect(refusalOf(problem('event_state_invalid'))).toEqual({ kind: 'changed' });
-  });
-
   it('reads a 409 event_concluded as concluded', () => {
     expect(refusalOf(problem('event_concluded'))).toEqual({ kind: 'concluded' });
-  });
-
-  it('reads a 409 event_host_required as needing a host (sc-6713)', () => {
-    expect(refusalOf(problem('event_host_required', { status: 409 }))).toEqual({
-      kind: 'needsHost',
-    });
   });
 
   it('reads a 403 plan_limit with its plan and limit', () => {
@@ -123,22 +105,5 @@ describe('pauseRefusalOf', () => {
     problem('internal_error', { status: 500 }),
   ])('reads anything else as failed', (error) => {
     expect(pauseRefusalOf(error)).toEqual({ kind: 'failed' });
-  });
-});
-
-describe("the app's Make live with no host (sc-15497)", () => {
-  it('opens refused on a draft with no hosts, and asks first once it has one', () => {
-    expect(makeLiveOpens({ status: 'draft', hosts: [] })).toEqual({ kind: 'needsHost' });
-    expect(makeLiveOpens({ status: 'draft', hosts: ['Funmi Adeyemi'] })).toEqual({
-      kind: 'confirm',
-    });
-  });
-
-  it('takes the same words from a 409 after the sheet opened', () => {
-    expect(refusalOf(problem('event_host_required'))).toEqual({ kind: 'needsHost' });
-  });
-
-  it('sends Add who is hosting to Edit details at Hosted by', () => {
-    expect(addHostsHref('evt 1')).toBe('/events/evt%201/edit?at=hosts');
   });
 });

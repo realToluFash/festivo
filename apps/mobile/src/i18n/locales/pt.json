@@ -1598,9 +1598,10 @@
     "planLimit_many": "Não foi publicado. O seu plano {{plan}} permite ter {{count, number}} de eventos publicados ou em pausa de cada vez.",
     "planLimitStays": "Este evento continua em rascunho. Termine ou cancele outro evento, ou mude de plano.",
     "close": "Fechar",
-    "needsHostTitle": "Indique os anfitriões antes de convidar alguém.",
-    "needsHostBody": "Os convidados veem os nomes dos anfitriões no convite. Este evento continua a ser um rascunho até ter pelo menos um anfitrião.",
-    "addHosts": "Indicar os anfitriões"
+    "hostEmpty": "Enter who is hosting to make this event live.",
+    "hostExplainer": "Guests read this name on their invitation and their page. Write it the way you want guests to see it.",
+    "notSavedChanged": "Not saved. Somebody else changed this event since you opened it.",
+    "hostsNow": "Who is hosting now, as guests will see it:"
   },
   "eventHosts": {
     "heading": "Anfitriões",
