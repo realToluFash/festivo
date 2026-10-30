@@ -140,7 +140,9 @@ Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each co
   tablet shows `eventForm.cancel` instead. A flow that leaves a form taps whichever is visible,
   each in a `runFlow` `when: visible:`, as `checks/sc3595-edit.yaml` does.
 - **On Android, Edit details sits below the fold of an event's page**: scroll to
-  `events.page.edit` before tapping it, and wait on `events.page`, not on the button.
+  `events.page.edit` before tapping it, and wait on `events.page`, not on the button. Keep
+  that scroll in a `runFlow` `when: platform: Android`: on an iPhone the button is already in
+  view, and `centerElement` pushes it under the page's opaque header.
 - **On Android, New event's dates and times are the system's dialogs**, closed with `OK`, not
   the sheet's `eventForm.start.done`. `checks/sc20824-create-android.yaml` is the Android copy of
   `checks/sc20824-create.yaml`.

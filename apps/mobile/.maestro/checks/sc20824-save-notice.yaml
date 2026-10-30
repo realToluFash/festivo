@@ -6,11 +6,15 @@ appId: host.exp.Exponent
     visible:
       id: 'events.page'
     timeout: 30000
-- scrollUntilVisible:
-    element:
-      id: 'events.page.edit'
-    direction: DOWN
-    centerElement: true
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: 'events.page.edit'
+          direction: DOWN
+          centerElement: true
 - tapOn:
     id: 'events.page.edit'
 - extendedWaitUntil:
