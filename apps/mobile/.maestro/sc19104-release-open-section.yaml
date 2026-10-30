@@ -1,34 +1,7 @@
 # sc-19104, Android release build: signed in, Settings opened from Home, SECTION chosen from the Settings list. Pass EMAIL, PASSWORD, SECTION.
 appId: com.soirely.app
 ---
-- launchApp:
-    appId: com.soirely.app
-    stopApp: true
-- extendedWaitUntil:
-    visible: 'Sign in|Iniciar sesión|.*Settings.*|.*Configuración.*'
-    timeout: 60000
-- runFlow:
-    when:
-      visible: 'Sign in|Iniciar sesión'
-    commands:
-      - tapOn: 'Sign in|Iniciar sesión'
-      - extendedWaitUntil:
-          visible:
-            id: 'signIn.email'
-          timeout: 30000
-      - tapOn:
-          id: 'signIn.email'
-      - inputText: ${EMAIL}
-      - tapOn:
-          id: 'signIn.password'
-      - inputText: ${PASSWORD}
-      - hideKeyboard
-      - tapOn:
-          id: 'signIn.submit'
-- extendedWaitUntil:
-    visible:
-      id: 'home.openSettings'
-    timeout: 60000
+- runFlow: release-sign-in.yaml
 - tapOn:
     id: 'home.openSettings'
 - scrollUntilVisible:

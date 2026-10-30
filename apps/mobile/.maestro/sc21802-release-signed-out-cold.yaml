@@ -1,12 +1,7 @@
-# sc-21802, release build: signed in, Settings' Sign out, the app stopped and launched again shows the signed-out landing page, not Home.
+# sc-21802, release build: signed in, Settings' Sign out, the app stopped and launched again shows the signed-out landing page, not Home. Pass EMAIL, PASSWORD.
 appId: com.soirely.app
 ---
-- launchApp:
-    appId: com.soirely.app
-- extendedWaitUntil:
-    visible:
-      id: 'home.openSettings'
-    timeout: 60000
+- runFlow: release-sign-in.yaml
 - tapOn:
     id: 'home.openSettings'
 - runFlow: settings-sign-out-tap.yaml
