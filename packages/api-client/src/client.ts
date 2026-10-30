@@ -223,6 +223,12 @@ export interface Health {
   checks: Record<string, { status: string; error?: string }>;
 }
 
+/** The oldest app build each store may still serve, as the API's settings write it; null is no minimum. */
+export interface MinimumAppVersions {
+  ios: string | null;
+  android: string | null;
+}
+
 export interface LinkedAddress {
   id: string;
   address: string;
@@ -2427,6 +2433,25 @@ export class ApiClient {
     return health;
   }
 
+  /** Signed out too. Throws on a failed answer or a shape it does not know, so the caller can carry on without it. */
+  async minimumAppVersions(): Promise<MinimumAppVersions> {
+    const response = await this.send('/api/app-versions/minimum', {
+      method: 'GET',
+      anonymous: true,
+    });
+    if (!response.ok) throw new ApiError(await toProblem(response), response);
+
+    const minimums = asMinimumAppVersions(await response.json().catch(() => null));
+
+    if (minimums == null) {
+      throw new Error(
+        'The API answered /api/app-versions/minimum in a shape this client does not know. Check MinimumAppVersionsController in services/api.',
+      );
+    }
+
+    return minimums;
+  }
+
   private async send(path: string, init: RequestOptions): Promise<Response> {
     const doFetch = this.options.fetch ?? fetch;
     const headers: Record<string, string> = {
@@ -3622,6 +3647,17 @@ function asHealth(raw: unknown): Health | null {
   }
 
   return { status: candidate.status, checks };
+}
+
+function asMinimumAppVersions(raw: unknown): MinimumAppVersions | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const { ios, android } = raw as Record<string, unknown>;
+
+  if (ios !== null && typeof ios !== 'string') return null;
+  if (android !== null && typeof android !== 'string') return null;
+
+  return { ios, android };
 }
 
 function asChallenge(raw: unknown): TwoFactorChallenge | null {

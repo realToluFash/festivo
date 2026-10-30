@@ -353,6 +353,33 @@ gets, because a client can do only one thing about either: refresh, and sign in 
 that fails. The list of ended sessions fails open, so during a Redis outage an ended session
 works until its token expires, at most fifteen minutes (sessions.md, sc-117).
 
+## The minimum app version
+
+The oldest app build each store may still serve, so a build the API is about to stop serving
+can be told to update (sc-22620). `GET /api/app-versions/minimum` gives it to any request,
+signed in or not:
+
+```json
+{ "ios": "1.4.0", "android": null }
+```
+
+- **Where it is set.** `MINIMUM_APP_VERSION_IOS` and `MINIMUM_APP_VERSION_ANDROID`, each on
+  its own, in the API's environment, read when it starts: a change takes a restart. The two
+  stores review a release on their own timelines, so one minimum for both would cut off one
+  platform while the other still waits on review.
+- **What it is.** Three numbers, `major.minor.patch`, compared in that order as numbers
+  (SemVer 2.0.0 §11), against the app's `version` in `apps/mobile/app.config.ts`. A build
+  exactly at the minimum is not below it. Empty is no minimum, which is the default and how
+  the local and QA stacks ship. Anything else (`1.2`, `v1.2.0`, `latest`) stops the API
+  from starting, with a message naming the setting; it is never read as unset.
+- **What it does.** A build below its platform's minimum shows "Update Soirely to carry on"
+  in place of the app, with one button to its store listing. The API does not refuse the
+  old build's requests: that would cut off a screen already open in the middle of an event.
+  The app's check fails open, so an unreachable API never blocks a build.
+- **When it is raised.** Only to cut off builds the API is about to stop serving, and only
+  once the release that replaces them has been in both stores for 14 days. Sooner only for a
+  security fix, on the owner's say.
+
 ## Pagination
 
 API Platform's, not a hand-rolled one. Fifty per page by default, two hundred maximum, and

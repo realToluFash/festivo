@@ -50,6 +50,9 @@ COPY . .
 RUN mkdir -p /app/var /data/caddy /config/caddy \
     && chown -R 1000:1000 /app/var /data /config
 USER 1000:1000
+ENTRYPOINT ["/app/bin/docker-entrypoint"]
+# Setting ENTRYPOINT clears the CMD inherited from the base image; this is that CMD.
+CMD ["--config", "/etc/frankenphp/Caddyfile", "--adapter", "caddyfile"]
 
 # --- autoloader -------------------------------------------------------------
 # The vendor stage installs without an autoloader, so it is written here, where
@@ -79,3 +82,6 @@ RUN case "$TARGETARCH" in \
 RUN mkdir -p /app/var /data/caddy /config/caddy \
     && chown -R 1000:1000 /app/var /data /config
 USER 1000:1000
+ENTRYPOINT ["/app/bin/docker-entrypoint"]
+# Setting ENTRYPOINT clears the CMD inherited from the base image; this is that CMD.
+CMD ["--config", "/etc/frankenphp/Caddyfile", "--adapter", "caddyfile"]
