@@ -6,6 +6,7 @@ import {
   ApiClient,
   type IssuedTokens,
   type TokenStore,
+  asNotificationArrival,
   asNotificationItem,
   asNotificationRead,
   awaiting,
@@ -3315,5 +3316,29 @@ describe("a read on the bell's topic (sc-3980)", () => {
     expect(
       asNotificationRead({ id: 'n1', title: 'Hi', read: false, createdAt: '2026-10-29' }),
     ).toBeNull();
+  });
+});
+
+describe('a published arrival (sc-21785)', () => {
+  const published = {
+    id: 'n1',
+    category: 'event_changes',
+    title: 'Ada Obi changed the event',
+    lines: [],
+    read: false,
+    createdAt: '2026-11-02T10:05:00+00:00',
+    unreadCount: 92,
+  };
+
+  test("carries the server's count with the item", () => {
+    expect(asNotificationArrival(published)).toMatchObject({
+      item: { id: 'n1', title: 'Ada Obi changed the event' },
+      unreadCount: 92,
+    });
+    expect(asNotificationRead(published)).toBeNull();
+  });
+
+  test('is nothing without a count', () => {
+    expect(asNotificationArrival({ ...published, unreadCount: undefined })).toBeNull();
   });
 });

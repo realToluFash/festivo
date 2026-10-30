@@ -34,8 +34,8 @@ function feed(items: FeedItem[], next: string | null = null): LoadedFeed<FeedIte
 }
 
 describe('the bell feed (sc-3980)', () => {
-  test('a live item joins the top and counts up, without moving the page boundary', () => {
-    const after = feedWithArrival(feed([item('a')], 'cursor'), item('b'));
+  test('a live item joins the top with the count published with it, without moving the page boundary', () => {
+    const after = feedWithArrival(feed([item('a')], 'cursor'), { item: item('b'), unreadCount: 2 });
 
     expect(after.items.map((shown) => shown.id)).toEqual(['b', 'a']);
     expect(after.unread).toBe(2);
@@ -43,7 +43,7 @@ describe('the bell feed (sc-3980)', () => {
   });
 
   test('an item already shown is not added twice', () => {
-    const after = feedWithArrival(feed([item('a')]), item('a'));
+    const after = feedWithArrival(feed([item('a')]), { item: item('a'), unreadCount: 1 });
 
     expect(after.items.map((shown) => shown.id)).toEqual(['a']);
     expect(after.unread).toBe(1);
@@ -51,14 +51,22 @@ describe('the bell feed (sc-3980)', () => {
 
   test('a rewritten item replaces the one shown and moves to the top (sc-13214)', () => {
     const rewritten = item('a', { category: 'event_day' });
-    const after = feedWithArrival(
-      feed([item('b'), item('a'), item('c', { read: true })]),
-      rewritten,
-    );
+    const after = feedWithArrival(feed([item('b'), item('a'), item('c', { read: true })]), {
+      item: rewritten,
+      unreadCount: 2,
+    });
 
     expect(after.items.map((shown) => shown.id)).toEqual(['a', 'b', 'c']);
     expect(after.items[0]).toBe(rewritten);
     expect(after.unread).toBe(2);
+  });
+
+  test('a raised item past the loaded page leaves the count as the server has it (sc-21785)', () => {
+    const loaded = { ...feed([item('a'), item('b')], 'cursor'), unread: 91 };
+    const after = feedWithArrival(loaded, { item: item('far'), unreadCount: 91 });
+
+    expect(after.items.map((shown) => shown.id)).toEqual(['far', 'a', 'b']);
+    expect(after.unread).toBe(91);
   });
 
   test('opening an unread item reads it once', () => {

@@ -24,7 +24,7 @@ use Psl\Type;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
-/** The bell (sc-3980). The item takes the delivery's id, so a retry after the hub refused writes nothing twice and publishes again. */
+/** The bell (sc-3980). The item takes the delivery's id, so a retry after the hub refused writes nothing twice and publishes again; every publish carries the count a reload would show (sc-21785). */
 final readonly class InAppSender implements ChannelSenderInterface
 {
     public function __construct(
@@ -136,6 +136,7 @@ final readonly class InAppSender implements ChannelSenderInterface
             $published['id'] = Type\string()->coerce($written);
         }
 
+        $published['unreadCount'] = $this->unreadFor($recipient);
         $this->realtimePublisher->publish(RealtimeTopic::UserNotifications, $recipient->id->toRfc4122(), $published);
 
         return null;
@@ -153,7 +154,7 @@ final readonly class InAppSender implements ChannelSenderInterface
             return;
         }
 
-        $unread = $this->notificationItemRepository->countUnreadFor($this->user($recipient), $this->notificationItemPruner->keptSince());
+        $unread = $this->unreadFor($recipient);
         $this->realtimePublisher->publish(RealtimeTopic::UserNotifications, $recipient->id->toRfc4122(), [
             'removedId' => Type\string()->coerce($removed),
             'unreadCount' => $unread,
@@ -166,11 +167,16 @@ final readonly class InAppSender implements ChannelSenderInterface
         $item = Type\instance_of(NotificationItem::class)->coerce($this->notificationItemRepository->find($id));
         $this->entityManager->refresh($item);
 
-        $unread = $this->notificationItemRepository->countUnreadFor($this->user($recipient), $this->notificationItemPruner->keptSince());
+        $unread = $this->unreadFor($recipient);
         $this->realtimePublisher->publish(RealtimeTopic::UserNotifications, $recipient->id->toRfc4122(), [
             'updated' => NotificationItemSerialiser::item($item, $eventAvailable),
             'unreadCount' => $unread,
         ]);
+    }
+
+    private function unreadFor(Recipient $recipient): int
+    {
+        return $this->notificationItemRepository->countUnreadFor($this->user($recipient), $this->notificationItemPruner->keptSince());
     }
 
     private function user(Recipient $recipient): User

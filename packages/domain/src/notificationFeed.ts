@@ -16,19 +16,15 @@ export interface LoadedFeed<Item extends FeedItem> {
   next: string | null;
 }
 
-/** A live item joins the top, replacing the one it rewrites (sc-13214), and the page boundary does not move. */
+/** A live item joins the top, replacing the one it rewrites (sc-13214), and the page boundary does not move; the count is the one the server published with it, as the item it rewrote may not be loaded (sc-21785). */
 export function feedWithArrival<Item extends FeedItem>(
   feed: LoadedFeed<Item>,
-  item: Item,
+  arrival: { item: Item; unreadCount: number },
 ): LoadedFeed<Item> {
-  const shown = feed.items.find((candidate) => candidate.id === item.id);
-  const counted = (candidate: Item | undefined): number =>
-    candidate == null || candidate.read ? 0 : 1;
-
   return {
     ...feed,
-    items: [item, ...feed.items.filter((candidate) => candidate.id !== item.id)],
-    unread: Math.max(feed.unread + counted(item) - counted(shown), 0),
+    items: [arrival.item, ...feed.items.filter((candidate) => candidate.id !== arrival.item.id)],
+    unread: arrival.unreadCount,
   };
 }
 

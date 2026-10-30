@@ -126,7 +126,7 @@ describe("the web bell's live line (sc-3980)", () => {
     source.open();
     await screen.findByRole('button', { name: 'Notifications, 1 unread' });
 
-    source.publish(item('b'));
+    source.publish({ ...item('b'), unreadCount: 2 });
 
     expect(await screen.findByRole('button', { name: 'Notifications, 2 unread' })).toBeTruthy();
   });
@@ -196,6 +196,39 @@ describe("the web bell's live line (sc-3980)", () => {
     expect(screen.queryByText('Item a')).toBeNull();
   });
 
+  it("somebody else's change raising an unread item not loaded leaves the count as the server has it (sc-21785)", async () => {
+    feedAnswers(async () => json({ ...page([item('b')]), unreadCount: 91, next: 'b' }));
+    const { container } = bell();
+    const source = await line();
+    source.open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 91 unread' }));
+    await screen.findByText('Item b');
+
+    source.publish({ ...item('far'), unreadCount: 91 });
+
+    expect(await screen.findByText('Item far')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Notifications, 91 unread' })).toBeTruthy();
+    expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe(
+      'New notification: Item far',
+    );
+  });
+
+  it("somebody else's change raising an unread item shown leaves the count, and a new one adds one (sc-21785)", async () => {
+    feedAnswers(async () => json(page([item('b'), item('a')])));
+    bell();
+    const source = await line();
+    source.open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 2 unread' }));
+    await screen.findByText('Item b');
+
+    source.publish({ ...item('a', { title: 'Item a again' }), unreadCount: 2 });
+    expect(await screen.findByText('Item a again')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Notifications, 2 unread' })).toBeTruthy();
+
+    source.publish({ ...item('c'), unreadCount: 3 });
+    expect(await screen.findByRole('button', { name: 'Notifications, 3 unread' })).toBeTruthy();
+  });
+
   it('reads page one again when a line opens, and takes the rows read elsewhere meanwhile', async () => {
     feedAnswers(
       async () => json(page([item('a')])),
@@ -226,7 +259,7 @@ describe("the web bell's live line (sc-3980)", () => {
 
     source.open();
     await waitFor(() => expect(vi.mocked(fetch)).toHaveBeenCalledTimes(3));
-    source.publish(item('b'));
+    source.publish({ ...item('b'), unreadCount: 2 });
     await act(async () => stale(json(page([item('a')]))));
 
     await waitFor(() => expect(vi.mocked(fetch)).toHaveBeenCalledTimes(4));
@@ -242,7 +275,7 @@ describe("the web bell's live line (sc-3980)", () => {
     bell();
     const source = await line();
 
-    source.publish(item('b'));
+    source.publish({ ...item('b'), unreadCount: 2 });
     await act(async () => stale(json(page([item('a')]))));
 
     expect(await screen.findByRole('button', { name: 'Notifications, 2 unread' })).toBeTruthy();

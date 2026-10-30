@@ -243,6 +243,23 @@ final class EventChangesTest extends MessagingTestCase
     }
 
     #[Test]
+    public function anotherMembersChangeSendsTheBellsTheCountAReloadShows(): void
+    {
+        $event = $this->liveEvent();
+        $this->edit($event, $this->ada, ['startsAt' => '2026-11-13T18:00:00', 'endsAt' => '2026-11-13T23:00:00']);
+        self::runUntilIdle();
+
+        self::at('2026-11-02 10:05');
+        $this->edit($event, $this->ada, ['venue' => ['name' => 'Hall B', 'address' => null]]);
+        self::runUntilIdle();
+
+        $sent = Vec\map($this->published($this->bola), static fn (array $published): array => Type\shape(['id' => Type\string(), 'unreadCount' => Type\int()], true)->coerce($published));
+        self::assertCount(2, $sent);
+        self::assertSame($sent[0]['id'], $sent[1]['id'], 'The second change raises the same item.');
+        self::assertSame([1, 1], Vec\map($sent, static fn (array $published): int => $published['unreadCount']));
+    }
+
+    #[Test]
     public function aMembersOwnChangeWithNoUnreadItemSendsTheirBellsNothing(): void
     {
         $event = $this->liveEvent();
