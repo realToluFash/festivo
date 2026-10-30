@@ -63,6 +63,7 @@ import {
   keyboardTopNow,
   settledLift,
   putKeysDownThen,
+  useKeysUp,
   watchKeyboardTop,
 } from './keyboardWatch.ts';
 
@@ -734,22 +735,13 @@ function useScreenScrollView() {
     origin.current = windowOrigin;
   }, [windowOrigin]);
   useCheckedFieldInView(screenScroll);
+  const keysUp = useKeysUp();
+  const keysWereUp = useRef(keysUp);
   useEffect(() => {
-    if (held == null) return;
-    // Only keys that come up from down let the hold go; keys swapped while up also say they showed (sc-18587).
-    let down = !Keyboard.isVisible();
-    const hidden = Keyboard.addListener('keyboardDidHide', () => {
-      down = true;
-    });
-    const shown = Keyboard.addListener('keyboardDidShow', () => {
-      if (down) setHeld(null);
-    });
-
-    return () => {
-      hidden.remove();
-      shown.remove();
-    };
-  }, [held]);
+    const cameUp = keysUp && !keysWereUp.current;
+    keysWereUp.current = keysUp;
+    if (cameUp) setHeld(null);
+  }, [keysUp]);
 
   const follow = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, layoutMeasurement } = event.nativeEvent;

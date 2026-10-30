@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { codegenNativeCommands, type HostInstance, Keyboard, Platform } from 'react-native';
 
 import { keyboardInWindow, keyboardLift } from '../kit/keyboard.ts';
@@ -29,6 +30,29 @@ export function watchKeyboardTop(
     shown.remove();
     hidden.remove();
   };
+}
+
+/** Whether the keyboard is up, changing when the avoiding view starts to move. Android also says the keys showed when Gboard swaps them while up, and that changes nothing here: only false to true is the keys coming up (sc-18587). */
+export function useKeysUp(): boolean {
+  const [up, setUp] = useState(() => keyboardTopNow(0) != null);
+
+  useEffect(() => {
+    // iOS's avoiding view pads on the Will events and Android's on the Did ones.
+    const ios = Platform.OS === 'ios';
+    const shown = Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', () =>
+      setUp(true),
+    );
+    const hidden = Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', () =>
+      setUp(false),
+    );
+
+    return () => {
+      shown.remove();
+      hidden.remove();
+    };
+  }, []);
+
+  return up;
 }
 
 export interface SettledLift {
