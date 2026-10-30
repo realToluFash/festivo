@@ -1,0 +1,49 @@
+# sc-22146: on iOS, New event's Starts time sheet, the wheel scrolled and Done pressed; Starts' time shows a time, as before.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.new'
+    timeout: 30000
+- tapOn:
+    id: 'events.new'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.start.time'
+    direction: DOWN
+    centerElement: true
+- swipe:
+    start: 50%, 45%
+    end: 50%, 57%
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'eventForm.start.time'
+- assertNotVisible:
+    id: 'eventForm.start.time'
+    text: '.*\d.*'
+- takeScreenshot: before
+- tapOn:
+    id: 'eventForm.start.time'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.start.done'
+    timeout: 10000
+- swipe:
+    start: 35%, 80%
+    end: 35%, 70%
+- waitForAnimationToEnd
+- takeScreenshot: picked
+- tapOn:
+    id: 'eventForm.start.done'
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'eventForm.start.done'
+- assertVisible:
+    id: 'eventForm.start.time'
+    text: '.*\d.*'
+- takeScreenshot: kept
