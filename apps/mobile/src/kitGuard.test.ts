@@ -289,6 +289,44 @@ describe("every dialog closes by VoiceOver's escape (sc-11063)", () => {
   });
 });
 
+describe('every Modal stays under the update-required state (sc-22962)', () => {
+  // A Modal is a window of its own, so only useModalOpen keeps it from covering the update-required screen.
+  it('in every Modal in the app', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ text }) => modalsLeftOpen(text) > 0)
+      .map(({ path }) => path);
+
+    expect(
+      offenders,
+      "Take the Modal's visible from useModalOpen in src/updateRequired.ts.",
+    ).toEqual([]);
+  });
+
+  it('passes a Modal whose visible comes from useModalOpen', () => {
+    expect(modalsLeftOpen('<Modal visible={useModalOpen(open)}>\n</Modal>')).toBe(0);
+    expect(
+      modalsLeftOpen('const shown = useModalOpen(open);\n<Modal visible={shown}>\n</Modal>'),
+    ).toBe(0);
+    expect(modalsLeftOpen("import { Modal, type TextInputInstance } from 'react-native';")).toBe(0);
+  });
+
+  it('notices a Modal that shows over the update-required state', () => {
+    expect(modalsLeftOpen('<Modal visible={open}>\n</Modal>')).toBe(1);
+    expect(modalsLeftOpen('<Modal transparent>\n</Modal>')).toBe(1);
+    expect(modalsLeftOpen('<Modal visible={useModalOpen(open) || forced}>\n</Modal>')).toBe(1);
+    expect(
+      modalsLeftOpen(
+        'const shown = useModalOpen(open) || forced;\n<Modal visible={shown}>\n</Modal>',
+      ),
+    ).toBe(1);
+    expect(
+      modalsLeftOpen(
+        'const shown = useModalOpen(open);\n<Modal visible={shown}>\n</Modal>\n<Modal visible={open}>\n</Modal>',
+      ),
+    ).toBe(1);
+  });
+});
+
 describe('a label goes only where a screen reader lands', () => {
   // VoiceOver never reads a label on a plain View, and TalkBack makes it a stop of its own (sc-11419, sc-11564).
   it('in every View and ScrollView in the app', () => {
@@ -1087,8 +1125,24 @@ function selfClosing(name: string, text: string): { line: number; markup: string
   });
 }
 
+function modalTags(text: string): RegExpExecArray[] {
+  return [...text.matchAll(/(?<![\w.])<Modal\b/gu)];
+}
+
 function modalsOpened(text: string): number {
-  return [...text.matchAll(/(?<![\w.])<Modal\b/gu)].length;
+  return modalTags(text).length;
+}
+
+/** How many Modals take their visible from somewhere other than useModalOpen, or have none. */
+function modalsLeftOpen(text: string): number {
+  const held = [...text.matchAll(/\bconst (\w+) = useModalOpen\([^()]*\);/gu)].map(
+    (match) => `{${match[1]}}`,
+  );
+
+  return modalTags(text)
+    .map((match) => propValue(text.slice(match.index, tagEnd(text, match.index)), 'visible') ?? '')
+    .filter((visible) => !(/^\{useModalOpen\([^()]*\)\}$/u.test(visible) || held.includes(visible)))
+    .length;
 }
 
 /** How many tags answer the escape on a view that iOS keeps mounted. */
