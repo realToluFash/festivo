@@ -124,7 +124,7 @@ export function TimeZoneCard({
         </View>
       )}
       {saved != null && (!editing || savedClosing) && (
-        <>
+        <View>
           {savedHolder}
           <Notice
             tone="done"
@@ -135,7 +135,7 @@ export function TimeZoneCard({
             readMs={focusBackMs(Platform.OS, SETTLED_MS, 'step')}
             wordsRef={savedGiven ? savedLine : undefined}
           />
-        </>
+        </View>
       )}
       {(!editing || closing) && (
         <SecondaryButton
