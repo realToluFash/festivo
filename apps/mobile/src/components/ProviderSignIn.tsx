@@ -88,7 +88,12 @@ export function ProviderButtons({
           testID="signIn.google"
         >
           <GoogleMark />
-          <Text size={tokens.typeButton.size} weight="medium" style={styles.googleText}>
+          <Text
+            size={brand.googleTextSize}
+            weight="medium"
+            family="googleSans"
+            style={styles.googleText}
+          >
             {googleLabel}
           </Text>
         </Pressable>
@@ -176,7 +181,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   google: { backgroundColor: brand.googleSurface, borderColor: brand.googleBorder },
-  googleText: { color: brand.googleInk },
+  googleText: { color: brand.googleInk, lineHeight: brand.googleLineHeight },
   apple: { backgroundColor: brand.appleSurface, borderColor: brand.appleSurface },
   appleText: { color: brand.appleInk },
 });

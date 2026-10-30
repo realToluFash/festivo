@@ -7,7 +7,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
-import { WEIGHTS, faced, type WeightName } from '../theme/fonts.ts';
+import { type Family, WEIGHTS, faced, type WeightName } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { subscribeTextLaidOut, textLayoutsAtNewScale } from './textLaidOut.ts';
 
@@ -16,8 +16,9 @@ import { subscribeTextLaidOut, textLayoutsAtNewScale } from './textLaidOut.ts';
  *
  * It takes `weight` and resolves it to `fontWeight`, and `faced()` turns the
  * weight into a face, so no screen ever writes a `fontFamily` — see
- * src/theme/fonts.ts. `mono` is for step numbers, keyboard shortcuts and codes
- * a person copies character by character, never for money or counts.
+ * src/theme/fonts.ts. `family="mono"` is for step numbers, keyboard shortcuts
+ * and codes a person copies character by character, never for money or counts;
+ * `family="googleSans"` is for the words on Google's sign-in button alone.
  *
  * It deliberately does NOT accept `onPress`. A Text with an onPress crashed the
  * previous build on React Native Web, so the replacement is a Pressable with a
@@ -28,7 +29,7 @@ export interface TextProps extends Omit<RNTextProps, 'onPress' | 'onLongPress'> 
   weight?: WeightName;
   size?: number;
   muted?: boolean;
-  mono?: boolean;
+  family?: Family;
   ref?: Ref<TextHandle> | undefined;
 }
 
@@ -38,7 +39,7 @@ export function Text({
   weight = 'regular',
   size = 16,
   muted = false,
-  mono = false,
+  family = 'sans',
   style,
   ...rest
 }: TextProps) {
@@ -57,7 +58,7 @@ export function Text({
           muted && styles.muted,
           style,
         ],
-        mono,
+        family,
       )}
       {...rest}
     />

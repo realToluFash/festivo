@@ -13,6 +13,15 @@ export const MONO = {
   700: 'JetBrainsMono-Bold',
 } as const;
 
+/** Google's own typeface for the words on its sign-in button, and nowhere else. Google publishes the one weight. */
+export const GOOGLE_SANS = {
+  500: 'GoogleSans-Medium',
+} as const;
+
+const FAMILIES = { sans: SANS, mono: MONO, googleSans: GOOGLE_SANS } as const;
+
+export type Family = keyof typeof FAMILIES;
+
 let loaded = false;
 
 /** Called once by the root when every face has loaded. Until then, and forever if one failed, text keeps the platform font. */
@@ -21,25 +30,25 @@ export function facesLoaded(): void {
 }
 
 /** Drops the weight once it has chosen the file: Android would look a 700 up in a BOLD slot that is empty, and draw Roboto. */
-export function faceStyle(flat: TextStyle, mono = false): TextStyle {
+export function faceStyle(flat: TextStyle, family: Family = 'sans'): TextStyle {
   if (!loaded) return flat;
 
   const { fontWeight, ...rest } = flat;
 
-  return { ...rest, fontFamily: faceFor(fontWeight, mono) };
+  return { ...rest, fontFamily: faceFor(fontWeight, family) };
 }
 
 /** A field's face, its weight and slant stated on Android as React Native reads them from the span over text it hands the field: unstated, the field keeps that span, and its face drops the weight Bold text adds. */
-export function inputFaceStyle(flat: TextStyle, mono: boolean, os: string): TextStyle {
-  const faced = faceStyle(flat, mono);
+export function inputFaceStyle(flat: TextStyle, family: Family, os: string): TextStyle {
+  const faced = faceStyle(flat, family);
   if (!loaded || os !== 'android') return faced;
 
   return { ...faced, fontWeight: 'normal', fontStyle: flat.fontStyle ?? 'normal' };
 }
 
-export function faceFor(asked: string | number | undefined, mono = false): string {
+export function faceFor(asked: string | number | undefined, family: Family = 'sans'): string {
   const wanted = numeric(asked);
-  const files: Record<number, string> = mono ? MONO : SANS;
+  const files: Record<number, string> = FAMILIES[family];
   const weight = Object.keys(files)
     .map(Number)
     .reduce((best, next) => (Math.abs(next - wanted) <= Math.abs(best - wanted) ? next : best));
