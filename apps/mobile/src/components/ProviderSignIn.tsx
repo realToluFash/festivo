@@ -13,7 +13,7 @@ import { Text } from './Text.tsx';
 
 const appleOnIos = Platform.OS === 'ios';
 const APPLE_IOS_TEXT_SIZE = tokens.sizeHitPhonePrimary * brand.appleTitleToHeight;
-const APPLE_IOS_LOGO_HEIGHT = tokens.sizeHitPhonePrimary * brand.appleLogoToHeight;
+const APPLE_IOS_LOGO_SCALE = brand.appleLogoHeight / 19;
 
 export function ProviderSignIn({ onFailed }: { onFailed?: (provider: string) => void }) {
   const { t } = useTranslation();
@@ -190,13 +190,13 @@ function AppleMark() {
   );
 }
 
-/** Apple Design Resources' "Left White Logo Medium", its padding cropped off by the viewBox. */
+/** Apple Design Resources' "Left White Logo Medium", cropped at the sides only so the glyph keeps Apple's place above the centre. */
 function AppleLogoIos() {
   return (
     <Svg
-      width={(APPLE_IOS_LOGO_HEIGHT * 15.46) / 19}
-      height={APPLE_IOS_LOGO_HEIGHT}
-      viewBox="7.75 10.5 15.46 19"
+      width={15.46 * APPLE_IOS_LOGO_SCALE}
+      height={44 * APPLE_IOS_LOGO_SCALE}
+      viewBox="7.75 0 15.46 44"
     >
       <Path
         fill={brand.appleInk}

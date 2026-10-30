@@ -14,7 +14,7 @@ export const brand = {
   appleInk: '#FFFFFF',
   /** Measured off iOS's own 48pt button, not the guidelines' 43%: 18.5pt words, a 13pt logo 6.5pt before them. */
   appleTitleToHeight: 0.385,
-  appleLogoToHeight: 13 / 48,
+  appleLogoHeight: 13,
   appleLogoGap: 6.5,
   /** Material 3's disabled content, which Google's guidelines defer to; Apple's publish no off look. */
   offOpacity: 0.38,
