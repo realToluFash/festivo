@@ -179,13 +179,13 @@ describe('a Text hidden from screen readers stays hidden on iOS', () => {
   it('in every Text marked hidden in the app, or inside a View marked hidden', () => {
     const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
       hiddenTexts(text)
-        .filter((tag) => !unreportable(tag.markup))
+        .filter((tag) => !unreportable(tag.markup, tag.when))
         .map((tag) => `${path}:${tag.line}`),
     );
 
     expect(
       offenders,
-      'Give it accessible={false}, or accessible={!x} when hidden by x, after any spread.',
+      'Give it accessible={false}, or accessible={x ? false : undefined} when hidden by x, after any spread.',
     ).toEqual([]);
   });
 
@@ -208,10 +208,20 @@ describe('a Text hidden from screen readers stays hidden on iOS', () => {
   it('notices a Text that iOS can still report', () => {
     expect(unreportable('<Text {...rest} accessible={false}>')).toBe(true);
     expect(unreportable('<Text accessible={false} {...rest}>')).toBe(false);
-    expect(unreportable('<Text accessibilityElementsHidden={closing} accessible={!closing}>')).toBe(
-      true,
-    );
-    expect(unreportable('<Text accessible={!closing} {...rest}>')).toBe(false);
+    expect(
+      unreportable(
+        '<Text accessibilityElementsHidden={closing} accessible={closing ? false : undefined}>',
+        'closing',
+      ),
+    ).toBe(true);
+    expect(
+      unreportable('<Text accessible={closing ? false : undefined} {...rest}>', 'closing'),
+    ).toBe(false);
+    expect(unreportable('<Text accessible={saving ? false : undefined}>', 'closing')).toBe(false);
+    expect(unreportable('<Text accessible={closing ? false : undefined}>')).toBe(false);
+    expect(
+      unreportable('<Text accessibilityElementsHidden={closing} accessible={!closing}>', 'closing'),
+    ).toBe(false);
     expect(unreportable('<Text accessible={closing}>')).toBe(false);
     expect(unreportable('<Text accessibilityElementsHidden importantForAccessibility="no">')).toBe(
       false,
@@ -1275,23 +1285,34 @@ function textTags(text: string): { line: number; markup: string }[] {
 }
 
 /** Every Text marked hidden itself, or opening inside a View marked hidden, read tag by tag. */
-function hiddenTexts(text: string): { line: number; markup: string }[] {
-  const hidden: { line: number; markup: string }[] = [];
-  const openViews: boolean[] = [];
+function hiddenTexts(text: string): { line: number; markup: string; when: string }[] {
+  const hidden: { line: number; markup: string; when: string }[] = [];
+  const openViews: (string | null)[] = [];
 
   for (const match of text.matchAll(/(?<![\w.])<(\/?)(View|Text)\b/gu)) {
     const markup = text.slice(match.index, tagEnd(text, match.index));
-    const hiddenHere = /\baccessibilityElementsHidden\b/u.test(markup);
+    const hiddenHere = hidingCondition(markup);
 
     if (match[2] === 'View') {
       if (match[1] === '/') openViews.pop();
       else if (!selfCloses(text, match.index)) openViews.push(hiddenHere);
-    } else if (match[1] === '' && (hiddenHere || openViews.includes(true))) {
-      hidden.push({ line: text.slice(0, match.index).split('\n').length, markup });
+    } else if (match[1] === '') {
+      const when = hiddenHere ?? openViews.findLast((view) => view !== null);
+
+      if (when != null) {
+        hidden.push({ line: text.slice(0, match.index).split('\n').length, markup, when });
+      }
     }
   }
 
   return hidden;
+}
+
+/** The condition in `accessibilityElementsHidden={x}`, empty when it always hides, null when it is absent. */
+function hidingCondition(markup: string): string | null {
+  const at = /\baccessibilityElementsHidden\b(?:=\{(\w+)\})?/u.exec(markup);
+
+  return at === null ? null : (at[1] ?? '');
 }
 
 /** Both hiding props, after any spread, so the Text stays hidden wherever its View's hiding misses it. */
@@ -1303,9 +1324,15 @@ function hidesItself(markup: string): boolean {
   );
 }
 
-/** A spread after `accessible={false}` can carry `accessible: true` and turn it back off. */
-function unreportable(markup: string): boolean {
-  const at = [...markup.matchAll(/\baccessible=\{(?:false|!\w+)\}/gu)].at(-1)?.index;
+/** A spread after `accessible={false}` can carry `accessible: true` and turn it back off; `accessible={x ? false : undefined}` hides it only while x is what hides it, and leaves Android's default, which is not focusable, the rest of the time. */
+function unreportable(markup: string, when = ''): boolean {
+  const last = [...markup.matchAll(/\baccessible=\{(?:false|(\w+) \? false : undefined)\}/gu)].at(
+    -1,
+  );
 
-  return at !== undefined && !markup.slice(at).includes('{...');
+  return (
+    last !== undefined &&
+    (last[1] === undefined || last[1] === when) &&
+    !markup.slice(last.index).includes('{...')
+  );
 }

@@ -83,6 +83,7 @@ export function TimeZoneCard({
     closing: savedClosing,
     // Keys a swap leaves up put the line out of sight, and a scroll to it that carries Save away moves TalkBack to the card's description first (sc-18587).
     closer: saveCloser,
+    hidden: savedHidden,
     close: closeSaved,
   } = useStepClose(opener, 'saved', 'holder', (back) => {
     setSavedFocused(back == null);
@@ -130,7 +131,7 @@ export function TimeZoneCard({
         accessibilityRole="header"
         accessibilityElementsHidden={savedClosing}
         importantForAccessibility={offWhileSaving}
-        accessible={!savedClosing}
+        accessible={savedClosing ? false : undefined}
       >
         {t('timeZone.title')}
       </Text>
@@ -139,22 +140,26 @@ export function TimeZoneCard({
         style={styles.secondary}
         accessibilityElementsHidden={savedClosing}
         importantForAccessibility={offWhileSaving}
-        accessible={!savedClosing}
+        accessible={savedClosing ? false : undefined}
       >
         {t('timeZone.intro')}
       </Text>
 
       {(!editing || opening || closing || savedClosing) && (
-        <View
-          style={styles.group}
-          accessibilityElementsHidden={savedClosing}
-          importantForAccessibility={offWhileSaving}
-        >
-          <Text size={tokens.typeRowTitle.size} weight="semibold" accessible={!savedClosing}>
+        <View style={styles.group} {...savedHidden}>
+          <Text
+            size={tokens.typeRowTitle.size}
+            weight="semibold"
+            accessible={savedClosing ? false : undefined}
+          >
             {label ?? t('timeZone.unset')}
           </Text>
           {timezone != null && (
-            <Text size={tokens.typeSmall.size} style={styles.secondary} accessible={!savedClosing}>
+            <Text
+              size={tokens.typeSmall.size}
+              style={styles.secondary}
+              accessible={savedClosing ? false : undefined}
+            >
               {timezone.replace(/_/g, ' ')}
             </Text>
           )}
