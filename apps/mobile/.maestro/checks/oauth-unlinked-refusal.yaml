@@ -1,0 +1,31 @@
+# Settings > Organisation, deleting it while Google or Apple only holds and neither is linked: the refusal's title above the field.
+# Needs an account stranded read-only: Google or Apple only on its organisation, neither linked.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible: '{{t:orgGeneral.intro}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'ownership.delete'
+    timeout: 60000
+- tapOn:
+    id: 'ownership.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'ownership.delete.name'
+    timeout: 15000
+- tapOn:
+    id: 'ownership.delete.name'
+- inputText: 'QA Organisation'
+- hideKeyboard
+- tapOn:
+    id: 'ownership.delete.send'
+- extendedWaitUntil:
+    visible:
+      id: 'ownership.delete.refused'
+    timeout: 15000
+- assertVisible:
+    id: 'ownership.delete.name'
+- takeScreenshot: oauth-unlinked-refusal

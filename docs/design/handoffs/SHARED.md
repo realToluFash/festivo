@@ -1,0 +1,220 @@
+# Design handoff — the shared half
+
+Every per-epic handoff in this folder says to read this first. It carries everything that
+is the same whatever epic you are working on. The per-epic file carries only what differs:
+the stories, the artboards that look relevant, the layouts, and the traps specific to that
+area.
+
+Read this, then the per-epic file, then start.
+
+---
+
+## What you are doing
+
+An epic's stories need screens. Some are already drawn in the design project; the rest are
+not. Your job is to find out which is which, design the missing ones **in the existing
+design's language**, and link each story to the artboard that covers it.
+
+Two things to hold onto throughout:
+
+- **The design is the language; the ticket is the content.** You are not inventing a look,
+  and you are not inventing product behaviour. Every screen you draw must be in the
+  established visual language, and must show exactly what its story's AC says — no more.
+- **You are not the designer.** What you build is a proposal to be reviewed, and every
+  ticket you touch has to say so. Do not present it as the design.
+
+## Read these first, in this order. Do not draw anything until you have.
+
+1. **`.claude/skills/screen-from-design/SKILL.md`** in this repository. The rules for this
+   work: where the design is, the order to read it, the four layouts and which codebase
+   owns each, and what to do when the design does not cover something.
+2. The design project, via the `DesignSync` tool's read methods (`list_files`, then
+   `get_file`). Project id `b64da70f-d60f-4ad6-90a4-efe6d387caa8`. Read:
+   - **`CLAUDE.md`** — what is settled, and what was **discarded**
+   - **`design-context/01-foundations.md`**
+   - the artboards your per-epic file names as candidates
+3. **`docs/design/tokens.mjs`** in this repository — the tokens, one source, with usage
+   notes and four settled decisions.
+4. **The worked example: https://claude.ai/artifact/2Swi2WCFoRNeqPRBngDpbK** — five
+   artboards for Budget and costs, built in this exact language for exactly this purpose.
+   Read it with the `Artifact` tool (`action: "read"`, then its files). **Match its style,
+   its density, and its level of finish.** Reading it will teach you more than this file
+   can describe.
+5. **`docs/design/claude-design-brief.md`**, section 5, for the area your epic covers. It
+   says what somebody does there and what makes it hard.
+6. The epic itself: `epics-get-by-id`, `stories-search` with that epic, then each story
+   with `stories-get-by-id`.
+
+## Step one: a coverage audit. Report it and stop.
+
+`list_files` on the design project gives the artboard names. They are human names, not
+story names, and one artboard usually covers several stories.
+
+| Story   | What it needs | Artboard | Covers it?                  |
+| ------- | ------------- | -------- | --------------------------- |
+| sc-NN … | …             | …        | fully / partly / not at all |
+
+For "partly", say which part is missing. For "not at all", say so plainly.
+
+Expect this to be the useful part. **Report the table and wait for a go-ahead before
+building anything.**
+
+## Step two: build the missing screens
+
+**One artifact for the whole epic**, not one per story. Inside it, one artboard per screen,
+named for what it is (`SignIn.dc.html`, `GuestList.dc.html`). Several stories may share an
+artboard, and one story may need several.
+
+### Making the artifact
+
+1. `Artifact` with `action: "quickstart"` and `intent: "design"`. Pass
+   `design_systems: false` — **this project uses no Design System artifact.**
+2. Publish with the Design type's `type_url` from that result, the `title` your per-epic
+   file gives, **no files**, and `auto_open: "after_first_write"`. Its reply carries the
+   type's instructions. Follow them.
+3. **Never pass `type_url` again.** A second one creates a second artifact.
+4. Write `project/canvas.json` first, complete, with a `boards` entry and an `order` slot
+   for every artboard you intend to write. Then the entry artboard. Publish those two
+   together. Then the rest, publishing as you go.
+
+### The house style, which is not negotiable
+
+Take exact values from `docs/design/tokens.mjs`.
+
+- **Instrument Sans** for everything a person reads; **JetBrains Mono** only for step
+  numbers, keyboard shortcuts, and codes a person reads or copies character by character
+  (recovery codes, an authenticator setup key, a join code), never for money or counts.
+  A six-digit code typed into a field stays Instrument Sans with `tabular-nums`. Load both
+  from Google Fonts in `<helmet>`. Money and counts use Instrument Sans with
+  `font-variant-numeric: tabular-nums`.
+- **`#4B5563` is the label ink** (7.6:1 on white): form labels, card subheads and
+  secondary icons, where the designer's screens use it. Secondary text stays `#5F6673`.
+- **Green `#1E9A64` is the only accent** — primary action, selected, done. Amber `#B7791F`
+  is attention, red `#C2410C` is broken only, grey is not-yet.
+- Page `#F5F6F8`. Cards white, 1px `#E6E8EC` border, radius 16 on desktop and 18 on phone.
+  Insets `#F6F7F9` with a 1px `#ECEEF2` border. Header bars tinted `#E9F0F9`.
+- Ink `#15171C`, secondary `#5F6673`. **`#9CA3AF` fails 4.5:1: decoration and disabled
+  only, never information.**
+- **Buttons are pills, 44px tall on every surface including desktop.** Rows, checkboxes,
+  steppers and icon buttons get 44px hit areas too. A control drawn at 36 carries 4px of
+  slop on every side to reach 44.
+- **Light mode only.** There is no dark appearance in this product.
+- Status always pairs a **shape with a word**. Never colour alone — a kitchen prints in
+  black and white and a server may be colour-blind.
+- **Nothing a person reads is below 12px.**
+- Copy: sentence case, full stops, middle dot `·` as separator, **no em dashes**, no emoji,
+  24-hour times, dates as "Friday, Aug 7", money in the event's currency. Buttons are verbs
+  that say what happens, never "Submit" or "OK".
+- **Every card ends with a next step** — a next-up line or a footer action.
+
+### Forms check before they send
+
+A form never sends a request it already knows will be refused. Draw this for **every** form, as its own state (`blank`, and `invalid_<field>` where a format check applies):
+
+- Required fields carry no mark; optional ones carry an "Optional" pill.
+- The primary button stays **enabled**. A disabled button cannot say what is missing; a pressed one can.
+- Pressing it with a required field empty, or in a shape the client can check for certain, **sends nothing**. Each failing field gets the red border and its own message under it ("Enter your email address."), `aria-invalid` and `aria-describedby`, and focus moves to the first failing field.
+- A message clears as soon as the field becomes valid. After the first press, fields re-check as the person leaves them.
+- Check on the client only what is certain there: empty, an email's shape, a length or digit count the AC states, a number inside its stated limits, a date that must be in the future. Never what only the server knows (taken, breached, wrong password); those stay the server's refusals.
+- The server still checks everything. A field error it returns uses the same words in the same place.
+- **It must work in Play, not only as a Tweak state.** Each input records what is typed, and the primary button runs the check: clear a field, press the button, and the error appears with focus on the field; type, and it clears. A Tweak state shows the look; it does not show the behaviour, and a reviewer testing the artboard will find a form that does nothing.
+
+**If the story's AC does not say which fields are required, or what counts as valid, ask PM on that story** (`[pm] (from ux)`, per `role-comments`) with your proposed list. Draw your proposal meanwhile and say so in the Design section.
+
+### Mechanics that fail silently if you get them wrong
+
+- Keep `<script src="./support.js"></script>` in the head exactly as the type's skeleton
+  has it.
+- `$preview` must equal the artboard's frame `w`×`h` in `canvas.json`.
+- Desktop screens are PAGEs: `"expand": "fill"` on the board entry and a **fluid** root —
+  no fixed px width. Phone is fixed at 390×844, tablet portrait 834×1194, tablet landscape
+  1280×880.
+- Give an artboard whose controls actually work `"is_interactive": true`. Leave it off
+  static ones.
+- **Accessible as drawn**: real `<button>`, `<a href>`, `<input>` + `<label>` even in a
+  mockup. `aria-label` on icon-only buttons. Never `role` or `onClick` on a `div` or
+  `span`. Decorative SVG gets `aria-hidden="true"`.
+- Anything designed around dragging needs a **click-click** path — pick, then place.
+  Dragging alone is not an accessible interaction.
+- **Do not verify.** Do not render it, screenshot it, open it in a browser, or read your
+  own files back to check. This is both the type's instruction and a standing rule on this
+  project. If you think a check is needed, ask first.
+
+## Step three: link it to the stories
+
+For each story:
+
+1. `stories-add-external-link` with the artifact URL, so the link is a first-class field
+   rather than buried in prose.
+2. Append one section to the description, leaving everything already there untouched:
+
+```markdown
+# Design
+
+**Artboard:** `<name>.dc.html` · <artifact url>
+
+**Layouts:** <desktop · tablet landscape · tablet portrait · phone>, and why that set.
+
+**What the design settles that this AC did not say:** two to five bullets.
+
+**Where the design and this AC disagree:** each one, stated. Do not resolve them.
+
+**Status:** drawn for this ticket in the established language, **not by the designer.**
+Needs review before it is treated as the specification.
+```
+
+`stories-update` **replaces** the description field, so pass the existing text plus your
+section. A partial value deletes the rest.
+
+## What NOT to do. Each has already gone wrong on this project.
+
+- **Do not invent product behaviour.** The screen shows what the AC says. If a screen
+  obviously needs something the AC does not mention, put it in the disagreements bullet
+  rather than drawing it as settled.
+- **Do not put a number on a screen that the product could not know.** Every figure is
+  either derived from something real or it does not belong. A fabricated count reads as a
+  feature and gets built. In the budget artifact every quantity carries a line naming its
+  source; do the same.
+- **Do not use the `Foyer` design system, or any Design System artifact.** The design
+  project's `CLAUDE.md` records that earlier explorations were discarded and are not to be
+  revived. Foyer is one. It is complete, polished and dead — spruce and marigold,
+  Instrument Serif, a dark theme, 34px controls. **Everything about it is wrong for this
+  product.** If you find yourself reading it, stop.
+- **Do not treat an artboard's fixtures as spec.** The `<script type="text/x-dc">` block's
+  `renderVals()` holds demo names and counts. Sample data, never requirements.
+- **Do not reword existing AC.** Add your section; a wrong AC item is a disagreement, not
+  an edit.
+- **Do not write to the design project.** Read methods only. Writing belongs to the
+  `/design-sync` skill, which only the user starts.
+- **Do not change a story's workflow state**, mark anything Done, or create or close
+  stories.
+- **Do not commit or open a pull request.** This work lives in the artifact and in
+  Shortcut.
+- **Do not build a screen for a story the design already covers.** Link the existing
+  artboard instead. Two drawings of one screen is the drift this exercise exists to prevent.
+
+## Rules that hold in every epic
+
+- **Four locales**, and French and Portuguese run 20–30% longer than English. No
+  fixed-width labels, nothing fitted tightly to a button.
+- **Nothing may interrupt a live event.** A limit is refused when something is created,
+  never mid-event.
+- **Stale state is declared during service.** A figure with no age and no connection state
+  is the worst failure this product can have.
+- **Assistance proposes, never acts.** A suggestion sits beside what is already there and
+  is accepted or discarded.
+- **Held is never shown like No reply.** A companion whose host has not accepted is its own
+  state.
+
+## How to report back
+
+1. The coverage table. Then stop.
+2. After the go-ahead: the artifact link, which artboards you drew and which stories each
+   covers, and the disagreements you found, grouped so they can be decided together.
+3. **Anything the design shows that no story asks for.** A screen drawn and not ticketed
+   matters as much as a story with no screen.
+4. Say plainly that you did not verify the artifact visually, because you were told not to.
+5. Tell the user the artifact is **private until they share it** from the page's Share
+   menu, since you cannot change its sharing.
+6. Where you were unsure, say so rather than choosing. An uncertainty named is worth more
+   than a confident guess.

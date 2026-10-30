@@ -1,0 +1,40 @@
+# Leaves ${EMAIL} signed in, signing in only when Expo Go is not already. sc-12596.
+#
+# Another account is signed out first. Home says whose session it is, in any of the four
+# languages, since the last batch may have left the account in any of them. The card's
+# heading is waited for rather than the Signed in as line, which a long organisation name
+# or a large text size puts below the fold. sc-18454.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- runFlow:
+    file: developer-menu.yaml
+    env:
+      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}'
+- extendedWaitUntil:
+    visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}'
+    timeout: 60000
+    optional: true
+# The reload before this can crash an Expo Go that has only just opened.
+- runFlow:
+    when:
+      notVisible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}'
+    file: reopen.yaml
+- runFlow:
+    when:
+      visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}'
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: '{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}'
+          direction: DOWN
+          timeout: 30000
+- runFlow:
+    when:
+      visible: '{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}'
+      notVisible: '{{t:any:settings.signedInAs|email}}|{{t:any:noOrganisation.signedInAs|email}}'
+    file: sign-out.yaml
+- runFlow:
+    when:
+      notVisible: '{{t:any:settings.signedInAs|email}}|{{t:any:noOrganisation.signedInAs|email}}'
+    file: sign-in-form.yaml

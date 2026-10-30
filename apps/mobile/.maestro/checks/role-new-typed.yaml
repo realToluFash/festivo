@@ -1,0 +1,29 @@
+# sc-12226: New role's page with a name typed, and Create role. Swipes at 75% across, as role-spare-page does.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/roles
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'roles.new'
+    direction: DOWN
+- tapOn:
+    id: 'roles.new'
+- tapOn:
+    id: 'roles.name'
+- inputText: 'Tablet Crew'
+- takeScreenshot: role-new-typed
+- hideKeyboard
+- repeat:
+    while:
+      notVisible: '{{t:rolesScreen.seeHeading}}'
+    times: 8
+    commands:
+      - swipe:
+          start: 75%, 70%
+          end: 75%, 30%
+- assertVisible: '{{t:rolesScreen.seeHeading}}'
+- takeScreenshot: role-new-foot

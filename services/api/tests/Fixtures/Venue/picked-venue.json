@@ -1,0 +1,14 @@
+{
+    "name": "The Civic Centre",
+    "address": {
+        "formatted": "Ozumba Mbadiwe Avenue, Victoria Island, Lagos, Nigeria",
+        "line1": "Ozumba Mbadiwe Avenue",
+        "line2": "Victoria Island",
+        "city": "Lagos",
+        "region": "Lagos State",
+        "postalCode": "101241",
+        "countryCode": "NG",
+        "latitude": 6.4316,
+        "longitude": 3.4246
+    }
+}

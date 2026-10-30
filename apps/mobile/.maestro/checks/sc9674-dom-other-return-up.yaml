@@ -1,0 +1,59 @@
+# Add a domain: example.org sent by the return key with the keys up, held, return pressed again, then refused. Keys stay up, the value is edited at once and sent again by return. sc-9674.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: companyDomains.add
+    centerElement: true
+- swipe:
+    start: '50%,40%'
+    end: '50%,60%'
+- waitForAnimationToEnd
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          id: companyDomains.domain
+      - eraseText: 80
+- inputText: 'example.org'
+- waitForAnimationToEnd
+- takeScreenshot: keys-up
+- assertVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- pressKey: Enter
+- waitForAnimationToEnd
+- takeScreenshot: at-return
+- assertVisible: '(?i)(shift|delete)'
+- pressKey: Enter
+- waitForAnimationToEnd
+- takeScreenshot: while-held
+- assertVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    visible: '(?:Add a domain your own address is at|Añada el dominio de su propia dirección|Ajoutez le domaine de votre propre adresse|Adicione o domínio do seu próprio endereço).*'
+    timeout: 45000
+- waitForAnimationToEnd
+- takeScreenshot: refused
+- assertVisible: '(?i)(shift|delete)'
+- inputText: x
+- assertVisible:
+    id: companyDomains.domain
+    text: 'example.orgx'
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: '(?:Add a domain your own address is at|Añada el dominio de su propia dirección|Ajoutez le domaine de votre propre adresse|Adicione o domínio do seu próprio endereço).*'
+    timeout: 45000
+- waitForAnimationToEnd
+- takeScreenshot: sent-again
+- assertVisible: '(?i)(shift|delete)'
