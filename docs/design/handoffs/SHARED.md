@@ -78,6 +78,9 @@ story may need several.
 3. Each epic's page has the id `e<epic number>` (`e26`, `e27`, `e29`) and the name
    `<epic number> · <area>`, the area as that epic's handoff file titles it
    (`27 · Accounts and sign-in`). Every board names its page.
+4. Update `project/canvas.json` first: the page, if it is new, then a `boards` entry and an
+   `order` slot for every artboard you intend to write. Then the artboards, publishing as
+   you go.
 
 ### The house style, which is not negotiable
 
