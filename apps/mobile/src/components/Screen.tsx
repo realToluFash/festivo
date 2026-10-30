@@ -740,16 +740,18 @@ export interface StepOpen {
   fieldFocused(): void;
 }
 
-/** Opens a step with `start`, in order where `stepOpensInOrder` says so: the opener stays until the step's field has taken input focus, then goes once TalkBack has followed it there, or after a settle when the field never takes it (sc-22392). */
-export function useStepOpen(start: () => void): StepOpen {
+/** Opens a step with `start`, in order where `stepOpensInOrder` says so: the opener stays until the step's field has taken input focus, then goes once TalkBack has followed it there, or after a settle when the field never takes it, and `opened` runs as it goes (sc-22392). */
+export function useStepOpen(start: () => void, opened: () => void): StepOpen {
   const [opening, setOpening] = useState(false);
   const openingNow = useRef(false);
   const startNow = useRef(start);
+  const openedNow = useRef(opened);
   const done = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const gone = useRef(false);
 
   useEffect(() => {
     startNow.current = start;
+    openedNow.current = opened;
   });
 
   useEffect(
@@ -765,6 +767,7 @@ export function useStepOpen(start: () => void): StepOpen {
     done.current = setTimeout(() => {
       openingNow.current = false;
       setOpening(false);
+      openedNow.current();
     }, ms);
   }, []);
 
@@ -777,6 +780,7 @@ export function useStepOpen(start: () => void): StepOpen {
       setOpening(inOrder);
       startNow.current();
       if (inOrder) endIn(SETTLED_MS);
+      else openedNow.current();
     });
   }, [endIn]);
 

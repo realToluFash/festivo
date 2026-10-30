@@ -87,13 +87,17 @@ export function TimeZoneCard({
     setEditing(false);
   });
   const savedGiven = savedFocused || savedClosing;
-  // Change going as the step comes leaves TalkBack's focus on nothing, which it puts on the header's back row (sc-22392).
-  const { opening, open, fieldFocused } = useStepOpen(() => {
-    setSaved(null);
-    setSavedFocused(false);
-    setClosed(undefined);
-    setEditing(true);
-  });
+  // Change, or the saved line's holder, going as the step comes leaves input focus on nothing, which Android puts on the header's back row (sc-22392).
+  const { opening, open, fieldFocused } = useStepOpen(
+    () => {
+      setClosed(undefined);
+      setEditing(true);
+    },
+    () => {
+      setSaved(null);
+      setSavedFocused(false);
+    },
+  );
   const frame = cardFrame(kind);
 
   useEffect(() => {
@@ -135,7 +139,7 @@ export function TimeZoneCard({
           )}
         </View>
       )}
-      {saved != null && (!editing || savedClosing) && (
+      {saved != null && (!editing || opening || savedClosing) && (
         <View>
           {savedHolder}
           <Notice
