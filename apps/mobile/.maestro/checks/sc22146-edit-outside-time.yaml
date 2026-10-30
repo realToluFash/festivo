@@ -17,6 +17,7 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - assertVisible:
     id: 'eventForm.start.time'
+    text: '.*14:00.*'
 - takeScreenshot: before
 - tapOn:
     id: 'eventForm.start.time'

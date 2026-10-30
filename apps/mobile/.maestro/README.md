@@ -115,8 +115,11 @@ Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each co
 - **A check of a kept value asserts the value is absent before it is picked**, with an
   `assertNotVisible` on the field beside `takeScreenshot: before` (`'.*\d.*'` for a time,
   `'.*\b${DAY}\b.*'` for a date). Otherwise a default filled in later lets the check pass
-  with the pick thrown away. An `assertNotVisible` after the pick sits behind an
-  `assertVisible` on the same field, or it passes on a field that has left the screen.
+  with the pick thrown away. A check that asserts after the pick that a value has gone
+  asserts first that it was there, with an `assertVisible` beside the same screenshot, or
+  a fixture with another value lets it pass. An `assertNotVisible` after the pick sits
+  behind an `assertVisible` on the same field, or it passes on a field that has left the
+  screen.
 - **One flow, one outcome.** A flow that signs in and then changes a password reports one
   failure for two features.
 - **Reach the bundler through `${METRO_URL}`**, never a literal port: the QA stack's
