@@ -16,7 +16,9 @@ import {
   type EverywhereRefusal,
   deviceMoment,
   deviceName,
+  everywhereButton,
   everywhereRefusal,
+  liftsIn,
 } from '../kit/devices.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
@@ -30,6 +32,7 @@ import { CodeField, Field, focusChecked, keysStayDown } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { PasswordField } from './PasswordField.tsx';
+import { ProviderButton } from './ProviderSignIn.tsx';
 import { type StepClosed, stepClosed, useAboveKeyboard, useFocusBackToOpener } from './Screen.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 
@@ -449,6 +452,15 @@ function EverywhereElse({
     };
   }, [provider]);
 
+  useEffect(() => {
+    const delay = liftsIn(refusal, Date.now());
+    if (delay == null) return;
+
+    const lift = setTimeout(() => setRefusal(null), delay);
+
+    return () => clearTimeout(lift);
+  }, [refusal]);
+
   async function submit(): Promise<void> {
     if (working || refusal?.kind === 'limited') return;
     if (!checks.passes({ password: password.current, code: code.current })) return;
@@ -490,12 +502,18 @@ function EverywhereElse({
         return;
       }
 
-      // A refused trip is made again; after a wrong code the kept sign-in is sent again.
-      if (provider != null && error instanceof ApiError && error.is('invalid_credentials')) {
+      const refused = everywhereRefusal(error, provider != null, t);
+
+      // A refused trip, or one limited before the code step, is made again; after a wrong code the kept sign-in is sent again.
+      if (
+        provider != null &&
+        ((error instanceof ApiError && error.is('invalid_credentials')) ||
+          (refused.kind === 'limited' && !codeAsked))
+      ) {
         returned.current = null;
         setConfirmed(false);
       }
-      setRefusal(everywhereRefusal(error, provider != null, t));
+      setRefusal(refused);
     }
   }
 
@@ -515,6 +533,19 @@ function EverywhereElse({
       ? t('devices.everywhereProviderConfirmed', { provider: PROVIDER_NAMES[provider] })
       : null;
   useReadOut(confirmedLine);
+  const button = everywhereButton(
+    {
+      providerName: provider == null ? null : PROVIDER_NAMES[provider],
+      confirmed,
+      codeAsked,
+      working,
+      refusal,
+      until,
+      keepsThisDevice,
+      count,
+    },
+    t,
+  );
 
   return (
     <>
@@ -625,25 +656,24 @@ function EverywhereElse({
           body={t('devices.everywhereWarningBody', { count })}
         />
 
-        <PrimaryButton
-          label={
-            refusal?.kind === 'limited'
-              ? until == null
-                ? t('devices.everywhereRetrySoon')
-                : t('devices.everywhereRetryAt', { time: until })
-              : working
-                ? t('devices.everywhereWorking')
-                : viaName != null
-                  ? t('devices.everywhereContinueWith', { provider: viaName })
-                  : keepsThisDevice
-                    ? t('devices.everywhereConfirm', { count })
-                    : t('devices.everywhereConfirmAll', { count })
-          }
-          onPress={() => void submit()}
-          busy={working}
-          off={refusal?.kind === 'limited'}
-          testID="devices.everywhere.confirm"
-        />
+        {provider != null && button.kind === 'provider' ? (
+          <ProviderButton
+            provider={provider}
+            label={button.label}
+            onPress={() => void submit()}
+            busy={working}
+            off={button.off}
+            testID="devices.everywhere.confirm"
+          />
+        ) : (
+          <PrimaryButton
+            label={button.label}
+            onPress={() => void submit()}
+            busy={working}
+            off={button.off}
+            testID="devices.everywhere.confirm"
+          />
+        )}
       </View>
       <SecondaryButton
         label={t('devices.everywhereKeep', { count })}

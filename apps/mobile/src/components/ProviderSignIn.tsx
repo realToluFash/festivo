@@ -66,60 +66,92 @@ export function ProviderButtons({
     }
   }
 
-  const googleLabel = t('signIn.withGoogle', { provider: 'Google' });
-  const appleLabel = t('signIn.withApple', { provider: 'Apple' });
-
   const shows = (provider: Provider): boolean =>
     only == null || only.length === 0 || only.includes(provider);
 
   return (
     <View style={styles.group}>
-      {/* Android names an unlabelled busy view "busy" alone, and keeps that name once it is idle. */}
       {shows('google') && (
-        <Pressable
-          style={[styles.button, styles.google]}
+        <ProviderButton
+          provider="google"
+          label={t('signIn.withGoogle', { provider: 'Google' })}
           onPress={() => void continueWith('google')}
-          disabled={busy}
-          accessibilityLabel={googleLabel}
-          accessibilityRole="button"
-          accessibilityState={{ busy, disabled: busy }}
+          busy={busy}
           testID="signIn.google"
-        >
-          <GoogleMark />
-          <Text
-            size={brand.googleTextSize}
-            weight="medium"
-            family="googleSans"
-            style={styles.googleText}
-          >
-            {googleLabel}
-          </Text>
-        </Pressable>
+        />
       )}
-
-      {/* Drawn on every platform: iOS's own button reads in the device's language, not the app's. */}
       {shows('apple') && (
-        <Pressable
-          style={[styles.button, styles.apple, appleOnIos && styles.appleIos]}
+        <ProviderButton
+          provider="apple"
+          label={t('signIn.withApple', { provider: 'Apple' })}
           onPress={() => void continueWith('apple')}
-          disabled={busy}
-          accessibilityLabel={appleLabel}
-          accessibilityRole="button"
-          accessibilityState={{ busy, disabled: busy }}
+          busy={busy}
           testID="signIn.apple"
-        >
-          {appleOnIos ? <AppleLogoIos /> : <AppleMark />}
-          <Text
-            size={appleOnIos ? APPLE_IOS_TEXT_SIZE : tokens.typeButton.size}
-            weight="medium"
-            family={appleOnIos ? 'system' : 'sans'}
-            style={styles.appleText}
-          >
-            {appleLabel}
-          </Text>
-        </Pressable>
+        />
       )}
     </View>
+  );
+}
+
+/** Busy and off are one look, the whole button faded with its words kept: Google and Apple fix what it may say (sc-22601). */
+export function ProviderButton({
+  provider,
+  label,
+  onPress,
+  busy = false,
+  off = false,
+  testID,
+}: {
+  provider: Provider;
+  label: string;
+  onPress: () => void;
+  busy?: boolean;
+  off?: boolean;
+  testID: string;
+}) {
+  const inactive = busy || off;
+  // Apple's words are drawn on every platform: iOS's own button reads in the device's language, not the app's.
+  const appleIos = provider === 'apple' && appleOnIos;
+
+  return (
+    <Pressable
+      style={[
+        styles.button,
+        provider === 'google' ? styles.google : styles.apple,
+        appleIos && styles.appleIos,
+        inactive && styles.inactive,
+      ]}
+      onPress={inactive ? undefined : onPress}
+      // A disabled button lets a tap through to the scroll view under it, which drops the keys mid-request.
+      // Pressable lets any non-null disabled overwrite accessibilityState.disabled, so busy leaves it unset.
+      disabled={off || undefined}
+      // Android names an unlabelled busy view "busy" alone, and keeps that name once it is idle.
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: inactive, busy }}
+      testID={testID}
+    >
+      {provider === 'google' ? <GoogleMark /> : appleIos ? <AppleLogoIos /> : <AppleMark />}
+      {provider === 'google' ? (
+        <Text
+          size={brand.googleTextSize}
+          weight="medium"
+          family="googleSans"
+          style={styles.googleText}
+        >
+          {label}
+        </Text>
+      ) : (
+        <Text
+          size={appleIos ? APPLE_IOS_TEXT_SIZE : tokens.typeButton.size}
+          weight="medium"
+          family={appleIos ? 'system' : 'sans'}
+          style={styles.appleText}
+        >
+          {label}
+        </Text>
+      )}
+    </Pressable>
   );
 }
 
@@ -196,4 +228,5 @@ const styles = StyleSheet.create({
   apple: { backgroundColor: brand.appleSurface, borderColor: brand.appleSurface },
   appleText: { color: brand.appleInk },
   appleIos: { gap: 0, paddingVertical: 0, borderWidth: 0 },
+  inactive: { opacity: brand.offOpacity },
 });

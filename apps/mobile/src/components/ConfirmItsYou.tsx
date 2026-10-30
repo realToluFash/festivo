@@ -32,6 +32,7 @@ import { PrimaryButton, QuietButton } from './Buttons.tsx';
 import { CodeField, Field, focusChecked, keysStayDown } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PasswordField } from './PasswordField.tsx';
+import { ProviderButton } from './ProviderSignIn.tsx';
 import { useAboveKeyboard } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
@@ -249,18 +250,22 @@ export function ConfirmItsYou({
           </Text>
         )}
 
-        <PrimaryButton
-          label={
-            checking
-              ? t('waysCard.checking')
-              : via === 'password' || via == null || codeAsked
-                ? t('waysCard.continue')
-                : t('waysCard.continueWith', { provider: PROVIDER_NAMES[via] })
-          }
-          onPress={() => void submit()}
-          busy={checking}
-          testID={`${idPrefix}.continue`}
-        />
+        {via !== 'password' && via != null && !codeAsked ? (
+          <ProviderButton
+            provider={via}
+            label={t('waysCard.continueWith', { provider: PROVIDER_NAMES[via] })}
+            onPress={() => void submit()}
+            busy={checking}
+            testID={`${idPrefix}.continue`}
+          />
+        ) : (
+          <PrimaryButton
+            label={checking ? t('waysCard.checking') : t('waysCard.continue')}
+            onPress={() => void submit()}
+            busy={checking}
+            testID={`${idPrefix}.continue`}
+          />
+        )}
       </View>
       <QuietButton
         label={t('waysCard.cancel')}
