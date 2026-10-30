@@ -1,8 +1,8 @@
 # Signs out from Complete your profile, which the batch's sign-out.yaml does not reach. sc-18648.
 #
-# Sign out is the screen's last line. In Spanish it can stop under the iPhone's bottom edge,
-# which Maestro counts as visible, so scrollUntilVisible leaves it there: one more scroll
-# brings it clear before the tap. sc-21193.
+# Sign out can stop under the iPhone's bottom edge, which Maestro counts as visible, so
+# scrollUntilVisible leaves it there. One more scroll lifts it clear, since the language row
+# sits below it. sc-21193.
 appId: host.exp.Exponent
 ---
 - scrollUntilVisible:
