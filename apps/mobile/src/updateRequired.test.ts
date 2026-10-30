@@ -67,7 +67,7 @@ describe('storeUrl', () => {
   });
 
   test("an iOS build made without an App Store id opens the store's search for Soirely", () => {
-    expect(storeUrl('ios', undefined)).toBe('https://apps.apple.com/search?term=Soirely');
+    expect(storeUrl('ios', undefined)).toBe('https://apps.apple.com/iphone/search?term=Soirely');
   });
 });
 
