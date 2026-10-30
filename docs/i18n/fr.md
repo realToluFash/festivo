@@ -94,7 +94,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   participe seul devrait s’accorder avec chaque ligne. Length est « Durée ». Un refus commence
   par « Non créé. », comme « Non publié. ». Les heures et les minutes se joignent par « et »
   dans `hoursAndMinutes` (« 2 heures et 20 minutes ») ; la date prend « le {{end}} », et
-  « Heures dans le fuseau {{timeZone}} », comme le formulaire.
+  « Heures dans le fuseau {{timeZone}} », comme le formulaire. L’app
+  (`mobile:eventDuplicate.*`, sc-22570 pour sc-22145) dit la même chose, clé par clé ;
+  « Type » y est français, comme sur le web.
 - **27 Oct 2026. Les hôtes d’un événement** (sc-15427 pour sc-6713, `web:eventHosts.*`,
   `eventLive.needsHost*|addHosts` web et app, `messages:validation.event_host*`,
   `messages:event.host_required|last_host`). Host est « hôte », comme `errors:event_host_required` ;

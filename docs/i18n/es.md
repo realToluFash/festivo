@@ -83,7 +83,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   copia» / «Lo que no se copia», porque un participio solo tendría que concordar con cada fila.
   Length es «Duración». Una negativa empieza «No se ha creado.», como «No se ha publicado.». Las
   horas y los minutos se unen con «y» en `hoursAndMinutes` («2 horas y 20 minutos»); la fecha
-  lleva «el {{end}}», y las horas, «Horas en {{timeZone}}», como el formulario.
+  lleva «el {{end}}», y las horas, «Horas en {{timeZone}}», como el formulario. La app
+  (`mobile:eventDuplicate.*`, sc-22570 para sc-22145) dice lo mismo, clave por clave.
 - **27 Oct 2026. Los anfitriones de un evento** (sc-15427 para sc-6713, `web:eventHosts.*`,
   `eventLive.needsHost*|addHosts` web y app, `messages:validation.event_host*`,
   `messages:event.host_required|last_host`). Host es «anfitrión», como ya decía
