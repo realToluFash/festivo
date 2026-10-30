@@ -423,6 +423,10 @@ function FrameHeader({
   );
 }
 
+// The back row stays one hit high at every text size, so its label grows only until its line fills the row; the title below grows on (sc-22871).
+const BACK_GROWS_TO =
+  tokens.sizeHit / (tokens.typeBodyPhone.size * tokens.typeBodyPhone.lineHeight);
+
 export function BackButton({
   label,
   onPress,
@@ -450,7 +454,12 @@ export function BackButton({
           stroke={off ? tokens.colorInkSecondary : tokens.colorInk}
         />
       </Svg>
-      <Text size={tokens.typeBodyPhone.size} weight="semibold" muted={off}>
+      <Text
+        size={tokens.typeBodyPhone.size}
+        weight="semibold"
+        muted={off}
+        maxFontSizeMultiplier={BACK_GROWS_TO}
+      >
         {label}
       </Text>
     </Pressable>
