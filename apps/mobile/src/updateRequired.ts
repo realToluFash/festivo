@@ -103,7 +103,7 @@ export function setUpdateRequired(next: boolean): void {
   listeners.forEach((listener) => listener());
 }
 
-/** Each `<Modal>` is a native window above the root, where the state is, so while it shows every one gives way. */
+/** Each React Native Modal is a native window above the root, where the state is, so while it shows every one gives way. */
 export function useModalOpen(open: boolean): boolean {
   const gated = useSyncExternalStore(
     (listener) => {
