@@ -652,6 +652,10 @@ export function useStepClose(
             );
             break;
           }
+          if (step.do === 'readOpener') {
+            moveScreenReaderFocus(view.current);
+            continue;
+          }
           if (step.do === 'putKeysDown') {
             cancels.push(
               putKeysDownThen(
