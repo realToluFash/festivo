@@ -275,3 +275,47 @@ export function titleScrollsWhileTyping({ keysUp, ...turned }: SidewaysTyping): 
 export function fieldKeptInSight({ keysUp, ...turned }: SidewaysTyping): boolean {
   return keysUp || iPhoneOnItsSide(turned);
 }
+
+/** The keyboard as a close puts it down: whether it is up, what hides it, and its hidden event. */
+export interface Keys {
+  up(): boolean;
+  hide(): void;
+  onHidden(hidden: () => void): () => void;
+}
+
+/** Hides `keys` and calls `then` once they have stayed down `settledMs`, or at once with them already down. Gboard swapping a password's keys for the ones a button gets says they went down and came back up, and a hide asked in that swap is lost, so each hidden event starts the settle again and keys up at its end are hidden once more (sc-18588). Returns what cancels the call still to come. */
+export function keysDownThen(keys: Keys, then: () => void, settledMs: number): () => void {
+  if (!keys.up()) {
+    keys.hide();
+    then();
+    return () => {};
+  }
+
+  let asked = 0;
+  let settle: ReturnType<typeof setTimeout> | undefined;
+  const unwatch = keys.onHidden(wait);
+  ask();
+
+  function ask(): void {
+    asked += 1;
+    keys.hide();
+    // Keys that never say they went down do not hold the close for ever.
+    wait();
+  }
+
+  function wait(): void {
+    clearTimeout(settle);
+    settle = setTimeout(landed, settledMs);
+  }
+
+  function landed(): void {
+    if (keys.up() && asked < 2) return ask();
+    unwatch();
+    then();
+  }
+
+  return () => {
+    unwatch();
+    clearTimeout(settle);
+  };
+}
