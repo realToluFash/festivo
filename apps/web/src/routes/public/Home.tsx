@@ -14,7 +14,12 @@ export function Home() {
     <div className="public">
       <header className="public-header">
         <span className="brand">{t('app.name')}</span>
-        <LanguagePicker />
+        <div className="public-header-actions">
+          <LanguagePicker />
+          <Link className="button" to="/sign-in">
+            {t('public.signIn')}
+          </Link>
+        </div>
       </header>
       <main id="content" className="public-main">
         <h1>{t('public.tagline')}</h1>
