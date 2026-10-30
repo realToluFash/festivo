@@ -1,0 +1,44 @@
+# sc-21802, release build: signed in as EMAIL, the app stopped, then launched again lands on home still signed in, with no sign-in screen.
+appId: com.soirely.app
+---
+- launchApp:
+    appId: com.soirely.app
+- extendedWaitUntil:
+    visible: 'Sign in|.*signed in to.*'
+    timeout: 60000
+- runFlow:
+    when:
+      visible: 'Sign in'
+    commands:
+      - tapOn: 'Sign in'
+      - extendedWaitUntil:
+          visible:
+            id: 'signIn.email'
+          timeout: 30000
+- tapOn:
+    id: 'signIn.email'
+- inputText: ${EMAIL}
+- scrollUntilVisible:
+    element:
+      id: 'signIn.password'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'signIn.password'
+- inputText: ${PASSWORD}
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 60000
+- takeScreenshot: release-signed-in
+- stopApp: com.soirely.app
+- launchApp:
+    appId: com.soirely.app
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 60000
+- assertNotVisible:
+    id: 'signIn.email'
+- takeScreenshot: release-cold-relaunched

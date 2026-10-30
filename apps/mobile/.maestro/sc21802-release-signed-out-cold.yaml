@@ -1,0 +1,33 @@
+# sc-21802, release build: signed in, Settings' Sign out, the app stopped and launched again shows the signed-out landing page, not Home.
+appId: com.soirely.app
+---
+- launchApp:
+    appId: com.soirely.app
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 60000
+- tapOn:
+    id: 'home.openSettings'
+- scrollUntilVisible:
+    element:
+      id: 'settings.signOut'
+    direction: DOWN
+    timeout: 30000
+- scroll
+- waitForAnimationToEnd
+- tapOn:
+    id: 'settings.signOut'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 30000
+- stopApp: com.soirely.app
+- launchApp:
+    appId: com.soirely.app
+- extendedWaitUntil:
+    visible: 'Sign in'
+    timeout: 60000
+- assertNotVisible:
+    id: 'home.openSettings'
+- takeScreenshot: release-signed-out-relaunched

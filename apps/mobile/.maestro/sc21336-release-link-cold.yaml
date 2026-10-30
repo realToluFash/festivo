@@ -1,8 +1,13 @@
-# sc-21336, release build: signed in as EMAIL, the app stopped, then opened by ${EVENT_ID}'s Edit details link (soirely://events/<id>/edit); ' Cold' typed, Save changes opens the event's page with the new name and Saved; back does not show Edit details.
+# sc-21336, release build (sc-21802: iOS's Open in "Soirely"? prompt answered): signed in as EMAIL, the app stopped, then opened by ${EVENT_ID}'s Edit details link (soirely://events/<id>/edit); ' Cold' typed, Save changes opens the event's page with the new name and Saved; back does not show Edit details.
 appId: com.soirely.app
 ---
 - launchApp:
     appId: com.soirely.app
+- runFlow:
+    when:
+      visible: 'Open in .*Soirely.*'
+    commands:
+      - tapOn: 'Cancel'
 - extendedWaitUntil:
     visible: 'Sign in|.*signed in to.*'
     timeout: 60000
@@ -47,6 +52,12 @@ appId: com.soirely.app
     timeout: 60000
 - stopApp: com.soirely.app
 - openLink: soirely://events/${EVENT_ID}/edit
+- runFlow:
+    when:
+      visible: 'Open in .*Soirely.*'
+      platform: iOS
+    commands:
+      - tapOn: 'Open'
 - extendedWaitUntil:
     visible:
       id: 'eventForm.name'
