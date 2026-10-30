@@ -488,7 +488,7 @@ export interface StepClose {
 }
 
 export interface HeldStepClose extends StepClose {
-  /** Holds input focus in the place of a line of words, which cannot take it; rendered beside the line while it shows. */
+  /** Holds input focus in the place of a line of words, which cannot take it; rendered while the line shows, first in a View of its own with the line, since it sits at its parent's top and a scroll view scrolls to the view taking input focus (sc-18587). */
   holder: ReactElement;
 }
 
