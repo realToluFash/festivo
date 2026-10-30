@@ -145,6 +145,57 @@ describe("the web bell's live line (sc-3980)", () => {
     expect(await screen.findByRole('button', { name: 'Notifications' })).toBeTruthy();
   });
 
+  it("a member's own rewrite takes the item's place, keeps the count and announces nothing (sc-21643)", async () => {
+    feedAnswers(async () =>
+      json(
+        page([
+          item('b'),
+          item('a', {
+            lines: [
+              'The date is now 13 Nov (was 12 Nov).',
+              'The venue is now Hall B (was Hall A).',
+            ],
+          }),
+        ]),
+      ),
+    );
+    const { container } = bell();
+    const source = await line();
+    source.open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 2 unread' }));
+    await screen.findByText('The date is now 13 Nov (was 12 Nov).');
+
+    source.publish({
+      updated: item('a', { lines: ['The venue is now Hall B (was Hall A).'] }),
+      unreadCount: 2,
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByText('The date is now 13 Nov (was 12 Nov).')).toBeNull(),
+    );
+    expect(screen.getAllByText(/^Item /).map((title) => title.textContent)).toEqual([
+      'Item b',
+      'Item a',
+    ]);
+    expect(screen.getAllByText('Unread')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: 'Notifications, 2 unread' })).toBeTruthy();
+    expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe('');
+  });
+
+  it("a member's own rewrite of an item not loaded adds nothing (sc-21643)", async () => {
+    feedAnswers(async () => json(page([item('b')])));
+    bell();
+    const source = await line();
+    source.open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    await screen.findByText('Item b');
+
+    source.publish({ updated: item('a'), unreadCount: 2 });
+
+    expect(await screen.findByRole('button', { name: 'Notifications, 2 unread' })).toBeTruthy();
+    expect(screen.queryByText('Item a')).toBeNull();
+  });
+
   it('reads page one again when a line opens, and takes the rows read elsewhere meanwhile', async () => {
     feedAnswers(
       async () => json(page([item('a')])),

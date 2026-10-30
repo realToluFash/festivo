@@ -145,6 +145,43 @@ describe('the bell feed (sc-3980)', () => {
     expect(after.unread).toBe(1);
   });
 
+  test("a rewrite by the member takes the item's place, keeping its time, and moves nothing else", () => {
+    const loaded = feed([at('c', 3), at('b', 2), at('a', 1)], 'cursor');
+
+    const after = feedWithLiveRead(loaded, {
+      id: 'b',
+      unreadCount: 3,
+      updated: at('b', 9, { category: 'event_changes', muted: true }),
+    });
+
+    expect(after.items.map((shown) => [shown.id, shown.category, shown.muted])).toEqual([
+      ['c', 'messages', false],
+      ['b', 'event_changes', true],
+      ['a', 'messages', false],
+    ]);
+    expect(after.items[1]?.createdAt).toBe('2026-10-29T10:02:00Z');
+    expect(after.unread).toBe(3);
+    expect(after.next).toBe('cursor');
+  });
+
+  test('a rewrite of an item shown as read leaves it read', () => {
+    const after = feedWithLiveRead(feed([item('a', { read: true })]), {
+      id: 'a',
+      unreadCount: 0,
+      updated: item('a', { category: 'event_changes' }),
+    });
+
+    expect(after.items).toEqual([item('a', { read: true, category: 'event_changes' })]);
+  });
+
+  test('a rewrite of an item not loaded adds nothing', () => {
+    const loaded = feed([item('b')], 'cursor');
+
+    const after = feedWithLiveRead(loaded, { id: 'a', unreadCount: 1, updated: item('a') });
+
+    expect(after.items).toEqual(loaded.items);
+  });
+
   test("a read published from another session reads the row, and the count is the server's", () => {
     const loaded = feed([item('b'), item('a')]);
 
