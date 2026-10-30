@@ -136,8 +136,8 @@ Only when words cannot carry it: a link to the section of the concepts artifact.
   certificates, a provider) or could be a paid feature.
 - **Sketches are concepts, not designs.** Keep them in one artifact, "Soirely concepts", with
   one section per idea. Each section is labelled _Concept — not a design, not for build_.
-  Load `artifact-design` before making it. Never draw in an epic's design artifact; that is
-  the designer's.
+  Load `artifact-design` before making it. Never draw in Soirely — Redesign; that is the
+  designer's.
 - **Then ask.** One `[pm] (from cd)` comment on the idea's story: "Accept, park or reject?",
   with the recommended version in a line (`sq cd comment sc-N --to pm`, which writes the
   header). Add `[ux]` (`--to pm,ux`) if it changes a drawn screen.
