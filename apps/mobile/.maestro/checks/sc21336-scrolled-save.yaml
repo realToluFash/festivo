@@ -1,0 +1,92 @@
+# sc-21336: ${EVENT_ID}'s page scrolled down to Edit details; ' One' typed, Save changes; the screenshot on landing must show Saved without scrolling. Then the same again (' Two'), relying on the blur clearing Saved.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.page.edit'
+    direction: DOWN
+    visibilityPercentage: 100
+- swipe:
+    start: 50%, 70%
+    end: 50%, 55%
+- waitForAnimationToEnd
+- takeScreenshot: scrolled
+- tapOn:
+    id: 'events.page.edit'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 20000
+- tapOn:
+    id: 'eventForm.name'
+- inputText: ' One'
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: '{{t:eventForm.name}}'
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+- tapOn:
+    id: 'eventForm.send'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 3000
+- waitForAnimationToEnd
+- takeScreenshot: landed1
+- assertVisible: '{{t:eventEdit.saved}}'
+- scrollUntilVisible:
+    element:
+      id: 'events.page.edit'
+    direction: DOWN
+    visibilityPercentage: 100
+- swipe:
+    start: 50%, 70%
+    end: 50%, 55%
+- waitForAnimationToEnd
+- tapOn:
+    id: 'events.page.edit'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 20000
+- tapOn:
+    id: 'eventForm.name'
+- inputText: ' Two'
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: '{{t:eventForm.name}}'
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+- tapOn:
+    id: 'eventForm.send'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 3000
+- waitForAnimationToEnd
+- takeScreenshot: landed2
+- assertVisible: '{{t:eventEdit.saved}}'
+- assertVisible: '.*Two.*'
