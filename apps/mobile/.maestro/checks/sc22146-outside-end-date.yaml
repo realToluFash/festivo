@@ -1,17 +1,11 @@
 # sc-22146: on iOS, New event's Ends date sheet, a new day (DAY) tapped and the sheet closed by a tap outside; Ends' date shows DAY.
 appId: host.exp.Exponent
 ---
-- openLink: ${METRO_URL}/--/events
-- extendedWaitUntil:
-    visible:
-      id: 'events.new'
-    timeout: 30000
-- tapOn:
-    id: 'events.new'
+- openLink: ${METRO_URL}/--/events/new
 - extendedWaitUntil:
     visible:
       id: 'eventForm.name'
-    timeout: 20000
+    timeout: 30000
 - scrollUntilVisible:
     element:
       id: 'eventForm.end.date'
