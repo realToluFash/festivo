@@ -313,6 +313,12 @@ describe('every Modal stays under the update-required state (sc-22962)', () => {
   it('notices a Modal that shows over the update-required state', () => {
     expect(modalsLeftOpen('<Modal visible={open}>\n</Modal>')).toBe(1);
     expect(modalsLeftOpen('<Modal transparent>\n</Modal>')).toBe(1);
+    expect(modalsLeftOpen('<Modal visible={useModalOpen(open) || forced}>\n</Modal>')).toBe(1);
+    expect(
+      modalsLeftOpen(
+        'const shown = useModalOpen(open) || forced;\n<Modal visible={shown}>\n</Modal>',
+      ),
+    ).toBe(1);
     expect(
       modalsLeftOpen(
         'const shown = useModalOpen(open);\n<Modal visible={shown}>\n</Modal>\n<Modal visible={open}>\n</Modal>',
@@ -1119,19 +1125,23 @@ function selfClosing(name: string, text: string): { line: number; markup: string
   });
 }
 
+function modalTags(text: string): RegExpExecArray[] {
+  return [...text.matchAll(/(?<![\w.])<Modal\b/gu)];
+}
+
 function modalsOpened(text: string): number {
-  return [...text.matchAll(/(?<![\w.])<Modal\b/gu)].length;
+  return modalTags(text).length;
 }
 
 /** How many Modals take their visible from somewhere other than useModalOpen, or have none. */
 function modalsLeftOpen(text: string): number {
-  const held = [...text.matchAll(/\bconst (\w+) = useModalOpen\(/gu)].map(
+  const held = [...text.matchAll(/\bconst (\w+) = useModalOpen\([^()]*\);/gu)].map(
     (match) => `{${match[1]}}`,
   );
 
-  return [...text.matchAll(/(?<![\w.])<Modal\b/gu)]
-    .map((match) => propValue(text.slice(match.index, tagEnd(text, match.index)), 'visible'))
-    .filter((visible) => !(visible?.startsWith('{useModalOpen(') || held.includes(visible ?? '')))
+  return modalTags(text)
+    .map((match) => propValue(text.slice(match.index, tagEnd(text, match.index)), 'visible') ?? '')
+    .filter((visible) => !(/^\{useModalOpen\([^()]*\)\}$/u.test(visible) || held.includes(visible)))
     .length;
 }
 
