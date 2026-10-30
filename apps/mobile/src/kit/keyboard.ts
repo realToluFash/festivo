@@ -193,6 +193,11 @@ export function settledOffsetKeeping(
   return outOfSight({ ...at, offset: keeping }) ? to : keeping;
 }
 
+/** Whether a scroll to `to` carries `kept`, the control TalkBack's focus is on, wholly out of a sight `shown` tall, so TalkBack moves that focus back to the nearest view before it in sight (sc-22357). */
+export function keptLeavesSight(shown: number, to: number | null, kept: InContent | null): boolean {
+  return to != null && kept != null && outOfSight({ ...kept, offset: to, shown });
+}
+
 /** Where the focused field sits inside the scroll content, as the last part of its group. */
 export interface Focused {
   contentY: number;
