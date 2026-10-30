@@ -56,10 +56,11 @@ export function holdEnds(offset: number, viewHeight: number, contentHeight: numb
   return offset + viewHeight <= Math.max(contentHeight, viewHeight) + 1;
 }
 
-/** The field whose blur puts the keys down when a step closes: the one holding input focus now, or else the one that raised the keys, which leaves them up once it has given input focus up (sc-18588). */
+/** The field whose blur puts the keys down when a step closes: the one holding input focus now, or else one of the step's own, or else the one that raised the keys. A field's blur hides the keys whichever field raised them, and one of the step's is still mounted, where JS can have lost track of focus as Gboard swaps a password's keys, and Keyboard.dismiss then hides nothing (sc-18588). */
 export function fieldToBlur<Field>(
   focusedNow: Field | null | undefined,
+  ofTheStep: Field | null,
   raisedTheKeys: Field | null,
 ): Field | null {
-  return focusedNow ?? raisedTheKeys;
+  return focusedNow ?? ofTheStep ?? raisedTheKeys;
 }

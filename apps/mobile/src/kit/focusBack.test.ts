@@ -69,15 +69,22 @@ describe('a step closing back to its opener', () => {
 
 describe('the field a closing step blurs to put the keys down', () => {
   it('is the one holding input focus', () => {
-    expect(fieldToBlur('new password', 'current password')).toBe('new password');
+    expect(fieldToBlur('new password', 'current password', 'current password')).toBe(
+      'new password',
+    );
   });
 
-  it('is the one that raised the keys once it has given input focus up, which leaves them up (sc-18588)', () => {
-    expect(fieldToBlur(null, 'current password')).toBe('current password');
+  it("is one of the step's own when JS knows of no field holding input focus, so the hide reaches the keys (sc-18588)", () => {
+    expect(fieldToBlur(null, 'current password', null)).toBe('current password');
+    expect(fieldToBlur(null, 'current password', 'time zone')).toBe('current password');
+  });
+
+  it('is the one that raised the keys once it has given input focus up, in a step with no field of its own', () => {
+    expect(fieldToBlur(null, null, 'time zone')).toBe('time zone');
   });
 
   it('is none when no field raised the keys', () => {
-    expect(fieldToBlur(null, null)).toBeNull();
+    expect(fieldToBlur(null, null, null)).toBeNull();
   });
 });
 
