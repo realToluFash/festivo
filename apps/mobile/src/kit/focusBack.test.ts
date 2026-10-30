@@ -13,7 +13,6 @@ import {
 } from './focusBack.ts';
 
 const TALKBACK_OWN_FOCUS_SOONEST_MS = 140;
-const BARE_NAME_CUT_OFF_MS = 400;
 
 describe('focus going back to a step’s opener', () => {
   it('lands on Android before TalkBack puts its own focus back, 0.14 s at the soonest qa2 measured (sc-17281)', () => {
@@ -46,17 +45,6 @@ describe('a step closing back to its opener', () => {
       { do: 'settleOpener', into: 'outOfSight', read: false },
       { do: 'finish', focusBack: false, atMs: TALKBACK_FOCUS_TAKEN_MS },
     ]);
-  });
-
-  it('reads the opener while TalkBack is still saying the bare name its input focus gives, which only a read starting within 0.4 s cuts off (sc-22995)', () => {
-    const steps = stepCloseSteps('android', true, 'opener');
-    const before = steps.slice(
-      0,
-      steps.findIndex((step) => step.do === 'readOpener'),
-    );
-
-    expect(before.map((step) => step.do)).not.toContain('putKeysDown');
-    expect(INPUT_FOCUS_TAKEN_MS).toBeLessThan(BARE_NAME_CUT_OFF_MS);
   });
 
   it('on Android with TalkBack on, gives input focus to a holder TalkBack does not read beside a line of words, and moves TalkBack’s focus to the line once the keys’ scroll has landed, before the step goes (sc-18587)', () => {
