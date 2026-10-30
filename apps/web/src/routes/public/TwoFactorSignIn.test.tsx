@@ -145,6 +145,19 @@ describe('a sign-in that asks for a second factor', () => {
     );
   });
 
+  it('says signing in did not work when the check fails on the way', async () => {
+    await atTheCodeScreen({
+      'POST /api/auth/two-factor/verify': () => problem('internal_error', 503),
+    });
+
+    enter('123456');
+
+    expect((await screen.findByRole('alert')).textContent).toContain('Signing in did not work');
+    expect(
+      screen.getByText('Something went wrong on the way. Try again in a moment.'),
+    ).toBeDefined();
+  });
+
   it('takes a recovery code instead, and says when one was already used', async () => {
     const sent = await atTheCodeScreen({
       'POST /api/auth/two-factor/verify': () => problem('recovery_code_used', 422),

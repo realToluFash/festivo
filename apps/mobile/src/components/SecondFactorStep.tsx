@@ -28,6 +28,8 @@ export function SecondFactorStep({
   recoveryIntro,
   submitLabel,
   pausedNote,
+  failedTitle,
+  failedBody,
   onLostBoth,
   onVerify,
   onExpired,
@@ -37,6 +39,8 @@ export function SecondFactorStep({
   recoveryIntro: string;
   submitLabel: string;
   pausedNote?: string;
+  failedTitle: string;
+  failedBody: string;
   /** Only where a sign-in asks: the way back in for somebody who has neither (sc-509). */
   onLostBoth?: () => void;
   onVerify: (factor: SecondFactor) => Promise<void>;
@@ -177,8 +181,8 @@ export function SecondFactorStep({
           <Notice
             tone="broken"
             mark={tokens.marks.broken.glyph}
-            title={t('signIn.failedTitle')}
-            body={t('signIn.failedBody')}
+            title={failedTitle}
+            body={failedBody}
             answer={status}
           />
         )}

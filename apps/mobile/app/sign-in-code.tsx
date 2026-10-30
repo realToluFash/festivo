@@ -18,6 +18,8 @@ export default function SignInCode() {
       intro={t('twoFactor.intro', { email: challenge.email })}
       recoveryIntro={t('twoFactor.recoveryIntro')}
       submitLabel={t('twoFactor.verify')}
+      failedTitle={t('signIn.failedTitle')}
+      failedBody={t('signIn.failedBody')}
       onVerify={async (factor) => {
         router.replace(
           await nextAfterSignIn(codePassed(await api.verifyTwoFactor(challenge.challenge, factor))),
