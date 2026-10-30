@@ -1346,3 +1346,21 @@ function unreportable(markup: string, when = ''): boolean {
     !markup.slice(last.index).includes('{...')
   );
 }
+
+describe('the code step fails in the words of the flow it is in (sc-22740)', () => {
+  it.each([
+    ['app/sign-in-code.tsx', 'signIn'],
+    ['app/reset-password.tsx', 'recovery'],
+  ])('%s passes %s failure words', (file, flow) => {
+    const text = readFileSync(join(...file.split('/')), 'utf8');
+
+    expect(text).toContain(`failedTitle={t('${flow}.failedTitle')}`);
+    expect(text).toContain(`failedBody={t('${flow}.failedBody')}`);
+  });
+
+  it('SecondFactorStep names no flow’s failure words itself', () => {
+    expect(readFileSync(join('src', 'components', 'SecondFactorStep.tsx'), 'utf8')).not.toMatch(
+      /\.failed(?:Title|Body)'/u,
+    );
+  });
+});

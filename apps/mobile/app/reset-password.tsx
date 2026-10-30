@@ -142,6 +142,8 @@ export default function ResetPassword() {
         recoveryIntro={t('recovery.codeRecoveryIntro')}
         submitLabel={t('recovery.continueToPassword')}
         pausedNote={t('recovery.nothingChanged')}
+        failedTitle={t('recovery.failedTitle')}
+        failedBody={t('recovery.failedBody')}
         onVerify={async (factor) => {
           try {
             await api.passResetCode(token, factor);
