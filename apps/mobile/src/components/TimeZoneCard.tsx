@@ -27,6 +27,7 @@ import { useReadOut } from './ReadOut.tsx';
 import {
   SETTLED_MS,
   type StepClosed,
+  type StepHidden,
   useAboveKeyboard,
   useFocusBackToOpener,
   useFocusOnAnswer,
@@ -69,6 +70,7 @@ export function TimeZoneCard({
     opener: changeOpener,
     closing,
     closer,
+    hidden,
     close,
   } = useStepClose(opener, 'change', 'opener', (back) => {
     setClosed(back);
@@ -186,6 +188,7 @@ export function TimeZoneCard({
           onFocused={fieldFocused}
           closer={closer}
           saveCloser={saveCloser}
+          hidden={hidden}
         />
       )}
     </View>
@@ -203,6 +206,7 @@ function Choosing({
   onFocused,
   closer,
   saveCloser,
+  hidden,
 }: {
   phone: boolean;
   zones: readonly TimeZoneOption[];
@@ -213,6 +217,8 @@ function Choosing({
   onFocused: () => void;
   closer: RefObject<ViewInstance | null>;
   saveCloser: RefObject<ViewInstance | null>;
+  /** Hides all but Cancel while Cancel closes the step. */
+  hidden: StepHidden;
 }) {
   const { t } = useTranslation();
   const [typed, setTyped] = useState('');
@@ -291,7 +297,7 @@ function Choosing({
 
   return (
     <>
-      <View {...aboveKeyboard}>
+      <View {...aboveKeyboard} {...hidden}>
         <View
           ref={top}
           onLayout={(event) => setGroupHeight(event.nativeEvent.layout.height)}

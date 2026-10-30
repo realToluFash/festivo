@@ -1,0 +1,23 @@
+# sc-22145: a copy opened any other way is an ordinary event page, Events going to the list.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events\.phase\..+'
+    timeout: 30000
+- takeScreenshot: list
+- tapOn:
+    id: 'events.tab.drafts'
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${COPY}'
+    timeout: 15000
+- tapOn:
+    id: 'events.row.${COPY}'
+- waitForAnimationToEnd
+- takeScreenshot: copy-from-list
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- takeScreenshot: after-back

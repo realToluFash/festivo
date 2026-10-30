@@ -32,6 +32,7 @@ import { PasswordField } from './PasswordField.tsx';
 import { PasswordRule } from './PasswordRule.tsx';
 import {
   type StepClosed,
+  type StepHidden,
   stepClosed,
   useAboveKeyboard,
   useFocusBackToOpener,
@@ -88,6 +89,7 @@ export function PasswordCard({
     closing,
     closer,
     field,
+    hidden,
     close,
   } = useStepClose(opener, 'change', 'opener', (closed) =>
     setStage({ kind: 'atRest', signedOut: null, added: null, closed }),
@@ -175,6 +177,7 @@ export function PasswordCard({
           onCancel={close}
           closer={closer}
           field={field}
+          hidden={hidden}
         />
       )}
     </View>
@@ -188,6 +191,7 @@ function Changing({
   onCancel,
   closer,
   field,
+  hidden,
 }: {
   email: string;
   closing: boolean;
@@ -195,6 +199,7 @@ function Changing({
   onCancel: () => void;
   closer: RefObject<ViewInstance | null>;
   field: RefCallback<HostInstance>;
+  hidden: StepHidden;
 }) {
   const { t } = useTranslation();
   const current = useRef('');
@@ -258,93 +263,95 @@ function Changing({
 
   return (
     <>
-      <Title text={t('passwordCard.formTitle')} answer="changing" />
+      <View {...hidden} style={styles.group}>
+        <Title text={t('passwordCard.formTitle')} answer="changing" />
 
-      {refusal?.field === 'paused' && (
-        <Notice
-          tone="attention"
-          mark="!"
-          title={t('passwordCard.pausedTitle')}
-          body={refusal.message}
-          answer={refusal}
-        />
-      )}
-      {refusal?.field === 'failed' && (
-        <Notice
-          tone="broken"
-          mark={tokens.marks.broken.glyph}
-          title={t('passwordCard.failedTitle')}
-          body={refusal.message}
-          answer={refusal}
-        />
-      )}
+        {refusal?.field === 'paused' && (
+          <Notice
+            tone="attention"
+            mark="!"
+            title={t('passwordCard.pausedTitle')}
+            body={refusal.message}
+            answer={refusal}
+          />
+        )}
+        {refusal?.field === 'failed' && (
+          <Notice
+            tone="broken"
+            mark={tokens.marks.broken.glyph}
+            title={t('passwordCard.failedTitle')}
+            body={refusal.message}
+            answer={refusal}
+          />
+        )}
 
-      <Field
-        label={t('passwordCard.current')}
-        labelAction={{
-          label: t('passwordCard.forgot'),
-          onPress: () => router.push('/forgot-password'),
-          testID: 'password.forgot',
-        }}
-        error={currentError}
-      >
-        <PasswordField
-          ref={currentRef}
-          wrong={currentError != null}
-          submitting={saving}
-          autoComplete="current-password"
-          textContentType="password"
-          onChangeText={(text) => {
-            current.current = text;
-            if (refusal?.field === 'currentPassword') setRefusal(null);
-            checks.edited('currentPassword', text);
+        <Field
+          label={t('passwordCard.current')}
+          labelAction={{
+            label: t('passwordCard.forgot'),
+            onPress: () => router.push('/forgot-password'),
+            testID: 'password.forgot',
           }}
-          onBlur={() => checks.left('currentPassword', current.current)}
-          returnKeyType="next"
-          onSubmitEditing={() => nextInput.current?.focus()}
-          accessibilityLabel={t('passwordCard.current')}
-          testID="password.current"
-        />
-      </Field>
-
-      <View {...aboveKeyboard} style={styles.group}>
-        <Field label={t('passwordCard.new')} error={nextError}>
+          error={currentError}
+        >
           <PasswordField
-            ref={nextInput}
-            wrong={nextError != null}
+            ref={currentRef}
+            wrong={currentError != null}
             submitting={saving}
-            autoComplete="new-password"
-            textContentType="newPassword"
+            autoComplete="current-password"
+            textContentType="password"
             onChangeText={(text) => {
-              next.current = text;
-              setLengthMet(meetsPasswordLength(text));
-              if (refusal?.field === 'newPassword') setRefusal(null);
-              checks.edited('newPassword', text);
+              current.current = text;
+              if (refusal?.field === 'currentPassword') setRefusal(null);
+              checks.edited('currentPassword', text);
             }}
-            onBlur={() => checks.left('newPassword', next.current)}
-            returnKeyType="done"
-            onSubmitEditing={() => void submit()}
-            submitBehavior="submit"
-            accessibilityLabel={t('passwordCard.new')}
-            testID="password.new"
+            onBlur={() => checks.left('currentPassword', current.current)}
+            returnKeyType="next"
+            onSubmitEditing={() => nextInput.current?.focus()}
+            accessibilityLabel={t('passwordCard.current')}
+            testID="password.current"
           />
         </Field>
 
-        <PasswordRule met={lengthMet} testID="password" />
+        <View {...aboveKeyboard} style={styles.group}>
+          <Field label={t('passwordCard.new')} error={nextError}>
+            <PasswordField
+              ref={nextInput}
+              wrong={nextError != null}
+              submitting={saving}
+              autoComplete="new-password"
+              textContentType="newPassword"
+              onChangeText={(text) => {
+                next.current = text;
+                setLengthMet(meetsPasswordLength(text));
+                if (refusal?.field === 'newPassword') setRefusal(null);
+                checks.edited('newPassword', text);
+              }}
+              onBlur={() => checks.left('newPassword', next.current)}
+              returnKeyType="done"
+              onSubmitEditing={() => void submit()}
+              submitBehavior="submit"
+              accessibilityLabel={t('passwordCard.new')}
+              testID="password.new"
+            />
+          </Field>
 
-        <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
-          {t('passwordCard.signsOut')}
-        </Text>
-        <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
-          {t('passwordCard.emailed', { email })}
-        </Text>
+          <PasswordRule met={lengthMet} testID="password" />
 
-        <PrimaryButton
-          label={saving ? t('passwordCard.saving') : t('passwordCard.save')}
-          onPress={() => void submit()}
-          busy={saving}
-          testID="password.save"
-        />
+          <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
+            {t('passwordCard.signsOut')}
+          </Text>
+          <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
+            {t('passwordCard.emailed', { email })}
+          </Text>
+
+          <PrimaryButton
+            label={saving ? t('passwordCard.saving') : t('passwordCard.save')}
+            onPress={() => void submit()}
+            busy={saving}
+            testID="password.save"
+          />
+        </View>
       </View>
       <QuietButton
         label={t('passwordCard.cancel')}

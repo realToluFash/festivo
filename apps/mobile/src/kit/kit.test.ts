@@ -20,6 +20,7 @@ import {
   fieldKeptInSight,
   groupInWindow,
   keyboardInWindow,
+  keptLeavesSight,
   keyboardLift,
   keysDownThen,
   keysOver,
@@ -327,6 +328,14 @@ describe("a closed step's opener is scrolled under TalkBack's focus only once it
 
     expect(settledOffsetKeeping(above, 'outOfSight', { contentY: 1000, height: 48 })).toBe(384);
     expect(settledOffsetKeeping(above, 'outOfSight', { contentY: 1500, height: 48 })).toBe(384);
+  });
+
+  it('says when that scroll carries Cancel wholly out of sight, as TalkBack sees it (sc-22357)', () => {
+    expect(keptLeavesSight(600, 384, { contentY: 1000, height: 48 })).toBe(true);
+    expect(keptLeavesSight(600, 398, { contentY: 950, height: 48 })).toBe(false);
+    expect(keptLeavesSight(600, 384, { contentY: 950, height: 48 })).toBe(false);
+    expect(keptLeavesSight(600, null, { contentY: 1500, height: 48 })).toBe(false);
+    expect(keptLeavesSight(600, 384, null)).toBe(false);
   });
 
   it('brings an opener below into sight as before, and with nothing to keep', () => {
