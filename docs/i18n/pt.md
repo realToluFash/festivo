@@ -73,7 +73,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   que não é copiado", porque um particípio sozinho teria de concordar com cada linha. Length é
   "Duração". Uma recusa começa "Não foi criado.", como "Não foi publicado.". As horas e os
   minutos juntam-se com "e" em `hoursAndMinutes` ("2 horas e 20 minutos"); a data leva "no dia
-  {{end}}", como `calledOffNotice`, e "Horas no fuso horário {{timeZone}}", como o formulário.
+  {{end}}", como `calledOffNotice`, e "Horas no fuso horário {{timeZone}}", como o formulário. A app
+  (`mobile:eventDuplicate.*`, sc-22570 para sc-22145) diz o mesmo, chave a chave.
 - **27 Oct 2026. Os anfitriões de um evento** (sc-15427 para sc-6713, `web:eventHosts.*`,
   `eventLive.needsHost*|addHosts` web e app, `messages:validation.event_host*`,
   `messages:event.host_required|last_host`). Host é "anfitrião", como `errors:event_host_required`;

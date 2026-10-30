@@ -33,6 +33,7 @@ import {
   useRoomAboveKeyboard,
   useScrolledToTop,
   useStepClose,
+  useStepOpen,
 } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
@@ -86,6 +87,17 @@ export function TimeZoneCard({
     setEditing(false);
   });
   const savedGiven = savedFocused || savedClosing;
+  // Change, or the saved line's holder, going as the step comes leaves input focus on nothing, which Android puts on the header's back row (sc-22392).
+  const { opening, open, fieldFocused } = useStepOpen(
+    () => {
+      setClosed(undefined);
+      setEditing(true);
+    },
+    () => {
+      setSaved(null);
+      setSavedFocused(false);
+    },
+  );
   const frame = cardFrame(kind);
 
   useEffect(() => {
@@ -115,7 +127,7 @@ export function TimeZoneCard({
         {t('timeZone.intro')}
       </Text>
 
-      {(!editing || closing || savedClosing) && (
+      {(!editing || opening || closing || savedClosing) && (
         <View style={styles.group}>
           <Text size={tokens.typeRowTitle.size} weight="semibold">
             {label ?? t('timeZone.unset')}
@@ -127,7 +139,7 @@ export function TimeZoneCard({
           )}
         </View>
       )}
-      {saved != null && (!editing || savedClosing) && (
+      {saved != null && (!editing || opening || savedClosing) && (
         <View>
           {savedHolder}
           <Notice
@@ -141,16 +153,11 @@ export function TimeZoneCard({
           />
         </View>
       )}
-      {(!editing || closing) && (
+      {(!editing || opening || closing) && (
         <SecondaryButton
           ref={changeOpener}
           label={t('timeZone.change')}
-          onPress={() => {
-            setSaved(null);
-            setSavedFocused(false);
-            setClosed(undefined);
-            setEditing(true);
-          }}
+          onPress={open}
           testID="timeZone.change"
         />
       )}
@@ -166,6 +173,7 @@ export function TimeZoneCard({
             closeSaved();
           }}
           onCancel={close}
+          onFocused={fieldFocused}
           closer={closer}
           saveCloser={saveCloser}
         />
@@ -182,6 +190,7 @@ function Choosing({
   closing,
   onSaved,
   onCancel,
+  onFocused,
   closer,
   saveCloser,
 }: {
@@ -191,6 +200,7 @@ function Choosing({
   closing: boolean;
   onSaved: (zone: TimeZoneOption) => Promise<void>;
   onCancel: () => void;
+  onFocused: () => void;
   closer: RefObject<ViewInstance | null>;
   saveCloser: RefObject<ViewInstance | null>;
 }) {
@@ -283,6 +293,7 @@ function Choosing({
               wrong={error != null}
               submitting={saving}
               autoFocus
+              onFocus={onFocused}
               autoCapitalize="none"
               placeholder={t('timeZone.placeholder')}
               value={typed}

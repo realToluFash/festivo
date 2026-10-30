@@ -7,6 +7,7 @@ import {
   INPUT_FOCUS_TAKEN_MS,
   scrollAsked,
   stepCloseSteps,
+  stepOpensInOrder,
   TALKBACK_FOCUS_BACK_MS,
   TALKBACK_FOCUS_TAKEN_MS,
 } from './focusBack.ts';
@@ -115,5 +116,16 @@ describe('a scroll a close asks for itself', () => {
   it('is not any other scroll, nor any scroll when none was asked for', () => {
     expect(scrollAsked(240, 200)).toBe(false);
     expect(scrollAsked(null, 240)).toBe(false);
+  });
+});
+
+describe('a step opening from its opener', () => {
+  it('on Android with TalkBack on, keeps the opener until the step’s field has input focus, so TalkBack goes from one to the other with nothing between (sc-22392)', () => {
+    expect(stepOpensInOrder('android', true)).toBe(true);
+  });
+
+  it('opens at once with TalkBack off, and on iOS', () => {
+    expect(stepOpensInOrder('android', false)).toBe(false);
+    expect(stepOpensInOrder('ios', true)).toBe(false);
   });
 });
