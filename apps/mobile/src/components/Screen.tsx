@@ -351,6 +351,15 @@ function bringIntoView(
   );
 }
 
+/** Runs `then` two frames on, once a commit made now has been mounted; returns what cancels it. */
+function afterMount(then: () => void): () => void {
+  let frame = requestAnimationFrame(() => {
+    frame = requestAnimationFrame(then);
+  });
+
+  return () => cancelAnimationFrame(frame);
+}
+
 /** The Field a client check focuses comes wholly into view above the keys, again once they are up and its error has grown it (sc-20721). */
 function useCheckedFieldInView(scroll: ScreenScrollView): void {
   useEffect(() => {
@@ -670,12 +679,17 @@ export function useStepClose(
 
   // The opener showing above the step pushes it down, and a Cancel pushed out of sight under TalkBack's focus has TalkBack move that focus to the step's nearest view still in sight, and read it, before the opener takes it (sc-22357).
   useLayoutEffect(() => {
-    if (closing)
+    if (!closing) return;
+
+    const keepCloser = () =>
       bringIntoView(scroll, closer.current, false, {
         when: 'outOfSight',
         aboveKeys: true,
         holding: true,
       });
+    keepCloser();
+    // Fabric on Android runs a scroll before the mount it was asked in, so at the page's end the one above stops at the content's old end, with the closer under the keys; TalkBack then reads the step's top as the keys go (sc-18587).
+    return afterMount(keepCloser);
   }, [closing, scroll]);
 
   useEffect(() => {
