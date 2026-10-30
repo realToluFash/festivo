@@ -41,6 +41,8 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **30 Oct 2026. Uma versão nova com o separador aberto** (sc-22881 para sc-22622, `release.*`,
+  web). "A Soirely foi atualizada.", no feminino; o botão, "Recarregar", o verbo do browser.
 - **30 Oct 2026. Uma versão demasiado antiga** (sc-22881 para sc-22620, `updateRequired.*`,
   app). "Atualize a Soirely para continuar", com "a Soirely" no feminino; o corpo, "Esta versão
   da Soirely já não funciona. Atualizar mantém tudo o que guardou."; o botão, "Atualizar".
