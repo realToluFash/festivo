@@ -56,8 +56,8 @@ import {
   type InputFocusTo,
   type StepCloseStep,
   stepCloseSteps,
-  stepOpensInOrder,
-  TALKBACK_FOCUS_TAKEN_MS,
+  type StepOpenStep,
+  stepOpenSteps,
 } from '../kit/focusBack.ts';
 import { stepOpeners } from '../kit/stepOpeners.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -774,14 +774,17 @@ export interface StepOpen {
   fieldShown(field: TextInputInstance | null): void;
   /** The step's field has taken input focus. */
   fieldFocused(): void;
+  /** The step starts closing: what is left of the open is dropped, so nothing focuses a field going or gone. */
+  stop(): void;
 }
 
-/** Opens a step with `start`, in order where `stepOpensInOrder` says so: the opener stays while TalkBack's focus is moved onto the step's field and the field then takes input focus, and goes once it has, or after a settle when the field never takes it, and `opened` runs as it goes (sc-22392). */
+/** Opens a step with `start`, by the steps `stepOpenSteps` gives, and `opened` runs as the opener goes (sc-22392). */
 export function useStepOpen(start: () => void, opened: () => void): StepOpen {
   const [opening, setOpening] = useState(false);
   const openingNow = useRef(false);
   const startNow = useRef(start);
   const openedNow = useRef(opened);
+  const fieldSteps = useRef<StepOpenStep[]>([]);
   const done = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const gone = useRef(false);
 
@@ -798,50 +801,61 @@ export function useStepOpen(start: () => void, opened: () => void): StepOpen {
     [],
   );
 
-  const endIn = useCallback((ms: number) => {
+  const end = useCallback(() => {
     clearTimeout(done.current);
-    done.current = setTimeout(() => {
-      openingNow.current = false;
-      setOpening(false);
-      openedNow.current();
-    }, ms);
+    fieldSteps.current = [];
+    if (!openingNow.current) return;
+
+    openingNow.current = false;
+    setOpening(false);
+    openedNow.current();
   }, []);
 
   const open = useCallback(() => {
     void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
       if (gone.current) return;
 
-      const inOrder = stepOpensInOrder(Platform.OS, on);
-      openingNow.current = inOrder;
-      setOpening(inOrder);
+      const [first, ...rest] = stepOpenSteps(Platform.OS, on, SETTLED_MS);
+      const keep = first?.do === 'keepOpener' ? first : null;
+      openingNow.current = keep != null;
+      fieldSteps.current = rest;
+      setOpening(keep != null);
       startNow.current();
-      if (inOrder) endIn(SETTLED_MS);
-      else openedNow.current();
+      if (keep == null) return openedNow.current();
+
+      clearTimeout(done.current);
+      done.current = setTimeout(end, keep.atMs);
     });
-  }, [endIn]);
+  }, [end]);
 
   // TalkBack says a field taking input focus and leaves its own focus on the opener, where the keys' scrolls carry it out of sight, and TalkBack then puts it on a neighbour: the card's description, Cancel or the next card (sc-22392).
   const fieldShown = useCallback(
     (field: TextInputInstance | null) => {
       if (!openingNow.current) return;
 
-      clearTimeout(done.current);
-      done.current = setTimeout(() => {
-        moveScreenReaderFocus(field);
+      const runFrom = (steps: StepOpenStep[]) => {
+        const [step, ...rest] = steps;
+        if (step == null) return;
+
         done.current = setTimeout(() => {
-          field?.focus();
-          endIn(SETTLED_MS);
-        }, TALKBACK_FOCUS_TAKEN_MS);
-      }, SETTLED_MS);
+          if (step.do === 'readField') moveScreenReaderFocus(field);
+          if (step.do === 'focusField') field?.focus();
+          if (step.do === 'finish') return end();
+          runFrom(rest);
+        }, step.atMs);
+      };
+
+      clearTimeout(done.current);
+      runFrom(fieldSteps.current);
     },
-    [endIn],
+    [end],
   );
 
   const fieldFocused = useCallback(() => {
-    if (openingNow.current) endIn(0);
-  }, [endIn]);
+    if (openingNow.current) end();
+  }, [end]);
 
-  return { opening, open, fieldShown, fieldFocused };
+  return { opening, open, fieldShown, fieldFocused, stop: end };
 }
 
 /** Holds input focus where TalkBack does not read it. */

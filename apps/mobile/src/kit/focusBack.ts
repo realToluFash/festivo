@@ -72,7 +72,25 @@ export function fieldToBlur<Field>(
   return focusedNow ?? ofTheStep ?? raisedTheKeys;
 }
 
-/** Whether a step opens in order on `os`: its opener stays, above the step, until TalkBack's focus is on the step's field and the field has taken input focus. An opener that goes as the step comes leaves TalkBack's focus on nothing, and TalkBack puts it on the header's back row and says "Settings" before the field (sc-22392). */
-export function stepOpensInOrder(os: string, screenReaderOn: boolean): boolean {
-  return os === 'android' && screenReaderOn;
+/** A step in opening a step from its opener. `keepOpener` keeps the opener above the step until the step's field shows, or for `atMs` when it never does. Once the field shows, `readField` moves TalkBack's focus to it `atMs` later, once it is in TalkBack's tree, and `focusField` gives it input focus `atMs` after that, so the keys' scrolls carry nothing TalkBack's focus is on out of sight. `finish` takes the opener away `atMs` later, or as soon as the field takes input focus. */
+export type StepOpenStep =
+  | { do: 'keepOpener'; atMs: number }
+  | { do: 'readField'; atMs: number }
+  | { do: 'focusField'; atMs: number }
+  | { do: 'finish'; atMs: number };
+
+/** How a step opens from its opener on `os`, against `settledMs` for a view to reach TalkBack's tree. At once: the opener goes as the step comes, and the field opens focused. In order, on Android with TalkBack on: the opener stays until TalkBack's focus is on the step's field and the field has taken input focus. An opener that goes as the step comes leaves TalkBack's focus on nothing, and TalkBack puts it on the header's back row and says "Settings" before the field; a field that takes input focus first is said by TalkBack with its own focus left on the opener, which the keys' scrolls then carry out of sight (sc-22392). */
+export function stepOpenSteps(
+  os: string,
+  screenReaderOn: boolean,
+  settledMs: number,
+): StepOpenStep[] {
+  if (os !== 'android' || !screenReaderOn) return [{ do: 'finish', atMs: 0 }];
+
+  return [
+    { do: 'keepOpener', atMs: settledMs },
+    { do: 'readField', atMs: settledMs },
+    { do: 'focusField', atMs: TALKBACK_FOCUS_TAKEN_MS },
+    { do: 'finish', atMs: settledMs },
+  ];
 }

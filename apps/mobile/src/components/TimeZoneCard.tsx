@@ -99,7 +99,7 @@ export function TimeZoneCard({
     [changeOpener],
   );
   // Change, or the saved line's holder, going as the step comes leaves input focus on nothing, which Android puts on the header's back row (sc-22392).
-  const { opening, open, fieldShown, fieldFocused } = useStepOpen(
+  const { opening, open, fieldShown, fieldFocused, stop } = useStepOpen(
     () => {
       setClosed(undefined);
       setEditing(true);
@@ -203,10 +203,14 @@ export function TimeZoneCard({
           closing={closing || savedClosing}
           onSaved={async (zone) => {
             await onSaved();
+            stop();
             setSaved(zoneLabel(zone));
             closeSaved();
           }}
-          onCancel={close}
+          onCancel={() => {
+            stop();
+            close();
+          }}
           opener={opening ? changeShown : null}
           onShown={fieldShown}
           onFocused={fieldFocused}
