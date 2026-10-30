@@ -14,9 +14,44 @@ function liveRegion(): HTMLElement {
   return document.querySelector<HTMLElement>('[aria-live="polite"]')!;
 }
 
+const BAND = 56;
+
+/** Lays the page out as a browser would: the band pushes what follows down unless scroll anchoring has already moved the page. */
+function layOut({ scrolled = 0, anchored = false, fieldTop = 400 }) {
+  vi.stubGlobal('scrollY', scrolled);
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+    this: HTMLElement,
+  ) {
+    const shown = document.querySelector('.release-band') != null;
+    const moved = shown && anchored ? BAND : 0;
+    const [top, height] =
+      this.querySelector('.release-band-words') != null
+        ? [-scrolled - moved, shown ? BAND : 0]
+        : [fieldTop + (shown ? BAND : 0) - moved, 40];
+
+    return { top, bottom: top + height } as DOMRect;
+  });
+
+  return vi.spyOn(window, 'scrollBy').mockImplementation(() => {});
+}
+
+async function showBandWhileTyping() {
+  render(
+    <>
+      <ReleaseBand differs={() => Promise.resolve(true)} />
+      <input aria-label="Name" />
+    </>,
+  );
+  screen.getByRole('textbox', { name: 'Name' }).focus();
+
+  comeBackIntoView();
+  await screen.findByRole('button', { name: 'Reload' });
+}
+
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('ReleaseBand', () => {
@@ -97,5 +132,37 @@ describe('ReleaseBand', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Reload' }));
     expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a page scrolled down where it was, by the band’s height', async () => {
+    const scrollBy = layOut({ scrolled: 300 });
+
+    await showBandWhileTyping();
+
+    expect(scrollBy).toHaveBeenCalledExactlyOnceWith(0, BAND);
+  });
+
+  it('scrolls nothing where the browser has already anchored the page', async () => {
+    const scrollBy = layOut({ scrolled: 300, anchored: true });
+
+    await showBandWhileTyping();
+
+    expect(scrollBy).not.toHaveBeenCalled();
+  });
+
+  it('scrolls nothing at the top of the page while the field being typed in stays in view', async () => {
+    const scrollBy = layOut({ fieldTop: 400 });
+
+    await showBandWhileTyping();
+
+    expect(scrollBy).not.toHaveBeenCalled();
+  });
+
+  it('keeps the field being typed in on screen when the band would push it out of the window', async () => {
+    const scrollBy = layOut({ fieldTop: window.innerHeight - 48 });
+
+    await showBandWhileTyping();
+
+    expect(scrollBy).toHaveBeenCalledExactlyOnceWith(0, BAND);
   });
 });
