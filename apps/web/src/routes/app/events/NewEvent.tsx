@@ -8,7 +8,6 @@ import {
   eventFormErrors,
   skippedLine,
   isEventType,
-  filledEndDate,
   localDateTime,
   type VenueDraft,
   venueDraftOf,
@@ -31,6 +30,7 @@ import { Choice, FieldError, Moment } from './EventFields.tsx';
 import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
 import { typeChoices } from './eventTypes.ts';
 import { useLeaveGuard } from './useLeaveGuard.tsx';
+import { useStartCarriesEnd } from './useStartCarriesEnd.ts';
 import { VenueSection } from './VenueSection.tsx';
 
 export function NewEvent() {
@@ -65,6 +65,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
   const [cover, setCover] = useState<{ uploadKey: string; photo: CoverPhoto } | null>(null);
   const staged = useRef<string | null>(null);
   const [unsent, setUnsent] = useState(0);
+  const [said, setSaid] = useState('');
   const [status, setStatus] = useState<'editing' | 'creating' | 'failed'>('editing');
   const focusNext = useRef<(() => void) | null>(null);
   const currencies = useMemo(() => currencyChoices('', currency, locale, t), [currency, locale, t]);
@@ -98,6 +99,17 @@ function EventForm({ organisation }: { organisation: Membership }) {
     setCover(next);
   }
 
+  const { moveStart, moveEnd } = useStartCarriesEnd({
+    draft,
+    endChosen: endChosen,
+    timeZone,
+    edit,
+    say: (line) => {
+      setUnsent(0);
+      setSaid(line);
+    },
+  });
+
   function edit(field: Field, changes: Partial<EventDraft>): void {
     setDraft((previous) => ({ ...previous, ...changes }));
     setErrors((previous) => ({ ...previous, [field]: undefined }));
@@ -116,6 +128,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
   async function create(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (busy) return;
+    setSaid('');
 
     const found: Errors = eventFormErrors({ draft, venue, timeZone, currency }, t);
 
@@ -206,7 +219,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
           </div>
         )}
         <p className="visually-hidden" role="status">
-          {unsent > 0 ? t('eventForm.problems', { count: unsent }) : ''}
+          {unsent > 0 ? t('eventForm.problems', { count: unsent }) : said}
         </p>
 
         <section className="card" aria-labelledby="event-about">
@@ -268,13 +281,8 @@ function EventForm({ organisation }: { organisation: Membership }) {
             time={draft.startTime}
             error={errors.startsAt}
             busy={busy}
-            onDate={(startDate) =>
-              edit('startsAt', {
-                startDate,
-                endDate: filledEndDate(startDate, draft.endDate, endChosen),
-              })
-            }
-            onTime={(startTime) => edit('startsAt', { startTime })}
+            onDate={(startDate) => moveStart({ startDate })}
+            onTime={(startTime) => moveStart({ startTime })}
           />
           <Moment
             id="event-end"
@@ -287,9 +295,9 @@ function EventForm({ organisation }: { organisation: Membership }) {
             busy={busy}
             onDate={(endDate) => {
               setEndChosen(endDate !== '');
-              edit('endsAt', { endDate });
+              moveEnd({ endDate });
             }}
-            onTime={(endTime) => edit('endsAt', { endTime })}
+            onTime={(endTime) => moveEnd({ endTime })}
           />
         </section>
 

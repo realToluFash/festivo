@@ -78,6 +78,8 @@ export function TimeZoneCard({
     opener: savedLine,
     holder: savedHolder,
     closing: savedClosing,
+    // Keys a swap leaves up put the line out of sight, and a scroll to it that carries Save away moves TalkBack to the card's description first (sc-18587).
+    closer: saveCloser,
     close: closeSaved,
   } = useStepClose(opener, 'saved', 'holder', (back) => {
     setSavedFocused(back == null);
@@ -165,6 +167,7 @@ export function TimeZoneCard({
           }}
           onCancel={close}
           closer={closer}
+          saveCloser={saveCloser}
         />
       )}
     </View>
@@ -180,6 +183,7 @@ function Choosing({
   onSaved,
   onCancel,
   closer,
+  saveCloser,
 }: {
   phone: boolean;
   zones: readonly TimeZoneOption[];
@@ -188,6 +192,7 @@ function Choosing({
   onSaved: (zone: TimeZoneOption) => Promise<void>;
   onCancel: () => void;
   closer: RefObject<ViewInstance | null>;
+  saveCloser: RefObject<ViewInstance | null>;
 }) {
   const { t } = useTranslation();
   const [typed, setTyped] = useState('');
@@ -342,6 +347,7 @@ function Choosing({
             label={saving ? t('timeZone.saving') : t('timeZone.save')}
             onPress={() => void save()}
             busy={saving}
+            ref={saveCloser}
             testID="timeZone.save"
           />
         </View>

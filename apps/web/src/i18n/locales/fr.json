@@ -73,6 +73,7 @@
     "date": "Date",
     "time": "Heure",
     "endsHint": "Un événement peut se poursuivre après minuit. Choisissez le jour où il se termine.",
+    "endMoved": "Ends moved with the start, to {{day}}, {{time}}.",
     "clocksSkip": "Le {{day}}, l’heure {{time}} n’existe pas dans le fuseau {{zone}} : c’est la nuit du passage à l’heure d’été. Elle sera remplacée par {{savedAs}}.",
     "clocksSkipNextDay": "Le {{day}}, l’heure {{time}} n’existe pas dans le fuseau {{zone}} : c’est la nuit du passage à l’heure d’été. Elle sera remplacée par le {{savedDay}} à {{savedAs}}.",
     "timeZone": "Fuseau horaire",
