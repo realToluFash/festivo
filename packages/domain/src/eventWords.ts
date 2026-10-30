@@ -1,4 +1,9 @@
-import { formatWallClock, formatWallDay } from './datetime.ts';
+import {
+  durationWords,
+  formatEventDayAndClock,
+  formatWallClock,
+  formatWallDay,
+} from './datetime.ts';
 import { type EventPhase, type EventState, calledOff } from './eventStates.ts';
 import {
   EVENT_NAME_MAXIMUM,
@@ -7,6 +12,8 @@ import {
   VENUE_ADDRESS_MAXIMUM,
   VENUE_NAME_MAXIMUM,
   type VenueDraft,
+  clockMinutes,
+  copiedEnd,
   eventFormProblems,
   skippedTime,
 } from './events.ts';
@@ -63,6 +70,51 @@ export function skippedLine(
   return savedDate === date
     ? t('eventForm.clocksSkip', words)
     : t('eventForm.clocksSkipNextDay', { ...words, savedDay: formatWallDay(savedDate, locale) });
+}
+
+/** Duplicate's refusal of a start not fully chosen (sc-3593), and the half the cursor goes to. */
+export function copyStartRefusal(
+  date: string,
+  time: string,
+  t: Translate,
+): { message: string; focus: 'date' | 'time' } | null {
+  if (date !== '' && time !== '') return null;
+
+  return {
+    message: t(
+      date === '' && time === ''
+        ? 'eventDuplicate.startMissing'
+        : date === ''
+          ? 'eventDuplicate.dateMissing'
+          : 'eventDuplicate.timeMissing',
+    ),
+    focus: date === '' ? 'date' : 'time',
+  };
+}
+
+/** The line under Duplicate's Starts: the copy's end once its start is chosen, and the original's length on the clock. */
+export function copyEndsLine(
+  date: string,
+  time: string,
+  original: { startsAt: string; endsAt: string; timeZone: string },
+  locale: string,
+  t: Translate,
+): string {
+  const { timeZone } = original;
+  const end = copiedEnd(date, time, timeZone, original);
+  const words = durationWords(clockMinutes(original, timeZone) ?? 0, locale);
+  const duration =
+    words.hours != null && words.minutes != null
+      ? t('eventDuplicate.hoursAndMinutes', { hourWords: words.hours, minuteWords: words.minutes })
+      : (words.hours ?? words.minutes ?? '');
+
+  return end == null
+    ? t('eventDuplicate.endsUnchosen', { duration, timeZone })
+    : t('eventDuplicate.ends', {
+        end: formatEventDayAndClock(end, timeZone, locale),
+        duration,
+        timeZone,
+      });
 }
 
 /** What a screen reader says when a new start has moved the end (sc-22144), or null when the end stayed. */
