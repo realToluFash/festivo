@@ -57,7 +57,7 @@ no routine scheduled, since the unattended run does those.
    `general-purpose` agent with the `Agent` tool, and tell it to follow this skill from
    section 3 on for that one story, to answer no comment, and to end with
    `sq ux drawn sc-N` once the story's Design section links the artboard. Wait for it to
-   finish before starting the next: two drawings may share an epic's artifact.
+   finish before starting the next: every drawing goes into the same artifact.
 3. Keep one line per story from each agent's report: the artboards drawn and anything it
    could not settle. The agent's context ends with it, so this run stays small however
    long the list is.
@@ -97,7 +97,7 @@ settled and it needs a screen. Draw it, write its Design section linking the art
 hand it to the developers: `sq ux move sc-N "Ready For Dev"`. A story you cannot draw until
 the owner decides goes to `Waiting On Owner`, with the question in a comment.
 
-Draw what each one needs, in its epic's artifact, and write its Design section. Where the
+Draw what each one needs, on its epic's page in Soirely — Redesign, and write its Design section. Where the
 AC leaves the answer undecided, ask `[pm]` on that story with your proposal
 (`sq ux comment sc-N --to pm`) and draw the proposal meanwhile. A signed-off story is out of scope unless its AC moved after the
 sign-off.
@@ -113,7 +113,7 @@ it on the owner's list to draw, which `sq web` shows with a copy button:
 
 ```sh
 sq ux to-draw sc-N <<'EOF'
-/soirely-designer Draw sc-N (<story name>) in epic E's artifact, <artifact url>.
+/soirely-designer Draw sc-N (<story name>) on page `<epic number> · <area>` in Soirely — Redesign, https://claude.ai/artifact/5cRzwbgmEK6wqbxp4j1zqx.
 Screens: <each screen, by artboard name>, in the four layouts.
 States: <the states the AC asks for, each named>.
 Fields: <each field and the API field that feeds it; what is required and valid>.
@@ -123,7 +123,7 @@ EOF
 ```
 
 The prompt is all the session it is pasted into will have, so it stands on its own: name
-the artifact, the screens and every state rather than pointing back at this run. Listing
+the page, the screens and every state rather than pointing back at this run. Listing
 the story again replaces its prompt. Leave the story where it is: it moves to
 `Ready For Dev` once it is drawn. Never say a story is drawn when it is only listed.
 
@@ -223,7 +223,7 @@ with `sq ux edit sc-N --section Design`, body on stdin: it replaces the Design s
 and leaves the rest of the description as it was. The house shape, in this order:
 
 ```markdown
-**Artboard:** `VerifyEmail-*.dc.html` (four layouts) · <artifact url>
+**Artboard:** `VerifyEmail-*.dc.html` (four layouts) · page `<epic number> · <area>` · <artifact url>
 
 **Layouts:** desktop web · tablet landscape · tablet portrait · phone, because …
 
