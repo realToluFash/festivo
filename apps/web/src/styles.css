@@ -4659,6 +4659,7 @@ button.members-row {
 
 .notifications-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--spaceSm);
@@ -4667,8 +4668,13 @@ button.members-row {
 }
 
 .notifications-header h2 {
+  flex: none;
   margin: 0;
   font: var(--typeTitleSection);
+}
+
+.notifications-header .link-button {
+  text-align: start;
 }
 
 .notifications-header [aria-disabled='true'] {

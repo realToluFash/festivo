@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
@@ -479,5 +482,19 @@ describe('the push ask', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
     expect(screen.queryByText('Turn on push?')).toBeNull();
+  });
+});
+
+describe('the heading at 320px (sc-21358)', () => {
+  const styles = readFileSync(join(import.meta.dirname, '../styles.css'), 'utf8');
+  const rule = (selector: string): string =>
+    new RegExp(`(?:^|\\n)\\s*${selector.replaceAll('.', '\\.')} \\{([^}]*)\\}`, 'u').exec(
+      styles,
+    )?.[1] ?? '';
+
+  it('keeps the heading whole and wraps Mark all as read under it', () => {
+    expect(rule('.notifications-header')).toMatch(/flex-wrap: wrap;/u);
+    expect(rule('.notifications-header h2')).toMatch(/flex: none;/u);
+    expect(rule('.notifications-header .link-button')).toMatch(/text-align: start;/u);
   });
 });
