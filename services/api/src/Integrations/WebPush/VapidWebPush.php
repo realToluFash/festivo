@@ -7,6 +7,7 @@ namespace App\Integrations\WebPush;
 use App\Domain\Messaging\Interfaces\PushServiceInterface;
 use App\Domain\Messaging\Model\PushTarget;
 use App\Domain\Messaging\Model\RenderedNotification;
+use App\Enum\NotificationCategory;
 use App\Enum\PushTargetKind;
 use ErrorException;
 use GuzzleHttp\HandlerStack;
@@ -39,7 +40,7 @@ final readonly class VapidWebPush implements PushServiceInterface
         return PushTargetKind::Web;
     }
 
-    public function push(PushTarget $target, RenderedNotification $notification, ?string $collapseKey): ?string
+    public function push(PushTarget $target, NotificationCategory $category, RenderedNotification $notification, ?string $collapseKey): ?string
     {
         $client = $this->client();
 

@@ -64,7 +64,7 @@ final readonly class PushSender implements ChannelSenderInterface
             }
 
             try {
-                $providerId = $service->push($target, $notification, $collapseKey);
+                $providerId = $service->push($target, $category, $notification, $collapseKey);
             } catch (RuntimeException $refusal) {
                 $refused[] = $refusal->getMessage();
 

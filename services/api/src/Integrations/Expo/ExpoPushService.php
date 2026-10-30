@@ -7,6 +7,7 @@ namespace App\Integrations\Expo;
 use App\Domain\Messaging\Interfaces\PushServiceInterface;
 use App\Domain\Messaging\Model\PushTarget;
 use App\Domain\Messaging\Model\RenderedNotification;
+use App\Enum\NotificationCategory;
 use App\Enum\PushTargetKind;
 use Psl\Dict;
 use Psl\Json;
@@ -34,7 +35,7 @@ final readonly class ExpoPushService implements PushServiceInterface
         return PushTargetKind::Expo;
     }
 
-    public function push(PushTarget $target, RenderedNotification $notification, ?string $collapseKey): ?string
+    public function push(PushTarget $target, NotificationCategory $category, RenderedNotification $notification, ?string $collapseKey): ?string
     {
         $message = Dict\filter_nulls([
             'to' => $target->address,
@@ -45,6 +46,9 @@ final readonly class ExpoPushService implements PushServiceInterface
             'collapseId' => $collapseKey,
             'threadId' => $collapseKey,
             'tag' => $collapseKey,
+            // The app makes the event_day channel; every other push takes Android's default.
+            'channelId' => NotificationCategory::EventDay === $category ? $category->value : null,
+            'interruptionLevel' => NotificationCategory::EventDay === $category ? 'time-sensitive' : null,
         ]);
 
         try {

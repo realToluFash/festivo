@@ -42,6 +42,8 @@ const config: ExpoConfig = {
     bundleIdentifier: 'com.soirely.app',
     // The native Sign in with Apple sheet, which App Store review asks for beside Google.
     usesAppleSignIn: true,
+    // Event day pushes are time-sensitive, so they break through Focus (sc-13214).
+    entitlements: { 'com.apple.developer.usernotifications.time-sensitive': true },
   },
   android: {
     package: 'com.soirely.app',

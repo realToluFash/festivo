@@ -8,6 +8,8 @@ const notifications = vi.hoisted(() => ({
   requestPermissionsAsync: vi.fn(async () => ({ granted: true, status: 'granted' })),
   getExpoPushTokenAsync: vi.fn(async () => ({ data: 'ExponentPushToken[abc]' })),
   setNotificationHandler: vi.fn(),
+  setNotificationChannelAsync: vi.fn(async () => null),
+  AndroidImportance: { HIGH: 5 },
   DEFAULT_ACTION_IDENTIFIER: 'expo.modules.notifications.actions.DEFAULT',
   getLastNotificationResponse: vi.fn((): unknown => null),
   clearLastNotificationResponse: vi.fn(),
@@ -23,6 +25,7 @@ const tapped = vi.hoisted(() => ({
 const router = vi.hoisted(() => ({ push: vi.fn() }));
 const effects = vi.hoisted(() => ({ cleanups: [] as (() => void)[] }));
 const stored = vi.hoisted(() => new Map<string, string>());
+const platform = vi.hoisted(() => ({ OS: 'ios' }));
 const appState = vi.hoisted(() => ({
   listener: null as ((state: string) => void) | null,
   remove: vi.fn(),
@@ -33,7 +36,9 @@ vi.mock('./config.ts', () => ({ config: settings }));
 vi.mock('expo-device', () => device);
 vi.mock('expo-notifications', () => notifications);
 vi.mock('expo-router', () => ({ router }));
+vi.mock('i18next', () => ({ t: (key: string) => key }));
 vi.mock('react-native', () => ({
+  Platform: platform,
   AppState: {
     addEventListener: (_: string, listener: (state: string) => void) => {
       appState.listener = listener;
@@ -86,6 +91,7 @@ describe("the app's push (sc-3980)", () => {
     device.isDevice = true;
     settings.easProjectId = 'project';
     stored.clear();
+    platform.OS = 'ios';
   });
 
   it('registers the Expo token for the project once push is allowed', async () => {
@@ -95,6 +101,19 @@ describe("the app's push (sc-3980)", () => {
     expect(api.registerPushTarget).toHaveBeenCalledWith({
       kind: 'expo',
       address: 'ExponentPushToken[abc]',
+    });
+  });
+
+  it('makes the Event day channel on Android, which the API sends Event day pushes on (sc-13214)', async () => {
+    await registerAppPush();
+    expect(notifications.setNotificationChannelAsync).not.toHaveBeenCalled();
+
+    platform.OS = 'android';
+    await registerAppPush();
+
+    expect(notifications.setNotificationChannelAsync).toHaveBeenCalledWith('event_day', {
+      name: 'notificationSettings.category.event_day',
+      importance: 5,
     });
   });
 

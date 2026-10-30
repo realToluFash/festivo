@@ -1,9 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+import { AndroidImportance } from 'expo-notifications';
 import { router } from 'expo-router';
 import { useEffect } from 'react';
-import { AppState } from 'react-native';
+import { t } from 'i18next';
+import { AppState, Platform } from 'react-native';
 
 import { api } from './api.ts';
 import { config } from './config.ts';
@@ -17,6 +19,14 @@ export async function registerAppPush(): Promise<void> {
 
   const { granted } = await Notifications.getPermissionsAsync();
   if (!granted) return;
+
+  // The API sends Event day pushes on this channel; its name follows the language at each load.
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('event_day', {
+      name: t('notificationSettings.category.event_day'),
+      importance: AndroidImportance.HIGH,
+    });
+  }
 
   const { data } = await Notifications.getExpoPushTokenAsync({ projectId: config.easProjectId });
 
