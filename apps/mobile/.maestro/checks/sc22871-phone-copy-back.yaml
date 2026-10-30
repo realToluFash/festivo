@@ -1,0 +1,34 @@
+# sc-22871 on a phone: the copy ${COPY} of ${EVENT}, opened at the link Duplicate opens, titles the header Events under ‹ Event; ‹ Event returns to ${EVENT}'s page, and its ‹ Events to the list with ${EVENT}'s row in view.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${COPY}?from=${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'frame.back'
+    text: '{{t:timeline.backToEvent}}'
+- assertVisible: '{{t:eventsScreen.title}}'
+- takeScreenshot: copy-top
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- assertVisible:
+    id: 'frame.back'
+    text: '{{t:eventsScreen.title}}'
+- takeScreenshot: original-again
+- tapOn:
+    id: 'frame.back'
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EVENT}'
+    timeout: 20000
+- assertNotVisible:
+    id: 'events.page'
+- takeScreenshot: list-after-back
