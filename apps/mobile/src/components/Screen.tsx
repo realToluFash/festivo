@@ -75,10 +75,10 @@ interface ScreenScrollView {
   origin: { current: number };
   /** The offset the native scroll view last reported. */
   offset: RefObject<number>;
-  /** Keeps the content at least its height now and `more`, until a scroll, a drag or TalkBack's own, brings the view's end back inside the content's real end, or the keys come up again. */
+  /** Keeps the content at least its height now and `more`, until a scroll, a drag or TalkBack's own, brings the view's end back inside the content's real end, or, once no step is closing, the keys come up again or a field takes focus. */
   hold(more: number): void;
-  /** Whether a view taking input focus scrolls itself into sight, which Android does by default. */
-  focusScrolls(on: boolean): void;
+  /** Whether a step is closing: a view taking input focus does not scroll itself into sight, which Android does by default, and only a scroll lets the hold go. A field the keys' Done key saved from can take focus back as the close puts the keys down, and letting the hold go then pulls the scroll back under TalkBack's focus (sc-18587). */
+  closing(on: boolean): void;
 }
 
 const ScreenScroll = createContext<ScreenScrollView | null>(null);
@@ -583,9 +583,9 @@ export function useStepClose(
       function runFrom(steps: readonly StepCloseStep[]): void {
         for (const [at, step] of steps.entries()) {
           if (step.do === 'holdScroll') {
+            scroll?.closing(true);
             scroll?.hold(Keyboard.metrics()?.height ?? 0);
-            scroll?.focusScrolls(false);
-            cancels.push(() => scroll?.focusScrolls(true));
+            cancels.push(() => scroll?.closing(false));
             continue;
           }
           if (step.do === 'showOpener') {
@@ -638,7 +638,7 @@ export function useStepClose(
 
           const done = setTimeout(() => {
             started.current = false;
-            scroll?.focusScrolls(true);
+            scroll?.closing(false);
             setClosing(false);
             finishNow.current(step.focusBack ? stepClosed(to) : undefined);
           }, step.atMs);
@@ -717,14 +717,18 @@ function useScreenScrollView() {
   const offset = useRef(0);
   const contentHeight = useRef(0);
   const [held, setHeld] = useState<number | null>(null);
-  const [scrollsToFocus, setScrollsToFocus] = useState(true);
+  const [stepClosing, setStepClosing] = useState(false);
+  const closingNow = useRef(false);
   const [screenScroll] = useState<ScreenScrollView>(() => ({
     ref: scrollView,
     resized: new Set(),
     origin,
     offset,
     hold: (more) => setHeld(contentHeight.current + more),
-    focusScrolls: setScrollsToFocus,
+    closing: (on) => {
+      closingNow.current = on;
+      setStepClosing(on);
+    },
   }));
   useEffect(() => {
     origin.current = windowOrigin;
@@ -735,13 +739,13 @@ function useScreenScrollView() {
   useEffect(() => {
     const cameUp = keysUp && !keysWereUp.current;
     keysWereUp.current = keysUp;
-    if (cameUp) setHeld(null);
+    if (cameUp && !closingNow.current) setHeld(null);
   }, [keysUp]);
   // Keys a close left up never come up again, and a hold kept into the next step pages TalkBack's scroll past its Cancel (sc-18588).
   useEffect(
     () =>
       watchFocusedField(() => {
-        if (focusedField() != null) setHeld(null);
+        if (focusedField() != null && !closingNow.current) setHeld(null);
       }),
     [],
   );
@@ -765,7 +769,7 @@ function useScreenScrollView() {
       onScroll: follow,
       onScrollEndDrag: follow,
       onMomentumScrollEnd: follow,
-      scrollsChildToFocus: scrollsToFocus,
+      scrollsChildToFocus: !stepClosing,
     },
     heldStyle: held == null ? undefined : { minHeight: held },
     onContentLayout: (event: LayoutChangeEvent) => {
