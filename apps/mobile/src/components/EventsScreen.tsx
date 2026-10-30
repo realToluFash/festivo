@@ -388,8 +388,7 @@ export function EventsScreen({
         pageless={pageless(load, inFront)}
         pageKey={open ?? ''}
         back={{
-          label: original == null ? t('eventsScreen.back') : t('timeline.backToEvent'),
-          drawn: original != null,
+          label: original == null ? t('eventsScreen.back') : t('eventsScreen.backToEvent'),
           onPress: back.onPress,
           testID: 'events.back',
         }}

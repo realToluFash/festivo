@@ -1434,6 +1434,7 @@
   "eventsScreen": {
     "title": "Eventos",
     "back": "‹ Eventos",
+    "backToEvent": "‹ Evento",
     "loading": "A carregar eventos…",
     "refreshing": "A atualizar…",
     "draft": "Rascunho",
