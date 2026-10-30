@@ -170,7 +170,11 @@ export function DraftRow({
         lines: [t('eventLive.endPassed')],
       });
     } else {
-      setAsking({ ...settled, failed: true });
+      setAsking({
+        ...settled,
+        ...(step.saved != null && { askHost: false, typed: '' }),
+        failed: true,
+      });
     }
   }
 
