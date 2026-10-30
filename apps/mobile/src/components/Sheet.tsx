@@ -11,21 +11,13 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
-import {
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { sheetKeysCover, sheetPadding, sheetUnderKeys } from '../kit/sheet.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { keyboardTopNow, watchKeyboardTop } from './keyboardWatch.ts';
+import { keyboardTopNow, useKeysUp, watchKeyboardTop } from './keyboardWatch.ts';
 import { SETTLED_MS } from './Screen.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 
@@ -195,29 +187,6 @@ export function useFocusBack(open: boolean, opener: RefObject<ScreenReaderTarget
 
     return () => clearTimeout(focus);
   }, [open, opener]);
-}
-
-/** Whether the keyboard is up, changing when the avoiding view starts to move. */
-export function useKeysUp(): boolean {
-  const [up, setUp] = useState(() => keyboardTopNow(0) != null);
-
-  useEffect(() => {
-    // iOS's avoiding view pads on the Will events and Android's on the Did ones.
-    const ios = Platform.OS === 'ios';
-    const shown = Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', () =>
-      setUp(true),
-    );
-    const hidden = Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', () =>
-      setUp(false),
-    );
-
-    return () => {
-      shown.remove();
-      hidden.remove();
-    };
-  }, []);
-
-  return up;
 }
 
 const styles = StyleSheet.create({
