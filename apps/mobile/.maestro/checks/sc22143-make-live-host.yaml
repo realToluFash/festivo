@@ -1,0 +1,48 @@
+# sc-22143: on ${EVENT}, a draft with no host, Make live opens the confirmation with Host 1 and the keyboard up; empty shows the empty message, a 66-character name the length rule, Go on the keyboard sends, and a valid name makes it live; Edit details then shows the name as Host 1.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.makeLive'
+    timeout: 30000
+- assertNotVisible: '.*Add who is hosting.*'
+- takeScreenshot: draft
+- tapOn:
+    id: 'events.makeLive'
+- extendedWaitUntil:
+    visible:
+      id: 'events.makeLiveHost'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: opens
+- tapOn:
+    id: 'events.makeLiveYes'
+- extendedWaitUntil:
+    visible: '{{t:eventLive.hostEmpty}}'
+    timeout: 10000
+- takeScreenshot: empty
+- tapOn:
+    id: 'events.makeLiveHost'
+- inputText: 'Abcdefghij Abcdefghij Abcdefghij Abcdefghij Abcdefghij Abcdefghi'
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: '.*60.*'
+    timeout: 10000
+- takeScreenshot: too-long
+- eraseText: 90
+- inputText: 'Dr Bello'
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.live'
+    timeout: 20000
+- takeScreenshot: live
+- openLink: ${METRO_URL}/--/events/${EVENT}/edit
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.host.1'
+    timeout: 30000
+- assertVisible: 'Dr Bello'
+- takeScreenshot: edit-hosted-by

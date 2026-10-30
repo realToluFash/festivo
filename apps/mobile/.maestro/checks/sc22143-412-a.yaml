@@ -1,0 +1,37 @@
+# sc-22143: on ${EVENT_A}, a draft with no host, Make live opens with Host 1, a name is typed, and the confirmation waits 25 seconds, while the tester changes the event elsewhere, before Make live is pressed; the screenshot shows how the 412 was met.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_A}
+- extendedWaitUntil:
+    visible:
+      id: 'events.makeLive'
+    timeout: 30000
+- tapOn:
+    id: 'events.makeLive'
+- extendedWaitUntil:
+    visible:
+      id: 'events.makeLiveHost'
+    timeout: 10000
+- inputText: 'Typed Name'
+- extendedWaitUntil:
+    visible:
+      id: 'sc22143.never'
+    timeout: 40000
+    optional: true
+- takeScreenshot: before
+- tapOn:
+    id: 'events.makeLiveYes'
+- extendedWaitUntil:
+    visible:
+      id: 'sc22143.never'
+    timeout: 5000
+    optional: true
+- takeScreenshot: after
+- scrollUntilVisible:
+    element:
+      id: 'events.makeLive(Yes|Close)'
+    direction: DOWN
+    timeout: 10000
+    optional: true
+- takeScreenshot: scrolled
