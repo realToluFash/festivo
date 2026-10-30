@@ -36,10 +36,12 @@ import {
   groupInWindow,
   keysOver,
   liftNeeded,
+  type InContent,
   type IntoView,
   offsetAboveKeyboard,
   scrollInsets,
-  settledOffset,
+  outOfSight,
+  settledOffsetKeeping,
   shownAboveKeys,
   shownEnd,
 } from '../kit/keyboard.ts';
@@ -291,39 +293,54 @@ interface Sight {
   when?: IntoView;
   /** The sight ends at the keys while they are up. */
   aboveKeys?: boolean;
+  /** Stays wholly in sight as the scroll goes back up, when the view can show with it. */
+  keep?: ScreenReaderTarget | null;
 }
 
 function bringIntoView(
   scroll: ScreenScrollView | null,
   line: ScreenReaderTarget | null,
   animated: boolean,
-  { when = 'wholly', aboveKeys = false }: Sight = {},
+  { when = 'wholly', aboveKeys = false, keep = null }: Sight = {},
+  measured: (wasOutOfSight: boolean) => void = () => {},
 ): void {
   const view = scroll?.ref.current;
   const content = view?.getInnerViewRef();
   const scrollHost = view?.getNativeScrollRef();
   if (scroll == null || view == null || content == null || scrollHost == null || line == null)
-    return;
+    return measured(false);
+
+  const kept = (then: (at: InContent | null) => void) =>
+    keep == null
+      ? then(null)
+      : keep.measureLayout(
+          content,
+          (_x, contentY, _w, height) => then({ contentY, height }),
+          () => then(null),
+        );
 
   // A field in another screen's scroll fails to measure here, and that screen brings it.
   line.measureLayout(
     content,
     (_x, contentY, _w, height) => {
-      scrollHost.measureInWindow((_sx, y, _sw, scrollHeight) => {
-        const keyboardTop = aboveKeys ? keyboardTopNow(scroll.origin.current) : null;
-        const shown = shownAboveKeys(keyboardTop, { y, height: scrollHeight });
-        const at = {
-          contentY,
-          height,
-          offset: scroll.offset.current,
-          shown,
-          margin: tokens.spaceLg,
-        };
-        const to = settledOffset(at, when);
-        if (to != null) view.scrollTo({ y: to, animated });
-      });
+      kept((keptAt) =>
+        scrollHost.measureInWindow((_sx, y, _sw, scrollHeight) => {
+          const keyboardTop = aboveKeys ? keyboardTopNow(scroll.origin.current) : null;
+          const shown = shownAboveKeys(keyboardTop, { y, height: scrollHeight });
+          const at = {
+            contentY,
+            height,
+            offset: scroll.offset.current,
+            shown,
+            margin: tokens.spaceLg,
+          };
+          const to = settledOffsetKeeping(at, when, keptAt);
+          if (to != null) view.scrollTo({ y: to, animated });
+          measured(outOfSight(at));
+        }),
+      );
     },
-    () => {},
+    () => measured(false),
   );
 }
 
@@ -490,6 +507,8 @@ export interface StepClose {
   opener: RefCallback<ViewInstance>;
   /** The step is closing in order, and its opener shows above it until focus has reached it, so nothing above the opener moves when the step goes (sc-18588). */
   closing: boolean;
+  /** The ref of the control that closes the step, kept in sight while the opener comes back into it (sc-18588). */
+  closer: RefObject<ViewInstance | null>;
   close(): void;
 }
 
@@ -522,6 +541,7 @@ export function useStepClose(
   const started = useRef(false);
   const view = useRef<ViewInstance | null>(null);
   const holder = useRef<ViewInstance | null>(null);
+  const closer = useRef<ViewInstance | null>(null);
   const inputFocus = useRef<ViewInstance | null>(null);
   const field = useRef<HostInstance | null>(null);
   const finishNow = useRef(finish);
@@ -595,17 +615,25 @@ export function useStepClose(
             break;
           }
           if (step.do === 'settleOpener') {
-            cancels.push(
-              settleOnto(
-                scroll,
-                () => view.current,
-                () => (step.read ? view.current : null),
-                false,
-                SETTLED_MS,
-                { when: step.into },
-              ),
-            );
-            continue;
+            const sight = { when: step.into, keep: closer.current };
+            let stopped = false;
+            cancels.push(() => {
+              stopped = true;
+            });
+            bringIntoView(scroll, view.current, false, sight, (wasOutOfSight) => {
+              if (stopped) return;
+              if (!step.read && !wasOutOfSight) return runFrom(steps.slice(at + 1));
+
+              // Content that shrinks around the line as it mounts can stop the first scroll short (sc-9382).
+              const settled = setTimeout(() => {
+                if (stopped) return;
+                bringIntoView(scroll, view.current, false, sight);
+                moveScreenReaderFocus(view.current);
+                runFrom(steps.slice(at + 1));
+              }, SETTLED_MS);
+              cancels.push(() => clearTimeout(settled));
+            });
+            break;
           }
 
           const done = setTimeout(() => {
@@ -630,7 +658,7 @@ export function useStepClose(
   useEffect(() => {
     if (!closing) return;
 
-    // Not cancelled when `finish` ends the closing: the opener's settle has to run after the step has gone (sc-9382).
+    // Not cancelled when `finish` ends the closing, which it does from inside this run.
     const before = cancel.current;
     const stop = run(afterShown.current);
     cancel.current = () => {
@@ -650,15 +678,15 @@ export function useStepClose(
     };
     void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
       if (gone) return;
-      cancel.current = run(stepCloseSteps(Platform.OS, on, SETTLED_MS, inputFocusTo));
+      cancel.current = run(stepCloseSteps(Platform.OS, on, inputFocusTo));
     });
   }, [run, inputFocusTo]);
 
   const held = useMemo(() => <FocusHolder holder={holder} />, []);
 
   return inputFocusTo === 'holder'
-    ? { opener: ref, holder: held, closing, close }
-    : { opener: ref, closing, close };
+    ? { opener: ref, holder: held, closing, closer, close }
+    : { opener: ref, closing, closer, close };
 }
 
 /** Holds input focus where TalkBack does not read it. */
@@ -709,6 +737,14 @@ function useScreenScrollView() {
     keysWereUp.current = keysUp;
     if (cameUp) setHeld(null);
   }, [keysUp]);
+  // Keys a close left up never come up again, and a hold kept into the next step pages TalkBack's scroll past its Cancel (sc-18588).
+  useEffect(
+    () =>
+      watchFocusedField(() => {
+        if (focusedField() != null) setHeld(null);
+      }),
+    [],
+  );
 
   const follow = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, layoutMeasurement } = event.nativeEvent;

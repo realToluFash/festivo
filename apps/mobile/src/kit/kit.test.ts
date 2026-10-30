@@ -31,6 +31,7 @@ import {
   scrollInsets,
   searchBesideTitle,
   settledOffset,
+  settledOffsetKeeping,
   shortWhileTyping,
   shownAboveKeys,
   shownEnd,
@@ -311,6 +312,33 @@ describe("a closed step's opener is scrolled under TalkBack's focus only once it
     expect(settledOffset({ ...opener, contentY: 900, offset: 300, margin: 16 }, 'outOfSight')).toBe(
       364,
     );
+  });
+
+  it('scrolls back up only as far as keeps Cancel, under TalkBack’s focus, wholly in sight', () => {
+    const above = { ...opener, contentY: 400, offset: 800, margin: 16 };
+
+    expect(settledOffsetKeeping(above, 'outOfSight', { contentY: 950, height: 48 })).toBe(398);
+    expect(settledOffsetKeeping(above, 'outOfSight', { contentY: 900, height: 48 })).toBe(384);
+  });
+
+  it('scrolls back up as before when keeping Cancel in sight leaves the opener out of it', () => {
+    const above = { ...opener, contentY: 400, offset: 800, margin: 16 };
+
+    expect(settledOffsetKeeping(above, 'outOfSight', { contentY: 1000, height: 48 })).toBe(384);
+    expect(settledOffsetKeeping(above, 'outOfSight', { contentY: 1500, height: 48 })).toBe(384);
+  });
+
+  it('brings an opener below into sight as before, and with nothing to keep', () => {
+    const below = { ...opener, contentY: 900, offset: 300, margin: 16 };
+
+    expect(settledOffsetKeeping(below, 'outOfSight', { contentY: 400, height: 48 })).toBe(364);
+    expect(
+      settledOffsetKeeping(
+        { ...opener, contentY: 400, offset: 800, margin: 16 },
+        'outOfSight',
+        null,
+      ),
+    ).toBe(384);
   });
 });
 

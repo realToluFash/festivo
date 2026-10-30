@@ -1,6 +1,6 @@
 import { ApiError, type TimeZoneOption } from '@soirely/api-client';
 import { exactZone, formerName, matchingZones, zoneLabel } from '@soirely/domain';
-import { useEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import {
   Platform,
   Pressable,
@@ -9,6 +9,7 @@ import {
   type TextInputInstance,
   useWindowDimensions,
   View,
+  type ViewInstance,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -66,6 +67,7 @@ export function TimeZoneCard({
   const {
     opener: changeOpener,
     closing,
+    closer,
     close,
   } = useStepClose(opener, 'change', 'opener', (back) => {
     setClosed(back);
@@ -162,6 +164,7 @@ export function TimeZoneCard({
             closeSaved();
           }}
           onCancel={close}
+          closer={closer}
         />
       )}
     </View>
@@ -176,6 +179,7 @@ function Choosing({
   closing,
   onSaved,
   onCancel,
+  closer,
 }: {
   phone: boolean;
   zones: readonly TimeZoneOption[];
@@ -183,6 +187,7 @@ function Choosing({
   closing: boolean;
   onSaved: (zone: TimeZoneOption) => Promise<void>;
   onCancel: () => void;
+  closer: RefObject<ViewInstance | null>;
 }) {
   const { t } = useTranslation();
   const [typed, setTyped] = useState('');
@@ -343,6 +348,7 @@ function Choosing({
       </View>
       <QuietButton
         label={t('timeZone.cancel')}
+        ref={closer}
         onPress={onCancel}
         off={saving}
         testID="timeZone.cancel"

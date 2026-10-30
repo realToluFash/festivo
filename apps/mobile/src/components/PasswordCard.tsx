@@ -1,8 +1,8 @@
 import { ApiError, type LinkedProvider } from '@soirely/api-client';
 import { cleanCode, codeProblem, formatCountdown, meetsPasswordLength } from '@soirely/domain';
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInputInstance, View } from 'react-native';
+import { type RefObject, useEffect, useRef, useState } from 'react';
+import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -80,6 +80,7 @@ export function PasswordCard({
   const {
     opener: changeOpener,
     closing,
+    closer,
     close,
   } = useStepClose(opener, 'change', 'opener', (closed) =>
     setStage({ kind: 'atRest', signedOut: null, added: null, closed }),
@@ -165,6 +166,7 @@ export function PasswordCard({
             onChanged?.();
           }}
           onCancel={close}
+          closer={closer}
         />
       )}
     </View>
@@ -176,11 +178,13 @@ function Changing({
   closing,
   onChanged,
   onCancel,
+  closer,
 }: {
   email: string;
   closing: boolean;
   onChanged: (signedOut: number) => void;
   onCancel: () => void;
+  closer: RefObject<ViewInstance | null>;
 }) {
   const { t } = useTranslation();
   const current = useRef('');
@@ -327,6 +331,7 @@ function Changing({
       </View>
       <QuietButton
         label={t('passwordCard.cancel')}
+        ref={closer}
         onPress={onCancel}
         off={saving}
         testID="password.cancel"
