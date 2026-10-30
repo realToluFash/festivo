@@ -23,13 +23,7 @@ appId: host.exp.Exponent
       visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}'
     commands:
       - openLink: ${METRO_URL}/--/settings
-      - scrollUntilVisible:
-          element:
-            id: 'settings.signOut'
-          direction: DOWN
-          timeout: 30000
-      - tapOn:
-          id: 'settings.signOut'
+      - runFlow: ../settings-sign-out-tap.yaml
       - extendedWaitUntil:
           notVisible:
             id: 'settings.signOut'
