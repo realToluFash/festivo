@@ -338,10 +338,18 @@ function Changing({
 
           <PasswordRule met={lengthMet} testID="password" />
 
-          <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
+          <Text
+            size={tokens.typeBodyPhone.size}
+            style={styles.secondary}
+            accessible={closing ? false : undefined}
+          >
             {t('passwordCard.signsOut')}
           </Text>
-          <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
+          <Text
+            size={tokens.typeBodyPhone.size}
+            style={styles.secondary}
+            accessible={closing ? false : undefined}
+          >
             {t('passwordCard.emailed', { email })}
           </Text>
 

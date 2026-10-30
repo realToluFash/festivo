@@ -82,8 +82,8 @@ function PhaseShape({ phase }: { phase: EventPhase }) {
           size={tokens.typeSmall.size}
           weight="bold"
           style={styles.stateWord}
-          accessible={false}
           {...hidden}
+          accessible={false}
         >
           ✓
         </Text>

@@ -365,8 +365,14 @@ function Choosing({
                   }}
                   testID={`timeZone.option.${zone.id}`}
                 >
-                  <Text size={tokens.typeBodyPhone.size}>{zoneLabel(zone)}</Text>
-                  <Text size={tokens.typeSmall.size} style={styles.secondary}>
+                  <Text size={tokens.typeBodyPhone.size} accessible={closing ? false : undefined}>
+                    {zoneLabel(zone)}
+                  </Text>
+                  <Text
+                    size={tokens.typeSmall.size}
+                    style={styles.secondary}
+                    accessible={closing ? false : undefined}
+                  >
                     {rowDetail(zone)}
                   </Text>
                 </Pressable>
@@ -379,6 +385,7 @@ function Choosing({
               size={tokens.typeBodyPhone.size}
               style={styles.secondary}
               accessibilityRole="alert"
+              accessible={closing ? false : undefined}
             >
               {nothing}
             </Text>
