@@ -12,4 +12,6 @@ export const brand = {
   googleLineHeight: 20,
   appleSurface: '#000000',
   appleInk: '#FFFFFF',
+  /** iOS's own button sets its title in the system font at this share of its height. */
+  appleTitleToHeight: 0.43,
 } as const;

@@ -20,7 +20,8 @@ export const GOOGLE_SANS = {
 
 const FAMILIES = { sans: SANS, mono: MONO, googleSans: GOOGLE_SANS } as const;
 
-export type Family = keyof typeof FAMILIES;
+/** `system` is the platform's own font, for the words on Apple's sign-in button on iOS alone. */
+export type Family = keyof typeof FAMILIES | 'system';
 
 let loaded = false;
 
@@ -31,7 +32,7 @@ export function facesLoaded(): void {
 
 /** Drops the weight once it has chosen the file: Android would look a 700 up in a BOLD slot that is empty, and draw Roboto. */
 export function faceStyle(flat: TextStyle, family: Family = 'sans'): TextStyle {
-  if (!loaded) return flat;
+  if (!loaded || family === 'system') return flat;
 
   const { fontWeight, ...rest } = flat;
 
@@ -46,7 +47,10 @@ export function inputFaceStyle(flat: TextStyle, family: Family, os: string): Tex
   return { ...faced, fontWeight: 'normal', fontStyle: flat.fontStyle ?? 'normal' };
 }
 
-export function faceFor(asked: string | number | undefined, family: Family = 'sans'): string {
+export function faceFor(
+  asked: string | number | undefined,
+  family: Exclude<Family, 'system'> = 'sans',
+): string {
   const wanted = numeric(asked);
   const files: Record<number, string> = FAMILIES[family];
   const weight = Object.keys(files)
