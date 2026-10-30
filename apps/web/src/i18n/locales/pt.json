@@ -4,8 +4,8 @@
     "skipToContent": "Ir para o conteúdo"
   },
   "release": {
-    "updated": "Soirely has been updated.",
-    "reload": "Reload"
+    "updated": "A Soirely foi atualizada.",
+    "reload": "Recarregar"
   },
   "pageTitle": {
     "part": "{{page}} – {{rest}}"
