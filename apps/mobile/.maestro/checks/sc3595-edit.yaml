@@ -30,18 +30,22 @@ appId: host.exp.Exponent
 - hideKeyboard
 - runFlow:
     when:
+      notVisible:
+        id: 'frame.back'
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: 'eventForm.cancel'
+          direction: UP
+      - tapOn:
+          id: 'eventForm.cancel'
+- runFlow:
+    when:
       visible:
         id: 'frame.back'
     commands:
       - tapOn:
           id: 'frame.back'
-- runFlow:
-    when:
-      visible:
-        id: 'eventForm.cancel'
-    commands:
-      - tapOn:
-          id: 'eventForm.cancel'
 - extendedWaitUntil:
     visible:
       id: 'eventForm.leave.keep'
