@@ -15,7 +15,6 @@ import {
   newEventHosts,
   skippedLine,
   isEventType,
-  filledEndDate,
   localDateTime,
   type VenueDraft,
   venueDraftOf,
@@ -46,6 +45,7 @@ import {
 import { typeChoices } from './eventTypes.ts';
 import { HostsSection } from './HostsSection.tsx';
 import { useLeaveGuard } from './useLeaveGuard.tsx';
+import { useStartCarriesEnd } from './useStartCarriesEnd.ts';
 import { VenueSection } from './VenueSection.tsx';
 
 const NO_HOSTS = { status: 'draft', hosts: [] } as const;
@@ -82,10 +82,10 @@ function EventForm({ organisation }: { organisation: Membership }) {
   const [errors, setErrors] = useState<Errors>({});
   const [hostErrors, setHostErrors] = useState<HostErrors>({});
   const [hostsChecked, setHostsChecked] = useState(false);
-  const [said, setSaid] = useState('');
   const [cover, setCover] = useState<{ uploadKey: string; photo: CoverPhoto } | null>(null);
   const staged = useRef<string | null>(null);
   const [unsent, setUnsent] = useState(0);
+  const [said, setSaid] = useState('');
   const [status, setStatus] = useState<'editing' | 'creating' | 'failed'>('editing');
   const focusNext = useRef<(() => void) | null>(null);
   const currencies = useMemo(() => currencyChoices('', currency, locale, t), [currency, locale, t]);
@@ -124,6 +124,17 @@ function EventForm({ organisation }: { organisation: Membership }) {
     staged.current = next?.uploadKey ?? null;
     setCover(next);
   }
+
+  const { moveStart, moveEnd } = useStartCarriesEnd({
+    draft,
+    endChosen: endChosen,
+    timeZone,
+    edit,
+    say: (line) => {
+      setUnsent(0);
+      setSaid(line);
+    },
+  });
 
   function edit(field: Field, changes: Partial<EventDraft>): void {
     setDraft((previous) => ({ ...previous, ...changes }));
@@ -167,6 +178,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
   async function create(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (busy) return;
+    setSaid('');
 
     const found: Errors = eventFormErrors({ draft, venue, timeZone, currency }, t);
     const sentHosts = newEventHosts(hosts);
@@ -175,7 +187,6 @@ function EventForm({ organisation }: { organisation: Membership }) {
     const unsentFields = Object.keys(found).length + Object.keys(hostFound).length;
     const { type } = draft;
 
-    setSaid('');
     setHostsChecked(true);
 
     if (unsentFields > 0 || type === '') {
@@ -340,13 +351,8 @@ function EventForm({ organisation }: { organisation: Membership }) {
             time={draft.startTime}
             error={errors.startsAt}
             busy={busy}
-            onDate={(startDate) =>
-              edit('startsAt', {
-                startDate,
-                endDate: filledEndDate(startDate, draft.endDate, endChosen),
-              })
-            }
-            onTime={(startTime) => edit('startsAt', { startTime })}
+            onDate={(startDate) => moveStart({ startDate })}
+            onTime={(startTime) => moveStart({ startTime })}
           />
           <Moment
             id="event-end"
@@ -359,9 +365,9 @@ function EventForm({ organisation }: { organisation: Membership }) {
             busy={busy}
             onDate={(endDate) => {
               setEndChosen(endDate !== '');
-              edit('endsAt', { endDate });
+              moveEnd({ endDate });
             }}
-            onTime={(endTime) => edit('endsAt', { endTime })}
+            onTime={(endTime) => moveEnd({ endTime })}
           />
         </section>
 

@@ -113,8 +113,8 @@ export function copiedEnd(
 
   if (start == null || length == null) return null;
 
-  const end = new Date(Date.parse(`${start.wallClock}Z`) + length * MINUTE).toISOString();
-  const instant = resolved(end.slice(0, 16), timeZone)?.instant;
+  const end = clockAfter(start.wallClock, length);
+  const instant = end == null ? null : resolved(end, timeZone)?.instant;
 
   return instant == null ? null : new Date(instant);
 }
@@ -184,6 +184,41 @@ function zoneOffsets(timeZone: string): ((instant: number) => number) | null {
 /** The end date follows the start date, typed partial dates included, until the host chooses one. */
 export function filledEndDate(startDate: string, endDate: string, endChosen: boolean): string {
   return endChosen ? endDate : startDate;
+}
+
+/** A new start carries a set end with it, `length` minutes after it on the clock as sc-3593 has it; with no length, or an end before the start the host is fixing, the end date follows as filledEndDate has it. */
+export function startMoved(
+  draft: EventDraft,
+  start: Partial<Pick<EventDraft, 'startDate' | 'startTime'>>,
+  endChosen: boolean,
+  timeZone: string,
+  length: number | null = draftLength(draft, timeZone),
+): EventDraft {
+  const next = { ...draft, ...start };
+  const startsAt = savedWallClock(next.startDate, next.startTime, timeZone);
+  const typed =
+    length == null || length < 0 || startsAt == null ? null : clockAfter(startsAt, length);
+  const carried = typed == null ? null : (resolved(typed, timeZone)?.wallClock ?? typed);
+
+  if (carried == null || !/^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(carried))
+    return { ...next, endDate: filledEndDate(next.startDate, draft.endDate, endChosen) };
+
+  return { ...next, endDate: carried.slice(0, 10), endTime: carried.slice(11, 16) };
+}
+
+/** End minus start on the clock as they would be saved, or null until both are complete. */
+export function draftLength(draft: EventDraft, timeZone: string): number | null {
+  const startsAt = savedWallClock(draft.startDate, draft.startTime, timeZone);
+  const endsAt = savedWallClock(draft.endDate, draft.endTime, timeZone);
+  const minutes = (Date.parse(`${endsAt}Z`) - Date.parse(`${startsAt}Z`)) / MINUTE;
+
+  return startsAt == null || endsAt == null || Number.isNaN(minutes) ? null : minutes;
+}
+
+function clockAfter(wallClock: string, minutes: number): string | null {
+  const clock = Date.parse(`${wallClock}Z`) + minutes * MINUTE;
+
+  return Number.isNaN(clock) ? null : new Date(clock).toISOString().slice(0, 16);
 }
 
 /** An event's saved values as the form types them: its wall-clock date and time, read off the offset form the API serves. */
