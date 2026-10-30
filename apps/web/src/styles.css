@@ -1059,6 +1059,13 @@ span {
   background: var(--brandAppleSurface);
 }
 
+/* Busy and off keep Google's and Apple's colours and words: the whole button fades (sc-22601). */
+.button-google[aria-disabled='true'],
+.button-apple[aria-disabled='true'] {
+  cursor: default;
+  opacity: var(--brandOffOpacity);
+}
+
 .button-google svg,
 .button-apple svg {
   display: block;
