@@ -4896,6 +4896,64 @@ button.members-row {
   }
 }
 
+/* Below 390 the category column is too narrow for a whole word, so each name takes a line
+   of its own above its two switches. Subgrid keeps every row on the header's columns. */
+@media (width < 24.375rem) {
+  .notification-settings-blocked {
+    overflow-wrap: normal;
+    hyphens: manual;
+  }
+
+  .notification-settings-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) min-content min-content;
+  }
+
+  .notification-settings-grid thead,
+  .notification-settings-grid tbody {
+    display: contents;
+  }
+
+  .notification-settings-grid tr {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+  }
+
+  .notification-settings-grid tbody tr {
+    border-top: var(--borderCard);
+  }
+
+  .notification-settings-grid tbody th,
+  .notification-settings-grid tbody td {
+    border-top: 0;
+  }
+
+  .notification-settings-grid tbody th {
+    grid-column: 1 / -1;
+    padding: var(--spaceLg) var(--spaceLg) var(--spaceXs);
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: manual;
+  }
+
+  .notification-settings-grid .notification-settings-channel {
+    width: auto;
+  }
+
+  .notification-settings-grid tbody td {
+    padding-top: 0;
+  }
+
+  .notification-settings-grid tbody td:nth-child(2) {
+    grid-column: 2;
+  }
+
+  .notification-settings-grid tbody td:nth-child(3) {
+    grid-column: 3;
+  }
+}
+
 .notification-row {
   position: relative;
   display: grid;
