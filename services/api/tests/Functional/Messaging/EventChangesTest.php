@@ -557,6 +557,52 @@ final class EventChangesTest extends MessagingTestCase
     }
 
     #[Test]
+    public function aPushHeldOvernightSurvivesAnEditChangedBack(): void
+    {
+        $event = $this->liveEvent();
+        $this->bola->setTimezone(self::ZONE);
+        self::em()->flush();
+
+        self::at('2026-11-02 22:00');
+        self::service(EventLifecycle::class)->pause($event, $this->ada);
+        self::runUntilIdle();
+
+        self::at('2026-11-02 23:00');
+        $this->edit($event, $this->chidi, ['startsAt' => '2026-11-12T18:00:00', 'endsAt' => '2026-11-12T23:30:00']);
+        self::at('2026-11-02 23:05');
+        $this->edit($event, $this->chidi, ['startsAt' => '2026-11-12T18:00:00', 'endsAt' => '2026-11-12T23:00:00']);
+        self::at('2026-11-02 23:30');
+        self::runUntilIdle();
+
+        self::at('2026-11-03 08:00');
+        self::runUntilIdle();
+
+        self::assertSame(['Ada Obi paused the event'], Vec\map($this->pushes($this->bola), static fn ($sent): string => $sent->body));
+    }
+
+    #[Test]
+    public function aPushHeldOvernightGoesOnceWhenAnEditStays(): void
+    {
+        $event = $this->liveEvent();
+        $this->bola->setTimezone(self::ZONE);
+        self::em()->flush();
+
+        self::at('2026-11-02 22:00');
+        self::service(EventLifecycle::class)->pause($event, $this->ada);
+        self::runUntilIdle();
+
+        self::at('2026-11-02 23:00');
+        $this->edit($event, $this->chidi, ['startsAt' => '2026-11-12T18:00:00', 'endsAt' => '2026-11-12T23:30:00']);
+        self::at('2026-11-02 23:30');
+        self::runUntilIdle();
+
+        self::at('2026-11-03 08:00');
+        self::runUntilIdle();
+
+        self::assertSame(["Ada Obi paused the event\nThe end time is now 23:30 (was 23:00).\nAlso changed by Chidi Eze."], Vec\map($this->pushes($this->bola), static fn ($sent): string => $sent->body));
+    }
+
+    #[Test]
     public function aMutedEventKeepsTheItemMarkedMutedWithNoPushOrEmail(): void
     {
         $event = $this->liveEvent();

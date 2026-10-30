@@ -452,6 +452,14 @@ final class NotificationWorker
             return EventVerdict::Cancel;
         }
 
+        $thread = $type->thread(self::dict($row['payload']));
+
+        if (null !== $thread && $this->earlierPushCarries($row, $thread)) {
+            $this->finishDelivery($id, NotificationDeliveryStatus::Cancelled, 'an earlier push carries its item');
+
+            return EventVerdict::Cancel;
+        }
+
         $zone = Type\nullable(Type\string())->coerce($this->connection->fetchOne('SELECT timezone FROM users WHERE id = :id', ['id' => $recipientId->toRfc4122()]) ?: null);
         $morning = QuietHours::releaseAt($category, $now, $zone);
 
@@ -467,7 +475,6 @@ final class NotificationWorker
             return EventVerdict::Hold;
         }
 
-        $thread = $type->thread(self::dict($row['payload']));
         $item = null !== $thread ? $this->threadItem($row, $thread) : $this->connection->fetchAssociative(
             <<<'SQL'
                 SELECT i.id IS NOT NULL AS present, i.read_at IS NOT NULL AS read
@@ -500,6 +507,39 @@ final class NotificationWorker
         }
 
         return EventVerdict::Send;
+    }
+
+    /**
+     * A push in the thread that is still waiting, or that went after this one was written, carries the item as it then reads, so this one would repeat it (sc-13214).
+     *
+     * @param array<string, mixed> $row
+     */
+    private function earlierPushCarries(array $row, string $thread): bool
+    {
+        $earlier = $this->connection->fetchFirstColumn(
+            <<<'SQL'
+                SELECT s.payload
+                FROM notification_deliveries d
+                JOIN scheduled_notifications s ON s.id = d.scheduled_notification_id
+                WHERE d.type = :type AND d.event_id = :event AND d.recipient_kind = :kind AND d.recipient_id = :recipient
+                  AND d.channel = :push AND d.id < :id
+                  AND (d.status = :pending OR (d.status = :sent AND d.finished_at >= :written))
+                SQL,
+            [
+                'type' => $row['type'],
+                'event' => $row['event_id'],
+                'kind' => $row['recipient_kind'],
+                'recipient' => $row['recipient_id'],
+                'push' => NotificationChannel::Push->value,
+                'id' => $row['id'],
+                'pending' => NotificationDeliveryStatus::Pending->value,
+                'sent' => NotificationDeliveryStatus::Sent->value,
+                'written' => $row['created_at'],
+            ],
+        );
+        $type = $this->notificationRegistry->type(Type\string()->coerce($row['type']));
+
+        return Iter\any($earlier, static fn (mixed $payload): bool => $type->thread(self::dict($payload)) === $thread);
     }
 
     /**
@@ -676,7 +716,7 @@ final class NotificationWorker
     {
         $row = $this->connection->fetchAssociative(
             <<<'SQL'
-                SELECT d.id, d.type, d.source_id, d.event_id, d.recipient_kind, d.recipient_id, d.channel, d.send_by, d.attempts, s.organisation_id, s.audience, s.payload
+                SELECT d.id, d.type, d.source_id, d.event_id, d.created_at, d.recipient_kind, d.recipient_id, d.channel, d.send_by, d.attempts, s.organisation_id, s.audience, s.payload
                 FROM notification_deliveries d
                 JOIN scheduled_notifications s ON s.id = d.scheduled_notification_id
                 WHERE d.id = :id
