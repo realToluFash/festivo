@@ -195,5 +195,5 @@ const styles = StyleSheet.create({
   googleText: { color: brand.googleInk, lineHeight: brand.googleLineHeight },
   apple: { backgroundColor: brand.appleSurface, borderColor: brand.appleSurface },
   appleText: { color: brand.appleInk },
-  appleIos: { gap: 0, paddingVertical: 0 },
+  appleIos: { gap: 0, paddingVertical: 0, borderWidth: 0 },
 });
