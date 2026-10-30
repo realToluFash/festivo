@@ -271,6 +271,8 @@ function Choosing({
   const [rowHeight, setRowHeight] = useState<number>(tokens.sizeHit);
   const { height } = useWindowDimensions();
   const short = shortWhileTyping({ os: Platform.OS, phone, height, keysUp: room != null });
+  // TalkBack reads the field as the step opens, before the keys are up, so the hint is there from the start (sc-22392).
+  const hinted = shortWhileTyping({ os: Platform.OS, phone, height, keysUp: true });
   useHeaderWithoutBack(short);
 
   const showingPicked = picked != null && typed === zoneLabel(picked);
@@ -337,7 +339,12 @@ function Choosing({
           onLayout={(event) => setGroupHeight(event.nativeEvent.layout.height)}
           style={styles.choosing}
         >
-          <Field label={t('timeZone.find')} error={error} help={short ? undefined : help}>
+          <Field
+            label={t('timeZone.find')}
+            error={error}
+            help={short ? undefined : help}
+            helpInHint={hinted}
+          >
             <TextField
               ref={input}
               wrong={error != null}
@@ -356,7 +363,7 @@ function Choosing({
               onSubmitEditing={() => void save()}
               submitBehavior="submit"
               accessibilityLabel={t('timeZone.find')}
-              accessibilityHint={short ? help : undefined}
+              accessibilityHint={hinted ? help : undefined}
               testID="timeZone.search"
             />
           </Field>
