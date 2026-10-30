@@ -59,6 +59,10 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **30 Oct 2026. Une version trop ancienne** (sc-22881 pour sc-22620, `updateRequired.*`, app).
+  « Mettez à jour Soirely pour continuer » ; le corps, « Cette version de Soirely ne fonctionne
+  plus. La mise à jour conserve tout ce que vous avez enregistré. » ; le bouton, « Mettre à
+  jour ». Jamais « obsolète » ni « non prise en charge », qui accusent la personne.
 - **30 Oct 2026. La fin décalée avec le début** (sc-22161 pour sc-22144, `eventForm.endMoved`,
   web et app). Seulement lu par le lecteur d’écran : « La fin a été décalée avec le début :
   {{day}}, {{time}}. » « Fin » et « Début » comme les légendes du formulaire ; « décalée »
