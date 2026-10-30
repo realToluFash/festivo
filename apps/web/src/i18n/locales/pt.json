@@ -60,6 +60,7 @@
   },
   "eventForm": {
     "title": "Novo evento",
+    "leaveBody": "O que escreveu para este evento vai perder-se.",
     "aboutHeading": "Sobre o evento",
     "whenHeading": "Quando",
     "zoneHeading": "Fuso horário e moeda",

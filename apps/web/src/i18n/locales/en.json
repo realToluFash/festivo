@@ -58,6 +58,7 @@
   },
   "eventForm": {
     "title": "New event",
+    "leaveBody": "What you typed for this event will be lost.",
     "aboutHeading": "About the event",
     "whenHeading": "When",
     "zoneHeading": "Time zone and currency",
