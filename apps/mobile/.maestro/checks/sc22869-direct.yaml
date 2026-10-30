@@ -1,0 +1,50 @@
+# sc-22869: Duplicate reached by its address, for text sizes where the event page's own pinned name hides the Duplicate button (sc-22871).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${LONG}/duplicate
+- takeScreenshot: long-loading
+- extendedWaitUntil:
+    visible:
+      id: 'frame.back'
+    timeout: 20000
+- scrollUntilVisible:
+    element: '{{t:eventDuplicate.copied}}'
+    timeout: 20000
+- scrollUntilVisible:
+    direction: UP
+    element:
+      id: 'frame.back'
+    timeout: 5000
+- swipe:
+    start: 50%, 40%
+    end: 50%, 90%
+    duration: 300
+- waitForAnimationToEnd
+- takeScreenshot: long-top
+- swipe:
+    start: 50%, 70%
+    end: 50%, 40%
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: long-scrolled
+- repeat:
+    times: 40
+    while:
+      notVisible:
+        id: 'eventDuplicate.create'
+    commands:
+      - swipe:
+          start: 50%, 80%
+          end: 50%, 55%
+          duration: 400
+- takeScreenshot: long-bottom
+- openLink: ${METRO_URL}/--/events/${SHORT}/duplicate
+- scrollUntilVisible:
+    element: '{{t:eventDuplicate.copied}}'
+    timeout: 20000
+- swipe:
+    start: 50%, 40%
+    end: 50%, 90%
+    duration: 300
+- waitForAnimationToEnd
+- takeScreenshot: short-top

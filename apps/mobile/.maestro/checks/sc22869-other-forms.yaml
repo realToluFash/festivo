@@ -1,0 +1,28 @@
+# sc-22869 regression: New event and Edit details keep their titles in the phone header.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'frame.back'
+    timeout: 20000
+- takeScreenshot: new-event
+- openLink: ${METRO_URL}/--/events/${LONG}/edit
+- extendedWaitUntil:
+    visible:
+      id: 'frame.back'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: edit-details
+- openLink: ${METRO_URL}/--/events/${LONG}
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- scrollUntilVisible:
+    direction: UP
+    element:
+      id: 'events.page.cover'
+    timeout: 10000
+- takeScreenshot: event-page

@@ -1,0 +1,58 @@
+# sc-22869: on a phone, Duplicate's header keeps Duplicate, and Duplicate {event} is the form's first line and scrolls away; the ways out still reach the original.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${LONG}
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- tapOn:
+    id: 'events.page.duplicate'
+- takeScreenshot: long-loading
+- extendedWaitUntil:
+    visible: '{{t:eventDuplicate.copied}}'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: long-top
+- swipe:
+    start: 50%, 70%
+    end: 50%, 45%
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: long-scrolled
+- repeat:
+    times: 20
+    while:
+      notVisible:
+        id: 'eventDuplicate.create'
+    commands:
+      - swipe:
+          start: 50%, 85%
+          end: 50%, 60%
+          duration: 400
+- takeScreenshot: long-bottom
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'events.page.duplicate'
+    timeout: 10000
+- takeScreenshot: long-back
+- openLink: ${METRO_URL}/--/events/${SHORT}
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- tapOn:
+    id: 'events.page.duplicate'
+- extendedWaitUntil:
+    visible: '{{t:eventDuplicate.copied}}'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: short-top
+- tapOn:
+    id: 'frame.back'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page.duplicate'
+    timeout: 10000
+- takeScreenshot: short-cancel
