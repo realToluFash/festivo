@@ -1353,6 +1353,43 @@ final class EventsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aNewEventIsCreatedWithItsHostsInOneRequest(): void
+    {
+        $created = $this->event($this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'hosts' => ['  Tayo Adeyemi ', "The Okafor\r\nfamily"]]));
+
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(['Tayo Adeyemi', 'The Okafor family'], $created['hosts']);
+
+        $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => EventCreator::CREATED, 'subjectType' => 'Event']);
+        self::assertInstanceOf(AuditEntry::class, $entry);
+        self::assertSame([null, ['Tayo Adeyemi', 'The Okafor family']], $entry->getChanges()['hosts'] ?? null);
+    }
+
+    #[Test]
+    public function aNewEventWithNoHostsHasNoneInItsCreateEntry(): void
+    {
+        $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'hosts' => []]);
+
+        $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => EventCreator::CREATED, 'subjectType' => 'Event']);
+        self::assertSame(201, $this->statusCode());
+        self::assertInstanceOf(AuditEntry::class, $entry);
+        self::assertArrayNotHasKey('hosts', $entry->getChanges());
+    }
+
+    /** @param list<string> $hosts */
+    #[Test]
+    #[DataProvider('hostRefusals')]
+    public function aCreateWithARefusedHostCreatesNothing(array $hosts, string $path, string $message): void
+    {
+        $this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'name' => '', 'hosts' => $hosts]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame($message, $this->violations()[$path] ?? null, Json\encode($this->last()));
+        self::assertArrayHasKey('name', $this->violations(), 'the hosts were not reported with the rest');
+        self::assertSame([], $this->listed());
+    }
+
+    #[Test]
     public function theHostsAreSavedAsTypedInTheirOrder(): void
     {
         $id = $this->create('Owambe', self::AHEAD);

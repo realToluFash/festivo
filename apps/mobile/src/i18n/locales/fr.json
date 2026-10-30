@@ -1599,9 +1599,10 @@
     "planLimit_many": "Non publié. Votre forfait {{plan}} permet d’avoir {{count, number}} d’événements publiés ou en pause à la fois.",
     "planLimitStays": "Cet événement reste en brouillon. Terminez ou annulez un autre événement, ou changez de forfait.",
     "close": "Fermer",
-    "needsHostTitle": "Indiquez les hôtes avant d’inviter qui que ce soit.",
-    "needsHostBody": "Les invités voient le nom des hôtes sur leur invitation. Cet événement reste un brouillon tant qu’il n’a pas au moins un hôte.",
-    "addHosts": "Indiquer les hôtes"
+    "hostEmpty": "Enter who is hosting to make this event live.",
+    "hostExplainer": "Guests read this name on their invitation and their page. Write it the way you want guests to see it.",
+    "notSavedChanged": "Not saved. Somebody else changed this event since you opened it.",
+    "hostsNow": "Who is hosting now, as guests will see it:"
   },
   "eventHosts": {
     "heading": "Hôtes",

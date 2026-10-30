@@ -86,6 +86,7 @@ describe('the app event form against the shared rules (sc-3595)', () => {
       endsAt: '2026-11-14T23:00',
       timeZone: 'Africa/Lagos',
       currency: 'NGN',
+      hosts: ['Funmi Adeyemi'],
     });
   });
 
@@ -177,11 +178,22 @@ describe('the field a pick lands in, on either platform', () => {
 const rows = (...names: string[]): HostRow[] => names.map((name, key) => ({ key, name }));
 
 describe("the app's Hosted by against the shared rules (sc-15497)", () => {
-  it('opens with the saved hosts in order, and a new event with none', () => {
+  it('opens with the saved hosts in order, and a new event with one empty Host 1 (sc-22143)', () => {
     expect(typedOf({ ...gala, hosts: ['Funmi Adeyemi', 'Tayo Adeyemi'] }).hosts).toEqual(
       rows('Funmi Adeyemi', 'Tayo Adeyemi'),
     );
-    expect(blankEvent({ timezone: 'Africa/Lagos', currency: 'NGN' }).hosts).toEqual([]);
+    expect(blankEvent({ timezone: 'Africa/Lagos', currency: 'NGN' }).hosts).toEqual(rows(''));
+  });
+
+  it('creates a new event with its hosts, and with none for a lone empty Host 1 (sc-22143)', () => {
+    const typed = typedOf(gala);
+
+    expect(newEventOf({ ...typed, hosts: rows(' Funmi\nAdeyemi ', 'Tayo') })?.hosts).toEqual([
+      'Funmi Adeyemi',
+      'Tayo',
+    ]);
+    expect(newEventOf({ ...typed, hosts: rows('  ') })?.hosts).toEqual([]);
+    expect(newEventOf({ ...typed, hosts: [] })?.hosts).toEqual([]);
   });
 
   it('sends the whole list, trimmed and on one line, only when it changed', () => {

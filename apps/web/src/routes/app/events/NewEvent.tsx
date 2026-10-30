@@ -6,6 +6,13 @@ import {
   eventNameLength,
   eventNameOf,
   eventFormErrors,
+  firstRefusedOf,
+  type HostErrors,
+  type HostRow,
+  hostErrorsOf,
+  hostRefusalsOf,
+  hostsSent,
+  newEventHosts,
   skippedLine,
   isEventType,
   localDateTime,
@@ -27,11 +34,21 @@ import { CoverSection } from './CoverSection.tsx';
 import { discardCoverUpload, refusalOf } from './coverPhoto.ts';
 import type { CoverPhoto } from './EventCoverImage.tsx';
 import { Choice, FieldError, Moment } from './EventFields.tsx';
-import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
+import {
+  type Errors,
+  FIELDS,
+  type Field,
+  describedBy,
+  hostInputId,
+  inputFor,
+} from './eventFieldOrder.ts';
 import { typeChoices } from './eventTypes.ts';
+import { HostsSection } from './HostsSection.tsx';
 import { useLeaveGuard } from './useLeaveGuard.tsx';
 import { useStartCarriesEnd } from './useStartCarriesEnd.ts';
 import { VenueSection } from './VenueSection.tsx';
+
+const NO_HOSTS = { status: 'draft', hosts: [] } as const;
 
 export function NewEvent() {
   const session = useSession();
@@ -61,7 +78,10 @@ function EventForm({ organisation }: { organisation: Membership }) {
   const [currency, setCurrency] = useState(
     CURRENCY_CODES.includes(organisation.currency) ? organisation.currency : '',
   );
+  const [hosts, setHosts] = useState<HostRow[]>([{ key: 0, name: '' }]);
   const [errors, setErrors] = useState<Errors>({});
+  const [hostErrors, setHostErrors] = useState<HostErrors>({});
+  const [hostsChecked, setHostsChecked] = useState(false);
   const [cover, setCover] = useState<{ uploadKey: string; photo: CoverPhoto } | null>(null);
   const staged = useRef<string | null>(null);
   const [unsent, setUnsent] = useState(0);
@@ -75,7 +95,13 @@ function EventForm({ organisation }: { organisation: Membership }) {
   );
   const types = useMemo(() => typeChoices(draft.type, t), [draft.type, t]);
   const busy = status === 'creating';
-  const typed = JSON.stringify({ draft, venue, timeZone, currency });
+  const typed = JSON.stringify({
+    draft,
+    venue,
+    timeZone,
+    currency,
+    hosts: hosts.map((row) => row.name),
+  });
   const [blank] = useState(typed);
   const dirty = typed !== blank || cover != null;
   const leave = useLeaveGuard({ dirty, busy, body: t('eventForm.leaveBody') });
@@ -115,14 +141,38 @@ function EventForm({ organisation }: { organisation: Membership }) {
     setErrors((previous) => ({ ...previous, [field]: undefined }));
   }
 
+  /** Focus goes to the first refused in the form's order: the name and type, then the hosts top to bottom, then the rest. */
   function refuse(
     found: Errors,
     focus = (id: string) => document.getElementById(id)?.focus(),
+    hostFound: HostErrors = {},
   ): void {
-    const first = FIELDS.find((field) => found[field] != null);
+    const first = firstRefusedOf(found, hostFound, hosts);
+    const id =
+      first == null
+        ? null
+        : 'field' in first
+          ? inputFor(first.field, draft)
+          : hostInputId({ key: first.host });
 
-    focusNext.current = first == null ? null : () => focus(inputFor(first, draft));
+    focusNext.current = id == null ? null : () => focus(id);
     setErrors(found);
+    setHostErrors(hostFound);
+  }
+
+  function editHosts(rows: HostRow[], touched: number | null): void {
+    setHosts(rows);
+    if (touched != null) setHostErrors((previous) => ({ ...previous, [touched]: undefined }));
+    else if (hostsChecked) setHostErrors(hostErrorsOf(newEventHosts(rows), t));
+  }
+
+  function leaveHost(row: HostRow): void {
+    if (!hostsChecked) return;
+
+    setHostErrors((previous) => ({
+      ...previous,
+      [row.key]: hostErrorsOf(newEventHosts(hosts), t)[row.key],
+    }));
   }
 
   async function create(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -131,14 +181,18 @@ function EventForm({ organisation }: { organisation: Membership }) {
     setSaid('');
 
     const found: Errors = eventFormErrors({ draft, venue, timeZone, currency }, t);
+    const sentHosts = newEventHosts(hosts);
+    const hostFound = hostErrorsOf(sentHosts, t);
 
-    const unsentFields = Object.keys(found).length;
+    const unsentFields = Object.keys(found).length + Object.keys(hostFound).length;
     const { type } = draft;
+
+    setHostsChecked(true);
 
     if (unsentFields > 0 || type === '') {
       setUnsent(unsentFields);
       setStatus('editing');
-      refuse(found);
+      refuse(found, undefined, hostFound);
       return;
     }
 
@@ -157,6 +211,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
         timeZone,
         currency,
         ...(sentVenue == null ? {} : { venue: sentVenue }),
+        hosts: hostsSent(sentHosts.map((row) => row.name)),
       });
 
       let coverRefused: string | null = null;
@@ -188,9 +243,11 @@ function EventForm({ organisation }: { organisation: Membership }) {
       const found: Errors = {};
       for (const field of FIELDS) if (refused[field] != null) found[field] = refused[field];
 
-      if (Object.keys(found).length > 0) {
+      const hostsFromServer = hostRefusalsOf(refused, sentHosts);
+
+      if (Object.keys(found).length + Object.keys(hostsFromServer).length > 0) {
         setStatus('editing');
-        refuse(found, land);
+        refuse(found, land, hostsFromServer);
         return;
       }
 
@@ -256,6 +313,19 @@ function EventForm({ organisation }: { organisation: Membership }) {
             onChange={(value) => edit('type', { type: isEventType(value) ? value : '' })}
           />
         </section>
+
+        <HostsSection
+          rows={hosts}
+          errors={hostErrors}
+          saved={NO_HOSTS}
+          busy={busy}
+          onRows={editHosts}
+          onLeave={leaveHost}
+          onSay={(line) => {
+            setUnsent(0);
+            setSaid(line);
+          }}
+        />
 
         <CoverSection
           type={draft.type}

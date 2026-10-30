@@ -71,8 +71,9 @@ function signedIn(organisation = IRE): void {
 
 type Answer = (body: unknown) => Response | Promise<Response>;
 
+/** Tagged as the API tags an event, which the event's page reads with its version. */
 function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status });
+  return new Response(JSON.stringify(body), { status, headers: { ETag: '"1"' } });
 }
 
 function deletion(needsName: boolean): Response {
