@@ -288,7 +288,7 @@ export function EventForm({
   }
 
   function moveStart(startDate: string, startTime: string): void {
-    const moved = startMoved(draft, { startDate, startTime }, endChosen);
+    const moved = startMoved(draft, { startDate, startTime }, endChosen, timeZone);
     const line = endMovedLine(draft, moved, dateLocale(), t);
 
     changeDraft('startsAt', moved);
