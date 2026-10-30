@@ -10,18 +10,22 @@ function comeBackIntoView() {
   });
 }
 
+function liveRegion(): HTMLElement {
+  return document.querySelector<HTMLElement>('[aria-live="polite"]')!;
+}
+
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
 describe('ReleaseBand', () => {
-  it('shows nothing until a check finds another release, with its status on the page from load', () => {
+  it('shows nothing until a check finds another release, with its live region on the page from load', () => {
     const differs = vi.fn(() => Promise.resolve(true));
 
     render(<ReleaseBand differs={differs} />);
 
-    expect(screen.getByRole('status').textContent).toBe('');
+    expect(liveRegion().textContent).toBe('');
     expect(screen.queryByRole('button')).toBeNull();
     expect(differs).not.toHaveBeenCalled();
   });
@@ -32,7 +36,7 @@ describe('ReleaseBand', () => {
     comeBackIntoView();
 
     await screen.findByRole('button', { name: 'Reload' });
-    expect(screen.getByRole('status').textContent).toBe('Soirely has been updated.');
+    expect(liveRegion().textContent).toBe('Soirely has been updated.');
   });
 
   it('shows nothing on the deployed release, or when the check cannot finish', async () => {

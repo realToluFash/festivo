@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { CHECK_EVERY_MS, deployedDiffers } from '../release.ts';
 
-/** Mounted once above every page with its status there from load, so a screen reader reads it once. */
+/** Mounted once above every page with its live region there from load, so a screen reader reads it once. */
 export function ReleaseBand({ differs = deployedDiffers }: { differs?: typeof deployedDiffers }) {
   const { t } = useTranslation();
   const [updated, setUpdated] = useState(false);
@@ -63,7 +63,7 @@ export function ReleaseBand({ differs = deployedDiffers }: { differs?: typeof de
 
   return (
     <div ref={band} className={updated ? 'release-band' : undefined}>
-      <p role="status" className="release-band-words">
+      <p aria-live="polite" aria-atomic="true" className="release-band-words">
         {updated ? t('release.updated') : null}
       </p>
       {updated && (
