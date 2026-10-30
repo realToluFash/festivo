@@ -3,7 +3,7 @@ import type { IntoView } from './keyboard.ts';
 /** Long enough for the opener to reach TalkBack's tree, which drops a hover on a view it has not yet seen (sc-9950), and short of the focus TalkBack puts back on its own. */
 export const TALKBACK_FOCUS_BACK_MS = 50;
 
-/** How long a closing step stays once the keys are down, so TalkBack's focus is on its opener before the step's Cancel goes, and an opening step's opener once its field has input focus, so TalkBack's focus is on the field before the opener goes (sc-22392). Longer costs only the moment both show. */
+/** How long a closing step stays once the keys are down, so TalkBack's focus is on its opener before the step's Cancel goes, and how long an opening step's field holds TalkBack's focus before it takes input focus, so the keys' scrolls carry nothing TalkBack's focus is on out of sight (sc-22392). Longer costs only the moment both show. */
 export const TALKBACK_FOCUS_TAKEN_MS = 150;
 
 /** Where focus comes back from: a step closed inside a card, or a page whose list returns with every row at once. */
@@ -70,7 +70,7 @@ export function fieldToBlur<Field>(
   return focusedNow ?? ofTheStep ?? raisedTheKeys;
 }
 
-/** Whether a step opens in order on `os`: its opener stays, above the step, until the step's field has taken input focus, which TalkBack follows. An opener that goes as the step comes leaves TalkBack's focus on nothing, and TalkBack puts it on the header's back row and says "Settings" before the field (sc-22392). */
+/** Whether a step opens in order on `os`: its opener stays, above the step, until TalkBack's focus is on the step's field and the field has taken input focus. An opener that goes as the step comes leaves TalkBack's focus on nothing, and TalkBack puts it on the header's back row and says "Settings" before the field (sc-22392). */
 export function stepOpensInOrder(os: string, screenReaderOn: boolean): boolean {
   return os === 'android' && screenReaderOn;
 }
