@@ -10,9 +10,12 @@ use App\Domain\Event\EventLifecycle;
 use App\Domain\Messaging\EventMuter;
 use App\Domain\Messaging\Model\Audience;
 use App\Domain\Messaging\Model\Trigger;
+use App\Domain\Messaging\NotificationPreferenceSetter;
 use App\Entity\Event;
 use App\Entity\User;
 use App\Enum\EventType;
+use App\Enum\NotificationCategory;
+use App\Enum\NotificationChannel;
 use App\Enum\SeededRole;
 use App\Http\EntityTag;
 use App\Tests\Double\Messaging\RecordingPushSender;
@@ -192,6 +195,19 @@ final class EventChangesTest extends MessagingTestCase
 
         self::assertStringStartsWith("You're getting this because you are on Gala at ", $lines[1]);
         self::assertMatchesRegularExpression('#^Notification settings: \S+/app/account/notifications$#', $lines[0]);
+    }
+
+    #[Test]
+    public function anEventDayEmailNamesEventDayAsTheSettingToTurnOff(): void
+    {
+        $event = $this->liveEvent(startsOn: '2026-11-03');
+        self::service(NotificationPreferenceSetter::class)->set($this->bola, NotificationCategory::EventDay, NotificationChannel::Email, true);
+
+        self::at('2026-11-02 18:00');
+        self::service(EventLifecycle::class)->pause($event, $this->ada);
+        self::runUntilIdle();
+
+        self::assertStringEndsWith('turn off Event day email in Notification settings.', Vec\reverse(Str\split($this->email($this->bola)->body, "\n"))[1]);
     }
 
     #[Test]

@@ -62,5 +62,6 @@
     "eventChanges.email.openInMaps": "Abrir en mapas",
     "eventChanges.email.settings": "Configuración de notificaciones",
     "eventChanges.email.link": "{label}: {url}",
-    "eventChanges.email.footer": "Recibe este correo porque forma parte de {event}, en {organisation}. Para dejar de recibirlos, desactive el correo electrónico de «Cambios en eventos» en la configuración de notificaciones."
+    "eventChanges.email.footer": "Recibe este correo porque forma parte de {event}, en {organisation}. Para dejar de recibirlos, desactive el correo electrónico de «Cambios en eventos» en la configuración de notificaciones.",
+    "eventChanges.email.footerEventDay": "You're getting this because you are on {event} at {organisation}. To stop these emails, turn off Event day email in Notification settings."
 }
