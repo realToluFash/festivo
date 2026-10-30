@@ -1,8 +1,8 @@
 import { Platform, StyleSheet, type StyleProp, type TextStyle } from 'react-native';
 
-import { MONO, SANS, faceStyle, inputFaceStyle } from './faceFor.ts';
+import { GOOGLE_SANS, MONO, SANS, type Family, faceStyle, inputFaceStyle } from './faceFor.ts';
 
-export { facesLoaded } from './faceFor.ts';
+export { type Family, facesLoaded } from './faceFor.ts';
 
 /**
  * Weights, never family names. This is a convention with teeth.
@@ -41,17 +41,18 @@ export const FONT_FACES = {
   [SANS[700]]: require('../../assets/fonts/instrument-sans/InstrumentSans-Bold.ttf'),
   [MONO[500]]: require('../../assets/fonts/jetbrains-mono/JetBrainsMono-Medium.ttf'),
   [MONO[700]]: require('../../assets/fonts/jetbrains-mono/JetBrainsMono-Bold.ttf'),
+  [GOOGLE_SANS[500]]: require('../../assets/fonts/google-sans/GoogleSans-Medium.ttf'),
 } as Record<string, number>;
 
 /**
  * The one place a family is chosen, from the weight the whole style asks for.
  * Text and every field put their style through this.
  */
-export function faced(style: StyleProp<TextStyle>, mono = false): TextStyle {
-  return faceStyle(StyleSheet.flatten(style) ?? {}, mono);
+export function faced(style: StyleProp<TextStyle>, family: Family = 'sans'): TextStyle {
+  return faceStyle(StyleSheet.flatten(style) ?? {}, family);
 }
 
 /** faced() for a TextInput, which every field puts its style through. */
-export function inputFaced(style: StyleProp<TextStyle>, mono = false): TextStyle {
-  return inputFaceStyle(StyleSheet.flatten(style) ?? {}, mono, Platform.OS);
+export function inputFaced(style: StyleProp<TextStyle>, family: Family = 'sans'): TextStyle {
+  return inputFaceStyle(StyleSheet.flatten(style) ?? {}, family, Platform.OS);
 }
