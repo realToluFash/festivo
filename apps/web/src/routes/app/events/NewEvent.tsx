@@ -8,10 +8,7 @@ import {
   eventFormErrors,
   skippedLine,
   isEventType,
-  endMovedLine,
   localDateTime,
-  draftLength,
-  startMoved,
   type VenueDraft,
   venueDraftOf,
   venueSent,
@@ -32,6 +29,7 @@ import type { CoverPhoto } from './EventCoverImage.tsx';
 import { Choice, FieldError, Moment } from './EventFields.tsx';
 import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
 import { typeChoices } from './eventTypes.ts';
+import { useStartCarriesEnd } from './useStartCarriesEnd.ts';
 import { VenueSection } from './VenueSection.tsx';
 
 export function NewEvent() {
@@ -67,7 +65,6 @@ function EventForm({ organisation }: { organisation: Membership }) {
   const staged = useRef<string | null>(null);
   const [unsent, setUnsent] = useState(0);
   const [said, setSaid] = useState('');
-  const heldLength = useRef<number | null>(null);
   const [status, setStatus] = useState<'editing' | 'creating' | 'failed'>('editing');
   const focusNext = useRef<(() => void) | null>(null);
   const currencies = useMemo(() => currencyChoices('', currency, locale, t), [currency, locale, t]);
@@ -97,26 +94,20 @@ function EventForm({ organisation }: { organisation: Membership }) {
     setCover(next);
   }
 
+  const { moveStart, moveEnd } = useStartCarriesEnd({
+    draft,
+    endChosen: endChosen,
+    timeZone,
+    edit,
+    say: (line) => {
+      setUnsent(0);
+      setSaid(line);
+    },
+  });
+
   function edit(field: Field, changes: Partial<EventDraft>): void {
     setDraft((previous) => ({ ...previous, ...changes }));
     setErrors((previous) => ({ ...previous, [field]: undefined }));
-  }
-
-  function moveStart(start: Partial<Pick<EventDraft, 'startDate' | 'startTime'>>): void {
-    const length = draftLength(draft, timeZone) ?? heldLength.current;
-    const moved = startMoved(draft, start, endChosen, timeZone, length);
-    const line = endMovedLine(draft, moved, dateLocale(), t);
-
-    heldLength.current = length;
-    edit('startsAt', moved);
-    if (line == null) return;
-    setUnsent(0);
-    setSaid(line);
-  }
-
-  function moveEnd(end: Partial<Pick<EventDraft, 'endDate' | 'endTime'>>): void {
-    heldLength.current = null;
-    edit('endsAt', end);
   }
 
   function refuse(

@@ -17,9 +17,6 @@ import {
   eventNameLength,
   eventFormErrors,
   skippedLine,
-  startMoved,
-  draftLength,
-  endMovedLine,
   isEventType,
   type VenueDraft,
   venueDraftOf,
@@ -61,6 +58,7 @@ import {
 } from './eventFieldOrder.ts';
 import { typeChoices } from './eventTypes.ts';
 import { HostsSection } from './HostsSection.tsx';
+import { useStartCarriesEnd } from './useStartCarriesEnd.ts';
 import { VenueSection } from './VenueSection.tsx';
 
 /** What the event page announces once the form has closed (sc-3587). */
@@ -213,7 +211,6 @@ function DetailsForm({
   const [hostErrors, setHostErrors] = useState<HostErrors>({});
   const [hostsChecked, setHostsChecked] = useState(false);
   const [said, setSaid] = useState('');
-  const heldLength = useRef<number | null>(null);
   const [unsent, setUnsent] = useState(0);
   const [status, setStatus] = useState<Status>('editing');
   const [confirming, setConfirming] = useState<'latest' | null>(null);
@@ -288,26 +285,20 @@ function DetailsForm({
     focusNext.current = null;
   }, [errors]);
 
+  const { moveStart, moveEnd } = useStartCarriesEnd({
+    draft,
+    endChosen: true,
+    timeZone,
+    edit,
+    say: (line) => {
+      setUnsent(0);
+      setSaid(line);
+    },
+  });
+
   function edit(field: Field, change: Partial<EventDraft>): void {
     setTyped((previous) => ({ ...previous, draft: { ...previous.draft, ...change } }));
     setErrors((previous) => ({ ...previous, [field]: undefined }));
-  }
-
-  function moveStart(start: Partial<Pick<EventDraft, 'startDate' | 'startTime'>>): void {
-    const length = draftLength(draft, timeZone) ?? heldLength.current;
-    const moved = startMoved(draft, start, true, timeZone, length);
-    const line = endMovedLine(draft, moved, dateLocale(), t);
-
-    heldLength.current = length;
-    edit('startsAt', moved);
-    if (line == null) return;
-    setUnsent(0);
-    setSaid(line);
-  }
-
-  function moveEnd(end: Partial<Pick<EventDraft, 'endDate' | 'endTime'>>): void {
-    heldLength.current = null;
-    edit('endsAt', end);
   }
 
   function choose(field: 'timeZone' | 'currency', value: string): void {

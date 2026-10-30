@@ -1385,6 +1385,22 @@ describe("Editing an event's details (sc-3587)", () => {
     );
   });
 
+  it('keeps the length through a start cleared and typed again (sc-22144)', async () => {
+    signedIn();
+    serving();
+    await editing();
+
+    fireEvent.change(document.getElementById('event-start-date')!, { target: { value: '' } });
+    fireEvent.change(document.getElementById('event-start-date')!, {
+      target: { value: '2026-11-21' },
+    });
+
+    expect([
+      (document.getElementById('event-end-date') as HTMLInputElement).value,
+      (document.getElementById('event-end-time') as HTMLInputElement).value,
+    ]).toEqual(['2026-11-22', '02:00']);
+  });
+
   it('opens an event from before types on Other', async () => {
     signedIn();
     serving({ 'GET /api/events/ev_1': () => tagged({ event: event({ type: 'other' }) }, '"1"') });
