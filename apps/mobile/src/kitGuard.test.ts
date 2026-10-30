@@ -183,7 +183,10 @@ describe('a Text hidden from screen readers stays hidden on iOS', () => {
         .map((tag) => `${path}:${tag.line}`),
     );
 
-    expect(offenders, 'Give it accessible={false}, after any spread.').toEqual([]);
+    expect(
+      offenders,
+      'Give it accessible={false}, or accessible={!x} when hidden by x, after any spread.',
+    ).toEqual([]);
   });
 
   it('notices a Text hidden by the View around it, and only while that View is open', () => {
@@ -205,6 +208,11 @@ describe('a Text hidden from screen readers stays hidden on iOS', () => {
   it('notices a Text that iOS can still report', () => {
     expect(unreportable('<Text {...rest} accessible={false}>')).toBe(true);
     expect(unreportable('<Text accessible={false} {...rest}>')).toBe(false);
+    expect(unreportable('<Text accessibilityElementsHidden={closing} accessible={!closing}>')).toBe(
+      true,
+    );
+    expect(unreportable('<Text accessible={!closing} {...rest}>')).toBe(false);
+    expect(unreportable('<Text accessible={closing}>')).toBe(false);
     expect(unreportable('<Text accessibilityElementsHidden importantForAccessibility="no">')).toBe(
       false,
     );
@@ -1297,7 +1305,7 @@ function hidesItself(markup: string): boolean {
 
 /** A spread after `accessible={false}` can carry `accessible: true` and turn it back off. */
 function unreportable(markup: string): boolean {
-  const at = markup.lastIndexOf('accessible={false}');
+  const at = [...markup.matchAll(/\baccessible=\{(?:false|!\w+)\}/gu)].at(-1)?.index;
 
-  return at !== -1 && !markup.slice(at).includes('{...');
+  return at !== undefined && !markup.slice(at).includes('{...');
 }

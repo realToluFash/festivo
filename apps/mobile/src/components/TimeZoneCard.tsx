@@ -120,32 +120,41 @@ export function TimeZoneCard({
   const current = zones.find((zone) => zone.id === timezone);
   const label = timezone == null ? null : current == null ? timezone : zoneLabel(current);
   // The scrolls of a save's close move TalkBack's focus off Save to the nearest view in sight, and the zone name, the intro or the title there is said before the line (sc-18587).
-  const offWhileSaving = {
-    accessibilityElementsHidden: savedClosing,
-    importantForAccessibility: savedClosing ? 'no-hide-descendants' : 'auto',
-  } as const;
+  const offWhileSaving = savedClosing ? 'no-hide-descendants' : 'auto';
 
   return (
     <View style={frame}>
       <Text
-        {...offWhileSaving}
         size={tokens.typeTitleSection.size}
         weight="bold"
         accessibilityRole="header"
+        accessibilityElementsHidden={savedClosing}
+        importantForAccessibility={offWhileSaving}
+        accessible={!savedClosing}
       >
         {t('timeZone.title')}
       </Text>
-      <Text {...offWhileSaving} size={tokens.typeBodyPhone.size} style={styles.secondary}>
+      <Text
+        size={tokens.typeBodyPhone.size}
+        style={styles.secondary}
+        accessibilityElementsHidden={savedClosing}
+        importantForAccessibility={offWhileSaving}
+        accessible={!savedClosing}
+      >
         {t('timeZone.intro')}
       </Text>
 
       {(!editing || opening || closing || savedClosing) && (
-        <View {...offWhileSaving} style={styles.group}>
-          <Text size={tokens.typeRowTitle.size} weight="semibold">
+        <View
+          style={styles.group}
+          accessibilityElementsHidden={savedClosing}
+          importantForAccessibility={offWhileSaving}
+        >
+          <Text size={tokens.typeRowTitle.size} weight="semibold" accessible={!savedClosing}>
             {label ?? t('timeZone.unset')}
           </Text>
           {timezone != null && (
-            <Text size={tokens.typeSmall.size} style={styles.secondary}>
+            <Text size={tokens.typeSmall.size} style={styles.secondary} accessible={!savedClosing}>
               {timezone.replace(/_/g, ' ')}
             </Text>
           )}
