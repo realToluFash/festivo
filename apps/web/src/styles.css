@@ -146,7 +146,7 @@ span {
   color: var(--colorInk);
   background: var(--colorCard);
   border: 0;
-  border-radius: var(--sizePill);
+  border-radius: var(--radiusPill);
   cursor: pointer;
 }
 
