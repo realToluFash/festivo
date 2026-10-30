@@ -6,6 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { DESTINATION_HREF } from '../kit/appNav.ts';
+import { formTitles } from '../kit/formTitles.ts';
 import { goUpToEvent } from '../kit/upToEvent.ts';
 import { markSaved } from '../kit/eventSaved.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
@@ -147,23 +148,26 @@ export function EditEventScreen({ eventId, toHosts }: { eventId: string; toHosts
 export function FormFrame({
   kind,
   title,
+  shortTitle,
   onCancel,
   cancelOff = false,
   children,
 }: {
   kind: LayoutKind;
   title: string;
+  shortTitle?: string;
   onCancel: () => void;
   cancelOff?: boolean;
   children: React.ReactNode;
 }) {
   const { t } = useTranslation();
   const phone = kind === 'phone';
+  const { bar, heading } = formTitles(kind, title, shortTitle, t('eventsScreen.title'));
 
   return (
     <AppFrame
       current="events"
-      title={phone ? title : t('eventsScreen.title')}
+      title={bar}
       back={
         phone
           ? { label: t('eventEdit.cancel'), onPress: () => cancelOff || onCancel(), off: cancelOff }
@@ -171,17 +175,21 @@ export function FormFrame({
       }
     >
       <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
-        {!phone && (
+        {heading != null && (
           <View style={styles.head}>
-            <QuietButton
-              label={t('eventEdit.cancel')}
-              onPress={onCancel}
-              off={cancelOff}
-              testID="eventForm.cancel"
-            />
-            <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
-              {title}
-            </Text>
+            {!phone && (
+              <QuietButton
+                label={t('eventEdit.cancel')}
+                onPress={onCancel}
+                off={cancelOff}
+                testID="eventForm.cancel"
+              />
+            )}
+            {heading != null && (
+              <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
+                {heading}
+              </Text>
+            )}
           </View>
         )}
         {children}

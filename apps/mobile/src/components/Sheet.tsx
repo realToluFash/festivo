@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { sheetKeysCover, sheetPadding, sheetUnderKeys } from '../kit/sheet.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
+import { useModalOpen } from '../updateRequired.ts';
 import { keyboardTopNow, useKeysUp, watchKeyboardTop } from './keyboardWatch.ts';
 import { SETTLED_MS } from './Screen.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
@@ -104,10 +105,11 @@ function SheetFrame({ open, onClose, scrimLabel, opener, testID, children }: She
   const keysCover = sheetKeysCover({ underKeys, keysUp, windowHeight, keysTop });
   const padding = sheetPadding({ phone, keysCover, insets });
   useFocusBack(open, opener);
+  const shown = useModalOpen(open);
 
   return (
     <Modal
-      visible={open}
+      visible={shown}
       transparent
       animationType={phone ? 'slide' : 'fade'}
       // An iOS modal is portrait-only by default, and a rotation under it measures the keys sideways.

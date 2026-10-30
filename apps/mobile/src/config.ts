@@ -24,6 +24,7 @@ interface Extra {
   appleClientId?: string;
   appleServicesId?: string;
   appleAppLink?: string;
+  appStoreId?: string;
   eas?: { projectId?: string };
 }
 
@@ -57,5 +58,7 @@ export const config = {
     /** The verified https App Link Apple's form_post comes back by; unset, Android keeps the sandbox path. */
     appLink: extra.appleAppLink === '' ? undefined : extra.appleAppLink,
   },
+  /** Soirely's numeric App Store id, for Update (sc-22620); unset until the app is listed, iOS searches the App Store. */
+  appStoreId: extra.appStoreId === '' ? undefined : extra.appStoreId,
   easProjectId: extra.eas?.projectId === '' ? undefined : extra.eas?.projectId,
 } as const;

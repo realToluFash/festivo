@@ -1,9 +1,4 @@
 import { type Provider, ProviderCancelled } from '@soirely/api-client';
-import {
-  AppleAuthenticationButton,
-  AppleAuthenticationButtonStyle,
-  AppleAuthenticationButtonType,
-} from 'expo-apple-authentication';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
@@ -15,6 +10,9 @@ import { nextAfterSignIn } from '../challenge.ts';
 import { brand } from '../theme/brand.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Text } from './Text.tsx';
+
+const appleOnIos = Platform.OS === 'ios';
+const APPLE_IOS_TEXT_SIZE = tokens.sizeHitPhonePrimary * brand.appleTitleToHeight;
 
 export function ProviderSignIn({ onFailed }: { onFailed?: (provider: string) => void }) {
   const { t } = useTranslation();
@@ -68,63 +66,92 @@ export function ProviderButtons({
     }
   }
 
-  const googleLabel = t('signIn.withGoogle', { provider: 'Google' });
-  const appleLabel = t('signIn.withApple', { provider: 'Apple' });
-
   const shows = (provider: Provider): boolean =>
     only == null || only.length === 0 || only.includes(provider);
 
   return (
     <View style={styles.group}>
-      {/* Android names an unlabelled busy view "busy" alone, and keeps that name once it is idle. */}
       {shows('google') && (
-        <Pressable
-          style={[styles.button, styles.google]}
+        <ProviderButton
+          provider="google"
+          label={t('signIn.withGoogle', { provider: 'Google' })}
           onPress={() => void continueWith('google')}
-          disabled={busy}
-          accessibilityLabel={googleLabel}
-          accessibilityRole="button"
-          accessibilityState={{ busy, disabled: busy }}
+          busy={busy}
           testID="signIn.google"
-        >
-          <GoogleMark />
-          <Text
-            size={brand.googleTextSize}
-            weight="medium"
-            family="googleSans"
-            style={styles.googleText}
-          >
-            {googleLabel}
-          </Text>
-        </Pressable>
-      )}
-
-      {/* Apple's own button on iOS, as its rules ask; elsewhere the same black style, drawn. */}
-      {!shows('apple') ? null : Platform.OS === 'ios' ? (
-        <AppleAuthenticationButton
-          buttonType={AppleAuthenticationButtonType.CONTINUE}
-          buttonStyle={AppleAuthenticationButtonStyle.BLACK}
-          cornerRadius={tokens.sizeHitPhonePrimary / 2}
-          style={styles.button}
-          onPress={() => void continueWith('apple')}
         />
-      ) : (
-        <Pressable
-          style={[styles.button, styles.apple]}
+      )}
+      {shows('apple') && (
+        <ProviderButton
+          provider="apple"
+          label={t('signIn.withApple', { provider: 'Apple' })}
           onPress={() => void continueWith('apple')}
-          disabled={busy}
-          accessibilityLabel={appleLabel}
-          accessibilityRole="button"
-          accessibilityState={{ busy, disabled: busy }}
+          busy={busy}
           testID="signIn.apple"
-        >
-          <AppleMark />
-          <Text size={tokens.typeButton.size} weight="medium" style={styles.appleText}>
-            {appleLabel}
-          </Text>
-        </Pressable>
+        />
       )}
     </View>
+  );
+}
+
+/** Busy and off are one look, the whole button faded with its words kept: Google and Apple fix what it may say (sc-22601). */
+export function ProviderButton({
+  provider,
+  label,
+  onPress,
+  busy = false,
+  off = false,
+  testID,
+}: {
+  provider: Provider;
+  label: string;
+  onPress: () => void;
+  busy?: boolean;
+  off?: boolean;
+  testID: string;
+}) {
+  const inactive = busy || off;
+  // Apple's words are drawn on every platform: iOS's own button reads in the device's language, not the app's.
+  const appleIos = provider === 'apple' && appleOnIos;
+
+  return (
+    <Pressable
+      style={[
+        styles.button,
+        provider === 'google' ? styles.google : styles.apple,
+        appleIos && styles.appleIos,
+        inactive && styles.inactive,
+      ]}
+      onPress={inactive ? undefined : onPress}
+      // A disabled button lets a tap through to the scroll view under it, which drops the keys mid-request.
+      // Pressable lets any non-null disabled overwrite accessibilityState.disabled, so busy leaves it unset.
+      disabled={off || undefined}
+      // Android names an unlabelled busy view "busy" alone, and keeps that name once it is idle.
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: inactive, busy }}
+      testID={testID}
+    >
+      {provider === 'google' ? <GoogleMark /> : appleIos ? <AppleLogoIos /> : <AppleMark />}
+      {provider === 'google' ? (
+        <Text
+          size={brand.googleTextSize}
+          weight="medium"
+          family="googleSans"
+          style={styles.googleText}
+        >
+          {label}
+        </Text>
+      ) : (
+        <Text
+          size={appleIos ? APPLE_IOS_TEXT_SIZE : tokens.typeButton.size}
+          weight="medium"
+          family={appleIos ? 'system' : 'sans'}
+          style={styles.appleText}
+        >
+          {label}
+        </Text>
+      )}
+    </Pressable>
   );
 }
 
@@ -162,6 +189,22 @@ function AppleMark() {
   );
 }
 
+/** Apple Design Resources' "Left White Logo Medium", padding included, at the button's height. */
+function AppleLogoIos() {
+  return (
+    <Svg
+      width={(tokens.sizeHitPhonePrimary * 31) / 44}
+      height={tokens.sizeHitPhonePrimary}
+      viewBox="0 0 31 44"
+    >
+      <Path
+        fill={brand.appleInk}
+        d="M15.7099491,14.8846154 C16.5675461,14.8846154 17.642562,14.3048315 18.28274,13.5317864 C18.8625238,12.8312142 19.2852829,11.852829 19.2852829,10.8744437 C19.2852829,10.7415766 19.2732041,10.6087095 19.2490464,10.5 C18.2948188,10.5362365 17.1473299,11.140178 16.4588366,11.9494596 C15.9152893,12.56548 15.4200572,13.5317864 15.4200572,14.5222505 C15.4200572,14.6671964 15.4442149,14.8121424 15.4562937,14.8604577 C15.5166879,14.8725366 15.6133185,14.8846154 15.7099491,14.8846154 Z M12.6902416,29.5 C13.8618881,29.5 14.3812778,28.714876 15.8428163,28.714876 C17.3285124,28.714876 17.6546408,29.4758423 18.9591545,29.4758423 C20.2395105,29.4758423 21.0971074,28.292117 21.9063891,27.1325493 C22.8123013,25.8038779 23.1867451,24.4993643 23.2109027,24.4389701 C23.1263509,24.4148125 20.6743484,23.4122695 20.6743484,20.5979021 C20.6743484,18.1579784 22.6069612,17.0588048 22.7156707,16.974253 C21.4353147,15.1382708 19.490623,15.0899555 18.9591545,15.0899555 C17.5217737,15.0899555 16.3501271,15.9596313 15.6133185,15.9596313 C14.8161157,15.9596313 13.7652575,15.1382708 12.521138,15.1382708 C10.1536872,15.1382708 7.75,17.0950413 7.75,20.7911634 C7.75,23.0861411 8.64383344,25.513986 9.74300699,27.0842339 C10.6851558,28.4129053 11.5065162,29.5 12.6902416,29.5 Z"
+      />
+    </Svg>
+  );
+}
+
 const styles = StyleSheet.create({
   group: { gap: tokens.spaceXl },
 
@@ -184,4 +227,6 @@ const styles = StyleSheet.create({
   googleText: { color: brand.googleInk, lineHeight: brand.googleLineHeight },
   apple: { backgroundColor: brand.appleSurface, borderColor: brand.appleSurface },
   appleText: { color: brand.appleInk },
+  appleIos: { gap: 0, paddingVertical: 0, borderWidth: 0 },
+  inactive: { opacity: brand.offOpacity },
 });

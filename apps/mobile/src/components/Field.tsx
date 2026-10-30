@@ -62,6 +62,7 @@ export function Field({
   errorAnswer,
   help,
   helpAnswer,
+  helpInHint = false,
   children,
   ref,
 }: {
@@ -75,6 +76,8 @@ export function Field({
   help?: string | readonly string[] | undefined;
   /** What a tap set for the help to answer it, where the tap's button went: its first line takes focus (sc-11173). */
   helpAnswer?: unknown;
+  /** The control says the help as its hint, so the lines are not a stop of their own. */
+  helpInHint?: boolean;
   children: ReactNode;
   /** The whole Field, which a client check failing on its picker brings into view. */
   ref?: RefObject<ViewInstance | null> | undefined;
@@ -129,6 +132,8 @@ export function Field({
           ref={index === 0 ? helpRead : undefined}
           size={tokens.typeSmall.size}
           style={styles.secondary}
+          accessible={helpInHint ? false : undefined}
+          importantForAccessibility={helpInHint ? 'no' : undefined}
         >
           {line}
         </Text>

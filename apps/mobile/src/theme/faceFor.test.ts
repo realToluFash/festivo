@@ -68,6 +68,15 @@ describe('a style reaches the platform with its face', () => {
     expect(faceStyle({ fontWeight: '700' }, 'mono')).toEqual({ fontFamily: 'JetBrainsMono-Bold' });
     expect(faceStyle({})).toEqual({ fontFamily: 'InstrumentSans-Regular' });
   });
+
+  it("leaves the platform's own font, and its weight, to the system family", () => {
+    facesLoaded();
+
+    expect(faceStyle({ fontWeight: '500', fontSize: 20 }, 'system')).toEqual({
+      fontWeight: '500',
+      fontSize: 20,
+    });
+  });
 });
 
 describe("a field's style reaches the platform with its face", () => {

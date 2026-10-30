@@ -923,6 +923,23 @@ describe('Transfer ownership for an owner with no password (sc-18959)', () => {
     );
   });
 
+  it("keeps Google's words while it checks what Google brought back, off and busy (sc-22601)", async () => {
+    signedIn(IRE, [], GOOGLE_ONLY);
+    backFrom({ signIn: SIGN_IN });
+    answering({
+      'GET /api/orgs/org_1/members': () => json(MEMBERS),
+      'POST /api/auth/proof': () => new Promise<Response>(() => {}),
+    });
+    settings();
+
+    const button = await screen.findByRole('button', { name: 'Continue with Google' });
+
+    expect(button.getAttribute('aria-busy')).toBe('true');
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(button.hasAttribute('data-off')).toBe(false);
+    expect(screen.queryByText('Checking…')).toBeNull();
+  });
+
   it('comes back from Google to Settings with Transfer ownership open and the owner chosen', async () => {
     signedIn(IRE, [], GOOGLE_ONLY);
     sessionStorage.setItem(

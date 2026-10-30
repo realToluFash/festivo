@@ -162,6 +162,7 @@ audit = ["App\\Audit\\**"]
 deletion = ["App\\Deletion\\**"]
 doctrine = ["App\\Doctrine\\**"]
 health = ["App\\Health\\**"]
+app_version = ["App\\AppVersion\\**"]
 locale = ["App\\Locale\\**"]
 storage = ["App\\Storage\\**"]
 realtime = ["App\\Realtime\\**"]
@@ -195,6 +196,10 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:deletion"
 [[guard.perimeter.rules]]
 namespace = "App\\Doctrine\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:doctrine"]
+
+[[guard.perimeter.rules]]
+namespace = "App\\AppVersion\\"
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:app_version"]
 
 [[guard.perimeter.rules]]
 namespace = "App\\Health\\"

@@ -3342,3 +3342,27 @@ describe('a published arrival (sc-21785)', () => {
     expect(asNotificationArrival({ ...published, unreadCount: undefined })).toBeNull();
   });
 });
+
+describe('minimumAppVersions', () => {
+  function answering(response: Response): ApiClient {
+    return new ApiClient({ baseUrl: () => 'http://api.test', fetch: async () => response });
+  }
+
+  test('gives each platform its minimum, or null for none', async () => {
+    const client = answering(Response.json({ ios: '1.4.0', android: null }));
+
+    await expect(client.minimumAppVersions()).resolves.toEqual({ ios: '1.4.0', android: null });
+  });
+
+  test('throws on a shape it does not know, so the caller carries on without it', async () => {
+    const client = answering(Response.json({ ios: 140 }));
+
+    await expect(client.minimumAppVersions()).rejects.toThrow('/api/app-versions/minimum');
+  });
+
+  test('throws on a failed answer', async () => {
+    const client = answering(problem(500, 'internal_error'));
+
+    await expect(client.minimumAppVersions()).rejects.toBeInstanceOf(ApiError);
+  });
+});

@@ -310,6 +310,18 @@ final class RegisterTest extends ApiTestCase
         );
     }
 
+    #[Test]
+    public function aNameLongerThanTheAccountTakesIsRefused(): void
+    {
+        $body = $this->register('longname@example.com', Str\repeat('a', User::NAME_MAXIMUM + 1), self::GOOD_PASSWORD);
+
+        self::assertSame(422, $this->client->getResponse()->getStatusCode());
+        self::assertContains(
+            ['propertyPath' => 'name', 'code' => 'validation_failed'],
+            self::pairs($body['violations']),
+        );
+    }
+
     /**
      * Every bad field at once. A form that reports one per submit makes somebody
      * guess how many more there are.

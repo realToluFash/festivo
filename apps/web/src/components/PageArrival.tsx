@@ -10,6 +10,8 @@ import {
   unasked,
 } from '../pageArrival.ts';
 import { retitle } from '../pageTitle.ts';
+import { SkipLinkSlot } from '../skipLinkSlot.ts';
+import { ReleaseBand } from './ReleaseBand.tsx';
 
 /** Focus goes where an opened page begins (WCAG 2.2 SC 2.4.3), and the tab names the page (SC 2.4.2). */
 export function PageArrival() {
@@ -19,6 +21,7 @@ export function PageArrival() {
   const shown = useRef(location.pathname);
   const stopArriving = useRef<(() => void) | null>(null);
   const [arriving, setArriving] = useState(false);
+  const [skipLinkSlot, setSkipLinkSlot] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const ask = () => {
@@ -68,7 +71,13 @@ export function PageArrival() {
 
   return (
     <Arriving.Provider value={arriving}>
-      <Outlet />
+      <SkipLinkSlot.Provider value={skipLinkSlot}>
+        <div className="frame">
+          <div ref={setSkipLinkSlot} />
+          <ReleaseBand />
+          <Outlet />
+        </div>
+      </SkipLinkSlot.Provider>
     </Arriving.Provider>
   );
 }

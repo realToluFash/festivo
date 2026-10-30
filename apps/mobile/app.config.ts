@@ -122,6 +122,7 @@ const config: ExpoConfig = {
     appleClientId: process.env.EXPO_PUBLIC_APPLE_CLIENT_ID,
     appleServicesId: process.env.EXPO_PUBLIC_APPLE_SERVICES_ID,
     appleAppLink: process.env.EXPO_PUBLIC_APPLE_APP_LINK,
+    appStoreId: process.env.EXPO_PUBLIC_APP_STORE_ID,
   },
 };
 

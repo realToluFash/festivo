@@ -304,7 +304,6 @@ export function EventsScreen({
       <Waiting words={t('eventsScreen.loadingEvent')} />
     );
   const inFront = page != null;
-  const pageName = shown?.name ?? null;
   const newEvent = () => router.push('/events/new');
 
   const list = (opener: (key: string) => RefCallback<ViewInstance>) =>
@@ -367,7 +366,7 @@ export function EventsScreen({
   return (
     <AppFrame
       current="events"
-      title={phone && inFront ? (pageName ?? t('eventsScreen.title')) : t('eventsScreen.title')}
+      title={t('eventsScreen.title')}
       back={phone && inFront ? back : undefined}
     >
       <ListAndPage

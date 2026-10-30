@@ -1,6 +1,6 @@
 import { ApiError, type TimeZoneOption } from '@soirely/api-client';
 import { exactZone, formerName, matchingZones, zoneLabel } from '@soirely/domain';
-import { type RefObject, useEffect, useRef, useState } from 'react';
+import { type RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import {
   Platform,
   Pressable,
@@ -90,8 +90,16 @@ export function TimeZoneCard({
     setEditing(false);
   });
   const savedGiven = savedFocused || savedClosing;
+  const changeShown = useRef<ViewInstance | null>(null);
+  const change = useCallback(
+    (view: ViewInstance | null) => {
+      changeOpener(view);
+      changeShown.current = view;
+    },
+    [changeOpener],
+  );
   // Change, or the saved line's holder, going as the step comes leaves input focus on nothing, which Android puts on the header's back row (sc-22392).
-  const { opening, open, fieldFocused } = useStepOpen(
+  const { opening, open, fieldShown, fieldFocused, stop } = useStepOpen(
     () => {
       setClosed(undefined);
       setEditing(true);
@@ -166,22 +174,25 @@ export function TimeZoneCard({
         </View>
       )}
       {saved != null && (!editing || opening || savedClosing) && (
-        <View>
+        // The line going as Change opens the step gives the same layout as an open with no line, where TalkBack keeps the field when Change goes; kept, its height left the field out of sight (sc-22392).
+        <View style={editing && !savedClosing ? styles.gone : undefined}>
           {savedHolder}
-          <Notice
-            tone="done"
-            mark={tokens.marks.done.glyph}
-            body={t('timeZone.saved', { zone: saved })}
-            answer={savedGiven ? undefined : saved}
-            takesFocus={!savedGiven}
-            readMs={focusBackMs(Platform.OS, SETTLED_MS, 'step')}
-            wordsRef={savedGiven ? savedLine : undefined}
-          />
+          {(!editing || savedClosing) && (
+            <Notice
+              tone="done"
+              mark={tokens.marks.done.glyph}
+              body={t('timeZone.saved', { zone: saved })}
+              answer={savedGiven ? undefined : saved}
+              takesFocus={!savedGiven}
+              readMs={focusBackMs(Platform.OS, SETTLED_MS, 'step')}
+              wordsRef={savedGiven ? savedLine : undefined}
+            />
+          )}
         </View>
       )}
       {(!editing || opening || closing) && (
         <SecondaryButton
-          ref={changeOpener}
+          ref={change}
           label={t('timeZone.change')}
           onPress={open}
           testID="timeZone.change"
@@ -195,10 +206,16 @@ export function TimeZoneCard({
           closing={closing || savedClosing}
           onSaved={async (zone) => {
             await onSaved();
+            stop();
             setSaved(zoneLabel(zone));
             closeSaved();
           }}
-          onCancel={close}
+          onCancel={() => {
+            stop();
+            close();
+          }}
+          opener={opening ? changeShown : null}
+          onShown={fieldShown}
           onFocused={fieldFocused}
           closer={closer}
           saveCloser={saveCloser}
@@ -217,6 +234,8 @@ function Choosing({
   closing,
   onSaved,
   onCancel,
+  opener,
+  onShown,
   onFocused,
   closer,
   saveCloser,
@@ -228,7 +247,10 @@ function Choosing({
   closing: boolean;
   onSaved: (zone: TimeZoneOption) => Promise<void>;
   onCancel: () => void;
-  onFocused: (field: TextInputInstance | null) => void;
+  /** Change, while it shows above the step as the step opens. */
+  opener: RefObject<ViewInstance | null> | null;
+  onShown: (field: TextInputInstance | null) => void;
+  onFocused: () => void;
   closer: RefObject<ViewInstance | null>;
   saveCloser: RefObject<ViewInstance | null>;
   /** Hides all but Cancel while Cancel closes the step. */
@@ -245,12 +267,15 @@ function Choosing({
   const aboveKeyboard = useAboveKeyboard(closing);
   const room = useRoomAboveKeyboard();
   // With no on-screen keyboard (a hardware one), nothing lifts, so the card is brought up on opening.
-  const top = useScrolledToTop();
+  const top = useScrolledToTop(opener);
+  useEffect(() => onShown(input.current), [onShown]);
   const [groupHeight, setGroupHeight] = useState(0);
   const [listHeight, setListHeight] = useState(0);
   const [rowHeight, setRowHeight] = useState<number>(tokens.sizeHit);
   const { height } = useWindowDimensions();
   const short = shortWhileTyping({ os: Platform.OS, phone, height, keysUp: room != null });
+  // TalkBack reads the field as the step opens, before the keys are up, so the hint is there from the start (sc-22392).
+  const hinted = shortWhileTyping({ os: Platform.OS, phone, height, keysUp: true });
   useHeaderWithoutBack(short);
 
   const showingPicked = picked != null && typed === zoneLabel(picked);
@@ -317,13 +342,18 @@ function Choosing({
           onLayout={(event) => setGroupHeight(event.nativeEvent.layout.height)}
           style={styles.choosing}
         >
-          <Field label={t('timeZone.find')} error={error} help={short ? undefined : help}>
+          <Field
+            label={t('timeZone.find')}
+            error={error}
+            help={short ? undefined : help}
+            helpInHint={hinted}
+          >
             <TextField
               ref={input}
               wrong={error != null}
               submitting={saving}
-              autoFocus
-              onFocus={() => onFocused(input.current)}
+              autoFocus={opener == null}
+              onFocus={onFocused}
               autoCapitalize="none"
               placeholder={t('timeZone.placeholder')}
               value={typed}
@@ -336,7 +366,7 @@ function Choosing({
               onSubmitEditing={() => void save()}
               submitBehavior="submit"
               accessibilityLabel={t('timeZone.find')}
-              accessibilityHint={short ? help : undefined}
+              accessibilityHint={hinted ? help : undefined}
               testID="timeZone.search"
             />
           </Field>
@@ -413,6 +443,7 @@ function Choosing({
 
 const styles = StyleSheet.create({
   group: { gap: tokens.spaceXxs },
+  gone: { position: 'absolute' },
   choosing: { gap: tokens.spaceLg },
   secondary: { color: tokens.colorInkSecondary },
   list: {

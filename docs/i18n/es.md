@@ -49,6 +49,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **30 Oct 2026. Una versión nueva con la pestaña abierta** (sc-22881 para sc-22622, `release.*`,
+  web). «Soirely se ha actualizado.»; el botón, «Recargar», el verbo del navegador. Sin artículo
+  ni género, como en «Actualice Soirely».
+- **30 Oct 2026. Una versión demasiado antigua** (sc-22881 para sc-22620, `updateRequired.*`,
+  app). «Actualice Soirely para continuar»; el cuerpo, «Esta versión de Soirely ya no funciona.
+  Al actualizarla, conservará todo lo que haya guardado.»; el botón, «Actualizar». Nunca
+  «obsoleta» ni «no compatible», que culpan a la persona.
 - **30 Oct 2026. El fin que se mueve con el inicio** (sc-22161 para sc-22144,
   `eventForm.endMoved`, web y app). Solo se oye, con el lector de pantalla: «El fin se ha movido
   con el inicio: {{day}}, {{time}}.» «Fin» e «Inicio» como las leyendas del formulario. El día y

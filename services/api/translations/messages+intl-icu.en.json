@@ -14,6 +14,7 @@
     "proof.required": "This needs your password, or a sign-in with Google or Apple, in the last {minutes, number, ::group-auto} minutes, and your two-factor code if two-factor is on.",
     "roles.name_too_long": "Shorten the name to {count, number, ::group-auto} characters or fewer.",
     "validation.event_name_too_long": "Shorten the name to {count, number, ::group-auto} characters or fewer.",
+    "validation.name_too_long": "Shorten your name to {count, number, ::group-auto} characters or fewer.",
     "validation.event_venue_address_too_long": "Shorten the address to {count, number, ::group-auto} characters or fewer.",
     "validation.event_venue_name_too_long": "Shorten the venue name to {count, number, ::group-auto} characters or fewer.",
     "validation.organisation_name_too_long": "That name is {length, number, ::group-auto} characters. Use {count, number, ::group-auto} or fewer.",

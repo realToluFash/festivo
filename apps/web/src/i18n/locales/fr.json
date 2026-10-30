@@ -3,6 +3,10 @@
     "name": "Soirely",
     "skipToContent": "Aller au contenu"
   },
+  "release": {
+    "updated": "Une nouvelle version de Soirely est en ligne.",
+    "reload": "Recharger"
+  },
   "pageTitle": {
     "part": "{{page}} – {{rest}}"
   },
@@ -938,6 +942,16 @@
     "keep": "Le garder associé",
     "keptByRule": "Une règle fixée par {{organisation}} : tous ses membres se connectent avec Google ou Apple, vous ne pouvez donc pas dissocier le dernier compte qui vous reste.",
     "keptByRuleNext": "Associez d’abord {{other}} si vous voulez dissocier {{provider}}."
+  },
+  "nameCard": {
+    "title": "Nom",
+    "change": "Modifier",
+    "save": "Enregistrer le nom",
+    "saving": "Enregistrement…",
+    "cancel": "Annuler",
+    "saved": "Votre nom est désormais {{name}}.",
+    "blank": "Saisissez votre nom.",
+    "failed": "Votre nom n’a pas pu être enregistré. Vérifiez votre connexion et réessayez."
   },
   "timeZone": {
     "title": "Fuseau horaire",

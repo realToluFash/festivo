@@ -77,9 +77,9 @@ export function TimeZoneCard({
         />
       ) : (
         <>
-          <div className="tz-current">
-            <div className="tz-current-text">
-              <span className="tz-current-label">{label ?? t('timeZone.unset')}</span>
+          <div className="current-value">
+            <div className="current-value-text">
+              <span className="current-value-label">{label ?? t('timeZone.unset')}</span>
               {timezone != null && <span className="muted">{timezone.replace(/_/g, ' ')}</span>}
             </div>
             <button

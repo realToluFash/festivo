@@ -12,4 +12,8 @@ export const brand = {
   googleLineHeight: 20,
   appleSurface: '#000000',
   appleInk: '#FFFFFF',
+  /** iOS's own button sets its title in the system font at this share of its height. */
+  appleTitleToHeight: 0.43,
+  /** Material 3's disabled content, which Google's guidelines defer to; Apple's publish no off look. */
+  offOpacity: 0.38,
 } as const;

@@ -24,6 +24,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     use SoftDeletable;
     use Timestampable;
 
+    public const int NAME_MAXIMUM = 180;
+
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
     private Uuid $id;

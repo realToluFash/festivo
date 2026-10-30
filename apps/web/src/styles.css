@@ -102,12 +102,83 @@ span {
   outline-offset: 2px;
 }
 
+/* ── Every page: the release band, then the page ───────────────────────────── */
+
+.frame {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* A page centred by auto margins would shrink to its content in a flex column. */
+.frame > * {
+  width: 100%;
+}
+
+/* In the page's flow, never sticky: it covers nothing and scrolls away with the page. */
+.release-band {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spaceXl);
+  min-height: var(--sizeHitPhoneHero);
+  padding: var(--spaceXxs) var(--space3xl);
+  background: var(--colorInk);
+  color: var(--colorInkOnDark);
+}
+
+.release-band-words {
+  margin: 0;
+}
+
+.release-band .release-band-words {
+  animation: release-band-words-in var(--motionBase) var(--motionEase);
+}
+
+/* Keeps its whole word at any width; the sentence beside it is what wraps. */
+.release-band-reload {
+  flex: none;
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceXl);
+  font: var(--typeButton);
+  letter-spacing: var(--typeButtonTracking);
+  white-space: nowrap;
+  color: var(--colorInk);
+  background: var(--colorCard);
+  border: 0;
+  border-radius: var(--radiusPill);
+  cursor: pointer;
+}
+
+.release-band-reload:hover {
+  background: var(--colorInset);
+}
+
+@keyframes release-band-words-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .release-band .release-band-words {
+    animation: none;
+  }
+}
+
+@media (width <= 40rem) {
+  .release-band {
+    gap: var(--spaceLg);
+    padding-inline: var(--spaceXl);
+  }
+}
+
 /* ── The signed-in shell ──────────────────────────────────────────────────── */
 
 .shell {
   display: grid;
+  flex: 1 0 auto;
   grid-template-columns: var(--sizeRail) minmax(0, 1fr);
-  min-height: 100vh;
 }
 
 .shell-sidebar {
@@ -197,10 +268,18 @@ span {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space3xl);
+  flex-wrap: wrap;
+  gap: var(--spaceLg) var(--space3xl);
   padding: var(--spaceXl) var(--space5xl);
   border-bottom: var(--borderHeader);
   background: var(--colorHeader);
+}
+
+.public-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceLg);
 }
 
 .public-main,
@@ -362,7 +441,7 @@ span {
  */
 
 @media (width <= 60rem) {
-  /* One column under a 100vh minimum would share the spare height with the sidebar. */
+  /* One column filling the window would share the spare height with the sidebar. */
   .shell {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto 1fr;
@@ -478,8 +557,8 @@ span {
 
 .auth {
   display: flex;
+  flex: 1 0 auto;
   flex-direction: column;
-  min-height: 100vh;
 }
 
 .auth-header {
@@ -1057,6 +1136,13 @@ span {
 
 .button-apple:hover {
   background: var(--brandAppleSurface);
+}
+
+/* Busy and off keep Google's and Apple's colours and words: the whole button fades (sc-22601). */
+.button-google[aria-disabled='true'],
+.button-apple[aria-disabled='true'] {
+  cursor: default;
+  opacity: var(--brandOffOpacity);
 }
 
 .button-google svg,
@@ -2654,14 +2740,14 @@ span {
   color: var(--colorInkOnDark);
 }
 
-.tz-current {
+.current-value {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--spaceSm) var(--spaceLg);
 }
 
-.tz-current-text {
+.current-value-text {
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -2669,7 +2755,7 @@ span {
   min-width: 12rem;
 }
 
-.tz-current-label {
+.current-value-label {
   font: var(--typeRowTitle);
 }
 

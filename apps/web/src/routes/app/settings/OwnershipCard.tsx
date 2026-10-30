@@ -537,14 +537,11 @@ function Transfer({
             className={provider === 'google' ? 'button button-google' : 'button button-apple'}
             type="button"
             aria-busy={busy}
+            {...offButton(busy, { dim: false })}
             onClick={() => continueWith(provider)}
           >
             {provider === 'google' ? <GoogleMark /> : <AppleMark />}
-            <span>
-              {busy
-                ? t('waysCard.checking')
-                : t('waysCard.continueWith', { provider: PROVIDER_NAMES[provider] })}
-            </span>
+            <span>{t('waysCard.continueWith', { provider: PROVIDER_NAMES[provider] })}</span>
           </button>
         ) : (
           <button className="button button-primary" type="submit" aria-busy={busy}>

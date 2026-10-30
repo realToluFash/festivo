@@ -37,6 +37,7 @@ import { CodeField, Field, FieldError, focusChecked, keysStayDown, TextField } f
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { PasswordField } from './PasswordField.tsx';
+import { ProviderButton } from './ProviderSignIn.tsx';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { type StepClosed, stepClosed, useAboveKeyboard, useFocusBackToOpener } from './Screen.tsx';
 import { Text } from './Text.tsx';
@@ -485,12 +486,9 @@ function Transfer({
       </Text>
 
       {provider != null && vouched == null ? (
-        <PrimaryButton
-          label={
-            busy
-              ? t('waysCard.checking')
-              : t('waysCard.continueWith', { provider: PROVIDER_NAMES[provider] })
-          }
+        <ProviderButton
+          provider={provider}
+          label={t('waysCard.continueWith', { provider: PROVIDER_NAMES[provider] })}
           busy={busy}
           onPress={() => void continueWith(provider)}
           testID="ownership.transfer.provider"
