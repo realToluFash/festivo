@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
-import { SHOWN_EVENT } from '../kit/eventDates.ts';
+import { SHOWN_EVENT } from '../kit/upToEvent.ts';
 import { offersDelete } from '../kit/eventDelete.ts';
 import { takeCoverRefused, takeSaved } from '../kit/eventSaved.ts';
 import {

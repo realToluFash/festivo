@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { SHOWN_EVENT, upToEvent } from './eventDates.ts';
+import { SHOWN_EVENT, upToEvent } from './upToEvent.ts';
 
 const home = { params: {} };
 const showing = (eventId: string | undefined) => ({ params: { [SHOWN_EVENT]: eventId } });
@@ -35,5 +35,17 @@ describe('‹ Event on All dates (sc-18776)', () => {
 
   it('opens the event when it is shown further back, not directly behind', () => {
     expect(upToEvent([showing('ev-1'), home, dates('ev-1')], 2, 'ev-1')).toBe('open');
+  });
+});
+
+describe('a save on Edit details (sc-21336)', () => {
+  const form = (eventId: string) => ({ params: { id: eventId } });
+
+  it('opens the event when a link opened the form over Home', () => {
+    expect(upToEvent([home, form('ev-1')], 1, 'ev-1')).toBe('open');
+  });
+
+  it('goes back when the form is over Events showing the same event', () => {
+    expect(upToEvent([home, showing('ev-1'), form('ev-1')], 2, 'ev-1')).toBe('back');
   });
 });

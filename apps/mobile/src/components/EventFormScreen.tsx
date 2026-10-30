@@ -6,7 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { DESTINATION_HREF } from '../kit/appNav.ts';
-import { upToEvent } from '../kit/eventDates.ts';
+import { goUpToEvent } from '../kit/upToEvent.ts';
 import { markSaved } from '../kit/eventSaved.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { useSignedIn } from '../signedIn.ts';
@@ -130,11 +130,8 @@ export function EditEventScreen({ eventId, toHosts }: { eventId: string; toHosts
           toHosts={toHosts && reads === 0}
           onCreated={() => {}}
           onSaved={(outcome) => {
-            const { routes, index } = navigation.getState() ?? { routes: [], index: 0 };
-
             if (outcome === 'saved') markSaved(eventId);
-            if (upToEvent(routes, index, eventId) === 'back') router.back();
-            else router.replace(eventHref(eventId));
+            goUpToEvent(navigation, router, eventId);
           }}
           onLatest={(latest) => {
             setLoad(latest);

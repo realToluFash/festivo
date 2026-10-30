@@ -18,3 +18,17 @@ export function upToEvent(
     ? 'back'
     : 'open';
 }
+
+/** Takes the way `upToEvent` gives, so All dates and Edit details cannot drift apart. */
+export function goUpToEvent(
+  navigation: {
+    getState: () => { routes: readonly { params?: unknown }[]; index: number } | undefined;
+  },
+  router: { back: () => void; replace: (href: `/events/${string}`) => void },
+  eventId: string,
+): void {
+  const { routes, index } = navigation.getState() ?? { routes: [], index: 0 };
+
+  if (upToEvent(routes, index, eventId) === 'back') router.back();
+  else router.replace(`/events/${encodeURIComponent(eventId)}`);
+}
