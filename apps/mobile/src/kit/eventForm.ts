@@ -142,3 +142,14 @@ export function pickedDate(picked: Date): string {
 export function pickedTime(picked: Date): string {
   return picked.toISOString().slice(11, 16);
 }
+
+/** The field after a picker closes on `picked`; however the iOS sheet closes, it keeps what it shows (sc-22146). */
+export function pickedInto(
+  mode: 'date' | 'time',
+  picked: Date,
+  field: { date: string; time: string },
+): { date: string; time: string } {
+  if (mode === 'date') return { date: pickedDate(picked), time: field.time };
+
+  return { date: field.date === '' ? pickedDate(picked) : field.date, time: pickedTime(picked) };
+}

@@ -57,8 +57,7 @@ import {
   changesOf,
   isDirty,
   newEventOf,
-  pickedDate,
-  pickedTime,
+  pickedInto,
   pickerValue,
   sendOutcome,
   typedOf,
@@ -721,8 +720,13 @@ function Moment({
   }
 
   function take(mode: 'date' | 'time', picked: Date): void {
-    if (mode === 'date') onPick(pickedDate(picked), time);
-    else onPick(date === '' ? pickedDate(picked) : date, pickedTime(picked));
+    const kept = pickedInto(mode, picked, { date, time });
+    onPick(kept.date, kept.time);
+  }
+
+  function keep(): void {
+    if (picking != null && held != null) take(picking, held);
+    setPicking(null);
   }
 
   const dayWords = date === '' ? t('eventForm.date') : formatWallDay(date, locale);
@@ -803,7 +807,7 @@ function Moment({
       {Platform.OS === 'ios' && (
         <Sheet
           open={picking != null}
-          onClose={() => setPicking(null)}
+          onClose={keep}
           scrimLabel={t('eventForm.pickerDone')}
           opener={pickerRef}
           testID={`${testID}.sheet`}
@@ -824,10 +828,7 @@ function Moment({
             )}
             <PrimaryButton
               label={t('eventForm.pickerDone')}
-              onPress={() => {
-                if (picking != null && held != null) take(picking, held);
-                setPicking(null);
-              }}
+              onPress={keep}
               testID={`${testID}.done`}
             />
           </View>
