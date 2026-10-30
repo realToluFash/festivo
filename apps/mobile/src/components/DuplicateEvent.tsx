@@ -84,6 +84,7 @@ export function DuplicateEventScreen({ eventId }: { eventId: string }) {
     <FormFrame
       kind={kind}
       title={name == null ? t('eventDuplicate.open') : t('eventDuplicate.title', { event: name })}
+      shortTitle={t('eventDuplicate.open')}
       onCancel={toOriginal}
       cancelOff={busy}
     >
