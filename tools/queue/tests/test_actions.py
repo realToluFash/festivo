@@ -1034,6 +1034,21 @@ class Merging(Base):
         self.assertIn("the lead is woken by the push", said)
         self.assertNotIn("In Review", said)
 
+    def test_findings_on_an_ops_story_go_to_ops(self):
+        self.fake.add(1, "In Review", ["ops"])
+        store.put_pr(self.db, pr())
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.post_review", return_value={}), \
+                mock.patch("soirely_queue.sync.sync_github"), \
+                mock.patch("soirely_queue.actions.findings",
+                           return_value=[{"path": "a", "line": 1, "blocking": True,
+                                          "body": "b"}]):
+            actions.review(self.as_("lead"), args(pr=9, verdict="back", findings="f",
+                                                  qa=None, text="summary"))
+        said = self.fake.comments[-1][1]
+        self.assertIn("[ops]", said)
+        self.assertNotIn("[dev", said)
+
     def test_findings_on_a_developers_pr_on_a_translation_ticket_ask_only_for_a_push(self):
         self.fake.add(1, "In Progress", ["translation", "dev2"])
         store.put_pr(self.db, dict(pr(), branch="fix/sc-1/test-wording"))
@@ -1671,6 +1686,12 @@ class FinishedStories(Base):
                                                      reply_to=None, files=None, text="Fix the test."))
         self.assertIn("which is Done: it wakes dev3", said)
         self.assertIn("new one", said)
+
+    def test_a_dev_comment_on_a_done_ops_story_says_it_wakes_ops(self):
+        self.fake.add(1, "Done", ["ops"])
+        said = actions.comment(self.as_("lead"), args(story="sc-1", to="dev", untagged=False,
+                                                     reply_to=None, files=None, text="Fix it."))
+        self.assertIn("which is Done: it wakes ops", said)
 
     def test_a_comment_on_a_done_story_says_its_files_went_up(self):
         self.fake.add(1, "Done", ["dev3"])

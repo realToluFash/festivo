@@ -250,7 +250,8 @@ moving it back to `Ready For QA`.
   plural or slot, a date in a string, a literal in code. You never fix those yourself.
   Wherever this skill says `[dev]`, tag the developer who built the string: `[devN]` when the
   feature story carries the `devN` label, `[dev]` when it carries `dev1` or no label. On a
-  feature story, tag `[dev]` and sq routes it to the developer whose label the story carries. A
+  feature story, tag `[dev]` and sq routes it to the developer whose label the story carries, or ops on an
+  `ops`-labelled story. A
   translation ticket carries no developer label, so a bare `[dev]` on one reaches developer 1 whoever
   built the feature. Under **Covers**, find the feature story the key came from and use its
   label. A ticket can cover stories from several developers, so a comment about keys from
