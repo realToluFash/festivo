@@ -18,6 +18,7 @@ import {
   barFits,
   coveredBy,
   fieldKeptInSight,
+  keptOffset,
   groupInWindow,
   keyboardInWindow,
   keyboardLift,
@@ -311,6 +312,16 @@ describe("a closed step's opener is scrolled under TalkBack's focus only once it
     expect(settledOffset({ ...opener, contentY: 900, offset: 300, margin: 16 }, 'outOfSight')).toBe(
       364,
     );
+  });
+});
+
+describe('a closing step keeps its view where it shows', () => {
+  it('scrolls by the height of the opener that pushed it down', () => {
+    expect(keptOffset(300, 620, 668)).toBe(348);
+  });
+
+  it('stays put when nothing moved it', () => {
+    expect(keptOffset(300, 620, 620)).toBeNull();
   });
 });
 

@@ -1,8 +1,8 @@
 import { ApiError, type LinkedProvider } from '@soirely/api-client';
 import { cleanCode, codeProblem, formatCountdown, meetsPasswordLength } from '@soirely/domain';
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInputInstance, View } from 'react-native';
+import { type RefObject, useEffect, useRef, useState } from 'react';
+import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -77,12 +77,17 @@ export function PasswordCard({
     onSetting?.(next.kind === 'setting');
   };
   const opener = useFocusBackToOpener(stage.kind === 'atRest' ? stage.closed : undefined);
+  const cancel = useRef<ViewInstance>(null);
   const {
     opener: changeOpener,
     closing,
     close,
-  } = useStepClose(opener, 'change', 'opener', (closed) =>
-    setStage({ kind: 'atRest', signedOut: null, added: null, closed }),
+  } = useStepClose(
+    opener,
+    'change',
+    'opener',
+    (closed) => setStage({ kind: 'atRest', signedOut: null, added: null, closed }),
+    cancel,
   );
   const frame = cardFrame(kind);
   const first = providers[0]?.provider;
@@ -160,6 +165,7 @@ export function PasswordCard({
         <Changing
           email={email}
           closing={closing}
+          cancel={cancel}
           onChanged={(signedOut) => {
             setStage({ kind: 'atRest', signedOut, added: null });
             onChanged?.();
@@ -174,11 +180,13 @@ export function PasswordCard({
 function Changing({
   email,
   closing,
+  cancel,
   onChanged,
   onCancel,
 }: {
   email: string;
   closing: boolean;
+  cancel: RefObject<ViewInstance | null>;
   onChanged: (signedOut: number) => void;
   onCancel: () => void;
 }) {
@@ -326,6 +334,7 @@ function Changing({
         />
       </View>
       <QuietButton
+        ref={cancel}
         label={t('passwordCard.cancel')}
         onPress={onCancel}
         off={saving}
