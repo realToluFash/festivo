@@ -17,6 +17,7 @@ import {
   eventNameLength,
   firstRefusedOf,
   hostErrorsOf,
+  newEventHosts,
   filledEndDate,
   formatWallClock,
   formatWallDay,
@@ -86,6 +87,8 @@ type Status = 'editing' | 'sending' | 'failed' | 'changedElsewhere' | 'created';
 
 type Asking = 'leave' | 'latest' | null;
 
+const NO_HOSTS = { status: 'draft', hosts: [] } as const;
+
 export function EventForm({
   kind,
   organisation,
@@ -134,6 +137,7 @@ export function EventForm({
     [over, entered, from],
   );
   const { draft, venue, timeZone, currency, hosts } = typed;
+  const checkedOf = (rows: readonly HostRow[]) => (editing ? rows : newEventHosts(rows));
   const dirty = isDirty(typed, from) || (!editing && cover != null);
 
   const nameInput = useRef<TextInputInstance>(null);
@@ -296,24 +300,27 @@ export function EventForm({
   function editHosts(rows: HostRow[], touched: number | null): void {
     setTyped((previous) => ({ ...previous, hosts: rows }));
     if (touched != null) setHostErrors((previous) => ({ ...previous, [touched]: undefined }));
-    else if (hostsChecked) setHostErrors(hostErrorsOf(rows, t));
+    else if (hostsChecked) setHostErrors(hostErrorsOf(checkedOf(rows), t));
     if (status === 'failed') setStatus('editing');
   }
 
-  /** After the first Save, each host is checked again as its field is left. */
+  /** After the first Save or Create event, each host is checked again as its field is left. */
   function leaveHost(row: HostRow): void {
     if (!hostsChecked) return;
-    setHostErrors((previous) => ({ ...previous, [row.key]: hostErrorsOf(hosts, t)[row.key] }));
+    setHostErrors((previous) => ({
+      ...previous,
+      [row.key]: hostErrorsOf(checkedOf(hosts), t)[row.key],
+    }));
   }
 
   async function send(): Promise<void> {
     if (busy) return;
 
     const found = eventFormErrors(typed, t);
-    const hostFound = editing ? hostErrorsOf(hosts, t) : {};
+    const hostFound = hostErrorsOf(checkedOf(hosts), t);
     const count = Object.keys(found).length + Object.keys(hostFound).length;
 
-    if (editing) setHostsChecked(true);
+    setHostsChecked(true);
 
     if (count > 0) {
       setUnsent({ count });
@@ -357,7 +364,7 @@ export function EventForm({
         leave(() => onSaved('saved'));
       }
     } catch (error) {
-      const outcome = sendOutcome(error, t, hosts);
+      const outcome = sendOutcome(error, t, checkedOf(hosts));
 
       if (outcome.kind === 'refused') {
         setStatus('editing');
@@ -462,19 +469,17 @@ export function EventForm({
           />
         </Field>
 
-        {opened != null && (
-          <HostsSection
-            kind={kind}
-            rows={hosts}
-            errors={hostErrors}
-            saved={opened.event}
-            busy={busy}
-            arrive={toHosts}
-            focusHost={focusHost}
-            onRows={editHosts}
-            onLeave={leaveHost}
-          />
-        )}
+        <HostsSection
+          kind={kind}
+          rows={hosts}
+          errors={hostErrors}
+          saved={opened?.event ?? NO_HOSTS}
+          busy={busy}
+          arrive={toHosts}
+          focusHost={focusHost}
+          onRows={editHosts}
+          onLeave={leaveHost}
+        />
 
         <CoverField
           type={draft.type}
