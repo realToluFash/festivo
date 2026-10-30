@@ -1,11 +1,12 @@
 import { type TaggedEvent } from '@soirely/api-client';
 import { roleHolds } from '@soirely/domain';
-import { Redirect, router } from 'expo-router';
+import { Redirect, router, useNavigation } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { DESTINATION_HREF } from '../kit/appNav.ts';
+import { goUpToEvent } from '../kit/upToEvent.ts';
 import { markSaved } from '../kit/eventSaved.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { useSignedIn } from '../signedIn.ts';
@@ -69,6 +70,7 @@ export function EditEventScreen({ eventId, toHosts }: { eventId: string; toHosts
   const [attempt, setAttempt] = useState(0);
   const [reads, setReads] = useState(0);
   const manages = organisation != null && roleHolds(organisation, 'events.manage');
+  const navigation = useNavigation();
 
   useEffect(() => {
     if (organisationId == null || !manages) return;
@@ -129,7 +131,7 @@ export function EditEventScreen({ eventId, toHosts }: { eventId: string; toHosts
           onCreated={() => {}}
           onSaved={(outcome) => {
             if (outcome === 'saved') markSaved(eventId);
-            leave(eventHref(eventId));
+            goUpToEvent(navigation, router, eventId);
           }}
           onLatest={(latest) => {
             setLoad(latest);
