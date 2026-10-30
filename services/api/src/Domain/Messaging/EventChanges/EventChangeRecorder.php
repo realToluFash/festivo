@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Messaging\EventChanges;
 
+use App\Domain\Messaging\Audience\MemberAudienceResolver;
 use App\Domain\Messaging\Model\Audience;
 use App\Domain\Messaging\Model\EventDetails;
 use App\Domain\Messaging\Model\Trigger;
@@ -18,6 +19,7 @@ use DateInterval;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
+use Psl\Iter;
 use Psl\Json;
 use Psl\Type;
 use Psr\Clock\ClockInterface;
@@ -36,6 +38,7 @@ final readonly class EventChangeRecorder
     public function __construct(
         private Connection $connection,
         private NotificationScheduler $notificationScheduler,
+        private MemberAudienceResolver $memberAudienceResolver,
         private ClockInterface $clock,
     ) {
     }
@@ -115,14 +118,31 @@ final readonly class EventChangeRecorder
             $this->notificationScheduler->schedule($type, $type . ':' . $id->toRfc4122(), $source, Trigger::at($now), $audience, ['eventId' => $eventId, 'changeId' => $id->toRfc4122()], $event);
         }
 
-        foreach ([EventChangesNotice::NAME, EventDayNotice::NAME] as $type) {
-            $key = $type . ':' . $eventId;
-            $pending = $this->pendingPayload($key);
-            $since = Type\string()->coerce($pending['since'] ?? $id->toRfc4122());
-            $action = $kind->isAction() || true === ($pending['action'] ?? false);
-            $dueAt = $action ? $now : $now->add(new DateInterval(self::SETTLE));
-            $this->notificationScheduler->schedule($type, $key, $source, Trigger::at($dueAt), $audience, ['eventId' => $eventId, 'since' => $since, 'action' => $action], $event);
+        foreach ($this->othersThan($event, $by) as $member) {
+            foreach ([EventChangesNotice::NAME, EventDayNotice::NAME] as $type) {
+                $key = $type . ':' . $eventId . ':' . $member->toRfc4122();
+                $pending = $this->pendingPayload($key);
+                $since = Type\string()->coerce($pending['since'] ?? $id->toRfc4122());
+                $action = $kind->isAction() || true === ($pending['action'] ?? false);
+                $dueAt = $action ? $now : $now->add(new DateInterval(self::SETTLE));
+                $alone = Audience::memberWithPermission($event->getOrganisation()->getId(), Permission::EventsRead, $member);
+                $this->notificationScheduler->schedule($type, $key, $source, Trigger::at($dueAt), $alone, ['eventId' => $eventId, 'since' => $since, 'action' => $action], $event);
+            }
         }
+    }
+
+    /** @return list<Uuid> each member's push and email wait on a window of their own, so their own change never moves it (AC 1) */
+    private function othersThan(Event $event, ?User $by): array
+    {
+        $audience = Audience::membersWithPermission($event->getOrganisation()->getId(), Permission::EventsRead, null === $by ? [] : [$by->getId()]);
+        $members = [];
+
+        do {
+            $page = $this->memberAudienceResolver->resolve($audience, Iter\last($members), 500);
+            $members = [...$members, ...$page];
+        } while ([] !== $page);
+
+        return $members;
     }
 
     /** @return array<string, mixed> the window's row still waiting under this key, if any */

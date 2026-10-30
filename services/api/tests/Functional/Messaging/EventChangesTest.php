@@ -202,6 +202,53 @@ final class EventChangesTest extends MessagingTestCase
     }
 
     #[Test]
+    public function aMembersOwnActionLeavesSomebodyElsesEditToSettleForThem(): void
+    {
+        $event = $this->liveEvent();
+        $this->edit($event, $this->bola, ['venue' => ['name' => 'Hall B', 'address' => null]]);
+        self::runUntilIdle();
+        $before = self::connection()->fetchAssociative('SELECT id, created_at FROM notification_items WHERE user_id = :user', ['user' => $this->ada->getId()->toRfc4122()]);
+
+        self::at('2026-11-02 10:02');
+        self::service(EventLifecycle::class)->pause($event, $this->ada);
+        self::runUntilIdle();
+
+        self::assertSame([$before], self::connection()->fetchAllAssociative('SELECT id, created_at FROM notification_items WHERE user_id = :user', ['user' => $this->ada->getId()->toRfc4122()]));
+        self::assertSame([[], []], [$this->emails($this->ada), $this->pushes($this->ada)]);
+        self::assertSame('Paused: Gala', $this->email($this->chidi)->subject);
+
+        self::at('2026-11-02 10:15');
+        self::runUntilIdle();
+
+        self::assertSame(['Changed: Gala'], Vec\map($this->emails($this->ada), static fn ($sent): string => $sent->subject));
+        self::assertCount(1, $this->pushes($this->ada));
+        self::assertCount(1, $this->emails($this->chidi), "Chidi had Bola's venue with the pause.");
+    }
+
+    #[Test]
+    public function aMembersOwnEditInsideSomebodyElsesWindowLeavesItsSettleWhereItWas(): void
+    {
+        $event = $this->liveEvent();
+        $this->edit($event, $this->bola, ['venue' => ['name' => 'Hall B', 'address' => null]]);
+        self::runUntilIdle();
+
+        self::at('2026-11-02 10:14');
+        $this->edit($event, $this->chidi, ['startsAt' => '2026-11-12T19:00:00']);
+        self::runUntilIdle();
+        self::at('2026-11-02 10:15');
+        self::runUntilIdle();
+
+        self::assertCount(1, $this->emails($this->chidi));
+        self::assertCount(1, $this->pushes($this->chidi));
+
+        self::at('2026-11-02 10:29');
+        self::runUntilIdle();
+
+        self::assertCount(1, $this->emails($this->chidi));
+        self::assertCount(1, $this->pushes($this->chidi));
+    }
+
+    #[Test]
     public function aMembersOwnChangeBackRewritesTheirUnreadItemWhereItWas(): void
     {
         $event = $this->liveEvent();
