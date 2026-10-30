@@ -1,12 +1,5 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
-import {
-  clockMinutes,
-  copiedEnd,
-  durationWords,
-  formatEventDayAndClock,
-  localDateTime,
-  skippedLine,
-} from '@soirely/domain';
+import { copyEndsLine, copyStartRefusal, localDateTime, skippedLine } from '@soirely/domain';
 import { type FormEvent, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -74,19 +67,11 @@ function DuplicateDialog({ event, onClose }: { event: OrganisationEvent; onClose
     form.preventDefault();
     if (busy) return;
 
-    if (date === '' || time === '') {
-      setError(
-        t(
-          date === '' && time === ''
-            ? 'eventDuplicate.startMissing'
-            : date === ''
-              ? 'eventDuplicate.dateMissing'
-              : 'eventDuplicate.timeMissing',
-        ),
-      );
-      document
-        .getElementById(date === '' ? 'event-copy-start-date' : 'event-copy-start-time')
-        ?.focus();
+    const refusal = copyStartRefusal(date, time, t);
+
+    if (refusal != null) {
+      setError(refusal.message);
+      document.getElementById(`event-copy-start-${refusal.focus}`)?.focus();
 
       return;
     }
@@ -114,13 +99,6 @@ function DuplicateDialog({ event, onClose }: { event: OrganisationEvent; onClose
       setStatus('failed');
     }
   }
-
-  const end = copiedEnd(date, time, event.timeZone, event);
-  const words = durationWords(clockMinutes(event, event.timeZone) ?? 0, locale);
-  const duration =
-    words.hours != null && words.minutes != null
-      ? t('eventDuplicate.hoursAndMinutes', { hourWords: words.hours, minuteWords: words.minutes })
-      : (words.hours ?? words.minutes ?? '');
 
   return (
     <>
@@ -178,15 +156,7 @@ function DuplicateDialog({ event, onClose }: { event: OrganisationEvent; onClose
             id="event-copy-start"
             legend={t('eventDuplicate.starts')}
             skipped={skippedLine(date, time, event.timeZone, locale, t)}
-            hint={
-              end == null
-                ? t('eventDuplicate.endsUnchosen', { duration, timeZone: event.timeZone })
-                : t('eventDuplicate.ends', {
-                    end: formatEventDayAndClock(end, event.timeZone, locale),
-                    duration,
-                    timeZone: event.timeZone,
-                  })
-            }
+            hint={copyEndsLine(date, time, event, locale, t)}
             date={date}
             time={time}
             error={error}

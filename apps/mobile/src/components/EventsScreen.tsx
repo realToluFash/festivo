@@ -14,7 +14,8 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
-import { SHOWN_EVENT } from '../kit/upToEvent.ts';
+import { SHOWN_EVENT, goUpToEvent } from '../kit/upToEvent.ts';
+import { backToOriginal } from '../kit/eventDuplicate.ts';
 import { offersDelete } from '../kit/eventDelete.ts';
 import { takeCoverRefused, takeSaved } from '../kit/eventSaved.ts';
 import {
@@ -49,7 +50,14 @@ const PAST_PAGE = 10;
 const LOADING: Load = { kind: 'loading' };
 
 /** Events, `EventsHome-*` and `EventView-*` (sc-1593): the organisation's events, read-only, and an event's page. */
-export function EventsScreen({ linked = null }: { linked?: string | null }) {
+export function EventsScreen({
+  linked = null,
+  copiedFrom,
+}: {
+  linked?: string | null;
+  /** The event this one was duplicated from, when Duplicate opened it (sc-22145). */
+  copiedFrom?: string | undefined;
+}) {
   const { t } = useTranslation();
   const { kind } = useListAndPageLayout(SPACING, 'nothing');
   const { account, organisation } = useSignedIn();
@@ -88,7 +96,16 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
   const toList = () => select(null, open == null ? undefined : stepClosed(`row.${open}`));
   const navigation = useNavigation<{
     setParams(params: { [SHOWN_EVENT]: string | undefined }): void;
+    getState(): { routes: readonly { params?: unknown }[]; index: number } | undefined;
   }>();
+  const original = backToOriginal(linked, open, copiedFrom);
+  const back =
+    original == null
+      ? { label: t('eventsScreen.title'), onPress: toList }
+      : {
+          label: t('timeline.backToEvent'),
+          onPress: () => goUpToEvent(navigation, router, original),
+        };
 
   useEffect(() => {
     navigation.setParams({ [SHOWN_EVENT]: open ?? undefined });
@@ -234,6 +251,7 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
   useSystemBack(linked != null && !landscape && open == null, () =>
     router.dismissTo(DESTINATION_HREF.home),
   );
+  useSystemBack(landscape && original != null, back.onPress);
 
   if (organisation != null && !reads && open == null) {
     return <Redirect href={DESTINATION_HREF.home} />;
@@ -241,6 +259,9 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
 
   const onEdit = manages
     ? () => open != null && router.push(`/events/${encodeURIComponent(open)}/edit`)
+    : undefined;
+  const onDuplicate = creates
+    ? () => open != null && router.push(`/events/${encodeURIComponent(open)}/duplicate`)
     : undefined;
   const found = listed ?? (opened.kind === 'loaded' ? opened.event : null);
   const shown = found == null ? null : latest(found);
@@ -254,6 +275,7 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
           manages={manages}
           onChange={onChange}
           onEdit={onEdit}
+          onDuplicate={onDuplicate}
           onDeleted={onDeleted}
         />
         {coverRefused?.eventId === open && (
@@ -346,7 +368,7 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     <AppFrame
       current="events"
       title={phone && inFront ? (pageName ?? t('eventsScreen.title')) : t('eventsScreen.title')}
-      back={phone && inFront ? { label: t('eventsScreen.title'), onPress: toList } : undefined}
+      back={phone && inFront ? back : undefined}
     >
       <ListAndPage
         kind={kind}
@@ -366,8 +388,9 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
         pageless={pageless(load, inFront)}
         pageKey={open ?? ''}
         back={{
-          label: t('eventsScreen.back'),
-          onPress: toList,
+          label: original == null ? t('eventsScreen.back') : t('timeline.backToEvent'),
+          drawn: original != null,
+          onPress: back.onPress,
           testID: 'events.back',
         }}
         spacing={SPACING}

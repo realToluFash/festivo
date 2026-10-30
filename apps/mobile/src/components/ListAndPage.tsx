@@ -18,6 +18,7 @@ import {
 } from '../layout/useLayout.ts';
 import { pageTakesBack } from '../kit/systemBack.ts';
 import { tokens } from '../theme/tokens.ts';
+import { BackButton } from './AppFrame.tsx';
 import { bodyEdges } from './bodyEdges.ts';
 import { QuietButton } from './Buttons.tsx';
 import { Screen, ScrollColumn } from './Screen.tsx';
@@ -49,7 +50,8 @@ export interface ListAndPageProps {
   /** Nothing to put in the page, so on a tablet on its side the list takes the full width. */
   pageless?: boolean;
   /** The page's own back, the header's on a phone included; Android's Back runs it too wherever the page is in front. */
-  back: { label: string; onPress: () => void; testID: string };
+  /** `drawn` gives a label with no chevron of its own the one BackButton draws. */
+  back: { label: string; onPress: () => void; testID: string; drawn?: boolean };
   spacing: ListAndPageSpacing;
   /** The screen's own `useListAndPageLayout`, so the two never decide apart. */
   kind: LayoutKind;
@@ -134,7 +136,11 @@ export function ListAndPage({
           <ScrollColumn key={pageKey} style={styles.fill} contentContainerStyle={column}>
             {kind === 'tabletPortrait' && (
               <View style={styles.start}>
-                <QuietButton label={back.label} onPress={back.onPress} testID={back.testID} />
+                {back.drawn === true ? (
+                  <BackButton label={back.label} onPress={back.onPress} testID={back.testID} />
+                ) : (
+                  <QuietButton label={back.label} onPress={back.onPress} testID={back.testID} />
+                )}
               </View>
             )}
             {page}

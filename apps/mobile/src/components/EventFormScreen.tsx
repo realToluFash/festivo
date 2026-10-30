@@ -144,15 +144,17 @@ export function EditEventScreen({ eventId, toHosts }: { eventId: string; toHosts
 }
 
 /** Cancel sits top left: the phone's header back row, a tablet's first control. */
-function FormFrame({
+export function FormFrame({
   kind,
   title,
   onCancel,
+  cancelOff = false,
   children,
 }: {
   kind: LayoutKind;
   title: string;
   onCancel: () => void;
+  cancelOff?: boolean;
   children: React.ReactNode;
 }) {
   const { t } = useTranslation();
@@ -162,7 +164,11 @@ function FormFrame({
     <AppFrame
       current="events"
       title={phone ? title : t('eventsScreen.title')}
-      back={phone ? { label: t('eventEdit.cancel'), onPress: onCancel } : undefined}
+      back={
+        phone
+          ? { label: t('eventEdit.cancel'), onPress: () => cancelOff || onCancel(), off: cancelOff }
+          : undefined
+      }
     >
       <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
         {!phone && (
@@ -170,6 +176,7 @@ function FormFrame({
             <QuietButton
               label={t('eventEdit.cancel')}
               onPress={onCancel}
+              off={cancelOff}
               testID="eventForm.cancel"
             />
             <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">

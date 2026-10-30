@@ -625,7 +625,7 @@ export function EventForm({
 }
 
 /** The answer to a press at the foot of the form shows at its top, so it scrolls there; ReadOut already says it, so focus stays. */
-function InSight({ children }: { children: ReactNode }) {
+export function InSight({ children }: { children: ReactNode }) {
   const { shown } = useBroughtIntoView();
 
   return <View ref={shown}>{children}</View>;
@@ -674,9 +674,10 @@ function Ask({
 }
 
 /** A start or an end: the platform's own date and time pickers, in the event's zone, named beside them. */
-function Moment({
+export function Moment({
   label,
   help,
+  hint,
   date,
   time,
   timeZone,
@@ -684,12 +685,15 @@ function Moment({
   disabled,
   readOnly,
   pickerRef,
+  timePickerRef,
   fieldRef,
   testID,
   onPick,
 }: {
   label: string;
   help?: string;
+  /** What the date and the time each read after their value. */
+  hint?: string;
   date: string;
   time: string;
   timeZone: string;
@@ -697,6 +701,7 @@ function Moment({
   disabled: boolean;
   readOnly: boolean;
   pickerRef: RefObject<ViewInstance | null>;
+  timePickerRef?: RefObject<ViewInstance | null>;
   fieldRef: RefObject<ViewInstance | null>;
   testID: string;
   onPick: (date: string, time: string) => void;
@@ -706,7 +711,8 @@ function Moment({
   const [picking, setPicking] = useState<'date' | 'time' | null>(null);
   const [held, setHeld] = useState<Date | null>(null);
   const [openedBy, setOpenedBy] = useState<'date' | 'time'>('date');
-  const timePicker = useRef<ViewInstance>(null);
+  const ownTimePicker = useRef<ViewInstance>(null);
+  const timePicker = timePickerRef ?? ownTimePicker;
   const skipped = skippedLine(date, time, timeZone, locale, t);
   const helpLines = [skipped, help].filter((line) => line != null);
 
@@ -770,6 +776,7 @@ function Moment({
               accessibilityRole={readOnly ? undefined : 'button'}
               accessibilityState={{ disabled: disabled || readOnly }}
               accessibilityLabel={t('eventForm.date')}
+              accessibilityHint={hint}
               accessibilityValue={{
                 text: [label, date === '' ? null : dayWords, timeZone]
                   .filter((part) => part != null)
@@ -796,6 +803,7 @@ function Moment({
             accessibilityRole={readOnly ? undefined : 'button'}
             accessibilityState={{ disabled: disabled || readOnly }}
             accessibilityLabel={t('eventForm.time')}
+            accessibilityHint={hint}
             accessibilityValue={{
               text: [label, time === '' ? null : timeWords, timeZone]
                 .filter((part) => part != null)

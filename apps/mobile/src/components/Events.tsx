@@ -172,6 +172,7 @@ export function EventPage({
   manages,
   onChange,
   onEdit,
+  onDuplicate,
   onDeleted,
 }: {
   kind: LayoutKind;
@@ -180,6 +181,8 @@ export function EventPage({
   onChange: (event: OrganisationEvent) => void;
   /** Absent for a role without events.manage (sc-3595). */
   onEdit?: (() => void) | undefined;
+  /** Absent for a role without events.create (sc-22145). */
+  onDuplicate?: (() => void) | undefined;
   /** Absent for a role without events.create (sc-3592). */
   onDeleted?: ((event: OrganisationEvent) => void) | undefined;
 }) {
@@ -241,8 +244,23 @@ export function EventPage({
             timeZone: event.timeZone,
           })}
         </Text>
-        {onEdit != null && (
-          <SecondaryButton label={t('eventEdit.open')} onPress={onEdit} testID="events.page.edit" />
+        {(onEdit != null || onDuplicate != null) && (
+          <View style={styles.pageActions}>
+            {onEdit != null && (
+              <SecondaryButton
+                label={t('eventEdit.open')}
+                onPress={onEdit}
+                testID="events.page.edit"
+              />
+            )}
+            {onDuplicate != null && (
+              <SecondaryButton
+                label={t('eventDuplicate.open')}
+                onPress={onDuplicate}
+                testID="events.page.duplicate"
+              />
+            )}
+          </View>
         )}
         <MuteEventCard kind={kind} eventId={event.id} />
         {onDeleted != null && (
@@ -287,6 +305,7 @@ const styles = StyleSheet.create({
   stepText: { flex: 1 },
   cards: { gap: tokens.spaceLg },
   pageHead: { gap: tokens.spaceXs },
+  pageActions: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
   stateWord: { color: tokens.colorInkSecondary },
   stateLive: {
     borderColor: tokens.colorAccentTintBorder,
