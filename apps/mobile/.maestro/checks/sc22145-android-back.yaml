@@ -1,0 +1,47 @@
+# sc-22145: Android back leaves Duplicate {event} for the original's page, and from the copy returns to the original's page.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- tapOn:
+    id: 'events.page.duplicate'
+- extendedWaitUntil:
+    visible: '{{t:eventDuplicate.copied}}'
+    timeout: 15000
+- back
+- waitForAnimationToEnd
+- takeScreenshot: back-from-form
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- tapOn:
+    id: 'events.page.duplicate'
+- scrollUntilVisible:
+    element:
+      id: 'eventDuplicate.create'
+    timeout: 15000
+- tapOn:
+    id: 'eventDuplicate.start.time'
+- tapOn: 'OK'
+- waitForAnimationToEnd
+- takeScreenshot: time-first
+- tapOn:
+    id: 'eventDuplicate.create'
+- back
+- takeScreenshot: back-while-creating
+- extendedWaitUntil:
+    visible:
+      id: 'frame.back'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: copy-page
+- back
+- waitForAnimationToEnd
+- takeScreenshot: back-from-copy
+- back
+- waitForAnimationToEnd
+- takeScreenshot: back-again
