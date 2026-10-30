@@ -40,10 +40,8 @@ import {
   liftNeeded,
   type InContent,
   type IntoView,
-  keptLeavesSight,
   offsetAboveKeyboard,
   scrollInsets,
-  outOfSight,
   settledOffsetKeeping,
   shownAboveKeys,
   shownEnd,
@@ -313,13 +311,13 @@ function bringIntoView(
   line: ScreenReaderTarget | null,
   animated: boolean,
   { when = 'wholly', aboveKeys = false, keep = null, holding = false }: Sight = {},
-  measured: (wasOutOfSight: boolean, keptLeft: boolean) => void = () => {},
+  measured: () => void = () => {},
 ): void {
   const view = scroll?.ref.current;
   const content = view?.getInnerViewRef();
   const scrollHost = view?.getNativeScrollRef();
   if (scroll == null || view == null || content == null || scrollHost == null || line == null)
-    return measured(false, false);
+    return measured();
 
   const kept = (then: (at: InContent | null) => void) =>
     keep == null
@@ -348,11 +346,11 @@ function bringIntoView(
           const to = settledOffsetKeeping(at, when, keptAt);
           if (to != null && holding) scroll.scrollHolding(to);
           else if (to != null) view.scrollTo({ y: to, animated });
-          measured(outOfSight(at), keptLeavesSight(shown, to, keptAt));
+          measured();
         }),
       );
     },
-    () => measured(false, false),
+    () => measured(),
   );
 }
 
@@ -634,6 +632,22 @@ export function useStepClose(
             cancels.push(() => clearTimeout(taken));
             break;
           }
+          if (step.do === 'bringOpener') {
+            let stopped = false;
+            cancels.push(() => {
+              stopped = true;
+            });
+            bringIntoView(
+              scroll,
+              view.current,
+              false,
+              { when: 'outOfSight', aboveKeys: true, holding: true },
+              () => {
+                if (!stopped) runFrom(steps.slice(at + 1));
+              },
+            );
+            break;
+          }
           if (step.do === 'putKeysDown') {
             cancels.push(
               putKeysDownThen(
@@ -654,16 +668,15 @@ export function useStepClose(
             cancels.push(() => {
               stopped = true;
             });
-            bringIntoView(scroll, view.current, false, sight, (wasOutOfSight, closerLeft) => {
+            bringIntoView(scroll, view.current, false, sight, () => {
               if (stopped) return;
-              if (!step.read && !wasOutOfSight) return runFrom(steps.slice(at + 1));
+              if (!step.read) return runFrom(steps.slice(at + 1));
 
               // Content that shrinks around the line as it mounts can stop the first scroll short (sc-9382).
               const settled = setTimeout(() => {
                 if (stopped) return;
                 bringIntoView(scroll, view.current, false, sight);
-                // With the step hidden, TalkBack moves its focus back from the closer the scroll carried away to the opener and says it, and a move after that says it again (sc-22357).
-                if (step.read || !closerLeft) moveScreenReaderFocus(view.current);
+                moveScreenReaderFocus(view.current);
                 runFrom(steps.slice(at + 1));
               }, SETTLED_MS);
               cancels.push(() => clearTimeout(settled));
