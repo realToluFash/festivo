@@ -14,6 +14,7 @@ import { NotificationsBell } from '../../components/NotificationsBell.tsx';
 import { SignInRulesNotices } from '../../components/SignInRulesNotices.tsx';
 import { AccessPaused } from '../../components/AccessPaused.tsx';
 import { TwoFactorOverdue } from '../../components/TwoFactorOverdue.tsx';
+import { SkipLink } from '../../components/SkipLink.tsx';
 import {
   joinOrganisation,
   landingFor,
@@ -188,9 +189,7 @@ function Shell() {
   if (organisation == null && session.pausedIn == null) {
     return (
       <div className="no-organisation-page">
-        <a className="skip-link" href="#content">
-          {t('app.skipToContent')}
-        </a>
+        <SkipLink />
         <header className="public-header">
           <span className="brand">{t('app.name')}</span>
           <LanguagePicker automatic={false} />
@@ -240,9 +239,7 @@ function Shell() {
 
   return (
     <div className="shell">
-      <a className="skip-link" href="#content" inert={menuOpen}>
-        {t('app.skipToContent')}
-      </a>
+      <SkipLink inert={menuOpen} />
 
       <aside className="shell-sidebar" inert={menuOpen}>
         <div className="shell-brand-row">
