@@ -1,6 +1,6 @@
 import { ApiError, type TimeZoneOption } from '@soirely/api-client';
 import { exactZone, formerName, matchingZones, zoneLabel } from '@soirely/domain';
-import { type RefObject, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Platform,
   Pressable,
@@ -9,7 +9,6 @@ import {
   type TextInputInstance,
   useWindowDimensions,
   View,
-  type ViewInstance,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -64,37 +63,24 @@ export function TimeZoneCard({
   const [savedFocused, setSavedFocused] = useState(false);
   const [closed, setClosed] = useState<StepClosed | undefined>(undefined);
   const opener = useFocusBackToOpener(editing ? undefined : closed);
-  const cancel = useRef<ViewInstance>(null);
   const {
     opener: changeOpener,
     closing,
     close,
-  } = useStepClose(
-    opener,
-    'change',
-    'opener',
-    (back) => {
-      setClosed(back);
-      setEditing(false);
-    },
-    cancel,
-  );
+  } = useStepClose(opener, 'change', 'opener', (back) => {
+    setClosed(back);
+    setEditing(false);
+  });
   // Saving closes with the line in the opener's place, so TalkBack's focus is on the line before Save goes (sc-18587).
   const {
     opener: savedLine,
     holder: savedHolder,
     closing: savedClosing,
     close: closeSaved,
-  } = useStepClose(
-    opener,
-    'saved',
-    'holder',
-    (back) => {
-      setSavedFocused(back == null);
-      setEditing(false);
-    },
-    cancel,
-  );
+  } = useStepClose(opener, 'saved', 'holder', (back) => {
+    setSavedFocused(back == null);
+    setEditing(false);
+  });
   const savedGiven = savedFocused || savedClosing;
   const frame = cardFrame(kind);
 
@@ -170,7 +156,6 @@ export function TimeZoneCard({
           zones={zones}
           now={label}
           closing={closing || savedClosing}
-          cancel={cancel}
           onSaved={async (zone) => {
             await onSaved();
             setSaved(zoneLabel(zone));
@@ -189,7 +174,6 @@ function Choosing({
   zones,
   now,
   closing,
-  cancel,
   onSaved,
   onCancel,
 }: {
@@ -197,7 +181,6 @@ function Choosing({
   zones: readonly TimeZoneOption[];
   now: string | null;
   closing: boolean;
-  cancel: RefObject<ViewInstance | null>;
   onSaved: (zone: TimeZoneOption) => Promise<void>;
   onCancel: () => void;
 }) {
@@ -359,7 +342,6 @@ function Choosing({
         </View>
       </View>
       <QuietButton
-        ref={cancel}
         label={t('timeZone.cancel')}
         onPress={onCancel}
         off={saving}
