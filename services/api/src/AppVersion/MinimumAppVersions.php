@@ -11,7 +11,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 /** The oldest app build each platform's store may still serve; null is no minimum. Malformed is a refusal to start, never an unset minimum (sc-22620). */
 final readonly class MinimumAppVersions
 {
-    private const string VERSION = '/^(0|[1-9]\d{0,8})\.(0|[1-9]\d{0,8})\.(0|[1-9]\d{0,8})$/';
+    private const string VERSION = '/^(0|[1-9]\d{0,8})\.(0|[1-9]\d{0,8})\.(0|[1-9]\d{0,8})\z/';
 
     public ?string $ios;
 

@@ -40,6 +40,7 @@ final class MinimumAppVersionsTest extends TestCase
         yield 'a pre-release' => ['1.2.0-beta'];
         yield 'a leading zero' => ['1.02.0'];
         yield 'a space' => [' 1.2.0'];
+        yield 'a trailing newline, as echo writes a secret' => ["1.2.0\n"];
     }
 
     #[Test]
