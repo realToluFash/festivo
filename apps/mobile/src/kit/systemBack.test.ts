@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { OPENED_IN_PLACE_OF_SETTINGS, pageTakesBack, sectionTakesBack } from './systemBack.ts';
+import {
+  OPENED_IN_PLACE_OF_SETTINGS,
+  pageTakesBack,
+  sectionTakesBack,
+  swipedBack,
+} from './systemBack.ts';
 
 describe('pageTakesBack', () => {
   it('takes Back where the page shows in place of its list', () => {
@@ -23,5 +28,18 @@ describe('sectionTakesBack', () => {
   it('leaves Back to the stack on a section pushed over the list, or opened from Home or another section', () => {
     expect(sectionTakesBack(undefined)).toBe(false);
     expect(sectionTakesBack('')).toBe(false);
+  });
+});
+
+describe('swipedBack', () => {
+  it('takes the pop the iOS edge swipe dispatches', () => {
+    expect(swipedBack({ type: 'POP' })).toBe(true);
+  });
+
+  it('lets a tab, a link and a page going back by itself leave the screen', () => {
+    expect(swipedBack({ type: 'GO_BACK' })).toBe(false);
+    expect(swipedBack({ type: 'POP_TO' })).toBe(false);
+    expect(swipedBack({ type: 'NAVIGATE' })).toBe(false);
+    expect(swipedBack({ type: 'RESET' })).toBe(false);
   });
 });

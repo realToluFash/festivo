@@ -21,7 +21,7 @@ import { tokens } from '../theme/tokens.ts';
 import { bodyEdges } from './bodyEdges.ts';
 import { QuietButton } from './Buttons.tsx';
 import { Screen, ScrollColumn } from './Screen.tsx';
-import { useSystemBack } from './useSystemBack.ts';
+import { useSwipeBack, useSystemBack } from './useSystemBack.ts';
 
 export interface ListAndPageSpacing {
   phone: StyleProp<ViewStyle>;
@@ -48,7 +48,7 @@ export interface ListAndPageProps {
   pageInFront: boolean;
   /** Nothing to put in the page, so on a tablet on its side the list takes the full width. */
   pageless?: boolean;
-  /** The page's own back, the header's on a phone included; Android's Back runs it too wherever the page is in front. */
+  /** The page's own back, the header's on a phone included; Android's Back and the iOS edge swipe run it too wherever the page is in front. */
   back: { label: string; onPress: () => void; testID: string };
   spacing: ListAndPageSpacing;
   /** The screen's own `useListAndPageLayout`, so the two never decide apart. */
@@ -95,6 +95,7 @@ export function ListAndPage({
   const landscape = kind === 'tabletLandscape';
   const split = landscape && !pageless;
   useSystemBack(pageTakesBack(kind, pageInFront), back.onPress);
+  useSwipeBack(pageTakesBack(kind, pageInFront), back.onPress);
   const column = landscape
     ? spacing.column
     : kind === 'phone'

@@ -12,3 +12,8 @@ export const OPENED_IN_PLACE_OF_SETTINGS = 'settings';
 export function sectionTakesBack(from: string | undefined): boolean {
   return from === OPENED_IN_PLACE_OF_SETTINGS;
 }
+
+/** The iOS edge swipe arrives as a `POP`; a tab, a sign-out, a link or a page's own `router.back()` (‹ Event on a copy) removes the screen some other way. */
+export function swipedBack(action: { type: string }): boolean {
+  return action.type === 'POP';
+}
