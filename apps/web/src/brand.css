@@ -12,4 +12,7 @@
   --brandAppleSurface: #000000;
   --brandAppleInk: #ffffff;
   --brandAppleFont: -apple-system, blinkmacsystemfont, 'Helvetica Neue', sans-serif;
+
+  /* Material 3's disabled content, which Google's guidelines defer to; Apple's publish no off look. */
+  --brandOffOpacity: 0.38;
 }

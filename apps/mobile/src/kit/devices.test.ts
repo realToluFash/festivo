@@ -2,7 +2,7 @@ import { ApiError, type DeviceSession } from '@soirely/api-client';
 import { type TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { deviceName, everywhereRefusal } from './devices.ts';
+import { deviceName, everywhereButton, everywhereRefusal, liftsIn } from './devices.ts';
 
 const t = ((key: string, values?: Record<string, string>) =>
   values == null ? key : `${key} ${JSON.stringify(values)}`) as unknown as TFunction;
@@ -73,6 +73,77 @@ describe('the devices card in the app', () => {
     expect(everywhereRefusal(refused('too_many_attempts', 429), false, t)).toEqual({
       kind: 'limited',
       until: null,
+    });
+  });
+
+  describe("which button proving it's you before signing out everywhere else draws", () => {
+    const step = {
+      providerName: 'Google',
+      confirmed: false,
+      codeAsked: false,
+      working: false,
+      refusal: null,
+      until: null,
+      keepsThisDevice: true,
+      count: 2,
+    };
+    const limited = { kind: 'limited', until: new Date('2026-10-30T14:35:00Z') } as const;
+
+    it("draws Google's button before Google and while the app checks what Google brought back", () => {
+      const google = {
+        kind: 'provider',
+        label: 'devices.everywhereContinueWith {"provider":"Google"}',
+        off: false,
+      };
+
+      expect(everywhereButton(step, t)).toEqual(google);
+      expect(everywhereButton({ ...step, confirmed: true, working: true }, t)).toEqual(google);
+    });
+
+    it("keeps Google's button and its words, off, when a limit comes back before the code step", () => {
+      expect(
+        everywhereButton({ ...step, confirmed: true, refusal: limited, until: '14:35' }, t),
+      ).toEqual({
+        kind: 'provider',
+        label: 'devices.everywhereContinueWith {"provider":"Google"}',
+        off: true,
+      });
+    });
+
+    it('draws the primary at the code step, saying when to try again once limited', () => {
+      const codeStep = { ...step, confirmed: true, codeAsked: true };
+
+      expect(everywhereButton(codeStep, t)).toEqual({
+        kind: 'primary',
+        label: 'devices.everywhereConfirm {"count":2}',
+        off: false,
+      });
+      expect(everywhereButton({ ...codeStep, refusal: limited, until: '14:35' }, t)).toEqual({
+        kind: 'primary',
+        label: 'devices.everywhereRetryAt {"time":"14:35"}',
+        off: true,
+      });
+    });
+
+    it('draws the primary beside a password', () => {
+      expect(
+        everywhereButton({ ...step, providerName: null, working: true, keepsThisDevice: false }, t),
+      ).toEqual({ kind: 'primary', label: 'devices.everywhereWorking', off: false });
+    });
+  });
+
+  describe("when a limit on proving it's you lifts", () => {
+    const until = new Date('2026-10-30T14:35:00Z');
+
+    it('lifts after the time left, and at once when the time has passed', () => {
+      expect(liftsIn({ kind: 'limited', until }, until.getTime() - 90_000)).toBe(90_000);
+      expect(liftsIn({ kind: 'limited', until }, until.getTime() + 1_000)).toBe(0);
+    });
+
+    it('never lifts by itself when nothing says when, or nothing is limited', () => {
+      expect(liftsIn({ kind: 'limited', until: null }, until.getTime())).toBeNull();
+      expect(liftsIn({ kind: 'failed', message: 'x' }, until.getTime())).toBeNull();
+      expect(liftsIn(null, until.getTime())).toBeNull();
     });
   });
 });
