@@ -559,9 +559,10 @@ def new_story(c, a):
     if c.role == "cd":
         labels.add("idea")
         state = "Backlog"
-        ideas = [s for s in store.stories(c.db) if "idea" in s["labels"] and not s["done"]]
+        ideas = W.open_ideas(store.stories(c.db))
         if len(ideas) >= MAX_IDEAS:
-            raise Refused(f"{len(ideas)} ideas are open already; at most {MAX_IDEAS}")
+            named = ", ".join(f"sc-{s['id']}" for s in ideas)
+            raise Refused(f"{len(ideas)} ideas are open already ({named}); at most {MAX_IDEAS}")
     if c.role in R.LINGUISTS:
         labels.add("translation")
     if c.role == "ops":

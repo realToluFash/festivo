@@ -890,6 +890,71 @@ describe('New event', () => {
     });
   });
 
+  it('asks before leaving with what was typed, and leaves when told to (sc-22147)', async () => {
+    signedIn();
+    answering({ 'GET /api/orgs/org_1/events': listed([]) });
+    await form();
+
+    fill('event-name', 'Owambe');
+    fireEvent.click(document.querySelector('.event-back')!);
+
+    const dialog = await screen.findByRole('alertdialog', { name: 'Leave without saving?' });
+    expect(within(dialog).getByText('What you typed for this event will be lost.')).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Leave without saving' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Events' })).toBeDefined();
+  });
+
+  it('keeps everything as it was typed when editing goes on (sc-22147)', async () => {
+    signedIn();
+    answering({});
+    await form();
+
+    fill('event-name', 'Owambe');
+    fill('event-type', 'wedding');
+    fill('event-currency', 'GBP');
+    fireEvent.click(
+      within(document.querySelector<HTMLElement>('.shell-sidebar')!).getByRole('link', {
+        name: 'Events',
+      }),
+    );
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Keep editing' }),
+    );
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    expect(screen.getByRole('heading', { level: 1, name: 'New event' })).toBeDefined();
+    expect(screen.getByLabelText<HTMLInputElement>('Event name').value).toBe('Owambe');
+    expect(screen.getByLabelText<HTMLSelectElement>('Type').value).toBe('wedding');
+    expect(screen.getByLabelText<HTMLSelectElement>('Currency').value).toBe('GBP');
+  });
+
+  it('leaves at once when nothing was typed (sc-22147)', async () => {
+    signedIn();
+    answering({ 'GET /api/orgs/org_1/events': listed([]) });
+    await form();
+
+    fireEvent.click(document.querySelector('.event-back')!);
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Events' })).toBeDefined();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('has the browser ask on reload only once something is typed (sc-22147)', async () => {
+    signedIn();
+    answering({});
+    await form();
+
+    const untouched = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(untouched);
+    expect(untouched.defaultPrevented).toBe(false);
+
+    fill('event-name', 'Owambe');
+    const typed = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(typed);
+    expect(typed.defaultPrevented).toBe(true);
+  });
+
   it("shows the server's refusals under the same fields, focus on the first", async () => {
     signedIn();
     answering({
@@ -3169,6 +3234,33 @@ describe('The cover (sc-3590)', () => {
         position: 50,
         description: null,
       }),
+    );
+  });
+
+  it('a new event left without saving discards the photo it staged (sc-22147)', async () => {
+    signedIn();
+    const sent = serving(null);
+    at('/app/events/new');
+    await screen.findByRole('heading', { level: 1, name: 'New event' });
+
+    choose(file());
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    await waitFor(() => expect(sent.map(({ line }) => line)).toContain('PUT /upload/1'));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
+    await screen.findByRole('button', { name: 'Change photo' });
+
+    fireEvent.click(document.querySelector('.event-back')!);
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog', { name: 'Leave without saving?' })).getByRole(
+        'button',
+        { name: 'Leave without saving' },
+      ),
+    );
+
+    await waitFor(() =>
+      expect(
+        sent.find(({ line }) => line === 'DELETE /api/orgs/org_1/event-cover-uploads')?.body,
+      ).toEqual({ uploadKey: 'event_cover/org_1/2026/10/one.jpg' }),
     );
   });
 

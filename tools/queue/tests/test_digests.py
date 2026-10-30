@@ -138,3 +138,29 @@ class LinguistPick(unittest.TestCase):
         lines = self.render("sweep")
         self.assertEqual(sorted(self.offered(lines)), ["sc-1", "sc-2", "sc-3", "sc-4", "sc-5"])
         self.assertNotIn("This is a pick", " ".join(lines))
+
+
+class Ideas(unittest.TestCase):
+    STORIES = [{**ready(n), "labels": ["idea"], "state": state, "description": "", "links": []}
+               for n, state in enumerate(["Backlog", "To Do", "Waiting On Owner",
+                                          "Ready For Dev", "Backlog"], start=1)]
+
+    def render(self, role):
+        p = Digest(role)
+        with mock.patch.object(digests, "qa_outstanding", return_value=[]), \
+                mock.patch.object(digests.store, "stories", return_value=self.STORIES), \
+                mock.patch.object(digests.store, "get_meta", return_value=None):
+            digests.DIGESTS[role](p, None, self.STORIES)
+        return p.lines
+
+    def test_the_creative_director_counts_the_ideas_the_cap_counts(self):
+        lines = self.render("cd")
+        self.assertEqual(lines[0], "Your open ideas (2, at most 3):")
+        self.assertEqual([entry.split()[0] for entry in lines[1:]], ["sc-1", "sc-5"])
+        self.assertEqual(digests.W.open_ideas(self.STORIES), [self.STORIES[0], self.STORIES[4]])
+
+    def test_the_product_manager_is_asked_about_the_ideas_still_in_backlog(self):
+        lines = self.render("pm")
+        start = lines.index("Ideas waiting on a decision:") + 1
+        listed = lines[start:lines.index("", start)]
+        self.assertEqual([entry.split()[0] for entry in listed], ["sc-1", "sc-5"])

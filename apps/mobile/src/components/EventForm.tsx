@@ -58,8 +58,7 @@ import {
   changesOf,
   isDirty,
   newEventOf,
-  pickedDate,
-  pickedTime,
+  pickedInto,
   pickerValue,
   sendOutcome,
   typedOf,
@@ -701,6 +700,8 @@ function Moment({
   const locale = dateLocale();
   const [picking, setPicking] = useState<'date' | 'time' | null>(null);
   const [held, setHeld] = useState<Date | null>(null);
+  const [openedBy, setOpenedBy] = useState<'date' | 'time'>('date');
+  const timePicker = useRef<ViewInstance>(null);
   const skipped = skippedLine(date, time, timeZone, locale, t);
   const helpLines = [skipped, help].filter((line) => line != null);
 
@@ -720,12 +721,18 @@ function Moment({
     }
 
     setHeld(value);
+    setOpenedBy(mode);
     setPicking(mode);
   }
 
   function take(mode: 'date' | 'time', picked: Date): void {
-    if (mode === 'date') onPick(pickedDate(picked), time);
-    else onPick(date === '' ? pickedDate(picked) : date, pickedTime(picked));
+    const kept = pickedInto(mode, picked, { date, time });
+    onPick(kept.date, kept.time);
+  }
+
+  function keep(): void {
+    if (picking != null && held != null) take(picking, held);
+    setPicking(null);
   }
 
   const dayWords = date === '' ? t('eventForm.date') : formatWallDay(date, locale);
@@ -773,6 +780,7 @@ function Moment({
         </View>
         <Field label={t('eventForm.time')}>
           <Pressable
+            ref={timePicker}
             style={[
               styles.pick,
               readOnly && styles.pickReadOnly,
@@ -806,9 +814,9 @@ function Moment({
       {Platform.OS === 'ios' && (
         <Sheet
           open={picking != null}
-          onClose={() => setPicking(null)}
+          onClose={keep}
           scrimLabel={t('eventForm.pickerDone')}
-          opener={pickerRef}
+          opener={openedBy === 'time' ? timePicker : pickerRef}
           testID={`${testID}.sheet`}
         >
           <View style={styles.ask}>
@@ -827,10 +835,7 @@ function Moment({
             )}
             <PrimaryButton
               label={t('eventForm.pickerDone')}
-              onPress={() => {
-                if (picking != null && held != null) take(picking, held);
-                setPicking(null);
-              }}
+              onPress={keep}
               testID={`${testID}.done`}
             />
           </View>

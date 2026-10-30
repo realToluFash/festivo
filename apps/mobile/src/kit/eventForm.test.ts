@@ -10,6 +10,7 @@ import {
   isDirty,
   newEventOf,
   pickedDate,
+  pickedInto,
   pickedTime,
   pickerValue,
   sendOutcome,
@@ -145,6 +146,31 @@ describe('the platform pickers', () => {
     const picked = pickerValue('', '', new Date('2026-10-26T08:15:00Z'));
 
     expect([pickedDate(picked), pickedTime(picked)]).toEqual(['2026-10-26', '12:00']);
+  });
+});
+
+describe('the field a pick lands in, on either platform', () => {
+  const field = { date: '2026-11-14', time: '16:00' };
+
+  it('takes the date picked, and keeps the time', () => {
+    const picked = pickerValue('2026-12-05', '16:00', new Date('2026-01-01T00:00:00Z'));
+
+    expect(pickedInto('date', picked, field)).toEqual({ date: '2026-12-05', time: '16:00' });
+  });
+
+  it('takes the time picked, and keeps the date', () => {
+    const picked = pickerValue('2026-11-14', '19:45', new Date('2026-01-01T00:00:00Z'));
+
+    expect(pickedInto('time', picked, field)).toEqual({ date: '2026-11-14', time: '19:45' });
+  });
+
+  it('fills an empty date with the day a time was picked on', () => {
+    const picked = pickerValue('', '09:30', new Date('2026-10-26T08:15:00Z'));
+
+    expect(pickedInto('time', picked, { date: '', time: '' })).toEqual({
+      date: '2026-10-26',
+      time: '09:30',
+    });
   });
 });
 

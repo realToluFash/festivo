@@ -21,22 +21,12 @@ import {
   type VenueDraft,
   venueDraftOf,
 } from '@soirely/domain';
-import {
-  type FormEvent,
-  type RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { type FormEvent, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useBlocker, useLocation, useNavigate, useParams } from 'react-router';
+import { Link, useLocation, useNavigate, useParams } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { useDialogKeys } from '../../../dialogFocus.ts';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
-import { offButton } from '../../../offButton.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
 import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
@@ -45,6 +35,7 @@ import { Forbidden } from '../Forbidden.tsx';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
+import { Confirm } from './Confirm.tsx';
 import { CoverSection } from './CoverSection.tsx';
 import { Choice, FieldError, Moment } from './EventFields.tsx';
 import {
@@ -58,6 +49,7 @@ import {
 } from './eventFieldOrder.ts';
 import { typeChoices } from './eventTypes.ts';
 import { HostsSection } from './HostsSection.tsx';
+import { useLeaveGuard } from './useLeaveGuard.tsx';
 import { useStartCarriesEnd } from './useStartCarriesEnd.ts';
 import { VenueSection } from './VenueSection.tsx';
 
@@ -216,8 +208,6 @@ function DetailsForm({
   const [confirming, setConfirming] = useState<'latest' | null>(null);
   const [fetchingLatest, setFetchingLatest] = useState(false);
   const focusNext = useRef<(() => void) | null>(null);
-  const closing = useRef(false);
-  const saving = useRef(false);
   const [notSaved, arriveAtNotSaved] = useStepFocus<HTMLParagraphElement>();
   const [saveButton, arriveAtSave] = useStepFocus<HTMLButtonElement>();
   const now = useServerNow();
@@ -254,9 +244,7 @@ function DetailsForm({
     [saved.timeZone, timeZone],
   );
   const types = useMemo(() => typeChoices(draft.type, t), [draft.type, t]);
-  const blocker = useBlocker(
-    useCallback(() => saving.current || (dirty && !closing.current), [dirty]),
-  );
+  const leave = useLeaveGuard({ dirty, busy, body: t('eventEdit.leaveBody') });
 
   const [toVenue] = useState(() => location.hash === '#venue');
   const [toCover] = useState(() => location.hash === '#cover');
@@ -270,15 +258,6 @@ function DetailsForm({
     else if (toHosts)
       document.getElementById(firstHost == null ? ADD_HOST_ID : hostInputId(firstHost))?.focus();
   }, [reread, toVenue, toCover, toHosts, firstHost]);
-
-  useEffect(() => {
-    if (!dirty) return;
-
-    const ask = (event: BeforeUnloadEvent): void => event.preventDefault();
-    window.addEventListener('beforeunload', ask);
-
-    return () => window.removeEventListener('beforeunload', ask);
-  }, [dirty]);
 
   useEffect(() => {
     focusNext.current?.();
@@ -338,7 +317,7 @@ function DetailsForm({
   }
 
   function close(outcome: EditOutcome): void {
-    closing.current = true;
+    leave.release();
     void navigate(eventPath, { state: { edit: outcome } });
   }
 
@@ -369,16 +348,12 @@ function DetailsForm({
     }
 
     setStatus('saving');
-    saving.current = true;
     const land = focusWhereSent();
 
     try {
       await api.updateEvent(saved.id, changes, opened.tag);
-      saving.current = false;
       close('saved');
     } catch (error) {
-      saving.current = false;
-
       if (error instanceof ApiError && error.status === 412) {
         setStatus('changedElsewhere');
         return;
@@ -427,7 +402,7 @@ function DetailsForm({
 
     try {
       const latest = await api.taggedEvent(saved.id);
-      closing.current = true;
+      leave.release();
       onLatest(latest);
     } catch {
       setFetchingLatest(false);
@@ -676,99 +651,7 @@ function DetailsForm({
         />
       )}
 
-      {blocker.state === 'blocked' && !busy && (
-        <Confirm
-          id="event-leave"
-          title={t('eventEdit.leaveTitle')}
-          body={t('eventEdit.leaveBody')}
-          go={t('eventEdit.leave')}
-          pending={false}
-          opensPage
-          onGo={() => blocker.proceed()}
-          onKeep={() => blocker.reset()}
-        />
-      )}
-    </>
-  );
-}
-
-/** Keep editing is the safe answer, so focus starts there; Escape keeps editing too, and focus goes back where it was unless going on opened another page. */
-function Confirm({
-  id,
-  title,
-  body,
-  go,
-  pending,
-  opensPage = false,
-  onGo,
-  onKeep,
-}: {
-  id: string;
-  title: string;
-  body: string;
-  go: string;
-  pending: boolean;
-  opensPage?: boolean;
-  onGo: () => void;
-  onKeep: () => void;
-}) {
-  const { t } = useTranslation();
-  const dialog = useRef<HTMLDivElement>(null);
-  const keep = useRef<HTMLButtonElement>(null);
-  const left = useRef(false);
-
-  useEffect(() => {
-    const opener = document.activeElement;
-
-    keep.current?.focus();
-
-    return () => {
-      if (left.current) return;
-      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
-    };
-  }, []);
-
-  useDialogKeys(dialog, onKeep, pending);
-
-  return (
-    <>
-      <div className="dialog-scrim" aria-hidden="true" />
-      <div
-        ref={dialog}
-        className="dialog"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby={`${id}-title`}
-        aria-describedby={`${id}-body`}
-      >
-        <div className="dialog-heading">
-          <h2 id={`${id}-title`}>{title}</h2>
-          <p id={`${id}-body`}>{body}</p>
-        </div>
-        <div className="dialog-actions">
-          <button
-            ref={keep}
-            type="button"
-            className="button button-primary"
-            {...offButton(pending, { dim: false })}
-            onClick={onKeep}
-          >
-            {t('eventEdit.keepEditing')}
-          </button>
-          <button
-            type="button"
-            className="button"
-            {...offButton(pending, { dim: false })}
-            aria-busy={pending}
-            onClick={() => {
-              left.current = opensPage;
-              onGo();
-            }}
-          >
-            {go}
-          </button>
-        </div>
-      </div>
+      {leave.dialog}
     </>
   );
 }

@@ -594,6 +594,39 @@ class NewStories(Base):
         with self.assertRaisesRegex(actions.Refused, "belongs to an epic.*new-epic"):
             self.file(None)
 
+    def idea(self):
+        self.fake.create_story = lambda **f: self.fake.raw.setdefault(
+            50, {"id": 50, "name": f["name"], "workflow_state_id": f["workflow_state_id"],
+                 "moved_at": "t0", "labels": f["labels"], "comments": [], "description": ""})
+        store.set_meta(self.db, "epics", {"22091": {"name": "Ideas", "state": "in progress"}})
+        return actions.new_story(self.as_("cd"), args(name="x", text="y", type=None,
+                                                       state=None, label=None, epic=22091,
+                                                       estimate=None))
+
+    def ideas(self, *states):
+        for number, state in enumerate(states, start=1):
+            self.fake.add(number, state, ["idea"])
+            self.as_("cd").story(number)
+
+    def test_three_ideas_in_backlog_refuse_a_fourth_and_are_named(self):
+        self.ideas("Backlog", "Backlog", "Backlog")
+        with self.assertRaisesRegex(actions.Refused, r"^3 ideas are open already "
+                                                     r"\(sc-1, sc-2, sc-3\); at most 3$"):
+            self.idea()
+        self.assertNotIn(50, self.fake.raw)
+
+    def test_ideas_the_product_manager_decided_leave_the_count(self):
+        self.ideas("To Do", "Waiting On Owner", "Ready For Dev", "Done")
+        self.assertIn("created sc-50 in Backlog", self.idea())
+        self.assertEqual(self.state(50), "Backlog")
+        self.assertEqual(self.labels(50), {"idea"})
+        self.assertEqual(self.labels(1), {"idea"})
+
+    def test_an_idea_still_needs_an_epic(self):
+        with self.assertRaisesRegex(actions.Refused, "belongs to an epic"):
+            actions.new_story(self.as_("cd"), args(name="x", text="y", type=None, state=None,
+                                                    label=None, epic=None, estimate=None))
+
     def test_a_story_in_a_done_or_unknown_epic_is_refused(self):
         store.set_meta(self.db, "epics", {"26": {"name": "Foundation", "state": "done"}})
         with self.assertRaisesRegex(actions.Refused, "epic 26 is done"):
