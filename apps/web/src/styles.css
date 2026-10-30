@@ -2732,14 +2732,14 @@ span {
   color: var(--colorInkOnDark);
 }
 
-.tz-current {
+.current-value {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--spaceSm) var(--spaceLg);
 }
 
-.tz-current-text {
+.current-value-text {
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -2747,7 +2747,7 @@ span {
   min-width: 12rem;
 }
 
-.tz-current-label {
+.current-value-label {
   font: var(--typeRowTitle);
 }
 

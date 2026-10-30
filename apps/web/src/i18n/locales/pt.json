@@ -943,6 +943,16 @@
     "keptByRule": "Uma regra definida por {{organisation}}: todos os membros iniciam sessão com Google ou Apple, por isso não pode desassociar a última conta que lhe resta.",
     "keptByRuleNext": "Se quiser desassociar a conta {{provider}}, associe primeiro uma conta {{other}}."
   },
+  "nameCard": {
+    "title": "Nome",
+    "change": "Alterar",
+    "save": "Guardar nome",
+    "saving": "A guardar…",
+    "cancel": "Cancelar",
+    "saved": "Nome alterado para {{name}}.",
+    "blank": "Introduza o seu nome.",
+    "failed": "Não foi possível guardar o seu nome. Verifique a sua ligação e tente novamente."
+  },
   "timeZone": {
     "title": "Fuso horário",
     "intro": "As horas nos emails e mensagens que a Soirely lhe envia são escritas neste fuso.",

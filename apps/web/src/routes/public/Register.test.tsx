@@ -90,6 +90,7 @@ describe('creating an account', () => {
       screen.getByText('Next, we email you a code to check the address is yours.'),
     ).toBeDefined();
     expect(screen.getByLabelText('Full name').getAttribute('autocomplete')).toBe('name');
+    expect((screen.getByLabelText('Full name') as HTMLInputElement).maxLength).toBe(180);
     expect(screen.getByLabelText('Email').getAttribute('autocomplete')).toBe('email');
     expect(screen.getByLabelText('Password').getAttribute('autocomplete')).toBe('new-password');
     expect(screen.getByText('At least 15 characters')).toBeDefined();

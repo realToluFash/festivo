@@ -943,6 +943,16 @@
     "keptByRule": "Une règle fixée par {{organisation}} : tous ses membres se connectent avec Google ou Apple, vous ne pouvez donc pas dissocier le dernier compte qui vous reste.",
     "keptByRuleNext": "Associez d’abord {{other}} si vous voulez dissocier {{provider}}."
   },
+  "nameCard": {
+    "title": "Nom",
+    "change": "Modifier",
+    "save": "Enregistrer le nom",
+    "saving": "Enregistrement…",
+    "cancel": "Annuler",
+    "saved": "Votre nom est désormais {{name}}.",
+    "blank": "Saisissez votre nom.",
+    "failed": "Votre nom n’a pas pu être enregistré. Vérifiez votre connexion et réessayez."
+  },
   "timeZone": {
     "title": "Fuseau horaire",
     "intro": "Les heures des e-mails et SMS que Soirely vous envoie sont écrites dans ce fuseau.",

@@ -1,5 +1,10 @@
 import { ApiError } from '@soirely/api-client';
-import { formatTimeOfDay, lockLiftsAt, meetsPasswordLength } from '@soirely/domain';
+import {
+  ACCOUNT_NAME_MAXIMUM,
+  formatTimeOfDay,
+  lockLiftsAt,
+  meetsPasswordLength,
+} from '@soirely/domain';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
@@ -146,6 +151,7 @@ export function Register() {
             autoComplete="name"
             autoCorrect="off"
             spellCheck={false}
+            maxLength={ACCOUNT_NAME_MAXIMUM}
             {...offField(busy)}
             aria-invalid={fields.name != null}
             aria-describedby={fields.name ? 'name-error' : undefined}
