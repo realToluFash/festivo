@@ -23,6 +23,8 @@ appId: host.exp.Exponent
           start: 50%, 85%
           end: 50%, 65%
           duration: 400
+- assertVisible:
+    id: 'eventDuplicate.create'
 - takeScreenshot: 1h-unchosen
 - openLink: ${METRO_URL}/--/events/${E2}
 - scrollUntilVisible:
@@ -46,6 +48,8 @@ appId: host.exp.Exponent
           start: 50%, 85%
           end: 50%, 65%
           duration: 400
+- assertVisible:
+    id: 'eventDuplicate.create'
 - takeScreenshot: 2h-unchosen
 - openLink: ${METRO_URL}/--/events/${E3}
 - scrollUntilVisible:
@@ -69,6 +73,8 @@ appId: host.exp.Exponent
           start: 50%, 85%
           end: 50%, 65%
           duration: 400
+- assertVisible:
+    id: 'eventDuplicate.create'
 - takeScreenshot: 45m-unchosen
 - openLink: ${METRO_URL}/--/events/${E4}
 - scrollUntilVisible:
@@ -92,6 +98,8 @@ appId: host.exp.Exponent
           start: 50%, 85%
           end: 50%, 65%
           duration: 400
+- assertVisible:
+    id: 'eventDuplicate.create'
 - takeScreenshot: 2h30-unchosen
 - tapOn:
     id: 'eventDuplicate.create'
@@ -149,6 +157,8 @@ appId: host.exp.Exponent
           start: 50%, 85%
           end: 50%, 65%
           duration: 400
+- assertVisible:
+    id: 'eventDuplicate.create'
 - takeScreenshot: 2h30-ends
 - tapOn:
     id: 'eventDuplicate.create'
