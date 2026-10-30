@@ -1,0 +1,39 @@
+# sc-20824: after Save changes from ${EVENT_ID}'s Edit details, scroll the event's page to its top and read the Saved notice there.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.page.edit'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'events.page.edit'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 20000
+- tapOn:
+    id: 'eventForm.name'
+- inputText: ' Noted'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'eventForm.send'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 3000
+- takeScreenshot: landed
+- scrollUntilVisible:
+    element: '(Saved|Cambios guardados)'
+    direction: UP
+- takeScreenshot: notice

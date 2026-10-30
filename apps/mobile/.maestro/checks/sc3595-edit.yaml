@@ -1,4 +1,4 @@
-# sc-3595: in ${ORG}, ${EVENT_ID}'s page opens Edit details with its values; Cancel after a change asks Leave without saving?, and Keep editing keeps it; ELSEWHERE_NAME saved meanwhile by another session makes Save changes answer 412, whose Show the latest asks and then shows that version; a new name saved returns to the page with Saved.
+# sc-3595: in ${ORG}, ${EVENT_ID}'s page opens Edit details with its values; Cancel (a phone's header back, a tablet's form control) after a change asks Leave without saving?, and Keep editing keeps it; ELSEWHERE_NAME saved meanwhile by another session makes Save changes answer 412, whose Show the latest asks and then shows that version; a new name saved returns to the page with Saved.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
@@ -9,8 +9,13 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/events/${EVENT_ID}
 - extendedWaitUntil:
     visible:
-      id: 'events.page.edit'
+      id: 'events.page'
     timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.page.edit'
+    direction: DOWN
+    centerElement: true
 - takeScreenshot: page
 - tapOn:
     id: 'events.page.edit'
@@ -23,12 +28,24 @@ appId: host.exp.Exponent
     id: 'eventForm.name'
 - inputText: ' mine'
 - hideKeyboard
-- scrollUntilVisible:
-    element:
-      id: 'eventForm.cancel'
-    direction: UP
-- tapOn:
-    id: 'eventForm.cancel'
+- runFlow:
+    when:
+      notVisible:
+        id: 'frame.back'
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: 'eventForm.cancel'
+          direction: UP
+      - tapOn:
+          id: 'eventForm.cancel'
+- runFlow:
+    when:
+      visible:
+        id: 'frame.back'
+    commands:
+      - tapOn:
+          id: 'frame.back'
 - extendedWaitUntil:
     visible:
       id: 'eventForm.leave.keep'

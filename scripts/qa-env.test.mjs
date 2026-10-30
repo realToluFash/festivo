@@ -59,6 +59,7 @@ import {
   expoGoIosClient,
   expoGoRunning,
   expoSdkMajor,
+  flowUrls,
   forAndroid,
   openIntent,
   linkIntent,
@@ -757,6 +758,18 @@ describe('Expo Go for iOS', () => {
       version: '58.0.2',
     });
     expect(() => expoGoIosClient(versions, '~57.0.0')).toThrow(/iOS for SDK 57/);
+  });
+});
+
+describe("a flow's URLs", () => {
+  it('name the API and the web client, for a second session in a runScript', () => {
+    const { urls, ports } = qaConfig(1);
+    expect(flowUrls(urls)).toEqual({
+      METRO_URL: `exp://127.0.0.1:${ports.METRO_PORT}`,
+      MAILPIT_URL: `http://127.0.0.1:${ports.MAILPIT_UI_PORT}`,
+      API_URL: `http://127.0.0.1:${ports.API_PORT}`,
+      WEB_URL: `http://127.0.0.1:${ports.WEB_PORT}`,
+    });
   });
 });
 
