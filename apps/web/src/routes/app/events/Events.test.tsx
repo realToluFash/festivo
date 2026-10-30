@@ -4847,6 +4847,7 @@ describe('Make live asks for a missing host (sc-22143)', () => {
     expect((await within(dialog).findByRole('alert')).textContent).toContain(
       'Not made live. Try again in a moment.',
     );
+    expect(within(dialog).queryByLabelText('Host 1')).toBeNull();
     await waitFor(() =>
       expect(document.activeElement).toBe(
         within(dialog).getByRole('button', { name: 'Make live' }),

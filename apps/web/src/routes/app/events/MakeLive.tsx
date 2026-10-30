@@ -156,7 +156,11 @@ export function DraftRow({
       await reread();
       refused({ title: t('eventLive.notMadeLive'), lines: [t('eventLive.endPassed')] });
     } else {
-      setAsking({ ...settled, failed: true });
+      setAsking({
+        ...settled,
+        ...(step.saved != null && { askHost: false, typed: '' }),
+        failed: true,
+      });
     }
   }
 
