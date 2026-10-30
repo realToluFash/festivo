@@ -74,6 +74,8 @@ interface ScreenScrollView {
   offset: RefObject<number>;
   /** Keeps the content at least its height now and `more`, until a scroll, a drag or TalkBack's own, brings the view's end back inside the content's real end, or the keys come up again. */
   hold(more: number): void;
+  /** Whether a view taking input focus scrolls itself into sight, which Android does by default. */
+  focusScrolls(on: boolean): void;
 }
 
 const ScreenScroll = createContext<ScreenScrollView | null>(null);
@@ -556,6 +558,8 @@ export function useStepClose(
         for (const [at, step] of steps.entries()) {
           if (step.do === 'holdScroll') {
             scroll?.hold(Keyboard.metrics()?.height ?? 0);
+            scroll?.focusScrolls(false);
+            cancels.push(() => scroll?.focusScrolls(true));
             continue;
           }
           if (step.do === 'showOpener') {
@@ -600,6 +604,7 @@ export function useStepClose(
 
           const done = setTimeout(() => {
             started.current = false;
+            scroll?.focusScrolls(true);
             setClosing(false);
             finishNow.current(step.focusBack ? stepClosed(to) : undefined);
           }, step.atMs);
@@ -678,12 +683,14 @@ function useScreenScrollView() {
   const offset = useRef(0);
   const contentHeight = useRef(0);
   const [held, setHeld] = useState<number | null>(null);
+  const [scrollsToFocus, setScrollsToFocus] = useState(true);
   const [screenScroll] = useState<ScreenScrollView>(() => ({
     ref: scrollView,
     resized: new Set(),
     origin,
     offset,
     hold: (more) => setHeld(contentHeight.current + more),
+    focusScrolls: setScrollsToFocus,
   }));
   useEffect(() => {
     origin.current = windowOrigin;
@@ -715,6 +722,7 @@ function useScreenScrollView() {
       onScroll: follow,
       onScrollEndDrag: follow,
       onMomentumScrollEnd: follow,
+      scrollsChildToFocus: scrollsToFocus,
     },
     heldStyle: held == null ? undefined : { minHeight: held },
     onContentLayout: (event: LayoutChangeEvent) => {
