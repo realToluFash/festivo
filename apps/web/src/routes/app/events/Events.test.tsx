@@ -792,6 +792,7 @@ describe('New event', () => {
         endsAt: '2026-11-14T16:00',
         timeZone: 'Africa/Lagos',
         currency: 'NGN',
+        hosts: [],
       }),
     );
   });
@@ -826,6 +827,7 @@ describe('New event', () => {
         endsAt: '2026-11-15T02:00',
         timeZone: 'Europe/London',
         currency: 'GBP',
+        hosts: [],
       },
     });
   });
@@ -955,6 +957,115 @@ describe('New event', () => {
     expect((document.getElementById('event-name') as HTMLInputElement).value).toBe('Gala');
     expect((document.getElementById('event-end-time') as HTMLInputElement).value).toBe('18:00');
     expect(screen.getByLabelText<HTMLSelectElement>('Currency').value).toBe('EUR');
+  });
+
+  describe('Hosted by (sc-22143)', () => {
+    function hosts(): HTMLElement {
+      return screen.getByRole('region', { name: 'Hosted by' });
+    }
+
+    function fillWhen(): void {
+      fill('event-type', 'party');
+      fill('event-start-date', '2026-11-14');
+      fill('event-start-time', '16:00');
+      fill('event-end-time', '18:00');
+    }
+
+    it('sits after Type and before When with one empty Host 1 that can be removed', async () => {
+      signedIn();
+      answering({});
+      await form();
+
+      expect(within(hosts()).getByLabelText('Host 1')).toBeDefined();
+      expect(within(hosts()).queryAllByRole('textbox')).toHaveLength(1);
+      expect(within(hosts()).getByRole('button', { name: 'Remove Host 1' })).toBeDefined();
+      expect(
+        within(hosts()).getByText(
+          'Guests read these names on their invitation and their page, in this order. Write them the way you want guests to see them.',
+        ),
+      ).toBeDefined();
+
+      fireEvent.click(within(hosts()).getByRole('button', { name: 'Remove Host 1' }));
+
+      expect(
+        within(hosts()).getByText(
+          'No hosts yet. The event can be made live once it has at least one.',
+        ),
+      ).toBeDefined();
+    });
+
+    it('creates the event with its hosts, cleaned and in their order, in one request', async () => {
+      signedIn();
+      const sent = answering({
+        'POST /api/orgs/org_1/events': () => json({ event: event() }, 201),
+        'GET /api/events/ev_1': () => json({ event: event() }),
+      });
+      await form();
+
+      fill('event-name', 'Gala');
+      fillWhen();
+      fill('event-host-0', '  Funmi\nAdeyemi ');
+      fireEvent.click(within(hosts()).getByRole('button', { name: 'Add a host' }));
+      fill('event-host-1', 'Tayo Adeyemi');
+      create();
+
+      await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+      const posts = sent.filter(({ line }) => line === 'POST /api/orgs/org_1/events');
+      expect(posts).toHaveLength(1);
+      expect(posts[0]?.body).toMatchObject({ hosts: ['Funmi Adeyemi', 'Tayo Adeyemi'] });
+    });
+
+    it('refuses an empty row once there are two, with every message at once, focus on the first in order', async () => {
+      signedIn();
+      const sent = answering({});
+      await form();
+
+      fillWhen();
+      fireEvent.click(within(hosts()).getByRole('button', { name: 'Add a host' }));
+      fill('event-host-1', 'é'.repeat(61));
+      create();
+
+      const name = document.getElementById('event-name')!;
+      await waitFor(() => expect(document.activeElement).toBe(name));
+      expect(errorUnder('event-host-0')).toContain('Enter a name or remove this host.');
+      expect(errorUnder('event-host-1')).toContain(
+        "A host's name can be at most 60 characters. This one has 61.",
+      );
+      expect(sent.map(({ line }) => line)).not.toContain('POST /api/orgs/org_1/events');
+
+      fill('event-name', 'Gala');
+      create();
+
+      await waitFor(() =>
+        expect(document.activeElement).toBe(document.getElementById('event-host-0')),
+      );
+      expect(sent.map(({ line }) => line)).not.toContain('POST /api/orgs/org_1/events');
+    });
+
+    it("shows the server's refusal under the row it names, creating nothing", async () => {
+      signedIn();
+      answering({
+        'POST /api/orgs/org_1/events': () =>
+          problem(422, 'validation_failed', {
+            violations: [
+              { propertyPath: 'hosts[1]', message: 'Refused by the server.', code: 'invalid' },
+            ],
+          }),
+      });
+      await form();
+
+      fill('event-name', 'Gala');
+      fillWhen();
+      fill('event-host-0', 'Funmi Adeyemi');
+      fireEvent.click(within(hosts()).getByRole('button', { name: 'Add a host' }));
+      fill('event-host-1', 'Tayo Adeyemi');
+      create();
+
+      const second = document.getElementById('event-host-1')!;
+      await waitFor(() => expect(document.activeElement).toBe(second));
+      expect(errorUnder('event-host-1')).toContain('Refused by the server.');
+      expect((second as HTMLTextAreaElement).value).toBe('Tayo Adeyemi');
+    });
   });
 
   it('is not offered to a role without Create events', async () => {
@@ -1793,6 +1904,7 @@ describe("An event's venue (sc-3589)", () => {
     const headings = screen.getAllByRole('heading', { level: 2 }).map((one) => one.textContent);
     expect(headings).toEqual([
       'About the event',
+      'Hosted by',
       'Cover',
       'When',
       'Venue',

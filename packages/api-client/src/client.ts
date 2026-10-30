@@ -442,7 +442,7 @@ export interface VenueInput {
   addressId?: string | null;
 }
 
-/** `startsAt` and `endsAt` are local to `timeZone`, with no offset: "2026-11-14T16:00". */
+/** `startsAt` and `endsAt` are local to `timeZone`, with no offset: "2026-11-14T16:00". `hosts` is checked as an edit's (sc-22143). */
 export interface NewEvent {
   name: string;
   type: EventType;
@@ -451,6 +451,7 @@ export interface NewEvent {
   timeZone: string;
   currency: string;
   venue?: VenueInput | null;
+  hosts?: string[];
 }
 
 /** One of the address lookup's suggestions (sc-53): the place's name, and the rest of its line. */
@@ -465,7 +466,7 @@ export interface PickedAddress extends VenueAddress {
 }
 
 /** What an edit sends: any of the fields, those left out keep their value (sc-3587); `hosts` is the whole list (sc-6713). */
-export type EventChanges = Partial<NewEvent> & { hosts?: string[] };
+export type EventChanges = Partial<NewEvent>;
 
 /** An event with its `ETag`, which an edit sends back as `If-Match`. */
 export interface TaggedEvent {
