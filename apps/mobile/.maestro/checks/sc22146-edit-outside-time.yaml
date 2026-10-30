@@ -1,0 +1,40 @@
+# sc-22146: on iOS, Edit details of EVENT (starting 14:00), Starts time sheet, the wheel scrolled and the sheet closed by a tap outside; Starts' time no longer shows 14:00.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}/edit
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.start.time'
+    direction: DOWN
+    centerElement: true
+- swipe:
+    start: 50%, 45%
+    end: 50%, 57%
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'eventForm.start.time'
+- takeScreenshot: before
+- tapOn:
+    id: 'eventForm.start.time'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.start.done'
+    timeout: 10000
+- swipe:
+    start: 35%, 80%
+    end: 35%, 70%
+- waitForAnimationToEnd
+- takeScreenshot: picked
+- tapOn:
+    point: '50%,8%'
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'eventForm.start.done'
+- assertVisible:
+    id: 'eventForm.start.time'
+    text: '^(?!.*14:00).*\d.*'
+- takeScreenshot: kept
