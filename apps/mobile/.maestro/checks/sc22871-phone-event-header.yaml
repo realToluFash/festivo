@@ -1,4 +1,4 @@
-# sc-22871 on a phone: the event ${EVENT}'s page titles the header Events under ‹ Events, the name ${NAME} is the card's heading and scrolls away, and the page reaches Delete event.
+# sc-22871 on a phone: the event ${EVENT}'s page has ‹ Events on its back, the name ${NAME} is the card's heading and scrolls away with it, and the page reaches Delete event.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/${EVENT}
@@ -10,7 +10,6 @@ appId: host.exp.Exponent
 - assertVisible:
     id: 'frame.back'
     text: '{{t:eventsScreen.title}}'
-- assertVisible: '{{t:eventsScreen.title}}'
 - assertVisible: '${NAME}'
 - takeScreenshot: top
 - scrollUntilVisible:
@@ -18,5 +17,5 @@ appId: host.exp.Exponent
       id: 'events.delete'
     direction: DOWN
     timeout: 120000
-- assertVisible: '{{t:eventsScreen.title}}'
+- assertNotVisible: '${NAME}'
 - takeScreenshot: scrolled

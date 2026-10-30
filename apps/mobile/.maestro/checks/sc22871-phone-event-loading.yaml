@@ -1,6 +1,10 @@
 # sc-22871 on a phone, with the API stopped: the event ${EVENT}'s page, before it loads, titles the header Events under ‹ Events at the same height as once loaded.
 appId: host.exp.Exponent
 ---
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
 - openLink: ${METRO_URL}/--/events/${EVENT}
 - assertVisible:
     id: 'frame.back'

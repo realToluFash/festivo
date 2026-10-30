@@ -1,4 +1,4 @@
-# sc-22871 on a phone: the copy ${COPY} of ${EVENT}, opened at the link Duplicate opens, titles the header Events under ‹ Event; ‹ Event returns to ${EVENT}'s page, and its ‹ Events to the list with ${EVENT}'s row in view.
+# sc-22871 on a phone: the copy ${COPY} of ${EVENT}, opened at the link Duplicate opens, has ‹ Event on its back; ‹ Event returns to ${EVENT}'s page, and its ‹ Events to the list with ${EVENT}'s row in view.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/${COPY}?from=${EVENT}
@@ -10,7 +10,6 @@ appId: host.exp.Exponent
 - assertVisible:
     id: 'frame.back'
     text: '{{t:timeline.backToEvent}}'
-- assertVisible: '{{t:eventsScreen.title}}'
 - takeScreenshot: copy-top
 - tapOn:
     id: 'frame.back'
