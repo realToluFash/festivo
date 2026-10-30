@@ -35,7 +35,7 @@ export function storeUrl(platform: 'ios' | 'android', appStoreId: string | undef
     return 'https://play.google.com/store/apps/details?id=com.soirely.app';
 
   return appStoreId == null
-    ? 'https://apps.apple.com/search?term=Soirely'
+    ? 'https://apps.apple.com/iphone/search?term=Soirely'
     : `https://apps.apple.com/app/id${appStoreId}`;
 }
 
