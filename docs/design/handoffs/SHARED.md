@@ -23,6 +23,13 @@ Two things to hold onto throughout:
   established visual language, and must show exactly what its story's AC says — no more.
 - **You are not the designer.** What you build is a proposal to be reviewed, and every
   ticket you touch has to say so. Do not present it as the design.
+- **Start from the epic's proposal boards.** Every epic page carries, for each screen, a
+  proposal board (see **Three boards per screen**). A new drawing for that epic takes its
+  context from those boards: their shell, layout, components and words. Not from [fd]
+  alone, not from older boards, and not from today's app. The owner set this on 30 Oct
+  2026, together with the migration rule: every ticket's functionality and AC stand as
+  they are; a story that moves a built screen to the new design changes how it looks and
+  is laid out, never what it does.
 
 ## Read these first, in this order. Do not draw anything until you have.
 
@@ -36,11 +43,13 @@ Two things to hold onto throughout:
    - the artboards your per-epic file names as candidates
 3. **`docs/design/tokens.mjs`** in this repository — the tokens, one source, with usage
    notes and four settled decisions.
-4. **The worked example: https://claude.ai/artifact/2Swi2WCFoRNeqPRBngDpbK** — five
-   artboards for Budget and costs, built in this exact language for exactly this purpose.
-   Read it with the `Artifact` tool (`action: "read"`, then its files). **Match its style,
-   its density, and its level of finish.** Reading it will teach you more than this file
-   can describe.
+4. **The worked example: page `29 · Events` of Soirely — Redesign,
+   https://claude.ai/artifact/5cRzwbgmEK6wqbxp4j1zqx**: Events home and Event view, each
+   as its three boards. Read `project/canvas.json`, then `EventsHome.dc.html`,
+   `EventsHome-fd.dc.html` and `EventsHome-App.dc.html`. **Match their style, their density,
+   and their level of finish.** Reading them will teach you more than this file can
+   describe. Your own epic's page is the next thing to read: its proposal boards are where
+   your drawing starts.
 5. **`docs/design/claude-design-brief.md`**, section 5, for the area your epic covers. It
    says what somebody does there and what makes it hard.
 6. The epic itself: `epics-get-by-id`, `stories-search` with that epic, then each story
@@ -81,6 +90,56 @@ story may need several.
 4. Update `project/canvas.json` first: the page, if it is new, then a `boards` entry and an
    `order` slot for every artboard you intend to write. Then the artboards, publishing as
    you go.
+5. **Other sessions publish to the same artifact.** Before changing a board, read its live
+   copy; if it differs from yours, fold their changes in so nothing of theirs is lost.
+   Publish only the files you changed, in patch mode, on the live version. Change
+   `canvas.json` with text edits, never by rewriting it whole: it holds other sessions'
+   boards and notes.
+
+### Three boards per screen
+
+The owner set this on 30 Oct 2026, with Events as the first page. Each screen on an epic's
+page is three boards side by side, on the same row:
+
+| x    | Board                | Title ends                                                     |
+| ---- | -------------------- | -------------------------------------------------------------- |
+| 0    | `<Screen>.dc.html`     | the proposal · [fd]'s way, the app's functionality             |
+| 4300 | `<Screen>-fd.dc.html`  | [fd] as drawn · reference, not the proposal                    |
+| 8600 | `<Screen>-App.dc.html` | the app today · drawn from the code, for comparison, not the proposal |
+
+The page's title note reads `<epic> · <area> · left: the proposal ([fd]'s way, the app's
+functionality) · middle: [fd] as drawn · right: the app today`, with `maxW` 12762.
+
+**The proposal.** [fd] decides **how** the screen is built: layout, shell, navigation,
+components, look. The app decides **what** is on it: the code (`apps/web` for desktop,
+`apps/mobile` for the tablets and phone) and the epic's stories' AC, features still to come
+included. Every field, required or optional mark, limit, refusal, state, dialog and flow is
+drawn with [fd]'s components; where [fd] has no pattern, extend its nearest one. Never copy
+today's app's look. Sort every element [fd] draws:
+
+- **(a) in the code**: keep it.
+- **(b) in a story's AC, not built yet**: keep it, with the small dashed grey pill
+  **"AC, not yet built"**.
+- **(c) in neither**: take it out, and close the gap with [fd]'s own layout (the next card
+  moves up, a grid loses a column). No holes, and nothing invented in its place.
+
+Where [fd]'s words and the code's disagree, the code's words go in [fd]'s place. A recorded
+pm or owner decision, in the epic's or story's dated sections, beats both.
+
+**A code check adds; it never takes [fd] away.** Checking boards against the code means
+adding the functionality they lack inside [fd]'s layout. It never means restyling a board
+to look like today's app, or removing an [fd] element the sorting above keeps. That went
+wrong once on Events, and the owner rejected it.
+
+**[fd] as drawn.** [fd]'s own frames for that screen and nothing else, changed only as
+much as the canvas needs: inline tokens, `support.js`, `$preview`. No floor fixes, and no
+"not by the designer" mark: it is [fd]'s drawing.
+
+**The app today.** Desktop from the web, the tablets and phone from the React Native app:
+today's look, layout and words, its main states as Tweaks, and its interactivity where the
+code has it. Name the source files in each frame's label, draw its house-rule breaks as
+they are, and list them. A screen the app has not built gets a small board saying so, with
+the routes checked.
 
 ### The house style, which is not negotiable
 
@@ -142,7 +201,12 @@ A form never sends a request it already knows will be refused. Draw this for **e
 - `$preview` must equal the artboard's frame `w`×`h` in `canvas.json`.
 - Desktop screens are PAGEs: `"expand": "fill"` on the board entry and a **fluid** root —
   no fixed px width. Phone is fixed at 390×844, tablet portrait 834×1194, tablet landscape
-  1280×880.
+  1280×880. **Open:** every board drawn so far uses 1194×834 for tablet landscape. Until the
+  owner settles which, match the boards already on your epic's page.
+- **Every board owes motion and the system states.** Motion per the spec on page
+  `26 · Foundation` (`Motion.dc.html`), with a Reduce motion switch; a `system` Tweak for
+  the network, error and loading states on `SystemStates.dc.html`.
+- An artboard is a row of frames side by side, padding 56, gap 64, with a `frame` Tweak.
 - Give an artboard whose controls actually work `"is_interactive": true`. Leave it off
   static ones.
 - **Accessible as drawn**: real `<button>`, `<a href>`, `<input>` + `<label>` even in a
@@ -165,7 +229,9 @@ For each story:
 ```markdown
 # Design
 
-**Artboard:** `<name>.dc.html` · page `<epic number> · <area>` · <artifact url>
+**Artboard:** `<name>.dc.html`, the proposal (beside it on the page: `<name>-fd.dc.html`,
+[fd] as drawn, and `<name>-App.dc.html`, the app today) · page `<epic number> · <area>` ·
+<artifact url>
 
 **Layouts:** <desktop · tablet landscape · tablet portrait · phone>, and why that set.
 
@@ -182,9 +248,13 @@ section. A partial value deletes the rest.
 
 ## What NOT to do. Each has already gone wrong on this project.
 
-- **Do not invent product behaviour.** The screen shows what the AC says. If a screen
-  obviously needs something the AC does not mention, put it in the disagreements bullet
+- **Do not invent product behaviour.** The screen shows what the code and the AC say. If a
+  screen obviously needs something neither mentions, put it in the disagreements bullet
   rather than drawing it as settled.
+- **Do not restyle [fd] to match today's app.** Today's app is the comparison board, never
+  the look. A check against the code adds what is missing inside [fd]'s layout.
+- **Do not change what a built screen does while moving it to the new design.** The
+  ticket's functionality and AC stand; only the look and layout move.
 - **Do not put a number on a screen that the product could not know.** Every figure is
   either derived from something real or it does not belong. A fabricated count reads as a
   feature and gets built. In the budget artifact every quantity carries a line naming its
