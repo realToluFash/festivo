@@ -1434,6 +1434,7 @@
   "eventsScreen": {
     "title": "Événements",
     "back": "‹ Événements",
+    "backToEvent": "‹ Événement",
     "loading": "Chargement des événements…",
     "refreshing": "Actualisation…",
     "draft": "Brouillon",
