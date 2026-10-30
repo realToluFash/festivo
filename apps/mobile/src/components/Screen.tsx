@@ -38,6 +38,7 @@ import {
   keysOver,
   liftNeeded,
   type IntoView,
+  keptOffset,
   offsetAboveKeyboard,
   scrollInsets,
   settledOffset,
@@ -493,7 +494,7 @@ export interface HeldStepClose extends StepClose {
   holder: ReactElement;
 }
 
-/** Closes a step back to the opener `to` names in the steps `stepCloseSteps` gives, with input focus going `inputFocusTo` the opener, a control, or to the `holder` it returns, beside a line of words; `finish` takes the step away, with what `useFocusBackToOpener` moves focus back from, or nothing when focus is already there (sc-18588). Without the holder rendered nothing takes input focus, and blurring the field hands focus to the header's back row (sc-18587). `stays` is the step's Cancel, kept where it shows while the opener shows above the step: pushed under the keys, it leaves TalkBack's focus on a view out of sight, which TalkBack moves to the step's control nearest it before the opener takes it (sc-18588). */
+/** Closes a step back to the opener `to` names in the steps `stepCloseSteps` gives, with input focus going `inputFocusTo` the opener, a control, or to the `holder` it returns, beside a line of words; `finish` takes the step away, with what `useFocusBackToOpener` moves focus back from, or nothing when focus is already there (sc-18588). Without the holder rendered nothing takes input focus, and blurring the field hands focus to the header's back row (sc-18587). `stays` is a view of the step that moves with the control TalkBack's focus is on, its Cancel, kept where it shows while the opener shows above the step: pushed under the keys, it leaves TalkBack's focus on a view out of sight, which TalkBack moves to the step's control nearest it before the opener takes it (sc-18588). */
 export function useStepClose(
   opener: (key: string) => RefCallback<ViewInstance>,
   to: string,
@@ -632,8 +633,8 @@ export function useStepClose(
     staysAt.current = null;
 
     contentY(scroll, stays.current, (now) => {
-      if (now !== at)
-        scroll?.ref.current?.scrollTo({ y: scroll.offset.current + now - at, animated: false });
+      const y = scroll && keptOffset(scroll.offset.current, at, now);
+      if (y != null) scroll?.ref.current?.scrollTo({ y, animated: false });
     });
   }, [closing, scroll, stays]);
 
