@@ -3,7 +3,14 @@ import { describe, expect, it } from 'vitest';
 
 import { EVENT_PHASES } from '@soirely/domain';
 
-import { PHASE_WORD, draftRowOf, endRefusalOf, pauseRefusalOf, refusalOf } from './makeLive.ts';
+import {
+  PHASE_WORD,
+  changedSinceOpening,
+  draftRowOf,
+  endRefusalOf,
+  pauseRefusalOf,
+  refusalOf,
+} from './makeLive.ts';
 
 const STARTS = '2026-11-14T16:00:00+01:00';
 const ENDS = '2026-11-15T02:00:00+01:00';
@@ -47,6 +54,27 @@ describe('draftRowOf', () => {
       expect(draftRowOf({ status, startsAt: STARTS, endsAt: ENDS }, BEFORE, true)).toBeNull();
     },
   );
+});
+
+describe('changedSinceOpening', () => {
+  const unhosted = { status: 'draft' as const, hosts: [] };
+  const hosted = { status: 'draft' as const, hosts: ['Tayo'] };
+
+  it('saves when the read on opening still has no host', () => {
+    expect(changedSinceOpening(unhosted, unhosted)).toBe(false);
+  });
+
+  it('says what it found when somebody else named a host after the page loaded', () => {
+    expect(changedSinceOpening(unhosted, hosted)).toBe(true);
+  });
+
+  it('says what it found when the event is no longer a Draft', () => {
+    expect(changedSinceOpening(unhosted, { status: 'live', hosts: ['Tayo'] })).toBe(true);
+  });
+
+  it('only goes live on the retry after its own save went through and going live failed', () => {
+    expect(changedSinceOpening(hosted, hosted)).toBe(false);
+  });
 });
 
 describe('refusalOf', () => {

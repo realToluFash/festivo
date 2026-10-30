@@ -11,7 +11,7 @@ import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'rea
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { draftRowOf, refusalOf } from '../kit/makeLive.ts';
+import { changedSinceOpening, draftRowOf, refusalOf } from '../kit/makeLive.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton } from './Buttons.tsx';
@@ -123,7 +123,7 @@ export function DraftRow({
       return;
     }
 
-    if (current.askHost && current.notice == null && rereadOf(base.event) !== 'noHost') {
+    if (current.askHost && current.notice == null && changedSinceOpening(event, base.event)) {
       found(base, current);
       return;
     }
@@ -198,7 +198,7 @@ export function DraftRow({
           onPress={() => {
             const askHost = needsHost(event);
             read.current = null;
-            if (askHost) void opened().catch(() => (read.current = null));
+            if (askHost) void opened().catch(() => undefined);
             setAsking({
               kind: 'confirm',
               askHost,

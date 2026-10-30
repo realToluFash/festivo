@@ -1,5 +1,11 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
-import { type EventPhase, type MakeLiveRow, makeLiveRow } from '@soirely/domain';
+import {
+  type EventPhase,
+  type MakeLiveRow,
+  makeLiveRow,
+  needsHost,
+  rereadOf,
+} from '@soirely/domain';
 
 /** The word each phase shows, never the stored state and never its colour alone (WCAG 2.2 §1.4.1). */
 export const PHASE_WORD = {
@@ -24,6 +30,14 @@ export function draftRowOf(
   const row = makeLiveRow(event, now);
 
   return row == null ? null : { line: row.line, offersMakeLive: manages && row.makeLive };
+}
+
+/** The read as the sheet opened already differs from the page, so the sheet says what it found instead of saving (sc-22143). Once this sheet's own save has gone through the page has its host, and a retry only goes live. */
+export function changedSinceOpening(
+  shown: Pick<OrganisationEvent, 'status' | 'hosts'>,
+  opened: Pick<OrganisationEvent, 'status' | 'hosts'>,
+): boolean {
+  return needsHost(shown) && rereadOf(opened) !== 'noHost';
 }
 
 export type MakeLiveRefusal =
