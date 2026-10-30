@@ -30,7 +30,8 @@ anybody reading the story later can see what was asked and what was decided.
 **A QA report is answered to the tester who signed it**: `(from qa2)` gets `[qa2]`. A
 question for QA in general is `[qa]`. **A developer question goes to the developer whose
 label the story carries**: `devN` gets `[devN]`, and `dev1` or no label gets `[dev]`. A
-bare `[dev]` reaches the developer whose label the story carries (sq routes it), but write
+bare `[dev]` reaches the developer whose label the story carries, or ops on an
+`ops`-labelled story (sq routes it), but write
 the tag that is meant. A
 translation ticket carries no developer label, so a bare `[dev]` on one reaches developer 1:
 there, use the label of the feature story the string came from, which its **Covers** names. **Wording questions go to `[l10n]`**, the one linguist, for any language. `[en]`, `[es]`,
