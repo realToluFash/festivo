@@ -102,12 +102,83 @@ span {
   outline-offset: 2px;
 }
 
+/* ── Every page: the release band, then the page ───────────────────────────── */
+
+.frame {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* A page centred by auto margins would shrink to its content in a flex column. */
+.frame > * {
+  width: 100%;
+}
+
+/* In the page's flow, never sticky: it covers nothing and scrolls away with the page. */
+.release-band {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spaceXl);
+  min-height: var(--sizeHitPhoneHero);
+  padding: var(--spaceXxs) var(--space3xl);
+  background: var(--colorInk);
+  color: var(--colorInkOnDark);
+}
+
+.release-band-words {
+  margin: 0;
+}
+
+.release-band .release-band-words {
+  animation: release-band-words-in var(--motionBase) var(--motionEase);
+}
+
+/* Keeps its whole word at any width; the sentence beside it is what wraps. */
+.release-band-reload {
+  flex: none;
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceXl);
+  font: var(--typeButton);
+  letter-spacing: var(--typeButtonTracking);
+  white-space: nowrap;
+  color: var(--colorInk);
+  background: var(--colorCard);
+  border: 0;
+  border-radius: var(--sizePill);
+  cursor: pointer;
+}
+
+.release-band-reload:hover {
+  background: var(--colorInset);
+}
+
+@keyframes release-band-words-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .release-band .release-band-words {
+    animation: none;
+  }
+}
+
+@media (width <= 40rem) {
+  .release-band {
+    gap: var(--spaceLg);
+    padding-inline: var(--spaceXl);
+  }
+}
+
 /* ── The signed-in shell ──────────────────────────────────────────────────── */
 
 .shell {
   display: grid;
+  flex: 1 0 auto;
   grid-template-columns: var(--sizeRail) minmax(0, 1fr);
-  min-height: 100vh;
 }
 
 .shell-sidebar {
@@ -362,7 +433,7 @@ span {
  */
 
 @media (width <= 60rem) {
-  /* One column under a 100vh minimum would share the spare height with the sidebar. */
+  /* One column filling the window would share the spare height with the sidebar. */
   .shell {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto 1fr;
@@ -478,8 +549,8 @@ span {
 
 .auth {
   display: flex;
+  flex: 1 0 auto;
   flex-direction: column;
-  min-height: 100vh;
 }
 
 .auth-header {

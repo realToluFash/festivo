@@ -3,6 +3,10 @@
     "name": "Soirely",
     "skipToContent": "Skip to content"
   },
+  "release": {
+    "updated": "Soirely has been updated.",
+    "reload": "Reload"
+  },
   "pageTitle": {
     "part": "{{page}} – {{rest}}"
   },
