@@ -4,8 +4,8 @@
     "skipToContent": "Ir al contenido"
   },
   "release": {
-    "updated": "Soirely has been updated.",
-    "reload": "Reload"
+    "updated": "Soirely se ha actualizado.",
+    "reload": "Recargar"
   },
   "pageTitle": {
     "part": "{{page}} – {{rest}}"
