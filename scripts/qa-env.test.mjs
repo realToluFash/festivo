@@ -91,6 +91,7 @@ import {
   releasePlatform,
   simulatorArch,
   staleBuilds,
+  iosReleaseBuildArgs,
   xcodeWorkspace,
   renderQaEnv,
   reversedPorts,
@@ -587,6 +588,14 @@ describe('a release build', () => {
       'Soirely.xcworkspace',
     );
     expect(() => xcodeWorkspace(['Soirely.xcodeproj'])).toThrow(/found 0/);
+  });
+
+  it('signs the release build ad hoc, so the Keychain keeps a session across a cold start', () => {
+    const args = iosReleaseBuildArgs('Soirely.xcworkspace', 'Soirely', '/tmp/build', 'arm64');
+    expect(args).toContain('CODE_SIGN_IDENTITY=-');
+    expect(args).toContain('ARCHS=arm64');
+    expect(args).not.toContain('CODE_SIGNING_ALLOWED=NO');
+    expect(args.at(-1)).toBe('build');
   });
 
   it('takes offline as every service the app reaches, stopped', () => {
