@@ -41,6 +41,11 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **30 Oct 2026. O fim que acompanha o início** (sc-22161 para sc-22144, `eventForm.endMoved`,
+  web e app). Só se ouve, no leitor de ecrã: "O fim acompanhou o início: {{day}}, {{time}}."
+  "Fim" e "Início" como as legendas do formulário; "acompanhou" diz que a duração se manteve,
+  o que "foi movido" não diz. O dia ("domingo, 18/07") e a hora vão depois dos dois pontos,
+  sem artigo, porque "às" falha à 01:00.
 - **29 Oct 2026. O aviso de que um evento mudou** (sc-21005 para sc-13214,
   `messages+intl-icu:eventChanges.*`: o sino, o push e o e-mail). O título é o ato no pretérito
   perfeito com o nome completo, "{name} pausou o evento", e nada concorda com o nome; "changed"
