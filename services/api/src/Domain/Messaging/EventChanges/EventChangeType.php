@@ -154,7 +154,7 @@ abstract readonly class EventChangeType implements NotificationTypeInterface
                 $this->link('eventChanges.email.open', $origin . self::place($eventId), $locale),
             ],
             '',
-            $this->translator->trans('eventChanges.email.footer', ['event' => $names['event'], 'organisation' => $names['organisation']], 'messages', $locale),
+            $this->translator->trans($this->isEventDay() ? 'eventChanges.email.footerEventDay' : 'eventChanges.email.footer', ['event' => $names['event'], 'organisation' => $names['organisation']], 'messages', $locale),
             $this->link('eventChanges.email.settings', $origin . '/app/account/notifications', $locale),
         ];
 
