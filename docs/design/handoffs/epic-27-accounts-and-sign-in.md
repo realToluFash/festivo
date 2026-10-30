@@ -10,7 +10,7 @@ again. Either way, **this file carries only what is specific to this epic, and i
 enough on its own.**
 
 - **Epic:** https://app.shortcut.com/soirely/epic/27
-- **Artifact title to use:** `Soirely — Accounts and sign-in`
+- **Page to use:** `27 · Accounts and sign-in` in Soirely — Redesign
 
 ## What this area is
 
@@ -39,8 +39,8 @@ four sizes rather than four different designs.
   completion.
 - A phone field is international by default: a country selector, a dial code, formatting as
   typed.
-- Backup codes are shown once, with a copy and a download, and a confirmation step that
-  proves the second factor works.
+- Backup codes are shown once, with **Copy all** (no download: sc-60), and a confirmation
+  step that proves the second factor works.
 
 ## Traps specific to this epic
 

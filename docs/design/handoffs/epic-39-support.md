@@ -10,7 +10,7 @@ again. Either way, **this file carries only what is specific to this epic, and i
 enough on its own.**
 
 - **Epic:** https://app.shortcut.com/soirely/epic/39
-- **Artifact title to use:** `Soirely — Support`
+- **Page to use:** `39 · Support` in Soirely — Redesign
 
 ## What this area is
 
