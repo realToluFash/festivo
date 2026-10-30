@@ -101,10 +101,10 @@ story may need several.
 The owner set this on 30 Oct 2026, with Events as the first page. Each screen on an epic's
 page is three boards side by side, on the same row:
 
-| x    | Board                | Title ends                                                     |
-| ---- | -------------------- | -------------------------------------------------------------- |
-| 0    | `<Screen>.dc.html`     | the proposal · [fd]'s way, the app's functionality             |
-| 4300 | `<Screen>-fd.dc.html`  | [fd] as drawn · reference, not the proposal                    |
+| x    | Board                  | Title ends                                                            |
+| ---- | ---------------------- | --------------------------------------------------------------------- |
+| 0    | `<Screen>.dc.html`     | the proposal · [fd]'s way, the app's functionality                    |
+| 4300 | `<Screen>-fd.dc.html`  | [fd] as drawn · reference, not the proposal                           |
 | 8600 | `<Screen>-App.dc.html` | the app today · drawn from the code, for comparison, not the proposal |
 
 The page's title note reads `<epic> · <area> · left: the proposal ([fd]'s way, the app's
