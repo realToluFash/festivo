@@ -463,6 +463,16 @@
     "keptByRule": "A rule set by {{organisation}}: everyone in it signs in with Google or Apple, so your last one cannot be removed.",
     "keptByRuleNext": "Link {{other}} first if you want to unlink {{provider}}."
   },
+  "nameCard": {
+    "title": "Name",
+    "change": "Change",
+    "save": "Save name",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "saved": "Name changed to {{name}}.",
+    "blank": "Enter your name.",
+    "failed": "Your name could not be saved. Check your connection and try again."
+  },
   "timeZone": {
     "title": "Time zone",
     "intro": "Times in the emails and texts Soirely sends you are written in this zone.",
@@ -658,7 +668,7 @@
     "title": "Settings",
     "yourAccount": "Your account",
     "account": "Account",
-    "accountLine": "Your email addresses and phone numbers",
+    "accountLine": "Your name, email addresses and phone numbers",
     "security": "Security",
     "securityLine": "Password, ways to sign in, two-factor, signed-in devices",
     "notifications": "Notifications",
@@ -669,8 +679,8 @@
     "signedInAs": "Signed in as {{email}}",
     "signOut": "Sign out",
     "choose": "Choose a section",
-    "chooseLine": "Account holds your email addresses and phone numbers. Security holds your password, ways to sign in, two-factor and signed-in devices.",
-    "chooseLineWithOrganisation": "Account holds your email addresses and phone numbers. Security holds your password, ways to sign in, two-factor and signed-in devices. Organisation holds the settings for {{name}}.",
+    "chooseLine": "Account holds your name, email addresses and phone numbers. Security holds your password, ways to sign in, two-factor and signed-in devices.",
+    "chooseLineWithOrganisation": "Account holds your name, email addresses and phone numbers. Security holds your password, ways to sign in, two-factor and signed-in devices. Organisation holds the settings for {{name}}.",
     "signInRules": "Sign-in rules",
     "signInRulesLine": "{{name}} · how people sign in, and for how long",
     "members": "Members",

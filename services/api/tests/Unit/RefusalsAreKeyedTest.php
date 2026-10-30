@@ -65,7 +65,8 @@ final class RefusalsAreKeyedTest extends TestCase
     {
         yield 'EventRules::violation' => ['Domain/Event/EventRules.php', 'validation.event_name_required'];
         yield 'OrganisationRules::violation' => ['Domain/Organisation/OrganisationRules.php', 'validation.organisation_name_required'];
-        yield 'UserRegistrar::violation' => ['Domain/User/UserRegistrar.php', 'validation.name_required'];
+        yield 'UserRegistrar::violation' => ['Domain/User/UserRegistrar.php', 'validation.email_invalid'];
+        yield 'AccountName::nameViolation' => ['Domain/User/AccountName.php', 'validation.name_required'];
         yield 'RoleManager::invalid' => ['Domain/Organisation/Roles/RoleManager.php', 'roles.name_builtin'];
         yield 'InvitationSender::invalid' => ['Domain/Organisation/Invitations/InvitationSender.php', 'validation.invite_email_required'];
         yield 'LinkedContacts::refusal' => ['Domain/User/Contacts/LinkedContacts.php', 'contacts.already_linked'];

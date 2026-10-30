@@ -14,6 +14,7 @@
     "proof.required": "Cette action nécessite votre mot de passe, ou une connexion avec Google ou Apple, dans les {minutes, number, ::group-auto} dernières minutes, ainsi que votre code de double authentification s’il est activé.",
     "roles.name_too_long": "Raccourcissez le nom à {count, number, ::group-auto} caractères maximum.",
     "validation.event_name_too_long": "Raccourcissez le nom à {count, number, ::group-auto} caractères maximum.",
+    "validation.name_too_long": "Raccourcissez votre nom à {count, number, ::group-auto} caractères maximum.",
     "validation.event_venue_address_too_long": "Raccourcissez l’adresse à {count, number, ::group-auto} caractères maximum.",
     "validation.event_venue_name_too_long": "Raccourcissez le nom du lieu à {count, number, ::group-auto} caractères maximum.",
     "validation.organisation_name_too_long": "Ce nom compte {length, number, ::group-auto} caractères. Raccourcissez-le à {count, number, ::group-auto} caractères maximum.",

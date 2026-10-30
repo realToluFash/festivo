@@ -471,6 +471,16 @@
     "keptByRule": "Uma regra definida por {{organisation}}: todos os membros iniciam sessão com Google ou Apple, por isso não pode desassociar a última conta que lhe resta.",
     "keptByRuleNext": "Se quiser desassociar a conta {{provider}}, associe primeiro uma conta {{other}}."
   },
+  "nameCard": {
+    "title": "Nome",
+    "change": "Alterar",
+    "save": "Guardar nome",
+    "saving": "A guardar…",
+    "cancel": "Cancelar",
+    "saved": "Nome alterado para {{name}}.",
+    "blank": "Introduza o seu nome.",
+    "failed": "Não foi possível guardar o seu nome. Verifique a sua ligação e tente novamente."
+  },
   "timeZone": {
     "title": "Fuso horário",
     "intro": "As horas nos emails e mensagens que a Soirely lhe envia são escritas neste fuso.",
@@ -675,7 +685,7 @@
     "title": "Definições",
     "yourAccount": "A sua conta",
     "account": "Conta",
-    "accountLine": "Os seus endereços de e-mail e números de telefone",
+    "accountLine": "O seu nome, endereços de e-mail e números de telefone",
     "security": "Segurança",
     "securityLine": "Palavra-passe, formas de iniciar sessão, dois fatores, dispositivos com sessão iniciada",
     "notifications": "Notificações",
@@ -686,8 +696,8 @@
     "signedInAs": "Sessão iniciada como {{email}}",
     "signOut": "Encerrar sessão",
     "choose": "Escolha uma secção",
-    "chooseLine": "Em Conta estão os seus endereços de e-mail e números de telefone. Em Segurança estão a palavra-passe, as formas de iniciar sessão, a autenticação de dois fatores e os dispositivos com sessão iniciada.",
-    "chooseLineWithOrganisation": "Em Conta estão os seus endereços de e-mail e números de telefone. Em Segurança estão a palavra-passe, as formas de iniciar sessão, a autenticação de dois fatores e os dispositivos com sessão iniciada. Em Organização estão as definições de {{name}}.",
+    "chooseLine": "Em Conta estão o seu nome, endereços de e-mail e números de telefone. Em Segurança estão a palavra-passe, as formas de iniciar sessão, a autenticação de dois fatores e os dispositivos com sessão iniciada.",
+    "chooseLineWithOrganisation": "Em Conta estão o seu nome, endereços de e-mail e números de telefone. Em Segurança estão a palavra-passe, as formas de iniciar sessão, a autenticação de dois fatores e os dispositivos com sessão iniciada. Em Organização estão as definições de {{name}}.",
     "signInRules": "Regras de início de sessão",
     "signInRulesLine": "{{name}} · como se inicia sessão e durante quanto tempo",
     "members": "Membros",

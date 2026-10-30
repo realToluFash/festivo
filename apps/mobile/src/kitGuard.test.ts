@@ -584,6 +584,7 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
     'src/components/DevicesCard.tsx',
     'src/components/PasswordCard.tsx',
     'src/components/TimeZoneCard.tsx',
+    'src/components/NameCard.tsx',
     'src/components/TwoFactorCard.tsx',
     'src/components/SecondFactorStep.tsx',
     'src/components/OrganisationDetails.tsx',
@@ -920,6 +921,10 @@ describe('a Cancel is off while the change beside it runs (sc-12545)', () => {
 
   it('in Time zone, beside Save time zone', () => {
     expect(offWhile('TimeZoneCard.tsx', 'saving')).toEqual(['"timeZone.cancel"']);
+  });
+
+  it('in Name, beside Save name', () => {
+    expect(offWhile('NameCard.tsx', 'saving')).toEqual(['"nameCard.cancel"']);
   });
 
   it("in Confirm it's you, beside Continue", () => {

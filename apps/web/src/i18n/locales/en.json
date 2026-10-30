@@ -920,6 +920,16 @@
     "keptByRule": "A rule set by {{organisation}}: everyone in it signs in with Google or Apple, so your last one cannot be removed.",
     "keptByRuleNext": "Link {{other}} first if you want to unlink {{provider}}."
   },
+  "nameCard": {
+    "title": "Name",
+    "change": "Change",
+    "save": "Save name",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "saved": "Name changed to {{name}}.",
+    "blank": "Enter your name.",
+    "failed": "Your name could not be saved. Check your connection and try again."
+  },
   "timeZone": {
     "title": "Time zone",
     "intro": "Times in the emails and texts Soirely sends you are written in this zone.",

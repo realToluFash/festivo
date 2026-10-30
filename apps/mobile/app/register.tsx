@@ -1,4 +1,4 @@
-import { meetsPasswordLength } from '@soirely/domain';
+import { ACCOUNT_NAME_MAXIMUM, meetsPasswordLength } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, type TextInputInstance, View } from 'react-native';
@@ -205,6 +205,7 @@ function Form({
           autoComplete="name"
           textContentType="name"
           autoCapitalize="words"
+          maxLength={ACCOUNT_NAME_MAXIMUM}
           onChangeText={(text) => {
             typed.current.name = text;
             checks.edited('name', text);

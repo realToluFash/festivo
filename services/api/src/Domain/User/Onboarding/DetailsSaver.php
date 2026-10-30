@@ -6,6 +6,7 @@ namespace App\Domain\User\Onboarding;
 
 use App\Domain\Organisation\DomainJoining\JoinRequester;
 use App\Domain\Organisation\OrganisationFounder;
+use App\Domain\User\AccountName;
 use App\Domain\User\Phone\PhoneNumberParser;
 use App\Domain\User\Phone\PrimaryPhoneSetter;
 use App\Entity\PhoneNumber;
@@ -35,6 +36,7 @@ final readonly class DetailsSaver
         private OrganisationRepository $organisationRepository,
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
+        private AccountName $accountName,
     ) {
     }
 
@@ -49,17 +51,9 @@ final readonly class DetailsSaver
         ?string $phoneNumber = null,
         ?string $askToJoin = null,
     ): ?PhoneNumber {
-        $violations = [];
         $trimmed = Str\trim($name);
+        $violations = $this->accountName->violations($trimmed);
         $phone = null;
-
-        if ('' === $trimmed) {
-            $violations[] = [
-                'propertyPath' => 'name',
-                'message' => $this->translator->trans('validation.name_required'),
-                'code' => ErrorCode::ValidationFailed->value,
-            ];
-        }
 
         $needsOrganisation = $this->accountCompleteness->needsOrganisation($user);
         $asking = $needsOrganisation ? $askToJoin : null;

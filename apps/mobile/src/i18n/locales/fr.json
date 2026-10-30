@@ -471,6 +471,16 @@
     "keptByRule": "Une règle fixée par {{organisation}} : tous ses membres se connectent avec Google ou Apple, vous ne pouvez donc pas dissocier le dernier compte qui vous reste.",
     "keptByRuleNext": "Associez d’abord {{other}} si vous voulez dissocier {{provider}}."
   },
+  "nameCard": {
+    "title": "Nom",
+    "change": "Modifier",
+    "save": "Enregistrer le nom",
+    "saving": "Enregistrement…",
+    "cancel": "Annuler",
+    "saved": "Votre nom est désormais {{name}}.",
+    "blank": "Saisissez votre nom.",
+    "failed": "Votre nom n’a pas pu être enregistré. Vérifiez votre connexion et réessayez."
+  },
   "timeZone": {
     "title": "Fuseau horaire",
     "intro": "Les heures des e-mails et SMS que Soirely vous envoie sont écrites dans ce fuseau.",
@@ -675,7 +685,7 @@
     "title": "Paramètres",
     "yourAccount": "Votre compte",
     "account": "Compte",
-    "accountLine": "Vos adresses e-mail et vos numéros de téléphone",
+    "accountLine": "Votre nom, vos adresses e-mail et vos numéros de téléphone",
     "security": "Sécurité",
     "securityLine": "Mot de passe, moyens de connexion, double authentification, appareils connectés",
     "notifications": "Notifications",
@@ -686,8 +696,8 @@
     "signedInAs": "Connecté en tant que {{email}}",
     "signOut": "Se déconnecter",
     "choose": "Choisissez une section",
-    "chooseLine": "Compte réunit vos adresses e-mail et vos numéros de téléphone. Sécurité réunit votre mot de passe, vos moyens de connexion, la double authentification et vos appareils connectés.",
-    "chooseLineWithOrganisation": "Compte réunit vos adresses e-mail et vos numéros de téléphone. Sécurité réunit votre mot de passe, vos moyens de connexion, la double authentification et vos appareils connectés. Organisation réunit les réglages de {{name}}.",
+    "chooseLine": "Compte réunit votre nom, vos adresses e-mail et vos numéros de téléphone. Sécurité réunit votre mot de passe, vos moyens de connexion, la double authentification et vos appareils connectés.",
+    "chooseLineWithOrganisation": "Compte réunit votre nom, vos adresses e-mail et vos numéros de téléphone. Sécurité réunit votre mot de passe, vos moyens de connexion, la double authentification et vos appareils connectés. Organisation réunit les réglages de {{name}}.",
     "signInRules": "Règles de connexion",
     "signInRulesLine": "{{name}} · moyens de connexion et durée des sessions",
     "members": "Membres",

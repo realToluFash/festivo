@@ -1274,6 +1274,11 @@ export class ApiClient {
   }
 
   /** The language switcher, signed in: the account's language, which every device and email then follow. */
+  /** The signed-in person's own name, saved with its ends trimmed; refused with a `name` violation when blank or too long. */
+  async setName(name: string): Promise<void> {
+    await this.put<unknown>('/api/auth/name', { name });
+  }
+
   /** Refused with a `timezone` violation for a zone IANA doesn't list; nothing is saved then. */
   async setTimezone(timezone: string): Promise<void> {
     await this.put<unknown>('/api/auth/timezone', { timezone });

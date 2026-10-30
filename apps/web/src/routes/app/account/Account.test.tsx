@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -99,6 +99,19 @@ function open(session: Partial<Session> = {}) {
   );
 }
 
+/** The Time zone card's Change, not the Name card's above it. */
+function zoneChange(): HTMLElement {
+  return within(screen.getByRole('region', { name: 'Time zone' })).getByRole('button', {
+    name: 'Change',
+  });
+}
+
+async function findZoneChange(): Promise<HTMLElement> {
+  return within(await screen.findByRole('region', { name: 'Time zone' })).getByRole('button', {
+    name: 'Change',
+  });
+}
+
 beforeEach(() => {
   tokens.save({ accessToken: 'live', refreshExpiresAt: '', sessionId: 's' });
 });
@@ -128,7 +141,7 @@ describe("the account's time zone", () => {
     answering();
     open();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    fireEvent.click(await findZoneChange());
     fireEvent.change(screen.getByLabelText('Find your time zone'), {
       target: { value: 'calcutta' },
     });
@@ -148,7 +161,7 @@ describe("the account's time zone", () => {
     });
     open();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    fireEvent.click(await findZoneChange());
     fireEvent.change(screen.getByLabelText('Find your time zone'), {
       target: { value: 'united kingdom' },
     });
@@ -174,20 +187,20 @@ describe("the account's time zone", () => {
     answering();
     open();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    fireEvent.click(await findZoneChange());
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Change' }));
+    expect(document.activeElement).toBe(zoneChange());
 
-    fireEvent.click(screen.getByRole('button', { name: 'Change' }));
+    fireEvent.click(zoneChange());
     fireEvent.keyDown(screen.getByLabelText('Find your time zone'), { key: 'Escape' });
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Change' }));
+    expect(document.activeElement).toBe(zoneChange());
   });
 
   it('sends nothing until a listed zone is picked', async () => {
     const sent = answering();
     open();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    fireEvent.click(await findZoneChange());
     fireEvent.click(screen.getByRole('button', { name: 'Save time zone' }));
     expect(screen.getByText('Choose a time zone from the list.')).toBeDefined();
 
@@ -220,7 +233,7 @@ describe("the account's time zone", () => {
     });
     open();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    fireEvent.click(await findZoneChange());
     fireEvent.change(screen.getByLabelText('Find your time zone'), {
       target: { value: 'Kinshasa' },
     });
@@ -298,7 +311,7 @@ describe('the time zone list after a language change', () => {
     answeringByLanguage(new Promise((resolve) => (release = resolve)));
     open();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    fireEvent.click(await findZoneChange());
     fireEvent.change(zoneInput(), { target: { value: 'calcutta' } });
     expect(screen.getByRole('option', { name: /Kolkata \(UTC\+05:30\)/ }).textContent).toContain(
       'India · was Calcutta',
@@ -330,7 +343,7 @@ describe('the time zone list after a language change', () => {
     );
     open();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    fireEvent.click(await findZoneChange());
     fireEvent.change(zoneInput(), { target: { value: 'calcutta' } });
 
     await act(() => setLanguage('fr'));
@@ -349,7 +362,7 @@ describe('the time zone list after a language change', () => {
   };
 
   async function saveKolkata(): Promise<void> {
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    fireEvent.click(await findZoneChange());
     fireEvent.change(zoneInput(), { target: { value: 'india' } });
     fireEvent.click(screen.getByRole('option', { name: /Kolkata \(UTC\+05:30\)/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Save time zone' }));
@@ -382,7 +395,7 @@ describe('the time zone list after a language change', () => {
       ),
     ).toBeDefined();
     expect(asked).toEqual(['en', 'fr', 'en']);
-    expect(screen.getByRole('button', { name: 'Change' })).toBeDefined();
+    expect(zoneChange()).toBeDefined();
   });
 
   it('keeps the saved name shown while the new list is on its way, and if it never comes', async () => {
@@ -407,7 +420,7 @@ describe('the time zone list after a language change', () => {
     answeringByLanguage();
     open();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    fireEvent.click(await findZoneChange());
     fireEvent.change(zoneInput(), { target: { value: 'united kingdom' } });
     fireEvent.click(screen.getByRole('option', { name: /London \(UTC\+01:00\)/ }));
 
