@@ -14,6 +14,7 @@
     "proof.required": "Para esto hace falta que haya confirmado su contraseña o iniciado sesión con Google o Apple en los últimos {minutes, number, ::group-auto} minutos, además de su código de verificación en dos pasos si la tiene activada.",
     "roles.name_too_long": "Acorte el nombre a {count, number, ::group-auto} caracteres como máximo.",
     "validation.event_name_too_long": "Acorte el nombre a {count, number, ::group-auto} caracteres como máximo.",
+    "validation.name_too_long": "Acorte su nombre a {count, number, ::group-auto} caracteres como máximo.",
     "validation.event_venue_address_too_long": "Acorte la dirección a {count, number, ::group-auto} caracteres como máximo.",
     "validation.event_venue_name_too_long": "Acorte el nombre del lugar a {count, number, ::group-auto} caracteres como máximo.",
     "validation.organisation_name_too_long": "Ese nombre tiene {length, number, ::group-auto} caracteres. Acórtelo a {count, number, ::group-auto} como máximo.",

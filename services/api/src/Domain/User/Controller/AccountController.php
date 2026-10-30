@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Controller;
 
+use App\Domain\User\AccountName;
 use App\Domain\User\CallerSession;
 use App\Domain\User\Http\AccountSerialiser;
 use App\Domain\User\SignOutEverywhereElse;
@@ -43,6 +44,7 @@ final class AccountController
         private readonly ClockInterface $clock,
         private readonly SignOutEverywhereElse $signOutEverywhereElse,
         private readonly CallerSession $callerSession,
+        private readonly AccountName $accountName,
     ) {
     }
 
@@ -71,6 +73,19 @@ final class AccountController
         $this->entityManager->flush();
 
         return new JsonResponse(['locale' => $locale]);
+    }
+
+    /** Settings > Account: the signed-in person's own name, and nobody else's. */
+    #[Route('/api/auth/name', name: 'auth_name', methods: ['PUT'])]
+    public function setName(Request $request): JsonResponse
+    {
+        $body = Input::body($request, Type\shape(['name' => Type\string()]));
+
+        $user = $this->user();
+        $this->accountName->change($user, $body['name']);
+        $this->entityManager->flush();
+
+        return new JsonResponse(['name' => $user->getName()]);
     }
 
     /** Settings > Account: the zone the times sent to this person are written in. Only an IANA zone is saved. */

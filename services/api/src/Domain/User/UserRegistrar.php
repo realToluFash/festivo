@@ -43,6 +43,7 @@ final readonly class UserRegistrar
         private VerificationCodeMailer $verificationCodeMailer,
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
+        private AccountName $accountName,
     ) {
     }
 
@@ -156,11 +157,7 @@ final readonly class UserRegistrar
             $violations[] = $this->violation('email', 'validation.email_invalid', ErrorCode::ValidationFailed->value);
         }
 
-        if ('' === Str\trim($name)) {
-            $violations[] = $this->violation('name', 'validation.name_required', ErrorCode::ValidationFailed->value);
-        }
-
-        $violations = [...$violations, ...$this->newPasswordRules->violations($password)];
+        $violations = [...$violations, ...$this->accountName->violations(Str\trim($name)), ...$this->newPasswordRules->violations($password)];
 
         if ([] !== $violations) {
             throw ApiException::validation($violations);
