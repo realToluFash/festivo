@@ -13,6 +13,7 @@ import { Text } from './Text.tsx';
 
 const appleOnIos = Platform.OS === 'ios';
 const APPLE_IOS_TEXT_SIZE = tokens.sizeHitPhonePrimary * brand.appleTitleToHeight;
+const APPLE_IOS_LOGO_SCALE = brand.appleLogoHeight / 19;
 
 export function ProviderSignIn({ onFailed }: { onFailed?: (provider: string) => void }) {
   const { t } = useTranslation();
@@ -189,13 +190,13 @@ function AppleMark() {
   );
 }
 
-/** Apple Design Resources' "Left White Logo Medium", padding included, at the button's height. */
+/** Apple Design Resources' "Left White Logo Medium", cropped at the sides only so the glyph keeps Apple's place above the centre. */
 function AppleLogoIos() {
   return (
     <Svg
-      width={(tokens.sizeHitPhonePrimary * 31) / 44}
-      height={tokens.sizeHitPhonePrimary}
-      viewBox="0 0 31 44"
+      width={15.46 * APPLE_IOS_LOGO_SCALE}
+      height={44 * APPLE_IOS_LOGO_SCALE}
+      viewBox="7.75 0 15.46 44"
     >
       <Path
         fill={brand.appleInk}
@@ -227,6 +228,6 @@ const styles = StyleSheet.create({
   googleText: { color: brand.googleInk, lineHeight: brand.googleLineHeight },
   apple: { backgroundColor: brand.appleSurface, borderColor: brand.appleSurface },
   appleText: { color: brand.appleInk },
-  appleIos: { gap: 0, paddingVertical: 0, borderWidth: 0 },
+  appleIos: { gap: brand.appleLogoGap, paddingVertical: 0, borderWidth: 0 },
   inactive: { opacity: brand.offOpacity },
 });
