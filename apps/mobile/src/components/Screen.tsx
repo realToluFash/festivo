@@ -58,6 +58,7 @@ import {
   type StepCloseStep,
   stepCloseSteps,
   stepOpensInOrder,
+  TALKBACK_FOCUS_BACK_MS,
   TALKBACK_FOCUS_TAKEN_MS,
 } from '../kit/focusBack.ts';
 import { stepOpeners } from '../kit/stepOpeners.ts';
@@ -752,11 +753,11 @@ export interface StepOpen {
   /** The step is opening in order, and its opener shows above it until the step's field has taken input focus and TalkBack's with it (sc-22392). */
   opening: boolean;
   open(): void;
-  /** The step's field, which opens focused, has taken input focus. */
-  fieldFocused(): void;
+  /** The step's field, which opens focused, has taken input focus; TalkBack's is moved onto it, since TalkBack only says a field taking input focus and leaves its own on the opener. */
+  fieldFocused(field: ScreenReaderTarget | null): void;
 }
 
-/** Opens a step with `start`, in order where `stepOpensInOrder` says so: the opener stays until the step's field has taken input focus, then goes once TalkBack has followed it there, or after a settle when the field never takes it, and `opened` runs as it goes (sc-22392). */
+/** Opens a step with `start`, in order where `stepOpensInOrder` says so: the opener stays until the step's field has taken input focus, then goes once TalkBack's focus has been moved there, or after a settle when the field never takes it, and `opened` runs as it goes (sc-22392). */
 export function useStepOpen(start: () => void, opened: () => void): StepOpen {
   const [opening, setOpening] = useState(false);
   const openingNow = useRef(false);
@@ -800,9 +801,19 @@ export function useStepOpen(start: () => void, opened: () => void): StepOpen {
     });
   }, [endIn]);
 
-  const fieldFocused = useCallback(() => {
-    if (openingNow.current) endIn(TALKBACK_FOCUS_TAKEN_MS);
-  }, [endIn]);
+  // An opener that goes with TalkBack's focus still on it hands that focus to whatever TalkBack finds near it: the card's description, Cancel or the field's label (sc-22392).
+  const fieldFocused = useCallback(
+    (field: ScreenReaderTarget | null) => {
+      if (!openingNow.current) return;
+
+      clearTimeout(done.current);
+      done.current = setTimeout(() => {
+        moveScreenReaderFocus(field);
+        endIn(TALKBACK_FOCUS_TAKEN_MS);
+      }, TALKBACK_FOCUS_BACK_MS);
+    },
+    [endIn],
+  );
 
   return { opening, open, fieldFocused };
 }

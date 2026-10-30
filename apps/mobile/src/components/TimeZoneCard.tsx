@@ -228,7 +228,7 @@ function Choosing({
   closing: boolean;
   onSaved: (zone: TimeZoneOption) => Promise<void>;
   onCancel: () => void;
-  onFocused: () => void;
+  onFocused: (field: TextInputInstance | null) => void;
   closer: RefObject<ViewInstance | null>;
   saveCloser: RefObject<ViewInstance | null>;
   /** Hides all but Cancel while Cancel closes the step. */
@@ -323,7 +323,7 @@ function Choosing({
               wrong={error != null}
               submitting={saving}
               autoFocus
-              onFocus={onFocused}
+              onFocus={() => onFocused(input.current)}
               autoCapitalize="none"
               placeholder={t('timeZone.placeholder')}
               value={typed}
