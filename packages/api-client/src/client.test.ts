@@ -6,6 +6,7 @@ import {
   ApiClient,
   type IssuedTokens,
   type TokenStore,
+  asNotificationItem,
   asNotificationRead,
   awaiting,
   phoneAwaitingCode,
@@ -3285,6 +3286,29 @@ describe("a read on the bell's topic (sc-3980)", () => {
       unreadCount: 1,
       removed: true,
     });
+  });
+
+  test("is a member's own rewrite, carrying the item as stored, which is not an arrival", () => {
+    const stored = {
+      id: 'n3',
+      category: 'event_changes',
+      title: 'Ada Obi changed the event',
+      lines: ['The venue is now Hall B (was Hall A).'],
+      eventId: 'e1',
+      eventName: 'Gala',
+      eventAvailable: true,
+      muted: false,
+      place: '/events/e1',
+      read: false,
+      createdAt: '2026-11-02T10:00:00+00:00',
+    };
+
+    expect(asNotificationRead({ updated: stored, unreadCount: 1 })).toEqual({
+      id: 'n3',
+      unreadCount: 1,
+      updated: stored,
+    });
+    expect(asNotificationItem({ updated: stored, unreadCount: 1 })).toBeNull();
   });
 
   test('is not an item published on the same topic', () => {

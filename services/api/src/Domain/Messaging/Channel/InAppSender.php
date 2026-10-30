@@ -69,11 +69,15 @@ final readonly class InAppSender implements ChannelSenderInterface
         }
 
         if (null !== $notification->thread && $notification->quiet) {
-            $this->connection->executeStatement(
-                'UPDATE notification_items SET category = :category, title = :title, lines = :lines, muted = :muted WHERE user_id = :user AND thread = :thread AND read_at IS NULL',
+            $rewritten = $this->connection->fetchOne(
+                'UPDATE notification_items SET category = :category, title = :title, lines = :lines, muted = :muted WHERE user_id = :user AND thread = :thread AND read_at IS NULL RETURNING id',
                 ['category' => $category->value, 'title' => $notification->subject, 'lines' => Json\encode($notification->lines), 'muted' => $delivery['muted'] && $category->heldByMute(), 'user' => $recipient->id->toRfc4122(), 'thread' => $notification->thread],
                 ['muted' => Types::BOOLEAN],
             );
+
+            if (false !== $rewritten) {
+                $this->publishRewrite($recipient, Type\string()->coerce($rewritten), $delivery['event_available']);
+            }
 
             return null;
         }
@@ -152,6 +156,19 @@ final readonly class InAppSender implements ChannelSenderInterface
         $unread = $this->notificationItemRepository->countUnreadFor($this->user($recipient), $this->notificationItemPruner->keptSince());
         $this->realtimePublisher->publish(RealtimeTopic::UserNotifications, $recipient->id->toRfc4122(), [
             'removedId' => Type\string()->coerce($removed),
+            'unreadCount' => $unread,
+        ]);
+    }
+
+    /** The member made this change, so their bells swap the item in where it sits, announcing nothing (sc-21643). */
+    private function publishRewrite(Recipient $recipient, string $id, bool $eventAvailable): void
+    {
+        $item = Type\instance_of(NotificationItem::class)->coerce($this->notificationItemRepository->find($id));
+        $this->entityManager->refresh($item);
+
+        $unread = $this->notificationItemRepository->countUnreadFor($this->user($recipient), $this->notificationItemPruner->keptSince());
+        $this->realtimePublisher->publish(RealtimeTopic::UserNotifications, $recipient->id->toRfc4122(), [
+            'updated' => NotificationItemSerialiser::item($item, $eventAvailable),
             'unreadCount' => $unread,
         ]);
     }

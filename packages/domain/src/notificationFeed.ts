@@ -83,19 +83,36 @@ export function feedWithMissed<Item extends FeedItem>(
   };
 }
 
-/** A read made in another of the member's sessions, or an unread item taken away: the rows follow it, and the count is the one the server published with it. */
+/** A read made in another of the member's sessions, an unread item taken away, or one the member's own change rewrote: the rows follow it, and the count is the one the server published with it. */
 export function feedWithLiveRead<Item extends FeedItem>(
   feed: LoadedFeed<Item>,
-  read: { id: string | null; unreadCount: number; removed?: boolean },
+  read: { id: string | null; unreadCount: number; removed?: boolean; updated?: Item },
 ): LoadedFeed<Item> {
   const followed =
     read.id == null
       ? feedAllRead(feed)
       : read.removed === true
         ? { ...feed, items: feed.items.filter((item) => item.id !== read.id) }
-        : feedWithRead(feed, read.id);
+        : read.updated != null
+          ? feedWithUpdate(feed, read.updated)
+          : feedWithRead(feed, read.id);
 
   return { ...followed, unread: read.unreadCount };
+}
+
+/** The rewritten words take the item's place, which keeps its time and its read state; an item not loaded yet stays unloaded (sc-21643). */
+function feedWithUpdate<Item extends FeedItem>(
+  feed: LoadedFeed<Item>,
+  updated: Item,
+): LoadedFeed<Item> {
+  return {
+    ...feed,
+    items: feed.items.map((shown) =>
+      shown.id === updated.id
+        ? { ...updated, read: shown.read, createdAt: shown.createdAt }
+        : shown,
+    ),
+  };
 }
 
 /** "at 14:05" today, the locale's date before today. */

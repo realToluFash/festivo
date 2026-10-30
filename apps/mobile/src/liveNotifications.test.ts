@@ -105,6 +105,21 @@ describe("the app's live bell (sc-3980)", () => {
     stop();
   });
 
+  it("hands on a member's own rewrite as a read, never as an arrival (sc-21643)", async () => {
+    const onItem = vi.fn();
+    const onRead = vi.fn();
+    const stop = followNotifications('u1', { onItem, onRead, onGap: vi.fn() });
+    await vi.advanceTimersByTimeAsync(0);
+
+    latest().listeners.get('message')?.({
+      data: JSON.stringify({ updated: item, unreadCount: 4 }),
+    });
+
+    expect(onItem).not.toHaveBeenCalled();
+    expect(onRead).toHaveBeenCalledExactlyOnceWith({ id: 'n1', unreadCount: 4, updated: item });
+    stop();
+  });
+
   it('connects again with a fresh token before the token lapses', async () => {
     const stop = followNotifications('u1', { onItem: vi.fn(), onRead: vi.fn(), onGap: vi.fn() });
     await vi.advanceTimersByTimeAsync(0);

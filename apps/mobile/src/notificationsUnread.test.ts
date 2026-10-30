@@ -135,6 +135,21 @@ describe("the bell's count, live (sc-3980)", () => {
     expect(arrivals).toHaveBeenCalledWith({ read: { id: 'n1', unreadCount: 3 } });
   });
 
+  it("hands a member's own rewrite to the feed as a read, with the count unchanged (sc-21643)", () => {
+    useUnread();
+    setUnread(2);
+    const arrivals = vi.fn();
+    useArrivals(arrivals);
+    const updated = { ...item, lines: ['The venue is now Hall B (was Hall A).'] };
+
+    live.followed[0]?.handlers.onRead({ id: 'n1', unreadCount: 2, updated });
+
+    expect(shown()).toBe(2);
+    expect(arrivals).toHaveBeenCalledExactlyOnceWith({
+      read: { id: 'n1', unreadCount: 2, updated },
+    });
+  });
+
   it('starts from nothing when another account signs in on the phone', () => {
     useUnread();
     setUnread(12);
