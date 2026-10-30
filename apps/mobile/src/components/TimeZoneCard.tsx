@@ -117,18 +117,28 @@ export function TimeZoneCard({
 
   const current = zones.find((zone) => zone.id === timezone);
   const label = timezone == null ? null : current == null ? timezone : zoneLabel(current);
+  // The scrolls of a save's close move TalkBack's focus off Save to the nearest view in sight, and the zone name, the intro or the title there is said before the line (sc-18587).
+  const offWhileSaving = {
+    accessibilityElementsHidden: savedClosing,
+    importantForAccessibility: savedClosing ? 'no-hide-descendants' : 'auto',
+  } as const;
 
   return (
     <View style={frame}>
-      <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+      <Text
+        {...offWhileSaving}
+        size={tokens.typeTitleSection.size}
+        weight="bold"
+        accessibilityRole="header"
+      >
         {t('timeZone.title')}
       </Text>
-      <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
+      <Text {...offWhileSaving} size={tokens.typeBodyPhone.size} style={styles.secondary}>
         {t('timeZone.intro')}
       </Text>
 
       {(!editing || opening || closing || savedClosing) && (
-        <View style={styles.group}>
+        <View {...offWhileSaving} style={styles.group}>
           <Text size={tokens.typeRowTitle.size} weight="semibold">
             {label ?? t('timeZone.unset')}
           </Text>
