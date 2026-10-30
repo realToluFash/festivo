@@ -1,4 +1,4 @@
-# sc-22869: Duplicate reached by its address, for text sizes where the event page's own pinned name hides the Duplicate button (sc-22871).
+# sc-22869: Duplicate of ${LONG} (an event with a long name) and ${SHORT} (one with a short name) reached by its address, for text sizes where the event page's own pinned name hides the Duplicate button (sc-22871).
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/${LONG}/duplicate
@@ -10,11 +10,6 @@ appId: host.exp.Exponent
 - scrollUntilVisible:
     element: '{{t:eventDuplicate.copied}}'
     timeout: 20000
-- scrollUntilVisible:
-    direction: UP
-    element:
-      id: 'frame.back'
-    timeout: 5000
 - swipe:
     start: 50%, 40%
     end: 50%, 90%
@@ -37,6 +32,8 @@ appId: host.exp.Exponent
           start: 50%, 80%
           end: 50%, 55%
           duration: 400
+- assertVisible:
+    id: 'eventDuplicate.create'
 - takeScreenshot: long-bottom
 - openLink: ${METRO_URL}/--/events/${SHORT}/duplicate
 - scrollUntilVisible:

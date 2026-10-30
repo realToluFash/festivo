@@ -1,4 +1,4 @@
-# sc-22869 regression: New event and Edit details keep their titles in the phone header.
+# sc-22869 regression: New event and Edit details keep their titles in the phone header; ${LONG} is an event with a long name.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/new

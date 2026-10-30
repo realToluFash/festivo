@@ -1,4 +1,4 @@
-# sc-22869: on a phone, Duplicate's header keeps Duplicate, and Duplicate {event} is the form's first line and scrolls away; the ways out still reach the original.
+# sc-22869: on a phone, for ${LONG} (an event with a long name) and ${SHORT} (one with a short name), Duplicate's header keeps Duplicate, and Duplicate {event} is the form's first line and scrolls away; the ways out still reach the original.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/${LONG}
@@ -30,6 +30,8 @@ appId: host.exp.Exponent
           start: 50%, 85%
           end: 50%, 60%
           duration: 400
+- assertVisible:
+    id: 'eventDuplicate.create'
 - takeScreenshot: long-bottom
 - back
 - extendedWaitUntil:
