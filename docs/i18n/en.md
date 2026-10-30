@@ -64,6 +64,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **30 Oct 2026. The end moving with the start** (sc-22161 for sc-22144, `eventForm.endMoved`,
+  web and app). Spoken only, politely, when a new start carries the end: "Ends moved with the
+  start, to {{day}}, {{time}}." Settled as sc-22144 wrote it; `Events.test.tsx` pins it. "Ends"
+  names the field the reader has just heard, as its legend says. No article before `{{time}}`
+  in any locale, since "a las" and "às" fail at 01:00; es, fr and pt name the day and the time
+  after a colon.
 - **29 Oct 2026. Being told an event changed** (sc-21005 for sc-13214,
   `messages+intl-icu:eventChanges.*`, the bell, the push and the email). Settled as sc-13214
   wrote it; `EventChangesTest` pins the titles, subjects, lines and footer. A title is the act

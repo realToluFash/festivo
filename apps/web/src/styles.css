@@ -4231,6 +4231,22 @@ button.members-row {
   margin: 0;
 }
 
+.event-live-hosts-now {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.event-live-hosts-now p,
+.event-live-hosts-now ul {
+  margin: 0;
+}
+
+.event-live-hosts-now ul {
+  padding-inline-start: var(--spaceXl);
+  overflow-wrap: anywhere;
+}
+
 /* ── End now and Call off (sc-3585) ───────────────────────────────────────── */
 
 .event-called-off p {

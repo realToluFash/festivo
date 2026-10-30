@@ -5,10 +5,9 @@ import { EVENT_PHASES } from '@soirely/domain';
 
 import {
   PHASE_WORD,
-  addHostsHref,
+  changedSinceOpening,
   draftRowOf,
   endRefusalOf,
-  makeLiveOpens,
   pauseRefusalOf,
   refusalOf,
 } from './makeLive.ts';
@@ -57,19 +56,30 @@ describe('draftRowOf', () => {
   );
 });
 
-describe('refusalOf', () => {
-  it('reads a 409 event_state_invalid as changed elsewhere', () => {
-    expect(refusalOf(problem('event_state_invalid'))).toEqual({ kind: 'changed' });
+describe('changedSinceOpening', () => {
+  const unhosted = { status: 'draft' as const, hosts: [] };
+  const hosted = { status: 'draft' as const, hosts: ['Tayo'] };
+
+  it('saves when the read on opening still has no host', () => {
+    expect(changedSinceOpening(unhosted, unhosted)).toBe(false);
   });
 
+  it('says what it found when somebody else named a host after the page loaded', () => {
+    expect(changedSinceOpening(unhosted, hosted)).toBe(true);
+  });
+
+  it('says what it found when the event is no longer a Draft', () => {
+    expect(changedSinceOpening(unhosted, { status: 'live', hosts: ['Tayo'] })).toBe(true);
+  });
+
+  it('only goes live on the retry after its own save went through and going live failed', () => {
+    expect(changedSinceOpening(hosted, hosted)).toBe(false);
+  });
+});
+
+describe('refusalOf', () => {
   it('reads a 409 event_concluded as concluded', () => {
     expect(refusalOf(problem('event_concluded'))).toEqual({ kind: 'concluded' });
-  });
-
-  it('reads a 409 event_host_required as needing a host (sc-6713)', () => {
-    expect(refusalOf(problem('event_host_required', { status: 409 }))).toEqual({
-      kind: 'needsHost',
-    });
   });
 
   it('reads a 403 plan_limit with its plan and limit', () => {
@@ -123,22 +133,5 @@ describe('pauseRefusalOf', () => {
     problem('internal_error', { status: 500 }),
   ])('reads anything else as failed', (error) => {
     expect(pauseRefusalOf(error)).toEqual({ kind: 'failed' });
-  });
-});
-
-describe("the app's Make live with no host (sc-15497)", () => {
-  it('opens refused on a draft with no hosts, and asks first once it has one', () => {
-    expect(makeLiveOpens({ status: 'draft', hosts: [] })).toEqual({ kind: 'needsHost' });
-    expect(makeLiveOpens({ status: 'draft', hosts: ['Funmi Adeyemi'] })).toEqual({
-      kind: 'confirm',
-    });
-  });
-
-  it('takes the same words from a 409 after the sheet opened', () => {
-    expect(refusalOf(problem('event_host_required'))).toEqual({ kind: 'needsHost' });
-  });
-
-  it('sends Add who is hosting to Edit details at Hosted by', () => {
-    expect(addHostsHref('evt 1')).toBe('/events/evt%201/edit?at=hosts');
   });
 });

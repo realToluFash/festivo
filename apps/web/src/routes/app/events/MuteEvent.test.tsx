@@ -56,8 +56,9 @@ function signedIn(organisation = IRE): void {
   __setSessionState({ status: 'signedIn', session });
 }
 
+/** Tagged as the API tags an event, which the event's page reads with its version. */
 function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status });
+  return new Response(JSON.stringify(body), { status, headers: { ETag: '"1"' } });
 }
 
 async function onTheEvent(

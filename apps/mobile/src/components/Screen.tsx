@@ -7,6 +7,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -50,6 +51,7 @@ import {
   fieldToBlur,
   focusBackMs,
   holdEnds,
+  scrollAsked,
   type InputFocusTo,
   type StepCloseStep,
   stepCloseSteps,
@@ -77,6 +79,8 @@ interface ScreenScrollView {
   offset: RefObject<number>;
   /** Keeps the content at least its height now and `more`, until a scroll, a drag or TalkBack's own, brings the view's end back inside the content's real end, or, once no step is closing, the keys come up again or a field takes focus. */
   hold(more: number): void;
+  /** Scrolls to `y` without letting the hold go, as a scroll a close makes for itself (sc-22357). */
+  scrollHolding(y: number): void;
   /** Whether a step is closing: a view taking input focus does not scroll itself into sight, which Android does by default, and only a scroll lets the hold go. A field the keys' Done key saved from can take focus back as the close puts the keys down, and letting the hold go then pulls the scroll back under TalkBack's focus (sc-18587). */
   closing(on: boolean): void;
 }
@@ -295,13 +299,15 @@ interface Sight {
   aboveKeys?: boolean;
   /** Stays wholly in sight as the scroll goes back up, when the view can show with it. */
   keep?: ScreenReaderTarget | null;
+  /** The scroll keeps the hold, as `scrollHolding`. */
+  holding?: boolean;
 }
 
 function bringIntoView(
   scroll: ScreenScrollView | null,
   line: ScreenReaderTarget | null,
   animated: boolean,
-  { when = 'wholly', aboveKeys = false, keep = null }: Sight = {},
+  { when = 'wholly', aboveKeys = false, keep = null, holding = false }: Sight = {},
   measured: (wasOutOfSight: boolean) => void = () => {},
 ): void {
   const view = scroll?.ref.current;
@@ -335,7 +341,8 @@ function bringIntoView(
             margin: tokens.spaceLg,
           };
           const to = settledOffsetKeeping(at, when, keptAt);
-          if (to != null) view.scrollTo({ y: to, animated });
+          if (to != null && holding) scroll.scrollHolding(to);
+          else if (to != null) view.scrollTo({ y: to, animated });
           measured(outOfSight(at));
         }),
       );
@@ -661,6 +668,16 @@ export function useStepClose(
 
   useEffect(() => () => cancel.current(), []);
 
+  // The opener showing above the step pushes it down, and a Cancel pushed out of sight under TalkBack's focus has TalkBack move that focus to the step's nearest view still in sight, and read it, before the opener takes it (sc-22357).
+  useLayoutEffect(() => {
+    if (closing)
+      bringIntoView(scroll, closer.current, false, {
+        when: 'outOfSight',
+        aboveKeys: true,
+        holding: true,
+      });
+  }, [closing, scroll]);
+
   useEffect(() => {
     if (!closing) return;
 
@@ -726,6 +743,7 @@ function useScreenScrollView() {
   const scrollView = useRef<ScrollViewInstance>(null);
   const offset = useRef(0);
   const contentHeight = useRef(0);
+  const askedTo = useRef<number | null>(null);
   const [held, setHeld] = useState<number | null>(null);
   const [stepClosing, setStepClosing] = useState(false);
   const closingNow = useRef(false);
@@ -735,8 +753,13 @@ function useScreenScrollView() {
     origin,
     offset,
     hold: (more) => setHeld(contentHeight.current + more),
+    scrollHolding: (y) => {
+      askedTo.current = y;
+      scrollView.current?.scrollTo({ y, animated: false });
+    },
     closing: (on) => {
       closingNow.current = on;
+      if (!on) askedTo.current = null;
       setStepClosing(on);
     },
   }));
@@ -765,8 +788,11 @@ function useScreenScrollView() {
   const follow = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, layoutMeasurement } = event.nativeEvent;
     offset.current = contentOffset.y;
+    const asked = scrollAsked(askedTo.current, contentOffset.y);
+    if (asked) askedTo.current = null;
     if (
       held != null &&
+      !asked &&
       holdEnds(contentOffset.y, layoutMeasurement.height, contentHeight.current)
     ) {
       setHeld(null);

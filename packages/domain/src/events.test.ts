@@ -7,6 +7,7 @@ import {
   type EventDraft,
   clockMinutes,
   copiedEnd,
+  draftLength,
   draftOf,
   type VenueDraft,
   eventChanges,
@@ -20,6 +21,7 @@ import {
   venueSent,
   savedWallClock,
   scheduleKept,
+  startMoved,
   skippedTime,
 } from './events.ts';
 
@@ -115,6 +117,124 @@ describe('the end date', () => {
     expect(filledEndDate('2026-11-14', '', false)).toBe('2026-11-14');
     expect(filledEndDate('2026-11-14', '0002-11-14', false)).toBe('2026-11-14');
     expect(filledEndDate('2026-11-14', '2026-11-16', true)).toBe('2026-11-16');
+  });
+});
+
+describe('a start that moves the end with it (sc-22144)', () => {
+  const MADRID = 'Europe/Madrid';
+  const night: EventDraft = {
+    ...DRAFT,
+    startDate: '2027-07-17',
+    startTime: '20:00',
+    endDate: '2027-07-18',
+    endTime: '08:00',
+  };
+  const endOf = (draft: EventDraft) => `${draft.endDate}T${draft.endTime}`;
+
+  it('keeps the length when the start time moves', () => {
+    expect(endOf(startMoved(night, { startTime: '21:00' }, true, MADRID))).toBe('2027-07-18T09:00');
+  });
+
+  it('keeps the length on the clock across the night the clocks go forward', () => {
+    const moved = startMoved(night, { startDate: '2027-03-27' }, true, MADRID);
+
+    expect(endOf(moved)).toBe('2027-03-28T08:00');
+    expect(savedWallClock(moved.endDate, moved.endTime, 'Europe/Madrid')).toBe('2027-03-28T08:00');
+  });
+
+  it('keeps the length on the clock across the night the clocks go back', () => {
+    expect(endOf(startMoved(night, { startDate: '2027-10-30' }, true, MADRID))).toBe(
+      '2027-10-31T08:00',
+    );
+  });
+
+  it('ends a carried end in a skipped hour where it will be saved', () => {
+    const skipped = startMoved(
+      night,
+      { startDate: '2027-03-27', startTime: '14:30' },
+      true,
+      MADRID,
+    );
+    const repeated = startMoved(
+      night,
+      { startDate: '2027-10-30', startTime: '14:30' },
+      true,
+      MADRID,
+    );
+
+    expect(endOf(skipped)).toBe('2027-03-28T03:30');
+    expect(endOf(repeated)).toBe('2027-10-31T02:30');
+  });
+
+  it('keeps the length after a start the clocks skip, as a copy does', () => {
+    const moved = startMoved(night, { startDate: '2027-03-28', startTime: '02:30' }, true, MADRID);
+
+    expect(endOf(moved)).toBe('2027-03-28T15:30');
+    expect(
+      copiedEnd('2027-03-28', '02:30', MADRID, {
+        startsAt: '2027-07-17T20:00:00+02:00',
+        endsAt: '2027-07-18T08:00:00+02:00',
+      }),
+    ).toEqual(new Date('2027-03-28T13:30:00Z'));
+  });
+
+  it('keeps the length an end change made, not the one before it', () => {
+    const shortened = { ...night, endDate: '2027-07-17', endTime: '23:00' };
+
+    expect(endOf(startMoved(shortened, { startTime: '19:00' }, true, MADRID))).toBe(
+      '2027-07-17T22:00',
+    );
+  });
+
+  it('follows the start date on a new event before an end is chosen', () => {
+    const fresh = {
+      ...DRAFT,
+      startDate: '2026-11-14',
+      startTime: '',
+      endDate: '2026-11-14',
+      endTime: '',
+    };
+
+    expect(startMoved(fresh, { startDate: '2026-11-20' }, false, MADRID)).toMatchObject({
+      startDate: '2026-11-20',
+      endDate: '2026-11-20',
+      endTime: '',
+    });
+    expect(
+      startMoved({ ...fresh, endTime: '' }, { startTime: '18:00' }, false, MADRID),
+    ).toMatchObject({
+      endDate: '2026-11-14',
+      endTime: '',
+    });
+  });
+
+  it('leaves a set end alone while the start is incomplete', () => {
+    expect(startMoved(night, { startDate: '' }, true, MADRID)).toMatchObject({
+      startDate: '',
+      endDate: '2027-07-18',
+      endTime: '08:00',
+    });
+  });
+
+  it('carries the end by the length it was given once a cleared start is typed again', () => {
+    const cleared = startMoved(night, { startDate: '' }, true, MADRID);
+    const length = draftLength(night, MADRID);
+
+    expect(length).toBe(720);
+    expect(draftLength(cleared, MADRID)).toBeNull();
+    expect(endOf(startMoved(cleared, { startDate: '2027-07-24' }, true, MADRID, length))).toBe(
+      '2027-07-25T08:00',
+    );
+  });
+
+  it('leaves an end before the start where it is, so moving the start can fix it', () => {
+    const backwards = { ...night, endDate: '2027-07-17', endTime: '18:00' };
+
+    expect(startMoved(backwards, { startTime: '17:00' }, true, MADRID)).toMatchObject({
+      startTime: '17:00',
+      endDate: '2027-07-17',
+      endTime: '18:00',
+    });
   });
 });
 

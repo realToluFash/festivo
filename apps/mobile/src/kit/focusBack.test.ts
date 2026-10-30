@@ -5,6 +5,7 @@ import {
   focusBackMs,
   holdEnds,
   INPUT_FOCUS_TAKEN_MS,
+  scrollAsked,
   stepCloseSteps,
   TALKBACK_FOCUS_BACK_MS,
   TALKBACK_FOCUS_TAKEN_MS,
@@ -102,5 +103,17 @@ describe('a scroll hold letting go', () => {
   it('lets go on content shorter than the view once the scroll is back at the top', () => {
     expect(holdEnds(0, VIEW, 300)).toBe(true);
     expect(holdEnds(50, VIEW, 300)).toBe(false);
+  });
+});
+
+describe('a scroll a close asks for itself', () => {
+  it('is the one that lands where it was asked to, which keeps the hold (sc-22357)', () => {
+    expect(scrollAsked(240, 240)).toBe(true);
+    expect(scrollAsked(240, 240.5)).toBe(true);
+  });
+
+  it('is not any other scroll, nor any scroll when none was asked for', () => {
+    expect(scrollAsked(240, 200)).toBe(false);
+    expect(scrollAsked(null, 240)).toBe(false);
   });
 });

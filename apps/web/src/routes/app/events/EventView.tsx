@@ -28,7 +28,7 @@ type Load =
   | { kind: 'loading' }
   | { kind: 'failed' }
   | { kind: 'notFound' }
-  | { kind: 'loaded'; event: OrganisationEvent };
+  | { kind: 'loaded'; event: OrganisationEvent; tag: string };
 
 type Page = 'event' | 'guests' | 'dates';
 
@@ -80,12 +80,12 @@ function EventOf({
   useEffect(() => {
     let current = true;
 
-    api.event(eventId).then(
-      (event) =>
+    api.taggedEvent(eventId).then(
+      ({ event, tag }) =>
         current &&
         setLoad(
           event.organisationId === organisationId
-            ? { kind: 'loaded', event }
+            ? { kind: 'loaded', event, tag }
             : { kind: 'notFound' },
         ),
       (error: unknown) =>
@@ -148,8 +148,9 @@ function EventOf({
       {load.kind === 'loaded' && page === 'event' && (
         <EventPage
           event={load.event}
+          tag={load.tag}
           heading={heading}
-          onChange={(event) => setLoad({ kind: 'loaded', event })}
+          onChange={(event, tag = load.tag) => setLoad({ kind: 'loaded', event, tag })}
         />
       )}
       {load.kind === 'loaded' && page === 'guests' && (
@@ -164,12 +165,14 @@ function EventOf({
 
 function EventPage({
   event,
+  tag,
   heading,
   onChange,
 }: {
   event: OrganisationEvent;
+  tag: string;
   heading: RefObject<HTMLHeadingElement | null>;
-  onChange: (event: OrganisationEvent) => void;
+  onChange: (event: OrganisationEvent, tag?: string) => void;
 }) {
   const { t } = useTranslation();
   const session = useSession();
@@ -220,6 +223,7 @@ function EventPage({
         <CalledOffNotice event={event} />
         <DraftRow
           event={event}
+          tag={tag}
           now={now}
           manages={can(session, 'events.manage')}
           heading={heading}

@@ -1,6 +1,6 @@
 import { type OrganisationEvent } from '@soirely/api-client';
-import { type RefObject, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { type ReactNode, type RefObject, useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -81,7 +81,7 @@ export function useLifecycleAction<C extends object, R extends { kind: string }>
   return { asking, pending, ask, tell, go, close };
 }
 
-/** The sheet every lifecycle move asks in: `confirm` while it asks, and without it a refusal with Close, and `onward` where the refusal has a way forward, and `retold` takes focus to the title when a refusal replaces the question. Test ids are `testID` with Sheet, Yes, No, Close and Onward. */
+/** The sheet every lifecycle move asks in: `confirm` while it asks, and without it a refusal with Close, and `onward` where the refusal has a way forward, and `retold` takes focus to the title when a refusal replaces the question. `children` go under the lines, which scroll between the title and the buttons. Test ids are `testID` with Sheet, Yes, No, Close and Onward. */
 export function LifecycleSheet({
   phone,
   open,
@@ -93,6 +93,7 @@ export function LifecycleSheet({
   onward = null,
   retold,
   onClose,
+  children,
 }: {
   phone: boolean;
   open: boolean;
@@ -104,6 +105,7 @@ export function LifecycleSheet({
   onward?: { label: string; onPress: () => void } | null;
   retold?: unknown;
   onClose: () => void;
+  children?: ReactNode;
 }) {
   const { t } = useTranslation();
 
@@ -114,11 +116,18 @@ export function LifecycleSheet({
           <AnswerHeading answer={retold} size={tokens.typeTitleSection.size} weight="bold">
             {title}
           </AnswerHeading>
-          {lines.map((line) => (
-            <Text key={line} size={tokens.typeBodyPhone.size} muted>
-              {line}
-            </Text>
-          ))}
+          <ScrollView
+            style={styles.body}
+            contentContainerStyle={styles.lines}
+            keyboardShouldPersistTaps="handled"
+          >
+            {lines.map((line) => (
+              <Text key={line} size={tokens.typeBodyPhone.size} muted>
+                {line}
+              </Text>
+            ))}
+            {children}
+          </ScrollView>
           <View style={phone ? styles.stacked : styles.actions}>
             {confirm != null ? (
               <>
@@ -178,7 +187,9 @@ export function LifecycleSheet({
 }
 
 const styles = StyleSheet.create({
-  sheet: { gap: tokens.spaceLg, padding: tokens.space3xl },
+  sheet: { flexShrink: 1, gap: tokens.spaceLg, padding: tokens.space3xl },
+  body: { flexShrink: 1, flexGrow: 0 },
+  lines: { gap: tokens.spaceLg },
   actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
   stacked: { gap: tokens.spaceSm },
   footer: {

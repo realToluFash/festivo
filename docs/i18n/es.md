@@ -49,6 +49,11 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **30 Oct 2026. El fin que se mueve con el inicio** (sc-22161 para sc-22144,
+  `eventForm.endMoved`, web y app). Solo se oye, con el lector de pantalla: «El fin se ha movido
+  con el inicio: {{day}}, {{time}}.» «Fin» e «Inicio» como las leyendas del formulario. El día y
+  la hora van tras dos puntos, sin artículo, porque «a las» falla a la 1:00 y «al dom, 18 jul»
+  no se dice.
 - **29 Oct 2026. El aviso de que un evento ha cambiado** (sc-21005 para sc-13214,
   `messages+intl-icu:eventChanges.*`: la campana, el push y el correo). El título es el acto en
   pretérito perfecto con el nombre completo, «{name} ha pausado el evento», y nada concuerda con

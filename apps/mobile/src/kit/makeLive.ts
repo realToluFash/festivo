@@ -1,5 +1,11 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
-import { type EventPhase, type MakeLiveRow, makeLiveRow, needsHost } from '@soirely/domain';
+import {
+  type EventPhase,
+  type MakeLiveRow,
+  makeLiveRow,
+  needsHost,
+  rereadOf,
+} from '@soirely/domain';
 
 /** The word each phase shows, never the stored state and never its colour alone (WCAG 2.2 §1.4.1). */
 export const PHASE_WORD = {
@@ -26,31 +32,21 @@ export function draftRowOf(
   return row == null ? null : { line: row.line, offersMakeLive: manages && row.makeLive };
 }
 
+/** The read as the sheet opened already differs from the page, so the sheet says what it found instead of saving (sc-22143). Once this sheet's own save has gone through the page has its host, and a retry only goes live. */
+export function changedSinceOpening(
+  shown: Pick<OrganisationEvent, 'status' | 'hosts'>,
+  opened: Pick<OrganisationEvent, 'status' | 'hosts'>,
+): boolean {
+  return needsHost(shown) && rereadOf(opened) !== 'noHost';
+}
+
 export type MakeLiveRefusal =
-  | { kind: 'changed' }
-  | { kind: 'concluded' }
-  | { kind: 'needsHost' }
-  | { kind: 'planLimit'; plan: string; limit: number }
-  | { kind: 'failed' };
+  { kind: 'concluded' } | { kind: 'planLimit'; plan: string; limit: number } | { kind: 'failed' };
 
-/** Make live on a draft with no host opens refused, rather than asking first (sc-15497). */
-export function makeLiveOpens(
-  event: Pick<OrganisationEvent, 'status' | 'hosts'>,
-): { kind: 'confirm' } | { kind: 'needsHost' } {
-  return needsHost(event) ? { kind: 'needsHost' } : { kind: 'confirm' };
-}
-
-/** Add who is hosting: Edit details at Hosted by. */
-export function addHostsHref(eventId: string): `/events/${string}` {
-  return `/events/${encodeURIComponent(eventId)}/edit?at=hosts`;
-}
-
-/** `changed` and `concluded` read the event again, so the page shows what it is now. */
+/** Going live refused once any host is saved; somebody else's change is the shared step's `stale` (sc-22143). `concluded` reads the event again. */
 export function refusalOf(error: unknown): MakeLiveRefusal {
   if (!(error instanceof ApiError)) return { kind: 'failed' };
-  if (error.is('event_state_invalid')) return { kind: 'changed' };
   if (error.is('event_concluded')) return { kind: 'concluded' };
-  if (error.is('event_host_required')) return { kind: 'needsHost' };
   if (error.is('plan_limit')) {
     return { kind: 'planLimit', plan: error.problem.plan ?? '', limit: error.problem.limit ?? 0 };
   }

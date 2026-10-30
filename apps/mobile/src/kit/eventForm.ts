@@ -20,6 +20,7 @@ import {
   hostsChanged,
   hostsSent,
   localDateTime,
+  newEventHosts,
   venueDraftOf,
   venueSent,
 } from '@soirely/domain';
@@ -35,14 +36,14 @@ export interface EventTyped {
   hosts: HostRow[];
 }
 
-/** A new event starts from the organisation's zone and currency, as the web's does (sc-1486). */
+/** A new event starts from the organisation's zone and currency, as the web's does (sc-1486), with one empty Host 1 (sc-22143). */
 export function blankEvent(organisation: { timezone: string; currency: string }): EventTyped {
   return {
     draft: { name: '', type: '', startDate: '', startTime: '', endDate: '', endTime: '' },
     venue: venueDraftOf(null),
     timeZone: organisation.timezone,
     currency: CURRENCY_CODES.includes(organisation.currency) ? organisation.currency : '',
-    hosts: [],
+    hosts: [{ key: 0, name: '' }],
   };
 }
 
@@ -71,7 +72,7 @@ export function changesOf(saved: OrganisationEvent, typed: EventTyped): EventCha
 }
 
 export function newEventOf(typed: EventTyped): NewEvent | null {
-  const { draft, venue, timeZone, currency } = typed;
+  const { draft, venue, timeZone, currency, hosts } = typed;
 
   if (draft.type === '') return null;
 
@@ -85,6 +86,7 @@ export function newEventOf(typed: EventTyped): NewEvent | null {
     timeZone,
     currency,
     ...(sent == null ? {} : { venue: sent }),
+    hosts: hostsSent(newEventHosts(hosts).map((row) => row.name)),
   };
 }
 

@@ -71,6 +71,7 @@
     "date": "Date",
     "time": "Time",
     "endsHint": "An event can run past midnight. Choose the day it ends.",
+    "endMoved": "Ends moved with the start, to {{day}}, {{time}}.",
     "clocksSkip": "There is no {{time}} on {{day}} in {{zone}}: the clocks go forward that night. It will be saved as {{savedAs}}.",
     "clocksSkipNextDay": "There is no {{time}} on {{day}} in {{zone}}: the clocks go forward that night. It will be saved as {{savedAs}} on {{savedDay}}.",
     "timeZone": "Time zone",
@@ -154,9 +155,10 @@
     "planLimit_other": "Not made live. Your {{plan}} plan allows {{count, number}} events to be live or paused at a time.",
     "planLimitStays": "This event stays a draft. Finish or call off another event, or change plan.",
     "close": "Close",
-    "needsHostTitle": "Add who is hosting before guests are invited.",
-    "needsHostBody": "Guests see the hosts' names on their invitation. This event stays a draft until it has at least one host.",
-    "addHosts": "Add who is hosting"
+    "hostEmpty": "Enter who is hosting to make this event live.",
+    "hostExplainer": "Guests read this name on their invitation and their page. Write it the way you want guests to see it.",
+    "notSavedChanged": "Not saved. Somebody else changed this event since you opened it.",
+    "hostsNow": "Who is hosting now, as guests will see it:"
   },
   "eventEnd": {
     "callOff": "Call off",

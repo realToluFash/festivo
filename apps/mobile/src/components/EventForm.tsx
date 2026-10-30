@@ -17,7 +17,9 @@ import {
   eventNameLength,
   firstRefusedOf,
   hostErrorsOf,
-  filledEndDate,
+  newEventHosts,
+  endMovedLine,
+  startMoved,
   formatWallClock,
   formatWallDay,
   isEventType,
@@ -76,7 +78,7 @@ import { CONTROL_TEXT_SIZE, Field, FieldError, TextField, focusChecked } from '.
 import { HostsSection } from './HostsSection.tsx';
 import { ListPicker } from './ListPicker.tsx';
 import { Notice } from './Notice.tsx';
-import { ReadOut } from './ReadOut.tsx';
+import { ReadOut, readOut } from './ReadOut.tsx';
 import { useBroughtIntoView } from './Screen.tsx';
 import { Sheet } from './Sheet.tsx';
 import { Text } from './Text.tsx';
@@ -85,6 +87,8 @@ import { VenueFields } from './VenueFields.tsx';
 type Status = 'editing' | 'sending' | 'failed' | 'changedElsewhere' | 'created';
 
 type Asking = 'leave' | 'latest' | null;
+
+const NO_HOSTS = { status: 'draft', hosts: [] } as const;
 
 export function EventForm({
   kind,
@@ -134,6 +138,7 @@ export function EventForm({
     [over, entered, from],
   );
   const { draft, venue, timeZone, currency, hosts } = typed;
+  const checkedOf = (rows: readonly HostRow[]) => (editing ? rows : newEventHosts(rows));
   const dirty = isDirty(typed, from) || (!editing && cover != null);
 
   const nameInput = useRef<TextInputInstance>(null);
@@ -285,6 +290,14 @@ export function EventForm({
     change(field, { draft: { ...draft, ...next } });
   }
 
+  function moveStart(startDate: string, startTime: string): void {
+    const moved = startMoved(draft, { startDate, startTime }, endChosen, timeZone);
+    const line = endMovedLine(draft, moved, dateLocale(), t);
+
+    changeDraft('startsAt', moved);
+    if (line != null) readOut(line);
+  }
+
   function refuse(found: EventErrors, hostFound: HostErrors = {}): void {
     setErrors(found);
     setHostErrors(hostFound);
@@ -296,24 +309,27 @@ export function EventForm({
   function editHosts(rows: HostRow[], touched: number | null): void {
     setTyped((previous) => ({ ...previous, hosts: rows }));
     if (touched != null) setHostErrors((previous) => ({ ...previous, [touched]: undefined }));
-    else if (hostsChecked) setHostErrors(hostErrorsOf(rows, t));
+    else if (hostsChecked) setHostErrors(hostErrorsOf(checkedOf(rows), t));
     if (status === 'failed') setStatus('editing');
   }
 
-  /** After the first Save, each host is checked again as its field is left. */
+  /** After the first Save or Create event, each host is checked again as its field is left. */
   function leaveHost(row: HostRow): void {
     if (!hostsChecked) return;
-    setHostErrors((previous) => ({ ...previous, [row.key]: hostErrorsOf(hosts, t)[row.key] }));
+    setHostErrors((previous) => ({
+      ...previous,
+      [row.key]: hostErrorsOf(checkedOf(hosts), t)[row.key],
+    }));
   }
 
   async function send(): Promise<void> {
     if (busy) return;
 
     const found = eventFormErrors(typed, t);
-    const hostFound = editing ? hostErrorsOf(hosts, t) : {};
+    const hostFound = hostErrorsOf(checkedOf(hosts), t);
     const count = Object.keys(found).length + Object.keys(hostFound).length;
 
-    if (editing) setHostsChecked(true);
+    setHostsChecked(true);
 
     if (count > 0) {
       setUnsent({ count });
@@ -357,7 +373,7 @@ export function EventForm({
         leave(() => onSaved('saved'));
       }
     } catch (error) {
-      const outcome = sendOutcome(error, t, hosts);
+      const outcome = sendOutcome(error, t, checkedOf(hosts));
 
       if (outcome.kind === 'refused') {
         setStatus('editing');
@@ -462,19 +478,17 @@ export function EventForm({
           />
         </Field>
 
-        {opened != null && (
-          <HostsSection
-            kind={kind}
-            rows={hosts}
-            errors={hostErrors}
-            saved={opened.event}
-            busy={busy}
-            arrive={toHosts}
-            focusHost={focusHost}
-            onRows={editHosts}
-            onLeave={leaveHost}
-          />
-        )}
+        <HostsSection
+          kind={kind}
+          rows={hosts}
+          errors={hostErrors}
+          saved={opened?.event ?? NO_HOSTS}
+          busy={busy}
+          arrive={toHosts}
+          focusHost={focusHost}
+          onRows={editHosts}
+          onLeave={leaveHost}
+        />
 
         <CoverField
           type={draft.type}
@@ -502,13 +516,7 @@ export function EventForm({
           pickerRef={startPicker}
           fieldRef={startField}
           testID="eventForm.start"
-          onPick={(date, time) =>
-            changeDraft('startsAt', {
-              startDate: date,
-              startTime: time,
-              endDate: filledEndDate(date, draft.endDate, endChosen),
-            })
-          }
+          onPick={(date, time) => moveStart(date, time)}
         />
 
         <Moment
@@ -617,7 +625,7 @@ export function EventForm({
 }
 
 /** The answer to a press at the foot of the form shows at its top, so it scrolls there; ReadOut already says it, so focus stays. */
-function InSight({ children }: { children: ReactNode }) {
+export function InSight({ children }: { children: ReactNode }) {
   const { shown } = useBroughtIntoView();
 
   return <View ref={shown}>{children}</View>;
@@ -666,9 +674,10 @@ function Ask({
 }
 
 /** A start or an end: the platform's own date and time pickers, in the event's zone, named beside them. */
-function Moment({
+export function Moment({
   label,
   help,
+  hint,
   date,
   time,
   timeZone,
@@ -676,12 +685,15 @@ function Moment({
   disabled,
   readOnly,
   pickerRef,
+  timePickerRef,
   fieldRef,
   testID,
   onPick,
 }: {
   label: string;
   help?: string;
+  /** What the date and the time each read after their value. */
+  hint?: string;
   date: string;
   time: string;
   timeZone: string;
@@ -689,6 +701,7 @@ function Moment({
   disabled: boolean;
   readOnly: boolean;
   pickerRef: RefObject<ViewInstance | null>;
+  timePickerRef?: RefObject<ViewInstance | null>;
   fieldRef: RefObject<ViewInstance | null>;
   testID: string;
   onPick: (date: string, time: string) => void;
@@ -698,7 +711,8 @@ function Moment({
   const [picking, setPicking] = useState<'date' | 'time' | null>(null);
   const [held, setHeld] = useState<Date | null>(null);
   const [openedBy, setOpenedBy] = useState<'date' | 'time'>('date');
-  const timePicker = useRef<ViewInstance>(null);
+  const ownTimePicker = useRef<ViewInstance>(null);
+  const timePicker = timePickerRef ?? ownTimePicker;
   const skipped = skippedLine(date, time, timeZone, locale, t);
   const helpLines = [skipped, help].filter((line) => line != null);
 
@@ -762,6 +776,7 @@ function Moment({
               accessibilityRole={readOnly ? undefined : 'button'}
               accessibilityState={{ disabled: disabled || readOnly }}
               accessibilityLabel={t('eventForm.date')}
+              accessibilityHint={hint}
               accessibilityValue={{
                 text: [label, date === '' ? null : dayWords, timeZone]
                   .filter((part) => part != null)
@@ -788,6 +803,7 @@ function Moment({
             accessibilityRole={readOnly ? undefined : 'button'}
             accessibilityState={{ disabled: disabled || readOnly }}
             accessibilityLabel={t('eventForm.time')}
+            accessibilityHint={hint}
             accessibilityValue={{
               text: [label, time === '' ? null : timeWords, timeZone]
                 .filter((part) => part != null)
