@@ -3,28 +3,7 @@
 # sc-22740.
 appId: host.exp.Exponent
 ---
-- launchApp:
-    appId: host.exp.Exponent
-    stopApp: true
-- openLink: ${METRO_URL}/--/sign-in
-- extendedWaitUntil:
-    visible:
-      id: 'signIn.email|home.openSignIn'
-    timeout: 90000
-- runFlow:
-    when:
-      visible:
-        id: 'home.openSignIn'
-    commands:
-      - tapOn:
-          id: 'home.openSignIn'
-- extendedWaitUntil:
-    visible:
-      id: 'signIn.email'
-    timeout: 20000
-- scrollUntilVisible:
-    element: '${LANGUAGE}'
-- tapOn: '${LANGUAGE}'
+- runFlow: sign-in-screen-language.yaml
 - openLink: ${METRO_URL}/--/reset-password?token=${TOKEN}
 - extendedWaitUntil:
     visible:
