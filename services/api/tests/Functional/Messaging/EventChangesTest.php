@@ -226,22 +226,26 @@ final class EventChangesTest extends MessagingTestCase
     }
 
     #[Test]
-    public function aMembersOwnEditAfterAnActionTheyWereToldOfSendsThemNothingAtItsSettle(): void
+    public function aMembersOwnEditInsideSomebodyElsesWindowLeavesItsSettleWhereItWas(): void
     {
         $event = $this->liveEvent();
-        self::service(EventLifecycle::class)->pause($event, $this->ada);
+        $this->edit($event, $this->bola, ['venue' => ['name' => 'Hall B', 'address' => null]]);
         self::runUntilIdle();
-        self::assertCount(1, $this->emails($this->chidi));
 
-        self::at('2026-11-02 10:05');
+        self::at('2026-11-02 10:14');
         $this->edit($event, $this->chidi, ['startsAt' => '2026-11-12T19:00:00']);
         self::runUntilIdle();
-        self::at('2026-11-02 10:20');
+        self::at('2026-11-02 10:15');
         self::runUntilIdle();
 
         self::assertCount(1, $this->emails($this->chidi));
         self::assertCount(1, $this->pushes($this->chidi));
-        self::assertCount(2, $this->emails($this->bola));
+
+        self::at('2026-11-02 10:29');
+        self::runUntilIdle();
+
+        self::assertCount(1, $this->emails($this->chidi));
+        self::assertCount(1, $this->pushes($this->chidi));
     }
 
     #[Test]
