@@ -1034,12 +1034,12 @@ span {
   gap: var(--spaceMd);
 }
 
-.button-google {
+/* Two classes, so a phone's `.auth-card .button` cannot set Google's words at 1rem. */
+.button.button-google {
   background: var(--brandGoogleSurface);
   border-color: var(--brandGoogleBorder);
   color: var(--brandGoogleInk);
-  font-family: var(--brandGoogleFont);
-  font-weight: 500;
+  font: var(--brandGoogleFont);
 }
 
 .button-google:hover {
