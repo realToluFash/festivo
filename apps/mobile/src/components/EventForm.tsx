@@ -697,6 +697,8 @@ function Moment({
   const locale = dateLocale();
   const [picking, setPicking] = useState<'date' | 'time' | null>(null);
   const [held, setHeld] = useState<Date | null>(null);
+  const [openedBy, setOpenedBy] = useState<'date' | 'time'>('date');
+  const timePicker = useRef<ViewInstance>(null);
   const skipped = skippedLine(date, time, timeZone, locale, t);
   const helpLines = [skipped, help].filter((line) => line != null);
 
@@ -716,6 +718,7 @@ function Moment({
     }
 
     setHeld(value);
+    setOpenedBy(mode);
     setPicking(mode);
   }
 
@@ -774,6 +777,7 @@ function Moment({
         </View>
         <Field label={t('eventForm.time')}>
           <Pressable
+            ref={timePicker}
             style={[
               styles.pick,
               readOnly && styles.pickReadOnly,
@@ -809,7 +813,7 @@ function Moment({
           open={picking != null}
           onClose={keep}
           scrimLabel={t('eventForm.pickerDone')}
-          opener={pickerRef}
+          opener={openedBy === 'time' ? timePicker : pickerRef}
           testID={`${testID}.sheet`}
         >
           <View style={styles.ask}>
