@@ -739,7 +739,9 @@ function useScreenScrollView() {
   useEffect(() => {
     const cameUp = keysUp && !keysWereUp.current;
     keysWereUp.current = keysUp;
-    if (cameUp && !closingNow.current) setHeld(null);
+    // Gboard swapping a password's keys as a close moves input focus off the field says they went down and came up, which lets go of the close's hold mid-close (sc-18588).
+    if (cameUp && !closingNow.current && TextInput.State.currentlyFocusedInput() != null)
+      setHeld(null);
   }, [keysUp]);
   // Keys a close left up never come up again, and a hold kept into the next step pages TalkBack's scroll past its Cancel (sc-18588).
   useEffect(
