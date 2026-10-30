@@ -1,4 +1,4 @@
-# sc-22143: on ${EVENT}, a draft with no host, Make live opens the confirmation with Host 1 and the keyboard up; empty shows the empty message, a 66-character name the length rule, Go on the keyboard sends, and a valid name makes it live; Edit details then shows the name as Host 1.
+# sc-22143: on ${EVENT}, a draft with no host, Make live opens the confirmation with Host 1 and the keyboard up; empty shows the empty message, a 64-character name the length rule, Go on the keyboard sends, and a valid name makes it live; Edit details then shows the name as Host 1.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}

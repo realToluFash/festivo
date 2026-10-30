@@ -23,6 +23,7 @@ appId: host.exp.Exponent
 - extendedWaitUntil:
     visible: '{{t:eventLive.failed}}'
     timeout: 40000
+- assertVisible: 'Offline Host'
 - takeScreenshot: failed
 - runScript:
     file: ../batch/helper.js

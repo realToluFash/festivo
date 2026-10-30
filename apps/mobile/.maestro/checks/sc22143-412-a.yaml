@@ -1,4 +1,4 @@
-# sc-22143: on ${EVENT_A}, a draft with no host, Make live opens with Host 1, a name is typed, and the confirmation waits 25 seconds, while the tester changes the event elsewhere, before Make live is pressed; the screenshot shows how the 412 was met.
+# sc-22143: on ${EVENT_A}, a draft with no host, Make live opens with Host 1, a name is typed, and the confirmation waits 40 seconds, while the tester changes the event elsewhere, before Make live is pressed; the screenshot shows how the 412 was met.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
