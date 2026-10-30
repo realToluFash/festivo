@@ -471,6 +471,16 @@
     "keptByRule": "Una norma de {{organisation}}: todos sus miembros inician sesión con Google o Apple, así que no puede desvincular la última cuenta que le queda.",
     "keptByRuleNext": "Si quiere desvincular {{provider}}, vincule antes {{other}}."
   },
+  "nameCard": {
+    "title": "Nombre",
+    "change": "Cambiar",
+    "save": "Guardar nombre",
+    "saving": "Guardando…",
+    "cancel": "Cancelar",
+    "saved": "Su nombre ahora es {{name}}.",
+    "blank": "Escriba su nombre.",
+    "failed": "No se ha podido guardar su nombre. Compruebe su conexión e inténtelo de nuevo."
+  },
   "timeZone": {
     "title": "Zona horaria",
     "intro": "Las horas de los correos y mensajes que le envía Soirely se escriben en esta zona.",
@@ -675,7 +685,7 @@
     "title": "Configuración",
     "yourAccount": "Su cuenta",
     "account": "Cuenta",
-    "accountLine": "Sus direcciones de correo electrónico y números de teléfono",
+    "accountLine": "Su nombre, direcciones de correo electrónico y números de teléfono",
     "security": "Seguridad",
     "securityLine": "Contraseña, formas de iniciar sesión, verificación en dos pasos y dispositivos con sesión abierta",
     "notifications": "Notificaciones",

@@ -1,5 +1,6 @@
 import { ApiError, type Account, type JoinOffers, awaiting } from '@soirely/api-client';
 import {
+  ACCOUNT_NAME_MAXIMUM,
   answeringInvitation,
   deviceRegion,
   followCountry,
@@ -565,6 +566,7 @@ function Details({
           autoComplete="name"
           textContentType="name"
           autoCapitalize="words"
+          maxLength={ACCOUNT_NAME_MAXIMUM}
           returnKeyType="next"
           submitBehavior="submit"
           onSubmitEditing={() => afterName.current?.focus()}

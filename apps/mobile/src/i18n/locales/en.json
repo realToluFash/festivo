@@ -463,6 +463,16 @@
     "keptByRule": "A rule set by {{organisation}}: everyone in it signs in with Google or Apple, so your last one cannot be removed.",
     "keptByRuleNext": "Link {{other}} first if you want to unlink {{provider}}."
   },
+  "nameCard": {
+    "title": "Name",
+    "change": "Change",
+    "save": "Save name",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "saved": "Name changed to {{name}}.",
+    "blank": "Enter your name.",
+    "failed": "Your name could not be saved. Check your connection and try again."
+  },
   "timeZone": {
     "title": "Time zone",
     "intro": "Times in the emails and texts Soirely sends you are written in this zone.",
@@ -658,7 +668,7 @@
     "title": "Settings",
     "yourAccount": "Your account",
     "account": "Account",
-    "accountLine": "Your email addresses and phone numbers",
+    "accountLine": "Your name, email addresses and phone numbers",
     "security": "Security",
     "securityLine": "Password, ways to sign in, two-factor, signed-in devices",
     "notifications": "Notifications",
