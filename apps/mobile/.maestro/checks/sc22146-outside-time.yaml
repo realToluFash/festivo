@@ -17,9 +17,9 @@ appId: host.exp.Exponent
       id: 'eventForm.start.time'
     direction: DOWN
     centerElement: true
-- assertVisible:
+- assertNotVisible:
     id: 'eventForm.start.time'
-    text: '{{t:eventForm.time}}'
+    text: '.*\d.*'
 - tapOn:
     id: 'eventForm.start.time'
 - extendedWaitUntil:
@@ -36,9 +36,6 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - assertNotVisible:
     id: 'eventForm.start.done'
-- assertNotVisible:
-    id: 'eventForm.start.time'
-    text: '{{t:eventForm.time}}'
 - assertVisible:
     id: 'eventForm.start.time'
     text: '.*\d.*'
