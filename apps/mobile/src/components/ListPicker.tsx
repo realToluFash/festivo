@@ -20,6 +20,7 @@ import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
+import { useModalOpen } from '../updateRequired.ts';
 import { useHeld } from './Field.tsx';
 import { LIFT } from './keyboardWatch.ts';
 import { Screen } from './Screen.tsx';
@@ -61,6 +62,7 @@ export function ListPicker({
   const { t } = useTranslation();
   const locale = currentLocale();
   const [open, setOpen] = useState(false);
+  const pickerShown = useModalOpen(open);
   const [search, setSearch] = useState('');
   const searchNameID = useId();
   const searching = useHeld(false, search, undefined, setSearch);
@@ -120,7 +122,7 @@ export function ListPicker({
       </Pressable>
 
       <Modal
-        visible={open}
+        visible={pickerShown}
         animationType="slide"
         supportedOrientations={TURNS_WITH_THE_APP}
         onRequestClose={() => setOpen(false)}

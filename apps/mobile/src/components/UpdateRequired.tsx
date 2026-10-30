@@ -19,7 +19,13 @@ import { api } from '../api.ts';
 import { config } from '../config.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { createUpdateGate, isBelow, storeUrl } from '../updateRequired.ts';
+import {
+  cameToForeground,
+  createUpdateGate,
+  isBelow,
+  setUpdateRequired,
+  storeUrl,
+} from '../updateRequired.ts';
 import { PrimaryButton } from './Buttons.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text, type TextHandle } from './Text.tsx';
@@ -39,6 +45,7 @@ export function UpdateGate({ children }: { children: ReactNode }) {
     const gate = createUpdateGate((next) => {
       if (next) setShown(true);
       setShowing(next);
+      setUpdateRequired(next);
     });
 
     const open = (): void => {
@@ -55,11 +62,14 @@ export function UpdateGate({ children }: { children: ReactNode }) {
 
     let last = AppState.currentState;
     const listener = AppState.addEventListener('change', (next) => {
-      if (last === 'background' && next === 'active') open();
+      if (cameToForeground(last, next)) open();
       last = next;
     });
 
-    return () => listener.remove();
+    return () => {
+      listener.remove();
+      setUpdateRequired(false);
+    };
   }, []);
 
   useEffect(() => {

@@ -1,4 +1,6 @@
 /** A build below its platform's minimum is asked to update (sc-22620). Fails open: anything unreadable is never below. */
+import { useSyncExternalStore } from 'react';
+import type { AppStateStatus } from 'react-native';
 
 const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
@@ -85,4 +87,31 @@ export function createUpdateGate(onChange: (showing: boolean) => void): UpdateGa
       if (current && at - openedAt <= ANSWER_WINDOW_MS) show(true);
     },
   };
+}
+
+/** RN reports iOS's WillEnterForeground as `background`, so a return is `background → active`; Control Center's `inactive → active` is not one. */
+export function cameToForeground(last: string | null | undefined, next: AppStateStatus): boolean {
+  return last === 'background' && next === 'active';
+}
+
+let required = false;
+const listeners = new Set<() => void>();
+
+export function setUpdateRequired(next: boolean): void {
+  if (next === required) return;
+  required = next;
+  listeners.forEach((listener) => listener());
+}
+
+/** Each `<Modal>` is a native window above the root, where the state is, so while it shows every one gives way. */
+export function useModalOpen(open: boolean): boolean {
+  const gated = useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    () => required,
+  );
+
+  return open && !gated;
 }

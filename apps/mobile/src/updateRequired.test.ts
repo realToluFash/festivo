@@ -1,6 +1,28 @@
 import { describe, expect, test, vi } from 'vitest';
 
-import { ANSWER_WINDOW_MS, createUpdateGate, isBelow, storeUrl } from './updateRequired.ts';
+const store = vi.hoisted(() => ({ notified: 0 }));
+
+vi.mock('react', () => ({
+  useSyncExternalStore: (
+    subscribe: (listener: () => void) => () => void,
+    snapshot: () => boolean,
+  ) => {
+    subscribe(() => {
+      store.notified += 1;
+    });
+    return snapshot();
+  },
+}));
+
+const {
+  ANSWER_WINDOW_MS,
+  cameToForeground,
+  createUpdateGate,
+  isBelow,
+  setUpdateRequired,
+  storeUrl,
+  useModalOpen,
+} = await import('./updateRequired.ts');
 
 describe('isBelow', () => {
   test.each([
@@ -18,7 +40,7 @@ describe('isBelow', () => {
     expect(isBelow('0.0.0', null)).toBe(false);
   });
 
-  test.each(['1.2', 'v1.2.0', 'latest', ''])(
+  test.each(['1.2', 'v1.2.0', 'latest', '', '1.2.0\n'])(
     'a minimum of %j is not a version, so a failed check',
     (minimum) => {
       expect(isBelow('0.0.0', minimum)).toBeNull();
@@ -42,6 +64,10 @@ describe('storeUrl', () => {
 
   test("iOS opens Soirely's App Store page", () => {
     expect(storeUrl('ios', '1234567890')).toBe('https://apps.apple.com/app/id1234567890');
+  });
+
+  test("an iOS build made without an App Store id opens the store's search for Soirely", () => {
+    expect(storeUrl('ios', undefined)).toBe('https://apps.apple.com/search?term=Soirely');
   });
 });
 
@@ -118,5 +144,42 @@ describe('createUpdateGate', () => {
 
     g.opened(60_000);
     expect(g.showing).toBe(true);
+  });
+});
+
+describe('cameToForeground', () => {
+  test('background to active is a return', () => {
+    expect(cameToForeground('background', 'active')).toBe(true);
+  });
+
+  test('inactive to active, Control Center or a notification pulled down and back, is not', () => {
+    expect(cameToForeground('inactive', 'active')).toBe(false);
+  });
+
+  test('going to the background is not', () => {
+    expect(cameToForeground('active', 'background')).toBe(false);
+  });
+});
+
+describe('useModalOpen', () => {
+  test('an open sheet gives way while the state shows, and comes back when it goes', () => {
+    expect(useModalOpen(true)).toBe(true);
+
+    const before = store.notified;
+    const g = createUpdateGate(setUpdateRequired);
+    g.opened(0);
+    g.answered(true, g.check, 10);
+
+    expect(store.notified).toBeGreaterThan(before);
+    expect(useModalOpen(true)).toBe(false);
+
+    g.opened(60_000);
+    g.answered(false, g.check, 60_010);
+
+    expect(useModalOpen(true)).toBe(true);
+  });
+
+  test('a closed sheet stays closed', () => {
+    expect(useModalOpen(false)).toBe(false);
   });
 });
