@@ -23,10 +23,7 @@ export interface MakeLiveCalls {
   makeLive(eventId: string): Promise<TaggedEvent>;
 }
 
-/**
- * `stale` reads the event again (a 412 on the save, or somebody acting between the two requests).
- * `saved` is the host's save when it went through, so a retry sends with its version.
- */
+/** `stale` reads the event again; `saved` is the host's save when it went through, so a retry sends with its version. */
 export type MakeLiveStep =
   | { kind: 'live'; tagged: TaggedEvent }
   | { kind: 'stale' }
