@@ -6,6 +6,7 @@ namespace App\Domain\Messaging\Interfaces;
 
 use App\Domain\Messaging\Model\PushTarget;
 use App\Domain\Messaging\Model\RenderedNotification;
+use App\Enum\NotificationCategory;
 use App\Enum\PushTargetKind;
 use RuntimeException;
 use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
@@ -23,5 +24,5 @@ interface PushServiceInterface
      *
      * @throws RuntimeException when the provider refused it, with a reason that quotes no address
      */
-    public function push(PushTarget $target, RenderedNotification $notification, ?string $collapseKey): ?string;
+    public function push(PushTarget $target, NotificationCategory $category, RenderedNotification $notification, ?string $collapseKey): ?string;
 }

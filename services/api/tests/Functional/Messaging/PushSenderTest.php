@@ -70,6 +70,18 @@ final class PushSenderTest extends ApiTestCase
     }
 
     #[Test]
+    public function anEventDayPushIsTimeSensitiveOnItsOwnAndroidChannel(): void
+    {
+        $this->registerPhone();
+
+        $this->sender(['data' => [['status' => 'ok', 'id' => 'ticket-1']]])->send(...$this->message(null, NotificationCategory::EventDay));
+
+        $message = Type\shape([0 => Type\dict(Type\string(), Type\mixed())])->coerce(Json\decode(Type\string()->coerce($this->requests[0]['options']['body'])))[0];
+        self::assertSame('event_day', $message['channelId'] ?? null);
+        self::assertSame('time-sensitive', $message['interruptionLevel'] ?? null);
+    }
+
+    #[Test]
     public function aPhoneExpoNoLongerKnowsIsForgotten(): void
     {
         $this->registerPhone();
@@ -136,12 +148,12 @@ final class PushSenderTest extends ApiTestCase
     }
 
     /** @return array{Uuid, Recipient, NotificationCategory, RenderedNotification, ?string} */
-    private function message(?string $collapseKey): array
+    private function message(?string $collapseKey, NotificationCategory $category = NotificationCategory::EventChanges): array
     {
         return [
             Uuid::v7(),
             new Recipient(NotificationAudienceKind::Member, $this->member->getId(), 'Ada', 'en', null),
-            NotificationCategory::EventChanges,
+            $category,
             new RenderedNotification('Ada replied', 'Going', [], '/events/1'),
             $collapseKey,
         ];

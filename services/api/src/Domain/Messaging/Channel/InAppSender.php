@@ -68,6 +68,16 @@ final readonly class InAppSender implements ChannelSenderInterface
             return null;
         }
 
+        if (null !== $notification->thread && $notification->quiet) {
+            $this->connection->executeStatement(
+                'UPDATE notification_items SET category = :category, title = :title, lines = :lines, muted = :muted WHERE user_id = :user AND thread = :thread AND read_at IS NULL',
+                ['category' => $category->value, 'title' => $notification->subject, 'lines' => Json\encode($notification->lines), 'muted' => $delivery['muted'] && $category->heldByMute(), 'user' => $recipient->id->toRfc4122(), 'thread' => $notification->thread],
+                ['muted' => Types::BOOLEAN],
+            );
+
+            return null;
+        }
+
         $item = new NotificationItem(
             $deliveryId,
             $this->user($recipient),

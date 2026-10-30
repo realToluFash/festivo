@@ -52,6 +52,14 @@ final readonly class EventChangeLog
         ));
     }
 
+    /** @return ?string who made the change, null for one made by nobody or not there */
+    public function actorOf(string $changeId): ?string
+    {
+        $actor = '' === $changeId ? false : $this->connection->fetchOne('SELECT actor_id FROM event_changes WHERE id = :id', ['id' => $changeId]);
+
+        return false === $actor ? null : Type\nullable(Type\string())->coerce($actor);
+    }
+
     /** @return ?string the change the member's unread item for the event began with */
     public function unreadFrom(Uuid $userId, string $eventId): ?string
     {

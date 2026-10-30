@@ -184,6 +184,76 @@ final class EventChangesTest extends MessagingTestCase
     }
 
     #[Test]
+    public function aMembersOwnActionLeavesTheirUnreadItemWhereItWas(): void
+    {
+        $event = $this->liveEvent();
+        self::service(EventLifecycle::class)->pause($event, $this->ada);
+        self::runUntilIdle();
+        $before = self::connection()->fetchAssociative('SELECT id, created_at FROM notification_items WHERE user_id = :user', ['user' => $this->bola->getId()->toRfc4122()]);
+
+        self::at('2026-11-02 10:05');
+        self::service(EventLifecycle::class)->resume($event, $this->bola);
+        self::runUntilIdle();
+
+        self::assertSame([$before], self::connection()->fetchAllAssociative('SELECT id, created_at FROM notification_items WHERE user_id = :user', ['user' => $this->bola->getId()->toRfc4122()]));
+        self::assertSame('Bola Adeyemi resumed the event', $this->items($this->chidi)[0]['title']);
+    }
+
+    #[Test]
+    public function aMembersOwnChangeBackRewritesTheirUnreadItemWhereItWas(): void
+    {
+        $event = $this->liveEvent();
+        $this->edit($event, $this->ada, ['startsAt' => '2026-11-13T18:00:00', 'endsAt' => '2026-11-13T23:00:00']);
+        $this->edit($event, $this->ada, ['venue' => ['name' => 'Hall B', 'address' => null]]);
+        self::runUntilIdle();
+        $before = self::connection()->fetchAssociative('SELECT id, created_at FROM notification_items WHERE user_id = :user', ['user' => $this->bola->getId()->toRfc4122()]);
+
+        self::at('2026-11-02 10:05');
+        $this->edit($event, $this->bola, ['startsAt' => '2026-11-12T18:00:00', 'endsAt' => '2026-11-12T23:00:00']);
+        self::runUntilIdle();
+
+        self::assertSame([$before], self::connection()->fetchAllAssociative('SELECT id, created_at FROM notification_items WHERE user_id = :user', ['user' => $this->bola->getId()->toRfc4122()]));
+        self::assertSame(['The venue is now Hall B (was Hall A).'], $this->items($this->bola)[0]['lines']);
+    }
+
+    #[Test]
+    public function aMembersOwnActionOnEventDayLeavesTheirUnreadItemWhereItWas(): void
+    {
+        $event = $this->liveEvent(startsOn: '2026-11-03');
+        self::at('2026-11-02 18:00');
+        self::service(EventLifecycle::class)->pause($event, $this->ada);
+        self::runUntilIdle();
+        $before = self::connection()->fetchAssociative('SELECT id, created_at FROM notification_items WHERE user_id = :user', ['user' => $this->bola->getId()->toRfc4122()]);
+
+        self::at('2026-11-02 18:05');
+        self::service(EventLifecycle::class)->resume($event, $this->bola);
+        self::runUntilIdle();
+
+        self::assertSame([$before], self::connection()->fetchAllAssociative('SELECT id, created_at FROM notification_items WHERE user_id = :user', ['user' => $this->bola->getId()->toRfc4122()]));
+        self::assertSame(['title' => 'Bola Adeyemi resumed the event', 'category' => 'event_day'], ['title' => $this->items($this->chidi)[0]['title'], 'category' => $this->items($this->chidi)[0]['category']]);
+    }
+
+    #[Test]
+    public function aMembersOwnChangeThatTakesEventDayOutOfTheirItemMarksItMutedAgain(): void
+    {
+        $event = $this->liveEvent(startsOn: '2026-11-05');
+        self::service(EventMuter::class)->set($this->bola, $event, true);
+        $this->edit($event, $this->ada, ['venue' => ['name' => 'Hall B', 'address' => null]]);
+        self::runUntilIdle();
+
+        self::at('2026-11-04 22:00');
+        $this->edit($event, $this->ada, ['startsAt' => '2026-11-05T19:00:00']);
+        self::runUntilIdle();
+        self::assertSame(['category' => 'event_day', 'muted' => false], ['category' => $this->items($this->bola)[0]['category'], 'muted' => $this->items($this->bola)[0]['muted']]);
+
+        self::at('2026-11-04 22:05');
+        $this->edit($event, $this->bola, ['startsAt' => '2026-11-05T20:00:00']);
+        self::runUntilIdle();
+
+        self::assertSame([['title' => 'Ada Obi changed the event', 'lines' => ['The venue is now Hall B (was Hall A).'], 'category' => 'event_changes', 'muted' => true]], $this->items($this->bola));
+    }
+
+    #[Test]
     public function theEmailEndsWithALinkToNotificationSettings(): void
     {
         $event = $this->liveEvent();
