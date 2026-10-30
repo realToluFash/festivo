@@ -268,10 +268,18 @@ span {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space3xl);
+  flex-wrap: wrap;
+  gap: var(--spaceLg) var(--space3xl);
   padding: var(--spaceXl) var(--space5xl);
   border-bottom: var(--borderHeader);
   background: var(--colorHeader);
+}
+
+.public-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceLg);
 }
 
 .public-main,
