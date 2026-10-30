@@ -179,16 +179,21 @@ function liftAboveKeyboard(
   });
 }
 
-/** For a field and the button under it, spread on their View. It lifts again when an error grows the group, unless `still`: a step closing under its opener moves down, and a lift then would scroll under TalkBack's focus (sc-18588). */
+/** For a field and the button under it, spread on their View. It lifts again when an error grows the group or the keys move, unless `still`: a step closing under its opener moves down, and a lift then would scroll under TalkBack's focus (sc-18588), as would one when Gboard swaps its keys as the holder takes input focus (sc-18587). */
 export function useAboveKeyboard(still = false): AboveKeyboard {
   const scroll = useContext(ScreenScroll);
   const ref = useRef<ViewInstance>(null);
   const keyboardTop = useRef<number | null>(keyboardTopNow(scroll?.origin.current ?? 0));
+  const stillNow = useRef(still);
 
   useEffect(() => {
-    const { lift, cancel } = settledLift(() =>
-      liftAboveKeyboard(scroll, ref.current, keyboardTop.current),
-    );
+    stillNow.current = still;
+  });
+
+  useEffect(() => {
+    const { lift, cancel } = settledLift(() => {
+      if (!stillNow.current) liftAboveKeyboard(scroll, ref.current, keyboardTop.current);
+    });
     const unwatch = watchKeyboardTop(
       () => scroll?.origin.current ?? 0,
       (top) => {
@@ -731,9 +736,19 @@ function useScreenScrollView() {
   useCheckedFieldInView(screenScroll);
   useEffect(() => {
     if (held == null) return;
-    const shown = Keyboard.addListener('keyboardDidShow', () => setHeld(null));
+    // Only keys that come up from down let the hold go; keys swapped while up also say they showed (sc-18587).
+    let down = !Keyboard.isVisible();
+    const hidden = Keyboard.addListener('keyboardDidHide', () => {
+      down = true;
+    });
+    const shown = Keyboard.addListener('keyboardDidShow', () => {
+      if (down) setHeld(null);
+    });
 
-    return () => shown.remove();
+    return () => {
+      hidden.remove();
+      shown.remove();
+    };
   }, [held]);
 
   const follow = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
