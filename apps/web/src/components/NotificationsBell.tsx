@@ -1,4 +1,4 @@
-import type { NotificationItem, NotificationRead } from '@soirely/api-client';
+import type { NotificationArrival, NotificationItem, NotificationRead } from '@soirely/api-client';
 import {
   badgeOf,
   feedAllRead,
@@ -67,11 +67,12 @@ export function NotificationsBell({ userId }: { userId: string }) {
 
   useLiveNotifications(userId, { onItem: arrived, onRead: readElsewhere, onGap: reread });
 
-  function arrived(item: NotificationItem): void {
+  function arrived(arrival: NotificationArrival): void {
+    const { item } = arrival;
     arrivals.current += 1;
     setFeed((current) =>
       current.status === 'loaded'
-        ? { ...feedWithArrival(current, item), status: 'loaded' }
+        ? { ...feedWithArrival(current, arrival), status: 'loaded' }
         : current,
     );
     setSaid(

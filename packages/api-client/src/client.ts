@@ -133,6 +133,12 @@ export interface NotificationRead {
   updated?: NotificationItem;
 }
 
+/** An item published to the member's bells, new or raised (sc-13214), with the count a reload would show (sc-21785). */
+export interface NotificationArrival {
+  item: NotificationItem;
+  unreadCount: number;
+}
+
 /** Mute this event's saved state. Items already delivered keep the Muted mark they were delivered with. */
 export interface EventMute {
   muted: boolean;
@@ -3802,6 +3808,14 @@ export function asNotificationRead(raw: unknown): NotificationRead | null {
   if (updated != null) return { id: updated.id, unreadCount: candidate.unreadCount, updated };
 
   return null;
+}
+
+export function asNotificationArrival(raw: unknown): NotificationArrival | null {
+  const item = asNotificationItem(raw);
+  const unreadCount = (raw as { unreadCount?: unknown } | null)?.unreadCount;
+  if (item == null || typeof unreadCount !== 'number') return null;
+
+  return { item, unreadCount };
 }
 
 function notificationItems(raw: unknown): NotificationItem[] {
