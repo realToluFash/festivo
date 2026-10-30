@@ -389,6 +389,7 @@ export function EventsScreen({
         pageKey={open ?? ''}
         back={{
           label: original == null ? t('eventsScreen.back') : t('timeline.backToEvent'),
+          drawn: original != null,
           onPress: back.onPress,
           testID: 'events.back',
         }}

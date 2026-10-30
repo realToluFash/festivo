@@ -165,7 +165,9 @@ export function FormFrame({
       current="events"
       title={phone ? title : t('eventsScreen.title')}
       back={
-        phone ? { label: t('eventEdit.cancel'), onPress: () => cancelOff || onCancel() } : undefined
+        phone
+          ? { label: t('eventEdit.cancel'), onPress: () => cancelOff || onCancel(), off: cancelOff }
+          : undefined
       }
     >
       <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>

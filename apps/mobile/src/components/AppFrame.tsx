@@ -123,7 +123,7 @@ export function AppFrame({
   /** A heading in the body takes screen reader focus after a tapped switch of organisation, in place of the title (sc-11032). */
   bodyTakesSwitch?: boolean;
   /** On a phone, the page this one was opened from, as Security's "Settings"; with `systemBack`, Android's Back runs it too. */
-  back?: { label: string; onPress: () => void; systemBack?: boolean } | undefined;
+  back?: { label: string; onPress: () => void; systemBack?: boolean; off?: boolean } | undefined;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -326,7 +326,7 @@ function FrameHeader({
   titleRef: RefObject<TextHandle | null> | undefined;
   /** A tapped switch of organisation, which takes screen reader focus to the title. */
   switchAnswer: unknown;
-  back: { label: string; onPress: () => void } | undefined;
+  back: { label: string; onPress: () => void; off?: boolean } | undefined;
   backHidden: boolean;
   email: string;
   organisation: Membership | null;
@@ -404,7 +404,7 @@ function FrameHeader({
         <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
       )}
       {back != null && !backHidden && (
-        <BackButton label={back.label} onPress={back.onPress} testID="frame.back" />
+        <BackButton label={back.label} onPress={back.onPress} off={back.off} testID="frame.back" />
       )}
       <View style={styles.titleRow}>
         <View style={styles.fill}>
@@ -425,18 +425,31 @@ function FrameHeader({
 export function BackButton({
   label,
   onPress,
+  off = false,
   testID,
 }: {
   label: string;
   onPress: () => void;
+  off?: boolean | undefined;
   testID: string;
 }) {
   return (
-    <Pressable style={styles.back} onPress={onPress} accessibilityRole="button" testID={testID}>
+    <Pressable
+      style={styles.back}
+      onPress={onPress}
+      disabled={off}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: off }}
+      testID={testID}
+    >
       <Svg width={tokens.sizeMark} height={tokens.sizeMark} viewBox="0 0 24 24" fill="none">
-        <Path d="m15 18-6-6 6-6" {...STROKE} stroke={tokens.colorInk} />
+        <Path
+          d="m15 18-6-6 6-6"
+          {...STROKE}
+          stroke={off ? tokens.colorInkSecondary : tokens.colorInk}
+        />
       </Svg>
-      <Text size={tokens.typeBodyPhone.size} weight="semibold">
+      <Text size={tokens.typeBodyPhone.size} weight="semibold" muted={off}>
         {label}
       </Text>
     </Pressable>
