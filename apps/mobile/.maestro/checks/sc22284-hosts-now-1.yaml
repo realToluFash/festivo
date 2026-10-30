@@ -17,9 +17,13 @@ appId: host.exp.Exponent
       id: 'events.makeLiveHost'
     timeout: 10000
 - runScript:
-    file: ../scripts/sc22284-hosts.js
+    file: ../scripts/change-event-elsewhere.js
     env:
-      COUNT: '1'
+      EVENT_ID: ${output.event}
+      HOSTS: '1'
+- assertTrue:
+    condition: ${output.changed == 200}
+    label: 'Hosts saved elsewhere, answered ${output.changed}'
 - inputText: Tolu Fash
 - tapOn:
     id: 'events.makeLiveYes'
@@ -29,6 +33,9 @@ appId: host.exp.Exponent
     timeout: 15000
 - assertVisible: '{{t:eventLive.notSavedChanged}}'
 - assertVisible: '{{t:eventLive.hostsNow}}'
+- scrollUntilVisible:
+    element: 'Adebayo Oluwaseun Fasugba-Ogunleye'
+    direction: DOWN
 - takeScreenshot: hosts-now-1
 - tapOn:
     id: 'events.makeLiveNo'

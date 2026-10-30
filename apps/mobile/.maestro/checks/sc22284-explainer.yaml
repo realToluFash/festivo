@@ -17,6 +17,7 @@ appId: host.exp.Exponent
       id: 'events.makeLiveHost'
     timeout: 10000
 - assertVisible: '{{t:eventLive.hostExplainer}}'
+- assertNotVisible: '{{t:eventLive.hostEmpty}}'
 - takeScreenshot: explainer
 - tapOn:
     id: 'events.makeLiveYes'

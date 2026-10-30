@@ -20,5 +20,5 @@ const made = http.post(`${API_URL}/api/orgs/${org}/events`, {
     hosts: [],
   }),
 });
+if (!made.ok) throw new Error(`draft not created: ${made.status} ${made.body}`);
 output.event = json(made.body).event.id;
-output.token = login.accessToken;
