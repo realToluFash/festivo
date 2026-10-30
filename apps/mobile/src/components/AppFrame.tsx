@@ -45,6 +45,7 @@ import { joinOrganisation, switchOrganisation, useSignedIn } from '../signedIn.t
 import { FrameSwitch, switchByTap, useFrameSwitch } from '../tappedSwitch.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useTwoFactorStanding } from '../twoFactorStanding.ts';
+import { useModalOpen } from '../updateRequired.ts';
 import { BellButton } from './BellButton.tsx';
 import { CreateOrganisation } from './CreateOrganisation.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
@@ -737,6 +738,7 @@ function Switcher({
   );
   useFocusBackToOpener(offerClosed, afterOffer);
   useFocusBack(open, opener);
+  const shown = useModalOpen(open);
   // The modal runs behind the bars, the cutout and the home indicator, so the card keeps its margin from them, not from the edge.
   const fit =
     Platform.OS === 'android'
@@ -758,7 +760,7 @@ function Switcher({
 
   return (
     <Modal
-      visible={open}
+      visible={shown}
       transparent
       animationType="fade"
       supportedOrientations={TURNS_WITH_THE_APP}
