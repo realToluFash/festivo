@@ -4,29 +4,46 @@ appId: com.soirely.app
 - launchApp:
     appId: com.soirely.app
 - extendedWaitUntil:
-    visible: 'Sign in|.*signed in to.*'
+    visible:
+      id: 'home\.open(SignIn|Settings)'
     timeout: 60000
 - runFlow:
     when:
-      visible: 'Sign in'
+      visible:
+        id: 'home.openSignIn'
     commands:
-      - tapOn: 'Sign in'
+      - tapOn:
+          id: 'home.openSignIn'
       - extendedWaitUntil:
           visible:
             id: 'signIn.email'
           timeout: 30000
-- tapOn:
-    id: 'signIn.email'
-- inputText: ${EMAIL}
-- scrollUntilVisible:
-    element:
-      id: 'signIn.password'
-    direction: DOWN
-    centerElement: true
-- tapOn:
-    id: 'signIn.password'
-- inputText: ${PASSWORD}
-- pressKey: Enter
+- runFlow:
+    when:
+      visible:
+        id: 'signIn.email'
+    commands:
+      - tapOn:
+          id: 'signIn.email'
+      - inputText: ${EMAIL}
+      - scrollUntilVisible:
+          element:
+            id: 'signIn.password'
+          direction: DOWN
+          centerElement: true
+      - tapOn:
+          id: 'signIn.password'
+      - inputText: ${PASSWORD}
+      - pressKey: Enter
+      - runFlow:
+          when:
+            visible:
+              id: 'signIn.submit'
+            platform: Android
+          commands:
+            - hideKeyboard
+            - tapOn:
+                id: 'signIn.submit'
 - extendedWaitUntil:
     visible:
       id: 'home.openSettings'

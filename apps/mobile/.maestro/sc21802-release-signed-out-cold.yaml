@@ -9,15 +9,7 @@ appId: com.soirely.app
     timeout: 60000
 - tapOn:
     id: 'home.openSettings'
-- scrollUntilVisible:
-    element:
-      id: 'settings.signOut'
-    direction: DOWN
-    timeout: 30000
-- scroll
-- waitForAnimationToEnd
-- tapOn:
-    id: 'settings.signOut'
+- runFlow: settings-sign-out-tap.yaml
 - extendedWaitUntil:
     visible:
       id: 'signIn.email'
@@ -26,7 +18,8 @@ appId: com.soirely.app
 - launchApp:
     appId: com.soirely.app
 - extendedWaitUntil:
-    visible: 'Sign in'
+    visible:
+      id: 'home.openSignIn'
     timeout: 60000
 - assertNotVisible:
     id: 'home.openSettings'
