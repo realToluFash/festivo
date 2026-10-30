@@ -516,7 +516,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **17 Oct 2026. "You're signed in" is "Tem sessão iniciada"** (`home.signedIn`,
   `home.signedInTo` with "em {{name}}"). A friendly statement in the formal register,
   impersonal like the rest; "Está ligado" reads as a connection, and agrees with a gender.
-- **17 Oct 2026. Contact details are "as formas de contacto"** (`settings.chooseLine`).
+- **17 Oct 2026. Contact details are "as formas de contacto"** (`settings.chooseLine` until
+  sc-22839, which names the email addresses and phone numbers instead).
   Rejected "como o contactar": the clitic "o" assumes a man.
 
 - **17 Oct 2026. A former name is "ex-{{name}}"** (`timeZone.was`, `timeZone.countryWas`):
