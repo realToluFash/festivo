@@ -1,0 +1,43 @@
+# sc-22819: on a tablet in portrait, the copy's back is the quiet ‹ Event, and it returns to the original's page.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- takeScreenshot: original-page
+- tapOn:
+    id: 'events.page.duplicate'
+- scrollUntilVisible:
+    element:
+      id: 'eventDuplicate.create'
+    timeout: 15000
+- tapOn:
+    id: 'eventDuplicate.start.time'
+- tapOn: 'OK'
+- tapOn:
+    id: 'eventDuplicate.create'
+- extendedWaitUntil:
+    notVisible:
+      id: 'eventDuplicate.create'
+    timeout: 15000
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'events.back'
+    text: '{{t:eventsScreen.backToEvent}}'
+- assertNotVisible:
+    id: 'events.back'
+    text: '{{t:timeline.backToEvent}}'
+- takeScreenshot: copy-page
+- tapOn:
+    id: 'events.back'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- assertVisible:
+    id: 'events.back'
+    text: '{{t:eventsScreen.back}}'
+- takeScreenshot: back-on-original
