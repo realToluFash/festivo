@@ -710,6 +710,46 @@ describe('New event', () => {
     );
   });
 
+  it('keeps the length through a start cleared and typed again (sc-22144)', async () => {
+    signedIn();
+    answering({});
+    await form();
+
+    fill('event-start-date', '2026-11-14');
+    fill('event-start-time', '16:00');
+    fill('event-end-date', '2026-11-15');
+    fill('event-end-time', '02:00');
+    fill('event-start-date', '');
+    fill('event-start-date', '2026-11-21');
+
+    expect([
+      (document.getElementById('event-end-date') as HTMLInputElement).value,
+      (document.getElementById('event-end-time') as HTMLInputElement).value,
+    ]).toEqual(['2026-11-22', '02:00']);
+  });
+
+  it('stops saying the end moved once Create event is pressed (sc-22144)', async () => {
+    signedIn();
+    answering({});
+    await form();
+
+    fill('event-start-date', '2026-11-14');
+    fill('event-start-time', '16:00');
+    fill('event-end-date', '2026-11-15');
+    fill('event-end-time', '02:00');
+    fill('event-type', 'party');
+    fill('event-start-time', '17:30');
+    create();
+    expect(screen.getByRole('status').textContent).toBe(
+      '1 field needs fixing, so nothing was sent.',
+    );
+
+    fill('event-name', 'Launch night');
+    create();
+
+    expect(screen.getByRole('status').textContent).toBe('');
+  });
+
   it('sends nothing for a blank name, says so beside it and moves focus to it', async () => {
     signedIn();
     const sent = answering({});

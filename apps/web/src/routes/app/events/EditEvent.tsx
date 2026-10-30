@@ -18,6 +18,7 @@ import {
   eventFormErrors,
   skippedLine,
   startMoved,
+  draftLength,
   endMovedLine,
   isEventType,
   type VenueDraft,
@@ -212,6 +213,7 @@ function DetailsForm({
   const [hostErrors, setHostErrors] = useState<HostErrors>({});
   const [hostsChecked, setHostsChecked] = useState(false);
   const [said, setSaid] = useState('');
+  const heldLength = useRef<number | null>(null);
   const [unsent, setUnsent] = useState(0);
   const [status, setStatus] = useState<Status>('editing');
   const [confirming, setConfirming] = useState<'latest' | null>(null);
@@ -292,13 +294,20 @@ function DetailsForm({
   }
 
   function moveStart(start: Partial<Pick<EventDraft, 'startDate' | 'startTime'>>): void {
-    const moved = startMoved(draft, start, true);
+    const length = draftLength(draft, timeZone) ?? heldLength.current;
+    const moved = startMoved(draft, start, true, timeZone, length);
     const line = endMovedLine(draft, moved, dateLocale(), t);
 
+    heldLength.current = length;
     edit('startsAt', moved);
     if (line == null) return;
     setUnsent(0);
     setSaid(line);
+  }
+
+  function moveEnd(end: Partial<Pick<EventDraft, 'endDate' | 'endTime'>>): void {
+    heldLength.current = null;
+    edit('endsAt', end);
   }
 
   function choose(field: 'timeZone' | 'currency', value: string): void {
@@ -558,8 +567,8 @@ function DetailsForm({
             time={draft.endTime}
             error={errors.endsAt}
             busy={busy}
-            onDate={(endDate) => edit('endsAt', { endDate })}
-            onTime={(endTime) => edit('endsAt', { endTime })}
+            onDate={(endDate) => moveEnd({ endDate })}
+            onTime={(endTime) => moveEnd({ endTime })}
           />
         </section>
 

@@ -10,6 +10,7 @@ import {
   isEventType,
   endMovedLine,
   localDateTime,
+  draftLength,
   startMoved,
   type VenueDraft,
   venueDraftOf,
@@ -66,6 +67,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
   const staged = useRef<string | null>(null);
   const [unsent, setUnsent] = useState(0);
   const [said, setSaid] = useState('');
+  const heldLength = useRef<number | null>(null);
   const [status, setStatus] = useState<'editing' | 'creating' | 'failed'>('editing');
   const focusNext = useRef<(() => void) | null>(null);
   const currencies = useMemo(() => currencyChoices('', currency, locale, t), [currency, locale, t]);
@@ -101,13 +103,20 @@ function EventForm({ organisation }: { organisation: Membership }) {
   }
 
   function moveStart(start: Partial<Pick<EventDraft, 'startDate' | 'startTime'>>): void {
-    const moved = startMoved(draft, start, endChosen);
+    const length = draftLength(draft, timeZone) ?? heldLength.current;
+    const moved = startMoved(draft, start, endChosen, timeZone, length);
     const line = endMovedLine(draft, moved, dateLocale(), t);
 
+    heldLength.current = length;
     edit('startsAt', moved);
     if (line == null) return;
     setUnsent(0);
     setSaid(line);
+  }
+
+  function moveEnd(end: Partial<Pick<EventDraft, 'endDate' | 'endTime'>>): void {
+    heldLength.current = null;
+    edit('endsAt', end);
   }
 
   function refuse(
@@ -123,6 +132,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
   async function create(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (busy) return;
+    setSaid('');
 
     const found: Errors = eventFormErrors({ draft, venue, timeZone, currency }, t);
 
@@ -288,9 +298,9 @@ function EventForm({ organisation }: { organisation: Membership }) {
             busy={busy}
             onDate={(endDate) => {
               setEndChosen(endDate !== '');
-              edit('endsAt', { endDate });
+              moveEnd({ endDate });
             }}
-            onTime={(endTime) => edit('endsAt', { endTime })}
+            onTime={(endTime) => moveEnd({ endTime })}
           />
         </section>
 
