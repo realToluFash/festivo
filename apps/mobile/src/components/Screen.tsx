@@ -509,6 +509,8 @@ export interface StepClose {
   closing: boolean;
   /** The ref of the control that closes the step, kept in sight while the opener comes back into it (sc-18588). */
   closer: RefObject<ViewInstance | null>;
+  /** One of the step's fields, blurred to put the keys down when JS knows of none holding input focus (sc-18588). */
+  field: RefCallback<HostInstance>;
   close(): void;
 }
 
@@ -544,6 +546,10 @@ export function useStepClose(
   const closer = useRef<ViewInstance | null>(null);
   const inputFocus = useRef<ViewInstance | null>(null);
   const field = useRef<HostInstance | null>(null);
+  const stepField = useRef<HostInstance | null>(null);
+  const stepFieldRef = useCallback((shown: HostInstance | null) => {
+    stepField.current = shown;
+  }, []);
   const finishNow = useRef(finish);
   const afterShown = useRef<readonly StepCloseStep[]>([]);
   const cancel = useRef(() => {});
@@ -670,7 +676,11 @@ export function useStepClose(
   const close = useCallback(() => {
     if (started.current) return;
     started.current = true;
-    field.current = fieldToBlur(TextInput.State.currentlyFocusedInput(), raisedBy.current);
+    field.current = fieldToBlur(
+      TextInput.State.currentlyFocusedInput(),
+      stepField.current,
+      raisedBy.current,
+    );
 
     let gone = false;
     cancel.current = () => {
@@ -685,8 +695,8 @@ export function useStepClose(
   const held = useMemo(() => <FocusHolder holder={holder} />, []);
 
   return inputFocusTo === 'holder'
-    ? { opener: ref, holder: held, closing, closer, close }
-    : { opener: ref, closing, closer, close };
+    ? { opener: ref, holder: held, closing, closer, field: stepFieldRef, close }
+    : { opener: ref, closing, closer, field: stepFieldRef, close };
 }
 
 /** Holds input focus where TalkBack does not read it. */
