@@ -16,6 +16,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_notification_item_feed', columns: ['user_id', 'created_at'])]
 #[ORM\Index(name: 'idx_notification_item_unread', columns: ['user_id'], options: ['where' => '(read_at IS NULL)'])]
 #[ORM\Index(name: 'idx_notification_item_created', columns: ['created_at'])]
+#[ORM\UniqueConstraint(name: 'uniq_notification_item_unread_thread', columns: ['user_id', 'thread'], options: ['where' => '((read_at IS NULL) AND (thread IS NOT NULL))'])]
 class NotificationItem
 {
     #[ORM\Id]
@@ -51,6 +52,14 @@ class NotificationItem
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $readAt = null;
+
+    /** Deliveries sharing a thread update its one unread item rather than adding another (sc-13214). */
+    #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
+    private ?string $thread = null;
+
+    /** The source the unread item began with, which its type renders it from. */
+    #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
+    private ?string $threadFrom = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $createdAt;
@@ -134,6 +143,16 @@ class NotificationItem
     public function setReadAt(?DateTimeImmutable $readAt): void
     {
         $this->readAt = $readAt;
+    }
+
+    public function getThread(): ?string
+    {
+        return $this->thread;
+    }
+
+    public function getThreadFrom(): ?string
+    {
+        return $this->threadFrom;
     }
 
     public function getCreatedAt(): DateTimeImmutable

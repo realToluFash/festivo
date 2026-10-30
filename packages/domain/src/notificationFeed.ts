@@ -3,6 +3,7 @@ import { formatDay, formatTimeOfDay } from './datetime.ts';
 /** The shape `@soirely/api-client` reads as `NotificationItem`; only what the feed needs. */
 export interface FeedItem {
   id: string;
+  createdAt: string;
   category: string;
   eventId: string | null;
   muted: boolean;
@@ -15,14 +16,20 @@ export interface LoadedFeed<Item extends FeedItem> {
   next: string | null;
 }
 
-/** A live item joins the top; one already shown is left as it is, and the page boundary does not move. */
+/** A live item joins the top, replacing the one it rewrites (sc-13214), and the page boundary does not move. */
 export function feedWithArrival<Item extends FeedItem>(
   feed: LoadedFeed<Item>,
   item: Item,
 ): LoadedFeed<Item> {
-  if (feed.items.some((shown) => shown.id === item.id)) return feed;
+  const shown = feed.items.find((candidate) => candidate.id === item.id);
+  const counted = (candidate: Item | undefined): number =>
+    candidate == null || candidate.read ? 0 : 1;
 
-  return { ...feed, items: [item, ...feed.items], unread: feed.unread + (item.read ? 0 : 1) };
+  return {
+    ...feed,
+    items: [item, ...feed.items.filter((candidate) => candidate.id !== item.id)],
+    unread: Math.max(feed.unread + counted(item) - counted(shown), 0),
+  };
 }
 
 export function feedWithRead<Item extends FeedItem>(
@@ -54,29 +61,39 @@ export function feedWithPage<Item extends FeedItem>(
   return { feed: { ...feed, items: [...feed.items, ...added], next: page.next }, added };
 }
 
-/** After a gap in the live line, page one read again: what was published meanwhile joins the top, a row read elsewhere meanwhile says so, the pages loaded stay, and the count is the server's. */
+/** After a gap in the live line, page one read again replaces every loaded row in its range, so one taken away meanwhile goes too; the pages loaded below it stay, and the count is the server's. */
 export function feedWithMissed<Item extends FeedItem>(
   feed: LoadedFeed<Item>,
   page: { items: Item[]; unread: number },
 ): LoadedFeed<Item> {
-  const shown = new Set(feed.items.map((item) => item.id));
-  const missed = page.items.filter((item) => !shown.has(item.id));
-  const again = new Map(page.items.map((item) => [item.id, item.read]));
-  const items = feed.items.map((item) => {
-    const read = again.get(item.id);
+  const again = new Set(page.items.map((item) => item.id));
+  const last = page.items.at(-1);
+  const below = (item: Item): boolean => {
+    if (last == null) return false;
+    const at = Date.parse(item.createdAt);
+    const lastAt = Date.parse(last.createdAt);
 
-    return read == null || read === item.read ? item : { ...item, read };
-  });
+    return at < lastAt || (at === lastAt && item.id < last.id);
+  };
 
-  return { ...feed, items: [...missed, ...items], unread: page.unread };
+  return {
+    ...feed,
+    items: [...page.items, ...feed.items.filter((item) => !again.has(item.id) && below(item))],
+    unread: page.unread,
+  };
 }
 
-/** A read made in another of the member's sessions: the rows follow it, and the count is the one the server published with it. */
+/** A read made in another of the member's sessions, or an unread item taken away: the rows follow it, and the count is the one the server published with it. */
 export function feedWithLiveRead<Item extends FeedItem>(
   feed: LoadedFeed<Item>,
-  read: { id: string | null; unreadCount: number },
+  read: { id: string | null; unreadCount: number; removed?: boolean },
 ): LoadedFeed<Item> {
-  const followed = read.id == null ? feedAllRead(feed) : feedWithRead(feed, read.id);
+  const followed =
+    read.id == null
+      ? feedAllRead(feed)
+      : read.removed === true
+        ? { ...feed, items: feed.items.filter((item) => item.id !== read.id) }
+        : feedWithRead(feed, read.id);
 
   return { ...followed, unread: read.unreadCount };
 }

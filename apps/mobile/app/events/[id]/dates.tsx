@@ -6,7 +6,7 @@ import { AppFrame, BackButton } from '../../../src/components/AppFrame.tsx';
 import { bodyEdges } from '../../../src/components/bodyEdges.ts';
 import { Screen } from '../../../src/components/Screen.tsx';
 import { AllDates } from '../../../src/components/Timeline.tsx';
-import { upFromDates } from '../../../src/kit/eventDates.ts';
+import { goUpToEvent } from '../../../src/kit/upToEvent.ts';
 import { useServerNow } from '../../../src/kit/serverNow.ts';
 import { useLayout } from '../../../src/layout/useLayout.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
@@ -19,12 +19,7 @@ export default function EventDates() {
   const navigation = useNavigation();
   const now = useServerNow();
   const phone = kind === 'phone';
-  const back = () => {
-    const { routes, index } = navigation.getState() ?? { routes: [], index: 0 };
-
-    if (upFromDates(routes, index, id) === 'back') router.back();
-    else router.replace(`/events/${encodeURIComponent(id)}`);
-  };
+  const back = () => goUpToEvent(navigation, router, id);
 
   return (
     <AppFrame

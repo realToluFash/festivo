@@ -1,3 +1,5 @@
+import quietHours from '../../../quiet-hours.json' with { type: 'json' };
+
 /** The shape `@soirely/api-client` reads as `NotificationSetting`; only what the grid needs. */
 export interface SettingRow {
   category: string;
@@ -17,8 +19,8 @@ export const NOTIFICATION_CATEGORY_ORDER = [
   'account_security',
 ] as const;
 
-/** Epic 36 §5: only Event day pushes between these hours, the member's own time. */
-export const QUIET_HOURS = { start: 21, end: 8 };
+/** Epic 36 §5: only Event day pushes between these hours, the member's own time. The API holds pushes by the same file. */
+export const QUIET_HOURS = { start: quietHours.start, end: quietHours.end };
 
 export const USAGE_THRESHOLDS = { low: 0.8, high: 1 };
 

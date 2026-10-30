@@ -32,6 +32,7 @@ import {
   searchBesideTitle,
   settledOffset,
   shortWhileTyping,
+  shownAboveKeys,
   shownEnd,
   titleScrollsWhileTyping,
 } from './keyboard.ts';
@@ -253,6 +254,35 @@ describe('a line that appears off screen is brought wholly into sight (sc-9382)'
 
   it('keeps its top in sight when it is taller than the screen', () => {
     expect(offsetIntoView({ ...line, height: 900, contentY: 1000, offset: 0 })).toBe(984);
+  });
+});
+
+describe('a field a check focuses comes wholly into sight above the keys (sc-20721)', () => {
+  const scrollView = { y: 100, height: 700 };
+  const field = { height: 120, margin: 16 };
+
+  it('has the whole scroll view in sight with the keys down, and down to the keys with them up', () => {
+    expect(shownAboveKeys(null, scrollView)).toBe(700);
+    expect(shownAboveKeys(500, scrollView)).toBe(400);
+    expect(shownAboveKeys(900, scrollView)).toBe(700);
+  });
+
+  it('comes down from above the screen to a margin under its top', () => {
+    const shown = shownAboveKeys(500, scrollView);
+
+    expect(offsetIntoView({ ...field, contentY: 40, offset: 900, shown })).toBe(24);
+  });
+
+  it('comes up out from under the keys', () => {
+    const shown = shownAboveKeys(500, scrollView);
+
+    expect(offsetIntoView({ ...field, contentY: 400, offset: 0, shown })).toBe(136);
+  });
+
+  it('stays put when it is already wholly in sight above them', () => {
+    const shown = shownAboveKeys(500, scrollView);
+
+    expect(offsetIntoView({ ...field, contentY: 100, offset: 0, shown })).toBeNull();
   });
 });
 

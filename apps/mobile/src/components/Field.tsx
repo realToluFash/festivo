@@ -35,7 +35,7 @@ import {
 } from '../kit/fields.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
-import { fieldFocused, fieldLeft } from './focusedField.ts';
+import { fieldChecked, fieldFocused, fieldLeft } from './focusedField.ts';
 import { useReadOut } from './ReadOut.tsx';
 import { useFocusOnAnswer } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
@@ -63,6 +63,7 @@ export function Field({
   help,
   helpAnswer,
   children,
+  ref,
 }: {
   label: string;
   pill?: string | undefined;
@@ -75,15 +76,18 @@ export function Field({
   /** What a tap set for the help to answer it, where the tap's button went: its first line takes focus (sc-11173). */
   helpAnswer?: unknown;
   children: ReactNode;
+  /** The whole Field, which a client check failing on its picker brings into view. */
+  ref?: RefObject<ViewInstance | null> | undefined;
 }) {
-  const field = useRef<ViewInstance>(null);
+  const own = useRef<ViewInstance>(null);
+  const field = ref ?? own;
   const labelID = useId();
   const { read: helpRead } = useFocusOnAnswer<TextHandle>(helpAnswer);
   useEffect(() => {
     const mounted = field.current;
 
     return () => fieldLeft(mounted);
-  }, []);
+  }, [field]);
 
   // A control's focus and blur bubble up to here.
   return (
@@ -246,11 +250,15 @@ export function focusRefused(field: RefObject<TextInputInstance | null>): void {
   moveScreenReaderFocus(field.current);
 }
 
-/** To the field a client check names, with the keyboard up on it. */
+/** To the field a client check names, with the keyboard up on it and the field brought into view above it. */
 export function focusChecked(field: RefObject<TextInputInstance | null>): void {
+  const input = field.current;
+  if (input == null) return;
+  const focused = input.isFocused();
   // Android's back gesture hides the keys and leaves the field focused, and focus() skips a focused field.
-  if (field.current?.isFocused() === true && !Keyboard.isVisible()) field.current.blur();
-  field.current?.focus();
+  if (focused && !Keyboard.isVisible()) input.blur();
+  fieldChecked(focused && Keyboard.isVisible());
+  input.focus();
 }
 
 /** At a submit the client checks passed: keys hidden over a focused field stay hidden while it runs and after it. */

@@ -28,7 +28,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Organisation              | Organisation            | Settled: section name, same word |
 | Sign in                   | Se connecter            |                                  |
 | Sign out                  | Déconnecter             |                                  |
-| Email                     | Adresse e-mail          |                                  |
+| Email                     | Adresse e-mail          | Settled 29 Oct: plain hyphen     |
 | Password                  | Mot de passe            |                                  |
 | Continue                  | Continuer               |                                  |
 | Cancel                    | Annuler                 |                                  |
@@ -44,6 +44,11 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Account mail              | Les e-mails du compte   | Settled 18 Oct                   |
 | Sign-in rules             | Règles de connexion     | Settled 19 Oct                   |
 
+- **« e-mail » keeps a plain hyphen (U+002D)**, never U+2011, even where it wraps as « e- » /
+  « mail » (sc-20577, #20957). A break at a hyphen is ordinary French typography; U+2011 is
+  missing from some fonts and email clients, breaks search, and outside GSM-7 sends an SMS as
+  UCS-2. A line that must not wrap is a `[dev]` layout question, not a character in the copy.
+
 ## Never translated
 
 - Soirely
@@ -54,6 +59,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **29 Oct 2026. L’avis qu’un événement a changé** (sc-21005 pour sc-13214,
+  `messages+intl-icu:eventChanges.*` : la cloche, le push et l’e-mail). Le titre est l’acte au
+  passé composé avec le nom complet, « {name} a mis l’événement en pause », auxiliaire avoir,
+  donc rien ne s’accorde avec le nom ; "changed" est « a modifié ». Chaque ligne ouvre sur la
+  nouveauté, « Nouvelle date : {new} (avant : {old}). » : « avant : » plutôt qu’« au lieu de »,
+  qui ne s’élide pas devant un fuseau (« au lieu de heure… »). Un lieu ajouté est « Lieu
+  confirmé », un lieu retiré « Lieu à confirmer ». L’objet est l’état accordé avec « événement » :
+  « En pause : {event} », « Repris : {event} ». Une fin un autre jour est « {weekday} à {time} ».
+  Les autres : « Également modifié par {name}. », « d’autres personnes » au `many`. Le pied
+  dit « vous faites partie de l’événement {event} » et cite « Modifications d’événements ».
 - **29 Oct 2026. Les notifications : la cloche, la mise en sourdine et les paramètres**
   (sc-14815 pour sc-3980, `notifications.*`, `eventMute.*`, `notificationSettings.*` web et
   app, `messages:notifications.*`). Le canal est « Push » en colonne et « notifications push »

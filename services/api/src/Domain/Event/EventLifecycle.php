@@ -7,11 +7,14 @@ namespace App\Domain\Event;
 use App\Audit\Auditor;
 use App\Domain\Event\Interfaces\ActiveEventsLimitInterface;
 use App\Domain\Event\Model\EventTransition;
+use App\Domain\Messaging\EventChanges\EventChangeRecorder;
+use App\Domain\Messaging\Model\EventDetails;
 use App\Entity\Event;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Enum\EventAction;
+use App\Enum\EventChangeKind;
 use App\Enum\EventGuard;
 use App\Enum\EventPhase;
 use App\Http\Exception\ApiException;
@@ -39,6 +42,7 @@ final readonly class EventLifecycle
         private Auditor $auditor,
         private ClockInterface $clock,
         private TranslatorInterface $translator,
+        private EventChangeRecorder $eventChangeRecorder,
     ) {
     }
 
@@ -78,10 +82,19 @@ final readonly class EventLifecycle
                 $this->check($guard, $action, $event, $now);
             }
 
+            $details = EventDetails::of($event);
             $apply($event, $now);
             $this->auditor->record($audited, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), [
                 'status' => [$before->value, $transition->to->value],
             ]);
+
+            match ($action) {
+                EventAction::End => $this->eventChangeRecorder->ended($event, $by, $details),
+                EventAction::MakeLive => $this->eventChangeRecorder->acted($event, $by, EventChangeKind::MadeLive),
+                EventAction::Pause => $this->eventChangeRecorder->acted($event, $by, EventChangeKind::Paused),
+                EventAction::Resume => $this->eventChangeRecorder->acted($event, $by, EventChangeKind::Resumed),
+                default => null,
+            };
             $this->entityManager->flush();
 
             return $event;

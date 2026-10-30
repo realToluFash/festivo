@@ -13,6 +13,13 @@ appId: host.exp.Exponent
 # erase leaves a fragment that the new text is typed on top of.
 - eraseText: 120
 - inputText: ${EMAIL}
+# Scrolled to: the You were signed out notice pushes Password under the keyboard. sc-20997.
+- scrollUntilVisible:
+    element:
+      id: 'signIn.password'
+    direction: DOWN
+    centerElement: true
+    timeout: 15000
 - tapOn:
     id: 'signIn.password'
 - eraseText: 120

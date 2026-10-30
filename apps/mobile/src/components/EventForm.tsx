@@ -28,7 +28,6 @@ import {
   withCurrent,
 } from '@soirely/domain';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import { useNavigation } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
 import {
   type ReactNode,
@@ -108,7 +107,6 @@ export function EventForm({
   onLatest: (latest: TaggedEvent) => void;
 }) {
   const { t } = useTranslation();
-  const navigation = useNavigation();
   const locale = currentLocale();
   const editing = opened != null;
   const [from] = useState<EventTyped>(() =>
@@ -124,7 +122,7 @@ export function EventForm({
   const [status, setStatus] = useState<Status>('editing');
   const [asking, setAsking] = useState<Asking>(null);
   const [fetchingLatest, setFetchingLatest] = useState(false);
-  const leaving = useRef(false);
+  const [leaving, setLeaving] = useState(false);
   const leaveAction = useRef<(() => void) | null>(null);
   const [cover, setCover] = useState<EventCoverPhoto | null>(opened?.event.cover ?? null);
   const staged = useRef<string | null>(null);
@@ -147,6 +145,11 @@ export function EventForm({
   const endPicker = useRef<ViewInstance>(null);
   const zonePicker = useRef<ViewInstance>(null);
   const currencyPicker = useRef<ViewInstance>(null);
+  const typeField = useRef<ViewInstance>(null);
+  const startField = useRef<ViewInstance>(null);
+  const endField = useRef<ViewInstance>(null);
+  const zoneField = useRef<ViewInstance>(null);
+  const currencyField = useRef<ViewInstance>(null);
   const [focusOn, setFocusOn] = useState<{ field: EventFormField } | null>(null);
 
   useEffect(() => {
@@ -165,18 +168,29 @@ export function EventForm({
           timeZone: zonePicker,
           currency: currencyPicker,
         }[field],
+        {
+          type: typeField,
+          startsAt: startField,
+          endsAt: endField,
+          timeZone: zoneField,
+          currency: currencyField,
+        }[field],
       );
   }, [focusOn]);
 
-  // A save or a create leaves before the state saying so has rendered, so the ref decides.
-  usePreventRemove(dirty, ({ data }) => {
-    if (leaving.current) {
-      navigation.dispatch(data.action);
-      return;
-    }
-    leaveAction.current = () => navigation.dispatch(data.action);
+  const held = dirty && !leaving;
+
+  // The guard comes down before the form leaves: an action it prevents and dispatches again loops (sc-20824).
+  const lift = usePreventRemove(held, ({ repeat }) => {
+    leaveAction.current = repeat;
     setAsking('leave');
   });
+
+  function leave(go: (() => void) | null): void {
+    setLeaving(true);
+    lift();
+    go?.();
+  }
 
   useEffect(
     () => () => {
@@ -221,13 +235,13 @@ export function EventForm({
   // The frame's destinations and its switcher ask here, and a destination left this way takes the form off the stack (sc-3595).
   useEffect(
     () =>
-      dirty
+      held
         ? holdLeaving((go) => {
             leaveAction.current = go;
             setAsking('leave');
           })
         : undefined,
-    [dirty],
+    [held],
   );
 
   const types = useMemo(
@@ -338,12 +352,10 @@ export function EventForm({
             .catch((error: unknown) => markCoverRefused(created.id, coverRefusalOf(error, t)));
 
         setStatus('created');
-        leaving.current = true;
-        onCreated(created.id);
+        leave(() => onCreated(created.id));
       } else if (opened != null) {
         await api.updateEvent(opened.event.id, changesOf(opened.event, typed), opened.tag);
-        leaving.current = true;
-        onSaved('saved');
+        leave(() => onSaved('saved'));
       }
     } catch (error) {
       const outcome = sendOutcome(error, t, hosts);
@@ -364,7 +376,6 @@ export function EventForm({
 
     try {
       const latest = await api.taggedEvent(opened.event.id);
-      leaving.current = true;
       onLatest(latest);
     } catch {
       setFetchingLatest(false);
@@ -438,7 +449,7 @@ export function EventForm({
           />
         </Field>
 
-        <Field label={t('eventForm.type')} error={errors.type}>
+        <Field ref={typeField} label={t('eventForm.type')} error={errors.type}>
           <ListPicker
             label={t('eventForm.type')}
             placeholder={t('eventForm.typePlaceholder')}
@@ -490,6 +501,7 @@ export function EventForm({
           disabled={busy}
           readOnly={over}
           pickerRef={startPicker}
+          fieldRef={startField}
           testID="eventForm.start"
           onPick={(date, time) =>
             changeDraft('startsAt', {
@@ -510,6 +522,7 @@ export function EventForm({
           disabled={busy}
           readOnly={over}
           pickerRef={endPicker}
+          fieldRef={endField}
           testID="eventForm.end"
           onPick={(date, time) => {
             if (date !== draft.endDate) setEndChosen(true);
@@ -528,7 +541,7 @@ export function EventForm({
           {...(over ? {} : { onUseZone: (zone: string) => change('timeZone', { timeZone: zone }) })}
         />
 
-        <Field label={t('eventForm.timeZone')} error={errors.timeZone}>
+        <Field ref={zoneField} label={t('eventForm.timeZone')} error={errors.timeZone}>
           <ListPicker
             label={t('eventForm.timeZone')}
             searchLabel={t('orgGeneral.searchTimezone')}
@@ -543,6 +556,7 @@ export function EventForm({
         </Field>
 
         <Field
+          ref={currencyField}
           label={t('eventForm.currency')}
           error={errors.currency}
           help={editing ? undefined : t('eventForm.defaultsHint', { name: organisation.name })}
@@ -584,8 +598,7 @@ export function EventForm({
         pending={false}
         onGo={() => {
           setAsking(null);
-          leaving.current = true;
-          leaveAction.current?.();
+          leave(leaveAction.current);
         }}
         onKeep={() => setAsking(null)}
         testID="eventForm.leave"
@@ -664,6 +677,7 @@ function Moment({
   disabled,
   readOnly,
   pickerRef,
+  fieldRef,
   testID,
   onPick,
 }: {
@@ -676,6 +690,7 @@ function Moment({
   disabled: boolean;
   readOnly: boolean;
   pickerRef: RefObject<ViewInstance | null>;
+  fieldRef: RefObject<ViewInstance | null>;
   testID: string;
   onPick: (date: string, time: string) => void;
 }) {
@@ -714,7 +729,7 @@ function Moment({
   const timeWords = time === '' ? t('eventForm.time') : formatWallClock(time, locale);
 
   return (
-    <View style={styles.momentGroup}>
+    <View ref={fieldRef} style={styles.momentGroup}>
       <View style={styles.momentHead}>
         <Text size={tokens.typeButton.size} weight="semibold">
           {label}

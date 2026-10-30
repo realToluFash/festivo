@@ -64,6 +64,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **29 Oct 2026. Being told an event changed** (sc-21005 for sc-13214,
+  `messages+intl-icu:eventChanges.*`, the bell, the push and the email). Settled as sc-13214
+  wrote it; `EventChangesTest` pins the titles, subjects, lines and footer. A title is the act
+  in the past with the person's full name, "{name} paused the event", and doubles as the
+  email's sentence with a full stop added, so it carries none. The subject is the state then
+  the event, "Paused: {event}", "Back on: {event}" for a resume. A change line is "The … is now
+  {new} (was {old})."; a removed venue is "to be confirmed", as the event page says. Support is
+  "Soirely support", by name. One line waits on [dev]: `email.footer` should open "You're
+  getting this because you are on {event} at {organisation}.", the house footer, but the test
+  matches "You get this because". es, fr and pt are written to the settled footer already.
 - **29 Oct 2026. Notifications: the bell, Mute this event and Notification settings** (sc-14815
   for sc-3980, `notifications.*`, `eventMute.*`, `notificationSettings.*` web and app,
   `messages:notifications.*`). Settled as sc-3980 wrote it, except the failures. A load failure

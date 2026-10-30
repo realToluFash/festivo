@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\Event;
 
 use App\Audit\Auditor;
+use App\Domain\Messaging\EventChanges\EventChangeRecorder;
+use App\Domain\Messaging\Model\EventDetails;
 use App\Domain\Messaging\NotificationScheduler;
 use App\Entity\Event;
 use App\Entity\User;
@@ -37,6 +39,7 @@ final readonly class EventEditor
         private ClockInterface $clock,
         private TranslatorInterface $translator,
         private NotificationScheduler $notificationScheduler,
+        private EventChangeRecorder $eventChangeRecorder,
     ) {
     }
 
@@ -62,6 +65,7 @@ final readonly class EventEditor
             }
 
             $before = self::recorded($event);
+            $details = EventDetails::of($event);
             $phase = EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $this->clock->now());
             $checked = $this->eventRules->check([
                 'name' => $fields['name'] ?? $event->getName(),
@@ -111,6 +115,7 @@ final readonly class EventEditor
 
             if ([] !== $changes) {
                 $this->auditor->record(self::UPDATED, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), $changes);
+                $this->eventChangeRecorder->edited($event, $by, $details, EventDetails::of($event));
                 $this->entityManager->flush();
             }
 

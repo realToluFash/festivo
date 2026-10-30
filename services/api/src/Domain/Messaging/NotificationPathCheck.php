@@ -6,6 +6,7 @@ namespace App\Domain\Messaging;
 
 use App\Domain\Messaging\Model\PathSymptom;
 use App\Enum\NotificationDeliveryStatus;
+use App\Enum\NotificationHold;
 use App\Enum\ScheduledNotificationStatus;
 use DateInterval;
 use DateTimeImmutable;
@@ -17,7 +18,7 @@ use Psl\Type;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 
-/** Run from cron, never from the worker, which would fall silent with it. Held, backing-off and claimed rows are not waiting. */
+/** Run from cron, never from the worker, which would fall silent with it. Held, backing-off and claimed rows are not waiting; a push held for the night is waiting from the 08:00 it wakes at. */
 final readonly class NotificationPathCheck
 {
     public const string STOPPED_AFTER = 'PT5M';
@@ -95,7 +96,7 @@ final readonly class NotificationPathCheck
                     SELECT next_attempt_at
                     FROM notification_deliveries
                     WHERE status = :deliveryPending
-                      AND held IS NULL
+                      AND (held IS NULL OR held = :quietHours)
                       AND next_attempt_at <= :now
                       AND (claimed_until IS NULL OR claimed_until < :now)
                 ) waiting
@@ -104,6 +105,7 @@ final readonly class NotificationPathCheck
                 'now' => $now,
                 'scheduledPending' => ScheduledNotificationStatus::Pending->value,
                 'deliveryPending' => NotificationDeliveryStatus::Pending->value,
+                'quietHours' => NotificationHold::QuietHours->value,
             ],
             ['now' => Types::DATETIME_IMMUTABLE],
         );

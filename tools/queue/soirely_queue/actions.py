@@ -188,7 +188,7 @@ def comment(c, a):
         store.mark_handled(c.db, c.role, [a.reply_to])
     c.refresh(story["id"])
     if to and story["done"]:
-        woken = ", ".join(sorted({R.developer_of(story["labels"]) if t == "dev"
+        woken = ", ".join(sorted({R.builder_of(story["labels"]) if t == "dev"
                                   else R.FORMER.get(t, t) for t in to}))
         return (f"posted #{posted['id']} on sc-{story['id']}{with_files(files)}, which is Done: "
                 f"it wakes {woken}. New work goes on an open story or a new one")
@@ -726,7 +726,7 @@ def review(c, a):
             post(c, story, ["qa"], f"PR #{a.pr} passed review at {head[:7]}: {pr['url']}\n\n"
                                    f"{a.qa or 'Nothing beyond the AC to look at hard.'}")
     elif story:
-        post(c, story, [R.developer_of(story["labels"])],
+        post(c, story, [R.builder_of(story["labels"])],
              f"Review of PR #{a.pr} at {head[:7]}: {blocking} blocking. {url}\n"
              + ("Answer each finding in its thread, fix and push; the lead is woken by the push."
                 if follow_up or W.side_pr(story, pr) else

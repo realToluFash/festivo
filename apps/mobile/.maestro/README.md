@@ -35,6 +35,9 @@ screenshot. `shared-flows-chained-*` run them one after another, as a batch woul
 | `return-home`              | Home                             | none                         |
 | `switch-organisation`      | Home, in the organisation `ORG`  | none                         |
 
+`switch-organisation`'s `ORG` is the organisation's id, not its name: the switcher's rows are
+`switcher.<id>`.
+
 `sign-in-screen-language` picks the one passed as `LANGUAGE`, by its chip, before
 `sign-in-any-language`. `sign-in-screen-english` runs it with `LANGUAGE: English`, for a phone
 a run in another language left signed out: `sign-in`'s first wait is on the English 'Email'.
@@ -80,6 +83,10 @@ A check is written like a flow, and also:
   from `apps/mobile/src/i18n/locales/en.json`, in single quotes. The harness writes each
   language's string in. `{{t:any:key}}` matches any of the four, and `{{t:key|email}}` puts the
   account's address where the string has `{{email}}`.
+  A server message has no `{{t:}}` key, and a key with a formatted placeholder such as
+  `{{count, number}}` is not filled in, so match those in all four languages, values written
+  in: `'(?:That code did not work|Ese código no ha funcionado|…).*'`, from
+  `services/api/translations/messages.*.json` or the app's locale files.
 - **`takeScreenshot: <name>`, on one line.** The harness prefixes the check and language, so
   `settings` in a Spanish batch lands in `.qa/<batch>/settings.es-settings.png`.
 
@@ -114,7 +121,11 @@ Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each co
   a flow uses `hideKeyboard` and then the tap. Split the two by platform, as
   `batch/sign-in-form.yaml` does. The one exception is a check whose outcome is the
   keyboard put away by hand: `checks/sc13408-change-dismiss.yaml` and
-  `checks/sc13408-choose-dismiss.yaml`.
+  `checks/sc13408-choose-dismiss.yaml`, and the `sc9674-*` checks, whose outcome is what the
+  keys do after a refused send: on an iPhone they put the keys away with a tap on blank page,
+  `tapOn: point: '2%,45%'`, since `hideKeyboard` hangs there. That point is for a phone only: on a
+  tablet it lands in the settings split list and opens another section. Their Android copies,
+  `sc9674-a-*`, press `pressKey: back` instead.
 - **Expo Go is the app**, so `appId` is `host.exp.Exponent` and the flow opens the project
   with `openLink`. A standalone build would use `com.soirely.app` and `launchApp`. On Android
   the package is `host.exp.exponent`, in lower case. Write iOS's: `qa-env.mjs maestro --android`
@@ -125,6 +136,30 @@ Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each co
   screen, so an `extendedWaitUntil` or `assertVisible` on a line under a phone's fold passes
   on the iPhone and times out there. Use `scrollUntilVisible`, which does not scroll when the
   line is already in view.
+- **A phone's form has no Cancel of its own.** Its header's back, `frame.back`, is Cancel; a
+  tablet shows `eventForm.cancel` instead. A flow that leaves a form taps whichever is visible,
+  each in a `runFlow` `when: visible:`, as `checks/sc3595-edit.yaml` does.
+- **On Android, Edit details sits below the fold of an event's page**: scroll to
+  `events.page.edit` before tapping it, and wait on `events.page`, not on the button. Keep
+  that scroll in a `runFlow` `when: platform: Android`: on an iPhone the button is already in
+  view, and `centerElement` pushes it under the page's opaque header.
+- **On Android, New event's dates and times are the system's dialogs**, closed with `OK`, not
+  the sheet's `eventForm.start.done`. `checks/sc20824-create-android.yaml` is the Android copy of
+  `checks/sc20824-create.yaml`.
+- **A `runScript` reaches the stack through `${API_URL}` and `${WEB_URL}`**, which the harness
+  passes to every flow and batch, as it does `${METRO_URL}`.
 - **On a tablet, a section's title is also a row in the split list** beside every settings
   page, so a wait that ends on `{{t:settings.organisation}}` ends on the list, not the page.
   Wait on a line only the page has, such as its intro or a field's `testID`.
+- **On a tablet, swipe the detail pane to scroll a settings page.** A page-wide
+  `scrollUntilVisible` does not move it, and can pass with the line never on screen. Swipe
+  at 85% across in a `repeat` until it shows, then `assertVisible` it, as
+  `checks/sc18978-ownership-transfer-note-provider-tablet.yaml` does.
+- **An Android tablet whose natural orientation is landscape swaps `setOrientation`.**
+  Soirely_QA2_Tablet's rotation 0 is 2560x1600, so `PORTRAIT` gives landscape and
+  `LANDSCAPE_LEFT` portrait, and a batch there runs in landscape. In a batch, pass the
+  swapped value to the checks that take one: `ORIENT=LANDSCAPE_LEFT` for portrait. Do not
+  lock the rotation with `adb shell wm user-rotation lock N` there: `setOrientation` writes
+  the same setting, so `batch/reset.yaml`, run before every check, and any check's
+  `setOrientation: ${ORIENT}` override it. The lock holds only in a `--cold` run or a single
+  check with no `setOrientation`.

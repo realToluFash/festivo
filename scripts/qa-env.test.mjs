@@ -59,6 +59,7 @@ import {
   expoGoIosClient,
   expoGoRunning,
   expoSdkMajor,
+  flowUrls,
   forAndroid,
   openIntent,
   linkIntent,
@@ -212,6 +213,9 @@ describe('the QA .env against compose.yaml', () => {
       expect(overrides.OAUTH_GOOGLE_ISSUERS.split(',')).toContain(`${sandbox}google`);
       expect(overrides.OAUTH_APPLE_ISSUERS.split(',')).toContain(`${sandbox}apple`);
       expect(app.EXPO_PUBLIC_API_URL).toBe(`http://127.0.0.1:${ports.API_PORT}`);
+      expect(app.EXPO_PUBLIC_MERCURE_URL).toBe(
+        `http://127.0.0.1:${ports.MERCURE_PORT}/.well-known/mercure`,
+      );
     }
   });
 
@@ -754,6 +758,18 @@ describe('Expo Go for iOS', () => {
       version: '58.0.2',
     });
     expect(() => expoGoIosClient(versions, '~57.0.0')).toThrow(/iOS for SDK 57/);
+  });
+});
+
+describe("a flow's URLs", () => {
+  it('name the API and the web client, for a second session in a runScript', () => {
+    const { urls, ports } = qaConfig(1);
+    expect(flowUrls(urls)).toEqual({
+      METRO_URL: `exp://127.0.0.1:${ports.METRO_PORT}`,
+      MAILPIT_URL: `http://127.0.0.1:${ports.MAILPIT_UI_PORT}`,
+      API_URL: `http://127.0.0.1:${ports.API_PORT}`,
+      WEB_URL: `http://127.0.0.1:${ports.WEB_PORT}`,
+    });
   });
 });
 
@@ -1810,7 +1826,7 @@ describe('the flows a batch runs', () => {
       }
       const signOut = readFileSync(join(target, 'batch/sign-out.yaml'), 'utf8');
       const someoneSignedIn = new RegExp(
-        `^(?:${signOut.match(/when:\s+visible: '(.*)'/)[1].replaceAll("''", "'")})$`,
+        `^(?:${signOut.match(/when:\s+visible: '(.*)'\s+commands:/)[1].replaceAll("''", "'")})$`,
       );
       const homeSettled = new RegExp(
         `^(?:${signOut.match(/extendedWaitUntil:\s+visible: '(.*)'/)[1].replaceAll("''", "'")})$`,
@@ -1823,7 +1839,19 @@ describe('the flows a batch runs', () => {
           expect(line.replace('{{email}}', 'other@soirely.test')).toMatch(homeSettled);
           expect(line.replace('{{email}}', 'other@soirely.test')).toMatch(someoneSignedIn);
         }
+        expect(catalogues[code].completeProfile.title).toMatch(homeSettled);
       }
+      const onDetails = new RegExp(
+        `^(?:${signOut.match(/when:\s+visible: '(.*)'\s+file: \.\.\/sign-out-from-complete-profile\.yaml/)[1].replaceAll("''", "'")})$`,
+      );
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        expect(catalogues[code].completeProfile.title).toMatch(onDetails);
+        expect(catalogues[code].completeProfile.title).not.toMatch(someoneSignedIn);
+      }
+      const detailsAt = signOut.indexOf('file: ../sign-out-from-complete-profile.yaml');
+      expect(detailsAt).toBeGreaterThan(-1);
+      expect(detailsAt).toBeLessThan(signOut.indexOf('openLink: ${METRO_URL}/--/settings'));
+      expect(existsSync(join(target, 'sign-out-from-complete-profile.yaml'))).toBe(true);
       expect(readFileSync(join(target, 'batch/reopen.yaml'), 'utf8')).not.toContain('{{t:');
       const sheet = "'This is the developer menu.*'";
       const decision = readFileSync(join(target, 'developer-menu-sheet.yaml'), 'utf8');

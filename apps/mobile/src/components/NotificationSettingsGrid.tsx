@@ -31,7 +31,11 @@ export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
   const [attempt, setAttempt] = useState(0);
   const [tap, setTap] = useState<object | undefined>(undefined);
   const [blocked, setBlocked] = useState(false);
+  const [column, setColumn] = useState<{ measured: string; width: number }>();
+  const phone = kind === 'phone';
   const locale = currentLocale();
+  const measured = `${kind}:${locale}`;
+  const width = column?.measured === measured ? column.width : undefined;
 
   useEffect(() => {
     let current = true;
@@ -106,7 +110,7 @@ export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
             size={tokens.typeLabel.size}
             weight="semibold"
             muted
-            style={styles.cell}
+            style={[styles.heading, { width }, width == null && styles.unmeasured]}
             accessible={false}
           >
             {t(`notificationSettings.${channel}`)}
@@ -130,7 +134,17 @@ export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
                 </Text>
               </View>
               {CHANNELS.map((channel) => (
-                <View key={channel} style={styles.cell}>
+                <View
+                  key={`${channel}:${measured}`}
+                  style={[styles.cell, phone ? styles.cellPhone : styles.cellTablet]}
+                  onLayout={(event) => {
+                    const cell = event.nativeEvent.layout.width;
+                    setColumn((widest) => ({
+                      measured,
+                      width: Math.max(widest?.measured === measured ? widest.width : 0, cell),
+                    }));
+                  }}
+                >
                   <OnOffSwitch
                     on={setting[channel].on}
                     words={{ on: t('notificationSettings.on'), off: t('notificationSettings.off') }}
@@ -140,6 +154,8 @@ export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
                     })}
                     hint={note}
                     disabled={!setting[channel].switchable}
+                    stacked={phone}
+                    steady
                     busy={isSaving(grid, { category: setting.category, channel })}
                     onChange={(on) => change(setting.category, channel, on)}
                     testID={`notificationSettings.${setting.category}.${channel}`}
@@ -172,7 +188,11 @@ export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   name: { flex: 1, minWidth: 0, gap: tokens.spaceXxs },
-  cell: { width: 88, alignItems: 'center', textAlign: 'center' },
+  heading: { textAlign: 'center' },
+  unmeasured: { opacity: 0 },
+  cell: { alignItems: 'center' },
+  cellPhone: { minWidth: tokens.sizeHit },
+  cellTablet: { minWidth: 88 },
   category: { gap: tokens.spaceSm },
   divided: {
     paddingTop: tokens.spaceLg,

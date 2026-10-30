@@ -4659,6 +4659,7 @@ button.members-row {
 
 .notifications-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--spaceSm);
@@ -4667,8 +4668,13 @@ button.members-row {
 }
 
 .notifications-header h2 {
+  flex: none;
   margin: 0;
   font: var(--typeTitleSection);
+}
+
+.notifications-header .link-button {
+  text-align: start;
 }
 
 .notifications-header [aria-disabled='true'] {
@@ -4841,6 +4847,16 @@ button.members-row {
   overflow-wrap: anywhere;
 }
 
+/* As narrow as its widest word, so the category name takes the rest of the row. */
+.notification-settings-grid .notification-settings-channel {
+  width: 1%;
+}
+
+.notification-settings-grid thead .notification-settings-channel {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
 .notification-settings-name {
   font: var(--typeRowTitle);
 }
@@ -4854,7 +4870,88 @@ button.members-row {
   display: inline-flex;
   align-items: center;
   gap: var(--spaceXs);
+  min-width: 88px;
   min-height: var(--sizeHit);
+}
+
+.notification-switch span {
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+
+@media (width <= 40rem) {
+  .notification-settings-grid .notification-settings-channel {
+    padding-inline: var(--spaceXxs);
+    text-align: center;
+  }
+
+  .notification-settings-grid .notification-settings-channel:last-child {
+    padding-right: var(--spaceLg);
+  }
+
+  .notification-switch {
+    flex-direction: column;
+    justify-content: center;
+    min-width: var(--sizeHit);
+  }
+}
+
+/* Below 390 the category column is too narrow for a whole word, so each name takes a line
+   of its own above its two switches. Subgrid keeps every row on the header's columns. */
+@media (width < 24.375rem) {
+  .notification-settings-blocked {
+    overflow-wrap: normal;
+    hyphens: manual;
+  }
+
+  .notification-settings-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) min-content min-content;
+  }
+
+  .notification-settings-grid thead,
+  .notification-settings-grid tbody {
+    display: contents;
+  }
+
+  .notification-settings-grid tr {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+  }
+
+  .notification-settings-grid tbody tr {
+    border-top: var(--borderCard);
+  }
+
+  .notification-settings-grid tbody th,
+  .notification-settings-grid tbody td {
+    border-top: 0;
+  }
+
+  .notification-settings-grid tbody th {
+    grid-column: 1 / -1;
+    padding: var(--spaceLg) var(--spaceLg) var(--spaceXs);
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: manual;
+  }
+
+  .notification-settings-grid .notification-settings-channel {
+    width: auto;
+  }
+
+  .notification-settings-grid tbody td {
+    padding-top: 0;
+  }
+
+  .notification-settings-grid tbody td:nth-child(2) {
+    grid-column: 2;
+  }
+
+  .notification-settings-grid tbody td:nth-child(3) {
+    grid-column: 3;
+  }
 }
 
 .notification-row {

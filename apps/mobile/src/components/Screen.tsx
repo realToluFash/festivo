@@ -15,6 +15,7 @@ import {
   AccessibilityInfo,
   type HostInstance,
   Keyboard,
+  type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Platform,
@@ -39,18 +40,21 @@ import {
   offsetAboveKeyboard,
   scrollInsets,
   settledOffset,
+  shownAboveKeys,
   shownEnd,
 } from '../kit/keyboard.ts';
 import {
   type FocusBackFrom,
   fieldToBlur,
   focusBackMs,
+  holdEnds,
+  type InputFocusTo,
   type StepCloseStep,
   stepCloseSteps,
 } from '../kit/focusBack.ts';
 import { stepOpeners } from '../kit/stepOpeners.ts';
 import { tokens } from '../theme/tokens.ts';
-import { focusedField, watchFocusedField } from './focusedField.ts';
+import { focusedField, watchCheckedField, watchFocusedField } from './focusedField.ts';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import {
   LIFT,
@@ -68,6 +72,10 @@ interface ScreenScrollView {
   origin: { current: number };
   /** The offset the native scroll view last reported. */
   offset: RefObject<number>;
+  /** Keeps the content at least its height now and `more`, until a scroll, a drag or TalkBack's own, brings the view's end back inside the content's real end, or the keys come up again. */
+  hold(more: number): void;
+  /** Whether a view taking input focus scrolls itself into sight, which Android does by default. */
+  focusScrolls(on: boolean): void;
 }
 
 const ScreenScroll = createContext<ScreenScrollView | null>(null);
@@ -169,8 +177,8 @@ function liftAboveKeyboard(
   });
 }
 
-/** For a field and the button under it, spread on their View. It lifts again when an error grows the group. */
-export function useAboveKeyboard(): AboveKeyboard {
+/** For a field and the button under it, spread on their View. It lifts again when an error grows the group, unless `still`: a step closing under its opener moves down, and a lift then would scroll under TalkBack's focus (sc-18588). */
+export function useAboveKeyboard(still = false): AboveKeyboard {
   const scroll = useContext(ScreenScroll);
   const ref = useRef<ViewInstance>(null);
   const keyboardTop = useRef<number | null>(keyboardTopNow(scroll?.origin.current ?? 0));
@@ -202,7 +210,9 @@ export function useAboveKeyboard(): AboveKeyboard {
 
   return {
     ref,
-    onLayout: () => liftAboveKeyboard(scroll, ref.current, keyboardTop.current),
+    onLayout: () => {
+      if (!still) liftAboveKeyboard(scroll, ref.current, keyboardTop.current);
+    },
   };
 }
 
@@ -271,11 +281,17 @@ export function useScrolledToTop(): RefObject<ViewInstance | null> {
 // VoiceOver drops a focus asked for while a sheet is still sliding away, and the scroll has to land first.
 export const SETTLED_MS = 500;
 
+interface Sight {
+  when?: IntoView;
+  /** The sight ends at the keys while they are up. */
+  aboveKeys?: boolean;
+}
+
 function bringIntoView(
   scroll: ScreenScrollView | null,
   line: ScreenReaderTarget | null,
   animated: boolean,
-  when: IntoView = 'wholly',
+  { when = 'wholly', aboveKeys = false }: Sight = {},
 ): void {
   const view = scroll?.ref.current;
   const content = view?.getInnerViewRef();
@@ -283,29 +299,78 @@ function bringIntoView(
   if (scroll == null || view == null || content == null || scrollHost == null || line == null)
     return;
 
-  line.measureLayout(content, (_x, contentY, _w, height) => {
-    scrollHost.measureInWindow((_sx, _sy, _sw, shown) => {
-      const at = { contentY, height, offset: scroll.offset.current, shown, margin: tokens.spaceLg };
-      const y = settledOffset(at, when);
-      if (y != null) view.scrollTo({ y, animated });
-    });
-  });
+  // A field in another screen's scroll fails to measure here, and that screen brings it.
+  line.measureLayout(
+    content,
+    (_x, contentY, _w, height) => {
+      scrollHost.measureInWindow((_sx, y, _sw, scrollHeight) => {
+        const keyboardTop = aboveKeys ? keyboardTopNow(scroll.origin.current) : null;
+        const shown = shownAboveKeys(keyboardTop, { y, height: scrollHeight });
+        const at = {
+          contentY,
+          height,
+          offset: scroll.offset.current,
+          shown,
+          margin: tokens.spaceLg,
+        };
+        const to = settledOffset(at, when);
+        if (to != null) view.scrollTo({ y: to, animated });
+      });
+    },
+    () => {},
+  );
 }
 
-/** Brings `shown` wholly into sight, and again as far as `settledInto` once it has settled, and moves screen reader focus to `read` after `readMs`; returns what cancels the steps still to come. */
+/** The Field a client check focuses comes wholly into view above the keys, again once they are up and its error has grown it (sc-20721). */
+function useCheckedFieldInView(scroll: ScreenScrollView): void {
+  useEffect(() => {
+    let cancel = () => {};
+    const unwatch = watchCheckedField((field) => {
+      cancel();
+      const bring = () => bringIntoView(scroll, field, true, { aboveKeys: true });
+      const unsettled = settleOnto(
+        scroll,
+        () => field,
+        () => null,
+        true,
+        SETTLED_MS,
+        {
+          aboveKeys: true,
+        },
+      );
+      // Keys that rise for the field, and Android's avoiding view shrinking under them, cover it afresh.
+      const shown = Keyboard.addListener('keyboardDidShow', bring);
+      scroll.resized.add(bring);
+      const done = setTimeout(() => cancel(), 2 * SETTLED_MS);
+      cancel = () => {
+        unsettled();
+        shown.remove();
+        scroll.resized.delete(bring);
+        clearTimeout(done);
+      };
+    });
+
+    return () => {
+      cancel();
+      unwatch();
+    };
+  }, [scroll]);
+}
+
+/** Brings `shown` into sight as far as `when`, and again once it has settled, and moves screen reader focus to `read` after `readMs`; returns what cancels the steps still to come. */
 function settleOnto(
   scroll: ScreenScrollView | null,
   shown: () => ScreenReaderTarget | null,
   read: () => ScreenReaderTarget | null,
   animated: boolean,
   readMs = SETTLED_MS,
-  settledInto: IntoView = 'wholly',
+  { when = 'wholly', aboveKeys = false }: Sight = {},
 ): () => void {
-  bringIntoView(scroll, shown(), animated);
+  bringIntoView(scroll, shown(), animated, { when, aboveKeys });
 
   // Content that shrinks around the line as it mounts can stop the first scroll short (sc-9382).
   const settled = setTimeout(
-    () => bringIntoView(scroll, shown(), animated, settledInto),
+    () => bringIntoView(scroll, shown(), animated, { when, aboveKeys }),
     SETTLED_MS,
   );
   const focus = setTimeout(() => moveScreenReaderFocus(read()), readMs);
@@ -417,19 +482,35 @@ export function useFocusBackToOpener(
 export interface StepClose {
   /** The opener's ref, in place of `opener(key)`. */
   opener: RefCallback<ViewInstance>;
-  /** The ref of a `FocusHolder` shown while the opener is, which holds input focus in the opener's place. */
-  holder: RefObject<ViewInstance | null>;
-  /** The step is closing in order, and its opener shows beside it until focus has reached it. */
+  /** The step is closing in order, and its opener shows above it until focus has reached it, so nothing above the opener moves when the step goes (sc-18588). */
   closing: boolean;
   close(): void;
 }
 
-/** Closes a step back to the opener `to` names, a control or a line of words, in the steps `stepCloseSteps` gives; `finish` takes the step away, with what `useFocusBackToOpener` moves focus back from, or nothing when focus is already there (sc-18588). The close needs `holder` rendered beside the opener: without it nothing takes input focus, and blurring the field hands focus to the header's back row (sc-18587). */
+export interface HeldStepClose extends StepClose {
+  /** Holds input focus in the place of a line of words, which cannot take it, where TalkBack does not read it; rendered while the line shows, first in a View of its own with the line. The close turns scroll-to-focus off while it takes focus, so Save stays put (sc-18587). */
+  holder: ReactElement;
+}
+
+/** Closes a step back to the opener `to` names in the steps `stepCloseSteps` gives, with input focus going `inputFocusTo` the opener, a control, or to the `holder` it returns, beside a line of words; `finish` takes the step away, with what `useFocusBackToOpener` moves focus back from, or nothing when focus is already there (sc-18588). Without the holder rendered nothing takes input focus, and blurring the field hands focus to the header's back row (sc-18587). */
 export function useStepClose(
   opener: (key: string) => RefCallback<ViewInstance>,
   to: string,
+  inputFocusTo: 'opener',
   finish: (closed: StepClosed | undefined) => void,
-): StepClose {
+): StepClose;
+export function useStepClose(
+  opener: (key: string) => RefCallback<ViewInstance>,
+  to: string,
+  inputFocusTo: 'holder',
+  finish: (closed: StepClosed | undefined) => void,
+): HeldStepClose;
+export function useStepClose(
+  opener: (key: string) => RefCallback<ViewInstance>,
+  to: string,
+  inputFocusTo: InputFocusTo,
+  finish: (closed: StepClosed | undefined) => void,
+): StepClose | HeldStepClose {
   const scroll = useContext(ScreenScroll);
   const [closing, setClosing] = useState(false);
   const started = useRef(false);
@@ -475,6 +556,12 @@ export function useStepClose(
 
       function runFrom(steps: readonly StepCloseStep[]): void {
         for (const [at, step] of steps.entries()) {
+          if (step.do === 'holdScroll') {
+            scroll?.hold(Keyboard.metrics()?.height ?? 0);
+            scroll?.focusScrolls(false);
+            cancels.push(() => scroll?.focusScrolls(true));
+            continue;
+          }
           if (step.do === 'showOpener') {
             afterShown.current = steps.slice(at + 1);
             setClosing(true);
@@ -506,10 +593,10 @@ export function useStepClose(
               settleOnto(
                 scroll,
                 () => view.current,
-                () => view.current,
+                () => (step.read ? view.current : null),
                 false,
                 SETTLED_MS,
-                step.into,
+                { when: step.into },
               ),
             );
             continue;
@@ -517,6 +604,7 @@ export function useStepClose(
 
           const done = setTimeout(() => {
             started.current = false;
+            scroll?.focusScrolls(true);
             setClosing(false);
             finishNow.current(step.focusBack ? stepClosed(to) : undefined);
           }, step.atMs);
@@ -556,15 +644,19 @@ export function useStepClose(
     };
     void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
       if (gone) return;
-      cancel.current = run(stepCloseSteps(Platform.OS, on, SETTLED_MS));
+      cancel.current = run(stepCloseSteps(Platform.OS, on, SETTLED_MS, inputFocusTo));
     });
-  }, [run]);
+  }, [run, inputFocusTo]);
 
-  return { opener: ref, holder, closing, close };
+  const held = useMemo(() => <FocusHolder holder={holder} />, []);
+
+  return inputFocusTo === 'holder'
+    ? { opener: ref, holder: held, closing, close }
+    : { opener: ref, closing, close };
 }
 
-/** Holds input focus in a closing step's opener's place, where TalkBack does not read it; rendered beside the opener, with `useStepClose`'s `holder`. */
-export function FocusHolder({ holder }: { holder: RefObject<ViewInstance | null> }) {
+/** Holds input focus where TalkBack does not read it. */
+function FocusHolder({ holder }: { holder: RefObject<ViewInstance | null> }) {
   return (
     <View ref={holder} style={styles.holder} collapsable={false} importantForAccessibility="no" />
   );
@@ -589,18 +681,37 @@ function useScreenScrollView() {
   const origin = useRef(windowOrigin);
   const scrollView = useRef<ScrollViewInstance>(null);
   const offset = useRef(0);
+  const contentHeight = useRef(0);
+  const [held, setHeld] = useState<number | null>(null);
+  const [scrollsToFocus, setScrollsToFocus] = useState(true);
   const [screenScroll] = useState<ScreenScrollView>(() => ({
     ref: scrollView,
     resized: new Set(),
     origin,
     offset,
+    hold: (more) => setHeld(contentHeight.current + more),
+    focusScrolls: setScrollsToFocus,
   }));
   useEffect(() => {
     origin.current = windowOrigin;
   }, [windowOrigin]);
+  useCheckedFieldInView(screenScroll);
+  useEffect(() => {
+    if (held == null) return;
+    const shown = Keyboard.addListener('keyboardDidShow', () => setHeld(null));
+
+    return () => shown.remove();
+  }, [held]);
 
   const follow = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    offset.current = event.nativeEvent.contentOffset.y;
+    const { contentOffset, layoutMeasurement } = event.nativeEvent;
+    offset.current = contentOffset.y;
+    if (
+      held != null &&
+      holdEnds(contentOffset.y, layoutMeasurement.height, contentHeight.current)
+    ) {
+      setHeld(null);
+    }
   };
 
   return {
@@ -611,6 +722,11 @@ function useScreenScrollView() {
       onScroll: follow,
       onScrollEndDrag: follow,
       onMomentumScrollEnd: follow,
+      scrollsChildToFocus: scrollsToFocus,
+    },
+    heldStyle: held == null ? undefined : { minHeight: held },
+    onContentLayout: (event: LayoutChangeEvent) => {
+      contentHeight.current = event.nativeEvent.layout.height;
     },
   };
 }
@@ -630,7 +746,7 @@ export function ScrollColumn({
   /** Out of the layout behind another column; back in, it shows where it was left. */
   away?: boolean;
 }) {
-  const { screenScroll, scrollProps } = useScreenScrollView();
+  const { screenScroll, scrollProps, heldStyle, onContentLayout } = useScreenScrollView();
   const docked = useContext(Dock)?.docked ?? false;
   const left = useRef<number | null>(null);
   const restore = () => {
@@ -663,12 +779,14 @@ export function ScrollColumn({
         }}
         onContentSizeChange={restore}
         style={style}
-        contentContainerStyle={contentContainerStyle}
+        contentContainerStyle={[styles.grow, heldStyle]}
         refreshControl={refreshControl}
         keyboardShouldPersistTaps="handled"
         {...scrollInsets(LIFT, docked)}
       >
-        {children}
+        <View onLayout={onContentLayout} style={contentContainerStyle}>
+          {children}
+        </View>
       </ScrollView>
     </ScreenScroll.Provider>
   );
@@ -710,7 +828,7 @@ export function Screen({
   contentStyle,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
-  const { screenScroll, scrollProps } = useScreenScrollView();
+  const { screenScroll, scrollProps, heldStyle, onContentLayout } = useScreenScrollView();
   const avoider = useRef<ViewInstance>(null);
   const keyboardTop = useRef<number | null>(null);
   const [keysCover, setKeysCover] = useState(0);
@@ -761,14 +879,16 @@ export function Screen({
     <ScrollView
       {...scrollProps}
       style={styles.fill}
-      contentContainerStyle={[styles.content, contentStyle]}
+      contentContainerStyle={[styles.grow, heldStyle]}
       // So the first tap after typing hits the control rather than only
       // dismissing the keyboard, which otherwise makes every button in a
       // form need pressing twice.
       keyboardShouldPersistTaps="handled"
       {...scrollInsets(LIFT, docked != null)}
     >
-      {children}
+      <View onLayout={onContentLayout} style={[styles.content, contentStyle]}>
+        {children}
+      </View>
     </ScrollView>
   ) : (
     <View style={[styles.fill, styles.content, contentStyle]}>{children}</View>
@@ -811,5 +931,7 @@ const styles = StyleSheet.create({
   holder: { position: 'absolute', width: 1, height: 1 },
   root: { flex: 1, backgroundColor: tokens.colorPage },
   fill: { flex: 1 },
+  // The content's own view, without the hold's minHeight, measures where the page really ends.
+  grow: { flexGrow: 1 },
   content: { padding: tokens.spaceXxl, gap: tokens.spaceXl },
 });

@@ -110,6 +110,7 @@ export function stackConfig(project, offset, address = '127.0.0.1') {
   // Expo reads these when the bundler starts, not from the stack's .env.
   const app = {
     EXPO_PUBLIC_API_URL: urls.api,
+    EXPO_PUBLIC_MERCURE_URL: urls.mercure,
     EXPO_PUBLIC_GOOGLE_AUTHORIZE_URL: `${urls.oidc}/google/authorize`,
     EXPO_PUBLIC_GOOGLE_TOKEN_URL: `${urls.oidc}/google/token`,
     EXPO_PUBLIC_APPLE_AUTHORIZE_URL: `${urls.oidc}/apple/authorize`,
@@ -390,6 +391,14 @@ export const expoGoApk = (versions, expoRange) =>
 
 export const expoGoIosClient = (versions, expoRange) =>
   expoGoClient(versions, expoRange, 'ios', 'iOS');
+
+// What a flow reaches the stack by, a runScript's second session included (sc-21340).
+export const flowUrls = (urls) => ({
+  METRO_URL: urls.metro,
+  MAILPIT_URL: urls.mailpit,
+  API_URL: urls.api,
+  WEB_URL: urls.web,
+});
 
 // Android's package is lower case, and every flow, an old commit's included, names iOS's.
 // Maestro's openLink names no package, and an emulator can hand exp:// to Expo Go's own home
@@ -1720,7 +1729,7 @@ async function maestro(args) {
   if (!flow) throw new Error('which flow? `maestro sign-in EMAIL=… PASSWORD=…`');
   const device = maestroDevice(args);
 
-  const env = [`METRO_URL=${CONFIG.urls.metro}`, `MAILPIT_URL=${CONFIG.urls.mailpit}`, ...vars];
+  const env = [...Object.entries(flowUrls(CONFIG.urls)).map(([k, v]) => `${k}=${v}`), ...vars];
   // An Android flow's links are opened by the harness: forAndroid.
   const helper = onAndroid ? await startHelper({ heard: { at: 0 }, device, onAndroid }) : null;
   if (helper) env.push(`HELPER_URL=http://127.0.0.1:${CONFIG.helperPort}`);
@@ -2343,8 +2352,7 @@ async function batch(args) {
   });
   // The secret stays with the helper: no flow is handed it.
   const env = {
-    METRO_URL: CONFIG.urls.metro,
-    MAILPIT_URL: CONFIG.urls.mailpit,
+    ...flowUrls(CONFIG.urls),
     HELPER_URL: `http://127.0.0.1:${CONFIG.helperPort}`,
     EMAIL: email,
     PASSWORD: password,

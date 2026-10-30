@@ -14,7 +14,19 @@ import {
 } from './notificationFeed.ts';
 
 function item(id: string, overrides: Partial<FeedItem> = {}): FeedItem {
-  return { id, category: 'messages', eventId: 'e1', muted: false, read: false, ...overrides };
+  return {
+    id,
+    createdAt: '2026-10-29T10:00:00Z',
+    category: 'messages',
+    eventId: 'e1',
+    muted: false,
+    read: false,
+    ...overrides,
+  };
+}
+
+function at(id: string, minute: number, overrides: Partial<FeedItem> = {}): FeedItem {
+  return item(id, { createdAt: `2026-10-29T10:0${minute}:00Z`, ...overrides });
 }
 
 function feed(items: FeedItem[], next: string | null = null): LoadedFeed<FeedItem> {
@@ -31,9 +43,22 @@ describe('the bell feed (sc-3980)', () => {
   });
 
   test('an item already shown is not added twice', () => {
-    const before = feed([item('a')]);
+    const after = feedWithArrival(feed([item('a')]), item('a'));
 
-    expect(feedWithArrival(before, item('a'))).toBe(before);
+    expect(after.items.map((shown) => shown.id)).toEqual(['a']);
+    expect(after.unread).toBe(1);
+  });
+
+  test('a rewritten item replaces the one shown and moves to the top (sc-13214)', () => {
+    const rewritten = item('a', { category: 'event_day' });
+    const after = feedWithArrival(
+      feed([item('b'), item('a'), item('c', { read: true })]),
+      rewritten,
+    );
+
+    expect(after.items.map((shown) => shown.id)).toEqual(['a', 'b', 'c']);
+    expect(after.items[0]).toBe(rewritten);
+    expect(after.unread).toBe(2);
   });
 
   test('opening an unread item reads it once', () => {
@@ -63,8 +88,11 @@ describe('the bell feed (sc-3980)', () => {
   });
 
   test('a gap reread adds what was missed on top and keeps every page loaded', () => {
-    const loaded = feed([item('b'), item('a'), item('older')], 'c2');
-    const after = feedWithMissed(loaded, { items: [item('new'), item('b'), item('a')], unread: 4 });
+    const loaded = feed([at('b', 3), at('a', 2), at('older', 1)], 'c2');
+    const after = feedWithMissed(loaded, {
+      items: [at('new', 4), at('b', 3), at('a', 2)],
+      unread: 4,
+    });
 
     expect(after.items.map((shown) => shown.id)).toEqual(['new', 'b', 'a', 'older']);
     expect(after.unread).toBe(4);
@@ -72,12 +100,48 @@ describe('the bell feed (sc-3980)', () => {
   });
 
   test('after a gap, a row read in another session meanwhile shows read', () => {
-    const after = feedWithMissed(feed([item('b'), item('a'), item('older')]), {
-      items: [item('b', { read: true }), item('a', { read: true })],
+    const after = feedWithMissed(feed([at('b', 3), at('a', 2), at('older', 1)]), {
+      items: [at('b', 3, { read: true }), at('a', 2, { read: true })],
       unread: 1,
     });
 
     expect(after.items.map((shown) => shown.read)).toEqual([true, true, false]);
+    expect(after.unread).toBe(1);
+  });
+
+  test('after a gap, an unread item taken away meanwhile leaves the feed (sc-13214)', () => {
+    const after = feedWithMissed(feed([at('c', 3), at('gone', 2), at('a', 1), at('older', 0)]), {
+      items: [at('c', 3), at('a', 1)],
+      unread: 2,
+    });
+
+    expect(after.items.map((shown) => shown.id)).toEqual(['c', 'a', 'older']);
+  });
+
+  test('after a gap, an empty page one leaves nothing above it', () => {
+    expect(feedWithMissed(feed([at('gone', 1)]), { items: [], unread: 0 }).items).toEqual([]);
+  });
+
+  test('after a gap, an item rewritten meanwhile shows as it is now, on top', () => {
+    const after = feedWithMissed(feed([item('b'), item('a')]), {
+      items: [item('a', { category: 'event_day' }), item('b')],
+      unread: 2,
+    });
+
+    expect(after.items.map((shown) => [shown.id, shown.category])).toEqual([
+      ['a', 'event_day'],
+      ['b', 'messages'],
+    ]);
+  });
+
+  test('an unread item taken away leaves the feed, with the count the server published', () => {
+    const after = feedWithLiveRead(feed([item('b'), item('a')]), {
+      id: 'a',
+      unreadCount: 1,
+      removed: true,
+    });
+
+    expect(after.items.map((shown) => shown.id)).toEqual(['b']);
     expect(after.unread).toBe(1);
   });
 

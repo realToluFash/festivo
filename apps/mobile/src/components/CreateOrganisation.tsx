@@ -173,10 +173,12 @@ function Form({
   const [saving, setSaving] = useState(false);
   const nameInput = useRef<TextInputInstance>(null);
   const countryPicker = useRef<ViewInstance>(null);
+  const countryField = useRef<ViewInstance>(null);
   const checks = useFormChecks(
     NEW_ORGANISATION_FIELDS,
     (field, value) => newOrganisationMessage(field, value, t),
-    (field) => (field === 'name' ? focusChecked(nameInput) : focusPicker(countryPicker)),
+    (field) =>
+      field === 'name' ? focusChecked(nameInput) : focusPicker(countryPicker, countryField),
   );
   const errors = { ...refused, ...checks.errors };
   const { body, onBodyLayout, onGroupLayout, onFieldLayout } = useFocusInSight(keysUp, inSight);
@@ -288,7 +290,7 @@ function Form({
           </Field>
         </View>
       </View>
-      <Field label={t('createOrganisation.country')} error={errors.countryCode}>
+      <Field ref={countryField} label={t('createOrganisation.country')} error={errors.countryCode}>
         <CountryPicker
           label={t('createOrganisation.country')}
           value={values.countryCode}

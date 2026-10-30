@@ -227,6 +227,10 @@ when@test:
             public: true
             autoconfigure: true
         App\Domain\Messaging\Channel\EmailSender: '@App\Tests\Double\Messaging\RecordingEmailSender'
+        App\Tests\Double\Messaging\RecordingPushSender:
+            public: true
+            autoconfigure: true
+        App\Domain\Messaging\Channel\PushSender: '@App\Tests\Double\Messaging\RecordingPushSender'
         App\Tests\Double\Messaging\RecordingHub:
             public: true
         Symfony\Component\Mercure\HubInterface: '@App\Tests\Double\Messaging\RecordingHub'
@@ -286,6 +290,89 @@ when@test:
                         ],
                     $category: !php/enum App\Enum\NotificationCategory::EventChanges,
                 }
+        test.notification.push.guest_replies:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                $name: 'test.push.guest_replies'
+                $channels:
+                    - !php/enum App\Enum\NotificationChannel::InApp
+                    - !php/enum App\Enum\NotificationChannel::Push
+                $category: !php/enum App\Enum\NotificationCategory::GuestReplies
+        test.notification.push.messages:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                $name: 'test.push.messages'
+                $channels:
+                    - !php/enum App\Enum\NotificationChannel::InApp
+                    - !php/enum App\Enum\NotificationChannel::Push
+                $category: !php/enum App\Enum\NotificationCategory::Messages
+        test.notification.push.event_day:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                $name: 'test.push.event_day'
+                $channels:
+                    - !php/enum App\Enum\NotificationChannel::InApp
+                    - !php/enum App\Enum\NotificationChannel::Push
+                $category: !php/enum App\Enum\NotificationCategory::EventDay
+        test.notification.push.event_changes:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                $name: 'test.push.event_changes'
+                $channels:
+                    - !php/enum App\Enum\NotificationChannel::InApp
+                    - !php/enum App\Enum\NotificationChannel::Push
+                $category: !php/enum App\Enum\NotificationCategory::EventChanges
+        test.notification.push.money:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                $name: 'test.push.money'
+                $channels:
+                    - !php/enum App\Enum\NotificationChannel::InApp
+                    - !php/enum App\Enum\NotificationChannel::Push
+                $category: !php/enum App\Enum\NotificationCategory::Money
+        test.notification.push.email_money:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                $name: 'test.push.email_money'
+                $channels:
+                    - !php/enum App\Enum\NotificationChannel::Email
+                    - !php/enum App\Enum\NotificationChannel::Push
+                $category: !php/enum App\Enum\NotificationCategory::Money
+        test.notification.push.account_security:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                $name: 'test.push.account_security'
+                $channels:
+                    - !php/enum App\Enum\NotificationChannel::InApp
+                    - !php/enum App\Enum\NotificationChannel::Push
+                $category: !php/enum App\Enum\NotificationCategory::AccountSecurity
+        test.notification.push.collapsing:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                $name: 'test.push.collapsing'
+                $channels:
+                    - !php/enum App\Enum\NotificationChannel::InApp
+                    - !php/enum App\Enum\NotificationChannel::Push
+                $category: !php/enum App\Enum\NotificationCategory::GuestReplies
+                $collapseKey: 'test.push.collapsing'
+        test.notification.push.timely:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                $name: 'test.push.timely'
+                $channels:
+                    - !php/enum App\Enum\NotificationChannel::InApp
+                    - !php/enum App\Enum\NotificationChannel::Push
+                $category: !php/enum App\Enum\NotificationCategory::Money
+                $tooLateAfter: 'PT2H'
         test.notification.guest:
             class: App\Tests\Double\Messaging\ScriptedNotificationType
             autoconfigure: true

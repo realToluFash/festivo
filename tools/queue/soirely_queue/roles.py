@@ -147,11 +147,11 @@ def header(text):
 
 
 def addressees(text, labels):
-    """`[dev]` means whichever developer's label the story carries."""
+    """`[dev]` means whoever builds the story: ops on an ops story, else its developer."""
     parsed = header(text)
     if not parsed:
         return []
-    return [developer_of(labels) if tag == "dev" else FORMER.get(tag, tag)
+    return [builder_of(labels) if tag == "dev" else FORMER.get(tag, tag)
             for tag in parsed["to"]]
 
 

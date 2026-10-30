@@ -4,6 +4,7 @@ import { Keyboard, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { currentLocale } from '../i18n/index.ts';
+import { fieldChecked } from './focusedField.ts';
 import { ListPicker } from './ListPicker.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 
@@ -53,8 +54,12 @@ export function CountryPicker({
   );
 }
 
-/** A refused Country is no text field: the keyboard closes and the screen reader lands on the picker. */
-export function focusPicker(picker: RefObject<ViewInstance | null>): void {
+/** A refused Country is no text field: the keyboard closes and the screen reader lands on the picker. With `field`, that Field comes wholly into view: on New event that is any refusal the form focuses, a server's as well as a client check's. */
+export function focusPicker(
+  picker: RefObject<ViewInstance | null>,
+  field?: RefObject<ViewInstance | null>,
+): void {
   Keyboard.dismiss();
+  if (field != null) fieldChecked(true, field.current);
   moveScreenReaderFocus(picker.current);
 }

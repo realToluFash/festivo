@@ -1,5 +1,5 @@
 /* global http, json, output, API_URL, WEB_URL, EMAIL, PASSWORD, EVENT_ID, ELSEWHERE_NAME -- what Maestro's runScript provides */
-// A second session for checks/sc3595-edit.yaml: signs in on the API as the same person and renames EVENT_ID, so the open form's tag is stale.
+// A second session for checks/sc3595-edit.yaml and checks/sc20824-edit-latest.yaml, given API_URL and WEB_URL by the harness: signs in on the API as the same person and renames EVENT_ID, so the open form's tag is stale.
 const login = http.post(`${API_URL}/api/auth/login`, {
   headers: { 'Content-Type': 'application/json', Origin: WEB_URL },
   body: JSON.stringify({ email: EMAIL, password: PASSWORD }),

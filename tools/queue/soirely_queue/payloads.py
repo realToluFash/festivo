@@ -87,7 +87,7 @@ def review(p, db, row, story, pr, cache):
     V.comments(p, story)
     if not pr:
         p.add("", "No open pull request. Ask the developer with "
-                  f"`{SQ} lead comment sc-{story['id']} --to {R.developer_of(story['labels'])}`.")
+                  f"`{SQ} lead comment sc-{story['id']} --to {R.builder_of(story['labels'])}`.")
         return next_lines(p, f"{SQ} lead done {row['id']} --note \"<one line>\"")
     V.pr_status(p, pr)
     V.lead_threads(p, pr)

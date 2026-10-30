@@ -76,7 +76,7 @@ export function useReadOut(
   useEffect(() => () => unsaid.current?.(), []);
 }
 
-/** A message read out as it appears; `words` are what it says, without its mark or its actions. */
+/** A message read out as it appears; `words` are what it says, without its mark or its actions. With nothing to show it takes no room, not even a gap in its column (sc-21232). */
 export function ReadOut({
   words,
   interrupts,
@@ -86,5 +86,5 @@ export function ReadOut({
 }: ViewProps & { words: string } & Pick<ReadOutOptions, 'interrupts' | 'answer'>) {
   useReadOut(words, { interrupts, answer });
 
-  return <View {...view}>{children}</View>;
+  return children == null ? null : <View {...view}>{children}</View>;
 }
