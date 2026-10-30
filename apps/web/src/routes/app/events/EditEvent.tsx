@@ -17,6 +17,8 @@ import {
   eventNameLength,
   eventFormErrors,
   skippedLine,
+  startMoved,
+  endMovedLine,
   isEventType,
   type VenueDraft,
   venueDraftOf,
@@ -289,6 +291,16 @@ function DetailsForm({
     setErrors((previous) => ({ ...previous, [field]: undefined }));
   }
 
+  function moveStart(start: Partial<Pick<EventDraft, 'startDate' | 'startTime'>>): void {
+    const moved = startMoved(draft, start, true);
+    const line = endMovedLine(draft, moved, dateLocale(), t);
+
+    edit('startsAt', moved);
+    if (line == null) return;
+    setUnsent(0);
+    setSaid(line);
+  }
+
   function choose(field: 'timeZone' | 'currency', value: string): void {
     setTyped((previous) => ({ ...previous, [field]: value }));
     setErrors((previous) => ({ ...previous, [field]: undefined }));
@@ -533,8 +545,8 @@ function DetailsForm({
             time={draft.startTime}
             error={errors.startsAt}
             busy={busy}
-            onDate={(startDate) => edit('startsAt', { startDate })}
-            onTime={(startTime) => edit('startsAt', { startTime })}
+            onDate={(startDate) => moveStart({ startDate })}
+            onTime={(startTime) => moveStart({ startTime })}
           />
           <Moment
             id="event-end"

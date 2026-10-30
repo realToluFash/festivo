@@ -72,6 +72,7 @@
     "date": "Fecha",
     "time": "Hora",
     "endsHint": "Un evento puede terminar pasada la medianoche. Elija el día en que termina.",
+    "endMoved": "Ends moved with the start, to {{day}}, {{time}}.",
     "clocksSkip": "En {{zone}}, la hora {{time}} del {{day}} no existe: esa noche se adelantan los relojes. Se guardará como {{savedAs}}.",
     "clocksSkipNextDay": "En {{zone}}, la hora {{time}} del {{day}} no existe: esa noche se adelantan los relojes. Se guardará el {{savedDay}}, como {{savedAs}}.",
     "timeZone": "Zona horaria",

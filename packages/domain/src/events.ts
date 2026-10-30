@@ -186,6 +186,34 @@ export function filledEndDate(startDate: string, endDate: string, endChosen: boo
   return endChosen ? endDate : startDate;
 }
 
+/** A new start carries a set end with it, as far after it on the clock as it was (sc-22144, sc-3593's rule); with no end set, the end date follows as filledEndDate has it. */
+export function startMoved(
+  draft: EventDraft,
+  start: Partial<Pick<EventDraft, 'startDate' | 'startTime'>>,
+  endChosen: boolean,
+): EventDraft {
+  const next = { ...draft, ...start };
+  const from = clockOf(draft.startDate, draft.startTime);
+  const to = clockOf(next.startDate, next.startTime);
+  const end = clockOf(draft.endDate, draft.endTime);
+  const carried =
+    from == null || to == null || end == null
+      ? null
+      : new Date(to + end - from).toISOString().slice(0, 16);
+
+  if (carried == null || !/^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(carried))
+    return { ...next, endDate: filledEndDate(next.startDate, draft.endDate, endChosen) };
+
+  return { ...next, endDate: carried.slice(0, 10), endTime: carried.slice(11, 16) };
+}
+
+function clockOf(date: string, time: string): number | null {
+  const typed = localDateTime(date, time);
+  const clock = typed == null ? Number.NaN : Date.parse(`${typed}Z`);
+
+  return Number.isNaN(clock) ? null : clock;
+}
+
 /** An event's saved values as the form types them: its wall-clock date and time, read off the offset form the API serves. */
 export function draftOf(event: {
   name: string;

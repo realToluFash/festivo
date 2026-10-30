@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import { venueDraftOf } from './events.ts';
-import { type Translate, changedWords, eventFormErrors, skippedLine } from './eventWords.ts';
+import {
+  type Translate,
+  changedWords,
+  endMovedLine,
+  eventFormErrors,
+  skippedLine,
+} from './eventWords.ts';
+
+const DRAFT_TIMES = { name: 'Gala', type: 'gala' as const };
 
 const t: Translate = (key: string, values?: Record<string, string | number>) =>
   values == null ? key : `${key}:${JSON.stringify(values)}`;
@@ -41,6 +49,29 @@ describe('skippedLine', () => {
     expect(skippedLine('2026-03-29', '01:30', 'Europe/London', 'en-GB', t)).toMatch(
       /^eventForm\.clocksSkip:.*"zone":"Europe\/London"/,
     );
+  });
+});
+
+describe('endMovedLine', () => {
+  const before = {
+    ...DRAFT_TIMES,
+    startDate: '2027-07-17',
+    startTime: '20:00',
+    endDate: '2027-07-18',
+    endTime: '08:00',
+  };
+
+  it('says where the end moved to', () => {
+    expect(endMovedLine(before, { ...before, endTime: '09:00' }, 'en-GB', t)).toBe(
+      'eventForm.endMoved:{"day":"Sun 18 Jul","time":"09:00"}',
+    );
+  });
+
+  it('says nothing when the end stayed or is not set', () => {
+    expect(endMovedLine(before, before, 'en-GB', t)).toBeNull();
+    expect(
+      endMovedLine(before, { ...before, endDate: '2027-07-20', endTime: '' }, 'en-GB', t),
+    ).toBeNull();
   });
 });
 

@@ -17,7 +17,8 @@ import {
   eventNameLength,
   firstRefusedOf,
   hostErrorsOf,
-  filledEndDate,
+  endMovedLine,
+  startMoved,
   formatWallClock,
   formatWallDay,
   isEventType,
@@ -77,7 +78,7 @@ import { CONTROL_TEXT_SIZE, Field, FieldError, TextField, focusChecked } from '.
 import { HostsSection } from './HostsSection.tsx';
 import { ListPicker } from './ListPicker.tsx';
 import { Notice } from './Notice.tsx';
-import { ReadOut } from './ReadOut.tsx';
+import { ReadOut, readOut } from './ReadOut.tsx';
 import { useBroughtIntoView } from './Screen.tsx';
 import { Sheet } from './Sheet.tsx';
 import { Text } from './Text.tsx';
@@ -284,6 +285,14 @@ export function EventForm({
 
   function changeDraft(field: EventFormField, next: Partial<EventDraft>): void {
     change(field, { draft: { ...draft, ...next } });
+  }
+
+  function moveStart(startDate: string, startTime: string): void {
+    const moved = startMoved(draft, { startDate, startTime }, endChosen);
+    const line = endMovedLine(draft, moved, dateLocale(), t);
+
+    changeDraft('startsAt', moved);
+    if (line != null) readOut(line);
   }
 
   function refuse(found: EventErrors, hostFound: HostErrors = {}): void {
@@ -503,13 +512,7 @@ export function EventForm({
           pickerRef={startPicker}
           fieldRef={startField}
           testID="eventForm.start"
-          onPick={(date, time) =>
-            changeDraft('startsAt', {
-              startDate: date,
-              startTime: time,
-              endDate: filledEndDate(date, draft.endDate, endChosen),
-            })
-          }
+          onPick={(date, time) => moveStart(date, time)}
         />
 
         <Moment

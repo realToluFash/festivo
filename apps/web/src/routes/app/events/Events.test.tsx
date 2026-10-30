@@ -690,6 +690,26 @@ describe('New event', () => {
     );
   });
 
+  it('moves a set end with the start, keeping its length, and says so (sc-22144)', async () => {
+    signedIn();
+    answering({});
+    await form();
+
+    fill('event-start-date', '2026-11-14');
+    fill('event-start-time', '16:00');
+    fill('event-end-date', '2026-11-15');
+    fill('event-end-time', '02:00');
+    fill('event-start-time', '17:30');
+
+    expect([
+      (document.getElementById('event-end-date') as HTMLInputElement).value,
+      (document.getElementById('event-end-time') as HTMLInputElement).value,
+    ]).toEqual(['2026-11-15', '03:30']);
+    expect(screen.getByRole('status').textContent).toBe(
+      'Ends moved with the start, to Sun, Nov 15, 03:30.',
+    );
+  });
+
   it('sends nothing for a blank name, says so beside it and moves focus to it', async () => {
     signedIn();
     const sent = answering({});
@@ -1291,6 +1311,37 @@ describe("Editing an event's details (sc-3587)", () => {
       expect(sent.find(({ line }) => line === 'PATCH /api/events/ev_1')?.body).toEqual({
         type: 'anniversary',
       }),
+    );
+  });
+
+  it('moves the end with the start, says so, and sends both as one change of dates (sc-22144)', async () => {
+    signedIn();
+    const { sent } = serving();
+    await editing();
+
+    fireEvent.change(document.getElementById('event-start-time')!, { target: { value: '18:00' } });
+
+    expect((document.getElementById('event-end-time') as HTMLInputElement).value).toBe('04:00');
+    expect(document.activeElement).toBe(document.body);
+    expect(screen.getByRole('status').textContent).toBe(
+      'Ends moved with the start, to Sun, Nov 15, 04:00.',
+    );
+
+    fireEvent.change(document.getElementById('event-end-time')!, { target: { value: '03:00' } });
+    fireEvent.change(document.getElementById('event-start-date')!, {
+      target: { value: '2026-11-21' },
+    });
+    expect([
+      (document.getElementById('event-end-date') as HTMLInputElement).value,
+      (document.getElementById('event-end-time') as HTMLInputElement).value,
+    ]).toEqual(['2026-11-22', '03:00']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() =>
+      expect(
+        sent.filter(({ line }) => line === 'PATCH /api/events/ev_1').map(({ body }) => body),
+      ).toEqual([{ startsAt: '2026-11-21T18:00', endsAt: '2026-11-22T03:00' }]),
     );
   });
 

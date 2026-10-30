@@ -8,8 +8,9 @@ import {
   eventFormErrors,
   skippedLine,
   isEventType,
-  filledEndDate,
+  endMovedLine,
   localDateTime,
+  startMoved,
   type VenueDraft,
   venueDraftOf,
   venueSent,
@@ -64,6 +65,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
   const [cover, setCover] = useState<{ uploadKey: string; photo: CoverPhoto } | null>(null);
   const staged = useRef<string | null>(null);
   const [unsent, setUnsent] = useState(0);
+  const [said, setSaid] = useState('');
   const [status, setStatus] = useState<'editing' | 'creating' | 'failed'>('editing');
   const focusNext = useRef<(() => void) | null>(null);
   const currencies = useMemo(() => currencyChoices('', currency, locale, t), [currency, locale, t]);
@@ -96,6 +98,16 @@ function EventForm({ organisation }: { organisation: Membership }) {
   function edit(field: Field, changes: Partial<EventDraft>): void {
     setDraft((previous) => ({ ...previous, ...changes }));
     setErrors((previous) => ({ ...previous, [field]: undefined }));
+  }
+
+  function moveStart(start: Partial<Pick<EventDraft, 'startDate' | 'startTime'>>): void {
+    const moved = startMoved(draft, start, endChosen);
+    const line = endMovedLine(draft, moved, dateLocale(), t);
+
+    edit('startsAt', moved);
+    if (line == null) return;
+    setUnsent(0);
+    setSaid(line);
   }
 
   function refuse(
@@ -200,7 +212,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
           </div>
         )}
         <p className="visually-hidden" role="status">
-          {unsent > 0 ? t('eventForm.problems', { count: unsent }) : ''}
+          {unsent > 0 ? t('eventForm.problems', { count: unsent }) : said}
         </p>
 
         <section className="card" aria-labelledby="event-about">
@@ -262,13 +274,8 @@ function EventForm({ organisation }: { organisation: Membership }) {
             time={draft.startTime}
             error={errors.startsAt}
             busy={busy}
-            onDate={(startDate) =>
-              edit('startsAt', {
-                startDate,
-                endDate: filledEndDate(startDate, draft.endDate, endChosen),
-              })
-            }
-            onTime={(startTime) => edit('startsAt', { startTime })}
+            onDate={(startDate) => moveStart({ startDate })}
+            onTime={(startTime) => moveStart({ startTime })}
           />
           <Moment
             id="event-end"
