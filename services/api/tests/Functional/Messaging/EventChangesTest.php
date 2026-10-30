@@ -234,6 +234,26 @@ final class EventChangesTest extends MessagingTestCase
     }
 
     #[Test]
+    public function aMembersOwnChangeThatTakesEventDayOutOfTheirItemMarksItMutedAgain(): void
+    {
+        $event = $this->liveEvent(startsOn: '2026-11-05');
+        self::service(EventMuter::class)->set($this->bola, $event, true);
+        $this->edit($event, $this->ada, ['venue' => ['name' => 'Hall B', 'address' => null]]);
+        self::runUntilIdle();
+
+        self::at('2026-11-04 22:00');
+        $this->edit($event, $this->ada, ['startsAt' => '2026-11-05T19:00:00']);
+        self::runUntilIdle();
+        self::assertSame(['category' => 'event_day', 'muted' => false], ['category' => $this->items($this->bola)[0]['category'], 'muted' => $this->items($this->bola)[0]['muted']]);
+
+        self::at('2026-11-04 22:05');
+        $this->edit($event, $this->bola, ['startsAt' => '2026-11-05T20:00:00']);
+        self::runUntilIdle();
+
+        self::assertSame([['title' => 'Ada Obi changed the event', 'lines' => ['The venue is now Hall B (was Hall A).'], 'category' => 'event_changes', 'muted' => true]], $this->items($this->bola));
+    }
+
+    #[Test]
     public function theEmailEndsWithALinkToNotificationSettings(): void
     {
         $event = $this->liveEvent();
