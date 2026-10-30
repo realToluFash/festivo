@@ -357,7 +357,7 @@ function useCheckedFieldInView(scroll: ScreenScrollView): void {
   }, [scroll]);
 }
 
-/** Brings `shown` wholly into sight, and again as far as `when` once it has settled, and moves screen reader focus to `read` after `readMs`; returns what cancels the steps still to come. */
+/** Brings `shown` into sight as far as `when`, and again once it has settled, and moves screen reader focus to `read` after `readMs`; returns what cancels the steps still to come. */
 function settleOnto(
   scroll: ScreenScrollView | null,
   shown: () => ScreenReaderTarget | null,
@@ -366,7 +366,7 @@ function settleOnto(
   readMs = SETTLED_MS,
   { when = 'wholly', aboveKeys = false }: Sight = {},
 ): () => void {
-  bringIntoView(scroll, shown(), animated, { aboveKeys });
+  bringIntoView(scroll, shown(), animated, { when, aboveKeys });
 
   // Content that shrinks around the line as it mounts can stop the first scroll short (sc-9382).
   const settled = setTimeout(
