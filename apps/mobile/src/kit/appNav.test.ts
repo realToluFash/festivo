@@ -149,6 +149,16 @@ describe('Events titles itself once, in the frame header (sc-17559)', () => {
   });
 });
 
+describe("A phone's event page keeps its name out of the header (sc-22871)", () => {
+  it('titles the header Events with an event open, and the name is the heading on the card', () => {
+    const events = source(join(SRC, 'components', 'EventsScreen.tsx'));
+    const page = source(join(SRC, 'components', 'Events.tsx'));
+
+    expect(events).toMatch(/<AppFrame\s+current="events"\s+title=\{t\('eventsScreen\.title'\)\}/u);
+    expect(page).toMatch(/accessibilityRole="header">\s*\{event\.name\}/u);
+  });
+});
+
 describe('The bell titles itself once, in the frame header (sc-3980)', () => {
   it('gives the feed no heading of its own on any layout', () => {
     const feed = source(join(SRC, 'components', 'NotificationsFeed.tsx'));
