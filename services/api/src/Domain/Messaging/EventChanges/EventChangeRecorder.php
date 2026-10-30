@@ -120,9 +120,9 @@ final readonly class EventChangeRecorder
 
         foreach ($this->othersThan($event, $by) as $member) {
             foreach ([EventChangesNotice::NAME, EventDayNotice::NAME] as $type) {
-                $key = $type . ':' . $eventId . ':' . $member->toRfc4122();
-                $pending = $this->pendingPayload($key);
+                $pending = $this->pendingPayload($type, $eventId, $member);
                 $since = Type\string()->coerce($pending['since'] ?? $id->toRfc4122());
+                $key = $type . ':' . $eventId . ':' . $member->toRfc4122() . ':' . $since;
                 $action = $kind->isAction() || true === ($pending['action'] ?? false);
                 $dueAt = $action ? $now : $now->add(new DateInterval(self::SETTLE));
                 $alone = Audience::memberWithPermission($event->getOrganisation()->getId(), Permission::EventsRead, $member);
@@ -145,12 +145,12 @@ final readonly class EventChangeRecorder
         return $members;
     }
 
-    /** @return array<string, mixed> the window's row still waiting under this key, if any */
-    private function pendingPayload(string $key): array
+    /** @return array<string, mixed> the member's window still waiting, if any. Each window has a key of its own, so a later one never takes back a push an earlier one holds for the morning. */
+    private function pendingPayload(string $type, string $eventId, Uuid $member): array
     {
         $payload = $this->connection->fetchOne(
-            'SELECT payload FROM scheduled_notifications WHERE cancellation_key = :key AND status = :pending',
-            ['key' => $key, 'pending' => ScheduledNotificationStatus::Pending->value],
+            'SELECT payload FROM scheduled_notifications WHERE event_id = :event AND type = :type AND status = :pending AND starts_with(cancellation_key, :prefix)',
+            ['event' => $eventId, 'type' => $type, 'pending' => ScheduledNotificationStatus::Pending->value, 'prefix' => $type . ':' . $eventId . ':' . $member->toRfc4122() . ':'],
         );
 
         return false === $payload ? [] : Json\typed(Type\string()->coerce($payload), Type\dict(Type\string(), Type\mixed()));
