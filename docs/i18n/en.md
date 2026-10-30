@@ -64,6 +64,10 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **30 Oct 2026. A build too old to use** (sc-22881 for sc-22620, `updateRequired.*`, app).
+  "Update Soirely to carry on", the house "to carry on"; the body says what happened ("no
+  longer works") and reassures ("Updating keeps everything you have saved"); the button is the
+  bare verb "Update". Never "upgrade", "outdated" or "unsupported", which blame the person.
 - **30 Oct 2026. The end moving with the start** (sc-22161 for sc-22144, `eventForm.endMoved`,
   web and app). Spoken only, politely, when a new start carries the end: "Ends moved with the
   start, to {{day}}, {{time}}." Settled as sc-22144 wrote it; `Events.test.tsx` pins it. "Ends"

@@ -1804,8 +1804,8 @@
     "back": "Volver"
   },
   "updateRequired": {
-    "title": "Update Soirely to carry on",
-    "body": "This version of Soirely no longer works. Updating keeps everything you have saved.",
-    "update": "Update"
+    "title": "Actualice Soirely para continuar",
+    "body": "Esta versión de Soirely ya no funciona. Al actualizarla, conservará todo lo que haya guardado.",
+    "update": "Actualizar"
   }
 }

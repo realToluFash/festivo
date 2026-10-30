@@ -41,6 +41,10 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **30 Oct 2026. Uma versão demasiado antiga** (sc-22881 para sc-22620, `updateRequired.*`,
+  app). "Atualize a Soirely para continuar", com "a Soirely" no feminino; o corpo, "Esta versão
+  da Soirely já não funciona. Atualizar mantém tudo o que guardou."; o botão, "Atualizar".
+  Nunca "obsoleta" nem "não suportada", que culpam a pessoa.
 - **30 Oct 2026. O fim que acompanha o início** (sc-22161 para sc-22144, `eventForm.endMoved`,
   web e app). Só se ouve, no leitor de ecrã: "O fim acompanhou o início: {{day}}, {{time}}."
   "Fim" e "Início" como as legendas do formulário; "acompanhou" diz que a duração se manteve,
