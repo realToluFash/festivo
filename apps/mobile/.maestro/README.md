@@ -47,6 +47,7 @@ phone starts with it.
 `sign-in-any-language`. `sign-in-screen-english` runs it with `LANGUAGE: English`, for a phone
 a run in another language left signed out: `sign-in`'s first wait is on the English 'Email'.
 `text-size-signed-out` starts with it too, so a change to the chip row lands in one flow.
+Where Expo Go lands the sign-in link on Home, it taps Home's Sign in first (sc-22740).
 
 Two flows tap one control by `testID`, passed as `ID`: `scroll-tap` scrolls to it from above
 or below, for a step inside another flow; `ownership-tap` takes a screenshot of what follows
@@ -103,6 +104,15 @@ reads. Every check starts with the API up, whatever the one before it left.
 
 Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each code
 (`batch/helper.js`), so it runs inside a batch, which holds the account's `TOTP_SECRET`.
+
+To test the code step itself, outside a batch, three flows stop on it and send a code you pass
+(sc-22740). Each opening flow starts with `sign-in-screen-language`:
+
+| Flow                     | Needs                                     | Leaves the app on                       |
+| ------------------------ | ----------------------------------------- | --------------------------------------- |
+| `sign-in-code-step-open` | `LANGUAGE`, `EMAIL`, `PASSWORD`           | the sign-in code step                   |
+| `reset-code-step-open`   | `LANGUAGE`, `TOKEN` (a reset link's)      | the reset link's code step              |
+| `two-factor-code-send`   | `CODE`, `SHOT`; `RECOVERY=true` if needed | the step's answer, screenshot as `SHOT` |
 
 ## Writing one
 
