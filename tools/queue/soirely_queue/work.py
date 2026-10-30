@@ -137,7 +137,7 @@ def open_ideas(stories):
     """The creative director's ideas still waiting on the product manager's decision: the
     cap and the digest count these, while the idea label stays on in every state."""
     return [s for s in stories if "idea" in s["labels"] and s["state"] == "Backlog"
-            and not s.get("done") and not s.get("archived")]
+            and not s.get("done")]
 
 
 def finished(story):
