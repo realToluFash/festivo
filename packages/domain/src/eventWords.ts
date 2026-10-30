@@ -65,6 +65,25 @@ export function skippedLine(
     : t('eventForm.clocksSkipNextDay', { ...words, savedDay: formatWallDay(savedDate, locale) });
 }
 
+/** What a screen reader says when a new start has moved the end (sc-22144), or null when the end stayed. */
+export function endMovedLine(
+  before: EventDraft,
+  after: EventDraft,
+  locale: string,
+  t: Translate,
+): string | null {
+  if (
+    after.endTime === '' ||
+    (after.endDate === before.endDate && after.endTime === before.endTime)
+  )
+    return null;
+
+  return t('eventForm.endMoved', {
+    day: formatWallDay(after.endDate, locale),
+    time: formatWallClock(after.endTime, locale),
+  });
+}
+
 const NOW_STATE = {
   draft: 'eventLive.nowState_draft',
   live: 'eventLive.nowState_live',

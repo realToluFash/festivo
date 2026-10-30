@@ -71,6 +71,7 @@
     "date": "Date",
     "time": "Time",
     "endsHint": "An event can run past midnight. Choose the day it ends.",
+    "endMoved": "Ends moved with the start, to {{day}}, {{time}}.",
     "clocksSkip": "There is no {{time}} on {{day}} in {{zone}}: the clocks go forward that night. It will be saved as {{savedAs}}.",
     "clocksSkipNextDay": "There is no {{time}} on {{day}} in {{zone}}: the clocks go forward that night. It will be saved as {{savedAs}} on {{savedDay}}.",
     "timeZone": "Time zone",

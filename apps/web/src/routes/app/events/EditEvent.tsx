@@ -50,6 +50,7 @@ import {
 import { typeChoices } from './eventTypes.ts';
 import { HostsSection } from './HostsSection.tsx';
 import { useLeaveGuard } from './useLeaveGuard.tsx';
+import { useStartCarriesEnd } from './useStartCarriesEnd.ts';
 import { VenueSection } from './VenueSection.tsx';
 
 /** What the event page announces once the form has closed (sc-3587). */
@@ -262,6 +263,17 @@ function DetailsForm({
     focusNext.current?.();
     focusNext.current = null;
   }, [errors]);
+
+  const { moveStart, moveEnd } = useStartCarriesEnd({
+    draft,
+    endChosen: true,
+    timeZone,
+    edit,
+    say: (line) => {
+      setUnsent(0);
+      setSaid(line);
+    },
+  });
 
   function edit(field: Field, change: Partial<EventDraft>): void {
     setTyped((previous) => ({ ...previous, draft: { ...previous.draft, ...change } }));
@@ -508,8 +520,8 @@ function DetailsForm({
             time={draft.startTime}
             error={errors.startsAt}
             busy={busy}
-            onDate={(startDate) => edit('startsAt', { startDate })}
-            onTime={(startTime) => edit('startsAt', { startTime })}
+            onDate={(startDate) => moveStart({ startDate })}
+            onTime={(startTime) => moveStart({ startTime })}
           />
           <Moment
             id="event-end"
@@ -521,8 +533,8 @@ function DetailsForm({
             time={draft.endTime}
             error={errors.endsAt}
             busy={busy}
-            onDate={(endDate) => edit('endsAt', { endDate })}
-            onTime={(endTime) => edit('endsAt', { endTime })}
+            onDate={(endDate) => moveEnd({ endDate })}
+            onTime={(endTime) => moveEnd({ endTime })}
           />
         </section>
 
