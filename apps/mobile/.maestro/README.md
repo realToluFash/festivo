@@ -112,6 +112,11 @@ Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each co
   `takeScreenshot: mobile-signed-in`. Maestro refuses a path that leaves its own run
   folder, so `just qa-mobile` points that folder at `.qa/<flow>/` and the file lands in
   `.qa/<flow>/mobile-signed-in.png`, which is where a QA report collects its evidence.
+- **A check of a kept value asserts the value is absent before it is picked**, with an
+  `assertNotVisible` on the field beside `takeScreenshot: before` (`'.*\d.*'` for a time,
+  `'.*\b${DAY}\b.*'` for a date). Otherwise a default filled in later lets the check pass
+  with the pick thrown away. An `assertNotVisible` after the pick sits behind an
+  `assertVisible` on the same field, or it passes on a field that has left the screen.
 - **One flow, one outcome.** A flow that signs in and then changes a password reports one
   failure for two features.
 - **Reach the bundler through `${METRO_URL}`**, never a literal port: the QA stack's

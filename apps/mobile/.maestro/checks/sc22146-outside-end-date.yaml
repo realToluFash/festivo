@@ -23,6 +23,9 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - assertVisible:
     id: 'eventForm.end.date'
+- assertNotVisible:
+    id: 'eventForm.end.date'
+    text: '.*\b${DAY}\b.*'
 - takeScreenshot: before
 - tapOn:
     id: 'eventForm.end.date'

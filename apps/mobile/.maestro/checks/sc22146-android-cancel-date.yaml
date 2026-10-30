@@ -32,6 +32,8 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - assertNotVisible:
     text: 'OK'
+- assertVisible:
+    id: 'eventForm.start.date'
 - assertNotVisible:
     id: 'eventForm.start.date'
     text: '.*\b${DAY}\b.*'
