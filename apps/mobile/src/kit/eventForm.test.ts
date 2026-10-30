@@ -149,25 +149,25 @@ describe('the platform pickers', () => {
   });
 });
 
-describe('the iOS picker sheet closed by a tap outside (sc-22146)', () => {
+describe('the field a pick lands in, on either platform', () => {
   const field = { date: '2026-11-14', time: '16:00' };
 
-  it('keeps a date scrolled to, and the time as it was', () => {
-    const scrolled = pickerValue('2026-12-05', '16:00', new Date('2026-01-01T00:00:00Z'));
+  it('takes the date picked, and keeps the time', () => {
+    const picked = pickerValue('2026-12-05', '16:00', new Date('2026-01-01T00:00:00Z'));
 
-    expect(pickedInto('date', scrolled, field)).toEqual({ date: '2026-12-05', time: '16:00' });
+    expect(pickedInto('date', picked, field)).toEqual({ date: '2026-12-05', time: '16:00' });
   });
 
-  it('keeps a time scrolled to, and the date as it was', () => {
-    const scrolled = pickerValue('2026-11-14', '19:45', new Date('2026-01-01T00:00:00Z'));
+  it('takes the time picked, and keeps the date', () => {
+    const picked = pickerValue('2026-11-14', '19:45', new Date('2026-01-01T00:00:00Z'));
 
-    expect(pickedInto('time', scrolled, field)).toEqual({ date: '2026-11-14', time: '19:45' });
+    expect(pickedInto('time', picked, field)).toEqual({ date: '2026-11-14', time: '19:45' });
   });
 
   it('fills an empty date with the day a time was picked on', () => {
-    const scrolled = pickerValue('', '09:30', new Date('2026-10-26T08:15:00Z'));
+    const picked = pickerValue('', '09:30', new Date('2026-10-26T08:15:00Z'));
 
-    expect(pickedInto('time', scrolled, { date: '', time: '' })).toEqual({
+    expect(pickedInto('time', picked, { date: '', time: '' })).toEqual({
       date: '2026-10-26',
       time: '09:30',
     });
