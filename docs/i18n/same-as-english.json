@@ -59,6 +59,7 @@
     "mobile:eventTypes.baby_shower",
     "web:eventForm.type",
     "web:eventDuplicate.copiedType",
+    "mobile:eventDuplicate.copiedType",
     "mobile:eventForm.type",
     "mobile:eventForm.date",
     "web:account.sectionNotifications",
