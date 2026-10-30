@@ -30,6 +30,7 @@ import type { CoverPhoto } from './EventCoverImage.tsx';
 import { Choice, FieldError, Moment } from './EventFields.tsx';
 import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
 import { typeChoices } from './eventTypes.ts';
+import { useLeaveGuard } from './useLeaveGuard.tsx';
 import { VenueSection } from './VenueSection.tsx';
 
 export function NewEvent() {
@@ -73,6 +74,10 @@ function EventForm({ organisation }: { organisation: Membership }) {
   );
   const types = useMemo(() => typeChoices(draft.type, t), [draft.type, t]);
   const busy = status === 'creating';
+  const typed = JSON.stringify({ draft, venue, timeZone, currency });
+  const [blank] = useState(typed);
+  const dirty = typed !== blank || cover != null;
+  const leave = useLeaveGuard({ dirty, busy, body: t('eventForm.leaveBody') });
 
   useEffect(() => {
     focusNext.current?.();
@@ -160,6 +165,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
           );
       }
 
+      leave.release();
       void navigate(
         `/app/events/${encodeURIComponent(created.id)}`,
         coverRefused == null ? undefined : { state: { coverRefused } },
@@ -343,6 +349,8 @@ function EventForm({ organisation }: { organisation: Membership }) {
           </button>
         </div>
       </form>
+
+      {leave.dialog}
     </div>
   );
 }
