@@ -545,7 +545,7 @@ export function useStepClose(
   const holder = useRef<ViewInstance | null>(null);
   const closer = useRef<ViewInstance | null>(null);
   const inputFocus = useRef<ViewInstance | null>(null);
-  const field = useRef<HostInstance | null>(null);
+  const toBlur = useRef<HostInstance | null>(null);
   const stepField = useRef<HostInstance | null>(null);
   const stepFieldRef = useCallback((shown: HostInstance | null) => {
     stepField.current = shown;
@@ -615,7 +615,7 @@ export function useStepClose(
                   runFrom(steps.slice(at + 1));
                 },
                 SETTLED_MS,
-                field.current,
+                toBlur.current,
               ),
             );
             break;
@@ -676,7 +676,7 @@ export function useStepClose(
   const close = useCallback(() => {
     if (started.current) return;
     started.current = true;
-    field.current = fieldToBlur(
+    toBlur.current = fieldToBlur(
       TextInput.State.currentlyFocusedInput(),
       stepField.current,
       raisedBy.current,
