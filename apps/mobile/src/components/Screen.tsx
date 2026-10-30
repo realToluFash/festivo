@@ -7,7 +7,6 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -38,7 +37,6 @@ import {
   keysOver,
   liftNeeded,
   type IntoView,
-  keptOffset,
   offsetAboveKeyboard,
   scrollInsets,
   settledOffset,
@@ -494,27 +492,24 @@ export interface HeldStepClose extends StepClose {
   holder: ReactElement;
 }
 
-/** Closes a step back to the opener `to` names in the steps `stepCloseSteps` gives, with input focus going `inputFocusTo` the opener, a control, or to the `holder` it returns, beside a line of words; `finish` takes the step away, with what `useFocusBackToOpener` moves focus back from, or nothing when focus is already there (sc-18588). Without the holder rendered nothing takes input focus, and blurring the field hands focus to the header's back row (sc-18587). `stays` is a view of the step that moves with the control TalkBack's focus is on, its Cancel, kept where it shows while the opener shows above the step: pushed under the keys, it leaves TalkBack's focus on a view out of sight, which TalkBack moves to the step's control nearest it before the opener takes it (sc-18588). */
+/** Closes a step back to the opener `to` names in the steps `stepCloseSteps` gives, with input focus going `inputFocusTo` the opener, a control, or to the `holder` it returns, beside a line of words; `finish` takes the step away, with what `useFocusBackToOpener` moves focus back from, or nothing when focus is already there (sc-18588). Without the holder rendered nothing takes input focus, and blurring the field hands focus to the header's back row (sc-18587). */
 export function useStepClose(
   opener: (key: string) => RefCallback<ViewInstance>,
   to: string,
   inputFocusTo: 'opener',
   finish: (closed: StepClosed | undefined) => void,
-  stays: RefObject<ViewInstance | null>,
 ): StepClose;
 export function useStepClose(
   opener: (key: string) => RefCallback<ViewInstance>,
   to: string,
   inputFocusTo: 'holder',
   finish: (closed: StepClosed | undefined) => void,
-  stays: RefObject<ViewInstance | null>,
 ): HeldStepClose;
 export function useStepClose(
   opener: (key: string) => RefCallback<ViewInstance>,
   to: string,
   inputFocusTo: InputFocusTo,
   finish: (closed: StepClosed | undefined) => void,
-  stays: RefObject<ViewInstance | null>,
 ): StepClose | HeldStepClose {
   const scroll = useContext(ScreenScroll);
   const [closing, setClosing] = useState(false);
@@ -523,7 +518,6 @@ export function useStepClose(
   const holder = useRef<ViewInstance | null>(null);
   const inputFocus = useRef<ViewInstance | null>(null);
   const field = useRef<HostInstance | null>(null);
-  const staysAt = useRef<number | null>(null);
   const finishNow = useRef(finish);
   const afterShown = useRef<readonly StepCloseStep[]>([]);
   const cancel = useRef(() => {});
@@ -627,17 +621,6 @@ export function useStepClose(
 
   useEffect(() => () => cancel.current(), []);
 
-  useLayoutEffect(() => {
-    const at = staysAt.current;
-    if (!closing || at == null) return;
-    staysAt.current = null;
-
-    contentY(scroll, stays.current, (now) => {
-      const y = scroll && keptOffset(scroll.offset.current, at, now);
-      if (y != null) scroll?.ref.current?.scrollTo({ y, animated: false });
-    });
-  }, [closing, scroll, stays]);
-
   useEffect(() => {
     if (!closing) return;
 
@@ -654,10 +637,6 @@ export function useStepClose(
     if (started.current) return;
     started.current = true;
     field.current = fieldToBlur(TextInput.State.currentlyFocusedInput(), raisedBy.current);
-    staysAt.current = null;
-    contentY(scroll, stays.current, (at) => {
-      staysAt.current = at;
-    });
 
     let gone = false;
     cancel.current = () => {
@@ -667,25 +646,13 @@ export function useStepClose(
       if (gone) return;
       cancel.current = run(stepCloseSteps(Platform.OS, on, SETTLED_MS, inputFocusTo));
     });
-  }, [run, inputFocusTo, scroll, stays]);
+  }, [run, inputFocusTo]);
 
   const held = useMemo(() => <FocusHolder holder={holder} />, []);
 
   return inputFocusTo === 'holder'
     ? { opener: ref, holder: held, closing, close }
     : { opener: ref, closing, close };
-}
-
-/** Where `view` sits in the scroll's content, which a scroll does not change. */
-function contentY(
-  scroll: ScreenScrollView | null,
-  view: ViewInstance | null,
-  then: (y: number) => void,
-): void {
-  const content = scroll?.ref.current?.getInnerViewRef();
-  if (content == null || view == null) return;
-
-  view.measureLayout(content, (_x, y) => then(y));
 }
 
 /** Holds input focus where TalkBack does not read it. */

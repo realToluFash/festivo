@@ -173,13 +173,6 @@ export function settledOffset(at: InScroll, when: IntoView): number | null {
   return offsetIntoView(at);
 }
 
-/** The scroll offset that keeps a view where it shows after the content above it moved it from `before` to `after` inside the scroll content; null when it has not moved (sc-18588). */
-export function keptOffset(offset: number, before: number, after: number): number | null {
-  if (after === before) return null;
-
-  return offset + after - before;
-}
-
 /** Where the focused field sits inside the scroll content, as the last part of its group. */
 export interface Focused {
   contentY: number;
