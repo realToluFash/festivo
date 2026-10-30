@@ -186,7 +186,7 @@ export function filledEndDate(startDate: string, endDate: string, endChosen: boo
   return endChosen ? endDate : startDate;
 }
 
-/** A new start carries a set end with it, `length` minutes after it on the clock as sc-3593 has it; with no length, the end date follows as filledEndDate has it. */
+/** A new start carries a set end with it, `length` minutes after it on the clock as sc-3593 has it; with no length, or an end before the start the host is fixing, the end date follows as filledEndDate has it. */
 export function startMoved(
   draft: EventDraft,
   start: Partial<Pick<EventDraft, 'startDate' | 'startTime'>>,
@@ -196,7 +196,8 @@ export function startMoved(
 ): EventDraft {
   const next = { ...draft, ...start };
   const startsAt = savedWallClock(next.startDate, next.startTime, timeZone);
-  const typed = length == null || startsAt == null ? null : clockAfter(startsAt, length);
+  const typed =
+    length == null || length < 0 || startsAt == null ? null : clockAfter(startsAt, length);
   const carried = typed == null ? null : (resolved(typed, timeZone)?.wallClock ?? typed);
 
   if (carried == null || !/^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(carried))

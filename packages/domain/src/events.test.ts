@@ -226,6 +226,16 @@ describe('a start that moves the end with it (sc-22144)', () => {
       '2027-07-25T08:00',
     );
   });
+
+  it('leaves an end before the start where it is, so moving the start can fix it', () => {
+    const backwards = { ...night, endDate: '2027-07-17', endTime: '18:00' };
+
+    expect(startMoved(backwards, { startTime: '17:00' }, true, MADRID)).toMatchObject({
+      startTime: '17:00',
+      endDate: '2027-07-17',
+      endTime: '18:00',
+    });
+  });
 });
 
 describe('editing an event (sc-3587)', () => {
