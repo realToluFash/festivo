@@ -173,6 +173,26 @@ export function settledOffset(at: InScroll, when: IntoView): number | null {
   return offsetIntoView(at);
 }
 
+/** Where a view sits inside the scroll content. */
+export interface InContent {
+  contentY: number;
+  height: number;
+}
+
+/** As settledOffset, except that a scroll back up stops where `kept`, the control TalkBack's focus is on, still shows wholly, when the view shows there at all: a scroll that carries the control out of sight is one TalkBack reads as a manual scroll away from its focus, which it moves on to a neighbour (sc-18588). */
+export function settledOffsetKeeping(
+  at: InScroll,
+  when: IntoView,
+  kept: InContent | null,
+): number | null {
+  const to = settledOffset(at, when);
+  if (to == null || kept == null || to >= at.offset) return to;
+
+  const keeping = Math.max(to, kept.contentY + kept.height - at.shown);
+
+  return outOfSight({ ...at, offset: keeping }) ? to : keeping;
+}
+
 /** Where the focused field sits inside the scroll content, as the last part of its group. */
 export interface Focused {
   contentY: number;

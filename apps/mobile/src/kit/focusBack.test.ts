@@ -32,10 +32,8 @@ describe('focus going back to a step’s opener', () => {
 });
 
 describe('a step closing back to its opener', () => {
-  const SETTLED_MS = 500;
-
   it('on Android with TalkBack on, holds the scroll where it is and gives a control opener input focus, which TalkBack says once, with nothing moving its focus there again, before the keys go down and the step goes (sc-18588)', () => {
-    expect(stepCloseSteps('android', true, SETTLED_MS, 'opener')).toEqual([
+    expect(stepCloseSteps('android', true, 'opener')).toEqual([
       { do: 'holdScroll' },
       { do: 'showOpener' },
       { do: 'takeInputFocus', atMs: INPUT_FOCUS_TAKEN_MS, to: 'opener' },
@@ -46,24 +44,24 @@ describe('a step closing back to its opener', () => {
   });
 
   it('on Android with TalkBack on, gives input focus to a holder TalkBack does not read beside a line of words, and moves TalkBack’s focus to the line once the keys’ scroll has landed, before the step goes (sc-18587)', () => {
-    expect(stepCloseSteps('android', true, SETTLED_MS, 'holder')).toEqual([
+    expect(stepCloseSteps('android', true, 'holder')).toEqual([
       { do: 'holdScroll' },
       { do: 'showOpener' },
       { do: 'takeInputFocus', atMs: INPUT_FOCUS_TAKEN_MS, to: 'holder' },
       { do: 'putKeysDown' },
       { do: 'settleOpener', into: 'outOfSight', read: true },
-      { do: 'finish', focusBack: false, atMs: SETTLED_MS + TALKBACK_FOCUS_TAKEN_MS },
+      { do: 'finish', focusBack: false, atMs: TALKBACK_FOCUS_TAKEN_MS },
     ]);
   });
 
   it('closes at once with no screen reader, which has no focus to lose', () => {
-    expect(stepCloseSteps('android', false, SETTLED_MS, 'opener')).toEqual([
+    expect(stepCloseSteps('android', false, 'opener')).toEqual([
       { do: 'finish', focusBack: true, atMs: 0 },
     ]);
   });
 
   it('closes at once on iOS, where VoiceOver waits for the move it is asked for', () => {
-    expect(stepCloseSteps('ios', true, SETTLED_MS, 'opener')).toEqual([
+    expect(stepCloseSteps('ios', true, 'opener')).toEqual([
       { do: 'finish', focusBack: true, atMs: 0 },
     ]);
   });
