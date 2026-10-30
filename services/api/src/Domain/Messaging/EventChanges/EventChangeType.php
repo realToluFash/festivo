@@ -101,8 +101,20 @@ abstract readonly class EventChangeType implements NotificationTypeInterface
         return null !== $window && $this->carries($this->summaryFor($payload, $reader, $since, $locale));
     }
 
+    /** @param array<string, mixed> $payload whether the member made this change, which never re-dates or announces their item (AC 1) */
+    protected function madeBy(array $payload, Uuid $reader): bool
+    {
+        return $this->eventChangeLog->actorOf(Type\string()->coerce($payload['changeId'] ?? '')) === $reader->toRfc4122();
+    }
+
+    /** @param array<string, mixed> $payload due for somebody else's change, and for the member's own while they have an unread item it rewrites */
+    protected function isItemDue(array $payload, Uuid $reader, ?EventChangeSummary $summary): bool
+    {
+        return $this->carries($summary) && (!$this->madeBy($payload, $reader) || null !== $this->eventChangeLog->unreadFrom($reader, self::eventId($payload)));
+    }
+
     /** @param array<string, mixed> $payload */
-    protected function item(array $payload, Recipient $recipient, ?EventChangeSummary $summary, ?string $from): RenderedNotification
+    protected function item(array $payload, Recipient $recipient, ?EventChangeSummary $summary, ?string $from, bool $quiet = false): RenderedNotification
     {
         $eventId = self::eventId($payload);
         $thread = EventChangeLog::thread($eventId);
@@ -114,7 +126,7 @@ abstract readonly class EventChangeType implements NotificationTypeInterface
         $title = $this->eventChangeWording->title($summary, $recipient->locale);
         $lines = $this->eventChangeWording->lines($summary, $recipient->id, $recipient->locale);
 
-        return new RenderedNotification($title, Str\join([$title, ...$lines], "\n"), $lines, self::place($eventId), $thread, $from);
+        return new RenderedNotification($title, Str\join([$title, ...$lines], "\n"), $lines, self::place($eventId), $thread, $from, $quiet);
     }
 
     /** @param array<string, mixed> $payload a deletion's push opens the bell, as its event's page is gone */
