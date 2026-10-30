@@ -10,7 +10,7 @@ again. Either way, **this file carries only what is specific to this epic, and i
 enough on its own.**
 
 - **Epic:** https://app.shortcut.com/soirely/epic/30
-- **Artifact title to use:** `Soirely — Guests`
+- **Page to use:** `30 · Guests` in Soirely — Redesign
 
 ## What this area is
 

@@ -530,8 +530,9 @@ DETAILS = {
                       "grants, by merging tools/queue/permissions.json and applying it.",
     "to-draw": "List a story whose screens this run cannot draw. The body is the prompt the "
                "owner pastes into a /soirely-designer session, so it stands on its own: the "
-               "epic's artifact URL, the screens and layouts to draw, the states each needs, "
-               "and the decisions already made. Listing the story again replaces its prompt.",
+               "epic's page in Soirely — Redesign and its URL, the screens and layouts to "
+               "draw, the states each needs, and the decisions already made. Listing the "
+               "story again replaces its prompt.",
     "drawn": "Take a story off the list to draw, once its artboard is linked on the story.",
     "comment": "Post a tagged comment. --to takes roles, dev, and the language tags en, es, "
                "fr and pt, which reach the linguist.",

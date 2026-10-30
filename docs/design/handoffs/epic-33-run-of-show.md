@@ -10,7 +10,7 @@ again. Either way, **this file carries only what is specific to this epic, and i
 enough on its own.**
 
 - **Epic:** https://app.shortcut.com/soirely/epic/33
-- **Artifact title to use:** `Soirely — Run of show`
+- **Page to use:** `33 · Run of show` in Soirely — Redesign
 
 ## What this area is
 

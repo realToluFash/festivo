@@ -10,7 +10,7 @@ again. Either way, **this file carries only what is specific to this epic, and i
 enough on its own.**
 
 - **Epic:** https://app.shortcut.com/soirely/epic/32
-- **Artifact title to use:** `Soirely — Menu and dietary`
+- **Page to use:** `32 · Menu and dietary` in Soirely — Redesign
 
 ## What this area is
 

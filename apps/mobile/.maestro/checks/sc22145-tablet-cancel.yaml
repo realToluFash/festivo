@@ -1,0 +1,44 @@
+# sc-22145: on a tablet, Duplicate {event}'s Cancel returns to the original's page, and the copy's ‹ Event control does too.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- tapOn:
+    id: 'events.page.duplicate'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.cancel'
+    timeout: 15000
+- tapOn:
+    id: 'eventForm.cancel'
+- waitForAnimationToEnd
+- takeScreenshot: after-cancel
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- tapOn:
+    id: 'events.page.duplicate'
+- scrollUntilVisible:
+    element:
+      id: 'eventDuplicate.create'
+    timeout: 15000
+- tapOn:
+    id: 'eventDuplicate.start.time'
+- tapOn: 'OK'
+- tapOn:
+    id: 'eventDuplicate.create'
+- extendedWaitUntil:
+    notVisible:
+      id: 'eventDuplicate.create'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: copy-page
+- tapOn:
+    id: 'events.back'
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: after-event-control

@@ -3,7 +3,15 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { MONO, SANS, faceFor, faceStyle, facesLoaded, inputFaceStyle } from './faceFor.ts';
+import {
+  GOOGLE_SANS,
+  MONO,
+  SANS,
+  faceFor,
+  faceStyle,
+  facesLoaded,
+  inputFaceStyle,
+} from './faceFor.ts';
 
 describe('a weight draws from its own file', () => {
   it('gives each of the four design weights a different Instrument Sans file', () => {
@@ -28,10 +36,16 @@ describe('a weight draws from its own file', () => {
   });
 
   it('keeps JetBrains Mono to its two weights', () => {
-    expect(faceFor('500', true)).toBe('JetBrainsMono-Medium');
-    expect(faceFor('700', true)).toBe('JetBrainsMono-Bold');
-    expect(faceFor('400', true)).toBe('JetBrainsMono-Medium');
-    expect(faceFor('600', true)).toBe('JetBrainsMono-Bold');
+    expect(faceFor('500', 'mono')).toBe('JetBrainsMono-Medium');
+    expect(faceFor('700', 'mono')).toBe('JetBrainsMono-Bold');
+    expect(faceFor('400', 'mono')).toBe('JetBrainsMono-Medium');
+    expect(faceFor('600', 'mono')).toBe('JetBrainsMono-Bold');
+  });
+
+  it("sets Google's button in Google Sans Medium, whatever weight it is asked for", () => {
+    expect(['400', '500', '600', '700'].map((weight) => faceFor(weight, 'googleSans'))).toEqual(
+      Array(4).fill('GoogleSans-Medium'),
+    );
   });
 });
 
@@ -51,7 +65,7 @@ describe('a style reaches the platform with its face', () => {
       fontSize: 16,
     });
     expect(faceStyle({ fontWeight: '700' })).toEqual({ fontFamily: 'InstrumentSans-Bold' });
-    expect(faceStyle({ fontWeight: '700' }, true)).toEqual({ fontFamily: 'JetBrainsMono-Bold' });
+    expect(faceStyle({ fontWeight: '700' }, 'mono')).toEqual({ fontFamily: 'JetBrainsMono-Bold' });
     expect(faceStyle({})).toEqual({ fontFamily: 'InstrumentSans-Regular' });
   });
 });
@@ -60,13 +74,13 @@ describe("a field's style reaches the platform with its face", () => {
   it('states a regular upright weight on Android, which the span over handed text reads, whatever file the weight chose', () => {
     facesLoaded();
 
-    expect(inputFaceStyle({ fontSize: 16 }, false, 'android')).toEqual({
+    expect(inputFaceStyle({ fontSize: 16 }, 'sans', 'android')).toEqual({
       fontFamily: 'InstrumentSans-Regular',
       fontSize: 16,
       fontWeight: 'normal',
       fontStyle: 'normal',
     });
-    expect(inputFaceStyle({ fontWeight: '700' }, false, 'android')).toEqual({
+    expect(inputFaceStyle({ fontWeight: '700' }, 'sans', 'android')).toEqual({
       fontFamily: 'InstrumentSans-Bold',
       fontWeight: 'normal',
       fontStyle: 'normal',
@@ -74,11 +88,11 @@ describe("a field's style reaches the platform with its face", () => {
   });
 
   it('leaves the iPhone and the web as faced() has them', () => {
-    expect(inputFaceStyle({ fontWeight: '700' }, false, 'ios')).toEqual(
+    expect(inputFaceStyle({ fontWeight: '700' }, 'sans', 'ios')).toEqual(
       faceStyle({ fontWeight: '700' }),
     );
-    expect(inputFaceStyle({ fontSize: 16 }, true, 'web')).toEqual(
-      faceStyle({ fontSize: 16 }, true),
+    expect(inputFaceStyle({ fontSize: 16 }, 'mono', 'web')).toEqual(
+      faceStyle({ fontSize: 16 }, 'mono'),
     );
   });
 });
@@ -90,6 +104,7 @@ describe('the faces ship inside the app', () => {
   it.each([
     ['instrument-sans', Object.values(SANS)],
     ['jetbrains-mono', Object.values(MONO)],
+    ['google-sans', Object.values(GOOGLE_SANS)],
   ])('bundles every %s file the mapper names, beside its licence', (folder, families) => {
     expect(readFileSync(join(fonts, folder, 'OFL.txt'), 'utf8')).toContain(
       'SIL Open Font License, Version 1.1',

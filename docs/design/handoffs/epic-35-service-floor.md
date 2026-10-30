@@ -10,7 +10,7 @@ again. Either way, **this file carries only what is specific to this epic, and i
 enough on its own.**
 
 - **Epic:** https://app.shortcut.com/soirely/epic/35
-- **Artifact title to use:** `Soirely — Service floor`
+- **Page to use:** `35 · Service floor` in Soirely — Redesign
 
 ## What this area is
 

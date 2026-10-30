@@ -10,7 +10,7 @@ again. Either way, **this file carries only what is specific to this epic, and i
 enough on its own.**
 
 - **Epic:** https://app.shortcut.com/soirely/epic/31
-- **Artifact title to use:** `Soirely — Venue and seating`
+- **Page to use:** `31 · Venue and seating` in Soirely — Redesign
 
 ## What this area is
 

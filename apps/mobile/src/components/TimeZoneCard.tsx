@@ -27,6 +27,7 @@ import { useReadOut } from './ReadOut.tsx';
 import {
   SETTLED_MS,
   type StepClosed,
+  type StepHidden,
   useAboveKeyboard,
   useFocusBackToOpener,
   useFocusOnAnswer,
@@ -69,6 +70,7 @@ export function TimeZoneCard({
     opener: changeOpener,
     closing,
     closer,
+    hidden,
     close,
   } = useStepClose(opener, 'change', 'opener', (back) => {
     setClosed(back);
@@ -81,6 +83,7 @@ export function TimeZoneCard({
     closing: savedClosing,
     // Keys a swap leaves up put the line out of sight, and a scroll to it that carries Save away moves TalkBack to the card's description first (sc-18587).
     closer: saveCloser,
+    hidden: savedHidden,
     close: closeSaved,
   } = useStepClose(opener, 'saved', 'holder', (back) => {
     setSavedFocused(back == null);
@@ -117,23 +120,46 @@ export function TimeZoneCard({
 
   const current = zones.find((zone) => zone.id === timezone);
   const label = timezone == null ? null : current == null ? timezone : zoneLabel(current);
+  // The scrolls of a save's close move TalkBack's focus off Save to the nearest view in sight, and the zone name, the intro or the title there is said before the line (sc-18587).
+  const offWhileSaving = savedClosing ? 'no-hide-descendants' : 'auto';
 
   return (
     <View style={frame}>
-      <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+      <Text
+        size={tokens.typeTitleSection.size}
+        weight="bold"
+        accessibilityRole="header"
+        accessibilityElementsHidden={savedClosing}
+        importantForAccessibility={offWhileSaving}
+        accessible={savedClosing ? false : undefined}
+      >
         {t('timeZone.title')}
       </Text>
-      <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
+      <Text
+        size={tokens.typeBodyPhone.size}
+        style={styles.secondary}
+        accessibilityElementsHidden={savedClosing}
+        importantForAccessibility={offWhileSaving}
+        accessible={savedClosing ? false : undefined}
+      >
         {t('timeZone.intro')}
       </Text>
 
       {(!editing || opening || closing || savedClosing) && (
-        <View style={styles.group}>
-          <Text size={tokens.typeRowTitle.size} weight="semibold">
+        <View style={styles.group} {...savedHidden}>
+          <Text
+            size={tokens.typeRowTitle.size}
+            weight="semibold"
+            accessible={savedClosing ? false : undefined}
+          >
             {label ?? t('timeZone.unset')}
           </Text>
           {timezone != null && (
-            <Text size={tokens.typeSmall.size} style={styles.secondary}>
+            <Text
+              size={tokens.typeSmall.size}
+              style={styles.secondary}
+              accessible={savedClosing ? false : undefined}
+            >
               {timezone.replace(/_/g, ' ')}
             </Text>
           )}
@@ -176,6 +202,7 @@ export function TimeZoneCard({
           onFocused={fieldFocused}
           closer={closer}
           saveCloser={saveCloser}
+          hidden={hidden}
         />
       )}
     </View>
@@ -193,6 +220,7 @@ function Choosing({
   onFocused,
   closer,
   saveCloser,
+  hidden,
 }: {
   phone: boolean;
   zones: readonly TimeZoneOption[];
@@ -200,9 +228,11 @@ function Choosing({
   closing: boolean;
   onSaved: (zone: TimeZoneOption) => Promise<void>;
   onCancel: () => void;
-  onFocused: () => void;
+  onFocused: (field: TextInputInstance | null) => void;
   closer: RefObject<ViewInstance | null>;
   saveCloser: RefObject<ViewInstance | null>;
+  /** Hides all but Cancel while Cancel closes the step. */
+  hidden: StepHidden;
 }) {
   const { t } = useTranslation();
   const [typed, setTyped] = useState('');
@@ -281,7 +311,7 @@ function Choosing({
 
   return (
     <>
-      <View {...aboveKeyboard}>
+      <View {...aboveKeyboard} {...hidden}>
         <View
           ref={top}
           onLayout={(event) => setGroupHeight(event.nativeEvent.layout.height)}
@@ -293,7 +323,7 @@ function Choosing({
               wrong={error != null}
               submitting={saving}
               autoFocus
-              onFocus={onFocused}
+              onFocus={() => onFocused(input.current)}
               autoCapitalize="none"
               placeholder={t('timeZone.placeholder')}
               value={typed}
@@ -335,8 +365,14 @@ function Choosing({
                   }}
                   testID={`timeZone.option.${zone.id}`}
                 >
-                  <Text size={tokens.typeBodyPhone.size}>{zoneLabel(zone)}</Text>
-                  <Text size={tokens.typeSmall.size} style={styles.secondary}>
+                  <Text size={tokens.typeBodyPhone.size} accessible={closing ? false : undefined}>
+                    {zoneLabel(zone)}
+                  </Text>
+                  <Text
+                    size={tokens.typeSmall.size}
+                    style={styles.secondary}
+                    accessible={closing ? false : undefined}
+                  >
                     {rowDetail(zone)}
                   </Text>
                 </Pressable>
@@ -349,6 +385,7 @@ function Choosing({
               size={tokens.typeBodyPhone.size}
               style={styles.secondary}
               accessibilityRole="alert"
+              accessible={closing ? false : undefined}
             >
               {nothing}
             </Text>

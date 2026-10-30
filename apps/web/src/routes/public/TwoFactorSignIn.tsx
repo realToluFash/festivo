@@ -22,6 +22,8 @@ export function TwoFactorSignIn() {
         intro={t('twoFactor.intro', { email: challenge.email })}
         recoveryIntro={t('twoFactor.recoveryIntro')}
         submitLabel={t('twoFactor.verify')}
+        failedTitle={t('signIn.failedTitle')}
+        failedBody={t('signIn.failedBody')}
         onVerify={async (factor) =>
           landAfterSignIn(
             codePassed(await api.verifyTwoFactor(challenge.challenge, factor)),

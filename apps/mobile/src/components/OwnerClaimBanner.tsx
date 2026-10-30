@@ -547,7 +547,7 @@ function RecordPanel({ record }: { record: NonNullable<OwnerClaim['record']> }) 
           <Text size={tokens.typeBody.size} muted>
             {row.label}
           </Text>
-          <Text size={tokens.typeBodyPhone.size} mono selectable style={styles.wraps}>
+          <Text size={tokens.typeBodyPhone.size} family="mono" selectable style={styles.wraps}>
             {row.text}
           </Text>
           <QuietButton

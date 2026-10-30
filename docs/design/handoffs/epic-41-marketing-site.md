@@ -10,7 +10,7 @@ again. Either way, **this file carries only what is specific to this epic, and i
 enough on its own.**
 
 - **Epic:** https://app.shortcut.com/soirely/epic/41
-- **Artifact title to use:** `Soirely — Marketing site`
+- **Page to use:** `41 · Marketing site` in Soirely — Redesign
 
 ## What this area is
 

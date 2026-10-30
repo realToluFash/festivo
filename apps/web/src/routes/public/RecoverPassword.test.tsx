@@ -497,3 +497,32 @@ describe('setting a new password from the link', () => {
     );
   });
 });
+
+describe('the reset code step failing on the way', () => {
+  it.each([
+    ['an app code', null, '123456'],
+    ['a recovery code', 'Use a recovery code instead', 'abcd-efgh'],
+  ])('says the reset did not work, for %s', async (_, switchTo, code) => {
+    answering({
+      'POST /api/auth/password/reset/check': () =>
+        json({ email: 'folake@ire.events', twoFactor: true }),
+      'POST /api/auth/password/reset/code': () => problem('internal_error', 503),
+    });
+    at('/reset-password?token=t1');
+
+    await screen.findByRole('heading', { level: 1, name: 'Enter your code' });
+    if (switchTo != null) fireEvent.click(screen.getByRole('button', { name: switchTo }));
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: code } });
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: switchTo == null ? 'Continue to a new password' : 'Use this code',
+      }),
+    );
+
+    expect((await screen.findByRole('alert')).textContent).toContain('That did not work');
+    expect(
+      screen.getByText('Something went wrong on the way. Try again in a moment.'),
+    ).toBeDefined();
+    expect(screen.queryByText('Signing in did not work')).toBeNull();
+  });
+});

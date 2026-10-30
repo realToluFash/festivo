@@ -10,7 +10,7 @@ again. Either way, **this file carries only what is specific to this epic, and i
 enough on its own.**
 
 - **Epic:** https://app.shortcut.com/soirely/epic/81
-- **Artifact title to use:** `Soirely — Budget and costs`
+- **Page to use:** `81 · Budget and costs` in Soirely — Redesign
 
 ## What this area is
 

@@ -1,0 +1,38 @@
+# sc-22143: on ${EVENT_D}, a draft with no host, Make live with a name while the API is stopped says it was not made live and keeps the name; with the API back, Make live makes it live.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_D}
+- extendedWaitUntil:
+    visible:
+      id: 'events.makeLive'
+    timeout: 30000
+- tapOn:
+    id: 'events.makeLive'
+- extendedWaitUntil:
+    visible:
+      id: 'events.makeLiveHost'
+    timeout: 10000
+- inputText: 'Offline Host'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    id: 'events.makeLiveYes'
+- extendedWaitUntil:
+    visible: '{{t:eventLive.failed}}'
+    timeout: 40000
+- assertVisible: 'Offline Host'
+- takeScreenshot: failed
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- tapOn:
+    id: 'events.makeLiveYes'
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.live'
+    timeout: 30000
+- takeScreenshot: live

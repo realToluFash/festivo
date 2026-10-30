@@ -28,6 +28,7 @@ import {
   TextInput,
   View,
   type ViewInstance,
+  type ViewProps,
   type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -39,6 +40,7 @@ import {
   liftNeeded,
   type InContent,
   type IntoView,
+  keptLeavesSight,
   offsetAboveKeyboard,
   scrollInsets,
   outOfSight,
@@ -56,6 +58,7 @@ import {
   type StepCloseStep,
   stepCloseSteps,
   stepOpensInOrder,
+  TALKBACK_FOCUS_BACK_MS,
   TALKBACK_FOCUS_TAKEN_MS,
 } from '../kit/focusBack.ts';
 import { stepOpeners } from '../kit/stepOpeners.ts';
@@ -310,13 +313,13 @@ function bringIntoView(
   line: ScreenReaderTarget | null,
   animated: boolean,
   { when = 'wholly', aboveKeys = false, keep = null, holding = false }: Sight = {},
-  measured: (wasOutOfSight: boolean) => void = () => {},
+  measured: (wasOutOfSight: boolean, keptLeft: boolean) => void = () => {},
 ): void {
   const view = scroll?.ref.current;
   const content = view?.getInnerViewRef();
   const scrollHost = view?.getNativeScrollRef();
   if (scroll == null || view == null || content == null || scrollHost == null || line == null)
-    return measured(false);
+    return measured(false, false);
 
   const kept = (then: (at: InContent | null) => void) =>
     keep == null
@@ -345,11 +348,11 @@ function bringIntoView(
           const to = settledOffsetKeeping(at, when, keptAt);
           if (to != null && holding) scroll.scrollHolding(to);
           else if (to != null) view.scrollTo({ y: to, animated });
-          measured(outOfSight(at));
+          measured(outOfSight(at), keptLeavesSight(shown, to, keptAt));
         }),
       );
     },
-    () => measured(false),
+    () => measured(false, false),
   );
 }
 
@@ -529,8 +532,15 @@ export interface StepClose {
   closer: RefObject<ViewInstance | null>;
   /** One of the step's fields, blurred to put the keys down when JS knows of none holding input focus (sc-18588). */
   field: RefCallback<HostInstance>;
+  /** Spread on a View around the step's content above the closer, which hides it from screen readers while the step closes: TalkBack, its focus on the closer as a scroll carries it away, moves that focus back to the nearest view before it, and with the step hidden that is the opener (sc-22357). */
+  hidden: StepHidden;
   close(): void;
 }
+
+export type StepHidden = Pick<
+  ViewProps,
+  'collapsable' | 'accessibilityElementsHidden' | 'importantForAccessibility'
+>;
 
 export interface HeldStepClose extends StepClose {
   /** Holds input focus in the place of a line of words, which cannot take it, where TalkBack does not read it; rendered while the line shows, first in a View of its own with the line. The close turns scroll-to-focus off while it takes focus, so Save stays put (sc-18587). */
@@ -644,7 +654,7 @@ export function useStepClose(
             cancels.push(() => {
               stopped = true;
             });
-            bringIntoView(scroll, view.current, false, sight, (wasOutOfSight) => {
+            bringIntoView(scroll, view.current, false, sight, (wasOutOfSight, closerLeft) => {
               if (stopped) return;
               if (!step.read && !wasOutOfSight) return runFrom(steps.slice(at + 1));
 
@@ -652,7 +662,8 @@ export function useStepClose(
               const settled = setTimeout(() => {
                 if (stopped) return;
                 bringIntoView(scroll, view.current, false, sight);
-                moveScreenReaderFocus(view.current);
+                // With the step hidden, TalkBack moves its focus back from the closer the scroll carried away to the opener and says it, and a move after that says it again (sc-22357).
+                if (step.read || !closerLeft) moveScreenReaderFocus(view.current);
                 runFrom(steps.slice(at + 1));
               }, SETTLED_MS);
               cancels.push(() => clearTimeout(settled));
@@ -726,21 +737,27 @@ export function useStepClose(
   }, [run, inputFocusTo]);
 
   const held = useMemo(() => <FocusHolder holder={holder} />, []);
+  // Never flattened, so hiding it does not remount the field holding input focus.
+  const hidden: StepHidden = {
+    collapsable: false,
+    accessibilityElementsHidden: closing,
+    importantForAccessibility: closing ? 'no-hide-descendants' : 'auto',
+  };
 
   return inputFocusTo === 'holder'
-    ? { opener: ref, holder: held, closing, closer, field: stepFieldRef, close }
-    : { opener: ref, closing, closer, field: stepFieldRef, close };
+    ? { opener: ref, holder: held, closing, closer, field: stepFieldRef, hidden, close }
+    : { opener: ref, closing, closer, field: stepFieldRef, hidden, close };
 }
 
 export interface StepOpen {
   /** The step is opening in order, and its opener shows above it until the step's field has taken input focus and TalkBack's with it (sc-22392). */
   opening: boolean;
   open(): void;
-  /** The step's field, which opens focused, has taken input focus. */
-  fieldFocused(): void;
+  /** The step's field, which opens focused, has taken input focus; TalkBack's is moved onto it, since TalkBack only says a field taking input focus and leaves its own on the opener. */
+  fieldFocused(field: ScreenReaderTarget | null): void;
 }
 
-/** Opens a step with `start`, in order where `stepOpensInOrder` says so: the opener stays until the step's field has taken input focus, then goes once TalkBack has followed it there, or after a settle when the field never takes it, and `opened` runs as it goes (sc-22392). */
+/** Opens a step with `start`, in order where `stepOpensInOrder` says so: the opener stays until the step's field has taken input focus, then goes once TalkBack's focus has been moved there, or after a settle when the field never takes it, and `opened` runs as it goes (sc-22392). */
 export function useStepOpen(start: () => void, opened: () => void): StepOpen {
   const [opening, setOpening] = useState(false);
   const openingNow = useRef(false);
@@ -784,9 +801,19 @@ export function useStepOpen(start: () => void, opened: () => void): StepOpen {
     });
   }, [endIn]);
 
-  const fieldFocused = useCallback(() => {
-    if (openingNow.current) endIn(TALKBACK_FOCUS_TAKEN_MS);
-  }, [endIn]);
+  // An opener that goes with TalkBack's focus still on it hands that focus to whatever TalkBack finds near it: the card's description, Cancel or the field's label (sc-22392).
+  const fieldFocused = useCallback(
+    (field: ScreenReaderTarget | null) => {
+      if (!openingNow.current) return;
+
+      clearTimeout(done.current);
+      done.current = setTimeout(() => {
+        moveScreenReaderFocus(field);
+        endIn(TALKBACK_FOCUS_TAKEN_MS);
+      }, TALKBACK_FOCUS_BACK_MS);
+    },
+    [endIn],
+  );
 
   return { opening, open, fieldFocused };
 }
