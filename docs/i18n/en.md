@@ -75,7 +75,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   runs for 24 hours, until {time} tomorrow." No {day} slot: the 24-hour cap keeps every end
   today or tomorrow, and only the third form can be ambiguous, so only it says "tomorrow".
   {time} is 24-hour from `Intl`. With sc-3906: "Nothing was changed. {name} was not added. Try
-  again."
+  again." When the event has ended under an open Someone's at the door (`409 event_concluded`
+  only): "The event has ended, so nobody can be added.", with Close the only act. It offers no
+  retry, since none can work, and keeps no contraction, as the API's "The event's end has
+  passed." does.
 - **30 Oct 2026. A build too old to use** (sc-22881 for sc-22620, `updateRequired.*`, app).
   "Update Soirely to carry on", the house "to carry on"; the body says what happened ("no
   longer works") and reassures ("Updating keeps everything you have saved"); the button is the
