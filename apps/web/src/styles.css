@@ -369,20 +369,9 @@ span {
 }
 
 /* The language switch as a pill: what it shows is drawn, and the native select over it takes the choice. */
-.language-pill {
+.button.language-pill {
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--sizeHit);
   padding: 0 var(--spaceLg);
-  border: var(--borderControl);
-  border-radius: calc(var(--sizeHit) / 2);
-  background: var(--colorCard);
-  font: var(--typeButton);
-}
-
-.language-pill:hover {
-  background: var(--colorInset);
 }
 
 .language-pill:has(select:focus-visible) {
@@ -410,7 +399,7 @@ span {
 }
 
 @media (width <= 40rem) {
-  .language-pill {
+  .button.language-pill {
     padding: 0 var(--spaceMd);
   }
 

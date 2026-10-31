@@ -32,7 +32,7 @@ export function LanguagePicker({
   const shown = LOCALES.find((locale) => locale.code === currentLocale());
 
   return (
-    <label className={pill ? 'language-pill' : 'language-picker'}>
+    <label className={pill ? 'button language-pill' : 'language-picker'}>
       <span className="visually-hidden">{t('language.label')}</span>
       {pill && shown != null && (
         <span className="language-pill-face" aria-hidden="true">
