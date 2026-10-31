@@ -989,6 +989,12 @@ describe('signing out everywhere else', () => {
       'POST /api/auth/sessions/others': () => json({ signedOut: 2, thisDevice: false }),
     });
 
+    const heard: string[][] = [];
+    const listening = new MutationObserver(() => {
+      heard.push(screen.queryAllByRole('status').map((status) => status.textContent ?? ''));
+    });
+    listening.observe(document.body, { childList: true, subtree: true, characterData: true });
+
     openSecurity();
 
     await waitFor(() =>
@@ -997,6 +1003,11 @@ describe('signing out everywhere else', () => {
         expect.stringContaining('The devices could not be listed'),
       ]),
     );
+    listening.disconnect();
+    const failedYet = (statuses: string[]) =>
+      statuses.some((words) => words.includes('The devices could not be listed'));
+    expect(heard.some((statuses) => statuses[0] === '' && !failedYet(statuses))).toBe(true);
+    expect(heard.filter((statuses) => statuses[0] === '' && failedYet(statuses))).toEqual([]);
     expect(screen.queryByRole('alert')).toBeNull();
     sessionStorage.clear();
   });

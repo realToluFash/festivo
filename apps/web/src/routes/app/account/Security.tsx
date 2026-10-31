@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { AccountSections } from '../../../components/AccountSections.tsx';
+import { LateStatus } from '../../../components/LateStatus.tsx';
 import { Pending } from '../../../components/Pending.tsx';
 import { StillSignedIn } from '../../../components/StillSignedIn.tsx';
 import { EverywhereElse } from './EverywhereElse.tsx';
@@ -66,6 +67,7 @@ export function Security() {
     count: number;
     arrived: boolean;
   } | null>(null);
+  const [doneHeard, setDoneHeard] = useState(false);
   const [codesSpent, setCodesSpent] = useState(0);
   const codeSpent = () => setCodesSpent((n) => n + 1);
   const here = useSignOut(() => navigate('/sign-in'));
@@ -133,6 +135,7 @@ export function Security() {
     setEnded(null);
     setEndFailed(false);
     setEverywhereDone({ count: result.signedOut, arrived });
+    setDoneHeard(false);
     if (!arrived) land(() => said.current);
     setRetried(false);
     setAfterStep(true);
@@ -148,6 +151,7 @@ export function Security() {
   }
 
   const quiet = afterStep && !retried && devices.kind !== 'ready';
+  const failed = devices.kind === 'failed' && (everywhereDone?.arrived !== true || doneHeard);
 
   return (
     <div className="account">
@@ -237,7 +241,16 @@ export function Security() {
 
               {everywhereDone != null &&
                 (everywhereDone.arrived ? (
-                  <ArrivedDone words={everywhereWords(everywhereDone.count, t)} />
+                  <LateStatus
+                    className="status-done"
+                    mark={
+                      <span className="mark mark-done" aria-hidden="true">
+                        ✓
+                      </span>
+                    }
+                    words={everywhereWords(everywhereDone.count, t)}
+                    onShown={() => setDoneHeard(true)}
+                  />
                 ) : (
                   <div className="status-done" ref={said} tabIndex={-1}>
                     <span className="mark mark-done" aria-hidden="true">
@@ -265,12 +278,12 @@ export function Security() {
 
               {/* After a step succeeded, its success is read first, so this waits on the page as
                   a polite status: VoiceOver skips one added with its words already inside. */}
-              {(quiet || devices.kind === 'failed') && (
+              {(quiet || failed) && (
                 <div
-                  className={devices.kind === 'failed' ? 'notice notice-broken' : 'visually-hidden'}
+                  className={failed ? 'notice notice-broken' : 'visually-hidden'}
                   role={quiet ? 'status' : retried ? undefined : 'alert'}
                 >
-                  {devices.kind === 'failed' && (
+                  {failed && (
                     <>
                       <span className="mark mark-broken" aria-hidden="true">
                         ✕
@@ -365,30 +378,6 @@ export function Security() {
 
 function everywhereWords(count: number, t: TFunction): string {
   return count === 0 ? t('devices.everywhereNone') : t('devices.everywhereDone', { count });
-}
-
-/** Filled a moment after the region is in the page, so a screen reader hears it rather than missing a region born full. */
-function ArrivedDone({ words }: { words: string }) {
-  const [shown, setShown] = useState('');
-
-  useEffect(() => {
-    const id = window.setTimeout(() => setShown(words), 0);
-
-    return () => window.clearTimeout(id);
-  }, [words]);
-
-  return (
-    <div className={shown === '' ? 'visually-hidden' : 'status-done'} role="status">
-      {shown !== '' && (
-        <>
-          <span className="mark mark-done" aria-hidden="true">
-            ✓
-          </span>
-          <p>{shown}</p>
-        </>
-      )}
-    </div>
-  );
 }
 
 function Row({
