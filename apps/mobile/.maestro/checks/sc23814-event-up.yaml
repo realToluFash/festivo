@@ -1,4 +1,4 @@
-# sc-23814, iPad upright: Events > ${EVENT} > the bell shows Back atop the body; Back, then the swipe, return to ${EVENT}'s page beside the list.
+# sc-23814, iPad upright: Events > ${EVENT} > the bell shows Back atop the body; Back, then the swipe, return to ${EVENT}'s page beside the list, which shows ${NAME}, the event's name. Needs Expo Go's Tools button off, as Maestro's tap on the bell otherwise lands on it.
 appId: host.exp.Exponent
 ---
 - setOrientation: PORTRAIT

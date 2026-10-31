@@ -1,4 +1,4 @@
-# sc-23814, iPad ${ORIENT}: Settings > Roles > the bell shows Back atop the body; Back, then the swipe, return to Roles chosen beside the Settings list.
+# sc-23814, iPad ${ORIENT}: Settings > Roles > the bell shows Back atop the body; Back, then the swipe, return to Roles chosen beside the Settings list. Needs Expo Go's Tools button off, as Maestro's tap on the bell otherwise lands on it.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}

@@ -1,4 +1,4 @@
-# sc-23814, iPad ${ORIENT}: Home > the bell; Back, then the swipe, return to Home.
+# sc-23814, iPad ${ORIENT}: Home > the bell; Back, then the swipe, return to Home. Needs Expo Go's Tools button off, as Maestro's tap on the bell otherwise lands on it.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
@@ -23,6 +23,8 @@ appId: host.exp.Exponent
     visible:
       id: 'home.openSettings'
     timeout: 10000
+- assertNotVisible:
+    id: 'notifications.back'
 - takeScreenshot: after-back
 - tapOn:
     id: 'frame.bell'
