@@ -89,6 +89,8 @@ import {
   mp4Duration,
   launchTime,
   launchRecorded,
+  launchStarted,
+  retakeReason,
   surfaceOrientation,
   iosBundle,
   clearIosRelease,
@@ -595,9 +597,31 @@ describe('a release build', () => {
       2310,
     );
     expect(launchTime('Error: Activity not started')).toBeNull();
+    expect(
+      launchTime(
+        'Status: timeout\nLaunchState: UNKNOWN (-1)\nActivity: id/.MainActivity\nWaitTime: 11978\nComplete\n',
+      ),
+    ).toBeNull();
     expect(launchRecorded(0.7, 1000, 2310)).toBe(false);
     expect(launchRecorded(4.96, 1000, 2310)).toBe(true);
     expect(launchRecorded(null, 1000, 2310)).toBe(false);
+  });
+
+  it('takes a timed-out launch as started only while the app is running', () => {
+    const timedOut =
+      'Status: timeout\nLaunchState: UNKNOWN (-1)\nActivity: id/.MainActivity\nWaitTime: 11978\nComplete\n';
+    expect(launchStarted(timedOut, '4242\n')).toBe(true);
+    expect(launchStarted(timedOut, '')).toBe(false);
+    expect(launchStarted(timedOut, null)).toBe(false);
+    expect(launchStarted('Error: Activity not started', '4242')).toBe(false);
+    expect(launchStarted('Status: ok\nTotalTime: 2310\nComplete\n', null)).toBe(true);
+  });
+
+  it('records again every take that did not show the first screen, and only those', () => {
+    expect(retakeReason('not recorded')).toMatch(/no video/);
+    expect(retakeReason('cut short')).toMatch(/recording ended/);
+    expect(retakeReason('timed out')).toMatch(/timed out/);
+    expect(retakeReason('recorded')).toBeNull();
   });
 
   it('names the launch video by platform and device, so every launch of a commit is kept', () => {
