@@ -499,13 +499,13 @@ function WithdrawConfirm({
           {t('ownerClaim.withdrawBody', { organisation })}
         </Text>
         <View style={phone ? styles.stacked : styles.actions}>
-          <PrimaryButton
+          <DestructiveButton
             label={pending ? t('ownerClaim.withdrawing') : t('ownerClaim.withdrawYes')}
             onPress={onWithdraw}
             busy={pending}
             testID="ownerClaim.withdrawYes"
           />
-          <SecondaryButton
+          <QuietButton
             label={t('ownerClaim.withdrawNo')}
             onPress={unlessPending(onKeep)}
             off={pending}
