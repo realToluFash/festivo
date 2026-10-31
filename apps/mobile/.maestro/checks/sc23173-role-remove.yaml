@@ -1,0 +1,38 @@
+# sc-23173: Remove role… at the foot of ${ROLE_ID}'s page, then its confirm, scrolled into view.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings/roles
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'roles.role.${ROLE_ID}'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'roles.role.${ROLE_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'roles.area.events.*'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: 'roles.remove'
+    direction: DOWN
+    visibilityPercentage: 100
+- waitForAnimationToEnd
+- takeScreenshot: role-remove-button
+- tapOn:
+    id: 'roles.remove'
+- waitForAnimationToEnd
+- takeScreenshot: role-remove-tapped
+- scrollUntilVisible:
+    element:
+      id: 'roles.remove.keep'
+    direction: DOWN
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: role-remove-confirm

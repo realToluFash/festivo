@@ -1,0 +1,27 @@
+# sc-23173: New role, reached by scrolling Roles, then Create role over the keyboard after typing a name.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings/roles
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'roles.new'
+    direction: DOWN
+    centerElement: true
+- waitForAnimationToEnd
+- takeScreenshot: roles-new-button
+- tapOn:
+    id: 'roles.new'
+- extendedWaitUntil:
+    visible:
+      id: 'roles.name'
+    timeout: 15000
+- tapOn:
+    id: 'roles.name'
+- inputText: 'Bar team'
+- waitForAnimationToEnd
+- takeScreenshot: role-new-typed

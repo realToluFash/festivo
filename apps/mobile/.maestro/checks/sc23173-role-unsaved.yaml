@@ -1,0 +1,31 @@
+# sc-23173: ${ROLE_ID} with Guests set to Change and not saved; Save and Discard changes at the foot.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings/roles
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'roles.role.${ROLE_ID}'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'roles.role.${ROLE_ID}'
+- scrollUntilVisible:
+    element:
+      id: 'roles.area.guests.change'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'roles.area.guests.change'
+- waitForAnimationToEnd
+- takeScreenshot: role-guests-tapped
+- scrollUntilVisible:
+    element:
+      id: 'roles.discard'
+    direction: DOWN
+- waitForAnimationToEnd
+- takeScreenshot: role-unsaved
