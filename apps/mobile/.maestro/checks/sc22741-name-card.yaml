@@ -25,5 +25,7 @@ appId: host.exp.Exponent
     id: 'nameCard.cancel'
 - waitForAnimationToEnd:
     timeout: 3000
+- assertVisible:
+    id: 'nameCard.change'
 - assertNotVisible: 'Should Not Save'
 - takeScreenshot: cancelled

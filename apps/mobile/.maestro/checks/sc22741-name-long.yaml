@@ -17,7 +17,11 @@ appId: host.exp.Exponent
 - takeScreenshot: long-typed
 - tapOn:
     id: 'nameCard.save'
-- waitForAnimationToEnd:
-    timeout: 4000
+- extendedWaitUntil:
+    notVisible:
+      id: 'nameCard.field'
+    timeout: 10000
+- assertVisible:
+    id: 'nameCard.change'
 - assertNotVisible: '.*ZZZ.*'
 - takeScreenshot: long-saved
