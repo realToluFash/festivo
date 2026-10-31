@@ -136,7 +136,9 @@ To test the code step itself, outside a batch, three flows stop on it and send a
   bundler is on 18081, and both `just qa-mobile` and `qa-env.mjs maestro` pass it in.
   Mailpit, the same, through `${MAILPIT_URL}`.
 - **Pass data in**, with `-e`: an account comes from `node scripts/qa-account.mjs`, so no
-  flow holds credentials.
+  flow holds credentials. A new check's first line names each `${…}` it needs; older ones
+  may not, so `grep -o '\${[A-Z_]*}'` the file before passing `-e`. The names differ
+  between checks: some take an event as `${EVENT}`, others as `${EVENT_ID}`.
 - **On iOS, Return gets past a text field, never `hideKeyboard`**, which stops a flow on
   an iPhone with "Couldn't hide the keyboard". Press `pressKey: Enter`: Return moves to the
   next field, sends the form where the field's Return sends it, and puts the keyboard away
@@ -186,6 +188,8 @@ To test the code step itself, outside a batch, three flows stop on it and send a
   portrait, and a hard-coded `setOrientation: PORTRAIT` (`checks/sc19212-regression-upright.yaml`,
   `checks/sc16389-upright.yaml`, the turn back at the end of the landscape checks) leaves the
   tablet in landscape until the next check's reset. A `--cold` run skips the reset, so its
-  checks start at rotation 0, landscape: for portrait there, or in a single check with no
-  `setOrientation`, run `adb shell wm user-rotation lock 1` first. In a warm batch, do not lock
-  the rotation: the reset and any `setOrientation` write the same setting.
+  checks start at whatever rotation the tablet was left in: rotation 0, landscape, on a fresh
+  emulator, and after a warm batch whatever its last check turned it to. Before a `--cold`
+  run, or a single check with no `setOrientation`, set the one you want:
+  `adb shell wm user-rotation lock 1` for portrait, `lock 0` for landscape. In a warm batch,
+  do not lock the rotation: the reset and any `setOrientation` write the same setting.

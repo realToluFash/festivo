@@ -1,4 +1,3 @@
-import { useNavigation } from 'expo-router';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Animated, PanResponder, type PanResponderInstance, Platform } from 'react-native';
 
@@ -56,7 +55,6 @@ export function useEdgeSwipeBack(
   active: boolean,
   onBack: () => void,
 ): { taking: boolean; dragging: boolean; shift: Animated.Value } {
-  const navigation = useNavigation();
   const strip = useContext(EdgeSwipeStrip);
   const { width } = useWindowFrame();
   const taking = Platform.OS === 'ios' && active && strip != null;
@@ -67,14 +65,10 @@ export function useEdgeSwipeBack(
 
   useEffect(() => {
     if (!taking) return;
-    navigation.setOptions({ gestureEnabled: false });
     strip(swipe.handlers);
 
-    return () => {
-      strip(undefined);
-      navigation.setOptions({ gestureEnabled: true });
-    };
-  }, [navigation, strip, swipe, taking]);
+    return () => strip(undefined);
+  }, [strip, swipe, taking]);
 
   return { taking, dragging: taking && dragging, shift: swipe.shift };
 }

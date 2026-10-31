@@ -173,6 +173,7 @@ export function FormFrame({
           ? { label: t('eventEdit.cancel'), onPress: () => cancelOff || onCancel(), off: cancelOff }
           : undefined
       }
+      backInBody={!cancelOff}
     >
       <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
         {heading != null && (

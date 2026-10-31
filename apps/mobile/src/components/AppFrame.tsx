@@ -1,6 +1,6 @@
 import { type Membership, primaryEmailAddress } from '@soirely/api-client';
 import { roleName, waitingInvitations } from '@soirely/domain';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useNavigation } from 'expo-router';
 import {
   type ReactNode,
   type Ref,
@@ -32,7 +32,7 @@ import { type WaitingInvitations, useWaitingInvitations } from '../invitations.t
 import { type DomainOffer, useDomainOffer } from '../joinOffers.ts';
 import { DESTINATION_HREF, type Destination, destinations } from '../kit/appNav.ts';
 import { backRowHiding } from '../kit/backRow.ts';
-import { EDGE_SWIPE_WIDTH } from '../kit/systemBack.ts';
+import { EDGE_SWIPE_WIDTH, stackSwipes } from '../kit/systemBack.ts';
 import { leaveThen } from '../leaveHeld.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { backLabelSize, railWidth } from '../layout/textSize.ts';
@@ -112,6 +112,7 @@ export function AppFrame({
   current,
   title,
   back,
+  backInBody = false,
   titleRef,
   aboutTheAccount = false,
   bodyTakesSwitch = false,
@@ -127,10 +128,13 @@ export function AppFrame({
   bodyTakesSwitch?: boolean;
   /** On a phone, the page this one was opened from, as Security's "Settings"; with `systemBack`, Android's Back runs it too. */
   back?: { label: string; onPress: () => void; systemBack?: boolean; off?: boolean } | undefined;
+  /** On a tablet, the body draws this page's back, and is false while that back is off. */
+  backInBody?: boolean;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
+  const navigation = useNavigation();
   useSystemBack(back?.systemBack === true, () => back?.onPress());
   // As the screen goes, by either Back, its header back is where TalkBack puts its focus, and says it with no name (sc-20554).
   const [inFront, setInFront] = useState(true);
@@ -157,6 +161,8 @@ export function AppFrame({
   const [edgeSwipe, setEdgeSwipe] = useState<EdgeSwipeHandlers | undefined>(undefined);
   const [backRow] = useState(() => backRowHiding(setBackHidden));
   useEffect(() => backRow.stop, [backRow]);
+  const stackSwipe = stackSwipes(kind, back, backInBody, edgeSwipe != null);
+  useEffect(() => navigation.setOptions({ gestureEnabled: stackSwipe }), [navigation, stackSwipe]);
   const signedIn = useSignedIn();
   usePushTaps(signedIn.account?.id);
   const waiting = useWaitingInvitations();
