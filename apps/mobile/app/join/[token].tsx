@@ -23,6 +23,7 @@ import { PrimaryButton, SecondaryButton } from '../../src/components/Buttons.tsx
 import { Field, focusChecked, keysStayDown, TextField } from '../../src/components/Field.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
 import { ReadOut } from '../../src/components/ReadOut.tsx';
+import { AnswerInView } from '../../src/components/Screen.tsx';
 import { Text } from '../../src/components/Text.tsx';
 import { holdLink } from '../../src/heldLink.ts';
 import { dateLocale } from '../../src/i18n/index.ts';
@@ -309,19 +310,21 @@ function Ask({
   return (
     <>
       {failed != null && (
-        <ReadOut
-          words={`${failedTitle}\n${failedBody}`}
-          interrupts
-          answer={failed}
-          accessibilityRole="alert"
-        >
-          <Notice
-            tone="broken"
-            mark={tokens.marks.broken.glyph}
-            title={failedTitle}
-            body={failedBody}
-          />
-        </ReadOut>
+        <AnswerInView answer={failed}>
+          <ReadOut
+            words={`${failedTitle}\n${failedBody}`}
+            interrupts
+            answer={failed}
+            accessibilityRole="alert"
+          >
+            <Notice
+              tone="broken"
+              mark={tokens.marks.broken.glyph}
+              title={failedTitle}
+              body={failedBody}
+            />
+          </ReadOut>
+        </AnswerInView>
       )}
       <Field
         label={t('requestToJoin.message')}
