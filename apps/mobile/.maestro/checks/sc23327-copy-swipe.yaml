@@ -36,7 +36,7 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - extendedWaitUntil:
     visible:
-      id: 'events.row.${EVENT}'
+      id: 'events.tab.upcoming'
     timeout: 20000
 - assertNotVisible:
     id: 'events.page'

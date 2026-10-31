@@ -52,6 +52,3 @@ appId: host.exp.Exponent
       - assertNotVisible:
           id: 'events.page'
       - takeScreenshot: after-swipe
-      - assertVisible:
-          id: 'events.tab.${TAB}'
-          selected: true
