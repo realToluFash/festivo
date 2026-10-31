@@ -1434,3 +1434,31 @@ describe('the code step fails in the words of the flow it is in (sc-22740)', () 
     );
   });
 });
+
+describe('a notice answering a send comes into view (sc-24496)', () => {
+  it.each([
+    ['src/components/OrganisationDetails.tsx', ['words={saved}', 'words={failed}']],
+    ['src/components/OwnershipCard.tsx', ['words={refused.message}', 'words={failed}']],
+    ['app/join/[token].tsx', ['words={`${failedTitle}']],
+  ])('%s brings each in through AnswerInView', (file, words) => {
+    const text = readFileSync(join(...file.split('/')), 'utf8');
+
+    for (const said of words) expect(answersInView(text, said), said).toBe(true);
+  });
+
+  it('notices a notice left where it shows', () => {
+    expect(answersInView('<ReadOut words={failed} interrupts>', 'words={failed}')).toBe(false);
+    expect(
+      answersInView('<AnswerInView>\n  <ReadOut words={failed} interrupts>', 'words={failed}'),
+    ).toBe(true);
+  });
+});
+
+/** Whether the ReadOut saying `said` opens straight inside an AnswerInView. */
+function answersInView(text: string, said: string): boolean {
+  const at = text.indexOf(said);
+  if (at < 0) return false;
+  const opened = text.lastIndexOf('<ReadOut', at);
+
+  return /<AnswerInView\b[^>]*>\s*$/u.test(text.slice(0, opened));
+}
