@@ -180,9 +180,11 @@ To test the code step itself, outside a batch, three flows stop on it and send a
   `checks/sc18978-ownership-transfer-note-provider-tablet.yaml` does.
 - **An Android tablet whose natural orientation is landscape swaps `setOrientation`.**
   Soirely_QA2_Tablet's rotation 0 is 2560x1600, so `PORTRAIT` gives landscape and
-  `LANDSCAPE_LEFT` portrait, and a batch there runs in landscape. In a batch, pass the
-  swapped value to the checks that take one: `ORIENT=LANDSCAPE_LEFT` for portrait. Do not
-  lock the rotation with `adb shell wm user-rotation lock N` there: `setOrientation` writes
-  the same setting, so `batch/reset.yaml`, run before every check, and any check's
-  `setOrientation: ${ORIENT}` override it. The lock holds only in a `--cold` run or a single
-  check with no `setOrientation`.
+  `LANDSCAPE_LEFT` portrait. `batch/reset.yaml` asks the harness for `/portrait`, which reads
+  `wm size` and turns such a display to real portrait, so every check there starts in
+  portrait. A check's own `setOrientation` is still swapped: pass `ORIENT=LANDSCAPE_LEFT` for
+  portrait, and a hard-coded `setOrientation: PORTRAIT` (`checks/sc19212-regression-upright.yaml`,
+  `checks/sc16389-upright.yaml`, the turn back at the end of the landscape checks) leaves the
+  tablet in landscape until the next check's reset. Do not lock the rotation with
+  `adb shell wm user-rotation lock N` there: the reset and any `setOrientation` write the same
+  setting.

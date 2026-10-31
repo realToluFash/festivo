@@ -1,6 +1,4 @@
-# sc-22819, Android: on a tablet in portrait, the copy made by Duplicate shows the quiet back; Android back returns to the original's page.
-#
-#   node .qa/bin/qa-env.mjs maestro sc22819-tablet-copy-android-back --android EVENT=…   (tablet turned to portrait first)
+# sc-22819, Android: on a tablet in portrait, the copy made by Duplicate shows the quiet back, and Android back returns to the original's page.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/${EVENT}

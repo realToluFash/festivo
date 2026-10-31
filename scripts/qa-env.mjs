@@ -2070,8 +2070,13 @@ export function portraitRotation(wmSize) {
 function portraitOnEmulator() {
   const tools = androidTools();
   const rotation = portraitRotation(adbOut(tools, ['shell', 'wm', 'size']));
-  adbOut(tools, ['shell', 'settings', 'put', 'system', 'accelerometer_rotation', '0']);
-  adbOut(tools, ['shell', 'settings', 'put', 'system', 'user_rotation', String(rotation)]);
+  for (const [setting, value] of [
+    ['accelerometer_rotation', '0'],
+    ['user_rotation', String(rotation)],
+  ]) {
+    if (adbOut(tools, ['shell', 'settings', 'put', 'system', setting, value]) === null)
+      throw new Error(`adb could not set ${setting} to ${value}`);
+  }
   return rotation;
 }
 
