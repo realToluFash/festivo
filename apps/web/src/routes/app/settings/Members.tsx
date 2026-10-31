@@ -1544,6 +1544,9 @@ function JoinRequestAnswer({
       </fieldset>
       {failed != null && <FieldError id={`approve-${member.id}`} message={failed} />}
       <div className="actions">
+        <button type="button" className="button" disabled={busy} onClick={back}>
+          {t('membersScreen.awaiting.cancel')}
+        </button>
         <button
           type="button"
           className="button button-primary"
@@ -1553,9 +1556,6 @@ function JoinRequestAnswer({
           onClick={() => void answer()}
         >
           {t('membersScreen.awaiting.approveAs', { role: role == null ? '' : roleName(t, role) })}
-        </button>
-        <button type="button" className="button" disabled={busy} onClick={back}>
-          {t('membersScreen.awaiting.cancel')}
         </button>
       </div>
     </div>
@@ -1949,11 +1949,11 @@ function Invite({
             </p>
 
             <div className="actions">
-              <button className="button button-primary" type="submit" aria-busy={busy}>
-                {t('membersScreen.send')}
-              </button>
               <button className="button" type="button" onClick={onCancel}>
                 {t('membersScreen.cancel')}
+              </button>
+              <button className="button button-primary" type="submit" aria-busy={busy}>
+                {t('membersScreen.send')}
               </button>
             </div>
           </form>

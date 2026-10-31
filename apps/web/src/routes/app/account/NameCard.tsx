@@ -158,11 +158,11 @@ function Editing({
       </div>
 
       <div className="actions">
-        <button className="button button-primary" type="submit" aria-busy={saving}>
-          {saving ? t('nameCard.saving') : t('nameCard.save')}
-        </button>
         <button className="button" type="button" onClick={onCancel} disabled={saving}>
           {t('nameCard.cancel')}
+        </button>
+        <button className="button button-primary" type="submit" aria-busy={saving}>
+          {saving ? t('nameCard.saving') : t('nameCard.save')}
         </button>
       </div>
     </form>

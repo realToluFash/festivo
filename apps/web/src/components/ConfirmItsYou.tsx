@@ -283,11 +283,11 @@ export function ConfirmItsYou({
 
         {askPassword || signIn != null ? (
           <div className="actions">
-            <button className="button button-primary" type="submit" aria-busy={checking}>
-              {checking ? t('waysCard.checking') : t('waysCard.continue')}
-            </button>
             <button className="button" type="button" onClick={onCancel} disabled={checking}>
               {t('waysCard.cancel')}
+            </button>
+            <button className="button button-primary" type="submit" aria-busy={checking}>
+              {checking ? t('waysCard.checking') : t('waysCard.continue')}
             </button>
           </div>
         ) : (

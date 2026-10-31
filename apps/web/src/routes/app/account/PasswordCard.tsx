@@ -324,11 +324,11 @@ function Setting({
           <p className="muted">{t('passwordCard.setEmailed', { email })}</p>
 
           <div className="actions">
-            <button className="button button-primary" type="submit" aria-busy={busy}>
-              {busy ? t('passwordCard.saving') : t('passwordCard.setSave')}
-            </button>
             <button className="button" type="button" onClick={onCancel} disabled={busy}>
               {t('passwordCard.cancel')}
+            </button>
+            <button className="button button-primary" type="submit" aria-busy={busy}>
+              {busy ? t('passwordCard.saving') : t('passwordCard.setSave')}
             </button>
           </div>
         </form>
@@ -407,8 +407,8 @@ function Setting({
         <p className="muted">{t('passwordCard.setCodeNote')}</p>
 
         <div className="actions">
-          <button className="button button-primary" type="submit" aria-busy={busy}>
-            {t('passwordCard.continue')}
+          <button className="button" type="button" onClick={onCancel}>
+            {t('passwordCard.cancel')}
           </button>
           <button
             className="button"
@@ -418,8 +418,8 @@ function Setting({
           >
             {resending.label}
           </button>
-          <button className="button" type="button" onClick={onCancel}>
-            {t('passwordCard.cancel')}
+          <button className="button button-primary" type="submit" aria-busy={busy}>
+            {t('passwordCard.continue')}
           </button>
         </div>
         <span className="visually-hidden" role="status">
@@ -627,11 +627,11 @@ function Changing({
         <p className="muted">{t('passwordCard.emailed', { email })}</p>
 
         <div className="actions">
-          <button className="button button-primary" type="submit" aria-busy={saving}>
-            {saving ? t('passwordCard.saving') : t('passwordCard.save')}
-          </button>
           <button className="button" type="button" onClick={onCancel} disabled={saving}>
             {t('passwordCard.cancel')}
+          </button>
+          <button className="button button-primary" type="submit" aria-busy={saving}>
+            {saving ? t('passwordCard.saving') : t('passwordCard.save')}
           </button>
         </div>
       </form>
