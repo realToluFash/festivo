@@ -317,16 +317,40 @@ export function recordingSize(wmSize, rotation = 0) {
   return `${even(width)}x${even(height)}`;
 }
 
-// The movie header's duration; null when the file has none, as a recording cut short may not.
+// The movie header's duration, found by walking the boxes to moov › mvhd; null when the file has
+// none, as a recording cut short may not.
 export function mp4Duration(bytes) {
-  const at = bytes ? bytes.indexOf('mvhd') : -1;
-  if (at < 0) return null;
-  const body = at + 4;
-  const v1 = bytes[body] === 1;
-  if (body + (v1 ? 32 : 20) > bytes.length) return null;
-  const scale = bytes.readUInt32BE(body + (v1 ? 20 : 12));
-  const length = v1 ? Number(bytes.readBigUInt64BE(body + 24)) : bytes.readUInt32BE(body + 16);
+  const mvhd =
+    bytes && mp4Box(bytes, mp4Box(bytes, { start: 0, end: bytes.length }, 'moov'), 'mvhd');
+  if (!mvhd) return null;
+  const v1 = bytes[mvhd.start] === 1;
+  if (mvhd.start + (v1 ? 32 : 20) > mvhd.end) return null;
+  const scale = bytes.readUInt32BE(mvhd.start + (v1 ? 20 : 12));
+  const length = v1
+    ? Number(bytes.readBigUInt64BE(mvhd.start + 24))
+    : bytes.readUInt32BE(mvhd.start + 16);
   return scale > 0 ? length / scale : null;
+}
+
+function mp4Box(bytes, within, type) {
+  if (!within) return null;
+  let at = within.start;
+  while (at + 8 <= within.end) {
+    let size = bytes.readUInt32BE(at);
+    let header = 8;
+    if (size === 1) {
+      if (at + 16 > within.end) return null;
+      size = Number(bytes.readBigUInt64BE(at + 8));
+      header = 16;
+    } else if (size === 0) {
+      size = within.end - at;
+    }
+    if (size < header) return null;
+    const end = Math.min(at + size, within.end);
+    if (bytes.toString('latin1', at + 4, at + 8) === type) return { start: at + header, end };
+    at += size;
+  }
+  return null;
 }
 
 export function launchTime(amStartW) {
@@ -338,7 +362,7 @@ export function launchTime(amStartW) {
 // frames only on change, so a short video can be a still screen; one that ends before the app has
 // drawn its first screen is not.
 export function launchRecorded(seconds, leadMs, launchMs) {
-  return seconds !== null && seconds * 1000 >= leadMs + (launchMs ?? 0);
+  return seconds !== null && seconds * 1000 >= leadMs + launchMs;
 }
 
 // A Mac keeps an APK and an app side by side: each build replaces only its own kind.
@@ -1667,8 +1691,16 @@ async function recordFirstLaunch(tools, root, apk, id, video) {
   rmSync(video, { force: true });
   adbOut(tools, ['pull', LAUNCH_RECORDING, video]);
   adbOut(tools, ['shell', 'rm', '-f', LAUNCH_RECORDING]);
+  // am start says Error on stdout and still exits 0; without a TotalTime the app never started.
+  const launchMs = launchTime(started);
+  if (launchMs === null) {
+    rmSync(video, { force: true });
+    throw new Error(
+      `${id}/.MainActivity did not start: ${started?.trim() || 'am start said nothing'}`,
+    );
+  }
   if (!existsSync(video)) return false;
-  return launchRecorded(mp4Duration(readFileSync(video)), RECORDING_LEAD_MS, launchTime(started));
+  return launchRecorded(mp4Duration(readFileSync(video)), RECORDING_LEAD_MS, launchMs);
 }
 
 function releaseCommit(root) {

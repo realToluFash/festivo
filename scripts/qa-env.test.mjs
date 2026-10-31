@@ -561,13 +561,33 @@ describe('a release build', () => {
         box.writeUInt32BE(scale, 20);
         box.writeUInt32BE(length, 24);
       }
-      return Buffer.concat([Buffer.from('....moov'), box]);
+      box.writeUInt32BE(box.length, 0);
+      return Buffer.concat([mp4Header(8 + box.length, 'moov'), box]);
     };
     expect(mp4Duration(mvhd(0, 1000, 700))).toBe(0.7);
     expect(mp4Duration(mvhd(1, 90000, 1593000))).toBe(17.7);
     expect(mp4Duration(mvhd(0, 0, 700))).toBeNull();
     expect(mp4Duration(mvhd(0, 1000, 700).subarray(0, 30))).toBeNull();
     expect(mp4Duration(Buffer.from('no header here'))).toBeNull();
+  });
+
+  it('reads the movie header inside moov, not four matching bytes in the frames before it', () => {
+    const mvhd = Buffer.alloc(28);
+    mvhd.writeUInt32BE(28, 0);
+    mvhd.write('mvhd', 4);
+    mvhd.writeUInt32BE(1000, 20);
+    mvhd.writeUInt32BE(4967, 24);
+    const frames = Buffer.concat([Buffer.from('xxxxmvhd'), Buffer.alloc(40, 0xff)]);
+    const file = Buffer.concat([
+      mp4Header(16, 'ftyp'),
+      Buffer.from('isom\0\0\0\0'),
+      mp4Header(8 + frames.length, 'mdat'),
+      frames,
+      mp4Header(8 + mvhd.length, 'moov'),
+      mvhd,
+    ]);
+    expect(mp4Duration(file)).toBe(4.967);
+    expect(mp4Duration(file.subarray(0, file.length - 10))).toBeNull();
   });
 
   it('takes a recording that ends before the app drew its first screen as cut short, not a still screen', () => {
@@ -577,7 +597,6 @@ describe('a release build', () => {
     expect(launchTime('Error: Activity not started')).toBeNull();
     expect(launchRecorded(0.7, 1000, 2310)).toBe(false);
     expect(launchRecorded(4.96, 1000, 2310)).toBe(true);
-    expect(launchRecorded(1.2, 1000, null)).toBe(true);
     expect(launchRecorded(null, 1000, 2310)).toBe(false);
   });
 
@@ -2297,3 +2316,10 @@ describe('the account --ready reports', () => {
     expect(report).toContain('EMAIL=a@qa.test PASSWORD=pw TOTP_SECRET=S3CR3T');
   });
 });
+
+function mp4Header(size, type) {
+  const header = Buffer.alloc(8);
+  header.writeUInt32BE(size, 0);
+  header.write(type, 4);
+  return header;
+}
