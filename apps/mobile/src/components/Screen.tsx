@@ -659,7 +659,7 @@ export function useStepClose(
               scroll,
               view.current,
               false,
-              { when: 'outOfSight', aboveKeys: true, holding: true },
+              { when: 'outOfSight', aboveKeys: true, keep: closer.current, holding: true },
               () => {
                 if (!stopped) runFrom(steps.slice(at + 1));
               },
