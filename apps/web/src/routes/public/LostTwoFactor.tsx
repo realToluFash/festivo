@@ -41,6 +41,7 @@ type View =
 
 /** Lost both the authenticator and the recovery codes (sc-509): nothing on this page signs anybody in. */
 export function LostTwoFactor() {
+  const { t } = useTranslation();
   const challenge = (useLocation().state as TwoFactorChallenge | null)?.challenge ?? null;
   const [view, setView] = useState<View>({ kind: 'loading' });
   const starting = useOneAtATime();
@@ -152,7 +153,7 @@ export function LostTwoFactor() {
   if (view.kind === 'loading') return <Pending />;
 
   return (
-    <AuthPage>
+    <AuthPage back={{ label: t('twoFactor.title') }}>
       {view.kind === 'start' && (
         <Start
           opening={view.opening}

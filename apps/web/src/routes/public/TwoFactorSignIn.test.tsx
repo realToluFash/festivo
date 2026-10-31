@@ -204,6 +204,21 @@ describe('a sign-in that asks for a second factor', () => {
     );
   });
 
+  it('has no back control of its own, and Reset your password comes back to it (sc-23279)', async () => {
+    await atTheCodeScreen({
+      'POST /api/auth/two-factor/verify': () =>
+        problem('too_many_attempts', 429, { 'Retry-After': '600' }),
+    });
+
+    expect(screen.queryByRole('button', { name: /‹/ })).toBeNull();
+    enter('000000');
+    fireEvent.click(await screen.findByRole('link', { name: 'Reset your password' }));
+    await screen.findByRole('heading', { level: 1, name: 'Reset your password' });
+    fireEvent.click(screen.getByRole('button', { name: 'Enter your code' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Enter your code' })).toBeDefined();
+  });
+
   it('goes back to sign-in when the challenge has run out', async () => {
     await atTheCodeScreen({
       'POST /api/auth/two-factor/verify': () => problem('two_factor_challenge_invalid', 401),

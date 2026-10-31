@@ -12,6 +12,7 @@ import { PasswordRule } from '../../components/PasswordRule.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { SecondFactorStep } from '../../components/SecondFactorStep.tsx';
 import { useFormChecks } from '../../formChecks.ts';
+import type { ForgotFrom } from '../../forgotFrom.ts';
 import { focusWhereSent } from '../../offField.ts';
 import { adoptAccount, landingFor, providerOnlyBy } from '../../session.ts';
 import { useStepFocus } from '../../stepFocus.ts';
@@ -121,7 +122,11 @@ export function ResetPassword() {
           </h1>
           <p>{t(`recovery.${status.kind}Body`)}</p>
         </div>
-        <Link className="button button-primary" to="/forgot-password">
+        <Link
+          className="button button-primary"
+          to="/forgot-password"
+          state={{ back: status.kind } satisfies ForgotFrom}
+        >
           {t('recovery.sendNew')}
         </Link>
         <div className="auth-footnote">

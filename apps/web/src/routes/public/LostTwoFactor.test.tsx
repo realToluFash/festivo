@@ -254,6 +254,15 @@ describe('getting back in without the authenticator', () => {
     ).toBeDefined();
   });
 
+  it('goes back to Enter your code from ‹ Enter your code, beside Back to sign in (sc-23279)', async () => {
+    await atTheStart({});
+
+    expect(screen.getByRole('link', { name: 'Back to sign in' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Enter your code' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Enter your code' })).toBeDefined();
+  });
+
   it('says nobody can confirm it when the last approver left while the codes were out', async () => {
     await atTheStart({
       'POST /api/auth/two-factor/recovery': () =>

@@ -7,6 +7,7 @@ import { Link } from 'react-router';
 import { dateLocale } from '../i18n/index.ts';
 import { offButton } from '../offButton.ts';
 import { focusWhereSent, offField } from '../offField.ts';
+import type { ForgotFrom } from '../forgotFrom.ts';
 import { FieldError } from './FieldError.tsx';
 
 type Mode = 'app' | 'recovery';
@@ -136,7 +137,11 @@ export function SecondFactorStep({
             {pausedNote != null && <p>{pausedNote}</p>}
             <div className="auth-footnote">
               <span>{t('twoFactor.notYou')}</span>
-              <Link className="link-button" to="/forgot-password">
+              <Link
+                className="link-button"
+                to="/forgot-password"
+                state={{ back: 'code' } satisfies ForgotFrom}
+              >
                 {t('twoFactor.resetPassword')}
               </Link>
             </div>

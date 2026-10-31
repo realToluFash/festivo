@@ -2,13 +2,15 @@ import { ApiError } from '@soirely/api-client';
 import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 
 import { api } from '../../api.ts';
+import type { AuthBackTo } from '../../components/AuthBack.tsx';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { FieldError } from '../../components/FieldError.tsx';
 import { emailMessage, useFormChecks } from '../../formChecks.ts';
 import { dateLocale } from '../../i18n/index.ts';
+import type { ForgotFrom } from '../../forgotFrom.ts';
 import { useStepFocus } from '../../stepFocus.ts';
 import { offField } from '../../offField.ts';
 
@@ -22,6 +24,7 @@ type Status =
 /** "Reset your password": an address in, and the same answer whether or not it has an account. */
 export function ForgotPassword() {
   const { t } = useTranslation();
+  const from = (useLocation().state as ForgotFrom)?.back;
   const [status, setStatus] = useState<Status>({ kind: 'asking' });
   const [typed, setTyped] = useState('');
   const [sentHeading, arriveAtSent] = useStepFocus();
@@ -55,9 +58,14 @@ export function ForgotPassword() {
     void send(email, false);
   }
 
+  const back: AuthBackTo =
+    from == null
+      ? { label: t('signIn.title'), heard: t('twoFactor.back'), fallback: '/sign-in' }
+      : { label: t(BACK_TITLE[from]) };
+
   if (status.kind === 'sent') {
     return (
-      <AuthPage>
+      <AuthPage back={back}>
         <div className="auth-heading">
           <h1 ref={sentHeading} tabIndex={-1}>
             {t('recovery.sentTitle')}
@@ -94,7 +102,7 @@ export function ForgotPassword() {
   }
 
   return (
-    <AuthPage>
+    <AuthPage back={back}>
       <div className="auth-heading">
         <h1>{t('recovery.title')}</h1>
         <p>{t('recovery.intro')}</p>
@@ -179,6 +187,15 @@ export function ForgotPassword() {
     </AuthPage>
   );
 }
+
+const BACK_TITLE = {
+  code: 'twoFactor.title',
+  used: 'recovery.usedTitle',
+  expired: 'recovery.expiredTitle',
+  invalid: 'recovery.invalidTitle',
+  account: 'account.title',
+  join: 'join.emailTakenTitle',
+} as const;
 
 function refusalFrom(error: unknown, again: boolean): Status {
   if (error instanceof ApiError && error.is('too_many_attempts')) {

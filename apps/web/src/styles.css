@@ -707,8 +707,10 @@ span {
   border-bottom: var(--borderHeader);
 }
 
-.auth-header .brand {
+.auth-header-start {
+  display: flex;
   flex: 1;
+  align-items: center;
 }
 
 .auth-main {
@@ -1561,6 +1563,11 @@ span {
 }
 
 /* ── Create your account ──────────────────────────────────────────────────── */
+
+.auth-back {
+  display: inline-flex;
+  align-items: center;
+}
 
 .auth-heading {
   display: flex;
