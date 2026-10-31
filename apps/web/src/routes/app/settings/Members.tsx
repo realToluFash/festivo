@@ -60,7 +60,7 @@ import { type Proving, dropProof, heldProof, howToProve } from '../../../recentP
 import { can, useSession } from '../../../session.ts';
 import { focusStep, useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { Forbidden } from '../Forbidden.tsx';
-import { MemberConfirm } from './MemberConfirm.tsx';
+import { ConfirmDialog } from '../../../components/ConfirmDialog.tsx';
 import { useDialogKeys } from '../../../dialogFocus.ts';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 
@@ -961,8 +961,7 @@ function MemberDetail({
           </p>
         </div>
       ) : (
-        member.suspension != null &&
-        (!byHand || removal === 'resting') && (
+        member.suspension != null && (
           <Suspension
             organisation={organisation}
             member={member}
@@ -1013,13 +1012,13 @@ function MemberDetail({
             {t('membersScreen.suspendButton')}
           </button>
           {suspending !== 'resting' && (
-            <MemberConfirm
+            <ConfirmDialog
               id="suspend-confirm"
               titleRef={asking}
               title={t('membersScreen.suspendConfirmTitle', { name: member.user.name })}
               keep={t('membersScreen.suspendKeep', { name: member.user.name })}
               go={t('membersScreen.suspendConfirm', { name: member.user.name })}
-              busy={suspending === 'suspending'}
+              pending={suspending === 'suspending'}
               onKeep={() => {
                 setSuspendFailed(null);
                 setSuspending('resting');
@@ -1035,7 +1034,7 @@ function MemberDetail({
               </p>
               <p>{t('membersScreen.suspendConfirmEmail')}</p>
               {suspendFailed != null && <FieldError id="suspend-failed" message={suspendFailed} />}
-            </MemberConfirm>
+            </ConfirmDialog>
           )}
         </section>
       )}
@@ -1080,7 +1079,7 @@ function MemberDetail({
       )}
 
       {acts && !onlyOwner && removal !== 'resting' && (
-        <MemberConfirm
+        <ConfirmDialog
           id="remove-confirm"
           titleRef={removeTitle}
           title={t('membersScreen.removeConfirmTitle', { name: member.user.name })}
@@ -1090,7 +1089,7 @@ function MemberDetail({
               : t('membersScreen.removeKeep', { name: member.user.name })
           }
           go={t('membersScreen.removeConfirm', { name: member.user.name })}
-          busy={removal === 'removing'}
+          pending={removal === 'removing'}
           onKeep={() => {
             setFailed(null);
             setRemoval('resting');
@@ -1105,7 +1104,7 @@ function MemberDetail({
             })}
           </p>
           {failed != null && <FieldError id="remove-failed" message={failed} />}
-        </MemberConfirm>
+        </ConfirmDialog>
       )}
     </div>
   );
@@ -1457,13 +1456,13 @@ function JoinRequestAnswer({
           {t('membersScreen.awaiting.turnDown')}
         </button>
         {answering === 'turningDown' && (
-          <MemberConfirm
+          <ConfirmDialog
             id={`turn-down-${member.id}-confirm`}
             titleRef={turnDownTitle}
             title={t('membersScreen.awaiting.turnDownTitle', { name })}
             keep={t('membersScreen.awaiting.keep')}
             go={t('membersScreen.awaiting.turnDownConfirm', { name })}
-            busy={busy}
+            pending={busy}
             onKeep={back}
             onGo={() => void answer()}
           >
@@ -1471,7 +1470,7 @@ function JoinRequestAnswer({
               {t('membersScreen.awaiting.turnDownBody', { name, organisation: organisation.name })}
             </p>
             {failed != null && <FieldError id={`turn-down-${member.id}`} message={failed} />}
-          </MemberConfirm>
+          </ConfirmDialog>
         )}
       </div>
     );

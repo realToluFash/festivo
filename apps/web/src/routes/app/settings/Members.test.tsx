@@ -210,7 +210,7 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-function answering(answers: Record<string, () => Response>) {
+function answering(answers: Record<string, () => Response | Promise<Response>>) {
   const sent: { line: string; body: unknown }[] = [];
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -565,6 +565,31 @@ describe('somebody awaiting approval (sc-392)', () => {
     expect(done).not.toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(done));
     expect(sent.some((one) => one.line.endsWith('/turn-down'))).toBe(true);
+  });
+
+  it('holds Keep the request while the turn-down is on its way', async () => {
+    signedIn();
+    let finish = (): void => {};
+    answering({
+      ...WAITING_READS,
+      'POST /api/orgs/org_1/members/m_ada/turn-down': () =>
+        new Promise<Response>((resolve) => {
+          finish = () => resolve(new Response(null, { status: 204 }));
+        }),
+    });
+    open();
+
+    const section = within(await screen.findByRole('region', { name: 'Awaiting approval' }));
+    fireEvent.click(section.getByRole('button', { name: 'Turn down' }));
+    fireEvent.click(section.getByRole('button', { name: 'Turn down Ada Okeke' }));
+
+    const keep = section.getByRole('button', { name: 'Keep the request' });
+    await waitFor(() => expect(keep.getAttribute('aria-disabled')).toBe('true'));
+    fireEvent.click(keep);
+    expect(section.getByRole('alertdialog')).toBeDefined();
+
+    finish();
+    expect(await screen.findByText(/Ada Okeke’s request is turned down\./)).toBeDefined();
   });
 
   it('gives a pending person no role yet, and Approve and Turn down on their page', async () => {

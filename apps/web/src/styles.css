@@ -2109,6 +2109,12 @@ span {
   color: var(--colorInkSecondary);
 }
 
+.dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
 .dialog-form {
   display: flex;
   flex-direction: column;
