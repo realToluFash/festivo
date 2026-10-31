@@ -10,6 +10,7 @@ const t = ((key: string, values?: Record<string, string>) =>
 function device(userAgent: string | null): DeviceSession {
   return {
     id: 'one',
+    thisDevice: false,
     userAgent,
     ipAddress: null,
     startedAt: '2026-10-17T09:00:00Z',

@@ -21,7 +21,6 @@ import { Notice } from './Notice.tsx';
 import {
   SETTLED_MS,
   type StepClosed,
-  stepHidden,
   type StepHidden,
   useAboveKeyboard,
   useFocusBackToOpener,
@@ -63,6 +62,7 @@ export function NameCard({
     closing: savedClosing,
     closer: saveCloser,
     hidden: savedHidden,
+    fieldHidden,
     close: closeSaved,
   } = useStepClose(opener, 'saved', 'holder', (back) => {
     setSavedFocused(back == null);
@@ -142,11 +142,11 @@ export function NameCard({
         <Editing
           name={name}
           closing={closing || savedClosing}
-          onSaved={async (now) => {
+          onSaved={async (now, fromKeys) => {
             await onSaved();
             stop();
             setSaved(now);
-            closeSaved();
+            closeSaved(fromKeys);
           }}
           onCancel={() => {
             stop();
@@ -158,6 +158,7 @@ export function NameCard({
           closer={closer}
           saveCloser={saveCloser}
           hidden={hidden}
+          fieldHidden={fieldHidden}
         />
       )}
     </View>
@@ -176,10 +177,11 @@ function Editing({
   closer,
   saveCloser,
   hidden,
+  fieldHidden,
 }: {
   name: string;
   closing: boolean;
-  onSaved: (now: string) => Promise<void>;
+  onSaved: (now: string, fromKeys: boolean) => Promise<void>;
   onCancel: () => void;
   /** Change, while it shows above the step as the step opens. */
   opener: RefObject<ViewInstance | null> | null;
@@ -189,6 +191,8 @@ function Editing({
   saveCloser: RefObject<ViewInstance | null>;
   /** Hides all but Cancel while Cancel closes the step. */
   hidden: StepHidden;
+  /** Hides the field while Save, not the keys, closes the step. */
+  fieldHidden: StepHidden;
 }) {
   const { t } = useTranslation();
   const [typed, setTyped] = useState(name);
@@ -199,7 +203,7 @@ function Editing({
   const top = useScrolledToTop(opener);
   useEffect(() => onShown(input.current), [onShown]);
 
-  async function save(): Promise<void> {
+  async function save(keys: boolean): Promise<void> {
     if (saving) return;
 
     const checked = nameToSave(typed, name);
@@ -220,7 +224,7 @@ function Editing({
 
     try {
       await api.setName(now);
-      await onSaved(now);
+      await onSaved(now, keys);
     } catch (refusal) {
       setSaving(false);
       setError(
@@ -235,8 +239,7 @@ function Editing({
     <>
       <View {...aboveKeyboard} {...hidden}>
         <View ref={top} style={styles.editing}>
-          {/* A scroll of a save's close that carries Save off under TalkBack's focus would put that focus on the field before the line (sc-18587). */}
-          <View {...stepHidden(closing)}>
+          <View {...fieldHidden}>
             <Field label={t('completeProfile.name')} error={error}>
               <TextField
                 ref={input}
@@ -254,7 +257,7 @@ function Editing({
                 autoCapitalize="words"
                 maxLength={ACCOUNT_NAME_MAXIMUM}
                 returnKeyType="done"
-                onSubmitEditing={() => void save()}
+                onSubmitEditing={() => void save(true)}
                 submitBehavior="submit"
                 accessibilityLabel={t('completeProfile.name')}
                 testID="nameCard.field"
@@ -264,7 +267,7 @@ function Editing({
 
           <PrimaryButton
             label={saving ? t('nameCard.saving') : t('nameCard.save')}
-            onPress={() => void save()}
+            onPress={() => void save(false)}
             busy={saving}
             ref={saveCloser}
             testID="nameCard.save"

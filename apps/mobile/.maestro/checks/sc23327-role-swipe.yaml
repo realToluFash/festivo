@@ -1,0 +1,38 @@
+# iOS. sc-23327 (sc-18108's steps, Back as the swipe from the left edge): Settings > Roles > the role ${ROLE}; Back shows the Roles list, a second Back shows Settings.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-settings.yaml
+- tapOn:
+    id: 'settings.roles'
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'roles.role.${ROLE}'
+    direction: DOWN
+- tapOn:
+    id: 'roles.role.${ROLE}'
+- waitForAnimationToEnd
+- takeScreenshot: page
+- swipe:
+    start: 1%, 50%
+    end: 85%, 50%
+    duration: 400
+- extendedWaitUntil:
+    visible:
+      id: 'roles.new'
+    timeout: 10000
+- takeScreenshot: after-back
+- swipe:
+    start: 1%, 50%
+    end: 85%, 50%
+    duration: 400
+- extendedWaitUntil:
+    visible:
+      id: 'settings.members'
+    timeout: 10000
+- assertNotVisible:
+    id: 'roles.new'
+- takeScreenshot: after-second-back

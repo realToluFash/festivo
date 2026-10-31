@@ -1,19 +1,19 @@
 /** The rest keep the order they came in. */
-export function thisDeviceFirst<T extends { id: string }>(
-  sessions: readonly T[],
-  thisDevice: string | null,
-): T[] {
-  const here = sessions.filter((session) => session.id === thisDevice);
-
-  return [...here, ...sessions.filter((session) => session.id !== thisDevice)];
+export function thisDeviceFirst<T extends { thisDevice: boolean }>(sessions: readonly T[]): T[] {
+  return [
+    ...sessions.filter((session) => session.thisDevice),
+    ...sessions.filter((session) => !session.thisDevice),
+  ];
 }
 
 /** Without this device in the list, Soirely cannot tell which is this one, so every session ends. */
-export function othersOf(
-  sessions: readonly { id: string }[],
-  thisDevice: string | null,
-): { count: number; sessionId: string | null } {
-  return sessions.some((session) => session.id === thisDevice)
-    ? { count: sessions.length - 1, sessionId: thisDevice }
-    : { count: sessions.length, sessionId: null };
+export function othersOf(sessions: readonly { id: string; thisDevice: boolean }[]): {
+  count: number;
+  sessionId: string | null;
+} {
+  const here = sessions.find((session) => session.thisDevice);
+
+  return here == null
+    ? { count: sessions.length, sessionId: null }
+    : { count: sessions.length - 1, sessionId: here.id };
 }

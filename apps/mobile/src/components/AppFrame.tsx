@@ -35,7 +35,7 @@ import { backRowHiding } from '../kit/backRow.ts';
 import { EDGE_SWIPE_WIDTH } from '../kit/systemBack.ts';
 import { leaveThen } from '../leaveHeld.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
-import { railWidth } from '../layout/textSize.ts';
+import { backLabelSize, railWidth } from '../layout/textSize.ts';
 import {
   type LayoutKind,
   useAccessibilitySizes,
@@ -447,6 +447,8 @@ export function BackButton({
   off?: boolean | undefined;
   testID: string;
 }) {
+  const { fontScale } = useWindowDimensions();
+
   return (
     <Pressable
       style={styles.back}
@@ -463,7 +465,12 @@ export function BackButton({
           stroke={off ? tokens.colorInkSecondary : tokens.colorInk}
         />
       </Svg>
-      <Text size={tokens.typeBodyPhone.size} weight="semibold" muted={off}>
+      <Text
+        size={tokens.typeBodyPhone.size}
+        weight="semibold"
+        muted={off}
+        maxFontSizeMultiplier={backLabelSize(fontScale) / tokens.typeBodyPhone.size}
+      >
         {label}
       </Text>
     </Pressable>
@@ -1062,7 +1069,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceXs,
-    height: tokens.sizeHit,
+    minHeight: tokens.sizeHit,
     marginLeft: -tokens.spaceXs,
     paddingHorizontal: tokens.spaceXs,
   },

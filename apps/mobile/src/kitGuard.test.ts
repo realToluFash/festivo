@@ -214,6 +214,9 @@ describe('a Text hidden from screen readers stays hidden on iOS', () => {
         '<View {...hidden}>\n  <View {...stepHidden(busy)}>\n    <Text>Zone</Text>\n  </View>\n</View>',
       ),
     ).toMatchObject([{ line: 3, when: 'busy' }]);
+    expect(hiddenTexts('<View {...fieldHidden}>\n  <Text>Zone</Text>\n</View>')).toMatchObject([
+      { line: 2, when: 'closing' },
+    ]);
   });
 
   it('notices a Text that iOS can still report', () => {
@@ -1378,7 +1381,7 @@ function hiddenTexts(text: string): { line: number; markup: string; when: string
   return hidden;
 }
 
-/** The condition in `accessibilityElementsHidden={x}`, empty when it always hides, null when it is absent; a spread `StepHidden` such as `{...savedHidden}` hides while its step's `savedClosing` is set, and `{...stepHidden(x)}` while `x` is. */
+/** The condition in `accessibilityElementsHidden={x}`, empty when it always hides, null when it is absent; a spread `StepHidden` such as `{...savedHidden}` hides while its step's `savedClosing` is set, `{...fieldHidden}` only within a close, so while `closing` is, and `{...stepHidden(x)}` while `x` is. */
 function hidingCondition(markup: string): string | null {
   const at = /\baccessibilityElementsHidden\b(?:=\{(\w+)\})?/u.exec(markup);
   if (at !== null) return at[1] ?? '';
@@ -1389,7 +1392,7 @@ function hidingCondition(markup: string): string | null {
   const spread = /\{\.\.\.(\w*?)([hH])idden\}/u.exec(markup);
   if (spread === null) return null;
 
-  return spread[2] === 'h' ? 'closing' : `${spread[1]}Closing`;
+  return spread[2] === 'h' || spread[1] === 'field' ? 'closing' : `${spread[1]}Closing`;
 }
 
 /** Both hiding props, after any spread, so the Text stays hidden wherever its View's hiding misses it. */

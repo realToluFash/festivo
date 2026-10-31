@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  backLabelSize,
   breakableEmail,
   drawnLine,
   fitWidest,
@@ -33,6 +34,22 @@ describe('titleSize', () => {
     for (const size of [20, 26, 28]) {
       expect(titleSize(size, AX2)).toBeGreaterThan(size);
     }
+  });
+});
+
+describe('backLabelSize', () => {
+  it.each([
+    [1, 15],
+    [1.5, 22.5],
+    [2, 30],
+  ])('grows with the text at %s', (fontScale, size) => {
+    expect(backLabelSize(fontScale)).toBe(size);
+  });
+
+  it('stops at twice its default, so the top two iOS steps draw it alike (sc-23361)', () => {
+    expect(backLabelSize(AX1)).toBe(15 * AX1);
+    expect(backLabelSize(AX2)).toBe(30);
+    expect(backLabelSize(3)).toBe(30);
   });
 });
 

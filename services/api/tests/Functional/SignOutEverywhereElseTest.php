@@ -58,6 +58,29 @@ final class SignOutEverywhereElseTest extends ApiTestCase
         self::assertCount(1, $listed['sessions']);
     }
 
+    /** The card read the list, then a refresh renewed this device's id before the step finished (sc-23422). */
+    #[Test]
+    public function anIdARefreshHasSinceRenewedStillKeepsThisDevice(): void
+    {
+        $this->account('renewed@example.com');
+        $tokens = Type\shape(['sessionId' => Type\string(), 'refreshToken' => Type\string()], true);
+        $listed = $tokens->coerce($this->call('POST', '/api/auth/login', null, ['email' => 'renewed@example.com', 'password' => self::PASSWORD]));
+        $phone = $this->signIn('renewed@example.com');
+        $refreshed = $this->call('POST', '/api/auth/refresh', null, ['refreshToken' => $listed['refreshToken']]);
+        $renewed = Type\shape(['accessToken' => Type\string(), 'sessionId' => Type\string()], true)->coerce($refreshed);
+        $laptop = ['accessToken' => $renewed['accessToken'], 'sessionId' => $renewed['sessionId']];
+        self::assertNotSame($listed['sessionId'], $laptop['sessionId']);
+
+        $body = $this->call('POST', '/api/auth/sessions/others', $laptop['accessToken'], [
+            'proof' => $this->proved($laptop),
+            'sessionId' => $listed['sessionId'],
+        ]);
+
+        self::assertSame(['signedOut' => 2, 'thisDevice' => false], $body, Json\encode($body));
+        self::assertSame(401, $this->me($phone['accessToken']));
+        self::assertSame(200, $this->me($laptop['accessToken']));
+    }
+
     #[Test]
     public function withoutASessionIdEverySessionEndsTheCallersToo(): void
     {

@@ -29,7 +29,6 @@ import {
 } from '../../../providerSignIn.ts';
 import { forgetSession, refreshAccount, rereadCredentials, useSession } from '../../../session.ts';
 import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
-import { currentSessionId } from '../../../tokens.ts';
 import { useSignOut } from '../../../signOut.ts';
 
 type Devices =
@@ -134,14 +133,9 @@ export function Security() {
     setEndFailed(false);
     setEverywhereDone({ count: result.signedOut, arrived });
     if (!arrived) land(() => said.current);
-    setDevices((current) =>
-      current.kind === 'ready'
-        ? {
-            kind: 'ready',
-            sessions: current.sessions.filter((s) => s.id === currentSessionId()),
-          }
-        : current,
-    );
+    setRetried(false);
+    setDevices({ kind: 'loading' });
+    setAttempt((n) => n + 1);
   }
 
   async function endHere(): Promise<void> {
@@ -201,7 +195,7 @@ export function Security() {
         <section className="card" aria-labelledby="devices-title">
           {checking == null && everywhere && devices.kind === 'ready' ? (
             <EverywhereElse
-              {...othersOf(devices.sessions, currentSessionId())}
+              {...othersOf(devices.sessions)}
               hasPassword={session.hasPassword}
               providers={session.providers}
               returned={returned}
@@ -302,11 +296,11 @@ export function Security() {
 
               {devices.kind === 'ready' && (
                 <ul className="device-list" ref={list} aria-label={t('devices.listLabel')}>
-                  {thisDeviceFirst(devices.sessions, currentSessionId()).map((device) => (
+                  {thisDeviceFirst(devices.sessions).map((device) => (
                     <Row
                       key={device.id}
                       device={device}
-                      here={device.id === currentSessionId()}
+                      here={device.thisDevice}
                       button={(element) => {
                         signOutButtons.current.set(device.id, element);
                       }}
@@ -320,24 +314,23 @@ export function Security() {
                 </ul>
               )}
 
-              {devices.kind === 'ready' &&
-                othersOf(devices.sessions, currentSessionId()).count > 0 && (
-                  <div className="device-footer">
-                    <button
-                      className="button"
-                      type="button"
-                      ref={everywhereButton}
-                      onClick={() => {
-                        setEverywhereDone(null);
-                        setEnded(null);
-                        setEverywhere(true);
-                      }}
-                    >
-                      {t('devices.everywhere')}
-                    </button>
-                    <p className="muted">{t('devices.everywhereHint')}</p>
-                  </div>
-                )}
+              {devices.kind === 'ready' && othersOf(devices.sessions).count > 0 && (
+                <div className="device-footer">
+                  <button
+                    className="button"
+                    type="button"
+                    ref={everywhereButton}
+                    onClick={() => {
+                      setEverywhereDone(null);
+                      setEnded(null);
+                      setEverywhere(true);
+                    }}
+                  >
+                    {t('devices.everywhere')}
+                  </button>
+                  <p className="muted">{t('devices.everywhereHint')}</p>
+                </div>
+              )}
             </>
           ) : (
             <Check
