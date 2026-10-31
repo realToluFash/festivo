@@ -2,6 +2,7 @@ import { type EventDeletion, type OrganisationEvent } from '@soirely/api-client'
 import { typedNameMatches } from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
 import {
+  Keyboard,
   ScrollView,
   type ScrollViewInstance,
   StyleSheet,
@@ -140,6 +141,13 @@ function Confirm({
   const fieldInSight = () => {
     if (typing.current) body.current?.scrollToEnd({ animated: true });
   };
+
+  useEffect(() => {
+    // iOS lifts the sheet over the keys' rise, so a scroll asked for as it starts stops short of the help (sc-22092).
+    const risen = Keyboard.addListener('keyboardDidShow', fieldInSight);
+
+    return () => risen.remove();
+  }, []);
 
   async function submit(): Promise<void> {
     if (pending) return;
