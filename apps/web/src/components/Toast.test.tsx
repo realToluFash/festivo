@@ -5,9 +5,23 @@ import { Toast } from './Toast.tsx';
 
 describe('the toast', () => {
   beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    document.documentElement.style.removeProperty('--toastLifetime');
+  });
 
   it('closes by itself after ten seconds', () => {
+    const onClose = vi.fn();
+    render(<Toast words="Guest removed." onClose={onClose} />);
+
+    act(() => vi.advanceTimersByTime(9750));
+    expect(onClose).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(250));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads a lifetime the built stylesheet writes in seconds', () => {
+    document.documentElement.style.setProperty('--toastLifetime', '10s');
     const onClose = vi.fn();
     render(<Toast words="Guest removed." onClose={onClose} />);
 

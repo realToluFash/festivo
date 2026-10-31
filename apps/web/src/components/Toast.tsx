@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { duration } from '../leaving.ts';
+
 /** The countdown waits while the pointer or focus is on it, so nobody loses Undo while reaching for it. */
 export function Toast({
   words,
@@ -20,10 +22,8 @@ export function Toast({
   }, [onClose]);
 
   useEffect(() => {
-    const lifetime = parseFloat(
-      getComputedStyle(document.documentElement).getPropertyValue('--toastLifetime'),
-    );
-    let left = Number.isFinite(lifetime) && lifetime > 0 ? lifetime : 10000;
+    const lifetime = duration('toastLifetime');
+    let left = lifetime > 0 ? lifetime : 10000;
     const tick = 250;
     const timer = window.setInterval(() => {
       if (held.current) return;

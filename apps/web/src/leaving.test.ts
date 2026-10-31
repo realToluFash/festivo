@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { motion } from './leaving';
+import { duration } from './leaving';
 
-describe('motion', () => {
+describe('duration', () => {
   afterEach(() => document.documentElement.style.removeProperty('--motionFast'));
 
   it.each([
@@ -11,6 +11,6 @@ describe('motion', () => {
   ])('reads %s as %d milliseconds', (written, ms) => {
     document.documentElement.style.setProperty('--motionFast', written);
 
-    expect(motion('motionFast')).toBe(ms);
+    expect(duration('motionFast')).toBe(ms);
   });
 });
