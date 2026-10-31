@@ -1386,6 +1386,56 @@ export const SCREEN_READER_OFF = [
   ['shell', 'settings', 'put', 'secure', 'accessibility_enabled', '0'],
 ];
 
+// android's start once the emulator is up, in order: nothing swipes or taps before the screen reader is off.
+export const ANDROID_START = [
+  { name: 'release build removed', run: ({ tools, root }) => removeRelease(tools, root) },
+  { name: 'airplane mode off', run: ({ tools }) => airplaneMode(tools, false) },
+  {
+    name: 'screen reader off',
+    adb: SCREEN_READER_OFF,
+    say: '  TalkBack is off: turn it on again in Settings for a screen-reader pass.',
+  },
+  {
+    name: 'Expo Go installed',
+    run: async (s) => {
+      s.fresh = await ensureAndroidExpoGo(s.tools, s.root);
+    },
+  },
+  {
+    name: 'ports reversed',
+    run: ({ tools }) => {
+      for (const port of reversedPorts(CONFIG.ports)) {
+        adbOut(tools, ['reverse', `tcp:${port}`, `tcp:${port}`]);
+      }
+    },
+  },
+  {
+    name: 'bundler started',
+    run: async (s) => {
+      step('The bundler');
+      s.metro = await startBundler(s.root, s.tools.env);
+    },
+  },
+  {
+    name: 'Expo Go launched',
+    run: ({ tools }) =>
+      adbOut(tools, [
+        'shell',
+        'am',
+        'start',
+        '-a',
+        'android.intent.action.VIEW',
+        '-d',
+        CONFIG.urls.metro,
+        EXPO_GO_ANDROID,
+      ]),
+  },
+  {
+    name: 'Expo Go menu dismissed',
+    run: (s) => s.fresh && dismissExpoGoIntro(s.tools, s.root),
+  },
+];
+
 async function android(args) {
   const tools = androidTools();
   if (!existsSync(tools.emulator)) {
@@ -1403,32 +1453,17 @@ async function android(args) {
 
   step(`The ${open}`);
   await bootEmulator(tools, CONFIG.emulators[open].name);
-  removeRelease(tools, root);
-  airplaneMode(tools, false);
-  for (const command of SCREEN_READER_OFF) adbOut(tools, command);
-  const fresh = await ensureAndroidExpoGo(tools, root);
-  for (const port of reversedPorts(CONFIG.ports)) {
-    adbOut(tools, ['reverse', `tcp:${port}`, `tcp:${port}`]);
+  const started = { tools, root };
+  for (const part of ANDROID_START) {
+    for (const command of part.adb ?? []) adbOut(tools, command);
+    if (part.say) console.log(part.say);
+    await part.run?.(started);
   }
-
-  step('The bundler');
-  const metro = await startBundler(root, tools.env);
-  adbOut(tools, [
-    'shell',
-    'am',
-    'start',
-    '-a',
-    'android.intent.action.VIEW',
-    '-d',
-    CONFIG.urls.metro,
-    EXPO_GO_ANDROID,
-  ]);
-  if (fresh) dismissExpoGoIntro(tools, root);
   console.log(
     `\nBundler on ${CONFIG.urls.metro}, open on the ${open} (${emulatorSerial()}). Leave it running.`,
   );
 
-  await new Promise((done) => metro.on('exit', done));
+  await new Promise((done) => started.metro.on('exit', done));
 }
 
 function link(args) {

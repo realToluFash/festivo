@@ -335,6 +335,8 @@ node .qa/bin/qa-env.mjs android --stop                   # the emulator, when th
 ```
 
 `android` behaves like `ios`: start it in the background, and restart it after a `checkout`.
+Each start switches TalkBack off and prints that it did: partway through a screen-reader pass,
+turn TalkBack on again after `android` starts, or a missing announcement is the harness, not the app.
 `release` needs no bundler and takes an hour the first time on a machine. The next `android`
 removes it. The emulator has no window, so `release` records the launch's first 15 seconds and
 prints where: judge a splash bullet on that video, frame by frame, never on a screenshot taken

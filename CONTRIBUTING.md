@@ -72,6 +72,8 @@ A developer running the suite and a QA pass stopping the API to test the offline
 `node .qa/bin/qa-env.mjs`. Expo Go does not own the app's `soirely://` scheme, so on Android
 a provider's redirect is handed back with `node .qa/bin/qa-env.mjs link 'soirely://oauth/…'`.
 `android` removes any release build first, because while it is installed it owns that scheme.
+It also switches TalkBack off, and says so: turn it on again after `android` starts for a
+screen-reader pass.
 
 Expo Go fetches the bundle from Metro and draws its own splash, so a bullet about the app
 offline from first launch, or its own splash screen, needs the app itself.

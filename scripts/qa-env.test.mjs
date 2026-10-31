@@ -26,6 +26,7 @@ import {
   afterRun,
   batchSummary,
   portraitRotation,
+  ANDROID_START,
   SCREEN_READER_OFF,
   driverBuilds,
   driverPids,
@@ -412,11 +413,24 @@ describe('the emulator android opens', () => {
 });
 
 describe('the screen reader on an emulator android opens', () => {
+  const at = (name) => ANDROID_START.findIndex((part) => part.name === name);
+  const off = ANDROID_START.findIndex((part) => part.adb === SCREEN_READER_OFF);
+
   it('is switched off, services and the master switch both', () => {
     expect(SCREEN_READER_OFF).toEqual([
       ['shell', 'settings', 'delete', 'secure', 'enabled_accessibility_services'],
       ['shell', 'settings', 'put', 'secure', 'accessibility_enabled', '0'],
     ]);
+  });
+
+  it('goes off before Expo Go is launched or its menu tapped', () => {
+    expect(off).toBeGreaterThanOrEqual(0);
+    expect(off).toBeLessThan(at('Expo Go launched'));
+    expect(off).toBeLessThan(at('Expo Go menu dismissed'));
+  });
+
+  it('says so, so a tester turns it on again', () => {
+    expect(ANDROID_START[off].say).toMatch(/TalkBack is off/);
   });
 });
 
