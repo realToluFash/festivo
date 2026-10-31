@@ -1,0 +1,16 @@
+# Settings > Organisation, nothing holding the change back: the editable details and Save changes, no line.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible: '{{t:orgGeneral.intro}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'organisation.save'
+    timeout: 20000
+- takeScreenshot: sc16265-editable
+- assertNotVisible:
+    id: 'organisation.link'
+- assertNotVisible:
+    id: 'organisation.turnOn'

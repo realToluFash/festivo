@@ -1,0 +1,6 @@
+{
+  "guests_one": "{{count, number}} invité",
+  "guests_other": "{{count}} invités",
+  "cap": "Jusqu’à {{most}} adresses",
+  "texted": "Nous avons envoyé un code au {{number}}."
+}

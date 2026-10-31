@@ -1,0 +1,40 @@
+import type { LayoutKind } from '../layout/classify.ts';
+
+/** Wherever the page shows in place of its list, Android's Back and iOS's swipe from the left edge are the page's own back (sc-18108, sc-23327). */
+export function pageTakesBack(kind: LayoutKind, pageInFront: boolean): boolean {
+  return pageInFront && kind !== 'tabletLandscape';
+}
+
+/** iOS's own swipe from the left edge is the drawn back's, unless the page has taken the swipe or the back is off; with no back drawn, as on a tab's own screen, it does nothing (sc-23777). `back` is the header's, drawn only on a phone. */
+export function stackSwipes(
+  kind: LayoutKind,
+  back: { off?: boolean } | undefined,
+  backInBody: boolean,
+  pageTookSwipe: boolean,
+): boolean {
+  if (pageTookSwipe) return false;
+  const drawnBack = kind === 'phone' ? back : undefined;
+
+  return drawnBack == null ? backInBody : drawnBack.off !== true;
+}
+
+/** The `from` a tablet's Settings list gives the section it opens in place of itself. */
+export const OPENED_IN_PLACE_OF_SETTINGS = 'settings';
+
+/** Only a section the tablet's list replaced itself with has no Settings under it; any other keeps Back as the stack has it (sc-19104). */
+export function sectionTakesBack(from: string | undefined): boolean {
+  return from === OPENED_IN_PLACE_OF_SETTINGS;
+}
+
+/** The strip at the left edge an iOS swipe back starts in, no wider than the pages' own margin, so it covers no control. */
+export const EDGE_SWIPE_WIDTH = 12;
+
+/** A drag from the edge that moves more across than down is iOS's swipe back (sc-23327). */
+export function edgeSwipeStarts(dx: number, dy: number): boolean {
+  return dx > 8 && dx > Math.abs(dy);
+}
+
+/** Let go past half the width, or flicked towards the right, the swipe completes; short of that the page stays. */
+export function edgeSwipeCompletes(dx: number, vx: number, width: number): boolean {
+  return dx > width / 2 || (vx > 0.5 && dx > 0);
+}

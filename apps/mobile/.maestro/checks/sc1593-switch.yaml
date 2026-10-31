@@ -1,0 +1,42 @@
+# sc-1593: ${EVENT} open in ${ORG}, then Switch organisation to ${OTHER_ORG}: Events shows ${OTHER_EVENT}, not ${EVENT}; then ${EMPTY_ORG}, which has none.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EVENT}'
+    timeout: 30000
+- tapOn:
+    id: 'events.row.${EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- takeScreenshot: before-switch
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${OTHER_ORG}
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${OTHER_EVENT}'
+    timeout: 20000
+- assertNotVisible:
+    id: 'events.row.${EVENT}'
+- takeScreenshot: after-switch
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${EMPTY_ORG}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible: '{{t:eventsScreen.firstRunTitle}}'
+    timeout: 20000
+- takeScreenshot: empty

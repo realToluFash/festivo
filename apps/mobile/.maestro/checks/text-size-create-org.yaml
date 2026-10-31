@@ -1,0 +1,24 @@
+# create-org, top to bottom, at whatever text size the simulator is set to. sc-13281.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'home.switchOrganisation'
+    timeout: 30000
+- tapOn:
+    id: 'home.switchOrganisation'
+- tapOn:
+    id: 'switcher.create'
+- extendedWaitUntil:
+    visible: '{{t:createOrganisation.title}}'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: create-org-1
+- scroll
+- takeScreenshot: create-org-2
+- scroll
+- takeScreenshot: create-org-3
+- scroll
+- takeScreenshot: create-org-4
