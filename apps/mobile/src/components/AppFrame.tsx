@@ -161,11 +161,7 @@ export function AppFrame({
   const [edgeSwipe, setEdgeSwipe] = useState<EdgeSwipeHandlers | undefined>(undefined);
   const [backRow] = useState(() => backRowHiding(setBackHidden));
   useEffect(() => backRow.stop, [backRow]);
-  const stackSwipe = stackSwipes(
-    kind === 'phone' ? back : undefined,
-    backInBody,
-    edgeSwipe != null,
-  );
+  const stackSwipe = stackSwipes(kind, back, backInBody, edgeSwipe != null);
   useEffect(() => navigation.setOptions({ gestureEnabled: stackSwipe }), [navigation, stackSwipe]);
   const signedIn = useSignedIn();
   usePushTaps(signedIn.account?.id);

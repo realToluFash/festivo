@@ -24,18 +24,23 @@ describe('pageTakesBack', () => {
 
 describe('stackSwipes', () => {
   it('swipes back where a back is drawn, in the header or the body', () => {
-    expect(stackSwipes({}, false, false)).toBe(true);
-    expect(stackSwipes(undefined, true, false)).toBe(true);
+    expect(stackSwipes('phone', {}, false, false)).toBe(true);
+    expect(stackSwipes('tabletPortrait', undefined, true, false)).toBe(true);
   });
 
   it('does nothing where no back is drawn, as on Home, the Events list or a section beside Settings', () => {
-    expect(stackSwipes(undefined, false, false)).toBe(false);
+    expect(stackSwipes('phone', undefined, false, false)).toBe(false);
+  });
+
+  it('does nothing for a header back on a tablet, which never draws it, with nothing in the body', () => {
+    expect(stackSwipes('tabletPortrait', {}, false, false)).toBe(false);
+    expect(stackSwipes('tabletLandscape', {}, false, false)).toBe(false);
   });
 
   it('does nothing while the back is off, or once the page in front has taken the swipe', () => {
-    expect(stackSwipes({ off: true }, false, false)).toBe(false);
-    expect(stackSwipes({}, false, true)).toBe(false);
-    expect(stackSwipes(undefined, true, true)).toBe(false);
+    expect(stackSwipes('phone', { off: true }, false, false)).toBe(false);
+    expect(stackSwipes('phone', {}, false, true)).toBe(false);
+    expect(stackSwipes('tabletPortrait', undefined, true, true)).toBe(false);
   });
 });
 
