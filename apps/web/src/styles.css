@@ -2175,17 +2175,17 @@ span {
   }
 }
 
-.shell-content[data-enter='forward'] {
+#content[data-enter='forward'] {
   animation: rise-in var(--motionBase) var(--motionEase);
 }
 
-.shell-content[data-enter='back'] {
+#content[data-enter='back'] {
   animation: drop-in var(--motionBase) var(--motionEase);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .dialog,
-  .shell-content[data-enter] {
+  #content[data-enter] {
     animation-name: fade-in;
     animation-duration: var(--motionBase);
   }
