@@ -1,0 +1,65 @@
+# sc-23422: with two-factor on, Sign out everywhere else, after the sign-in renewed while the card was open, leaves this device alone and counted.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../scripts/sc23422-others.js
+    env:
+      OTHERS: '0'
+      WAIT_MS: '0'
+- openLink: ${METRO_URL}/--/settings/security
+- extendedWaitUntil:
+    visible: '{{t:security.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'devices.everywhere'
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- takeScreenshot: card-before
+- runScript:
+    file: ../scripts/sc23422-others.js
+    env:
+      OTHERS: '0'
+      WAIT_MS: '75000'
+- tapOn:
+    id: 'devices.everywhere'
+- extendedWaitUntil:
+    visible: '.*This device stays signed in.*'
+    timeout: 10000
+- takeScreenshot: step-offers-others
+- tapOn:
+    id: 'devices.everywhere.password'
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'devices.everywhere.confirm'
+- extendedWaitUntil:
+    visible:
+      id: 'devices.everywhere.code'
+    timeout: 30000
+- takeScreenshot: code-asked
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /code
+- tapOn:
+    id: 'devices.everywhere.code'
+- inputText: ${output.helper.code}
+- hideKeyboard
+- tapOn:
+    id: 'devices.everywhere.confirm'
+- extendedWaitUntil:
+    visible: '(Your other device is signed out\.|Your [0-9]+ other devices are signed out\.)'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'devices.here'
+    direction: DOWN
+    timeout: 15000
+    centerElement: true
+- assertVisible: '1 device'
+- assertNotVisible: '0 devices'
+- assertNotVisible:
+    id: 'devices.everywhere'
+- takeScreenshot: card-after

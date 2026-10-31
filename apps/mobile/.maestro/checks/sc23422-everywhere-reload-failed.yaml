@@ -1,0 +1,60 @@
+# sc-23422: when the list cannot be loaded again after Sign out everywhere else, the success line stays, the load-failed notice and Try again show, and Try again lists this device alone. Needs the app's API behind .qa/sc23422/proxy.mjs.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../scripts/sc23422-others.js
+    env:
+      OTHERS: '2'
+      WAIT_MS: '0'
+- openLink: ${METRO_URL}/--/settings/security
+- extendedWaitUntil:
+    visible: '{{t:security.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'devices.everywhere'
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- takeScreenshot: card-before
+- runScript:
+    file: ../scripts/sc23422-others.js
+    env:
+      OTHERS: '0'
+      WAIT_MS: '0'
+- tapOn:
+    id: 'devices.everywhere'
+- extendedWaitUntil:
+    visible: '.*This device stays signed in.*'
+    timeout: 10000
+- takeScreenshot: step-offers-others
+- tapOn:
+    id: 'devices.everywhere.password'
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'devices.everywhere.confirm'
+- extendedWaitUntil:
+    visible: '(Your other device is signed out\.|Your [0-9]+ other devices are signed out\.)'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'devices.retry'
+    direction: DOWN
+    timeout: 15000
+    centerElement: true
+- assertVisible: 'The devices could not be listed'
+- assertVisible: '(Your other device is signed out\.|Your [0-9]+ other devices are signed out\.)'
+- assertNotVisible: '0 devices'
+- takeScreenshot: reload-failed
+- tapOn:
+    id: 'devices.retry'
+- scrollUntilVisible:
+    element:
+      id: 'devices.here'
+    direction: DOWN
+    timeout: 15000
+    centerElement: true
+- assertVisible: '1 device'
+- assertNotVisible: '0 devices'
+- takeScreenshot: retried
