@@ -2120,6 +2120,12 @@ span {
   color: var(--colorInkSecondary);
 }
 
+.dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
 .dialog-form {
   display: flex;
   flex-direction: column;
@@ -2144,6 +2150,11 @@ span {
 }
 
 @media (width <= 40rem) {
+  .dialog-actions-stack {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
   .dialog {
     top: auto;
     bottom: 0;
@@ -2186,17 +2197,17 @@ span {
   }
 }
 
-.shell-content[data-enter='forward'] {
+#content[data-enter='forward'] {
   animation: rise-in var(--motionBase) var(--motionEase);
 }
 
-.shell-content[data-enter='back'] {
+#content[data-enter='back'] {
   animation: drop-in var(--motionBase) var(--motionEase);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .dialog,
-  .shell-content[data-enter] {
+  #content[data-enter] {
     animation-name: fade-in;
     animation-duration: var(--motionBase);
   }
@@ -4571,10 +4582,18 @@ button.members-row {
 
 /* ── Make live (sc-3584) ──────────────────────────────────────────────────── */
 
-/* A status chip: a shape beside its word, so a state never rests on colour alone (sc-3585, sc-23172). */
+/* A status chip: a shape beside its word, so a state never rests on colour alone, and its words wrap at 320 rather than push the page sideways (sc-3585, sc-23172). */
 .status-chip {
+  flex: 0 1 auto;
   gap: var(--spaceXs);
+  max-width: 100%;
+  height: auto;
+  min-height: var(--sizePill);
+  padding-block: var(--spaceHair);
+  box-sizing: border-box;
   background: var(--colorNeutralFill);
+  font: var(--typePillWrapped);
+  white-space: normal;
 }
 
 .status-chip::before {

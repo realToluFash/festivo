@@ -143,6 +143,12 @@ export const tokens = {
     "lineHeight": 1,
     "letterSpacing": "0"
   },
+  "typePillWrapped": {
+    "size": 12,
+    "weight": 600,
+    "lineHeight": 1.25,
+    "letterSpacing": "0"
+  },
   "typeButton": {
     "size": 14,
     "weight": 600,

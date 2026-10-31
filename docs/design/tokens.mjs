@@ -133,6 +133,7 @@ export const tokens = {
   // beats an accident. It makes 12 the floor for everything a person reads,
   // which is tested.
   typePill: { size: 12, weight: 600, lineHeight: 1, letterSpacing: '0' }, // status pills
+  typePillWrapped: { size: 12, weight: 600, lineHeight: 1.25, letterSpacing: '0' }, // a status chip whose words wrap onto a second line at 320
   typeButton: { size: 14, weight: 600, lineHeight: 1, letterSpacing: '0' }, // 44px buttons; 15 on phone primaries; 13 inside dense rows
   typeCode: { size: 14, weight: 600, lineHeight: 1, letterSpacing: '0' }, // codes read or copied by character, step numbers; never times, money or counts
   typeRoomNow: { size: 64, weight: 700, lineHeight: 1.05, letterSpacing: '-0.02em' }, // room screen only; 30 for "coming up", 20 for labels
