@@ -40,6 +40,7 @@ import {
   readyReport,
   REBUILD,
   rerunHints,
+  runId,
   runAsync,
   runBudgetMs,
   startHelper,
@@ -1466,6 +1467,22 @@ describe('a batch flow', () => {
     expect(flow.indexOf('_checks/settings.en.yaml')).toBeLessThan(flow.indexOf('/language?to=es'));
   });
 
+  it('runs a check named twice twice, each under its own id', () => {
+    const runs = batchRuns(['home', 'settings', 'home'], ['en']);
+    expect(runs.map(runId)).toEqual(['home.en', 'settings.en', 'home.en.run2']);
+    const flow = batchFlow({ runs });
+    expect(flow).toContain('_checks/home.en.yaml');
+    expect(flow).toContain('_checks/home.en.run2.yaml');
+  });
+
+  it('reports a failed first run of a check that passed the second time', () => {
+    const ids = batchRuns(['home', 'home'], ['any']).map(runId);
+    expect(batchSummary(ids, { passed: new Set(['home.run2']), begun: ids, crashed: [] })).toEqual([
+      '✗ home',
+      '✓ home.run2',
+    ]);
+  });
+
   it('relaunches and signs out first when it is one check, cold', () => {
     const flow = batchFlow({ checks: ['home'], languages: ['any'], cold: true });
     expect(flow).toContain('stopApp: true');
@@ -1517,6 +1534,13 @@ describe('the batch command', () => {
     ).toEqual([
       'node .qa/bin/qa-env.mjs batch tour-settings-es settings --lang es --cold --ipad EMAIL=a@b.test PASSWORD=… TOTP_SECRET=…',
       'node .qa/bin/qa-env.mjs batch tour-home-en home --lang en --cold --ipad EMAIL=a@b.test PASSWORD=… TOTP_SECRET=…',
+    ]);
+  });
+
+  it('re-runs a check that failed twice once', () => {
+    const failures = batchRuns(['home', 'home'], ['any']);
+    expect(rerunHints('tour', failures, { args: [], email: 'a@b.test', secret: null })).toEqual([
+      'node .qa/bin/qa-env.mjs batch tour-home home --cold EMAIL=a@b.test PASSWORD=…',
     ]);
   });
 

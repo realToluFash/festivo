@@ -1825,13 +1825,17 @@ export function localise(flow, catalogues, language, values = {}) {
 
 export const checkId = (check, language) => (language === 'any' ? check : `${check}.${language}`);
 
+// A check named twice in one batch runs twice, and each run passes or fails under its own id.
+export const runId = ({ check, language, repeat = 1 }) =>
+  repeat === 1 ? checkId(check, language) : `${checkId(check, language)}.run${repeat}`;
+
 const helperStep = (ask, file) =>
   ['- runScript:', `    file: ${file}`, '    env:', `      ASK: '${ask}'`, ''].join('\n');
 
-export function batchCheck(flow, check, language, { reset }) {
+export function batchCheck(flow, check, language, { reset, repeat = 1 }) {
   const at = flow.indexOf('\n---\n');
   if (at === -1) throw new Error(`${check}: no --- between its config and its commands`);
-  const id = checkId(check, language);
+  const id = runId({ check, language, repeat });
   const commands = flow
     .slice(at + 5)
     .replace(/^(\s*-\s*takeScreenshot:\s*)(['"]?)([^'"\s]+)\2\s*$/gm, `$1${id}-$3`)
@@ -1846,7 +1850,13 @@ export function batchCheck(flow, check, language, { reset }) {
 }
 
 export const batchRuns = (checks, languages) =>
-  languages.flatMap((language) => checks.map((check) => ({ check, language })));
+  languages.flatMap((language) =>
+    checks.map((check, index) => ({
+      check,
+      language,
+      repeat: checks.slice(0, index + 1).filter((named) => named === check).length,
+    })),
+  );
 
 export function batchFlow({ checks, languages, cold, runs = batchRuns(checks, languages) }) {
   const lines = [`appId: ${EXPO_GO}`, '---', '- launchApp:', `    appId: ${EXPO_GO}`];
@@ -1854,14 +1864,10 @@ export function batchFlow({ checks, languages, cold, runs = batchRuns(checks, la
   if (cold) lines.push('- runFlow: batch/sign-out.yaml');
   else lines.push(helperStep('/reload', 'batch/helper.js').trimEnd());
   lines.push('- runFlow: batch/session.yaml');
-  runs.forEach(({ check, language }, index) => {
-    if (index > 0 && language !== runs[index - 1].language)
-      lines.push(helperStep(`/language?to=${language}`, 'batch/helper.js').trimEnd());
-    lines.push(
-      '- runFlow:',
-      `    file: _checks/${checkId(check, language)}.yaml`,
-      '    optional: true',
-    );
+  runs.forEach((run, index) => {
+    if (index > 0 && run.language !== runs[index - 1].language)
+      lines.push(helperStep(`/language?to=${run.language}`, 'batch/helper.js').trimEnd());
+    lines.push('- runFlow:', `    file: _checks/${runId(run)}.yaml`, '    optional: true');
   });
   return `${lines.join('\n')}\n`;
 }
@@ -1883,25 +1889,21 @@ export function composeBatch(
     writeFileSync(path, localise(readFileSync(path, 'utf8'), catalogues, 'any', { email }));
   }
   mkdirSync(join(target, '_checks'));
-  for (const language of languages) {
-    for (const check of checks) {
-      const flow = localise(
-        readFileSync(join(source, 'checks', `${check}.yaml`), 'utf8'),
-        catalogues,
-        language,
-        { email },
-      );
-      const id = checkId(check, language);
-      writeFileSync(
-        join(target, '_checks', `${id}.yaml`),
-        finish(batchCheck(flow, check, language, { reset: !cold })),
-      );
-      if (cold) {
-        writeFileSync(
-          join(target, `_cold.${id}.yaml`),
-          finish(batchFlow({ checks: [check], languages: [language], cold })),
-        );
-      }
+  for (const run of batchRuns(checks, languages)) {
+    const { check, language, repeat } = run;
+    const flow = localise(
+      readFileSync(join(source, 'checks', `${check}.yaml`), 'utf8'),
+      catalogues,
+      language,
+      { email },
+    );
+    const id = runId(run);
+    writeFileSync(
+      join(target, '_checks', `${id}.yaml`),
+      finish(batchCheck(flow, check, language, { reset: !cold, repeat })),
+    );
+    if (cold) {
+      writeFileSync(join(target, `_cold.${id}.yaml`), finish(batchFlow({ runs: [run], cold })));
     }
   }
   if (!cold) writeFileSync(join(target, '_batch.yaml'), finish(batchFlow({ checks, languages })));
@@ -2424,11 +2426,9 @@ async function batch(args) {
   const started = Date.now();
   try {
     if (cold) {
-      for (const language of languages) {
-        for (const check of checks) {
-          if (named) await setLocale(language);
-          await test(join(flows, `_cold.${checkId(check, language)}.yaml`), [{ check, language }]);
-        }
+      for (const run of batchRuns(checks, languages)) {
+        if (named) await setLocale(run.language);
+        await test(join(flows, `_cold.${runId(run)}.yaml`), [run]);
       }
     } else {
       if (named) await setLocale(languages[0]);
@@ -2454,7 +2454,7 @@ async function batch(args) {
 
   spawnSync('sh', ['-c', `find "${out}" -mindepth 2 -name '*.png' -exec cp {} "${out}/" \\;`]);
   const runs = batchRuns(checks, languages);
-  const ids = runs.map(({ check, language }) => checkId(check, language));
+  const ids = runs.map(runId);
   const failed = ids.filter((id) => !passed.has(id));
   console.log(
     `\nBatch ${name}${cold ? ', each check alone and cold' : ''}: ` +
@@ -2464,7 +2464,7 @@ async function batch(args) {
     console.log(`  ${line}`);
   console.log(`Evidence in ${out}`);
   if (failed.length) {
-    const failures = runs.filter(({ check, language }) => !passed.has(checkId(check, language)));
+    const failures = runs.filter((run) => !passed.has(runId(run)));
     console.log('Re-run each alone, cold:');
     for (const hint of rerunHints(name, failures, { args, email, secret, rest }))
       console.log(`  ${hint}`);
@@ -2499,8 +2499,7 @@ export async function runHeld(
   const after = afterRun(held, { begun, from, passed, stalled: stall.stalled, afterStall });
   if (after.crashed) crashed.push(after.crashed);
   if (begun.length === from) {
-    for (const { check, language } of held)
-      unstarted.set(checkId(check, language), stall.stalled ? 'stalled' : 'ended');
+    for (const run of held) unstarted.set(runId(run), stall.stalled ? 'stalled' : 'ended');
   }
   return after;
 }
@@ -2518,7 +2517,7 @@ export async function resumeBatch(rest, resume) {
 // any run of a batch the watchdog has stopped before, since its driver may still be going down.
 export function afterRun(held, { begun, from, passed, stalled = false, afterStall = false }) {
   const current = begun.slice(from).at(-1);
-  const rest = held.filter(({ check, language }) => !begun.includes(checkId(check, language)));
+  const rest = held.filter((run) => !begun.includes(runId(run)));
   if (!current) return { crashed: null, rest: stalled || afterStall ? rest : [] };
   const lost = rest.length > 0 || stalled;
   return { crashed: lost && !passed.has(current) ? current : null, rest };
@@ -2540,7 +2539,13 @@ export function batchSummary(ids, { passed, begun, crashed, unstarted = new Map(
 
 export function rerunHints(name, failures, { args, email, secret, rest = {} }) {
   const device = ['--ipad', '--android'].filter((flag) => args.includes(flag));
-  return failures.map(({ check, language }) =>
+  const once = failures.filter(
+    (run, index) =>
+      failures.findIndex(
+        (other) => other.check === run.check && other.language === run.language,
+      ) === index,
+  );
+  return once.map(({ check, language }) =>
     [
       'node .qa/bin/qa-env.mjs batch',
       `${name}-${checkId(check, language).replace('.', '-')}`,
