@@ -1,0 +1,43 @@
+# sc-23327 on iOS: on the copy ${COPY} of ${EVENT} (header ‹ Event), the swipe from the left edge shows the original's page, as ‹ Event does; a second swipe returns to the list.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${COPY}?from=${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'frame.back'
+    text: '{{t:timeline.backToEvent}}'
+- takeScreenshot: copy-top
+- swipe:
+    start: 1%, 50%
+    end: 50%, 50%
+    duration: 1500
+- takeScreenshot: copy-mid-drag
+- swipe:
+    start: 1%, 50%
+    end: 85%, 50%
+    duration: 400
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- assertVisible:
+    id: 'frame.back'
+    text: '{{t:eventsScreen.title}}'
+- takeScreenshot: original-after-swipe
+- swipe:
+    start: 1%, 50%
+    end: 85%, 50%
+    duration: 400
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EVENT}'
+    timeout: 20000
+- assertNotVisible:
+    id: 'events.page'
+- takeScreenshot: list-after-second-swipe

@@ -1,0 +1,57 @@
+# sc-23327 (from sc-22871) on a phone: from Events > ${TAB} > ${EVENT}, the header's ‹ Events and then the edge swipe each return to the list with ${EVENT}'s row in view.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.${TAB}'
+    timeout: 30000
+- tapOn:
+    id: 'events.tab.${TAB}'
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${EVENT}'
+    timeout: 20000
+- tapOn:
+    id: 'events.row.${EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- tapOn:
+    id: 'frame.back'
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EVENT}'
+    timeout: 10000
+- assertNotVisible:
+    id: 'events.page'
+- takeScreenshot: after-header-back
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: 'events.row.${EVENT}'
+      - extendedWaitUntil:
+          visible:
+            id: 'events.page'
+          timeout: 20000
+      - waitForAnimationToEnd
+      - swipe:
+          start: 1%, 50%
+          end: 85%, 50%
+          duration: 400
+      - waitForAnimationToEnd
+      - extendedWaitUntil:
+          visible:
+            id: 'events.row.${EVENT}'
+          timeout: 10000
+      - assertNotVisible:
+          id: 'events.page'
+      - takeScreenshot: after-swipe
+      - assertVisible:
+          id: 'events.tab.${TAB}'
+          selected: true
