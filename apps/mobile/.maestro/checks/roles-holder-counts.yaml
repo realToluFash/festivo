@@ -1,0 +1,17 @@
+# Roles, with the event manager's and the coordinator's holder counts in view, read in the account's language (sc-15361).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/roles
+- extendedWaitUntil:
+    visible: '{{t:rolesScreen.title}}'
+    timeout: 30000
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'roles.role.coordinator'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: roles-holder-counts

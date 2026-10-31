@@ -1,0 +1,18 @@
+# Name open on Account, a new name typed, keys still up on the field. sc-18587.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible: '{{t:account.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'nameCard.change'
+    timeout: 30000
+- tapOn:
+    id: 'nameCard.change'
+- tapOn:
+    id: 'nameCard.field'
+- eraseText: 80
+- inputText: 'Adaeze Okafor'
+- takeScreenshot: name-typed

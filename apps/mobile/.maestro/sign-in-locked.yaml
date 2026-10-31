@@ -1,0 +1,48 @@
+# Past the sign-in limit the form says when to try again, and offers a reset. sc-55.
+#
+# Six wrong passwords, because the limit is five per address; a fresh address
+# from `node scripts/qa-account.mjs` so no other run's budget is spent. The time
+# is matched in English: the notice has no testID but its reset button.
+#
+#   node .qa/bin/qa-env.mjs maestro sign-in-locked EMAIL=…
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.submit'
+    timeout: 60000
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- repeat:
+    times: 6
+    commands:
+      - runFlow:
+          when:
+            notVisible:
+              id: 'signIn.locked.reset'
+          commands:
+            - tapOn:
+                id: 'signIn.password'
+            - eraseText: 120
+            - inputText: 'not-the-password'
+            - tapOn:
+                id: 'signIn.submit'
+            - runFlow:
+                when:
+                  visible: 'Save Password?'
+                commands:
+                  - tapOn: 'Not Now'
+            - waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.locked.reset'
+    timeout: 30000
+- assertVisible: 'Try again at [0-2][0-9]:[0-5][0-9].*'
+- waitForAnimationToEnd
+- takeScreenshot: mobile-sign-in-locked

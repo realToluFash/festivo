@@ -1,0 +1,14 @@
+# Expo Go's developer menu, where it is open over the app: its own Close button, never a
+# coordinate, which differs between iPhone and iPad. A first run opens the menu under its
+# sheet, and Continue closes only the sheet. Both the sheet flow and expo-go-menu.yaml call
+# this. sc-19752, sc-20534.
+appId: host.exp.Exponent
+---
+- runFlow:
+    when:
+      visible: 'Go home'
+    commands:
+      - tapOn: 'Close'
+      - extendedWaitUntil:
+          notVisible: 'Go home'
+          timeout: 5000

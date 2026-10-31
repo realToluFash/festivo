@@ -1,0 +1,53 @@
+# iOS. sc-23327 (sc-18108's steps, Back as the swipe from the left edge): a member's Remove confirmation open; Back once (MODE=header: the header back), then Back again. BACK_ID is the page's own back: frame.back on a phone, members.back, roles.back or events.back held upright.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-settings.yaml
+- tapOn:
+    id: 'settings.members'
+- extendedWaitUntil:
+    visible:
+      id: 'members.row.${MEMBER}'
+    timeout: 30000
+- tapOn:
+    id: 'members.row.${MEMBER}'
+- extendedWaitUntil:
+    visible:
+      id: '${BACK_ID}'
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: 'members.remove'
+    direction: DOWN
+- tapOn:
+    id: 'members.remove'
+- scrollUntilVisible:
+    element:
+      id: 'members.remove.confirm'
+    direction: DOWN
+- takeScreenshot: confirm
+- runFlow:
+    when:
+      true: ${MODE == 'header'}
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: '${BACK_ID}'
+          direction: UP
+      - tapOn:
+          id: '${BACK_ID}'
+- runFlow:
+    when:
+      true: ${MODE != 'header'}
+    commands:
+      - swipe:
+          start: 1%, 50%
+          end: 85%, 50%
+          duration: 400
+- waitForAnimationToEnd
+- takeScreenshot: after-back
+- swipe:
+    start: 1%, 50%
+    end: 85%, 50%
+    duration: 400
+- waitForAnimationToEnd
+- takeScreenshot: after-second-back

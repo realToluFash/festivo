@@ -1,0 +1,43 @@
+# sc-22146: on iOS, New event's Ends time sheet, the wheel scrolled and the sheet closed by a tap outside; Ends' time shows a time.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.end.time'
+    direction: DOWN
+    centerElement: true
+- swipe:
+    start: 50%, 45%
+    end: 50%, 57%
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'eventForm.end.time'
+- assertNotVisible:
+    id: 'eventForm.end.time'
+    text: '.*\d.*'
+- takeScreenshot: before
+- tapOn:
+    id: 'eventForm.end.time'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.end.done'
+    timeout: 10000
+- swipe:
+    start: 35%, 80%
+    end: 35%, 70%
+- waitForAnimationToEnd
+- takeScreenshot: picked
+- tapOn:
+    point: '50%,8%'
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'eventForm.end.done'
+- assertVisible:
+    id: 'eventForm.end.time'
+    text: '.*\d.*'
+- takeScreenshot: kept
