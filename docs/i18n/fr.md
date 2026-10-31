@@ -625,3 +625,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `validation.invite_email_invalid`, sc-20577) : « Cela ne ressemble pas à une adresse e-mail.
   Vérifiez qu’elle contient un @ et un domaine. » L’anglais est le même partout, le français
   aussi ; « Cette adresse e-mail ne semble pas valide », sur le champ d’invitation, était l’exception.
+- **31 Oct 2026. Le toast et son « Enregistré »** (`toast.undo`, `toast.close`,
+  `saveLabel.saved`, web et app, sc-24571 pour sc-22092). L’action du toast est « Annuler »,
+  comme partout pour défaire ce qui vient d’être fait ; à côté d’un message qui vient de dire
+  ce qui a été fait, elle ne se lit pas comme « renoncer ». Le bouton de fermeture s’annonce
+  « Fermer ». Le bouton d’enregistrement passe à « ✓ Enregistré » : sur le bouton, le participe
+  seul suffit et tient sur téléphone ; la région live garde « Modifications enregistrées ».

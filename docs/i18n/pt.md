@@ -589,3 +589,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   contém", com o verbo de `deleteLoading`. "Se a eliminar … são eliminados na mesma", e
   "restaurá-la", como `deleteWindow`, com o prazo fixo "durante 30 dias". O botão é "Tentar
   novamente", como no ecrã Eventos.
+- **31 Oct 2026. O aviso e o seu "Guardado"** (`toast.undo`, `toast.close`, `saveLabel.saved`,
+  web e app, sc-24571 para sc-22092). A ação do aviso é "Anular", o verbo curto que as interfaces
+  PT-PT usam para desfazer o que acabou de ser feito; o botão de fecho anuncia-se "Fechar",
+  como `switcher.close`. O botão de guardar passa a "✓ Guardado", no masculino invariável,
+  porque o botão não sabe o que guarda.

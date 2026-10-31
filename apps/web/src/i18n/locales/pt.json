@@ -2082,10 +2082,10 @@
     "key_automatic": "O Soirely trata disso por si"
   },
   "saveLabel": {
-    "saved": "Saved"
+    "saved": "Guardado"
   },
   "toast": {
-    "undo": "Undo",
-    "close": "Close"
+    "undo": "Anular",
+    "close": "Fechar"
   }
 }

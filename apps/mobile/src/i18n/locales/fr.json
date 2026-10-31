@@ -1819,10 +1819,10 @@
     "update": "Mettre à jour"
   },
   "saveLabel": {
-    "saved": "Saved"
+    "saved": "Enregistré"
   },
   "toast": {
-    "undo": "Undo",
-    "close": "Close"
+    "undo": "Annuler",
+    "close": "Fermer"
   }
 }

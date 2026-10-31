@@ -2082,10 +2082,10 @@
     "key_automatic": "Soirely s’en charge pour vous"
   },
   "saveLabel": {
-    "saved": "Saved"
+    "saved": "Enregistré"
   },
   "toast": {
-    "undo": "Undo",
-    "close": "Close"
+    "undo": "Annuler",
+    "close": "Fermer"
   }
 }
