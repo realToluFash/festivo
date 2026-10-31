@@ -84,6 +84,7 @@ import {
   qrPng,
   APP_SERVICES,
   launchVideo,
+  recordingSize,
   iosBundle,
   clearIosRelease,
   uninstallHeld,
@@ -506,6 +507,16 @@ describe('a release build', () => {
         apk,
       ),
     ).toEqual(['soirely-0123456789ab.apk']);
+  });
+
+  it('records the tablet at half its size, where the encoder records 0.05 s at full size', () => {
+    expect(recordingSize('Physical size: 1600x2560\n')).toBe('800x1280');
+    expect(recordingSize('Physical size: 2560x1600\nOverride size: 1280x800\n')).toBe('1280x800');
+  });
+
+  it('records the phone at its own size', () => {
+    expect(recordingSize('Physical size: 1080x2400\n')).toBeNull();
+    expect(recordingSize(null)).toBeNull();
   });
 
   it('names the launch video by platform and device, so every launch of a commit is kept', () => {

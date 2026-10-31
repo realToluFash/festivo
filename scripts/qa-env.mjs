@@ -292,6 +292,17 @@ export function launchVideo(root, sha, platform, device) {
   return join(root, '.qa/release', `launch-${sha.slice(0, 12)}.${platform}.${device}.mp4`);
 }
 
+// At the tablet's 1600 × 2560 the emulator's encoder records 0.05 s; halved it records it all (sc-24660).
+export function recordingSize(wmSize) {
+  const found = /Physical size: (\d+)x(\d+)/.exec(wmSize ?? '');
+  if (!found) return null;
+  let [width, height] = [Number(found[1]), Number(found[2])];
+  if (Math.min(width, height) <= 1080) return null;
+  while (Math.min(width, height) > 1080) [width, height] = [width / 2, height / 2];
+  const even = (side) => 2 * Math.round(side / 2);
+  return `${even(width)}x${even(height)}`;
+}
+
 // A Mac keeps an APK and an app side by side: each build replaces only its own kind.
 export function staleBuilds(names, build) {
   const kind = extname(build);
@@ -1578,9 +1589,19 @@ function removeRelease(tools, root) {
 }
 
 function recordLaunch(tools) {
+  const size = recordingSize(adbOut(tools, ['shell', 'wm', 'size']));
   const recorder = spawn(
     tools.adb,
-    ['-s', emulatorSerial(), 'shell', 'screenrecord', '--time-limit', '15', LAUNCH_RECORDING],
+    [
+      '-s',
+      emulatorSerial(),
+      'shell',
+      'screenrecord',
+      '--time-limit',
+      '15',
+      ...(size ? ['--size', size] : []),
+      LAUNCH_RECORDING,
+    ],
     { stdio: 'ignore', env: tools.env },
   );
   return new Promise((done) => {
@@ -1723,16 +1744,29 @@ function startAppServices(root) {
 function recordSimulator(udid, video) {
   rmSync(video, { force: true });
   const recorder = spawn('xcrun', ['simctl', 'io', udid, 'recordVideo', '--force', video], {
-    stdio: 'ignore',
+    stdio: ['ignore', 'ignore', 'pipe'],
   });
   const stopped = new Promise((done) => {
     recorder.on('error', () => done());
     recorder.on('exit', () => done());
   });
-  return async () => {
-    await pause(15000);
-    recorder.kill('SIGINT');
-    await stopped;
+  // simctl takes seconds to start writing; a launch before then loses the launch screen (sc-24660).
+  const started = new Promise((done) => {
+    let said = '';
+    recorder.stderr.on('data', (chunk) => {
+      said += chunk;
+      if (said.includes('Recording started')) done();
+    });
+    stopped.then(done);
+    pause(10000).then(done);
+  });
+  return {
+    started,
+    stop: async () => {
+      await pause(15000);
+      recorder.kill('SIGINT');
+      await stopped;
+    },
   };
 }
 
@@ -1765,10 +1799,11 @@ async function releaseIos(args) {
   else startAppServices(root);
 
   const video = launchVideo(root, sha, 'ios', open);
-  const recorded = recordSimulator(udid, video);
+  const recording = recordSimulator(udid, video);
+  await recording.started;
   await pause(1000);
   run('xcrun', ['simctl', 'launch', udid, id]);
-  await recorded();
+  await recording.stop();
   console.log(
     `\nSoirely ${sha.slice(0, 12)}, a release build, on its first launch on the ${open}` +
       `, ${offline ? `offline: ${APP_SERVICES.join(', ')} stopped` : 'online'}.` +
