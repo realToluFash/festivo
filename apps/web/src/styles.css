@@ -2296,6 +2296,7 @@ span {
 .roles-pick[aria-pressed='true'] {
   border-left: var(--borderSelected);
   border-radius: 0 var(--radiusInset) var(--radiusInset) 0;
+  padding-left: calc(var(--spaceMd) - 2px);
   background: var(--colorRowSelected);
 }
 
