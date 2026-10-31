@@ -22,7 +22,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'events.page.duplicate'
 - takeScreenshot: duplicate-after-tap
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       id: 'eventDuplicate.start.date'
     timeout: 10000
