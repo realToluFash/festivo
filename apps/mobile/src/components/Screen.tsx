@@ -638,6 +638,10 @@ export function useStepClose(
             cancels.push(() => scroll?.closing(false));
             continue;
           }
+          if (step.do === 'awaitMount') {
+            cancels.push(afterMount(() => runFrom(steps.slice(at + 1))));
+            break;
+          }
           if (step.do === 'showOpener') {
             afterShown.current = steps.slice(at + 1);
             setClosing(true);
