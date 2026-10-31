@@ -1970,6 +1970,9 @@ describe('the flows a batch runs', () => {
         reset.match(/notVisible: '(.*)'/)[1],
       );
       expect(reset).toContain('ASK: /running');
+      expect(reset).toMatch(
+        /ASK: \/reload(?:\s|#.*)+- runFlow:\s+when:\s+true: \$\{!output\.helper\.reloaded\}\s+file: reopen\.yaml[\s\S]*openLink: \$\{METRO_URL\}\/--\//,
+      );
       expect(reset).not.toMatch(/when:\s+(not)?[vV]isible/);
       expect(readdirSync(join(target, 'batch')).filter((f) => f.includes('save-password'))).toEqual(
         [],
