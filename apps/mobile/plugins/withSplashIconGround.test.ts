@@ -8,7 +8,7 @@ function splashStyles() {
       style: [
         { $: { name: 'AppTheme' }, item: [] },
         {
-          $: { name: 'Theme.App.SplashScreen' },
+          $: { name: 'Theme.App.SplashScreen', parent: 'Theme.SplashScreen' },
           item: [
             { $: { name: 'windowSplashScreenBackground' }, _: '@color/splashscreen_background' },
             { $: { name: 'windowSplashScreenAnimatedIcon' }, _: '@drawable/splashscreen_logo' },
@@ -28,6 +28,15 @@ describe('withIconGroundInTheme', () => {
       { $: { name: 'windowSplashScreenAnimatedIcon' }, _: '@drawable/splashscreen_logo' },
       { $: { name: 'windowSplashScreenIconBackgroundColor' }, _: '#123456' },
     ]);
+  });
+
+  it('moves the theme under the parent that passes the icon background on to Android', () => {
+    const theme = withIconGroundInTheme(splashStyles(), '#123456').resources.style?.[1];
+
+    expect(theme?.$).toEqual({
+      name: 'Theme.App.SplashScreen',
+      parent: 'Theme.SplashScreen.IconBackground',
+    });
   });
 
   it('sets it once when run again', () => {
