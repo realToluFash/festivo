@@ -34,26 +34,12 @@ describe('focus going back to a step’s opener', () => {
 });
 
 describe('a step closing back to its opener', () => {
-  it('on Android with TalkBack on, holds the scroll where it is, waits for the hold to mount before the opener shows, and gives a control opener input focus, then brings it into sight and moves TalkBack’s focus to it, before the keys go down and the step goes (sc-18588, sc-22357, sc-22995)', () => {
-    expect(stepCloseSteps('android', true, 'opener')).toEqual([
+  it('on Android with TalkBack on, holds the scroll, waits for the hold to mount before the opener shows, gives input focus to a holder TalkBack does not read, so a control opener is not said once for input focus and again for the move, then brings the opener into sight and moves TalkBack’s focus to it before the keys go down and the step goes (sc-18587, sc-18588, sc-22357, sc-22995)', () => {
+    expect(stepCloseSteps('android', true)).toEqual([
       { do: 'holdScroll' },
       { do: 'awaitMount' },
       { do: 'showOpener' },
-      { do: 'takeInputFocus', atMs: INPUT_FOCUS_TAKEN_MS, to: 'opener' },
-      { do: 'bringOpener' },
-      { do: 'readOpener' },
-      { do: 'putKeysDown' },
-      { do: 'settleOpener', into: 'outOfSight' },
-      { do: 'finish', focusBack: false, atMs: TALKBACK_FOCUS_TAKEN_MS },
-    ]);
-  });
-
-  it('on Android with TalkBack on, gives input focus to a holder TalkBack does not read beside a line of words, and moves TalkBack’s focus to the line before the keys go down, so TalkBack has not already put it there from the carried-off Save (sc-18587)', () => {
-    expect(stepCloseSteps('android', true, 'holder')).toEqual([
-      { do: 'holdScroll' },
-      { do: 'awaitMount' },
-      { do: 'showOpener' },
-      { do: 'takeInputFocus', atMs: INPUT_FOCUS_TAKEN_MS, to: 'holder' },
+      { do: 'takeInputFocus', atMs: INPUT_FOCUS_TAKEN_MS },
       { do: 'bringOpener' },
       { do: 'readOpener' },
       { do: 'putKeysDown' },
@@ -63,15 +49,11 @@ describe('a step closing back to its opener', () => {
   });
 
   it('closes at once with no screen reader, which has no focus to lose', () => {
-    expect(stepCloseSteps('android', false, 'opener')).toEqual([
-      { do: 'finish', focusBack: true, atMs: 0 },
-    ]);
+    expect(stepCloseSteps('android', false)).toEqual([{ do: 'finish', focusBack: true, atMs: 0 }]);
   });
 
   it('closes at once on iOS, where VoiceOver waits for the move it is asked for', () => {
-    expect(stepCloseSteps('ios', true, 'opener')).toEqual([
-      { do: 'finish', focusBack: true, atMs: 0 },
-    ]);
+    expect(stepCloseSteps('ios', true)).toEqual([{ do: 'finish', focusBack: true, atMs: 0 }]);
   });
 });
 
