@@ -636,7 +636,8 @@ export function useStepClose(
             scroll?.closing(true);
             scroll?.hold(Keyboard.metrics()?.height ?? 0);
             cancels.push(() => scroll?.closing(false));
-            continue;
+            cancels.push(afterMount(() => runFrom(steps.slice(at + 1))));
+            break;
           }
           if (step.do === 'showOpener') {
             afterShown.current = steps.slice(at + 1);
