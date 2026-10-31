@@ -267,6 +267,7 @@ function Choosing({
   const [picked, setPicked] = useState<TimeZoneOption | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [fromKeys, setFromKeys] = useState(false);
   const input = useRef<TextInputInstance>(null);
   // A zone picked from the list takes the list's place, so focus goes to the field now holding it.
   useFocusOnAnswer(picked ?? undefined, input);
@@ -311,9 +312,10 @@ function Choosing({
           most: LIST_HEIGHT,
         });
 
-  async function save(): Promise<void> {
+  async function save(keys: boolean): Promise<void> {
     if (saving) return;
 
+    setFromKeys(keys);
     const zone = showingPicked ? picked : exactZone(zones, typed);
     if (zone == null) {
       setError(
@@ -348,8 +350,8 @@ function Choosing({
           onLayout={(event) => setGroupHeight(event.nativeEvent.layout.height)}
           style={styles.choosing}
         >
-          {/* A scroll of a save's close that carries Save off under TalkBack's focus would put that focus on the field before the line (sc-18587). */}
-          <View style={styles.choosing} {...stepHidden(closing)}>
+          {/* A scroll of a save's close that carries Save off under TalkBack's focus would put that focus on the field before the line; saved from the keys, that focus is on the field, and hiding it sends TalkBack to the next card (sc-18587). */}
+          <View style={styles.choosing} {...stepHidden(closing && !fromKeys)}>
             <Field
               label={t('timeZone.find')}
               error={error}
@@ -371,7 +373,7 @@ function Choosing({
                   setError(null);
                 }}
                 returnKeyType="done"
-                onSubmitEditing={() => void save()}
+                onSubmitEditing={() => void save(true)}
                 submitBehavior="submit"
                 accessibilityLabel={t('timeZone.find')}
                 accessibilityHint={hinted ? help : undefined}
@@ -432,7 +434,7 @@ function Choosing({
 
           <PrimaryButton
             label={saving ? t('timeZone.saving') : t('timeZone.save')}
-            onPress={() => void save()}
+            onPress={() => void save(false)}
             busy={saving}
             ref={saveCloser}
             testID="timeZone.save"

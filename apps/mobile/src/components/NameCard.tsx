@@ -194,14 +194,16 @@ function Editing({
   const [typed, setTyped] = useState(name);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [fromKeys, setFromKeys] = useState(false);
   const input = useRef<TextInputInstance>(null);
   const aboveKeyboard = useAboveKeyboard(closing);
   const top = useScrolledToTop(opener);
   useEffect(() => onShown(input.current), [onShown]);
 
-  async function save(): Promise<void> {
+  async function save(keys: boolean): Promise<void> {
     if (saving) return;
 
+    setFromKeys(keys);
     const checked = nameToSave(typed, name);
     if (checked.kind === 'blank') {
       setError(t('nameCard.blank'));
@@ -235,8 +237,8 @@ function Editing({
     <>
       <View {...aboveKeyboard} {...hidden}>
         <View ref={top} style={styles.editing}>
-          {/* A scroll of a save's close that carries Save off under TalkBack's focus would put that focus on the field before the line (sc-18587). */}
-          <View {...stepHidden(closing)}>
+          {/* A scroll of a save's close that carries Save off under TalkBack's focus would put that focus on the field before the line; saved from the keys, that focus is on the field, and hiding it sends TalkBack to the next card (sc-18587). */}
+          <View {...stepHidden(closing && !fromKeys)}>
             <Field label={t('completeProfile.name')} error={error}>
               <TextField
                 ref={input}
@@ -254,7 +256,7 @@ function Editing({
                 autoCapitalize="words"
                 maxLength={ACCOUNT_NAME_MAXIMUM}
                 returnKeyType="done"
-                onSubmitEditing={() => void save()}
+                onSubmitEditing={() => void save(true)}
                 submitBehavior="submit"
                 accessibilityLabel={t('completeProfile.name')}
                 testID="nameCard.field"
@@ -264,7 +266,7 @@ function Editing({
 
           <PrimaryButton
             label={saving ? t('nameCard.saving') : t('nameCard.save')}
-            onPress={() => void save()}
+            onPress={() => void save(false)}
             busy={saving}
             ref={saveCloser}
             testID="nameCard.save"
