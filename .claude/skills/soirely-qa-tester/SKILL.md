@@ -363,7 +363,7 @@ check in a batch costs a reload and its own few seconds.
 ```sh
 node .qa/bin/qa-env.mjs account --ready                  # profile complete, owning one organisation
 node .qa/bin/qa-env.mjs account --two-factor             # the same, two-factor on; prints TOTP_SECRET
-node .qa/bin/qa-env.mjs batch <name> <check>… EMAIL=… PASSWORD=… [TOTP_SECRET=…] [--lang en,es] [--ipad | --android]
+node .qa/bin/qa-env.mjs batch <name> <check>… EMAIL=… PASSWORD=… [TOTP_SECRET=…] [--lang en,es] [--ipad | --se | --android]
 node .qa/bin/qa-env.mjs batch <name>-<check> <check> --cold EMAIL=… PASSWORD=…   # one check alone, cold
 ```
 
