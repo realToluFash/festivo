@@ -635,7 +635,7 @@ function Leave({
         <>
           <p>{t('ownership.leaveBody', { organisation: organisation.name })}</p>
           {refused != null && <FieldError id="leave-failed" message={refused} />}
-          <div className="actions">
+          <div className="actions actions-confirm">
             <button type="button" className="link-button" {...offButton(busy)} onClick={onStay}>
               {t('ownership.stay')}
             </button>
@@ -808,7 +808,7 @@ function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: ()
         </p>
       </div>
 
-      <div className="actions">
+      <div className="actions actions-confirm">
         <button className="link-button" type="button" {...offButton(busy)} onClick={onKeep}>
           <span className="button-label">
             {t('ownership.deleteKeep', { organisation: organisation.name })}

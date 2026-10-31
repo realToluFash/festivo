@@ -474,6 +474,18 @@ span {
   :has(> :is(.button-primary, .button-danger)) > .button {
     --buttonHit: var(--sizeHitPhonePrimary);
   }
+
+  /* A text action keeps 44 beside a 48 button: a row would otherwise stretch it to 48. */
+  :has(> :is(.button-primary, .button-danger)) > .link-button {
+    height: fit-content;
+    margin-block: auto;
+  }
+
+  /* A confirm's pair stacked: the confirming button on top, the dismissive one under it. */
+  .actions-confirm {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
 }
 
 /* ── Panels, tables, states ───────────────────────────────────────────────── */

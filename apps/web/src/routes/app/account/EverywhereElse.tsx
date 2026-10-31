@@ -288,7 +288,10 @@ export function EverywhereElse({
           </div>
         </div>
 
-        <div className="actions">
+        <div className="actions actions-confirm">
+          <button className="link-button" type="button" onClick={onKeep} disabled={working}>
+            {t('devices.everywhereKeep', { count })}
+          </button>
           {viaProvider ? (
             <button
               className={provider === 'google' ? 'button button-google' : 'button button-apple'}
@@ -327,9 +330,6 @@ export function EverywhereElse({
                     : t('devices.everywhereConfirmAll', { count })}
             </button>
           )}
-          <button className="link-button" type="button" onClick={onKeep} disabled={working}>
-            {t('devices.everywhereKeep', { count })}
-          </button>
         </div>
       </form>
     </>
