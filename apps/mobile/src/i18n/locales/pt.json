@@ -1222,7 +1222,7 @@
     "beyondGrant": "A função desta pessoa inclui uma permissão que a sua não tem, por isso não pode alterar-lhe a função nem o acesso.",
     "removeTitle": "Remover {{name}}",
     "removeBody": "Esta pessoa perde o acesso assim que voltar a usar a Soirely. Os eventos desta pessoa continuam associados a {{organisation}}.",
-    "removeButton": "Remover de {{organisation}}",
+    "removeButton": "Remover de {{organisation}}…",
     "removeConfirmTitle": "Remover {{name}}?",
     "removeConfirmBody": "{{name}} deixa de ter acesso a {{organisation}} assim que voltar a usar a Soirely. Os eventos desta pessoa continuam associados a {{organisation}}, e tudo o que fez fica guardado.",
     "removeConfirm": "Remover {{name}}",
