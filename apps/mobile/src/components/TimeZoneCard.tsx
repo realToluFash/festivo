@@ -27,7 +27,6 @@ import { useReadOut } from './ReadOut.tsx';
 import {
   SETTLED_MS,
   type StepClosed,
-  stepHidden,
   type StepHidden,
   useAboveKeyboard,
   useFocusBackToOpener,
@@ -87,6 +86,7 @@ export function TimeZoneCard({
     // Keys a swap leaves up put the line out of sight, and a scroll to it that carries Save away moves TalkBack to the card's description first (sc-18587).
     closer: saveCloser,
     hidden: savedHidden,
+    fieldHidden,
     close: closeSaved,
   } = useStepClose(opener, 'saved', 'holder', (back) => {
     setSavedFocused(back == null);
@@ -210,11 +210,11 @@ export function TimeZoneCard({
           zones={zones}
           now={label}
           closing={closing || savedClosing}
-          onSaved={async (zone) => {
+          onSaved={async (zone, fromKeys) => {
             await onSaved();
             stop();
             setSaved(zoneLabel(zone));
-            closeSaved();
+            closeSaved(fromKeys);
           }}
           onCancel={() => {
             stop();
@@ -226,6 +226,7 @@ export function TimeZoneCard({
           closer={closer}
           saveCloser={saveCloser}
           hidden={hidden}
+          fieldHidden={fieldHidden}
         />
       )}
     </View>
@@ -246,12 +247,13 @@ function Choosing({
   closer,
   saveCloser,
   hidden,
+  fieldHidden,
 }: {
   phone: boolean;
   zones: readonly TimeZoneOption[];
   now: string | null;
   closing: boolean;
-  onSaved: (zone: TimeZoneOption) => Promise<void>;
+  onSaved: (zone: TimeZoneOption, fromKeys: boolean) => Promise<void>;
   onCancel: () => void;
   /** Change, while it shows above the step as the step opens. */
   opener: RefObject<ViewInstance | null> | null;
@@ -261,6 +263,8 @@ function Choosing({
   saveCloser: RefObject<ViewInstance | null>;
   /** Hides all but Cancel while Cancel closes the step. */
   hidden: StepHidden;
+  /** Hides the field while Save, not the keys, closes the step. */
+  fieldHidden: StepHidden;
 }) {
   const { t } = useTranslation();
   const [typed, setTyped] = useState('');
@@ -311,7 +315,7 @@ function Choosing({
           most: LIST_HEIGHT,
         });
 
-  async function save(): Promise<void> {
+  async function save(keys: boolean): Promise<void> {
     if (saving) return;
 
     const zone = showingPicked ? picked : exactZone(zones, typed);
@@ -329,7 +333,7 @@ function Choosing({
 
     try {
       await api.setTimezone(zone.id);
-      await onSaved(zone);
+      await onSaved(zone, keys);
     } catch (refusal) {
       setSaving(false);
       setError(
@@ -348,8 +352,7 @@ function Choosing({
           onLayout={(event) => setGroupHeight(event.nativeEvent.layout.height)}
           style={styles.choosing}
         >
-          {/* A scroll of a save's close that carries Save off under TalkBack's focus would put that focus on the field before the line (sc-18587). */}
-          <View style={styles.choosing} {...stepHidden(closing)}>
+          <View style={styles.choosing} {...fieldHidden}>
             <Field
               label={t('timeZone.find')}
               error={error}
@@ -371,7 +374,7 @@ function Choosing({
                   setError(null);
                 }}
                 returnKeyType="done"
-                onSubmitEditing={() => void save()}
+                onSubmitEditing={() => void save(true)}
                 submitBehavior="submit"
                 accessibilityLabel={t('timeZone.find')}
                 accessibilityHint={hinted ? help : undefined}
@@ -432,7 +435,7 @@ function Choosing({
 
           <PrimaryButton
             label={saving ? t('timeZone.saving') : t('timeZone.save')}
-            onPress={() => void save()}
+            onPress={() => void save(false)}
             busy={saving}
             ref={saveCloser}
             testID="timeZone.save"
