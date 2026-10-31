@@ -76,11 +76,17 @@ export function newOrganisationMessage(
   return problem.kind === 'nameBlank' ? t('orgGeneral.nameBlank') : t('forms.countryBlank');
 }
 
-/** "Too many new organisations for now. Try again at 14:35.", the time in the reader's own clock. */
-export function limitMessage(until: Date | null, locale: string, t: TFunction): string {
-  const title = t('createOrganisation.limitedTitle');
-
-  return until == null
-    ? title
-    : `${title} ${t('createOrganisation.limitedBody', { time: formatTimeOfDay(until, locale) })}`;
+/** "Too many new organisations for now." over "Try again at 14:35.", the time in the reader's own clock, and no second line when no time came. */
+export function limitNotice(
+  until: Date | null,
+  locale: string,
+  t: TFunction,
+): { title: string; body: string | null } {
+  return {
+    title: t('createOrganisation.limitedTitle'),
+    body:
+      until == null
+        ? null
+        : t('createOrganisation.limitedBody', { time: formatTimeOfDay(until, locale) }),
+  };
 }
