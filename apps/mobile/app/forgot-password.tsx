@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
 import { type AuthBack, AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
-import { Footnote, PrimaryButton, SecondaryButton } from '../src/components/Buttons.tsx';
+import { Footnote, PrimaryButton, QuietButton } from '../src/components/Buttons.tsx';
 import { Field, focusChecked, keysStayDown, TextField } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { Text } from '../src/components/Text.tsx';
@@ -85,11 +85,15 @@ export default function ForgotPassword() {
           mark="i"
           title={t('recovery.nothingTitle')}
           body={t('recovery.nothingBody')}
-        />
-        <SecondaryButton
-          label={t('recovery.sendAgain')}
-          onPress={() => void send(status.email, true)}
-          testID="recovery.sendAgain"
+          button={
+            <View style={styles.sendAgain}>
+              <QuietButton
+                label={t('recovery.sendAgain')}
+                onPress={() => void send(status.email, true)}
+                testID="recovery.sendAgain"
+              />
+            </View>
+          }
         />
         <Text size={tokens.typeSmall.size} style={styles.secondary}>
           {t('recovery.providerNote')}
@@ -212,5 +216,6 @@ function refusalFrom(error: unknown, again: boolean): Status {
 
 const styles = StyleSheet.create({
   form: { gap: tokens.spaceXl },
+  sendAgain: { alignItems: 'flex-start' },
   secondary: { color: tokens.colorInkSecondary },
 });

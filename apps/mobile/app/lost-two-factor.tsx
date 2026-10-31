@@ -897,19 +897,21 @@ function Codes({
             busy={asking}
             testID="lostTwoFactor.ask"
           />
-          <SecondaryButton
-            label={
-              cooldown > 0
-                ? t('lostTwoFactor.resendIn', { time: formatCountdown(cooldown) })
-                : t('lostTwoFactor.resend')
-            }
-            onPress={() => void resend()}
-            off={cooldown > 0}
-            testID="lostTwoFactor.resend"
-          />
-          <Text size={tokens.typeSmall.size} style={styles.secondary}>
-            {t('lostTwoFactor.resendNote')}
-          </Text>
+          <View style={styles.resend}>
+            <QuietButton
+              label={
+                cooldown > 0
+                  ? t('lostTwoFactor.resendIn', { time: formatCountdown(cooldown) })
+                  : t('lostTwoFactor.resend')
+              }
+              onPress={() => void resend()}
+              off={cooldown > 0}
+              testID="lostTwoFactor.resend"
+            />
+            <Text size={tokens.typeSmall.size} style={styles.secondary}>
+              {t('lostTwoFactor.resendNote')}
+            </Text>
+          </View>
           {hasPhone && wording.offerText && (
             <SecondaryButton
               label={t('lostTwoFactor.textInstead')}
@@ -926,6 +928,7 @@ function Codes({
 }
 
 const styles = StyleSheet.create({
+  resend: { alignItems: 'flex-start', gap: tokens.spaceXs },
   saying: { gap: tokens.spaceSm },
   steps: { gap: tokens.spaceMd },
   step: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceMd },

@@ -142,7 +142,11 @@ describe('getting back in without the authenticator', () => {
     ).toBeDefined();
     expect(screen.getByLabelText('Code from the email')).toBeDefined();
     expect(screen.getByLabelText('Code from the text')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Send new codes in 0:42' })).toBeDefined();
+    // A text-only action, with no fill and no edge (sc-23279).
+    expect(screen.getByRole('button', { name: 'Send new codes in 0:42' }).className).toBe(
+      'link-button',
+    );
+    expect(screen.getByText('New codes replace the last ones.')).toBeDefined();
   });
 
   it('checks both codes before asking, and marks only the one the server says is wrong', async () => {

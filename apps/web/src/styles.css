@@ -1500,6 +1500,15 @@ span {
   text-decoration: underline;
 }
 
+.resend .link-button {
+  font-variant-numeric: tabular-nums;
+}
+
+.resend .link-button[data-off] {
+  color: var(--colorInkSecondary);
+  cursor: default;
+}
+
 .auth-footnote .link-button {
   display: inline-flex;
   align-items: center;
