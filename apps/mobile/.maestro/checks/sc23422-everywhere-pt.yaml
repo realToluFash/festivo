@@ -1,4 +1,4 @@
-# sc-23422, in Portuguese and after a wrong password first: Sign out everywhere else, after the sign-in renewed while the card was open, leaves this device alone and counted.
+# sc-23422, in Portuguese and after a wrong password first: Sign out everywhere else leaves this device alone and counted. Needs ${EMAIL}, ${PASSWORD}, ${API_URL} and ${METRO_URL}.
 appId: host.exp.Exponent
 ---
 - runScript:

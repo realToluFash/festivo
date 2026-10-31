@@ -1,4 +1,4 @@
-# sc-23422: Sign out everywhere else, after the sign-in renewed while the card was open, leaves this device alone and counted.
+# sc-23422: Sign out everywhere else, after the sign-in renewed while the card was open, leaves this device alone and counted. Needs ${EMAIL}, ${PASSWORD}, ${API_URL} and ${METRO_URL}, and the QA stack's API on JWT_TOKEN_TTL=60 (below the 75 s wait, in services/api/.env.local), or nothing renews and the check passes without the fix.
 appId: host.exp.Exponent
 ---
 - runScript:
@@ -25,7 +25,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'devices.everywhere'
 - extendedWaitUntil:
-    visible: '.*This device stays signed in.*'
+    visible: '.*(?:This device stays signed in|En este dispositivo la sesión sigue abierta|Cet appareil-ci reste connecté|Neste dispositivo, a sessão mantém-se).*'
     timeout: 10000
 - takeScreenshot: step-offers-others
 - tapOn:
@@ -35,7 +35,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'devices.everywhere.confirm'
 - extendedWaitUntil:
-    visible: '(Your other device is signed out\.|Your [0-9]+ other devices are signed out\.)'
+    visible: '(?:Your other device is signed out\.|Your [0-9]+ other devices are signed out\.|Se cerró la sesión en su otro dispositivo\.|Se cerró la sesión en sus [0-9]+ (?:de )?otros dispositivos\.|Votre autre appareil est déconnecté\.|Vos [0-9]+ (?:d’)?autres appareils sont déconnectés\.|A sessão foi encerrada no seu outro dispositivo\.|A sessão foi encerrada nos seus [0-9]+ (?:de )?outros dispositivos\.)'
     timeout: 30000
 - scrollUntilVisible:
     element:
@@ -43,8 +43,8 @@ appId: host.exp.Exponent
     direction: DOWN
     timeout: 15000
     centerElement: true
-- assertVisible: '1 device'
-- assertNotVisible: '0 devices'
+- assertVisible: '(?:1 device|1 dispositivo|1 appareil)'
+- assertNotVisible: '(?:0 devices|0 dispositivos|0 appareils)'
 - assertNotVisible:
     id: 'devices.everywhere'
 - takeScreenshot: card-after
