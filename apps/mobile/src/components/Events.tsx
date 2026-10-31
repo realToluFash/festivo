@@ -1,6 +1,7 @@
 import type { OrganisationEvent } from '@soirely/api-client';
 import {
   type EventPhase,
+  PHASE_LOOK,
   calledOff,
   formatEventDate,
   formatEventRange,
@@ -8,7 +9,7 @@ import {
 } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { StyleSheet, View, type TextStyle, type ViewStyle } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
@@ -25,6 +26,7 @@ import { DraftRow } from './MakeLive.tsx';
 import { PauseButton, PausedRow } from './PauseEvent.tsx';
 import { Notice } from './Notice.tsx';
 import { readOut } from './ReadOut.tsx';
+import { StatusChip } from './StatusChip.tsx';
 import { StepMark } from './StepMark.tsx';
 import { Text } from './Text.tsx';
 import { ComingUp } from './Timeline.tsx';
@@ -35,56 +37,16 @@ function useShownPhase(event: OrganisationEvent, now: Date): EventPhase {
   return shownPhase(event, useLoadedAt(event), now);
 }
 
-/** A word and a shape, never colour alone (WCAG 2.2 §1.4.1); the pill grows with its word. */
 export function EventState({ phase }: { phase: EventPhase }) {
   const { t } = useTranslation();
-  const pair = PHASE_PAIR[phase];
 
   return (
-    <View style={[styles.state, pair?.chip]} testID={`events.phase.${phase}`}>
-      <PhaseShape phase={phase} />
-      <Text size={tokens.typeSmall.size} weight="semibold" style={pair?.word ?? styles.stateWord}>
-        {t(PHASE_WORD[phase])}
-      </Text>
-    </View>
+    <StatusChip
+      look={PHASE_LOOK[phase]}
+      word={t(PHASE_WORD[phase])}
+      testID={`events.phase.${phase}`}
+    />
   );
-}
-
-/** Draft an empty circle, Live a green dot, Happening now a half-filled circle, Paused two bars, Finished a tick. */
-function PhaseShape({ phase }: { phase: EventPhase }) {
-  const hidden = { accessibilityElementsHidden: true, importantForAccessibility: 'no' } as const;
-
-  switch (phase) {
-    case 'draft':
-      return <View style={styles.ring} {...hidden} />;
-    case 'live':
-      return <View style={styles.dot} {...hidden} />;
-    case 'happening_now':
-      return (
-        <View style={[styles.ring, styles.ringNow]} {...hidden}>
-          <View style={styles.halfNow} />
-        </View>
-      );
-    case 'paused':
-      return (
-        <View style={styles.bars} {...hidden}>
-          <View style={styles.bar} />
-          <View style={styles.bar} />
-        </View>
-      );
-    case 'finished':
-      return (
-        <Text
-          size={tokens.typeSmall.size}
-          weight="bold"
-          style={styles.stateWord}
-          {...hidden}
-          accessible={false}
-        >
-          ✓
-        </Text>
-      );
-  }
 }
 
 function EventType({ event, size }: { event: OrganisationEvent; size: number }) {
@@ -302,50 +264,5 @@ const styles = StyleSheet.create({
   cards: { gap: tokens.spaceLg },
   pageHead: { gap: tokens.spaceXs },
   pageActions: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
-  stateWord: { color: tokens.colorInkSecondary },
-  state: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceXs,
-    paddingHorizontal: tokens.spaceSm,
-    paddingVertical: tokens.spaceXxs,
-    borderRadius: tokens.radiusPill,
-    borderWidth: 1,
-    borderColor: tokens.colorControlBorder,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: tokens.radiusPill,
-    backgroundColor: tokens.colorAccent,
-  },
-  ring: {
-    width: 10,
-    height: 10,
-    borderRadius: tokens.radiusPill,
-    borderWidth: 1.5,
-    borderColor: tokens.colorMarkEmpty,
-    overflow: 'hidden',
-  },
-  ringNow: { borderColor: tokens.colorAttentionText },
-  halfNow: { width: '50%', height: '100%', backgroundColor: tokens.colorAttentionText },
   lifecycle: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceMd },
-  bars: { flexDirection: 'row', gap: 2 },
-  bar: { width: 3, height: 10, borderRadius: 1, backgroundColor: tokens.colorPausedText },
 });
-
-const PHASE_PAIR: Partial<Record<EventPhase, { chip: ViewStyle; word: TextStyle }>> = {
-  live: {
-    chip: { borderColor: tokens.colorAccentTintBorder, backgroundColor: tokens.colorAccentTint },
-    word: { color: tokens.colorAccentText },
-  },
-  happening_now: {
-    chip: { borderColor: tokens.colorAttentionBorder, backgroundColor: tokens.colorAttentionTint },
-    word: { color: tokens.colorAttentionText },
-  },
-  paused: {
-    chip: { borderColor: tokens.colorHeaderBorder, backgroundColor: tokens.colorPausedTint },
-    word: { color: tokens.colorPausedText },
-  },
-};

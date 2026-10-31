@@ -4,10 +4,10 @@ import { tokens } from '../theme/tokens.ts';
 import { Text } from './Text.tsx';
 import { useMarkSide } from './markSide.ts';
 
-export type StatusTone = 'progress' | 'done' | 'broken' | 'skipped';
+export type MarkTone = 'progress' | 'done' | 'broken' | 'skipped';
 
 /** A state as a shape and a word, never colour alone: "… Waiting for an answer", "✓ Confirmed". */
-export function StatusMark({ tone, word }: { tone: StatusTone; word: string }) {
+export function StatusMark({ tone, word }: { tone: MarkTone; word: string }) {
   return (
     <View style={styles.row}>
       <GlyphMark mark={tokens.marks[tone]} />

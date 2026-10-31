@@ -15,6 +15,7 @@ import {
   memberIsShown,
   memberRowLine,
   memberStanding,
+  memberStatusLook,
   memberStatusWord,
   PROOF_MINUTES,
   ownRoleLine,
@@ -46,7 +47,7 @@ import { FieldError } from './Field.tsx';
 import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
 import { OwnerClaimBanner } from './OwnerClaimBanner.tsx';
-import { GlyphMark, type Mark } from './StatusMark.tsx';
+import { StatusChip } from './StatusChip.tsx';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { ConfirmItsYou } from './ConfirmItsYou.tsx';
 import {
@@ -74,36 +75,11 @@ export function activeCount(list: MembersList): number {
   return list.members.filter((member) => member.status === 'active').length;
 }
 
-const MEMBER_MARK = 18;
-
-const FORMER_MARK: Mark = {
-  glyph: tokens.marks.broken.glyph,
-  fill: tokens.colorCard,
-  ring: tokens.colorInkSecondary,
-  ink: tokens.colorInkSecondary,
-};
-
-/** A member's state as a shape and a word, never colour alone. */
+/** A member's state as a chip, a shape and a word, never colour alone (sc-23172). */
 function MemberState({ member }: { member: OrganisationMember }) {
   const { t } = useTranslation();
-  const mark =
-    member.status === 'active'
-      ? tokens.marks.done
-      : member.status === 'pending_approval'
-        ? tokens.marks.progress
-        : member.status === 'suspended'
-          ? tokens.marks.skipped
-          : FORMER_MARK;
-  const word = member.status === 'active' ? styles.wordActive : styles.wordQuiet;
 
-  return (
-    <View style={styles.state}>
-      <GlyphMark mark={mark} side={MEMBER_MARK} />
-      <Text size={tokens.typeSmall.size} weight="semibold" style={word}>
-        {memberStatusWord(t, member)}
-      </Text>
-    </View>
-  );
+  return <StatusChip look={memberStatusLook(member)} word={memberStatusWord(t, member)} />;
 }
 
 function Avatar({ name, large = false }: { name: string; large?: boolean }) {
@@ -388,10 +364,12 @@ function MemberRow({
             {breakableEmail(member.user.email)}
           </Text>
         )}
-        <Text size={tokens.typeSmall.size} muted>
-          {memberRowLine(t, member, organisation.name, (at) => formatDay(at, dateLocale()))}
-        </Text>
-        <MemberState member={member} />
+        <View style={styles.headLine}>
+          <MemberState member={member} />
+          <Text size={tokens.typeSmall.size} muted style={styles.rowLine}>
+            {memberRowLine(t, member, organisation.name, (at) => formatDay(at, dateLocale()))}
+          </Text>
+        </View>
       </View>
     </>
   );
@@ -1239,9 +1217,11 @@ function Remove({
             )}
           </View>
         )}
-        <SecondaryButton
+        <DestructiveButton
           ref={opener('remove')}
-          label={t('membersScreen.removeButton', { organisation: organisationName })}
+          label={t(onlyOwner ? 'membersScreen.removeButton' : 'membersScreen.removeButtonOpen', {
+            organisation: organisationName,
+          })}
           off={removal === 'removing'}
           onPress={() => {
             setKept(undefined);
@@ -1345,14 +1325,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: tokens.colorNeutralFill,
   },
-  state: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceXs,
-    marginTop: tokens.spaceHair,
-  },
-  wordActive: { color: tokens.colorAccentText },
-  wordQuiet: { color: tokens.colorInkSecondary },
+  rowLine: { flexShrink: 1 },
   person: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceLg },
   headLine: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
   choices: { gap: tokens.spaceXs },
