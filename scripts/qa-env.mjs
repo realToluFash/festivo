@@ -2060,6 +2060,21 @@ function reloadOnEmulator() {
   });
 }
 
+// Maestro's PORTRAIT is rotation 0, which a landscape-native tablet draws landscape (sc-23471).
+export function portraitRotation(wmSize) {
+  const [, width, height] = /Physical size: (\d+)x(\d+)/.exec(wmSize ?? '') ?? [];
+  if (width === undefined) throw new Error(`no display size in wm size: ${wmSize}`);
+  return Number(width) > Number(height) ? 1 : 0;
+}
+
+function portraitOnEmulator() {
+  const tools = androidTools();
+  const rotation = portraitRotation(adbOut(tools, ['shell', 'wm', 'size']));
+  adbOut(tools, ['shell', 'settings', 'put', 'system', 'accelerometer_rotation', '0']);
+  adbOut(tools, ['shell', 'settings', 'put', 'system', 'user_rotation', String(rotation)]);
+  return rotation;
+}
+
 export function expoGoRunning(launchctlList) {
   return new RegExp(
     `^\\d+\\s+\\S+\\s+UIKitApplication:${EXPO_GO.replaceAll('.', '\\.')}\\[`,
@@ -2190,6 +2205,7 @@ export function startHelper({
   onAndroid,
   open = openOnEmulator,
   reload = reloadOnEmulator,
+  portrait = portraitOnEmulator,
   port = CONFIG.helperPort,
 }) {
   const server = createServer(async (request, response) => {
@@ -2213,6 +2229,9 @@ export function startHelper({
         else if (!(await reload()))
           console.error('\nThe app did not run again within 8s of a reload');
         return reply(200, { reloaded: true });
+      }
+      if (url.pathname === '/portrait') {
+        return reply(200, { rotation: onAndroid ? portrait() : null });
       }
       if (url.pathname === '/running') {
         return reply(200, { running: appRunning(device, onAndroid) });

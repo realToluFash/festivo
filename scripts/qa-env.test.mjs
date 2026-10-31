@@ -25,6 +25,7 @@ import {
   batchRuns,
   afterRun,
   batchSummary,
+  portraitRotation,
   driverBuilds,
   driverPids,
   bundlerEnv,
@@ -1293,6 +1294,18 @@ describe('the API a batch holds', () => {
   });
 });
 
+describe('portraitRotation', () => {
+  it('turns a landscape-native display a quarter, and leaves a phone at 0', () => {
+    expect(portraitRotation('Physical size: 2560x1600\n')).toBe(1);
+    expect(portraitRotation('Physical size: 1080x2400\nOverride size: 2400x1080\n')).toBe(0);
+  });
+
+  it('refuses an answer with no size in it', () => {
+    expect(() => portraitRotation('error: no devices')).toThrow('no display size in wm size');
+    expect(() => portraitRotation(null)).toThrow('no display size in wm size');
+  });
+});
+
 describe('the batch helper', () => {
   const helperFor = async (container, open, options = {}) => {
     const { control, ran } = dockerDouble(container);
@@ -1339,6 +1352,21 @@ describe('the batch helper', () => {
       expect(ran).toEqual(['pause api', 'unpause api', 'locale es']);
     } finally {
       server.close();
+    }
+  });
+
+  it('turns an Android device to portrait, and leaves iOS to Maestro', async () => {
+    const turned = [];
+    const portrait = () => turned.push('portrait') && 1;
+    const android = await helperFor('running', undefined, { onAndroid: true, portrait });
+    const ios = await helperFor('running', undefined, { onAndroid: false, portrait });
+    try {
+      expect(await android.ask('/portrait')).toEqual({ rotation: 1 });
+      expect(await ios.ask('/portrait')).toEqual({ rotation: null });
+      expect(turned).toEqual(['portrait']);
+    } finally {
+      android.server.close();
+      ios.server.close();
     }
   });
 
