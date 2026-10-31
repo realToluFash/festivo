@@ -7,8 +7,13 @@ appId: host.exp.Exponent
       id: 'events.tab.drafts'
     timeout: 30000
 - takeScreenshot: list
+- waitForAnimationToEnd
 - tapOn:
     id: 'events.tab.drafts'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'events.tab.drafts'
+    selected: true
 - scrollUntilVisible:
     element:
       id: 'events.row.${COPY}'
@@ -32,8 +37,12 @@ appId: host.exp.Exponent
       - tapOn:
           id: 'events.back'
 - waitForAnimationToEnd
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       id: 'events.tab.drafts'
+    direction: UP
     timeout: 15000
+- assertVisible:
+    id: 'events.tab.drafts'
+    selected: true
 - takeScreenshot: after-back
