@@ -292,11 +292,25 @@ export function launchVideo(root, sha, platform, device) {
   return join(root, '.qa/release', `launch-${sha.slice(0, 12)}.${platform}.${device}.mp4`);
 }
 
-// At the tablet's 1600 × 2560 the emulator's encoder records 0.05 s; halved it records it all (sc-24660).
-export function recordingSize(wmSize) {
+export function physicalSize(wmSize) {
   const found = /Physical size: (\d+)x(\d+)/.exec(wmSize ?? '');
-  if (!found) return null;
-  let [width, height] = [Number(found[1]), Number(found[2])];
+  return found ? { width: Number(found[1]), height: Number(found[2]) } : null;
+}
+
+export function surfaceOrientation(dumpsysInput) {
+  const found =
+    /Viewport INTERNAL:[^\n]*\borientation=([0-3])/.exec(dumpsysInput ?? '') ??
+    /SurfaceOrientation: ([0-3])/.exec(dumpsysInput ?? '');
+  return found ? Number(found[1]) : 0;
+}
+
+// At the tablet's 1600 × 2560 the emulator's encoder records 0.05 s; halved it records it all (sc-24660).
+// screenrecord letterboxes a --size that is not in the display's current orientation.
+export function recordingSize(wmSize, rotation = 0) {
+  const size = physicalSize(wmSize);
+  if (!size) return null;
+  let { width, height } = size;
+  if (rotation % 2 === 1) [width, height] = [height, width];
   if (Math.min(width, height) <= 1080) return null;
   while (Math.min(width, height) > 1080) [width, height] = [width / 2, height / 2];
   const even = (side) => 2 * Math.round(side / 2);
@@ -1589,7 +1603,10 @@ function removeRelease(tools, root) {
 }
 
 function recordLaunch(tools) {
-  const size = recordingSize(adbOut(tools, ['shell', 'wm', 'size']));
+  const size = recordingSize(
+    adbOut(tools, ['shell', 'wm', 'size']),
+    surfaceOrientation(adbOut(tools, ['shell', 'dumpsys', 'input'])),
+  );
   const recorder = spawn(
     tools.adb,
     [
@@ -2183,9 +2200,9 @@ function reloadOnEmulator() {
 
 // Maestro's PORTRAIT is rotation 0, which a landscape-native tablet draws landscape (sc-23471).
 export function portraitRotation(wmSize) {
-  const [, width, height] = /Physical size: (\d+)x(\d+)/.exec(wmSize ?? '') ?? [];
-  if (width === undefined) throw new Error(`no display size in wm size: ${wmSize}`);
-  return Number(width) > Number(height) ? 1 : 0;
+  const size = physicalSize(wmSize);
+  if (!size) throw new Error(`no display size in wm size: ${wmSize}`);
+  return size.width > size.height ? 1 : 0;
 }
 
 function portraitOnEmulator() {
