@@ -354,13 +354,17 @@ function mp4Box(bytes, within, type) {
 }
 
 // A slow first launch makes am start -W give up at about ten seconds with Status: timeout and no
-// TotalTime, though the activity goes on starting (sc-24660); the launch took at least its WaitTime.
+// TotalTime, though the activity goes on starting (sc-24660). Then nobody knows when it drew.
 export function launchTime(amStartW) {
+  const total = /TotalTime: (\d+)/.exec(amStartW ?? '');
+  return total ? Number(total[1]) : null;
+}
+
+// am start says Error on stdout and still exits 0, and a timed-out launch may since have crashed.
+export function launchStarted(amStartW, pid) {
   const output = amStartW ?? '';
-  const total = /TotalTime: (\d+)/.exec(output);
-  if (total) return Number(total[1]);
-  const waited = /WaitTime: (\d+)/.exec(output);
-  return /Status: timeout/.test(output) && waited ? Number(waited[1]) : null;
+  if (/TotalTime: \d+/.test(output)) return true;
+  return /Status: timeout/.test(output) && Boolean(pid?.trim());
 }
 
 // Under load the emulator's encoder can stop in the first second (sc-24660). screenrecord writes
@@ -1696,17 +1700,18 @@ async function recordFirstLaunch(tools, root, apk, id, video) {
   rmSync(video, { force: true });
   adbOut(tools, ['pull', LAUNCH_RECORDING, video]);
   adbOut(tools, ['shell', 'rm', '-f', LAUNCH_RECORDING]);
-  // am start says Error on stdout and still exits 0; a timeout counts only if the app is running.
-  const launchMs = launchTime(started);
-  const running = adbOut(tools, ['shell', 'pidof', id])?.trim();
-  if (launchMs === null || (!/TotalTime/.test(started) && !running)) {
+  if (!launchStarted(started, adbOut(tools, ['shell', 'pidof', id]))) {
     rmSync(video, { force: true });
     throw new Error(
       `${id}/.MainActivity did not start: ${started?.trim() || 'am start said nothing'}`,
     );
   }
-  if (!existsSync(video)) return false;
-  return launchRecorded(mp4Duration(readFileSync(video)), RECORDING_LEAD_MS, launchMs);
+  if (!existsSync(video)) return 'not recorded';
+  const launchMs = launchTime(started);
+  if (launchMs === null) return 'timed out';
+  return launchRecorded(mp4Duration(readFileSync(video)), RECORDING_LEAD_MS, launchMs)
+    ? 'recorded'
+    : 'cut short';
 }
 
 function releaseCommit(root) {
@@ -1761,17 +1766,24 @@ async function releaseAndroid(args) {
   }
 
   const video = launchVideo(root, sha, 'android', open);
-  let recorded = await recordFirstLaunch(tools, root, apk, id, video);
-  if (!recorded) {
-    console.log('  the recording ended before the app drew its first screen: recording again');
-    recorded = await recordFirstLaunch(tools, root, apk, id, video);
+  let take = await recordFirstLaunch(tools, root, apk, id, video);
+  if (take === 'cut short' || take === 'timed out') {
+    console.log(
+      take === 'timed out'
+        ? '  am start timed out before the app drew its first screen: recording again'
+        : '  the recording ended before the app drew its first screen: recording again',
+    );
+    take = await recordFirstLaunch(tools, root, apk, id, video);
   }
   console.log(
     `\nSoirely ${sha.slice(0, 12)}, a release build, on its first launch on the ${open}` +
       ` (${emulatorSerial()}), ${offline ? 'offline: no default network, no stack' : 'online'}.` +
       `\n${existsSync(video) ? `Its first 15 seconds: ${video}` : 'The launch was not recorded.'}` +
-      (existsSync(video) && !recorded
+      (existsSync(video) && take === 'cut short'
         ? '\nWarning: both takes ended before the app drew its first screen; the host may be under load.'
+        : '') +
+      (existsSync(video) && take === 'timed out'
+        ? '\nWarning: am start timed out on the second take, so the first screen may come after the video ends.'
         : '') +
       `\nThe next \`android\` removes it and turns airplane mode off.`,
   );
