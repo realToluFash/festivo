@@ -25,6 +25,7 @@ import {
   batchRuns,
   afterRun,
   batchSummary,
+  physicalSize,
   portraitRotation,
   ANDROID_START,
   SCREEN_READER_OFF,
@@ -84,6 +85,8 @@ import {
   qrPng,
   APP_SERVICES,
   launchVideo,
+  recordingSize,
+  surfaceOrientation,
   iosBundle,
   clearIosRelease,
   uninstallHeld,
@@ -506,6 +509,41 @@ describe('a release build', () => {
         apk,
       ),
     ).toEqual(['soirely-0123456789ab.apk']);
+  });
+
+  it('records the tablet at half its size, where the encoder records 0.05 s at full size', () => {
+    expect(recordingSize('Physical size: 1600x2560\n')).toBe('800x1280');
+    expect(recordingSize('Physical size: 2560x1600\nOverride size: 1280x800\n')).toBe('1280x800');
+  });
+
+  it('records a landscape-native tablet drawn in portrait in portrait, not letterboxed', () => {
+    expect(recordingSize('Physical size: 2560x1600\n', 1)).toBe('800x1280');
+    expect(recordingSize('Physical size: 2560x1600\n', 3)).toBe('800x1280');
+    expect(recordingSize('Physical size: 2560x1600\n', 2)).toBe('1280x800');
+  });
+
+  it('reads the display rotation from dumpsys input, 0 when it is not there', () => {
+    expect(surfaceOrientation('    Viewport INTERNAL\n      SurfaceOrientation: 1\n')).toBe(1);
+    expect(
+      surfaceOrientation(
+        '  Viewport INTERNAL: displayId=0, uniqueId=local:1, orientation=3, logicalFrame=[0, 0, 1600, 2560]\n',
+      ),
+    ).toBe(3);
+    expect(surfaceOrientation('error: no devices')).toBe(0);
+    expect(surfaceOrientation(null)).toBe(0);
+  });
+
+  it('reads the physical size, and nothing from an answer without one', () => {
+    expect(physicalSize('Physical size: 2560x1600\nOverride size: 1280x800\n')).toEqual({
+      width: 2560,
+      height: 1600,
+    });
+    expect(physicalSize('error: no devices')).toBeNull();
+  });
+
+  it('records the phone at its own size', () => {
+    expect(recordingSize('Physical size: 1080x2400\n')).toBeNull();
+    expect(recordingSize(null)).toBeNull();
   });
 
   it('names the launch video by platform and device, so every launch of a commit is kept', () => {

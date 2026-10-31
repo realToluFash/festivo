@@ -292,6 +292,31 @@ export function launchVideo(root, sha, platform, device) {
   return join(root, '.qa/release', `launch-${sha.slice(0, 12)}.${platform}.${device}.mp4`);
 }
 
+export function physicalSize(wmSize) {
+  const found = /Physical size: (\d+)x(\d+)/.exec(wmSize ?? '');
+  return found ? { width: Number(found[1]), height: Number(found[2]) } : null;
+}
+
+export function surfaceOrientation(dumpsysInput) {
+  const found =
+    /Viewport INTERNAL:[^\n]*\borientation=([0-3])/.exec(dumpsysInput ?? '') ??
+    /SurfaceOrientation: ([0-3])/.exec(dumpsysInput ?? '');
+  return found ? Number(found[1]) : 0;
+}
+
+// At the tablet's 1600 × 2560 the emulator's encoder records 0.05 s; halved it records it all (sc-24660).
+// screenrecord letterboxes a --size that is not in the display's current orientation.
+export function recordingSize(wmSize, rotation = 0) {
+  const size = physicalSize(wmSize);
+  if (!size) return null;
+  let { width, height } = size;
+  if (rotation % 2 === 1) [width, height] = [height, width];
+  if (Math.min(width, height) <= 1080) return null;
+  while (Math.min(width, height) > 1080) [width, height] = [width / 2, height / 2];
+  const even = (side) => 2 * Math.round(side / 2);
+  return `${even(width)}x${even(height)}`;
+}
+
 // A Mac keeps an APK and an app side by side: each build replaces only its own kind.
 export function staleBuilds(names, build) {
   const kind = extname(build);
@@ -1578,9 +1603,22 @@ function removeRelease(tools, root) {
 }
 
 function recordLaunch(tools) {
+  const size = recordingSize(
+    adbOut(tools, ['shell', 'wm', 'size']),
+    surfaceOrientation(adbOut(tools, ['shell', 'dumpsys', 'input'])),
+  );
   const recorder = spawn(
     tools.adb,
-    ['-s', emulatorSerial(), 'shell', 'screenrecord', '--time-limit', '15', LAUNCH_RECORDING],
+    [
+      '-s',
+      emulatorSerial(),
+      'shell',
+      'screenrecord',
+      '--time-limit',
+      '15',
+      ...(size ? ['--size', size] : []),
+      LAUNCH_RECORDING,
+    ],
     { stdio: 'ignore', env: tools.env },
   );
   return new Promise((done) => {
@@ -1723,16 +1761,29 @@ function startAppServices(root) {
 function recordSimulator(udid, video) {
   rmSync(video, { force: true });
   const recorder = spawn('xcrun', ['simctl', 'io', udid, 'recordVideo', '--force', video], {
-    stdio: 'ignore',
+    stdio: ['ignore', 'ignore', 'pipe'],
   });
   const stopped = new Promise((done) => {
     recorder.on('error', () => done());
     recorder.on('exit', () => done());
   });
-  return async () => {
-    await pause(15000);
-    recorder.kill('SIGINT');
-    await stopped;
+  // simctl takes seconds to start writing; a launch before then loses the launch screen (sc-24660).
+  const started = new Promise((done) => {
+    let said = '';
+    recorder.stderr.on('data', (chunk) => {
+      said += chunk;
+      if (said.includes('Recording started')) done();
+    });
+    stopped.then(done);
+    pause(10000).then(done);
+  });
+  return {
+    started,
+    stop: async () => {
+      await pause(15000);
+      recorder.kill('SIGINT');
+      await stopped;
+    },
   };
 }
 
@@ -1765,10 +1816,11 @@ async function releaseIos(args) {
   else startAppServices(root);
 
   const video = launchVideo(root, sha, 'ios', open);
-  const recorded = recordSimulator(udid, video);
+  const recording = recordSimulator(udid, video);
+  await recording.started;
   await pause(1000);
   run('xcrun', ['simctl', 'launch', udid, id]);
-  await recorded();
+  await recording.stop();
   console.log(
     `\nSoirely ${sha.slice(0, 12)}, a release build, on its first launch on the ${open}` +
       `, ${offline ? `offline: ${APP_SERVICES.join(', ')} stopped` : 'online'}.` +
@@ -2148,9 +2200,9 @@ function reloadOnEmulator() {
 
 // Maestro's PORTRAIT is rotation 0, which a landscape-native tablet draws landscape (sc-23471).
 export function portraitRotation(wmSize) {
-  const [, width, height] = /Physical size: (\d+)x(\d+)/.exec(wmSize ?? '') ?? [];
-  if (width === undefined) throw new Error(`no display size in wm size: ${wmSize}`);
-  return Number(width) > Number(height) ? 1 : 0;
+  const size = physicalSize(wmSize);
+  if (!size) throw new Error(`no display size in wm size: ${wmSize}`);
+  return size.width > size.height ? 1 : 0;
 }
 
 function portraitOnEmulator() {
