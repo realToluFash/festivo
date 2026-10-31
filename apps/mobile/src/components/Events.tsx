@@ -8,7 +8,7 @@ import {
 } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type TextStyle, type ViewStyle } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
@@ -38,16 +38,12 @@ function useShownPhase(event: OrganisationEvent, now: Date): EventPhase {
 /** A word and a shape, never colour alone (WCAG 2.2 §1.4.1); the pill grows with its word. */
 export function EventState({ phase }: { phase: EventPhase }) {
   const { t } = useTranslation();
-  const live = phase === 'live';
+  const pair = PHASE_PAIR[phase];
 
   return (
-    <View style={[styles.state, live && styles.stateLive]} testID={`events.phase.${phase}`}>
+    <View style={[styles.state, pair?.chip]} testID={`events.phase.${phase}`}>
       <PhaseShape phase={phase} />
-      <Text
-        size={tokens.typeSmall.size}
-        weight="semibold"
-        style={live ? styles.stateWordLive : styles.stateWord}
-      >
+      <Text size={tokens.typeSmall.size} weight="semibold" style={pair?.word ?? styles.stateWord}>
         {t(PHASE_WORD[phase])}
       </Text>
     </View>
@@ -307,11 +303,6 @@ const styles = StyleSheet.create({
   pageHead: { gap: tokens.spaceXs },
   pageActions: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
   stateWord: { color: tokens.colorInkSecondary },
-  stateLive: {
-    borderColor: tokens.colorAccentTintBorder,
-    backgroundColor: tokens.colorAccentTint,
-  },
-  stateWordLive: { color: tokens.colorAccentText },
   state: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
@@ -319,9 +310,9 @@ const styles = StyleSheet.create({
     gap: tokens.spaceXs,
     paddingHorizontal: tokens.spaceSm,
     paddingVertical: tokens.spaceXxs,
-    borderRadius: tokens.radiusField,
+    borderRadius: tokens.radiusPill,
     borderWidth: 1,
-    borderColor: tokens.colorBorder,
+    borderColor: tokens.colorControlBorder,
   },
   dot: {
     width: 8,
@@ -337,9 +328,24 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorMarkEmpty,
     overflow: 'hidden',
   },
-  ringNow: { borderColor: tokens.colorAttention },
-  halfNow: { width: '50%', height: '100%', backgroundColor: tokens.colorAttention },
+  ringNow: { borderColor: tokens.colorAttentionText },
+  halfNow: { width: '50%', height: '100%', backgroundColor: tokens.colorAttentionText },
   lifecycle: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceMd },
   bars: { flexDirection: 'row', gap: 2 },
-  bar: { width: 3, height: 10, borderRadius: 1, backgroundColor: tokens.colorAttention },
+  bar: { width: 3, height: 10, borderRadius: 1, backgroundColor: tokens.colorPausedText },
 });
+
+const PHASE_PAIR: Partial<Record<EventPhase, { chip: ViewStyle; word: TextStyle }>> = {
+  live: {
+    chip: { borderColor: tokens.colorAccentTintBorder, backgroundColor: tokens.colorAccentTint },
+    word: { color: tokens.colorAccentText },
+  },
+  happening_now: {
+    chip: { borderColor: tokens.colorAttentionBorder, backgroundColor: tokens.colorAttentionTint },
+    word: { color: tokens.colorAttentionText },
+  },
+  paused: {
+    chip: { borderColor: tokens.colorHeaderBorder, backgroundColor: tokens.colorPausedTint },
+    word: { color: tokens.colorPausedText },
+  },
+};

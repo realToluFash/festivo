@@ -1,9 +1,24 @@
-import type { Ref } from 'react';
-import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
+import { type Ref, useState } from 'react';
+import { Animated, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { tokens } from '../theme/tokens.ts';
 import { CONTROL_TEXT_SIZE } from './Field.tsx';
 import { Text } from './Text.tsx';
+
+const PressFade = Animated.createAnimatedComponent(Pressable);
+
+/** A pressed button drops to `opacityPressed` and comes back, in `motionFast`, on the native driver. */
+function usePressFade() {
+  const [opacity] = useState(() => new Animated.Value(1));
+  const to = (value: number) => () =>
+    Animated.timing(opacity, {
+      toValue: value,
+      duration: tokens.motionFast,
+      useNativeDriver: true,
+    }).start();
+
+  return { opacity, onPressIn: to(tokens.opacityPressed), onPressOut: to(1) };
+}
 
 /** Loading changes the words, never a bare spinner; `off` is for a lock the person is told about. */
 export function PrimaryButton({
@@ -24,11 +39,14 @@ export function PrimaryButton({
   testID: string;
 }) {
   const inactive = busy || off;
+  const fade = usePressFade();
 
   return (
-    <Pressable
+    <PressFade
       ref={ref}
-      style={[styles.primary, busy && styles.primaryBusy, off && styles.primaryOff]}
+      style={[styles.primary, off && styles.primaryOff, { opacity: fade.opacity }]}
+      onPressIn={inactive ? undefined : fade.onPressIn}
+      onPressOut={fade.onPressOut}
       onPress={busy ? undefined : onPress}
       // A disabled button lets a tap through to the scroll view under it, which drops the keys mid-request.
       // Pressable lets any non-null disabled overwrite accessibilityState.disabled, so busy leaves it unset.
@@ -46,7 +64,7 @@ export function PrimaryButton({
       >
         {label}
       </Text>
-    </Pressable>
+    </PressFade>
   );
 }
 
@@ -69,10 +87,19 @@ export function SecondaryButton({
   ref?: Ref<ViewInstance> | undefined;
   testID: string;
 }) {
+  const fade = usePressFade();
+
   return (
-    <Pressable
+    <PressFade
       ref={ref}
-      style={[styles.secondary, stacked && styles.secondaryStacked, off && styles.secondaryOff]}
+      style={[
+        styles.secondary,
+        stacked && styles.secondaryStacked,
+        off && styles.secondaryOff,
+        { opacity: fade.opacity },
+      ]}
+      onPressIn={off ? undefined : fade.onPressIn}
+      onPressOut={fade.onPressOut}
       onPress={onPress}
       disabled={off}
       accessibilityLabel={accessibilityLabel}
@@ -87,7 +114,54 @@ export function SecondaryButton({
       >
         {label}
       </Text>
-    </Pressable>
+    </PressFade>
+  );
+}
+
+/** Never red, and named for what it ends: "Sign out…" opens a confirm, "Sign it out" confirms. */
+export function DestructiveButton({
+  label,
+  onPress,
+  busy = false,
+  off = false,
+  ref,
+  testID,
+}: {
+  label: string;
+  onPress: () => void;
+  busy?: boolean;
+  off?: boolean;
+  ref?: Ref<ViewInstance> | undefined;
+  testID: string;
+}) {
+  const inactive = busy || off;
+  const fade = usePressFade();
+
+  return (
+    <PressFade
+      ref={ref}
+      style={[
+        styles.secondary,
+        styles.secondaryStacked,
+        off && styles.secondaryOff,
+        { opacity: fade.opacity },
+      ]}
+      onPressIn={inactive ? undefined : fade.onPressIn}
+      onPressOut={fade.onPressOut}
+      onPress={busy ? undefined : onPress}
+      disabled={off || undefined}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: inactive, busy }}
+      testID={testID}
+    >
+      <Text
+        size={CONTROL_TEXT_SIZE}
+        weight="semibold"
+        style={[styles.label, off ? styles.secondaryInk : styles.ink]}
+      >
+        {label}
+      </Text>
+    </PressFade>
   );
 }
 
@@ -176,9 +250,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spaceXxl,
     paddingVertical: tokens.spaceXs,
     borderRadius: tokens.sizeHitPhonePrimary / 2,
-    backgroundColor: tokens.colorAccent,
+    backgroundColor: tokens.colorAccentHover,
   },
-  primaryBusy: { backgroundColor: tokens.colorAccentHover },
   primaryOff: { backgroundColor: tokens.colorBorder },
   secondary: {
     alignSelf: 'flex-start',
