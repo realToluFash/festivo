@@ -124,12 +124,19 @@ today's app's look. Sort every element [fd] draws:
   moves up, a grid loses a column). No holes, and nothing invented in its place.
 
 Where [fd]'s words and the code's disagree, the code's words go in [fd]'s place. A recorded
-pm or owner decision, in the epic's or story's dated sections, beats both.
+pm or owner decision, in the epic's or story's dated sections, beats both. On a screen not
+built yet, a line no story words stays in [brackets] until its story is groomed and [en]
+words it. Never word it yourself (epic 22091, 31 Oct).
 
 **A code check adds; it never takes [fd] away.** Checking boards against the code means
 adding the functionality they lack inside [fd]'s layout. It never means restyling a board
 to look like today's app, or removing an [fd] element the sorting above keeps. That went
 wrong once on Events, and the owner rejected it.
+
+**[fd]'s notes stay on [fd]'s board.** Its intro and decision notes describe its drawing,
+and on a proposal that no longer matches it they read as instructions (Staffing's "mark
+them here"). They go on the "[fd] as drawn" board only. A proposal may carry notes of its
+own, saying what it settles (epic 22091, 31 Oct).
 
 **[fd] as drawn.** [fd]'s own frames for that screen and nothing else, changed only as
 much as the canvas needs: inline tokens, `support.js`, `$preview`. No floor fixes, and no
@@ -200,9 +207,9 @@ A form never sends a request it already knows will be refused. Draw this for **e
   has it.
 - `$preview` must equal the artboard's frame `w`×`h` in `canvas.json`.
 - Desktop screens are PAGEs: `"expand": "fill"` on the board entry and a **fluid** root —
-  no fixed px width. Phone is fixed at 390×844, tablet portrait 834×1194, tablet landscape
-  1280×880. **Open:** every board drawn so far uses 1194×834 for tablet landscape. Until the
-  owner settles which, match the boards already on your epic's page.
+  no fixed px width. Phone is fixed at 390×844, tablet portrait 834×1194 and tablet
+  landscape 1194×834: one iPad turned on its side, so the two orientations compare (epic
+  22091, 31 Oct). The QA iPad is wider both ways, so a layout that holds here holds there.
 - **Every board owes motion and the system states.** Motion per the spec on page
   `26 · Foundation` (`Motion.dc.html`), with a Reduce motion switch; a `system` Tweak for
   the network, error and loading states on `SystemStates.dc.html`.
