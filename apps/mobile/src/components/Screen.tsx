@@ -556,6 +556,10 @@ export function stepHidden(closing: boolean): StepHidden {
 export interface HeldStepClose extends StepClose {
   /** Holds input focus in the place of a line of words, which cannot take it, or of a control TalkBack would say twice, where TalkBack does not read it; rendered while the line shows, first in a View of its own with the line. The close turns scroll-to-focus off while it takes focus, so Save stays put (sc-18587). */
   holder: ReactElement;
+  /** Spread on a View around the step's field, which hides it from screen readers while a close started by Save runs: a scroll that carries Save off under TalkBack's focus would put that focus on the field before the line. Closed from the keys, TalkBack's focus is on the field, and hiding it sends TalkBack to the next card, so it stays (sc-18587). */
+  fieldHidden: StepHidden;
+  /** `fromKeys` when the keyboard's Done key started the close rather than a control. */
+  close(fromKeys?: boolean): void;
 }
 
 /** Closes a step back to the opener `to` names in the steps `stepCloseSteps` gives, with input focus going `inputFocusTo` the opener, a control, or to the `holder` it returns, beside a line of words; `finish` takes the step away, with what `useFocusBackToOpener` moves focus back from, or nothing when focus is already there (sc-18588). Without the holder rendered nothing takes input focus, and blurring the field hands focus to the header's back row (sc-18587). */
@@ -579,6 +583,7 @@ export function useStepClose(
 ): StepClose | HeldStepClose {
   const scroll = useContext(ScreenScroll);
   const [closing, setClosing] = useState(false);
+  const [fromKeys, setFromKeys] = useState(false);
   const started = useRef(false);
   const view = useRef<ViewInstance | null>(null);
   const holder = useRef<ViewInstance | null>(null);
@@ -737,30 +742,44 @@ export function useStepClose(
     };
   }, [closing, run]);
 
-  const close = useCallback(() => {
-    if (started.current) return;
-    started.current = true;
-    toBlur.current = fieldToBlur(
-      TextInput.State.currentlyFocusedInput(),
-      stepField.current,
-      raisedBy.current,
-    );
+  const close = useCallback(
+    (keys = false) => {
+      if (started.current) return;
+      started.current = true;
+      setFromKeys(keys);
+      toBlur.current = fieldToBlur(
+        TextInput.State.currentlyFocusedInput(),
+        stepField.current,
+        raisedBy.current,
+      );
 
-    let gone = false;
-    cancel.current = () => {
-      gone = true;
-    };
-    void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
-      if (gone) return;
-      cancel.current = run(stepCloseSteps(Platform.OS, on, inputFocusTo));
-    });
-  }, [run, inputFocusTo]);
+      let gone = false;
+      cancel.current = () => {
+        gone = true;
+      };
+      void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
+        if (gone) return;
+        cancel.current = run(stepCloseSteps(Platform.OS, on, inputFocusTo));
+      });
+    },
+    [run, inputFocusTo],
+  );
 
   const held = useMemo(() => <FocusHolder holder={holder} />, []);
   const hidden = stepHidden(closing);
+  const fieldHidden = stepHidden(closing && !fromKeys);
 
   return inputFocusTo === 'holder'
-    ? { opener: ref, holder: held, closing, closer, field: stepFieldRef, hidden, close }
+    ? {
+        opener: ref,
+        holder: held,
+        closing,
+        closer,
+        field: stepFieldRef,
+        hidden,
+        fieldHidden,
+        close,
+      }
     : { opener: ref, closing, closer, field: stepFieldRef, hidden, close };
 }
 
