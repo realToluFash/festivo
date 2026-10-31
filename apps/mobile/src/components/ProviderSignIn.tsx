@@ -14,6 +14,8 @@ import { Text } from './Text.tsx';
 const appleOnIos = Platform.OS === 'ios';
 const APPLE_IOS_TEXT_SIZE = tokens.sizeHitPhonePrimary * brand.appleTitleToHeight;
 const APPLE_IOS_LOGO_SCALE = brand.appleLogoHeight / 19;
+// Apple's band is 44 units with the glyph centred at 20; ending it at 39.2 puts the glyph 0.3pt above the fill's centre, as on iOS's own.
+const APPLE_IOS_LOGO_BAND = 39.2;
 
 export function ProviderSignIn({ onFailed }: { onFailed?: (provider: string) => void }) {
   const { t } = useTranslation();
@@ -148,6 +150,12 @@ export function ProviderButton({
           weight="medium"
           family={appleIos ? 'system' : 'sans'}
           style={styles.appleText}
+          // iOS's own button keeps its words one size at every text size, and shrinks a long title to fit.
+          {...(appleIos && {
+            allowFontScaling: false,
+            numberOfLines: 1,
+            adjustsFontSizeToFit: true,
+          })}
         >
           {label}
         </Text>
@@ -190,13 +198,13 @@ function AppleMark() {
   );
 }
 
-/** Apple Design Resources' "Left White Logo Medium", cropped at the sides only so the glyph keeps Apple's place above the centre. */
+/** Apple Design Resources' "Left White Logo Medium", cropped at the sides and the foot. */
 function AppleLogoIos() {
   return (
     <Svg
       width={15.46 * APPLE_IOS_LOGO_SCALE}
-      height={44 * APPLE_IOS_LOGO_SCALE}
-      viewBox="7.75 0 15.46 44"
+      height={APPLE_IOS_LOGO_BAND * APPLE_IOS_LOGO_SCALE}
+      viewBox={`7.75 0 15.46 ${APPLE_IOS_LOGO_BAND}`}
     >
       <Path
         fill={brand.appleInk}
