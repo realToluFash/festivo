@@ -595,6 +595,12 @@ describe('a release build', () => {
       2310,
     );
     expect(launchTime('Error: Activity not started')).toBeNull();
+    expect(
+      launchTime(
+        'Status: timeout\nLaunchState: UNKNOWN (-1)\nActivity: id/.MainActivity\nWaitTime: 11978\nComplete\n',
+      ),
+    ).toBe(11978);
+    expect(launchTime('Status: ok\nWaitTime: 11978\n')).toBeNull();
     expect(launchRecorded(0.7, 1000, 2310)).toBe(false);
     expect(launchRecorded(4.96, 1000, 2310)).toBe(true);
     expect(launchRecorded(null, 1000, 2310)).toBe(false);

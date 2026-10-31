@@ -353,9 +353,14 @@ function mp4Box(bytes, within, type) {
   return null;
 }
 
+// A slow first launch makes am start -W give up at about ten seconds with Status: timeout and no
+// TotalTime, though the activity goes on starting (sc-24660); the launch took at least its WaitTime.
 export function launchTime(amStartW) {
-  const found = /TotalTime: (\d+)/.exec(amStartW ?? '');
-  return found ? Number(found[1]) : null;
+  const output = amStartW ?? '';
+  const total = /TotalTime: (\d+)/.exec(output);
+  if (total) return Number(total[1]);
+  const waited = /WaitTime: (\d+)/.exec(output);
+  return /Status: timeout/.test(output) && waited ? Number(waited[1]) : null;
 }
 
 // Under load the emulator's encoder can stop in the first second (sc-24660). screenrecord writes
@@ -1691,9 +1696,10 @@ async function recordFirstLaunch(tools, root, apk, id, video) {
   rmSync(video, { force: true });
   adbOut(tools, ['pull', LAUNCH_RECORDING, video]);
   adbOut(tools, ['shell', 'rm', '-f', LAUNCH_RECORDING]);
-  // am start says Error on stdout and still exits 0; without a TotalTime the app never started.
+  // am start says Error on stdout and still exits 0; a timeout counts only if the app is running.
   const launchMs = launchTime(started);
-  if (launchMs === null) {
+  const running = adbOut(tools, ['shell', 'pidof', id])?.trim();
+  if (launchMs === null || (!/TotalTime/.test(started) && !running)) {
     rmSync(video, { force: true });
     throw new Error(
       `${id}/.MainActivity did not start: ${started?.trim() || 'am start said nothing'}`,
