@@ -1,0 +1,12 @@
+# Expo Go's first-run developer-menu sheet can open over the app on a launch or a reload, and
+# hides every screen the batch waits for. Waits for the caller's SETTLED screens or the sheet,
+# and taps the sheet's Continue when it is the sheet. SETTLED is the caller's own: one wider
+# than what the caller has seen go can match the screen from before a reload. sc-20534.
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible: '${SETTLED}|This is the developer menu.*'
+    timeout: 60000
+    optional: true
+- runFlow:
+    file: ../developer-menu-sheet.yaml

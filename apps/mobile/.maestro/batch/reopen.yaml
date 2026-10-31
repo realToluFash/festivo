@@ -1,0 +1,14 @@
+# A reload can close Expo Go rather than reload it, most often one that has only just opened
+# or has just signed in: open it again, at Home. Both session.yaml and reset.yaml call this.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+- openLink: ${METRO_URL}/--/
+- runFlow:
+    file: developer-menu.yaml
+    env:
+      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}'
+- extendedWaitUntil:
+    visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}'
+    timeout: 60000

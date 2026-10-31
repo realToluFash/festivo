@@ -1,0 +1,53 @@
+# sc-22144 on Android: Edit details of ${EVENT} (17 Jul 2027 20:00 to 18 Jul 08:00); the start a day later moves the end to 19 Jul 08:00; the end a day later (20 Jul), then the start a day earlier, moves the end to 19 Jul 08:00; back asks Leave without saving?
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}/edit
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.start.date'
+    direction: DOWN
+    centerElement: true
+- takeScreenshot: loaded
+- tapOn:
+    id: 'eventForm.start.date'
+- waitForAnimationToEnd
+- swipe:
+    start: 23%, 47%
+    end: 23%, 39%
+    duration: 1500
+- waitForAnimationToEnd
+- takeScreenshot: start-picker
+- tapOn: 'OK'
+- waitForAnimationToEnd
+- takeScreenshot: start-later
+- tapOn:
+    id: 'eventForm.end.date'
+- waitForAnimationToEnd
+- swipe:
+    start: 23%, 47%
+    end: 23%, 39%
+    duration: 1500
+- waitForAnimationToEnd
+- tapOn: 'OK'
+- waitForAnimationToEnd
+- takeScreenshot: end-later
+- tapOn:
+    id: 'eventForm.start.date'
+- waitForAnimationToEnd
+- swipe:
+    start: 23%, 47%
+    end: 23%, 55%
+    duration: 1500
+- waitForAnimationToEnd
+- tapOn: 'OK'
+- waitForAnimationToEnd
+- takeScreenshot: start-earlier
+- back
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'eventForm.leave.keep'
+- takeScreenshot: leave-asked

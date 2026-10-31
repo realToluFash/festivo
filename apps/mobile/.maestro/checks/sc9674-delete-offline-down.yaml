@@ -1,0 +1,48 @@
+# Delete organisation: name typed, keys hidden, API stopped. Keys never open. sc-9674.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: ownership.delete
+    centerElement: true
+- tapOn:
+    id: ownership.delete
+- extendedWaitUntil:
+    visible:
+      id: ownership.delete.name
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: ownership.delete.name
+    centerElement: true
+- tapOn:
+    id: ownership.delete.name
+- inputText: ${ORG_NAME}
+- tapOn:
+    point: '2%,45%'
+- waitForAnimationToEnd
+- takeScreenshot: keys-hidden
+- assertNotVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- scrollUntilVisible:
+    element:
+      id: ownership.delete.send
+    centerElement: true
+- tapOn:
+    id: ownership.delete.send
+- extendedWaitUntil:
+    visible: '.*{{t:ownership.failed}}.*'
+    timeout: 45000
+- waitForAnimationToEnd:
+    timeout: 3000
+- waitForAnimationToEnd
+- takeScreenshot: refused
+- assertNotVisible: '(?i)(shift|delete)'
