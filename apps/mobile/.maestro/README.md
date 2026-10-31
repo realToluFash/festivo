@@ -101,6 +101,9 @@ A check is written like a flow, and also:
   `{{count, number}}` is not filled in, so match those in all four languages, values written
   in: `'(?:That code did not work|Ese código no ha funcionado|…).*'`, from
   `services/api/translations/messages.*.json` or the app's locale files.
+- **Subflows may sit in `checks/<story>/`, and are not localised.** Only the check itself
+  has its `{{t:}}` filled in, so a subflow there matches by id, and any `{{t:}}` text goes in
+  the check that calls it.
 - **`takeScreenshot: <name>`, on one line.** The harness prefixes the check and language, so
   `settings` in a Spanish batch lands in `.qa/<batch>/settings.es-settings.png`.
 
