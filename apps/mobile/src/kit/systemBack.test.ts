@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { OPENED_IN_PLACE_OF_SETTINGS, pageTakesBack, sectionTakesBack } from './systemBack.ts';
+import {
+  OPENED_IN_PLACE_OF_SETTINGS,
+  edgeSwipeCompletes,
+  edgeSwipeStarts,
+  pageTakesBack,
+  sectionTakesBack,
+} from './systemBack.ts';
 
 describe('pageTakesBack', () => {
   it('takes Back where the page shows in place of its list', () => {
@@ -23,5 +29,30 @@ describe('sectionTakesBack', () => {
   it('leaves Back to the stack on a section pushed over the list, or opened from Home or another section', () => {
     expect(sectionTakesBack(undefined)).toBe(false);
     expect(sectionTakesBack('')).toBe(false);
+  });
+});
+
+describe('edgeSwipeStarts', () => {
+  it('starts on a drag that moves across to the right', () => {
+    expect(edgeSwipeStarts(20, 3)).toBe(true);
+  });
+
+  it('leaves a vertical drag, a drag to the left and a touch that barely moves', () => {
+    expect(edgeSwipeStarts(20, 30)).toBe(false);
+    expect(edgeSwipeStarts(-20, 0)).toBe(false);
+    expect(edgeSwipeStarts(4, 0)).toBe(false);
+  });
+});
+
+describe('edgeSwipeCompletes', () => {
+  it('completes past half the width, or on a flick to the right', () => {
+    expect(edgeSwipeCompletes(201, 0, 400)).toBe(true);
+    expect(edgeSwipeCompletes(40, 1, 400)).toBe(true);
+  });
+
+  it('stays on the page when let go short of half and slowly, or pulled back', () => {
+    expect(edgeSwipeCompletes(199, 0.2, 400)).toBe(false);
+    expect(edgeSwipeCompletes(150, -1, 400)).toBe(false);
+    expect(edgeSwipeCompletes(-5, 1, 400)).toBe(false);
   });
 });

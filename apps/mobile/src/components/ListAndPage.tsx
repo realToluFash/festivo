@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from 'react';
 import {
+  Animated,
   type RefreshControlProps,
   type StyleProp,
   StyleSheet,
@@ -21,6 +22,7 @@ import { tokens } from '../theme/tokens.ts';
 import { bodyEdges } from './bodyEdges.ts';
 import { QuietButton } from './Buttons.tsx';
 import { Screen, ScrollColumn } from './Screen.tsx';
+import { useEdgeSwipeBack } from './useEdgeSwipeBack.ts';
 import { useSystemBack } from './useSystemBack.ts';
 
 export interface ListAndPageSpacing {
@@ -48,8 +50,8 @@ export interface ListAndPageProps {
   pageInFront: boolean;
   /** Nothing to put in the page, so on a tablet on its side the list takes the full width. */
   pageless?: boolean;
-  /** The page's own back, the header's on a phone included; Android's Back runs it too wherever the page is in front. */
-  back: { label: string; onPress: () => void; testID: string };
+  /** The page's own back, the header's on a phone included; Android's Back and iOS's swipe from the left edge run it too wherever the page is in front. `revealsList: false` when it leads elsewhere, so the swipe shows no list under the page. */
+  back: { label: string; onPress: () => void; testID: string; revealsList?: boolean };
   spacing: ListAndPageSpacing;
   /** The screen's own `useListAndPageLayout`, so the two never decide apart. */
   kind: LayoutKind;
@@ -76,7 +78,7 @@ export function useListAndPageLayout(
   };
 }
 
-// The half behind is out of the layout, so neither touch, TalkBack nor Tab reaches it.
+// The half behind is out of the layout, so neither touch, TalkBack nor Tab reaches it; during iOS's swipe back it shows under the page, still hidden from screen readers.
 export function ListAndPage({
   heading,
   besideHeading,
@@ -94,7 +96,10 @@ export function ListAndPage({
   const listWidth = useSideListWidth(spacing.listWidth);
   const landscape = kind === 'tabletLandscape';
   const split = landscape && !pageless;
-  useSystemBack(pageTakesBack(kind, pageInFront), back.onPress);
+  const takesBack = pageTakesBack(kind, pageInFront);
+  useSystemBack(takesBack, back.onPress);
+  const swipe = useEdgeSwipeBack(takesBack, back.onPress);
+  const listUnder = swipe.dragging && back.revealsList !== false;
   const column = landscape
     ? spacing.column
     : kind === 'phone'
@@ -117,7 +122,7 @@ export function ListAndPage({
         <View
           style={[
             split ? { width: listWidth } : styles.fill,
-            !landscape && pageInFront && styles.behind,
+            !landscape && pageInFront && !listUnder && styles.behind,
           ]}
         >
           <ScrollColumn
@@ -130,7 +135,14 @@ export function ListAndPage({
             {list}
           </ScrollColumn>
         </View>
-        <View style={[styles.fill, (landscape ? pageless : !pageInFront) && styles.behind]}>
+        <Animated.View
+          style={[
+            styles.fill,
+            (landscape ? pageless : !pageInFront) && styles.behind,
+            swipe.dragging && styles.over,
+            swipe.taking && { transform: [{ translateX: swipe.shift }] },
+          ]}
+        >
           <ScrollColumn key={pageKey} style={styles.fill} contentContainerStyle={column}>
             {kind === 'tabletPortrait' && (
               <View style={styles.start}>
@@ -139,7 +151,7 @@ export function ListAndPage({
             )}
             {page}
           </ScrollColumn>
-        </View>
+        </Animated.View>
       </View>
     </Screen>
   );
@@ -152,4 +164,12 @@ const styles = StyleSheet.create({
   start: { alignSelf: 'flex-start' },
   head: { flexDirection: 'row', alignItems: 'flex-end', gap: tokens.spaceLg },
   split: { flex: 1, minHeight: 0, flexDirection: 'row' },
+  over: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: tokens.colorPage,
+  },
 });
