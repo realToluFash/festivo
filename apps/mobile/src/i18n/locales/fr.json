@@ -765,7 +765,7 @@
     "describeSeededReadOnly": "Intégré, il ne peut donc pas être supprimé. Une personne qui peut modifier {{area}} choisit ce qu’il permet.",
     "describeCustomReadOnly": "Créé par {{name}}.",
     "describeNew": "Part de rien. Activez ce dont ces personnes ont besoin.",
-    "remove": "Supprimer le rôle",
+    "remove": "Supprimer le rôle…",
     "ownerNote": "Propriétaire est intégré et ne peut être ni modifié ni supprimé. Il a toujours tout, et {{name}} en a toujours au moins un.",
     "saved": "Enregistré. S’applique à la prochaine requête de chaque personne.",
     "gridHeading": "Dans chaque domaine, ce rôle peut",

@@ -1352,7 +1352,7 @@
     "describeSeededReadOnly": "Es predefinido, así que no se puede eliminar. Lo que incluye lo decide alguien que pueda cambiar {{area}}.",
     "describeCustomReadOnly": "Creado por {{name}}.",
     "describeNew": "Empieza sin nada. Active lo que necesiten.",
-    "remove": "Eliminar rol",
+    "remove": "Eliminar rol…",
     "ownerNote": "Propietario es predefinido y no se puede editar ni eliminar. Siempre lo tiene todo, y {{name}} siempre tiene al menos uno.",
     "saved": "Guardado. Se aplica en la próxima solicitud de cada persona.",
     "gridHeading": "En cada área, este rol puede",
