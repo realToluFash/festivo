@@ -1358,23 +1358,6 @@ span {
   color: var(--colorAttentionText);
 }
 
-.request-state-done {
-  color: var(--colorAccentText);
-}
-
-.request-state-broken {
-  color: var(--colorBrokenText);
-}
-
-.request-state-ended {
-  color: var(--colorInkSecondary);
-}
-
-.mark-ended {
-  border: var(--borderMark) var(--colorInkSecondary);
-  color: var(--colorInkSecondary);
-}
-
 .button-danger {
   color: var(--colorInk);
 }
@@ -4647,11 +4630,26 @@ button.members-row {
   border-radius: 0;
 }
 
-.status-chip[data-shape='tick']::before {
+.status-chip[data-tone='broken'] {
+  background: var(--colorBrokenTint);
+  color: var(--colorBrokenText);
+}
+
+.status-chip[data-shape='tick']::before,
+.status-chip[data-shape='cross']::before,
+.status-chip[data-shape='dash']::before {
   width: auto;
   height: auto;
   border-radius: 0;
   content: '✓';
+}
+
+.status-chip[data-shape='cross']::before {
+  content: '✕';
+}
+
+.status-chip[data-shape='dash']::before {
+  content: '–';
 }
 
 .mark-paused::before {

@@ -4,6 +4,8 @@ import {
   codeWording,
   formatCountdown,
   formatPhone,
+  RECOVERY_LOOK,
+  type RecoveryOutcome,
   recoveryIntroKey,
 } from '@soirely/domain';
 import { Redirect, router } from 'expo-router';
@@ -34,7 +36,7 @@ import {
 import { Notice } from '../src/components/Notice.tsx';
 import { useFocusOnAnswer } from '../src/components/Screen.tsx';
 import { readOut } from '../src/components/ReadOut.tsx';
-import { StatusMark, type MarkTone } from '../src/components/StatusMark.tsx';
+import { StatusChip } from '../src/components/StatusChip.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { dropRecovery, heldRecovery, holdRecovery } from '../src/heldRecovery.ts';
 import { currentLocale } from '../src/i18n/index.ts';
@@ -200,8 +202,6 @@ export default function LostTwoFactor() {
   }
 }
 
-type Tone = MarkTone;
-
 function Saying({
   title,
   intro,
@@ -209,13 +209,13 @@ function Saying({
 }: {
   title: string;
   intro: string;
-  mark?: { tone: Tone; word: string };
+  mark?: { outcome: RecoveryOutcome; word: string };
 }) {
   const tapped = useContext(Tapped);
 
   return (
     <View style={styles.saying}>
-      {mark != null && <StatusMark tone={mark.tone} word={mark.word} />}
+      {mark != null && <StatusChip look={RECOVERY_LOOK[mark.outcome]} word={mark.word} />}
       <AuthHeading title={title} intro={intro} answer={tapped} />
     </View>
   );
@@ -231,7 +231,7 @@ function Replaced({ onStartAgain }: { onStartAgain: () => void }) {
         <Saying
           title={t('lostTwoFactor.replacedTitle')}
           intro={t('lostTwoFactor.replacedIntro')}
-          mark={{ tone: 'skipped', word: t('lostTwoFactor.replacedMark') }}
+          mark={{ outcome: 'ended', word: t('lostTwoFactor.replacedMark') }}
         />
       }
     >
@@ -442,7 +442,7 @@ function Request({
           <Saying
             title={t('lostTwoFactor.waitingTitle')}
             intro={t(recoveryIntroKey('waiting', state.nobody), { organisations })}
-            mark={{ tone: 'progress', word: t('lostTwoFactor.waitingMark') }}
+            mark={{ outcome: 'waiting', word: t('lostTwoFactor.waitingMark') }}
           />
         }
       >
@@ -493,7 +493,7 @@ function Request({
           <Saying
             title={t('lostTwoFactor.approvedTitle')}
             intro={t(recoveryIntroKey('approved', state.nobody), { organisations: anyOf })}
-            mark={{ tone: 'done', word: t('lostTwoFactor.approvedMark') }}
+            mark={{ outcome: 'approved', word: t('lostTwoFactor.approvedMark') }}
           />
         }
       >
@@ -515,7 +515,7 @@ function Request({
           <Saying
             title={t('lostTwoFactor.turnedDownTitle')}
             intro={t(recoveryIntroKey('turned_down', state.nobody), { organisations: anyOf })}
-            mark={{ tone: 'broken', word: t('lostTwoFactor.turnedDownMark') }}
+            mark={{ outcome: 'turned_down', word: t('lostTwoFactor.turnedDownMark') }}
           />
         }
       >
@@ -538,7 +538,7 @@ function Request({
           <Saying
             title={t('lostTwoFactor.endedTitle')}
             intro={t(recoveryIntroKey('expired', state.nobody))}
-            mark={{ tone: 'skipped', word: t('lostTwoFactor.endedMark') }}
+            mark={{ outcome: 'ended', word: t('lostTwoFactor.endedMark') }}
           />
         }
       >
@@ -567,7 +567,7 @@ function Request({
         <Saying
           title={t('lostTwoFactor.cancelledTitle')}
           intro={t('lostTwoFactor.cancelledIntro')}
-          mark={{ tone: 'skipped', word: t('lostTwoFactor.cancelledMark') }}
+          mark={{ outcome: 'ended', word: t('lostTwoFactor.cancelledMark') }}
         />
       }
     >

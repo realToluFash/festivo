@@ -1,10 +1,10 @@
 import type { EventPhase } from './eventStates.ts';
 import type { MemberState } from './members.ts';
 
-export type StatusTone = 'accent' | 'attention' | 'paused' | 'neutral';
+export type StatusTone = 'accent' | 'attention' | 'paused' | 'broken' | 'neutral';
 
 /** The shape beside a status chip's word, so a state never rests on colour alone (WCAG 2.2, 1.4.1). */
-export type StatusShape = 'ring' | 'dot' | 'half' | 'bars' | 'tick';
+export type StatusShape = 'ring' | 'dot' | 'half' | 'bars' | 'tick' | 'cross' | 'dash';
 
 export interface StatusLook {
   tone: StatusTone;
@@ -38,4 +38,14 @@ export const INVITATION_LOOK: Record<InvitationState, StatusLook> = {
   declined: { tone: 'neutral', shape: 'ring' },
   revoked: { tone: 'neutral', shape: 'ring' },
   expired: { tone: 'neutral', shape: 'ring' },
+};
+
+/** Where a lost two-factor request stands (sc-509); `ended` is an expired, cancelled or replaced one. */
+export type RecoveryOutcome = 'waiting' | 'approved' | 'turned_down' | 'ended';
+
+export const RECOVERY_LOOK: Record<RecoveryOutcome, StatusLook> = {
+  waiting: { tone: 'attention', shape: 'ring' },
+  approved: { tone: 'accent', shape: 'tick' },
+  turned_down: { tone: 'broken', shape: 'cross' },
+  ended: { tone: 'neutral', shape: 'dash' },
 };
