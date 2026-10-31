@@ -3,9 +3,9 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { crc32, deflateSync, inflateSync } from 'node:zlib';
 
 import { tokens } from '../docs/design/tokens.mjs';
+import { encodePng } from './qa-env.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -136,68 +136,13 @@ export function pixels(image) {
   return { size, channels, data: out };
 }
 
-function chunk(type, data) {
-  const head = Buffer.alloc(8);
-  head.writeUInt32BE(data.length, 0);
-  head.write(type, 4, 'ascii');
-  const tail = Buffer.alloc(4);
-  tail.writeUInt32BE(crc32(Buffer.concat([head.subarray(4), data])), 0);
-
-  return Buffer.concat([head, data, tail]);
-}
-
-export function encode({ size, channels, data }) {
-  const header = Buffer.alloc(13);
-  header.writeUInt32BE(size, 0);
-  header.writeUInt32BE(size, 4);
-  header[8] = 8;
-  header[9] = channels === 3 ? 2 : 6;
-  const stride = size * channels;
-  const rows = Buffer.alloc((stride + 1) * size);
-  for (let y = 0; y < size; y++) {
-    data.copy(rows, y * (stride + 1) + 1, y * stride, (y + 1) * stride);
-  }
-
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk('IHDR', header),
-    chunk('IDAT', deflateSync(rows, { level: 9 })),
-    chunk('IEND', Buffer.alloc(0)),
-  ]);
-}
-
-/** A PNG this script wrote, read back: its size, channels and unfiltered bytes. */
-export function decode(png) {
-  const size = png.readUInt32BE(16);
-  const channels = png[25] === 2 ? 3 : 4;
-  const parts = [];
-  for (let at = 8; at < png.length;) {
-    const length = png.readUInt32BE(at);
-    if (png.toString('ascii', at + 4, at + 8) === 'IDAT') {
-      parts.push(png.subarray(at + 8, at + 8 + length));
-    }
-    at += length + 12;
-  }
-  const rows = inflateSync(Buffer.concat(parts));
-  const stride = size * channels;
-  const data = Buffer.alloc(stride * size);
-  for (let y = 0; y < size; y++) {
-    if (rows[y * (stride + 1)] !== 0) {
-      throw new Error('Only the unfiltered rows this script writes can be read back.');
-    }
-    rows.copy(data, y * stride, y * (stride + 1) + 1, (y + 1) * (stride + 1));
-  }
-
-  return { size, channels, data };
-}
-
 export function onDisk(path) {
   return readFileSync(resolve(ROOT, path));
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   for (const [path, image] of Object.entries(IMAGES)) {
-    writeFileSync(resolve(ROOT, path), encode(pixels(image)));
+    writeFileSync(resolve(ROOT, path), encodePng(pixels(image)));
     console.log(`wrote ${path}`);
   }
 }

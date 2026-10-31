@@ -3,13 +3,14 @@ import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 
 import { tokens } from '../docs/design/tokens.mjs';
-import { IMAGES, decode, onDisk, pixels } from './draw-logo.mjs';
+import { IMAGES, onDisk, pixels } from './draw-logo.mjs';
+import { decodePng } from './qa-env.mjs';
 
 describe('the logo images', () => {
   for (const [path, image] of Object.entries(IMAGES)) {
     it(`${path} is the symbol as drawn from the tokens`, () => {
       const drawn = pixels(image);
-      const disk = decode(onDisk(path));
+      const disk = decodePng(onDisk(path));
 
       expect(disk.size).toBe(drawn.size);
       expect(disk.channels).toBe(drawn.channels);
