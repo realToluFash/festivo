@@ -1,5 +1,9 @@
+/** The built stylesheet may write `120ms` as `.12s`, so the unit is read, not assumed. */
 export function motion(name: 'motionFast' | 'motionBase' | 'motionSlow'): number {
-  return parseFloat(getComputedStyle(document.documentElement).getPropertyValue(`--${name}`)) || 0;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim();
+  const amount = parseFloat(value);
+  if (Number.isNaN(amount)) return 0;
+  return value.endsWith('ms') ? amount : value.endsWith('s') ? amount * 1000 : amount;
 }
 
 export function easing(): string {
