@@ -12,7 +12,9 @@ export function ConfirmDialog({
   go,
   pending,
   opensPage = false,
+  stacks = false,
   children,
+  refusal,
   onKeep,
   onGo,
 }: {
@@ -23,7 +25,9 @@ export function ConfirmDialog({
   go: string;
   pending: boolean;
   opensPage?: boolean;
+  stacks?: boolean;
   children: ReactNode;
+  refusal?: ReactNode;
   onKeep: () => void;
   onGo: () => void;
 }) {
@@ -66,7 +70,8 @@ export function ConfirmDialog({
             {children}
           </div>
         </div>
-        <div className="dialog-actions dialog-actions-stack">
+        {refusal}
+        <div className={stacks ? 'dialog-actions dialog-actions-stack' : 'dialog-actions'}>
           <button
             ref={keepButton}
             type="button"

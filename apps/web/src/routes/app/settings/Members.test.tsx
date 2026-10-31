@@ -1526,11 +1526,11 @@ describe('suspending and restoring a member', () => {
     fireEvent.click(suspend);
 
     expect(suspend.hasAttribute('disabled')).toBe(false);
-    expect(
-      await screen.findByText(
-        'That did not go through. Nothing was changed. Try again in a moment.',
-      ),
-    ).toBeDefined();
+    const refusal = await screen.findByText(
+      'That did not go through. Nothing was changed. Try again in a moment.',
+    );
+    expect(refusal.closest('.dialog-heading')).toBeNull();
+    expect(refusal.closest('.dialog')).not.toBeNull();
     expect(document.activeElement).toBe(suspend);
   });
 

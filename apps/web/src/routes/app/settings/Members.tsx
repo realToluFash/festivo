@@ -1019,6 +1019,10 @@ function MemberDetail({
               keep={t('membersScreen.suspendKeep', { name: member.user.name })}
               go={t('membersScreen.suspendConfirm', { name: member.user.name })}
               pending={suspending === 'suspending'}
+              stacks
+              refusal={
+                suspendFailed != null && <FieldError id="suspend-failed" message={suspendFailed} />
+              }
               onKeep={() => {
                 setSuspendFailed(null);
                 setSuspending('resting');
@@ -1033,7 +1037,6 @@ function MemberDetail({
                 })}
               </p>
               <p>{t('membersScreen.suspendConfirmEmail')}</p>
-              {suspendFailed != null && <FieldError id="suspend-failed" message={suspendFailed} />}
             </ConfirmDialog>
           )}
         </section>
@@ -1090,6 +1093,8 @@ function MemberDetail({
           }
           go={t('membersScreen.removeConfirm', { name: member.user.name })}
           pending={removal === 'removing'}
+          stacks
+          refusal={failed != null && <FieldError id="remove-failed" message={failed} />}
           onKeep={() => {
             setFailed(null);
             setRemoval('resting');
@@ -1103,7 +1108,6 @@ function MemberDetail({
               organisation: organisation.name,
             })}
           </p>
-          {failed != null && <FieldError id="remove-failed" message={failed} />}
         </ConfirmDialog>
       )}
     </div>
@@ -1463,13 +1467,16 @@ function JoinRequestAnswer({
             keep={t('membersScreen.awaiting.keep')}
             go={t('membersScreen.awaiting.turnDownConfirm', { name })}
             pending={busy}
+            stacks
+            refusal={
+              failed != null && <FieldError id={`turn-down-${member.id}`} message={failed} />
+            }
             onKeep={back}
             onGo={() => void answer()}
           >
             <p>
               {t('membersScreen.awaiting.turnDownBody', { name, organisation: organisation.name })}
             </p>
-            {failed != null && <FieldError id={`turn-down-${member.id}`} message={failed} />}
           </ConfirmDialog>
         )}
       </div>
