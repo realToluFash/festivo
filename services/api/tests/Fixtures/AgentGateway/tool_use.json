@@ -1,0 +1,147 @@
+{
+    "source": "documented",
+    "request": {
+        "max_tokens": 16000,
+        "messages": [
+            {
+                "content": "How many guests said yes to event evt_garden_party? Use the tool.",
+                "role": "user"
+            }
+        ],
+        "model": "claude-opus-5-5",
+        "output_config": {
+            "effort": "medium"
+        },
+        "system": [
+            {
+                "type": "text",
+                "text": "You are the assistant inside Soirely, an event management product. You are\ntalking to an organiser — somebody running a wedding, a conference, a funeral,\na birthday — about an event they are responsible for.\n\nAnswer the question that was asked. Be brief and concrete: an organiser is\nusually on a phone, mid-task, and wants the answer rather than the options.\n\nYou can see only what this conversation and the tools you have been given\ncontain. If answering needs something you have not been given, say what you\nneed instead of guessing. An invented guest count or table number is worse\nthan no answer, because it will be acted on.\n\nDo not offer to do things you have no tool for."
+            },
+            {
+                "type": "text",
+                "text": "## Today\n\nToday is Wednesday 21 October 2026 (UTC). Work out any relative date the organiser gives you, such as tomorrow or next Wednesday, from this date. If the exact day matters and their timezone would change the answer, ask.",
+                "cache_control": {
+                    "type": "ephemeral",
+                    "ttl": "5m"
+                }
+            },
+            {
+                "type": "text",
+                "text": "## Language\n\nAnswer in English (en), however the organiser writes to you. Keep names, venues and other proper nouns as they were given."
+            }
+        ],
+        "thinking": {
+            "type": "adaptive"
+        },
+        "tools": [
+            {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "event_id": {
+                            "type": "string",
+                            "description": "The event to count replies for."
+                        },
+                        "answer": {
+                            "type": "string",
+                            "enum": ["yes", "no", "maybe"]
+                        }
+                    },
+                    "required": ["event_id"]
+                },
+                "name": "count_replies",
+                "description": "Count the RSVP replies for an event, optionally only those with one answer."
+            }
+        ]
+    },
+    "worker": {
+        "output": {
+            "answer": {
+                "type": "tool_use",
+                "name": "count_replies",
+                "input": {
+                    "event_id": "evt_garden_party",
+                    "answer": "yes"
+                }
+            }
+        },
+        "stopReason": "end_turn",
+        "usage": {
+            "inputTokens": 1956,
+            "outputTokens": 98
+        }
+    },
+    "anthropic": {
+        "status": 200,
+        "body": {
+            "id": "msg_01SyntheticToolUse0000000",
+            "type": "message",
+            "role": "assistant",
+            "model": "claude-opus-5-5",
+            "content": [
+                {
+                    "type": "thinking",
+                    "thinking": "",
+                    "signature": "EqQBCkYIBxgCKkBSyntheticSignature"
+                },
+                {
+                    "type": "tool_use",
+                    "id": "toolu_01SyntheticCall000000000",
+                    "name": "count_replies",
+                    "input": {
+                        "event_id": "evt_garden_party",
+                        "answer": "yes"
+                    }
+                }
+            ],
+            "stop_reason": "tool_use",
+            "stop_sequence": null,
+            "usage": {
+                "input_tokens": 688,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+                "cache_creation": {
+                    "ephemeral_5m_input_tokens": 0,
+                    "ephemeral_1h_input_tokens": 0
+                },
+                "output_tokens": 84,
+                "service_tier": "standard"
+            }
+        }
+    },
+    "apiKey": null,
+    "gateway": {
+        "status": 200,
+        "headers": {},
+        "body": {
+            "id": "msg_01Gateway0000000000001",
+            "type": "message",
+            "role": "assistant",
+            "model": "claude-opus-5-5",
+            "content": [
+                {
+                    "type": "tool_use",
+                    "id": "toolu_01Gateway0000000000001",
+                    "name": "count_replies",
+                    "input": {
+                        "event_id": "evt_garden_party",
+                        "answer": "yes"
+                    }
+                }
+            ],
+            "stop_reason": "tool_use",
+            "stop_sequence": null,
+            "usage": {
+                "input_tokens": 1956,
+                "output_tokens": 98,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+                "cache_creation": {
+                    "ephemeral_5m_input_tokens": 0,
+                    "ephemeral_1h_input_tokens": 0
+                },
+                "service_tier": "standard"
+            }
+        }
+    }
+}

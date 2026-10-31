@@ -1,0 +1,36 @@
+# Account, its time zone changed to Lisbon, and the confirmation that names it.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible: '{{t:account.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'timeZone.change'
+    timeout: 30000
+- tapOn:
+    id: 'timeZone.change'
+- tapOn:
+    id: 'timeZone.search'
+- inputText: 'Lisbon'
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: 'timeZone.search'
+          optional: true
+- tapOn:
+    id: 'timeZone.option.Europe/Lisbon'
+    optional: true
+- tapOn:
+    id: 'timeZone.save'
+    optional: true
+- extendedWaitUntil:
+    visible: '.*Lis(bon|bonne).*'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: 'timeZone.change'
+- takeScreenshot: time-zone-saved
