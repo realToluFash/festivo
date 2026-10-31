@@ -707,8 +707,15 @@ span {
   border-bottom: var(--borderHeader);
 }
 
-.auth-header .brand {
-  flex: 1;
+.auth-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sizeHit);
+}
+
+.auth-header .brand,
+.auth-header .auth-back {
+  margin-right: auto;
 }
 
 .auth-main {
@@ -1583,12 +1590,6 @@ span {
 }
 
 /* ── Create your account ──────────────────────────────────────────────────── */
-
-.auth-back {
-  display: inline-flex;
-  align-items: center;
-  align-self: flex-start;
-}
 
 .auth-heading {
   display: flex;

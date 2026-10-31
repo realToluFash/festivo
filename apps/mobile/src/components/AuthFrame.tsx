@@ -85,6 +85,7 @@ export function AuthFrame({
   children,
 }: {
   saying?: ReactNode;
+  /** In the brand row's place at every size, such as register's ‹ Sign in. */
   back?: ReactNode;
   /** On a phone, the content sits at the foot: a done state's way on. */
   atFoot?: boolean;
@@ -95,9 +96,11 @@ export function AuthFrame({
 
   const brand = (
     <View style={styles.brandRow}>
-      <Title size={tokens.typeTitleDialog.size} style={styles.brand}>
-        {t('app.name')}
-      </Title>
+      {back ?? (
+        <Title size={tokens.typeTitleDialog.size} style={styles.brand}>
+          {t('app.name')}
+        </Title>
+      )}
     </View>
   );
 
@@ -109,7 +112,6 @@ export function AuthFrame({
   return (
     <Screen style={styles.page} contentStyle={CONTENT[kind]}>
       <View style={landscape ? styles.landscapeLeft : undefined}>
-        {back}
         {brand}
         {landscape && <View style={styles.landscapeSaying}>{saying}</View>}
         {landscape && <LanguageChoice />}
@@ -146,7 +148,7 @@ const styles = StyleSheet.create({
     gap: tokens.space5xl,
     padding: tokens.space6xl,
   },
-  brandRow: { height: tokens.sizeHit, justifyContent: 'center' },
+  brandRow: { minHeight: tokens.sizeHit, justifyContent: 'center' },
   brand: { letterSpacing: -0.4 },
   heading: { gap: tokens.spaceXs },
   title: { letterSpacing: -0.5 },

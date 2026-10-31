@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -97,6 +97,14 @@ describe('the way back from Create your account (sc-23277)', () => {
 
     const back = screen.getByRole('button', { name: 'Back to sign in' });
     expect(back.textContent).toBe('‹ Sign in');
+  });
+
+  it('sits in the header in place of the brand', () => {
+    from(['/register']);
+
+    const header = screen.getByRole('banner');
+    expect(within(header).getByRole('button', { name: 'Back to sign in' })).toBeTruthy();
+    expect(within(header).queryByText('Soirely')).toBeNull();
   });
 
   it('does what the browser’s Back does, when there is a page to go back to', async () => {

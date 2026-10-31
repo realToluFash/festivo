@@ -111,17 +111,21 @@ export function Register() {
   }
 
   return (
-    <AuthPage>
-      <button
-        type="button"
-        className="link-button auth-back"
-        aria-label={t('register.back')}
-        onClick={() => (location.key === 'default' ? void navigate('/sign-in') : void navigate(-1))}
-      >
-        <span aria-hidden="true">‹ </span>
-        {t('signIn.title')}
-      </button>
-
+    <AuthPage
+      back={
+        <button
+          type="button"
+          className="link-button auth-back"
+          aria-label={t('register.back')}
+          onClick={() =>
+            location.key === 'default' ? void navigate('/sign-in') : void navigate(-1)
+          }
+        >
+          <span aria-hidden="true">‹ </span>
+          {t('signIn.title')}
+        </button>
+      }
+    >
       <div className="auth-heading">
         <h1>{t('register.title')}</h1>
         <p>{t('register.intro')}</p>
