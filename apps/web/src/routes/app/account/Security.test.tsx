@@ -655,6 +655,16 @@ describe('signing out everywhere else', () => {
     expect(document.body.textContent).not.toMatch(/15 minutes|immediate/i);
   });
 
+  it('puts the dismissive button before the confirming one', async () => {
+    stub({});
+
+    await openCheck();
+    const keep = screen.getByRole('button', { name: 'Keep them signed in' });
+    const signOut = screen.getByRole('button', { name: 'Sign them out' });
+
+    expect(keep.compareDocumentPosition(signOut)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
   it('keeps every device when the check is declined', async () => {
     const sent = stub({});
 

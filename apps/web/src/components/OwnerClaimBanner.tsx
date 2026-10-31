@@ -491,7 +491,7 @@ function WithdrawConfirm({
           <h2 id="owner-claim-withdraw-title">{t('ownerClaim.withdrawTitle')}</h2>
           <p id="owner-claim-withdraw-body">{t('ownerClaim.withdrawBody', { organisation })}</p>
         </div>
-        <div className="dialog-actions">
+        <div className="dialog-actions actions-confirm">
           <button
             ref={keep}
             type="button"

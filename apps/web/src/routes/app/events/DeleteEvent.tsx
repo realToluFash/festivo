@@ -190,7 +190,7 @@ function DeleteDialog({
             </div>
           )}
 
-          <div className="dialog-actions">
+          <div className="dialog-actions actions-confirm">
             <button
               type="button"
               className="link-button"

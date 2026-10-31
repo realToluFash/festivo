@@ -474,6 +474,18 @@ span {
   :has(> :is(.button-primary, .button-danger)) > .button {
     --buttonHit: var(--sizeHitPhonePrimary);
   }
+
+  /* A text action keeps 44 beside a 48 button: a row would otherwise stretch it to 48. */
+  :has(> :is(.button-primary, .button-danger)) > .link-button {
+    height: fit-content;
+    margin-block: auto;
+  }
+
+  /* A confirm's pair stacked: the confirming button on top, the dismissive one under it. */
+  .actions-confirm {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
 }
 
 /* ── Panels, tables, states ───────────────────────────────────────────────── */
@@ -3241,11 +3253,6 @@ span {
   .owner-claim-withdraw {
     border-radius: var(--radiusSheet) var(--radiusSheet) 0 0;
   }
-
-  .owner-claim-withdraw .dialog-actions {
-    flex-direction: column-reverse;
-    align-items: stretch;
-  }
 }
 
 .members-chips {
@@ -4720,13 +4727,6 @@ button.members-row {
   color: var(--colorInkSecondary);
 }
 
-@media (width <= 40rem) {
-  .event-delete-dialog .dialog-actions {
-    flex-direction: column-reverse;
-    align-items: stretch;
-  }
-}
-
 /* ── Duplicate an event (sc-3593) ─────────────────────────────────────────── */
 
 .event-copy-lists {
@@ -4772,11 +4772,6 @@ button.members-row {
     height: 100%;
     max-height: none;
     border-radius: 0;
-  }
-
-  .event-copy-dialog .dialog-actions {
-    flex-direction: column-reverse;
-    align-items: stretch;
   }
 }
 
