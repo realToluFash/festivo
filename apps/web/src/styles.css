@@ -1433,10 +1433,6 @@ span {
   gap: var(--spaceXs);
 }
 
-.resend .button {
-  font-variant-numeric: tabular-nums;
-}
-
 .resend p {
   margin: 0;
   font: var(--typeSmall);
@@ -1513,6 +1509,15 @@ span {
 .link-button.link-button-quiet:hover {
   color: var(--colorInk);
   text-decoration: underline;
+}
+
+.resend .link-button {
+  font-variant-numeric: tabular-nums;
+}
+
+.resend .link-button[data-off] {
+  color: var(--colorInkSecondary);
+  cursor: default;
 }
 
 .auth-footnote .link-button {
