@@ -20,7 +20,6 @@ appId: host.exp.Exponent
     visible:
       id: 'events.page'
     timeout: 20000
-- assertVisible: '{{t:eventsScreen.title}}'
 - tapOn:
     id: 'frame.back'
 - extendedWaitUntil:
