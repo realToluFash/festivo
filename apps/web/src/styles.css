@@ -322,6 +322,11 @@ span {
   max-width: 100%;
   text-decoration: none;
   cursor: pointer;
+  transition: opacity var(--motionFast) var(--motionEase);
+}
+
+.button:active {
+  opacity: var(--opacityPressed);
 }
 
 /* A label naming a role, an organisation or a person wraps whole. */
@@ -343,14 +348,21 @@ span {
 }
 
 .button-primary {
-  background: var(--colorAccent);
-  border-color: var(--colorAccent);
+  background: var(--colorAccentHover);
+  border-color: var(--colorAccentHover);
   color: var(--colorInkOnDark);
 }
 
 .button-primary:hover {
-  background: var(--colorAccentHover);
-  border-color: var(--colorAccentHover);
+  background: var(--colorPrimaryHover);
+  border-color: var(--colorPrimaryHover);
+}
+
+@media (width <= 40rem) {
+  .button-primary,
+  .button-danger {
+    --buttonHit: var(--sizeHitPhonePrimary);
+  }
 }
 
 /* ── Panels, tables, states ───────────────────────────────────────────────── */
@@ -623,7 +635,7 @@ span {
   width: 100%;
   min-height: var(--sizeHit);
   padding: 0 var(--spaceLg);
-  border: var(--borderControl);
+  border: var(--borderField);
   border-radius: var(--radiusField);
   background: var(--colorCard);
   color: var(--colorInk);
@@ -1258,7 +1270,7 @@ span {
 }
 
 .button-danger {
-  color: var(--colorBrokenText);
+  color: var(--colorInk);
 }
 
 .request-card-head {
@@ -1923,6 +1935,7 @@ span {
   border: 0;
   background: var(--scrimDialog);
   cursor: pointer;
+  animation: fade-in var(--motionBase) var(--motionEase);
 }
 
 .dialog-scrim:disabled {
@@ -1948,6 +1961,7 @@ span {
   border: var(--borderCard);
   border-radius: var(--radiusCardDesktop);
   box-shadow: var(--shadowDialog);
+  animation: rise-in var(--motionBase) var(--motionEase);
 }
 
 .dialog:focus {
@@ -2005,6 +2019,55 @@ span {
     transform: none;
     border-radius: var(--radiusCardDesktop) var(--radiusCardDesktop) 0 0;
     box-shadow: var(--shadowSheet);
+    animation: sheet-in var(--motionSlow) var(--motionEase);
+  }
+}
+
+/* ── Motion (sc-22092): a fade and a short rise, never longer than --motionMax ── */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    translate: 0 var(--motionRise);
+  }
+}
+
+@keyframes drop-in {
+  from {
+    opacity: 0;
+    translate: 0 calc(-1 * var(--motionRise));
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    translate: 0 100%;
+  }
+}
+
+.shell-content[data-enter='forward'] {
+  animation: rise-in var(--motionBase) var(--motionEase);
+}
+
+.shell-content[data-enter='back'] {
+  animation: drop-in var(--motionBase) var(--motionEase);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog,
+  .shell-content[data-enter] {
+    animation-name: fade-in;
+    animation-duration: var(--motionBase);
+  }
+
+  .button {
+    transition: none;
   }
 }
 
@@ -4193,7 +4256,7 @@ button.members-row {
 }
 
 .cover-remove {
-  color: var(--colorBrokenText);
+  color: var(--colorInk);
 }
 
 .cover-remove-below {
@@ -4276,10 +4339,14 @@ button.members-row {
   background: var(--colorAccent);
 }
 
-.pill-happening-now,
-.pill-paused {
+.pill-happening-now {
   background: var(--colorAttentionTint);
   color: var(--colorAttentionText);
+}
+
+.pill-paused {
+  background: var(--colorPausedTint);
+  color: var(--colorPausedText);
 }
 
 .pill-happening-now::before {
@@ -4288,8 +4355,8 @@ button.members-row {
 }
 
 .pill-paused::before {
-  border-left: 0.1875rem solid var(--colorAttentionText);
-  border-right: 0.1875rem solid var(--colorAttentionText);
+  border-left: 0.1875rem solid var(--colorPausedText);
+  border-right: 0.1875rem solid var(--colorPausedText);
   border-radius: 0;
 }
 
