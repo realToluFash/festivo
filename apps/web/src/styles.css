@@ -3775,6 +3775,10 @@ button.members-row {
   color: var(--colorAccentText);
 }
 
+.event-page-outcome p {
+  margin: 0;
+}
+
 .event-form-actions,
 .event-page-actions {
   display: flex;
@@ -4036,6 +4040,10 @@ button.members-row {
   margin: 0;
   color: var(--colorInk);
   font-weight: 500;
+}
+
+.cover-removed p {
+  margin: 0;
 }
 
 .cover-removed svg {
