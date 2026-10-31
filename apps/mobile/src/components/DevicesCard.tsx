@@ -24,7 +24,6 @@ import { useFormChecks } from '../kit/formChecks.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { tokens } from '../theme/tokens.ts';
-import { currentSessionId } from '../tokens.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
@@ -51,7 +50,7 @@ type Stage =
   | { kind: 'checking'; device: DeviceSession }
   | { kind: 'everywhere' };
 
-/** Settings > Security, the "Signed in on" card in the app (sc-55, sc-115): this device is the session the keystore holds. */
+/** Settings > Security, the "Signed in on" card in the app (sc-55, sc-115): this device is the session the API marks. */
 export function DevicesCard({
   hasPassword,
   providers,
@@ -82,7 +81,6 @@ export function DevicesCard({
   const title = useRef<TextHandle>(null);
   const opener = useFocusBackToOpener(stage.kind === 'list' ? stage.closed : undefined, title);
   const frame = cardFrame(kind);
-  const here = currentSessionId();
 
   if (listedFor !== reload) {
     setListedFor(reload);
@@ -150,11 +148,8 @@ export function DevicesCard({
     }
 
     show({ kind: 'list', said: { kind: 'everywhere', signedOut: result.signedOut } });
-    setDevices((current) =>
-      current.kind === 'ready'
-        ? { kind: 'ready', sessions: current.sessions.filter((s) => s.id === currentSessionId()) }
-        : current,
-    );
+    setDevices({ kind: 'loading' });
+    setAttempt((n) => n + 1);
   }
 
   if (stage.kind === 'checking') {
@@ -175,7 +170,7 @@ export function DevicesCard({
     return (
       <View style={frame}>
         <EverywhereElse
-          {...othersOf(devices.sessions, here)}
+          {...othersOf(devices.sessions)}
           hasPassword={hasPassword}
           providers={providers}
           onDone={endedElsewhere}
@@ -264,11 +259,11 @@ export function DevicesCard({
 
       {devices.kind === 'ready' && (
         <View>
-          {thisDeviceFirst(devices.sessions, here).map((device) => (
+          {thisDeviceFirst(devices.sessions).map((device) => (
             <Row
               key={device.id}
               device={device}
-              here={device.id === here}
+              here={device.thisDevice}
               onEndHere={() => onSignOutHere()}
               opener={opener(`signOut.${device.id}`)}
               onCheck={() => show({ kind: 'checking', device })}
@@ -277,7 +272,7 @@ export function DevicesCard({
         </View>
       )}
 
-      {devices.kind === 'ready' && othersOf(devices.sessions, here).count > 0 && (
+      {devices.kind === 'ready' && othersOf(devices.sessions).count > 0 && (
         <View style={styles.footer}>
           <SecondaryButton
             label={t('devices.everywhere')}

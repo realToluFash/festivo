@@ -2062,6 +2062,7 @@ describe('the device a sign-in comes from', () => {
 describe('the sessions an account has', () => {
   const SESSION = {
     id: '018f3a4c-0000-7c3d-9e1f-2a3b4c5d6e7f',
+    thisDevice: true,
     userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/141.0.0.0 Safari/537.36',
     ipAddress: '102.89.33.14',
     startedAt: '2026-10-15T08:40:00+00:00',
@@ -2086,6 +2087,14 @@ describe('the sessions an account has', () => {
 
     expect(sessions).toHaveLength(1);
     expect(sessions[0]?.ipAddress).toBe('102.89.33.14');
+    expect(sessions[0]?.thisDevice).toBe(true);
+  });
+
+  test('reads a row without the mark as another device', async () => {
+    const { thisDevice: _, ...unmarked } = SESSION;
+    const sessions = await client(json({ sessions: [unmarked] })).sessions();
+
+    expect(sessions[0]?.thisDevice).toBe(false);
   });
 
   /** A client that named itself nothing is a row that says so, not a crash. */
