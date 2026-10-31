@@ -64,6 +64,18 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **31 Oct 2026. Who's here, for the floor lead** (sc-3918, settled on pm's #24454 and #24466).
+  Empty states say what is true, not what is missing: "Everyone due by {time} has clocked in."
+  and "Nobody has clocked in yet."; with nobody to move, "Everyone here is already on
+  {station}." The polite announcement is "{name} clocked in at {time}." A load failure is the
+  house "The list of who is here did not load.", followed by "Check your connection and try
+  again." where a retry is drawn. The Job line has three forms, each ending in a full stop:
+  "{job} shifts end at {time}. Theirs runs from now until then.", "{job} has no shift tonight.
+  Theirs runs from now until the event ends at {time}." and "{job} has no shift tonight. Theirs
+  runs for 24 hours, until {time} tomorrow." No {day} slot: the 24-hour cap keeps every end
+  today or tomorrow, and only the third form can be ambiguous, so only it says "tomorrow".
+  {time} is 24-hour from `Intl`. With sc-3906: "Nothing was changed. {name} was not added. Try
+  again."
 - **30 Oct 2026. A build too old to use** (sc-22881 for sc-22620, `updateRequired.*`, app).
   "Update Soirely to carry on", the house "to carry on"; the body says what happened ("no
   longer works") and reassures ("Updating keeps everything you have saved"); the button is the
