@@ -34,9 +34,10 @@ describe('focus going back to a step’s opener', () => {
 });
 
 describe('a step closing back to its opener', () => {
-  it('on Android with TalkBack on, holds the scroll where it is and gives a control opener input focus, then brings it into sight and moves TalkBack’s focus to it, before the keys go down and the step goes (sc-18588, sc-22357, sc-22995)', () => {
+  it('on Android with TalkBack on, holds the scroll where it is, waits for the hold to mount before the opener shows, and gives a control opener input focus, then brings it into sight and moves TalkBack’s focus to it, before the keys go down and the step goes (sc-18588, sc-22357, sc-22995)', () => {
     expect(stepCloseSteps('android', true, 'opener')).toEqual([
       { do: 'holdScroll' },
+      { do: 'awaitMount' },
       { do: 'showOpener' },
       { do: 'takeInputFocus', atMs: INPUT_FOCUS_TAKEN_MS, to: 'opener' },
       { do: 'bringOpener' },
@@ -50,6 +51,7 @@ describe('a step closing back to its opener', () => {
   it('on Android with TalkBack on, gives input focus to a holder TalkBack does not read beside a line of words, and moves TalkBack’s focus to the line before the keys go down, so TalkBack has not already put it there from the carried-off Save (sc-18587)', () => {
     expect(stepCloseSteps('android', true, 'holder')).toEqual([
       { do: 'holdScroll' },
+      { do: 'awaitMount' },
       { do: 'showOpener' },
       { do: 'takeInputFocus', atMs: INPUT_FOCUS_TAKEN_MS, to: 'holder' },
       { do: 'bringOpener' },
