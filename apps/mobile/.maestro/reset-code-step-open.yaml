@@ -1,0 +1,11 @@
+# Opens a reset link's code step (two-factor on) with the signed-out app in LANGUAGE (its chip
+# on the sign-in screen: English, Español, Français, Português). Pass LANGUAGE and TOKEN.
+# sc-22740.
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-screen-language.yaml
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN}
+- extendedWaitUntil:
+    visible:
+      id: 'twoFactor.code'
+    timeout: 30000

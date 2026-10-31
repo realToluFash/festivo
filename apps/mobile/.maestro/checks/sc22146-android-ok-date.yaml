@@ -1,0 +1,35 @@
+# sc-22146: on Android, New event's Starts date dialog, a new day (DAY) tapped and OK pressed; Starts' date shows DAY, as before.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.start.date'
+    direction: DOWN
+    centerElement: true
+- assertNotVisible:
+    id: 'eventForm.start.date'
+    text: '.*\b${DAY}\b.*'
+- takeScreenshot: before
+- tapOn:
+    id: 'eventForm.start.date'
+- extendedWaitUntil:
+    visible:
+      text: 'OK'
+    timeout: 10000
+- tapOn:
+    text: '${DAY}'
+- takeScreenshot: picked
+- tapOn:
+    text: 'OK'
+- waitForAnimationToEnd
+- assertNotVisible:
+    text: 'OK'
+- assertVisible:
+    id: 'eventForm.start.date'
+    text: '.*\b${DAY}\b.*'
+- takeScreenshot: kept

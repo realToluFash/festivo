@@ -1,0 +1,15 @@
+# Closes the keys with the iPad keyboard's hide key, then taps Create organisation. sc-13408.
+#
+# The hide key is tapped by its place on an iPad in portrait: the key has no id.
+appId: host.exp.Exponent
+---
+- tapOn:
+    point: '97%,97%'
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: mobile-13408-keys-down-before
+- tapOn:
+    id: 'createOrganisation.create'
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: mobile-13408-keys-down-after

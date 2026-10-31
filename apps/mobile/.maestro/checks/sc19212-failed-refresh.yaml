@@ -1,0 +1,43 @@
+# sc-19212: on a tablet on its side, Events of ${ORG} listing events, nothing open: a pull to refresh with the API stopped gives the failed card at full width, no Choose an event pane; Try again with it back gives the split.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.new'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: listed
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- swipe:
+    start: 20%, 30%
+    end: 20%, 80%
+    duration: 600
+- extendedWaitUntil:
+    visible:
+      id: 'events.retry'
+    timeout: 30000
+- waitForAnimationToEnd
+- assertNotVisible: '{{t:eventsScreen.choose}}.*'
+- takeScreenshot: failed
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- tapOn:
+    id: 'events.retry'
+- extendedWaitUntil:
+    visible:
+      id: 'events.new'
+    timeout: 30000
+- waitForAnimationToEnd
+- assertVisible: '{{t:eventsScreen.choose}}.*'
+- takeScreenshot: split
