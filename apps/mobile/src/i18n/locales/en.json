@@ -746,7 +746,7 @@
     "describeSeededReadOnly": "Built in, so it cannot be removed. Someone who can change {{area}} decides what it holds.",
     "describeCustomReadOnly": "Made by {{name}}.",
     "describeNew": "Starts from nothing. Switch on what they need.",
-    "remove": "Remove role",
+    "remove": "Remove role…",
     "ownerNote": "Owner is built in and can't be edited or removed. It always has everything, and {{name}} always has at least one.",
     "saved": "Saved. Applies on each person's next request.",
     "gridHeading": "In each area, this role can",

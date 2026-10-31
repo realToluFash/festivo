@@ -258,7 +258,7 @@ describe('Settings > Roles', () => {
 
     expect(screen.getByText(/Owner is built in and can't be edited or removed/)).toBeDefined();
     expect(screen.queryByRole('group', { name: 'Events' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Remove role' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Remove role…' })).toBeNull();
   });
 
   it('saves a seeded role’s new grant, and says who gets it', async () => {
@@ -302,10 +302,10 @@ describe('Settings > Roles', () => {
     );
     await roles();
     pick(/^Coordinator/);
-    expect(screen.queryByRole('button', { name: 'Remove role' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Remove role…' })).toBeNull();
 
     pick(/^Door team/);
-    fireEvent.click(screen.getByRole('button', { name: 'Remove role' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove role…' }));
     fireEvent.click(screen.getByRole('button', { name: 'Move them and remove Door team' }));
 
     expect(screen.getByText('Choose the role these people move to.')).toBeDefined();
@@ -346,7 +346,7 @@ describe('Settings > Roles', () => {
     });
     await roles();
     pick(/^Door team/);
-    fireEvent.click(screen.getByRole('button', { name: 'Remove role' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove role…' }));
     fireEvent.click(screen.getByLabelText(/^Read-only/));
     fireEvent.click(screen.getByRole('button', { name: 'Move them and remove Door team' }));
 
@@ -553,7 +553,7 @@ describe('Settings > Roles', () => {
     ).toBeDefined();
 
     pick(/^Door team/);
-    fireEvent.click(screen.getByRole('button', { name: 'Remove role' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove role…' }));
 
     expect(screen.getByLabelText(/^Read-only/)).toBeDefined();
     expect(screen.queryByLabelText(/^Owner/)).toBeNull();
@@ -763,7 +763,7 @@ describe('Settings > Roles', () => {
     await roles();
     pick(/^Door team/);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Remove role' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove role…' }));
 
     expect(document.activeElement).toBe(
       screen.getByRole('heading', { level: 2, name: 'Remove Door team?' }),
@@ -880,17 +880,17 @@ describe('where focus goes once a click on Roles is answered (sc-11369)', () => 
     await roles();
     pick(/^Door team/);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Remove role' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove role…' }));
     fireEvent.click(screen.getByRole('button', { name: 'Keep Door team' }));
 
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Remove role' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Remove role…' }));
   });
 
   it('puts focus on Roles once a role is removed beside the list', async () => {
     answering(removed());
     await roles();
     pick(/^Door team/);
-    fireEvent.click(screen.getByRole('button', { name: 'Remove role' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove role…' }));
     fireEvent.click(screen.getByLabelText(/^Read-only/));
     fireEvent.click(screen.getByRole('button', { name: 'Move them and remove Door team' }));
 
@@ -986,7 +986,7 @@ describe('where focus goes once a click on Roles is answered (sc-11369)', () => 
       answering(removed());
       await roles();
       pick(/^Door team/);
-      fireEvent.click(screen.getByRole('button', { name: 'Remove role' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Remove role…' }));
       fireEvent.click(screen.getByLabelText(/^Read-only/));
       fireEvent.click(screen.getByRole('button', { name: 'Move them and remove Door team' }));
 
@@ -1017,7 +1017,7 @@ describe('where focus goes once a click on Roles is answered (sc-11369)', () => 
       });
       await roles();
       pick(/^Door team/);
-      fireEvent.click(screen.getByRole('button', { name: 'Remove role' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Remove role…' }));
       fireEvent.click(screen.getByLabelText(/^Read-only/));
       fireEvent.click(screen.getByRole('button', { name: 'Move them and remove Door team' }));
       await waitFor(() =>

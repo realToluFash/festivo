@@ -115,7 +115,11 @@ export function RoleList({
         >
           <View style={styles.fill}>
             <View style={styles.pickName}>
-              <Text size={landscape ? tokens.typeRowTitle.size : 16} weight="bold">
+              <Text
+                size={landscape ? tokens.typeRowTitle.size : tokens.typeTitleSection.size}
+                weight={landscape && open === role.id ? 'semibold' : 'bold'}
+                style={landscape && open === role.id ? styles.accent : undefined}
+              >
                 {roleName(t, role)}
               </Text>
               {role.seededAs != null && (
@@ -298,7 +302,7 @@ export function RolePage({
 
   const remove = removable && (
     <View style={styles.start}>
-      <SecondaryButton
+      <DestructiveButton
         ref={removeButton}
         label={t('rolesScreen.remove')}
         onPress={onRemove}
@@ -695,6 +699,7 @@ function WhatTheySee({ grant, areas }: { grant: string[]; areas: string[] }) {
 /** Removing a role members hold sends nothing until the role they move to is chosen (sc-66). */
 export function RemoveRole({
   answer,
+  phone,
   organisation,
   role,
   roles,
@@ -703,6 +708,8 @@ export function RemoveRole({
 }: {
   /** The tap that asked: the title takes screen reader focus. */
   answer?: unknown;
+  /** Stacked with the confirming button on top on a phone, and in a row with Keep first on a tablet. */
+  phone: boolean;
   organisation: Membership;
   role: OrganisationRole;
   roles: OrganisationRole[];
@@ -741,6 +748,26 @@ export function RemoveRole({
 
     onRemoved(withoutRole(roles, role, moving));
   }
+
+  const confirm = (
+    <DestructiveButton
+      label={
+        role.holders === 0
+          ? t('rolesScreen.removeConfirmEmpty', { role: title })
+          : t('rolesScreen.removeConfirm', { role: title })
+      }
+      busy={status === 'removing'}
+      onPress={() => void remove()}
+      testID="roles.remove.confirm"
+    />
+  );
+  const keep = (
+    <QuietButton
+      label={t('rolesScreen.keep', { role: title })}
+      onPress={onKeep}
+      testID="roles.remove.keep"
+    />
+  );
 
   return (
     <View style={[styles.card, styles.padded, styles.removing]}>
@@ -799,21 +826,17 @@ export function RemoveRole({
           <FieldError message={t('rolesScreen.failedRemove')} />
         </View>
       )}
-      <DestructiveButton
-        label={
-          role.holders === 0
-            ? t('rolesScreen.removeConfirmEmpty', { role: title })
-            : t('rolesScreen.removeConfirm', { role: title })
-        }
-        busy={status === 'removing'}
-        onPress={() => void remove()}
-        testID="roles.remove.confirm"
-      />
-      <QuietButton
-        label={t('rolesScreen.keep', { role: title })}
-        onPress={onKeep}
-        testID="roles.remove.keep"
-      />
+      {phone ? (
+        <>
+          {confirm}
+          {keep}
+        </>
+      ) : (
+        <View style={styles.pair}>
+          {keep}
+          {confirm}
+        </View>
+      )}
     </View>
   );
 }
@@ -854,33 +877,47 @@ function Unsaved({
   );
 }
 
+const RADIO = tokens.sizeMark + tokens.spaceHair;
+const STROKE = 2;
+
 const styles = StyleSheet.create({
   fill: { flex: 1, minWidth: 0 },
   start: { alignSelf: 'flex-start' },
-  stack: { gap: 14 },
+  stack: { gap: tokens.spaceLg },
   card: {
     borderRadius: tokens.radiusCardPhone,
     borderWidth: 1,
     borderColor: tokens.colorBorder,
     backgroundColor: tokens.colorCard,
   },
-  padded: { gap: tokens.spaceSm, paddingVertical: 18, paddingHorizontal: tokens.spaceLg },
+  padded: {
+    gap: tokens.spaceSm,
+    paddingVertical: tokens.spaceXl,
+    paddingHorizontal: tokens.spaceLg,
+  },
   list: { paddingVertical: tokens.spaceXxs, paddingHorizontal: tokens.spaceLg },
   listDense: { gap: tokens.spaceXxs, padding: tokens.spaceMd },
   divided: { borderTopWidth: 1, borderTopColor: tokens.colorInsetBorder },
   pick: {
-    minHeight: 64,
+    minHeight: tokens.sizeHit + tokens.spaceXxl,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceMd,
     paddingVertical: tokens.spaceSm,
   },
   pickDense: {
-    minHeight: 60,
+    minHeight: tokens.sizeHit + tokens.spaceXl,
     paddingHorizontal: tokens.spaceMd,
     borderRadius: tokens.radiusField,
   },
-  pickOpen: { backgroundColor: tokens.colorNeutralFill },
+  pickOpen: {
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
+    borderLeftWidth: STROKE,
+    borderLeftColor: tokens.colorAccent,
+    paddingLeft: tokens.spaceMd - STROKE,
+    backgroundColor: tokens.colorRowSelected,
+  },
   pickName: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
   pill: {
     minHeight: tokens.sizePill,
@@ -892,10 +929,10 @@ const styles = StyleSheet.create({
   },
   head: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: tokens.spaceLg },
   headText: { gap: tokens.spaceXs },
-  nameInput: { fontSize: 17, fontWeight: '700' },
+  nameInput: { fontSize: tokens.typeTitleSection.size, fontWeight: '700' },
   grid: { paddingVertical: tokens.spaceXs, paddingHorizontal: tokens.spaceLg },
   gridHeading: { paddingTop: tokens.spaceMd, paddingBottom: tokens.spaceSm },
-  area: { gap: tokens.spaceSm, paddingVertical: 14 },
+  area: { gap: tokens.spaceSm, paddingVertical: tokens.spaceLg },
   rowHead: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
   rowText: { gap: tokens.spaceHair },
   levels: { flexDirection: 'row', gap: tokens.spaceXs },
@@ -923,12 +960,12 @@ const styles = StyleSheet.create({
     marginTop: tokens.spaceXxs,
     paddingTop: tokens.spaceMd,
     paddingLeft: tokens.spaceMd,
-    borderLeftWidth: 2,
+    borderLeftWidth: STROKE,
     borderLeftColor: tokens.colorInsetBorder,
   },
   unsaved: {
     gap: tokens.spaceMd,
-    padding: 14,
+    padding: tokens.spaceLg,
     borderRadius: tokens.radiusInset,
     borderWidth: 1,
     borderColor: tokens.colorAttentionBorder,
@@ -945,34 +982,46 @@ const styles = StyleSheet.create({
   holderWord: { color: tokens.colorInkSecondary },
   moreHolders: { minHeight: tokens.sizeHit, justifyContent: 'center', alignSelf: 'flex-start' },
   removing: { gap: tokens.spaceMd },
+  pair: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: tokens.spaceLg,
+  },
   choices: { gap: tokens.spaceXs },
   choice: {
-    minHeight: 60,
+    minHeight: tokens.sizeHit + tokens.spaceXl,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceMd,
     paddingVertical: tokens.spaceXs,
-    paddingHorizontal: 14,
+    paddingHorizontal: tokens.spaceLg,
     borderRadius: tokens.radiusInset,
     borderWidth: 1,
     borderColor: tokens.colorControlBorder,
     backgroundColor: tokens.colorCard,
   },
   choiceOn: {
-    borderWidth: 2,
+    borderWidth: STROKE,
     borderColor: tokens.colorAccent,
     backgroundColor: tokens.colorAccentTint,
   },
   radio: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
+    width: RADIO,
+    height: RADIO,
+    borderRadius: RADIO / 2,
+    borderWidth: STROKE,
     borderColor: tokens.colorControlBorder,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: tokens.colorCard,
   },
   radioOn: { borderColor: tokens.colorAccent },
-  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: tokens.colorAccent },
+  radioDot: {
+    width: tokens.spaceMd,
+    height: tokens.spaceMd,
+    borderRadius: tokens.spaceMd / 2,
+    backgroundColor: tokens.colorAccent,
+  },
 });

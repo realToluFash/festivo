@@ -2294,7 +2294,10 @@ span {
 }
 
 .roles-pick[aria-pressed='true'] {
-  background: var(--colorInset);
+  border-left: var(--borderSelected);
+  border-radius: 0 var(--radiusInset) var(--radiusInset) 0;
+  padding-left: calc(var(--spaceMd) - 2px);
+  background: var(--colorRowSelected);
 }
 
 .roles-pick-text,
@@ -2316,6 +2319,11 @@ span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.roles-pick[aria-pressed='true'] strong {
+  color: var(--colorAccentText);
+  font-weight: 600;
 }
 
 .roles-detail {
@@ -2547,6 +2555,18 @@ span {
   .roles-pick-text,
   .roles-row-text {
     flex-basis: 13rem;
+  }
+
+  /* Stacked, the confirming one is on top: Save over Discard changes, Remove over Keep. */
+  .roles-unsaved .roles-actions,
+  .roles-removing .roles-actions {
+    flex-direction: column-reverse;
+    flex-basis: 100%;
+  }
+
+  .roles-unsaved .roles-actions > *,
+  .roles-removing .roles-actions > * {
+    width: 100%;
   }
 }
 
