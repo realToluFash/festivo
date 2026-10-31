@@ -409,7 +409,7 @@ describe('a field keeps focus while signing in, and takes it for its line (sc-11
     await waitFor(() =>
       expect(screen.getByLabelText<HTMLInputElement>('Email').readOnly).toBe(true),
     );
-    const forgot = screen.getByRole('link', { name: 'Forgot your password?' });
+    const forgot = screen.getByRole('link', { name: 'Forgot it?' });
     forgot.focus();
     act(refuse);
 
@@ -457,7 +457,7 @@ describe('signing in under an organisation’s sign-in rules (sc-69)', () => {
     expect(banner.textContent).toMatch(/Use Google instead/);
     expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('folake@ire.events');
     expect(screen.queryByLabelText('Password')).toBeNull();
-    expect(screen.queryByRole('link', { name: 'Forgot your password?' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Forgot it?' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Sign in' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Continue with Apple' })).toBeNull();

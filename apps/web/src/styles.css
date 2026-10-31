@@ -2932,21 +2932,6 @@ span {
   accent-color: var(--colorAccent);
 }
 
-/* A word chosen per width, both in the page, one shown. */
-.narrow-only {
-  display: none;
-}
-
-@media (width <= 40rem) {
-  .wide-only {
-    display: none;
-  }
-
-  .narrow-only {
-    display: inline;
-  }
-}
-
 /* ── Your account's sections, and the time zone (sc-868) ─────────────────── */
 
 .account-sections {

@@ -700,7 +700,6 @@
     "dismiss": "Dismiss"
   },
   "recovery": {
-    "forgot": "Forgot your password?",
     "forgotShort": "Forgot it?",
     "title": "Reset your password",
     "intro": "Enter the email you sign in with. If it has an account, we send it a link to set a new password.",

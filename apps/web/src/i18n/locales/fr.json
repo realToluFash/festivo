@@ -718,7 +718,6 @@
     "dismiss": "Fermer"
   },
   "recovery": {
-    "forgot": "Mot de passe oublié ?",
     "forgotShort": "Oublié ?",
     "title": "Réinitialisez votre mot de passe",
     "intro": "Saisissez l’adresse e-mail avec laquelle vous vous connectez. Si elle a un compte, nous lui envoyons un lien pour choisir un nouveau mot de passe.",

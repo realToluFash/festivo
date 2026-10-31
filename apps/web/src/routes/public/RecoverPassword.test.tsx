@@ -69,7 +69,7 @@ describe('asking for a reset link', () => {
   it('is reached from sign-in', async () => {
     at('/sign-in');
 
-    fireEvent.click(screen.getByRole('link', { name: 'Forgot your password?' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Forgot it?' }));
 
     await waitFor(() =>
       expect(screen.getByRole('heading', { level: 1, name: 'Reset your password' })).toBeDefined(),
