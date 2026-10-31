@@ -199,6 +199,7 @@ export function SecondFactorStep({
               accessibilityLabel={label}
               autoCapitalize="none"
               autoComplete="off"
+              style={styles.figures}
             />
           )}
         </Field>
@@ -242,5 +243,6 @@ export function SecondFactorStep({
 const styles = StyleSheet.create({
   form: { gap: tokens.spaceXl },
   paused: { gap: tokens.spaceSm },
+  figures: { fontVariant: ['tabular-nums'] },
   secondary: { color: tokens.colorInkSecondary },
 });

@@ -167,7 +167,7 @@ export function SecondFactorStep({
             {mode === 'app' ? t('twoFactor.code') : t('twoFactor.recoveryCode')}
           </label>
           <input
-            className={error == null ? 'input' : 'input input-wrong'}
+            className={error == null ? 'input input-figures' : 'input input-figures input-wrong'}
             id="code"
             name="code"
             type="text"

@@ -1407,6 +1407,11 @@ span {
   caret-color: var(--colorInk);
 }
 
+/* The code and recovery-code fields at a code step: Instrument Sans, figures one width (sc-23279). */
+.input-figures {
+  font-variant-numeric: tabular-nums;
+}
+
 .code-input.input-wrong {
   border-color: var(--colorBroken);
 }
