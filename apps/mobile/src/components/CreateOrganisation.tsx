@@ -22,7 +22,7 @@ import {
   NEW_ORGANISATION_FIELDS,
   createOrganisation,
   dropsKeysAfter,
-  limitMessage,
+  limitNotice,
   newOrganisationMessage,
 } from '../kit/organisationCreate.ts';
 import { useLayout } from '../layout/useLayout.ts';
@@ -168,7 +168,7 @@ function Form({
   const [refused, setRefused] = useState<Partial<Record<NewOrganisationField, string | undefined>>>(
     {},
   );
-  const [limited, setLimited] = useState<string | null>(null);
+  const [limited, setLimited] = useState<ReturnType<typeof limitNotice> | null>(null);
   const [failed, setFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const nameInput = useRef<TextInputInstance>(null);
@@ -212,7 +212,7 @@ function Form({
 
     setSaving(false);
     if (dropsKeysAfter(outcome.kind, Platform.OS)) nameInput.current?.blur();
-    if (outcome.kind === 'limited') setLimited(limitMessage(outcome.until, locale, t));
+    if (outcome.kind === 'limited') setLimited(limitNotice(outcome.until, locale, t));
     if (outcome.kind === 'failed') setFailed(true);
     if (outcome.kind === 'refused') {
       setRefused(outcome.errors);
@@ -253,8 +253,17 @@ function Form({
     <>
       <View style={styles.group} onLayout={(event) => onGroupLayout(event.nativeEvent.layout)}>
         {limited != null && (
-          <ReadOut words={limited} interrupts accessibilityRole="alert">
-            <Notice tone="attention" mark="!" body={limited} />
+          <ReadOut
+            words={[limited.title, limited.body].filter((line) => line != null).join(' ')}
+            interrupts
+            accessibilityRole="alert"
+          >
+            <Notice
+              tone="attention"
+              mark="!"
+              title={limited.title}
+              {...(limited.body == null ? {} : { body: limited.body })}
+            />
           </ReadOut>
         )}
         {failed && (
