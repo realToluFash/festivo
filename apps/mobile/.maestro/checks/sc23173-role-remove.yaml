@@ -1,4 +1,4 @@
-# sc-23173: Remove role… at the foot of ${ROLE_ID}'s page, then its confirm, scrolled into view.
+# sc-23173: Remove role… at the foot of ${ROLE_ID}'s page, then its confirm, scrolled into view. ORIENT=PORTRAIT|LANDSCAPE_LEFT. Phone; on a tablet the remove panel is role-remove-no-replacement-tablet.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}

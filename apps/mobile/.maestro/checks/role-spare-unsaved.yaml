@@ -1,4 +1,4 @@
-# sc-12226: the role page named by ${ROLE_ID} with Guests changed to Read and not saved, then the unsaved line.
+# sc-12226: the role page named by ${ROLE_ID} with Guests changed to Read and not saved, then the unsaved line. Misses the foot under the tab bar since #1100; use sc23173-role-unsaved (phone) or sc23173-role-unsaved-tablet.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/roles

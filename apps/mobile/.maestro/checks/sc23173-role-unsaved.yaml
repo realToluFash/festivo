@@ -1,4 +1,4 @@
-# sc-23173: ${ROLE_ID} with Guests set to Change and not saved; Save and Discard changes at the foot.
+# sc-23173: on a phone, ${ROLE_ID} with Guests set to Change and not saved; Save and Discard changes at the foot. ORIENT=PORTRAIT|LANDSCAPE_LEFT. On a tablet, run sc23173-role-unsaved-tablet.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}

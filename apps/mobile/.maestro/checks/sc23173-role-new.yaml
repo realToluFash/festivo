@@ -1,4 +1,4 @@
-# sc-23173: New role, reached by scrolling Roles, then Create role over the keyboard after typing a name.
+# sc-23173: New role, reached by scrolling Roles, then Create role over the keyboard after typing a name. ORIENT=PORTRAIT|LANDSCAPE_LEFT.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
@@ -24,4 +24,6 @@ appId: host.exp.Exponent
     id: 'roles.name'
 - inputText: 'Bar team'
 - waitForAnimationToEnd
+- assertVisible:
+    id: 'roles.save'
 - takeScreenshot: role-new-typed
