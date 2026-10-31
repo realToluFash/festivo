@@ -1817,5 +1817,12 @@
     "title": "Mettez à jour Soirely pour continuer",
     "body": "Cette version de Soirely ne fonctionne plus. La mise à jour conserve tout ce que vous avez enregistré.",
     "update": "Mettre à jour"
+  },
+  "saveLabel": {
+    "saved": "Saved"
+  },
+  "toast": {
+    "undo": "Undo",
+    "close": "Close"
   }
 }
