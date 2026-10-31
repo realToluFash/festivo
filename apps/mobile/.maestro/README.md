@@ -187,7 +187,7 @@ To test the code step itself, outside a batch, three flows stop on it and send a
   `checks/sc16389-upright.yaml`, the turn back at the end of the landscape checks) leaves the
   tablet in landscape until the next check's reset. A `--cold` run skips the reset, so its
   checks start at whatever rotation the tablet was left in: rotation 0, landscape, on a fresh
-  emulator, and rotation 1, portrait, after a warm batch. Before a `--cold` run, or a single
-  check with no `setOrientation`, set the one you want: `adb shell wm user-rotation lock 1`
-  for portrait, `lock 0` for landscape. In a warm batch, do not lock
-  the rotation: the reset and any `setOrientation` write the same setting.
+  emulator, and after a warm batch whatever its last check turned it to. Before a `--cold`
+  run, or a single check with no `setOrientation`, set the one you want:
+  `adb shell wm user-rotation lock 1` for portrait, `lock 0` for landscape. In a warm batch,
+  do not lock the rotation: the reset and any `setOrientation` write the same setting.
