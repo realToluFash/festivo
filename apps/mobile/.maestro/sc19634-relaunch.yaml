@@ -1,0 +1,14 @@
+# Relaunches the app and waits for EXPECT_ID, the screen a held sign-up or an ended session
+# should open on. sc-19634.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: ${EXPECT_ID}
+    timeout: 60000
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}

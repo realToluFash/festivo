@@ -1,0 +1,6 @@
+# Cancels Create an organisation and opens it again, clean. sc-13408.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'createOrganisation.cancel'
+- runFlow: open-create-organisation.yaml

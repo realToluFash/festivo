@@ -1,0 +1,31 @@
+# sc-23777 on an iPad, rotation as left: the swipe from each Settings section beside the list does nothing.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: section-tablet.yaml
+    env:
+      SECTION: account
+- runFlow:
+    file: section-tablet.yaml
+    env:
+      SECTION: security
+- runFlow:
+    file: section-tablet.yaml
+    env:
+      SECTION: notifications
+- runFlow:
+    file: section-tablet.yaml
+    env:
+      SECTION: organisation
+- runFlow:
+    file: section-tablet.yaml
+    env:
+      SECTION: signInRules
+- runFlow:
+    file: section-tablet.yaml
+    env:
+      SECTION: members
+- runFlow:
+    file: section-tablet.yaml
+    env:
+      SECTION: roles
