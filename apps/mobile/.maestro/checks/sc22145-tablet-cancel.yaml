@@ -43,6 +43,13 @@ appId: host.exp.Exponent
 - takeScreenshot: copy-page
 - runFlow:
     when:
+      notVisible:
+        id: 'frame.back'
+    commands:
+      - assertVisible:
+          id: 'events.back'
+- runFlow:
+    when:
       visible:
         id: 'frame.back'
     commands:
@@ -57,3 +64,15 @@ appId: host.exp.Exponent
           id: 'events.back'
 - waitForAnimationToEnd
 - takeScreenshot: after-event-control
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: 'events.back'
+    commands:
+      - assertVisible:
+          id: 'events.back'
+          text: '{{t:eventsScreen.back}}'

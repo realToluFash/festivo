@@ -48,6 +48,9 @@ page: it picks a start (Android's dialogs close with `OK`, iOS's sheets with Don
 Create draft out from under an iPhone's tab bar, and taps it. A check that makes a copy calls
 it rather than repeating the platform split.
 
+A check whose taps are conditional (`runFlow` with `when`) ends on an assertion of where it
+landed, so a tap that went elsewhere, or no tap at all, fails rather than passing on a screenshot.
+
 `sign-in-screen-language` picks the one passed as `LANGUAGE`, by its chip, before
 `sign-in-any-language`. `sign-in-screen-english` runs it with `LANGUAGE: English`, for a phone
 a run in another language left signed out: `sign-in`'s first wait is on the English 'Email'.
