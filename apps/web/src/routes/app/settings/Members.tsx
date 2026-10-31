@@ -1030,18 +1030,7 @@ function MemberDetail({
               <div className="actions">
                 <button
                   type="button"
-                  className="button button-dark"
-                  aria-busy={suspending === 'suspending'}
-                  {...offButton(suspending === 'suspending')}
-                  onClick={() => void suspend()}
-                >
-                  <span className="button-label">
-                    {t('membersScreen.suspendConfirm', { name: member.user.name })}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="button"
+                  className="link-button"
                   onClick={() => {
                     setSuspendFailed(null);
                     setSuspending('resting');
@@ -1050,6 +1039,17 @@ function MemberDetail({
                 >
                   <span className="button-label">
                     {t('membersScreen.suspendKeep', { name: member.user.name })}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="button button-danger"
+                  aria-busy={suspending === 'suspending'}
+                  {...offButton(suspending === 'suspending')}
+                  onClick={() => void suspend()}
+                >
+                  <span className="button-label">
+                    {t('membersScreen.suspendConfirm', { name: member.user.name })}
                   </span>
                 </button>
               </div>
@@ -1115,18 +1115,7 @@ function MemberDetail({
               <div className="actions">
                 <button
                   type="button"
-                  className="button button-danger"
-                  aria-busy={removal === 'removing'}
-                  {...offButton(removal === 'removing')}
-                  onClick={() => void remove()}
-                >
-                  <span className="button-label">
-                    {t('membersScreen.removeConfirm', { name: member.user.name })}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="button"
+                  className="link-button"
                   onClick={() => {
                     setFailed(null);
                     setRemoval('resting');
@@ -1137,6 +1126,17 @@ function MemberDetail({
                     {byHand
                       ? t('membersScreen.suspendedRemoveKeep')
                       : t('membersScreen.removeKeep', { name: member.user.name })}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="button button-danger"
+                  aria-busy={removal === 'removing'}
+                  {...offButton(removal === 'removing')}
+                  onClick={() => void remove()}
+                >
+                  <span className="button-label">
+                    {t('membersScreen.removeConfirm', { name: member.user.name })}
                   </span>
                 </button>
               </div>
@@ -1501,6 +1501,9 @@ function JoinRequestAnswer({
         <p>{t('membersScreen.awaiting.turnDownBody', { name, organisation: organisation.name })}</p>
         {failed != null && <FieldError id={`turn-down-${member.id}`} message={failed} />}
         <div className="actions">
+          <button type="button" className="link-button" disabled={busy} onClick={back}>
+            {t('membersScreen.awaiting.keep')}
+          </button>
           <button
             type="button"
             className="button button-danger"
@@ -1509,9 +1512,6 @@ function JoinRequestAnswer({
             onClick={() => void answer()}
           >
             {t('membersScreen.awaiting.turnDownConfirm', { name })}
-          </button>
-          <button type="button" className="button" disabled={busy} onClick={back}>
-            {t('membersScreen.awaiting.keep')}
           </button>
         </div>
       </div>
@@ -1544,6 +1544,9 @@ function JoinRequestAnswer({
       </fieldset>
       {failed != null && <FieldError id={`approve-${member.id}`} message={failed} />}
       <div className="actions">
+        <button type="button" className="button" disabled={busy} onClick={back}>
+          {t('membersScreen.awaiting.cancel')}
+        </button>
         <button
           type="button"
           className="button button-primary"
@@ -1553,9 +1556,6 @@ function JoinRequestAnswer({
           onClick={() => void answer()}
         >
           {t('membersScreen.awaiting.approveAs', { role: role == null ? '' : roleName(t, role) })}
-        </button>
-        <button type="button" className="button" disabled={busy} onClick={back}>
-          {t('membersScreen.awaiting.cancel')}
         </button>
       </div>
     </div>
@@ -1949,11 +1949,11 @@ function Invite({
             </p>
 
             <div className="actions">
-              <button className="button button-primary" type="submit" aria-busy={busy}>
-                {t('membersScreen.send')}
-              </button>
               <button className="button" type="button" onClick={onCancel}>
                 {t('membersScreen.cancel')}
+              </button>
+              <button className="button button-primary" type="submit" aria-busy={busy}>
+                {t('membersScreen.send')}
               </button>
             </div>
           </form>

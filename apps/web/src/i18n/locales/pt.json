@@ -2080,5 +2080,12 @@
     "key_event": "O próprio evento",
     "key_you": "Algo que tem de fazer",
     "key_automatic": "O Soirely trata disso por si"
+  },
+  "saveLabel": {
+    "saved": "Saved"
+  },
+  "toast": {
+    "undo": "Undo",
+    "close": "Close"
   }
 }

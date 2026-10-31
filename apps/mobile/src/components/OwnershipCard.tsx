@@ -31,7 +31,7 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { reloadSignedIn, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
-import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field, FieldError, focusChecked, keysStayDown, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
@@ -610,7 +610,7 @@ function Leave({
             {t('ownership.leaveBody', { organisation: name })}
           </Text>
           {refused != null && <FieldError message={refused} />}
-          <PrimaryButton
+          <DestructiveButton
             label={t('ownership.leave', { organisation: name })}
             busy={busy}
             onPress={() => void leave()}
@@ -765,7 +765,7 @@ function Delete({
             testID="ownership.delete.name"
           />
         </Field>
-        <PrimaryButton
+        <DestructiveButton
           label={t('ownership.deleteButton', { organisation: name })}
           busy={busy}
           onPress={() => void submit()}

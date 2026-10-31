@@ -172,8 +172,17 @@ export function RecoveryRequestsCard() {
                         {problem != null && <p role="alert">{problem}</p>}
                         <div className="actions">
                           <button
+                            className={here === 'approve' ? 'button' : 'link-button'}
+                            type="button"
+                            onClick={() => keep(request, here)}
+                          >
+                            {here === 'approve'
+                              ? t('recoveryRequests.cancel')
+                              : t('recoveryRequests.keep')}
+                          </button>
+                          <button
                             className={
-                              here === 'approve' ? 'button button-primary' : 'button button-dark'
+                              here === 'approve' ? 'button button-primary' : 'button button-danger'
                             }
                             type="button"
                             onClick={() => void answer(request, here)}
@@ -181,15 +190,6 @@ export function RecoveryRequestsCard() {
                             {here === 'approve'
                               ? t('recoveryRequests.approveConfirm')
                               : t('recoveryRequests.turnDownConfirm')}
-                          </button>
-                          <button
-                            className="button"
-                            type="button"
-                            onClick={() => keep(request, here)}
-                          >
-                            {here === 'approve'
-                              ? t('recoveryRequests.cancel')
-                              : t('recoveryRequests.keep')}
                           </button>
                         </div>
                       </div>

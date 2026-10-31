@@ -39,7 +39,7 @@ import { type Proving, dropProof, heldProof, howToProve } from '../recentProof.t
 import { breakableEmail } from '../layout/textSize.ts';
 import { type LayoutKind, useAccessibilitySizes } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { useComeForward } from './comeForward.ts';
 import { FieldError } from './Field.tsx';
@@ -768,13 +768,13 @@ function JoinRequestAnswer({
           {t('membersScreen.awaiting.turnDownBody', { name, organisation: organisation.name })}
         </Text>
         {refusal}
-        <PrimaryButton
+        <DestructiveButton
           label={t('membersScreen.awaiting.turnDownConfirm', { name })}
           busy={busy}
           onPress={() => void answer()}
           testID={`members.turnDown.confirm.${member.id}`}
         />
-        <SecondaryButton
+        <QuietButton
           label={t('membersScreen.awaiting.keep')}
           off={busy}
           onPress={back}
@@ -1268,13 +1268,13 @@ function Remove({
         </View>
       )}
       <View style={styles.actions}>
-        <PrimaryButton
+        <DestructiveButton
           label={t('membersScreen.removeConfirm', { name })}
           busy={removal === 'removing'}
           onPress={() => void remove()}
           testID="members.remove.confirm"
         />
-        <SecondaryButton
+        <QuietButton
           label={t('membersScreen.removeKeep', { name })}
           onPress={() => {
             setFailed(null);

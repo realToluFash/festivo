@@ -17,7 +17,7 @@ import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { heldProof } from '../recentProof.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
-import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
+import { DestructiveButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { ConfirmItsYou } from './ConfirmItsYou.tsx';
 import { Notice } from './Notice.tsx';
@@ -517,12 +517,12 @@ function Confirming({
         title={t('waysCard.confirmWarning', { provider: name })}
         body={t('waysCard.confirmEmailed', { provider: name })}
       />
-      <PrimaryButton
+      <DestructiveButton
         label={t('waysCard.confirmUnlink', { provider: name })}
         onPress={onUnlink}
         testID="ways.unlink"
       />
-      <SecondaryButton label={t('waysCard.keep')} onPress={onKeep} testID="ways.keep" />
+      <QuietButton label={t('waysCard.keep')} onPress={onKeep} testID="ways.keep" />
     </>
   );
 }

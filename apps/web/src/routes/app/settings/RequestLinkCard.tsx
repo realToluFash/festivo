@@ -160,6 +160,17 @@ export function RequestLinkCard({ organisation }: { organisation: Membership }) 
               <p>{t('requestLink.replaceBody')}</p>
               <div className="company-domain-buttons">
                 <button
+                  className="link-button"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setConfirming(false);
+                    arriveAtReplace();
+                  }}
+                >
+                  {t('requestLink.keep')}
+                </button>
+                <button
                   className="button button-danger"
                   type="button"
                   aria-busy={busy}
@@ -169,17 +180,6 @@ export function RequestLinkCard({ organisation }: { organisation: Membership }) 
                   }
                 >
                   {t('requestLink.replaceConfirm')}
-                </button>
-                <button
-                  className="button"
-                  type="button"
-                  disabled={busy}
-                  onClick={() => {
-                    setConfirming(false);
-                    arriveAtReplace();
-                  }}
-                >
-                  {t('requestLink.keep')}
                 </button>
               </div>
             </div>

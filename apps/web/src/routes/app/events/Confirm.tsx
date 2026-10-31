@@ -61,7 +61,7 @@ export function Confirm({
           <button
             ref={keep}
             type="button"
-            className="button button-primary"
+            className="link-button"
             {...offButton(pending, { dim: false })}
             onClick={onKeep}
           >
@@ -69,7 +69,7 @@ export function Confirm({
           </button>
           <button
             type="button"
-            className="button"
+            className="button button-danger"
             {...offButton(pending, { dim: false })}
             aria-busy={pending}
             onClick={() => {

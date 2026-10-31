@@ -11,12 +11,22 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import {
+  Animated,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { sheetKeysCover, sheetPadding, sheetUnderKeys } from '../kit/sheet.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
+import { glide } from '../motion.ts';
+import { useReducedMotion } from '../reducedMotion.ts';
 import { useModalOpen } from '../updateRequired.ts';
 import { keyboardTopNow, useKeysUp, watchKeyboardTop } from './keyboardWatch.ts';
 import { SETTLED_MS } from './Screen.tsx';
@@ -105,13 +115,15 @@ function SheetFrame({ open, onClose, scrimLabel, opener, testID, children }: She
   const keysCover = sheetKeysCover({ underKeys, keysUp, windowHeight, keysTop });
   const padding = sheetPadding({ phone, keysCover, insets });
   useFocusBack(open, opener);
-  const shown = useModalOpen(open);
+  const reduced = useReducedMotion();
+  const { present, scrim, frame } = useSheetMotion(open, phone, reduced, height);
+  const shown = useModalOpen(present);
 
   return (
     <Modal
       visible={shown}
       transparent
-      animationType={phone ? 'slide' : 'fade'}
+      animationType="none"
       // An iOS modal is portrait-only by default, and a rotation under it measures the keys sideways.
       supportedOrientations={['portrait', 'landscape']}
       // Load-bearing for the keys too: without them Android fits the modal to the bars and ends it at the keys.
@@ -137,6 +149,13 @@ function SheetFrame({ open, onClose, scrimLabel, opener, testID, children }: She
             },
           ]}
         >
+          <Animated.View
+            style={[
+              StyleSheet.absoluteFill,
+              { backgroundColor: phone ? tokens.scrimSheet : tokens.scrimDialog, opacity: scrim },
+            ]}
+            pointerEvents="none"
+          />
           {scrimLabel != null && (
             <Pressable
               style={StyleSheet.absoluteFill}
@@ -145,11 +164,12 @@ function SheetFrame({ open, onClose, scrimLabel, opener, testID, children }: She
               accessibilityLabel={scrimLabel}
             />
           )}
-          <View
+          <Animated.View
             style={[
               styles.frame,
               phone ? styles.framePhone : styles.frameTablet,
               { paddingBottom: padding.frameBottom },
+              frame,
             ]}
             accessibilityViewIsModal
             onAccessibilityEscape={onClose}
@@ -160,11 +180,55 @@ function SheetFrame({ open, onClose, scrimLabel, opener, testID, children }: She
             {phone && !underKeys && (
               <View style={[styles.skirt, { height }]} pointerEvents="none" />
             )}
-          </View>
+          </Animated.View>
         </View>
       </KeyboardAvoidingView>
     </Modal>
   );
+}
+
+/** Keeps the Modal up until its exit has played, so the sheet can leave rather than vanish. */
+function useSheetMotion(shown: boolean, phone: boolean, reduced: boolean, height: number) {
+  const [present, setPresent] = useState(shown);
+  const [scrim] = useState(() => new Animated.Value(0));
+  const [shift] = useState(() => new Animated.Value(0));
+  const [fade] = useState(() => new Animated.Value(0));
+  const slides = phone && !reduced;
+  const travel = useRef(0);
+
+  if (shown && !present) setPresent(true);
+
+  useEffect(() => {
+    travel.current = phone ? height : tokens.motionRise;
+  });
+
+  useEffect(() => {
+    if (!present) return;
+    const away = travel.current;
+
+    if (shown) {
+      shift.setValue(reduced ? 0 : away);
+      const run = Animated.parallel([
+        glide(scrim, 1, tokens.motionBase),
+        glide(fade, 1, slides ? 0 : tokens.motionBase),
+        glide(shift, 0, slides ? tokens.motionSlow : tokens.motionBase),
+      ]);
+      run.start();
+      return () => run.stop();
+    }
+
+    const leave = slides || reduced ? tokens.motionBase : tokens.motionFast;
+    const run = Animated.parallel([
+      glide(scrim, 0, leave),
+      slides ? glide(shift, away, leave) : glide(fade, 0, leave),
+    ]);
+    run.start(({ finished }) => {
+      if (finished) setPresent(false);
+    });
+    return () => run.stop();
+  }, [shown, present, slides, reduced, scrim, shift, fade]);
+
+  return { present, scrim, frame: { opacity: fade, transform: [{ translateY: shift }] } };
 }
 
 /** The keyboard's top edge in the sheet's window, or null while the keys are down. */
@@ -194,11 +258,10 @@ export function useFocusBack(open: boolean, opener: RefObject<ScreenReaderTarget
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   scrim: { flex: 1 },
-  scrimPhone: { justifyContent: 'flex-end', backgroundColor: tokens.scrimSheet },
+  scrimPhone: { justifyContent: 'flex-end' },
   scrimTablet: {
     justifyContent: 'center',
     padding: tokens.spaceXxl,
-    backgroundColor: tokens.scrimDialog,
   },
   frame: {
     flexShrink: 1,

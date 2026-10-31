@@ -193,7 +193,7 @@ function DeleteDialog({
           <div className="dialog-actions">
             <button
               type="button"
-              className="button"
+              className="link-button"
               {...offButton(busy, { dim: false })}
               onClick={onKeep}
             >

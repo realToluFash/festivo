@@ -11,8 +11,10 @@ import {
   removedHost,
 } from '@soirely/domain';
 import { useLayoutEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 
+import { rowArrives, rowLeaves } from '../../../leaving.ts';
 import { offButton } from '../../../offButton.ts';
 import { FieldError } from './EventFields.tsx';
 import { ADD_HOST_ID, describedBy, hostInputId } from './eventFieldOrder.ts';
@@ -38,7 +40,13 @@ export function HostsSection({
   const { t } = useTranslation();
   const focusNext = useRef<HostFocus | null>(null);
   const nextKey = useRef(Math.max(0, ...rows.map((row) => row.key)) + 1);
+  const arriving = useRef<number | null>(null);
+  const latest = useRef(rows);
   const keepLast = keepsLastHost(saved, rows.length);
+
+  useLayoutEffect(() => {
+    latest.current = rows;
+  }, [rows]);
 
   useLayoutEffect(() => {
     const next = focusNext.current;
@@ -64,10 +72,27 @@ export function HostsSection({
     onSay(change.said);
   }
 
+  /** The row fades before it goes, so it is found by key in the rows as they are by then. */
+  function remove(key: number, row: HTMLElement | null): void {
+    rowLeaves(row, () => {
+      const now = latest.current;
+      flushSync(() =>
+        changed(
+          removedHost(
+            now,
+            now.findIndex((one) => one.key === key),
+            t,
+          ),
+        ),
+      );
+    });
+  }
+
   function add(): void {
     const key = nextKey.current;
     nextKey.current += 1;
     focusNext.current = { key, control: 'name' };
+    arriving.current = key;
     onRows([...rows, { key, name: '' }], null);
   }
 
@@ -88,7 +113,15 @@ export function HostsSection({
             const name = hostCalled(row, index, t);
 
             return (
-              <li key={row.key} className="event-host">
+              <li
+                key={row.key}
+                className="event-host"
+                ref={(node) => {
+                  if (node == null || arriving.current !== row.key) return;
+                  arriving.current = null;
+                  rowArrives(node);
+                }}
+              >
                 <label htmlFor={id}>{t('eventHosts.label', { position: index + 1 })}</label>
                 <div className="event-host-line">
                   <textarea
@@ -151,7 +184,7 @@ export function HostsSection({
                         className="button"
                         aria-label={t('eventHosts.removeNamed', { name })}
                         {...offButton(busy, { dim: false })}
-                        onClick={() => changed(removedHost(rows, index, t))}
+                        onClick={(click) => remove(row.key, click.currentTarget.closest('li'))}
                       >
                         {t('eventHosts.remove')}
                       </button>

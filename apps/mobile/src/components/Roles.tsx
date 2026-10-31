@@ -42,7 +42,7 @@ import { currentLocale } from '../i18n/index.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { LEVEL_BORDER_ON, LEVEL_PADDING, roomBeside, stacksRows } from '../rowArrangement.ts';
 import { tokens } from '../theme/tokens.ts';
-import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
+import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { Field, FieldError, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
@@ -799,7 +799,7 @@ export function RemoveRole({
           <FieldError message={t('rolesScreen.failedRemove')} />
         </View>
       )}
-      <PrimaryButton
+      <DestructiveButton
         label={
           role.holders === 0
             ? t('rolesScreen.removeConfirmEmpty', { role: title })
@@ -809,7 +809,7 @@ export function RemoveRole({
         onPress={() => void remove()}
         testID="roles.remove.confirm"
       />
-      <SecondaryButton
+      <QuietButton
         label={t('rolesScreen.keep', { role: title })}
         onPress={onKeep}
         testID="roles.remove.keep"

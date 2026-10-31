@@ -59,3 +59,12 @@ export function unasked(state: unknown): boolean {
 
 /** A page that opens on its own, such as Sign in after a session ended, says so in its navigation's state. */
 export const UNASKED = { unasked: true } as const;
+
+/** The page fades in as it opens, rising when the person goes on and dropping when they go back. */
+export function enter(page: HTMLElement | null, back: boolean): void {
+  if (page == null) return;
+
+  delete page.dataset.enter;
+  void page.offsetWidth; // a reflow, so the same animation starts again on the next page
+  page.dataset.enter = back ? 'back' : 'forward';
+}

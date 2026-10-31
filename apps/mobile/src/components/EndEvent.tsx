@@ -80,6 +80,7 @@ export function EndRow({
                 label: t(callOff ? 'eventEnd.callOff' : 'eventEnd.endNow'),
                 keep: t('eventEnd.keepItOn'),
                 pending: asking.pending,
+                ends: true,
                 onGo: () => go({ label: asking.label }, () => api.endEvent(event.id)),
               }
             : null

@@ -20,7 +20,7 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { typedCodeProblem } from '../kit/twoFactor.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
-import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field, focusChecked, keysStayDown, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
@@ -615,7 +615,7 @@ function TurningOff({
         />
       </Field>
 
-      <PrimaryButton
+      <DestructiveButton
         label={t('twoFactorCard.turnItOff')}
         onPress={() => void submit()}
         busy={checking}

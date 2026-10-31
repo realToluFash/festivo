@@ -5,6 +5,7 @@ import {
   Arriving,
   arriveAt,
   currentSection,
+  enter,
   pageStart,
   sharesHeading,
   unasked,
@@ -59,6 +60,7 @@ export function PageArrival() {
     if (!opened) return;
 
     window.scrollTo(0, 0);
+    enter(document.getElementById('content'), navigationType === 'POP');
     setArriving(true);
     stopArriving.current = arriveAt(
       sharesHeading(from, location.pathname) ? currentSection : pageStart,

@@ -322,6 +322,11 @@ span {
   max-width: 100%;
   text-decoration: none;
   cursor: pointer;
+  transition: opacity var(--motionFast) var(--motionEase);
+}
+
+.button:active {
+  opacity: var(--opacityPressed);
 }
 
 /* A label naming a role, an organisation or a person wraps whole. */
@@ -343,14 +348,22 @@ span {
 }
 
 .button-primary {
-  background: var(--colorAccent);
-  border-color: var(--colorAccent);
+  background: var(--colorAccentHover);
+  border-color: var(--colorAccentHover);
   color: var(--colorInkOnDark);
 }
 
 .button-primary:hover {
-  background: var(--colorAccentHover);
-  border-color: var(--colorAccentHover);
+  background: var(--colorPrimaryHover);
+  border-color: var(--colorPrimaryHover);
+}
+
+@media (width <= 40rem) {
+  .button-primary,
+  .button-danger,
+  :has(> :is(.button-primary, .button-danger)) > .button {
+    --buttonHit: var(--sizeHitPhonePrimary);
+  }
 }
 
 /* ── Panels, tables, states ───────────────────────────────────────────────── */
@@ -623,7 +636,7 @@ span {
   width: 100%;
   min-height: var(--sizeHit);
   padding: 0 var(--spaceLg);
-  border: var(--borderControl);
+  border: var(--borderField);
   border-radius: var(--radiusField);
   background: var(--colorCard);
   color: var(--colorInk);
@@ -1052,23 +1065,6 @@ span {
   gap: var(--spaceXl);
 }
 
-.button-dark {
-  background: var(--colorDark);
-  border-color: var(--colorDark);
-  color: var(--colorInkOnDark);
-}
-
-.button-dark:hover {
-  background: var(--colorDarkInset);
-  border-color: var(--colorDarkInset);
-}
-
-.button-dark[aria-busy='true'] {
-  background: var(--colorDarkInset);
-  border-color: var(--colorDarkInset);
-  color: var(--colorInkOnDark);
-}
-
 /* ── Your account at phone width ──────────────────────────────────────────── */
 
 @media (width <= 40rem) {
@@ -1258,7 +1254,7 @@ span {
 }
 
 .button-danger {
-  color: var(--colorBrokenText);
+  color: var(--colorInk);
 }
 
 .request-card-head {
@@ -1923,6 +1919,7 @@ span {
   border: 0;
   background: var(--scrimDialog);
   cursor: pointer;
+  animation: fade-in var(--motionBase) var(--motionEase);
 }
 
 .dialog-scrim:disabled {
@@ -1948,6 +1945,7 @@ span {
   border: var(--borderCard);
   border-radius: var(--radiusCardDesktop);
   box-shadow: var(--shadowDialog);
+  animation: rise-in var(--motionBase) var(--motionEase);
 }
 
 .dialog:focus {
@@ -2005,6 +2003,55 @@ span {
     transform: none;
     border-radius: var(--radiusCardDesktop) var(--radiusCardDesktop) 0 0;
     box-shadow: var(--shadowSheet);
+    animation: sheet-in var(--motionSlow) var(--motionEase);
+  }
+}
+
+/* ── Motion (sc-22092): a fade and a short rise, never longer than --motionMax ── */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    translate: 0 var(--motionRise);
+  }
+}
+
+@keyframes drop-in {
+  from {
+    opacity: 0;
+    translate: 0 calc(-1 * var(--motionRise));
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    translate: 0 100%;
+  }
+}
+
+.shell-content[data-enter='forward'] {
+  animation: rise-in var(--motionBase) var(--motionEase);
+}
+
+.shell-content[data-enter='back'] {
+  animation: drop-in var(--motionBase) var(--motionEase);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog,
+  .shell-content[data-enter] {
+    animation-name: fade-in;
+    animation-duration: var(--motionBase);
+  }
+
+  .button {
+    transition: none;
   }
 }
 
@@ -3007,7 +3054,7 @@ span {
   }
 
   .owner-claim-withdraw .dialog-actions {
-    flex-direction: column;
+    flex-direction: column-reverse;
     align-items: stretch;
   }
 }
@@ -4193,7 +4240,7 @@ button.members-row {
 }
 
 .cover-remove {
-  color: var(--colorBrokenText);
+  color: var(--colorInk);
 }
 
 .cover-remove-below {
@@ -4276,10 +4323,14 @@ button.members-row {
   background: var(--colorAccent);
 }
 
-.pill-happening-now,
-.pill-paused {
+.pill-happening-now {
   background: var(--colorAttentionTint);
   color: var(--colorAttentionText);
+}
+
+.pill-paused {
+  background: var(--colorPausedTint);
+  color: var(--colorPausedText);
 }
 
 .pill-happening-now::before {
@@ -4288,8 +4339,8 @@ button.members-row {
 }
 
 .pill-paused::before {
-  border-left: 0.1875rem solid var(--colorAttentionText);
-  border-right: 0.1875rem solid var(--colorAttentionText);
+  border-left: 0.1875rem solid var(--colorPausedText);
+  border-right: 0.1875rem solid var(--colorPausedText);
   border-radius: 0;
 }
 
@@ -5119,4 +5170,84 @@ button.members-row {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--spaceLg);
+}
+
+/* ── Toast (sc-22092): the dark surface, its Undo a text action on it ───────── */
+
+.toast {
+  position: fixed;
+  bottom: var(--space3xl);
+  left: 50%;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  box-sizing: border-box;
+  width: max-content;
+  max-width: calc(100% - var(--space5xl));
+  padding: var(--spaceXs) var(--spaceXs) var(--spaceXs) var(--spaceXl);
+  transform: translateX(-50%);
+  border-radius: var(--radiusInset);
+  background: var(--colorInk);
+  color: var(--colorInkOnDark);
+  box-shadow: var(--shadowToast);
+  animation: rise-in var(--motionBase) var(--motionEase);
+}
+
+.toast-words {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.toast-undo,
+.toast-close {
+  flex: none;
+  min-width: var(--sizeHit);
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceLg);
+  border: 0;
+  border-radius: var(--radiusPill);
+  background: transparent;
+  color: var(--colorInkOnDark);
+  font: var(--typeButton);
+  cursor: pointer;
+  transition: opacity var(--motionFast) var(--motionEase);
+}
+
+.toast-undo {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.toast-undo:hover,
+.toast-close:hover {
+  background: var(--colorDarkInset);
+}
+
+.toast-undo:active,
+.toast-close:active {
+  opacity: var(--opacityPressed);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation-name: fade-in;
+  }
+}
+
+/* A save confirmed (sc-22092): both labels hold the button's width, and one fades into the other. */
+.save-label {
+  display: inline-grid;
+}
+
+.save-label > span {
+  grid-area: 1 / 1;
+  transition: opacity var(--motionBase) var(--motionEase);
+}
+
+.save-label[data-saved='false'] > .save-label-saved,
+.save-label[data-saved='true'] > .save-label-words {
+  opacity: 0;
 }

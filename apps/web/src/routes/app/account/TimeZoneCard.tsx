@@ -264,6 +264,9 @@ function Choosing({
       </div>
 
       <div className="actions">
+        <button className="button" type="button" onClick={onCancel} disabled={saving}>
+          {t('timeZone.cancel')}
+        </button>
         <button
           className="button button-primary"
           type="button"
@@ -271,9 +274,6 @@ function Choosing({
           onClick={() => void save()}
         >
           {saving ? t('timeZone.saving') : t('timeZone.save')}
-        </button>
-        <button className="button" type="button" onClick={onCancel} disabled={saving}>
-          {t('timeZone.cancel')}
         </button>
       </div>
     </>

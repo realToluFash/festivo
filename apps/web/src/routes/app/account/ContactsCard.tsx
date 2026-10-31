@@ -373,20 +373,20 @@ function ContactsCard({
                     <p>{t('contacts.promoteBody', { old: primary?.shown ?? '' })}</p>
                     <div className="actions">
                       <button
-                        className="button button-primary"
-                        type="button"
-                        aria-busy={sending}
-                        onClick={() => void act(row, 'promote')}
-                      >
-                        {t('contacts.promoteConfirm')}
-                      </button>
-                      <button
                         className="button"
                         type="button"
                         {...offButton(sending)}
                         onClick={() => closeBackTo(`promote ${row.id}`)}
                       >
                         {t('contacts.promoteKeep', { old: primary?.shown ?? '' })}
+                      </button>
+                      <button
+                        className="button button-primary"
+                        type="button"
+                        aria-busy={sending}
+                        onClick={() => void act(row, 'promote')}
+                      >
+                        {t('contacts.promoteConfirm')}
                       </button>
                     </div>
                   </div>
@@ -419,20 +419,20 @@ function ContactsCard({
                     <p>{t('contacts.removeBody')}</p>
                     <div className="actions">
                       <button
-                        className="button button-dark"
-                        type="button"
-                        aria-busy={sending}
-                        onClick={() => void act(row, 'remove')}
-                      >
-                        {t(email ? 'contacts.removeConfirm' : 'contacts.removeConfirmPhone')}
-                      </button>
-                      <button
-                        className="button"
+                        className="link-button"
                         type="button"
                         {...offButton(sending)}
                         onClick={() => closeBackTo(`remove ${row.id}`)}
                       >
                         {t(email ? 'contacts.removeKeep' : 'contacts.removeKeepPhone')}
+                      </button>
+                      <button
+                        className="button button-danger"
+                        type="button"
+                        aria-busy={sending}
+                        onClick={() => void act(row, 'remove')}
+                      >
+                        {t(email ? 'contacts.removeConfirm' : 'contacts.removeConfirmPhone')}
                       </button>
                     </div>
                   </div>
@@ -576,11 +576,11 @@ function AddEmail({
         </p>
       </div>
       <div className="actions">
-        <button className="button button-primary" type="submit" aria-busy={sending}>
-          {t('contacts.addEmailConfirm')}
-        </button>
         <button className="button" type="button" onClick={onCancel} disabled={sending}>
           {t('contacts.cancel')}
+        </button>
+        <button className="button button-primary" type="submit" aria-busy={sending}>
+          {t('contacts.addEmailConfirm')}
         </button>
       </div>
     </form>
@@ -656,11 +656,11 @@ function AddPhone({
         }}
       />
       <div className="actions">
-        <button className="button button-primary" type="submit" aria-busy={sending}>
-          {t('contacts.addPhoneConfirm')}
-        </button>
         <button className="button" type="button" onClick={onCancel} disabled={sending}>
           {t('contacts.cancel')}
+        </button>
+        <button className="button button-primary" type="submit" aria-busy={sending}>
+          {t('contacts.addPhoneConfirm')}
         </button>
       </div>
     </form>

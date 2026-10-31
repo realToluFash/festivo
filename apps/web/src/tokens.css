@@ -11,6 +11,7 @@
   --colorInsetBorder: #ECEEF2;
   --colorBorder: #E6E8EC;
   --colorControlBorder: #D9DCE2;
+  --colorFieldBorder: #80868F;
   --colorNeutralFill: #F1F2F4;
   --colorTrack: #D6D9E0;
   --colorMarkEmpty: #C9CED6;
@@ -25,6 +26,7 @@
   --colorHeaderTrack: #DCE5F1;
   --colorAccent: #1E9A64;
   --colorAccentHover: #178556;
+  --colorPrimaryHover: #176B47;
   --colorAccentTint: #E8F5EE;
   --colorAccentText: #176B47;
   --colorAccentTintBorder: #CDE9DA;
@@ -37,6 +39,8 @@
   --colorBroken: #C2410C;
   --colorBrokenTint: #FDECE4;
   --colorBrokenText: #9A3412;
+  --colorPausedText: #1F4E8C;
+  --colorPausedTint: #E9F0F9;
   --optionGreen: #6AA84F;
   --optionBlue: #3B7DD8;
   --optionAmber: #E3A72F;
@@ -137,6 +141,7 @@
   --radiusFrameDesktop: 16px;
   --borderCard: 1px solid #E6E8EC;
   --borderControl: 1px solid #D9DCE2;
+  --borderField: 1px solid #80868F;
   --borderInset: 1px solid #ECEEF2;
   --borderDivider: 1px solid #F1F2F4;
   --borderHeader: 1px solid #D7E2F0;
@@ -159,6 +164,9 @@
   --motionBase: 200ms;
   --motionSlow: 320ms;
   --motionEase: cubic-bezier(0.2, 0, 0, 1);
+  --motionMax: 500ms;
+  --motionRise: 8px;
+  --opacityPressed: 0.85;
   --toastLifetime: 10000ms;
   --markDoneFill: #1E9A64;
   --markDoneRing: #1E9A64;

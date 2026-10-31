@@ -16,7 +16,7 @@ import { type DeleteAnswer, deleteEvent } from '../kit/eventDelete.ts';
 import { refusalTitle } from '../kit/refusal.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
+import { DestructiveButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { Field, FieldError, TextField, focusChecked, focusRefused } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
@@ -169,16 +169,15 @@ function Confirm({
   }
 
   const keep = (
-    <SecondaryButton
+    <QuietButton
       label={t('eventDelete.keep')}
       onPress={onKeep}
       off={pending}
-      stacked={phone}
       testID="events.deleteKeep"
     />
   );
   const go = (
-    <PrimaryButton
+    <DestructiveButton
       label={t('eventDelete.delete')}
       onPress={() => void submit()}
       busy={pending}

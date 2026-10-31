@@ -26,7 +26,7 @@ import { phoneProblemMessage } from '../phoneProblem.ts';
 import { heldProof } from '../recentProof.ts';
 import { rereadAccount } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
-import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { ConfirmItsYou } from './ConfirmItsYou.tsx';
 import { Field, FieldError, focusChecked, keysStayDown, TextField } from './Field.tsx';
@@ -365,16 +365,21 @@ function ContactsCard({
                       ? t('contacts.promoteBody', { old: primary?.shown ?? '' })
                       : t('contacts.removeBody')}
                   </Text>
-                  <PrimaryButton
-                    label={
-                      here === 'promote'
-                        ? t('contacts.promoteConfirm')
-                        : t(email ? 'contacts.removeConfirm' : 'contacts.removeConfirmPhone')
-                    }
-                    onPress={() => void act(row, here)}
-                    busy={sending}
-                    testID={`contacts.${row.id}.confirm`}
-                  />
+                  {here === 'promote' ? (
+                    <PrimaryButton
+                      label={t('contacts.promoteConfirm')}
+                      onPress={() => void act(row, here)}
+                      busy={sending}
+                      testID={`contacts.${row.id}.confirm`}
+                    />
+                  ) : (
+                    <DestructiveButton
+                      label={t(email ? 'contacts.removeConfirm' : 'contacts.removeConfirmPhone')}
+                      onPress={() => void act(row, here)}
+                      busy={sending}
+                      testID={`contacts.${row.id}.confirm`}
+                    />
+                  )}
                   <QuietButton
                     label={
                       here === 'promote'
