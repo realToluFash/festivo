@@ -3,6 +3,10 @@ appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
 - openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'frame.organisation'
+    timeout: 30000
 - waitForAnimationToEnd:
     timeout: 8000
 - takeScreenshot: home

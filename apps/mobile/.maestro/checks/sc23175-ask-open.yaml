@@ -16,7 +16,16 @@ appId: host.exp.Exponent
 - tapOn:
     id: requestToJoin.message
 - inputText: 'Line one of a message. Line two keeps going on and on so that it wraps over more than one line of the box, and line three, and four, and five, and six.'
-- tapOn:
-    point: '2%,45%'
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          point: '2%,45%'
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - pressKey: back
 - waitForAnimationToEnd
 - takeScreenshot: typed
