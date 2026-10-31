@@ -16,6 +16,7 @@ const SESSIONS = {
   sessions: [
     {
       id: HERE,
+      thisDevice: true,
       userAgent:
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
       ipAddress: '102.89.33.14',
@@ -25,6 +26,7 @@ const SESSIONS = {
     },
     {
       id: ELSEWHERE,
+      thisDevice: false,
       userAgent:
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
       ipAddress: '197.210.78.3',
@@ -560,6 +562,7 @@ describe('signing out everywhere else', () => {
       ...SESSIONS.sessions,
       {
         id: THIRD,
+        thisDevice: false,
         userAgent:
           'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1',
         ipAddress: '105.112.4.9',
@@ -583,7 +586,10 @@ describe('signing out everywhere else', () => {
       sent.push({ call, body: typeof init?.body === 'string' ? JSON.parse(init.body) : null });
 
       const fallback: Record<string, () => Response> = {
-        'GET /api/auth/sessions': () => json(THREE),
+        'GET /api/auth/sessions': () =>
+          sent.some((entry) => entry.call === 'POST /api/auth/sessions/others')
+            ? json({ sessions: [SESSIONS.sessions[0]] })
+            : json(THREE),
         'GET /api/auth/two-factor': () => json({ on: twoFactorOn, recoveryCodesLeft: 10 }),
       };
       const answer = answers[call] ?? fallback[call];
@@ -686,10 +692,62 @@ describe('signing out everywhere else', () => {
       { call: 'POST /api/auth/proof', body: { password: 'a decent passphrase' } },
       { call: 'POST /api/auth/sessions/others', body: { proof: 'p-1', sessionId: HERE } },
     ]);
-    expect(screen.getByText('Chrome on macOS')).toBeDefined();
+    expect(await screen.findByText('Chrome on macOS')).toBeDefined();
     expect(screen.queryByText('Chrome on Windows')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Sign out everywhere else' })).toBeNull();
     expect(document.body.textContent).not.toMatch(/15 minutes/);
+  });
+
+  it('keeps this device and counts it alone when a refresh renewed its id while the step was open', async () => {
+    const sent = stub({
+      'POST /api/auth/proof': () => json({ proof: 'p-1', expiresAt: '' }),
+      'POST /api/auth/sessions/others': () => json({ signedOut: 2, thisDevice: false }),
+    });
+
+    await openCheck();
+    tokens.save({
+      accessToken: 'renewed',
+      refreshExpiresAt: '',
+      sessionId: '018f3a4c-0009-7c3d-9e1f-2a3b4c5d6e7f',
+    });
+    fireEvent.change(password(), { target: { value: 'a decent passphrase' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign them out' }));
+
+    expect(await screen.findByText('Your 2 other devices are signed out.')).toBeDefined();
+    expect(await screen.findByText('1 device')).toBeDefined();
+    expect(screen.getByText('This device')).toBeDefined();
+    expect(sent.find((entry) => entry.call === 'POST /api/auth/sessions/others')?.body).toEqual({
+      proof: 'p-1',
+      sessionId: HERE,
+    });
+  });
+
+  it('still says they are signed out when the list cannot be read again, and lists this device on a retry', async () => {
+    let failing = true;
+    const sent = stub({
+      'GET /api/auth/sessions': () =>
+        !sent.some((entry) => entry.call === 'POST /api/auth/sessions/others')
+          ? json(THREE)
+          : failing
+            ? new Response(null, { status: 503 })
+            : json({ sessions: [SESSIONS.sessions[0]] }),
+      'POST /api/auth/proof': () => json({ proof: 'p-1', expiresAt: '' }),
+      'POST /api/auth/sessions/others': () => json({ signedOut: 2, thisDevice: false }),
+    });
+
+    await openCheck();
+    fireEvent.change(password(), { target: { value: 'a decent passphrase' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign them out' }));
+
+    expect(await screen.findByText('The devices could not be listed')).toBeDefined();
+    expect(screen.getByText('Your 2 other devices are signed out.')).toBeDefined();
+    expect(screen.queryByText('0 devices')).toBeNull();
+
+    failing = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByText('1 device')).toBeDefined();
+    expect(screen.getByText('This device')).toBeDefined();
   });
 
   it('says so when there was nothing left to sign out', async () => {
@@ -921,8 +979,9 @@ describe('signing out everywhere else', () => {
   });
 
   it('without this device in the list, says it signs out all of them and lands on sign-in', async () => {
-    tokens.save({ accessToken: 'live', refreshExpiresAt: '', sessionId: '' });
     const sent = stub({
+      'GET /api/auth/sessions': () =>
+        json({ sessions: THREE.sessions.map((session) => ({ ...session, thisDevice: false })) }),
       'POST /api/auth/proof': () => json({ proof: 'p-1', expiresAt: '' }),
       'POST /api/auth/sessions/others': () => json({ signedOut: 3, thisDevice: true }),
     });

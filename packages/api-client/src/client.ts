@@ -717,6 +717,8 @@ export interface ProfileDetails {
 /** `userAgent` and `ipAddress` are what the client claimed; nothing verifies either. */
 export interface DeviceSession {
   id: string;
+  /** The session the request came from, by its sign-in rather than its id, which every refresh renews. */
+  thisDevice: boolean;
   userAgent: string | null;
   ipAddress: string | null;
   startedAt: string;
@@ -3617,6 +3619,7 @@ function asSessions(raw: unknown): DeviceSession[] | null {
 
     sessions.push({
       id: session.id,
+      thisDevice: session.thisDevice === true,
       userAgent: typeof session.userAgent === 'string' ? session.userAgent : null,
       ipAddress: typeof session.ipAddress === 'string' ? session.ipAddress : null,
       startedAt: session.startedAt,

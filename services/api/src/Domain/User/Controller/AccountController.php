@@ -117,14 +117,17 @@ final class AccountController
         return new JsonResponse(['timezones' => TimeZoneList::at($this->clock->now(), $request->getLocale())]);
     }
 
+    /** `thisDevice` is the caller's chain, which every refresh keeps, so a client's own renewed id need not match. */
     #[Route('/api/auth/sessions', name: 'auth_sessions', methods: ['GET'])]
     public function sessions(): JsonResponse
     {
         $sessions = $this->refreshTokenRepository->findUsableFor($this->user());
+        $caller = $this->callerSession->chain();
 
         return new JsonResponse([
             'sessions' => Vec\map($sessions, static fn (RefreshToken $session): array => [
                 'id' => $session->getId()->toRfc4122(),
+                'thisDevice' => null !== $caller && $session->getChainId()->equals($caller),
                 'userAgent' => $session->getUserAgent(),
                 'ipAddress' => $session->getIpAddress(),
                 'startedAt' => $session->getChainStartedAt()->format(\DATE_ATOM),

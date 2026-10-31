@@ -333,6 +333,13 @@ phone's button: every session but this device's ends at once.
 - **`thisDevice` is the caller's own chain**, the access token's `sid` claim, not the
   `sessionId` the client named: `true` when that chain was among those ended, and the
   client signs out. A stale or wrong `sessionId` is told the truth.
+- **The devices list marks this device the same way.** `GET /api/auth/sessions` gives each
+  row `thisDevice`, true for the caller's chain. A client never matches rows against the
+  `sessionId` it holds: every refresh renews that id, so a list read before the refresh
+  matches nothing (sc-23422). The marked row's id is what the client sends as `sessionId`;
+  rotation revokes a row without deleting it, so an id a refresh has since renewed still
+  names the chain. After the step the card asks for the list again rather than filtering
+  the one it holds.
 - **One audit entry**, `sessions.signed_out_elsewhere`, carrying the count.
 
 ## Adding a password

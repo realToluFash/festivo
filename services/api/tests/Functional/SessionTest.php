@@ -288,6 +288,24 @@ final class SessionTest extends ApiTestCase
     }
 
     #[Test]
+    public function sessionsMarkTheCallersOwnEvenAfterARefreshRenewedItsId(): void
+    {
+        $this->account('this-device@example.com');
+
+        $this->signInExisting('this-device@example.com');
+        $laptop = $this->signInExisting('this-device@example.com');
+        $renewed = $this->refresh($laptop['refreshToken']);
+        self::assertNotSame($laptop['sessionId'], $renewed['sessionId']);
+
+        $marked = Vec\filter(
+            $this->get('/api/auth/sessions', $renewed['accessToken'])['sessions'],
+            static fn (array $session): bool => true === $session['thisDevice'],
+        );
+
+        self::assertSame([$renewed['sessionId']], Vec\map($marked, static fn (array $session): string => $session['id']));
+    }
+
+    #[Test]
     public function anotherAccountsSessionIsNotFound(): void
     {
         $mine = $this->signIn('mine@example.com');
