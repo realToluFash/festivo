@@ -692,7 +692,7 @@ describe('signing out everywhere else', () => {
       { call: 'POST /api/auth/proof', body: { password: 'a decent passphrase' } },
       { call: 'POST /api/auth/sessions/others', body: { proof: 'p-1', sessionId: HERE } },
     ]);
-    expect(screen.getByText('Chrome on macOS')).toBeDefined();
+    expect(await screen.findByText('Chrome on macOS')).toBeDefined();
     expect(screen.queryByText('Chrome on Windows')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Sign out everywhere else' })).toBeNull();
     expect(document.body.textContent).not.toMatch(/15 minutes/);
