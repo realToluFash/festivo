@@ -1,4 +1,4 @@
-# sc-22145: on a tablet, Duplicate {event}'s Cancel returns to the original's page, and the copy's ‹ Event control does too.
+# sc-22145: Duplicate {event}'s Cancel (a phone's header back, a tablet's form control) returns to the original's page, and the copy's back (‹ Event on a tablet) does too.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/${EVENT}
@@ -8,12 +8,28 @@ appId: host.exp.Exponent
     timeout: 30000
 - tapOn:
     id: 'events.page.duplicate'
-- extendedWaitUntil:
-    visible:
-      id: 'eventForm.cancel'
+- scrollUntilVisible:
+    element:
+      id: 'eventDuplicate.create'
     timeout: 15000
-- tapOn:
-    id: 'eventForm.cancel'
+- runFlow:
+    when:
+      notVisible:
+        id: 'frame.back'
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: 'eventForm.cancel'
+          direction: UP
+      - tapOn:
+          id: 'eventForm.cancel'
+- runFlow:
+    when:
+      visible:
+        id: 'frame.back'
+    commands:
+      - tapOn:
+          id: 'frame.back'
 - waitForAnimationToEnd
 - takeScreenshot: after-cancel
 - scrollUntilVisible:
@@ -22,23 +38,41 @@ appId: host.exp.Exponent
     timeout: 30000
 - tapOn:
     id: 'events.page.duplicate'
-- scrollUntilVisible:
-    element:
-      id: 'eventDuplicate.create'
-    timeout: 15000
-- tapOn:
-    id: 'eventDuplicate.start.time'
-- tapOn: 'OK'
-- tapOn:
-    id: 'eventDuplicate.create'
-- extendedWaitUntil:
-    notVisible:
-      id: 'eventDuplicate.create'
-    timeout: 15000
-- waitForAnimationToEnd
+- runFlow:
+    file: ../duplicate-create-draft.yaml
 - takeScreenshot: copy-page
-- tapOn:
-    id: 'events.back'
-    optional: true
+- runFlow:
+    when:
+      notVisible:
+        id: 'frame.back'
+    commands:
+      - assertVisible:
+          id: 'events.back'
+- runFlow:
+    when:
+      visible:
+        id: 'frame.back'
+    commands:
+      - tapOn:
+          id: 'frame.back'
+- runFlow:
+    when:
+      visible:
+        id: 'events.back'
+    commands:
+      - tapOn:
+          id: 'events.back'
 - waitForAnimationToEnd
 - takeScreenshot: after-event-control
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: 'events.back'
+    commands:
+      - assertVisible:
+          id: 'events.back'
+          text: '{{t:eventsScreen.back}}'
