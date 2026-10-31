@@ -28,8 +28,8 @@ import {
   keysStayDown,
   TextField,
 } from '../../src/components/Field.tsx';
-import { Initials } from '../../src/components/Initials.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
+import { OrgTile } from '../../src/components/OrgTile.tsx';
 import { ReadOut } from '../../src/components/ReadOut.tsx';
 import { AnswerInView } from '../../src/components/Screen.tsx';
 import { Text } from '../../src/components/Text.tsx';
@@ -142,18 +142,7 @@ function Asking({
     <>
       <AuthHeading title={t('requestToJoin.title', { organisation })} />
       <View style={styles.org}>
-        <View
-          style={styles.tile}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        >
-          <Initials
-            name={organisation}
-            size={tokens.typeButton.size}
-            weight="semibold"
-            style={styles.tileText}
-          />
-        </View>
+        <OrgTile name={organisation} size="card" />
         <View style={styles.naming}>
           <Text size={tokens.typeRowTitle.size} weight="semibold">
             {organisation}
@@ -451,15 +440,6 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorInsetBorder,
     backgroundColor: tokens.colorInset,
   },
-  tile: {
-    width: tokens.space6xl,
-    height: tokens.space6xl,
-    borderRadius: tokens.radiusNav,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.colorAccentTint,
-  },
-  tileText: { color: tokens.colorAccentText },
   naming: { flex: 1, minWidth: 0, gap: tokens.spaceHair },
   message: {
     lineHeight: MESSAGE_LINE_HEIGHT,

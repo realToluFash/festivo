@@ -15,7 +15,7 @@ import { dateLocale } from '../i18n/index.ts';
 import type { WaitingInvitations } from '../invitations.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
-import { Initials } from './Initials.tsx';
+import { OrgTile } from './OrgTile.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
 
@@ -67,13 +67,7 @@ function InvitationRow({
   return (
     <View style={styles.row}>
       <View style={styles.head}>
-        <View
-          style={styles.tile}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        >
-          <Initials name={organisation} size={tokens.typeMeta.size} weight="bold" muted />
-        </View>
+        <OrgTile name={organisation} invited />
         <View style={styles.naming}>
           <Text size={tokens.typeRowTitle.size} weight="semibold">
             {organisation}
@@ -184,17 +178,6 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorInset,
   },
   head: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceMd },
-  tile: {
-    width: tokens.space5xl,
-    height: tokens.space5xl,
-    borderRadius: tokens.radiusSmall,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: tokens.colorInkTertiary,
-    backgroundColor: tokens.colorCard,
-  },
   naming: { flex: 1, minWidth: 0, gap: tokens.spaceHair },
   answer: { gap: tokens.spaceSm, alignItems: 'flex-start' },
   buttons: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
