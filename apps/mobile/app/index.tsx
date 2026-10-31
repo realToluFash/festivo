@@ -249,7 +249,7 @@ function HealthCheck({ state, onRetry }: { state: State; onRetry: () => void }) 
             <Text size={tokens.typeSmall.size} family="mono" style={styles.checkName}>
               {name}
             </Text>
-            <View style={styles.line}>
+            <View style={[styles.line, styles.checkStatus]}>
               <GlyphMark mark={ok ? tokens.marks.done : BROKEN} />
               <Text
                 size={tokens.typeSmall.size}
@@ -286,14 +286,14 @@ const styles = StyleSheet.create({
   check: {
     minHeight: tokens.sizeHit,
     flexDirection: 'row',
-    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
     columnGap: tokens.spaceLg,
     borderTopWidth: 1,
     borderTopColor: tokens.colorInsetBorder,
   },
-  checkName: { color: tokens.colorInkSecondary },
+  checkName: { flexShrink: 1, color: tokens.colorInkSecondary },
+  checkStatus: { flexShrink: 0 },
   brokenInk: { color: tokens.colorBrokenText },
   okInk: { color: tokens.colorAccentText },
 });
