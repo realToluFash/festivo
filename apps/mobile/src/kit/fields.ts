@@ -56,6 +56,8 @@ export function codeProps(takesRecoveryCode: boolean) {
 
 export interface FieldText {
   held: boolean;
+  /** Held, the field is handed its text: on Android only once a key lands, as handing it the text it shows has TalkBack read it again as replaced (sc-23943). */
+  handsHeld: boolean;
   value: string | undefined;
   defaultValue: string | undefined;
   typed: string;
@@ -68,7 +70,8 @@ export function nextPin(
   fontScale: number,
   scale: number,
 ): { pinned: string | undefined; scale: number } {
-  const repin = (field.held || fontScale !== scale) && field.value === undefined;
+  const repin =
+    ((field.held && field.handsHeld) || fontScale !== scale) && field.value === undefined;
 
   return { pinned: repin ? field.typed : field.pinned, scale: fontScale };
 }
@@ -92,6 +95,16 @@ export function keyTyped(last: Typing, text: string): Typing {
   return { ...last, typed: text, given: undefined };
 }
 
+/** Whether a held field is handed its text: off Android always, on Android only to undo a key that landed while held. */
+export function handsHeld(os: string, strayed: boolean): boolean {
+  return os !== 'android' || strayed;
+}
+
+/** Whether a key has landed in this hold: one landing marks it, and a release clears it, so the next hold starts unhanded. */
+export function nextStrayed(held: boolean, strayed: boolean, keyed: boolean): boolean {
+  return held && (strayed || keyed);
+}
+
 /** The value TextInput is handed: on Android only one not yet typed, so typing leaves the field uncontrolled. */
 export function valueHanded(
   os: string,
@@ -104,7 +117,7 @@ export function valueHanded(
 /** What a field hands TextInput as its text, held or not. */
 export function fieldText(field: FieldText): { value?: string; defaultValue?: string } {
   if (field.value !== undefined) return { value: field.value };
-  if (field.held) return { value: field.typed };
+  if (field.held && field.handsHeld) return { value: field.typed };
   const defaultValue = field.pinned ?? field.defaultValue;
 
   return defaultValue === undefined ? {} : { defaultValue };
