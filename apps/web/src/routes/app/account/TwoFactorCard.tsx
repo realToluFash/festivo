@@ -386,11 +386,11 @@ function SettingUp({
             </div>
 
             <div className="actions">
-              <button className="button button-primary" type="submit" aria-busy={checking}>
-                {t('twoFactorCard.checkCode')}
-              </button>
               <button className="button" type="button" {...offButton(checking)} onClick={onCancel}>
                 {t('twoFactorCard.cancel')}
+              </button>
+              <button className="button button-primary" type="submit" aria-busy={checking}>
+                {t('twoFactorCard.checkCode')}
               </button>
             </div>
           </form>
@@ -560,11 +560,11 @@ function TurningOff({
         </div>
 
         <div className="actions">
-          <button className="button button-danger" type="submit" aria-busy={checking}>
-            {t('twoFactorCard.turnItOff')}
-          </button>
           <button className="link-button" type="button" {...offButton(checking)} onClick={onKeep}>
             {t('twoFactorCard.keepItOn')}
+          </button>
+          <button className="button button-danger" type="submit" aria-busy={checking}>
+            {t('twoFactorCard.turnItOff')}
           </button>
         </div>
       </form>
@@ -658,11 +658,11 @@ function ConfirmNewCodes({
         </div>
 
         <div className="actions">
-          <button className="button button-primary" type="submit" aria-busy={checking}>
-            {t('twoFactorCard.makeNewCodes')}
-          </button>
           <button className="button" type="button" {...offButton(checking)} onClick={onKeep}>
             {t('twoFactorCard.keepCodes')}
+          </button>
+          <button className="button button-primary" type="submit" aria-busy={checking}>
+            {t('twoFactorCard.makeNewCodes')}
           </button>
         </div>
       </form>
