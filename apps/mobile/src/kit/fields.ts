@@ -100,6 +100,11 @@ export function handsHeld(os: string, strayed: boolean): boolean {
   return os !== 'android' || strayed;
 }
 
+/** Whether a key has landed in this hold: one landing marks it, and a release clears it, so the next hold starts unhanded. */
+export function nextStrayed(held: boolean, strayed: boolean, keyed: boolean): boolean {
+  return held && (strayed || keyed);
+}
+
 /** The value TextInput is handed: on Android only one not yet typed, so typing leaves the field uncontrolled. */
 export function valueHanded(
   os: string,

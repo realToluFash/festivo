@@ -11,6 +11,7 @@ import {
   keyTyped,
   nextGiven,
   nextPin,
+  nextStrayed,
   passwordProps,
   type Typing,
   valueHanded,
@@ -646,6 +647,16 @@ describe('a field held on Android is handed no text TalkBack would read as repla
 
     expect(fieldText(strayed)).toEqual({ value: 'Adaeze Okafor' });
     expect(fieldText(step(strayed, false))).toEqual({ defaultValue: 'Adaeze Okafor' });
+  });
+
+  it('starts a hold after a stray hold unhanded, so a retried save reads no echo', () => {
+    const keyed = nextStrayed(true, false, true);
+    const released = nextStrayed(false, keyed, false);
+
+    expect(keyed).toBe(true);
+    expect(nextStrayed(true, keyed, false)).toBe(true);
+    expect(released).toBe(false);
+    expect(handsHeld('android', nextStrayed(true, released, false))).toBe(false);
   });
 
   it('is handed its text throughout a hold on iOS', () => {

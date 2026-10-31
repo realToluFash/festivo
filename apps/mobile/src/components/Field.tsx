@@ -31,6 +31,7 @@ import {
   keyTyped,
   nextGiven,
   nextPin,
+  nextStrayed,
   type Typing,
   valueHanded,
 } from '../kit/fields.ts';
@@ -236,12 +237,15 @@ export function useHeld(
 
   if (next.scale !== scale) setScale(next.scale);
   if (handed !== typing || next.pinned !== pinned) setTyping({ ...handed, pinned: next.pinned });
-  if (!held && strayed) setStrayed(false);
+  const stillStrayed = nextStrayed(held, strayed, false);
+  if (stillStrayed !== strayed) setStrayed(stillStrayed);
 
   if (held)
     return {
       ...fieldText(field),
-      onChangeText: field.handsHeld ? undefined : () => setStrayed(true),
+      onChangeText: field.handsHeld
+        ? undefined
+        : () => setStrayed(nextStrayed(held, strayed, true)),
     };
 
   return {
