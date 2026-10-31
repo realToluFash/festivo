@@ -419,20 +419,20 @@ function ContactsCard({
                     <p>{t('contacts.removeBody')}</p>
                     <div className="actions">
                       <button
-                        className="button button-danger"
-                        type="button"
-                        aria-busy={sending}
-                        onClick={() => void act(row, 'remove')}
-                      >
-                        {t(email ? 'contacts.removeConfirm' : 'contacts.removeConfirmPhone')}
-                      </button>
-                      <button
                         className="link-button"
                         type="button"
                         {...offButton(sending)}
                         onClick={() => closeBackTo(`remove ${row.id}`)}
                       >
                         {t(email ? 'contacts.removeKeep' : 'contacts.removeKeepPhone')}
+                      </button>
+                      <button
+                        className="button button-danger"
+                        type="button"
+                        aria-busy={sending}
+                        onClick={() => void act(row, 'remove')}
+                      >
+                        {t(email ? 'contacts.removeConfirm' : 'contacts.removeConfirmPhone')}
                       </button>
                     </div>
                   </div>
