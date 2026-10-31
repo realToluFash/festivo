@@ -75,6 +75,13 @@ a provider's redirect is handed back with `node .qa/bin/qa-env.mjs link 'soirely
 It also switches TalkBack off, and says so: turn it on again after `android` starts for a
 screen-reader pass.
 
+`ios` and `android` start the bundler and keep it for as long as they run, so they are
+started in the background and left running for the pass. An agent's background command is
+stopped at its timeout, ten minutes unless it names one, and the bundler goes with it,
+mid-batch: start them with the longest timeout the tool allows (7200000 ms). `ios --se`,
+`batch --se` and the other simulator commands run on the tester's iPhone SE
+(`Soirely QA<n> iPhone SE`) instead of the iPhone, as `--ipad` does for the iPad.
+
 Expo Go fetches the bundle from Metro and draws its own splash, so a bullet about the app
 offline from first launch, or its own splash screen, needs the app itself.
 `node .qa/bin/qa-env.mjs release` builds a release APK of the QA worktree's commit, with the bundle and fonts inside, installs
@@ -92,7 +99,7 @@ platform and took an hour here. The APK is kept in
 (`--rebuild` forces one).
 
 On the Mac, `release` does the same for the tester's iPhone simulator (`--ipad` for the iPad,
-`--android` for the emulator instead): `expo prebuild --platform ios`, `pod install` and an
+`--se` for the iPhone SE, `--android` for the emulator instead): `expo prebuild --platform ios`, `pod install` and an
 `xcodebuild` Release build for the simulator, with no signing, no Expo account and no EAS, kept as
 `.qa/release/soirely-<commit>.app`. It needs Xcode and CocoaPods. A simulator shares the Mac's
 network, so `--offline` stops the services the app reaches (`api`, `mercure`, `storage`, `oidc`)

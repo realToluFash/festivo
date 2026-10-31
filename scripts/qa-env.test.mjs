@@ -386,11 +386,19 @@ describe('a commit checkout asks for', () => {
 
 describe('the simulator ios opens', () => {
   it.each([
-    [[], { open: 'phone', shut: 'ipad' }],
-    [['--phone'], { open: 'phone', shut: 'ipad' }],
-    [['--ipad'], { open: 'ipad', shut: 'phone' }],
-  ])('%j opens one and shuts the other', (args, expected) => {
+    [[], { open: 'phone', shut: ['ipad', 'se'] }],
+    [['--phone'], { open: 'phone', shut: ['ipad', 'se'] }],
+    [['--ipad'], { open: 'ipad', shut: ['phone', 'se'] }],
+    [['--se'], { open: 'se', shut: ['phone', 'ipad'] }],
+  ])('%j opens one and shuts the others', (args, expected) => {
     expect(simulatorFor(args)).toEqual(expected);
+  });
+
+  it.each(TESTERS)("opens tester %i's own iPhone SE, with nothing renamed", (tester) => {
+    const { simulators } = qaConfig(tester);
+    const label = tester === 1 ? 'Soirely QA' : `Soirely QA${tester}`;
+    expect(simulators[simulatorFor(['--se']).open].name).toBe(`${label} iPhone SE`);
+    expect(simulators.phone.name).toBe(`${label} iPhone`);
   });
 });
 
@@ -1686,6 +1694,18 @@ describe('the batch command', () => {
     ).toEqual([
       'node .qa/bin/qa-env.mjs batch tour-settings-es settings --lang es --cold --ipad EMAIL=a@b.test PASSWORD=… TOTP_SECRET=…',
       'node .qa/bin/qa-env.mjs batch tour-home-en home --lang en --cold --ipad EMAIL=a@b.test PASSWORD=… TOTP_SECRET=…',
+    ]);
+  });
+
+  it('re-runs a failed check on the iPhone SE it ran on', () => {
+    expect(
+      rerunHints('tour', [{ check: 'home', language: 'any' }], {
+        args: ['--se'],
+        email: 'a@b.test',
+        secret: null,
+      }),
+    ).toEqual([
+      'node .qa/bin/qa-env.mjs batch tour-home home --cold --se EMAIL=a@b.test PASSWORD=…',
     ]);
   });
 
