@@ -39,7 +39,13 @@ import { ReadOut } from './ReadOut.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import { ProviderButton } from './ProviderSignIn.tsx';
 import { AnswerHeading } from './AnswerHeading.tsx';
-import { type StepClosed, stepClosed, useAboveKeyboard, useFocusBackToOpener } from './Screen.tsx';
+import {
+  AnswerInView,
+  type StepClosed,
+  stepClosed,
+  useAboveKeyboard,
+  useFocusBackToOpener,
+} from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 type Preview =
@@ -368,9 +374,11 @@ function Transfer({
       </Text>
 
       {refused?.field === null && (
-        <ReadOut words={refused.message} interrupts accessibilityRole="alert">
-          <Notice tone="broken" mark={tokens.marks.broken.glyph} body={refused.message} />
-        </ReadOut>
+        <AnswerInView>
+          <ReadOut words={refused.message} interrupts accessibilityRole="alert">
+            <Notice tone="broken" mark={tokens.marks.broken.glyph} body={refused.message} />
+          </ReadOut>
+        </AnswerInView>
       )}
 
       <View ref={ownerRow} accessibilityRole="radiogroup" style={styles.choices}>
@@ -724,14 +732,16 @@ function Delete({
         />
       )}
       {failed != null && (
-        <ReadOut
-          words={failed}
-          interrupts
-          accessibilityRole="alert"
-          testID="ownership.delete.refused"
-        >
-          <Notice tone="broken" mark={tokens.marks.broken.glyph} body={failed} />
-        </ReadOut>
+        <AnswerInView>
+          <ReadOut
+            words={failed}
+            interrupts
+            accessibilityRole="alert"
+            testID="ownership.delete.refused"
+          >
+            <Notice tone="broken" mark={tokens.marks.broken.glyph} body={failed} />
+          </ReadOut>
+        </AnswerInView>
       )}
       <View {...aboveKeyboard} style={styles.form}>
         <Field

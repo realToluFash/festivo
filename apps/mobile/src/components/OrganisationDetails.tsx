@@ -47,6 +47,7 @@ import { Field, focusChecked, focusRefused, keysStayDown, TextField } from './Fi
 import { ListPicker } from './ListPicker.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
+import { AnswerInView } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 type Status = 'editing' | 'saving' | 'saved' | 'failed';
@@ -176,14 +177,18 @@ export function EditableDetails({
   return (
     <>
       {status === 'saved' && (
-        <ReadOut words={saved}>
-          <Notice tone="done" mark={tokens.marks.done.glyph} body={saved} />
-        </ReadOut>
+        <AnswerInView>
+          <ReadOut words={saved}>
+            <Notice tone="done" mark={tokens.marks.done.glyph} body={saved} />
+          </ReadOut>
+        </AnswerInView>
       )}
       {status === 'failed' && (
-        <ReadOut words={failed} interrupts accessibilityRole="alert">
-          <Notice tone="broken" mark={tokens.marks.broken.glyph} body={failed} />
-        </ReadOut>
+        <AnswerInView>
+          <ReadOut words={failed} interrupts accessibilityRole="alert">
+            <Notice tone="broken" mark={tokens.marks.broken.glyph} body={failed} />
+          </ReadOut>
+        </AnswerInView>
       )}
 
       <View style={cardFrame(kind)}>

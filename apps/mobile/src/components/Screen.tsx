@@ -85,6 +85,10 @@ interface ScreenScrollView {
   scrollHolding(y: number): void;
   /** Whether a step is closing: a view taking input focus does not scroll itself into sight, which Android does by default, and only a scroll lets the hold go. A field the keys' Done key saved from can take focus back as the close puts the keys down, and letting the hold go then pulls the scroll back under TalkBack's focus (sc-18587). */
   closing(on: boolean): void;
+  /** Whether an answer is coming into view: a field's group does not lift above the keys meanwhile, as the answer comes before it (sc-24496). */
+  answering(on: boolean): void;
+  /** Whether any answer is coming into view now. */
+  answeringNow(): boolean;
 }
 
 const ScreenScroll = createContext<ScreenScrollView | null>(null);
@@ -148,7 +152,7 @@ function liftAboveKeyboard(
   const content = view?.getInnerViewRef();
   const scrollHost = view?.getNativeScrollRef();
   if (scroll == null || view == null || content == null || scrollHost == null) return;
-  if (group == null || keyboardTop == null) return;
+  if (group == null || keyboardTop == null || scroll.answeringNow()) return;
 
   group.measureLayout(content, (_x, contentY, _w, height) => {
     scrollHost.measureInWindow((_sx, scrollTop, _sw, scrollHeight) => {
@@ -372,27 +376,7 @@ function useCheckedFieldInView(scroll: ScreenScrollView): void {
     let cancel = () => {};
     const unwatch = watchCheckedField((field) => {
       cancel();
-      const bring = () => bringIntoView(scroll, field, true, { aboveKeys: true });
-      const unsettled = settleOnto(
-        scroll,
-        () => field,
-        () => null,
-        true,
-        SETTLED_MS,
-        {
-          aboveKeys: true,
-        },
-      );
-      // Keys that rise for the field, and Android's avoiding view shrinking under them, cover it afresh.
-      const shown = Keyboard.addListener('keyboardDidShow', bring);
-      scroll.resized.add(bring);
-      const done = setTimeout(() => cancel(), 2 * SETTLED_MS);
-      cancel = () => {
-        unsettled();
-        shown.remove();
-        scroll.resized.delete(bring);
-        clearTimeout(done);
-      };
+      cancel = followIntoView(scroll, () => field);
     });
 
     return () => {
@@ -400,6 +384,34 @@ function useCheckedFieldInView(scroll: ScreenScrollView): void {
       unwatch();
     };
   }, [scroll]);
+}
+
+/** Brings `shown` wholly into sight above the keys now and once it has settled, and again as the keys rise (and fall, with `alsoOnHide`) or the scroll view resizes, until two settles have passed; calls `ended` once it stops and returns what stops it sooner. */
+function followIntoView(
+  scroll: ScreenScrollView,
+  shown: () => ScreenReaderTarget | null,
+  { alsoOnHide = false, ended = () => {} }: { alsoOnHide?: boolean; ended?: () => void } = {},
+): () => void {
+  const sight = { aboveKeys: true };
+  const bring = () => bringIntoView(scroll, shown(), true, sight);
+  const unsettled = settleOnto(scroll, shown, () => null, true, SETTLED_MS, sight);
+  // Keys that rise, and Android's avoiding view shrinking under them, cover it afresh.
+  const keys = [Keyboard.addListener('keyboardDidShow', bring)];
+  if (alsoOnHide) keys.push(Keyboard.addListener('keyboardDidHide', bring));
+  scroll.resized.add(bring);
+  let stopped = false;
+  const stop = () => {
+    if (stopped) return;
+    stopped = true;
+    clearTimeout(done);
+    unsettled();
+    keys.forEach((key) => key.remove());
+    scroll.resized.delete(bring);
+    ended();
+  };
+  const done = setTimeout(stop, 2 * SETTLED_MS);
+
+  return stop;
 }
 
 /** Brings `shown` into sight as far as `when`, and again once it has settled, and moves screen reader focus to `read` after `readMs`; returns what cancels the steps still to come. */
@@ -450,6 +462,32 @@ export function useBroughtIntoView(readRef?: RefObject<ViewInstance | null>): Br
   );
 
   return { shown: ref, read };
+}
+
+/** Brings `shown`, a notice answering a send, wholly into sight between the header and the keys once it mounts, and again with the keys moving or the scroll view resizing in the settle; screen reader focus stays where it is (sc-24496). */
+export function useAnswerInView(): RefObject<ViewInstance | null> {
+  const scroll = useContext(ScreenScroll);
+  const shown = useRef<ViewInstance>(null);
+
+  useEffect(() => {
+    if (scroll == null) return;
+
+    scroll.answering(true);
+    // A code step closing takes the keys with it, and Android's avoiding view grows back after.
+    return followIntoView(scroll, () => shown.current, {
+      alsoOnHide: true,
+      ended: () => scroll.answering(false),
+    });
+  }, [scroll]);
+
+  return shown;
+}
+
+/** A notice answering a send, brought into sight as useAnswerInView. */
+export function AnswerInView({ children }: { children: ReactNode }) {
+  const shown = useAnswerInView();
+
+  return <View ref={shown}>{children}</View>;
 }
 
 export interface FocusedOnAnswer<Read extends ScreenReaderTarget> {
@@ -888,11 +926,16 @@ function useScreenScrollView() {
   const [held, setHeld] = useState<number | null>(null);
   const [stepClosing, setStepClosing] = useState(false);
   const closingNow = useRef(false);
+  const answers = useRef(0);
   const [screenScroll] = useState<ScreenScrollView>(() => ({
     ref: scrollView,
     resized: new Set(),
     origin,
     offset,
+    answering: (on) => {
+      answers.current += on ? 1 : -1;
+    },
+    answeringNow: () => answers.current > 0,
     hold: (more) => setHeld(contentHeight.current + more),
     scrollHolding: (y) => {
       askedTo.current = y;
