@@ -46,6 +46,7 @@ export function Security() {
   const [ended, setEnded] = useState<string | null>(null);
   const [endFailed, setEndFailed] = useState(false);
   const [retried, setRetried] = useState(false);
+  const [afterStep, setAfterStep] = useState(false);
   const devicesHeading = useRef<HTMLHeadingElement>(null);
   const said = useRef<HTMLDivElement>(null);
   const signOutButtons = useRef(new Map<string, HTMLButtonElement | null>());
@@ -134,6 +135,7 @@ export function Security() {
     setEverywhereDone({ count: result.signedOut, arrived });
     if (!arrived) land(() => said.current);
     setRetried(false);
+    setAfterStep(true);
     setDevices({ kind: 'loading' });
     setAttempt((n) => n + 1);
   }
@@ -144,6 +146,8 @@ export function Security() {
     setEverywhereDone(null);
     await here.signOut();
   }
+
+  const quiet = afterStep && !retried && devices.kind !== 'ready';
 
   return (
     <div className="account">
@@ -161,6 +165,7 @@ export function Security() {
         onChanged={() => {
           setEnded(null);
           setRetried(false);
+          setAfterStep(true);
           setDevices({ kind: 'loading' });
           setAttempt((n) => n + 1);
         }}
@@ -262,35 +267,44 @@ export function Security() {
 
               {devices.kind === 'loading' && <Pending />}
 
-              {devices.kind === 'failed' && (
-                <div className="notice notice-broken" role={retried ? undefined : 'alert'}>
-                  <span className="mark mark-broken" aria-hidden="true">
-                    ✕
-                  </span>
-                  <div
-                    className="notice-body"
-                    ref={failedNotice}
-                    tabIndex={retried ? -1 : undefined}
-                  >
-                    <p className="notice-title">{t('devices.failedTitle')}</p>
-                    <p>{t('devices.failedBody')}</p>
-                  </div>
-                  <button
-                    className="button"
-                    type="button"
-                    onClick={() => {
-                      setRetried(true);
-                      setDevices({ kind: 'loading' });
-                      setAttempt((n) => n + 1);
-                      land(
-                        () =>
-                          failedNotice.current ??
-                          (list.current == null ? null : devicesHeading.current),
-                      );
-                    }}
-                  >
-                    {t('error.retry')}
-                  </button>
+              {/* After a step succeeded, its success is read first, so this waits on the page as
+                  a polite status: VoiceOver skips one added with its words already inside. */}
+              {(quiet || devices.kind === 'failed') && (
+                <div
+                  className={devices.kind === 'failed' ? 'notice notice-broken' : 'visually-hidden'}
+                  role={quiet ? 'status' : retried ? undefined : 'alert'}
+                >
+                  {devices.kind === 'failed' && (
+                    <>
+                      <span className="mark mark-broken" aria-hidden="true">
+                        ✕
+                      </span>
+                      <div
+                        className="notice-body"
+                        ref={failedNotice}
+                        tabIndex={retried ? -1 : undefined}
+                      >
+                        <p className="notice-title">{t('devices.failedTitle')}</p>
+                        <p>{t('devices.failedBody')}</p>
+                      </div>
+                      <button
+                        className="button"
+                        type="button"
+                        onClick={() => {
+                          setRetried(true);
+                          setDevices({ kind: 'loading' });
+                          setAttempt((n) => n + 1);
+                          land(
+                            () =>
+                              failedNotice.current ??
+                              (list.current == null ? null : devicesHeading.current),
+                          );
+                        }}
+                      >
+                        {t('error.retry')}
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
 

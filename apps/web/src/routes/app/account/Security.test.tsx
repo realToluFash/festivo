@@ -750,6 +750,37 @@ describe('signing out everywhere else', () => {
     expect(screen.getByText('This device')).toBeDefined();
   });
 
+  it('reads the failed list after the success, as a status already waiting on the page', async () => {
+    let answer: (response: Response) => void = () => {};
+    const sent = stub({
+      'GET /api/auth/sessions': () =>
+        !sent.some((entry) => entry.call === 'POST /api/auth/sessions/others')
+          ? json(THREE)
+          : (new Promise<Response>((resolve) => {
+              answer = resolve;
+            }) as unknown as Response),
+      'POST /api/auth/proof': () => json({ proof: 'p-1', expiresAt: '' }),
+      'POST /api/auth/sessions/others': () => json({ signedOut: 2, thisDevice: false }),
+    });
+
+    await openCheck();
+    fireEvent.change(password(), { target: { value: 'a decent passphrase' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign them out' }));
+
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toBe('✓Your 2 other devices are signed out.'),
+    );
+    const waiting = screen.getAllByRole('status').find((status) => status.textContent === '');
+    expect(waiting).toBeDefined();
+
+    answer(new Response(null, { status: 503 }));
+
+    await waitFor(() => expect(waiting?.textContent).toMatch('The devices could not be listed'));
+    expect(screen.getByRole('status')).toBe(waiting);
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(document.activeElement?.textContent).toBe('✓Your 2 other devices are signed out.');
+  });
+
   it('says so when there was nothing left to sign out', async () => {
     stub({
       'POST /api/auth/proof': () => json({ proof: 'p-1', expiresAt: '' }),
@@ -939,6 +970,37 @@ describe('signing out everywhere else', () => {
     sessionStorage.clear();
   });
 
+  it('back from Google, reads the success and then the failed list, both as statuses', async () => {
+    __setSessionState({
+      status: 'signedIn',
+      session: { ...FOLAKE, hasPassword: false, providers: [{ provider: 'google', email: null }] },
+    });
+    const signIn = { code: 'the-code', codeVerifier: 'v', redirectUri: 'r', nonce: 'n' };
+    sessionStorage.setItem(
+      'soirely.provider.returned',
+      JSON.stringify({ provider: 'google', purpose: { kind: 'signOutOthers' }, signIn }),
+    );
+    const sent = stub({
+      'GET /api/auth/sessions': () =>
+        sent.some((entry) => entry.call === 'POST /api/auth/sessions/others')
+          ? new Response(null, { status: 503 })
+          : json(THREE),
+      'POST /api/auth/proof': () => json({ proof: 'p-1', expiresAt: '' }),
+      'POST /api/auth/sessions/others': () => json({ signedOut: 2, thisDevice: false }),
+    });
+
+    openSecurity();
+
+    await waitFor(() =>
+      expect(screen.getAllByRole('status').map((status) => status.textContent)).toEqual([
+        '✓Your 2 other devices are signed out.',
+        expect.stringContaining('The devices could not be listed'),
+      ]),
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+    sessionStorage.clear();
+  });
+
   it('signs the others out once, back from Google, when React abandons the render it arrives in', async () => {
     __setSessionState({
       status: 'signedIn',
@@ -1069,6 +1131,30 @@ describe('changing the password', () => {
     });
     await waitFor(() =>
       expect(calls.filter((call) => call.path === '/api/auth/sessions').length).toBe(2),
+    );
+  });
+
+  it('reads the whole Password changed line before the devices that failed to load', async () => {
+    let saved = false;
+    answering({
+      'GET /api/auth/sessions': () =>
+        saved ? new Response(null, { status: 503 }) : json(SESSIONS),
+      'PATCH /api/auth/password': () => {
+        saved = true;
+
+        return json({ signedOut: 1 });
+      },
+    });
+
+    openSecurity();
+    fillIn('the old passphrase', 'a brand new passphrase');
+
+    await waitFor(() =>
+      expect(screen.getByRole('status').textContent).toMatch('The devices could not be listed'),
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(document.activeElement?.textContent).toBe(
+      '✓Password changed. Your other device is signed out.',
     );
   });
 
