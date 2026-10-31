@@ -115,6 +115,39 @@ export function LifecycleSheet({
   children?: ReactNode;
 }) {
   const { t } = useTranslation();
+  const go =
+    confirm == null ? null : confirm.ends === true ? (
+      <DestructiveButton
+        label={confirm.label}
+        onPress={confirm.onGo}
+        busy={confirm.pending}
+        testID={`${testID}Yes`}
+      />
+    ) : (
+      <PrimaryButton
+        label={confirm.label}
+        onPress={confirm.onGo}
+        busy={confirm.pending}
+        testID={`${testID}Yes`}
+      />
+    );
+  const keep =
+    confirm == null ? null : confirm.ends === true ? (
+      <QuietButton
+        label={confirm.keep}
+        onPress={onClose}
+        off={confirm.pending}
+        testID={`${testID}No`}
+      />
+    ) : (
+      <SecondaryButton
+        label={confirm.keep}
+        onPress={onClose}
+        off={confirm.pending}
+        stacked={phone}
+        testID={`${testID}No`}
+      />
+    );
 
   return (
     <Sheet open={open} onClose={onClose} opener={opener} testID={`${testID}Sheet`}>
@@ -136,36 +169,15 @@ export function LifecycleSheet({
             {children}
           </ScrollView>
           <View style={phone ? styles.stacked : styles.actions}>
-            {confirm?.ends === true ? (
+            {confirm != null && phone ? (
               <>
-                <DestructiveButton
-                  label={confirm.label}
-                  onPress={confirm.onGo}
-                  busy={confirm.pending}
-                  testID={`${testID}Yes`}
-                />
-                <QuietButton
-                  label={confirm.keep}
-                  onPress={onClose}
-                  off={confirm.pending}
-                  testID={`${testID}No`}
-                />
+                {go}
+                {keep}
               </>
             ) : confirm != null ? (
               <>
-                <PrimaryButton
-                  label={confirm.label}
-                  onPress={confirm.onGo}
-                  busy={confirm.pending}
-                  testID={`${testID}Yes`}
-                />
-                <SecondaryButton
-                  label={confirm.keep}
-                  onPress={onClose}
-                  off={confirm.pending}
-                  stacked={phone}
-                  testID={`${testID}No`}
-                />
+                {keep}
+                {go}
               </>
             ) : onward != null && phone ? (
               <>

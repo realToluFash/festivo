@@ -434,13 +434,13 @@ function StopConfirm({
       </AnswerHeading>
       <Text size={tokens.typeBodyPhone.size}>{t('ownerClaim.stopBody', { organisation })}</Text>
       <View style={styles.actions}>
+        <QuietButton label={t('ownerClaim.stopNo')} onPress={onKeep} testID="ownerClaim.stopNo" />
         <DestructiveButton
           label={t('ownerClaim.stopYes')}
           onPress={onStop}
           busy={busy}
           testID="ownerClaim.stopYes"
         />
-        <QuietButton label={t('ownerClaim.stopNo')} onPress={onKeep} testID="ownerClaim.stopNo" />
       </View>
     </View>
   );
@@ -466,6 +466,22 @@ function WithdrawConfirm({
 }) {
   const { t } = useTranslation();
   const unlessPending = (act: () => void) => () => !pending && act();
+  const withdraw = (
+    <DestructiveButton
+      label={pending ? t('ownerClaim.withdrawing') : t('ownerClaim.withdrawYes')}
+      onPress={onWithdraw}
+      busy={pending}
+      testID="ownerClaim.withdrawYes"
+    />
+  );
+  const keep = (
+    <QuietButton
+      label={t('ownerClaim.withdrawNo')}
+      onPress={unlessPending(onKeep)}
+      off={pending}
+      testID="ownerClaim.withdrawNo"
+    />
+  );
 
   return (
     <Sheet
@@ -499,18 +515,17 @@ function WithdrawConfirm({
           {t('ownerClaim.withdrawBody', { organisation })}
         </Text>
         <View style={phone ? styles.stacked : styles.actions}>
-          <DestructiveButton
-            label={pending ? t('ownerClaim.withdrawing') : t('ownerClaim.withdrawYes')}
-            onPress={onWithdraw}
-            busy={pending}
-            testID="ownerClaim.withdrawYes"
-          />
-          <QuietButton
-            label={t('ownerClaim.withdrawNo')}
-            onPress={unlessPending(onKeep)}
-            off={pending}
-            testID="ownerClaim.withdrawNo"
-          />
+          {phone ? (
+            <>
+              {withdraw}
+              {keep}
+            </>
+          ) : (
+            <>
+              {keep}
+              {withdraw}
+            </>
+          )}
         </View>
       </View>
     </Sheet>
