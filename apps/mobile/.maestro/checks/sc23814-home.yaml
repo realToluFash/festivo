@@ -1,0 +1,45 @@
+# sc-23814, iPad ${ORIENT}: Home > the bell; Back, then the swipe, return to Home.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'frame.bell'
+- extendedWaitUntil:
+    visible:
+      id: 'notifications.back'
+    timeout: 15000
+- runFlow:
+    when:
+      visible:
+        id: notifications.pushAsk.notNow
+    commands:
+      - tapOn:
+          id: notifications.pushAsk.notNow
+- takeScreenshot: notifications
+- tapOn:
+    id: 'notifications.back'
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 10000
+- takeScreenshot: after-back
+- tapOn:
+    id: 'frame.bell'
+- extendedWaitUntil:
+    visible:
+      id: 'notifications.back'
+    timeout: 15000
+- waitForAnimationToEnd
+- swipe:
+    start: 1%, 50%
+    end: 85%, 50%
+    duration: 400
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 10000
+- assertNotVisible:
+    id: 'notifications.back'
+- takeScreenshot: after-swipe
