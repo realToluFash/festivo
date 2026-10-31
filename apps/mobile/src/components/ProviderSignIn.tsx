@@ -14,8 +14,8 @@ import { Text } from './Text.tsx';
 const appleOnIos = Platform.OS === 'ios';
 const APPLE_IOS_TEXT_SIZE = tokens.sizeHitPhonePrimary * brand.appleTitleToHeight;
 const APPLE_IOS_LOGO_SCALE = brand.appleLogoHeight / 19;
-// Apple's band is 44 units with the glyph centred at 20; ending it at 39.2 puts the glyph 0.3pt above the fill's centre, as on iOS's own.
-const APPLE_IOS_LOGO_BAND = 39.2;
+// The glyph is centred at 20 units; a band ending at 40.8 centres it at 20.4, putting the glyph 0.3pt above the fill's centre, as on iOS's own.
+const APPLE_IOS_LOGO_BAND = 40.8;
 
 export function ProviderSignIn({ onFailed }: { onFailed?: (provider: string) => void }) {
   const { t } = useTranslation();
