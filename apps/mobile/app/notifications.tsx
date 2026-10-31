@@ -16,6 +16,7 @@ export default function Notifications() {
   const { t } = useTranslation();
   const { kind } = useLayout();
   const title = useRef<TextHandle>(null);
+  const phone = kind === 'phone';
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
   return (
@@ -27,8 +28,12 @@ export default function Notifications() {
       back={{ label: t('notifications.back'), onPress: back, systemBack: true }}
       backInBody
     >
-      <Screen edges={bodyEdges(kind)} scroll={false}>
-        {kind !== 'phone' && (
+      <Screen
+        edges={bodyEdges(kind)}
+        scroll={false}
+        {...(phone ? {} : { contentStyle: styles.body })}
+      >
+        {!phone && (
           <View style={styles.back}>
             <BackButton
               label={t('notifications.back')}
@@ -44,5 +49,6 @@ export default function Notifications() {
 }
 
 const styles = StyleSheet.create({
+  body: { padding: 0 },
   back: { paddingTop: tokens.spaceXl, paddingHorizontal: tokens.spaceXl },
 });
