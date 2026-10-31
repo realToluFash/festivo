@@ -1,0 +1,22 @@
+# sc-23175: Ask to join opened from a request link, as it opens and then with three lines in Message and the keys away. TOKEN, a link the account has not asked through. ORIENT=PORTRAIT|LANDSCAPE_LEFT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/join/${TOKEN}
+- extendedWaitUntil:
+    visible:
+      id: requestToJoin.message
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: open
+- scrollUntilVisible:
+    element:
+      id: requestToJoin.message
+    centerElement: true
+- tapOn:
+    id: requestToJoin.message
+- inputText: 'Line one of a message. Line two keeps going on and on so that it wraps over more than one line of the box, and line three, and four, and five, and six.'
+- tapOn:
+    point: '2%,45%'
+- waitForAnimationToEnd
+- takeScreenshot: typed
