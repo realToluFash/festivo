@@ -48,11 +48,12 @@ export function NameCard({
   const opener = useFocusBackToOpener(editing ? undefined : closed);
   const {
     opener: changeOpener,
+    holder: changeHolder,
     closing,
     closer,
     hidden,
     close,
-  } = useStepClose(opener, 'change', 'opener', (back) => {
+  } = useStepClose(opener, 'change', (back) => {
     setClosed(back);
     setEditing(false);
   });
@@ -64,7 +65,7 @@ export function NameCard({
     hidden: savedHidden,
     fieldHidden,
     close: closeSaved,
-  } = useStepClose(opener, 'saved', 'holder', (back) => {
+  } = useStepClose(opener, 'saved', (back) => {
     setSavedFocused(back == null);
     setEditing(false);
   });
@@ -131,12 +132,15 @@ export function NameCard({
         </View>
       )}
       {(!editing || opening || closing) && (
-        <SecondaryButton
-          ref={change}
-          label={t('nameCard.change')}
-          onPress={open}
-          testID="nameCard.change"
-        />
+        <View>
+          {changeHolder}
+          <SecondaryButton
+            ref={change}
+            label={t('nameCard.change')}
+            onPress={open}
+            testID="nameCard.change"
+          />
+        </View>
       )}
       {editing && (
         <Editing

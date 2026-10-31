@@ -2,13 +2,8 @@
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/${EVENT}
-- scrollUntilVisible:
-    element:
-      id: 'events.page.duplicate'
-    timeout: 30000
-- waitForAnimationToEnd
-- tapOn:
-    id: 'events.page.duplicate'
+- runFlow:
+    file: ../duplicate-open.yaml
 - scrollUntilVisible:
     element:
       id: 'eventDuplicate.create'
@@ -33,13 +28,8 @@ appId: host.exp.Exponent
           id: 'frame.back'
 - waitForAnimationToEnd
 - takeScreenshot: after-cancel
-- scrollUntilVisible:
-    element:
-      id: 'events.page.duplicate'
-    timeout: 30000
-- waitForAnimationToEnd
-- tapOn:
-    id: 'events.page.duplicate'
+- runFlow:
+    file: ../duplicate-open.yaml
 - runFlow:
     file: ../duplicate-create-draft.yaml
 - takeScreenshot: copy-page

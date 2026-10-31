@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { AccountSections } from '../../../components/AccountSections.tsx';
+import { LateStatus } from '../../../components/LateStatus.tsx';
 import { Pending } from '../../../components/Pending.tsx';
 import { StillSignedIn } from '../../../components/StillSignedIn.tsx';
 import { EverywhereElse } from './EverywhereElse.tsx';
@@ -46,6 +47,7 @@ export function Security() {
   const [ended, setEnded] = useState<string | null>(null);
   const [endFailed, setEndFailed] = useState(false);
   const [retried, setRetried] = useState(false);
+  const [afterStep, setAfterStep] = useState(false);
   const devicesHeading = useRef<HTMLHeadingElement>(null);
   const said = useRef<HTMLDivElement>(null);
   const signOutButtons = useRef(new Map<string, HTMLButtonElement | null>());
@@ -65,6 +67,7 @@ export function Security() {
     count: number;
     arrived: boolean;
   } | null>(null);
+  const [doneHeard, setDoneHeard] = useState(false);
   const [codesSpent, setCodesSpent] = useState(0);
   const codeSpent = () => setCodesSpent((n) => n + 1);
   const here = useSignOut(() => navigate('/sign-in'));
@@ -132,8 +135,10 @@ export function Security() {
     setEnded(null);
     setEndFailed(false);
     setEverywhereDone({ count: result.signedOut, arrived });
+    setDoneHeard(false);
     if (!arrived) land(() => said.current);
     setRetried(false);
+    setAfterStep(true);
     setDevices({ kind: 'loading' });
     setAttempt((n) => n + 1);
   }
@@ -144,6 +149,9 @@ export function Security() {
     setEverywhereDone(null);
     await here.signOut();
   }
+
+  const quiet = afterStep && !retried && devices.kind !== 'ready';
+  const failed = devices.kind === 'failed' && (everywhereDone?.arrived !== true || doneHeard);
 
   return (
     <div className="account">
@@ -161,6 +169,7 @@ export function Security() {
         onChanged={() => {
           setEnded(null);
           setRetried(false);
+          setAfterStep(true);
           setDevices({ kind: 'loading' });
           setAttempt((n) => n + 1);
         }}
@@ -230,21 +239,26 @@ export function Security() {
                 </div>
               )}
 
-              {everywhereDone != null && (
-                <div
-                  className="status-done"
-                  {...(everywhereDone.arrived ? { role: 'status' } : { ref: said, tabIndex: -1 })}
-                >
-                  <span className="mark mark-done" aria-hidden="true">
-                    ✓
-                  </span>
-                  <p>
-                    {everywhereDone.count === 0
-                      ? t('devices.everywhereNone')
-                      : t('devices.everywhereDone', { count: everywhereDone.count })}
-                  </p>
-                </div>
-              )}
+              {everywhereDone != null &&
+                (everywhereDone.arrived ? (
+                  <LateStatus
+                    className="status-done"
+                    mark={
+                      <span className="mark mark-done" aria-hidden="true">
+                        ✓
+                      </span>
+                    }
+                    words={everywhereWords(everywhereDone.count, t)}
+                    onShown={() => setDoneHeard(true)}
+                  />
+                ) : (
+                  <div className="status-done" ref={said} tabIndex={-1}>
+                    <span className="mark mark-done" aria-hidden="true">
+                      ✓
+                    </span>
+                    <p>{everywhereWords(everywhereDone.count, t)}</p>
+                  </div>
+                ))}
 
               {endFailed && (
                 <div className="notice notice-broken">
@@ -262,35 +276,44 @@ export function Security() {
 
               {devices.kind === 'loading' && <Pending />}
 
-              {devices.kind === 'failed' && (
-                <div className="notice notice-broken" role={retried ? undefined : 'alert'}>
-                  <span className="mark mark-broken" aria-hidden="true">
-                    ✕
-                  </span>
-                  <div
-                    className="notice-body"
-                    ref={failedNotice}
-                    tabIndex={retried ? -1 : undefined}
-                  >
-                    <p className="notice-title">{t('devices.failedTitle')}</p>
-                    <p>{t('devices.failedBody')}</p>
-                  </div>
-                  <button
-                    className="button"
-                    type="button"
-                    onClick={() => {
-                      setRetried(true);
-                      setDevices({ kind: 'loading' });
-                      setAttempt((n) => n + 1);
-                      land(
-                        () =>
-                          failedNotice.current ??
-                          (list.current == null ? null : devicesHeading.current),
-                      );
-                    }}
-                  >
-                    {t('error.retry')}
-                  </button>
+              {/* After a step succeeded, its success is read first, so this waits on the page as
+                  a polite status: VoiceOver skips one added with its words already inside. */}
+              {(quiet || failed) && (
+                <div
+                  className={failed ? 'notice notice-broken' : 'visually-hidden'}
+                  role={quiet ? 'status' : retried ? undefined : 'alert'}
+                >
+                  {failed && (
+                    <>
+                      <span className="mark mark-broken" aria-hidden="true">
+                        ✕
+                      </span>
+                      <div
+                        className="notice-body"
+                        ref={failedNotice}
+                        tabIndex={retried ? -1 : undefined}
+                      >
+                        <p className="notice-title">{t('devices.failedTitle')}</p>
+                        <p>{t('devices.failedBody')}</p>
+                      </div>
+                      <button
+                        className="button"
+                        type="button"
+                        onClick={() => {
+                          setRetried(true);
+                          setDevices({ kind: 'loading' });
+                          setAttempt((n) => n + 1);
+                          land(
+                            () =>
+                              failedNotice.current ??
+                              (list.current == null ? null : devicesHeading.current),
+                          );
+                        }}
+                      >
+                        {t('error.retry')}
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -351,6 +374,10 @@ export function Security() {
       )}
     </div>
   );
+}
+
+function everywhereWords(count: number, t: TFunction): string {
+  return count === 0 ? t('devices.everywhereNone') : t('devices.everywhereDone', { count });
 }
 
 function Row({

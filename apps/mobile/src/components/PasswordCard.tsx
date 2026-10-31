@@ -86,12 +86,13 @@ export function PasswordCard({
   const opener = useFocusBackToOpener(stage.kind === 'atRest' ? stage.closed : undefined);
   const {
     opener: changeOpener,
+    holder: changeHolder,
     closing,
     closer,
     field,
     hidden,
     close,
-  } = useStepClose(opener, 'change', 'opener', (closed) =>
+  } = useStepClose(opener, 'change', (closed) =>
     setStage({ kind: 'atRest', signedOut: null, added: null, closed }),
   );
   const frame = cardFrame(kind);
@@ -158,12 +159,15 @@ export function PasswordCard({
           <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
             {t('passwordCard.intro')}
           </Text>
-          <SecondaryButton
-            ref={changeOpener}
-            label={t('passwordCard.change')}
-            onPress={() => setStage({ kind: 'changing' })}
-            testID="password.change"
-          />
+          <View>
+            {changeHolder}
+            <SecondaryButton
+              ref={changeOpener}
+              label={t('passwordCard.change')}
+              onPress={() => setStage({ kind: 'changing' })}
+              testID="password.change"
+            />
+          </View>
         </>
       )}
       {stage.kind === 'changing' && (
@@ -174,7 +178,7 @@ export function PasswordCard({
             setStage({ kind: 'atRest', signedOut, added: null });
             onChanged?.();
           }}
-          onCancel={close}
+          onCancel={() => close()}
           closer={closer}
           field={field}
           hidden={hidden}

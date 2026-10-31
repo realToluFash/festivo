@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
+import { LateStatus } from '../../../components/LateStatus.tsx';
 import { useDialogKeys } from '../../../dialogFocus.ts';
 import { offButton } from '../../../offButton.ts';
 import { type CoverPhoto, EventCoverImage } from './EventCoverImage.tsx';
@@ -128,7 +129,11 @@ export function CoverSection({
         )}
         <div className="cover-field-side">
           {removed ? (
-            <RemovedLine words={t('eventCover.removed')} />
+            <LateStatus
+              className="cover-removed"
+              mark={<CheckIcon />}
+              words={t('eventCover.removed')}
+            />
           ) : (
             photo == null && <p className="field-help">{t('eventCover.defaultLine')}</p>
           )}
@@ -174,24 +179,6 @@ export function CoverSection({
         />
       )}
     </section>
-  );
-}
-
-/** Filled a moment after the region is in the page, so a screen reader hears it rather than missing a region born full. */
-function RemovedLine({ words }: { words: string }) {
-  const [said, setSaid] = useState('');
-
-  useEffect(() => {
-    const id = window.setTimeout(() => setSaid(words), 0);
-
-    return () => window.clearTimeout(id);
-  }, [words]);
-
-  return (
-    <p className="cover-removed" role="status">
-      {said !== '' && <CheckIcon />}
-      {said}
-    </p>
   );
 }
 
