@@ -2029,5 +2029,12 @@
     "key_event": "The event itself",
     "key_you": "Something you need to do",
     "key_automatic": "Soirely does it for you"
+  },
+  "saveLabel": {
+    "saved": "Saved"
+  },
+  "toast": {
+    "undo": "Undo",
+    "close": "Close"
   }
 }

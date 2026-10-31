@@ -2080,5 +2080,12 @@
     "key_event": "L’événement lui-même",
     "key_you": "Ce que vous devez faire",
     "key_automatic": "Soirely s’en charge pour vous"
+  },
+  "saveLabel": {
+    "saved": "Saved"
+  },
+  "toast": {
+    "undo": "Undo",
+    "close": "Close"
   }
 }

@@ -360,7 +360,8 @@ span {
 
 @media (width <= 40rem) {
   .button-primary,
-  .button-danger {
+  .button-danger,
+  :has(> :is(.button-primary, .button-danger)) > .button {
     --buttonHit: var(--sizeHitPhonePrimary);
   }
 }
@@ -5186,4 +5187,84 @@ button.members-row {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--spaceLg);
+}
+
+/* ── Toast (sc-22092): the dark surface, its Undo a text action on it ───────── */
+
+.toast {
+  position: fixed;
+  bottom: var(--space3xl);
+  left: 50%;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  box-sizing: border-box;
+  width: max-content;
+  max-width: calc(100% - var(--space5xl));
+  padding: var(--spaceXs) var(--spaceXs) var(--spaceXs) var(--spaceXl);
+  transform: translateX(-50%);
+  border-radius: var(--radiusInset);
+  background: var(--colorInk);
+  color: var(--colorInkOnDark);
+  box-shadow: var(--shadowToast);
+  animation: rise-in var(--motionBase) var(--motionEase);
+}
+
+.toast-words {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.toast-undo,
+.toast-close {
+  flex: none;
+  min-width: var(--sizeHit);
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceLg);
+  border: 0;
+  border-radius: var(--radiusPill);
+  background: transparent;
+  color: var(--colorInkOnDark);
+  font: var(--typeButton);
+  cursor: pointer;
+  transition: opacity var(--motionFast) var(--motionEase);
+}
+
+.toast-undo {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.toast-undo:hover,
+.toast-close:hover {
+  background: var(--colorDarkInset);
+}
+
+.toast-undo:active,
+.toast-close:active {
+  opacity: var(--opacityPressed);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation-name: fade-in;
+  }
+}
+
+/* A save confirmed (sc-22092): both labels hold the button's width, and one fades into the other. */
+.save-label {
+  display: inline-grid;
+}
+
+.save-label > span {
+  grid-area: 1 / 1;
+  transition: opacity var(--motionBase) var(--motionEase);
+}
+
+.save-label[data-saved='false'] > .save-label-saved,
+.save-label[data-saved='true'] > .save-label-words {
+  opacity: 0;
 }
