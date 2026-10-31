@@ -6,7 +6,6 @@
     "title": "Soirely",
     "subtitle": "La noche, desde su bolsillo.",
     "openSignIn": "Iniciar sesión",
-    "openLayouts": "Demostración de diseños",
     "signedInTo": "Ha iniciado sesión en {{name}}",
     "openSettings": "Abrir Configuración",
     "switchOrganisation": "Cambiar de organización"
@@ -30,7 +29,7 @@
     "retry": "Inténtelo de nuevo",
     "check": "Comprobación",
     "state": "Estado",
-    "usingFallback": "No hay ninguna URL de API configurada, por lo que se está intentando localhost. Eso funciona en un simulador y no en un dispositivo; consulte el archivo README."
+    "usingFallback": "No hay ninguna URL de API configurada, por lo que se está intentando localhost. Eso funciona en un simulador, pero no en un dispositivo. Consulte el archivo README."
   },
   "language": {
     "label": "Idioma",

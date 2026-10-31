@@ -6,7 +6,6 @@
     "title": "Soirely",
     "subtitle": "La soirée, depuis votre poche.",
     "openSignIn": "Se connecter",
-    "openLayouts": "Démonstration des mises en page",
     "signedInTo": "Vous êtes connecté à {{name}}",
     "openSettings": "Ouvrir les Paramètres",
     "switchOrganisation": "Changer d’organisation"
@@ -30,7 +29,7 @@
     "retry": "Veuillez réessayer",
     "check": "Vérification",
     "state": "État",
-    "usingFallback": "Aucune URL d’API n’est configurée : localhost est donc utilisé. Cela fonctionne sur un simulateur et non sur un appareil — veuillez consulter le fichier README."
+    "usingFallback": "Aucune URL d’API n’est configurée : localhost est donc utilisé. Cela fonctionne sur un simulateur, mais pas sur un appareil. Veuillez consulter le fichier README."
   },
   "language": {
     "label": "Langue",
