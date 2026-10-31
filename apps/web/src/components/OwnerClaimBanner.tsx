@@ -394,14 +394,6 @@ function OwnerClaimCard({
             <div className="actions">
               <button
                 type="button"
-                className="button button-danger"
-                aria-busy={busy}
-                onClick={() => !busy && void stop()}
-              >
-                {t('ownerClaim.stopYes')}
-              </button>
-              <button
-                type="button"
                 className="link-button"
                 onClick={() => {
                   setConfirming(false);
@@ -409,6 +401,14 @@ function OwnerClaimCard({
                 }}
               >
                 {t('ownerClaim.stopNo')}
+              </button>
+              <button
+                type="button"
+                className="button button-danger"
+                aria-busy={busy}
+                onClick={() => !busy && void stop()}
+              >
+                {t('ownerClaim.stopYes')}
               </button>
             </div>
           </div>
@@ -647,14 +647,6 @@ export function PausedOwnerClaim({
             <div className="actions">
               <button
                 type="button"
-                className="button button-danger"
-                aria-busy={busy}
-                onClick={() => !busy && void stop()}
-              >
-                {t('ownerClaim.stopYes')}
-              </button>
-              <button
-                type="button"
                 className="link-button"
                 onClick={() => {
                   setConfirming(false);
@@ -662,6 +654,14 @@ export function PausedOwnerClaim({
                 }}
               >
                 {t('ownerClaim.stopNo')}
+              </button>
+              <button
+                type="button"
+                className="button button-danger"
+                aria-busy={busy}
+                onClick={() => !busy && void stop()}
+              >
+                {t('ownerClaim.stopYes')}
               </button>
             </div>
           </div>
