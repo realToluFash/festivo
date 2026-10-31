@@ -34,7 +34,7 @@ import { DESTINATION_HREF, type Destination, destinations } from '../kit/appNav.
 import { backRowHiding } from '../kit/backRow.ts';
 import { leaveThen } from '../leaveHeld.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
-import { railWidth } from '../layout/textSize.ts';
+import { backLabelSize, railWidth } from '../layout/textSize.ts';
 import {
   type LayoutKind,
   useAccessibilitySizes,
@@ -423,10 +423,6 @@ function FrameHeader({
   );
 }
 
-// The back row stays one hit high at every text size, so its label grows only until its line fills the row; the title below grows on (sc-22871).
-const BACK_GROWS_TO =
-  tokens.sizeHit / (tokens.typeBodyPhone.size * tokens.typeBodyPhone.lineHeight);
-
 export function BackButton({
   label,
   onPress,
@@ -438,6 +434,8 @@ export function BackButton({
   off?: boolean | undefined;
   testID: string;
 }) {
+  const { fontScale } = useWindowDimensions();
+
   return (
     <Pressable
       style={styles.back}
@@ -458,7 +456,7 @@ export function BackButton({
         size={tokens.typeBodyPhone.size}
         weight="semibold"
         muted={off}
-        maxFontSizeMultiplier={BACK_GROWS_TO}
+        maxFontSizeMultiplier={backLabelSize(fontScale) / tokens.typeBodyPhone.size}
       >
         {label}
       </Text>
@@ -1057,7 +1055,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceXs,
-    height: tokens.sizeHit,
+    minHeight: tokens.sizeHit,
     marginLeft: -tokens.spaceXs,
     paddingHorizontal: tokens.spaceXs,
   },

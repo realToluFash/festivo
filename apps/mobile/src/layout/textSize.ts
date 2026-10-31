@@ -23,6 +23,14 @@ export function titleSize(size: number, fontScale: number): number {
   return fontScale >= NINTH_STEP_SCALE ? steps[1] : steps[0];
 }
 
+// WCAG 2.2 SC 1.4.4 asks for text at twice its size; past that the header's back stays put and only the title grows (sc-23361).
+const BACK_GROWS_TO = 2;
+
+/** The size a header's back label is drawn at: the full scale up to twice its default, no further. */
+export function backLabelSize(fontScale: number): number {
+  return tokens.typeBodyPhone.size * Math.min(fontScale, BACK_GROWS_TO);
+}
+
 /** Every distinct word in these texts. */
 export function wordsIn(texts: readonly string[]): string[] {
   return [...new Set(texts.flatMap((text) => text.split(/\s+/u)).filter((word) => word !== ''))];
