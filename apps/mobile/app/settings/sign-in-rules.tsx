@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: tokens.colorBorder,
   },
-  ruleLabel: { textTransform: 'uppercase', letterSpacing: 1.3 },
+  ruleLabel: { textTransform: 'uppercase', letterSpacing: tokens.typeLabel.size * 0.1 },
 });
 
 const CONTENT: Record<LayoutKind, object> = {

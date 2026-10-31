@@ -307,12 +307,12 @@ function Editable({
         <div className="sign-in-rules-main">
           <section className="card settings-card" aria-labelledby="rules-method">
             <h2 id="rules-method">{t('signInRules.methodTitle')}</h2>
-            <fieldset className="roles-replacements sign-in-rules-methods">
+            <fieldset className="sign-in-rules-methods">
               <legend className="visually-hidden">{t('signInRules.methodTitle')}</legend>
               {[false, true].map((providerOnly) => (
                 <label
                   key={String(providerOnly)}
-                  className="roles-replacement"
+                  className="sign-in-rules-method"
                   htmlFor={`rules-method-${providerOnly ? 'provider' : 'any'}`}
                 >
                   <input
@@ -322,10 +322,10 @@ function Editable({
                     checked={rules.providerOnly === providerOnly}
                     onChange={() => pickMethod(providerOnly)}
                   />
-                  <span className="roles-row-name">
+                  <span className="sign-in-rules-method-name">
                     {t(providerOnly ? 'signInRules.providerOnly' : 'signInRules.anyMethod')}
                   </span>
-                  <span className="muted roles-replacement-means">
+                  <span className="muted sign-in-rules-method-means">
                     {t(
                       providerOnly ? 'signInRules.providerOnlyMeans' : 'signInRules.anyMethodMeans',
                       {
@@ -336,20 +336,6 @@ function Editable({
                 </label>
               ))}
             </fieldset>
-            {needsOwnProvider && (
-              <div className="notice notice-attention sign-in-rules-needs-own" role="alert">
-                <span className="mark mark-attention" aria-hidden="true">
-                  !
-                </span>
-                <div className="notice-body">
-                  <p className="notice-title">{t('signInRules.needsOwnProviderTitle')}</p>
-                  <p>{t('signInRules.needsOwnProviderBody')}</p>
-                  <Link className="button" to="/app/account/security">
-                    {t('signInRules.unlinkedLink')}
-                  </Link>
-                </div>
-              </div>
-            )}
             {requiresProvider && stranded.length > 0 && (
               <div className="notice notice-attention">
                 <span className="mark mark-attention" aria-hidden="true">
@@ -370,6 +356,20 @@ function Editable({
                       </li>
                     ))}
                   </ul>
+                </div>
+              </div>
+            )}
+            {needsOwnProvider && (
+              <div className="notice notice-attention sign-in-rules-needs-own" role="alert">
+                <span className="mark mark-attention" aria-hidden="true">
+                  !
+                </span>
+                <div className="notice-body">
+                  <p className="notice-title">{t('signInRules.needsOwnProviderTitle')}</p>
+                  <p>{t('signInRules.needsOwnProviderBody')}</p>
+                  <Link className="button" to="/app/account/security">
+                    {t('signInRules.unlinkedLink')}
+                  </Link>
                 </div>
               </div>
             )}
@@ -419,6 +419,15 @@ function Editable({
                 )}
               </button>
             </div>
+            <p className="muted">
+              {t(
+                rules.everyoneNeedsTwoFactor
+                  ? 'signInRules.twoFactorCovered'
+                  : rules.administratorsNeedTwoFactor
+                    ? 'signInRules.twoFactorOn'
+                    : 'signInRules.twoFactorOff',
+              )}
+            </p>
             {needsOwnTwoFactor && (
               <div className="notice notice-attention sign-in-rules-needs-own" role="alert">
                 <span className="mark mark-attention" aria-hidden="true">
@@ -433,15 +442,6 @@ function Editable({
                 </div>
               </div>
             )}
-            <p className="muted">
-              {t(
-                rules.everyoneNeedsTwoFactor
-                  ? 'signInRules.twoFactorCovered'
-                  : rules.administratorsNeedTwoFactor
-                    ? 'signInRules.twoFactorOn'
-                    : 'signInRules.twoFactorOff',
-              )}
-            </p>
           </section>
 
           <section className="card settings-card" aria-labelledby="rules-everyone">
@@ -462,20 +462,6 @@ function Editable({
                 {t(rules.everyoneNeedsTwoFactor ? 'signInRules.turnOff' : 'signInRules.turnOn')}
               </button>
             </div>
-            {everyoneNeedsOwn && (
-              <div className="notice notice-attention sign-in-rules-needs-own" role="alert">
-                <span className="mark mark-attention" aria-hidden="true">
-                  !
-                </span>
-                <div className="notice-body">
-                  <p className="notice-title">{t('signInRules.needsOwnTitle')}</p>
-                  <p>{t('signInRules.needsOwnBody')}</p>
-                  <Link className="button" to="/app/account/security">
-                    {t('signInRules.needsOwnTurnOn')}
-                  </Link>
-                </div>
-              </div>
-            )}
             {rules.everyoneNeedsTwoFactor && page.everyoneNeedsTwoFactor && (
               <p>{t('signInRules.everyoneRequiredFrom', { deadline })}</p>
             )}
@@ -529,6 +515,20 @@ function Editable({
                   { organisation: name },
                 )}
               </p>
+            )}
+            {everyoneNeedsOwn && (
+              <div className="notice notice-attention sign-in-rules-needs-own" role="alert">
+                <span className="mark mark-attention" aria-hidden="true">
+                  !
+                </span>
+                <div className="notice-body">
+                  <p className="notice-title">{t('signInRules.needsOwnTitle')}</p>
+                  <p>{t('signInRules.needsOwnBody')}</p>
+                  <Link className="button" to="/app/account/security">
+                    {t('signInRules.needsOwnTurnOn')}
+                  </Link>
+                </div>
+              </div>
             )}
           </section>
         </div>
@@ -660,8 +660,8 @@ function Changes({ changes }: { changes: SignInRuleChange[] }) {
       ) : (
         <ol className="sign-in-rules-changes">
           {changes.map((change) => (
-            <li key={`${change.entry}-${change.rule}`}>
-              <p className="muted">
+            <li key={`${change.entry}-${change.rule}`} className="sign-in-rules-change">
+              <p className="sign-in-rules-change-when">
                 {t('signInRules.changeWhen', {
                   day: formatDay(change.at, locale),
                   time: formatTimeOfDay(change.at, locale),
@@ -674,8 +674,8 @@ function Changes({ changes }: { changes: SignInRuleChange[] }) {
                         }),
                 })}
               </p>
-              <p>{ruleValue(t, change.rule, change.now)}</p>
-              <p className="muted">
+              <p className="sign-in-rules-change-now">{ruleValue(t, change.rule, change.now)}</p>
+              <p className="sign-in-rules-change-was">
                 {t('signInRules.changeWas', { was: ruleValue(t, change.rule, change.was) })}
               </p>
             </li>

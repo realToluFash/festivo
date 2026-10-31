@@ -3225,8 +3225,46 @@ button.members-row {
   flex: 1 1 20rem;
 }
 
+/* SignInRules.dc.html draws the two radios as option cards, side by side until they wrap. */
 .sign-in-rules-methods {
-  max-width: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceMd);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.sign-in-rules-method {
+  display: flex;
+  flex: 1 1 16rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXs) var(--spaceMd);
+  min-height: var(--sizeHit);
+  padding: var(--spaceLg);
+  border: var(--borderControl);
+  border-radius: var(--radiusInset);
+  background: var(--colorCard);
+  cursor: pointer;
+}
+
+.sign-in-rules-method:has(input:checked) {
+  border: var(--borderSelected);
+  background: var(--colorAccentTint);
+}
+
+.sign-in-rules-method-name {
+  flex: 1;
+  font: var(--typeRowTitle);
+  overflow-wrap: anywhere;
+}
+
+/* Under the name, past the radio: a 20px control and the row's gap. */
+.sign-in-rules-method-means {
+  flex-basis: 100%;
+  padding-left: calc(var(--sizeMark) + var(--spaceMd));
+  font: var(--typeSmall);
 }
 
 .sign-in-rules-switch {
@@ -3262,8 +3300,7 @@ button.members-row {
   margin-top: var(--spaceSm);
 }
 
-.sign-in-rules-effects,
-.sign-in-rules-changes {
+.sign-in-rules-effects {
   display: flex;
   flex-direction: column;
   gap: var(--spaceMd);
@@ -3271,8 +3308,44 @@ button.members-row {
   padding-left: var(--spaceLg);
 }
 
-.sign-in-rules-changes p {
+/* Each change is a list row: when and who, the value now, then what it was. */
+.sign-in-rules-changes {
+  display: flex;
+  flex-direction: column;
   margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sign-in-rules-change {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  padding-bottom: var(--spaceMd);
+}
+
+.sign-in-rules-change + .sign-in-rules-change {
+  padding-top: var(--spaceMd);
+  border-top: var(--borderInset);
+}
+
+.sign-in-rules-change-when,
+.sign-in-rules-change-was {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+.sign-in-rules-change-now {
+  margin: 0;
+  font: var(--typeRowTitle);
+}
+
+/* At phone width Save rules runs the card's width, as every primary on a phone does. */
+@media (width <= 40rem) {
+  .sign-in-rules-side .button-primary {
+    width: 100%;
+  }
 }
 
 /* ── Company domain joining (sc-561) ──────────────────────────────────────── */
