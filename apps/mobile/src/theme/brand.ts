@@ -12,9 +12,9 @@ export const brand = {
   googleLineHeight: 20,
   appleSurface: '#000000',
   appleInk: '#FFFFFF',
-  /** Measured off iOS's own 48pt button, not the guidelines' 43%: 18.5pt words, a 13pt logo 6.5pt before them. */
+  /** Measured off iOS's own 48pt button, not the guidelines' 43%: 18.5pt words, the glyph drawn 14pt tall (11.4pt wide) 6.5pt before them. */
   appleTitleToHeight: 0.385,
-  appleLogoHeight: 13,
+  appleLogoHeight: 14,
   appleLogoGap: 6.5,
   /** Material 3's disabled content, which Google's guidelines defer to; Apple's publish no off look. */
   offOpacity: 0.38,
