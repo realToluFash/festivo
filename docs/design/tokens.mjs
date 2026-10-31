@@ -27,8 +27,12 @@
 //   4. The reply states tell themselves apart by SHAPE; grey no longer comes in
 //      two values, and the two that failed contrast are gone.
 //
+// SIX MORE, settled under sc-22092 and tested the same way: colorPrimaryHover,
+// colorFieldBorder with borderField, colorPausedText with colorPausedTint,
+// motionRise with opacityPressed, motionMax, and the motion block itself.
+
 // Everything else is still the extraction's own value, so a later extraction
-// can be diffed against this file and only these four should show up.
+// can be diffed against this file and only these ten should show up.
 //
 // Same names as the design's tokens.css (--colorInk ⇄ tokens.colorInk).
 
@@ -44,7 +48,8 @@ export const tokens = {
   colorInset: '#F6F7F9', // inset panels, open rows, hover on nav
   colorInsetBorder: '#ECEEF2', // inset border and card section dividers
   colorBorder: '#E6E8EC', // card border, table header line
-  colorControlBorder: '#D9DCE2', // outlined buttons, chips, inputs
+  colorControlBorder: '#D9DCE2', // secondary and destructive buttons, chips: controls a word identifies, so the edge carries nothing (1.37:1). Never a text field's edge
+  colorFieldBorder: '#80868F', // SETTLED (sc-22092): a text field's edge at rest and focused, 3:1 on colorCard (3.67), colorPage (3.39) and colorHeader (3.20)
   colorNeutralFill: '#F1F2F4', // chips, avatars, neutral pills, disabled buttons; ALSO the row divider (1px) – one value, two roles
   colorTrack: '#D6D9E0', // bar tracks; the "no pick" option colour
   colorMarkEmpty: '#C9CED6', // empty status circle, dashed add-buttons, disabled primary buttons
@@ -59,8 +64,9 @@ export const tokens = {
   colorHeaderBorder: '#D7E2F0',
   colorHeaderTrack: '#DCE5F1', // segmented-control track when it sits on the header
   // ── Colour · meaning. Every use also carries a word or a shape. ────────────
-  colorAccent: '#1E9A64', // primary action, selected, done
-  colorAccentHover: '#178556', // web only (hover)
+  colorAccent: '#1E9A64', // selected, done, the focus ring: wherever no label sits on it (3.58:1 on white clears 3:1, not 4.5:1)
+  colorAccentHover: '#178556', // the primary button's fill in both clients, under a white label (4.64:1). The name is the extraction's
+  colorPrimaryHover: '#176B47', // SETTLED (sc-22092): the primary button on hover, web only, 6.50:1 under white. colorAccentText's hex, named for the role
   colorAccentTint: '#E8F5EE',
   colorAccentText: '#176B47', // green text on white/tint (4.5:1); green ink links
   colorAccentTintBorder: '#CDE9DA',
@@ -73,9 +79,11 @@ export const tokens = {
   colorBroken: '#C2410C', // broken, bounced, allergy outline
   colorBrokenTint: '#FDECE4',
   colorBrokenText: '#9A3412',
+  colorPausedText: '#1F4E8C', // SETTLED (sc-22092): the Paused chip's word, 7.24:1 on its tint
+  colorPausedTint: '#E9F0F9', // SETTLED (sc-22092): the Paused chip; colorHeader's hex, named for the role
   // ── Colour · option palette (menu choices, groups). Always with a letter or word. ──
   // SETTLED (sc-80). Was #1E9A64, the accent's own hex. The accent means
-  // selected / done / primary and cannot move, so the option moved: on the menu
+  // selected / done and cannot move, so the option moved: on the menu
   // screen a green-coded dish was indistinguishable from a selected one, which
   // is the one place the two genuinely meet. A yellower green, clear of both the
   // accent and the teal below it. The HUE is a proposal the designer may swap;
@@ -183,6 +191,7 @@ export const tokens = {
   // ── Borders ────────────────────────────────────────────────────────────────
   borderCard: '1px solid #E6E8EC',
   borderControl: '1px solid #D9DCE2',
+  borderField: '1px solid #80868F', // SETTLED (sc-22092): a text field's edge, colorFieldBorder
   borderInset: '1px solid #ECEEF2',
   borderDivider: '1px solid #F1F2F4',
   borderHeader: '1px solid #D7E2F0',
@@ -331,11 +340,14 @@ export const tokens = {
     },
   },
 
-  // ── Motion. The prototype animates nothing; these are PROPOSED for the behaviour batch. ──
-  motionFast: 120,
-  motionBase: 200,
-  motionSlow: 320, // ms
+  // ── Motion. SETTLED (sc-22092): both clients use these; reduced, a fade of at most motionBase or none. ──
+  motionFast: 120, // an exit, a press
+  motionBase: 200, // a fade, a rise
+  motionSlow: 320, // ms · a sheet rising
   motionEase: 'cubic-bezier(0.2, 0, 0, 1)',
+  motionMax: 500, // ms · SETTLED (sc-22092): no interface transition lasts longer, so motion never makes somebody wait
+  motionRise: 8, // px · SETTLED (sc-22092): how far a page or a dialog rises as it fades in
+  opacityPressed: 0.85, // SETTLED (sc-22092): a pressed button, back in motionFast
   toastLifetime: 10000, // ms · every undo toast in the screens lives 10 s (8 s on Insights – accident)
 };
 

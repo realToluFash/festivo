@@ -103,6 +103,13 @@ describe('what the source itself asserts', () => {
     expect(tokens.colorAccent).toBe('#1E9A64');
   });
 
+  it('gives milliseconds to the motion limit and pixels to the rise', () => {
+    const css = outputs()[WEB_OUT];
+    expect(css).toContain('--motionMax: 500ms;');
+    expect(css).toContain('--motionRise: 8px;');
+    expect(css).toContain('--opacityPressed: 0.85;');
+  });
+
   it('puts every hit target at 44, desktop included', () => {
     expect(tokens.sizeHit).toBe(44);
   });
@@ -238,5 +245,72 @@ describe('settled: the reply states are told apart by shape, not by shades of gr
   it('names all five', () => {
     const words = Object.values(tokens.replyStates).map((s) => s.word);
     expect(words).toEqual(['Coming', 'Maybe', 'Not coming', 'Held', 'No reply']);
+  });
+});
+
+describe('settled: a white label sits on a green it can be read on', () => {
+  it('fills the primary button with the hover green, 4.5:1 under white', () => {
+    expect(tokens.colorAccentHover).toBe('#178556');
+    expect(contrast(tokens.colorInkOnDark, tokens.colorAccentHover)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('hovers one step darker on the web', () => {
+    expect(tokens.colorPrimaryHover).toBe('#176B47');
+    expect(contrast(tokens.colorInkOnDark, tokens.colorPrimaryHover)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('keeps the accent where no label sits, because under one it fails', () => {
+    expect(contrast(tokens.colorInkOnDark, tokens.colorAccent)).toBeLessThan(4.5);
+    expect(contrast(tokens.colorAccent, tokens.colorCard)).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('settled: a text field shows where to type', () => {
+  for (const surface of ['colorCard', 'colorPage', 'colorHeader']) {
+    it(`draws its edge at 3:1 on ${surface}, at rest and on an error`, () => {
+      expect(contrast(tokens.colorFieldBorder, tokens[surface])).toBeGreaterThanOrEqual(3);
+      expect(contrast(tokens.colorBroken, tokens[surface])).toBeGreaterThanOrEqual(3);
+    });
+  }
+
+  it('names its colour in its border', () => {
+    expect(tokens.borderField).toBe(`1px solid ${tokens.colorFieldBorder}`);
+  });
+
+  it('leaves the edge a word identifies as it was', () => {
+    expect(tokens.colorControlBorder).toBe('#D9DCE2');
+    expect(contrast(tokens.colorControlBorder, tokens.colorCard)).toBeLessThan(3);
+  });
+});
+
+describe('settled: Paused has a pair of its own', () => {
+  it('reads at 4.5:1 on its chip', () => {
+    expect(tokens.colorPausedText).toBe('#1F4E8C');
+    expect(tokens.colorPausedTint).toBe('#E9F0F9');
+    expect(contrast(tokens.colorPausedText, tokens.colorPausedTint)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('is not amber, which Happening now keeps', () => {
+    expect(tokens.colorPausedText).not.toBe(tokens.colorAttentionText);
+    expect(tokens.colorPausedTint).not.toBe(tokens.colorAttentionTint);
+  });
+});
+
+describe('settled: motion is short, and both clients use it', () => {
+  it("keeps the extraction's durations and easing", () => {
+    expect([tokens.motionFast, tokens.motionBase, tokens.motionSlow]).toEqual([120, 200, 320]);
+    expect(tokens.motionEase).toBe('cubic-bezier(0.2, 0, 0, 1)');
+  });
+
+  it('lasts no longer than 500 ms, so it never makes somebody wait', () => {
+    expect(tokens.motionMax).toBe(500);
+    for (const key of ['motionFast', 'motionBase', 'motionSlow']) {
+      expect(tokens[key]).toBeLessThanOrEqual(tokens.motionMax);
+    }
+  });
+
+  it('rises 8px and presses to 85%', () => {
+    expect(tokens.motionRise).toBe(8);
+    expect(tokens.opacityPressed).toBe(0.85);
   });
 });

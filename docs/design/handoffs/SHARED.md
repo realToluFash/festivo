@@ -162,15 +162,35 @@ Take exact values from `docs/design/tokens.mjs`.
   `font-variant-numeric: tabular-nums`.
 - **`#4B5563` is the label ink** (7.6:1 on white): form labels, card subheads and
   secondary icons, where the designer's screens use it. Secondary text stays `#5F6673`.
-- **Green `#1E9A64` is the only accent** — primary action, selected, done. Amber `#B7791F`
-  is attention, red `#C2410C` is broken only, grey is not-yet.
+- **Green `#1E9A64` is the only accent**, wherever no label sits on it: selected, done, and
+  the focus ring. Amber `#B7791F` is attention, red `#C2410C` is broken only, grey is
+  not-yet. **No action is red.**
+- **The primary button's label is white on `#178556`** (4.64:1), and on the web `#176B47`
+  (6.50:1) on hover. White on `#1E9A64` is 3.58:1, which fails.
+- **The destructive button is the outlined one**: a secondary button's white fill, 1px
+  `#D9DCE2` edge and `#15171C` label (17.93:1), told apart by its word. It is named for what
+  it ends, never OK, Yes or Confirm. One that opens a confirm ends with an ellipsis
+  (**Sign out…**); the confirming one inside the confirm is the same button named again with
+  none (**Sign it out**), and the dismissive one is a text action (**Keep it signed in**).
+- **Button order**: in a row the dismissive one first and the confirming one last; stacked,
+  as in a sheet on the phone, the confirming one on top.
+- **A text field's edge is `#80868F`** at rest and focused (3.67 on white, 3.39 on the page,
+  3.20 on the header band). Focused, the ring sits outside it: 2px `#1E9A64` at a 2px
+  offset. On an error the edge is `#C2410C`. A secondary button's and a chip's edge stay
+  `#D9DCE2`: their word identifies them.
+- **Paused** is `#1F4E8C` on `#E9F0F9` (7.24:1). Every chip's word is at least 4.5:1 on its
+  chip.
 - Page `#F5F6F8`. Cards white, 1px `#E6E8EC` border, radius 16 on desktop and 18 on phone.
   Insets `#F6F7F9` with a 1px `#ECEEF2` border. Header bars tinted `#E9F0F9`.
 - Ink `#15171C`, secondary `#5F6673`. **`#9CA3AF` fails 4.5:1: decoration and disabled
   only, never information.**
-- **Buttons are pills, 44px tall on every surface including desktop.** Rows, checkboxes,
-  steppers and icon buttons get 44px hit areas too. A control drawn at 36 carries 4px of
-  slop on every side to reach 44.
+- **Buttons are pills, 44px tall**, desktop included. In the app on every device, and on the
+  web up to 40rem, a primary or destructive button is 48, and so is a secondary button
+  stacked full width with one. A text-only action, a word with no fill and no edge, keeps
+  44 wherever it sits. Rows, checkboxes, steppers and icon buttons get 44px hit areas too.
+  A control drawn at 36 carries 4px of slop on every side to reach 44.
+- **Motion** is 120, 200 and 320 ms with `cubic-bezier(0.2, 0, 0, 1)`, and no transition is
+  longer than 500 ms. With less motion asked for, it is a fade of at most 200 ms or none.
 - **Light mode only.** There is no dark appearance in this product.
 - Status always pairs a **shape with a word**. Never colour alone — a kitchen prints in
   black and white and a server may be colour-blind.
