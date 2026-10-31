@@ -20,6 +20,10 @@ appId: host.exp.Exponent
     timeout: 10000
 - assertNotVisible:
     id: 'register.name'
+# Cold, so Create your account opens with nothing behind it and takes the replace branch.
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
 - openLink: ${METRO_URL}/--/register
 - extendedWaitUntil:
     visible:
