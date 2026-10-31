@@ -11,6 +11,7 @@ import {
   removedHost,
 } from '@soirely/domain';
 import { useLayoutEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 
 import { rowArrives, rowLeaves } from '../../../leaving.ts';
@@ -40,7 +41,12 @@ export function HostsSection({
   const focusNext = useRef<HostFocus | null>(null);
   const nextKey = useRef(Math.max(0, ...rows.map((row) => row.key)) + 1);
   const arriving = useRef<number | null>(null);
+  const latest = useRef(rows);
   const keepLast = keepsLastHost(saved, rows.length);
+
+  useLayoutEffect(() => {
+    latest.current = rows;
+  }, [rows]);
 
   useLayoutEffect(() => {
     const next = focusNext.current;
@@ -64,6 +70,22 @@ export function HostsSection({
     focusNext.current = change.focus;
     onRows(change.rows, null);
     onSay(change.said);
+  }
+
+  /** The row fades before it goes, so it is found by key in the rows as they are by then. */
+  function remove(key: number, row: HTMLElement | null): void {
+    rowLeaves(row, () => {
+      const now = latest.current;
+      flushSync(() =>
+        changed(
+          removedHost(
+            now,
+            now.findIndex((one) => one.key === key),
+            t,
+          ),
+        ),
+      );
+    });
   }
 
   function add(): void {
@@ -162,11 +184,7 @@ export function HostsSection({
                         className="button"
                         aria-label={t('eventHosts.removeNamed', { name })}
                         {...offButton(busy, { dim: false })}
-                        onClick={(click) =>
-                          rowLeaves(click.currentTarget.closest('li'), () =>
-                            changed(removedHost(rows, index, t)),
-                          )
-                        }
+                        onClick={(click) => remove(row.key, click.currentTarget.closest('li'))}
                       >
                         {t('eventHosts.remove')}
                       </button>

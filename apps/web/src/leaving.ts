@@ -22,6 +22,8 @@ export function leaveDialog(dialog: HTMLElement, scrim: Element | null, parent: 
     const copy = node.cloneNode(true) as HTMLElement;
     copy.setAttribute('aria-hidden', 'true');
     copy.inert = true;
+    copy.removeAttribute('id');
+    for (const named of copy.querySelectorAll('[id]')) named.removeAttribute('id');
     copy.style.animation = 'none';
     copy.style.pointerEvents = 'none';
     host.append(copy);
@@ -48,7 +50,7 @@ export function rowArrives(row: HTMLElement | null): void {
   });
 }
 
-/** The row is taken out of the list only once it has faded and its gap has closed. */
+/** The row is taken out of the list only once it has faded and its gap has closed; `then` commits before it returns, so a row still on the page is drawn again. */
 export function rowLeaves(row: HTMLElement | null, then: () => void): void {
   if (row == null || typeof row.animate !== 'function') {
     then();
@@ -77,5 +79,14 @@ export function rowLeaves(row: HTMLElement | null, then: () => void): void {
       ).finished;
     })
     .catch(() => undefined)
-    .finally(then);
+    .finally(() => {
+      then();
+      if (row.isConnected) stays(row);
+    });
+}
+
+function stays(row: HTMLElement): void {
+  for (const run of row.getAnimations()) run.cancel();
+  row.style.pointerEvents = '';
+  row.style.overflow = '';
 }
