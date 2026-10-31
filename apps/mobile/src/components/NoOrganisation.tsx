@@ -11,7 +11,7 @@ import { signOutHere, useSignedIn } from '../signedIn.ts';
 import { switchByTap } from '../tappedSwitch.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useStartOrganisation } from './AppFrame.tsx';
-import { Footnote, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { Footnote, PrimaryButton, QuietButton } from './Buttons.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Text, type TextHandle } from './Text.tsx';
@@ -32,7 +32,6 @@ export function NoOrganisation({
   const startButton = useRef<ViewInstance>(null);
   const email = account == null ? '' : (primaryEmailAddress(account) ?? '');
   const listed = waiting.invitations.length > 0;
-  const StartButton = listed ? SecondaryButton : PrimaryButton;
 
   return (
     <View style={[cardFrame(kind), styles.card]} testID="noOrganisation">
@@ -57,7 +56,7 @@ export function NoOrganisation({
           </Text>
           <Text size={tokens.typeBodyPhone.size}>{t('noOrganisation.startBody')}</Text>
           <View style={styles.startAction}>
-            <StartButton
+            <PrimaryButton
               label={t('noOrganisation.start')}
               onPress={() => startOrganisation(startButton)}
               ref={startButton}
