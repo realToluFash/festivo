@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from 'react';
 import {
   Animated,
+  Platform,
   type RefreshControlProps,
   type StyleProp,
   StyleSheet,
@@ -17,7 +18,7 @@ import {
   useSideListWidth,
   useWindowFrame,
 } from '../layout/useLayout.ts';
-import { pageTakesBack } from '../kit/systemBack.ts';
+import { pageBackHit, pageTakesBack } from '../kit/systemBack.ts';
 import { tokens } from '../theme/tokens.ts';
 import { bodyEdges } from './bodyEdges.ts';
 import { QuietButton } from './Buttons.tsx';
@@ -146,7 +147,12 @@ export function ListAndPage({
           <ScrollColumn key={pageKey} style={styles.fill} contentContainerStyle={column}>
             {kind === 'tabletPortrait' && (
               <View style={styles.start}>
-                <QuietButton label={back.label} onPress={back.onPress} testID={back.testID} />
+                <QuietButton
+                  label={back.label}
+                  onPress={back.onPress}
+                  hit={pageBackHit(Platform.OS)}
+                  testID={back.testID}
+                />
               </View>
             )}
             {page}

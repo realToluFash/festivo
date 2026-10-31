@@ -1,4 +1,5 @@
 import type { LayoutKind } from '../layout/classify.ts';
+import { tokens } from '../theme/tokens.ts';
 
 /** Wherever the page shows in place of its list, Android's Back and iOS's swipe from the left edge are the page's own back (sc-18108, sc-23327). */
 export function pageTakesBack(kind: LayoutKind, pageInFront: boolean): boolean {
@@ -24,4 +25,9 @@ export function edgeSwipeStarts(dx: number, dy: number): boolean {
 /** Let go past half the width, or flicked towards the right, the swipe completes; short of that the page stays. */
 export function edgeSwipeCompletes(dx: number, vx: number, width: number): boolean {
   return dx > width / 2 || (vx > 0.5 && dx > 0);
+}
+
+/** A page's own back is 44 pt tall on iOS and 48 dp on Android, each platform's floor for a touch target (sc-22819). */
+export function pageBackHit(os: string): number {
+  return os === 'android' ? 48 : tokens.sizeHit;
 }

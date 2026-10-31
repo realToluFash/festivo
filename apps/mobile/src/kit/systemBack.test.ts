@@ -4,6 +4,7 @@ import {
   OPENED_IN_PLACE_OF_SETTINGS,
   edgeSwipeCompletes,
   edgeSwipeStarts,
+  pageBackHit,
   pageTakesBack,
   sectionTakesBack,
 } from './systemBack.ts';
@@ -54,5 +55,12 @@ describe('edgeSwipeCompletes', () => {
     expect(edgeSwipeCompletes(199, 0.2, 400)).toBe(false);
     expect(edgeSwipeCompletes(150, -1, 400)).toBe(false);
     expect(edgeSwipeCompletes(-5, 1, 400)).toBe(false);
+  });
+});
+
+describe('pageBackHit', () => {
+  it('is 48 dp tall on Android and 44 pt on iOS', () => {
+    expect(pageBackHit('android')).toBe(48);
+    expect(pageBackHit('ios')).toBe(44);
   });
 });

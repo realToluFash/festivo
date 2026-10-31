@@ -91,24 +91,26 @@ export function SecondaryButton({
   );
 }
 
-/** A link-weight action with a 44px hit area, for "Keep my current number" and the like. */
+/** A link-weight action with a 44px hit area unless `hit` says otherwise, for "Keep my current number" and the like. */
 export function QuietButton({
   label,
   onPress,
   off = false,
+  hit,
   ref,
   testID,
 }: {
   label: string;
   onPress: () => void;
   off?: boolean;
+  hit?: number;
   ref?: Ref<ViewInstance> | undefined;
   testID: string;
 }) {
   return (
     <Pressable
       ref={ref}
-      style={styles.quiet}
+      style={[styles.quiet, hit !== undefined && { minHeight: hit }]}
       onPress={onPress}
       disabled={off}
       accessibilityRole="button"
