@@ -1380,6 +1380,12 @@ function dismissExpoGoIntro(tools, root) {
   if (!ok) console.log('  Expo Go shows its developer menu once: tap Continue before a flow runs.');
 }
 
+// A screen reader left on by an accessibility pass turns every later swipe into explore-by-touch.
+export const SCREEN_READER_OFF = [
+  ['shell', 'settings', 'delete', 'secure', 'enabled_accessibility_services'],
+  ['shell', 'settings', 'put', 'secure', 'accessibility_enabled', '0'],
+];
+
 async function android(args) {
   const tools = androidTools();
   if (!existsSync(tools.emulator)) {
@@ -1399,6 +1405,7 @@ async function android(args) {
   await bootEmulator(tools, CONFIG.emulators[open].name);
   removeRelease(tools, root);
   airplaneMode(tools, false);
+  for (const command of SCREEN_READER_OFF) adbOut(tools, command);
   const fresh = await ensureAndroidExpoGo(tools, root);
   for (const port of reversedPorts(CONFIG.ports)) {
     adbOut(tools, ['reverse', `tcp:${port}`, `tcp:${port}`]);

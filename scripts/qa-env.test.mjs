@@ -26,6 +26,7 @@ import {
   afterRun,
   batchSummary,
   portraitRotation,
+  SCREEN_READER_OFF,
   driverBuilds,
   driverPids,
   bundlerEnv,
@@ -407,6 +408,15 @@ describe('the emulator android opens', () => {
     [['--tablet'], { open: 'tablet', shut: 'phone' }],
   ])('%j opens one and shuts the other', (args, expected) => {
     expect(emulatorFor(args)).toEqual(expected);
+  });
+});
+
+describe('the screen reader on an emulator android opens', () => {
+  it('is switched off, services and the master switch both', () => {
+    expect(SCREEN_READER_OFF).toEqual([
+      ['shell', 'settings', 'delete', 'secure', 'enabled_accessibility_services'],
+      ['shell', 'settings', 'put', 'secure', 'accessibility_enabled', '0'],
+    ]);
   });
 });
 
