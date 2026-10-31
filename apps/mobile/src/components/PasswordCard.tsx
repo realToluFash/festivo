@@ -178,7 +178,7 @@ export function PasswordCard({
             setStage({ kind: 'atRest', signedOut, added: null });
             onChanged?.();
           }}
-          onCancel={close}
+          onCancel={() => close()}
           closer={closer}
           field={field}
           hidden={hidden}
