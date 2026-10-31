@@ -40,6 +40,15 @@ appId: host.exp.Exponent
           element:
             id: 'eventDuplicate.create'
           timeout: 15000
+      - swipe:
+          start: 50%, 80%
+          end: 50%, 15%
+          duration: 600
+      - swipe:
+          start: 50%, 80%
+          end: 50%, 15%
+          duration: 600
+      - waitForAnimationToEnd
 - tapOn:
     id: 'eventDuplicate.create'
 - extendedWaitUntil:

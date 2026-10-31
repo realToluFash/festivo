@@ -1,10 +1,10 @@
-# sc-22145: a copy opened any other way is an ordinary event page, Events going to the list.
+# sc-22145: a copy opened any other way is an ordinary event page, whose back (the header's on a phone, ‹ Events on a tablet in portrait) goes to the list.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events
 - extendedWaitUntil:
     visible:
-      id: 'events\.phase\..+'
+      id: 'events.tab.drafts'
     timeout: 30000
 - takeScreenshot: list
 - tapOn:
@@ -17,7 +17,19 @@ appId: host.exp.Exponent
     id: 'events.row.${COPY}'
 - waitForAnimationToEnd
 - takeScreenshot: copy-from-list
-- tapOn:
-    id: 'frame.back'
+- runFlow:
+    when:
+      visible:
+        id: 'frame.back'
+    commands:
+      - tapOn:
+          id: 'frame.back'
+- runFlow:
+    when:
+      visible:
+        id: 'events.back'
+    commands:
+      - tapOn:
+          id: 'events.back'
 - waitForAnimationToEnd
 - takeScreenshot: after-back

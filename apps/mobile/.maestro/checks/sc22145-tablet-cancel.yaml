@@ -26,9 +26,42 @@ appId: host.exp.Exponent
     element:
       id: 'eventDuplicate.create'
     timeout: 15000
-- tapOn:
-    id: 'eventDuplicate.start.time'
-- tapOn: 'OK'
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          id: 'eventDuplicate.start.time'
+      - tapOn: 'OK'
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: 'eventDuplicate.start.date'
+      - waitForAnimationToEnd
+      - tapOn:
+          id: 'eventDuplicate.start.done'
+      - waitForAnimationToEnd
+      - tapOn:
+          id: 'eventDuplicate.start.time'
+      - waitForAnimationToEnd
+      - tapOn:
+          id: 'eventDuplicate.start.done'
+      - waitForAnimationToEnd
+      - scrollUntilVisible:
+          element:
+            id: 'eventDuplicate.create'
+          timeout: 15000
+      - swipe:
+          start: 50%, 80%
+          end: 50%, 15%
+          duration: 600
+      - swipe:
+          start: 50%, 80%
+          end: 50%, 15%
+          duration: 600
+      - waitForAnimationToEnd
 - tapOn:
     id: 'eventDuplicate.create'
 - extendedWaitUntil:
