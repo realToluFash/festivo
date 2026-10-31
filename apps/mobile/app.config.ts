@@ -1,7 +1,7 @@
 import type { ExpoConfig } from 'expo/config';
 
 import { withFontScaleKept } from './plugins/withFontScaleKept.ts';
-import { withLaunchScreenColour } from './plugins/withLaunchScreenColour.ts';
+import { withSplashIconGround } from './plugins/withSplashIconGround.ts';
 import { tokens } from './src/theme/tokens.ts';
 
 /**
@@ -49,7 +49,8 @@ const config: ExpoConfig = {
     package: 'com.soirely.app',
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
-      backgroundColor: tokens.colorPage,
+      monochromeImage: './assets/adaptive-icon-mono.png',
+      backgroundColor: tokens.colorBrandInk,
     },
     ...(appleAppLink == null
       ? {}
@@ -96,8 +97,10 @@ const config: ExpoConfig = {
       'expo-splash-screen',
       {
         backgroundColor: tokens.colorPage,
-        // iOS shows the page colour alone; Apple's launch screen is not for branding.
+        // The owner put the symbol on iOS's launch screen too, departing from the HIG on purpose (sc-23302).
+        // expo-splash-screen centres the image on a 288 dp canvas, which Android fits to the 240 dp icon in its 160 dp circle.
         android: { image: './assets/splash-icon.png', imageWidth: 288 },
+        ios: { image: './assets/launch-tile.png', imageWidth: 120 },
       },
     ],
   ],
@@ -126,4 +129,4 @@ const config: ExpoConfig = {
   },
 };
 
-export default withLaunchScreenColour(withFontScaleKept(config), { pageColour: tokens.colorPage });
+export default withSplashIconGround(withFontScaleKept(config), { ground: tokens.colorBrandInk });
