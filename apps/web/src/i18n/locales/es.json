@@ -2082,10 +2082,10 @@
     "key_automatic": "Soirely se encarga por usted"
   },
   "saveLabel": {
-    "saved": "Saved"
+    "saved": "Guardado"
   },
   "toast": {
-    "undo": "Undo",
-    "close": "Close"
+    "undo": "Deshacer",
+    "close": "Cerrar"
   }
 }
