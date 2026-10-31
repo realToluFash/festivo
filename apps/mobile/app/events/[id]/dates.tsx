@@ -26,6 +26,7 @@ export default function EventDates() {
       current="events"
       title={t('timeline.allDates')}
       back={phone ? { label: t('timeline.backToEvent'), onPress: back } : undefined}
+      backInBody
     >
       <Screen edges={bodyEdges(kind)} contentStyle={styles.content}>
         {!phone && (

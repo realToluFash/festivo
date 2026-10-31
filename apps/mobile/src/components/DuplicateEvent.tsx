@@ -59,8 +59,6 @@ export function DuplicateEventScreen({ eventId }: { eventId: string }) {
     [navigation, eventId],
   );
 
-  useEffect(() => navigation.setOptions({ gestureEnabled: !busy }), [navigation, busy]);
-
   useEffect(() => {
     if (organisationId == null || !creates) return;
     let live = true;

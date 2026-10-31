@@ -5,6 +5,17 @@ export function pageTakesBack(kind: LayoutKind, pageInFront: boolean): boolean {
   return pageInFront && kind !== 'tabletLandscape';
 }
 
+/** iOS's own swipe from the left edge is the drawn back's, unless the page has taken the swipe or the back is off; with no back drawn, as on a tab's own screen, it does nothing (sc-23777). */
+export function stackSwipes(
+  back: { off?: boolean } | undefined,
+  backInBody: boolean,
+  pageTookSwipe: boolean,
+): boolean {
+  if (pageTookSwipe) return false;
+
+  return back == null ? backInBody : back.off !== true;
+}
+
 /** The `from` a tablet's Settings list gives the section it opens in place of itself. */
 export const OPENED_IN_PLACE_OF_SETTINGS = 'settings';
 
