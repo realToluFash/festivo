@@ -208,12 +208,6 @@ export function CompanyDomainsCard({
                 {t('companyDomains.removeBody', { domain })}
               </Text>
               <View style={styles.buttons}>
-                <DestructiveButton
-                  label={t('companyDomains.removeConfirm', { domain })}
-                  busy={busy}
-                  onPress={() => void remove(domain)}
-                  testID={`companyDomains.confirm.${domain}`}
-                />
                 <QuietButton
                   label={t('companyDomains.keep')}
                   off={busy}
@@ -222,6 +216,12 @@ export function CompanyDomainsCard({
                     setClosed(stepClosed(domain));
                   }}
                   testID={`companyDomains.keep.${domain}`}
+                />
+                <DestructiveButton
+                  label={t('companyDomains.removeConfirm', { domain })}
+                  busy={busy}
+                  onPress={() => void remove(domain)}
+                  testID={`companyDomains.confirm.${domain}`}
                 />
               </View>
             </View>

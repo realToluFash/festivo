@@ -171,14 +171,6 @@ export function RequestLinkCard({
               </AnswerHeading>
               <Text size={tokens.typeBodyPhone.size}>{t('requestLink.replaceBody')}</Text>
               <View style={styles.buttons}>
-                <DestructiveButton
-                  label={t('requestLink.replaceConfirm')}
-                  busy={busy}
-                  onPress={() =>
-                    void change(() => api.replaceRequestLink(organisation.id), 'replaced', true)
-                  }
-                  testID="requestLink.replaceConfirm"
-                />
                 <QuietButton
                   label={t('requestLink.keep')}
                   off={busy}
@@ -187,6 +179,14 @@ export function RequestLinkCard({
                     setClosed(stepClosed('replace'));
                   }}
                   testID="requestLink.keep"
+                />
+                <DestructiveButton
+                  label={t('requestLink.replaceConfirm')}
+                  busy={busy}
+                  onPress={() =>
+                    void change(() => api.replaceRequestLink(organisation.id), 'replaced', true)
+                  }
+                  testID="requestLink.replaceConfirm"
                 />
               </View>
             </View>
