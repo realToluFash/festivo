@@ -32,4 +32,8 @@ appId: host.exp.Exponent
       - tapOn:
           id: 'events.back'
 - waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.drafts'
+    timeout: 15000
 - takeScreenshot: after-back

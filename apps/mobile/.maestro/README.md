@@ -43,6 +43,11 @@ phone starts with it.
 `switch-organisation`'s `ORG` is the organisation's id, not its name: the switcher's rows are
 `switcher.<id>`.
 
+`duplicate-create-draft` starts on Duplicate {event}'s form and leaves the app on the copy's
+page: it picks a start (Android's dialogs close with `OK`, iOS's sheets with Done), swipes
+Create draft out from under an iPhone's tab bar, and taps it. A check that makes a copy calls
+it rather than repeating the platform split.
+
 `sign-in-screen-language` picks the one passed as `LANGUAGE`, by its chip, before
 `sign-in-any-language`. `sign-in-screen-english` runs it with `LANGUAGE: English`, for a phone
 a run in another language left signed out: `sign-in`'s first wait is on the English 'Email'.
