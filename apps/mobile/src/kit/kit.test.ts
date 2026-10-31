@@ -7,6 +7,7 @@ import {
   fieldName,
   type FieldText,
   fieldText,
+  handsHeld,
   keyTyped,
   nextGiven,
   nextPin,
@@ -533,6 +534,7 @@ describe('a field held through a submit', () => {
   };
   const typed: FieldText = {
     held: false,
+    handsHeld: true,
     value: undefined,
     defaultValue: undefined,
     typed: 'hunter22',
@@ -576,6 +578,7 @@ describe('a field through a text-size change', () => {
   });
   const given: FieldText = {
     held: false,
+    handsHeld: true,
     value: undefined,
     defaultValue: 'ada@example.com',
     typed: 'ada@example.com',
@@ -613,6 +616,40 @@ describe('a field through a text-size change', () => {
 
     expect(nextPin(typedAfter, 1.3, 1)).toEqual({ pinned: 'grace@example.com', scale: 1.3 });
     expect(nextPin(typedAfter, 1.3, 1.3)).toEqual({ pinned: undefined, scale: 1.3 });
+  });
+});
+
+describe('a field held on Android is handed no text TalkBack would read as replaced (sc-23943)', () => {
+  const step = (field: FieldText, held: boolean): FieldText => {
+    const next = { ...field, held };
+
+    return { ...next, pinned: nextPin(next, 1, 1).pinned };
+  };
+  const typedOver: FieldText = {
+    held: false,
+    handsHeld: handsHeld('android', false),
+    value: undefined,
+    defaultValue: undefined,
+    typed: 'Adaeze Okafor',
+    pinned: 'QA Tester',
+  };
+
+  it('keeps the text it was last given through a hold with no key', () => {
+    const held = step(typedOver, true);
+
+    expect(fieldText(held)).toEqual({ defaultValue: 'QA Tester' });
+    expect(fieldText(step(held, false))).toEqual({ defaultValue: 'QA Tester' });
+  });
+
+  it('is handed what was typed to undo a key that lands while held', () => {
+    const strayed = step({ ...typedOver, handsHeld: handsHeld('android', true) }, true);
+
+    expect(fieldText(strayed)).toEqual({ value: 'Adaeze Okafor' });
+    expect(fieldText(step(strayed, false))).toEqual({ defaultValue: 'Adaeze Okafor' });
+  });
+
+  it('is handed its text throughout a hold on iOS', () => {
+    expect(handsHeld('ios', false)).toBe(true);
   });
 });
 
@@ -661,6 +698,7 @@ describe('a key typed on Android leaves the field its text, so TalkBack says onl
     const next = nextGiven('android', value, typing);
     const field = {
       held: false,
+      handsHeld: false,
       value: valueHanded('android', value, next.given),
       defaultValue: undefined,
       typed: next.typed,
@@ -705,6 +743,7 @@ describe('a key typed on Android leaves the field its text, so TalkBack says onl
     const next = nextGiven('android', 'Galx', { ...opened, typed: 'Galx' });
     const field = {
       held: false,
+      handsHeld: false,
       value: valueHanded('android', 'Galx', next.given),
       defaultValue: undefined,
       typed: next.typed,
