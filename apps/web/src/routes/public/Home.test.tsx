@@ -38,3 +38,39 @@ describe('The front page signed out (sc-23145)', () => {
     );
   });
 });
+
+describe('The front page in the settled look (sc-23146)', () => {
+  it('puts Service status at its foot as a text link, not beside Get started', () => {
+    open();
+
+    const footer = screen.getByRole('contentinfo');
+    const status = within(footer).getByRole('link', { name: 'Service status' });
+
+    expect(status.classList.contains('link-button')).toBe(true);
+    expect(status.classList.contains('button')).toBe(false);
+    expect(
+      within(screen.getByRole('main')).queryByRole('link', { name: 'Service status' }),
+    ).toBeNull();
+  });
+
+  it('draws the language switch as a pill naming the language, over the same select', () => {
+    open();
+
+    const language = within(screen.getByRole('banner')).getByRole('combobox', {
+      name: 'Language',
+    });
+
+    expect(language.closest('.language-pill')?.textContent).toContain('English');
+    expect(
+      within(language)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['Automatic (en)', 'English', 'Español', 'Français', 'Português']);
+  });
+
+  it('carries no em dash in the line under the tagline', () => {
+    open();
+
+    expect(screen.getByRole('main').textContent).not.toContain('—');
+  });
+});

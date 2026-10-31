@@ -11,28 +11,26 @@ export function Home() {
   usePageTitle(t('app.name'));
 
   return (
-    <div className="public">
-      <header className="public-header">
+    <div className="front">
+      <header className="front-header">
         <span className="brand">{t('app.name')}</span>
-        <div className="public-header-actions">
-          <LanguagePicker />
-          <Link className="button" to="/sign-in">
-            {t('public.signIn')}
-          </Link>
-        </div>
+        <LanguagePicker pill />
+        <Link className="button" to="/sign-in">
+          {t('public.signIn')}
+        </Link>
       </header>
-      <main id="content" className="public-main">
+      <main id="content" className="front-main">
         <h1>{t('public.tagline')}</h1>
         <p>{t('public.body')}</p>
-        <nav className="public-actions">
-          <Link className="button button-primary" to="/register">
-            {t('public.getStarted')}
-          </Link>
-          <Link className="button" to="/status">
-            {t('status.title')}
-          </Link>
-        </nav>
+        <Link className="button button-primary" to="/register">
+          {t('public.getStarted')}
+        </Link>
       </main>
+      <footer className="front-footer">
+        <Link className="link-button link-button-quiet" to="/status">
+          {t('status.title')}
+        </Link>
+      </footer>
     </div>
   );
 }

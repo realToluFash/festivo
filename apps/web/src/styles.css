@@ -275,13 +275,6 @@ span {
   background: var(--colorHeader);
 }
 
-.public-header-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spaceLg);
-}
-
 .public-main,
 .guest-main {
   padding: var(--space6xl) var(--spaceXl);
@@ -295,11 +288,139 @@ span {
   font: var(--typeBodyGuest);
 }
 
-.public-actions {
+/* The front page signed out: the header, the tagline and Get started, and Service status at the foot, all in one window. */
+.front {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  max-width: calc(74rem + 2 * var(--space6xl) + 2 * var(--spaceSm));
+  margin: 0 auto;
+  padding: 0 calc(var(--space6xl) + var(--spaceSm));
+}
+
+.front-header {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--spaceLg);
-  margin-top: var(--space3xl);
+  padding-block: var(--space3xl);
+}
+
+.front-header .brand {
+  margin-inline-end: auto;
+}
+
+.front-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding-block: var(--space6xl);
+}
+
+.front-main h1 {
+  margin: 0;
+  font-size: 60px;
+  line-height: 1.05;
+  letter-spacing: var(--typeDisplayTracking);
+}
+
+.front-main p {
+  max-width: 35rem;
+  margin: var(--spaceXl) 0 var(--space5xl);
+  font-size: 20px;
+  line-height: 1.5;
+  color: var(--colorInkSecondary);
+}
+
+.front-footer {
+  display: flex;
+  padding-block: var(--spaceXl);
+}
+
+@media (width <= 40rem) {
+  .front {
+    padding: 0 var(--spaceXl);
+  }
+
+  .front-header {
+    gap: var(--spaceXs);
+    padding-block: var(--spaceXl);
+  }
+
+  .front-main h1 {
+    font-size: 36px;
+  }
+
+  .front-main p {
+    font-size: 16px;
+  }
+
+  .front-main .button-primary {
+    align-self: stretch;
+  }
+}
+
+@media (width < 24rem) {
+  .front-main h1 {
+    font-size: 32px;
+  }
+}
+
+/* The language switch as a pill: what it shows is drawn, and the native select over it takes the choice. */
+.language-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceLg);
+  border: var(--borderControl);
+  border-radius: calc(var(--sizeHit) / 2);
+  background: var(--colorCard);
+  font: var(--typeButton);
+}
+
+.language-pill:hover {
+  background: var(--colorInset);
+}
+
+.language-pill:has(select:focus-visible) {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
+.language-pill select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  font: var(--typeBody);
+  cursor: pointer;
+}
+
+.language-pill-face {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+}
+
+.language-pill-code {
+  display: none;
+}
+
+@media (width <= 40rem) {
+  .language-pill {
+    padding: 0 var(--spaceMd);
+  }
+
+  .language-pill-name {
+    display: none;
+  }
+
+  .language-pill-code {
+    display: inline;
+  }
 }
 
 /* Buttons are pills, in three levels, and never below 44px. A label that wraps keeps its lines apart and
@@ -1373,6 +1494,24 @@ span {
   color: var(--colorAccentText);
   font: var(--typeButton);
   cursor: pointer;
+  transition: opacity var(--motionFast) var(--motionEase);
+}
+
+.link-button:active {
+  opacity: var(--opacityPressed);
+}
+
+/* In secondary ink, underlined only under the pointer. */
+.link-button.link-button-quiet {
+  display: inline-flex;
+  align-items: center;
+  color: var(--colorInkSecondary);
+  text-decoration: none;
+}
+
+.link-button.link-button-quiet:hover {
+  color: var(--colorInk);
+  text-decoration: underline;
 }
 
 .auth-footnote .link-button {
