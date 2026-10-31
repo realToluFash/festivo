@@ -1,16 +1,20 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { type AuthBackTo, useAuthBack } from './AuthBack.tsx';
 import { LanguageChoice } from './LanguageChoice.tsx';
 
-/** Every auth screen's page: the brand and the language switcher in the header, the card under it. */
-export function AuthPage({ children }: { children: ReactNode }) {
+/** Every auth screen's page: the brand, or the back control in its place, and the language switcher in the header, the card under it. */
+export function AuthPage({ back, children }: { back?: AuthBackTo; children: ReactNode }) {
   const { t } = useTranslation();
+  const control = useAuthBack(back);
 
   return (
     <div className="auth">
       <header className="auth-header">
-        <span className="brand">{t('app.name')}</span>
+        <div className="auth-header-start">
+          {control ?? <span className="brand">{t('app.name')}</span>}
+        </div>
         <LanguageChoice />
       </header>
 

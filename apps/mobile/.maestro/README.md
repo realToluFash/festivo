@@ -131,6 +131,12 @@ To test the code step itself, outside a batch, three flows stop on it and send a
 | `reset-code-step-open`   | `LANGUAGE`, `TOKEN` (a reset link's)      | the reset link's code step              |
 | `two-factor-code-send`   | `CODE`, `SHOT`; `RECOVERY=true` if needed | the step's answer, screenshot as `SHOT` |
 
+The back controls getting back in (sc-23279): `sc23279-lost-back-code` and
+`sc23279-lost-back-recovery` start on the code step and check **‹ Enter your code** and
+**‹ Enter a recovery code** on lost two-factor return to the step as it was left, through
+`sc23279-lost-back` (`RECOVERY`, `BACK`, `SHOT`). `sc23279-dead-link-no-back` checks Reset your
+password shows no back control after a dead link's **Send a new link**.
+
 ## Writing one
 
 - **Target `testID`, never prose.** A flow that taps `"Sign in"` taps whichever "Sign in"

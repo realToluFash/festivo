@@ -707,8 +707,10 @@ span {
   border-bottom: var(--borderHeader);
 }
 
-.auth-header .brand {
+.auth-header-start {
+  display: flex;
   flex: 1;
+  align-items: center;
 }
 
 .auth-main {
@@ -1358,23 +1360,6 @@ span {
   color: var(--colorAttentionText);
 }
 
-.request-state-done {
-  color: var(--colorAccentText);
-}
-
-.request-state-broken {
-  color: var(--colorBrokenText);
-}
-
-.request-state-ended {
-  color: var(--colorInkSecondary);
-}
-
-.mark-ended {
-  border: var(--borderMark) var(--colorInkSecondary);
-  color: var(--colorInkSecondary);
-}
-
 .button-danger {
   color: var(--colorInk);
 }
@@ -1420,6 +1405,11 @@ span {
   letter-spacing: 0.3em;
   text-align: center;
   caret-color: var(--colorInk);
+}
+
+/* The code and recovery-code fields at a code step: Instrument Sans, figures one width (sc-23279). */
+.input-figures {
+  font-variant-numeric: tabular-nums;
 }
 
 .code-input.input-wrong {
@@ -1515,6 +1505,15 @@ span {
   text-decoration: underline;
 }
 
+.resend .link-button {
+  font-variant-numeric: tabular-nums;
+}
+
+.resend .link-button[data-off] {
+  color: var(--colorInkSecondary);
+  cursor: default;
+}
+
 .auth-footnote .link-button {
   display: inline-flex;
   align-items: center;
@@ -1578,6 +1577,11 @@ span {
 }
 
 /* ── Create your account ──────────────────────────────────────────────────── */
+
+.auth-back {
+  display: inline-flex;
+  align-items: center;
+}
 
 .auth-heading {
   display: flex;
@@ -4647,11 +4651,26 @@ button.members-row {
   border-radius: 0;
 }
 
-.status-chip[data-shape='tick']::before {
+.status-chip[data-tone='broken'] {
+  background: var(--colorBrokenTint);
+  color: var(--colorBrokenText);
+}
+
+.status-chip[data-shape='tick']::before,
+.status-chip[data-shape='cross']::before,
+.status-chip[data-shape='dash']::before {
   width: auto;
   height: auto;
   border-radius: 0;
   content: '✓';
+}
+
+.status-chip[data-shape='cross']::before {
+  content: '✕';
+}
+
+.status-chip[data-shape='dash']::before {
+  content: '–';
 }
 
 .mark-paused::before {

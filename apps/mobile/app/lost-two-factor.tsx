@@ -4,9 +4,11 @@ import {
   codeWording,
   formatCountdown,
   formatPhone,
+  RECOVERY_LOOK,
+  type RecoveryOutcome,
   recoveryIntroKey,
 } from '@soirely/domain';
-import { Redirect, router } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import {
   type ReactNode,
   createContext,
@@ -21,7 +23,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
 import { heldChallenge } from '../src/challenge.ts';
-import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
+import { type AuthBack, AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from '../src/components/Buttons.tsx';
 import {
   CodeField,
@@ -34,7 +36,7 @@ import {
 import { Notice } from '../src/components/Notice.tsx';
 import { useFocusOnAnswer } from '../src/components/Screen.tsx';
 import { readOut } from '../src/components/ReadOut.tsx';
-import { StatusMark, type MarkTone } from '../src/components/StatusMark.tsx';
+import { StatusChip } from '../src/components/StatusChip.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { dropRecovery, heldRecovery, holdRecovery } from '../src/heldRecovery.ts';
 import { currentLocale } from '../src/i18n/index.ts';
@@ -59,6 +61,7 @@ const Tapped = createContext<object | undefined>(undefined);
 
 /** Lost both the authenticator and the recovery codes (sc-509): nothing on this screen signs anybody in. */
 export default function LostTwoFactor() {
+  const back = useBackToCode();
   const challenge = heldChallenge()?.challenge ?? null;
   const [view, setShown] = useState<Shown>({ kind: 'loading' });
   const [tapped, setTapped] = useState<object | undefined>(undefined);
@@ -158,7 +161,7 @@ export default function LostTwoFactor() {
 
   function shown(): ReactNode {
     if (view.kind === 'signIn') return <Redirect href="/sign-in" />;
-    if (view.kind === 'loading') return <AuthFrame>{null}</AuthFrame>;
+    if (view.kind === 'loading') return <AuthFrame back={back}>{null}</AuthFrame>;
     if (view.kind === 'start') {
       return (
         <Start
@@ -200,8 +203,6 @@ export default function LostTwoFactor() {
   }
 }
 
-type Tone = MarkTone;
-
 function Saying({
   title,
   intro,
@@ -209,13 +210,13 @@ function Saying({
 }: {
   title: string;
   intro: string;
-  mark?: { tone: Tone; word: string };
+  mark?: { outcome: RecoveryOutcome; word: string };
 }) {
   const tapped = useContext(Tapped);
 
   return (
     <View style={styles.saying}>
-      {mark != null && <StatusMark tone={mark.tone} word={mark.word} />}
+      {mark != null && <StatusChip look={RECOVERY_LOOK[mark.outcome]} word={mark.word} />}
       <AuthHeading title={title} intro={intro} answer={tapped} />
     </View>
   );
@@ -224,14 +225,16 @@ function Saying({
 /** A newer request was started on another device (pm #1267): its codes went there, so this one starts again. */
 function Replaced({ onStartAgain }: { onStartAgain: () => void }) {
   const { t } = useTranslation();
+  const back = useBackToCode();
 
   return (
     <AuthFrame
+      back={back}
       saying={
         <Saying
           title={t('lostTwoFactor.replacedTitle')}
           intro={t('lostTwoFactor.replacedIntro')}
-          mark={{ tone: 'skipped', word: t('lostTwoFactor.replacedMark') }}
+          mark={{ outcome: 'ended', word: t('lostTwoFactor.replacedMark') }}
         />
       }
     >
@@ -246,6 +249,20 @@ function Replaced({ onStartAgain }: { onStartAgain: () => void }) {
       <BackToSignIn />
     </AuthFrame>
   );
+}
+
+/** Opened from Enter your code, so the system's back returns to it as it was left, from every step (sc-23279). */
+function useBackToCode(): AuthBack | null {
+  const { t } = useTranslation();
+  const { from } = useLocalSearchParams<{ from?: 'app' | 'recovery' }>();
+
+  if (!router.canGoBack()) return null;
+
+  return {
+    label: from === 'recovery' ? t('twoFactor.recoveryTitle') : t('twoFactor.title'),
+    onPress: () => router.back(),
+    testID: 'lostTwoFactor.backToCode',
+  };
 }
 
 function BackToSignIn() {
@@ -273,6 +290,7 @@ function Start({
 }) {
   const markSide = useMarkSide(tokens.sizeMark);
   const { t } = useTranslation();
+  const back = useBackToCode();
   const steps = [
     opening.phone == null
       ? t('lostTwoFactor.step1EmailOnly', { email: opening.email })
@@ -285,6 +303,7 @@ function Start({
 
   return (
     <AuthFrame
+      back={back}
       saying={
         <Saying title={t('lostTwoFactor.startTitle')} intro={t('lostTwoFactor.startIntro')} />
       }
@@ -342,9 +361,11 @@ function Start({
 
 function Nobody({ supportAddress }: { supportAddress: string }) {
   const { t } = useTranslation();
+  const back = useBackToCode();
 
   return (
     <AuthFrame
+      back={back}
       saying={
         <Saying title={t('lostTwoFactor.nobodyTitle')} intro={t('lostTwoFactor.nobodyIntro')} />
       }
@@ -361,10 +382,11 @@ function Nobody({ supportAddress }: { supportAddress: string }) {
 
 function Failed({ failure, onRetry }: { failure: Shown; onRetry: () => void }) {
   const { t } = useTranslation();
+  const back = useBackToCode();
   const tapped = useContext(Tapped);
 
   return (
-    <AuthFrame>
+    <AuthFrame back={back}>
       <Notice
         tone="broken"
         mark={tokens.marks.broken.glyph}
@@ -403,6 +425,7 @@ function Request({
 }) {
   const supportAddress = state.supportAddress;
   const { t } = useTranslation();
+  const back = useBackToCode();
   const waiting = state.status === 'waiting';
   const organisations = listed(state.organisations, 'conjunction');
   const anyOf = listed(state.organisations, 'disjunction');
@@ -438,11 +461,12 @@ function Request({
   if (waiting) {
     return (
       <AuthFrame
+        back={back}
         saying={
           <Saying
             title={t('lostTwoFactor.waitingTitle')}
             intro={t(recoveryIntroKey('waiting', state.nobody), { organisations })}
-            mark={{ tone: 'progress', word: t('lostTwoFactor.waitingMark') }}
+            mark={{ outcome: 'waiting', word: t('lostTwoFactor.waitingMark') }}
           />
         }
       >
@@ -489,11 +513,12 @@ function Request({
   if (state.status === 'approved') {
     return (
       <AuthFrame
+        back={back}
         saying={
           <Saying
             title={t('lostTwoFactor.approvedTitle')}
             intro={t(recoveryIntroKey('approved', state.nobody), { organisations: anyOf })}
-            mark={{ tone: 'done', word: t('lostTwoFactor.approvedMark') }}
+            mark={{ outcome: 'approved', word: t('lostTwoFactor.approvedMark') }}
           />
         }
       >
@@ -511,11 +536,12 @@ function Request({
   if (state.status === 'turned_down') {
     return (
       <AuthFrame
+        back={back}
         saying={
           <Saying
             title={t('lostTwoFactor.turnedDownTitle')}
             intro={t(recoveryIntroKey('turned_down', state.nobody), { organisations: anyOf })}
-            mark={{ tone: 'broken', word: t('lostTwoFactor.turnedDownMark') }}
+            mark={{ outcome: 'turned_down', word: t('lostTwoFactor.turnedDownMark') }}
           />
         }
       >
@@ -534,11 +560,12 @@ function Request({
   if (state.status === 'expired') {
     return (
       <AuthFrame
+        back={back}
         saying={
           <Saying
             title={t('lostTwoFactor.endedTitle')}
             intro={t(recoveryIntroKey('expired', state.nobody))}
-            mark={{ tone: 'skipped', word: t('lostTwoFactor.endedMark') }}
+            mark={{ outcome: 'ended', word: t('lostTwoFactor.endedMark') }}
           />
         }
       >
@@ -563,11 +590,12 @@ function Request({
 
   return (
     <AuthFrame
+      back={back}
       saying={
         <Saying
           title={t('lostTwoFactor.cancelledTitle')}
           intro={t('lostTwoFactor.cancelledIntro')}
-          mark={{ tone: 'skipped', word: t('lostTwoFactor.cancelledMark') }}
+          mark={{ outcome: 'ended', word: t('lostTwoFactor.cancelledMark') }}
         />
       }
     >
@@ -592,6 +620,7 @@ function Codes({
   onReplaced: () => void;
 }) {
   const { t } = useTranslation();
+  const back = useBackToCode();
   const codes = state.codes;
   const wording = codeWording(codes?.route ?? null);
   const hasPhone = state.phone != null;
@@ -777,6 +806,7 @@ function Codes({
 
   return (
     <AuthFrame
+      back={back}
       saying={
         <Saying
           title={hasPhone ? t('lostTwoFactor.codesTitle') : t('lostTwoFactor.codesTitleEmailOnly')}
@@ -867,19 +897,21 @@ function Codes({
             busy={asking}
             testID="lostTwoFactor.ask"
           />
-          <SecondaryButton
-            label={
-              cooldown > 0
-                ? t('lostTwoFactor.resendIn', { time: formatCountdown(cooldown) })
-                : t('lostTwoFactor.resend')
-            }
-            onPress={() => void resend()}
-            off={cooldown > 0}
-            testID="lostTwoFactor.resend"
-          />
-          <Text size={tokens.typeSmall.size} style={styles.secondary}>
-            {t('lostTwoFactor.resendNote')}
-          </Text>
+          <View style={styles.resend}>
+            <QuietButton
+              label={
+                cooldown > 0
+                  ? t('lostTwoFactor.resendIn', { time: formatCountdown(cooldown) })
+                  : t('lostTwoFactor.resend')
+              }
+              onPress={() => void resend()}
+              off={cooldown > 0}
+              testID="lostTwoFactor.resend"
+            />
+            <Text size={tokens.typeSmall.size} style={styles.secondary}>
+              {t('lostTwoFactor.resendNote')}
+            </Text>
+          </View>
           {hasPhone && wording.offerText && (
             <SecondaryButton
               label={t('lostTwoFactor.textInstead')}
@@ -896,6 +928,7 @@ function Codes({
 }
 
 const styles = StyleSheet.create({
+  resend: { alignItems: 'flex-start', gap: tokens.spaceXs },
   saying: { gap: tokens.spaceSm },
   steps: { gap: tokens.spaceMd },
   step: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceMd },

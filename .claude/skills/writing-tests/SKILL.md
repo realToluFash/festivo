@@ -184,6 +184,14 @@ Anything user-facing exists in `en`, `es`, `fr` and `pt`. `ErrorCodeCatalogueTes
 carries a label for a case that no longer exists, and no two cases read the same in any
 locale. A new enum whose values reach a person gets the same three tests.
 
+## A way back in the app gets a Maestro flow
+
+A navigation control added to an app screen gets a Maestro step for each way it can go back,
+and one for where it shows no control: `apps/mobile/.maestro/`, named for the story, written
+to its README's rules. The web's version of the same control has a test beside its route; the
+app's has no suite that walks the stack, so without the flow nothing checks it. Two pull
+requests in a row shipped an app back control with no step (#1108, #1110).
+
 ## Browser checks only on request
 
 Never drive the app in a browser to confirm something unless asked. `tsc --noEmit`, the

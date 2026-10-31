@@ -42,7 +42,7 @@ export function SecondFactorStep({
   failedTitle: string;
   failedBody: string;
   /** Only where a sign-in asks: the way back in for somebody who has neither (sc-509). */
-  onLostBoth?: () => void;
+  onLostBoth?: (from: CodeMode) => void;
   onVerify: (factor: SecondFactor) => Promise<void>;
   onExpired: () => void;
 }) {
@@ -170,7 +170,9 @@ export function SecondFactorStep({
             <Footnote
               question={t('twoFactor.notYou')}
               action={t('twoFactor.resetPassword')}
-              onPress={() => router.push('/forgot-password')}
+              onPress={() =>
+                router.push(`/forgot-password?from=${mode === 'app' ? 'code' : 'recovery'}`)
+              }
               role="link"
               testID="twoFactor.reset"
             />
@@ -197,6 +199,7 @@ export function SecondFactorStep({
               accessibilityLabel={label}
               autoCapitalize="none"
               autoComplete="off"
+              style={styles.figures}
             />
           )}
         </Field>
@@ -228,7 +231,7 @@ export function SecondFactorStep({
         ) : (
           <QuietButton
             label={t('twoFactor.lostBoth')}
-            onPress={onLostBoth}
+            onPress={() => onLostBoth(mode)}
             testID="twoFactor.lostBoth"
           />
         )}
@@ -240,5 +243,6 @@ export function SecondFactorStep({
 const styles = StyleSheet.create({
   form: { gap: tokens.spaceXl },
   paused: { gap: tokens.spaceSm },
+  figures: { fontVariant: ['tabular-nums'] },
   secondary: { color: tokens.colorInkSecondary },
 });

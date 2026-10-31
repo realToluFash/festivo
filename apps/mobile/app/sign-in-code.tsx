@@ -25,7 +25,7 @@ export default function SignInCode() {
           await nextAfterSignIn(codePassed(await api.verifyTwoFactor(challenge.challenge, factor))),
         );
       }}
-      onLostBoth={() => router.push('/lost-two-factor')}
+      onLostBoth={(from) => router.push(`/lost-two-factor?from=${from}`)}
       onExpired={() => router.replace('/sign-in')}
     />
   );

@@ -119,7 +119,7 @@ export default function ResetPassword() {
       >
         <PrimaryButton
           label={t('recovery.sendNew')}
-          onPress={() => router.replace('/forgot-password')}
+          onPress={() => router.replace('/forgot-password?from=link')}
           testID="recovery.sendNew"
         />
         <Footnote

@@ -20,6 +20,7 @@ import { Pending } from '../../components/Pending.tsx';
 import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { RequestToJoin } from './RequestToJoin.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
+import type { ForgotFrom } from '../../forgotFrom.ts';
 import { useFormChecks } from '../../formChecks.ts';
 import { dropHeldInvitation, holdInvitation } from '../../heldInvitation.ts';
 import { dateLocale } from '../../i18n/index.ts';
@@ -495,7 +496,11 @@ function EmailTaken({ token, email }: { token: string; email: string }) {
       >
         {t('join.signInToAccept')}
       </button>
-      <Link className="link-button" to="/forgot-password">
+      <Link
+        className="link-button"
+        to="/forgot-password"
+        state={{ back: 'join' } satisfies ForgotFrom}
+      >
         {t('join.forgotPassword')}
       </Link>
     </>

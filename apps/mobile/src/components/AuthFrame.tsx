@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
+import { BackButton } from './AppFrame.tsx';
 import { LanguageChoice } from './LanguageChoice.tsx';
 import { useMarkSide } from './markSide.ts';
 import { useReadOut } from './ReadOut.tsx';
@@ -77,16 +78,23 @@ export function AuthHeading({
   );
 }
 
+/** The step the system's back returns to, drawn as ‹ and its title in place of the brand. */
+export interface AuthBack {
+  label: string;
+  heard?: string;
+  onPress: () => void;
+  testID: string;
+}
+
 /** Every auth screen at three sizes: phone stacks with no card, portrait centres one, landscape splits saying from doing. */
 export function AuthFrame({
   saying = null,
-  phoneTop,
+  back,
   atFoot = false,
   children,
 }: {
   saying?: ReactNode;
-  /** In place of the brand row on a phone, such as register's back row. */
-  phoneTop?: ReactNode;
+  back?: AuthBack | null | undefined;
   /** On a phone, the content sits at the foot: a done state's way on. */
   atFoot?: boolean;
   children: ReactNode;
@@ -110,7 +118,7 @@ export function AuthFrame({
   return (
     <Screen style={styles.page} contentStyle={CONTENT[kind]}>
       <View style={landscape ? styles.landscapeLeft : undefined}>
-        {phone ? (phoneTop ?? brand) : brand}
+        {back != null ? <BackButton {...back} /> : brand}
         {landscape && <View style={styles.landscapeSaying}>{saying}</View>}
         {landscape && <LanguageChoice />}
       </View>

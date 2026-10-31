@@ -142,7 +142,11 @@ describe('getting back in without the authenticator', () => {
     ).toBeDefined();
     expect(screen.getByLabelText('Code from the email')).toBeDefined();
     expect(screen.getByLabelText('Code from the text')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Send new codes in 0:42' })).toBeDefined();
+    // A text-only action, with no fill and no edge (sc-23279).
+    expect(screen.getByRole('button', { name: 'Send new codes in 0:42' }).className).toBe(
+      'link-button',
+    );
+    expect(screen.getByText('New codes replace the last ones.')).toBeDefined();
   });
 
   it('checks both codes before asking, and marks only the one the server says is wrong', async () => {
@@ -242,6 +246,7 @@ describe('getting back in without the authenticator', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Waiting for your organisation' }),
     ).toBeDefined();
+    expect(screen.getByText('Waiting for an answer').getAttribute('data-shape')).toBe('ring');
     expect(screen.getByText('Asked Saturday, Oct 17 at 14:20 WAT.')).toBeDefined();
     expect(
       screen.getByText('If nobody answers by Saturday, Oct 24 at 14:20 WAT, the request ends.'),
@@ -251,6 +256,15 @@ describe('getting back in without the authenticator', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Request cancelled' }),
     ).toBeDefined();
+  });
+
+  it('goes back to Enter your code from ‹ Enter your code, beside Back to sign in (sc-23279)', async () => {
+    await atTheStart({});
+
+    expect(screen.getByRole('link', { name: 'Back to sign in' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Enter your code' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Enter your code' })).toBeDefined();
   });
 
   it('says nobody can confirm it when the last approver left while the codes were out', async () => {
@@ -341,6 +355,7 @@ describe('getting back in without the authenticator', () => {
       screen.getByText('Nobody in your organisation can confirm this. Contact Soirely support.'),
     ).toBeDefined();
     expect(screen.queryByText(/Ask an owner or admin of/)).toBeNull();
+    expect(screen.getByText('Turned down').getAttribute('data-shape')).toBe('cross');
     expect(screen.getAllByRole('link', { name: 'Email support@soirely.com' })).toHaveLength(1);
   });
 
