@@ -1,0 +1,7 @@
+# Needs EVENT, an event the account owns. sc-22145: Duplicar, tapped once it is clear of the header, opens Duplicate {event}'s form; a lost tap fails at the tap.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- runFlow:
+    file: ../duplicate-open.yaml
+- takeScreenshot: form-open

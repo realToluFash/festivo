@@ -1,0 +1,9 @@
+# sc-23777: the swipe from the left edge, far enough to complete.
+appId: host.exp.Exponent
+---
+- waitForAnimationToEnd
+- swipe:
+    start: 1%, 50%
+    end: 85%, 50%
+    duration: 400
+- waitForAnimationToEnd

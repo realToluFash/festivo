@@ -1,0 +1,43 @@
+# Create an organisation: the Country list's Done closes only the list, what was typed stays, Cancel then closes the sheet, and a tap above it closes it too.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createOrganisation.name'
+- inputText: 'Escape Typed'
+- tapOn:
+    id: 'createOrganisation.country'
+- extendedWaitUntil:
+    visible:
+      id: 'createOrganisation.country.search'
+    timeout: 10000
+- takeScreenshot: create-country-list
+- tapOn:
+    id: 'createOrganisation.country.close'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation.country.search'
+    timeout: 10000
+- assertVisible:
+    id: 'createOrganisation'
+- assertVisible: 'Escape Typed'
+- takeScreenshot: create-after-list-done
+- tapOn:
+    id: 'createOrganisation.cancel'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation'
+    timeout: 10000
+- takeScreenshot: create-after-cancel
+- runFlow: ../open-create-organisation.yaml
+- hideKeyboard:
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: create-before-scrim
+- tapOn:
+    point: '50%,15%'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation'
+    timeout: 10000
+- takeScreenshot: create-after-scrim

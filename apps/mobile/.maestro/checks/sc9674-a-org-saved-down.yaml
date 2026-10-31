@@ -1,0 +1,27 @@
+# Organisation: Name changed, keys hidden by the back gesture (Android), Save changes. Saved. shows and the keys stay down. sc-9674.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- tapOn:
+    id: organisation.name
+- eraseText: 80
+- inputText: QA Saved Again
+- pressKey: back
+- waitForAnimationToEnd
+- assertNotVisible: '(?i)(shift|delete)'
+- scrollUntilVisible:
+    element:
+      id: organisation.save
+    centerElement: true
+- tapOn:
+    id: organisation.save
+- extendedWaitUntil:
+    visible: '{{t:orgGeneral.saved}}'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: saved
+- assertNotVisible: '(?i)(shift|delete)'

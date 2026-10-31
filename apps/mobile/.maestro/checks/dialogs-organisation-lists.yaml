@@ -1,0 +1,90 @@
+# Settings > Organisation: Country, Currency, Time zone and Language lists close by Done with the field unchanged; a Time zone option sets it. Needs an organisation whose time zone is not Lisbon.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.country'
+    timeout: 30000
+- assertNotVisible: '.*Lisbon.*'
+- takeScreenshot: org-before
+- tapOn:
+    id: 'organisation.country'
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.country.search'
+    timeout: 10000
+- takeScreenshot: org-country-list
+- tapOn:
+    id: 'organisation.country.close'
+- extendedWaitUntil:
+    notVisible:
+      id: 'organisation.country.search'
+    timeout: 10000
+- tapOn:
+    id: 'organisation.currency'
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.currency.search'
+    timeout: 10000
+- takeScreenshot: org-currency-list
+- tapOn:
+    id: 'organisation.currency.close'
+- extendedWaitUntil:
+    notVisible:
+      id: 'organisation.currency.search'
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: 'organisation.language'
+    centerElement: true
+- tapOn:
+    id: 'organisation.language'
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.language.close'
+    timeout: 10000
+- takeScreenshot: org-language-list
+- tapOn:
+    id: 'organisation.language.close'
+- extendedWaitUntil:
+    notVisible:
+      id: 'organisation.language.close'
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: 'organisation.timezone'
+    direction: UP
+    centerElement: true
+- tapOn:
+    id: 'organisation.timezone'
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.timezone.search'
+    timeout: 10000
+- tapOn:
+    id: 'organisation.timezone.search'
+- inputText: 'Lisbon'
+- takeScreenshot: org-timezone-list
+- tapOn:
+    id: 'organisation.timezone.close'
+- extendedWaitUntil:
+    notVisible:
+      id: 'organisation.timezone.search'
+    timeout: 10000
+- assertNotVisible: '.*Lisbon.*'
+- takeScreenshot: org-after-done
+- tapOn:
+    id: 'organisation.timezone'
+- tapOn:
+    id: 'organisation.timezone.search'
+- eraseText: 30
+- inputText: 'Lisbon'
+- tapOn:
+    id: 'organisation.timezone.Europe/Lisbon'
+- extendedWaitUntil:
+    notVisible:
+      id: 'organisation.timezone.search'
+    timeout: 10000
+- assertVisible: '.*Lisbon.*'
+- takeScreenshot: org-timezone-chosen

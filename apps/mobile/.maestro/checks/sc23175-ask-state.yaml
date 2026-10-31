@@ -1,0 +1,32 @@
+# sc-23175: TOKEN's request link page in whatever state it opens on for the account (limited, member, waiting, dead), pressing Ask to join when it is offered. ORIENT=PORTRAIT|LANDSCAPE_LEFT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/join/${TOKEN}
+- extendedWaitUntil:
+    visible:
+      id: 'requestToJoin\.(ask|carryOn|home)'
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: requestToJoin.ask
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: requestToJoin.ask
+          centerElement: true
+      - tapOn:
+          id: requestToJoin.ask
+      - extendedWaitUntil:
+          visible:
+            id: 'requestToJoin\.(carryOn|home)'
+          timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: 'requestToJoin\.(carryOn|home)'
+    timeout: 15000
+- assertNotVisible:
+    id: requestToJoin.ask
+- waitForAnimationToEnd
+- takeScreenshot: state

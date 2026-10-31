@@ -1,0 +1,37 @@
+# Settings > Organisation, the delete dialog opened with the API stopped: the could-not-count notice and Try again, then the keyboard up and the name field and Delete reached by scrolling. Deletes nothing. sc-16928.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible: '{{t:orgGeneral.intro}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'ownership.delete'
+    timeout: 60000
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    id: 'ownership.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'ownership.delete.retry'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: uncounted
+- tapOn:
+    id: 'ownership.delete.name'
+- inputText: 'QA'
+- waitForAnimationToEnd
+- takeScreenshot: uncounted-keyboard
+- scrollUntilVisible:
+    element:
+      id: 'ownership.delete.send'
+    timeout: 20000
+- takeScreenshot: uncounted-keyboard-delete
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
