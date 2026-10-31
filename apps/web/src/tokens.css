@@ -86,6 +86,8 @@
   --typeLabelTracking: 0.1em;
   --typePill: 600 12px/1 var(--fontFamily);
   --typePillTracking: 0;
+  --typePillWrapped: 600 12px/1.25 var(--fontFamily);
+  --typePillWrappedTracking: 0;
   --typeButton: 600 14px/1 var(--fontFamily);
   --typeButtonTracking: 0;
   --typeCode: 600 14px/1 var(--fontFamilyMono);

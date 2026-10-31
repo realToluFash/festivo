@@ -210,7 +210,7 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-function answering(answers: Record<string, () => Response>) {
+function answering(answers: Record<string, () => Response | Promise<Response>>) {
   const sent: { line: string; body: unknown }[] = [];
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -567,6 +567,31 @@ describe('somebody awaiting approval (sc-392)', () => {
     expect(sent.some((one) => one.line.endsWith('/turn-down'))).toBe(true);
   });
 
+  it('holds Keep the request while the turn-down is on its way', async () => {
+    signedIn();
+    let finish = (): void => {};
+    answering({
+      ...WAITING_READS,
+      'POST /api/orgs/org_1/members/m_ada/turn-down': () =>
+        new Promise<Response>((resolve) => {
+          finish = () => resolve(new Response(null, { status: 204 }));
+        }),
+    });
+    open();
+
+    const section = within(await screen.findByRole('region', { name: 'Awaiting approval' }));
+    fireEvent.click(section.getByRole('button', { name: 'Turn down' }));
+    fireEvent.click(section.getByRole('button', { name: 'Turn down Ada Okeke' }));
+
+    const keep = section.getByRole('button', { name: 'Keep the request' });
+    await waitFor(() => expect(keep.getAttribute('aria-disabled')).toBe('true'));
+    fireEvent.click(keep);
+    expect(section.getByRole('alertdialog')).toBeDefined();
+
+    finish();
+    expect(await screen.findByText(/Ada Okeke’s request is turned down\./)).toBeDefined();
+  });
+
   it('gives a pending person no role yet, and Approve and Turn down on their page', async () => {
     signedIn();
     answering(WAITING_READS);
@@ -627,7 +652,10 @@ describe('inviting somebody', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Invite somebody' }));
     expect(document.activeElement).toBe(
-      screen.getByRole('heading', { level: 1, name: 'Invite somebody' }),
+      within(screen.getByRole('dialog', { name: 'Invite somebody' })).getByRole('heading', {
+        level: 2,
+        name: 'Invite somebody',
+      }),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }));
 
@@ -1470,6 +1498,22 @@ describe('suspending and restoring a member', () => {
     expect(screen.getByText(/Their role is kept while they're suspended/)).toBeDefined();
   });
 
+  it('asks Suspend and Remove in the sc-22092 dialog, a sheet at phone width (sc-23172)', async () => {
+    signedIn();
+    answering({ ...READS, 'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)) });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Suspend…' }));
+    const suspending = screen.getByRole('alertdialog', { name: 'Suspend Bisi Adeyemi?' });
+    expect(suspending.className).toBe('dialog');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Remove from / }));
+    expect(screen.getByRole('alertdialog', { name: /Remove Bisi Adeyemi/ })).toBeDefined();
+  });
+
   it('keeps focus on Suspend ‹name› while it runs and once it fails with no connection (sc-11487)', async () => {
     signedIn();
     answering({ ...READS, 'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)) });
@@ -1482,11 +1526,11 @@ describe('suspending and restoring a member', () => {
     fireEvent.click(suspend);
 
     expect(suspend.hasAttribute('disabled')).toBe(false);
-    expect(
-      await screen.findByText(
-        'That did not go through. Nothing was changed. Try again in a moment.',
-      ),
-    ).toBeDefined();
+    const refusal = await screen.findByText(
+      'That did not go through. Nothing was changed. Try again in a moment.',
+    );
+    expect(refusal.closest('.dialog-heading')).toBeNull();
+    expect(refusal.closest('.dialog')).not.toBeNull();
     expect(document.activeElement).toBe(suspend);
   });
 
@@ -1826,7 +1870,7 @@ describe('the dates the server wrote after a language change (sc-9267)', () => {
 });
 
 describe('where focus goes once a click on Members is answered (sc-11369)', () => {
-  it('puts focus back on Invite somebody after Cancel or ‹ Members', async () => {
+  it('puts focus back on Invite somebody after Cancel or Escape', async () => {
     signedIn();
     answering(READS);
     open();
@@ -1836,7 +1880,8 @@ describe('where focus goes once a click on Members is answered (sc-11369)', () =
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Invite somebody' }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Invite somebody' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Members' }));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Invite somebody' }));
   });
 
