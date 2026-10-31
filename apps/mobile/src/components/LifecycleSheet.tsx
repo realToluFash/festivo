@@ -7,7 +7,7 @@ import { api } from '../api.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
-import { Sheet } from './Sheet.tsx';
+import { Sheet, SheetActions } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 import { type ScreenReaderTarget } from './screenReaderFocus.ts';
 
@@ -149,6 +149,18 @@ export function LifecycleSheet({
       />
     );
 
+  const close = (
+    <SecondaryButton
+      label={t('eventLive.close')}
+      onPress={onClose}
+      stacked={phone}
+      testID={`${testID}Close`}
+    />
+  );
+  const onwardButton = onward != null && (
+    <PrimaryButton label={onward.label} onPress={onward.onPress} testID={`${testID}Onward`} />
+  );
+
   return (
     <Sheet open={open} onClose={onClose} opener={opener} testID={`${testID}Sheet`}>
       {open && (
@@ -168,44 +180,17 @@ export function LifecycleSheet({
             ))}
             {children}
           </ScrollView>
-          <View style={phone ? styles.stacked : styles.actions}>
-            {confirm != null && phone ? (
+          <SheetActions>
+            {confirm != null ? (
               <>
-                {go}
-                {keep}
-              </>
-            ) : confirm != null ? (
-              <>
-                {keep}
-                {go}
-              </>
-            ) : onward != null && phone ? (
-              <>
-                <PrimaryButton
-                  label={onward.label}
-                  onPress={onward.onPress}
-                  testID={`${testID}Onward`}
-                />
-                <SecondaryButton
-                  label={t('eventLive.close')}
-                  onPress={onClose}
-                  stacked
-                  testID={`${testID}Close`}
-                />
+                {phone ? go : keep}
+                {phone ? keep : go}
               </>
             ) : onward != null ? (
-              <View style={styles.footer}>
-                <SecondaryButton
-                  label={t('eventLive.close')}
-                  onPress={onClose}
-                  testID={`${testID}Close`}
-                />
-                <PrimaryButton
-                  label={onward.label}
-                  onPress={onward.onPress}
-                  testID={`${testID}Onward`}
-                />
-              </View>
+              <>
+                {phone ? onwardButton : close}
+                {phone ? close : onwardButton}
+              </>
             ) : (
               <PrimaryButton
                 label={t('eventLive.close')}
@@ -213,7 +198,7 @@ export function LifecycleSheet({
                 testID={`${testID}Close`}
               />
             )}
-          </View>
+          </SheetActions>
         </View>
       )}
     </Sheet>
@@ -224,14 +209,4 @@ const styles = StyleSheet.create({
   sheet: { flexShrink: 1, gap: tokens.spaceLg, padding: tokens.space3xl },
   body: { flexShrink: 1, flexGrow: 0 },
   lines: { gap: tokens.spaceLg },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
-  stacked: { gap: tokens.spaceSm },
-  footer: {
-    flexGrow: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    gap: tokens.spaceSm,
-  },
 });
