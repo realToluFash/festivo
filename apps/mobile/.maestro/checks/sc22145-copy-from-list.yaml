@@ -11,6 +11,9 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'events.tab.drafts'
 - waitForAnimationToEnd
+- assertVisible:
+    id: 'events.tab.drafts'
+    selected: true
 - scrollUntilVisible:
     element:
       id: 'events.row.${COPY}'
@@ -39,4 +42,7 @@ appId: host.exp.Exponent
       id: 'events.tab.drafts'
     direction: UP
     timeout: 15000
+- assertVisible:
+    id: 'events.tab.drafts'
+    selected: true
 - takeScreenshot: after-back
