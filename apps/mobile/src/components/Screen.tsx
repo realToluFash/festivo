@@ -376,27 +376,7 @@ function useCheckedFieldInView(scroll: ScreenScrollView): void {
     let cancel = () => {};
     const unwatch = watchCheckedField((field) => {
       cancel();
-      const bring = () => bringIntoView(scroll, field, true, { aboveKeys: true });
-      const unsettled = settleOnto(
-        scroll,
-        () => field,
-        () => null,
-        true,
-        SETTLED_MS,
-        {
-          aboveKeys: true,
-        },
-      );
-      // Keys that rise for the field, and Android's avoiding view shrinking under them, cover it afresh.
-      const shown = Keyboard.addListener('keyboardDidShow', bring);
-      scroll.resized.add(bring);
-      const done = setTimeout(() => cancel(), 2 * SETTLED_MS);
-      cancel = () => {
-        unsettled();
-        shown.remove();
-        scroll.resized.delete(bring);
-        clearTimeout(done);
-      };
+      cancel = followIntoView(scroll, () => field);
     });
 
     return () => {
@@ -404,6 +384,34 @@ function useCheckedFieldInView(scroll: ScreenScrollView): void {
       unwatch();
     };
   }, [scroll]);
+}
+
+/** Brings `shown` wholly into sight above the keys now and once it has settled, and again as the keys rise (and fall, with `alsoOnHide`) or the scroll view resizes, until two settles have passed; calls `ended` once it stops and returns what stops it sooner. */
+function followIntoView(
+  scroll: ScreenScrollView,
+  shown: () => ScreenReaderTarget | null,
+  { alsoOnHide = false, ended = () => {} }: { alsoOnHide?: boolean; ended?: () => void } = {},
+): () => void {
+  const sight = { aboveKeys: true };
+  const bring = () => bringIntoView(scroll, shown(), true, sight);
+  const unsettled = settleOnto(scroll, shown, () => null, true, SETTLED_MS, sight);
+  // Keys that rise, and Android's avoiding view shrinking under them, cover it afresh.
+  const keys = [Keyboard.addListener('keyboardDidShow', bring)];
+  if (alsoOnHide) keys.push(Keyboard.addListener('keyboardDidHide', bring));
+  scroll.resized.add(bring);
+  let stopped = false;
+  const stop = () => {
+    if (stopped) return;
+    stopped = true;
+    clearTimeout(done);
+    unsettled();
+    keys.forEach((key) => key.remove());
+    scroll.resized.delete(bring);
+    ended();
+  };
+  const done = setTimeout(stop, 2 * SETTLED_MS);
+
+  return stop;
 }
 
 /** Brings `shown` into sight as far as `when`, and again once it has settled, and moves screen reader focus to `read` after `readMs`; returns what cancels the steps still to come. */
@@ -456,8 +464,8 @@ export function useBroughtIntoView(readRef?: RefObject<ViewInstance | null>): Br
   return { shown: ref, read };
 }
 
-/** Brings `shown`, a notice answering a send, wholly into sight between the header and the keys once it mounts, and again with each new `answer`, the keys moving or the scroll view resizing in the settle; screen reader focus stays where it is (sc-24496). */
-export function useAnswerInView(answer?: unknown): RefObject<ViewInstance | null> {
+/** Brings `shown`, a notice answering a send, wholly into sight between the header and the keys once it mounts, and again with the keys moving or the scroll view resizing in the settle; screen reader focus stays where it is (sc-24496). */
+export function useAnswerInView(): RefObject<ViewInstance | null> {
   const scroll = useContext(ScreenScroll);
   const shown = useRef<ViewInstance>(null);
 
@@ -465,45 +473,19 @@ export function useAnswerInView(answer?: unknown): RefObject<ViewInstance | null
     if (scroll == null) return;
 
     scroll.answering(true);
-    const sight = { aboveKeys: true };
-    const bring = () => bringIntoView(scroll, shown.current, true, sight);
-    const unsettled = settleOnto(
-      scroll,
-      () => shown.current,
-      () => null,
-      true,
-      SETTLED_MS,
-      sight,
-    );
     // A code step closing takes the keys with it, and Android's avoiding view grows back after.
-    const keys = [
-      Keyboard.addListener('keyboardDidShow', bring),
-      Keyboard.addListener('keyboardDidHide', bring),
-    ];
-    scroll.resized.add(bring);
-    let ended = false;
-    const end = () => {
-      if (ended) return;
-      ended = true;
-      unsettled();
-      keys.forEach((key) => key.remove());
-      scroll.resized.delete(bring);
-      scroll.answering(false);
-    };
-    const done = setTimeout(end, 2 * SETTLED_MS);
-
-    return () => {
-      clearTimeout(done);
-      end();
-    };
-  }, [scroll, answer]);
+    return followIntoView(scroll, () => shown.current, {
+      alsoOnHide: true,
+      ended: () => scroll.answering(false),
+    });
+  }, [scroll]);
 
   return shown;
 }
 
 /** A notice answering a send, brought into sight as useAnswerInView. */
-export function AnswerInView({ answer, children }: { answer?: unknown; children: ReactNode }) {
-  const shown = useAnswerInView(answer);
+export function AnswerInView({ children }: { children: ReactNode }) {
+  const shown = useAnswerInView();
 
   return <View ref={shown}>{children}</View>;
 }

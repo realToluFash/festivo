@@ -374,7 +374,7 @@ function Transfer({
       </Text>
 
       {refused?.field === null && (
-        <AnswerInView answer={refused}>
+        <AnswerInView>
           <ReadOut words={refused.message} interrupts accessibilityRole="alert">
             <Notice tone="broken" mark={tokens.marks.broken.glyph} body={refused.message} />
           </ReadOut>

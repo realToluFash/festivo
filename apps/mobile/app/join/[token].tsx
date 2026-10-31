@@ -310,7 +310,7 @@ function Ask({
   return (
     <>
       {failed != null && (
-        <AnswerInView answer={failed}>
+        <AnswerInView>
           <ReadOut
             words={`${failedTitle}\n${failedBody}`}
             interrupts
