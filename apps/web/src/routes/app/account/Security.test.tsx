@@ -334,7 +334,7 @@ describe('the devices signed in to an account', () => {
     );
     expect(screen.getByRole('alert').textContent).toMatch(/this device was not signed out/);
     expect(document.activeElement).toBe(button);
-    expect(scrolled).toHaveBeenCalledWith({ block: 'nearest' });
+    await waitFor(() => expect(scrolled).toHaveBeenCalledWith({ block: 'nearest' }));
     expect(screen.getByText('This device')).toBeDefined();
     expect(screen.queryByRole('heading', { name: 'Sign in' })).toBeNull();
     expect(tokens.access()).toBe('live');
@@ -417,7 +417,7 @@ describe('the devices signed in to an account', () => {
     const second = await screen.findByRole('alert');
     expect(second.textContent).toMatch(/You are still signed in/);
     expect(second).not.toBe(first);
-    expect(scrolled).toHaveBeenCalledWith({ block: 'nearest' });
+    await waitFor(() => expect(scrolled).toHaveBeenCalledWith({ block: 'nearest' }));
   });
 
   it("keeps one answer per press, dropping another device's sign-out once this one's fails", async () => {
