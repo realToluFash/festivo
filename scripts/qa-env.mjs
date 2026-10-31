@@ -1686,6 +1686,18 @@ function recordLaunch(tools) {
 
 const RECORDING_LEAD_MS = 1000;
 
+// Each take that did not show the first screen gets one more: an encoder that died under load, a
+// failed pull, a short video and a timed-out start can all go right the second time.
+const RETAKE_REASONS = {
+  'not recorded': 'no video came off the emulator',
+  'cut short': 'the recording ended before the app drew its first screen',
+  'timed out': 'am start timed out before the app drew its first screen',
+};
+
+export function retakeReason(take) {
+  return RETAKE_REASONS[take] ?? null;
+}
+
 // A fresh install every time, so the launch is the app's first, with no cache.
 async function recordFirstLaunch(tools, root, apk, id, video) {
   removeRelease(tools, root);
@@ -1767,12 +1779,9 @@ async function releaseAndroid(args) {
 
   const video = launchVideo(root, sha, 'android', open);
   let take = await recordFirstLaunch(tools, root, apk, id, video);
-  if (take === 'cut short' || take === 'timed out') {
-    console.log(
-      take === 'timed out'
-        ? '  am start timed out before the app drew its first screen: recording again'
-        : '  the recording ended before the app drew its first screen: recording again',
-    );
+  const reason = retakeReason(take);
+  if (reason) {
+    console.log(`  ${reason}: recording again`);
     take = await recordFirstLaunch(tools, root, apk, id, video);
   }
   console.log(

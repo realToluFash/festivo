@@ -90,6 +90,7 @@ import {
   launchTime,
   launchRecorded,
   launchStarted,
+  retakeReason,
   surfaceOrientation,
   iosBundle,
   clearIosRelease,
@@ -614,6 +615,13 @@ describe('a release build', () => {
     expect(launchStarted(timedOut, null)).toBe(false);
     expect(launchStarted('Error: Activity not started', '4242')).toBe(false);
     expect(launchStarted('Status: ok\nTotalTime: 2310\nComplete\n', null)).toBe(true);
+  });
+
+  it('records again every take that did not show the first screen, and only those', () => {
+    expect(retakeReason('not recorded')).toMatch(/no video/);
+    expect(retakeReason('cut short')).toMatch(/recording ended/);
+    expect(retakeReason('timed out')).toMatch(/timed out/);
+    expect(retakeReason('recorded')).toBeNull();
   });
 
   it('names the launch video by platform and device, so every launch of a commit is kept', () => {
