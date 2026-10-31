@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
   },
   fieldReadOnly: { backgroundColor: tokens.colorNeutralFill },
   value: { flex: 1, color: tokens.colorInk },
-  placeholder: { flex: 1, color: tokens.colorInkTertiary },
+  placeholder: { flex: 1, color: tokens.colorInkSecondary },
   fill: { flex: 1 },
   page: { backgroundColor: tokens.colorPage },
   sheet: { flex: 1, gap: tokens.spaceLg, padding: tokens.space3xl },
