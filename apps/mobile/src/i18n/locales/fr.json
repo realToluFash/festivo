@@ -1223,6 +1223,7 @@
     "removeTitle": "Retirer {{name}}",
     "removeBody": "Cette personne perd l’accès dès qu’elle utilise de nouveau Soirely. Ses événements restent rattachés à {{organisation}}.",
     "removeButton": "Retirer de {{organisation}}",
+    "removeButtonOpen": "Retirer de {{organisation}}…",
     "removeConfirmTitle": "Retirer {{name}} ?",
     "removeConfirmBody": "{{name}} n’aura plus accès à {{organisation}} dès sa prochaine utilisation de Soirely. Ses événements restent rattachés à {{organisation}}, et tout ce que cette personne a fait est conservé.",
     "removeConfirm": "Retirer {{name}}",

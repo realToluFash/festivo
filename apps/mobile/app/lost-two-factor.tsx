@@ -34,7 +34,7 @@ import {
 import { Notice } from '../src/components/Notice.tsx';
 import { useFocusOnAnswer } from '../src/components/Screen.tsx';
 import { readOut } from '../src/components/ReadOut.tsx';
-import { StatusMark, type StatusTone } from '../src/components/StatusMark.tsx';
+import { StatusMark, type MarkTone } from '../src/components/StatusMark.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { dropRecovery, heldRecovery, holdRecovery } from '../src/heldRecovery.ts';
 import { currentLocale } from '../src/i18n/index.ts';
@@ -200,7 +200,7 @@ export default function LostTwoFactor() {
   }
 }
 
-type Tone = StatusTone;
+type Tone = MarkTone;
 
 function Saying({
   title,

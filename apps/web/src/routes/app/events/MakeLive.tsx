@@ -1,6 +1,7 @@
 import { ApiError, type OrganisationEvent, type TaggedEvent } from '@soirely/api-client';
 import {
   type EventPhase,
+  PHASE_LOOK,
   changedWords,
   makeLiveHostError,
   makeLiveRow,
@@ -13,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { StatusChip } from '../../../components/StatusChip.tsx';
 import { useDialogKeys } from '../../../dialogFocus.ts';
 import { offButton } from '../../../offButton.ts';
 import { FieldError } from './EventFields.tsx';
@@ -25,11 +27,7 @@ import { type Refused } from './useLifecycleAction.ts';
 export function StatusPill({ phase }: { phase: EventPhase }) {
   const { t } = useTranslation();
 
-  return (
-    <span className={`pill-quiet pill-phase pill-${phase.replace('_', '-')}`}>
-      {t(PHASE_WORD[phase])}
-    </span>
-  );
+  return <StatusChip look={PHASE_LOOK[phase]}>{t(PHASE_WORD[phase])}</StatusChip>;
 }
 
 /** `askHost` while the draft had no host when it opened; `notice` is what a reread after a 412 found (sc-22143). */

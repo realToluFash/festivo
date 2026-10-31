@@ -2776,15 +2776,19 @@ span {
   align-items: center;
   min-height: var(--sizeHit);
   padding: 0 var(--spaceLg);
+  border: var(--borderSelected);
+  border-color: transparent;
   border-radius: var(--radiusPill);
   color: var(--colorInkSecondary);
   font-weight: 600;
   text-decoration: none;
 }
 
+/* [fd]'s selected row: the accent edge and tint, never a dark pill (sc-23172). */
 .account-section[aria-current='page'] {
-  background: var(--colorDark);
-  color: var(--colorInkOnDark);
+  border: var(--borderSelected);
+  background: var(--colorRowSelected);
+  color: var(--colorAccentText);
 }
 
 .current-value {
@@ -2958,6 +2962,19 @@ span {
   align-items: flex-start;
 }
 
+@media (width > 40rem) {
+  .members-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--spaceLg);
+    align-items: center;
+  }
+
+  .members-head > .button {
+    grid-area: 1 / 2 / span 2;
+  }
+}
+
 .members-head h1,
 .members h1 {
   margin: 0;
@@ -3120,17 +3137,60 @@ button.members-row {
   overflow-wrap: anywhere;
 }
 
-.members-state {
-  font-weight: 600;
+.members-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXs) var(--spaceSm);
+}
+
+/* The desktop board's status column: the chip leaves the line under the name for a column of its own. */
+@media (width > 40rem) {
+  .members-list .members-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) 15rem auto;
+    column-gap: var(--spaceMd);
+  }
+
+  .members-list .members-row-text,
+  .members-list .members-row-meta {
+    display: contents;
+  }
+
+  .members-list .members-row-name {
+    grid-area: 1 / 2;
+  }
+
+  .members-list .members-row-meta > .muted {
+    grid-area: 2 / 2;
+  }
+
+  .members-list .status-chip {
+    grid-area: 1 / 3 / span 2;
+    justify-self: start;
+  }
+
+  .members-list .person-tile {
+    grid-area: 1 / 1 / span 2;
+  }
+
+  .members-list .members-row > [aria-hidden='true']:last-child {
+    grid-area: 1 / 4 / span 2;
+  }
+}
+
+/* A person's initials: the neutral tile, as the green one is the organisation's alone (sc-23172). */
+.person-tile {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--space6xl);
+  height: var(--space6xl);
+  border-radius: var(--radiusPill);
+  background: var(--colorNeutralFill);
   color: var(--colorInkSecondary);
-}
-
-.members-state[data-state='active'] {
-  color: var(--colorAccentText);
-}
-
-.members-state[data-state='pending_approval'] {
-  color: var(--colorAttentionText);
+  font: var(--typeButton);
 }
 
 .members-empty,
@@ -4296,12 +4356,13 @@ button.members-row {
 
 /* ── Make live (sc-3584) ──────────────────────────────────────────────────── */
 
-/* Each phase has a shape of its own beside its word (sc-3585): Draft a ring, Live a dot, Happening now a half-filled ring, Paused two bars, Finished a tick. */
-.pill-phase {
+/* A status chip: a shape beside its word, so a state never rests on colour alone (sc-3585, sc-23172). */
+.status-chip {
   gap: var(--spaceXs);
+  background: var(--colorNeutralFill);
 }
 
-.pill-phase::before {
+.status-chip::before {
   flex: none;
   box-sizing: border-box;
   width: 0.5rem;
@@ -4310,38 +4371,49 @@ button.members-row {
   content: '';
 }
 
-.pill-draft::before {
-  border: var(--borderMark) var(--colorInkSecondary);
-}
-
-.pill-live {
+.status-chip[data-tone='accent'] {
   background: var(--colorAccentTint);
   color: var(--colorAccentText);
 }
 
-.pill-live::before {
-  background: var(--colorAccent);
-}
-
-.pill-happening-now {
+.status-chip[data-tone='attention'] {
   background: var(--colorAttentionTint);
   color: var(--colorAttentionText);
 }
 
-.pill-paused {
+.status-chip[data-tone='paused'] {
   background: var(--colorPausedTint);
   color: var(--colorPausedText);
 }
 
-.pill-happening-now::before {
-  border: var(--borderMark) var(--colorAttentionText);
-  background: linear-gradient(90deg, var(--colorAttentionText) 50%, transparent 50%);
+.status-chip[data-shape='ring']::before {
+  border: var(--borderMark) currentcolor;
 }
 
-.pill-paused::before {
-  border-left: 0.1875rem solid var(--colorPausedText);
-  border-right: 0.1875rem solid var(--colorPausedText);
+.status-chip[data-shape='dot']::before {
+  background: currentcolor;
+}
+
+.status-chip[data-tone='accent'][data-shape='dot']::before {
+  background: var(--colorAccent);
+}
+
+.status-chip[data-shape='half']::before {
+  border: var(--borderMark) currentcolor;
+  background: linear-gradient(90deg, currentcolor 50%, transparent 50%);
+}
+
+.status-chip[data-shape='bars']::before {
+  border-left: 0.1875rem solid currentcolor;
+  border-right: 0.1875rem solid currentcolor;
   border-radius: 0;
+}
+
+.status-chip[data-shape='tick']::before {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  content: '✓';
 }
 
 .mark-paused::before {
@@ -4351,13 +4423,6 @@ button.members-row {
   border-left: 0.1875rem solid var(--colorAttentionText);
   border-right: 0.1875rem solid var(--colorAttentionText);
   content: '';
-}
-
-.pill-finished::before {
-  width: auto;
-  height: auto;
-  border-radius: 0;
-  content: '✓';
 }
 
 .event-draft-row {

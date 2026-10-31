@@ -125,7 +125,11 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
           testID={`settings.${section}`}
         >
           <View style={styles.fill}>
-            <Text size={tokens.typeTitleSection.size} weight="semibold">
+            <Text
+              size={tokens.typeTitleSection.size}
+              weight="semibold"
+              style={open === section && styles.titleOpen}
+            >
               {t(`settings.${section}`)}
             </Text>
             <Text size={tokens.typeBody.size} muted>
@@ -267,8 +271,16 @@ const styles = StyleSheet.create({
     paddingVertical: tokens.spaceSm,
     paddingHorizontal: 14,
     borderRadius: tokens.radiusField,
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
-  sectionOpen: { backgroundColor: tokens.colorNeutralFill },
+  // [fd]'s selected row, the accent edge on its tint, never a dark or grey fill (sc-23172).
+  sectionOpen: {
+    borderWidth: 2,
+    borderColor: tokens.colorAccent,
+    backgroundColor: tokens.colorRowSelected,
+  },
+  titleOpen: { color: tokens.colorAccentText },
   foot: { gap: tokens.spaceSm, paddingTop: tokens.spaceSm, paddingHorizontal: tokens.spaceXxs },
   footTablet: { paddingTop: 0, paddingHorizontal: tokens.spaceHair },
   signOut: {

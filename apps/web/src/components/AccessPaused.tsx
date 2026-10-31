@@ -1,10 +1,11 @@
 import type { Membership, PausedOrganisation } from '@soirely/api-client';
-import { pausedReasonKey, pausedSwitch } from '@soirely/domain';
+import { memberStatusLook, pausedReasonKey, pausedSwitch } from '@soirely/domain';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { pageTitle, usePageTitle } from '../pageTitle.ts';
 import { PausedOwnerClaim } from './OwnerClaimBanner.tsx';
+import { StatusChip } from './StatusChip.tsx';
 
 /** In place of every page of an organisation the account's access to is paused in (sc-564). */
 export function AccessPaused({
@@ -29,9 +30,9 @@ export function AccessPaused({
   return (
     <section className="card settings-card access-paused" aria-labelledby="paused-title">
       <p>
-        <span className="members-state" data-state="suspended">
+        <StatusChip look={memberStatusLook({ status: 'suspended' })}>
           {t('accessPaused.badge')}
-        </span>
+        </StatusChip>
       </p>
       <h1 id="paused-title">{t(pausedReasonKey(suspension.reason), named)}</h1>
       <p className="muted">{t('accessPaused.since', { when: suspension.since.written })}</p>

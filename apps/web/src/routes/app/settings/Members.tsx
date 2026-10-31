@@ -10,6 +10,7 @@ import {
 import {
   type MemberFilter,
   type MemberStanding,
+  INVITATION_LOOK,
   PROOF_MINUTES,
   approvalRoles,
   emailProblem,
@@ -21,6 +22,7 @@ import {
   memberIsShown,
   memberRowLine,
   memberStanding,
+  memberStatusLook,
   memberStatusWord,
   ownRoleLine,
   roleName,
@@ -44,6 +46,7 @@ import { ConfirmItsYou } from '../../../components/ConfirmItsYou.tsx';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { OwnerClaimBanner } from '../../../components/OwnerClaimBanner.tsx';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
+import { StatusChip } from '../../../components/StatusChip.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
 import { offButton } from '../../../offButton.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
@@ -425,7 +428,7 @@ function MembersOverview({
                 data-member={member.id}
                 onClick={() => onOpen(member.id)}
               >
-                <span className="org-tile" aria-hidden="true">
+                <span className="person-tile" aria-hidden="true">
                   {initials(member.user.name)}
                 </span>
                 <span className="members-row-text">
@@ -533,14 +536,14 @@ function MemberRow({
   const line = memberRowLine(t, member, organisation.name, (at) => formatDay(at, dateLocale()));
   const content = (
     <>
-      <span className="org-tile" aria-hidden="true">
+      <span className="person-tile" aria-hidden="true">
         {initials(member.user.name)}
       </span>
       <span className="members-row-text">
         <span className="members-row-name">{member.user.name}</span>
-        <span className="muted">{line}</span>
-        <span className="members-state" data-state={member.status}>
-          {memberStatusWord(t, member)}
+        <span className="members-row-meta">
+          <StatusChip look={memberStatusLook(member)}>{memberStatusWord(t, member)}</StatusChip>
+          <span className="muted">{line}</span>
         </span>
       </span>
     </>
@@ -613,9 +616,9 @@ function InvitationRow({
         })}
       </span>
       <div className="members-invitation-foot">
-        <span className="members-state" data-state={invitation.status}>
+        <StatusChip look={INVITATION_LOOK[invitation.status]}>
           {t(`membersScreen.invitationState.${invitation.status}`)}
-        </span>
+        </StatusChip>
         {manages && invitation.status === 'pending' && (
           <button
             type="button"
@@ -848,7 +851,7 @@ function MemberDetail({
         {t('membersScreen.title')}
       </button>
       <div className="members-person">
-        <span className="org-tile" aria-hidden="true">
+        <span className="person-tile" aria-hidden="true">
           {initials(member.user.name)}
         </span>
         <div className="org-naming">
@@ -1005,7 +1008,7 @@ function MemberDetail({
               <button
                 ref={suspendButton}
                 type="button"
-                className="button"
+                className="button button-danger"
                 onClick={() => {
                   askOpened.current = true;
                   setSuspending('confirming');
@@ -1093,7 +1096,9 @@ function MemberDetail({
                 onClick={() => (onlyOwner ? void remove() : confirmRemoving())}
               >
                 <span className="button-label">
-                  {t('membersScreen.removeButton', { organisation: organisation.name })}
+                  {t(onlyOwner ? 'membersScreen.removeButton' : 'membersScreen.removeButtonOpen', {
+                    organisation: organisation.name,
+                  })}
                 </span>
               </button>
             </>
@@ -1271,7 +1276,7 @@ function Suspension({
               className="button button-danger"
               onClick={onRemove}
             >
-              {t('membersScreen.removeTitle', named)}
+              {t('membersScreen.removeNameOpen', named)}
             </button>
           )}
         </div>
