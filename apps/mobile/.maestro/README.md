@@ -185,6 +185,7 @@ To test the code step itself, outside a batch, three flows stop on it and send a
   portrait. A check's own `setOrientation` is still swapped: pass `ORIENT=LANDSCAPE_LEFT` for
   portrait, and a hard-coded `setOrientation: PORTRAIT` (`checks/sc19212-regression-upright.yaml`,
   `checks/sc16389-upright.yaml`, the turn back at the end of the landscape checks) leaves the
-  tablet in landscape until the next check's reset. Do not lock the rotation with
-  `adb shell wm user-rotation lock N` there: the reset and any `setOrientation` write the same
-  setting.
+  tablet in landscape until the next check's reset. A `--cold` run skips the reset, so its
+  checks start at rotation 0, landscape: for portrait there, or in a single check with no
+  `setOrientation`, run `adb shell wm user-rotation lock 1` first. In a warm batch, do not lock
+  the rotation: the reset and any `setOrientation` write the same setting.
