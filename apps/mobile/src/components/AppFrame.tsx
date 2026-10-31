@@ -32,6 +32,7 @@ import { type WaitingInvitations, useWaitingInvitations } from '../invitations.t
 import { type DomainOffer, useDomainOffer } from '../joinOffers.ts';
 import { DESTINATION_HREF, type Destination, destinations } from '../kit/appNav.ts';
 import { backRowHiding } from '../kit/backRow.ts';
+import { EDGE_SWIPE_WIDTH } from '../kit/systemBack.ts';
 import { leaveThen } from '../leaveHeld.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { railWidth } from '../layout/textSize.ts';
@@ -60,6 +61,7 @@ import { type TextHandle, Text } from './Text.tsx';
 import { Title, useWholeWords } from './Title.tsx';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
+import { type EdgeSwipeHandlers, EdgeSwipeStrip } from './useEdgeSwipeBack.ts';
 import { useSystemBack } from './useSystemBack.ts';
 
 type Opening = (opener: RefObject<ViewInstance | null>) => void;
@@ -152,6 +154,7 @@ export function AppFrame({
   const createdWords = useRef<ViewInstance>(null);
   const switched = created == null ? null : t('switcher.switched', { name: created.name });
   const [backHidden, setBackHidden] = useState(false);
+  const [edgeSwipe, setEdgeSwipe] = useState<EdgeSwipeHandlers | undefined>(undefined);
   const [backRow] = useState(() => backRowHiding(setBackHidden));
   useEffect(() => backRow.stop, [backRow]);
   const signedIn = useSignedIn();
@@ -252,27 +255,37 @@ export function AppFrame({
           <OpenSwitcher.Provider value={openSwitcher}>
             <StartOrganisation.Provider value={startOrganisation}>
               <HideBack.Provider value={backRow.hide}>
-                {standIn === 'paused' && signedIn.pausedIn != null ? (
-                  <AccessPaused
-                    paused={signedIn.pausedIn}
-                    others={signedIn.organisations}
-                    onSwitch={(next) => switchByTap(next.id)}
-                    onChoose={(opener) => openSwitcher?.(opener)}
-                  />
-                ) : standIn === 'overdue' && signedIn.organisation != null ? (
-                  <TwoFactorOverdue
-                    organisation={signedIn.organisation}
-                    answer={switchAnswer ?? lapsed}
-                  />
-                ) : (
-                  <FrameSwitch.Provider value={switchAnswer}>{children}</FrameSwitch.Provider>
-                )}
+                <EdgeSwipeStrip.Provider value={setEdgeSwipe}>
+                  {standIn === 'paused' && signedIn.pausedIn != null ? (
+                    <AccessPaused
+                      paused={signedIn.pausedIn}
+                      others={signedIn.organisations}
+                      onSwitch={(next) => switchByTap(next.id)}
+                      onChoose={(opener) => openSwitcher?.(opener)}
+                    />
+                  ) : standIn === 'overdue' && signedIn.organisation != null ? (
+                    <TwoFactorOverdue
+                      organisation={signedIn.organisation}
+                      answer={switchAnswer ?? lapsed}
+                    />
+                  ) : (
+                    <FrameSwitch.Provider value={switchAnswer}>{children}</FrameSwitch.Provider>
+                  )}
+                </EdgeSwipeStrip.Provider>
               </HideBack.Provider>
             </StartOrganisation.Provider>
           </OpenSwitcher.Provider>
         </View>
         {kind === 'phone' && <TabBar current={current} />}
       </View>
+      {edgeSwipe != null && (
+        <View
+          style={styles.edgeSwipe}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          {...edgeSwipe}
+        />
+      )}
       <Switcher
         open={choosing}
         organisations={signedIn.organisations}
@@ -986,6 +999,7 @@ function Icon({ destination, on, size }: { destination: Destination; on: boolean
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: tokens.colorPage },
   row: { flexDirection: 'row' },
+  edgeSwipe: { position: 'absolute', top: 0, bottom: 0, left: 0, width: EDGE_SWIPE_WIDTH },
   column: { flex: 1, minWidth: 0 },
   body: { flex: 1, minHeight: 0 },
   fill: { flex: 1 },

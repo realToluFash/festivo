@@ -1,23 +1,31 @@
 import { useNavigation } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { Animated, PanResponder, type PanResponderInstance, Platform } from 'react-native';
 
 import { edgeSwipeCompletes, edgeSwipeStarts } from '../kit/systemBack.ts';
 import { useWindowFrame } from '../layout/useLayout.ts';
 
-type Handlers = PanResponderInstance['panHandlers'];
+export type EdgeSwipeHandlers = PanResponderInstance['panHandlers'];
 
-function edgeSwipe(): {
+/** AppFrame's strip over the window's left edge, header included, which a page in front of its list hands its swipe to (sc-23327). */
+export const EdgeSwipeStrip = createContext<
+  ((handlers: EdgeSwipeHandlers | undefined) => void) | undefined
+>(undefined);
+
+function edgeSwipe(onDrag: (dragging: boolean) => void): {
   shift: Animated.Value;
-  handlers: Handlers;
+  handlers: EdgeSwipeHandlers;
   follow(onBack: () => void, width: number): void;
 } {
   const shift = new Animated.Value(0);
   let latest = { onBack: () => {}, width: 0 };
   const settle = () =>
-    Animated.spring(shift, { toValue: 0, useNativeDriver: false, bounciness: 0 }).start();
+    Animated.spring(shift, { toValue: 0, useNativeDriver: false, bounciness: 0 }).start(() =>
+      onDrag(false),
+    );
   const { panHandlers } = PanResponder.create({
     onMoveShouldSetPanResponder: (_, { dx, dy }) => edgeSwipeStarts(dx, dy),
+    onPanResponderGrant: () => onDrag(true),
     onPanResponderMove: (_, { dx }) => shift.setValue(Math.max(0, dx)),
     onPanResponderRelease: (_, { dx, vx }) => {
       if (!edgeSwipeCompletes(dx, vx, latest.width)) {
@@ -25,7 +33,10 @@ function edgeSwipe(): {
         return;
       }
       latest.onBack();
-      requestAnimationFrame(() => shift.setValue(0));
+      requestAnimationFrame(() => {
+        shift.setValue(0);
+        onDrag(false);
+      });
     },
     onPanResponderTerminate: settle,
     onPanResponderTerminationRequest: () => false,
@@ -40,24 +51,30 @@ function edgeSwipe(): {
   };
 }
 
-/** While `active` on iOS, the left-edge swipe runs `onBack` in place of the stack's, from a strip over the edge, as scroll views would take the drag (sc-23327). */
+/** While `active` on iOS, the left-edge swipe runs `onBack` in place of the stack's, from AppFrame's strip, as scroll views would take the drag (sc-23327). */
 export function useEdgeSwipeBack(
   active: boolean,
   onBack: () => void,
-): { handlers: Handlers | undefined; shift: Animated.Value } {
+): { taking: boolean; dragging: boolean; shift: Animated.Value } {
   const navigation = useNavigation();
+  const strip = useContext(EdgeSwipeStrip);
   const { width } = useWindowFrame();
-  const taking = Platform.OS === 'ios' && active;
-  const [swipe] = useState(edgeSwipe);
+  const taking = Platform.OS === 'ios' && active && strip != null;
+  const [dragging, setDragging] = useState(false);
+  const [swipe] = useState(() => edgeSwipe(setDragging));
 
   useEffect(() => swipe.follow(onBack, width));
 
   useEffect(() => {
     if (!taking) return;
     navigation.setOptions({ gestureEnabled: false });
+    strip(swipe.handlers);
 
-    return () => navigation.setOptions({ gestureEnabled: true });
-  }, [navigation, taking]);
+    return () => {
+      strip(undefined);
+      navigation.setOptions({ gestureEnabled: true });
+    };
+  }, [navigation, strip, swipe, taking]);
 
-  return { handlers: taking ? swipe.handlers : undefined, shift: swipe.shift };
+  return { taking, dragging: taking && dragging, shift: swipe.shift };
 }
