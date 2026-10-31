@@ -219,6 +219,7 @@ export default function RolesScreen() {
       selected != null ? (
       <RemoveRole
         answer={atName}
+        phone={phone}
         organisation={organisation}
         role={selected}
         roles={catalogue.roles}
