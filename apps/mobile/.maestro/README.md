@@ -136,9 +136,9 @@ To test the code step itself, outside a batch, three flows stop on it and send a
   bundler is on 18081, and both `just qa-mobile` and `qa-env.mjs maestro` pass it in.
   Mailpit, the same, through `${MAILPIT_URL}`.
 - **Pass data in**, with `-e`: an account comes from `node scripts/qa-account.mjs`, so no
-  flow holds credentials. A check's first line names each `${…}` it needs, and the names
-  differ between checks: an event is `${EVENT}` in the `sc23327-*` checks and `${EVENT_ID}`
-  in `sc20824-gesture-leave` and most older ones, so read that line before passing `-e`.
+  flow holds credentials. A new check's first line names each `${…}` it needs; older ones
+  may not, so `grep -o '\${[A-Z_]*}'` the file before passing `-e`. The names differ
+  between checks: some take an event as `${EVENT}`, others as `${EVENT_ID}`.
 - **On iOS, Return gets past a text field, never `hideKeyboard`**, which stops a flow on
   an iPhone with "Couldn't hide the keyboard". Press `pressKey: Enter`: Return moves to the
   next field, sends the form where the field's Return sends it, and puts the keyboard away
