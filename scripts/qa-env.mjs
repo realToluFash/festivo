@@ -317,6 +317,30 @@ export function recordingSize(wmSize, rotation = 0) {
   return `${even(width)}x${even(height)}`;
 }
 
+// The movie header's duration; null when the file has none, as a recording cut short may not.
+export function mp4Duration(bytes) {
+  const at = bytes ? bytes.indexOf('mvhd') : -1;
+  if (at < 0) return null;
+  const body = at + 4;
+  const v1 = bytes[body] === 1;
+  if (body + (v1 ? 32 : 20) > bytes.length) return null;
+  const scale = bytes.readUInt32BE(body + (v1 ? 20 : 12));
+  const length = v1 ? Number(bytes.readBigUInt64BE(body + 24)) : bytes.readUInt32BE(body + 16);
+  return scale > 0 ? length / scale : null;
+}
+
+export function launchTime(amStartW) {
+  const found = /TotalTime: (\d+)/.exec(amStartW ?? '');
+  return found ? Number(found[1]) : null;
+}
+
+// Under load the emulator's encoder can stop in the first second (sc-24660). screenrecord writes
+// frames only on change, so a short video can be a still screen; one that ends before the app has
+// drawn its first screen is not.
+export function launchRecorded(seconds, leadMs, launchMs) {
+  return seconds !== null && seconds * 1000 >= leadMs + (launchMs ?? 0);
+}
+
 // A Mac keeps an APK and an app side by side: each build replaces only its own kind.
 export function staleBuilds(names, build) {
   const kind = extname(build);
@@ -1627,6 +1651,26 @@ function recordLaunch(tools) {
   });
 }
 
+const RECORDING_LEAD_MS = 1000;
+
+// A fresh install every time, so the launch is the app's first, with no cache.
+async function recordFirstLaunch(tools, root, apk, id, video) {
+  removeRelease(tools, root);
+  adbOut(tools, ['uninstall', id]);
+  run(tools.adb, ['-s', emulatorSerial(), 'install', apk], { env: tools.env });
+  writeFileSync(installedRelease(root), id);
+
+  const recording = recordLaunch(tools);
+  await pause(RECORDING_LEAD_MS);
+  const started = adbOut(tools, ['shell', 'am', 'start', '-W', '-n', `${id}/.MainActivity`]);
+  await recording;
+  rmSync(video, { force: true });
+  adbOut(tools, ['pull', LAUNCH_RECORDING, video]);
+  adbOut(tools, ['shell', 'rm', '-f', LAUNCH_RECORDING]);
+  if (!existsSync(video)) return false;
+  return launchRecorded(mp4Duration(readFileSync(video)), RECORDING_LEAD_MS, launchTime(started));
+}
+
 function releaseCommit(root) {
   assertQaStack(root);
   if (git(['status', '--porcelain', '--untracked-files=no'], root) !== '') {
@@ -1667,12 +1711,7 @@ async function releaseAndroid(args) {
 
   step(`The ${open}`);
   await bootEmulator(tools, CONFIG.emulators[open].name);
-  // A fresh install every time, so the launch below is the app's first, with no cache.
   const id = androidPackage(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
-  removeRelease(tools, root);
-  adbOut(tools, ['uninstall', id]);
-  run(tools.adb, ['-s', emulatorSerial(), 'install', apk], { env: tools.env });
-  writeFileSync(installedRelease(root), id);
   airplaneMode(tools, offline);
   if (offline) {
     adbOut(tools, ['reverse', '--remove-all']);
@@ -1683,18 +1722,19 @@ async function releaseAndroid(args) {
     }
   }
 
-  const recording = recordLaunch(tools);
-  await pause(1000);
-  adbOut(tools, ['shell', 'am', 'start', '-n', `${id}/.MainActivity`]);
-  await recording;
   const video = launchVideo(root, sha, 'android', open);
-  rmSync(video, { force: true });
-  adbOut(tools, ['pull', LAUNCH_RECORDING, video]);
-  adbOut(tools, ['shell', 'rm', '-f', LAUNCH_RECORDING]);
+  let recorded = await recordFirstLaunch(tools, root, apk, id, video);
+  if (!recorded) {
+    console.log('  the recording ended before the app drew its first screen: recording again');
+    recorded = await recordFirstLaunch(tools, root, apk, id, video);
+  }
   console.log(
     `\nSoirely ${sha.slice(0, 12)}, a release build, on its first launch on the ${open}` +
       ` (${emulatorSerial()}), ${offline ? 'offline: no default network, no stack' : 'online'}.` +
       `\n${existsSync(video) ? `Its first 15 seconds: ${video}` : 'The launch was not recorded.'}` +
+      (existsSync(video) && !recorded
+        ? '\nWarning: both takes ended before the app drew its first screen; the host may be under load.'
+        : '') +
       `\nThe next \`android\` removes it and turns airplane mode off.`,
   );
 }
