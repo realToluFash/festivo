@@ -187,6 +187,11 @@ From `CLAUDE.md` and the foundations. Each one is a decision, not a preference:
 - Copy: sentence case, full stops, middle dot `·` as the separator, **no em dashes**, no
   emoji, 24-hour times, dates as "Friday, Aug 7", money in the event's currency.
 - Buttons are verbs that say what happens. Never "Submit" or "OK".
+- **A pair of choices has one order per direction.** In a row, the dismissive button
+  (Keep, Cancel) comes first and the confirming one last, in a dialog, a sheet and an
+  inline confirm alike, and a wrapping row is still a row. In a stack, the confirming one is
+  on top. On the app, `phone ? stacked : row` needs both orders, so render the two buttons
+  once and place them per branch rather than writing one sequence for both (sc-22092).
 
 ## 7. What the stack cannot express
 
