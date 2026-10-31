@@ -20,6 +20,7 @@ import { type LayoutKind, useLayout } from '../../src/layout/useLayout.ts';
 import { markRulesSeen } from '../../src/signInRulesSeen.ts';
 import { useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
+import { tracking } from '../../src/theme/tracking.ts';
 
 /** `tapped` when it answers Try again, so focus moves to it (sc-11173). */
 type Load =
@@ -254,7 +255,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: tokens.colorBorder,
   },
-  ruleLabel: { textTransform: 'uppercase', letterSpacing: 1.3 },
+  ruleLabel: { textTransform: 'uppercase', letterSpacing: tracking(tokens.typeLabel) },
 });
 
 const CONTENT: Record<LayoutKind, object> = {

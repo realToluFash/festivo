@@ -2639,29 +2639,6 @@ span {
   border: 0;
 }
 
-.roles-replacement {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spaceMd);
-  min-height: var(--sizeHit);
-  padding: var(--spaceXs) var(--spaceMd);
-  border: var(--borderControl);
-  border-radius: var(--radiusInset);
-  cursor: pointer;
-}
-
-.roles-replacement .roles-row-name {
-  flex: 1;
-  overflow-wrap: anywhere;
-}
-
-/* Under the name, past the radio: a 20px control and the row's gap. */
-.roles-replacement-means {
-  flex-basis: 100%;
-  padding-left: calc(var(--sizeMark) + var(--spaceMd));
-}
-
 .roles-back {
   display: none;
   align-self: flex-start;
@@ -2696,11 +2673,6 @@ span {
   .roles-removing .roles-actions > * {
     width: 100%;
   }
-}
-
-.roles-replacement:has(input:checked) {
-  border: var(--borderSelected);
-  background: var(--colorAccentTint);
 }
 
 .no-organisation-main {
@@ -2880,6 +2852,58 @@ span {
 
 .recovery-codes li {
   flex: 1 1 40%;
+}
+
+/* A radio drawn as a selectable card: Roles' "who takes over" and Sign-in rules' method. */
+.option-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceMd);
+  min-height: var(--sizeHit);
+  padding: var(--spaceXs) var(--spaceMd);
+  border: var(--borderControl);
+  border-radius: var(--radiusInset);
+  cursor: pointer;
+}
+
+.option-card:has(input:checked) {
+  border: var(--borderSelected);
+  background: var(--colorAccentTint);
+}
+
+.option-card input {
+  width: var(--sizeMark);
+  height: var(--sizeMark);
+  margin: 0;
+  accent-color: var(--colorAccent);
+}
+
+.option-card-name {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+/* Under the name, past the radio and the row's gap. */
+.option-card-means {
+  flex-basis: 100%;
+  padding-left: calc(var(--sizeMark) + var(--spaceMd));
+}
+
+/* SignInRules.dc.html: the card as a tile on the page, side by side until they wrap. */
+.option-card-tile {
+  flex: 1 1 16rem;
+  row-gap: var(--spaceXs);
+  padding: var(--spaceLg);
+  background: var(--colorCard);
+}
+
+.option-card-tile .option-card-name {
+  font: var(--typeRowTitle);
+}
+
+.option-card-tile .option-card-means {
+  font: var(--typeSmall);
 }
 
 .checkbox {
@@ -3434,7 +3458,12 @@ button.members-row {
 }
 
 .sign-in-rules-methods {
-  max-width: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceMd);
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 .sign-in-rules-switch {
@@ -3470,8 +3499,7 @@ button.members-row {
   margin-top: var(--spaceSm);
 }
 
-.sign-in-rules-effects,
-.sign-in-rules-changes {
+.sign-in-rules-effects {
   display: flex;
   flex-direction: column;
   gap: var(--spaceMd);
@@ -3479,8 +3507,44 @@ button.members-row {
   padding-left: var(--spaceLg);
 }
 
-.sign-in-rules-changes p {
+/* Each change is a list row: when and who, the value now, then what it was. */
+.sign-in-rules-changes {
+  display: flex;
+  flex-direction: column;
   margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sign-in-rules-change {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  padding-bottom: var(--spaceMd);
+}
+
+.sign-in-rules-change + .sign-in-rules-change {
+  padding-top: var(--spaceMd);
+  border-top: var(--borderInset);
+}
+
+.sign-in-rules-change-when,
+.sign-in-rules-change-was {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+.sign-in-rules-change-now {
+  margin: 0;
+  font: var(--typeRowTitle);
+}
+
+/* At phone width Save rules runs the card's width, as every primary on a phone does. */
+@media (width <= 40rem) {
+  .sign-in-rules-side .button-primary {
+    width: 100%;
+  }
 }
 
 /* ── Company domain joining (sc-561) ──────────────────────────────────────── */
