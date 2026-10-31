@@ -1419,6 +1419,18 @@ describe('the batch helper', () => {
     }
   });
 
+  it('on Android, says so when the app did not run again after a reload', async () => {
+    const { server, ask } = await helperFor('running', undefined, {
+      onAndroid: true,
+      reload: async () => false,
+    });
+    try {
+      expect(await ask('/reload')).toEqual({ reloaded: false });
+    } finally {
+      server.close();
+    }
+  });
+
   it('refuses a state it does not know', async () => {
     const { server, ask, ran } = await helperFor('running');
     try {

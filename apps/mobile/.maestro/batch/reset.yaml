@@ -14,6 +14,11 @@ appId: host.exp.Exponent
     file: helper.js
     env:
       ASK: /reload
+# On Android a reload the app never took leaves the last check's screen mounted.
+- runFlow:
+    when:
+      true: ${!output.helper.reloaded}
+    file: reopen.yaml
 # Home, whatever link Expo Go reopens the experience at.
 - openLink: ${METRO_URL}/--/
 # Gone first, or the screen from before the reload passes the wait below.
