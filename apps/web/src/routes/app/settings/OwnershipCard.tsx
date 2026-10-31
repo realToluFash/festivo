@@ -532,6 +532,9 @@ function Transfer({
       </p>
 
       <div className="actions">
+        <button className="button" type="button" {...offButton(busy)} onClick={onCancel}>
+          {t('ownership.keep')}
+        </button>
         {provider != null && vouched == null ? (
           <button
             className={provider === 'google' ? 'button button-google' : 'button button-apple'}
@@ -552,9 +555,6 @@ function Transfer({
             </span>
           </button>
         )}
-        <button className="button" type="button" {...offButton(busy)} onClick={onCancel}>
-          {t('ownership.keep')}
-        </button>
       </div>
     </form>
   );
@@ -623,11 +623,11 @@ function Leave({
             </div>
           </div>
           <div className="actions">
-            <button type="button" className="button button-primary" onClick={onTransfer}>
-              {t('ownership.transfer')}
-            </button>
             <button type="button" className="button" onClick={onStay}>
               {t('ownership.stay')}
+            </button>
+            <button type="button" className="button button-primary" onClick={onTransfer}>
+              {t('ownership.transfer')}
             </button>
           </div>
         </>
@@ -635,7 +635,10 @@ function Leave({
         <>
           <p>{t('ownership.leaveBody', { organisation: organisation.name })}</p>
           {refused != null && <FieldError id="leave-failed" message={refused} />}
-          <div className="actions">
+          <div className="actions actions-confirm">
+            <button type="button" className="link-button" {...offButton(busy)} onClick={onStay}>
+              {t('ownership.stay')}
+            </button>
             <button
               type="button"
               className="button button-danger"
@@ -646,9 +649,6 @@ function Leave({
               <span className="button-label">
                 {t('ownership.leave', { organisation: organisation.name })}
               </span>
-            </button>
-            <button type="button" className="button" {...offButton(busy)} onClick={onStay}>
-              {t('ownership.stay')}
             </button>
           </div>
         </>
@@ -808,15 +808,15 @@ function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: ()
         </p>
       </div>
 
-      <div className="actions">
+      <div className="actions actions-confirm">
+        <button className="link-button" type="button" {...offButton(busy)} onClick={onKeep}>
+          <span className="button-label">
+            {t('ownership.deleteKeep', { organisation: organisation.name })}
+          </span>
+        </button>
         <button className="button button-danger" type="submit" aria-busy={busy}>
           <span className="button-label">
             {t('ownership.deleteButton', { organisation: organisation.name })}
-          </span>
-        </button>
-        <button className="button" type="button" {...offButton(busy)} onClick={onKeep}>
-          <span className="button-label">
-            {t('ownership.deleteKeep', { organisation: organisation.name })}
           </span>
         </button>
       </div>

@@ -6,7 +6,6 @@
     "title": "Soirely",
     "subtitle": "The night, from your pocket.",
     "openSignIn": "Sign in",
-    "openLayouts": "Layout demonstration",
     "signedInTo": "You’re signed in to {{name}}",
     "openSettings": "Open Settings",
     "switchOrganisation": "Switch organisation"
@@ -30,7 +29,7 @@
     "retry": "Try again",
     "check": "Check",
     "state": "State",
-    "usingFallback": "No API URL is configured, so this is trying localhost. That works on a simulator and not on a device — see the README."
+    "usingFallback": "No API URL is configured, so this is trying localhost. That works on a simulator but not on a device. See the README."
   },
   "language": {
     "label": "Language",
@@ -746,7 +745,7 @@
     "describeSeededReadOnly": "Built in, so it cannot be removed. Someone who can change {{area}} decides what it holds.",
     "describeCustomReadOnly": "Made by {{name}}.",
     "describeNew": "Starts from nothing. Switch on what they need.",
-    "remove": "Remove role",
+    "remove": "Remove role…",
     "ownerNote": "Owner is built in and can't be edited or removed. It always has everything, and {{name}} always has at least one.",
     "saved": "Saved. Applies on each person's next request.",
     "gridHeading": "In each area, this role can",
@@ -1188,6 +1187,7 @@
     "removeTitle": "Remove {{name}}",
     "removeBody": "They lose access on their next request. Their events stay with {{organisation}}.",
     "removeButton": "Remove from {{organisation}}",
+    "removeButtonOpen": "Remove from {{organisation}}…",
     "removeConfirmTitle": "Remove {{name}}?",
     "removeConfirmBody": "{{name}} stops having access to {{organisation}} on their next request. Their events stay with {{organisation}}, and everything they did is kept.",
     "removeConfirm": "Remove {{name}}",
@@ -1772,5 +1772,12 @@
     "title": "Update Soirely to carry on",
     "body": "This version of Soirely no longer works. Updating keeps everything you have saved.",
     "update": "Update"
+  },
+  "saveLabel": {
+    "saved": "Saved"
+  },
+  "toast": {
+    "undo": "Undo",
+    "close": "Close"
   }
 }

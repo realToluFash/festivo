@@ -54,6 +54,7 @@ import { useFocusBack } from './Sheet.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
 import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
+import { OrgTile } from './OrgTile.tsx';
 import { ReadOut, useReadOut } from './ReadOut.tsx';
 import { type StepClosed, stepClosed, useFocusBackToOpener, useFocusOnAnswer } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
@@ -680,7 +681,7 @@ function OrgPill({
       accessibilityLabel={label}
       testID="frame.organisation"
     >
-      {!large && <Tile name={organisation.name} />}
+      {!large && <OrgTile name={organisation.name} />}
       <View style={styles.shrink}>
         <Text
           size={railed ? tokens.typeBody.size : tokens.typeBodyPhone.size}
@@ -709,18 +710,6 @@ function OrgPill({
         </Svg>
       )}
     </Pressable>
-  );
-}
-
-function Tile({ name }: { name: string }) {
-  return (
-    <View
-      style={styles.tile}
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-    >
-      <Initials name={name} size={tokens.typeMeta.size} weight="bold" style={styles.accent} />
-    </View>
   );
 }
 
@@ -828,7 +817,7 @@ function Switcher({
                   accessibilityState={{ selected: isCurrent }}
                   testID={`switcher.${organisation.id}`}
                 >
-                  {!large && <Tile name={organisation.name} />}
+                  {!large && <OrgTile name={organisation.name} />}
                   <View style={[styles.fill, styles.shrink]}>
                     <Text size={tokens.typeBodyPhone.size} weight="semibold" numberOfLines={lines}>
                       {organisation.name}

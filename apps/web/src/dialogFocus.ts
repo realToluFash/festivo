@@ -1,6 +1,8 @@
 import { type RefObject, useEffect } from 'react';
 
-/** Escape dismisses an open dialog unless it is locked while its request is in flight, and Tab stays inside it. */
+import { leaveDialog } from './leaving.ts';
+
+/** Escape dismisses an open dialog unless it is locked while its request is in flight, Tab stays inside it, and it plays its exit as it closes. */
 export function useDialogKeys(
   dialog: RefObject<HTMLElement | null>,
   onDismiss: () => void,
@@ -16,6 +18,21 @@ export function useDialogKeys(
 
     return () => document.removeEventListener('keydown', keys);
   }, [dialog, onDismiss, locked]);
+
+  useEffect(() => {
+    const node = dialog.current;
+    const parent = node?.parentElement;
+
+    if (node == null || parent == null) return;
+
+    const before = node.previousElementSibling;
+    const scrim = before?.classList.contains('dialog-scrim') ? before : null;
+
+    return () => {
+      // Still in the page means React is only remounting it (StrictMode), not closing it.
+      if (!node.isConnected) leaveDialog(node, scrim, parent);
+    };
+  }, [dialog]);
 }
 
 /** Tab and Shift+Tab wrap inside an open dialog rather than leaving it. */

@@ -164,6 +164,17 @@ export function VenueSection({
               <div className="event-form-actions">
                 <button
                   type="button"
+                  className="button"
+                  disabled={busy}
+                  onClick={() => {
+                    lookup.answered();
+                    document.getElementById('event-venue-address')?.focus();
+                  }}
+                >
+                  {t('eventForm.venueZoneKeep', { zone: offer.keep })}
+                </button>
+                <button
+                  type="button"
                   className="button button-primary"
                   disabled={busy}
                   onClick={() => {
@@ -174,17 +185,6 @@ export function VenueSection({
                   }}
                 >
                   {t('eventForm.venueZoneUse', { zone: offer.zone })}
-                </button>
-                <button
-                  type="button"
-                  className="button"
-                  disabled={busy}
-                  onClick={() => {
-                    lookup.answered();
-                    document.getElementById('event-venue-address')?.focus();
-                  }}
-                >
-                  {t('eventForm.venueZoneKeep', { zone: offer.keep })}
                 </button>
               </div>
             </div>

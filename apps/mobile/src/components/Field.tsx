@@ -284,6 +284,25 @@ export function keysStayDown(): void {
   if (!Keyboard.isVisible()) TextInput.State.currentlyFocusedInput()?.blur();
 }
 
+/** [fd]'s focus ring: 2px of accent at a 2px offset, outside the field's own edge. */
+function useFocusRing(onFocus: TextInputProps['onFocus'], onBlur: TextInputProps['onBlur']) {
+  const [ringed, setRinged] = useState(false);
+
+  return {
+    ringed,
+    ringing: {
+      onFocus: (event: Parameters<NonNullable<TextInputProps['onFocus']>>[0]) => {
+        setRinged(true);
+        onFocus?.(event);
+      },
+      onBlur: (event: Parameters<NonNullable<TextInputProps['onBlur']>>[0]) => {
+        setRinged(false);
+        onBlur?.(event);
+      },
+    },
+  };
+}
+
 export function TextField({
   wrong = false,
   submitting = false,
@@ -295,6 +314,7 @@ export function TextField({
 }: TextFieldProps) {
   const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
   const labelID = useFieldLabel();
+  const { ringed, ringing } = useFocusRing(rest.onFocus, rest.onBlur);
 
   return (
     <TextInput
@@ -306,7 +326,8 @@ export function TextField({
       })}
       {...holding}
       ref={ref}
-      style={inputFaced([styles.input, wrong && styles.wrong, style])}
+      {...ringing}
+      style={inputFaced([styles.input, wrong && styles.wrong, ringed && styles.ring, style])}
       aria-invalid={wrong}
     />
   );
@@ -328,6 +349,7 @@ export function CodeField({
 }: CodeFieldProps) {
   const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
   const labelID = useFieldLabel();
+  const { ringed, ringing } = useFocusRing(rest.onFocus, rest.onBlur);
 
   return (
     <TextInput
@@ -340,7 +362,8 @@ export function CodeField({
       })}
       {...holding}
       ref={ref}
-      style={inputFaced([styles.code, wrong && styles.wrong, style])}
+      {...ringing}
+      style={inputFaced([styles.code, wrong && styles.wrong, ringed && styles.ring, style])}
       aria-invalid={wrong}
     />
   );
@@ -352,13 +375,19 @@ export const fieldStyles = StyleSheet.create({
     paddingHorizontal: tokens.spaceLg,
     paddingVertical: tokens.spaceSm,
     borderWidth: 1,
-    borderColor: tokens.colorControlBorder,
+    borderColor: tokens.colorFieldBorder,
     borderRadius: tokens.radiusField,
     backgroundColor: tokens.colorCard,
     color: tokens.colorInk,
     fontSize: CONTROL_TEXT_SIZE,
   },
   wrong: { borderColor: tokens.colorBroken },
+  ring: {
+    outlineWidth: 2,
+    outlineOffset: 2,
+    outlineStyle: 'solid',
+    outlineColor: tokens.colorAccent,
+  },
 });
 
 const styles = StyleSheet.create({
@@ -380,12 +409,13 @@ const styles = StyleSheet.create({
   trailing: { marginLeft: 'auto' },
   input: fieldStyles.input,
   wrong: fieldStyles.wrong,
+  ring: fieldStyles.ring,
   code: {
     minHeight: tokens.sizeHitPhoneHero,
     paddingHorizontal: tokens.spaceLg,
     paddingVertical: tokens.spaceSm,
     borderWidth: 1,
-    borderColor: tokens.colorControlBorder,
+    borderColor: tokens.colorFieldBorder,
     borderRadius: tokens.radiusInset,
     backgroundColor: tokens.colorCard,
     color: tokens.colorInk,

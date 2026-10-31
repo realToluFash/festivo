@@ -12,6 +12,7 @@ export const tokens = {
   "colorInsetBorder": "#ECEEF2",
   "colorBorder": "#E6E8EC",
   "colorControlBorder": "#D9DCE2",
+  "colorFieldBorder": "#80868F",
   "colorNeutralFill": "#F1F2F4",
   "colorTrack": "#D6D9E0",
   "colorMarkEmpty": "#C9CED6",
@@ -26,6 +27,7 @@ export const tokens = {
   "colorHeaderTrack": "#DCE5F1",
   "colorAccent": "#1E9A64",
   "colorAccentHover": "#178556",
+  "colorPrimaryHover": "#176B47",
   "colorAccentTint": "#E8F5EE",
   "colorAccentText": "#176B47",
   "colorAccentTintBorder": "#CDE9DA",
@@ -38,6 +40,8 @@ export const tokens = {
   "colorBroken": "#C2410C",
   "colorBrokenTint": "#FDECE4",
   "colorBrokenText": "#9A3412",
+  "colorPausedText": "#1F4E8C",
+  "colorPausedTint": "#E9F0F9",
   "optionGreen": "#6AA84F",
   "optionBlue": "#3B7DD8",
   "optionAmber": "#E3A72F",
@@ -139,6 +143,12 @@ export const tokens = {
     "lineHeight": 1,
     "letterSpacing": "0"
   },
+  "typePillWrapped": {
+    "size": 12,
+    "weight": 600,
+    "lineHeight": 1.25,
+    "letterSpacing": "0"
+  },
   "typeButton": {
     "size": 14,
     "weight": 600,
@@ -210,6 +220,7 @@ export const tokens = {
   "radiusFrameDesktop": 16,
   "borderCard": "1px solid #E6E8EC",
   "borderControl": "1px solid #D9DCE2",
+  "borderField": "1px solid #80868F",
   "borderInset": "1px solid #ECEEF2",
   "borderDivider": "1px solid #F1F2F4",
   "borderHeader": "1px solid #D7E2F0",
@@ -433,6 +444,9 @@ export const tokens = {
   "motionBase": 200,
   "motionSlow": 320,
   "motionEase": "cubic-bezier(0.2, 0, 0, 1)",
+  "motionMax": 500,
+  "motionRise": 8,
+  "opacityPressed": 0.85,
   "toastLifetime": 10000
 } as const;
 

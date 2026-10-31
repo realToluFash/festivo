@@ -12,6 +12,7 @@ import { Text } from '../src/components/Text.tsx';
 import { UpdateGate } from '../src/components/UpdateRequired.tsx';
 import { initI18n } from '../src/i18n/index.ts';
 import { loadInstallId } from '../src/installId.ts';
+import { useReducedMotion } from '../src/reducedMotion.ts';
 import { FONT_FACES, facesLoaded } from '../src/theme/fonts.ts';
 import { tokens } from '../src/theme/tokens.ts';
 
@@ -28,6 +29,7 @@ showPushInForeground();
  */
 export default function RootLayout() {
   const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
+  const reduced = useReducedMotion();
   const [message, setMessage] = useState('');
 
   useEffect(() => {
@@ -81,7 +83,12 @@ export default function RootLayout() {
       <ThemeProvider value={theme}>
         <WindowOrigin>
           <UpdateGate>
-            <Stack screenOptions={{ headerShown: false }} />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                ...(reduced && { animation: 'fade', animationDuration: tokens.motionBase }),
+              }}
+            />
           </UpdateGate>
         </WindowOrigin>
       </ThemeProvider>

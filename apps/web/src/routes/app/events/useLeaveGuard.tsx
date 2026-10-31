@@ -2,7 +2,7 @@ import { type ReactNode, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useBlocker } from 'react-router';
 
-import { Confirm } from './Confirm.tsx';
+import { ConfirmDialog } from '../../../components/ConfirmDialog.tsx';
 
 /** Holds every way out while the form is sending, asks before one loses what was typed, and lets go once `release` has been called for a navigation the form makes itself. */
 export function useLeaveGuard({
@@ -35,16 +35,18 @@ export function useLeaveGuard({
 
   const dialog =
     blocker.state === 'blocked' && !busy ? (
-      <Confirm
+      <ConfirmDialog
         id="event-leave"
         title={t('eventEdit.leaveTitle')}
-        body={body}
+        keep={t('eventEdit.keepEditing')}
         go={t('eventEdit.leave')}
         pending={false}
         opensPage
         onGo={() => blocker.proceed()}
         onKeep={() => blocker.reset()}
-      />
+      >
+        <p>{body}</p>
+      </ConfirmDialog>
     ) : null;
 
   return { release, dialog };

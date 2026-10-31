@@ -1256,7 +1256,7 @@
     "beyondGrant": "Le rôle de cette personne comporte une autorisation que le vôtre n’a pas : vous ne pouvez donc modifier ni son rôle ni son accès.",
     "suspendTitle": "Suspendre {{name}}",
     "suspendBody": "Dès sa prochaine utilisation de Soirely, cette personne perd l’accès à l’organisation {{organisation}}, jusqu’à ce que quelqu’un le rétablisse. Son rôle, ses événements et son historique sont conservés.",
-    "suspendButton": "Suspendre",
+    "suspendButton": "Suspendre…",
     "suspendConfirmTitle": "Suspendre {{name}} ?",
     "suspendConfirmBody": "{{name}} perd l’accès à l’organisation {{organisation}} dès sa prochaine utilisation de Soirely, jusqu’à ce que quelqu’un le rétablisse. Son rôle, ses événements et son historique sont conservés.",
     "suspendConfirmEmail": "Cette personne en est prévenue par e-mail, dans sa langue. L’e-mail ne dit pas qui a suspendu son accès.",
@@ -1283,8 +1283,10 @@
     "seatsOpenMembers": "Ouvrir Membres ›",
     "seatsSuspendedFree": "Un accès suspendu n’occupe pas de place.",
     "removeTitle": "Retirer {{name}}",
+    "removeNameOpen": "Retirer {{name}}…",
     "removeBody": "Cette personne perd l’accès dès qu’elle utilise de nouveau Soirely. Ses événements restent rattachés à l’organisation {{organisation}}.",
     "removeButton": "Retirer de l’organisation {{organisation}}",
+    "removeButtonOpen": "Retirer de l’organisation {{organisation}}…",
     "removeConfirmTitle": "Retirer {{name}} ?",
     "removeConfirmBody": "{{name}} perdra l’accès à l’organisation {{organisation}} dès sa prochaine utilisation de Soirely. Ses événements restent rattachés à l’organisation {{organisation}}, et tout ce que cette personne a fait est conservé.",
     "removeConfirm": "Retirer {{name}}",
@@ -1350,7 +1352,7 @@
     "describeSeededReadOnly": "Intégré, il ne peut donc pas être supprimé. Une personne qui peut modifier {{area}} choisit ce qu’il permet.",
     "describeCustomReadOnly": "Créé par {{name}}.",
     "describeNew": "Part de rien. Activez ce dont ces personnes ont besoin.",
-    "remove": "Supprimer le rôle",
+    "remove": "Supprimer le rôle…",
     "ownerNote": "Propriétaire est intégré et ne peut être ni modifié ni supprimé. Il a toujours tout, et {{name}} en a toujours au moins un.",
     "saved": "Enregistré. S’applique à la prochaine requête de chaque personne.",
     "gridHeading": "Dans chaque domaine, ce rôle peut",
@@ -2080,5 +2082,12 @@
     "key_event": "L’événement lui-même",
     "key_you": "Ce que vous devez faire",
     "key_automatic": "Soirely s’en charge pour vous"
+  },
+  "saveLabel": {
+    "saved": "Enregistré"
+  },
+  "toast": {
+    "undo": "Annuler",
+    "close": "Fermer"
   }
 }

@@ -25,7 +25,7 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
-import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
+import { DestructiveButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field, focusChecked, keysStayDown } from './Field.tsx';
 import { Notice } from './Notice.tsx';
@@ -380,8 +380,8 @@ function Check({
         title={t('devices.checkWarning')}
         body={`${t('devices.signInAgain')} ${t('devices.passwordAdvice')}`}
       />
-      <PrimaryButton label={t('devices.end')} onPress={onEnd} testID="devices.end" />
-      <SecondaryButton label={t('devices.keep')} onPress={onKeep} testID="devices.keep" />
+      <DestructiveButton label={t('devices.end')} onPress={onEnd} testID="devices.end" />
+      <QuietButton label={t('devices.keep')} onPress={onKeep} testID="devices.keep" />
     </>
   );
 }
@@ -661,7 +661,7 @@ function EverywhereElse({
             testID="devices.everywhere.confirm"
           />
         ) : (
-          <PrimaryButton
+          <DestructiveButton
             label={button.label}
             onPress={() => void submit()}
             busy={working}
@@ -670,7 +670,7 @@ function EverywhereElse({
           />
         )}
       </View>
-      <SecondaryButton
+      <QuietButton
         label={t('devices.everywhereKeep', { count })}
         onPress={onKeep}
         off={working}

@@ -159,11 +159,10 @@ export function CreateOrganisation({
               !
             </span>
             <div className="notice-body">
-              <p>
-                <strong>{t('createOrganisation.limitedTitle')}</strong>
-                {limitedUntil !== '' &&
-                  ` ${t('createOrganisation.limitedBody', { time: limitedUntil })}`}
-              </p>
+              <p className="notice-title">{t('createOrganisation.limitedTitle')}</p>
+              {limitedUntil !== '' && (
+                <p>{t('createOrganisation.limitedBody', { time: limitedUntil })}</p>
+              )}
             </div>
           </div>
         )}

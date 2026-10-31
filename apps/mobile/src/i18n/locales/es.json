@@ -6,7 +6,6 @@
     "title": "Soirely",
     "subtitle": "La noche, desde su bolsillo.",
     "openSignIn": "Iniciar sesión",
-    "openLayouts": "Demostración de diseños",
     "signedInTo": "Ha iniciado sesión en {{name}}",
     "openSettings": "Abrir Configuración",
     "switchOrganisation": "Cambiar de organización"
@@ -30,7 +29,7 @@
     "retry": "Inténtelo de nuevo",
     "check": "Comprobación",
     "state": "Estado",
-    "usingFallback": "No hay ninguna URL de API configurada, por lo que se está intentando localhost. Eso funciona en un simulador y no en un dispositivo; consulte el archivo README."
+    "usingFallback": "No hay ninguna URL de API configurada, por lo que se está intentando localhost. Eso funciona en un simulador, pero no en un dispositivo. Consulte el archivo README."
   },
   "language": {
     "label": "Idioma",
@@ -766,7 +765,7 @@
     "describeSeededReadOnly": "Es predefinido, así que no se puede eliminar. Lo que incluye lo decide alguien que pueda cambiar {{area}}.",
     "describeCustomReadOnly": "Creado por {{name}}.",
     "describeNew": "Empieza sin nada. Active lo que necesiten.",
-    "remove": "Eliminar rol",
+    "remove": "Eliminar rol…",
     "ownerNote": "Propietario es predefinido y no se puede editar ni eliminar. Siempre lo tiene todo, y {{name}} siempre tiene al menos uno.",
     "saved": "Guardado. Se aplica en la próxima solicitud de cada persona.",
     "gridHeading": "En cada área, este rol puede",
@@ -1223,6 +1222,7 @@
     "removeTitle": "Quitar a {{name}}",
     "removeBody": "Pierde el acceso en cuanto vuelva a usar Soirely. Sus eventos se quedan en {{organisation}}.",
     "removeButton": "Quitar de {{organisation}}",
+    "removeButtonOpen": "Quitar de {{organisation}}…",
     "removeConfirmTitle": "¿Quitar a {{name}}?",
     "removeConfirmBody": "{{name}} dejará de tener acceso a {{organisation}} en cuanto vuelva a usar Soirely. Sus eventos se quedan en {{organisation}} y se conserva todo lo que hizo.",
     "removeConfirm": "Quitar a {{name}}",
@@ -1817,5 +1817,12 @@
     "title": "Actualice Soirely para continuar",
     "body": "Esta versión de Soirely ya no funciona. Al actualizarla, conservará todo lo que haya guardado.",
     "update": "Actualizar"
+  },
+  "saveLabel": {
+    "saved": "Guardado"
+  },
+  "toast": {
+    "undo": "Deshacer",
+    "close": "Cerrar"
   }
 }

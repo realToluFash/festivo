@@ -205,6 +205,14 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
                   <p>{t('companyDomains.removeBody', { domain })}</p>
                   <div className="company-domain-buttons">
                     <button
+                      className="link-button"
+                      type="button"
+                      disabled={busy}
+                      onClick={() => keep(domain)}
+                    >
+                      {t('companyDomains.keep')}
+                    </button>
+                    <button
                       className="button button-danger"
                       type="button"
                       aria-busy={busy}
@@ -212,14 +220,6 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
                       onClick={() => void remove(domain)}
                     >
                       {t('companyDomains.removeConfirm', { domain })}
-                    </button>
-                    <button
-                      className="button"
-                      type="button"
-                      disabled={busy}
-                      onClick={() => keep(domain)}
-                    >
-                      {t('companyDomains.keep')}
                     </button>
                   </div>
                 </div>

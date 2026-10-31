@@ -275,13 +275,6 @@ span {
   background: var(--colorHeader);
 }
 
-.public-header-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spaceLg);
-}
-
 .public-main,
 .guest-main {
   padding: var(--space6xl) var(--spaceXl);
@@ -295,11 +288,128 @@ span {
   font: var(--typeBodyGuest);
 }
 
-.public-actions {
+/* The front page signed out: the header, the tagline and Get started, and Service status at the foot, all in one window. */
+.front {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  max-width: calc(74rem + 2 * var(--space6xl) + 2 * var(--spaceSm));
+  margin: 0 auto;
+  padding: 0 calc(var(--space6xl) + var(--spaceSm));
+}
+
+.front-header {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--spaceLg);
-  margin-top: var(--space3xl);
+  padding-block: var(--space3xl);
+}
+
+.front-header .brand {
+  margin-inline-end: auto;
+}
+
+.front-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding-block: var(--space6xl);
+}
+
+.front-main h1 {
+  margin: 0;
+  font-size: 60px;
+  line-height: 1.05;
+  letter-spacing: var(--typeDisplayTracking);
+}
+
+.front-main p {
+  max-width: 35rem;
+  margin: var(--spaceXl) 0 var(--space5xl);
+  font-size: 20px;
+  line-height: 1.5;
+  color: var(--colorInkSecondary);
+}
+
+.front-footer {
+  display: flex;
+  padding-block: var(--spaceXl);
+}
+
+@media (width <= 40rem) {
+  .front {
+    padding: 0 var(--spaceXl);
+  }
+
+  .front-header {
+    gap: var(--spaceXs);
+    padding-block: var(--spaceXl);
+  }
+
+  .front-main h1 {
+    font-size: 36px;
+  }
+
+  .front-main p {
+    font-size: 16px;
+  }
+
+  .front-main .button-primary {
+    align-self: stretch;
+  }
+}
+
+@media (width < 24rem) {
+  .front-main h1 {
+    font-size: 32px;
+  }
+}
+
+/* The language switch as a pill: what it shows is drawn, and the native select over it takes the choice. */
+.button.language-pill {
+  position: relative;
+  padding: 0 var(--spaceLg);
+}
+
+.language-pill:has(select:focus-visible) {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
+.language-pill select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  font: var(--typeBody);
+  cursor: pointer;
+}
+
+.language-pill-face {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+}
+
+.language-pill-code {
+  display: none;
+}
+
+@media (width <= 40rem) {
+  .button.language-pill {
+    padding: 0 var(--spaceMd);
+  }
+
+  .language-pill-name {
+    display: none;
+  }
+
+  .language-pill-code {
+    display: inline;
+  }
 }
 
 /* Buttons are pills, in three levels, and never below 44px. A label that wraps keeps its lines apart and
@@ -322,6 +432,11 @@ span {
   max-width: 100%;
   text-decoration: none;
   cursor: pointer;
+  transition: opacity var(--motionFast) var(--motionEase);
+}
+
+.button:active {
+  opacity: var(--opacityPressed);
 }
 
 /* A label naming a role, an organisation or a person wraps whole. */
@@ -343,14 +458,34 @@ span {
 }
 
 .button-primary {
-  background: var(--colorAccent);
-  border-color: var(--colorAccent);
+  background: var(--colorAccentHover);
+  border-color: var(--colorAccentHover);
   color: var(--colorInkOnDark);
 }
 
 .button-primary:hover {
-  background: var(--colorAccentHover);
-  border-color: var(--colorAccentHover);
+  background: var(--colorPrimaryHover);
+  border-color: var(--colorPrimaryHover);
+}
+
+@media (width <= 40rem) {
+  .button-primary,
+  .button-danger,
+  :has(> :is(.button-primary, .button-danger)) > .button {
+    --buttonHit: var(--sizeHitPhonePrimary);
+  }
+
+  /* A text action keeps 44 beside a 48 button: a row would otherwise stretch it to 48. */
+  :has(> :is(.button-primary, .button-danger)) > .link-button {
+    height: fit-content;
+    margin-block: auto;
+  }
+
+  /* A confirm's pair stacked: the confirming button on top, the dismissive one under it. */
+  .actions-confirm {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
 }
 
 /* ── Panels, tables, states ───────────────────────────────────────────────── */
@@ -623,7 +758,7 @@ span {
   width: 100%;
   min-height: var(--sizeHit);
   padding: 0 var(--spaceLg);
-  border: var(--borderControl);
+  border: var(--borderField);
   border-radius: var(--radiusField);
   background: var(--colorCard);
   color: var(--colorInk);
@@ -1052,23 +1187,6 @@ span {
   gap: var(--spaceXl);
 }
 
-.button-dark {
-  background: var(--colorDark);
-  border-color: var(--colorDark);
-  color: var(--colorInkOnDark);
-}
-
-.button-dark:hover {
-  background: var(--colorDarkInset);
-  border-color: var(--colorDarkInset);
-}
-
-.button-dark[aria-busy='true'] {
-  background: var(--colorDarkInset);
-  border-color: var(--colorDarkInset);
-  color: var(--colorInkOnDark);
-}
-
 /* ── Your account at phone width ──────────────────────────────────────────── */
 
 @media (width <= 40rem) {
@@ -1258,7 +1376,7 @@ span {
 }
 
 .button-danger {
-  color: var(--colorBrokenText);
+  color: var(--colorInk);
 }
 
 .request-card-head {
@@ -1377,6 +1495,24 @@ span {
   color: var(--colorAccentText);
   font: var(--typeButton);
   cursor: pointer;
+  transition: opacity var(--motionFast) var(--motionEase);
+}
+
+.link-button:active {
+  opacity: var(--opacityPressed);
+}
+
+/* In secondary ink, underlined only under the pointer. */
+.link-button.link-button-quiet {
+  display: inline-flex;
+  align-items: center;
+  color: var(--colorInkSecondary);
+  text-decoration: none;
+}
+
+.link-button.link-button-quiet:hover {
+  color: var(--colorInk);
+  text-decoration: underline;
 }
 
 .auth-footnote .link-button {
@@ -1923,6 +2059,7 @@ span {
   border: 0;
   background: var(--scrimDialog);
   cursor: pointer;
+  animation: fade-in var(--motionBase) var(--motionEase);
 }
 
 .dialog-scrim:disabled {
@@ -1948,6 +2085,7 @@ span {
   border: var(--borderCard);
   border-radius: var(--radiusCardDesktop);
   box-shadow: var(--shadowDialog);
+  animation: rise-in var(--motionBase) var(--motionEase);
 }
 
 .dialog:focus {
@@ -1969,6 +2107,12 @@ span {
 .dialog-heading p {
   margin: 0;
   color: var(--colorInkSecondary);
+}
+
+.dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
 }
 
 .dialog-form {
@@ -1995,6 +2139,11 @@ span {
 }
 
 @media (width <= 40rem) {
+  .dialog-actions-stack {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
   .dialog {
     top: auto;
     bottom: 0;
@@ -2005,6 +2154,55 @@ span {
     transform: none;
     border-radius: var(--radiusCardDesktop) var(--radiusCardDesktop) 0 0;
     box-shadow: var(--shadowSheet);
+    animation: sheet-in var(--motionSlow) var(--motionEase);
+  }
+}
+
+/* ── Motion (sc-22092): a fade and a short rise, never longer than --motionMax ── */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    translate: 0 var(--motionRise);
+  }
+}
+
+@keyframes drop-in {
+  from {
+    opacity: 0;
+    translate: 0 calc(-1 * var(--motionRise));
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    translate: 0 100%;
+  }
+}
+
+#content[data-enter='forward'] {
+  animation: rise-in var(--motionBase) var(--motionEase);
+}
+
+#content[data-enter='back'] {
+  animation: drop-in var(--motionBase) var(--motionEase);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog,
+  #content[data-enter] {
+    animation-name: fade-in;
+    animation-duration: var(--motionBase);
+  }
+
+  .button {
+    transition: none;
   }
 }
 
@@ -2247,7 +2445,10 @@ span {
 }
 
 .roles-pick[aria-pressed='true'] {
-  background: var(--colorInset);
+  border-left: var(--borderSelected);
+  border-radius: 0 var(--radiusInset) var(--radiusInset) 0;
+  padding-left: calc(var(--spaceMd) - 2px);
+  background: var(--colorRowSelected);
 }
 
 .roles-pick-text,
@@ -2269,6 +2470,11 @@ span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.roles-pick[aria-pressed='true'] strong {
+  color: var(--colorAccentText);
+  font-weight: 600;
 }
 
 .roles-detail {
@@ -2456,29 +2662,6 @@ span {
   border: 0;
 }
 
-.roles-replacement {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spaceMd);
-  min-height: var(--sizeHit);
-  padding: var(--spaceXs) var(--spaceMd);
-  border: var(--borderControl);
-  border-radius: var(--radiusInset);
-  cursor: pointer;
-}
-
-.roles-replacement .roles-row-name {
-  flex: 1;
-  overflow-wrap: anywhere;
-}
-
-/* Under the name, past the radio: a 20px control and the row's gap. */
-.roles-replacement-means {
-  flex-basis: 100%;
-  padding-left: calc(var(--sizeMark) + var(--spaceMd));
-}
-
 .roles-back {
   display: none;
   align-self: flex-start;
@@ -2501,11 +2684,18 @@ span {
   .roles-row-text {
     flex-basis: 13rem;
   }
-}
 
-.roles-replacement:has(input:checked) {
-  border: var(--borderSelected);
-  background: var(--colorAccentTint);
+  /* Stacked, the confirming one is on top: Save over Discard changes, Remove over Keep. */
+  .roles-unsaved .roles-actions,
+  .roles-removing .roles-actions {
+    flex-direction: column-reverse;
+    flex-basis: 100%;
+  }
+
+  .roles-unsaved .roles-actions > *,
+  .roles-removing .roles-actions > * {
+    width: 100%;
+  }
 }
 
 .no-organisation-main {
@@ -2687,6 +2877,58 @@ span {
   flex: 1 1 40%;
 }
 
+/* A radio drawn as a selectable card: Roles' "who takes over" and Sign-in rules' method. */
+.option-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceMd);
+  min-height: var(--sizeHit);
+  padding: var(--spaceXs) var(--spaceMd);
+  border: var(--borderControl);
+  border-radius: var(--radiusInset);
+  cursor: pointer;
+}
+
+.option-card:has(input:checked) {
+  border: var(--borderSelected);
+  background: var(--colorAccentTint);
+}
+
+.option-card input {
+  width: var(--sizeMark);
+  height: var(--sizeMark);
+  margin: 0;
+  accent-color: var(--colorAccent);
+}
+
+.option-card-name {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+/* Under the name, past the radio and the row's gap. */
+.option-card-means {
+  flex-basis: 100%;
+  padding-left: calc(var(--sizeMark) + var(--spaceMd));
+}
+
+/* SignInRules.dc.html: the card as a tile on the page, side by side until they wrap. */
+.option-card-tile {
+  flex: 1 1 16rem;
+  row-gap: var(--spaceXs);
+  padding: var(--spaceLg);
+  background: var(--colorCard);
+}
+
+.option-card-tile .option-card-name {
+  font: var(--typeRowTitle);
+}
+
+.option-card-tile .option-card-means {
+  font: var(--typeSmall);
+}
+
 .checkbox {
   display: flex;
   align-items: center;
@@ -2729,15 +2971,19 @@ span {
   align-items: center;
   min-height: var(--sizeHit);
   padding: 0 var(--spaceLg);
+  border: var(--borderSelected);
+  border-color: transparent;
   border-radius: var(--radiusPill);
   color: var(--colorInkSecondary);
   font-weight: 600;
   text-decoration: none;
 }
 
+/* [fd]'s selected row: the accent edge and tint, never a dark pill (sc-23172). */
 .account-section[aria-current='page'] {
-  background: var(--colorDark);
-  color: var(--colorInkOnDark);
+  border: var(--borderSelected);
+  background: var(--colorRowSelected);
+  color: var(--colorAccentText);
 }
 
 .current-value {
@@ -2911,6 +3157,19 @@ span {
   align-items: flex-start;
 }
 
+@media (width > 40rem) {
+  .members-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--spaceLg);
+    align-items: center;
+  }
+
+  .members-head > .button {
+    grid-area: 1 / 2 / span 2;
+  }
+}
+
 .members-head h1,
 .members h1 {
   margin: 0;
@@ -3005,11 +3264,6 @@ span {
   .owner-claim-withdraw {
     border-radius: var(--radiusSheet) var(--radiusSheet) 0 0;
   }
-
-  .owner-claim-withdraw .dialog-actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
 }
 
 .members-chips {
@@ -3073,17 +3327,60 @@ button.members-row {
   overflow-wrap: anywhere;
 }
 
-.members-state {
-  font-weight: 600;
+.members-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXs) var(--spaceSm);
+}
+
+/* The desktop board's status column: the chip leaves the line under the name for a column of its own. */
+@media (width > 40rem) {
+  .members-list .members-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) 15rem auto;
+    column-gap: var(--spaceMd);
+  }
+
+  .members-list .members-row-text,
+  .members-list .members-row-meta {
+    display: contents;
+  }
+
+  .members-list .members-row-name {
+    grid-area: 1 / 2;
+  }
+
+  .members-list .members-row-meta > .muted {
+    grid-area: 2 / 2;
+  }
+
+  .members-list .status-chip {
+    grid-area: 1 / 3 / span 2;
+    justify-self: start;
+  }
+
+  .members-list .person-tile {
+    grid-area: 1 / 1 / span 2;
+  }
+
+  .members-list .members-row > [aria-hidden='true']:last-child {
+    grid-area: 1 / 4 / span 2;
+  }
+}
+
+/* A person's initials: the neutral tile, as the green one is the organisation's alone (sc-23172). */
+.person-tile {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--space6xl);
+  height: var(--space6xl);
+  border-radius: var(--radiusPill);
+  background: var(--colorNeutralFill);
   color: var(--colorInkSecondary);
-}
-
-.members-state[data-state='active'] {
-  color: var(--colorAccentText);
-}
-
-.members-state[data-state='pending_approval'] {
-  color: var(--colorAttentionText);
+  font: var(--typeButton);
 }
 
 .members-empty,
@@ -3179,7 +3476,12 @@ button.members-row {
 }
 
 .sign-in-rules-methods {
-  max-width: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceMd);
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 .sign-in-rules-switch {
@@ -3215,8 +3517,7 @@ button.members-row {
   margin-top: var(--spaceSm);
 }
 
-.sign-in-rules-effects,
-.sign-in-rules-changes {
+.sign-in-rules-effects {
   display: flex;
   flex-direction: column;
   gap: var(--spaceMd);
@@ -3224,8 +3525,44 @@ button.members-row {
   padding-left: var(--spaceLg);
 }
 
-.sign-in-rules-changes p {
+/* Each change is a list row: when and who, the value now, then what it was. */
+.sign-in-rules-changes {
+  display: flex;
+  flex-direction: column;
   margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sign-in-rules-change {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  padding-bottom: var(--spaceMd);
+}
+
+.sign-in-rules-change + .sign-in-rules-change {
+  padding-top: var(--spaceMd);
+  border-top: var(--borderInset);
+}
+
+.sign-in-rules-change-when,
+.sign-in-rules-change-was {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+.sign-in-rules-change-now {
+  margin: 0;
+  font: var(--typeRowTitle);
+}
+
+/* At phone width Save rules runs the card's width, as every primary on a phone does. */
+@media (width <= 40rem) {
+  .sign-in-rules-side .button-primary {
+    width: 100%;
+  }
 }
 
 /* ── Company domain joining (sc-561) ──────────────────────────────────────── */
@@ -4193,7 +4530,7 @@ button.members-row {
 }
 
 .cover-remove {
-  color: var(--colorBrokenText);
+  color: var(--colorInk);
 }
 
 .cover-remove-below {
@@ -4249,12 +4586,21 @@ button.members-row {
 
 /* ── Make live (sc-3584) ──────────────────────────────────────────────────── */
 
-/* Each phase has a shape of its own beside its word (sc-3585): Draft a ring, Live a dot, Happening now a half-filled ring, Paused two bars, Finished a tick. */
-.pill-phase {
+/* A status chip: a shape beside its word, so a state never rests on colour alone, and its words wrap at 320 rather than push the page sideways (sc-3585, sc-23172). */
+.status-chip {
+  flex: 0 1 auto;
   gap: var(--spaceXs);
+  max-width: 100%;
+  height: auto;
+  min-height: var(--sizePill);
+  padding-block: var(--spaceHair);
+  box-sizing: border-box;
+  background: var(--colorNeutralFill);
+  font: var(--typePillWrapped);
+  white-space: normal;
 }
 
-.pill-phase::before {
+.status-chip::before {
   flex: none;
   box-sizing: border-box;
   width: 0.5rem;
@@ -4263,34 +4609,49 @@ button.members-row {
   content: '';
 }
 
-.pill-draft::before {
-  border: var(--borderMark) var(--colorInkSecondary);
-}
-
-.pill-live {
+.status-chip[data-tone='accent'] {
   background: var(--colorAccentTint);
   color: var(--colorAccentText);
 }
 
-.pill-live::before {
-  background: var(--colorAccent);
-}
-
-.pill-happening-now,
-.pill-paused {
+.status-chip[data-tone='attention'] {
   background: var(--colorAttentionTint);
   color: var(--colorAttentionText);
 }
 
-.pill-happening-now::before {
-  border: var(--borderMark) var(--colorAttentionText);
-  background: linear-gradient(90deg, var(--colorAttentionText) 50%, transparent 50%);
+.status-chip[data-tone='paused'] {
+  background: var(--colorPausedTint);
+  color: var(--colorPausedText);
 }
 
-.pill-paused::before {
-  border-left: 0.1875rem solid var(--colorAttentionText);
-  border-right: 0.1875rem solid var(--colorAttentionText);
+.status-chip[data-shape='ring']::before {
+  border: var(--borderMark) currentcolor;
+}
+
+.status-chip[data-shape='dot']::before {
+  background: currentcolor;
+}
+
+.status-chip[data-tone='accent'][data-shape='dot']::before {
+  background: var(--colorAccent);
+}
+
+.status-chip[data-shape='half']::before {
+  border: var(--borderMark) currentcolor;
+  background: linear-gradient(90deg, currentcolor 50%, transparent 50%);
+}
+
+.status-chip[data-shape='bars']::before {
+  border-left: 0.1875rem solid currentcolor;
+  border-right: 0.1875rem solid currentcolor;
   border-radius: 0;
+}
+
+.status-chip[data-shape='tick']::before {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  content: '✓';
 }
 
 .mark-paused::before {
@@ -4300,13 +4661,6 @@ button.members-row {
   border-left: 0.1875rem solid var(--colorAttentionText);
   border-right: 0.1875rem solid var(--colorAttentionText);
   content: '';
-}
-
-.pill-finished::before {
-  width: auto;
-  height: auto;
-  border-radius: 0;
-  content: '✓';
 }
 
 .event-draft-row {
@@ -4392,13 +4746,6 @@ button.members-row {
   color: var(--colorInkSecondary);
 }
 
-@media (width <= 40rem) {
-  .event-delete-dialog .dialog-actions {
-    flex-direction: column-reverse;
-    align-items: stretch;
-  }
-}
-
 /* ── Duplicate an event (sc-3593) ─────────────────────────────────────────── */
 
 .event-copy-lists {
@@ -4444,11 +4791,6 @@ button.members-row {
     height: 100%;
     max-height: none;
     border-radius: 0;
-  }
-
-  .event-copy-dialog .dialog-actions {
-    flex-direction: column-reverse;
-    align-items: stretch;
   }
 }
 
@@ -5119,4 +5461,84 @@ button.members-row {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--spaceLg);
+}
+
+/* ── Toast (sc-22092): the dark surface, its Undo a text action on it ───────── */
+
+.toast {
+  position: fixed;
+  bottom: var(--space3xl);
+  left: 50%;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  box-sizing: border-box;
+  width: max-content;
+  max-width: calc(100% - var(--space5xl));
+  padding: var(--spaceXs) var(--spaceXs) var(--spaceXs) var(--spaceXl);
+  transform: translateX(-50%);
+  border-radius: var(--radiusInset);
+  background: var(--colorInk);
+  color: var(--colorInkOnDark);
+  box-shadow: var(--shadowToast);
+  animation: rise-in var(--motionBase) var(--motionEase);
+}
+
+.toast-words {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.toast-undo,
+.toast-close {
+  flex: none;
+  min-width: var(--sizeHit);
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceLg);
+  border: 0;
+  border-radius: var(--radiusPill);
+  background: transparent;
+  color: var(--colorInkOnDark);
+  font: var(--typeButton);
+  cursor: pointer;
+  transition: opacity var(--motionFast) var(--motionEase);
+}
+
+.toast-undo {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.toast-undo:hover,
+.toast-close:hover {
+  background: var(--colorDarkInset);
+}
+
+.toast-undo:active,
+.toast-close:active {
+  opacity: var(--opacityPressed);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation-name: fade-in;
+  }
+}
+
+/* A save confirmed (sc-22092): both labels hold the button's width, and one fades into the other. */
+.save-label {
+  display: inline-grid;
+}
+
+.save-label > span {
+  grid-area: 1 / 1;
+  transition: opacity var(--motionBase) var(--motionEase);
+}
+
+.save-label[data-saved='false'] > .save-label-saved,
+.save-label[data-saved='true'] > .save-label-words {
+  opacity: 0;
 }

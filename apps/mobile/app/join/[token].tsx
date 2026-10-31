@@ -20,8 +20,16 @@ import { useTranslation } from 'react-i18next';
 import { api, meAtLaunch } from '../../src/api.ts';
 import { AuthFrame, AuthHeading } from '../../src/components/AuthFrame.tsx';
 import { PrimaryButton, SecondaryButton } from '../../src/components/Buttons.tsx';
-import { Field, focusChecked, keysStayDown, TextField } from '../../src/components/Field.tsx';
+import {
+  CONTROL_TEXT_SIZE,
+  Field,
+  fieldStyles,
+  focusChecked,
+  keysStayDown,
+  TextField,
+} from '../../src/components/Field.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
+import { OrgTile } from '../../src/components/OrgTile.tsx';
 import { ReadOut } from '../../src/components/ReadOut.tsx';
 import { AnswerInView } from '../../src/components/Screen.tsx';
 import { Text } from '../../src/components/Text.tsx';
@@ -33,6 +41,9 @@ import { unreachableFrom } from '../../src/unreachable.ts';
 
 /** An invitation's token is 64 hex characters; the app answers invitations in the product, not by link. */
 const REQUEST_LINK_TOKEN = /^[0-9a-f]{32}$/i;
+
+const MESSAGE_LINES = 4;
+const MESSAGE_LINE_HEIGHT = CONTROL_TEXT_SIZE * tokens.typeBodyPhone.lineHeight;
 
 type Shown =
   | { kind: 'loading' }
@@ -131,12 +142,15 @@ function Asking({
     <>
       <AuthHeading title={t('requestToJoin.title', { organisation })} />
       <View style={styles.org}>
-        <Text size={tokens.typeRowTitle.size} weight="bold">
-          {organisation}
-        </Text>
-        <Text size={tokens.typeSmall.size} muted>
-          {t('requestToJoin.requestLink')}
-        </Text>
+        <OrgTile name={organisation} size="card" />
+        <View style={styles.naming}>
+          <Text size={tokens.typeRowTitle.size} weight="semibold">
+            {organisation}
+          </Text>
+          <Text size={tokens.typeSmall.size} muted>
+            {t('requestToJoin.requestLink')}
+          </Text>
+        </View>
       </View>
 
       {view.kind === 'sent' && (
@@ -171,7 +185,7 @@ function Asking({
             answer={view}
             takesFocus
           />
-          <CarryOn />
+          <CarryOn plain />
         </>
       )}
       {view.kind === 'open' && !view.signedIn && (
@@ -341,7 +355,7 @@ function Ask({
           submitting={busy}
           value={message}
           multiline
-          numberOfLines={4}
+          numberOfLines={MESSAGE_LINES}
           style={styles.message}
           onChangeText={(text) => {
             setMessage(text);
@@ -401,11 +415,12 @@ function Standing({ preview, answer }: { preview: RequestLinkPreview; answer: Sh
 }
 
 /** Launch decides where the account belongs: a gate, the wait for approval, or the app. */
-function CarryOn({ label }: { label?: string | undefined }) {
+function CarryOn({ label, plain = false }: { label?: string | undefined; plain?: boolean }) {
   const { t } = useTranslation();
+  const Button = plain ? SecondaryButton : PrimaryButton;
 
   return (
-    <PrimaryButton
+    <Button
       label={label ?? t('requestToJoin.carryOn')}
       onPress={() => router.replace('/')}
       testID="requestToJoin.carryOn"
@@ -415,6 +430,22 @@ function CarryOn({ label }: { label?: string | undefined }) {
 
 const styles = StyleSheet.create({
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  org: { gap: tokens.spaceXs },
-  message: { minHeight: 112, textAlignVertical: 'top' },
+  org: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
+    padding: tokens.spaceLg,
+    borderRadius: tokens.radiusInset,
+    borderWidth: 1,
+    borderColor: tokens.colorInsetBorder,
+    backgroundColor: tokens.colorInset,
+  },
+  naming: { flex: 1, minWidth: 0, gap: tokens.spaceHair },
+  message: {
+    lineHeight: MESSAGE_LINE_HEIGHT,
+    minHeight:
+      MESSAGE_LINES * MESSAGE_LINE_HEIGHT +
+      2 * (fieldStyles.input.paddingVertical + fieldStyles.input.borderWidth),
+    textAlignVertical: 'top',
+  },
 });

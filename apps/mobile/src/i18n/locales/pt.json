@@ -6,7 +6,6 @@
     "title": "Soirely",
     "subtitle": "A noite, a partir do seu bolso.",
     "openSignIn": "Iniciar sessão",
-    "openLayouts": "Demonstração de disposições",
     "signedInTo": "Tem sessão iniciada em {{name}}",
     "openSettings": "Abrir Definições",
     "switchOrganisation": "Mudar de organização"
@@ -30,7 +29,7 @@
     "retry": "Tente novamente",
     "check": "Verificação",
     "state": "Estado",
-    "usingFallback": "Não está configurado qualquer URL da API, pelo que está a ser tentado o localhost. Isso funciona num simulador e não num dispositivo — consulte o ficheiro README."
+    "usingFallback": "Não está configurado qualquer URL da API, pelo que está a ser tentado o localhost. Isso funciona num simulador, mas não num dispositivo. Consulte o ficheiro README."
   },
   "language": {
     "label": "Idioma",
@@ -766,7 +765,7 @@
     "describeSeededReadOnly": "É predefinida, por isso não pode ser removida. Quem pode alterar {{area}} decide o que inclui.",
     "describeCustomReadOnly": "Criada por {{name}}.",
     "describeNew": "Começa sem nada. Ative o que for preciso.",
-    "remove": "Remover função",
+    "remove": "Remover função…",
     "ownerNote": "Proprietário é predefinida e não pode ser editada nem removida. Tem sempre tudo, e {{name}} tem sempre pelo menos um.",
     "saved": "Guardado. Aplica-se no próximo pedido de cada pessoa.",
     "gridHeading": "Em cada área, esta função pode",
@@ -1223,6 +1222,7 @@
     "removeTitle": "Remover {{name}}",
     "removeBody": "Esta pessoa perde o acesso assim que voltar a usar a Soirely. Os eventos desta pessoa continuam associados a {{organisation}}.",
     "removeButton": "Remover de {{organisation}}",
+    "removeButtonOpen": "Remover de {{organisation}}…",
     "removeConfirmTitle": "Remover {{name}}?",
     "removeConfirmBody": "{{name}} deixa de ter acesso a {{organisation}} assim que voltar a usar a Soirely. Os eventos desta pessoa continuam associados a {{organisation}}, e tudo o que fez fica guardado.",
     "removeConfirm": "Remover {{name}}",
@@ -1817,5 +1817,12 @@
     "title": "Atualize a Soirely para continuar",
     "body": "Esta versão da Soirely já não funciona. Atualizar mantém tudo o que guardou.",
     "update": "Atualizar"
+  },
+  "saveLabel": {
+    "saved": "Guardado"
+  },
+  "toast": {
+    "undo": "Anular",
+    "close": "Fechar"
   }
 }

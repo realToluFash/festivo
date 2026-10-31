@@ -423,7 +423,7 @@ describe('creating an organisation', () => {
     pressCreate();
 
     const alert = await screen.findByText('Too many new organisations for now.');
-    expect(alert.parentElement?.textContent).toMatch(/Try again at \d{2}:\d{2}\./);
+    expect(alert.nextElementSibling?.textContent).toMatch(/^Try again at \d{2}:\d{2}\.$/);
     expect(screen.getAllByRole('alert')).toHaveLength(1);
     const name = screen.getByLabelText('Organisation name') as HTMLInputElement;
     expect(name.value).toBe('Six');
@@ -602,7 +602,8 @@ describe('creating an organisation', () => {
     await screen.findByRole('button', { name: 'Creating…' });
 
     answer(problem('too_many_attempts', 429));
-    expect(await screen.findByText('Too many new organisations for now.')).toBeDefined();
+    const alert = await screen.findByText('Too many new organisations for now.');
+    expect(alert.nextElementSibling).toBeNull();
     expect(screen.getByRole('dialog')).toBeDefined();
     // Focus back on the name is the sign the dialog has unlocked its Escape as well as its buttons.
     await waitFor(() =>

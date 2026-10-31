@@ -22,6 +22,8 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { type LayoutKind } from '../layout/useLayout.ts';
+import { rowsChange } from '../motion.ts';
+import { useReducedMotion } from '../reducedMotion.ts';
 import { tokens } from '../theme/tokens.ts';
 import { CONTROL_TEXT_SIZE, Field, TextField, focusChecked } from './Field.tsx';
 import { readOut } from './ReadOut.tsx';
@@ -64,6 +66,7 @@ export function HostsSection({
   const addButton = useRef<ViewInstance>(null);
   const focusNext = useRef<FocusNext>(null);
   const nextKey = useRef(Math.max(0, ...rows.map((row) => row.key)) + 1);
+  const reduced = useReducedMotion();
   const [arrival, setArrival] = useState(() => (arrive ? hostsArrival(rows) : null));
   const keepLast = keepsLastHost(saved, rows.length);
   const phone = kind === 'phone';
@@ -112,6 +115,7 @@ export function HostsSection({
     nextKey.current += 1;
     focusNext.current = { to: { key, control: 'name' }, keys: true };
     if (arrival === 'add') setArrival(null);
+    rowsChange(reduced);
     onRows([...rows, { key, name: '' }], null);
   }
 
@@ -208,7 +212,10 @@ export function HostsSection({
                 {!keepLast && (
                   <Pressable
                     style={styles.remove}
-                    onPress={() => apply(removedHost(rows, index, t))}
+                    onPress={() => {
+                      rowsChange(reduced);
+                      apply(removedHost(rows, index, t));
+                    }}
                     disabled={busy}
                     accessibilityRole="button"
                     accessibilityLabel={t('eventHosts.removeNamed', { name })}

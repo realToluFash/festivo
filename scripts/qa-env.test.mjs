@@ -25,6 +25,7 @@ import {
   batchRuns,
   afterRun,
   batchSummary,
+  physicalSize,
   portraitRotation,
   ANDROID_START,
   SCREEN_READER_OFF,
@@ -84,6 +85,11 @@ import {
   qrPng,
   APP_SERVICES,
   launchVideo,
+  recordingSize,
+  mp4Duration,
+  launchTime,
+  launchRecorded,
+  surfaceOrientation,
   iosBundle,
   clearIosRelease,
   uninstallHeld,
@@ -506,6 +512,92 @@ describe('a release build', () => {
         apk,
       ),
     ).toEqual(['soirely-0123456789ab.apk']);
+  });
+
+  it('records the tablet at half its size, where the encoder records 0.05 s at full size', () => {
+    expect(recordingSize('Physical size: 1600x2560\n')).toBe('800x1280');
+    expect(recordingSize('Physical size: 2560x1600\nOverride size: 1280x800\n')).toBe('1280x800');
+  });
+
+  it('records a landscape-native tablet drawn in portrait in portrait, not letterboxed', () => {
+    expect(recordingSize('Physical size: 2560x1600\n', 1)).toBe('800x1280');
+    expect(recordingSize('Physical size: 2560x1600\n', 3)).toBe('800x1280');
+    expect(recordingSize('Physical size: 2560x1600\n', 2)).toBe('1280x800');
+  });
+
+  it('reads the display rotation from dumpsys input, 0 when it is not there', () => {
+    expect(surfaceOrientation('    Viewport INTERNAL\n      SurfaceOrientation: 1\n')).toBe(1);
+    expect(
+      surfaceOrientation(
+        '  Viewport INTERNAL: displayId=0, uniqueId=local:1, orientation=3, logicalFrame=[0, 0, 1600, 2560]\n',
+      ),
+    ).toBe(3);
+    expect(surfaceOrientation('error: no devices')).toBe(0);
+    expect(surfaceOrientation(null)).toBe(0);
+  });
+
+  it('reads the physical size, and nothing from an answer without one', () => {
+    expect(physicalSize('Physical size: 2560x1600\nOverride size: 1280x800\n')).toEqual({
+      width: 2560,
+      height: 1600,
+    });
+    expect(physicalSize('error: no devices')).toBeNull();
+  });
+
+  it('records the phone at its own size', () => {
+    expect(recordingSize('Physical size: 1080x2400\n')).toBeNull();
+    expect(recordingSize(null)).toBeNull();
+  });
+
+  it("reads a recording's length from its movie header, in both header versions", () => {
+    const mvhd = (version, scale, length) => {
+      const box = Buffer.alloc(version === 1 ? 40 : 28);
+      box.write('mvhd', 4);
+      box[8] = version;
+      if (version === 1) {
+        box.writeUInt32BE(scale, 28);
+        box.writeBigUInt64BE(BigInt(length), 32);
+      } else {
+        box.writeUInt32BE(scale, 20);
+        box.writeUInt32BE(length, 24);
+      }
+      box.writeUInt32BE(box.length, 0);
+      return Buffer.concat([mp4Header(8 + box.length, 'moov'), box]);
+    };
+    expect(mp4Duration(mvhd(0, 1000, 700))).toBe(0.7);
+    expect(mp4Duration(mvhd(1, 90000, 1593000))).toBe(17.7);
+    expect(mp4Duration(mvhd(0, 0, 700))).toBeNull();
+    expect(mp4Duration(mvhd(0, 1000, 700).subarray(0, 30))).toBeNull();
+    expect(mp4Duration(Buffer.from('no header here'))).toBeNull();
+  });
+
+  it('reads the movie header inside moov, not four matching bytes in the frames before it', () => {
+    const mvhd = Buffer.alloc(28);
+    mvhd.writeUInt32BE(28, 0);
+    mvhd.write('mvhd', 4);
+    mvhd.writeUInt32BE(1000, 20);
+    mvhd.writeUInt32BE(4967, 24);
+    const frames = Buffer.concat([Buffer.from('xxxxmvhd'), Buffer.alloc(40, 0xff)]);
+    const file = Buffer.concat([
+      mp4Header(16, 'ftyp'),
+      Buffer.from('isom\0\0\0\0'),
+      mp4Header(8 + frames.length, 'mdat'),
+      frames,
+      mp4Header(8 + mvhd.length, 'moov'),
+      mvhd,
+    ]);
+    expect(mp4Duration(file)).toBe(4.967);
+    expect(mp4Duration(file.subarray(0, file.length - 10))).toBeNull();
+  });
+
+  it('takes a recording that ends before the app drew its first screen as cut short, not a still screen', () => {
+    expect(launchTime('Status: ok\nActivity: id/.MainActivity\nTotalTime: 2310\nComplete\n')).toBe(
+      2310,
+    );
+    expect(launchTime('Error: Activity not started')).toBeNull();
+    expect(launchRecorded(0.7, 1000, 2310)).toBe(false);
+    expect(launchRecorded(4.96, 1000, 2310)).toBe(true);
+    expect(launchRecorded(null, 1000, 2310)).toBe(false);
   });
 
   it('names the launch video by platform and device, so every launch of a commit is kept', () => {
@@ -2224,3 +2316,10 @@ describe('the account --ready reports', () => {
     expect(report).toContain('EMAIL=a@qa.test PASSWORD=pw TOTP_SECRET=S3CR3T');
   });
 });
+
+function mp4Header(size, type) {
+  const header = Buffer.alloc(8);
+  header.writeUInt32BE(size, 0);
+  header.write(type, 4);
+  return header;
+}

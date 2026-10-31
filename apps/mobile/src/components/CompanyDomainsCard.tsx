@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
+import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Field, focusChecked, focusRefused, keysStayDown, TextField } from './Field.tsx';
 import { AnswerHeading } from './AnswerHeading.tsx';
@@ -208,13 +208,7 @@ export function CompanyDomainsCard({
                 {t('companyDomains.removeBody', { domain })}
               </Text>
               <View style={styles.buttons}>
-                <PrimaryButton
-                  label={t('companyDomains.removeConfirm', { domain })}
-                  busy={busy}
-                  onPress={() => void remove(domain)}
-                  testID={`companyDomains.confirm.${domain}`}
-                />
-                <SecondaryButton
+                <QuietButton
                   label={t('companyDomains.keep')}
                   off={busy}
                   onPress={() => {
@@ -222,6 +216,12 @@ export function CompanyDomainsCard({
                     setClosed(stepClosed(domain));
                   }}
                   testID={`companyDomains.keep.${domain}`}
+                />
+                <DestructiveButton
+                  label={t('companyDomains.removeConfirm', { domain })}
+                  busy={busy}
+                  onPress={() => void remove(domain)}
+                  testID={`companyDomains.confirm.${domain}`}
                 />
               </View>
             </View>

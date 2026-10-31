@@ -854,11 +854,7 @@ function Removing({
           >
             <legend className="visually-hidden">{t('rolesScreen.replacementLegend')}</legend>
             {choices.map((one) => (
-              <label
-                key={one.id}
-                className="roles-replacement"
-                htmlFor={`role-replacement-${one.id}`}
-              >
+              <label key={one.id} className="option-card" htmlFor={`role-replacement-${one.id}`}>
                 <input
                   id={`role-replacement-${one.id}`}
                   type="radio"
@@ -869,8 +865,8 @@ function Removing({
                     setMissing(false);
                   }}
                 />
-                <span className="roles-row-name">{roleName(t, one)}</span>
-                <span className="muted roles-replacement-means">
+                <span className="roles-row-name option-card-name">{roleName(t, one)}</span>
+                <span className="muted option-card-means">
                   {t(describe(one, true), { name: organisation.name })}
                 </span>
               </label>
@@ -898,16 +894,16 @@ function Removing({
         </div>
       )}
       <div className="roles-actions">
+        <button type="button" className="link-button" onClick={onKeep}>
+          <span className="button-label">{keepLabel}</span>
+        </button>
         <button
           type="button"
-          className="button button-dark"
+          className="button button-danger"
           {...offButton(status === 'removing')}
           onClick={() => void remove()}
         >
           <span className="button-label">{removeLabel}</span>
-        </button>
-        <button type="button" className="button" onClick={onKeep}>
-          <span className="button-label">{keepLabel}</span>
         </button>
       </div>
     </div>

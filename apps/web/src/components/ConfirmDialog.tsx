@@ -1,44 +1,53 @@
-import { useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
+import { type ReactNode, type RefObject, useEffect, useRef } from 'react';
 
-import { useDialogKeys } from '../../../dialogFocus.ts';
-import { offButton } from '../../../offButton.ts';
+import { useDialogKeys } from '../dialogFocus.ts';
+import { offButton } from '../offButton.ts';
 
-/** Keep editing is the safe answer, so focus starts there; Escape keeps editing too, and focus goes back where it was unless going on opened another page. */
-export function Confirm({
+/** Focus starts on Keep and returns unless going on opened a page; with `titleRef` the opener moves it to the title instead (sc-11369). */
+export function ConfirmDialog({
   id,
   title,
-  body,
+  titleRef,
+  keep,
   go,
   pending,
   opensPage = false,
-  onGo,
+  stacks = false,
+  children,
+  refusal,
   onKeep,
+  onGo,
 }: {
   id: string;
   title: string;
-  body: string;
+  titleRef?: RefObject<HTMLHeadingElement | null>;
+  keep: string;
   go: string;
   pending: boolean;
   opensPage?: boolean;
-  onGo: () => void;
+  stacks?: boolean;
+  children: ReactNode;
+  refusal?: ReactNode;
   onKeep: () => void;
+  onGo: () => void;
 }) {
-  const { t } = useTranslation();
   const dialog = useRef<HTMLDivElement>(null);
-  const keep = useRef<HTMLButtonElement>(null);
+  const keepButton = useRef<HTMLButtonElement>(null);
   const left = useRef(false);
+  const focusesKeep = titleRef == null;
 
   useEffect(() => {
+    if (!focusesKeep) return;
+
     const opener = document.activeElement;
 
-    keep.current?.focus();
+    keepButton.current?.focus();
 
     return () => {
       if (left.current) return;
       if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
     };
-  }, []);
+  }, [focusesKeep]);
 
   useDialogKeys(dialog, onKeep, pending);
 
@@ -54,22 +63,27 @@ export function Confirm({
         aria-describedby={`${id}-body`}
       >
         <div className="dialog-heading">
-          <h2 id={`${id}-title`}>{title}</h2>
-          <p id={`${id}-body`}>{body}</p>
+          <h2 id={`${id}-title`} ref={titleRef} tabIndex={titleRef == null ? undefined : -1}>
+            {title}
+          </h2>
+          <div id={`${id}-body`} className="dialog-body">
+            {children}
+          </div>
         </div>
-        <div className="dialog-actions">
+        {refusal}
+        <div className={stacks ? 'dialog-actions dialog-actions-stack' : 'dialog-actions'}>
           <button
-            ref={keep}
+            ref={keepButton}
             type="button"
-            className="button button-primary"
+            className="link-button"
             {...offButton(pending, { dim: false })}
             onClick={onKeep}
           >
-            {t('eventEdit.keepEditing')}
+            <span className="button-label">{keep}</span>
           </button>
           <button
             type="button"
-            className="button"
+            className="button button-danger"
             {...offButton(pending, { dim: false })}
             aria-busy={pending}
             onClick={() => {
@@ -77,7 +91,7 @@ export function Confirm({
               onGo();
             }}
           >
-            {go}
+            <span className="button-label">{go}</span>
           </button>
         </div>
       </div>

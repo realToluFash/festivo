@@ -210,7 +210,7 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-function answering(answers: Record<string, () => Response>) {
+function answering(answers: Record<string, () => Response | Promise<Response>>) {
   const sent: { line: string; body: unknown }[] = [];
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -567,6 +567,31 @@ describe('somebody awaiting approval (sc-392)', () => {
     expect(sent.some((one) => one.line.endsWith('/turn-down'))).toBe(true);
   });
 
+  it('holds Keep the request while the turn-down is on its way', async () => {
+    signedIn();
+    let finish = (): void => {};
+    answering({
+      ...WAITING_READS,
+      'POST /api/orgs/org_1/members/m_ada/turn-down': () =>
+        new Promise<Response>((resolve) => {
+          finish = () => resolve(new Response(null, { status: 204 }));
+        }),
+    });
+    open();
+
+    const section = within(await screen.findByRole('region', { name: 'Awaiting approval' }));
+    fireEvent.click(section.getByRole('button', { name: 'Turn down' }));
+    fireEvent.click(section.getByRole('button', { name: 'Turn down Ada Okeke' }));
+
+    const keep = section.getByRole('button', { name: 'Keep the request' });
+    await waitFor(() => expect(keep.getAttribute('aria-disabled')).toBe('true'));
+    fireEvent.click(keep);
+    expect(section.getByRole('alertdialog')).toBeDefined();
+
+    finish();
+    expect(await screen.findByText(/Ada Okeke’s request is turned down\./)).toBeDefined();
+  });
+
   it('gives a pending person no role yet, and Approve and Turn down on their page', async () => {
     signedIn();
     answering(WAITING_READS);
@@ -627,7 +652,10 @@ describe('inviting somebody', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Invite somebody' }));
     expect(document.activeElement).toBe(
-      screen.getByRole('heading', { level: 1, name: 'Invite somebody' }),
+      within(screen.getByRole('dialog', { name: 'Invite somebody' })).getByRole('heading', {
+        level: 2,
+        name: 'Invite somebody',
+      }),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }));
 
@@ -763,7 +791,7 @@ describe('inviting somebody', () => {
     expect(document.activeElement).toBe(
       screen.getByRole('heading', { level: 1, name: 'Bisi Adeyemi' }),
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Remove from Ìrè Events' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from Ìrè Events…' }));
     expect(document.activeElement).toBe(
       screen.getByRole('heading', { level: 2, name: 'Remove Bisi Adeyemi?' }),
     );
@@ -785,10 +813,10 @@ describe('inviting somebody', () => {
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
-    const remove = screen.getByRole('button', { name: 'Remove from Ìrè Events' });
+    const remove = screen.getByRole('button', { name: 'Remove from Ìrè Events…' });
 
     expect(remove.hasAttribute('title')).toBe(false);
-    expect(remove.querySelector('.button-label')?.textContent).toBe('Remove from Ìrè Events');
+    expect(remove.querySelector('.button-label')?.textContent).toBe('Remove from Ìrè Events…');
   });
 
   it('keeps focus on Remove ‹name› while it runs and once it fails with no connection (sc-11487)', async () => {
@@ -797,7 +825,7 @@ describe('inviting somebody', () => {
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Remove from Ìrè Events' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from Ìrè Events…' }));
     const remove = screen.getByRole('button', { name: 'Remove Bisi Adeyemi' });
     remove.focus();
     fireEvent.click(remove);
@@ -855,7 +883,7 @@ describe('inviting somebody', () => {
     expect(
       screen.getByText('If nobody answers by Monday, Nov 16 at 14:20 WAT, they are removed.'),
     ).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Remove from Ìrè Events' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Remove from Ìrè Events…' })).toBeDefined();
 
     fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
 
@@ -1153,7 +1181,7 @@ describe('inviting somebody', () => {
     ).toBeDefined();
     expect(screen.getAllByText(/Only an owner can change/)).toHaveLength(1);
     expect(screen.queryByRole('button', { name: 'Restore' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Remove from Ìrè Events' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Remove from Ìrè Events…' })).toBeNull();
   });
 
   it('tells an administrator why an active owner beside another owner has no role picker', async () => {
@@ -1193,7 +1221,7 @@ describe('inviting somebody', () => {
     expect(
       await screen.findAllByText("Only an owner can change an owner's role or remove them."),
     ).toHaveLength(1);
-    expect(screen.queryByRole('button', { name: 'Remove from Ìrè Events' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Remove from Ìrè Events…' })).toBeNull();
   });
 
   describe('a member whose role holds a permission the viewer lacks (sc-11160)', () => {
@@ -1228,8 +1256,8 @@ describe('inviting somebody', () => {
       expect(within(card).queryByRole('radio')).toBeNull();
       expect(within(card).queryByRole('button')).toBeNull();
       expect(within(card).queryByRole('link')).toBeNull();
-      expect(screen.queryByRole('button', { name: 'Suspend' })).toBeNull();
-      expect(screen.queryByRole('button', { name: 'Remove from Ìrè Events' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Suspend…' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Remove from Ìrè Events…' })).toBeNull();
       expect(screen.queryByText(/Only an owner can change/)).toBeNull();
     });
 
@@ -1248,7 +1276,7 @@ describe('inviting somebody', () => {
       expect(within(card).queryByText(BEYOND)).toBeNull();
       expect(within(card).queryByText(/Their role is kept while/)).toBeNull();
       expect(screen.queryByRole('button', { name: 'Restore access' })).toBeNull();
-      expect(screen.queryByRole('button', { name: 'Remove Bisi Adeyemi' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Remove Bisi Adeyemi…' })).toBeNull();
       expect(screen.queryByText(/Restore access returns them/)).toBeNull();
     });
 
@@ -1279,7 +1307,7 @@ describe('inviting somebody', () => {
       ).toBeDefined();
       expect(screen.getAllByText(BEYOND)).toHaveLength(1);
       expect(screen.queryByRole('button', { name: 'Restore' })).toBeNull();
-      expect(screen.queryByRole('button', { name: 'Remove from Ìrè Events' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Remove from Ìrè Events…' })).toBeNull();
     });
 
     it('offers the picker for a role the loaded catalogue lacks, and leaves the refusal to the API', async () => {
@@ -1290,7 +1318,7 @@ describe('inviting somebody', () => {
       expect(screen.queryByText(BEYOND)).toBeNull();
       const radio = screen.getByRole('radio', { name: /Door team/ });
       expect((radio as HTMLInputElement).checked).toBe(true);
-      expect(screen.getByRole('button', { name: 'Remove from Ìrè Events' })).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Remove from Ìrè Events…' })).toBeDefined();
     });
 
     it('lets an owner change the same member as today', async () => {
@@ -1305,7 +1333,7 @@ describe('inviting somebody', () => {
       fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
 
       expect(screen.queryByText(BEYOND)).toBeNull();
-      expect(screen.getByRole('button', { name: 'Remove from Ìrè Events' })).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Remove from Ìrè Events…' })).toBeDefined();
     });
   });
 
@@ -1350,7 +1378,7 @@ describe('inviting somebody', () => {
       screen.getByText('If nobody answers by Monday, Nov 16 at 14:20 WAT, they are removed.'),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Restore' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Remove from Ìrè Events' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Remove from Ìrè Events…' })).toBeNull();
     expect(screen.queryByText(/Only an owner can change/)).toBeNull();
   });
 
@@ -1458,7 +1486,7 @@ describe('suspending and restoring a member', () => {
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Suspend' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Suspend…' }));
     expect(sent.some((one) => one.line.endsWith('/suspend'))).toBe(false);
     expect(document.activeElement?.textContent).toBe('Suspend Bisi Adeyemi?');
     expect(screen.getByRole('button', { name: 'Keep Bisi Adeyemi' })).toBeDefined();
@@ -1470,23 +1498,39 @@ describe('suspending and restoring a member', () => {
     expect(screen.getByText(/Their role is kept while they're suspended/)).toBeDefined();
   });
 
+  it('asks Suspend and Remove in the sc-22092 dialog, a sheet at phone width (sc-23172)', async () => {
+    signedIn();
+    answering({ ...READS, 'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)) });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Suspend…' }));
+    const suspending = screen.getByRole('alertdialog', { name: 'Suspend Bisi Adeyemi?' });
+    expect(suspending.className).toBe('dialog');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Remove from / }));
+    expect(screen.getByRole('alertdialog', { name: /Remove Bisi Adeyemi/ })).toBeDefined();
+  });
+
   it('keeps focus on Suspend ‹name› while it runs and once it fails with no connection (sc-11487)', async () => {
     signedIn();
     answering({ ...READS, 'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)) });
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Suspend' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Suspend…' }));
     const suspend = screen.getByRole('button', { name: 'Suspend Bisi Adeyemi' });
     suspend.focus();
     fireEvent.click(suspend);
 
     expect(suspend.hasAttribute('disabled')).toBe(false);
-    expect(
-      await screen.findByText(
-        'That did not go through. Nothing was changed. Try again in a moment.',
-      ),
-    ).toBeDefined();
+    const refusal = await screen.findByText(
+      'That did not go through. Nothing was changed. Try again in a moment.',
+    );
+    expect(refusal.closest('.dialog-heading')).toBeNull();
+    expect(refusal.closest('.dialog')).not.toBeNull();
     expect(document.activeElement).toBe(suspend);
   });
 
@@ -1496,7 +1540,7 @@ describe('suspending and restoring a member', () => {
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Suspend' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Suspend…' }));
     fireEvent.click(screen.getByRole('button', { name: 'Suspend Bisi Adeyemi' }));
     const keep = screen.getByRole('button', { name: 'Keep Bisi Adeyemi' });
     keep.focus();
@@ -1529,7 +1573,7 @@ describe('suspending and restoring a member', () => {
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: /^Folake Adeyemi/ }));
-    expect(screen.queryByRole('button', { name: 'Suspend' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Suspend…' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /Members/ }));
     fireEvent.click(await screen.findByRole('button', { name: /Kemi Lawal/ }));
 
@@ -1538,7 +1582,7 @@ describe('suspending and restoring a member', () => {
         'Owners cannot be suspended. To suspend Kemi Lawal, change their role first.',
       ),
     ).toBeDefined();
-    expect(screen.queryByRole('button', { name: 'Suspend' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Suspend…' })).toBeNull();
   });
 
   it('offers neither Suspend nor Restore without members.manage', async () => {
@@ -1549,7 +1593,7 @@ describe('suspending and restoring a member', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
 
     expect(screen.queryByRole('button', { name: 'Restore access' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Suspend' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Suspend…' })).toBeNull();
   });
 
   it('restores without asking, with the role they held', async () => {
@@ -1569,7 +1613,7 @@ describe('suspending and restoring a member', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Restore access' }));
 
     expect(await screen.findByText('Bisi Adeyemi has access again, as Coordinator.')).toBeDefined();
-    expect(await screen.findByRole('button', { name: 'Suspend' })).toBeDefined();
+    expect(await screen.findByRole('button', { name: 'Suspend…' })).toBeDefined();
   });
 
   it('asks first before removing a suspended member, and keeps them suspended on Keep', async () => {
@@ -1578,7 +1622,7 @@ describe('suspending and restoring a member', () => {
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Remove Bisi Adeyemi' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Bisi Adeyemi…' }));
 
     expect(document.activeElement).toBe(
       screen.getByRole('heading', { level: 2, name: 'Remove Bisi Adeyemi?' }),
@@ -1657,7 +1701,7 @@ describe('suspending and restoring a member', () => {
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Suspend' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Suspend…' }));
     fireEvent.click(screen.getByRole('button', { name: 'Suspend Bisi Adeyemi' }));
 
     expect(
@@ -1826,7 +1870,7 @@ describe('the dates the server wrote after a language change (sc-9267)', () => {
 });
 
 describe('where focus goes once a click on Members is answered (sc-11369)', () => {
-  it('puts focus back on Invite somebody after Cancel or ‹ Members', async () => {
+  it('puts focus back on Invite somebody after Cancel or Escape', async () => {
     signedIn();
     answering(READS);
     open();
@@ -1836,7 +1880,8 @@ describe('where focus goes once a click on Members is answered (sc-11369)', () =
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Invite somebody' }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Invite somebody' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Members' }));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Invite somebody' }));
   });
 
@@ -1905,14 +1950,14 @@ describe('where focus goes once a click on Members is answered (sc-11369)', () =
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Suspend' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Suspend…' }));
     fireEvent.click(screen.getByRole('button', { name: 'Keep Bisi Adeyemi' }));
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Suspend' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Suspend…' }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Remove from Ìrè Events' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from Ìrè Events…' }));
     fireEvent.click(screen.getByRole('button', { name: 'Keep Bisi Adeyemi' }));
     expect(document.activeElement).toBe(
-      screen.getByRole('button', { name: 'Remove from Ìrè Events' }),
+      screen.getByRole('button', { name: 'Remove from Ìrè Events…' }),
     );
   });
 
@@ -1922,11 +1967,11 @@ describe('where focus goes once a click on Members is answered (sc-11369)', () =
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Remove Bisi Adeyemi' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Bisi Adeyemi…' }));
     fireEvent.click(screen.getByRole('button', { name: 'Keep them suspended' }));
 
     expect(document.activeElement).toBe(
-      screen.getByRole('button', { name: 'Remove Bisi Adeyemi' }),
+      screen.getByRole('button', { name: 'Remove Bisi Adeyemi…' }),
     );
   });
 
@@ -1961,7 +2006,7 @@ describe('where focus goes once a click on Members is answered (sc-11369)', () =
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Remove from Ìrè Events' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from Ìrè Events…' }));
     fireEvent.click(screen.getByRole('button', { name: 'Remove Bisi Adeyemi' }));
 
     const line = await screen.findByText(

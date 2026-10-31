@@ -1,4 +1,4 @@
-# sc-11786: Remove {role}? on the role ${ROLE_ID}, which seven people hold.
+# sc-11786: Remove {role}? on the role ${ROLE_ID}, which seven people hold. Misses Remove role… under the tab bar since #1100; use sc23173-role-remove.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}

@@ -35,7 +35,7 @@ import { Forbidden } from '../Forbidden.tsx';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
-import { Confirm } from './Confirm.tsx';
+import { ConfirmDialog } from '../../../components/ConfirmDialog.tsx';
 import { CoverSection } from './CoverSection.tsx';
 import { Choice, FieldError, Moment } from './EventFields.tsx';
 import {
@@ -625,9 +625,6 @@ function DetailsForm({
         )}
 
         <div className="event-form-actions">
-          <button ref={saveButton} className="button button-primary" type="submit" aria-busy={busy}>
-            {busy ? t('eventEdit.saving') : t('eventEdit.save')}
-          </button>
           <button
             type="button"
             className="button"
@@ -636,19 +633,24 @@ function DetailsForm({
           >
             {t('eventEdit.cancel')}
           </button>
+          <button ref={saveButton} className="button button-primary" type="submit" aria-busy={busy}>
+            {busy ? t('eventEdit.saving') : t('eventEdit.save')}
+          </button>
         </div>
       </form>
 
       {confirming === 'latest' && (
-        <Confirm
+        <ConfirmDialog
           id="event-latest"
           title={t('eventEdit.showLatestTitle')}
-          body={t('eventEdit.showLatestBody')}
+          keep={t('eventEdit.keepEditing')}
           go={t('eventEdit.showLatest')}
           pending={fetchingLatest}
           onGo={() => void showLatest()}
           onKeep={() => setConfirming(null)}
-        />
+        >
+          <p>{t('eventEdit.showLatestBody')}</p>
+        </ConfirmDialog>
       )}
 
       {leave.dialog}

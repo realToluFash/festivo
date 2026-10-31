@@ -266,9 +266,9 @@ describe('Settings > General, ownership and leaving', () => {
     await waitFor(() => expect(document.activeElement).toBe(body));
     expect(body?.textContent).toContain('Make somebody else an owner, then you can leave.');
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(body?.closest('.settings-form')?.querySelector('.actions button')?.textContent).toBe(
-      'Transfer ownership',
-    );
+    expect(
+      body?.closest('.settings-form')?.querySelector('.actions button:last-child')?.textContent,
+    ).toBe('Transfer ownership');
   });
 
   it('says a wrong password changed nothing', async () => {

@@ -561,11 +561,11 @@ function Confirming({
       </div>
 
       <div className="actions">
-        <button className="button button-dark" type="button" onClick={onUnlink}>
-          {t('waysCard.confirmUnlink', { provider: name })}
-        </button>
-        <button className="button" type="button" onClick={onKeep}>
+        <button className="link-button" type="button" onClick={onKeep}>
           {t('waysCard.keep')}
+        </button>
+        <button className="button button-danger" type="button" onClick={onUnlink}>
+          {t('waysCard.confirmUnlink', { provider: name })}
         </button>
       </div>
     </>

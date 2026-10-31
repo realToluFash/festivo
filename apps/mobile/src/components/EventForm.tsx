@@ -70,7 +70,7 @@ import { useLoadedAt, useServerNow } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { holdLeaving } from '../leaveHeld.ts';
 import { tokens } from '../theme/tokens.ts';
-import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
+import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { type CoverUse, CoverField, discardCoverUpload } from './CoverField.tsx';
 import { focusPicker } from './CountryPicker.tsx';
@@ -661,13 +661,13 @@ function Ask({
           {title}
         </Text>
         <Text size={tokens.typeBodyPhone.size}>{body}</Text>
-        <PrimaryButton
+        <DestructiveButton label={go} onPress={onGo} busy={pending} testID={`${testID}.go`} />
+        <QuietButton
           label={t('eventEdit.keepEditing')}
           onPress={onKeep}
           off={pending}
           testID={`${testID}.keep`}
         />
-        <SecondaryButton label={go} onPress={onGo} off={pending} testID={`${testID}.go`} />
       </View>
     </Sheet>
   );
@@ -900,5 +900,5 @@ const styles = StyleSheet.create({
   pickDate: { flex: 1 },
   pickReadOnly: { backgroundColor: tokens.colorNeutralFill },
   pickWrong: { borderColor: tokens.colorBroken },
-  placeholder: { color: tokens.colorInkTertiary },
+  placeholder: { color: tokens.colorInkSecondary },
 });

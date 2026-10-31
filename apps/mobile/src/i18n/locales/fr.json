@@ -6,7 +6,6 @@
     "title": "Soirely",
     "subtitle": "La soirée, depuis votre poche.",
     "openSignIn": "Se connecter",
-    "openLayouts": "Démonstration des mises en page",
     "signedInTo": "Vous êtes connecté à {{name}}",
     "openSettings": "Ouvrir les Paramètres",
     "switchOrganisation": "Changer d’organisation"
@@ -30,7 +29,7 @@
     "retry": "Veuillez réessayer",
     "check": "Vérification",
     "state": "État",
-    "usingFallback": "Aucune URL d’API n’est configurée : localhost est donc utilisé. Cela fonctionne sur un simulateur et non sur un appareil — veuillez consulter le fichier README."
+    "usingFallback": "Aucune URL d’API n’est configurée : localhost est donc utilisé. Cela fonctionne sur un simulateur, mais pas sur un appareil. Veuillez consulter le fichier README."
   },
   "language": {
     "label": "Langue",
@@ -766,7 +765,7 @@
     "describeSeededReadOnly": "Intégré, il ne peut donc pas être supprimé. Une personne qui peut modifier {{area}} choisit ce qu’il permet.",
     "describeCustomReadOnly": "Créé par {{name}}.",
     "describeNew": "Part de rien. Activez ce dont ces personnes ont besoin.",
-    "remove": "Supprimer le rôle",
+    "remove": "Supprimer le rôle…",
     "ownerNote": "Propriétaire est intégré et ne peut être ni modifié ni supprimé. Il a toujours tout, et {{name}} en a toujours au moins un.",
     "saved": "Enregistré. S’applique à la prochaine requête de chaque personne.",
     "gridHeading": "Dans chaque domaine, ce rôle peut",
@@ -1223,6 +1222,7 @@
     "removeTitle": "Retirer {{name}}",
     "removeBody": "Cette personne perd l’accès dès qu’elle utilise de nouveau Soirely. Ses événements restent rattachés à {{organisation}}.",
     "removeButton": "Retirer de {{organisation}}",
+    "removeButtonOpen": "Retirer de {{organisation}}…",
     "removeConfirmTitle": "Retirer {{name}} ?",
     "removeConfirmBody": "{{name}} n’aura plus accès à {{organisation}} dès sa prochaine utilisation de Soirely. Ses événements restent rattachés à {{organisation}}, et tout ce que cette personne a fait est conservé.",
     "removeConfirm": "Retirer {{name}}",
@@ -1817,5 +1817,12 @@
     "title": "Mettez à jour Soirely pour continuer",
     "body": "Cette version de Soirely ne fonctionne plus. La mise à jour conserve tout ce que vous avez enregistré.",
     "update": "Mettre à jour"
+  },
+  "saveLabel": {
+    "saved": "Enregistré"
+  },
+  "toast": {
+    "undo": "Annuler",
+    "close": "Fermer"
   }
 }

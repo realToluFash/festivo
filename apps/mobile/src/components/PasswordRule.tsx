@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { tokens } from '../theme/tokens.ts';
+import { tracking } from '../theme/tracking.ts';
 import { Text } from './Text.tsx';
 import { useMarkSide } from './markSide.ts';
 
@@ -64,7 +65,7 @@ const styles = StyleSheet.create({
   },
   ruleHeading: {
     color: tokens.colorInkSecondary,
-    letterSpacing: 1.2,
+    letterSpacing: tracking(tokens.typeLabel),
     textTransform: 'uppercase',
   },
   rule: {

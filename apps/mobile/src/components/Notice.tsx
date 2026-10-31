@@ -1,4 +1,4 @@
-import type { Ref } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { tokens } from '../theme/tokens.ts';
@@ -19,8 +19,10 @@ export function Notice({
   body,
   detail,
   action,
+  button,
   heading = false,
   announce = false,
+  interrupts = false,
   answer,
   takesFocus = false,
   readMs,
@@ -34,10 +36,14 @@ export function Notice({
   body?: string;
   detail?: string | null;
   action?: FieldAction | undefined;
+  /** A house button under the words, where the way out is a button rather than a text action. */
+  button?: ReactNode;
   /** The notice is the screen's message, so its title is the screen's heading. */
   heading?: boolean;
   /** The notice appears in answer to something the person did, so a screen reader reads it out. */
   announce?: boolean;
+  /** Read out ahead of whatever a screen reader was saying. */
+  interrupts?: boolean;
   /** What a tap set for this notice to answer it: the notice is read out as it appears, and again with each new answer, without changing what a screen reader reads on it. */
   answer?: unknown;
   /** The answer takes screen reader focus to the words, which focus reads, in place of reading them out (sc-11032). */
@@ -52,7 +58,7 @@ export function Notice({
     !takesFocus && (announce || answer !== undefined)
       ? [title, body, detail].filter((line) => line != null).join('\n')
       : null,
-    { answer },
+    { answer, interrupts },
   );
   const { shown, read } = useFocusOnAnswer(takesFocus ? answer : undefined, undefined, readMs);
   const wordsAsOne = announce || takesFocus || wordsRef != null;
@@ -136,6 +142,7 @@ export function Notice({
             </Text>
           </Pressable>
         )}
+        {button != null && <View style={styles.button}>{button}</View>}
       </View>
     </View>
   );
@@ -159,6 +166,7 @@ const styles = StyleSheet.create({
   done: { backgroundColor: tokens.colorAccentTint, borderColor: tokens.colorAccentTintBorder },
   body: { flex: 1, gap: tokens.spaceHair },
   words: { gap: tokens.spaceHair },
+  button: { marginTop: tokens.spaceSm },
   action: { minHeight: tokens.sizeHit, justifyContent: 'center', alignSelf: 'flex-start' },
   accent: { color: tokens.colorAccentText },
 

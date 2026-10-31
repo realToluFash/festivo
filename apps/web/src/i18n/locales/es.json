@@ -1256,7 +1256,7 @@
     "beyondGrant": "El rol de esta persona incluye un permiso que el de usted no tiene, así que no puede cambiarle el rol ni el acceso.",
     "suspendTitle": "Suspender a {{name}}",
     "suspendBody": "Esta persona pierde el acceso a {{organisation}} en cuanto vuelva a usar Soirely, hasta que alguien lo restablezca. Se conservan su rol, sus eventos y su historial.",
-    "suspendButton": "Suspender",
+    "suspendButton": "Suspender…",
     "suspendConfirmTitle": "¿Suspender a {{name}}?",
     "suspendConfirmBody": "{{name}} pierde el acceso a {{organisation}} en cuanto vuelva a usar Soirely, hasta que alguien lo restablezca. Se conservan su rol, sus eventos y su historial.",
     "suspendConfirmEmail": "Se le avisa por correo electrónico en su idioma. El correo no dice quién ha suspendido su acceso.",
@@ -1283,8 +1283,10 @@
     "seatsOpenMembers": "Abrir Miembros ›",
     "seatsSuspendedFree": "Quien tiene el acceso suspendido no ocupa plaza.",
     "removeTitle": "Quitar a {{name}}",
+    "removeNameOpen": "Quitar a {{name}}…",
     "removeBody": "Pierde el acceso en cuanto vuelva a usar Soirely. Sus eventos se quedan en {{organisation}}.",
     "removeButton": "Quitar de {{organisation}}",
+    "removeButtonOpen": "Quitar de {{organisation}}…",
     "removeConfirmTitle": "¿Quitar a {{name}}?",
     "removeConfirmBody": "{{name}} dejará de tener acceso a {{organisation}} en cuanto vuelva a usar Soirely. Sus eventos se quedan en {{organisation}} y se conserva todo lo que hizo.",
     "removeConfirm": "Quitar a {{name}}",
@@ -1350,7 +1352,7 @@
     "describeSeededReadOnly": "Es predefinido, así que no se puede eliminar. Lo que incluye lo decide alguien que pueda cambiar {{area}}.",
     "describeCustomReadOnly": "Creado por {{name}}.",
     "describeNew": "Empieza sin nada. Active lo que necesiten.",
-    "remove": "Eliminar rol",
+    "remove": "Eliminar rol…",
     "ownerNote": "Propietario es predefinido y no se puede editar ni eliminar. Siempre lo tiene todo, y {{name}} siempre tiene al menos uno.",
     "saved": "Guardado. Se aplica en la próxima solicitud de cada persona.",
     "gridHeading": "En cada área, este rol puede",
@@ -2080,5 +2082,12 @@
     "key_event": "El propio evento",
     "key_you": "Algo que debe hacer usted",
     "key_automatic": "Soirely se encarga por usted"
+  },
+  "saveLabel": {
+    "saved": "Guardado"
+  },
+  "toast": {
+    "undo": "Deshacer",
+    "close": "Cerrar"
   }
 }

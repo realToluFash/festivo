@@ -318,7 +318,7 @@
   },
   "public": {
     "tagline": "Plan the event. Run the night.",
-    "body": "Soirely is where an event is planned at a desk and run from a phone. Guests, seating, menus, the running order — in one place, in your language.",
+    "body": "Soirely is where an event is planned at a desk and run from a phone. Guests, seating, menus and the running order, in one place and in your language.",
     "signIn": "Sign in",
     "getStarted": "Get started"
   },
@@ -1232,7 +1232,7 @@
     "beyondGrant": "Their role holds a permission yours does not, so you cannot change their role or their access.",
     "suspendTitle": "Suspend {{name}}",
     "suspendBody": "They can't use {{organisation}} from their next request until someone restores their access. Their role, their events and their history are kept.",
-    "suspendButton": "Suspend",
+    "suspendButton": "Suspend…",
     "suspendConfirmTitle": "Suspend {{name}}?",
     "suspendConfirmBody": "{{name}} can't use {{organisation}} from their next request until someone restores their access. Their role, their events and their history are kept.",
     "suspendConfirmEmail": "They're emailed in their language. The email doesn't say who suspended them.",
@@ -1258,8 +1258,10 @@
     "seatsOpenMembers": "Open Members ›",
     "seatsSuspendedFree": "Suspended members do not take a seat.",
     "removeTitle": "Remove {{name}}",
+    "removeNameOpen": "Remove {{name}}…",
     "removeBody": "They lose access on their next request. Their events stay with {{organisation}}.",
     "removeButton": "Remove from {{organisation}}",
+    "removeButtonOpen": "Remove from {{organisation}}…",
     "removeConfirmTitle": "Remove {{name}}?",
     "removeConfirmBody": "{{name}} stops having access to {{organisation}} on their next request. Their events stay with {{organisation}}, and everything they did is kept.",
     "removeConfirm": "Remove {{name}}",
@@ -1323,7 +1325,7 @@
     "describeSeededReadOnly": "Built in, so it cannot be removed. Someone who can change {{area}} decides what it holds.",
     "describeCustomReadOnly": "Made by {{name}}.",
     "describeNew": "Starts from nothing. Switch on what they need.",
-    "remove": "Remove role",
+    "remove": "Remove role…",
     "ownerNote": "Owner is built in and can't be edited or removed. It always has everything, and {{name}} always has at least one.",
     "saved": "Saved. Applies on each person's next request.",
     "gridHeading": "In each area, this role can",
@@ -2029,5 +2031,12 @@
     "key_event": "The event itself",
     "key_you": "Something you need to do",
     "key_automatic": "Soirely does it for you"
+  },
+  "saveLabel": {
+    "saved": "Saved"
+  },
+  "toast": {
+    "undo": "Undo",
+    "close": "Close"
   }
 }
