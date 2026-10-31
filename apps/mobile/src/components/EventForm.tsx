@@ -900,5 +900,5 @@ const styles = StyleSheet.create({
   pickDate: { flex: 1 },
   pickReadOnly: { backgroundColor: tokens.colorNeutralFill },
   pickWrong: { borderColor: tokens.colorBroken },
-  placeholder: { color: tokens.colorInkTertiary },
+  placeholder: { color: tokens.colorInkSecondary },
 });

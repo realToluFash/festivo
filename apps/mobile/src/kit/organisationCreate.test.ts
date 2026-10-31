@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createOrganisation,
   dropsKeysAfter,
-  limitMessage,
+  limitNotice,
   newOrganisationMessage,
 } from './organisationCreate.ts';
 
@@ -126,10 +126,14 @@ describe('the words before sending', () => {
   it('names the minute the limit lifts in 24-hour time', () => {
     const until = new Date(2026, 9, 19, 14, 35);
 
-    expect(limitMessage(until, 'en', words)).toBe(
-      'createOrganisation.limitedTitle createOrganisation.limitedBody {"time":"14:35"}',
-    );
-    expect(limitMessage(null, 'en', words)).toBe('createOrganisation.limitedTitle');
+    expect(limitNotice(until, 'en', words)).toEqual({
+      title: 'createOrganisation.limitedTitle',
+      body: 'createOrganisation.limitedBody {"time":"14:35"}',
+    });
+    expect(limitNotice(null, 'en', words)).toEqual({
+      title: 'createOrganisation.limitedTitle',
+      body: null,
+    });
   });
 });
 
