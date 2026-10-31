@@ -765,7 +765,7 @@
     "describeSeededReadOnly": "É predefinida, por isso não pode ser removida. Quem pode alterar {{area}} decide o que inclui.",
     "describeCustomReadOnly": "Criada por {{name}}.",
     "describeNew": "Começa sem nada. Ative o que for preciso.",
-    "remove": "Remover função",
+    "remove": "Remover função…",
     "ownerNote": "Proprietário é predefinida e não pode ser editada nem removida. Tem sempre tudo, e {{name}} tem sempre pelo menos um.",
     "saved": "Guardado. Aplica-se no próximo pedido de cada pessoa.",
     "gridHeading": "Em cada área, esta função pode",
