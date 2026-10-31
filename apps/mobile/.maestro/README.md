@@ -48,6 +48,11 @@ page: it picks a start (Android's dialogs close with `OK`, iOS's sheets with Don
 Create draft out from under an iPhone's tab bar, and taps it. A check that makes a copy calls
 it rather than repeating the platform split.
 
+`duplicate-open` starts on the original's page and ends on Duplicate {event}'s form. On an
+iPhone, `scrollUntilVisible` can stop with Duplicar under the opaque header, where Maestro
+still counts it visible and its tap lands on the header, so it nudges the row down before
+tapping and waits on `eventDuplicate.start.date` (iOS has no `eventDuplicate.start`).
+
 A check whose taps are conditional (`runFlow` with `when`) ends on an assertion of where it
 landed, so a tap that went elsewhere, or no tap at all, fails rather than passing on a screenshot.
 
