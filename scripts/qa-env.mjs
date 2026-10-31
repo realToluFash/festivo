@@ -140,6 +140,7 @@ export function qaConfig(tester = 1, address = undefined) {
   const simulators = {
     phone: { name: `${label} iPhone`, type: 'iPhone 17 Pro' },
     ipad: { name: `${label} iPad`, type: 'iPad Pro 13-inch (M5)' },
+    se: { name: `${label} iPhone SE`, type: 'iPhone SE (3rd generation)' },
   };
   const avd = label.replace(/ /g, '_');
   const emulators = {
@@ -230,11 +231,10 @@ export function commitTarget(sha, { verify, remoteBranchesWith }) {
   return { ref: sha, label: sha };
 }
 
-// One of a tester's simulators runs at a time: the phone unless --ipad asks otherwise.
+// One of a tester's simulators runs at a time: the phone unless --ipad or --se asks otherwise.
 export function simulatorFor(args) {
-  return args.includes('--ipad')
-    ? { open: 'ipad', shut: 'phone' }
-    : { open: 'phone', shut: 'ipad' };
+  const open = ['ipad', 'se'].find((key) => args.includes(`--${key}`)) ?? 'phone';
+  return { open, shut: ['phone', 'ipad', 'se'].filter((key) => key !== open) };
 }
 
 export function emulatorFor(args) {
@@ -1141,7 +1141,7 @@ async function ios(args) {
   assertQaStack(root);
   const { open, shut } = simulatorFor(args);
   const id = iosBundle(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
-  shutSimulator(root, shut, id);
+  for (const key of shut) shutSimulator(root, key, id);
   // An offline release launch stopped these; a release build owns soirely:// while installed.
   startAppServices(root);
   const expo = mobileExpoRange(root);
@@ -1901,7 +1901,7 @@ async function releaseIos(args) {
 
   step(`The ${open}`);
   const id = iosBundle(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
-  shutSimulator(root, shut, id);
+  for (const key of shut) shutSimulator(root, key, id);
   const udid = simulatorId(CONFIG.simulators[open].name);
   if (!udid) throw new Error(`no ${CONFIG.simulators[open].name} simulator — run setup`);
   withoutPasswordAutoFill(udid);
@@ -1938,7 +1938,7 @@ function maestroDevice(args) {
     }
     return emulatorSerial();
   }
-  const device = args.includes('--ipad') ? CONFIG.simulators.ipad : CONFIG.simulators.phone;
+  const device = CONFIG.simulators[simulatorFor(args).open];
   const udid = simulatorId(device.name);
   if (!udid) throw new Error(`no ${device.name} simulator — run setup`);
   return udid;
@@ -2776,7 +2776,7 @@ export function batchSummary(ids, { passed, begun, crashed, unstarted = new Map(
 }
 
 export function rerunHints(name, failures, { args, email, secret, rest = {} }) {
-  const device = ['--ipad', '--android'].filter((flag) => args.includes(flag));
+  const device = ['--ipad', '--se', '--android'].filter((flag) => args.includes(flag));
   const once = failures.filter(
     (run, index) =>
       failures.findIndex(

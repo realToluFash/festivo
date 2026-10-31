@@ -297,11 +297,11 @@ With no MCP, fall back to a script — `npx playwright` with a `page.goto`,
 ### The app — Maestro, on simulators
 
 ```sh
-node .qa/bin/qa-env.mjs ios [--ipad]                     # the bundler, in Expo Go, on the QA phone (or iPad); shuts the other
-node .qa/bin/qa-env.mjs release [--offline] [--ipad]     # a release build of the commit on the simulator, on its first launch
+node .qa/bin/qa-env.mjs ios [--ipad | --se]              # the bundler, in Expo Go, on the QA phone (or iPad, iPhone SE); shuts the others
+node .qa/bin/qa-env.mjs release [--offline] [--ipad | --se] # a release build of the commit on the simulator, on its first launch
 node .qa/bin/qa-env.mjs maestro sign-in EMAIL=… PASSWORD=…        # one flow, on the phone
 node .qa/bin/qa-env.mjs maestro sign-in --ipad EMAIL=… PASSWORD=… # on the tablet
-node .qa/bin/qa-env.mjs hierarchy [--ipad | --android]           # what is on screen, for writing a flow
+node .qa/bin/qa-env.mjs hierarchy [--ipad | --se | --android]    # what is on screen, for writing a flow
 ```
 
 Never a bare `maestro --device …` on iOS. Maestro's iOS driver answers on one port, so a
@@ -315,15 +315,17 @@ rather than the network: the app's offline state, never iOS's own no-network scr
 the first 15 seconds under `.qa/release`, as on Android; judge a splash bullet on that video.
 The next `ios` removes the build and starts the stack again.
 
-`ios` keeps running — start it in the background, and restart it after a `checkout`, or it
-serves the previous commit. Never `just qa-ios` or `just qa-mobile`: those drive the
+`ios` keeps running — start it in the background with the longest timeout the tool allows
+(`timeout: 7200000`), or the bundler is stopped with it at ten minutes, mid-batch. Restart it
+after a `checkout`, or it serves the previous commit. `--se` is the iPhone SE, for an SE bullet
+(`maestro`, `batch` and `hierarchy` take it too); never rename simulators for it. Never `just qa-ios` or `just qa-mobile`: those drive the
 developer's bundler and whichever simulator happens to be booted.
 
 **Android**, on your emulators `Soirely_QA<n>_Phone` and `Soirely_QA<n>_Tablet`. On a host
 without Xcode it is the whole app pass. On the Mac it is the pass for every bullet whose AC
 names Android, alone or beside iOS, and an Android-only story is yours to take as much as
 qa2's. On the Mac keep one device of your own booted: shut the simulator
-(`xcrun simctl shutdown "Soirely QA<n> iPhone"`, and `iPad`) before `android`, and run
+(`xcrun simctl shutdown "Soirely QA<n> iPhone"`, `iPad` and `iPhone SE`) before `android`, and run
 `android --stop` before `ios`.
 
 ```sh
@@ -334,7 +336,7 @@ node .qa/bin/qa-env.mjs release [--offline] [--tablet]   # a release build of th
 node .qa/bin/qa-env.mjs android --stop                   # the emulator, when the pass is done
 ```
 
-`android` behaves like `ios`: start it in the background, and restart it after a `checkout`.
+`android` behaves like `ios`: start it in the background with the same timeout, and restart it after a `checkout`.
 Each start switches TalkBack off and prints that it did: partway through a screen-reader pass,
 turn TalkBack on again after `android` starts, or a missing announcement is the harness, not the app.
 `release` needs no bundler and takes an hour the first time on a machine. The next `android`
@@ -522,7 +524,7 @@ item that someone else has to decide or fix: `[pm]` for an undecided behaviour, 
 missing state on an artboard, `[dev]` for a question about the build. See `role-comments`.
 **End each device pass by closing what it opened**: stop the background `ios` or `android`
 command (it is the bundler), then the device, with `node .qa/bin/qa-env.mjs android --stop`
-or `xcrun simctl shutdown "Soirely QA<n> iPhone"` (and `iPad`). A bundler left running
+or `xcrun simctl shutdown "Soirely QA<n> iPhone"` (and `iPad`, `iPhone SE`). A bundler left running
 holds your worker as busy, and an emulator holds several GB.
 Finish with `sq qa done <id> --note "<one line>"`; the note is what your next run on the
 story sees.
