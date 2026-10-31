@@ -180,7 +180,7 @@ function DuplicateDialog({ event, onClose }: { event: OrganisationEvent; onClose
             )}
           </div>
 
-          <div className="dialog-actions">
+          <div className="dialog-actions actions-confirm">
             <button
               type="button"
               className="button"

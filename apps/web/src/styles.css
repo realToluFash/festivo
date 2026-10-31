@@ -3253,11 +3253,6 @@ span {
   .owner-claim-withdraw {
     border-radius: var(--radiusSheet) var(--radiusSheet) 0 0;
   }
-
-  .owner-claim-withdraw .dialog-actions {
-    flex-direction: column-reverse;
-    align-items: stretch;
-  }
 }
 
 .members-chips {
@@ -4732,13 +4727,6 @@ button.members-row {
   color: var(--colorInkSecondary);
 }
 
-@media (width <= 40rem) {
-  .event-delete-dialog .dialog-actions {
-    flex-direction: column-reverse;
-    align-items: stretch;
-  }
-}
-
 /* ── Duplicate an event (sc-3593) ─────────────────────────────────────────── */
 
 .event-copy-lists {
@@ -4784,11 +4772,6 @@ button.members-row {
     height: 100%;
     max-height: none;
     border-radius: 0;
-  }
-
-  .event-copy-dialog .dialog-actions {
-    flex-direction: column-reverse;
-    align-items: stretch;
   }
 }
 
