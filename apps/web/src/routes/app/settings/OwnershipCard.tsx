@@ -647,7 +647,7 @@ function Leave({
                 {t('ownership.leave', { organisation: organisation.name })}
               </span>
             </button>
-            <button type="button" className="button" {...offButton(busy)} onClick={onStay}>
+            <button type="button" className="link-button" {...offButton(busy)} onClick={onStay}>
               {t('ownership.stay')}
             </button>
           </div>
@@ -814,7 +814,7 @@ function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: ()
             {t('ownership.deleteButton', { organisation: organisation.name })}
           </span>
         </button>
-        <button className="button" type="button" {...offButton(busy)} onClick={onKeep}>
+        <button className="link-button" type="button" {...offButton(busy)} onClick={onKeep}>
           <span className="button-label">
             {t('ownership.deleteKeep', { organisation: organisation.name })}
           </span>

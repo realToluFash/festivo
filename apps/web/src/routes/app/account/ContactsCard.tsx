@@ -419,7 +419,7 @@ function ContactsCard({
                     <p>{t('contacts.removeBody')}</p>
                     <div className="actions">
                       <button
-                        className="button button-dark"
+                        className="button button-danger"
                         type="button"
                         aria-busy={sending}
                         onClick={() => void act(row, 'remove')}
@@ -427,7 +427,7 @@ function ContactsCard({
                         {t(email ? 'contacts.removeConfirm' : 'contacts.removeConfirmPhone')}
                       </button>
                       <button
-                        className="button"
+                        className="link-button"
                         type="button"
                         {...offButton(sending)}
                         onClick={() => closeBackTo(`remove ${row.id}`)}

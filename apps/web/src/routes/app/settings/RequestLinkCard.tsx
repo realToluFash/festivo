@@ -171,7 +171,7 @@ export function RequestLinkCard({ organisation }: { organisation: Membership }) 
                   {t('requestLink.replaceConfirm')}
                 </button>
                 <button
-                  className="button"
+                  className="link-button"
                   type="button"
                   disabled={busy}
                   onClick={() => {

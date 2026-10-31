@@ -402,7 +402,7 @@ function OwnerClaimCard({
               </button>
               <button
                 type="button"
-                className="button"
+                className="link-button"
                 onClick={() => {
                   setConfirming(false);
                   land(() => stopButton.current);
@@ -655,7 +655,7 @@ export function PausedOwnerClaim({
               </button>
               <button
                 type="button"
-                className="button"
+                className="link-button"
                 onClick={() => {
                   setConfirming(false);
                   land(() => stopButton.current);

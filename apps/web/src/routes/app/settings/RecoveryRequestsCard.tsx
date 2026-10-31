@@ -173,7 +173,7 @@ export function RecoveryRequestsCard() {
                         <div className="actions">
                           <button
                             className={
-                              here === 'approve' ? 'button button-primary' : 'button button-dark'
+                              here === 'approve' ? 'button button-primary' : 'button button-danger'
                             }
                             type="button"
                             onClick={() => void answer(request, here)}
@@ -183,7 +183,7 @@ export function RecoveryRequestsCard() {
                               : t('recoveryRequests.turnDownConfirm')}
                           </button>
                           <button
-                            className="button"
+                            className={here === 'approve' ? 'button' : 'link-button'}
                             type="button"
                             onClick={() => keep(request, here)}
                           >

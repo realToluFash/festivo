@@ -68,7 +68,7 @@ export function LifecycleDialog<C>({
               <button
                 ref={first}
                 type="button"
-                className="button"
+                className={tone === 'danger' ? 'link-button' : 'button'}
                 {...offButton(pending, { dim: false })}
                 onClick={onClose}
               >

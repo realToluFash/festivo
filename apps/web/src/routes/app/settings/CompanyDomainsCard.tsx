@@ -214,7 +214,7 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
                       {t('companyDomains.removeConfirm', { domain })}
                     </button>
                     <button
-                      className="button"
+                      className="link-button"
                       type="button"
                       disabled={busy}
                       onClick={() => keep(domain)}

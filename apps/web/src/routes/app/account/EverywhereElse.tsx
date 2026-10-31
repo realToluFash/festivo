@@ -311,7 +311,7 @@ export function EverywhereElse({
             </button>
           ) : (
             <button
-              className="button button-dark"
+              className="button button-danger"
               type="submit"
               aria-busy={working}
               {...offButton(refusal?.kind === 'limited')}
@@ -327,7 +327,7 @@ export function EverywhereElse({
                     : t('devices.everywhereConfirmAll', { count })}
             </button>
           )}
-          <button className="button" type="button" onClick={onKeep} disabled={working}>
+          <button className="link-button" type="button" onClick={onKeep} disabled={working}>
             {t('devices.everywhereKeep', { count })}
           </button>
         </div>

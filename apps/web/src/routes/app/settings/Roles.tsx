@@ -900,13 +900,13 @@ function Removing({
       <div className="roles-actions">
         <button
           type="button"
-          className="button button-dark"
+          className="button button-danger"
           {...offButton(status === 'removing')}
           onClick={() => void remove()}
         >
           <span className="button-label">{removeLabel}</span>
         </button>
-        <button type="button" className="button" onClick={onKeep}>
+        <button type="button" className="link-button" onClick={onKeep}>
           <span className="button-label">{keepLabel}</span>
         </button>
       </div>

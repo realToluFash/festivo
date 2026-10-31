@@ -1030,7 +1030,7 @@ function MemberDetail({
               <div className="actions">
                 <button
                   type="button"
-                  className="button button-dark"
+                  className="button button-danger"
                   aria-busy={suspending === 'suspending'}
                   {...offButton(suspending === 'suspending')}
                   onClick={() => void suspend()}
@@ -1041,7 +1041,7 @@ function MemberDetail({
                 </button>
                 <button
                   type="button"
-                  className="button"
+                  className="link-button"
                   onClick={() => {
                     setSuspendFailed(null);
                     setSuspending('resting');
@@ -1126,7 +1126,7 @@ function MemberDetail({
                 </button>
                 <button
                   type="button"
-                  className="button"
+                  className="link-button"
                   onClick={() => {
                     setFailed(null);
                     setRemoval('resting');
@@ -1510,7 +1510,7 @@ function JoinRequestAnswer({
           >
             {t('membersScreen.awaiting.turnDownConfirm', { name })}
           </button>
-          <button type="button" className="button" disabled={busy} onClick={back}>
+          <button type="button" className="link-button" disabled={busy} onClick={back}>
             {t('membersScreen.awaiting.keep')}
           </button>
         </div>

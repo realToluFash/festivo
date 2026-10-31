@@ -560,10 +560,10 @@ function TurningOff({
         </div>
 
         <div className="actions">
-          <button className="button button-dark" type="submit" aria-busy={checking}>
+          <button className="button button-danger" type="submit" aria-busy={checking}>
             {t('twoFactorCard.turnItOff')}
           </button>
-          <button className="button" type="button" {...offButton(checking)} onClick={onKeep}>
+          <button className="link-button" type="button" {...offButton(checking)} onClick={onKeep}>
             {t('twoFactorCard.keepItOn')}
           </button>
         </div>
