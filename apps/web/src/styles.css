@@ -2133,6 +2133,11 @@ span {
 }
 
 @media (width <= 40rem) {
+  .dialog-actions-stack {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
   .dialog {
     top: auto;
     bottom: 0;
@@ -4575,10 +4580,18 @@ button.members-row {
 
 /* ── Make live (sc-3584) ──────────────────────────────────────────────────── */
 
-/* A status chip: a shape beside its word, so a state never rests on colour alone (sc-3585, sc-23172). */
+/* A status chip: a shape beside its word, so a state never rests on colour alone, and its words wrap at 320 rather than push the page sideways (sc-3585, sc-23172). */
 .status-chip {
+  flex: 0 1 auto;
   gap: var(--spaceXs);
+  max-width: 100%;
+  height: auto;
+  min-height: var(--sizePill);
+  padding-block: 2px;
+  box-sizing: border-box;
   background: var(--colorNeutralFill);
+  line-height: 1.25;
+  white-space: normal;
 }
 
 .status-chip::before {
