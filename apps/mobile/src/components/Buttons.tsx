@@ -124,6 +124,7 @@ export function DestructiveButton({
   onPress,
   busy = false,
   off = false,
+  accessibilityLabel,
   ref,
   testID,
 }: {
@@ -131,6 +132,7 @@ export function DestructiveButton({
   onPress: () => void;
   busy?: boolean;
   off?: boolean;
+  accessibilityLabel?: string;
   ref?: Ref<ViewInstance> | undefined;
   testID: string;
 }) {
@@ -150,6 +152,7 @@ export function DestructiveButton({
       onPressOut={fade.onPressOut}
       onPress={busy ? undefined : onPress}
       disabled={off || undefined}
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityRole="button"
       accessibilityState={{ disabled: inactive, busy }}
       testID={testID}

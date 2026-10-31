@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
-import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
+import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { Sheet } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 import { type ScreenReaderTarget } from './screenReaderFocus.ts';
@@ -101,7 +101,14 @@ export function LifecycleSheet({
   testID: string;
   title: string;
   lines: string[];
-  confirm: { label: string; keep: string; pending: boolean; onGo: () => void } | null;
+  confirm: {
+    label: string;
+    keep: string;
+    pending: boolean;
+    /** Something ends: the destructive button confirms, and keeping it is a text action. */
+    ends?: boolean;
+    onGo: () => void;
+  } | null;
   onward?: { label: string; onPress: () => void } | null;
   retold?: unknown;
   onClose: () => void;
@@ -129,7 +136,22 @@ export function LifecycleSheet({
             {children}
           </ScrollView>
           <View style={phone ? styles.stacked : styles.actions}>
-            {confirm != null ? (
+            {confirm?.ends === true ? (
+              <>
+                <DestructiveButton
+                  label={confirm.label}
+                  onPress={confirm.onGo}
+                  busy={confirm.pending}
+                  testID={`${testID}Yes`}
+                />
+                <QuietButton
+                  label={confirm.keep}
+                  onPress={onClose}
+                  off={confirm.pending}
+                  testID={`${testID}No`}
+                />
+              </>
+            ) : confirm != null ? (
               <>
                 <PrimaryButton
                   label={confirm.label}

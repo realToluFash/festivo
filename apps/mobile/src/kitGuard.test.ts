@@ -954,11 +954,17 @@ describe('a contact confirmation shows its request running, its way back off (sc
   const text = readFileSync(join('src', 'components', 'ContactsCard.tsx'), 'utf8');
 
   it('on Make it primary and Remove it, busy while they send', () => {
-    const busy = selfClosing('PrimaryButton', text)
-      .filter(({ markup }) => /\bbusy=\{sending\}/u.test(markup))
-      .map(({ markup }) => propValue(markup, 'testID'));
+    const busy = ['DestructiveButton', 'PrimaryButton'].flatMap((button) =>
+      selfClosing(button, text)
+        .filter(({ markup }) => /\bbusy=\{sending\}/u.test(markup))
+        .map(({ markup }) => propValue(markup, 'testID')),
+    );
 
-    expect(busy).toEqual(['{`contacts.${row.id}.confirm`}', '{`contacts.${kind}.send`}']);
+    expect(busy).toEqual([
+      '{`contacts.${row.id}.confirm`}',
+      '{`contacts.${row.id}.confirm`}',
+      '{`contacts.${kind}.send`}',
+    ]);
   });
 
   it('on Keep and on Cancel under an add form, off until the answer', () => {
@@ -1063,47 +1069,56 @@ describe('a way back that names an outcome is off while its request runs (sc-125
     expect(propValue(pressable, 'accessibilityState')).toBe('{{ disabled: off }}');
   });
 
-  it('where PrimaryButton busy still takes the tap, so the keys stay up, and does nothing with it', () => {
-    const text = readFileSync(join('src', 'components', 'Buttons.tsx'), 'utf8');
-    const body = text.slice(text.indexOf('export function PrimaryButton('));
-    const start = body.indexOf('<PressFade');
-    const pressable = body.slice(start, tagEnd(body, start));
+  it.each(['PrimaryButton', 'DestructiveButton'])(
+    'where %s busy still takes the tap, so the keys stay up, and does nothing with it',
+    (button) => {
+      const text = readFileSync(join('src', 'components', 'Buttons.tsx'), 'utf8');
+      const body = text.slice(text.indexOf(`export function ${button}(`));
+      const start = body.indexOf('<PressFade');
+      const pressable = body.slice(start, tagEnd(body, start));
 
-    expect(propValue(pressable, 'disabled')).toBe('{off || undefined}');
-    expect(propValue(pressable, 'onPress')).toBe('{busy ? undefined : onPress}');
-    expect(propValue(pressable, 'accessibilityState')).toBe('{{ disabled: inactive, busy }}');
-  });
+      expect(propValue(pressable, 'disabled')).toBe('{off || undefined}');
+      expect(propValue(pressable, 'onPress')).toBe('{busy ? undefined : onPress}');
+      expect(propValue(pressable, 'accessibilityState')).toBe('{{ disabled: inactive, busy }}');
+      expect(propValue(pressable, 'accessibilityLabel')).toBe('{accessibilityLabel ?? label}');
+    },
+  );
 
-  it('where PrimaryButton busy or taken off is read as off once Pressable has merged its props', () => {
-    const pressableSource = readFileSync(
-      require.resolve('react-native/Libraries/Components/Pressable/Pressable.js'),
-      'utf8',
-    );
-    expect(pressableSource).toMatch(/disabled != null \? \{\.\.\._accessibilityState, disabled\}/u);
+  it.each(['PrimaryButton', 'DestructiveButton'])(
+    'where %s busy or taken off is read as off once Pressable has merged its props',
+    (button) => {
+      const pressableSource = readFileSync(
+        require.resolve('react-native/Libraries/Components/Pressable/Pressable.js'),
+        'utf8',
+      );
+      expect(pressableSource).toMatch(
+        /disabled != null \? \{\.\.\._accessibilityState, disabled\}/u,
+      );
 
-    const text = readFileSync(join('src', 'components', 'Buttons.tsx'), 'utf8');
-    const body = text.slice(text.indexOf('export function PrimaryButton('));
-    const start = body.indexOf('<PressFade');
-    const pressable = body.slice(start, tagEnd(body, start));
-    const evaluate = (prop: string) =>
-      new Function(
-        'busy',
-        'off',
-        `const inactive = busy || off; return ${propValue(pressable, prop)?.slice(1, -1)};`,
-      ) as (busy: boolean, off: boolean) => unknown;
-    const disabled = evaluate('disabled');
-    const state = evaluate('accessibilityState');
-    const readAsOff = (busy: boolean, off: boolean) => {
-      const merged = disabled(busy, off);
-      return merged != null ? merged : (state(busy, off) as { disabled: boolean }).disabled;
-    };
+      const text = readFileSync(join('src', 'components', 'Buttons.tsx'), 'utf8');
+      const body = text.slice(text.indexOf(`export function ${button}(`));
+      const start = body.indexOf('<PressFade');
+      const pressable = body.slice(start, tagEnd(body, start));
+      const evaluate = (prop: string) =>
+        new Function(
+          'busy',
+          'off',
+          `const inactive = busy || off; return ${propValue(pressable, prop)?.slice(1, -1)};`,
+        ) as (busy: boolean, off: boolean) => unknown;
+      const disabled = evaluate('disabled');
+      const state = evaluate('accessibilityState');
+      const readAsOff = (busy: boolean, off: boolean) => {
+        const merged = disabled(busy, off);
+        return merged != null ? merged : (state(busy, off) as { disabled: boolean }).disabled;
+      };
 
-    expect([readAsOff(true, false), readAsOff(false, true), readAsOff(false, false)]).toEqual([
-      true,
-      true,
-      false,
-    ]);
-  });
+      expect([readAsOff(true, false), readAsOff(false, true), readAsOff(false, false)]).toEqual([
+        true,
+        true,
+        false,
+      ]);
+    },
+  );
 });
 
 interface Source {

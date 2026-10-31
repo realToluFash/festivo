@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
+import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { Notice } from './Notice.tsx';
@@ -171,7 +171,7 @@ export function RequestLinkCard({
               </AnswerHeading>
               <Text size={tokens.typeBodyPhone.size}>{t('requestLink.replaceBody')}</Text>
               <View style={styles.buttons}>
-                <PrimaryButton
+                <DestructiveButton
                   label={t('requestLink.replaceConfirm')}
                   busy={busy}
                   onPress={() =>
@@ -179,7 +179,7 @@ export function RequestLinkCard({
                   }
                   testID="requestLink.replaceConfirm"
                 />
-                <SecondaryButton
+                <QuietButton
                   label={t('requestLink.keep')}
                   off={busy}
                   onPress={() => {

@@ -15,7 +15,7 @@ import { api } from '../api.ts';
 import { useShownLanguage } from '../i18n/index.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { useComeForward, useOpenerInSight } from './comeForward.ts';
@@ -434,17 +434,13 @@ function StopConfirm({
       </AnswerHeading>
       <Text size={tokens.typeBodyPhone.size}>{t('ownerClaim.stopBody', { organisation })}</Text>
       <View style={styles.actions}>
-        <PrimaryButton
+        <DestructiveButton
           label={t('ownerClaim.stopYes')}
           onPress={onStop}
           busy={busy}
           testID="ownerClaim.stopYes"
         />
-        <SecondaryButton
-          label={t('ownerClaim.stopNo')}
-          onPress={onKeep}
-          testID="ownerClaim.stopNo"
-        />
+        <QuietButton label={t('ownerClaim.stopNo')} onPress={onKeep} testID="ownerClaim.stopNo" />
       </View>
     </View>
   );
