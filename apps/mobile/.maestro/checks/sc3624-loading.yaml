@@ -1,0 +1,26 @@
+# sc-3624: ${EV} opened from Events with the API paused: Coming up says it is loading, with All dates still linked. Needs the batch helper's /api (sc-17894); /started brings the API back up.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- tapOn:
+    id: 'events.tab.drafts'
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${EV}'
+    direction: DOWN
+    timeout: 30000
+# The list has loaded, so from here only Event View's own reads wait on the API.
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- tapOn:
+    id: 'events.row.${EV}'
+- scrollUntilVisible:
+    element:
+      id: 'timeline.comingUp.loading'
+    direction: DOWN
+    timeout: 30000
+- assertVisible:
+    id: 'timeline.allDates'
+- takeScreenshot: loading

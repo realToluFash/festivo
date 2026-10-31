@@ -1,0 +1,57 @@
+# The iPad on its side at whatever text size the simulator is set to: the rail, the switcher, the Settings list, and the lists beside a member's and a role's page. sc-13496.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'frame.organisation'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: land-home
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: land-settings-1
+- scroll
+- takeScreenshot: land-settings-2
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.row.*'
+    timeout: 30000
+- tapOn:
+    id: 'members.row.*'
+    index: 0
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: land-member
+- openLink: ${METRO_URL}/--/settings/roles
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 30000
+- tapOn:
+    id: 'roles.role.owner'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: land-role
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'frame.organisation'
+    timeout: 15000
+- tapOn:
+    id: 'frame.organisation'
+- extendedWaitUntil:
+    visible: '{{t:switcher.heading}}'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: land-switcher
+- setOrientation: PORTRAIT

@@ -1,0 +1,26 @@
+# Signing in with two-factor on: the code step, after the password. sc-12596.
+#
+#   node .qa/bin/qa-env.mjs account --two-factor    an account with it on
+#   node .qa/bin/qa-env.mjs batch <name> <check>… EMAIL=… PASSWORD=… TOTP_SECRET=…
+#
+# The harness keeps the secret and makes the code as it is typed, a step past the last one
+# it made: the API refuses a code at or before the last it accepted, and counts the refusal.
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible:
+      id: 'twoFactor.code'
+    timeout: 30000
+- runScript:
+    file: batch/helper.js
+    env:
+      ASK: /code
+- tapOn:
+    id: 'twoFactor.code'
+- inputText: ${output.helper.code}
+- tapOn:
+    id: 'twoFactor.verify'
+- extendedWaitUntil:
+    notVisible:
+      id: 'twoFactor.code'
+    timeout: 30000

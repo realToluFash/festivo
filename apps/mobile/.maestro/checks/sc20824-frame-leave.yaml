@@ -1,0 +1,124 @@
+# sc-20824, sc-3595's frame check scrolled to Edit details for a taller page: in ${ORG}, with a name typed in New event, each of the frame's destinations (tab bar, header pills or rail) asks Leave without saving?, Events itself included; Keep editing keeps the form, and Leave without saving lands on Settings with the form gone from Events. Then ${EVENT_ID}'s Edit details with a change typed: Home asks, and leaving lands on Home with the form gone from Events.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.new'
+    timeout: 30000
+- tapOn:
+    id: 'events.new'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 20000
+- tapOn:
+    id: 'eventForm.name'
+- inputText: 'Tab Leave Party'
+- hideKeyboard
+- takeScreenshot: new-typed
+- tapOn:
+    id: 'frame.home'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.leave.keep'
+    timeout: 10000
+- takeScreenshot: new-home-asks
+- tapOn:
+    id: 'eventForm.leave.keep'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'eventForm.name'
+    text: 'Tab Leave Party'
+- takeScreenshot: new-home-kept
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.leave.keep'
+    timeout: 10000
+- takeScreenshot: new-events-asks
+- tapOn:
+    id: 'eventForm.leave.keep'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'eventForm.name'
+- tapOn:
+    id: 'frame.settings'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.leave.go'
+    timeout: 10000
+- takeScreenshot: new-settings-asks
+- tapOn:
+    id: 'eventForm.leave.go'
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 20000
+- assertNotVisible:
+    id: 'eventForm.name'
+- takeScreenshot: new-settings-left
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.new'
+    timeout: 20000
+- assertNotVisible:
+    id: 'eventForm.name'
+- takeScreenshot: new-form-gone
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: 'events.page.edit'
+          direction: DOWN
+          centerElement: true
+- tapOn:
+    id: 'events.page.edit'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 20000
+- tapOn:
+    id: 'eventForm.name'
+- inputText: ' tab'
+- hideKeyboard
+- tapOn:
+    id: 'frame.home'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.leave.go'
+    timeout: 10000
+- takeScreenshot: edit-home-asks
+- tapOn:
+    id: 'eventForm.leave.go'
+- extendedWaitUntil:
+    visible:
+      id: 'home.switchOrganisation'
+    timeout: 20000
+- assertNotVisible:
+    id: 'eventForm.name'
+- takeScreenshot: edit-home-left
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.new'
+    timeout: 20000
+- assertNotVisible:
+    id: 'eventForm.name'
+- takeScreenshot: edit-form-gone

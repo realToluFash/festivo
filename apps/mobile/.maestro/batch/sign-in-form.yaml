@@ -1,0 +1,55 @@
+# The sign-in form, without the relaunch sign-in.yaml makes: a batch launches Expo Go once.
+# With two-factor on, the code comes from sign-in-two-factor.yaml.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 60000
+- tapOn:
+    id: 'signIn.email'
+# 120 rather than the default 50: an address is longer than that, and a partial
+# erase leaves a fragment that the new text is typed on top of.
+- eraseText: 120
+- inputText: ${EMAIL}
+# Scrolled to: the You were signed out notice pushes Password under the keyboard. sc-20997.
+- scrollUntilVisible:
+    element:
+      id: 'signIn.password'
+    direction: DOWN
+    centerElement: true
+    timeout: 15000
+- tapOn:
+    id: 'signIn.password'
+- eraseText: 120
+- inputText: ${PASSWORD}
+# On iOS the password field's Go key, not a tap: on an iPad hideKeyboard can scroll the
+# form instead, and the tap lands where the button was (sc-19359). On Android Enter can
+# type into the field instead of submitting (sc-18648), so it taps. No retry.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - pressKey: Enter
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+      - tapOn:
+          id: 'signIn.submit'
+- extendedWaitUntil:
+    notVisible:
+      id: 'signIn.submit'
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: 'twoFactor.code'
+    file: ../sign-in-two-factor.yaml
+- scrollUntilVisible:
+    element:
+      text: '{{t:any:settings.signedInAs|email}}|{{t:any:noOrganisation.signedInAs|email}}'
+    direction: DOWN
+    timeout: 30000
