@@ -409,7 +409,7 @@ describe('a field keeps focus while signing in, and takes it for its line (sc-11
     await waitFor(() =>
       expect(screen.getByLabelText<HTMLInputElement>('Email').readOnly).toBe(true),
     );
-    const forgot = screen.getByRole('link', { name: 'Forgot your password?' });
+    const forgot = screen.getByRole('link', { name: 'Forgot it?' });
     forgot.focus();
     act(refuse);
 
@@ -457,7 +457,7 @@ describe('signing in under an organisation’s sign-in rules (sc-69)', () => {
     expect(banner.textContent).toMatch(/Use Google instead/);
     expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('folake@ire.events');
     expect(screen.queryByLabelText('Password')).toBeNull();
-    expect(screen.queryByRole('link', { name: 'Forgot your password?' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Forgot it?' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Sign in' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Continue with Apple' })).toBeNull();
@@ -525,5 +525,37 @@ describe('signing in under an organisation’s sign-in rules (sc-69)', () => {
     expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('folake@ire.events');
     expect(screen.getByRole('button', { name: 'Continue with Apple' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Continue with Google' })).toBeNull();
+  });
+});
+
+describe('the language buttons (sc-23277)', () => {
+  function phoneWide(matches: boolean): void {
+    vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query) =>
+        ({ matches, media: query, addEventListener() {}, removeEventListener() {} }) as never,
+    );
+  }
+
+  it('sit in the header wider than a phone', () => {
+    phoneWide(false);
+    at('/sign-in');
+
+    const languages = screen.getByRole('group', { name: 'Language' });
+
+    expect(screen.getByRole('banner').contains(languages)).toBe(true);
+  });
+
+  it('come once, after the form and its links, on a phone, the brand still in the header', () => {
+    phoneWide(true);
+    at('/sign-in');
+
+    const languages = screen.getByRole('group', { name: 'Language' });
+    const content = screen.getByRole('main');
+
+    expect(screen.getByRole('banner').textContent).toContain('Soirely');
+    expect(screen.getByRole('banner').contains(languages)).toBe(false);
+    expect(content.compareDocumentPosition(languages) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
   });
 });

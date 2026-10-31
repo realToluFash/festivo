@@ -440,7 +440,7 @@ function CodeScreen({
 
               <div className="resend">
                 <button
-                  className="button"
+                  className="link-button"
                   type="button"
                   {...resending.button}
                   onClick={() => void resend()}

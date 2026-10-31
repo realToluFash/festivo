@@ -24,7 +24,6 @@ import {
   refusalFromParams,
   ruleRefusal,
 } from '../src/kit/signInRules.ts';
-import { useLayout } from '../src/layout/useLayout.ts';
 
 type Status =
   /** `another`: Sign in with another account brought the form back in its place. */
@@ -109,7 +108,6 @@ function Credentials({
   onAnotherAccount: () => void;
 }) {
   const { t } = useTranslation();
-  const { kind } = useLayout();
   const email = useRef<TextInputInstance>(null);
   const password = useRef<TextInputInstance>(null);
 
@@ -271,7 +269,7 @@ function Credentials({
           <Field
             label={t('signIn.password')}
             labelAction={{
-              label: kind === 'phone' ? t('recovery.forgotShort') : t('recovery.forgot'),
+              label: t('recovery.forgotShort'),
               onPress: () => router.push('/forgot-password'),
               testID: 'signIn.forgot',
             }}

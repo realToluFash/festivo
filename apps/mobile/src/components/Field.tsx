@@ -421,6 +421,7 @@ const styles = StyleSheet.create({
     color: tokens.colorInk,
     fontSize: tokens.typeTitleDialog.size,
     fontWeight: '700',
+    fontVariant: ['tabular-nums'],
     letterSpacing: 8,
     textAlign: 'center',
   },

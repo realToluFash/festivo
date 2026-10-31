@@ -707,8 +707,15 @@ span {
   border-bottom: var(--borderHeader);
 }
 
-.auth-header .brand {
-  flex: 1;
+.auth-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sizeHit);
+}
+
+.auth-header .brand,
+.auth-header .auth-back {
+  margin-right: auto;
 }
 
 .auth-main {
@@ -1126,7 +1133,11 @@ span {
 
   .auth-main {
     align-items: stretch;
-    padding: var(--spaceSm) var(--space3xl) var(--space5xl);
+    padding: var(--spaceSm) var(--space3xl) var(--space3xl);
+  }
+
+  .auth-foot {
+    padding: 0 var(--space3xl) var(--space5xl);
   }
 
   .language-choice {
@@ -1433,10 +1444,6 @@ span {
   gap: var(--spaceXs);
 }
 
-.resend .button {
-  font-variant-numeric: tabular-nums;
-}
-
 .resend p {
   margin: 0;
   font: var(--typeSmall);
@@ -1513,6 +1520,15 @@ span {
 .link-button.link-button-quiet:hover {
   color: var(--colorInk);
   text-decoration: underline;
+}
+
+.resend .link-button {
+  font-variant-numeric: tabular-nums;
+}
+
+.resend .link-button[data-off] {
+  color: var(--colorInkSecondary);
+  cursor: default;
 }
 
 .auth-footnote .link-button {
@@ -2941,21 +2957,6 @@ span {
   width: var(--sizeMark);
   height: var(--sizeMark);
   accent-color: var(--colorAccent);
-}
-
-/* A word chosen per width, both in the page, one shown. */
-.narrow-only {
-  display: none;
-}
-
-@media (width <= 40rem) {
-  .wide-only {
-    display: none;
-  }
-
-  .narrow-only {
-    display: inline;
-  }
 }
 
 /* ── Your account's sections, and the time zone (sc-868) ─────────────────── */

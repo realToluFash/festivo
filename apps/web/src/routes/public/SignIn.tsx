@@ -252,14 +252,8 @@ export function SignIn() {
             <div className="field">
               <div className="field-heading">
                 <label htmlFor="password">{t('signIn.password')}</label>
-                {/* Shorter on a phone, as drawn; the name a screen reader hears stays the whole question. */}
-                <Link
-                  className="link-button"
-                  to="/forgot-password"
-                  aria-label={t('recovery.forgot')}
-                >
-                  <span className="wide-only">{t('recovery.forgot')}</span>
-                  <span className="narrow-only">{t('recovery.forgotShort')}</span>
+                <Link className="link-button" to="/forgot-password">
+                  {t('recovery.forgotShort')}
                 </Link>
               </div>
               <PasswordField

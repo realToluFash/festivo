@@ -400,6 +400,7 @@
   },
   "register": {
     "title": "Crie a sua conta",
+    "back": "Voltar ao início de sessão",
     "intro": "A seguir, enviamos-lhe um código por e-mail para confirmar que o endereço é seu.",
     "name": "Nome completo",
     "email": "Endereço de e-mail",
@@ -718,7 +719,6 @@
     "dismiss": "Fechar"
   },
   "recovery": {
-    "forgot": "Esqueceu-se da palavra-passe?",
     "forgotShort": "Esqueceu-se?",
     "title": "Reponha a sua palavra-passe",
     "intro": "Introduza o e-mail com que inicia sessão. Se tiver uma conta, enviamos-lhe uma ligação para definir uma nova palavra-passe.",
