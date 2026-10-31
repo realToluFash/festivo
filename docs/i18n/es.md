@@ -561,3 +561,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   electrónico. Compruebe que tiene una @ y un dominio.» El inglés de todas es el mismo, así que
   el español también; se descartaron «un correo electrónico» (es un mensaje, no una dirección) y
   «una dirección de correo» (el glosario dice _correo electrónico_).
+- **31 Oct 2026. El aviso y su «Guardado»** (`toast.undo`, `toast.close`, `saveLabel.saved`,
+  web y app, sc-24571 para sc-22092). La acción del aviso es «Deshacer» y su botón de cierre se
+  anuncia «Cerrar». El botón de guardar pasa a «✓ Guardado», en masculino invariable, porque
+  el botón no sabe qué se guarda; se descartó «Cambios guardados», demasiado largo para el
+  botón del teléfono.
