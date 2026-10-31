@@ -42,18 +42,20 @@ describe('a step closing back to its opener', () => {
       { do: 'bringOpener' },
       { do: 'readOpener' },
       { do: 'putKeysDown' },
-      { do: 'settleOpener', into: 'outOfSight', read: false },
+      { do: 'settleOpener', into: 'outOfSight' },
       { do: 'finish', focusBack: false, atMs: TALKBACK_FOCUS_TAKEN_MS },
     ]);
   });
 
-  it('on Android with TalkBack on, gives input focus to a holder TalkBack does not read beside a line of words, and moves TalkBack’s focus to the line once the keys’ scroll has landed, before the step goes (sc-18587)', () => {
+  it('on Android with TalkBack on, gives input focus to a holder TalkBack does not read beside a line of words, and moves TalkBack’s focus to the line before the keys go down, so TalkBack has not already put it there from the carried-off Save (sc-18587)', () => {
     expect(stepCloseSteps('android', true, 'holder')).toEqual([
       { do: 'holdScroll' },
       { do: 'showOpener' },
       { do: 'takeInputFocus', atMs: INPUT_FOCUS_TAKEN_MS, to: 'holder' },
+      { do: 'bringOpener' },
+      { do: 'readOpener' },
       { do: 'putKeysDown' },
-      { do: 'settleOpener', into: 'outOfSight', read: true },
+      { do: 'settleOpener', into: 'outOfSight' },
       { do: 'finish', focusBack: false, atMs: TALKBACK_FOCUS_TAKEN_MS },
     ]);
   });

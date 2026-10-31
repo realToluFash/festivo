@@ -390,6 +390,7 @@ export function EventsScreen({
           label: original == null ? t('eventsScreen.back') : t('eventsScreen.backToEvent'),
           onPress: back.onPress,
           testID: 'events.back',
+          revealsList: original == null,
         }}
         spacing={SPACING}
       />

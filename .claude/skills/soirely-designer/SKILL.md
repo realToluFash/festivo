@@ -37,6 +37,14 @@ Read all three, plus `.claude/skills/screen-from-design/SKILL.md`, before drawin
 If you change how this work is done, change `SHARED.md` — not this file, and not fifteen
 copies of it.
 
+**Two rules from 30 Oct that every drawing follows**, both in `SHARED.md`:
+
+- **Three boards per screen**: the proposal ([fd]'s way, the app's functionality), [fd] as
+  drawn, and the app today. See **Three boards per screen**.
+- **Start from the epic page's proposal boards**, not from [fd] alone, older boards or
+  today's app. A built screen moving to the new design keeps its ticket's functionality
+  and AC; only its look and layout change.
+
 ## 2. Pick the work
 
 ### The owner's run with no argument draws the list
@@ -177,6 +185,10 @@ story's AC, `docs/architecture/`, the endpoint's response shape. If nothing feed
 Never carry a number across from a reference or a mock. A count the reference had no way to
 know is a count you have no way to know.
 
+A story's AC counts as a feed for something still to be built. An [fd] element only an AC
+asks for stays on the proposal with the "AC, not yet built" pill; one that neither the code
+nor any AC feeds comes out (`SHARED.md`, **Three boards per screen**).
+
 ## 5. What every screen owes
 
 - **Four layouts**: desktop web · tablet landscape · tablet portrait · phone. They are
@@ -212,9 +224,13 @@ nothing is drawn in them:
 - epic 28, Organisations and access: https://claude.ai/artifact/3PTd8uLPLCH3gUugouhTGZ
 - epic 34, Staffing: https://claude.ai/artifact/6Urq4HMJ8pH5jGEyTXCfcE
 
-Read it before you change it (`action: "read"`), and read
-https://claude.ai/artifact/2Swi2WCFoRNeqPRBngDpbK, the worked example for Budget and costs,
-built in this language for exactly this purpose. Match its density and level of finish.
+Read it before you change it (`action: "read"`). Other sessions publish to it too: read a
+board's live copy before you change it and fold in what differs, publish only your files in
+patch mode, and edit `canvas.json` with text edits rather than rewriting it.
+
+Page `29 · Events` is the worked example: Events home and Event view, each as its three
+boards. Match its density and level of finish, and start your own drawing from your epic
+page's proposal boards.
 
 ## 7. Write the story's Design section
 
@@ -223,7 +239,7 @@ with `sq ux edit sc-N --section Design`, body on stdin: it replaces the Design s
 and leaves the rest of the description as it was. The house shape, in this order:
 
 ```markdown
-**Artboard:** `VerifyEmail-*.dc.html` (four layouts) · page `<epic number> · <area>` · <artifact url>
+**Artboard:** `VerifyEmail.dc.html`, the proposal (four layouts), beside `VerifyEmail-fd.dc.html` and `VerifyEmail-App.dc.html` · page `<epic number> · <area>` · <artifact url>
 
 **Layouts:** desktop web · tablet landscape · tablet portrait · phone, because …
 
