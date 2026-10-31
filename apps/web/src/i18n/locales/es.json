@@ -400,6 +400,7 @@
   },
   "register": {
     "title": "Cree su cuenta",
+    "back": "Volver a iniciar sesión",
     "intro": "A continuación, le enviamos un código por correo para comprobar que la dirección es suya.",
     "name": "Nombre completo",
     "email": "Correo electrónico",

@@ -394,6 +394,7 @@
   },
   "register": {
     "title": "Create your account",
+    "back": "Back to sign in",
     "intro": "Next, we email you a code to check the address is yours.",
     "name": "Full name",
     "email": "Email",

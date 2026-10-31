@@ -81,6 +81,41 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+describe('the way back from Create your account (sc-23277)', () => {
+  function from(entries: string[]) {
+    const router = createMemoryRouter(routes, {
+      initialEntries: entries,
+      initialIndex: entries.length - 1,
+    });
+    render(<RouterProvider router={router} />);
+
+    return router;
+  }
+
+  it('reads ‹ Sign in, and is heard as Back to sign in', () => {
+    from(['/register']);
+
+    const back = screen.getByRole('button', { name: 'Back to sign in' });
+    expect(back.textContent).toBe('‹ Sign in');
+  });
+
+  it('does what the browser’s Back does, when there is a page to go back to', async () => {
+    const router = from(['/sign-in', '/forgot-password', '/register']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to sign in' }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/forgot-password'));
+  });
+
+  it('opens Sign in when the account form was the first page opened', async () => {
+    const router = from(['/register']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to sign in' }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/sign-in'));
+  });
+});
+
 describe('creating an account', () => {
   it('asks for a name, an email and a password, and states the rule before submit', () => {
     at('/register');

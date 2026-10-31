@@ -400,6 +400,7 @@
   },
   "register": {
     "title": "Créez votre compte",
+    "back": "Retour à la connexion",
     "intro": "Ensuite, nous vous envoyons un code par e-mail pour vérifier que l’adresse est la vôtre.",
     "name": "Nom complet",
     "email": "Adresse e-mail",

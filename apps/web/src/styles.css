@@ -1579,6 +1579,12 @@ span {
 
 /* ── Create your account ──────────────────────────────────────────────────── */
 
+.auth-back {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+}
+
 .auth-heading {
   display: flex;
   flex-direction: column;
