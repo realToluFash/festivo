@@ -532,6 +532,9 @@ function Transfer({
       </p>
 
       <div className="actions">
+        <button className="button" type="button" {...offButton(busy)} onClick={onCancel}>
+          {t('ownership.keep')}
+        </button>
         {provider != null && vouched == null ? (
           <button
             className={provider === 'google' ? 'button button-google' : 'button button-apple'}
@@ -552,9 +555,6 @@ function Transfer({
             </span>
           </button>
         )}
-        <button className="button" type="button" {...offButton(busy)} onClick={onCancel}>
-          {t('ownership.keep')}
-        </button>
       </div>
     </form>
   );

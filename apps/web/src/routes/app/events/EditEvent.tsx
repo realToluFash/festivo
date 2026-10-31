@@ -625,9 +625,6 @@ function DetailsForm({
         )}
 
         <div className="event-form-actions">
-          <button ref={saveButton} className="button button-primary" type="submit" aria-busy={busy}>
-            {busy ? t('eventEdit.saving') : t('eventEdit.save')}
-          </button>
           <button
             type="button"
             className="button"
@@ -635,6 +632,9 @@ function DetailsForm({
             onClick={() => void navigate(eventPath)}
           >
             {t('eventEdit.cancel')}
+          </button>
+          <button ref={saveButton} className="button button-primary" type="submit" aria-busy={busy}>
+            {busy ? t('eventEdit.saving') : t('eventEdit.save')}
           </button>
         </div>
       </form>
