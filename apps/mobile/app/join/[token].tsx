@@ -23,6 +23,7 @@ import { PrimaryButton, SecondaryButton } from '../../src/components/Buttons.tsx
 import {
   CONTROL_TEXT_SIZE,
   Field,
+  fieldStyles,
   focusChecked,
   keysStayDown,
   TextField,
@@ -42,6 +43,7 @@ import { unreachableFrom } from '../../src/unreachable.ts';
 const REQUEST_LINK_TOKEN = /^[0-9a-f]{32}$/i;
 
 const MESSAGE_LINES = 4;
+const MESSAGE_LINE_HEIGHT = CONTROL_TEXT_SIZE * tokens.typeBodyPhone.lineHeight;
 
 type Shown =
   | { kind: 'loading' }
@@ -460,8 +462,10 @@ const styles = StyleSheet.create({
   tileText: { color: tokens.colorAccentText },
   naming: { flex: 1, minWidth: 0, gap: tokens.spaceHair },
   message: {
+    lineHeight: MESSAGE_LINE_HEIGHT,
     minHeight:
-      MESSAGE_LINES * CONTROL_TEXT_SIZE * tokens.typeBodyPhone.lineHeight + 2 * tokens.spaceLg,
+      MESSAGE_LINES * MESSAGE_LINE_HEIGHT +
+      2 * (fieldStyles.input.paddingVertical + fieldStyles.input.borderWidth),
     textAlignVertical: 'top',
   },
 });
