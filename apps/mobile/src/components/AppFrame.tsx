@@ -445,11 +445,13 @@ function FrameHeader({
 
 export function BackButton({
   label,
+  heard,
   onPress,
   off = false,
   testID,
 }: {
   label: string;
+  heard?: string;
   onPress: () => void;
   off?: boolean | undefined;
   testID: string;
@@ -462,6 +464,7 @@ export function BackButton({
       onPress={onPress}
       disabled={off}
       accessibilityRole="button"
+      accessibilityLabel={heard}
       accessibilityState={{ disabled: off }}
       testID={testID}
     >
