@@ -1,0 +1,19 @@
+# On Sign in, without relaunching: types EMAIL and PASSWORD, submits, and waits for WAIT_TEXT. sc-19634.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- eraseText: 120
+- inputText: ${PASSWORD}
+- tapOn:
+    id: 'signIn.submit'
+- scrollUntilVisible:
+    element:
+      text: ${WAIT_TEXT}
+    direction: DOWN
+    timeout: 30000
+- takeScreenshot: ${SHOT}

@@ -1,0 +1,44 @@
+# sc-23777 on an iPad, side: the bell's Notifications opened from ${EVENT}'s page and from Settings > Roles (by its link, as Maestro's tap on the bell lands on Expo Go's tools button on its side); with sc-23814 merged it draws Back, so the swipe follows that Back.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_RIGHT
+- runFlow: ../return-home.yaml
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- waitForAnimationToEnd
+- runFlow: ../developer-menu-close.yaml
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil:
+    visible: '{{t:notifications.heading}}'
+    timeout: 20000
+- takeScreenshot: bell-event-before
+- runFlow: ../checks/sc23777/swipe.yaml
+- takeScreenshot: bell-event-after
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'frame.settings'
+- tapOn:
+    id: 'settings.roles'
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil:
+    visible: '{{t:notifications.heading}}'
+    timeout: 20000
+- takeScreenshot: bell-roles-before
+- runFlow: ../checks/sc23777/swipe.yaml
+- takeScreenshot: bell-roles-after
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 10000

@@ -1,0 +1,11 @@
+# sc-11786: Roles, with New role.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings/roles
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: roles-list

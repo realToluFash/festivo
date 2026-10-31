@@ -1,0 +1,51 @@
+# The onboarding strip from A few details through Verify phone, then Carry on to Home. sc-18140.
+# EMAIL must be fresh. NUMBER is a UK mobile without its leading 0.
+#
+#   node .qa/bin/qa-env.mjs maestro onboarding-step-marks-phone NAME=… EMAIL=… PASSWORD=… NUMBER=…
+appId: host.exp.Exponent
+---
+- runFlow: onboarding-step-marks.yaml
+- tapOn:
+    id: 'completeProfile.organisation'
+- inputText: 'QA Marks Org'
+- tapOn:
+    id: 'completeProfile.country'
+- tapOn:
+    id: 'completeProfile.country.search'
+- inputText: 'United Kingdom'
+- tapOn:
+    id: 'completeProfile.country.GB'
+- scrollUntilVisible:
+    element:
+      id: 'completeProfile.phone.country'
+- tapOn:
+    id: 'completeProfile.phone.country'
+- tapOn:
+    id: 'completeProfile.phone.country.search'
+- inputText: 'United Kingdom'
+- tapOn:
+    id: 'completeProfile.phone.country.GB'
+- tapOn:
+    id: 'completeProfile.phone.number'
+- inputText: ${NUMBER}
+- scrollUntilVisible:
+    element:
+      id: 'completeProfile.save'
+- tapOn:
+    id: 'completeProfile.save'
+- extendedWaitUntil:
+    visible:
+      id: 'verifyPhone.carryOn'
+    timeout: 20000
+- scrollUntilVisible:
+    element: 'Your details'
+    direction: UP
+- waitForAnimationToEnd
+- takeScreenshot: marks-verify-phone
+- scrollUntilVisible:
+    element:
+      id: 'verifyPhone.carryOn'
+- tapOn:
+    id: 'verifyPhone.carryOn'
+- waitForAnimationToEnd
+- takeScreenshot: after-carry-on

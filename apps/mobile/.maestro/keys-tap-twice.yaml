@@ -1,0 +1,14 @@
+# Taps the busy button, passed as BUTTON, a second time while the request is held. sc-13408.
+#
+#   node .qa/bin/qa-env.mjs maestro keys-tap-twice -e BUTTON=createOrganisation.create
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: ${BUTTON}
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    id: ${BUTTON}
+- waitForAnimationToEnd:
+    timeout: 1500
+- takeScreenshot: mobile-13408-tap-twice

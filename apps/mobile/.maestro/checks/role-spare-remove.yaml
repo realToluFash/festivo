@@ -1,0 +1,38 @@
+# sc-12226: Remove role? opened from the page of the role named by ${ROLE_ID}, then kept.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/roles
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'roles.role.${ROLE_ID}'
+    direction: DOWN
+- tapOn:
+    id: 'roles.role.${ROLE_ID}'
+- repeat:
+    while:
+      notVisible:
+        id: 'roles.remove'
+    times: 8
+    commands:
+      - swipe:
+          start: 75%, 70%
+          end: 75%, 30%
+- tapOn:
+    id: 'roles.remove'
+- takeScreenshot: role-spare-remove
+- repeat:
+    while:
+      notVisible:
+        id: 'roles.remove.keep'
+    times: 8
+    commands:
+      - swipe:
+          start: 75%, 70%
+          end: 75%, 30%
+- takeScreenshot: role-spare-remove-foot
+- tapOn:
+    id: 'roles.remove.keep'
