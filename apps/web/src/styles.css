@@ -4593,10 +4593,10 @@ button.members-row {
   max-width: 100%;
   height: auto;
   min-height: var(--sizePill);
-  padding-block: 2px;
+  padding-block: var(--spaceHair);
   box-sizing: border-box;
   background: var(--colorNeutralFill);
-  line-height: 1.25;
+  font: var(--typePillWrapped);
   white-space: normal;
 }
 
