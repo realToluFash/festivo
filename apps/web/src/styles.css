@@ -2503,29 +2503,6 @@ span {
   border: 0;
 }
 
-.roles-replacement {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spaceMd);
-  min-height: var(--sizeHit);
-  padding: var(--spaceXs) var(--spaceMd);
-  border: var(--borderControl);
-  border-radius: var(--radiusInset);
-  cursor: pointer;
-}
-
-.roles-replacement .roles-row-name {
-  flex: 1;
-  overflow-wrap: anywhere;
-}
-
-/* Under the name, past the radio: a 20px control and the row's gap. */
-.roles-replacement-means {
-  flex-basis: 100%;
-  padding-left: calc(var(--sizeMark) + var(--spaceMd));
-}
-
 .roles-back {
   display: none;
   align-self: flex-start;
@@ -2548,11 +2525,6 @@ span {
   .roles-row-text {
     flex-basis: 13rem;
   }
-}
-
-.roles-replacement:has(input:checked) {
-  border: var(--borderSelected);
-  background: var(--colorAccentTint);
 }
 
 .no-organisation-main {
@@ -2732,6 +2704,58 @@ span {
 
 .recovery-codes li {
   flex: 1 1 40%;
+}
+
+/* A radio drawn as a selectable card: Roles' "who takes over" and Sign-in rules' method. */
+.option-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceMd);
+  min-height: var(--sizeHit);
+  padding: var(--spaceXs) var(--spaceMd);
+  border: var(--borderControl);
+  border-radius: var(--radiusInset);
+  cursor: pointer;
+}
+
+.option-card:has(input:checked) {
+  border: var(--borderSelected);
+  background: var(--colorAccentTint);
+}
+
+.option-card input {
+  width: var(--sizeMark);
+  height: var(--sizeMark);
+  margin: 0;
+  accent-color: var(--colorAccent);
+}
+
+.option-card-name {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+/* Under the name, past the radio and the row's gap. */
+.option-card-means {
+  flex-basis: 100%;
+  padding-left: calc(var(--sizeMark) + var(--spaceMd));
+}
+
+/* SignInRules.dc.html: the card as a tile on the page, side by side until they wrap. */
+.option-card-tile {
+  flex: 1 1 16rem;
+  row-gap: var(--spaceXs);
+  padding: var(--spaceLg);
+  background: var(--colorCard);
+}
+
+.option-card-tile .option-card-name {
+  font: var(--typeRowTitle);
+}
+
+.option-card-tile .option-card-means {
+  font: var(--typeSmall);
 }
 
 .checkbox {
@@ -3225,7 +3249,6 @@ button.members-row {
   flex: 1 1 20rem;
 }
 
-/* SignInRules.dc.html draws the two radios as option cards, side by side until they wrap. */
 .sign-in-rules-methods {
   display: flex;
   flex-wrap: wrap;
@@ -3233,38 +3256,6 @@ button.members-row {
   margin: 0;
   padding: 0;
   border: 0;
-}
-
-.sign-in-rules-method {
-  display: flex;
-  flex: 1 1 16rem;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spaceXs) var(--spaceMd);
-  min-height: var(--sizeHit);
-  padding: var(--spaceLg);
-  border: var(--borderControl);
-  border-radius: var(--radiusInset);
-  background: var(--colorCard);
-  cursor: pointer;
-}
-
-.sign-in-rules-method:has(input:checked) {
-  border: var(--borderSelected);
-  background: var(--colorAccentTint);
-}
-
-.sign-in-rules-method-name {
-  flex: 1;
-  font: var(--typeRowTitle);
-  overflow-wrap: anywhere;
-}
-
-/* Under the name, past the radio: a 20px control and the row's gap. */
-.sign-in-rules-method-means {
-  flex-basis: 100%;
-  padding-left: calc(var(--sizeMark) + var(--spaceMd));
-  font: var(--typeSmall);
 }
 
 .sign-in-rules-switch {

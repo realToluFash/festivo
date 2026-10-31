@@ -312,7 +312,7 @@ function Editable({
               {[false, true].map((providerOnly) => (
                 <label
                   key={String(providerOnly)}
-                  className="sign-in-rules-method"
+                  className="option-card option-card-tile"
                   htmlFor={`rules-method-${providerOnly ? 'provider' : 'any'}`}
                 >
                   <input
@@ -322,10 +322,10 @@ function Editable({
                     checked={rules.providerOnly === providerOnly}
                     onChange={() => pickMethod(providerOnly)}
                   />
-                  <span className="sign-in-rules-method-name">
+                  <span className="option-card-name">
                     {t(providerOnly ? 'signInRules.providerOnly' : 'signInRules.anyMethod')}
                   </span>
-                  <span className="muted sign-in-rules-method-means">
+                  <span className="muted option-card-means">
                     {t(
                       providerOnly ? 'signInRules.providerOnlyMeans' : 'signInRules.anyMethodMeans',
                       {
