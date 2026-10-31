@@ -8,7 +8,7 @@ import {
   type RecoveryOutcome,
   recoveryIntroKey,
 } from '@soirely/domain';
-import { Redirect, router } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import {
   type ReactNode,
   createContext,
@@ -23,7 +23,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
 import { heldChallenge } from '../src/challenge.ts';
-import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
+import { type AuthBack, AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from '../src/components/Buttons.tsx';
 import {
   CodeField,
@@ -61,6 +61,7 @@ const Tapped = createContext<object | undefined>(undefined);
 
 /** Lost both the authenticator and the recovery codes (sc-509): nothing on this screen signs anybody in. */
 export default function LostTwoFactor() {
+  const back = useBackToCode();
   const challenge = heldChallenge()?.challenge ?? null;
   const [view, setShown] = useState<Shown>({ kind: 'loading' });
   const [tapped, setTapped] = useState<object | undefined>(undefined);
@@ -160,7 +161,7 @@ export default function LostTwoFactor() {
 
   function shown(): ReactNode {
     if (view.kind === 'signIn') return <Redirect href="/sign-in" />;
-    if (view.kind === 'loading') return <AuthFrame>{null}</AuthFrame>;
+    if (view.kind === 'loading') return <AuthFrame back={back}>{null}</AuthFrame>;
     if (view.kind === 'start') {
       return (
         <Start
@@ -224,9 +225,11 @@ function Saying({
 /** A newer request was started on another device (pm #1267): its codes went there, so this one starts again. */
 function Replaced({ onStartAgain }: { onStartAgain: () => void }) {
   const { t } = useTranslation();
+  const back = useBackToCode();
 
   return (
     <AuthFrame
+      back={back}
       saying={
         <Saying
           title={t('lostTwoFactor.replacedTitle')}
@@ -246,6 +249,20 @@ function Replaced({ onStartAgain }: { onStartAgain: () => void }) {
       <BackToSignIn />
     </AuthFrame>
   );
+}
+
+/** Opened from Enter your code, so the system's back returns to it as it was left, from every step (sc-23279). */
+function useBackToCode(): AuthBack | null {
+  const { t } = useTranslation();
+  const { from } = useLocalSearchParams<{ from?: 'app' | 'recovery' }>();
+
+  if (!router.canGoBack()) return null;
+
+  return {
+    label: from === 'recovery' ? t('twoFactor.recoveryTitle') : t('twoFactor.title'),
+    onPress: () => router.back(),
+    testID: 'lostTwoFactor.backToCode',
+  };
 }
 
 function BackToSignIn() {
@@ -273,6 +290,7 @@ function Start({
 }) {
   const markSide = useMarkSide(tokens.sizeMark);
   const { t } = useTranslation();
+  const back = useBackToCode();
   const steps = [
     opening.phone == null
       ? t('lostTwoFactor.step1EmailOnly', { email: opening.email })
@@ -285,6 +303,7 @@ function Start({
 
   return (
     <AuthFrame
+      back={back}
       saying={
         <Saying title={t('lostTwoFactor.startTitle')} intro={t('lostTwoFactor.startIntro')} />
       }
@@ -342,9 +361,11 @@ function Start({
 
 function Nobody({ supportAddress }: { supportAddress: string }) {
   const { t } = useTranslation();
+  const back = useBackToCode();
 
   return (
     <AuthFrame
+      back={back}
       saying={
         <Saying title={t('lostTwoFactor.nobodyTitle')} intro={t('lostTwoFactor.nobodyIntro')} />
       }
@@ -361,10 +382,11 @@ function Nobody({ supportAddress }: { supportAddress: string }) {
 
 function Failed({ failure, onRetry }: { failure: Shown; onRetry: () => void }) {
   const { t } = useTranslation();
+  const back = useBackToCode();
   const tapped = useContext(Tapped);
 
   return (
-    <AuthFrame>
+    <AuthFrame back={back}>
       <Notice
         tone="broken"
         mark={tokens.marks.broken.glyph}
@@ -403,6 +425,7 @@ function Request({
 }) {
   const supportAddress = state.supportAddress;
   const { t } = useTranslation();
+  const back = useBackToCode();
   const waiting = state.status === 'waiting';
   const organisations = listed(state.organisations, 'conjunction');
   const anyOf = listed(state.organisations, 'disjunction');
@@ -438,6 +461,7 @@ function Request({
   if (waiting) {
     return (
       <AuthFrame
+        back={back}
         saying={
           <Saying
             title={t('lostTwoFactor.waitingTitle')}
@@ -489,6 +513,7 @@ function Request({
   if (state.status === 'approved') {
     return (
       <AuthFrame
+        back={back}
         saying={
           <Saying
             title={t('lostTwoFactor.approvedTitle')}
@@ -511,6 +536,7 @@ function Request({
   if (state.status === 'turned_down') {
     return (
       <AuthFrame
+        back={back}
         saying={
           <Saying
             title={t('lostTwoFactor.turnedDownTitle')}
@@ -534,6 +560,7 @@ function Request({
   if (state.status === 'expired') {
     return (
       <AuthFrame
+        back={back}
         saying={
           <Saying
             title={t('lostTwoFactor.endedTitle')}
@@ -563,6 +590,7 @@ function Request({
 
   return (
     <AuthFrame
+      back={back}
       saying={
         <Saying
           title={t('lostTwoFactor.cancelledTitle')}
@@ -592,6 +620,7 @@ function Codes({
   onReplaced: () => void;
 }) {
   const { t } = useTranslation();
+  const back = useBackToCode();
   const codes = state.codes;
   const wording = codeWording(codes?.route ?? null);
   const hasPhone = state.phone != null;
@@ -777,6 +806,7 @@ function Codes({
 
   return (
     <AuthFrame
+      back={back}
       saying={
         <Saying
           title={hasPhone ? t('lostTwoFactor.codesTitle') : t('lostTwoFactor.codesTitleEmailOnly')}

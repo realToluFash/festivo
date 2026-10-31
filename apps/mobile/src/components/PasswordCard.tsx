@@ -293,7 +293,7 @@ function Changing({
           label={t('passwordCard.current')}
           labelAction={{
             label: t('passwordCard.forgot'),
-            onPress: () => router.push('/forgot-password'),
+            onPress: () => router.push('/forgot-password?from=security'),
             testID: 'password.forgot',
           }}
           error={currentError}
