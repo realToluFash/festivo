@@ -1,0 +1,126 @@
+import type { Membership, PausedOrganisation } from '@soirely/api-client';
+import { pausedReasonKey, pausedSwitch } from '@soirely/domain';
+import { router } from 'expo-router';
+import { type RefObject, useRef } from 'react';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
+import { useTranslation } from 'react-i18next';
+
+import { SECTION_HREF } from '../kit/appNav.ts';
+import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
+import { tokens } from '../theme/tokens.ts';
+import { bodyEdges } from './bodyEdges.ts';
+import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
+import { Notice } from './Notice.tsx';
+import { PausedOwnerClaim } from './OwnerClaimBanner.tsx';
+import { Screen } from './Screen.tsx';
+import { cardFrame } from './cardFrame.ts';
+import { Text } from './Text.tsx';
+
+/** `AccessPaused-*`: in place of every screen of an organisation the account's access to is paused in (sc-564). */
+export function AccessPaused({
+  paused,
+  others,
+  onSwitch,
+  onChoose,
+}: {
+  paused: PausedOrganisation;
+  others: readonly Membership[];
+  onSwitch: (to: Membership) => void;
+  onChoose: (opener: RefObject<ViewInstance | null>) => void;
+}) {
+  const { t } = useTranslation();
+  const switchButton = useRef<ViewInstance>(null);
+  const { kind } = useLayout();
+  const { suspension } = paused;
+  const named = { organisation: paused.name, domain: suspension.domain ?? '' };
+  const addressGone = suspension.reason === 'address_gone';
+  const switchTo = pausedSwitch(others);
+
+  return (
+    <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
+      <View style={[cardFrame(kind), styles.card]}>
+        <Text size={tokens.typeBody.size} weight="bold" muted>
+          {t('accessPaused.badge')}
+        </Text>
+        <Text
+          size={
+            kind === 'tabletLandscape' ? tokens.typeTitlePage.size : tokens.typeTitleDialog.size
+          }
+          weight="bold"
+          accessibilityRole="header"
+        >
+          {t(pausedReasonKey(suspension.reason), named)}
+        </Text>
+        <Text size={tokens.typeBodyPhone.size} muted>
+          {t('accessPaused.since', { when: suspension.since.written })}
+        </Text>
+        <Text size={tokens.typeBodyPhone.size}>{t('accessPaused.kept', named)}</Text>
+        <Text size={tokens.typeBodyPhone.size}>{t('accessPaused.untouched')}</Text>
+        {suspension.onlyOwner ? (
+          <Notice
+            tone="quiet"
+            mark={tokens.marks.info.glyph}
+            body={t('accessPaused.stillOnlyOwner', named)}
+          />
+        ) : (
+          suspension.removesAt != null && (
+            <Notice
+              tone="attention"
+              mark="!"
+              body={t('accessPaused.removedBy', { ...named, when: suspension.removesAt.written })}
+            />
+          )
+        )}
+        {paused.ownerClaim != null && (
+          <PausedOwnerClaim
+            organisationId={paused.id}
+            organisation={paused.name}
+            claim={paused.ownerClaim}
+          />
+        )}
+        <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+          {t('accessPaused.nextTitle')}
+        </Text>
+        <Text size={tokens.typeBodyPhone.size}>
+          {t(
+            addressGone ? 'accessPaused.nextAddressGone' : 'accessPaused.nextNothingNeeded',
+            named,
+          )}
+        </Text>
+        <View style={styles.actions}>
+          {addressGone && (
+            <PrimaryButton
+              label={t('accessPaused.accountSettings')}
+              onPress={() => router.navigate(SECTION_HREF.account)}
+              testID="accessPaused.account"
+            />
+          )}
+          {switchTo != null && (
+            <SecondaryButton
+              label={t('accessPaused.switch')}
+              onPress={() =>
+                switchTo === 'switcher' ? onChoose(switchButton) : onSwitch(switchTo)
+              }
+              ref={switchButton}
+              testID="accessPaused.switch"
+            />
+          )}
+        </View>
+      </View>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  phone: { paddingTop: tokens.spaceXxl, paddingHorizontal: tokens.spaceXl },
+  portrait: { paddingTop: tokens.space3xl, paddingHorizontal: tokens.space4xl },
+  landscape: { paddingTop: tokens.space4xl, paddingHorizontal: tokens.space5xl },
+  card: { gap: 14 },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
+});
+
+const CONTENT: Record<LayoutKind, object> = {
+  phone: styles.phone,
+  tabletPortrait: styles.portrait,
+  tabletLandscape: styles.landscape,
+};

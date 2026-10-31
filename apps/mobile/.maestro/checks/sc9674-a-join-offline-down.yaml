@@ -1,0 +1,37 @@
+# Ask to join: message typed, keys hidden by the back gesture (Android), API stopped. Keys never open. sc-9674.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/join/${TOKEN}
+- extendedWaitUntil:
+    visible:
+      id: requestToJoin.message
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: requestToJoin.message
+    centerElement: true
+- tapOn:
+    id: requestToJoin.message
+- inputText: hello
+- pressKey: back
+- waitForAnimationToEnd
+- takeScreenshot: keys-hidden
+- assertNotVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- scrollUntilVisible:
+    element:
+      id: requestToJoin.ask
+    centerElement: true
+- tapOn:
+    id: requestToJoin.ask
+- extendedWaitUntil:
+    visible: '.*{{t:requestToJoin.failedTitle}}.*'
+    timeout: 45000
+- waitForAnimationToEnd:
+    timeout: 3000
+- waitForAnimationToEnd
+- takeScreenshot: refused
+- assertNotVisible: '(?i)(shift|delete)'

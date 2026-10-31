@@ -1,0 +1,22 @@
+# Taps ID, scrolled to from above or below. sc-12545.
+#
+#   node .qa/bin/qa-env.mjs maestro scroll-tap ID=…
+appId: host.exp.Exponent
+---
+- runFlow:
+    when:
+      notVisible:
+        id: ${ID}
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: ${ID}
+          direction: UP
+          timeout: 15000
+          optional: true
+- scrollUntilVisible:
+    element:
+      id: ${ID}
+    centerElement: true
+- tapOn:
+    id: ${ID}
