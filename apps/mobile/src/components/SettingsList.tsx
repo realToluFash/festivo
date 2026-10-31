@@ -27,6 +27,7 @@ import {
 } from '../layout/useLayout.ts';
 import { signOutHere, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
+import { tracking } from '../theme/tracking.ts';
 import { Text } from './Text.tsx';
 
 /** The section keeps its place in the tree on every layout, so a rotation keeps what was typed. */
@@ -240,7 +241,11 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row' },
   center: { textAlign: 'center' },
   phoneList: { gap: tokens.spaceLg },
-  label: { paddingHorizontal: tokens.spaceXxs, letterSpacing: 1.2, textTransform: 'uppercase' },
+  label: {
+    paddingHorizontal: tokens.spaceXxs,
+    letterSpacing: tracking(tokens.typeLabel),
+    textTransform: 'uppercase',
+  },
   labelTablet: { paddingHorizontal: 14, paddingVertical: tokens.spaceXxs },
   labelLater: { paddingTop: tokens.spaceLg },
   card: {
