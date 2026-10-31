@@ -493,22 +493,22 @@ function WithdrawConfirm({
         </div>
         <div className="dialog-actions">
           <button
+            ref={keep}
             type="button"
-            className="button button-primary"
+            className="link-button"
+            {...offButton(pending, { dim: false })}
+            onClick={onKeep}
+          >
+            {t('ownerClaim.withdrawNo')}
+          </button>
+          <button
+            type="button"
+            className="button button-danger"
             {...offButton(pending, { dim: false })}
             aria-busy={pending}
             onClick={onWithdraw}
           >
             {pending ? t('ownerClaim.withdrawing') : t('ownerClaim.withdrawYes')}
-          </button>
-          <button
-            ref={keep}
-            type="button"
-            className="button"
-            {...offButton(pending, { dim: false })}
-            onClick={onKeep}
-          >
-            {t('ownerClaim.withdrawNo')}
           </button>
         </div>
         <span className="visually-hidden" role="status">

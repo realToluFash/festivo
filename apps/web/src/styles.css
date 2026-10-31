@@ -3054,7 +3054,7 @@ span {
   }
 
   .owner-claim-withdraw .dialog-actions {
-    flex-direction: column;
+    flex-direction: column-reverse;
     align-items: stretch;
   }
 }
