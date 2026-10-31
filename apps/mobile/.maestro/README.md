@@ -43,6 +43,14 @@ phone starts with it.
 `switch-organisation`'s `ORG` is the organisation's id, not its name: the switcher's rows are
 `switcher.<id>`.
 
+`duplicate-create-draft` starts on Duplicate {event}'s form and leaves the app on the copy's
+page: it picks a start (Android's dialogs close with `OK`, iOS's sheets with Done), swipes
+Create draft out from under an iPhone's tab bar, and taps it. A check that makes a copy calls
+it rather than repeating the platform split.
+
+A check whose taps are conditional (`runFlow` with `when`) ends on an assertion of where it
+landed, so a tap that went elsewhere, or no tap at all, fails rather than passing on a screenshot.
+
 `sign-in-screen-language` picks the one passed as `LANGUAGE`, by its chip, before
 `sign-in-any-language`. `sign-in-screen-english` runs it with `LANGUAGE: English`, for a phone
 a run in another language left signed out: `sign-in`'s first wait is on the English 'Email'.
@@ -193,3 +201,8 @@ To test the code step itself, outside a batch, three flows stop on it and send a
   run, or a single check with no `setOrientation`, set the one you want:
   `adb shell wm user-rotation lock 1` for portrait, `lock 0` for landscape. In a warm batch,
   do not lock the rotation: the reset and any `setOrientation` write the same setting.
+- **On iOS, set a large text size only after the batch has signed in.** With
+  `xcrun simctl ui <device> content_size` at `accessibility-extra-extra-large` or larger
+  before the batch, its sign-in types the password into the email field (`--cold`) or misses
+  `events.page` (warm). Sign in at the default size, then change it live, as for
+  `checks/sc23361-iphone-back-width.yaml`.

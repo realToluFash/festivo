@@ -27,9 +27,11 @@ import {
   FIELD_DEFAULTS,
   fieldName,
   fieldText,
+  handsHeld,
   keyTyped,
   nextGiven,
   nextPin,
+  nextStrayed,
   type Typing,
   valueHanded,
 } from '../kit/fields.ts';
@@ -220,10 +222,12 @@ export function useHeld(
   });
   const { fontScale } = useWindowDimensions();
   const [scale, setScale] = useState(fontScale);
+  const [strayed, setStrayed] = useState(false);
   const handed = nextGiven(Platform.OS, value, typing);
   const { typed, pinned, given } = handed;
   const field = {
     held,
+    handsHeld: handsHeld(Platform.OS, strayed),
     value: valueHanded(Platform.OS, value, given),
     defaultValue,
     typed,
@@ -233,8 +237,16 @@ export function useHeld(
 
   if (next.scale !== scale) setScale(next.scale);
   if (handed !== typing || next.pinned !== pinned) setTyping({ ...handed, pinned: next.pinned });
+  const stillStrayed = nextStrayed(held, strayed, false);
+  if (stillStrayed !== strayed) setStrayed(stillStrayed);
 
-  if (held) return { ...fieldText(field), onChangeText: undefined };
+  if (held)
+    return {
+      ...fieldText(field),
+      onChangeText: field.handsHeld
+        ? undefined
+        : () => setStrayed(nextStrayed(held, strayed, true)),
+    };
 
   return {
     ...fieldText(field),
