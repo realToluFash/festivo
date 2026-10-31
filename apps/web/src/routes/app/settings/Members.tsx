@@ -60,6 +60,8 @@ import { type Proving, dropProof, heldProof, howToProve } from '../../../recentP
 import { can, useSession } from '../../../session.ts';
 import { focusStep, useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { Forbidden } from '../Forbidden.tsx';
+import { MemberConfirm } from './MemberConfirm.tsx';
+import { useDialogKeys } from '../../../dialogFocus.ts';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 
 type Load =
@@ -210,39 +212,6 @@ function MembersLoaded({
     land(() => find() ?? headingRef.current);
   }
 
-  if (view.kind === 'invite') {
-    const again = view.again;
-
-    return (
-      <Invite
-        organisation={organisation}
-        roles={grantableRoles(roles, organisation)}
-        email={view.email}
-        roleId={view.roleId}
-        again={again}
-        returned={returned}
-        onCancel={() =>
-          backToList(() =>
-            again == null
-              ? inviteButton.current
-              : document.querySelector<HTMLElement>(`[data-invite-again="${again}"]`),
-          )
-        }
-        onSent={(invitation, flash) => {
-          onChange({
-            ...list,
-            invitations: [
-              invitation,
-              ...list.invitations.filter((one) => one.id !== invitation.id),
-            ],
-          });
-          setView({ kind: 'list', flash });
-          land(() => flashNotice.current);
-        }}
-      />
-    );
-  }
-
   if (member != null) {
     return (
       <MemberDetail
@@ -274,30 +243,61 @@ function MembersLoaded({
     );
   }
 
-  return (
-    <MembersOverview
+  const inviting = view.kind === 'invite' && (
+    <Invite
       organisation={organisation}
-      list={list}
       roles={grantableRoles(roles, organisation)}
-      manages={manages}
-      headingRef={headingRef}
-      inviteRef={inviteButton}
-      flashRef={flashNotice}
-      flash={view.kind === 'list' ? view.flash : null}
-      answered={view.kind === 'list' ? (view.answered ?? null) : null}
-      onAnswered={(changed, answered) => {
-        onChange(changed);
-        setView({ kind: 'list', flash: null, answered });
-      }}
-      onOpen={(id) => setView({ kind: 'member', id })}
-      onInvite={(email, roleId, again) => setView({ kind: 'invite', email, roleId, again })}
-      onRevoked={(invitation) =>
+      email={view.email}
+      roleId={view.roleId}
+      again={view.again}
+      returned={returned}
+      onCancel={() =>
+        backToList(() =>
+          view.again == null
+            ? inviteButton.current
+            : document.querySelector<HTMLElement>(`[data-invite-again="${view.again}"]`),
+        )
+      }
+      onSent={(invitation, flash) => {
         onChange({
           ...list,
-          invitations: list.invitations.map((one) => (one.id === invitation.id ? invitation : one)),
-        })
-      }
+          invitations: [invitation, ...list.invitations.filter((one) => one.id !== invitation.id)],
+        });
+        setView({ kind: 'list', flash });
+        land(() => flashNotice.current);
+      }}
     />
+  );
+
+  return (
+    <>
+      <MembersOverview
+        organisation={organisation}
+        list={list}
+        roles={grantableRoles(roles, organisation)}
+        manages={manages}
+        headingRef={headingRef}
+        inviteRef={inviteButton}
+        flashRef={flashNotice}
+        flash={view.kind === 'list' ? view.flash : null}
+        answered={view.kind === 'list' ? (view.answered ?? null) : null}
+        onAnswered={(changed, answered) => {
+          onChange(changed);
+          setView({ kind: 'list', flash: null, answered });
+        }}
+        onOpen={(id) => setView({ kind: 'member', id })}
+        onInvite={(email, roleId, again) => setView({ kind: 'invite', email, roleId, again })}
+        onRevoked={(invitation) =>
+          onChange({
+            ...list,
+            invitations: list.invitations.map((one) =>
+              one.id === invitation.id ? invitation : one,
+            ),
+          })
+        }
+      />
+      {inviting}
+    </>
   );
 }
 
@@ -997,157 +997,115 @@ function MemberDetail({
 
       {standing === 'manageable' && active && !owner && (
         <section className="card" aria-labelledby="suspend-title">
-          {suspending === 'resting' ? (
-            <>
-              <h2 id="suspend-title">
-                {t('membersScreen.suspendTitle', { name: member.user.name })}
-              </h2>
-              <p className="muted">
-                {t('membersScreen.suspendBody', { organisation: organisation.name })}
-              </p>
-              <button
-                ref={suspendButton}
-                type="button"
-                className="button button-danger"
-                onClick={() => {
-                  askOpened.current = true;
-                  setSuspending('confirming');
-                }}
-              >
-                {t('membersScreen.suspendButton')}
-              </button>
-            </>
-          ) : (
-            <>
-              <h2 id="suspend-title" ref={asking} tabIndex={-1}>
-                {t('membersScreen.suspendConfirmTitle', { name: member.user.name })}
-              </h2>
+          <h2 id="suspend-title">{t('membersScreen.suspendTitle', { name: member.user.name })}</h2>
+          <p className="muted">
+            {t('membersScreen.suspendBody', { organisation: organisation.name })}
+          </p>
+          <button
+            ref={suspendButton}
+            type="button"
+            className="button button-danger"
+            onClick={() => {
+              askOpened.current = true;
+              setSuspending('confirming');
+            }}
+          >
+            {t('membersScreen.suspendButton')}
+          </button>
+          {suspending !== 'resting' && (
+            <MemberConfirm
+              id="suspend-confirm"
+              titleRef={asking}
+              title={t('membersScreen.suspendConfirmTitle', { name: member.user.name })}
+              keep={t('membersScreen.suspendKeep', { name: member.user.name })}
+              go={t('membersScreen.suspendConfirm', { name: member.user.name })}
+              busy={suspending === 'suspending'}
+              onKeep={() => {
+                setSuspendFailed(null);
+                setSuspending('resting');
+                land(() => suspendButton.current);
+              }}
+              onGo={() => void suspend()}
+            >
               <p>
                 {t('membersScreen.suspendConfirmBody', {
                   name: member.user.name,
                   organisation: organisation.name,
                 })}
               </p>
-              <p className="muted">{t('membersScreen.suspendConfirmEmail')}</p>
+              <p>{t('membersScreen.suspendConfirmEmail')}</p>
               {suspendFailed != null && <FieldError id="suspend-failed" message={suspendFailed} />}
-              <div className="actions">
-                <button
-                  type="button"
-                  className="link-button"
-                  onClick={() => {
-                    setSuspendFailed(null);
-                    setSuspending('resting');
-                    land(() => suspendButton.current);
-                  }}
-                >
-                  <span className="button-label">
-                    {t('membersScreen.suspendKeep', { name: member.user.name })}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="button button-danger"
-                  aria-busy={suspending === 'suspending'}
-                  {...offButton(suspending === 'suspending')}
-                  onClick={() => void suspend()}
-                >
-                  <span className="button-label">
-                    {t('membersScreen.suspendConfirm', { name: member.user.name })}
-                  </span>
-                </button>
-              </div>
-            </>
+            </MemberConfirm>
           )}
         </section>
       )}
 
-      {acts && (!byHand || removal !== 'resting') && (
+      {acts && !byHand && (
         <section className="card" aria-labelledby="remove-title">
-          {removal === 'resting' || (onlyOwner && removal === 'removing') ? (
-            <>
-              <h2 id="remove-title">
-                {t('membersScreen.removeTitle', { name: member.user.name })}
-              </h2>
-              <p className="muted">
-                {t('membersScreen.removeBody', { organisation: organisation.name })}
-              </p>
-              {onlyOwner && failed != null && (
-                <div ref={refusal} tabIndex={-1}>
-                  <FieldError id="remove-failed" message={failed}>
-                    <p className="muted">
-                      {t('membersScreen.onlyOwnerNotRemovable', { name: member.user.name })}
-                    </p>
-                    {member.suspension?.reason === 'address_gone' && (
-                      <p className="muted">
-                        {t('membersScreen.onlyOwnerRestoreNeedsAddress', {
-                          domain: member.suspension.domain ?? '',
-                        })}
-                      </p>
-                    )}
-                  </FieldError>
-                </div>
-              )}
-              <button
-                ref={removeButton}
-                type="button"
-                className="button button-danger"
-                aria-busy={removal === 'removing'}
-                {...offButton(removal === 'removing')}
-                onClick={() => (onlyOwner ? void remove() : confirmRemoving())}
-              >
-                <span className="button-label">
-                  {t(onlyOwner ? 'membersScreen.removeButton' : 'membersScreen.removeButtonOpen', {
-                    organisation: organisation.name,
-                  })}
-                </span>
-              </button>
-            </>
-          ) : (
-            <>
-              <h2 id="remove-title" ref={removeTitle} tabIndex={-1}>
-                {t('membersScreen.removeConfirmTitle', { name: member.user.name })}
-              </h2>
-              <p>
-                {t(
-                  byHand ? 'membersScreen.suspendedRemoveBody' : 'membersScreen.removeConfirmBody',
-                  {
-                    name: member.user.name,
-                    organisation: organisation.name,
-                  },
+          <h2 id="remove-title">{t('membersScreen.removeTitle', { name: member.user.name })}</h2>
+          <p className="muted">
+            {t('membersScreen.removeBody', { organisation: organisation.name })}
+          </p>
+          {onlyOwner && failed != null && (
+            <div ref={refusal} tabIndex={-1}>
+              <FieldError id="remove-failed" message={failed}>
+                <p className="muted">
+                  {t('membersScreen.onlyOwnerNotRemovable', { name: member.user.name })}
+                </p>
+                {member.suspension?.reason === 'address_gone' && (
+                  <p className="muted">
+                    {t('membersScreen.onlyOwnerRestoreNeedsAddress', {
+                      domain: member.suspension.domain ?? '',
+                    })}
+                  </p>
                 )}
-              </p>
-              {failed != null && <FieldError id="remove-failed" message={failed} />}
-              <div className="actions">
-                <button
-                  type="button"
-                  className="link-button"
-                  onClick={() => {
-                    setFailed(null);
-                    setRemoval('resting');
-                    land(() => (byHand ? removeSuspended.current : removeButton.current));
-                  }}
-                >
-                  <span className="button-label">
-                    {byHand
-                      ? t('membersScreen.suspendedRemoveKeep')
-                      : t('membersScreen.removeKeep', { name: member.user.name })}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="button button-danger"
-                  aria-busy={removal === 'removing'}
-                  {...offButton(removal === 'removing')}
-                  onClick={() => void remove()}
-                >
-                  <span className="button-label">
-                    {t('membersScreen.removeConfirm', { name: member.user.name })}
-                  </span>
-                </button>
-              </div>
-            </>
+              </FieldError>
+            </div>
           )}
+          <button
+            ref={removeButton}
+            type="button"
+            className="button button-danger"
+            aria-busy={onlyOwner && removal === 'removing'}
+            {...offButton(onlyOwner && removal === 'removing')}
+            onClick={() => (onlyOwner ? void remove() : confirmRemoving())}
+          >
+            <span className="button-label">
+              {t(onlyOwner ? 'membersScreen.removeButton' : 'membersScreen.removeButtonOpen', {
+                organisation: organisation.name,
+              })}
+            </span>
+          </button>
         </section>
+      )}
+
+      {acts && !onlyOwner && removal !== 'resting' && (
+        <MemberConfirm
+          id="remove-confirm"
+          titleRef={removeTitle}
+          title={t('membersScreen.removeConfirmTitle', { name: member.user.name })}
+          keep={
+            byHand
+              ? t('membersScreen.suspendedRemoveKeep')
+              : t('membersScreen.removeKeep', { name: member.user.name })
+          }
+          go={t('membersScreen.removeConfirm', { name: member.user.name })}
+          busy={removal === 'removing'}
+          onKeep={() => {
+            setFailed(null);
+            setRemoval('resting');
+            land(() => (byHand ? removeSuspended.current : removeButton.current));
+          }}
+          onGo={() => void remove()}
+        >
+          <p>
+            {t(byHand ? 'membersScreen.suspendedRemoveBody' : 'membersScreen.removeConfirmBody', {
+              name: member.user.name,
+              organisation: organisation.name,
+            })}
+          </p>
+          {failed != null && <FieldError id="remove-failed" message={failed} />}
+        </MemberConfirm>
       )}
     </div>
   );
@@ -1433,6 +1391,11 @@ function JoinRequestAnswer({
   const role = offered.find((one) => one.id === picked);
   const name = member.user.name;
   const step = useCallback((element: HTMLElement | null) => element?.focus(), []);
+  const turnDownTitle = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    if (answering === 'turningDown') turnDownTitle.current?.focus();
+  }, [answering]);
 
   async function answer(): Promise<void> {
     setBusy(true);
@@ -1474,7 +1437,7 @@ function JoinRequestAnswer({
     setAnswering('resting');
   }
 
-  if (answering === 'resting') {
+  if (answering === 'resting' || answering === 'turningDown') {
     return (
       <div className="actions">
         <button
@@ -1493,32 +1456,23 @@ function JoinRequestAnswer({
         >
           {t('membersScreen.awaiting.turnDown')}
         </button>
-      </div>
-    );
-  }
-
-  if (answering === 'turningDown') {
-    return (
-      <div className="members-answer">
-        <h3 ref={step} tabIndex={-1}>
-          {t('membersScreen.awaiting.turnDownTitle', { name })}
-        </h3>
-        <p>{t('membersScreen.awaiting.turnDownBody', { name, organisation: organisation.name })}</p>
-        {failed != null && <FieldError id={`turn-down-${member.id}`} message={failed} />}
-        <div className="actions">
-          <button type="button" className="link-button" disabled={busy} onClick={back}>
-            {t('membersScreen.awaiting.keep')}
-          </button>
-          <button
-            type="button"
-            className="button button-danger"
-            aria-busy={busy}
-            {...offButton(busy)}
-            onClick={() => void answer()}
+        {answering === 'turningDown' && (
+          <MemberConfirm
+            id={`turn-down-${member.id}-confirm`}
+            titleRef={turnDownTitle}
+            title={t('membersScreen.awaiting.turnDownTitle', { name })}
+            keep={t('membersScreen.awaiting.keep')}
+            go={t('membersScreen.awaiting.turnDownConfirm', { name })}
+            busy={busy}
+            onKeep={back}
+            onGo={() => void answer()}
           >
-            {t('membersScreen.awaiting.turnDownConfirm', { name })}
-          </button>
-        </div>
+            <p>
+              {t('membersScreen.awaiting.turnDownBody', { name, organisation: organisation.name })}
+            </p>
+            {failed != null && <FieldError id={`turn-down-${member.id}`} message={failed} />}
+          </MemberConfirm>
+        )}
       </div>
     );
   }
@@ -1782,8 +1736,10 @@ function Invite({
   );
   const emailError = checks.errors.email ?? refused;
   const heading = useRef<HTMLHeadingElement>(null);
+  const dialog = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => focusStep(heading.current), []);
+  useDialogKeys(dialog, onCancel, busy);
 
   async function confirmFirst(typed: string): Promise<void> {
     setDraft(typed);
@@ -1854,117 +1810,126 @@ function Invite({
   }
 
   return (
-    <div className="members">
-      <button type="button" className="link-button members-back" onClick={onCancel}>
-        <span aria-hidden="true">‹ </span>
-        {t('membersScreen.title')}
-      </button>
-      <h1 ref={heading} tabIndex={-1}>
-        {t('membersScreen.invite')}
-      </h1>
-      <p className="muted">{organisation.name}</p>
+    <>
+      <div className="dialog-scrim" aria-hidden="true" />
+      <div
+        ref={dialog}
+        className="dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="invite-title"
+      >
+        <div className="dialog-heading">
+          <h2 id="invite-title" ref={heading} tabIndex={-1}>
+            {t('membersScreen.invite')}
+          </h2>
+          <p>{organisation.name}</p>
+        </div>
 
-      {proving != null && role != null ? (
-        <section className="card settings-form" aria-labelledby="invite-prove-title">
-          <ConfirmItsYou
-            idPrefix="invite-prove"
-            intro={t('membersScreen.proveOwner', {
-              organisation: organisation.name,
-              count: PROOF_MINUTES,
-            })}
-            via={proving.via}
-            twoFactorOn={proving.twoFactorOn}
-            returned={fromTrip}
-            purpose={{ kind: 'makeOwner', roleId: role.id, to: { email: draft, again } }}
-            onProved={(proof) => {
-              setFromTrip(null);
-              void deliver(draft, proof);
-            }}
-            onCancel={() => {
-              setFromTrip(null);
-              setProving(null);
-            }}
-          />
-        </section>
-      ) : (
-        <>
-          {failed != null && (
-            <div className="notice notice-broken" role="alert">
-              <span className="mark mark-broken" aria-hidden="true">
-                ✕
-              </span>
-              <p>{failed}</p>
-            </div>
-          )}
-
-          <form className="card settings-form" noValidate onSubmit={(event) => void send(event)}>
-            <h2>{t('membersScreen.whoToInvite')}</h2>
-            <div className="field">
-              <label htmlFor="invite-email">{t('register.email')}</label>
-              <input
-                className={emailError != null ? 'input input-wrong' : 'input'}
-                id="invite-email"
-                name="email"
-                type="email"
-                inputMode="email"
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="none"
-                spellCheck={false}
-                defaultValue={draft}
-                {...offField(busy)}
-                aria-invalid={emailError != null}
-                aria-describedby={emailError != null ? 'invite-email-error' : undefined}
-                onBlur={(event) => checks.left('email', event.target.value)}
-                onChange={(event) => {
-                  setRefused(null);
-                  checks.edited('email', event.target.value);
-                }}
-              />
-              {emailError != null && <FieldError id="invite-email-error" message={emailError} />}
-            </div>
-
-            <fieldset className="members-roles">
-              <legend>{t('membersScreen.role')}</legend>
-              {roles.map((one) => (
-                <label key={one.id} className="members-role">
-                  <input
-                    type="radio"
-                    name="role"
-                    value={one.id}
-                    checked={picked === one.id}
-                    disabled={busy}
-                    onChange={() => setPicked(one.id)}
-                  />
-                  <span className="members-role-text">
-                    <span className="members-row-name">{roleName(t, one)}</span>
-                    {one.seededAs != null && (
-                      <span className="muted">{t(`membersScreen.roleMeans.${one.seededAs}`)}</span>
-                    )}
-                  </span>
-                </label>
-              ))}
-            </fieldset>
-
-            <p className="muted">
-              {t('membersScreen.inviteNote', {
+        {proving != null && role != null ? (
+          <section className="dialog-form" aria-labelledby="invite-prove-title">
+            <ConfirmItsYou
+              idPrefix="invite-prove"
+              intro={t('membersScreen.proveOwner', {
                 organisation: organisation.name,
-                role: role == null ? '' : roleName(t, role),
+                count: PROOF_MINUTES,
               })}
-            </p>
+              via={proving.via}
+              twoFactorOn={proving.twoFactorOn}
+              returned={fromTrip}
+              purpose={{ kind: 'makeOwner', roleId: role.id, to: { email: draft, again } }}
+              onProved={(proof) => {
+                setFromTrip(null);
+                void deliver(draft, proof);
+              }}
+              onCancel={() => {
+                setFromTrip(null);
+                setProving(null);
+              }}
+            />
+          </section>
+        ) : (
+          <>
+            {failed != null && (
+              <div className="notice notice-broken" role="alert">
+                <span className="mark mark-broken" aria-hidden="true">
+                  ✕
+                </span>
+                <p>{failed}</p>
+              </div>
+            )}
 
-            <div className="actions">
-              <button className="button" type="button" onClick={onCancel}>
-                {t('membersScreen.cancel')}
-              </button>
-              <button className="button button-primary" type="submit" aria-busy={busy}>
-                {t('membersScreen.send')}
-              </button>
-            </div>
-          </form>
-        </>
-      )}
-    </div>
+            <form className="dialog-form" noValidate onSubmit={(event) => void send(event)}>
+              <h3>{t('membersScreen.whoToInvite')}</h3>
+              <div className="field">
+                <label htmlFor="invite-email">{t('register.email')}</label>
+                <input
+                  className={emailError != null ? 'input input-wrong' : 'input'}
+                  id="invite-email"
+                  name="email"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  defaultValue={draft}
+                  {...offField(busy)}
+                  aria-invalid={emailError != null}
+                  aria-describedby={emailError != null ? 'invite-email-error' : undefined}
+                  onBlur={(event) => checks.left('email', event.target.value)}
+                  onChange={(event) => {
+                    setRefused(null);
+                    checks.edited('email', event.target.value);
+                  }}
+                />
+                {emailError != null && <FieldError id="invite-email-error" message={emailError} />}
+              </div>
+
+              <fieldset className="members-roles">
+                <legend>{t('membersScreen.role')}</legend>
+                {roles.map((one) => (
+                  <label key={one.id} className="members-role">
+                    <input
+                      type="radio"
+                      name="role"
+                      value={one.id}
+                      checked={picked === one.id}
+                      disabled={busy}
+                      onChange={() => setPicked(one.id)}
+                    />
+                    <span className="members-role-text">
+                      <span className="members-row-name">{roleName(t, one)}</span>
+                      {one.seededAs != null && (
+                        <span className="muted">
+                          {t(`membersScreen.roleMeans.${one.seededAs}`)}
+                        </span>
+                      )}
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
+
+              <p className="muted">
+                {t('membersScreen.inviteNote', {
+                  organisation: organisation.name,
+                  role: role == null ? '' : roleName(t, role),
+                })}
+              </p>
+
+              <div className="dialog-actions dialog-actions-stack">
+                <button className="button" type="button" onClick={onCancel}>
+                  {t('membersScreen.cancel')}
+                </button>
+                <button className="button button-primary" type="submit" aria-busy={busy}>
+                  {t('membersScreen.send')}
+                </button>
+              </div>
+            </form>
+          </>
+        )}
+      </div>
+    </>
   );
 }
 

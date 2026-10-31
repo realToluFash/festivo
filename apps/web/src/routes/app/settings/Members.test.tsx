@@ -627,7 +627,10 @@ describe('inviting somebody', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Invite somebody' }));
     expect(document.activeElement).toBe(
-      screen.getByRole('heading', { level: 1, name: 'Invite somebody' }),
+      within(screen.getByRole('dialog', { name: 'Invite somebody' })).getByRole('heading', {
+        level: 2,
+        name: 'Invite somebody',
+      }),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }));
 
@@ -1470,6 +1473,22 @@ describe('suspending and restoring a member', () => {
     expect(screen.getByText(/Their role is kept while they're suspended/)).toBeDefined();
   });
 
+  it('asks Suspend and Remove in the sc-22092 dialog, a sheet at phone width (sc-23172)', async () => {
+    signedIn();
+    answering({ ...READS, 'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)) });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Suspend…' }));
+    const suspending = screen.getByRole('alertdialog', { name: 'Suspend Bisi Adeyemi?' });
+    expect(suspending.className).toBe('dialog');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Remove from / }));
+    expect(screen.getByRole('alertdialog', { name: /Remove Bisi Adeyemi/ })).toBeDefined();
+  });
+
   it('keeps focus on Suspend ‹name› while it runs and once it fails with no connection (sc-11487)', async () => {
     signedIn();
     answering({ ...READS, 'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)) });
@@ -1826,7 +1845,7 @@ describe('the dates the server wrote after a language change (sc-9267)', () => {
 });
 
 describe('where focus goes once a click on Members is answered (sc-11369)', () => {
-  it('puts focus back on Invite somebody after Cancel or ‹ Members', async () => {
+  it('puts focus back on Invite somebody after Cancel or Escape', async () => {
     signedIn();
     answering(READS);
     open();
@@ -1836,7 +1855,8 @@ describe('where focus goes once a click on Members is answered (sc-11369)', () =
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Invite somebody' }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Invite somebody' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Members' }));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Invite somebody' }));
   });
 
