@@ -527,3 +527,35 @@ describe('signing in under an organisation’s sign-in rules (sc-69)', () => {
     expect(screen.queryByRole('button', { name: 'Continue with Google' })).toBeNull();
   });
 });
+
+describe('the language buttons (sc-23277)', () => {
+  function phoneWide(matches: boolean): void {
+    vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query) =>
+        ({ matches, media: query, addEventListener() {}, removeEventListener() {} }) as never,
+    );
+  }
+
+  it('sit in the header wider than a phone', () => {
+    phoneWide(false);
+    at('/sign-in');
+
+    const languages = screen.getByRole('group', { name: 'Language' });
+
+    expect(screen.getByRole('banner').contains(languages)).toBe(true);
+  });
+
+  it('come once, after the form and its links, on a phone, the brand still in the header', () => {
+    phoneWide(true);
+    at('/sign-in');
+
+    const languages = screen.getByRole('group', { name: 'Language' });
+    const content = screen.getByRole('main');
+
+    expect(screen.getByRole('banner').textContent).toContain('Soirely');
+    expect(screen.getByRole('banner').contains(languages)).toBe(false);
+    expect(content.compareDocumentPosition(languages) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+});

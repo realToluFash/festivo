@@ -1133,7 +1133,11 @@ span {
 
   .auth-main {
     align-items: stretch;
-    padding: var(--spaceSm) var(--space3xl) var(--space5xl);
+    padding: var(--spaceSm) var(--space3xl) var(--space3xl);
+  }
+
+  .auth-foot {
+    padding: 0 var(--space3xl) var(--space5xl);
   }
 
   .language-choice {
