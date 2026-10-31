@@ -1,0 +1,36 @@
+# Create your account's ‹ Sign in, in English, both ways it can go. sc-23277.
+# Reached from Sign in, it goes back to it. Opened by a link, it replaces itself with Sign in.
+#
+#   node .qa/bin/qa-env.mjs maestro register-back
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-screen-english.yaml
+- tapOn:
+    id: 'signIn.register'
+- extendedWaitUntil:
+    visible:
+      id: 'register.back'
+    timeout: 10000
+- takeScreenshot: mobile-register-back-pushed
+- tapOn:
+    id: 'register.back'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 10000
+- assertNotVisible:
+    id: 'register.name'
+- openLink: ${METRO_URL}/--/register
+- extendedWaitUntil:
+    visible:
+      id: 'register.back'
+    timeout: 60000
+- takeScreenshot: mobile-register-back-linked
+- tapOn:
+    id: 'register.back'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 10000
+- assertNotVisible:
+    id: 'register.name'
