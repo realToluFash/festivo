@@ -22,7 +22,7 @@ import { basename, dirname, extname, join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
-import { crc32, deflateSync } from 'node:zlib';
+import { crc32, deflateSync, inflateSync } from 'node:zlib';
 
 export const DEVELOPMENT_PORTS = {
   POSTGRES_PORT: 5432,
@@ -1146,36 +1146,78 @@ async function bundlerUp(seconds = 120) {
   return false;
 }
 
+const SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const COLOUR_TYPE = { 1: 0, 3: 2, 4: 6 };
+const CHANNELS = { 0: 1, 2: 3, 6: 4 };
+
+function chunk(type, data) {
+  const head = Buffer.alloc(8);
+  head.writeUInt32BE(data.length, 0);
+  head.write(type, 4, 'ascii');
+  const tail = Buffer.alloc(4);
+  tail.writeUInt32BE(crc32(Buffer.concat([head.subarray(4), data])), 0);
+
+  return Buffer.concat([head, data, tail]);
+}
+
+/** A square 8-bit PNG of grey (1 channel), RGB (3) or RGBA (4) bytes, rows unfiltered. */
+export function encodePng({ size, channels, data }) {
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(size, 0);
+  header.writeUInt32BE(size, 4);
+  header[8] = 8;
+  header[9] = COLOUR_TYPE[channels];
+  const stride = size * channels;
+  const rows = Buffer.alloc((stride + 1) * size);
+  for (let y = 0; y < size; y++) {
+    data.copy(rows, y * (stride + 1) + 1, y * stride, (y + 1) * stride);
+  }
+
+  return Buffer.concat([
+    SIGNATURE,
+    chunk('IHDR', header),
+    chunk('IDAT', deflateSync(rows, { level: 9 })),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
+}
+
+/** A PNG `encodePng` wrote, read back: its size, channels and unfiltered bytes. */
+export function decodePng(png) {
+  const size = png.readUInt32BE(16);
+  const channels = CHANNELS[png[25]];
+  const parts = [];
+  for (let at = 8; at < png.length;) {
+    const length = png.readUInt32BE(at);
+    if (png.toString('ascii', at + 4, at + 8) === 'IDAT') {
+      parts.push(png.subarray(at + 8, at + 8 + length));
+    }
+    at += length + 12;
+  }
+  const rows = inflateSync(Buffer.concat(parts));
+  const stride = size * channels;
+  const data = Buffer.alloc(stride * size);
+  for (let y = 0; y < size; y++) {
+    if (rows[y * (stride + 1)] !== 0) {
+      throw new Error('Only the unfiltered rows encodePng writes can be read back.');
+    }
+    rows.copy(data, y * stride, y * (stride + 1) + 1, (y + 1) * (stride + 1));
+  }
+
+  return { size, channels, data };
+}
+
 export function qrPng(modules, scale = 8, margin = 4) {
   const size = Math.sqrt(modules.length);
   const side = (size + 2 * margin) * scale;
-  const rows = Buffer.alloc(side * (side + 1), 255);
+  const data = Buffer.alloc(side * side, 255);
   for (let y = 0; y < side; y++) {
-    rows[y * (side + 1)] = 0;
     for (let x = 0; x < side; x++) {
       const [mx, my] = [Math.floor(x / scale) - margin, Math.floor(y / scale) - margin];
       const dark = mx >= 0 && my >= 0 && mx < size && my < size && modules[my * size + mx];
-      if (dark) rows[y * (side + 1) + 1 + x] = 0;
+      if (dark) data[y * side + x] = 0;
     }
   }
-  const chunk = (type, data) => {
-    const body = Buffer.concat([Buffer.from(type, 'latin1'), data]);
-    const length = Buffer.alloc(4);
-    length.writeUInt32BE(data.length);
-    const check = Buffer.alloc(4);
-    check.writeUInt32BE(crc32(body));
-    return Buffer.concat([length, body, check]);
-  };
-  const header = Buffer.alloc(13);
-  header.writeUInt32BE(side, 0);
-  header.writeUInt32BE(side, 4);
-  header[8] = 8;
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk('IHDR', header),
-    chunk('IDAT', deflateSync(rows)),
-    chunk('IEND', Buffer.alloc(0)),
-  ]);
+  return encodePng({ size: side, channels: 1, data });
 }
 
 // Outlives the plan run, for a person's phone. Restarted each time: with no file watcher,

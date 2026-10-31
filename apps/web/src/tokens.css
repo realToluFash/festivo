@@ -51,6 +51,11 @@
   --scrimSheet: rgba(21,23,28,0.35);
   --scrimDialog: rgba(21,23,28,0.4);
   --colorPrintInk: #000000;
+  --colorBrandInk: #17151C;
+  --colorBrandPomegranate: #D62B4E;
+  --colorBrandSaffron: #F2B22C;
+  --colorBrandJade: #00A37A;
+  --colorBrandUltramarine: #3E3FD6;
   --fontFamily: 'Instrument Sans', sans-serif;
   --fontFamilyMono: 'JetBrains Mono', monospace;
   --typeDisplay: 700 48px/1 var(--fontFamily);
