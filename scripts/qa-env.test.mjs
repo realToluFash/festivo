@@ -1419,6 +1419,18 @@ describe('the batch helper', () => {
     }
   });
 
+  it('on Android, says so when the app did not run again after a reload', async () => {
+    const { server, ask } = await helperFor('running', undefined, {
+      onAndroid: true,
+      reload: async () => false,
+    });
+    try {
+      expect(await ask('/reload')).toEqual({ reloaded: false });
+    } finally {
+      server.close();
+    }
+  });
+
   it('refuses a state it does not know', async () => {
     const { server, ask, ran } = await helperFor('running');
     try {
@@ -1958,6 +1970,9 @@ describe('the flows a batch runs', () => {
         reset.match(/notVisible: '(.*)'/)[1],
       );
       expect(reset).toContain('ASK: /running');
+      expect(reset).toMatch(
+        /ASK: \/reload(?:\s|#.*)+- runFlow:\s+when:\s+true: \$\{!output\.helper\.reloaded\}\s+file: reopen\.yaml[\s\S]*openLink: \$\{METRO_URL\}\/--\//,
+      );
       expect(reset).not.toMatch(/when:\s+(not)?[vV]isible/);
       expect(readdirSync(join(target, 'batch')).filter((f) => f.includes('save-password'))).toEqual(
         [],

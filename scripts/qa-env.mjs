@@ -2232,10 +2232,13 @@ export function startHelper({
         return reply(200, { code: await nextCode(email, secret) });
       }
       if (url.pathname === '/reload') {
-        if (!onAndroid) await reloadApp();
-        else if (!(await reload()))
-          console.error('\nThe app did not run again within 8s of a reload');
-        return reply(200, { reloaded: true });
+        if (!onAndroid) {
+          await reloadApp();
+          return reply(200, { reloaded: true });
+        }
+        const reloaded = await reload();
+        if (!reloaded) console.error('\nThe app did not run again within 8s of a reload');
+        return reply(200, { reloaded });
       }
       if (url.pathname === '/portrait') {
         return reply(200, { rotation: onAndroid ? portrait() : null });
