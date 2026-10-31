@@ -878,6 +878,7 @@ function Unsaved({
 }
 
 const RADIO = tokens.sizeMark + tokens.spaceHair;
+const STROKE = 2;
 
 const styles = StyleSheet.create({
   fill: { flex: 1, minWidth: 0 },
@@ -912,8 +913,9 @@ const styles = StyleSheet.create({
   pickOpen: {
     borderTopLeftRadius: 0,
     borderBottomLeftRadius: 0,
-    borderLeftWidth: tokens.spaceHair,
+    borderLeftWidth: STROKE,
     borderLeftColor: tokens.colorAccent,
+    paddingLeft: tokens.spaceMd - STROKE,
     backgroundColor: tokens.colorRowSelected,
   },
   pickName: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
@@ -958,7 +960,7 @@ const styles = StyleSheet.create({
     marginTop: tokens.spaceXxs,
     paddingTop: tokens.spaceMd,
     paddingLeft: tokens.spaceMd,
-    borderLeftWidth: tokens.spaceHair,
+    borderLeftWidth: STROKE,
     borderLeftColor: tokens.colorInsetBorder,
   },
   unsaved: {
@@ -1001,7 +1003,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   choiceOn: {
-    borderWidth: tokens.spaceHair,
+    borderWidth: STROKE,
     borderColor: tokens.colorAccent,
     backgroundColor: tokens.colorAccentTint,
   },
@@ -1009,7 +1011,7 @@ const styles = StyleSheet.create({
     width: RADIO,
     height: RADIO,
     borderRadius: RADIO / 2,
-    borderWidth: tokens.spaceHair,
+    borderWidth: STROKE,
     borderColor: tokens.colorControlBorder,
     alignItems: 'center',
     justifyContent: 'center',
