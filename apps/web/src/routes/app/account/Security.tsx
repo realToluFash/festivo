@@ -235,21 +235,17 @@ export function Security() {
                 </div>
               )}
 
-              {everywhereDone != null && (
-                <div
-                  className="status-done"
-                  {...(everywhereDone.arrived ? { role: 'status' } : { ref: said, tabIndex: -1 })}
-                >
-                  <span className="mark mark-done" aria-hidden="true">
-                    ✓
-                  </span>
-                  <p>
-                    {everywhereDone.count === 0
-                      ? t('devices.everywhereNone')
-                      : t('devices.everywhereDone', { count: everywhereDone.count })}
-                  </p>
-                </div>
-              )}
+              {everywhereDone != null &&
+                (everywhereDone.arrived ? (
+                  <ArrivedDone words={everywhereWords(everywhereDone.count, t)} />
+                ) : (
+                  <div className="status-done" ref={said} tabIndex={-1}>
+                    <span className="mark mark-done" aria-hidden="true">
+                      ✓
+                    </span>
+                    <p>{everywhereWords(everywhereDone.count, t)}</p>
+                  </div>
+                ))}
 
               {endFailed && (
                 <div className="notice notice-broken">
@@ -362,6 +358,34 @@ export function Security() {
             />
           )}
         </section>
+      )}
+    </div>
+  );
+}
+
+function everywhereWords(count: number, t: TFunction): string {
+  return count === 0 ? t('devices.everywhereNone') : t('devices.everywhereDone', { count });
+}
+
+/** Filled a moment after the region is in the page, so a screen reader hears it rather than missing a region born full. */
+function ArrivedDone({ words }: { words: string }) {
+  const [shown, setShown] = useState('');
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setShown(words), 0);
+
+    return () => window.clearTimeout(id);
+  }, [words]);
+
+  return (
+    <div className={shown === '' ? 'visually-hidden' : 'status-done'} role="status">
+      {shown !== '' && (
+        <>
+          <span className="mark mark-done" aria-hidden="true">
+            ✓
+          </span>
+          <p>{shown}</p>
+        </>
       )}
     </div>
   );
