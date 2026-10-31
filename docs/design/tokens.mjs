@@ -93,6 +93,13 @@ export const tokens = {
   scrimDialog: 'rgba(21,23,28,0.4)', // centred dialogs
   // ── Colour · print (black and white only) ──────────────────────────────────
   colorPrintInk: '#000000',
+  // ── Colour · brand. The four-dot symbol, for the logo and brand assets only (sc-23302). ──
+  // Never for text or a control: saffron and jade fail 4.5:1, saffron fails 3:1; WCAG 1.4.3 exempts only a logo.
+  colorBrandInk: '#17151C', // logo and brand assets only: the symbol's ground. Not colorInk, which stays the app's text
+  colorBrandPomegranate: '#D62B4E', // logo and brand assets only: the symbol's top-left dot
+  colorBrandSaffron: '#F2B22C', // logo and brand assets only: the symbol's top-right dot
+  colorBrandJade: '#00A37A', // logo and brand assets only: the symbol's bottom-right dot. Not colorAccent, which stays the action colour
+  colorBrandUltramarine: '#3E3FD6', // logo and brand assets only: the symbol's bottom-left dot
 
   // ── Type ───────────────────────────────────────────────────────────────────
   fontFamily: "'Instrument Sans', sans-serif", // all reading text, all names
