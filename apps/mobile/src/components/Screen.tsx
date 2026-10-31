@@ -554,7 +554,7 @@ export function stepHidden(closing: boolean): StepHidden {
 }
 
 export interface HeldStepClose extends StepClose {
-  /** Holds input focus in the place of a line of words, which cannot take it, where TalkBack does not read it; rendered while the line shows, first in a View of its own with the line. The close turns scroll-to-focus off while it takes focus, so Save stays put (sc-18587). */
+  /** Holds input focus in the place of a line of words, which cannot take it, or of a control TalkBack would say twice, where TalkBack does not read it; rendered while the line shows, first in a View of its own with the line. The close turns scroll-to-focus off while it takes focus, so Save stays put (sc-18587). */
   holder: ReactElement;
 }
 

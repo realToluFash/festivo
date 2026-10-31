@@ -67,13 +67,15 @@ export function TimeZoneCard({
   const [savedFocused, setSavedFocused] = useState(false);
   const [closed, setClosed] = useState<StepClosed | undefined>(undefined);
   const opener = useFocusBackToOpener(editing ? undefined : closed);
+  // Change taking input focus itself is said by TalkBack, as a bare "Change" or by following it there, beside the move that reads it, so it is said twice (sc-22995).
   const {
     opener: changeOpener,
+    holder: changeHolder,
     closing,
     closer,
     hidden,
     close,
-  } = useStepClose(opener, 'change', 'opener', (back) => {
+  } = useStepClose(opener, 'change', 'holder', (back) => {
     setClosed(back);
     setEditing(false);
   });
@@ -192,12 +194,15 @@ export function TimeZoneCard({
         </View>
       )}
       {(!editing || opening || closing) && (
-        <SecondaryButton
-          ref={change}
-          label={t('timeZone.change')}
-          onPress={open}
-          testID="timeZone.change"
-        />
+        <View>
+          {changeHolder}
+          <SecondaryButton
+            ref={change}
+            label={t('timeZone.change')}
+            onPress={open}
+            testID="timeZone.change"
+          />
+        </View>
       )}
       {editing && (
         <Choosing
