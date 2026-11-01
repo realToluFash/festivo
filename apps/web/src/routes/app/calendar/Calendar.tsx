@@ -51,6 +51,7 @@ import { can, useSession } from '../../../session.ts';
 import { PHASE_WORD } from '../events/eventWords.ts';
 import { FirstRun } from '../events/FirstRun.tsx';
 import { StatusPill } from '../events/MakeLive.tsx';
+import { CalendarSubscribe } from './CalendarSubscribe.tsx';
 
 const KEPT = 'soirely.calendar';
 
@@ -81,12 +82,21 @@ export function Calendar() {
     <CalendarOf
       key={organisation.id}
       organisationId={organisation.id}
+      organisationName={organisation.name}
       creates={can(session, 'events.create')}
     />
   );
 }
 
-function CalendarOf({ organisationId, creates }: { organisationId: string; creates: boolean }) {
+function CalendarOf({
+  organisationId,
+  organisationName,
+  creates,
+}: {
+  organisationId: string;
+  organisationName: string;
+  creates: boolean;
+}) {
   const { t } = useTranslation();
   const phone = usePhoneWidth();
   const wide = useWide();
@@ -163,12 +173,19 @@ function CalendarOf({ organisationId, creates }: { organisationId: string; creat
     moveFocus.current = 'grid';
   }, []);
 
+  const subscribe = (
+    <CalendarSubscribe organisationId={organisationId} organisationName={organisationName} />
+  );
+
   if (load.kind === 'loaded' && load.events.length === 0) {
     return (
       <div className="calendar">
-        <h1 ref={title} tabIndex={-1}>
-          {t('calendar.title')}
-        </h1>
+        <div className="calendar-heading">
+          <h1 ref={title} tabIndex={-1}>
+            {t('calendar.title')}
+          </h1>
+          {subscribe}
+        </div>
         <FirstRun creates={creates} createLabel="events.newEvent" />
       </div>
     );
@@ -181,9 +198,12 @@ function CalendarOf({ organisationId, creates }: { organisationId: string; creat
 
   return (
     <div className="calendar">
-      <h1 className="calendar-title" ref={title} tabIndex={-1}>
-        {t('calendar.title')}
-      </h1>
+      <div className="calendar-heading">
+        <h1 className="calendar-title" ref={title} tabIndex={-1}>
+          {t('calendar.title')}
+        </h1>
+        {subscribe}
+      </div>
       <div className="calendar-toolbar">
         <div className="calendar-move">
           <button

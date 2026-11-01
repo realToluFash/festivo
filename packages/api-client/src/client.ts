@@ -297,6 +297,12 @@ export interface RequestLink {
   url: string | null;
 }
 
+/** The Calendar's private feed link (sc-3626): the same feed over https, and as webcal for a calendar app to subscribe to. */
+export interface CalendarFeedLink {
+  url: string;
+  webcal: string;
+}
+
 /** Why somebody signed in cannot ask through a request link: they belong, they wait, or they were turned down lately. */
 export type RequestStanding = 'member' | 'waiting' | 'cooling_off';
 
@@ -2234,6 +2240,36 @@ export class ApiClient {
         {},
       ),
     );
+  }
+
+  async calendarFeed(organisationId: string): Promise<CalendarFeedLink> {
+    return this.asCalendarFeedLink(
+      await this.get<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/calendar-feed`),
+    );
+  }
+
+  /** The old link stops working at once. */
+  async resetCalendarFeed(organisationId: string): Promise<CalendarFeedLink> {
+    return this.asCalendarFeedLink(
+      await this.post<unknown>(
+        `/api/orgs/${encodeURIComponent(organisationId)}/calendar-feed/reset`,
+        {},
+      ),
+    );
+  }
+
+  private asCalendarFeedLink(raw: unknown): CalendarFeedLink {
+    const path = (raw as Record<string, unknown> | null)?.path;
+
+    if (typeof path !== 'string' || !path.startsWith('/')) {
+      throw new Error(
+        'The API answered /api/orgs/{id}/calendar-feed in a shape this client does not know. Check CalendarFeedController in services/api.',
+      );
+    }
+
+    const url = this.url(path);
+
+    return { url, webcal: url.replace(/^https?:/, 'webcal:') };
   }
 
   async joinOffers(): Promise<JoinOffers> {

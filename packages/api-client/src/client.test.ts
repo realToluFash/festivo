@@ -3409,3 +3409,51 @@ describe('minimumAppVersions', () => {
     await expect(client.minimumAppVersions()).rejects.toBeInstanceOf(ApiError);
   });
 });
+
+describe('the calendar feed link (sc-3626)', () => {
+  function answering(body: unknown) {
+    const sent: { url: string; method: string }[] = [];
+    const client = new ApiClient({
+      baseUrl: () => 'https://api.soirely.test/',
+      fetch: async (input, init) => {
+        sent.push({ url: String(input), method: init?.method ?? 'GET' });
+
+        return new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      },
+    });
+
+    return { client, sent };
+  }
+
+  test('puts the link on the API origin, and offers it as webcal too', async () => {
+    const { client, sent } = answering({ path: '/api/calendar-feeds/abc.ics' });
+
+    expect(await client.calendarFeed('org_1')).toEqual({
+      url: 'https://api.soirely.test/api/calendar-feeds/abc.ics',
+      webcal: 'webcal://api.soirely.test/api/calendar-feeds/abc.ics',
+    });
+    expect(sent).toEqual([
+      { url: 'https://api.soirely.test/api/orgs/org_1/calendar-feed', method: 'GET' },
+    ]);
+  });
+
+  test('resets the link with a POST and reads the new one', async () => {
+    const { client, sent } = answering({ path: '/api/calendar-feeds/new.ics' });
+
+    expect((await client.resetCalendarFeed('org_1')).url).toBe(
+      'https://api.soirely.test/api/calendar-feeds/new.ics',
+    );
+    expect(sent).toEqual([
+      { url: 'https://api.soirely.test/api/orgs/org_1/calendar-feed/reset', method: 'POST' },
+    ]);
+  });
+
+  test('refuses an answer without a path', async () => {
+    const { client } = answering({ url: 'https://elsewhere.test/x.ics' });
+
+    await expect(client.calendarFeed('org_1')).rejects.toThrow(/CalendarFeedController/);
+  });
+});
