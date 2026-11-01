@@ -11,12 +11,7 @@ type Shape =
   | { shape: 'cards'; cards: readonly CardShape[]; titled?: boolean }
   | { shape: 'line' };
 
-/**
- * What stands where content is on its way: nothing for a second, then the
- * content's shape in inset blocks under the screen's loading words.
- *
- * `inCard` draws inside a card that is already there, under its heading.
- */
+/** Nothing for a second, then the content's shape under its loading words; `inCard` draws inside a card already there. */
 export function Skeleton({
   words,
   inCard = false,
