@@ -39,6 +39,7 @@ import {
   keysStayDown,
 } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
+import { Pending } from '../src/components/Pending.tsx';
 import { useFocusOnAnswer } from '../src/components/Screen.tsx';
 import { readOut } from '../src/components/ReadOut.tsx';
 import { StatusChip } from '../src/components/StatusChip.tsx';
@@ -166,7 +167,12 @@ export default function LostTwoFactor() {
 
   function shown(): ReactNode {
     if (view.kind === 'signIn') return <Redirect href="/sign-in" />;
-    if (view.kind === 'loading') return <AuthFrame back={back}>{null}</AuthFrame>;
+    if (view.kind === 'loading')
+      return (
+        <AuthFrame back={back}>
+          <Pending />
+        </AuthFrame>
+      );
     if (view.kind === 'start') {
       return (
         <Start

@@ -2,6 +2,9 @@
   "app": {
     "name": "Soirely"
   },
+  "pending": {
+    "loading": "Loading…"
+  },
   "home": {
     "title": "Soirely",
     "subtitle": "The night, from your pocket.",
