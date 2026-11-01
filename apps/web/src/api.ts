@@ -36,7 +36,7 @@ export const api = new ApiClient({
   // Every request tells the offline band whether Soirely answered (sc-22586).
   fetch: (input, init) => {
     const answer = fetch(input, init);
-    connection.observe(answer, init?.signal);
+    connection.observe(answer, init);
 
     return answer;
   },

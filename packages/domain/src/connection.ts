@@ -4,8 +4,14 @@ export const NO_ANSWER_MS = 20_000;
 /** `deviceBack` is a reason to ask again, never proof of an answer: captive Wi-Fi says it too. */
 export type ConnectionChange = 'lost' | 'answered' | 'deviceBack';
 
+/** The parts of a request's init the watcher reads. */
+export interface Asked {
+  signal?: AbortSignal | null;
+  body?: unknown;
+}
+
 export interface Connection {
-  observe(answer: Promise<unknown>, signal?: AbortSignal | null): void;
+  observe(answer: Promise<unknown>, asked?: Asked): void;
   deviceOffline(): void;
   deviceOnline(): void;
   subscribe(listener: (change: ConnectionChange) => void): () => void;
@@ -23,17 +29,18 @@ export function createConnection(
   };
 
   return {
-    observe(answer, signal) {
-      const silent = timers.set(() => tell('lost'), NO_ANSWER_MS);
+    observe(answer, asked) {
+      // An upload can take longer than 20 s while Soirely is receiving it: only a request with no body falls silent.
+      const silent = asked?.body == null ? timers.set(() => tell('lost'), NO_ANSWER_MS) : null;
 
       answer.then(
         () => {
-          timers.clear(silent);
+          if (silent != null) timers.clear(silent);
           tell('answered');
         },
         () => {
-          timers.clear(silent);
-          if (signal?.aborted !== true) tell('lost');
+          if (silent != null) timers.clear(silent);
+          if (asked?.signal?.aborted !== true) tell('lost');
         },
       );
     },

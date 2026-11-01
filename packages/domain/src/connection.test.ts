@@ -56,7 +56,7 @@ describe('the connection', () => {
     const controller = new AbortController();
     controller.abort();
 
-    connection.observe(Promise.reject(new Error('aborted')), controller.signal);
+    connection.observe(Promise.reject(new Error('aborted')), { signal: controller.signal });
     await settled();
 
     expect(heard).toEqual([]);
@@ -70,6 +70,15 @@ describe('the connection', () => {
 
     silence();
     expect(heard).toEqual(['lost']);
+  });
+
+  it('does not hear an upload still being received as silence', () => {
+    const { connection, heard, silence } = watched();
+
+    connection.observe(new Promise(() => {}), { body: new Blob(['cover']) });
+    silence();
+
+    expect(heard).toEqual([]);
   });
 
   it('does not count an answered request as silent later', async () => {
