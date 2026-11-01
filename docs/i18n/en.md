@@ -64,6 +64,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **1 Nov 2026. Events and an event's own navigation** (sc-26732 for sc-22103,
+  `web:events.*`, `mobile:eventsScreen.*`, `eventNav.*` web and app). Settled as sc-22103 wrote
+  it, except one line: `staffComing` reads "Staffing for this event is coming.", since "The staff
+  … are coming" reads as people on their way. The areas are Overview, Guests, Menu, Seating,
+  Messages, Schedule, Staff, Budget and Reports; a figure the product lacks is "Coming soon". The
+  Draft and Paused next-step lines explain, so they keep "can't"; the end-passed line refuses,
+  so it says "cannot".
 - **1 Nov 2026. How soon an event ends, and the Overview's coming cards** (sc-26608 for
   sc-25008, `events.endsIn`, `eventsScreen.endsIn`, `eventPage.onTrack`, `replies`, `needsYou`,
   `team`). "Ends {{time}}", where {{time}} is `Intl.RelativeTimeFormat`'s whole phrase ("in 3
