@@ -825,6 +825,7 @@
         stopped: ['', 'Stopped'],
         elsewhere: ['', 'Elsewhere'],
         refused: ['critical', 'Refused'],
+        prompt: ['critical', 'Stopped on a prompt'],
       };
       let data = null,
         fetchedAt = 0,
@@ -951,6 +952,10 @@
         tags.push(`<span class="tag">${esc(r.account || 'not logged in')}</span>`);
         const blocks = [];
         if (r.owner) blocks.push(`<div class="owner"><b>Waiting on you:</b> ${esc(r.owner)}</div>`);
+        if (r.prompt)
+          blocks.push(
+            `<div class="owner"><b>Stopped on a prompt:</b> ${esc(r.prompt.worker)} item ${esc(r.prompt.item)} wanted <code>${esc(r.prompt.wanted || 'a command it did not name')}</code></div>`,
+          );
         if (r.sessions.length)
           blocks.push(`<div class="block"><div class="k"><span>Session</span></div>
       <ul class="holding">${r.sessions

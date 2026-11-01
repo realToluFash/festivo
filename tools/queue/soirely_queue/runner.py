@@ -487,6 +487,47 @@ def artifact_outcome(db, role, entry, why=None, seen=None, told=None):
         "folder": entry.get("folder"), "told": sorted(told or ()), "why": why, "seen": seen})
 
 
+def prompt_outcome(db, role, entry, told=None):
+    """What `sq status` says of a role whose last session was stopped on a permission prompt,
+    cleared by the role's next run that is not, and the stories ops has been told of, kept."""
+    told = sorted(told or ())
+    store.set_meta(db, f"prompt:{role}", ({"told": told} if told else None) if entry is None
+                   else {"at": entry["at"], "worker": entry.get("worker", role),
+                         "item": entry["item"], "story": entry.get("story"),
+                         "wanted": entry.get("wanted"), "told": told})
+
+
+def prompt_text(name, entry):
+    wanted = f"`{entry['wanted']}`" if entry.get("wanted") else "a command it did not name"
+    story = f"sc-{entry['story']}" if entry.get("story") else "no story"
+    return (f"{name}'s worker for item {entry['item']} ({story}) was stopped: its "
+            f"`claude --bg` session {entry.get('bg') or ''} under "
+            f"{entry.get('account') or entry['folder']} waited over "
+            f"{background.PROMPT_GRACE_SECONDS // 60} minutes on a permission prompt nobody can "
+            f"answer, asking to run {wanted}. Whatever it had not committed is still in its "
+            "worktree, and the item went back to the queue for the role's next run. Ops: allow "
+            "it (permissions.json, which the owner merges and applies, or the worker's "
+            "--allowedTools), or say in the role's skill how to do without it (sc-26428).")
+
+
+def stopped_on_prompt(db, name, entry, ids, tell):
+    """Tells ops once per story what the session wanted, and hands the run's items back."""
+    role = entry["role"]
+    told = set((store.get_meta(db, f"prompt:{role}") or {}).get("told") or ())
+    entry["report"] = (f"stopped on a permission prompt, wanting "
+                       f"{entry.get('wanted') or 'a command it did not name'}"
+                       + (f"; it had said: {entry['report']}" if entry.get("report") else ""))
+    if entry.get("story") and entry["story"] not in told:
+        try:
+            tell(entry["story"], role, prompt_text(name, entry))
+            told.add(entry["story"])
+        except (RuntimeError, OSError) as failed:
+            entry["report"] += f"; the [ops] comment failed too: {failed}"
+    for work_id in ids:
+        store.release(db, work_id)
+    prompt_outcome(db, role, entry, told)
+
+
 def told_stories(db, role):
     return set((store.get_meta(db, f"artifact:{role}") or {}).get("told") or ())
 
@@ -506,6 +547,9 @@ def in_background(db, platform, name, entry, values, folder, text, cwd, ids, all
         on_start=begun, daemon=getattr(platform, "claude_daemon", None))
     if why not in ("ended", "settled"):
         entry["stopped"] = why
+    if why == "prompt":
+        entry["wanted"] = result.get("wanted")
+    result.pop("wanted", None)
     refused = result.pop("artifact_refused", None)
     read = result.pop("artifact_read", False)
     if read:
@@ -606,6 +650,12 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
     entry.update(runlog.from_result(result, code))
     if ended is not None:
         entry["ended"] = ended
+    if entry.get("stopped") == "prompt":
+        stopped_on_prompt(db, name, entry, ids, tell)
+    elif ((held := store.get_meta(db, f"prompt:{role}") or {}).get("at")
+          and held.get("worker", role) == name):
+        # Another worker's prompt stays until that worker's next run settles it.
+        prompt_outcome(db, role, None, held.get("told"))
     runlog.append(home, role, entry)
     waits = runlog.waits_on_owner(entry["report"])
     if waits:
