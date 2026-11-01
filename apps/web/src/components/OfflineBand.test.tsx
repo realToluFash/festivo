@@ -55,7 +55,7 @@ function draft(name: string) {
   };
 }
 
-type Soirely = 'answers' | 'unreachable' | 'broken';
+type Soirely = 'answers' | 'unreachable' | 'broken' | 'refresh503';
 
 /** Events' two requests, answered with whatever the event is called by then, or not answered at all. */
 function serving(state: { soirely: Soirely; name: string }) {
@@ -64,6 +64,8 @@ function serving(state: { soirely: Soirely; name: string }) {
 
     if (state.soirely === 'unreachable') throw new TypeError('Failed to fetch');
     if (state.soirely === 'broken') return new Response('{}', { status: 503 });
+    if (state.soirely === 'refresh503')
+      return new Response('{}', { status: url.pathname === '/api/auth/refresh' ? 503 : 401 });
     if (url.pathname !== '/api/orgs/org_1/events') return new Response('{}', { status: 200 });
 
     const finished = url.searchParams.get('finished') === 'true';
@@ -212,6 +214,29 @@ describe('the offline band (sc-22586)', () => {
 
     await screen.findByText('The events did not load. Try again in a moment.');
     expect(band()).toBeNull();
+  });
+
+  it('goes when the token refresh answers 503, and asks no more: that is an answer too', async () => {
+    signedIn();
+    const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde' };
+    const fetched = serving(state);
+    await onEvents();
+
+    state.soirely = 'unreachable';
+    goOffline();
+    await waitFor(() => expect(band()).not.toBeNull());
+    state.soirely = 'refresh503';
+    fetched.mockClear();
+    comeBack();
+
+    await screen.findByText('The events did not load. Try again in a moment.');
+    expect(band()).toBeNull();
+    const refreshes = () =>
+      fetched.mock.calls.filter(([input]) => String(input).endsWith('/api/auth/refresh')).length;
+    const asked = refreshes();
+    expect(asked).toBeGreaterThan(0);
+    await new Promise((resolve) => setTimeout(resolve, 2_500));
+    expect(refreshes()).toBe(asked);
   });
 
   it('shows nothing on a screen that has loaded nothing', async () => {

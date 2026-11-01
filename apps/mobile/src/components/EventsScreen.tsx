@@ -16,7 +16,8 @@ import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { eventHref } from '../kit/eventNav.ts';
 import { takeDeleted } from '../kit/eventSaved.ts';
 import { hasNoEvents } from '../kit/eventsOpen.ts';
-import { keepsWhatLoaded, useOffline } from '../offline.ts';
+import { useOffline } from '../offline.ts';
+import { afterFailedLoad } from '../offlineLoad.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AppFrame } from './AppFrame.tsx';
@@ -128,11 +129,11 @@ export function EventsScreen() {
         live &&
         setHeld((before) => ({
           in: organisationId,
-          // A reload that never reached Soirely keeps the rows, under the offline band.
-          load:
-            before.load.kind === 'loaded' && keepsWhatLoaded(error)
-              ? { ...before.load, refreshing: false }
-              : { kind: 'failed' },
+          load: afterFailedLoad(
+            before.load.kind === 'loaded' ? { ...before.load, refreshing: false } : before.load,
+            error,
+            { kind: 'failed' },
+          ),
         })),
     );
 

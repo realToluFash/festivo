@@ -6,7 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { type Stale, useOffline } from '../offline.ts';
+import { type Stale, keepsWhatLoaded, useOffline } from '../offline.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { offersDelete } from '../kit/eventDelete.ts';
 import { backToOriginal } from '../kit/eventDuplicate.ts';
@@ -291,7 +291,7 @@ function useOpened(
       (error: unknown) =>
         live &&
         setHeld((before) =>
-          before.for === key && before.opened.kind === 'loaded'
+          before.for === key && before.opened.kind === 'loaded' && keepsWhatLoaded(error)
             ? before
             : { for: key, opened: openedOf({ error }, organisationId) },
         ),
