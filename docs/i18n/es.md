@@ -571,7 +571,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   organización; las fechas de un evento siguen siendo «Todas las fechas». Las vistas son «Mes» y
   «Agenda» (igual que en inglés, en `same-as-english.json`), con el grupo «Vista». El filtro dice
   «Eventos e hitos» | «Solo eventos», «hito» como `timeline.*` («e» ante «hi»). Un
-  intervalo es «Del {{from}} al {{to}}»; la celda llena dice «+{{count}} más», corto para la
-  celda de unos 50 px del teléfono. El mes vacío abre con el mes, «En {{month}} no hay nada en
+  intervalo es «Del {{from}} al {{to}}»; la celda llena dice «+{{count}}», sin más: «+43 más»
+  se cortaba en «+43 m…» en el iPhone SE (celda de unos 50 px) y pasaba a dos líneas en la web a
+  390 px (QA, 1 nov., como en francés). Bajo las barras, «+3» se entiende solo; el lector de
+  pantalla lee el nombre del día, que da el número de elementos. El mes vacío abre con el mes, «En {{month}} no hay nada en
   el calendario.», para no repetir «en el calendario en». «Elemento» cuenta eventos y fechas a la
   vez en el nombre del día para el lector de pantalla.
