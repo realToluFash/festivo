@@ -24,7 +24,7 @@ type Status =
 /** "Reset your password": an address in, and the same answer whether or not it has an account. */
 export function ForgotPassword() {
   const { t } = useTranslation();
-  const from = (useLocation().state as ForgotFrom)?.back;
+  const from = useLocation().state as ForgotFrom;
   const [status, setStatus] = useState<Status>({ kind: 'asking' });
   const [typed, setTyped] = useState('');
   const [sentHeading, arriveAtSent] = useStepFocus();
@@ -61,7 +61,9 @@ export function ForgotPassword() {
   const back: AuthBackTo =
     from == null
       ? { label: t('signIn.title'), heard: t('twoFactor.back'), fallback: '/sign-in' }
-      : { label: t(BACK_TITLE[from]) };
+      : from.back === 'join'
+        ? { label: t('join.registerTitle', { organisation: from.organisation }) }
+        : { label: t(BACK_TITLE[from.back]) };
 
   if (status.kind === 'sent') {
     return (
@@ -194,7 +196,6 @@ const BACK_TITLE = {
   expired: 'recovery.expiredTitle',
   invalid: 'recovery.invalidTitle',
   account: 'account.title',
-  join: 'join.emailTakenTitle',
 } as const;
 
 function refusalFrom(error: unknown, again: boolean): Status {

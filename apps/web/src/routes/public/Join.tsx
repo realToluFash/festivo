@@ -229,7 +229,9 @@ function JoinPage({
       {view.kind === 'open' && preview.forYou === true && (
         <Answer preview={preview} onChange={onChange} />
       )}
-      {view.kind === 'emailTaken' && <EmailTaken token={token} email={preview.email} />}
+      {view.kind === 'emailTaken' && (
+        <EmailTaken token={token} email={preview.email} organisation={words.organisation} />
+      )}
       {view.kind === 'accepted' && <Accepted preview={preview} />}
       {view.kind === 'declined' && <Declined inviter={words.inviter} />}
       {view.kind === 'refused' && (
@@ -471,7 +473,15 @@ function Register({
   );
 }
 
-function EmailTaken({ token, email }: { token: string; email: string }) {
+function EmailTaken({
+  token,
+  email,
+  organisation,
+}: {
+  token: string;
+  email: string;
+  organisation: string;
+}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -499,7 +509,7 @@ function EmailTaken({ token, email }: { token: string; email: string }) {
       <Link
         className="link-button"
         to="/forgot-password"
-        state={{ back: 'join' } satisfies ForgotFrom}
+        state={{ back: 'join', organisation } satisfies ForgotFrom}
       >
         {t('join.forgotPassword')}
       </Link>
