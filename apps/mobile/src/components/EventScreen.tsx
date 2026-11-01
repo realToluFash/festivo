@@ -203,10 +203,12 @@ export function EventScreen({
     >
       <Screen edges={bodyEdges(kind)} contentStyle={phone ? styles.phone : styles.tablet}>
         {!phone && (
-          <View style={styles.backRow}>
-            <BackButton label={backLabel} onPress={back} testID="events.back" />
-            {kind === 'tabletPortrait' && refreshing}
-          </View>
+          <BackButton
+            label={backLabel}
+            onPress={back}
+            beside={kind === 'tabletPortrait' ? refreshing : null}
+            testID="events.back"
+          />
         )}
         {body}
       </Screen>
@@ -327,12 +329,6 @@ function useOpened(
 
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
-  backRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: tokens.spaceMd,
-  },
   phone: {
     gap: tokens.spaceLg,
     paddingTop: tokens.spaceXl,

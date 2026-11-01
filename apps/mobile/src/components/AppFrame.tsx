@@ -534,15 +534,13 @@ function FrameHeader({
         )}
         <Pills entries={entries} scrolls={inEvent} />
         {back != null && !backHidden && (
-          <View style={styles.backRow}>
-            <BackButton
-              label={back.label}
-              onPress={back.onPress}
-              off={back.off}
-              testID="frame.back"
-            />
-            {besideBack}
-          </View>
+          <BackButton
+            label={back.label}
+            onPress={back.onPress}
+            off={back.off}
+            beside={besideBack}
+            testID="frame.back"
+          />
         )}
         <View style={styles.titleRow}>
           <View style={styles.fill}>
@@ -584,15 +582,13 @@ function FrameHeader({
         </View>
       )}
       {back != null && !backHidden && (
-        <View style={styles.backRow}>
-          <BackButton
-            label={back.label}
-            onPress={back.onPress}
-            off={back.off}
-            testID="frame.back"
-          />
-          {besideBack}
-        </View>
+        <BackButton
+          label={back.label}
+          onPress={back.onPress}
+          off={back.off}
+          beside={besideBack}
+          testID="frame.back"
+        />
       )}
       <View style={styles.titleRow}>
         <View style={styles.fill}>
@@ -621,17 +617,18 @@ export function BackButton({
   heard,
   onPress,
   off = false,
+  beside,
   testID,
 }: {
   label: string;
   heard?: string;
   onPress: () => void;
   off?: boolean | undefined;
+  beside?: ReactNode;
   testID: string;
 }) {
   const { fontScale } = useWindowDimensions();
-
-  return (
+  const button = (
     <Pressable
       style={styles.back}
       onPress={onPress}
@@ -658,7 +655,26 @@ export function BackButton({
       </Text>
     </Pressable>
   );
+
+  if (beside == null) return button;
+
+  return (
+    <View style={besideRow.row}>
+      {button}
+      {beside}
+    </View>
+  );
 }
+
+/** A heading or Back at the start, something small at the far end: Back beside Refreshing…, a title beside Refreshing… (sc-27046). */
+export const besideRow = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tokens.spaceMd,
+  },
+});
 
 function goTo(destination: Destination): void {
   const href = DESTINATION_HREF[destination];
@@ -1322,12 +1338,6 @@ const styles = StyleSheet.create({
     borderBottomColor: tokens.colorHeaderBorder,
   },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
-  backRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: tokens.spaceMd,
-  },
   phoneHeader: {
     gap: tokens.spaceLg,
     paddingHorizontal: tokens.spaceXxl,

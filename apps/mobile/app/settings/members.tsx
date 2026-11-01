@@ -6,7 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../src/api.ts';
-import { AppFrame } from '../../src/components/AppFrame.tsx';
+import { AppFrame, besideRow } from '../../src/components/AppFrame.tsx';
 import { ComeForward, FocusWhenBehind } from '../../src/components/comeForward.ts';
 import { SecondaryButton } from '../../src/components/Buttons.tsx';
 import {
@@ -166,7 +166,7 @@ export default function MembersScreen() {
   const heading = (
     <View style={styles.heading}>
       {!alone && (
-        <View style={styles.titleRow}>
+        <View style={besideRow.row}>
           <View style={styles.shrink}>
             <Text
               ref={membersTitle}
@@ -320,12 +320,6 @@ export default function MembersScreen() {
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
   heading: { gap: tokens.spaceXxs },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: tokens.spaceMd,
-  },
   shrink: { flexShrink: 1, minWidth: 0 },
   phone: {
     gap: tokens.spaceLg,
