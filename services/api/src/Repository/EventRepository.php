@@ -7,6 +7,8 @@ namespace App\Repository;
 use App\Entity\Event;
 use App\Entity\Organisation;
 use App\Enum\EventStatus;
+use App\Enum\FeedEntryStatus;
+use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -79,6 +81,38 @@ final class EventRepository extends ServiceEntityRepository
             ->setParameter('ended', EventStatus::Ended->value)
             ->setParameter('active', [EventStatus::Live->value, EventStatus::Paused->value])
             ->setParameter('now', $now->setTimezone(new DateTimeZone('UTC')), 'datetime_immutable');
+    }
+
+    /**
+     * Every event of the organisation, and those deleted within the last 30 days, which a subscribed calendar is told are cancelled (sc-3626).
+     *
+     * @return list<Event> soonest first
+     */
+    public function findForCalendarFeed(Organisation $organisation, DateTimeImmutable $now): array
+    {
+        $filters = $this->getEntityManager()->getFilters();
+        $filtered = $filters->isEnabled('soft_delete');
+
+        if ($filtered) {
+            $filters->disable('soft_delete');
+        }
+
+        try {
+            /** @var list<Event> */
+            return $this->createQueryBuilder('e')
+                ->andWhere('e.organisation = :organisation')
+                ->andWhere('e.deletedAt IS NULL OR e.deletedAt > :since')
+                ->setParameter('organisation', $organisation)
+                ->setParameter('since', $now->setTimezone(new DateTimeZone('UTC'))->sub(new DateInterval(FeedEntryStatus::KEPT_CANCELLED)), 'datetime_immutable')
+                ->orderBy('e.startsAtUtc', 'ASC')
+                ->addOrderBy('e.id', 'ASC')
+                ->getQuery()
+                ->getResult();
+        } finally {
+            if ($filtered) {
+                $filters->enable('soft_delete');
+            }
+        }
     }
 
     public function findOrganisationIdOf(Uuid $eventId): ?Uuid

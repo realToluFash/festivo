@@ -136,6 +136,7 @@ external = [
     "Lcobucci\\**",
     "Lexik\\**",
     "libphonenumber\\**",
+    "Monolog\\**",
     "OTPHP\\**",
     "PHPUnit\\**",
     "Psl\\**",

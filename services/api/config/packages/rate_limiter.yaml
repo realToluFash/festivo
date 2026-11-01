@@ -126,3 +126,11 @@ framework:
             policy: fixed_window
             limit: 5
             interval: '15 minutes'
+
+        calendar_feed_token:
+            # Per calendar link, keyed on its token's hash so the token itself is never a cache key
+            # (sc-3626). A calendar app checks every few hours; a person adding the link on three
+            # devices and refreshing by hand stays well inside this, and a script does not.
+            policy: fixed_window
+            limit: 60
+            interval: '1 hour'

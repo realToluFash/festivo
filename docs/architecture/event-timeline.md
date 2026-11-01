@@ -9,13 +9,13 @@ The code is `App\Domain\Event\Timeline`, served at `GET /api/events/<id>/timelin
 
 ## The pieces
 
-| Piece                      | What it is                                                                          |
-| -------------------------- | ----------------------------------------------------------------------------------- |
-| `MilestoneSourceInterface` | one area's milestones for one event, read on every request                          |
-| `Milestone`                | a date-time, a title, an optional note, an owner, the area, an optional action      |
-| `EventTimeline`            | merges every source, drops the areas the reader cannot see, sorts earliest first    |
-| `EventDates`               | the first source: the event's own dates, as they happened                           |
-| `nextUp()`                 | `packages/domain`: the one rule for which milestone is **Next up**, on every client |
+| Piece                      | What it is                                                                            |
+| -------------------------- | ------------------------------------------------------------------------------------- |
+| `MilestoneSourceInterface` | one area's milestones for one event, read on every request                            |
+| `Milestone`                | a key, a date-time, a title, an optional note, an owner, the area, an optional action |
+| `EventTimeline`            | merges every source, drops the areas the reader cannot see, sorts earliest first      |
+| `EventDates`               | the first source: the event's own dates, as they happened                             |
+| `nextUp()`                 | `packages/domain`: the one rule for which milestone is **Next up**, on every client   |
 
 ## Adding an area's milestones
 
@@ -43,6 +43,11 @@ and the timeline, the route and the clients do not change.
   `.coming-up-rows` (`apps/web/src/styles.css`, three widths) and `rows`/`rowsPhone`
   (`apps/mobile/src/components/Timeline.tsx`).
 - **Two milestones at the same instant** keep the order their sources were read in.
+- **A key** names the milestone within its event and stays the same when its date or title
+  changes: `<area>.<what>`, such as `event.starts`. The calendar feed builds each
+  milestone's `UID` from it, so a subscribed calendar moves the entry rather than adding a
+  second one (sc-3626). Its `SEQUENCE` is the event's version, so a source whose dates can
+  change without the event's row changing has to give the feed another way to see it.
 
 `EventDates` is the worked example: the start, titled "{name} starts", unless the event was
 called off, and the end, "{name} ends", only when `EventDayCount` says the event touches more
@@ -98,3 +103,37 @@ deadline should not vanish from the screen. When every milestone has passed ther
 A milestone is **Passed** once its instant is behind `now` and it is not Next up.
 On an Ended event the `events` area's milestones are Passed whatever the clock reads, so
 every caller passes `ended` to `nextUp`, `markedMilestones` and `comingUp` (sc-16709).
+
+## The calendar feed
+
+**Subscribe in your calendar app** on the Calendar (sc-3626) gives each member a private
+iCalendar (RFC 5545) link for the organisation: `App\Domain\Event\CalendarFeed`.
+
+| Route                                     | What it does                                              |
+| ----------------------------------------- | --------------------------------------------------------- |
+| `GET /api/orgs/<id>/calendar-feed`        | the reader's link path, made on first ask (`events.read`) |
+| `POST /api/orgs/<id>/calendar-feed/reset` | a new link; the old one is a 404 from that moment         |
+| `GET /api/calendar-feeds/<token>.ics`     | the feed, public, the token its only credential           |
+
+The API answers a path; each client puts its own API address in front, and `webcal://` in
+place of `http(s)://` for **Open in calendar app**.
+
+- **The token** is the HMAC-SHA256 of a 256-bit random seed under the app secret. The row
+  keeps the seed and the token's SHA-256, which it is found by. The panel can show the
+  same link every time it opens, and a copy of the database alone cannot rebuild it.
+- **Access is read on every fetch**, from the link's owner: an active membership whose role
+  holds `events.read`, an account that is not deleted. Anything else is the same 404 as a
+  link that never existed. The milestones are those the owner's role reads, as on every
+  screen.
+- **What it holds**: each event's name, start and end with its `TZID` and a `VTIMEZONE`
+  written from PHP's own transitions, its venue line, its status word and a link back; each
+  milestone as an instant `VEVENT` with its title, note and a link. Nothing about guests,
+  contacts, dietary notes or money.
+- **Changes update in place**: an event's `UID` is its id and a milestone's is its event and
+  key; `SEQUENCE` is the event's version. A Paused event's summary says so. A called-off or
+  deleted event stays as `STATUS:CANCELLED` for 30 days (`FeedEntryStatus`), then drops out.
+- **Caching**: a strong `ETag` from the body, `If-None-Match` answered 304, and a budget of
+  60 fetches an hour per link (`calendar_feed_token`), keyed on the token's hash.
+- **Logs**: `FeedTokenRedactor` takes the token out of every Monolog record, since the router
+  logs each matched path and its parameters.
+- **Language**: the account's stored language, else what the calendar app asks for.

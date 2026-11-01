@@ -64,5 +64,6 @@
     "eventChanges.email.settings": "Definições de notificações",
     "eventChanges.email.link": "{label}: {url}",
     "eventChanges.email.footer": "Está a receber esta mensagem porque faz parte de {event}, em {organisation}. Para deixar de receber estes e-mails, desative o e-mail de «Alterações aos eventos» nas definições de notificações.",
-    "eventChanges.email.footerEventDay": "Está a receber esta mensagem porque faz parte de {event}, em {organisation}. Para deixar de receber estes e-mails, desative o e-mail de «Dia do evento» nas definições de notificações."
+    "eventChanges.email.footerEventDay": "Está a receber esta mensagem porque faz parte de {event}, em {organisation}. Para deixar de receber estes e-mails, desative o e-mail de «Dia do evento» nas definições de notificações.",
+    "limits.calendar_feed": "This calendar link has been fetched too often. Try again {hour, plural, other {at {time}}}."
 }

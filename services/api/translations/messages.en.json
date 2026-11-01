@@ -207,5 +207,14 @@
     "notifications.push_target_refused": "This device cannot take notifications from Soirely.",
     "timeline.event_starts": "{name} starts",
     "timeline.event_ends": "{name} ends",
-    "timeline.event_called_off": "{name} called off"
+    "timeline.event_called_off": "{name} called off",
+    "calendar_feed.status.draft": "Draft",
+    "calendar_feed.status.live": "Live",
+    "calendar_feed.status.paused": "Paused",
+    "calendar_feed.status.finished": "Finished",
+    "calendar_feed.status.called_off": "Called off",
+    "calendar_feed.status.deleted": "Deleted",
+    "calendar_feed.paused_summary": "{name} (paused)",
+    "calendar_feed.status_line": "Status: {status}",
+    "calendar_feed.open_line": "Open in Soirely: {link}"
 }
