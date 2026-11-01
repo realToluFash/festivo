@@ -385,6 +385,7 @@ function ContactsCard({
                       label={t('contacts.promoteKeep', { old: primary?.shown ?? '' })}
                       onPress={() => closeTo(`primary.${row.id}`)}
                       off={sending}
+                      stacked
                       testID={`contacts.${row.id}.keep`}
                     />
                   ) : (

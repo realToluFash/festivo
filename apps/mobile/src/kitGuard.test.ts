@@ -1016,11 +1016,17 @@ describe('a contact confirmation shows its request running, its way back off (sc
   });
 
   it('on Keep and on Cancel under an add form, off until the answer', () => {
-    const off = selfClosing('QuietButton', text)
-      .filter(({ markup }) => /\boff=\{sending\}/u.test(markup))
-      .map(({ markup }) => propValue(markup, 'testID'));
+    const off = ['SecondaryButton', 'QuietButton'].flatMap((button) =>
+      selfClosing(button, text)
+        .filter(({ markup }) => /\boff=\{sending\}/u.test(markup))
+        .map(({ markup }) => propValue(markup, 'testID')),
+    );
 
-    expect(off).toEqual(['{`contacts.${row.id}.keep`}', '{`contacts.${kind}.cancel`}']);
+    expect(off).toEqual([
+      '{`contacts.${row.id}.keep`}',
+      '{`contacts.${row.id}.keep`}',
+      '{`contacts.${kind}.cancel`}',
+    ]);
   });
 
   it('back on Make this your primary address? when a change fails past the check', () => {
