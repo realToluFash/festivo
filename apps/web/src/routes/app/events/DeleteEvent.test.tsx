@@ -112,21 +112,25 @@ function answering(answers: Record<string, Answer>) {
   return sent;
 }
 
-async function onTheEvent(shown: ReturnType<typeof event>, answers: Record<string, Answer> = {}) {
+async function onTheEvent(
+  shown: ReturnType<typeof event>,
+  answers: Record<string, Answer> = {},
+  initialEntries = ['/app/events/ev_1'],
+) {
   const sent = answering({
     'GET /api/events/ev_1': () => json({ event: shown }),
     'GET /api/orgs/org_1/events': () => json({ events: [], total: 0 }),
     'DELETE /api/events/ev_1': () => new Response(null, { status: 204 }),
     ...answers,
   });
-  render(
-    <RouterProvider
-      router={createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1'] })}
-    />,
-  );
+  const router = createMemoryRouter(routes, {
+    initialEntries,
+    initialIndex: initialEntries.length - 1,
+  });
+  render(<RouterProvider router={router} />);
   await screen.findByRole('heading', { level: 1, name: shown.name });
 
-  return sent;
+  return { sent, router };
 }
 
 async function asking(
@@ -134,7 +138,7 @@ async function asking(
   needsName: boolean,
   answers: Record<string, Answer> = {},
 ) {
-  const sent = await onTheEvent(shown, {
+  const { sent } = await onTheEvent(shown, {
     'GET /api/events/ev_1/deletion': () => deletion(needsName),
     ...answers,
   });
@@ -198,6 +202,23 @@ describe('Delete an event (sc-3592)', () => {
     await waitFor(() =>
       expect(screen.getByRole('status').textContent).toBe('Adaeze and Tunde was deleted.'),
     );
+  });
+
+  it('takes the deleted page out of history, so Back from Events never opens it (sc-22103)', async () => {
+    signedIn();
+    const { router } = await onTheEvent(
+      event(),
+      { 'GET /api/events/ev_1/deletion': () => deletion(false) },
+      ['/app/events', '/app/events/ev_1'],
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Delete event…' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Delete Adaeze and Tunde?' });
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+    await screen.findByRole('heading', { level: 1, name: 'Events' });
+    await router.navigate(-1);
+
+    expect(router.state.location.pathname).toBe('/app/events');
   });
 
   it('asks for the name of an event past Draft, and says until when support can restore it', async () => {
