@@ -41,6 +41,6 @@ appId: host.exp.Exponent
       id: 'createOrganisation'
     timeout: 30000
 - extendedWaitUntil:
-    visible: '(?:Now working in|Ahora trabaja en|Vous travaillez maintenant dans|Agora a trabalhar em) Held Made Android\.'
+    visible: '{{t:switcher.switched}}'
     timeout: 20000
 - takeScreenshot: held-created-home
