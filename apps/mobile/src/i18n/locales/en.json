@@ -6,7 +6,6 @@
     "loading": "Loading…"
   },
   "home": {
-    "title": "Soirely",
     "subtitle": "The night, from your pocket.",
     "openSignIn": "Sign in",
     "signedInTo": "You’re signed in to {{name}}",
@@ -875,6 +874,7 @@
     "makePrimary": "Make primary",
     "makePrimaryPhone": "Make primary",
     "remove": "Remove",
+    "removeAsks": "Remove…",
     "removeLabel": "Remove {{address}}",
     "promoteTitle": "Make this your primary address?",
     "promoteBody": "You will sign in with it from now on, and account mail goes there. {{old}} stays linked and stops signing you in.",
@@ -1494,7 +1494,9 @@
     "nextChangeDates": "This event’s end has passed, so it cannot be made live. Change its dates first.",
     "nextResume": "Paused. Guests can’t reply or change anything until you resume it.",
     "footer_one": "{{count, number}} event · Sorted by date",
-    "footer_other": "{{count, number}} events · Sorted by date"
+    "footer_other": "{{count, number}} events · Sorted by date",
+    "endsIn": "Ends {{time}}",
+    "thenSoon": "{{when}} ·"
   },
   "eventPage": {
     "venue": "Venue",
@@ -1506,7 +1508,11 @@
     "tileComing": "Coming",
     "tileMealPicks": "Meal picks in",
     "tileSeated": "Seated",
-    "tileBudgetUsed": "Budget used"
+    "tileBudgetUsed": "Budget used",
+    "onTrack": "On track",
+    "replies": "Replies",
+    "needsYou": "Needs you",
+    "team": "Team on this event"
   },
   "eventForm": {
     "title": "New event",

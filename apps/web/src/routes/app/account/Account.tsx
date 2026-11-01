@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
-import { AccountSections } from '../../../components/AccountSections.tsx';
+import { AccountHeader } from '../../../components/AccountHeader.tsx';
 import { refreshAccount, useSession } from '../../../session.ts';
 import { ContactsCards } from './ContactsCard.tsx';
 import { NameCard } from './NameCard.tsx';
@@ -13,12 +13,7 @@ export function Account() {
 
   return (
     <div className="account">
-      <div className="account-heading">
-        <h1>{t('account.title')}</h1>
-        <p>{session.email}</p>
-      </div>
-
-      <AccountSections />
+      <AccountHeader title={t('account.title')} email={session.email} />
 
       <NameCard name={session.name} onSaved={() => refreshAccount()} />
 

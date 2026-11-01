@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
+import { Brand } from '../../components/Brand.tsx';
 import { LanguagePicker } from '../../components/LanguagePicker.tsx';
 import { usePageTitle } from '../../pageTitle.ts';
 
@@ -13,7 +14,7 @@ export function Home() {
   return (
     <div className="front">
       <header className="front-header">
-        <span className="brand">{t('app.name')}</span>
+        <Brand />
         <LanguagePicker pill />
         <Link className="button" to="/sign-in">
           {t('public.signIn')}

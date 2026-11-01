@@ -242,13 +242,40 @@ span {
 /* The width is used rather than reserved: a 1200px content column on a 2560px
    monitor is the layout this product exists to avoid. */
 .shell-content {
-  padding: var(--space4xl) var(--space5xl);
+  --shellBlock: var(--space4xl);
+  --shellInline: var(--space5xl);
+
+  padding: var(--shellBlock) var(--shellInline);
   max-width: 100rem;
 }
 
 .brand {
-  font: var(--typeTitleSection);
-  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+}
+
+/* The wordmark is as wide as [fd]'s 22 px name would be, at 6.6 times its size (sc-23330). */
+.brand img {
+  display: block;
+  width: 146px;
+  height: auto;
+}
+
+/* The lockup leaves the bell room in the sidebar's 192 px row. */
+.brand-lockup img {
+  width: 140px;
+}
+
+/* Up to 40rem the brand shares a bar, so it is exactly as wide as the name it replaces. */
+@media (width <= 40rem) {
+  .brand img,
+  .brand-lockup img {
+    width: 51px;
+  }
+
+  .auth-header .brand img {
+    width: 63px;
+  }
 }
 
 .language-picker select {
@@ -608,7 +635,8 @@ span {
   }
 
   .shell-content {
-    padding: var(--spaceXl);
+    --shellBlock: var(--spaceXl);
+    --shellInline: var(--spaceXl);
   }
 
   .public-header {
@@ -633,7 +661,7 @@ span {
 
   /* An account in no organisation has no switcher, so the bar says whose it is instead. */
   .shell-sidebar:not(:has(.org-switcher)) .brand {
-    display: block;
+    display: flex;
     flex: 1;
   }
 
@@ -987,7 +1015,58 @@ span {
   display: flex;
   flex-direction: column;
   gap: var(--spaceXxl);
+}
+
+.account > :not(.account-header) {
   max-width: 47.5rem;
+}
+
+.account-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.account-header h1 {
+  margin: 0;
+}
+
+/* The band runs to the content's edges, as Account-*, Security-* and Notifications-* draw it above 40rem. */
+@media (width > 40rem) {
+  .account-header {
+    margin-inline: calc(-1 * var(--shellInline));
+    padding: var(--space4xl) var(--shellInline) var(--spaceXxl);
+    background: var(--colorHeader);
+    border-bottom: var(--borderHeader);
+  }
+
+  .shell-content > .account:first-child > .account-header {
+    margin-top: calc(-1 * var(--shellBlock));
+  }
+
+  .account-header .account-sections {
+    flex-wrap: nowrap;
+    align-self: flex-start;
+    gap: var(--spaceHair);
+    min-width: 26.25rem;
+    padding: var(--spaceXxs);
+    border-radius: var(--radiusPill);
+    background: var(--colorHeaderTrack);
+  }
+
+  .account-header .account-section {
+    flex: 1;
+    justify-content: center;
+    border: 0;
+    white-space: nowrap;
+  }
+
+  .account-header .account-section[aria-current='page'] {
+    border: 0;
+    background: var(--colorCard);
+    box-shadow: var(--shadowCard);
+    color: var(--colorInk);
+  }
 }
 
 .account-heading {
@@ -1139,10 +1218,6 @@ span {
     padding: var(--spaceXl) var(--space3xl) 0;
     background: none;
     border-bottom: 0;
-  }
-
-  .auth-header .brand {
-    font: var(--typeTitleDialog);
   }
 
   .auth-main {
@@ -3155,6 +3230,52 @@ span {
   align-items: flex-start;
 }
 
+/* ── Your account's cards, as `Account.dc.html` draws them (sc-23283) ─────── */
+
+.card.account-card {
+  gap: var(--spaceLg);
+  padding: var(--spaceXl) var(--spaceXxl);
+}
+
+.account-card h2 {
+  font: var(--typeLabel);
+  letter-spacing: var(--typeLabelTracking);
+  text-transform: uppercase;
+  color: var(--colorInkSecondary);
+}
+
+.account-card .current-value-label {
+  overflow-wrap: anywhere;
+}
+
+.card.contacts-card {
+  padding-inline: 0;
+}
+
+.contacts-card > * {
+  margin-inline: var(--spaceXxl);
+}
+
+.contacts-card > .ways-list {
+  margin-inline: 0;
+}
+
+.contacts-card .way {
+  padding: var(--spaceLg) var(--spaceXxl);
+  border-top: var(--borderDivider);
+}
+
+.actions-pair {
+  align-items: center;
+}
+
+@media (width <= 40rem) {
+  .actions-pair {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
 /* ── An invitation to join ────────────────────────────────────────────────── */
 
 .join-org {
@@ -4155,6 +4276,12 @@ button.members-row {
 .events-row-time {
   color: var(--colorInkSecondary);
   font: var(--typeSmall);
+}
+
+/* How soon moves to the next line whole, leaving the separator where the line before ends (sc-25008). */
+.events-soon {
+  display: inline-block;
+  max-width: 100%;
 }
 
 .events-row-dates {
@@ -6753,18 +6880,31 @@ button.members-row {
   align-items: start;
 }
 
-.event-overview-main {
+/* Two columns that stack apart where there is room for both (1280 × 800); below it, one column in the phone's order (sc-25008). */
+@media (width >= 64rem) {
+  .event-overview-columns {
+    grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem);
+  }
+}
+
+.event-overview-main,
+.event-overview-side {
   display: flex;
   flex-direction: column;
   gap: var(--space3xl);
   min-width: 0;
 }
 
-/* Manage beside Details and Coming up where there is room for both (1280 × 800), after them below it. */
-@media (width >= 64rem) {
-  .event-overview-columns {
-    grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem);
-  }
+.event-soon-label {
+  margin: 0;
+  padding-bottom: var(--spaceLg);
+  border-bottom: var(--borderInset);
+}
+
+.event-soon .placeholder-soon {
+  margin: 0;
+  font: var(--typeBodyPhone);
+  font-weight: 500;
 }
 
 @media (width <= 40rem) {

@@ -202,6 +202,9 @@ From `CLAUDE.md` and the foundations. Each one is a decision, not a preference:
   inline confirm alike, and a wrapping row is still a row. In a stack, the confirming one is
   on top. On the app, `phone ? stacked : row` needs both orders, so render the two buttons
   once and place them per branch rather than writing one sequence for both (sc-22092).
+  On the web, place a pair with `ActionPair` (`className` carries `dialog-actions` and the
+  like), never with `column-reverse`, which turns the stack over for the eye and leaves Tab
+  in the old order (WCAG 2.4.3; sc-23282).
 
 ## 7. What the stack cannot express
 

@@ -2,10 +2,14 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   type HomeEvent,
+  type HowSoon,
   cardDate,
   eventDays,
   eventsHome,
   forgetEventsTab,
+  howSoon,
+  howSoonPhrase,
+  howSoonWords,
   nextStep,
   rememberEventsTab,
   rememberTabHolding,
@@ -378,5 +382,107 @@ describe('eventDays', () => {
     expect(
       eventDays({ ...lagos, status: 'ended', concludedAt: '2026-09-30T10:00:00+01:00' }),
     ).toEqual({ kind: 'calledOffOn', concludedAt: '2026-09-30T10:00:00+01:00' });
+  });
+});
+
+describe('howSoon', () => {
+  const now = new Date('2026-10-31T19:57:00+01:00');
+  const at = (startsAt: string, endsAt = '2026-12-31T23:00:00+01:00') => ({
+    startsAt,
+    endsAt,
+    timeZone: 'Africa/Lagos',
+  });
+
+  it('counts minutes under an hour, rounded down', () => {
+    expect(howSoon(at('2026-10-31T20:00:30+01:00'), 'live', now)).toEqual({
+      to: 'start',
+      count: 3,
+      unit: 'minute',
+    });
+  });
+
+  it('reads 0 minutes in the last minute, never 1', () => {
+    expect(howSoon(at('2026-10-31T19:57:40+01:00'), 'live', now)).toEqual({
+      to: 'start',
+      count: 0,
+      unit: 'minute',
+    });
+  });
+
+  it('counts hours under a day, rounded down', () => {
+    expect(howSoon(at('2026-10-31T21:56:00+01:00'), 'live', now)?.count).toBe(1);
+    expect(howSoon(at('2026-11-01T10:57:00+01:00'), 'paused', now)).toEqual({
+      to: 'start',
+      count: 15,
+      unit: 'hour',
+    });
+  });
+
+  it('counts days by the dates in the event’s zone from 24 hours on, never weeks', () => {
+    expect(howSoon(at('2026-11-01T20:57:00+01:00'), 'live', now)).toEqual({
+      to: 'start',
+      count: 1,
+      unit: 'day',
+    });
+    expect(howSoon(at('2026-12-05T08:00:00+01:00'), 'live', now)?.count).toBe(35);
+    expect(howSoon(at('2027-12-05T12:00:00+01:00'), 'draft', now)?.count).toBe(400);
+  });
+
+  it('counts to the end once under way', () => {
+    expect(
+      howSoon(at('2026-10-31T19:00:00+01:00', '2026-10-31T22:57:00+01:00'), 'happening_now', now),
+    ).toEqual({ to: 'end', count: 3, unit: 'hour' });
+    expect(
+      howSoon(at('2026-10-31T19:00:00+01:00', '2026-11-03T22:00:00+01:00'), 'paused', now),
+    ).toEqual({ to: 'end', count: 3, unit: 'day' });
+  });
+
+  it('says nothing once finished, past its end, or for a draft past its start', () => {
+    expect(howSoon(at('2026-11-14T16:00:00+01:00'), 'finished', now)).toBeNull();
+    expect(
+      howSoon(at('2026-10-30T19:00:00+01:00', '2026-10-31T19:00:00+01:00'), 'live', now),
+    ).toBeNull();
+    expect(howSoon(at('2026-10-31T19:00:00+01:00'), 'draft', now)).toBeNull();
+  });
+});
+
+describe('howSoonWords', () => {
+  const words = (count: number, unit: HowSoon['unit'], locale: string) =>
+    howSoonWords({ to: 'start', count, unit }, locale);
+
+  it.each([
+    ['en', 'in 32 days', 'tomorrow', 'in 40 minutes', 'this minute'],
+    ['es', 'dentro de 32 días', 'mañana', 'dentro de 40 minutos', 'este minuto'],
+    ['fr', 'dans 32 jours', 'demain', 'dans 40 minutes', 'cette minute-ci'],
+    ['pt', 'dentro de 32 dias', 'amanhã', 'dentro de 40 minutos', 'este minuto'],
+  ])('reads CLDR’s long form, auto, in %s', (locale, days, tomorrow, minutes, thisMinute) => {
+    expect(words(32, 'day', locale)).toBe(days);
+    expect(words(1, 'day', locale)).toBe(tomorrow);
+    expect(words(40, 'minute', locale)).toBe(minutes);
+    expect(words(0, 'minute', locale)).toBe(thisMinute);
+  });
+});
+
+describe('howSoonPhrase', () => {
+  const event = {
+    startsAt: '2026-11-14T09:00:00+01:00',
+    endsAt: '2026-11-14T23:00:00+01:00',
+    timeZone: 'Europe/Madrid',
+  };
+  const endsIn = (time: string) => `Ends ${time}`;
+
+  it('says how soon it starts, and how soon it ends once under way', () => {
+    expect(howSoonPhrase(event, 'live', new Date('2026-11-13T08:00:00+01:00'), 'pt', endsIn)).toBe(
+      'amanhã',
+    );
+    expect(
+      howSoonPhrase(event, 'happening_now', new Date('2026-11-14T22:59:20+01:00'), 'en', endsIn),
+    ).toBe('Ends this minute');
+  });
+
+  it('has no phrase for a finished event', () => {
+    expect(
+      howSoonPhrase(event, 'finished', new Date('2026-11-13T12:00:00+01:00'), 'en', endsIn),
+    ).toBeNull();
   });
 });

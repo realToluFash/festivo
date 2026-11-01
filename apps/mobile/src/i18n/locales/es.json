@@ -6,7 +6,6 @@
     "loading": "Cargando…"
   },
   "home": {
-    "title": "Soirely",
     "subtitle": "La noche, desde su bolsillo.",
     "openSignIn": "Iniciar sesión",
     "signedInTo": "Ha iniciado sesión en {{name}}",
@@ -900,6 +899,7 @@
     "makePrimary": "Hacer principal",
     "makePrimaryPhone": "Hacer principal",
     "remove": "Quitar",
+    "removeAsks": "Quitar…",
     "removeLabel": "Quitar {{address}}",
     "promoteTitle": "¿Hacer principal esta dirección?",
     "promoteBody": "A partir de ahora iniciará sesión con ella y recibirá ahí el correo de la cuenta. La dirección {{old}} seguirá vinculada, pero ya no servirá para iniciar sesión.",
@@ -1536,7 +1536,9 @@
     "nextResume": "Paused. Guests can’t reply or change anything until you resume it.",
     "footer_one": "{{count, number}} event · Sorted by date",
     "footer_other": "{{count, number}} events · Sorted by date",
-    "footer_many": "{{count, number}} events · Sorted by date"
+    "footer_many": "{{count, number}} events · Sorted by date",
+    "endsIn": "Ends {{time}}",
+    "thenSoon": "{{when}} ·"
   },
   "eventPage": {
     "venue": "Lugar",
@@ -1548,7 +1550,11 @@
     "tileComing": "Asistirán",
     "tileMealPicks": "Menús elegidos",
     "tileSeated": "Con asiento",
-    "tileBudgetUsed": "Presupuesto usado"
+    "tileBudgetUsed": "Presupuesto usado",
+    "onTrack": "On track",
+    "replies": "Replies",
+    "needsYou": "Needs you",
+    "team": "Team on this event"
   },
   "eventForm": {
     "title": "Nuevo evento",

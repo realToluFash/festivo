@@ -5,6 +5,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api, meAtLaunch } from '../src/api.ts';
+import { Brand } from '../src/components/Brand.tsx';
 import { Home as SignedInHome } from '../src/components/Home.tsx';
 import { PrimaryButton, SecondaryButton } from '../src/components/Buttons.tsx';
 import { cardFrame } from '../src/components/cardFrame.ts';
@@ -13,7 +14,6 @@ import { Pending } from '../src/components/Pending.tsx';
 import { Screen } from '../src/components/Screen.tsx';
 import { GlyphMark, type Mark } from '../src/components/StatusMark.tsx';
 import { Text } from '../src/components/Text.tsx';
-import { Title } from '../src/components/Title.tsx';
 import { config } from '../src/config.ts';
 import { followAccount } from '../src/accountLanguage.ts';
 import { landingFor } from '../src/landing.ts';
@@ -166,15 +166,13 @@ function SignedOut({ state, onRetry }: { state: State; onRetry: () => void }) {
   const { t } = useTranslation();
   const { kind, width } = useLayout();
   const phone = kind === 'phone';
-  const titleSize = phone ? (width < 390 ? 28 : 30) : 34;
+  const brandWidth = phone ? (width < 390 ? 185 : 199) : 225;
 
   return (
     <Screen contentStyle={phone ? styles.phone : styles.tablet}>
       <View style={phone ? styles.stack : styles.column}>
         <View style={styles.heading}>
-          <Title size={titleSize} accessibilityRole="header">
-            {t('home.title')}
-          </Title>
+          <Brand width={brandWidth} header testID="launch.brand" />
           <Text size={tokens.typeBodyPhone.size} muted>
             {t('home.subtitle')}
           </Text>

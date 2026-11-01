@@ -93,7 +93,9 @@
     "nextResume": "Paused. Guests can’t reply or change anything until you resume it.",
     "footer_one": "{{count, number}} event · Sorted by date",
     "footer_other": "{{count, number}} events · Sorted by date",
-    "footer_many": "{{count, number}} events · Sorted by date"
+    "footer_many": "{{count, number}} events · Sorted by date",
+    "endsIn": "Ends {{time}}",
+    "thenSoon": "{{when}} ·"
   },
   "eventForm": {
     "title": "Novo evento",
@@ -180,7 +182,11 @@
     "tileComing": "Vêm",
     "tileMealPicks": "Menus escolhidos",
     "tileSeated": "Sentados",
-    "tileBudgetUsed": "Orçamento usado"
+    "tileBudgetUsed": "Orçamento usado",
+    "onTrack": "On track",
+    "replies": "Replies",
+    "needsYou": "Needs you",
+    "team": "Team on this event"
   },
   "eventLive": {
     "guestsBlocked": "Só é possível convidar pessoas depois de este evento ser publicado.",
@@ -1516,6 +1522,7 @@
     "makePrimary": "Tornar principal",
     "makePrimaryPhone": "Tornar principal",
     "remove": "Remover",
+    "removeAsks": "Remover…",
     "removeLabel": "Remover {{address}}",
     "promoteTitle": "Tornar este endereço principal?",
     "promoteBody": "Passa a iniciar sessão com ele, e o e-mail da conta passa a ir para lá. O endereço {{old}} continua associado, mas deixa de servir para iniciar sessão.",

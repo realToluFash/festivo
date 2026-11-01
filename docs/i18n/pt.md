@@ -41,6 +41,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **01 Nov 2026. O que um botão diz enquanto envia, num evento** (sc-22578 para sc-22103,
+  `eventLive.making`, `eventPause.pausing`, `.resuming`, `eventEnd.callingOff`, `.ending`,
+  `eventDelete.deleting`, `eventEnd.callOffFailed`, web e app). "A" + infinitivo do verbo do
+  botão com reticências, como "A guardar…", nunca o gerúndio do Brasil: "A publicar…",
+  "A pausar…", "A retomar…", "A cancelar…", "A terminar…", "A eliminar…". Cancelar tem a sua
+  própria falha, "Não foi cancelado. Tente novamente daqui a pouco.", nunca a de terminar.
 - **30 Oct 2026. Uma versão nova com o separador aberto** (sc-22881 para sc-22622, `release.*`,
   web). "A Soirely foi atualizada.", no feminino; o botão, "Recarregar", o verbo do browser.
 - **30 Oct 2026. Uma versão demasiado antiga** (sc-22881 para sc-22620, `updateRequired.*`,

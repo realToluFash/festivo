@@ -145,7 +145,7 @@ export function EventsFailed({
 
 const OVERVIEW_TILES = ['tileComing', 'tileMealPicks', 'tileSeated', 'tileBudgetUsed'] as const;
 
-/** [fd]'s Event view (sc-22103): the Top, then Overview's tiles, Details and Coming up, with Manage beside them on a tablet on its side. */
+/** [fd]'s Event view (sc-22103): the Top, then Overview's tiles and cards in two columns on a tablet on its side, in one elsewhere (sc-25008). */
 export function EventPage({
   kind,
   event,
@@ -181,7 +181,7 @@ export function EventPage({
   }, [event.id, phase, t]);
 
   const manage = (
-    <View style={[cardFrame(kind), styles.manage, landscape && styles.manageBeside]}>
+    <View style={[cardFrame(kind), styles.manage]}>
       <Text size={tokens.typeRowTitle.size} weight="semibold" accessibilityRole="header">
         {t('eventPage.manage')}
       </Text>
@@ -213,6 +213,16 @@ export function EventPage({
       {onDeleted != null && <DeleteEventSection kind={kind} event={event} onDeleted={onDeleted} />}
     </View>
   );
+  const details = <Details kind={kind} event={event} onEdit={onEdit} />;
+  const comingUp = (
+    <ComingUp
+      kind={kind}
+      event={event}
+      now={now}
+      onAllDates={() => router.push(`/events/${encodeURIComponent(event.id)}/dates`)}
+    />
+  );
+  const soon = (card: keyof typeof SOON_CARDS) => <SoonCard key={card} kind={kind} card={card} />;
 
   return (
     <View style={styles.cards} testID="events.page">
@@ -242,18 +252,67 @@ export function EventPage({
           })}
         />
       )}
-      <View style={landscape ? styles.columns : styles.cards}>
-        <View style={[styles.cards, landscape && styles.main]}>
-          <Details kind={kind} event={event} onEdit={onEdit} />
-          <ComingUp
-            kind={kind}
-            event={event}
-            now={now}
-            onAllDates={() => router.push(`/events/${encodeURIComponent(event.id)}/dates`)}
-          />
+      {landscape ? (
+        <View style={styles.columns}>
+          <View style={[styles.cards, styles.main]}>
+            {details}
+            {soon('needsYou')}
+            {comingUp}
+            {soon('team')}
+          </View>
+          <View style={[styles.cards, styles.side]}>
+            {soon('onTrack')}
+            {soon('replies')}
+            {manage}
+          </View>
         </View>
-        {manage}
+      ) : (
+        <View style={styles.cards}>
+          {details}
+          {soon('onTrack')}
+          {soon('needsYou')}
+          {soon('replies')}
+          {comingUp}
+          {soon('team')}
+          {manage}
+        </View>
+      )}
+    </View>
+  );
+}
+
+const SOON_CARDS = {
+  onTrack: 'eventPage.onTrack',
+  replies: 'eventPage.replies',
+  needsYou: 'eventPage.needsYou',
+  team: 'eventPage.team',
+} as const;
+
+/** [fd]'s Overview card with nothing to show yet: its label, then Coming soon, and nothing to press (sc-25008). */
+function SoonCard({ kind, card }: { kind: LayoutKind; card: keyof typeof SOON_CARDS }) {
+  const { t } = useTranslation();
+  const label = t(SOON_CARDS[card]);
+  const soon = t('eventsScreen.comingSoon');
+
+  return (
+    <View
+      style={cardFrame(kind)}
+      accessible
+      accessibilityLabel={`${label}, ${soon}`}
+      testID={`events.page.${card}`}
+    >
+      <View style={styles.soonHead}>
+        <Text size={tokens.typeRowTitle.size} weight="semibold">
+          {label}
+        </Text>
       </View>
+      <Text
+        size={kind === 'phone' ? tokens.typeBody.size : tokens.typeBodyPhone.size}
+        weight="medium"
+        muted
+      >
+        {soon}
+      </Text>
     </View>
   );
 }
@@ -492,7 +551,12 @@ const styles = StyleSheet.create({
   columns: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceLg },
   main: { flex: 2, minWidth: 0 },
   manage: { gap: tokens.spaceMd },
-  manageBeside: { flex: 1, minWidth: 0 },
+  side: { flex: 1, minWidth: 0 },
+  soonHead: {
+    paddingBottom: tokens.spaceMd,
+    borderBottomWidth: 1,
+    borderBottomColor: tokens.colorInsetBorder,
+  },
   detailsHead: {
     flexDirection: 'row',
     flexWrap: 'wrap',

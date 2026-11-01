@@ -6,7 +6,6 @@
     "loading": "Chargement…"
   },
   "home": {
-    "title": "Soirely",
     "subtitle": "La soirée, depuis votre poche.",
     "openSignIn": "Se connecter",
     "signedInTo": "Vous êtes connecté à {{name}}",
@@ -900,6 +899,7 @@
     "makePrimary": "Définir comme principale",
     "makePrimaryPhone": "Définir comme principal",
     "remove": "Retirer",
+    "removeAsks": "Retirer…",
     "removeLabel": "Retirer {{address}}",
     "promoteTitle": "En faire votre adresse principale ?",
     "promoteBody": "Vous l’utiliserez désormais pour vous connecter, et les e-mails du compte y seront envoyés. L’adresse {{old}} reste associée au compte, mais ne permet plus de vous connecter.",
@@ -1536,7 +1536,9 @@
     "nextResume": "Paused. Guests can’t reply or change anything until you resume it.",
     "footer_one": "{{count, number}} event · Sorted by date",
     "footer_other": "{{count, number}} events · Sorted by date",
-    "footer_many": "{{count, number}} events · Sorted by date"
+    "footer_many": "{{count, number}} events · Sorted by date",
+    "endsIn": "Ends {{time}}",
+    "thenSoon": "{{when}} ·"
   },
   "eventPage": {
     "venue": "Lieu",
@@ -1548,7 +1550,11 @@
     "tileComing": "Présents",
     "tileMealPicks": "Menus choisis",
     "tileSeated": "Placés",
-    "tileBudgetUsed": "Budget utilisé"
+    "tileBudgetUsed": "Budget utilisé",
+    "onTrack": "On track",
+    "replies": "Replies",
+    "needsYou": "Needs you",
+    "team": "Team on this event"
   },
   "eventForm": {
     "title": "Nouvel événement",

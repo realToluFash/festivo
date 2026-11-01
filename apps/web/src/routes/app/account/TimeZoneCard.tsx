@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { useComboboxKeys } from '../../../comboboxKeys.ts';
+import { ActionPair } from '../../../components/ActionPair.tsx';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { useStepFocus } from '../../../stepFocus.ts';
@@ -56,7 +57,7 @@ export function TimeZoneCard({
   const savedZone = saved == null ? null : (zones.find((zone) => zone.id === saved.id) ?? saved);
 
   return (
-    <section className="card" aria-labelledby="tz-title">
+    <section className="card account-card" aria-labelledby="tz-title">
       <h2 id="tz-title">{t('timeZone.title')}</h2>
       <p>{t('timeZone.intro')}</p>
 
@@ -263,19 +264,23 @@ function Choosing({
         {error != null && <FieldError id="tz-err" message={error} />}
       </div>
 
-      <div className="actions">
-        <button className="button" type="button" onClick={onCancel} disabled={saving}>
-          {t('timeZone.cancel')}
-        </button>
-        <button
-          className="button button-primary"
-          type="button"
-          aria-busy={saving}
-          onClick={() => void save()}
-        >
-          {saving ? t('timeZone.saving') : t('timeZone.save')}
-        </button>
-      </div>
+      <ActionPair
+        dismiss={
+          <button className="button" type="button" onClick={onCancel} disabled={saving}>
+            {t('timeZone.cancel')}
+          </button>
+        }
+        confirm={
+          <button
+            className="button button-primary"
+            type="button"
+            aria-busy={saving}
+            onClick={() => void save()}
+          >
+            {saving ? t('timeZone.saving') : t('timeZone.save')}
+          </button>
+        }
+      />
     </>
   );
 }

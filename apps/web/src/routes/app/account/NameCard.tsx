@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
+import { ActionPair } from '../../../components/ActionPair.tsx';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { focusWhereSent, offField } from '../../../offField.ts';
 import { useStepFocus } from '../../../stepFocus.ts';
@@ -22,7 +23,7 @@ export function NameCard({ name, onSaved }: { name: string; onSaved: () => Promi
   }, [editing, refocus]);
 
   return (
-    <section className="card" aria-labelledby="name-title">
+    <section className="card account-card" aria-labelledby="name-title">
       <h2 id="name-title">{t('nameCard.title')}</h2>
 
       {editing ? (
@@ -157,14 +158,18 @@ function Editing({
         {error != null && <FieldError id="name-err" message={error} />}
       </div>
 
-      <div className="actions">
-        <button className="button" type="button" onClick={onCancel} disabled={saving}>
-          {t('nameCard.cancel')}
-        </button>
-        <button className="button button-primary" type="submit" aria-busy={saving}>
-          {saving ? t('nameCard.saving') : t('nameCard.save')}
-        </button>
-      </div>
+      <ActionPair
+        dismiss={
+          <button className="button" type="button" onClick={onCancel} disabled={saving}>
+            {t('nameCard.cancel')}
+          </button>
+        }
+        confirm={
+          <button className="button button-primary" type="submit" aria-busy={saving}>
+            {saving ? t('nameCard.saving') : t('nameCard.save')}
+          </button>
+        }
+      />
     </form>
   );
 }
