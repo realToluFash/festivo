@@ -1,0 +1,31 @@
+# sc-23267 regression: Create an organisation named ${NAME}, Create organisation pressed with the API paused, Cancel while it sends closes the sheet; once the API is back, no organisation named ${NAME} shows in the switcher.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createOrganisation.name'
+- inputText: ${NAME}
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- tapOn:
+    id: 'createOrganisation.create'
+- takeScreenshot: cancel-sending-creating
+- tapOn:
+    id: 'createOrganisation.cancel'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation'
+    timeout: 10000
+- takeScreenshot: cancel-sending-closed
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'home.switchOrganisation'
+- waitForAnimationToEnd
+- assertNotVisible: '.*${NAME}.*'
+- takeScreenshot: cancel-sending-switcher
