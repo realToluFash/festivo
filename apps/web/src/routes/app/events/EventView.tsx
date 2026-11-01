@@ -16,6 +16,7 @@ import { api } from '../../../api.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
+import { useWideWidth } from '../../../phoneWidth.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
@@ -312,7 +313,7 @@ function SoonCard({ card }: { card: keyof typeof SOON_CARDS }) {
   );
 }
 
-/** The page's first area: [fd]'s tiles, then its cards in two columns where there is room, and in the phone's order in one where there is not (sc-25008). */
+/** The page's first area: [fd]'s tiles, then its cards in two columns where there is room, and in the phone's order in one where there is not, so they are read in the order they are seen (sc-25008). */
 function Overview({
   event,
   heading,
@@ -336,6 +337,7 @@ function Overview({
   const phase = shownPhase(event, loadedAt, now);
   const manages = can(session, 'events.manage');
   const creates = can(session, 'events.create');
+  const wide = useWideWidth();
 
   useEffect(() => {
     if (editOutcome(location.state) == null && coverRefusal(location.state) == null) return;
@@ -346,6 +348,8 @@ function Overview({
     );
   }, [location, navigate]);
 
+  const details = <Details event={event} manages={manages} />;
+  const comingUp = <ComingUp event={event} now={now} />;
   const manage = (
     <section className="card event-manage" aria-labelledby="event-manage-title">
       <h2 id="event-manage-title">{t('eventPage.manage')}</h2>
@@ -405,19 +409,31 @@ function Overview({
           words={outcome === 'saved' ? t('eventEdit.saved') : t('eventEdit.nothingChanged')}
         />
       )}
-      <div className="event-overview-columns">
-        <div className="event-overview-main">
-          <Details event={event} manages={manages} />
-          <SoonCard card="needsYou" />
-          <ComingUp event={event} now={now} />
-          <SoonCard card="team" />
+      {wide ? (
+        <div className="event-overview-columns">
+          <div className="event-overview-main">
+            {details}
+            <SoonCard card="needsYou" />
+            {comingUp}
+            <SoonCard card="team" />
+          </div>
+          <div className="event-overview-side">
+            <SoonCard card="onTrack" />
+            <SoonCard card="replies" />
+            {manage}
+          </div>
         </div>
-        <div className="event-overview-side">
+      ) : (
+        <div className="event-overview-main">
+          {details}
           <SoonCard card="onTrack" />
+          <SoonCard card="needsYou" />
           <SoonCard card="replies" />
+          {comingUp}
+          <SoonCard card="team" />
           {manage}
         </div>
-      </div>
+      )}
     </div>
   );
 }

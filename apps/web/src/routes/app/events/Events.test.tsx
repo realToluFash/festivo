@@ -5,6 +5,7 @@ import { EVENT_TYPES, forgetEventsTab, serverClock } from '@soirely/domain';
 
 import { __setSessionState, type Session, switchOrganisation } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
+import { WIDE_WIDTH } from '../../../phoneWidth.ts';
 import { breaksAnywhere } from '../../../test-wrapping.ts';
 import { routes } from '../../index.tsx';
 
@@ -1567,6 +1568,36 @@ describe("An event's Overview (sc-22103)", () => {
       screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent),
     ).toEqual([
       'Details',
+      'On track',
+      'Needs you',
+      'Replies',
+      'Coming up',
+      'Team on this event',
+      'Manage',
+      'Just for you',
+    ]);
+    expect(screen.queryByRole('button', { name: /more/i })).toBeNull();
+  });
+
+  it('reads its cards column by column where the two columns sit side by side (sc-25008)', async () => {
+    vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query) =>
+        ({
+          matches: query === WIDE_WIDTH,
+          media: query,
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+        }) as unknown as MediaQueryList,
+    );
+    signedIn();
+    answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    expect(
+      screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent),
+    ).toEqual([
+      'Details',
       'Needs you',
       'Coming up',
       'Team on this event',
@@ -1575,7 +1606,6 @@ describe("An event's Overview (sc-22103)", () => {
       'Manage',
       'Just for you',
     ]);
-    expect(screen.queryByRole('button', { name: /more/i })).toBeNull();
   });
 
   it('shows On track, Replies, Needs you and Team on this event as placeholders, with nothing to press and no hosts (sc-25008)', async () => {
