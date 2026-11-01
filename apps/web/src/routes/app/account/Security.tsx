@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { AccountSections } from '../../../components/AccountSections.tsx';
+import { AccountHeader } from '../../../components/AccountHeader.tsx';
 import { LateStatus } from '../../../components/LateStatus.tsx';
 import { StillSignedIn } from '../../../components/StillSignedIn.tsx';
 import { EverywhereElse } from './EverywhereElse.tsx';
@@ -155,12 +155,7 @@ export function Security() {
 
   return (
     <div className="account">
-      <div className="account-heading">
-        <h1>{t('account.title')}</h1>
-        <p>{session.email}</p>
-      </div>
-
-      <AccountSections />
+      <AccountHeader title={t('account.title')} email={session.email} />
 
       <PasswordCard
         email={session.email}
