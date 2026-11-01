@@ -603,3 +603,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   (célula de cerca de 50 px) e passava a duas linhas na web a 390 px (QA, 1 nov., como em
   francês). Sob as barras, "+3" lê-se sozinho; o leitor de ecrã lê o nome do dia, que dá o
   número de elementos.
+- **1 Nov 2026. Subscrever o Calendário** (sc-25960 para sc-3626, `calendarFeed.*`, web e app;
+  `messages:calendar_feed.*`; `messages+intl-icu:limits.calendar_feed`). "Subscrever na sua
+  aplicação de calendário"; no cabeçalho do telemóvel, "Subscrever". A ligação é "a sua ligação
+  privada", no feminino ("Copiada", "Copie-a", "Partilhou-a por engano?"), e "redefine-se", como
+  a palavra-passe ("repor" é restaurar o que foi eliminado). As aplicações têm o nome que o
+  utilizador vê: "o Google Calendar, o Calendário da Apple ou o Outlook"; a tecla do Mac é
+  "Comando". Os estados no calendário subscrito são os da lista de eventos, no masculino com
+  "evento": Rascunho, Publicado, Em pausa, Terminado, Cancelado, Eliminado. "Dietary notes" é
+  "As notas sobre alimentação". O limite concorda o artigo com a hora, como `limits.tries`.
