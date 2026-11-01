@@ -678,6 +678,7 @@
   "frame": {
     "home": "Accueil",
     "events": "Événements",
+    "calendar": "Calendar",
     "settings": "Paramètres",
     "organisation": "Organisation"
   },
@@ -1777,6 +1778,30 @@
     "key_you": "Ce que vous devez faire",
     "key_automatic": "Soirely s’en charge pour vous",
     "backToEvent": "Événement"
+  },
+  "calendar": {
+    "title": "Calendar",
+    "previous": "Previous",
+    "next": "Next",
+    "today": "Today",
+    "todayDay": "Today, {{day}}",
+    "dayWithItems_one": "{{day}}, {{count, number}} item",
+    "dayWithItems_other": "{{day}}, {{count, number}} items",
+    "dayWithItems_many": "{{day}}, {{count, number}} items",
+    "month": "Month",
+    "agenda": "Agenda",
+    "showAll": "Events and milestones",
+    "showEvents": "Events only",
+    "more_one": "+{{count, number}} more",
+    "more_other": "+{{count, number}} more",
+    "more_many": "+{{count, number}} more",
+    "close": "Close",
+    "timeInZone": "{{time}} {{timeZone}}",
+    "range": "{{from}} to {{to}}",
+    "loading": "Loading the calendar…",
+    "failed": "The calendar did not load. Check your connection, then try again. Nothing has changed.",
+    "emptyMonth": "Nothing on the calendar in {{month}}.",
+    "emptyDay": "Nothing on this day."
   },
   "notifications": {
     "bell": "Notifications",
