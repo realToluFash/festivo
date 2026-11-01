@@ -12,8 +12,8 @@ import { Screen, useFocusOnAnswer } from './Screen.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { Title } from './Title.tsx';
 
-const PORTRAIT_COLUMN_WIDTH = 560;
-const LANDSCAPE_COLUMN_WIDTH = 520;
+const CARD_WIDTH = 520;
+const FORM_COLUMN_WIDTH = 600;
 
 /** The screen's title, sized for the layout; `landscapeOnly` keeps the intro to a landscape tablet. */
 export function AuthHeading({
@@ -89,49 +89,58 @@ export interface AuthBack {
   testID: string;
 }
 
-/** Every auth screen at three sizes: phone stacks with no card, a tablet centres one, its languages and `foot` under it. */
+/** Every auth screen at three sizes: phone stacks with no card, portrait centres one, landscape splits saying from doing. */
 export function AuthFrame({
   saying = null,
   back,
   atFoot = false,
-  foot,
   children,
 }: {
   saying?: ReactNode;
-  /** In the brand row's place at every size, such as register's ‹ Sign in. */
+  /** In the brand's place at every size, such as register's ‹ Sign in. */
   back?: AuthBack | null | undefined;
   /** On a phone, the content sits at the foot: a done state's way on. */
   atFoot?: boolean;
-  /** After the languages, last on the page, such as sign-in's New here?. */
-  foot?: ReactNode;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
-  const phone = kind === 'phone';
-  const column = phone ? undefined : COLUMN[kind];
+
+  const brand = (
+    <View style={styles.brandRow}>
+      {back != null ? (
+        <BackButton {...back} />
+      ) : (
+        <Title size={tokens.typeTitleDialog.size} style={styles.brand}>
+          {t('app.name')}
+        </Title>
+      )}
+    </View>
+  );
 
   // One tree at every size, so rotating or entering split view restyles the form and never remounts it:
-  // what was typed, the focus and Show or Hide survive.
+  // what was typed, the focus and Show or Hide survive. Only the heading moves, beside or above the form.
+  const landscape = kind === 'tabletLandscape';
+  const phone = kind === 'phone';
+
   return (
     <Screen style={styles.page} contentStyle={CONTENT[kind]}>
-      <View style={[styles.brandRow, column]}>
-        {back != null ? (
-          <BackButton {...back} />
-        ) : (
-          <Title size={tokens.typeTitleDialog.size} style={styles.brand}>
-            {t('app.name')}
-          </Title>
+      <View style={landscape ? styles.landscapeLeft : undefined}>
+        {brand}
+        {landscape && <View style={styles.landscapeSaying}>{saying}</View>}
+        {landscape && <LanguageChoice />}
+      </View>
+      <View style={MAIN[kind]}>
+        <View style={CARD[kind]}>
+          {!landscape && saying}
+          {phone && atFoot && <View style={styles.spacer} />}
+          <View style={styles.form}>{children}</View>
+        </View>
+        {!landscape && (
+          <View style={phone ? undefined : styles.tabletLanguage}>
+            <LanguageChoice />
+          </View>
         )}
-      </View>
-      <View style={[CARD[kind], column]}>
-        {saying}
-        {phone && atFoot && <View style={styles.spacer} />}
-        <View style={styles.form}>{children}</View>
-      </View>
-      <View style={[styles.foot, column]}>
-        <LanguageChoice />
-        {foot}
       </View>
     </Screen>
   );
@@ -141,20 +150,19 @@ const styles = StyleSheet.create({
   page: { backgroundColor: tokens.colorPage },
   phoneContent: {
     flexGrow: 1,
-    gap: tokens.spaceXxl,
+    gap: tokens.spaceXl,
     paddingTop: tokens.spaceSm,
     paddingHorizontal: tokens.space3xl,
     paddingBottom: tokens.space5xl,
   },
-  tabletContent: {
+  portraitContent: { flexGrow: 1, gap: tokens.space3xl, padding: tokens.space6xl },
+  landscapeContent: {
     flexGrow: 1,
-    alignItems: 'center',
-    gap: tokens.spaceXxl,
-    paddingTop: tokens.space3xl,
-    paddingHorizontal: tokens.space4xl,
-    paddingBottom: tokens.space6xl,
+    flexDirection: 'row',
+    gap: tokens.space5xl,
+    padding: tokens.space6xl,
   },
-  brandRow: { minHeight: tokens.sizeHit, justifyContent: 'center' },
+  brandRow: { minHeight: tokens.sizeHit, alignItems: 'flex-start', justifyContent: 'center' },
   brand: { letterSpacing: -0.4 },
   heading: { gap: tokens.spaceXs },
   headingApart: { gap: tokens.spaceXxl },
@@ -169,33 +177,40 @@ const styles = StyleSheet.create({
   },
   spacer: { flex: 1 },
   form: { gap: tokens.spaceXl },
-  phoneCard: { flexGrow: 1, gap: tokens.spaceXxl },
+  phoneMain: { flexGrow: 1, gap: tokens.spaceXl },
+  phoneCard: { flexGrow: 1, gap: tokens.spaceXl },
+  centred: { alignItems: 'center', gap: tokens.space3xl },
+  tabletLanguage: { width: CARD_WIDTH, maxWidth: '100%' },
+  landscapeLeft: { flex: 1, gap: tokens.space3xl },
+  landscapeSaying: { flex: 1, justifyContent: 'center', gap: tokens.spaceXl, maxWidth: 460 },
+  landscapeRight: { width: FORM_COLUMN_WIDTH, maxWidth: '50%' },
   card: {
-    gap: tokens.spaceXxl,
-    padding: tokens.space5xl,
+    width: CARD_WIDTH,
+    maxWidth: '100%',
+    gap: tokens.spaceXl,
+    padding: tokens.space4xl,
     backgroundColor: tokens.colorCard,
     borderWidth: 1,
     borderColor: tokens.colorBorder,
     borderRadius: tokens.radiusCardPhone,
   },
-  foot: { gap: tokens.spaceLg },
-  portraitColumn: { width: PORTRAIT_COLUMN_WIDTH, maxWidth: '100%' },
-  landscapeColumn: { width: LANDSCAPE_COLUMN_WIDTH, maxWidth: '100%' },
+  cardFill: { width: '100%' },
 });
 
 const CONTENT = {
   phone: styles.phoneContent,
-  tabletPortrait: styles.tabletContent,
-  tabletLandscape: styles.tabletContent,
+  tabletPortrait: styles.portraitContent,
+  tabletLandscape: styles.landscapeContent,
+} as const;
+
+const MAIN = {
+  phone: styles.phoneMain,
+  tabletPortrait: styles.centred,
+  tabletLandscape: styles.landscapeRight,
 } as const;
 
 const CARD: Record<LayoutKind, StyleProp<ViewStyle>> = {
   phone: styles.phoneCard,
   tabletPortrait: styles.card,
-  tabletLandscape: styles.card,
+  tabletLandscape: [styles.card, styles.cardFill],
 };
-
-const COLUMN = {
-  tabletPortrait: styles.portraitColumn,
-  tabletLandscape: styles.landscapeColumn,
-} as const;

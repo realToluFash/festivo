@@ -409,7 +409,7 @@ describe('a field keeps focus while signing in, and takes it for its line (sc-11
     await waitFor(() =>
       expect(screen.getByLabelText<HTMLInputElement>('Email').readOnly).toBe(true),
     );
-    const forgot = screen.getByRole('link', { name: 'Forgot it?' });
+    const forgot = screen.getByRole('link', { name: 'Forgot your password?' });
     forgot.focus();
     act(refuse);
 
@@ -457,7 +457,7 @@ describe('signing in under an organisation’s sign-in rules (sc-69)', () => {
     expect(banner.textContent).toMatch(/Use Google instead/);
     expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('folake@ire.events');
     expect(screen.queryByLabelText('Password')).toBeNull();
-    expect(screen.queryByRole('link', { name: 'Forgot it?' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Forgot your password?' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Sign in' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Continue with Apple' })).toBeNull();
@@ -528,7 +528,7 @@ describe('signing in under an organisation’s sign-in rules (sc-69)', () => {
   });
 });
 
-describe('the frame, as the board draws it (sc-23277)', () => {
+describe('the frame from before [fd] (sc-26511)', () => {
   function phoneWide(matches: boolean): void {
     vi.spyOn(window, 'matchMedia').mockImplementation(
       (query) =>
@@ -536,63 +536,32 @@ describe('the frame, as the board draws it (sc-23277)', () => {
     );
   }
 
-  it('sit in the header wider than a phone', () => {
-    phoneWide(false);
+  it.each([false, true])('keeps the brand and the languages in the header (phone: %s)', (phone) => {
+    phoneWide(phone);
     at('/sign-in');
 
-    const languages = screen.getByRole('group', { name: 'Language' });
+    const header = screen.getByRole('banner');
 
-    expect(screen.getByRole('banner').contains(languages)).toBe(true);
+    expect(header.textContent).toContain('Soirely');
+    expect(header.contains(screen.getByRole('group', { name: 'Language' }))).toBe(true);
   });
 
-  it('come once, after the form and its links, on a phone, the brand still in the header', () => {
-    phoneWide(true);
-    at('/sign-in');
-
-    const languages = screen.getByRole('group', { name: 'Language' });
-    const content = screen.getByRole('main');
-
-    expect(screen.getByRole('banner').textContent).toContain('Soirely');
-    expect(screen.getByRole('banner').contains(languages)).toBe(false);
-    expect(content.compareDocumentPosition(languages) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
-  });
-
-  it('names the languages on a phone with words on the page', () => {
-    phoneWide(true);
-    at('/sign-in');
-
-    const languages = screen.getByRole('group', { name: 'Language' });
-
-    expect(languages.textContent).toMatch(/^Language/);
-  });
-
-  it('sets New here? under the card, outside it, wider than a phone', () => {
-    phoneWide(false);
+  it('sets New here? as the card’s last line', () => {
     at('/sign-in');
 
     const createAccount = screen.getByRole('link', { name: 'Create an account' });
     const card = screen.getByRole('heading', { name: 'Sign in' }).closest('section');
 
-    expect(card?.contains(createAccount)).toBe(false);
-    expect(screen.getByRole('main').contains(createAccount)).toBe(true);
-    expect(card!.compareDocumentPosition(createAccount) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
+    expect(card?.contains(createAccount)).toBe(true);
   });
 
-  it('sets New here? after the languages on a phone', () => {
-    phoneWide(true);
+  it('asks Forgot your password? whole, and shows Forgot it? only at phone width', () => {
     at('/sign-in');
 
-    const createAccount = screen.getByRole('link', { name: 'Create an account' });
-    const languages = screen.getByRole('group', { name: 'Language' });
+    const forgot = screen.getByRole('link', { name: 'Forgot your password?' });
 
-    expect(screen.getByRole('main').contains(createAccount)).toBe(false);
-    expect(
-      languages.compareDocumentPosition(createAccount) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(forgot.querySelector('.wide-only')?.textContent).toBe('Forgot your password?');
+    expect(forgot.querySelector('.narrow-only')?.textContent).toBe('Forgot it?');
   });
 });
 

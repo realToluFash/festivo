@@ -720,6 +720,7 @@
     "dismiss": "Fechar"
   },
   "recovery": {
+    "forgot": "Esqueceu-se da palavra-passe?",
     "forgotShort": "Esqueceu-se?",
     "title": "Reponha a sua palavra-passe",
     "intro": "Introduza o e-mail com que inicia sessão. Se tiver uma conta, enviamos-lhe uma ligação para definir uma nova palavra-passe.",

@@ -706,17 +706,11 @@ span {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--spaceSm) var(--spaceXl);
-  padding: var(--spaceLg) var(--space5xl);
+  gap: var(--spaceSm) var(--spaceLg);
+  min-height: var(--sizeTopBar);
+  padding: var(--spaceSm) var(--space5xl);
   background: var(--colorHeader);
   border-bottom: var(--borderHeader);
-}
-
-.auth-header .brand {
-  display: flex;
-  align-items: center;
-  min-height: var(--sizeHit);
-  font: var(--typeTitleDialog);
 }
 
 .back-control {
@@ -735,27 +729,22 @@ span {
 .auth-main {
   display: flex;
   flex: 1;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space3xl);
-  padding: var(--space6xl) var(--space5xl);
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--space6xl) var(--spaceXl);
 }
 
 .auth-card {
   display: flex;
   flex-direction: column;
-  gap: var(--spaceXxl);
+  gap: var(--spaceXl);
   width: 100%;
   max-width: 30rem;
-  padding: var(--space6xl);
+  padding: var(--space5xl);
   background: var(--colorCard);
   border: var(--borderCard);
   border-radius: var(--radiusCardDesktop);
-}
-
-.auth-after {
-  width: 100%;
-  max-width: 30rem;
+  box-shadow: var(--shadowCard);
 }
 
 /* ── Fields ───────────────────────────────────────────────────────────────── */
@@ -949,36 +938,41 @@ span {
   color: var(--colorInkOnDark);
 }
 
-/* ── Choosing a language: one pill a language, the chosen one tinted ──────── */
+/* ── Choosing a language, as a control rather than a menu ─────────────────── */
 
 .language-choice {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spaceXs);
-}
-
-.language-choice-label {
-  margin-right: var(--spaceXxs);
-  font: var(--typeSmall);
-  color: var(--colorInkSecondary);
+  gap: var(--spaceHair);
+  padding: var(--spaceXxs);
+  border-radius: var(--radiusPill);
+  background: var(--colorHeaderTrack);
 }
 
 .language-choice button {
+  position: relative;
   flex: none;
-  min-height: var(--sizeHit);
+  min-height: var(--sizeSegmentInner);
   padding: 0 var(--spaceLg);
-  border: var(--borderControl);
+  border: 0;
   border-radius: var(--radiusPill);
-  background: var(--colorCard);
-  color: var(--colorInk);
+  background: transparent;
+  color: var(--colorInkSecondary);
   font: var(--typeButton);
   cursor: pointer;
 }
 
+/* Drawn at the segment's height; the target reaches the 44px floor beyond it. */
+.language-choice button::after {
+  position: absolute;
+  inset: calc((var(--sizeSegmentInner) - var(--sizeHit)) / 2) 0;
+  content: '';
+}
+
 .language-choice button[aria-pressed='true'] {
-  background: var(--colorAccentTint);
-  border: var(--borderSelected);
+  background: var(--colorCard);
+  box-shadow: var(--shadowCard);
+  color: var(--colorInk);
 }
 
 /* ── Your account ─────────────────────────────────────────────────────────── */
@@ -1141,20 +1135,36 @@ span {
     border-bottom: 0;
   }
 
-  .auth-main {
-    align-items: stretch;
-    padding: var(--spaceSm) var(--space3xl) var(--space3xl);
+  .auth-header .brand {
+    font: var(--typeTitleDialog);
   }
 
-  .auth-foot {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spaceXxl);
-    padding: 0 var(--space3xl) var(--space5xl);
+  .auth-main {
+    align-items: stretch;
+    padding: var(--spaceSm) var(--space3xl) var(--space5xl);
+  }
+
+  .language-choice {
+    gap: var(--spaceSm);
+    padding: 0;
+    background: none;
+  }
+
+  .language-choice button {
+    min-height: var(--sizeHit);
+    border: var(--borderControl);
+    background: var(--colorCard);
+    color: var(--colorInk);
+  }
+
+  .language-choice button[aria-pressed='true'] {
+    background: var(--colorAccentTint);
+    border: var(--borderSelected);
+    box-shadow: none;
   }
 
   .auth-card {
-    gap: var(--spaceXxl);
+    gap: var(--spaceXl);
     max-width: none;
     padding: 0;
     background: none;
@@ -1424,6 +1434,10 @@ span {
   flex-direction: column;
   align-items: flex-start;
   gap: var(--spaceXs);
+}
+
+.resend .button {
+  font-variant-numeric: tabular-nums;
 }
 
 .resend p {
@@ -3024,6 +3038,21 @@ span {
   width: var(--sizeMark);
   height: var(--sizeMark);
   accent-color: var(--colorAccent);
+}
+
+/* A word chosen per width, both in the page, one shown. */
+.narrow-only {
+  display: none;
+}
+
+@media (width <= 40rem) {
+  .wide-only {
+    display: none;
+  }
+
+  .narrow-only {
+    display: inline;
+  }
 }
 
 /* ── Your account's sections, and the time zone (sc-868) ─────────────────── */

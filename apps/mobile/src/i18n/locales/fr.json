@@ -105,6 +105,7 @@
     "limitedTitle": "Trop d’inscriptions depuis ce réseau",
     "limitedBody": "Réessayez à {{time}}.",
     "orWithEmail": "ou avec votre e-mail",
+    "landscapeNote": "Ou utilisez votre adresse e-mail et un mot de passe, à droite.",
     "haveAccount": "Vous avez déjà un compte ?",
     "back": "Retour à la connexion",
     "failedTitle": "La création du compte n’a pas abouti",
@@ -240,6 +241,7 @@
     "dismiss": "Fermer"
   },
   "recovery": {
+    "forgot": "Mot de passe oublié ?",
     "forgotShort": "Oublié ?",
     "title": "Réinitialisez votre mot de passe",
     "intro": "Saisissez l’adresse e-mail avec laquelle vous vous connectez. Si elle a un compte, nous lui envoyons un lien pour choisir un nouveau mot de passe.",

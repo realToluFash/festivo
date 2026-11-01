@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: tokens.spaceXs,
+    gap: tokens.spaceSm,
   },
   label: { marginRight: tokens.spaceXxs, color: tokens.colorInkSecondary },
   chip: {

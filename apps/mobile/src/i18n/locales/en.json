@@ -103,6 +103,7 @@
     "limitedTitle": "Too many sign-ups from this network",
     "limitedBody": "Try again at {{time}}.",
     "orWithEmail": "or with email",
+    "landscapeNote": "Or use your email and a password on the right.",
     "haveAccount": "Already have an account?",
     "back": "Back to sign in",
     "failedTitle": "Creating your account did not work",
@@ -237,6 +238,7 @@
     "dismiss": "Dismiss"
   },
   "recovery": {
+    "forgot": "Forgot your password?",
     "forgotShort": "Forgot it?",
     "title": "Reset your password",
     "intro": "Enter the email you sign in with. If it has an account, we send it a link to set a new password.",

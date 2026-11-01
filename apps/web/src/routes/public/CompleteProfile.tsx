@@ -145,7 +145,7 @@ export function CompleteProfile() {
 
       {unreached && <StillSignedIn />}
 
-      <div className="auth-footnote auth-footnote-plain">
+      <div className="auth-footnote">
         <span>{t('completeProfile.signedInAs', { email: state.session.email })}</span>
         <button className="link-button" type="button" onClick={() => void signOut()}>
           {t('completeProfile.signOut')}
