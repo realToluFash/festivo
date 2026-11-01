@@ -1534,6 +1534,18 @@
     "footer_other": "{{count, number}} events · Sorted by date",
     "footer_many": "{{count, number}} events · Sorted by date"
   },
+  "eventPage": {
+    "venue": "Local",
+    "venueToBeConfirmed": "Local a confirmar",
+    "invited": "Convidados",
+    "details": "Detalhes",
+    "dates": "Datas",
+    "manage": "Gerir",
+    "tileComing": "Vêm",
+    "tileMealPicks": "Menus escolhidos",
+    "tileSeated": "Sentados",
+    "tileBudgetUsed": "Orçamento usado"
+  },
   "eventForm": {
     "title": "Novo evento",
     "name": "Nome do evento",
@@ -1693,7 +1705,9 @@
     "notEnded": "Não foi terminado.",
     "alreadyOver": "Este evento já terminou.",
     "calledOffNotice": "Cancelado no dia {{date}}, antes de começar. Os convidados que abrem a sua ligação são informados de que não se vai realizar.",
-    "close": "Fechar"
+    "close": "Fechar",
+    "callOffOpen": "Cancelar o evento…",
+    "endNowOpen": "Terminar agora…"
   },
   "eventPause": {
     "pause": "Pausar",
@@ -1708,7 +1722,7 @@
     "resumeFailed": "Não foi retomado. Tente novamente daqui a pouco."
   },
   "eventDelete": {
-    "open": "Eliminar o evento",
+    "open": "Eliminar o evento…",
     "note": "Elimina o evento e tudo o que contém para toda a equipa. Os convidados que abrirem a sua ligação veem que já não está disponível.",
     "title": "Eliminar {{event}}?",
     "draftBody": "É um rascunho sem ninguém na lista de convidados. Vai ser eliminado para toda a equipa.",

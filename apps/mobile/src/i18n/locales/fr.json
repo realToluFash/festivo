@@ -1534,6 +1534,18 @@
     "footer_other": "{{count, number}} events · Sorted by date",
     "footer_many": "{{count, number}} events · Sorted by date"
   },
+  "eventPage": {
+    "venue": "Lieu",
+    "venueToBeConfirmed": "Lieu à confirmer",
+    "invited": "Invités",
+    "details": "Détails",
+    "dates": "Dates",
+    "manage": "Gérer",
+    "tileComing": "Présents",
+    "tileMealPicks": "Menus choisis",
+    "tileSeated": "Placés",
+    "tileBudgetUsed": "Budget utilisé"
+  },
   "eventForm": {
     "title": "Nouvel événement",
     "name": "Nom de l’événement",
@@ -1693,7 +1705,9 @@
     "notEnded": "Non terminé.",
     "alreadyOver": "Cet événement est déjà terminé.",
     "calledOffNotice": "Annulé le {{date}}, avant son début. Les invités qui ouvrent leur lien voient qu’il n’aura pas lieu.",
-    "close": "Fermer"
+    "close": "Fermer",
+    "callOffOpen": "Annuler l’événement…",
+    "endNowOpen": "Terminer maintenant…"
   },
   "eventPause": {
     "pause": "Mettre en pause",
@@ -1708,7 +1722,7 @@
     "resumeFailed": "Non repris. Réessayez dans un instant."
   },
   "eventDelete": {
-    "open": "Supprimer l’événement",
+    "open": "Supprimer l’événement…",
     "note": "Supprime l’événement et tout son contenu pour toute votre équipe. Les invités qui ouvrent leur lien voient qu’il n’est plus disponible.",
     "title": "Supprimer {{event}} ?",
     "draftBody": "C’est un brouillon dont la liste d’invités est vide. Il sera supprimé pour toute votre équipe.",

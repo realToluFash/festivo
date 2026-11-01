@@ -17,7 +17,7 @@ import { type DeleteAnswer, deleteEvent } from '../kit/eventDelete.ts';
 import { refusalTitle } from '../kit/refusal.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { DestructiveButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { DestructiveButton, QuietButton } from './Buttons.tsx';
 import { Field, FieldError, TextField, focusChecked, focusRefused } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
@@ -61,14 +61,11 @@ export function DeleteEventSection({
 
   return (
     <View style={styles.section} testID="events.deleteSection">
-      <Text size={tokens.typeButton.size} weight="semibold">
-        {t('eventDelete.open')}
-      </Text>
       <Text size={tokens.typeSmall.size} muted>
         {t('eventDelete.note')}
       </Text>
       {openFailed != null && <FieldError message={openFailed} />}
-      <SecondaryButton
+      <DestructiveButton
         ref={opener}
         label={t('eventDelete.open')}
         onPress={open}

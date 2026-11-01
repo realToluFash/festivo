@@ -48,7 +48,7 @@ export function EndRow({
       {label != null && (
         <SecondaryButton
           ref={opener}
-          label={t(`eventEnd.${label}`)}
+          label={t(`eventEnd.${label}Open`)}
           onPress={() => ask({ label })}
           testID="events.end"
         />

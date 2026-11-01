@@ -8,8 +8,8 @@ import {
   shownPhase,
 } from '@soirely/domain';
 import { router } from 'expo-router';
-import { useEffect, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { type ReactNode, useEffect, useRef } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
@@ -19,12 +19,12 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { DeleteEventSection } from './DeleteEvent.tsx';
-import { EventCover } from './EventCover.tsx';
 import { MuteEventCard } from './MuteEventCard.tsx';
 import { EndRow } from './EndEvent.tsx';
 import { DraftRow } from './MakeLive.tsx';
 import { PauseButton, PausedRow } from './PauseEvent.tsx';
 import { Notice } from './Notice.tsx';
+import { Placeholder } from './Placeholder.tsx';
 import { readOut } from './ReadOut.tsx';
 import { StatusChip } from './StatusChip.tsx';
 import { StepMark } from './StepMark.tsx';
@@ -35,6 +35,15 @@ import { cardFrame } from './cardFrame.ts';
 /** The phase the page shows: the server's, flipped by the corrected clock at the start and the end (sc-3585). */
 function useShownPhase(event: OrganisationEvent, now: Date): EventPhase {
   return shownPhase(event, useLoadedAt(event), now);
+}
+
+const NO_EVENT = {};
+
+/** The same, for a screen whose event may not have loaded yet. */
+export function usePhaseOf(event: OrganisationEvent | null, now: Date): EventPhase | null {
+  const loadedAt = useLoadedAt(event ?? NO_EVENT);
+
+  return event == null ? null : shownPhase(event, loadedAt, now);
 }
 
 export function EventState({ phase }: { phase: EventPhase }) {
@@ -133,7 +142,11 @@ export function EventsFailed({
   );
 }
 
-/** The event's areas go under its times, each added by the story that builds it: none yet (sc-1454 adds Check-in). A Draft's row says what it blocks. */
+/** [fd]'s Event view (sc-22103): the Top, then Overview's tiles, Details and Coming up, with Manage beside them on a tablet on its side. */
+export type EditAt = 'starts' | 'venue' | 'hosts';
+
+const OVERVIEW_TILES = ['tileComing', 'tileMealPicks', 'tileSeated', 'tileBudgetUsed'] as const;
+
 export function EventPage({
   kind,
   event,
@@ -147,8 +160,8 @@ export function EventPage({
   event: OrganisationEvent;
   manages: boolean;
   onChange: (event: OrganisationEvent) => void;
-  /** Absent for a role without events.manage (sc-3595). */
-  onEdit?: (() => void) | undefined;
+  /** Absent for a role without events.manage (sc-3595); `at` is the field it opens with focus on. */
+  onEdit?: ((at?: EditAt) => void) | undefined;
   /** Absent for a role without events.create (sc-22145). */
   onDuplicate?: (() => void) | undefined;
   /** Absent for a role without events.create (sc-3592). */
@@ -158,6 +171,7 @@ export function EventPage({
   const now = useServerNow();
   const phase = useShownPhase(event, now);
   const said = useRef({ id: event.id, phase });
+  const landscape = kind === 'tabletLandscape';
 
   // A change of phase on an open page is said politely, never on arrival (WCAG 2.2 §4.1.3).
   useEffect(() => {
@@ -167,81 +181,263 @@ export function EventPage({
     said.current = { id: event.id, phase };
   }, [event.id, phase, t]);
 
-  return (
-    <View style={styles.cards}>
-      <View style={cardFrame(kind)} testID="events.page">
-        <EventCover cover={event.cover} type={event.type} testID="events.page.cover" />
-        <View style={styles.pageHead}>
-          <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
-            {event.name}
-          </Text>
-          <EventState phase={phase} />
-        </View>
-        {calledOff(event) && event.concludedAt != null && (
-          <Notice
-            tone="quiet"
-            mark={tokens.marks.info.glyph}
-            body={t('eventEnd.calledOffNotice', {
-              date: formatEventDate(event.concludedAt, event.timeZone, dateLocale()),
-            })}
+  const manage = (
+    <View style={[cardFrame(kind), styles.manage, landscape && styles.manageBeside]}>
+      <Text size={tokens.typeRowTitle.size} weight="semibold" accessibilityRole="header">
+        {t('eventPage.manage')}
+      </Text>
+      <View style={styles.lifecycle}>
+        <PauseButton
+          kind={kind}
+          event={event}
+          phase={phase}
+          manages={manages}
+          onChange={onChange}
+        />
+        <EndRow
+          kind={kind}
+          event={event}
+          phase={phase}
+          manages={manages}
+          now={now}
+          onChange={onChange}
+        />
+        {onDuplicate != null && phase !== 'finished' && (
+          <SecondaryButton
+            label={t('eventDuplicate.open')}
+            onPress={onDuplicate}
+            testID="events.page.duplicate"
           />
         )}
-        <DraftRow kind={kind} event={event} manages={manages} now={now} onChange={onChange} />
-        <PausedRow event={event} phase={phase} manages={manages} onChange={onChange} />
-        <View style={styles.lifecycle}>
-          <PauseButton
+      </View>
+      <MuteEventCard kind={kind} eventId={event.id} />
+      {onDeleted != null && <DeleteEventSection kind={kind} event={event} onDeleted={onDeleted} />}
+    </View>
+  );
+
+  return (
+    <View style={styles.cards} testID="events.page">
+      <EventTop
+        kind={kind}
+        event={event}
+        phase={phase}
+        manages={manages}
+        now={now}
+        onChange={onChange}
+        onEdit={onEdit}
+        onDuplicate={onDuplicate}
+      />
+      <View style={styles.tiles}>
+        {OVERVIEW_TILES.map((tile) => (
+          <View key={tile} style={[styles.tile, kind === 'phone' && styles.tileHalf]}>
+            <Placeholder label={t(`eventPage.${tile}`)} />
+          </View>
+        ))}
+      </View>
+      {calledOff(event) && event.concludedAt != null && (
+        <Notice
+          tone="quiet"
+          mark={tokens.marks.info.glyph}
+          body={t('eventEnd.calledOffNotice', {
+            date: formatEventDate(event.concludedAt, event.timeZone, dateLocale()),
+          })}
+        />
+      )}
+      <View style={landscape ? styles.columns : styles.cards}>
+        <View style={[styles.cards, landscape && styles.main]}>
+          <Details kind={kind} event={event} onEdit={onEdit} />
+          <ComingUp
             kind={kind}
             event={event}
-            phase={phase}
-            manages={manages}
-            onChange={onChange}
-          />
-          <EndRow
-            kind={kind}
-            event={event}
-            phase={phase}
-            manages={manages}
             now={now}
-            onChange={onChange}
+            onAllDates={() => router.push(`/events/${encodeURIComponent(event.id)}/dates`)}
           />
         </View>
-        <EventType event={event} size={tokens.typeBody.size} />
+        {manage}
+      </View>
+    </View>
+  );
+}
+
+/** Above every area: the name, the phase, the dates, the venue, and the phase's one primary (sc-22103). */
+export function EventTop({
+  kind,
+  event,
+  phase,
+  manages,
+  now,
+  onChange,
+  onEdit,
+  onDuplicate,
+}: {
+  kind: LayoutKind;
+  event: OrganisationEvent;
+  phase: EventPhase;
+  manages: boolean;
+  now: Date;
+  onChange?: ((event: OrganisationEvent) => void) | undefined;
+  onEdit?: ((at?: EditAt) => void) | undefined;
+  onDuplicate?: (() => void) | undefined;
+}) {
+  const { t } = useTranslation();
+  const endPassed = phase === 'draft' && now.getTime() >= Date.parse(event.endsAt);
+
+  return (
+    <View style={[cardFrame(kind), styles.top]} testID="events.top">
+      <View style={styles.pageHead}>
+        <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
+          {event.name}
+        </Text>
+        <EventState phase={phase} />
+      </View>
+      <EventType event={event} size={tokens.typeBody.size} />
+      <Text size={tokens.typeBody.size}>
+        {t('eventsScreen.when', {
+          range: formatEventRange(event.startsAt, event.endsAt, event.timeZone, dateLocale()),
+          timeZone: event.timeZone,
+        })}
+      </Text>
+      <Text size={tokens.typeBody.size} muted>
+        {venuePlace(event) ?? t('eventPage.venueToBeConfirmed')}
+      </Text>
+      <Placeholder label={t('eventPage.invited')} />
+      {onChange != null && (
+        <>
+          <DraftRow kind={kind} event={event} manages={manages} now={now} onChange={onChange} />
+          {endPassed && onEdit != null && (
+            <PrimaryButton
+              label={t('eventLive.changeDates')}
+              onPress={() => onEdit('starts')}
+              testID="events.changeDates"
+            />
+          )}
+          <PausedRow event={event} phase={phase} manages={manages} onChange={onChange} />
+        </>
+      )}
+      {phase === 'finished' && onDuplicate != null && (
+        <PrimaryButton
+          label={t('eventDuplicate.open')}
+          onPress={onDuplicate}
+          testID="events.page.duplicate"
+        />
+      )}
+    </View>
+  );
+}
+
+function venuePlace(event: OrganisationEvent): string | null {
+  return event.venue?.name ?? event.venue?.address?.formatted ?? null;
+}
+
+/** Each row opens Edit details at its own field for somebody who manages events, and nothing for anybody else. */
+function Details({
+  kind,
+  event,
+  onEdit,
+}: {
+  kind: LayoutKind;
+  event: OrganisationEvent;
+  onEdit?: ((at?: EditAt) => void) | undefined;
+}) {
+  const { t } = useTranslation();
+  const venue = event.venue;
+  const address = venue?.address?.formatted ?? null;
+
+  return (
+    <View style={cardFrame(kind)} testID="events.details">
+      <View style={styles.detailsHead}>
+        <Text size={tokens.typeRowTitle.size} weight="semibold" accessibilityRole="header">
+          {t('eventPage.details')}
+        </Text>
+        {onEdit != null && (
+          <SecondaryButton
+            label={t('eventEdit.open')}
+            onPress={() => onEdit()}
+            testID="events.page.edit"
+          />
+        )}
+      </View>
+      <DetailRow
+        label={t('eventPage.dates')}
+        onPress={onEdit && (() => onEdit('starts'))}
+        testID="events.details.dates"
+      >
         <Text size={tokens.typeBody.size}>
           {t('eventsScreen.when', {
             range: formatEventRange(event.startsAt, event.endsAt, event.timeZone, dateLocale()),
             timeZone: event.timeZone,
           })}
         </Text>
-        {(onEdit != null || onDuplicate != null) && (
-          <View style={styles.pageActions}>
-            {onEdit != null && (
-              <SecondaryButton
-                label={t('eventEdit.open')}
-                onPress={onEdit}
-                testID="events.page.edit"
-              />
+      </DetailRow>
+      <DetailRow
+        label={t('eventPage.venue')}
+        onPress={onEdit && (() => onEdit('venue'))}
+        testID="events.details.venue"
+      >
+        {venue == null ? (
+          <Text size={tokens.typeBody.size}>{t('eventPage.venueToBeConfirmed')}</Text>
+        ) : (
+          <>
+            {venue.name != null && (
+              <Text size={tokens.typeBody.size} weight="semibold">
+                {venue.name}
+              </Text>
             )}
-            {onDuplicate != null && (
-              <SecondaryButton
-                label={t('eventDuplicate.open')}
-                onPress={onDuplicate}
-                testID="events.page.duplicate"
-              />
-            )}
-          </View>
+            {address != null && <Text size={tokens.typeBody.size}>{address}</Text>}
+          </>
         )}
-        <MuteEventCard kind={kind} eventId={event.id} />
-        {onDeleted != null && (
-          <DeleteEventSection kind={kind} event={event} onDeleted={onDeleted} />
+      </DetailRow>
+      <DetailRow
+        label={t('eventHosts.heading')}
+        onPress={onEdit && (() => onEdit('hosts'))}
+        testID="events.details.hosts"
+      >
+        <Text size={tokens.typeBody.size}>
+          {event.hosts.length === 0 ? t('eventHosts.none') : event.hosts.join(', ')}
+        </Text>
+        {onEdit != null && (
+          <Text size={tokens.typeSmall.size} muted>
+            {t('eventHosts.add')}
+          </Text>
         )}
-      </View>
-      <ComingUp
-        kind={kind}
-        event={event}
-        now={now}
-        onAllDates={() => router.push(`/events/${encodeURIComponent(event.id)}/dates`)}
-      />
+      </DetailRow>
     </View>
+  );
+}
+
+function DetailRow({
+  label,
+  onPress,
+  testID,
+  children,
+}: {
+  label: string;
+  onPress: (() => void) | undefined;
+  testID: string;
+  children: ReactNode;
+}) {
+  const body = (
+    <>
+      <Text size={tokens.typeSmall.size} muted>
+        {label}
+      </Text>
+      <View style={styles.detailValue}>{children}</View>
+    </>
+  );
+
+  return onPress == null ? (
+    <View style={styles.detailRow} testID={testID}>
+      {body}
+    </View>
+  ) : (
+    <Pressable
+      style={styles.detailRow}
+      onPress={onPress}
+      accessibilityRole="button"
+      testID={testID}
+    >
+      {body}
+    </Pressable>
   );
 }
 
@@ -273,6 +469,37 @@ const styles = StyleSheet.create({
   stepText: { flex: 1 },
   cards: { gap: tokens.spaceLg },
   pageHead: { gap: tokens.spaceXs },
-  pageActions: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
+  top: { gap: tokens.spaceSm },
   lifecycle: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceMd },
+  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
+  tile: {
+    flexGrow: 1,
+    flexBasis: 0,
+    minWidth: 140,
+    padding: tokens.spaceLg,
+    borderRadius: tokens.radiusCardPhone,
+    borderWidth: 1,
+    borderColor: tokens.colorBorder,
+    backgroundColor: tokens.colorCard,
+  },
+  tileHalf: { flexBasis: '40%' },
+  columns: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceLg },
+  main: { flex: 2, minWidth: 0 },
+  manage: { gap: tokens.spaceMd },
+  manageBeside: { flex: 1, minWidth: 0 },
+  detailsHead: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tokens.spaceSm,
+  },
+  detailRow: {
+    gap: tokens.spaceHair,
+    minHeight: tokens.sizeHit,
+    paddingVertical: tokens.spaceSm,
+    borderTopWidth: 1,
+    borderTopColor: tokens.colorInsetBorder,
+  },
+  detailValue: { gap: tokens.spaceHair },
 });

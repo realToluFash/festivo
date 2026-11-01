@@ -1,12 +1,11 @@
 import type { Membership, OrganisationEvent } from '@soirely/api-client';
-import { type EventArea, formatEventRange, rememberTabHolding, roleHolds } from '@soirely/domain';
+import { type EventArea, rememberTabHolding, roleHolds } from '@soirely/domain';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { dateLocale } from '../i18n/index.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { offersDelete } from '../kit/eventDelete.ts';
 import { backToOriginal } from '../kit/eventDuplicate.ts';
@@ -14,6 +13,7 @@ import { EVENT_AREA, areaBack } from '../kit/eventNav.ts';
 import { markDeleted, takeCoverRefused, takeSaved } from '../kit/eventSaved.ts';
 import { type Opened, openedOf, openedWithoutAsking } from '../kit/eventsOpen.ts';
 import { SHOWN_EVENT, goUpToEvent } from '../kit/upToEvent.ts';
+import { useServerNow } from '../kit/serverNow.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -21,7 +21,14 @@ import { AppFrame, BackButton } from './AppFrame.tsx';
 import { bodyEdges } from './bodyEdges.ts';
 import { SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
-import { EventNotFound, EventPage, EventState, EventsFailed } from './Events.tsx';
+import {
+  type EditAt,
+  EventNotFound,
+  EventPage,
+  EventTop,
+  EventsFailed,
+  usePhaseOf,
+} from './Events.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { Screen, useScrolledToTop } from './Screen.tsx';
@@ -64,6 +71,8 @@ export function EventScreen({
   const opened = useOpened(eventId, account != null, organisation);
   const { reload, change } = opened;
   const event = opened.kind === 'loaded' ? opened.event : null;
+  const now = useServerNow();
+  const phase = usePhaseOf(event, now);
   const original = backToOriginal(eventId, eventId, copiedFrom);
 
   useEffect(() => {
@@ -71,10 +80,10 @@ export function EventScreen({
   }, [navigation, eventId]);
 
   useEffect(() => {
-    if (organisationId != null && event != null && !keepsTab) {
-      rememberTabHolding(organisationId, event.phase);
+    if (organisationId != null && phase != null && !keepsTab) {
+      rememberTabHolding(organisationId, phase);
     }
-  }, [organisationId, event, keepsTab]);
+  }, [organisationId, phase, keepsTab]);
 
   useFocusEffect(
     useCallback(() => {
@@ -105,7 +114,8 @@ export function EventScreen({
   useEdgeSwipeBack(area !== 'overview', back);
 
   const onEdit = manages
-    ? () => router.push(`/events/${encodeURIComponent(eventId)}/edit`)
+    ? (at?: EditAt) =>
+        router.push(`/events/${encodeURIComponent(eventId)}/edit${at == null ? '' : `?at=${at}`}`)
     : undefined;
   const onDuplicate = creates
     ? () => router.push(`/events/${encodeURIComponent(eventId)}/duplicate`)
@@ -144,7 +154,7 @@ export function EventScreen({
               {onEdit != null && (
                 <SecondaryButton
                   label={t('eventEdit.open')}
-                  onPress={onEdit}
+                  onPress={() => onEdit()}
                   testID="events.page.coverRefused.edit"
                 />
               )}
@@ -152,7 +162,18 @@ export function EventScreen({
           )}
         </Arrived>
       ) : (
-        <PlaceholderArea event={event} area={area} />
+        <PlaceholderArea area={area}>
+          <EventTop
+            kind={kind}
+            event={event}
+            phase={phase ?? event.phase}
+            manages={manages}
+            now={now}
+            onChange={change}
+            onEdit={onEdit}
+            onDuplicate={onDuplicate}
+          />
+        </PlaceholderArea>
       )
     ) : opened.kind === 'notFound' ? (
       <EventNotFound onBack={leave} />
@@ -183,28 +204,20 @@ export function EventScreen({
   );
 }
 
-/** An area no epic has built yet: under the event's name, its own name and a line saying it is coming, and nothing to press. */
+/** An area no epic has built yet: under the Top, its own name and a line saying it is coming, and nothing to press. */
 function PlaceholderArea({
-  event,
   area,
+  children,
 }: {
-  event: OrganisationEvent;
   area: Exclude<EventArea, 'overview'>;
+  children: ReactNode;
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
 
   return (
     <View style={styles.stack} testID={`events.area.${area}`}>
-      <View style={styles.top}>
-        <Text size={tokens.typeTitlePhone.size} weight="bold">
-          {event.name}
-        </Text>
-        <EventState phase={event.phase} />
-        <Text size={tokens.typeBody.size} muted>
-          {formatEventRange(event.startsAt, event.endsAt, event.timeZone, dateLocale())}
-        </Text>
-      </View>
+      {children}
       <View style={cardFrame(kind)}>
         <Text size={tokens.typeRowTitle.size} weight="semibold" accessibilityRole="header">
           {t(`eventNav.${area}`)}
@@ -288,7 +301,6 @@ function useOpened(
 
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
-  top: { gap: tokens.spaceXs },
   phone: {
     gap: tokens.spaceLg,
     paddingTop: tokens.spaceXl,

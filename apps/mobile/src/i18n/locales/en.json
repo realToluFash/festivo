@@ -1492,6 +1492,18 @@
     "footer_one": "{{count, number}} event · Sorted by date",
     "footer_other": "{{count, number}} events · Sorted by date"
   },
+  "eventPage": {
+    "venue": "Venue",
+    "venueToBeConfirmed": "Venue to be confirmed",
+    "invited": "Invited",
+    "details": "Details",
+    "dates": "Dates",
+    "manage": "Manage",
+    "tileComing": "Coming",
+    "tileMealPicks": "Meal picks in",
+    "tileSeated": "Seated",
+    "tileBudgetUsed": "Budget used"
+  },
   "eventForm": {
     "title": "New event",
     "name": "Event name",
@@ -1648,7 +1660,9 @@
     "notEnded": "Not ended.",
     "alreadyOver": "This event is already over.",
     "calledOffNotice": "Called off on {{date}}, before it started. Guests following their link are told it won't go ahead.",
-    "close": "Close"
+    "close": "Close",
+    "callOffOpen": "Call off…",
+    "endNowOpen": "End now…"
   },
   "eventPause": {
     "pause": "Pause",
@@ -1663,7 +1677,7 @@
     "resumeFailed": "Not resumed. Try again in a moment."
   },
   "eventDelete": {
-    "open": "Delete event",
+    "open": "Delete event…",
     "note": "Removes the event and everything in it for your whole team. Guests following its link see that it isn't available.",
     "title": "Delete {{event}}?",
     "draftBody": "It's a draft with nobody on its guest list. It will be removed for your whole team.",
