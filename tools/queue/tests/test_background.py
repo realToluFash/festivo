@@ -61,7 +61,7 @@ class Start(unittest.TestCase):
         run = lambda *_, **__: said("Workspace not trusted. Run `claude` in /x once.")  # noqa
         with self.assertRaises(background.NotStarted) as raised:
             background.start(["claude"], "/x", {"CLAUDE_CONFIG_DIR": "/c"}, run)
-        self.assertIn("covers every checkout under it", str(raised.exception))
+        self.assertIn("the main checkout", str(raised.exception))
 
 
 class Summary(unittest.TestCase):

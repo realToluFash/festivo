@@ -50,9 +50,10 @@ def start(argv, cwd, env, run=subprocess.run):
     if not found:
         said = (done.stdout or done.stderr or "no output").strip()
         if "not trusted" in said:
-            said += (" Run `claude` once in the workspace folder (agents.json's `workspace`) "
-                     f"with CLAUDE_CONFIG_DIR={env.get('CLAUDE_CONFIG_DIR', '~/.claude')} and "
-                     "accept the trust prompt; it covers every checkout under it.")
+            said += (" Run `claude` once in the main checkout, the repository every role "
+                     "checkout is a worktree of, with CLAUDE_CONFIG_DIR="
+                     f"{env.get('CLAUDE_CONFIG_DIR', '~/.claude')} and accept the trust prompt; "
+                     "trusting a folder above it does not count.")
         raise NotStarted(said[:400])
     return found.group(1)
 

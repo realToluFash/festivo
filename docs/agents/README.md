@@ -66,7 +66,8 @@ workers as they are and removes the ticks.
   shows a session's work. A session that starts without the Artifact tools (it happened once,
   1 Nov) is stopped at its first reply and started once more; twice without them, the run
   is reported as not started. A background session needs the workspace trusted once per
-  account: run `claude` in the workspace folder with that `CLAUDE_CONFIG_DIR` and accept.
+  account, in the main checkout every role checkout is a worktree of: run `claude` there with
+  that `CLAUDE_CONFIG_DIR` and accept. Trusting a folder above it does not count.
 - **One worker per role at a time.** While a role's worker runs, its tick is skipped.
 - **The run log.** Each run appends one line to `runs/<role>.jsonl`: time, item, exit code,
   cost, token usage and the worker's report. `sq status` shows the last report per role.
