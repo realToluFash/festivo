@@ -2,10 +2,7 @@ import { Fragment, type ReactNode } from 'react';
 
 import { usePhoneWidth } from '../phoneWidth.ts';
 
-/**
- * A confirm's or a form's two buttons in sc-22092's order: in a row the dismissive one leads,
- * stacked the confirming one is on top. The markup follows what is seen, so Tab does too.
- */
+/** Swapped in the markup, never by `column-reverse`, so Tab follows what is seen. */
 export function ActionPair({ dismiss, confirm }: { dismiss: ReactNode; confirm: ReactNode }) {
   const stacked = usePhoneWidth();
   const pair = [

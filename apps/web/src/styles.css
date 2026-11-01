@@ -2781,56 +2781,6 @@ span {
   gap: var(--spaceSm);
 }
 
-/* Your account's cards as `Account.dc.html` draws them: a small label for a heading, tighter edges. */
-.card.account-card {
-  gap: var(--spaceLg);
-  padding: var(--spaceXl) var(--spaceXxl);
-}
-
-.account-card h2 {
-  font: var(--typeLabel);
-  letter-spacing: var(--typeLabelTracking);
-  text-transform: uppercase;
-  color: var(--colorInkSecondary);
-}
-
-.account-card .current-value-label {
-  overflow-wrap: anywhere;
-}
-
-/* The address and number cards: each row a band across the card, divided by a rule. */
-.card.contacts-card {
-  padding-inline: 0;
-}
-
-.contacts-card > * {
-  margin-inline: var(--spaceXxl);
-}
-
-.contacts-card > .ways-list {
-  margin-inline: 0;
-}
-
-.contacts-card .way {
-  padding: var(--spaceLg) var(--spaceXxl);
-  border-top: var(--borderDivider);
-}
-
-.contacts-card > .contacts-head .field-help {
-  font-variant-numeric: tabular-nums;
-}
-
-.actions-pair {
-  align-items: center;
-}
-
-@media (width <= 40rem) {
-  .actions-pair {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
-
 /* ── A label with a pill beside it ─────────────────────────────────────────── */
 
 .label-row {
@@ -3196,6 +3146,52 @@ span {
   flex-direction: column;
   gap: var(--spaceSm);
   align-items: flex-start;
+}
+
+/* ── Your account's cards, as `Account.dc.html` draws them (sc-23283) ─────── */
+
+.card.account-card {
+  gap: var(--spaceLg);
+  padding: var(--spaceXl) var(--spaceXxl);
+}
+
+.account-card h2 {
+  font: var(--typeLabel);
+  letter-spacing: var(--typeLabelTracking);
+  text-transform: uppercase;
+  color: var(--colorInkSecondary);
+}
+
+.account-card .current-value-label {
+  overflow-wrap: anywhere;
+}
+
+.card.contacts-card {
+  padding-inline: 0;
+}
+
+.contacts-card > * {
+  margin-inline: var(--spaceXxl);
+}
+
+.contacts-card > .ways-list {
+  margin-inline: 0;
+}
+
+.contacts-card .way {
+  padding: var(--spaceLg) var(--spaceXxl);
+  border-top: var(--borderDivider);
+}
+
+.actions-pair {
+  align-items: center;
+}
+
+@media (width <= 40rem) {
+  .actions-pair {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 /* ── An invitation to join ────────────────────────────────────────────────── */
