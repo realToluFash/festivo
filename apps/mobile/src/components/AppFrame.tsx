@@ -77,6 +77,8 @@ import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 import { type EdgeSwipeHandlers, EdgeSwipeStrip } from './useEdgeSwipeBack.ts';
 import { useSystemBack } from './useSystemBack.ts';
+import { OfflineBand } from './OfflineBand.tsx';
+import { type Stale } from '../offline.ts';
 
 type Opening = (opener: RefObject<ViewInstance | null>) => void;
 
@@ -202,9 +204,12 @@ export function AppFrame({
   inEvent,
   primary,
   underTitle,
+  offline = null,
   children,
 }: {
   current: Destination;
+  /** What the screen loaded, once Soirely stops answering (sc-22586). */
+  offline?: Stale | null;
   /** The screen's one primary, in the header band where [fd] puts it (sc-22103). */
   primary?: HeaderPrimaryProps | undefined;
   /** A line under the title, in the header band, as Events' summary. */
@@ -343,6 +348,7 @@ export function AppFrame({
           primary={primary}
           underTitle={underTitle}
         />
+        <OfflineBand stale={offline} />
         <View style={styles.body}>
           {switched != null &&
             (created?.takesFocus === true ? (

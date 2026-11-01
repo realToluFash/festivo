@@ -6,6 +6,8 @@
  * each grows its own error path and most of those are never exercised.
  */
 import { type Account, ApiClient, type Problem, awaiting } from '@soirely/api-client';
+import { connection } from '@soirely/domain';
+import { addNetworkStateListener } from 'expo-network';
 import { getCalendars } from 'expo-localization';
 import { router } from 'expo-router';
 
@@ -40,6 +42,18 @@ export const api = new ApiClient({
       .then((account) => router.replace(landingFor(awaiting(account))))
       .catch(() => router.replace('/'));
   },
+  // Every request tells the offline band whether Soirely answered (sc-22586).
+  fetch: (input, init) => {
+    const answer = fetch(input, init);
+    connection.observe(answer, init?.signal);
+
+    return answer;
+  },
+});
+
+addNetworkStateListener(({ isConnected }) => {
+  if (isConnected === false) connection.deviceOffline();
+  else if (isConnected === true) connection.deviceOnline();
 });
 
 /** Launch's own `me()`: an ended session is reported back rather than redirected (sc-927). */

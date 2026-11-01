@@ -2,6 +2,10 @@
   "app": {
     "name": "Soirely"
   },
+  "offline": {
+    "asOf": "Offline · as of {{time}}",
+    "asOfDay": "Offline · as of {{day}} at {{time}}"
+  },
   "pending": {
     "loading": "A carregar…"
   },
