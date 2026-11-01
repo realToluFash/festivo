@@ -8,6 +8,7 @@ import { api } from '../api.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { CardFailed, type Unread } from './CardFailed.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { Notice } from './Notice.tsx';
@@ -29,7 +30,9 @@ export function RequestLinkCard({
 }) {
   const { t } = useTranslation();
   const [link, setLink] = useState<RequestLink | null>(null);
-  const [unread, setUnread] = useState(false);
+  const [unread, setUnread] = useState<Unread | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const [retried, setRetried] = useState<object | null>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -44,16 +47,31 @@ export function RequestLinkCard({
 
     api.requestLink(organisation.id).then(
       (found) => current && setLink(found),
-      () => current && setUnread(true),
+      () => current && setUnread({ tapped: attempt > 0 }),
     );
 
     return () => {
       current = false;
     };
-  }, [organisation.id]);
+  }, [organisation.id, attempt]);
+
+  function retry(): void {
+    setUnread(null);
+    setRetried({});
+    setAttempt((n) => n + 1);
+  }
 
   if (link == null) {
-    return unread ? null : (
+    return unread != null ? (
+      <CardFailed
+        kind={kind}
+        title={t('requestLink.title')}
+        words={t('requestLink.unreadable')}
+        unread={unread}
+        onRetry={retry}
+        testID="requestLink.retry"
+      />
+    ) : (
       <View style={cardFrame(kind)}>
         <Text size={tokens.typeRowTitle.size} weight="bold" accessibilityRole="header">
           {t('requestLink.title')}
@@ -115,14 +133,14 @@ export function RequestLinkCard({
   return (
     <View style={cardFrame(kind)}>
       <View style={styles.heading}>
-        <Text
+        <AnswerHeading
+          answer={retried ?? undefined}
           size={tokens.typeRowTitle.size}
           weight="bold"
-          accessibilityRole="header"
           style={styles.title}
         >
           {t('requestLink.title')}
-        </Text>
+        </AnswerHeading>
         <Arrived>
           <OnOffSwitch
             on={link.on}

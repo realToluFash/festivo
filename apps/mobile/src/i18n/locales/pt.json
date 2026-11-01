@@ -1167,7 +1167,7 @@
     "removed": "{{domain}} foi removido.",
     "removedNext": "Quem usa este domínio deixa de poder pedir para aderir desta forma.",
     "failed": "Não foi possível. Tente novamente daqui a pouco.",
-    "unreadable": "Não foi possível carregar a lista. Recarregue a página para tentar novamente."
+    "unreadable": "Não foi possível carregar a lista."
   },
   "membersScreen": {
     "proveOwner_one": "Para dar a alguém a função de Proprietário de {{organisation}}, confirme que é você. Não voltamos a pedir durante um minuto.",
@@ -1342,7 +1342,7 @@
       "copied": "Ligação copiada."
     },
     "failed": "Não funcionou. Tente de novo dentro de momentos.",
-    "unreadable": "Não foi possível carregar a ligação de adesão. Recarregue a página para tentar novamente."
+    "unreadable": "Não foi possível carregar a ligação de adesão."
   },
   "requestToJoin": {
     "title": "Pedir para aderir a {{organisation}}",
