@@ -11,7 +11,8 @@ import time
 import unittest
 from unittest import mock
 
-from soirely_queue import checkout, github, review, runlog, runner, sessions, shared, store
+from soirely_queue import (background, checkout, github, review, roles, runlog, runner,
+                           sessions, shared, store)
 
 from .fakes import FakeRefs
 
@@ -827,7 +828,7 @@ class Worker(unittest.TestCase):
         runner.worker(self.db, self.home, self.platform, name, item_id, run_claude=claude,
                       load=lambda: config(self.root, roles={name: {}}),
                       prepare=lambda *_: ("c" * 40, "Your checkout has changes."),
-                      refresh_harness=refresh, now=ON_ZERO)
+                      refresh_harness=refresh, now=ON_ZERO, run_background=as_background(claude))
         return prompts[0], asked
 
     def test_a_testers_start_refreshes_its_harness_and_says_so(self):
@@ -870,9 +871,9 @@ class Worker(unittest.TestCase):
         with mock.patch("soirely_queue.review.remove") as removed:
             try:
                 runner.worker(self.db, self.home, self.platform, "lead-2", item_id,
-                              run_claude=claude, load=lambda: config(self.root),
+                              load=lambda: config(self.root),
                               prepare=lambda *_: ("c" * 40, None), make_review=make,
-                              now=ON_ZERO)
+                              now=ON_ZERO, run_background=as_background(claude))
             finally:
                 self.removed = [call.args[0].name for call in removed.call_args_list]
         return made
@@ -952,6 +953,93 @@ class Worker(unittest.TestCase):
             entry = runner.worker_ended(self.home, self.platform, "ops", 1, now=ON_ZERO,
                                         db=self.db)
         self.assertNotIn("session", entry)
+
+
+def as_background(claude):
+    """A `claude -p` fake run as the background runner would run it."""
+    def run(values, folder, name, text, cwd, finished, allowed=(), denied=(), extra=None,
+            on_start=None, daemon=None):
+        if on_start:
+            on_start("1d923fe2", SESSION)
+        code, stdout, _, _ = claude([], text, cwd, dict(extra or {}), finished)
+        found = runner.own_result([stdout]) or {}
+        return found, code, "ended", SESSION
+    return run
+
+
+class BackgroundWorker(unittest.TestCase):
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.root = pathlib.Path(self.folder.name)
+        (self.root / "festivo").mkdir()
+        self.home = self.root / "home"
+        self.db = store.connect(":memory:")
+        store.record(self.db, [work("dev")], ON_ZERO)
+        self.item = store.waiting(self.db, "dev")[0]["id"]
+        store.claim(self.db, "dev", ON_ZERO)
+        self.platform = FakePlatform()
+
+    def tearDown(self):
+        self.folder.cleanup()
+
+    def run_dev(self, result, why="ended", code=0):
+        calls, seen = [], []
+
+        def run(values, folder, name, text, cwd, finished, allowed=(), denied=(), extra=None,
+                on_start=None, daemon=None):
+            calls.append({"name": name, "cwd": cwd, "extra": extra, "daemon": daemon,
+                          "run_dir_there": pathlib.Path(extra["SQ_RUN_DIR"]).is_dir()})
+            on_start("1d923fe2", SESSION)
+            seen.append(sessions.current(self.db, "dev"))
+            return result, code, why, SESSION
+
+        claude = mock.Mock()
+        entry = runner.worker(self.db, self.home, self.platform, "dev", self.item,
+                              run_claude=claude, load=lambda: config(self.root, roles={"dev": {}}),
+                              prepare=lambda *_: ("c" * 40, None), now=ON_ZERO,
+                              run_background=run)
+        claude.assert_not_called()
+        return entry, calls, seen
+
+    def test_a_developer_runs_as_a_background_session_recorded_as_it_starts(self):
+        entry, calls, seen = self.run_dev({"result": "Built.", "total_cost_usd": 0.31,
+                                           "num_turns": 4})
+        self.assertEqual(calls[0]["name"], f"dev item {self.item}")
+        self.assertTrue(calls[0]["run_dir_there"])
+        self.assertEqual((seen[0]["bg"], seen[0]["session"]), ("1d923fe2", SESSION))
+        logged = runlog.last(self.home, "dev")
+        self.assertEqual((logged["report"], logged["cost_usd"], logged["session"], logged["exit"]),
+                         ("Built.", 0.31, SESSION, 0))
+        self.assertNotIn("stopped", logged)
+
+    def test_a_session_stopped_at_a_limit_says_which(self):
+        entry, _, _ = self.run_dev({"result": None, "is_error": True}, why="oom-kill", code=1)
+        self.assertEqual((entry["stopped"], entry["exit"]), ("oom-kill", 1))
+
+    def test_a_session_that_will_not_start_is_reported(self):
+        def run(*_, **__):
+            raise background.NotStarted("Workspace not trusted.")
+
+        entry = runner.worker(self.db, self.home, self.platform, "dev", self.item,
+                              load=lambda: config(self.root, roles={"dev": {}}),
+                              prepare=lambda *_: ("c" * 40, None), now=ON_ZERO,
+                              run_background=run)
+        self.assertIn("Workspace not trusted.", entry["report"])
+        self.assertEqual(self.platform.notes[0][0], "Soirely: dev's worker stopped")
+        self.assertFalse(runner.run_dir(self.home, "dev", self.item).exists())
+
+    def test_a_worker_stopped_at_its_limit_stops_its_session_too(self):
+        sessions.begin(self.db, "dev", {"item": self.item, "bg": "1d923fe2", "session": SESSION,
+                                        "folder": str(self.root / "claude")})
+        with mock.patch.dict("os.environ", {"SERVICE_RESULT": "timeout"}), \
+                mock.patch("soirely_queue.background.stop") as stopped:
+            runner.worker_ended(self.home, self.platform, "dev", self.item, now=ON_ZERO,
+                                db=self.db)
+        self.assertEqual(stopped.call_args.args[0], "1d923fe2")
+
+    def test_only_the_developers_and_the_lead_run_in_the_background(self):
+        found = {role for role, values in roles.ROLES.items() if values.get("background")}
+        self.assertEqual(found, set(roles.DEVS) | {"lead"})
 
 
 FAKE_CLAUDE = textwrap.dedent("""

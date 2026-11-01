@@ -22,6 +22,13 @@ need no permission prompt. **Never write to it**: it is the designer's, and the 
 belongs to the `/design-sync` skill, which the user starts. A change you want goes back as
 a request, not a push.
 
+**The epics' screens are in an Artifact, Soirely — Redesign**
+(`https://claude.ai/artifact/5cRzwbgmEK6wqbxp4j1zqx`), one page per epic, which a story's
+Design section links to. Read it with the `Artifact` tool: `action: "read"` with `path:
+"canvas.json"` for the pages, then the board the story names. It is not a doc, so the Claude
+Docs tools fail on it. Never publish to it; it is the designer's. A worker without the
+`Artifact` tool says so in its report rather than building from memory.
+
 Read in this order, every time, before writing any markup:
 
 1. **`CLAUDE.md`** — the settled decisions, in the designer's words. This outranks your

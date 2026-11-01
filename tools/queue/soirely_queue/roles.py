@@ -81,8 +81,11 @@ ROLES = {
            "filter": not_translation, "heartbeat": 120, "sweeps": True},
     "ux": {"skill": "soirely-designer", "queue": ["Needs Design"],
            "filter": not_translation, "heartbeat": 120, "sweeps": True},
+    # `background`: the worker runs as `claude --bg`, which has the Artifact tool the design
+    # is read with.
     **{role: {"skill": "soirely-developer", "queue": BUILD_QUEUE,
               "filter": developer_filter(role), "heartbeat": 30, "prs": True,
+              "background": True,
               **({"invoke": f"/soirely-developer {role}", "offset": number(role) - 1}
                  if role != "dev" else {})}
        for role in DEVS},
@@ -95,7 +98,7 @@ ROLES = {
             "queue": ["Ready For QA"], "filter": everything, "heartbeat": 30, "offset": 2,
             "memoryMax": "8G"},
     "lead": {"skill": "soirely-tech-lead", "queue": [], "filter": everything,
-             "heartbeat": 30, "reviews": True},
+             "heartbeat": 30, "reviews": True, "background": True},
     "bm": {"skill": "soirely-business-manager", "queue": ["Backlog"],
            "filter": not_translation, "heartbeat": 720, "sweeps": True},
     "ops": {"skill": "soirely-ops", "queue": BUILD_QUEUE + ["To Do"],

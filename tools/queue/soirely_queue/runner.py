@@ -13,8 +13,8 @@ import sys
 import threading
 import time
 
-from . import (checkout, drawing, harness, local, machine, permissions, review, roles, runlog,
-               sessions, shared, store, sync, update)
+from . import (background, checkout, drawing, harness, local, machine, permissions, review,
+               roles, runlog, sessions, shared, store, sync, update)
 
 VERSION_EVERY_SECONDS = 10 * 60
 # `claude -p` stays up while a background shell it started still runs, so a run whose item
@@ -334,6 +334,10 @@ def command(values, config_dir, allowed=(), denied=(), session=None):
         argv += ["--allowedTools", *allowed]
     if denied:
         argv += ["--disallowedTools", *denied]
+    return argv, account_env(config_dir)
+
+
+def account_env(config_dir):
     env = dict(os.environ)
     folder = machine.expand(config_dir)
     # Claude's own folder runs as Claude does by default, with nothing set.
@@ -341,7 +345,7 @@ def command(values, config_dir, allowed=(), denied=(), session=None):
         env.pop("CLAUDE_CONFIG_DIR", None)
     else:
         env["CLAUDE_CONFIG_DIR"] = str(folder)
-    return argv, env
+    return env
 
 
 def process_table():
@@ -464,12 +468,31 @@ def run_dir(home, name, item_id):
     return home / "scratch" / f"{name}-{item_id}"
 
 
+def in_background(db, platform, name, entry, values, folder, text, cwd, ids, allowed, denied,
+                  scratch, run_background):
+    """The worker's item as a background session. Returns what `claude -p` would have:
+    `(result, exit status, ended)`; `ended` is None, as no shell it left is ended here."""
+    def begun(short, session):
+        entry.update(bg=short, session=session)
+        sessions.begin(db, name, entry)
+
+    entry["session"] = None
+    result, code, why, _ = run_background(
+        values, folder, f"{name} item {entry['item']}", text, cwd,
+        lambda: settled(db, ids, name), allowed, denied, extra={"SQ_RUN_DIR": str(scratch)},
+        on_start=begun, daemon=getattr(platform, "claude_daemon", None))
+    if why not in ("ended", "settled"):
+        entry["stopped"] = why
+    return result, code, None
+
+
 def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=machine.load,
            prepare=checkout.prepare, make_review=review.make, refresh_harness=harness.refresh,
-           now=None):
+           now=None, run_background=None):
     """Runs inside the worker's unit: prepares the checkout, runs the model, records the
     run. `name` is the role, or `pm-2` and on for a further worker of it."""
     role = machine.worker_role(name)
+    run_background = run_background or background.run
     config = load()
     row = store.item(db, item_id)
     batch = store.held(db, role, now, worker=name) if row else []
@@ -507,26 +530,38 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
     entry["account"] = machine.account(folder)
     entry.update(session=sessions.new_id(), folder=str(folder), cwd=str(cwd),
                  story=row["story_id"] if row else None)
-    argv, env = command(values, folder, permissions.for_role(permissions.applied(), role),
-                        permissions.denied(home / "sq" / "sq", folder), entry["session"])
-    sessions.begin(db, name, entry)
+    allowed = permissions.for_role(permissions.applied(), role)
+    denied = permissions.denied(home / "sq" / "sq", folder)
     scratch = run_dir(home, name, item_id)
     scratch.mkdir(parents=True, exist_ok=True)
-    env["SQ_RUN_DIR"] = str(scratch)
+    ids = [r["id"] for r in batch] if row else [item_id]
+    text = prompt(batch, role, main, note)
     try:
-        ids = [r["id"] for r in batch] if row else [item_id]
-        code, stdout, stderr, ended = run_claude(
-            argv, prompt(batch, role, main, note), cwd, env, lambda: settled(db, ids, name))
+        if roles.ROLES[role].get("background"):
+            result, code, ended = in_background(db, platform, name, entry, values, folder,
+                                                text, cwd, ids, allowed, denied, scratch,
+                                                run_background)
+        else:
+            argv, env = command(values, folder, allowed, denied, entry["session"])
+            sessions.begin(db, name, entry)
+            env["SQ_RUN_DIR"] = str(scratch)
+            code, stdout, stderr, ended = run_claude(argv, text, cwd, env,
+                                                     lambda: settled(db, ids, name))
+            every = results(stdout)
+            own = own_result([stdout])
+            if own:
+                result = dict(own, total_cost_usd=every[-1].get("total_cost_usd"))
+            else:
+                result = {"result": (stdout or stderr or "")[-2000:]}
+    except background.NotStarted as error:
+        entry["report"] = f"the worker's background session did not start: {error}"
+        runlog.append(home, role, entry)
+        platform.notify(f"Soirely: {name}'s worker stopped", entry["report"][:300])
+        return entry
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
         if cwd != path:
             review.remove(path)
-    every = results(stdout)
-    own = own_result([stdout])
-    if own:
-        result = dict(own, total_cost_usd=every[-1].get("total_cost_usd"))
-    else:
-        result = {"result": (stdout or stderr or "")[-2000:]}
     entry.update(runlog.from_result(result, code))
     if ended is not None:
         entry["ended"] = ended
@@ -546,6 +581,10 @@ def worker_ended(home, platform, name, item_id, now=None, load=machine.load, db=
     report of its own, so this leaves the record, and takes its review worktree away."""
     role = machine.worker_role(name)
     shutil.rmtree(run_dir(home, name, item_id), ignore_errors=True)
+    live = sessions.current(db, name) if db is not None else None
+    if live and live.get("bg") and live.get("item") == item_id:
+        # The session runs under the daemon, so the worker's end does not end it.
+        background.stop(live["bg"], account_env(live["folder"]))
     if role in review.ROLES:
         try:
             review.remove(machine.checkout(load(), role, name))

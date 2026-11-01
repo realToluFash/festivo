@@ -55,6 +55,16 @@ workers as they are and removes the ticks.
   role's own checkout, with the same model, effort, skills and prompt as today's workers.
   It runs apart from the tick that started it, so it outlives it: as its own systemd unit
   on Linux, and on a Mac as a process in a session of its own, run by `sq worker-supervise`.
+- **The developers and the lead run as background sessions** (`claude --bg`) instead,
+  because only those have the `Artifact` tool, and the screens they build and review are
+  in an Artifact, Soirely — Redesign (sc-25203). The worker starts the session, records its
+  id in the run, and watches it with `claude agents` until the turn ends, the item is done,
+  or a limit is reached, then stops it. Its run-log line is read from the transcript, its
+  cost reckoned from `models.json`. A session runs under the account's Claude daemon, which
+  sq starts in a unit of its own in the agents' slice (`soirely-claude-<hash>`), so a
+  worker's end does not take the account's other sessions with it. `claude attach <id>`
+  shows a session's work. A background session needs the workspace trusted once per
+  account: run `claude` in the workspace folder with that `CLAUDE_CONFIG_DIR` and accept.
 - **One worker per role at a time.** While a role's worker runs, its tick is skipped.
 - **The run log.** Each run appends one line to `runs/<role>.jsonl`: time, item, exit code,
   cost, token usage and the worker's report. `sq status` shows the last report per role.
@@ -144,7 +154,9 @@ against a misreading rather than an attack.
   whole session over memory stall, with 25 GiB still free. Macs have no hard limit, so
   there each worker's supervisor checks its memory every 5 seconds and stops it over its
   `memoryMax`, as it does at its `maxRuntime`. The 16G for all workers together holds on
-  Linux only.
+  Linux only. A background session is kept the same way on both: its process tree's memory,
+  its time and its cost are polled every 5 seconds, since it runs under the daemon rather
+  than the worker's unit.
 - **Spending.** A per-run ceiling (`--max-budget-usd`) can be set per role in
   `agents.json`. No role has one until the owner picks a number.
 - **No token, no tick.** The Shortcut token is read from `~/.config/soirely/env` (mode 600,
