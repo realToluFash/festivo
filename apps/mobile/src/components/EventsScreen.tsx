@@ -164,7 +164,7 @@ export function EventsScreen() {
   ) : (
     <Arrived style={styles.stack}>
       {deleted != null && (
-        <AnswerInView>
+        <AnswerInView key={deleted}>
           <ReadOut words={t('eventDelete.deleted', { event: deleted })}>
             <Notice
               tone="done"
