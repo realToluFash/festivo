@@ -14,6 +14,7 @@ import { calendarGrid } from './calendarGrid.ts';
 import { cardFrame } from './cardFrame.ts';
 import { useReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
+import { useShownAfter } from './useShownAfter.ts';
 
 export type CardShape = { lines?: number; fields?: number; options?: number; cover?: boolean };
 
@@ -164,18 +165,6 @@ export function Arrived({ children, style }: { children: ReactNode; style?: View
   }, [reduced, shown]);
 
   return <Animated.View style={[style, { opacity: shown }]}>{children}</Animated.View>;
-}
-
-function useShownAfter(ms: number): boolean {
-  const [shown, setShown] = useState(false);
-
-  useEffect(() => {
-    const id = setTimeout(() => setShown(true), ms);
-
-    return () => clearTimeout(id);
-  }, [ms]);
-
-  return shown;
 }
 
 function usePulse(running: boolean): Animated.Value {

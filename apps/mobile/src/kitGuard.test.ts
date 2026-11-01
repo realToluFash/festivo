@@ -1571,6 +1571,7 @@ describe('a screen still reading says so in words (sc-23279)', () => {
   it.each([
     ['app/lost-two-factor.tsx', "view.kind === 'loading'"],
     ['app/reset-password.tsx', "status.kind === 'checking'"],
+    ['app/index.tsx', "launching === 'deciding'"],
   ])('%s shows Pending while %s', (file, reading) => {
     expect(showsPending(readFileSync(join(...file.split('/')), 'utf8'), reading)).toBe(true);
   });
@@ -1592,5 +1593,5 @@ function showsPending(text: string, reading: string): boolean {
   const rest = text.slice(at + 1);
   const next = /\n\s*if \(/u.exec(rest);
 
-  return rest.slice(0, next?.index).includes('<Pending />');
+  return /<Pending\b[^>]*\/>/u.test(rest.slice(0, next?.index));
 }

@@ -9,6 +9,7 @@ import { Home as SignedInHome } from '../src/components/Home.tsx';
 import { PrimaryButton, SecondaryButton } from '../src/components/Buttons.tsx';
 import { cardFrame } from '../src/components/cardFrame.ts';
 import { Notice } from '../src/components/Notice.tsx';
+import { Pending } from '../src/components/Pending.tsx';
 import { Screen } from '../src/components/Screen.tsx';
 import { GlyphMark, type Mark } from '../src/components/StatusMark.tsx';
 import { Text } from '../src/components/Text.tsx';
@@ -20,6 +21,7 @@ import { useLayout } from '../src/layout/useLayout.ts';
 import { dropRegistration, heldRegistration } from '../src/pendingRegistration.ts';
 import { launchRoute } from '../src/resumeSignUp.ts';
 import { ruleRefusal, signInRoute } from '../src/kit/signInRules.ts';
+import { SKELETON_AFTER_MS } from '../src/kit/skeleton.ts';
 import { launchSignedIn } from '../src/signedIn.ts';
 import { tokens } from '../src/theme/tokens.ts';
 import { unreachableFrom } from '../src/unreachable.ts';
@@ -135,13 +137,13 @@ export default function Home() {
 
   if (launching === 'signedIn') return <SignedInHome />;
 
-  if (launching === 'deciding') {
+  // The page colour alone for a second, then the spinner over its loading words (sc-26325).
+  if (launching === 'deciding')
     return (
-      <View style={styles.deciding}>
-        <ActivityIndicator color={tokens.colorAccent} />
+      <View style={styles.deciding} accessibilityState={{ busy: true }} testID="launch.deciding">
+        <Pending after={SKELETON_AFTER_MS} stacked />
       </View>
     );
-  }
 
   return <SignedOut state={state} onRetry={retry} />;
 }
