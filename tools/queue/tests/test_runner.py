@@ -1065,6 +1065,21 @@ class BackgroundWorker(unittest.TestCase):
                               prepare=lambda *_: ("c" * 40, None), now=ON_ZERO,
                               run_background=run, tell=tell)
         self.assertIn("the [ops] comment failed too: SHORTCUT_API_TOKEN", entry["report"])
+        self.assertIn("the [ops] comment failed too", runlog.last(self.home, "dev")["report"])
+
+    def test_the_story_is_told_once_however_often_its_item_comes_back(self):
+        self.on_story()
+        told = []
+
+        def run(*_, **__):
+            raise background.NoArtifactTools("bbbb2222")
+
+        for _ in range(2):
+            runner.worker(self.db, self.home, self.platform, "dev", self.item,
+                          load=lambda: config(self.root, roles={"dev": {}}),
+                          prepare=lambda *_: ("c" * 40, None), now=ON_ZERO,
+                          run_background=run, tell=lambda *a: told.append(a))
+        self.assertEqual(len(told), 1)
 
     def test_a_refused_read_is_kept_and_a_clean_read_clears_it(self):
         self.run_dev({"result": "Stopped.", "artifact_refused": "No access."})

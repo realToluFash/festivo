@@ -483,7 +483,7 @@ def artifact_outcome(db, role, entry, why=None, seen=None):
     else the account and why it could not."""
     store.set_meta(db, f"artifact:{role}", None if not why else {
         "at": entry["at"], "worker": entry.get("worker", role), "account": entry.get("account"),
-        "folder": entry.get("folder"), "why": why, "seen": seen})
+        "folder": entry.get("folder"), "story": entry.get("story"), "why": why, "seen": seen})
 
 
 def in_background(db, platform, name, entry, values, folder, text, cwd, ids, allowed, denied,
@@ -575,14 +575,16 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
                 result = {"result": (stdout or stderr or "")[-2000:]}
     except background.NotStarted as error:
         entry["report"] = f"the worker's background session did not start: {error}"
-        runlog.append(home, role, entry)
         if isinstance(error, background.NoArtifactTools):
+            # The item comes back on every lease; its story is told once.
+            told = (store.get_meta(db, f"artifact:{role}") or {}).get("story")
             artifact_outcome(db, role, entry, NO_TOOL, error.short)
-            if entry["story"]:
+            if entry["story"] and told != entry["story"]:
                 try:
                     tell(entry["story"], role, no_tool_text(name, entry, error.short))
                 except (RuntimeError, OSError) as failed:
                     entry["report"] += f"; the [ops] comment failed too: {failed}"
+        runlog.append(home, role, entry)
         platform.notify(f"Soirely: {name}'s worker stopped", entry["report"][:300])
         return entry
     finally:
