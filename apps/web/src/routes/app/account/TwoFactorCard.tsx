@@ -447,7 +447,7 @@ function SavingCodes({
   const [copied, setCopied] = useState(false);
   const dialog = useRef<HTMLDivElement>(null);
 
-  useDialogKeys(dialog, onFinish, true);
+  useDialogKeys(dialog, onFinish, false);
 
   async function copyAll(): Promise<void> {
     try {

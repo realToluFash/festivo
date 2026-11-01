@@ -51,6 +51,9 @@ type Stage =
 
 const QR_SIZE = 168;
 
+/** `reload` moves focus once the card is back, so the codes sheet hands none back itself. */
+const noOpener: RefObject<null> = { current: null };
+
 /** Settings > Security, the two-factor card, in the app. */
 export function TwoFactorCard({
   email,
@@ -121,6 +124,10 @@ export function TwoFactorCard({
     setClosed(to == null ? undefined : stepClosed(to));
     setStage({ kind: 'loading' });
     setAttempt((n) => n + 1);
+  }
+
+  function finishCodes(): void {
+    reload(stage.kind === 'savingCodes' && stage.renewed ? 'newCodes' : 'title');
   }
 
   async function turnOn(): Promise<void> {
@@ -200,17 +207,12 @@ export function TwoFactorCard({
       {stage.kind === 'savingCodes' && <Title text={t('twoFactorCard.title')} />}
       <Sheet
         open={stage.kind === 'savingCodes'}
-        onClose={() => undefined}
-        opener={title}
+        onClose={finishCodes}
+        opener={noOpener}
         testID="twoFactor.codesSheet"
       >
         {stage.kind === 'savingCodes' && (
-          <SavingCodes
-            codes={stage.codes}
-            phone={phone}
-            answer={stage}
-            onFinish={() => reload(stage.renewed ? 'newCodes' : 'title')}
-          />
+          <SavingCodes codes={stage.codes} phone={phone} answer={stage} onFinish={finishCodes} />
         )}
       </Sheet>
 

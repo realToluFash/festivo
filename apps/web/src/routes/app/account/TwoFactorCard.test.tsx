@@ -393,6 +393,24 @@ describe('closing a step on Two-factor authentication', () => {
     expect(document.activeElement).toBe(again);
   });
 
+  it('does what Finish does on Escape from the new codes', async () => {
+    answering({
+      'GET /api/auth/two-factor': () => json({ on: true, recoveryCodesLeft: 3 }),
+      'POST /api/auth/two-factor/recovery-codes': () => json({ recoveryCodes: CODES }),
+    });
+    card();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Make new codes' }, UNDER_LOAD));
+    fireEvent.change(screen.getByLabelText('Code'), { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Make new codes' }));
+    await screen.findByRole('button', { name: 'Finish' }, UNDER_LOAD);
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    const again = await screen.findByRole('button', { name: 'Make new codes' }, UNDER_LOAD);
+    expect(document.activeElement).toBe(again);
+    expect(screen.queryByRole('button', { name: 'Finish' })).toBeNull();
+  });
+
   it('takes focus to the notice, read once, when the card cannot load again', async () => {
     let reachable = true;
     answering({
