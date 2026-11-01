@@ -223,9 +223,12 @@ function useSheetMotion(
     const away = travel.current;
 
     if (shown) {
+      // onShow can fail to come for a sheet opened while another is up or leaving; an iPad loses an entry started before it, so onShow replays it (sc-23267).
+      if (onScreen) {
+        scrim.setValue(0);
+        fade.setValue(0);
+      }
       shift.setValue(reduced ? 0 : away);
-      // Started before the Modal's window is up, an iPad lost the native-driven entry and kept the card at opacity 0 (sc-23267).
-      if (!onScreen) return;
       const run = Animated.parallel([
         glide(scrim, 1, tokens.motionBase),
         glide(fade, 1, slides ? 0 : tokens.motionBase),
