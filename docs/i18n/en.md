@@ -54,6 +54,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Passed, Next up, Overdue             | 27 Oct 2026 (sc-15756): a date's standing on All dates. Owners: "Event", "You", "Automatic".                                                                                                                                                                 |
 | The day, Programme                   | Settled 19 Oct 2026 (sc-3899): the guest page heading, "The day" for one day, "Programme" when items span several days.                                                                                                                                      |
 | That's everything                    | Settled 19 Oct 2026: the end of the run of show, then "Finished {{count}} min behind plan.", "… ahead of plan." or "Finished on plan.", three whole keys. Replaced "That's the whole night".                                                                 |
+| Try again (button)                   | Settled 1 Nov 2026, sc-26974: every button that runs a failed request again, web and app. The sending form is "Trying again…".                                                                                                                               |
 
 ## Never translated
 
