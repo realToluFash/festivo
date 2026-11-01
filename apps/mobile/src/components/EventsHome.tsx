@@ -62,7 +62,8 @@ export function EventsHome({
   tab: EventsTab;
   onTab: (tab: EventsTab) => void;
   open: string | null;
-  onOpen: (id: string) => void;
+  /** Opened from Happening now, Back returns to the tab that was showing. */
+  onOpen: (id: string, fromHappeningNow: boolean) => void;
   opener?: ((key: string) => Ref<ViewInstance>) | undefined;
   more: 'idle' | 'loading' | 'failed';
   shown: string | null;
@@ -93,7 +94,7 @@ export function EventsHome({
                 phase="happening_now"
                 now={now}
                 selected={event.id === open}
-                onOpen={onOpen}
+                onOpen={(id) => onOpen(id, true)}
                 opener={opener?.(`row.${event.id}`)}
               />
             </View>
@@ -147,7 +148,7 @@ export function EventsHome({
                 phase={shownPhase(event, load.at, now)}
                 now={now}
                 selected={event.id === open}
-                onOpen={onOpen}
+                onOpen={(id) => onOpen(id, false)}
                 opener={opener?.(`row.${event.id}`)}
               />
             </View>
