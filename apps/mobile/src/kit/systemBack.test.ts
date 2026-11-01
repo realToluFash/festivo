@@ -25,6 +25,7 @@ describe('pageTakesBack', () => {
 describe('stackSwipes', () => {
   it('swipes back where a back is drawn, in the header or the body', () => {
     expect(stackSwipes('phone', {}, false, false)).toBe(true);
+    expect(stackSwipes('tabletPortrait', {}, false, false)).toBe(true);
     expect(stackSwipes('tabletPortrait', undefined, true, false)).toBe(true);
   });
 
@@ -32,8 +33,7 @@ describe('stackSwipes', () => {
     expect(stackSwipes('phone', undefined, false, false)).toBe(false);
   });
 
-  it('does nothing for a header back on a tablet, which never draws it, with nothing in the body', () => {
-    expect(stackSwipes('tabletPortrait', {}, false, false)).toBe(false);
+  it('does nothing for a header back on a tablet on its side, which never draws it, with nothing in the body', () => {
     expect(stackSwipes('tabletLandscape', {}, false, false)).toBe(false);
   });
 

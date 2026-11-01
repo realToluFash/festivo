@@ -10,7 +10,7 @@ import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { Text } from '../../src/components/Text.tsx';
 import { TimeZoneCard } from '../../src/components/TimeZoneCard.tsx';
-import { type LayoutKind, useLayout } from '../../src/layout/useLayout.ts';
+import { type LayoutKind, settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { reloadSignedIn, useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
@@ -22,25 +22,19 @@ export default function Account() {
   const { account } = useSignedIn();
   // Set by a verify screen popping back here; a new value starts the cards afresh, to say so.
   const { verified } = useLocalSearchParams<{ verified?: string }>();
-  const phone = kind === 'phone';
+  const alone = !settingsListBeside(kind);
 
   return (
     <AppFrame
       current="settings"
       aboutTheAccount
-      title={phone ? t('account.title') : t('settings.title')}
-      back={phone ? backToSettings(t('settings.title')) : undefined}
+      title={alone ? t('account.title') : t('settings.title')}
+      back={alone ? backToSettings(t('settings.title')) : undefined}
     >
       <SettingsSplit open="account">
         <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
-          {!phone && (
-            <Text
-              size={
-                kind === 'tabletLandscape' ? tokens.typeTitlePage.size : tokens.typeTitlePhone.size
-              }
-              weight="bold"
-              accessibilityRole="header"
-            >
+          {!alone && (
+            <Text size={tokens.typeTitlePage.size} weight="bold" accessibilityRole="header">
               {t('account.title')}
             </Text>
           )}

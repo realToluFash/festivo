@@ -5,7 +5,7 @@ export function pageTakesBack(kind: LayoutKind, pageInFront: boolean): boolean {
   return pageInFront && kind !== 'tabletLandscape';
 }
 
-/** iOS's own swipe from the left edge is the drawn back's, unless the page has taken the swipe or the back is off; with no back drawn, as on a tab's own screen, it does nothing (sc-23777). `back` is the header's, drawn only on a phone. */
+/** iOS's own swipe from the left edge is the drawn back's, unless the page has taken the swipe or the back is off; with no back drawn, as on a tab's own screen, it does nothing (sc-23777). `back` is the header's, drawn on a phone and an upright tablet. */
 export function stackSwipes(
   kind: LayoutKind,
   back: { off?: boolean } | undefined,
@@ -13,7 +13,7 @@ export function stackSwipes(
   pageTookSwipe: boolean,
 ): boolean {
   if (pageTookSwipe) return false;
-  const drawnBack = kind === 'phone' ? back : undefined;
+  const drawnBack = kind === 'tabletLandscape' ? undefined : back;
 
   return drawnBack == null ? backInBody : drawnBack.off !== true;
 }

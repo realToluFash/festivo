@@ -127,7 +127,7 @@ export function AppFrame({
   aboutTheAccount?: boolean;
   /** A heading in the body takes screen reader focus after a tapped switch of organisation, in place of the title (sc-11032). */
   bodyTakesSwitch?: boolean;
-  /** On a phone, the page this one was opened from, as Security's "Settings"; with `systemBack`, Android's Back runs it too. */
+  /** On a phone or an upright tablet, the page this one was opened from, as Security's "Settings"; with `systemBack`, Android's Back runs it too. */
   back?: { label: string; onPress: () => void; systemBack?: boolean; off?: boolean } | undefined;
   /** On a tablet, the body draws this page's back, and is false while that back is off. */
   backInBody?: boolean;
@@ -407,6 +407,14 @@ function FrameHeader({
             );
           })}
         </View>
+        {back != null && !backHidden && (
+          <BackButton
+            label={back.label}
+            onPress={back.onPress}
+            off={back.off}
+            testID="frame.back"
+          />
+        )}
         <View style={styles.titleRow}>
           <View style={styles.fill}>
             <Title size={tokens.typeTitlePage.size} accessibilityRole="header" ref={read}>

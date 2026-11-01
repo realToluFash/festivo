@@ -56,6 +56,11 @@ export function isTablet(kind: LayoutKind): boolean {
   return kind !== 'phone';
 }
 
+/** Only on its side does a tablet keep the Settings list beside the open section; upright, as on a phone, the list is its own screen (epic 22091, Decided 30 Oct). */
+export function settingsListBeside(kind: LayoutKind): boolean {
+  return kind === 'tabletLandscape';
+}
+
 /** The room a page keeps beside its list: about what the phone frame gives one. */
 export const PAGE_BESIDE_MIN_WIDTH = 360;
 
@@ -72,7 +77,7 @@ export function sectionWidth(window: ScreenWindow, beside: SectionBeside): numbe
   const kind = classifyLayout(window);
   const content = window.width - (kind === 'tabletLandscape' ? railWidth(window.fontScale) : 0);
   const columns =
-    beside === 'settingsList' && kind !== 'phone'
+    beside === 'settingsList' && settingsListBeside(kind)
       ? sideListWidth(SETTINGS_LIST_WIDTH, content, window.fontScale)
       : 0;
 

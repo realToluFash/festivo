@@ -5,10 +5,10 @@ import { AppFrame } from '../../src/components/AppFrame.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import { Screen } from '../../src/components/Screen.tsx';
 import { ChooseSection, SettingsList, SettingsSplit } from '../../src/components/SettingsList.tsx';
-import { useLayout } from '../../src/layout/useLayout.ts';
+import { type LayoutKind, settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
-/** Settings, `AppSettings-*`: the list on a phone, the list beside "Choose a section" on a tablet. */
+/** Settings, `AppSettings-*`: the list on its own screen on a phone and an upright tablet, the list beside "Choose a section" on a tablet on its side. */
 export default function Settings() {
   const { t } = useTranslation();
   const { kind } = useLayout();
@@ -16,12 +16,12 @@ export default function Settings() {
   return (
     <AppFrame current="settings" title={t('settings.title')}>
       <SettingsSplit open={null}>
-        {kind === 'phone' ? (
-          <Screen edges={bodyEdges(kind)} contentStyle={styles.phone}>
+        {settingsListBeside(kind) ? (
+          <ChooseSection />
+        ) : (
+          <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
             <SettingsList kind={kind} open={null} />
           </Screen>
-        ) : (
-          <ChooseSection />
         )}
       </SettingsSplit>
     </AppFrame>
@@ -34,4 +34,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spaceXl,
     paddingBottom: tokens.space3xl,
   },
+  portrait: { padding: tokens.space3xl, paddingBottom: tokens.space6xl },
 });
+
+const CONTENT: Record<LayoutKind, object> = {
+  phone: styles.phone,
+  tabletPortrait: styles.portrait,
+  tabletLandscape: styles.portrait,
+};
