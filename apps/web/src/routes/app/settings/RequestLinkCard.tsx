@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
+import { ActionPair } from '../../../components/ActionPair.tsx';
 import { offButton } from '../../../offButton.ts';
 import { useStepFocus } from '../../../stepFocus.ts';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
@@ -172,36 +173,40 @@ export function RequestLinkCard({ organisation }: { organisation: Membership }) 
                   {t('requestLink.replaceTitle')}
                 </h3>
                 <p>{t('requestLink.replaceBody')}</p>
-                <div className="company-domain-buttons">
-                  <button
-                    className="link-button"
-                    type="button"
-                    disabled={busy}
-                    onClick={() => {
-                      setConfirming(false);
-                      arriveAtReplace();
-                    }}
-                  >
-                    {t('requestLink.keep')}
-                  </button>
-                  <button
-                    className="button button-danger"
-                    type="button"
-                    aria-busy={busy}
-                    disabled={busy}
-                    onClick={() =>
-                      void change(() => api.replaceRequestLink(organisation.id), 'replaced')
-                    }
-                  >
-                    {t('requestLink.replaceConfirm')}
-                  </button>
-                </div>
+                <ActionPair
+                  dismiss={
+                    <button
+                      className="link-button"
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        setConfirming(false);
+                        arriveAtReplace();
+                      }}
+                    >
+                      {t('requestLink.keep')}
+                    </button>
+                  }
+                  confirm={
+                    <button
+                      className="button button-danger"
+                      type="button"
+                      aria-busy={busy}
+                      disabled={busy}
+                      onClick={() =>
+                        void change(() => api.replaceRequestLink(organisation.id), 'replaced')
+                      }
+                    >
+                      {t('requestLink.replaceConfirm')}
+                    </button>
+                  }
+                />
               </div>
             ) : (
               <div>
                 <button
                   ref={replaceButton}
-                  className="button"
+                  className="button button-danger"
                   type="button"
                   disabled={busy}
                   onClick={() => setConfirming(true)}

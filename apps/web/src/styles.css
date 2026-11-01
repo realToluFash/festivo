@@ -2430,6 +2430,23 @@ span {
   max-width: 85rem;
 }
 
+/* Company domain joining and Requests to join side by side from about 900 wide (General.dc). */
+.settings-pair {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--spaceXxl);
+}
+
+.settings-pair > * {
+  flex: 1 1 26.25rem;
+  min-width: 0;
+}
+
+.settings-general .input-unchosen {
+  color: var(--colorInkSecondary);
+}
+
 /* The name under the heading is OrgGeneral-Phone's; the desktop boards leave it to the switcher. */
 .settings-organisation {
   display: none;
@@ -3885,7 +3902,6 @@ button.members-row {
   background: var(--colorInset);
 }
 
-.company-domain-buttons,
 .company-domain-add {
   display: flex;
   flex-wrap: wrap;
