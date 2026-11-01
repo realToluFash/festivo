@@ -28,7 +28,7 @@
     "healthy": "Todos os serviços estão a responder.",
     "degraded": "Alguns serviços não estão a responder.",
     "unreachable": "Não foi possível contactar a API.",
-    "retry": "Tente novamente",
+    "retry": "Tentar novamente",
     "check": "Verificação",
     "state": "Estado",
     "usingFallback": "Não está configurado qualquer URL da API, pelo que está a ser tentado o localhost. Isso funciona num simulador, mas não num dispositivo. Consulte o ficheiro README."
@@ -352,7 +352,7 @@
     "keepItOn": "Manter ativa",
     "failedTitle": "Não foi possível carregar a autenticação de dois fatores",
     "failedBody": "Algo correu mal do nosso lado. Tente novamente daqui a pouco.",
-    "retry": "Tente novamente",
+    "retry": "Tentar novamente",
     "phoneSetupTitle": "Adicione a Soirely à sua aplicação de autenticação",
     "phoneCantScan": "Leia o código a partir de outro ecrã ou introduza esta chave na aplicação.",
     "phoneKeepElsewhere": "Guarde-os noutro sítio que não este telemóvel.",
@@ -586,7 +586,7 @@
     "askAgain": "Pedir de novo",
     "failedTitle": "Não funcionou",
     "failedBody": "Algo correu mal pelo caminho. Tente de novo dentro de momentos.",
-    "retry": "Tentar de novo",
+    "retry": "Tentar novamente",
     "setupTitle": "Configure de novo a autenticação de dois fatores",
     "setupIntro": "A autenticação de dois fatores foi desativada para poder voltar a entrar. Configure-a de novo para que uma palavra-passe sozinha não abra a sua conta.",
     "setup": "Configurar a autenticação de dois fatores",
@@ -676,7 +676,7 @@
     "everywhereFailedTitle": "Nenhuma sessão foi encerrada",
     "everywhereFailedBody": "Isto é sobre o acesso à API e não sobre a sua conta. Tente novamente.",
     "loading": "A carregar…",
-    "retry": "Tente novamente"
+    "retry": "Tentar novamente"
   },
   "frame": {
     "home": "Início",
@@ -1477,7 +1477,7 @@
     "refreshing": "A atualizar…",
     "draft": "Rascunho",
     "failedLoad": "Não foi possível carregar os seus eventos. Verifique a ligação e tente novamente.",
-    "retry": "Tente novamente",
+    "retry": "Tentar novamente",
     "firstRunTitle": "Prepare o seu primeiro evento",
     "firstRunStepName": "Dê-lhe um nome e escolha quando começa e quando termina.",
     "firstRunStepDefaults": "Confirme o fuso horário e a moeda.",

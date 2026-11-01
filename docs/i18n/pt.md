@@ -31,6 +31,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Phone (device)                | Telemóvel                    | Settled 18 Oct 2026. Never "celular"                             |
 | Account (Settings section)    | Conta                        | Settled 18 Oct 2026. A bare label: "em Conta", "Voltar a Conta"  |
 | Alternative (address, number) | alternativo                  | Settled 18 Oct 2026. Not primary; never "secundário"             |
+| Try again (button)            | Tentar novamente             | Settled 1 Nov 2026, sc-26974                                     |
 
 ## Never translated
 
