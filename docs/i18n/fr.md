@@ -638,5 +638,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   Schedule), sous « Affichage ». Le filtre dit « Événements et jalons » | « Événements
   seulement », « jalon » comme `timeline.*`. Le nom lu d’un choix est « {{group}} : {{choice}} »,
   U+00A0 avant les deux-points. Un intervalle est « Du {{from}} au {{to}} ». La case pleine dit
-  « +{{count}} autres » (« +1 autre ») ; à vérifier sur iPhone SE, la case du téléphone fait
-  environ 50 px.
+  « +{{count}} », sans nom : « +3 autres » était coupé en « +3 aut… » sur iPhone SE (case
+  d’environ 50 px) et passait sur deux lignes sur le web à 390 px (QA, 1 nov.). Sous les barres
+  de la case, « +3 » se lit seul ; le lecteur d’écran lit le nom de la journée, qui donne le
+  nombre d’éléments, et ne lit pas ce texte.
