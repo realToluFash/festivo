@@ -49,6 +49,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **01 Nov 2026. Lo que dice un botón mientras envía, en un evento** (sc-22578 para sc-22103,
+  `eventLive.making`, `eventPause.pausing`, `.resuming`, `eventEnd.callingOff`, `.ending`,
+  `eventDelete.deleting`, `eventEnd.callOffFailed`, web y app). El gerundio del verbo del botón
+  con puntos suspensivos, como «Guardando…»: «Publicando…», «Pausando…», «Reanudando…»,
+  «Cancelando…», «Finalizando…», «Eliminando…». Cancelar tiene su propio fallo, «No se ha
+  cancelado. Vuelva a intentarlo en un momento.», nunca el de finalizar.
 - **30 Oct 2026. Una versión nueva con la pestaña abierta** (sc-22881 para sc-22622, `release.*`,
   web). «Soirely se ha actualizado.»; el botón, «Recargar», el verbo del navegador. Sin artículo
   ni género, como en «Actualice Soirely».

@@ -59,6 +59,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **01 Nov 2026. Ce que dit un bouton pendant l’envoi, sur un événement** (sc-22578 pour
+  sc-22103, `eventLive.making`, `eventPause.pausing`, `.resuming`, `eventEnd.callingOff`,
+  `.ending`, `eventDelete.deleting`, `eventEnd.callOffFailed`, web et app). Le nom de l’action
+  suivi de points de suspension, comme « Enregistrement… » : « Publication… »,
+  « Mise en pause… », « Reprise… », « Annulation… », « Suppression… ». Terminer est
+  « Fin en cours… », car « Fin… » seul se lit comme un générique. Annuler a son propre refus,
+  « Non annulé. Réessayez dans un instant. », jamais celui de « Terminer ».
 - **30 Oct 2026. Une nouvelle version, l’onglet ouvert** (sc-22881 pour sc-22622, `release.*`,
   web). « Une nouvelle version de Soirely est en ligne. » ; le bouton, « Recharger », le verbe du
   navigateur. « Soirely a été mis à jour » obligerait à choisir un genre pour la marque.
