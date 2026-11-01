@@ -1663,6 +1663,27 @@ export class ApiClient {
     }
   }
 
+  /** Every event the organisation has, unfinished and Finished, as the Calendar places them all (sc-3625). */
+  async allEvents(organisationId: string): Promise<ListedEvent[]> {
+    const events: ListedEvent[] = [];
+
+    for (const finished of [false, true]) {
+      for (let page = 1; ; page++) {
+        const read = await this.events(organisationId, {
+          finished,
+          page,
+          itemsPerPage: MOST_EVENTS_PER_PAGE,
+        });
+
+        events.push(...read.events);
+
+        if (read.events.length < MOST_EVENTS_PER_PAGE) break;
+      }
+    }
+
+    return events;
+  }
+
   /** Refused `validation_failed` with violations on name, type, startsAt, endsAt, timeZone or currency. */
   async createEvent(organisationId: string, event: NewEvent): Promise<OrganisationEvent> {
     return this.organisationEvent(
@@ -2709,6 +2730,9 @@ export function awaiting(
 
   return account.waitingFor == null ? null : 'approval';
 }
+
+/** The events list's largest page (EventsController::MOST_PER_PAGE). */
+const MOST_EVENTS_PER_PAGE = 200;
 
 const REQUEST_STANDINGS = ['member', 'waiting', 'cooling_off'] as const;
 

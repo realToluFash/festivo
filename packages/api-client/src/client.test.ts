@@ -2794,6 +2794,40 @@ describe('events (sc-1486)', () => {
     expect(urls).toEqual(['?finished=false&page=1', '?finished=false&page=2']);
   });
 
+  test('every event, unfinished then Finished, is read in the largest pages', async () => {
+    const full = Array.from({ length: 200 }, (_, at) => ({
+      ...EVENT,
+      id: `u${at}`,
+      milestones: [],
+    }));
+    const pages = [
+      { events: full, total: 201 },
+      { events: [{ ...EVENT, id: 'u200', milestones: [] }], total: 201 },
+      { events: [{ ...EVENT, id: 'f1', milestones: [] }], total: 1 },
+    ];
+    const urls: string[] = [];
+    const api = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('live', null),
+      refreshTokenIn: 'cookie',
+      fetch: async (url) => {
+        urls.push(new URL(String(url)).search);
+
+        return json(pages[urls.length - 1]);
+      },
+    });
+
+    const events = await api.allEvents('org_1');
+
+    expect(events).toHaveLength(202);
+    expect(events.at(-1)?.id).toBe('f1');
+    expect(urls).toEqual([
+      '?finished=false&page=1&itemsPerPage=200',
+      '?finished=false&page=2&itemsPerPage=200',
+      '?finished=true&page=1&itemsPerPage=200',
+    ]);
+  });
+
   test('an event is created with local times and its zone, and read by its id', async () => {
     const { api, sent } = client(() => json({ event: EVENT }, 201));
     const body = {
