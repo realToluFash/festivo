@@ -32,8 +32,13 @@ describe('sign-in lands on the signed-in home', () => {
 });
 
 describe('the frame shows only what is built', () => {
-  it('has Home, Events and Settings, in that order, for a role that can read events', () => {
-    expect(destinations({ permissions: ['events.read'] })).toEqual(['home', 'events', 'settings']);
+  it('has Home, Events, Calendar and Settings, in that order, for a role that can read events', () => {
+    expect(destinations({ permissions: ['events.read'] })).toEqual([
+      'home',
+      'events',
+      'calendar',
+      'settings',
+    ]);
   });
 
   it('leaves Events out for a role whose Events level is Nothing, and with no organisation (sc-1593)', () => {
@@ -48,6 +53,7 @@ describe('the frame shows only what is built', () => {
     expect(destinationOf('/settingsx')).toBe('home');
     expect(destinationOf('/events')).toBe('events');
     expect(destinationOf('/events/evt_gala')).toBe('events');
+    expect(destinationOf('/calendar')).toBe('calendar');
   });
 
   it('opens a route that exists for each destination and section', () => {

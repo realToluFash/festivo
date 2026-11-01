@@ -678,6 +678,7 @@
   "frame": {
     "home": "Inicio",
     "events": "Eventos",
+    "calendar": "Calendar",
     "settings": "Configuración",
     "organisation": "Organización"
   },
@@ -1777,6 +1778,33 @@
     "key_you": "Algo que debe hacer usted",
     "key_automatic": "Soirely se encarga por usted",
     "backToEvent": "Evento"
+  },
+  "calendar": {
+    "title": "Calendar",
+    "previous": "Previous",
+    "next": "Next",
+    "today": "Today",
+    "todayDay": "Today, {{day}}",
+    "dayWithItems_one": "{{day}}, {{count, number}} item",
+    "dayWithItems_other": "{{day}}, {{count, number}} items",
+    "dayWithItems_many": "{{day}}, {{count, number}} items",
+    "month": "Month",
+    "agenda": "Agenda",
+    "view": "View",
+    "show": "Show",
+    "choiceIn": "{{group}}: {{choice}}",
+    "showAll": "Events and milestones",
+    "showEvents": "Events only",
+    "more_one": "+{{count, number}} more",
+    "more_other": "+{{count, number}} more",
+    "more_many": "+{{count, number}} more",
+    "close": "Close",
+    "timeInZone": "{{time}} {{timeZone}}",
+    "range": "{{from}} to {{to}}",
+    "loading": "Loading the calendar…",
+    "failed": "The calendar did not load. Check your connection, then try again. Nothing has changed.",
+    "emptyMonth": "Nothing on the calendar in {{month}}.",
+    "emptyDay": "Nothing on this day."
   },
   "notifications": {
     "bell": "Notificaciones",

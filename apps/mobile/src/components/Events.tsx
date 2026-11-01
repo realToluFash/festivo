@@ -67,9 +67,11 @@ const FIRST_RUN_STEPS = [
 
 export function NoEvents({
   kind,
+  createLabel,
   onCreate,
 }: {
   kind: LayoutKind;
+  createLabel?: string;
   /** Absent for a role without Create events, which reads where events will come from. */
   onCreate?: (() => void) | undefined;
 }) {
@@ -98,7 +100,7 @@ export function NoEvents({
         />
       ) : (
         <PrimaryButton
-          label={t('eventsScreen.firstRunCreate')}
+          label={createLabel ?? t('eventsScreen.firstRunCreate')}
           onPress={onCreate}
           testID="events.none.new"
         />
@@ -107,7 +109,15 @@ export function NoEvents({
   );
 }
 
-export function EventsFailed({ onRetry, testID }: { onRetry: () => void; testID: string }) {
+export function EventsFailed({
+  words,
+  onRetry,
+  testID,
+}: {
+  words?: string;
+  onRetry: () => void;
+  testID: string;
+}) {
   const { t } = useTranslation();
 
   return (
@@ -115,7 +125,7 @@ export function EventsFailed({ onRetry, testID }: { onRetry: () => void; testID:
       <Notice
         tone="broken"
         mark={tokens.marks.broken.glyph}
-        body={t('eventsScreen.failedLoad')}
+        body={words ?? t('eventsScreen.failedLoad')}
         announce
       />
       <SecondaryButton label={t('eventsScreen.retry')} onPress={onRetry} testID={testID} />

@@ -1652,10 +1652,27 @@ export class ApiClient {
 
   /** Every page of them, so a list can group them by the clock without one falling off a page (sc-3594). */
   async unfinishedEvents(organisationId: string): Promise<ListedEvent[]> {
+    return this.everyPage(organisationId, { finished: false });
+  }
+
+  /** Every event the organisation has, unfinished and Finished, as the Calendar places them all (sc-3625). */
+  async allEvents(organisationId: string): Promise<ListedEvent[]> {
+    const query = { itemsPerPage: MOST_EVENTS_PER_PAGE };
+
+    return [
+      ...(await this.everyPage(organisationId, { ...query, finished: false })),
+      ...(await this.everyPage(organisationId, { ...query, finished: true })),
+    ];
+  }
+
+  private async everyPage(
+    organisationId: string,
+    query: Omit<EventsQuery, 'page'>,
+  ): Promise<ListedEvent[]> {
     const events: ListedEvent[] = [];
 
     for (let page = 1; ; page++) {
-      const read = await this.events(organisationId, { page });
+      const read = await this.events(organisationId, { ...query, page });
 
       events.push(...read.events);
 
@@ -2709,6 +2726,9 @@ export function awaiting(
 
   return account.waitingFor == null ? null : 'approval';
 }
+
+/** The events list's largest page (EventsController::MOST_PER_PAGE). */
+const MOST_EVENTS_PER_PAGE = 200;
 
 const REQUEST_STANDINGS = ['member', 'waiting', 'cooling_off'] as const;
 

@@ -13,6 +13,7 @@
   "nav": {
     "dashboard": "Painel",
     "events": "Eventos",
+    "calendar": "Calendar",
     "guests": "Convidados",
     "settings": "Definições",
     "account": "A sua conta",
@@ -2082,6 +2083,33 @@
     "key_event": "O próprio evento",
     "key_you": "Algo que tem de fazer",
     "key_automatic": "O Soirely trata disso por si"
+  },
+  "calendar": {
+    "title": "Calendar",
+    "previous": "Previous",
+    "next": "Next",
+    "today": "Today",
+    "todayDay": "Today, {{day}}",
+    "dayWithItems_one": "{{day}}, {{count, number}} item",
+    "dayWithItems_other": "{{day}}, {{count, number}} items",
+    "dayWithItems_many": "{{day}}, {{count, number}} items",
+    "view": "View",
+    "month": "Month",
+    "agenda": "Agenda",
+    "show": "Show",
+    "showAll": "Events and milestones",
+    "showEvents": "Events only",
+    "more_one": "+{{count, number}} more",
+    "more_other": "+{{count, number}} more",
+    "more_many": "+{{count, number}} more",
+    "close": "Close",
+    "timeInZone": "{{time}} {{timeZone}}",
+    "range": "{{from}} to {{to}}",
+    "loading": "Loading the calendar…",
+    "failed": "The calendar did not load. Check your connection, then try again. Nothing has changed.",
+    "retry": "Try again",
+    "emptyMonth": "Nothing on the calendar in {{month}}.",
+    "emptyDay": "Nothing on this day."
   },
   "saveLabel": {
     "saved": "Guardado"

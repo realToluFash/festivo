@@ -13,6 +13,7 @@
   "nav": {
     "dashboard": "Panel",
     "events": "Eventos",
+    "calendar": "Calendar",
     "guests": "Invitados",
     "settings": "Configuración",
     "account": "Su cuenta",
@@ -2082,6 +2083,33 @@
     "key_event": "El propio evento",
     "key_you": "Algo que debe hacer usted",
     "key_automatic": "Soirely se encarga por usted"
+  },
+  "calendar": {
+    "title": "Calendar",
+    "previous": "Previous",
+    "next": "Next",
+    "today": "Today",
+    "todayDay": "Today, {{day}}",
+    "dayWithItems_one": "{{day}}, {{count, number}} item",
+    "dayWithItems_other": "{{day}}, {{count, number}} items",
+    "dayWithItems_many": "{{day}}, {{count, number}} items",
+    "view": "View",
+    "month": "Month",
+    "agenda": "Agenda",
+    "show": "Show",
+    "showAll": "Events and milestones",
+    "showEvents": "Events only",
+    "more_one": "+{{count, number}} more",
+    "more_other": "+{{count, number}} more",
+    "more_many": "+{{count, number}} more",
+    "close": "Close",
+    "timeInZone": "{{time}} {{timeZone}}",
+    "range": "{{from}} to {{to}}",
+    "loading": "Loading the calendar…",
+    "failed": "The calendar did not load. Check your connection, then try again. Nothing has changed.",
+    "retry": "Try again",
+    "emptyMonth": "Nothing on the calendar in {{month}}.",
+    "emptyDay": "Nothing on this day."
   },
   "saveLabel": {
     "saved": "Guardado"
