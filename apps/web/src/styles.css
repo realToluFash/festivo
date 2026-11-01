@@ -4150,6 +4150,12 @@ button.members-row {
   font: var(--typeSmall);
 }
 
+/* How soon moves to the next line whole, leaving the separator where the line before ends (sc-25008). */
+.events-soon {
+  display: inline-block;
+  max-width: 100%;
+}
+
 .events-row-dates {
   font: var(--typeBody);
   line-height: 1.35;

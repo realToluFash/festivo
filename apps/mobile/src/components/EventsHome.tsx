@@ -10,8 +10,8 @@ import {
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { dateLocale } from '../i18n/index.ts';
-import { eventDatesWords, nextStepWords, summaryWords } from '../kit/eventsHome.ts';
+import { dateLocale, useShownLanguage } from '../i18n/index.ts';
+import { eventDatesWords, howSoonPhrase, nextStepWords, summaryWords } from '../kit/eventsHome.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -226,6 +226,7 @@ function Card({
   onOpen: () => void;
 }) {
   const { t } = useTranslation();
+  const language = useShownLanguage();
   const dates = eventDatesWords(event, dateLocale(), t);
   const next = nextStepWords(nextStep(event, phase, now), t);
 
@@ -245,9 +246,7 @@ function Card({
       <View style={styles.cardDates}>
         <Text size={tokens.typeSmall.size}>{dates.days}</Text>
         {dates.time != null && (
-          <Text size={tokens.typeSmall.size} muted>
-            {dates.time}
-          </Text>
+          <WithSoon line={dates.time} soon={howSoonPhrase(event, phase, now, language, t)} />
         )}
       </View>
       <EventState phase={phase} />
@@ -273,6 +272,7 @@ function HappeningNow({
   onOpen: () => void;
 }) {
   const { t } = useTranslation();
+  const language = useShownLanguage();
   const dates = eventDatesWords(event, dateLocale(), t);
   const step = nextStep(event, 'happening_now', now);
 
@@ -294,9 +294,10 @@ function HappeningNow({
         <TypeAndPlace event={event} />
       </View>
       {dates.time != null && (
-        <Text size={tokens.typeSmall.size} muted>
-          {dates.time}
-        </Text>
+        <WithSoon
+          line={dates.time}
+          soon={howSoonPhrase(event, 'happening_now', now, language, t)}
+        />
       )}
       <View style={styles.figures}>
         {NOW_FIGURES.map((label) => (
@@ -309,6 +310,30 @@ function HappeningNow({
         </Text>
       )}
     </Pressable>
+  );
+}
+
+/** The phrase goes to the next line whole rather than split, and the separator stays where the line before ends. */
+function WithSoon({ line, soon }: { line: string; soon: string | null }) {
+  const { t } = useTranslation();
+
+  if (soon == null) {
+    return (
+      <Text size={tokens.typeSmall.size} muted>
+        {line}
+      </Text>
+    );
+  }
+
+  return (
+    <View style={styles.withSoon}>
+      <Text size={tokens.typeSmall.size} muted>
+        {t('eventsScreen.thenSoon', { when: line })}
+      </Text>
+      <Text size={tokens.typeSmall.size} muted>
+        {soon}
+      </Text>
+    </View>
   );
 }
 
@@ -369,5 +394,6 @@ const styles = StyleSheet.create({
   gridCard: { flexGrow: 1, flexBasis: 280 },
   cardHead: { gap: tokens.spaceHair, alignSelf: 'stretch' },
   cardDates: { gap: tokens.spaceHair },
+  withSoon: { flexDirection: 'row', flexWrap: 'wrap', columnGap: tokens.spaceXs },
   figures: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceXl },
 });

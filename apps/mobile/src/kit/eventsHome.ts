@@ -1,10 +1,13 @@
 import {
+  type EventPhase,
   type EventState,
   type NextStep,
   eventDays,
   formatEventClock,
   formatEventShortDay,
   formatEventWeekday,
+  howSoon,
+  howSoonWords,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
@@ -63,6 +66,23 @@ export function eventDatesWords(
       timeZone: event.timeZone,
     }),
   };
+}
+
+/** "in 32 days", or "Ends tomorrow" once under way; null where the event has no phrase (sc-25008). */
+export function howSoonPhrase(
+  event: { startsAt: string; endsAt: string; timeZone: string },
+  phase: EventPhase,
+  now: Date,
+  language: string,
+  t: TFunction,
+): string | null {
+  const soon = howSoon(event, phase, now);
+
+  if (soon == null) return null;
+
+  const words = howSoonWords(soon, language);
+
+  return soon.to === 'end' ? t('eventsScreen.endsIn', { time: words }) : words;
 }
 
 /** A card's last line: what its phase asks for next, else its next milestone. */

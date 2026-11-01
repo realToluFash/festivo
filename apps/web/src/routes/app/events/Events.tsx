@@ -8,6 +8,8 @@ import {
   formatEventClock,
   formatEventShortDay,
   formatEventWeekday,
+  howSoon,
+  howSoonWords,
   nextStep,
   rememberEventsTab,
   rememberedEventsTab,
@@ -21,7 +23,7 @@ import { Link, useLocation, useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { Skeleton } from '../../../components/Skeleton.tsx';
-import { dateLocale } from '../../../i18n/index.ts';
+import { dateLocale, useShownLanguage } from '../../../i18n/index.ts';
 import { useServerNow } from '../../../serverNow.ts';
 import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
@@ -412,6 +414,7 @@ function eventLink(event: ListedEvent): string {
 /** One link for the whole event, with nothing to press inside it (sc-22103). */
 function EventRow({ event, phase, now }: { event: ListedEvent; phase: EventPhase; now: Date }) {
   const { t } = useTranslation();
+  const soon = useHowSoon(event, phase, now);
 
   return (
     <Link className="events-row" to={eventLink(event)}>
@@ -420,7 +423,7 @@ function EventRow({ event, phase, now }: { event: ListedEvent; phase: EventPhase
         <TypeAndPlace event={event} />
       </span>
       <span className="events-row-dates">
-        <EventDates event={event} />
+        <EventDates event={event} soon={soon} />
       </span>
       <span className="events-row-status">
         <StatusPill phase={phase} />
@@ -437,6 +440,7 @@ function EventRow({ event, phase, now }: { event: ListedEvent; phase: EventPhase
 function HappeningNow({ event, now }: { event: ListedEvent; now: Date }) {
   const { t } = useTranslation();
   const step = nextStep(event, 'happening_now', now);
+  const soon = useHowSoon(event, 'happening_now', now);
 
   return (
     <Link className="events-now-card" to={eventLink(event)}>
@@ -453,7 +457,7 @@ function HappeningNow({ event, now }: { event: ListedEvent; now: Date }) {
             <TypeAndPlace event={event} />
           </span>
           <span className="muted">
-            <EventDates event={event} part="time" />
+            <EventDates event={event} part="time" soon={soon} />
           </span>
         </span>
         <span className="events-now-figures">
@@ -484,13 +488,15 @@ function TypeAndPlace({ event }: { event: ListedEvent }) {
   );
 }
 
-/** Its day or its first and last day, then its start and zone, all in the event's own zone. */
+/** Its day or its first and last day, then its start and zone, all in the event's own zone, and how soon it is. */
 function EventDates({
   event,
   part = 'both',
+  soon = null,
 }: {
   event: ListedEvent;
   part?: 'days' | 'time' | 'both';
+  soon?: string | null;
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
@@ -513,16 +519,37 @@ function EventDates({
     time: formatEventClock(event.startsAt, event.timeZone, locale),
     timeZone: event.timeZone,
   });
+  const timeAndSoon =
+    soon == null ? (
+      time
+    ) : (
+      <>
+        {t('events.thenSoon', { when: time })} <span className="events-soon">{soon}</span>
+      </>
+    );
 
   if (part === 'days') return dates;
-  if (part === 'time') return time;
+  if (part === 'time') return timeAndSoon;
 
   return (
     <>
       <span>{dates}</span>
-      <span className="muted events-row-time">{time}</span>
+      <span className="muted events-row-time">{timeAndSoon}</span>
     </>
   );
+}
+
+/** "in 32 days", or "Ends tomorrow" once under way; null where the event has no phrase (sc-25008). */
+function useHowSoon(event: ListedEvent, phase: EventPhase, now: Date): string | null {
+  const { t } = useTranslation();
+  const language = useShownLanguage();
+  const soon = howSoon(event, phase, now);
+
+  if (soon == null) return null;
+
+  const words = howSoonWords(soon, language);
+
+  return soon.to === 'end' ? t('events.endsIn', { time: words }) : words;
 }
 
 function NextStep({ event, phase, now }: { event: ListedEvent; phase: EventPhase; now: Date }) {

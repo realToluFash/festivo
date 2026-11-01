@@ -152,8 +152,8 @@ describe('Events', () => {
     const rows = within(screen.getByRole('tabpanel')).getAllByRole('listitem');
 
     expect(rows.map((row) => spaced(row.textContent))).toEqual([
-      'Adaeze and TundeWeddingSaturday, Nov 14 to Sunday, Nov 1516:00 · Africa/LagosDraftGuests Coming soonReplies Coming soonGuests can’t be invited until this event is live.',
-      'Board dinnerCorporate eventTuesday, Dec 119:00 · Europe/LondonDraftGuests Coming soonReplies Coming soonGuests can’t be invited until this event is live.',
+      'Adaeze and TundeWeddingSaturday, Nov 14 to Sunday, Nov 1516:00 · Africa/Lagos · in 32 daysDraftGuests Coming soonReplies Coming soonGuests can’t be invited until this event is live.',
+      'Board dinnerCorporate eventTuesday, Dec 119:00 · Europe/London · in 49 daysDraftGuests Coming soonReplies Coming soonGuests can’t be invited until this event is live.',
     ]);
     expect(within(rows[0]!).getAllByRole('link')).toHaveLength(1);
     expect(within(rows[0]!).getByRole('link').getAttribute('href')).toBe('/app/events/ev_1');
@@ -325,17 +325,77 @@ describe('Events Home (sc-3594)', () => {
     const now = (await screen.findByRole('heading', { name: 'Happening now' })).parentElement!;
     const card = within(now).getByRole('listitem');
     expect(spaced(card.textContent)).toBe(
-      'Sunday, Nov 1 to Tuesday, Nov 3Happening nowTonightWedding09:00 · Europe/MadridArrived Coming soonCourse Coming soonNext cue Coming soonNext up Tonight ends',
+      'Sunday, Nov 1 to Tuesday, Nov 3Happening nowTonightWedding09:00 · Europe/Madrid · Ends in 2 daysArrived Coming soonCourse Coming soonNext cue Coming soonNext up Tonight ends',
     );
     expect(within(card).getAllByRole('link')).toHaveLength(1);
 
     const upcoming = screen.getByRole('tabpanel');
     expect(spaced(within(upcoming).getByRole('listitem').textContent)).toBe(
-      'LaterWeddingSaturday, Nov 14 to Sunday, Nov 1516:00 · Africa/LagosLiveGuests Coming soonReplies Coming soonNext up Later starts',
+      'LaterWeddingSaturday, Nov 14 to Sunday, Nov 1516:00 · Africa/Lagos · in 13 daysLiveGuests Coming soonReplies Coming soonNext up Later starts',
     );
 
     fireEvent.click(screen.getByRole('tab', { name: 'Past 0' }));
     expect(screen.getByRole('heading', { name: 'Happening now' })).toBeDefined();
+  });
+
+  it('says how soon each event is, a minute behind the clock at most, and how soon it ends from its start (sc-25008)', async () => {
+    signedIn();
+    answering({
+      'GET /api/orgs/org_1/events': listed([
+        live('Party', {
+          startsAt: '2026-11-01T12:03:30Z',
+          endsAt: '2026-11-01T14:00:00Z',
+          timeZone: 'Africa/Lagos',
+          milestones: [],
+        }),
+      ]),
+    });
+    at('/app/events');
+
+    const row = async () =>
+      spaced(within(await screen.findByRole('tabpanel')).getByRole('link').textContent);
+    expect(await row()).toContain('13:03 · Africa/Lagos · in 3 minutes');
+
+    await act(() => vi.advanceTimersByTimeAsync(60_000));
+    expect(await row()).toContain('13:03 · Africa/Lagos · in 2 minutes');
+
+    await act(() => vi.advanceTimersByTimeAsync(150_000));
+    const now = (await screen.findByRole('heading', { name: 'Happening now' })).parentElement!;
+    expect(spaced(within(now).getByRole('link').textContent)).toContain(
+      '13:03 · Africa/Lagos · Ends in 1 hour',
+    );
+  });
+
+  it('reads the last minute as this minute, and gives a draft past its start and a finished event no phrase (sc-25008)', async () => {
+    signedIn();
+    answering({
+      'GET /api/orgs/org_1/events': listed(
+        [
+          live('Soon', { startsAt: '2026-11-01T12:00:40Z', milestones: [] }),
+          event({
+            id: 'late',
+            name: 'Late draft',
+            startsAt: '2026-11-01T10:00:00Z',
+            endsAt: '2026-11-01T14:00:00Z',
+            milestones: [],
+          }),
+        ],
+        finished(1),
+      ),
+    });
+    at('/app/events');
+
+    const rows = async () =>
+      within(await screen.findByRole('tabpanel'))
+        .getAllByRole('link')
+        .map((link) => spaced(link.textContent));
+    expect((await rows())[0]).toContain('13:00 · Africa/Lagos · this minute');
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Drafts 1' }));
+    expect((await rows())[0]).toContain('11:00 · Africa/LagosDraft');
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Past 1' }));
+    expect((await rows())[0]).not.toMatch(/ · (in |Ends )/);
   });
 
   it('reads a Happening now event that started before today as its first and last day', async () => {
@@ -355,7 +415,7 @@ describe('Events Home (sc-3594)', () => {
 
     const now = (await screen.findByRole('heading', { name: 'Happening now' })).parentElement!;
     expect(spaced(within(now).getByRole('listitem').textContent)).toBe(
-      'Saturday, Oct 31 to Monday, Nov 2Happening nowWeekendWedding09:00 · Europe/MadridArrived Coming soonCourse Coming soonNext cue Coming soonNext up Weekend ends',
+      'Saturday, Oct 31 to Monday, Nov 2Happening nowWeekendWedding09:00 · Europe/Madrid · Ends in 13 hoursArrived Coming soonCourse Coming soonNext cue Coming soonNext up Weekend ends',
     );
   });
 

@@ -1,4 +1,5 @@
 import { type EventPhase, type EventState, calledOff, shownPhase } from './eventStates.ts';
+import { type LocaleCode, pluralLocale } from './locales.ts';
 import { type Milestone, milestoneDistance, nextUp } from './timeline.ts';
 
 export interface HomeEvent {
@@ -180,6 +181,48 @@ export function eventDays(event: {
   return day.format(new Date(event.startsAt)) === day.format(new Date(event.endsAt))
     ? { kind: 'oneDay', startsAt: event.startsAt }
     : { kind: 'days', startsAt: event.startsAt, endsAt: event.endsAt };
+}
+
+export interface HowSoon {
+  to: 'start' | 'end';
+  count: number;
+  unit: 'minute' | 'hour' | 'day';
+}
+
+const MINUTE = 60 * 1000;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+
+/** Time to its start, or once under way to its end, rounded down: minutes under an hour, hours under a day, else days by the dates in its zone (sc-25008). */
+export function howSoon(
+  event: { startsAt: string; endsAt: string; timeZone: string },
+  phase: EventPhase,
+  now: Date,
+): HowSoon | null {
+  if (phase === 'finished') return null;
+
+  const to = now.getTime() < Date.parse(event.startsAt) ? 'start' : 'end';
+
+  if (to === 'end' && phase === 'draft') return null;
+
+  const at = to === 'start' ? event.startsAt : event.endsAt;
+  const left = Date.parse(at) - now.getTime();
+
+  if (left <= 0) return null;
+  if (left < HOUR) return { to, count: Math.floor(left / MINUTE), unit: 'minute' };
+  if (left < DAY) return { to, count: Math.floor(left / HOUR), unit: 'hour' };
+
+  const distance = milestoneDistance(at, event.timeZone, now);
+
+  return { to, count: distance.kind === 'inDays' ? distance.count : 1, unit: 'day' };
+}
+
+/** CLDR's long form with `auto` numbering, in the region the copy is written for: "tomorrow", "this minute", Portugal's "dentro de 32 dias". */
+export function howSoonWords(soon: HowSoon, locale: LocaleCode): string {
+  return new Intl.RelativeTimeFormat(pluralLocale(locale), {
+    numeric: 'auto',
+    style: 'long',
+  }).format(soon.count, soon.unit);
 }
 
 /** When it was ended or called off, or its end, for one the clock has finished since it was loaded. */
