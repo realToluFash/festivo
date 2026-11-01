@@ -98,16 +98,7 @@ export function SignIn() {
   }
 
   return (
-    <AuthPage
-      foot={
-        <div className="auth-footnote auth-footnote-plain">
-          <span>{t('signIn.newHere')}</span>
-          <Link className="link-button" to="/register">
-            {t('signIn.createAccount')}
-          </Link>
-        </div>
-      }
-    >
+    <AuthPage>
       <h1>{t('signIn.title')}</h1>
 
       {status.kind === 'sessionEnded' && (
@@ -261,8 +252,14 @@ export function SignIn() {
             <div className="field">
               <div className="field-heading">
                 <label htmlFor="password">{t('signIn.password')}</label>
-                <Link className="link-button" to="/forgot-password">
-                  {t('recovery.forgotShort')}
+                {/* Shorter on a phone, as drawn; the name a screen reader hears stays the whole question. */}
+                <Link
+                  className="link-button"
+                  to="/forgot-password"
+                  aria-label={t('recovery.forgot')}
+                >
+                  <span className="wide-only">{t('recovery.forgot')}</span>
+                  <span className="narrow-only">{t('recovery.forgotShort')}</span>
                 </Link>
               </div>
               <PasswordField
@@ -311,6 +308,13 @@ export function SignIn() {
           <ProviderSignIn />
         </>
       )}
+
+      <div className="auth-footnote">
+        <span>{t('signIn.newHere')}</span>
+        <Link className="link-button" to="/register">
+          {t('signIn.createAccount')}
+        </Link>
+      </div>
     </AuthPage>
   );
 }

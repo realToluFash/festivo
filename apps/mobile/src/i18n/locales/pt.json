@@ -105,6 +105,7 @@
     "limitedTitle": "Demasiados registos a partir desta rede",
     "limitedBody": "Tente novamente às {{time}}.",
     "orWithEmail": "ou com o seu e-mail",
+    "landscapeNote": "Ou use o seu e-mail e uma palavra-passe, à direita.",
     "haveAccount": "Já tem uma conta?",
     "back": "Voltar ao início de sessão",
     "failedTitle": "Não foi possível criar a sua conta",
@@ -240,6 +241,7 @@
     "dismiss": "Fechar"
   },
   "recovery": {
+    "forgot": "Esqueceu-se da palavra-passe?",
     "forgotShort": "Esqueceu-se?",
     "title": "Reponha a sua palavra-passe",
     "intro": "Introduza o e-mail com que inicia sessão. Se tiver uma conta, enviamos-lhe uma ligação para definir uma nova palavra-passe.",

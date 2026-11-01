@@ -105,6 +105,7 @@
     "limitedTitle": "Demasiados registros desde esta red",
     "limitedBody": "Inténtelo de nuevo a las {{time}}.",
     "orWithEmail": "o con su correo",
+    "landscapeNote": "O use su correo electrónico y una contraseña a la derecha.",
     "haveAccount": "¿Ya tiene una cuenta?",
     "back": "Volver a iniciar sesión",
     "failedTitle": "No se ha podido crear su cuenta",
@@ -240,6 +241,7 @@
     "dismiss": "Cerrar"
   },
   "recovery": {
+    "forgot": "¿Ha olvidado su contraseña?",
     "forgotShort": "¿La olvidó?",
     "title": "Restablezca su contraseña",
     "intro": "Introduzca el correo con el que inicia sesión. Si tiene una cuenta, le enviamos un enlace para establecer una nueva contraseña.",

@@ -440,7 +440,7 @@ function CodeScreen({
 
               <div className="resend">
                 <button
-                  className="link-button"
+                  className="button"
                   type="button"
                   {...resending.button}
                   onClick={() => void resend()}
@@ -460,7 +460,7 @@ function CodeScreen({
           {stillSignedIn && <StillSignedIn />}
 
           {wrongAddress != null && (
-            <div className="auth-footnote auth-footnote-plain">
+            <div className="auth-footnote">
               <span>{t('verifyEmail.wrongAddress')}</span>
               <button className="link-button" type="button" onClick={() => void wrongAddress()}>
                 {registersAgain ? t('verifyEmail.registerAgain') : t('verifyEmail.signOut')}

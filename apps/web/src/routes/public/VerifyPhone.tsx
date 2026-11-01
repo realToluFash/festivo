@@ -344,7 +344,7 @@ export function VerifyPhone() {
 
               <div className="resend">
                 <button
-                  className="link-button"
+                  className="button"
                   type="button"
                   {...resending.button}
                   onClick={() => void resend()}
