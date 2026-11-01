@@ -1,6 +1,8 @@
 import { emailProblem } from '@soirely/domain';
 import type { TFunction } from 'i18next';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+
+import { holdMovedClicks } from './movedClicks.ts';
 
 /** sc-63's "Forms check before they send": every field on the first press, then each as it is left, and a message gone as soon as its field is right. */
 export function useFormChecks<F extends string>(
@@ -10,6 +12,8 @@ export function useFormChecks<F extends string>(
 ) {
   const [errors, setErrors] = useState<Partial<Record<F, string>>>({});
   const [pressed, setPressed] = useState(false);
+
+  useEffect(holdMovedClicks, []);
 
   function set(field: F, message: string | null): void {
     setErrors((previous) => {

@@ -595,3 +595,82 @@ describe('the frame, as the board draws it (sc-23277)', () => {
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 });
+
+describe('a click that leaves a field counts when its re-check moves the button (sc-25852)', () => {
+  function placed(target: HTMLElement) {
+    vi.spyOn(target, 'getBoundingClientRect').mockReturnValue(new DOMRect(100, 400, 320, 44));
+  }
+
+  function pressFrom(field: HTMLElement, target: HTMLElement, releaseAtY = 420) {
+    placed(target);
+    fireEvent.mouseDown(target, { clientX: 200, clientY: 420 });
+    fireEvent.blur(field);
+    fireEvent.mouseUp(document.body, { clientX: 200, clientY: releaseAtY });
+  }
+
+  async function refusedOnce(sent: Sent[]) {
+    answering({ 'POST /api/auth/login': () => problem(401, 'invalid_credentials') }, sent);
+    at('/sign-in');
+    fillIn();
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/do not match/));
+  }
+
+  function logins(sent: Sent[]) {
+    return sent.filter((request) => request.path === '/api/auth/login');
+  }
+
+  it('checks both fields and sends nothing when Sign in moved up under the click', async () => {
+    const sent: Sent[] = [];
+    await refusedOnce(sent);
+    const email = screen.getByLabelText('Email');
+    const password = screen.getByLabelText('Password');
+    fireEvent.change(email, { target: { value: '' } });
+    fireEvent.change(password, { target: { value: '' } });
+
+    pressFrom(password, screen.getByRole('button', { name: 'Sign in' }));
+
+    expect(screen.getByText('Enter your email address.')).toBeDefined();
+    expect(screen.getByText('Enter your password.')).toBeDefined();
+    expect(document.activeElement).toBe(email);
+    expect(logins(sent)).toHaveLength(1);
+  });
+
+  it('opens Create your account when the link moved under the click', async () => {
+    await refusedOnce([]);
+    const password = screen.getByLabelText('Password');
+    fireEvent.change(password, { target: { value: '' } });
+
+    pressFrom(password, screen.getByRole('link', { name: 'Create an account' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1, name: 'Create your account' })).toBeDefined(),
+    );
+  });
+
+  it('still cancels a press released away from where Sign in was, and still re-checks the field', async () => {
+    const sent: Sent[] = [];
+    await refusedOnce(sent);
+    const password = screen.getByLabelText('Password');
+    fireEvent.change(password, { target: { value: '' } });
+
+    pressFrom(password, screen.getByRole('button', { name: 'Sign in' }), 600);
+
+    expect(screen.getByText('Enter your password.')).toBeDefined();
+    expect(screen.queryByText('Enter your email address.')).toBeNull();
+    expect(logins(sent)).toHaveLength(1);
+  });
+
+  it('sends one request for a click that nothing moved', async () => {
+    const sent: Sent[] = [];
+    await refusedOnce(sent);
+    const button = screen.getByRole('button', { name: 'Sign in' });
+    placed(button);
+
+    fireEvent.mouseDown(button, { clientX: 200, clientY: 420 });
+    fireEvent.blur(screen.getByLabelText('Password'));
+    fireEvent.mouseUp(button, { clientX: 200, clientY: 420 });
+    fireEvent.click(button);
+
+    await waitFor(() => expect(logins(sent)).toHaveLength(2));
+  });
+});
