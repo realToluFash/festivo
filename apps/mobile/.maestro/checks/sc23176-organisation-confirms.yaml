@@ -1,0 +1,83 @@
+# Settings > Organisation in [fd] (sc-23176): each card, then each confirm opened in place.
+# Needs an owner with one company domain, the request link on, and one other member.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- takeScreenshot: details
+- scrollUntilVisible:
+    element:
+      id: companyDomains.domain
+    centerElement: true
+- takeScreenshot: domains
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: companyDomains.remove.soirely.test
+- takeScreenshot: domain-confirm
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: companyDomains.keep.soirely.test
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: requestLink.replace
+- takeScreenshot: link-confirm
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: requestLink.keep
+- scrollUntilVisible:
+    element:
+      id: ownership.delete
+    centerElement: true
+- takeScreenshot: ownership
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: ownership.transfer
+- takeScreenshot: transfer-open
+- tapOn:
+    id: ownership\.owner\..*
+- takeScreenshot: transfer-picked
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: ownership.transfer.send
+- takeScreenshot: transfer-checked
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: ownership.transfer.keep
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: ownership.leave
+- takeScreenshot: leave-confirm
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: ownership.leave.stay
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: ownership.delete
+- extendedWaitUntil:
+    visible:
+      id: ownership.delete.name
+    timeout: 15000
+- takeScreenshot: delete-confirm
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: ownership.delete.send
+- takeScreenshot: delete-checked
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: ownership.delete.keep
+- takeScreenshot: closed
