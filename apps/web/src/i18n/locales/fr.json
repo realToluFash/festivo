@@ -1439,11 +1439,11 @@
   },
   "contacts": {
     "emailsTitle": "Adresses e-mail",
-    "emailsFailed": "Your email addresses did not load. Try again in a moment.",
+    "emailsFailed": "Vos adresses e-mail n’ont pas pu être chargées. Réessayez dans un instant.",
     "emailsIntro": "Votre adresse principale vous permet de vous connecter et reçoit les e-mails du compte. Les autres adresses servent à vous joindre, mais pas à vous connecter.",
     "emailsList": "Adresses e-mail de ce compte",
     "phonesTitle": "Numéros de téléphone",
-    "phonesFailed": "Your phone numbers did not load. Try again in a moment.",
+    "phonesFailed": "Vos numéros de téléphone n’ont pas pu être chargés. Réessayez dans un instant.",
     "phonesIntro": "Votre numéro principal est celui de votre profil. Les autres numéros servent aussi à vous joindre.",
     "phonesList": "Numéros de téléphone de ce compte",
     "count": "{{count, number}} sur {{most, number}}",
