@@ -20,10 +20,12 @@ appId: host.exp.Exponent
     env:
       ASK: /api?to=up
 - tapOn:
+    id: 'calendar.view.month'
+- tapOn:
     id: 'calendar.retry'
 - extendedWaitUntil:
     visible:
-      id: 'calendar.grid|calendar.agenda'
+      id: 'calendar.grid'
     timeout: 30000
 - assertNotVisible:
     id: 'calendar.retry'
