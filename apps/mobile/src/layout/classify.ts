@@ -31,7 +31,7 @@ export interface WindowSize {
  */
 export const TABLET_MIN_DIMENSION = 600;
 
-// Width only ever steps a window down: the Settings list (320), a section's widest margins (64) and a page.
+// Width only ever steps a window down. 744 was the Settings list (320) beside a section; upright the list now opens alone, and the number is kept as it is for now.
 export const UPRIGHT_MIN_WIDTH = 744;
 
 export const SIDE_MIN_WIDTH = 964;

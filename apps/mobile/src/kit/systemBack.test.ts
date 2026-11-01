@@ -4,6 +4,7 @@ import {
   OPENED_IN_PLACE_OF_SETTINGS,
   edgeSwipeCompletes,
   edgeSwipeStarts,
+  headerDrawsBack,
   pageTakesBack,
   sectionTakesBack,
   stackSwipes,
@@ -19,6 +20,24 @@ describe('pageTakesBack', () => {
     expect(pageTakesBack('phone', false)).toBe(false);
     expect(pageTakesBack('tabletPortrait', false)).toBe(false);
     expect(pageTakesBack('tabletLandscape', true)).toBe(false);
+  });
+});
+
+describe('headerDrawsBack', () => {
+  const back = { label: 'Back' };
+
+  it('draws the back in the header on a phone, and on an upright tablet whose body has none', () => {
+    expect(headerDrawsBack('phone', back, false)).toBe(back);
+    expect(headerDrawsBack('phone', back, true)).toBe(back);
+    expect(headerDrawsBack('tabletPortrait', back, false)).toBe(back);
+  });
+
+  it('leaves it to the body on an upright tablet, so Notifications shows one back, not two', () => {
+    expect(headerDrawsBack('tabletPortrait', back, true)).toBeUndefined();
+  });
+
+  it('never draws it on a tablet on its side', () => {
+    expect(headerDrawsBack('tabletLandscape', back, false)).toBeUndefined();
   });
 });
 
