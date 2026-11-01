@@ -1,4 +1,4 @@
-# The Calendar's Month grid, with a busy day's "+n more", in the account's language.
+# The Calendar's Month grid, with a busy day's "+n more", in the account's language. Needs an account with enough events on 14 Nov 2026 for "+n more" and none on 10 Nov 2026; steps back from today's month to November, so it holds while today is November 2026 or later.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/calendar
@@ -8,6 +8,20 @@ appId: host.exp.Exponent
     timeout: 30000
 - tapOn:
     id: calendar.view.month
+- tapOn:
+    id: calendar.today
+- extendedWaitUntil:
+    visible:
+      id: calendar.grid
+    timeout: 15000
+- repeat:
+    while:
+      notVisible:
+        id: calendar.day.2026-11-14
+    times: 24
+    commands:
+      - tapOn:
+          id: calendar.previous
 - extendedWaitUntil:
     visible:
       id: calendar.day.2026-11-14
@@ -28,4 +42,5 @@ appId: host.exp.Exponent
     visible:
       id: calendar.dayList
     timeout: 10000
+- assertVisible: '{{t:calendar.emptyDay}}'
 - takeScreenshot: day-empty
