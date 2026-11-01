@@ -308,7 +308,7 @@ describe('Calendar', () => {
 
     const busy = day(/^Saturday, November 14, 4 items$/);
 
-    expect(within(busy).getByText('+2 more')).toBeTruthy();
+    expect(within(busy).getByText('+2')).toBeTruthy();
     fireEvent.click(busy);
     expect(within(screen.getByRole('dialog')).getAllByRole('link')).toHaveLength(4);
   });
