@@ -179,12 +179,11 @@ span {
 .offline-band {
   margin: calc(-1 * var(--shellBlock)) calc(-1 * var(--shellInline)) var(--shellBlock);
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: var(--spaceMd) var(--spaceXl);
+  gap: var(--spaceXl);
   min-height: var(--sizeHit);
-  padding: var(--spaceLg) var(--space5xl);
+  padding: var(--spaceXxs) var(--space5xl);
   background: var(--colorAttentionTint);
   border-bottom: 1px solid var(--colorAttentionBorder);
   color: var(--colorAttentionText);
@@ -196,6 +195,9 @@ span {
   align-items: flex-start;
   gap: var(--spaceMd);
   margin: 0;
+
+  /* Its first line sits level with Try again's middle; the words wrap, the button stays at the end of that line. */
+  padding-block: calc((var(--sizeHit) - 20px) / 2);
   font-weight: 600;
   font-size: 14px;
   line-height: 20px;
@@ -216,14 +218,14 @@ span {
   letter-spacing: var(--typeButtonTracking);
   white-space: nowrap;
   color: var(--colorAttentionText);
-  background: transparent;
-  border: 1px solid currentcolor;
+  background: var(--colorCard);
+  border: 1px solid var(--colorAttentionBorder);
   border-radius: var(--radiusPill);
   cursor: pointer;
 }
 
 .offline-band-retry:hover {
-  background: var(--colorAttentionWash);
+  background: var(--colorInset);
 }
 
 .offline-refreshing {

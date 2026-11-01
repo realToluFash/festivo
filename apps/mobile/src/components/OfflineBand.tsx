@@ -78,12 +78,12 @@ export function OfflineBand({ stale }: { stale: Stale | null }) {
         </Text>
       </View>
       <Pressable
-        style={styles.retry}
+        style={({ pressed }) => [styles.retry, pressed && styles.retryPressed]}
         onPress={stale.retry}
         accessibilityRole="button"
         testID="offline.retry"
       >
-        <Text size={tokens.typeButton.size} weight="semibold" style={styles.ink}>
+        <Text size={tokens.typeButton.size} weight="semibold" numberOfLines={1} style={styles.ink}>
           {t('eventsScreen.retry')}
         </Text>
       </Pressable>
@@ -91,30 +91,42 @@ export function OfflineBand({ stale }: { stale: Stale | null }) {
   );
 }
 
+// The line 15/600 takes at the default text size; a larger size only drops the words a little below the middle.
+const WORDS_LINE = 20;
+
 const styles = StyleSheet.create({
   band: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: tokens.spaceMd,
+    gap: tokens.spaceXl,
     minHeight: tokens.sizeHitPhonePrimary,
-    paddingVertical: 13,
+    paddingVertical: tokens.spaceXxs,
     backgroundColor: tokens.colorAttentionTint,
     borderBottomWidth: 1,
     borderBottomColor: tokens.colorAttentionBorder,
   },
   phone: { paddingHorizontal: tokens.spaceXl },
   tablet: { paddingHorizontal: tokens.space3xl },
-  words: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceMd, flexShrink: 1 },
+  // Its first line sits level with Try again's middle; the words wrap, the button stays at the end of that line.
+  words: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: tokens.spaceMd,
+    flexShrink: 1,
+    paddingVertical: (tokens.sizeHitPhonePrimary - WORDS_LINE) / 2,
+  },
   mark: { marginTop: 1 },
   ink: { color: tokens.colorAttentionText, flexShrink: 1 },
   retry: {
-    minHeight: tokens.sizeHit,
+    flexShrink: 0,
+    minHeight: tokens.sizeHitPhonePrimary,
     justifyContent: 'center',
     paddingHorizontal: tokens.spaceXl,
+    backgroundColor: tokens.colorCard,
     borderWidth: 1,
-    borderColor: tokens.colorAttentionText,
+    borderColor: tokens.colorAttentionBorder,
     borderRadius: tokens.radiusPill,
   },
+  retryPressed: { backgroundColor: tokens.colorInset },
 });
