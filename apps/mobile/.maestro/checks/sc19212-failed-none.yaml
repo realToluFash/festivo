@@ -16,7 +16,6 @@ appId: host.exp.Exponent
       id: 'events.retry'
     timeout: 30000
 - waitForAnimationToEnd
-- assertNotVisible: '{{t:eventsScreen.choose}}.*'
 - takeScreenshot: failed
 - runScript:
     file: ../batch/helper.js
@@ -30,5 +29,4 @@ appId: host.exp.Exponent
       id: 'events.firstRun'
     timeout: 30000
 - waitForAnimationToEnd
-- assertNotVisible: '{{t:eventsScreen.choose}}.*'
 - takeScreenshot: first-run

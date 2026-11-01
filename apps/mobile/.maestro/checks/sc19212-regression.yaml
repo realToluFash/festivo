@@ -12,7 +12,8 @@ appId: host.exp.Exponent
       id: 'events.new'
     timeout: 30000
 - waitForAnimationToEnd
-- assertVisible: '{{t:eventsScreen.choose}}.*'
+- assertNotVisible:
+    id: 'events.page'
 - assertVisible:
     id: 'events.tab.upcoming'
 - assertVisible:

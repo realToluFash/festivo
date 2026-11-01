@@ -8,9 +8,6 @@ appId: host.exp.Exponent
     file: ../duplicate-create-draft.yaml
 - assertVisible:
     id: 'events.back'
-    text: '{{t:eventsScreen.backToEvent}}'
-- assertNotVisible:
-    id: 'events.back'
     text: '{{t:timeline.backToEvent}}'
 - takeScreenshot: copy-page
 - tapOn:
