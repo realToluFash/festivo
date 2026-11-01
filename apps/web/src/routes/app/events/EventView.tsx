@@ -4,6 +4,7 @@ import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 
+import { BackControl } from '../../../components/BackControl.tsx';
 import { api } from '../../../api.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
@@ -105,15 +106,13 @@ function EventOf({
   return (
     <div className="event-page">
       {page === 'event' ? (
-        <Link className="link-button event-back" to="/app/events">
-          <span aria-hidden="true">‹ </span>
-          {t('events.title')}
-        </Link>
+        <BackControl className="event-back" label={t('events.title')} to="/app/events" />
       ) : (
-        <Link className="link-button event-back" to={`/app/events/${encodeURIComponent(eventId)}`}>
-          <span aria-hidden="true">‹ </span>
-          {t('eventPage.backToEvent')}
-        </Link>
+        <BackControl
+          className="event-back"
+          label={t('eventPage.backToEvent')}
+          to={`/app/events/${encodeURIComponent(eventId)}`}
+        />
       )}
 
       {load.kind === 'loading' && (

@@ -713,11 +713,12 @@ span {
   font: var(--typeTitleDialog);
 }
 
-.auth-back {
+.back-control {
   display: inline-flex;
   align-items: center;
   gap: var(--spaceXs);
   min-height: var(--sizeHit);
+  text-decoration: none;
 }
 
 .auth-header .brand,
@@ -4027,12 +4028,6 @@ button.members-row {
 .events-first-run-create,
 .event-back {
   align-self: flex-start;
-}
-
-.event-back {
-  display: inline-flex;
-  align-items: center;
-  text-decoration: none;
 }
 
 .event-form {

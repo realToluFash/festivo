@@ -1,5 +1,7 @@
 import { useLocation, useNavigate } from 'react-router';
 
+import { BackControl } from './BackControl.tsx';
+
 /** "‹ Sign in": the title of the step the browser's Back returns to, doing what Back does there (sc-23279). */
 export interface AuthBackTo {
   label: string;
@@ -18,16 +20,13 @@ export function useAuthBack(back: AuthBackTo | undefined) {
   const { label, heard, fallback } = back;
 
   return (
-    <button
-      type="button"
-      className="link-button auth-back"
-      aria-label={heard}
+    <BackControl
+      label={label}
+      heard={heard}
+      className="auth-back"
       onClick={() =>
         opened && fallback != null ? void navigate(fallback, { replace: true }) : void navigate(-1)
       }
-    >
-      <span aria-hidden="true">‹</span>
-      {label}
-    </button>
+    />
   );
 }

@@ -23,8 +23,9 @@ import {
 } from '@soirely/domain';
 import { type FormEvent, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation, useNavigate, useParams } from 'react-router';
+import { useLocation, useNavigate, useParams } from 'react-router';
 
+import { BackControl } from '../../../components/BackControl.tsx';
 import { api } from '../../../api.ts';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
@@ -118,10 +119,7 @@ function EditOf({ organisationId, eventId }: { organisationId: string; eventId: 
 
   return (
     <div className="event-form-page">
-      <Link className="link-button event-back" to={eventPath}>
-        <span aria-hidden="true">‹ </span>
-        {t('eventPage.backToEvent')}
-      </Link>
+      <BackControl className="event-back" label={t('eventPage.backToEvent')} to={eventPath} />
 
       {'kind' in load && load.kind === 'loading' && (
         <p className="muted" role="status">

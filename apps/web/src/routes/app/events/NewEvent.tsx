@@ -22,8 +22,9 @@ import {
 } from '@soirely/domain';
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 
+import { BackControl } from '../../../components/BackControl.tsx';
 import { api } from '../../../api.ts';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
@@ -260,10 +261,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
 
   return (
     <div className="event-form-page">
-      <Link className="link-button event-back" to="/app/events">
-        <span aria-hidden="true">‹ </span>
-        {t('events.title')}
-      </Link>
+      <BackControl className="event-back" label={t('events.title')} to="/app/events" />
       <h1>{t('eventForm.title')}</h1>
 
       <form className="event-form" noValidate onSubmit={(event) => void create(event)}>
