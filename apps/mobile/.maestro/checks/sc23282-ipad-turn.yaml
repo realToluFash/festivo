@@ -11,19 +11,19 @@ appId: host.exp.Exponent
 - takeScreenshot: landscape-top
 - repeat:
     while:
-      notVisible: 'Chrome on Windows'
+      notVisible: 'Chrome .+ Windows'
     times: 10
     commands:
       - swipe:
           start: 85%, 80%
           end: 85%, 30%
-- assertVisible: 'Chrome on Windows'
+- assertVisible: 'Chrome .+ Windows'
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: landscape-devices
 - tapOn:
     id: 'devices\.row\..+\.signOut'
-    rightOf: 'Chrome on Windows'
+    rightOf: 'Chrome .+ Windows'
 - waitForAnimationToEnd
 - takeScreenshot: landscape-device-tapped
 - openLink: ${METRO_URL}/--/settings/security
@@ -59,18 +59,18 @@ appId: host.exp.Exponent
     id: 'ways.keep'
 - repeat:
     while:
-      notVisible: 'Chrome on Windows'
+      notVisible: 'Chrome .+ Windows'
     times: 10
     commands:
       - swipe:
           start: 85%, 80%
           end: 85%, 30%
-- assertVisible: 'Chrome on Windows'
+- assertVisible: 'Chrome .+ Windows'
 - waitForAnimationToEnd:
     timeout: 3000
 - tapOn:
     id: 'devices\.row\..+\.signOut'
-    rightOf: 'Chrome on Windows'
+    rightOf: 'Chrome .+ Windows'
 - waitForAnimationToEnd
 - takeScreenshot: portrait-device-tapped
 - repeat:

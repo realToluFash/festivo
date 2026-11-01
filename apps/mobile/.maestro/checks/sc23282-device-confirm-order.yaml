@@ -3,7 +3,7 @@ appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/security
 - scrollUntilVisible:
-    element: 'Safari on iPad'
+    element: 'Safari .+ iPad'
     timeout: 30000
     centerElement: true
 - waitForAnimationToEnd:
@@ -11,7 +11,7 @@ appId: host.exp.Exponent
 - takeScreenshot: rows
 - tapOn:
     id: 'devices\.row\..+\.signOut'
-    rightOf: 'Safari on iPad'
+    rightOf: 'Safari .+ iPad'
 - waitForAnimationToEnd
 - takeScreenshot: after-tap
 - waitForAnimationToEnd
@@ -32,14 +32,14 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - takeScreenshot: kept-focus
 - scrollUntilVisible:
-    element: 'Safari on iPad'
+    element: 'Safari .+ iPad'
     timeout: 30000
     centerElement: true
 - waitForAnimationToEnd:
     timeout: 3000
 - tapOn:
     id: 'devices\.row\..+\.signOut'
-    rightOf: 'Safari on iPad'
+    rightOf: 'Safari .+ iPad'
 - scrollUntilVisible:
     element:
       id: 'devices.end'
