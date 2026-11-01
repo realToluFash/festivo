@@ -299,7 +299,7 @@ function ContactsCard({
               </View>
 
               {here == null && (offers.verify || offers.makePrimary || offers.remove) && (
-                <View style={styles.actions}>
+                <View style={[styles.actions, layout === 'phone' ? styles.full : styles.beside]}>
                   {offers.verify && (
                     <SecondaryButton
                       label={t('contacts.sendCode')}
@@ -646,6 +646,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.spaceSm,
   },
+  beside: { flexShrink: 0, maxWidth: '100%' },
   state: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceXs },
   markOn: {
     borderRadius: tokens.radiusPill,
