@@ -178,9 +178,6 @@ span {
 /* Full width under the header: it cancels the content column's own padding, and takes its own room. */
 .offline-band {
   margin: calc(-1 * var(--shellBlock)) calc(-1 * var(--shellInline)) var(--shellBlock);
-}
-
-.offline-band {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
