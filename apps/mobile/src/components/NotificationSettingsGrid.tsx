@@ -1,7 +1,6 @@
 import { quietHoursIn, settingRows, usageThresholdsIn } from '@soirely/domain';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -17,6 +16,7 @@ import {
 } from '../kit/notificationSettings.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
+import { BellMark } from './BellMark.tsx';
 import { FieldError } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { OnOffSwitch } from './OnOffSwitch.tsx';
@@ -192,24 +192,11 @@ export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
   );
 }
 
-/** The bell with a slash beside the push-blocked words, as the web's `.bell-mark` draws it; decoration only. */
+/** The bell with a slash beside the push-blocked words, decoration only. */
 function BellBlocked() {
   return (
     <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <Svg
-        width={tokens.sizeMark}
-        height={tokens.sizeMark}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke={tokens.marks.info.ink}
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <Path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" />
-        <Path d="M10 20.5a2 2 0 0 0 4 0" />
-        <Path d="M4 4l16 16" />
-      </Svg>
+      <BellMark ink={tokens.marks.info.ink} slashed />
     </View>
   );
 }

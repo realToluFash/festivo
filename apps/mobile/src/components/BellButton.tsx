@@ -1,11 +1,11 @@
 import { badgeOf } from '@soirely/domain';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
 import { useUnread } from '../notificationsUnread.ts';
 import { tokens } from '../theme/tokens.ts';
+import { BellMark } from './BellMark.tsx';
 import { Text } from './Text.tsx';
 
 /** The bell in the frame (sc-3980): its name gives the exact count, the badge stops at 99+. */
@@ -24,17 +24,7 @@ export function BellButton() {
       }
       testID="frame.bell"
     >
-      <Svg
-        width={tokens.sizeMark}
-        height={tokens.sizeMark}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke={tokens.colorInk}
-        strokeWidth={1.75}
-      >
-        <Path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" />
-        <Path d="M10 20.5a2 2 0 0 0 4 0" />
-      </Svg>
+      <BellMark ink={tokens.colorInk} />
       {badge != null && (
         <View style={styles.badge} importantForAccessibility="no-hide-descendants">
           <Text size={tokens.typeSmall.size} weight="semibold" style={styles.badgeInk}>

@@ -5350,8 +5350,8 @@ button.members-row {
 }
 
 .notification-settings-grid {
-  width: calc(100% - 2 * var(--spaceLg));
-  margin-inline: var(--spaceLg);
+  width: calc(100% - 2 * var(--spaceSm));
+  margin-inline: var(--spaceSm);
   border-collapse: collapse;
 }
 
