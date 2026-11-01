@@ -5770,7 +5770,7 @@ button.members-row {
 
 .skeleton-shown .skeleton-blocks {
   visibility: visible;
-  animation: skeleton-pulse 1400ms ease-in-out 3;
+  animation: skeleton-pulse var(--motionPulse) ease-in-out var(--motionPulseTimes);
 }
 
 .skeleton-words {
@@ -5931,7 +5931,7 @@ button.members-row {
 /* Opacity only, ending where it started, so holding still afterwards changes nothing on screen. */
 @keyframes skeleton-pulse {
   50% {
-    opacity: 0.55;
+    opacity: var(--opacityPulse);
   }
 }
 

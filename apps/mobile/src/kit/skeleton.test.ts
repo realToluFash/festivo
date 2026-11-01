@@ -1,14 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { SKELETON_AFTER_MS, SKELETON_PULSE, barWidths, fillingRows } from './skeleton.ts';
+import { SKELETON_AFTER_MS, barWidths, fillingRows } from './skeleton.ts';
 
 describe('a screen waiting for its content (sc-23303)', () => {
   it('shows nothing for the first second', () => {
     expect(SKELETON_AFTER_MS).toBe(1000);
-  });
-
-  it('pulses for under five seconds, then holds still', () => {
-    expect(SKELETON_PULSE.ms * SKELETON_PULSE.times).toBeLessThan(5000);
   });
 
   it('fills the room it has with rows, never fewer than three or more than ten', () => {

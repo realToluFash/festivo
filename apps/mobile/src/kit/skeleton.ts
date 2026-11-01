@@ -1,9 +1,6 @@
 /** Under a second a person's flow is not broken, and a loading state that flashes up and away is noise. */
 export const SKELETON_AFTER_MS = 1000;
 
-/** Opacity only, ending where it started, three times: 4.2 s, inside WCAG 2.2.2's five seconds. */
-export const SKELETON_PULSE = { dimmed: 0.55, ms: 1400, times: 3 } as const;
-
 export type SkeletonRowHeight = 56 | 64 | 76;
 
 type Width = `${number}%`;

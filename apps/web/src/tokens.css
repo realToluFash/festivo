@@ -169,6 +169,9 @@
   --motionMax: 500ms;
   --motionRise: 8px;
   --opacityPressed: 0.85;
+  --motionPulse: 1400ms;
+  --motionPulseTimes: 3;
+  --opacityPulse: 0.55;
   --toastLifetime: 10000ms;
   --markDoneFill: #1E9A64;
   --markDoneRing: #1E9A64;

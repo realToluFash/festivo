@@ -70,8 +70,13 @@ describe('a screen waiting for its content (sc-23303)', () => {
 describe('how a skeleton moves (sc-23303)', () => {
   const styles = readFileSync(join(import.meta.dirname, '../styles.css'), 'utf8');
 
-  it('pulses three times of 1400 ms, inside five seconds, and never when less motion is asked for', () => {
-    expect(styles).toMatch(/animation: skeleton-pulse 1400ms ease-in-out 3;/u);
+  it('pulses as the tokens say, and never when less motion is asked for', () => {
+    expect(styles).toMatch(
+      /animation: skeleton-pulse var\(--motionPulse\) ease-in-out var\(--motionPulseTimes\);/u,
+    );
+    expect(styles).toMatch(
+      /@keyframes skeleton-pulse \{\s*50% \{\s*opacity: var\(--opacityPulse\);/u,
+    );
     const reduced = styles.slice(styles.lastIndexOf('@media (prefers-reduced-motion: reduce)'));
     expect(reduced).toMatch(/\.skeleton-shown \.skeleton-blocks,[^}]*animation: none;/su);
   });

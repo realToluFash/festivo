@@ -3,7 +3,6 @@ import { Animated, StyleSheet, View, type ViewStyle, useWindowDimensions } from 
 
 import {
   SKELETON_AFTER_MS,
-  SKELETON_PULSE,
   type SkeletonRowHeight,
   barWidths,
   fillingRows,
@@ -156,17 +155,17 @@ function usePulse(running: boolean): Animated.Value {
       opacity.setValue(1);
       return;
     }
-    const half = SKELETON_PULSE.ms / 2;
+    const half = tokens.motionPulse / 2;
     const run = Animated.loop(
       Animated.sequence([
         Animated.timing(opacity, {
-          toValue: SKELETON_PULSE.dimmed,
+          toValue: tokens.opacityPulse,
           duration: half,
           useNativeDriver: true,
         }),
         Animated.timing(opacity, { toValue: 1, duration: half, useNativeDriver: true }),
       ]),
-      { iterations: SKELETON_PULSE.times },
+      { iterations: tokens.motionPulseTimes },
     );
     run.start();
 
