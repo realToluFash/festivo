@@ -6,6 +6,7 @@ import { type Ref, type RefObject, useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
   Pressable,
+  ScrollView,
   StyleSheet,
   type TextInputInstance,
   View,
@@ -25,13 +26,8 @@ import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field, focusChecked, keysStayDown, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { useReadOut } from './ReadOut.tsx';
-import {
-  type StepClosed,
-  stepClosed,
-  useAboveKeyboard,
-  useFocusBackToOpener,
-  useScrolledToTop,
-} from './Screen.tsx';
+import { type StepClosed, stepClosed, useAboveKeyboard, useFocusBackToOpener } from './Screen.tsx';
+import { Sheet, SheetActions } from './Sheet.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { useMarkSide } from './markSide.ts';
 import { Arrived, Skeleton } from './Skeleton.tsx';
@@ -201,14 +197,22 @@ export function TwoFactorCard({
         />
       )}
 
-      {stage.kind === 'savingCodes' && (
-        <SavingCodes
-          codes={stage.codes}
-          phone={phone}
-          answer={stage}
-          onFinish={() => reload(stage.renewed ? 'newCodes' : 'title')}
-        />
-      )}
+      {stage.kind === 'savingCodes' && <Title text={t('twoFactorCard.title')} />}
+      <Sheet
+        open={stage.kind === 'savingCodes'}
+        onClose={() => undefined}
+        opener={title}
+        testID="twoFactor.codesSheet"
+      >
+        {stage.kind === 'savingCodes' && (
+          <SavingCodes
+            codes={stage.codes}
+            phone={phone}
+            answer={stage}
+            onFinish={() => reload(stage.renewed ? 'newCodes' : 'title')}
+          />
+        )}
+      </Sheet>
 
       {stage.kind === 'turningOff' && (
         <TurningOff
@@ -484,83 +488,86 @@ function SavingCodes({
   const [copied, setCopied] = useState(false);
   const copiedAll = t('twoFactorCard.copiedAll', { count: codes.length });
   useReadOut(copied ? copiedAll : null);
-  const top = useScrolledToTop();
 
   useEffect(() => Keyboard.dismiss(), []);
 
   return (
     <>
-      <View ref={top} collapsable={false}>
+      <ScrollView style={styles.sheetBody} contentContainerStyle={styles.sheetContent}>
         <Title text={t('twoFactorCard.saveTitle')} answer={answer} />
-      </View>
-      <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
-        {phone
-          ? `${t('twoFactorCard.saveIntro')} ${t('twoFactorCard.phoneKeepElsewhere')}`
-          : t('twoFactorCard.saveIntro')}
-      </Text>
-
-      <View style={styles.codes}>
-        {codes.map((code) => (
-          <Text
-            key={code}
-            size={tokens.typeBodyPhone.size}
-            family="mono"
-            selectable
-            style={styles.code}
-          >
-            {code}
-          </Text>
-        ))}
-      </View>
-
-      <SecondaryButton
-        label={copied ? `✓ ${t('twoFactorCard.copied')}` : t('twoFactorCard.copyAll')}
-        onPress={() => {
-          void setStringAsync(codes.join('\n')).then(() => setCopied(true));
-        }}
-        testID="twoFactor.copyAll"
-      />
-      {copied && (
-        <Text size={tokens.typeSmall.size} weight="semibold" style={styles.on}>
-          {copiedAll}
+        <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
+          {phone
+            ? `${t('twoFactorCard.saveIntro')} ${t('twoFactorCard.phoneKeepElsewhere')}`
+            : t('twoFactorCard.saveIntro')}
         </Text>
-      )}
 
-      <Pressable
-        style={styles.checkbox}
-        onPress={() => setSaved((now) => !now)}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: saved }}
-        testID="twoFactor.saved"
-      >
-        <View
-          style={[styles.box, markSide, saved && styles.boxOn]}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        >
-          {saved && (
+        <View style={styles.codes}>
+          {codes.map((code) => (
             <Text
-              size={tokens.typePill.size}
-              weight="bold"
-              style={styles.markOnInk}
-              accessible={false}
+              key={code}
+              size={tokens.typeBodyPhone.size}
+              family="mono"
+              selectable
+              style={styles.code}
             >
-              ✓
+              {code}
             </Text>
-          )}
+          ))}
         </View>
-        <Text size={tokens.typeBodyPhone.size}>{t('twoFactorCard.savedThem')}</Text>
-      </Pressable>
 
-      <Text size={tokens.typeSmall.size} style={styles.secondary}>
-        {saved ? t('twoFactorCard.finishReady') : t('twoFactorCard.finishLocked')}
-      </Text>
-      <PrimaryButton
-        label={t('twoFactorCard.finish')}
-        onPress={onFinish}
-        off={!saved}
-        testID="twoFactor.finish"
-      />
+        <SecondaryButton
+          label={copied ? `✓ ${t('twoFactorCard.copied')}` : t('twoFactorCard.copyAll')}
+          onPress={() => {
+            void setStringAsync(codes.join('\n')).then(() => setCopied(true));
+          }}
+          testID="twoFactor.copyAll"
+        />
+        {copied && (
+          <Text size={tokens.typeSmall.size} weight="semibold" style={styles.on}>
+            {copiedAll}
+          </Text>
+        )}
+
+        <Pressable
+          style={styles.checkbox}
+          onPress={() => setSaved((now) => !now)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: saved }}
+          testID="twoFactor.saved"
+        >
+          <View
+            style={[styles.box, markSide, saved && styles.boxOn]}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            {saved && (
+              <Text
+                size={tokens.typePill.size}
+                weight="bold"
+                style={styles.markOnInk}
+                accessible={false}
+              >
+                ✓
+              </Text>
+            )}
+          </View>
+          <Text size={tokens.typeBodyPhone.size}>{t('twoFactorCard.savedThem')}</Text>
+        </Pressable>
+
+        <Text size={tokens.typeSmall.size} style={styles.secondary}>
+          {saved ? t('twoFactorCard.finishReady') : t('twoFactorCard.finishLocked')}
+        </Text>
+      </ScrollView>
+      <View style={styles.sheetFooter}>
+        <SheetActions>
+          <PrimaryButton
+            label={t('twoFactorCard.finish')}
+            onPress={onFinish}
+            off={!saved}
+            testID="twoFactor.finish"
+          />
+        </SheetActions>
+      </View>
     </>
   );
 }
@@ -806,4 +813,16 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorControlBorder,
   },
   boxOn: { borderColor: tokens.colorAccent, backgroundColor: tokens.colorAccent },
+  sheetBody: { flexShrink: 1 },
+  sheetContent: {
+    gap: tokens.spaceLg,
+    paddingHorizontal: tokens.space3xl,
+    paddingTop: tokens.space3xl,
+    paddingBottom: tokens.spaceLg,
+  },
+  sheetFooter: {
+    paddingHorizontal: tokens.space3xl,
+    paddingTop: tokens.spaceSm,
+    paddingBottom: tokens.space3xl,
+  },
 });

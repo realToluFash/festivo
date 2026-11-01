@@ -578,6 +578,17 @@ describe('a way back in Two-factor authentication is off while its request runs 
   });
 });
 
+describe('the ten recovery codes show in the sheet, a dialog on an iPad (sc-23282)', () => {
+  it('with the codes and Finish inside it', () => {
+    const text = readFileSync(join('src', 'components', 'TwoFactorCard.tsx'), 'utf8');
+    const sheet = /<Sheet\b[\s\S]*?<\/Sheet>/u.exec(text)?.[0] ?? '';
+
+    expect(sheet).toContain('testID="twoFactor.codesSheet"');
+    expect(sheet).toContain('<SavingCodes');
+    expect(text.match(/<SavingCodes\b/gu)).toHaveLength(1);
+  });
+});
+
 const FOCUS_THROUGH =
   'A refusal focuses through focusChecked or focusRefused: focus() skips a field Android left focused with the keys hidden.';
 
