@@ -1,4 +1,4 @@
-# sc-22103: opened from Calendar's agenda, All dates, two areas, Back to Overview, Back to Calendar.
+# sc-22103: opened from Calendar's agenda, All dates, two areas, Back to Overview, Back to Calendar. Needs ${METRO_URL}, ${LIVE}.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/

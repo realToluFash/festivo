@@ -1,4 +1,4 @@
-# sc-22103: Duplicate an event from its page, then Delete event on the copy: Events with the notice, never the original's page.
+# sc-22103: Duplicate an event from its page, then Delete event on the copy: Events with the notice, never the original's page. Needs ${METRO_URL}, ${ORIG}, ${ORIG_NAME}.
 appId: host.exp.Exponent
 ---
 - runFlow: ../checks/sc22103/to-drafts.yaml
@@ -48,10 +48,8 @@ appId: host.exp.Exponent
     timeout: 20000
 - waitForAnimationToEnd
 - takeScreenshot: landed
-- scrollUntilVisible:
-    element:
-      text: '.*${ORIG_NAME} was deleted\.'
-    direction: UP
+- extendedWaitUntil:
+    visible: '{{t:eventDelete.deleted}}'
     timeout: 20000
 - takeScreenshot: deleted
 - swipe:

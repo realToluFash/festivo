@@ -1,4 +1,4 @@
-# sc-22103: Edit details from the Venue row, what navigation shows over it, then Back to the page and Back to Events.
+# sc-22103: Edit details from the Venue row, what navigation shows over it, then Back (Cancel on a tablet) to the page and Back to Events. Needs ${METRO_URL}, ${LIVE}.
 appId: host.exp.Exponent
 ---
 - runFlow: ../checks/sc22103/to-upcoming.yaml
@@ -23,8 +23,24 @@ appId: host.exp.Exponent
     id: 'events.details.venue'
 - waitForAnimationToEnd
 - takeScreenshot: edit
-- tapOn:
-    id: 'frame.back'
+- runFlow:
+    when:
+      visible:
+        id: 'frame.back'
+    commands:
+      - tapOn:
+          id: 'frame.back'
+- runFlow:
+    when:
+      notVisible:
+        id: 'frame.back'
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: 'eventForm.cancel'
+          direction: UP
+      - tapOn:
+          id: 'eventForm.cancel'
 - waitForAnimationToEnd
 - extendedWaitUntil:
     visible:

@@ -1,4 +1,4 @@
-# sc-22103: Delete event on a draft opened from Events (Drafts) lands on Events with the notice once, on Drafts.
+# sc-22103: Delete event on a draft opened from Events (Drafts) lands on Events with the notice once, on Drafts. Needs ${METRO_URL}, ${GONE_EVENTS}, ${GONE_NAME}.
 appId: host.exp.Exponent
 ---
 - runFlow: ../checks/sc22103/to-drafts.yaml
@@ -41,10 +41,8 @@ appId: host.exp.Exponent
     timeout: 20000
 - waitForAnimationToEnd
 - takeScreenshot: landed
-- scrollUntilVisible:
-    element:
-      text: '.*${GONE_NAME} was deleted\.'
-    direction: UP
+- extendedWaitUntil:
+    visible: '{{t:eventDelete.deleted}}'
     timeout: 20000
 - takeScreenshot: deleted
 - swipe:
@@ -58,9 +56,9 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'frame.calendar'
 - waitForAnimationToEnd
-- assertNotVisible: '.*was deleted\.'
+- assertNotVisible: '{{t:eventDelete.deleted}}'
 - tapOn:
     id: 'frame.events'
 - waitForAnimationToEnd
-- assertNotVisible: '.*was deleted\.'
+- assertNotVisible: '{{t:eventDelete.deleted}}'
 - takeScreenshot: later

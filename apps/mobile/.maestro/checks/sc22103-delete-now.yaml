@@ -1,4 +1,4 @@
-# sc-22103: Delete event on a happening event opened from Happening now while Upcoming shows: Events, the notice, the tab kept.
+# sc-22103: Delete event on a happening event opened from Happening now while Upcoming shows: Events, the notice, the tab kept (${LIVE} on Upcoming). Needs ${METRO_URL}, ${GONE_NOW}, ${NOW_NAME}, ${LIVE}.
 appId: host.exp.Exponent
 ---
 - runFlow: ../checks/sc22103/to-upcoming.yaml
@@ -42,10 +42,8 @@ appId: host.exp.Exponent
     timeout: 20000
 - waitForAnimationToEnd
 - takeScreenshot: landed
-- scrollUntilVisible:
-    element:
-      text: '.*${NOW_NAME} was deleted\.'
-    direction: UP
+- extendedWaitUntil:
+    visible: '{{t:eventDelete.deleted}}'
     timeout: 20000
 - takeScreenshot: deleted
 - swipe:
@@ -56,3 +54,9 @@ appId: host.exp.Exponent
 - assertNotVisible:
     id: 'events.page'
 - takeScreenshot: after-swipe
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${LIVE}'
+    centerElement: true
+    timeout: 20000
+- takeScreenshot: upcoming-kept

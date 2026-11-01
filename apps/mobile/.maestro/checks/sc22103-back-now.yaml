@@ -1,4 +1,4 @@
-# sc-22103: opened from Happening now while Drafts shows, All dates, two areas, Back to Overview, Back to Events still on Drafts.
+# sc-22103: opened from Happening now while Drafts shows, All dates, two areas, Back to Overview, Back to Events still on Drafts. Needs ${METRO_URL}, ${DRAFT}, ${NOW}.
 appId: host.exp.Exponent
 ---
 - runFlow: ../checks/sc22103/to-drafts.yaml

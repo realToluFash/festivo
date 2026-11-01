@@ -1,4 +1,4 @@
-# sc-22103: opened from Events (Upcoming), All dates, two areas, Back to Overview, Back to Events on Upcoming: no second copy of the page.
+# sc-22103: opened from Events (Upcoming), All dates, two areas, Back to Overview, Back to Events on Upcoming: no second copy of the page. Needs ${METRO_URL}, ${LIVE}.
 appId: host.exp.Exponent
 ---
 - runFlow: ../checks/sc22103/to-upcoming.yaml
