@@ -23,11 +23,11 @@ import {
 } from '../../src/components/Screen.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { Text, type TextHandle } from '../../src/components/Text.tsx';
-import { cardFrame } from '../../src/components/cardFrame.ts';
 import { DESTINATION_HREF } from '../../src/kit/appNav.ts';
 import { useSignedIn } from '../../src/signedIn.ts';
 import { settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { tokens } from '../../src/theme/tokens.ts';
+import { Arrived, Skeleton } from '../../src/components/Skeleton.tsx';
 
 type Load =
   | { kind: 'loading' }
@@ -151,11 +151,7 @@ export default function RolesScreen() {
 
   const waiting =
     load.kind === 'loading' ? (
-      <View style={cardFrame(kind)}>
-        <Text size={tokens.typeBodyPhone.size} muted>
-          {t('rolesScreen.loading')}
-        </Text>
-      </View>
+      <Skeleton words={t('rolesScreen.loading')} shape="rows" rowHeight={64} />
     ) : load.kind === 'failed' ? (
       <View style={styles.stack} accessibilityRole="alert">
         <Notice
@@ -297,7 +293,7 @@ export default function RolesScreen() {
             <FocusBack closed={listClosed} fallback={rolesTitle}>
               {(opener) => (
                 <>
-                  {waiting ?? list(opener)}
+                  {waiting ?? <Arrived>{list(opener)}</Arrived>}
                   {!landscape && waiting == null && newRole(opener('new'))}
                 </>
               )}

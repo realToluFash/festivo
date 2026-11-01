@@ -27,7 +27,6 @@ import {
   pageless,
   selectionIn,
 } from '../kit/eventsOpen.ts';
-import { useLayout } from '../layout/useLayout.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AppFrame } from './AppFrame.tsx';
@@ -39,8 +38,8 @@ import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { FocusBack, type StepClosed, stepClosed, useScrolledToTop } from './Screen.tsx';
 import { Text } from './Text.tsx';
-import { cardFrame } from './cardFrame.ts';
 import { useSystemBack } from './useSystemBack.ts';
+import { Arrived, Skeleton } from './Skeleton.tsx';
 
 type Load =
   { kind: 'loading' } | { kind: 'failed' } | ({ kind: 'loaded'; refreshing: boolean } & HomeLoad);
@@ -267,7 +266,7 @@ export function EventsScreen({
   const shown = found == null ? null : latest(found);
   const page =
     open == null ? null : shown != null ? (
-      <View style={styles.stack}>
+      <Arrived style={styles.stack}>
         {savedEvent === open && <Saved />}
         <EventPage
           kind={kind}
@@ -295,24 +294,29 @@ export function EventsScreen({
             )}
           </View>
         )}
-      </View>
+      </Arrived>
     ) : opened.kind === 'notFound' ? (
       <EventNotFound onBack={toList} />
     ) : opened.kind === 'failed' ? (
       <EventsFailed onRetry={opened.retry} testID="events.page.retry" />
     ) : (
-      <Waiting words={t('eventsScreen.loadingEvent')} />
+      <Skeleton
+        words={t('eventsScreen.loadingEvent')}
+        shape="cards"
+        titled
+        cards={[{ cover: true, lines: 2 }, { lines: 3 }, { lines: 2 }]}
+      />
     );
   const inFront = page != null;
   const newEvent = () => router.push('/events/new');
 
   const list = (opener: (key: string) => RefCallback<ViewInstance>) =>
     !reads ? null : load.kind === 'loading' ? (
-      <Waiting words={t('eventsScreen.loading')} />
+      <Skeleton words={t('eventsScreen.loading')} shape="rows" rowHeight={76} picture />
     ) : load.kind === 'failed' ? (
       <EventsFailed onRetry={reload} testID="events.retry" />
     ) : (
-      <View style={styles.stack}>
+      <Arrived style={styles.stack}>
         {deleted != null && (
           <ReadOut words={t('eventDelete.deleted', { event: deleted })}>
             <Notice
@@ -360,7 +364,7 @@ export function EventsScreen({
             />
           </>
         )}
-      </View>
+      </Arrived>
     );
 
   return (
@@ -413,18 +417,6 @@ function Saved() {
       <ReadOut words={t('eventEdit.saved')}>
         <Notice tone="done" mark={tokens.marks.done.glyph} body={t('eventEdit.saved')} />
       </ReadOut>
-    </View>
-  );
-}
-
-function Waiting({ words }: { words: string }) {
-  const { kind } = useLayout();
-
-  return (
-    <View style={cardFrame(kind)}>
-      <Text size={tokens.typeBodyPhone.size} muted accessibilityRole="text">
-        {words}
-      </Text>
     </View>
   );
 }

@@ -10,14 +10,7 @@ import {
 } from '@soirely/domain';
 import { type EventStatus, type OrganisationEvent } from '@soirely/api-client';
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  PixelRatio,
-  Platform,
-  StyleSheet,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { PixelRatio, Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -30,6 +23,7 @@ import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { distanceWords } from '../kit/distanceWords.ts';
+import { Arrived, Skeleton } from './Skeleton.tsx';
 
 type Load =
   | { kind: 'loading' }
@@ -155,17 +149,20 @@ export function ComingUp({
             </Text>
           </View>
         )}
-        {load.kind === 'loaded' &&
-          shown.map((marked, index) => (
-            <MilestoneRow
-              key={index}
-              marked={marked}
-              timeZone={load.timeline.timeZone}
-              now={now}
-              distance
-              first={index === 0}
-            />
-          ))}
+        {load.kind === 'loaded' && shown.length > 0 && (
+          <Arrived>
+            {shown.map((marked, index) => (
+              <MilestoneRow
+                key={index}
+                marked={marked}
+                timeZone={load.timeline.timeZone}
+                now={now}
+                distance
+                first={index === 0}
+              />
+            ))}
+          </Arrived>
+        )}
       </View>
     </View>
   );
@@ -191,7 +188,7 @@ export function AllDates({
         <DatesFailed announced={retried} onRetry={retry} testID="timeline.allDates.retry" />
       )}
       {load.kind === 'loaded' && (
-        <>
+        <Arrived style={styles.allDates}>
           <Text size={tokens.typeBodyPhone.size} muted>
             {t('timeline.intro', { timeZone: load.timeline.timeZone })}
           </Text>
@@ -217,7 +214,7 @@ export function AllDates({
               </View>
             ))}
           </View>
-        </>
+        </Arrived>
       )}
     </View>
   );
@@ -227,11 +224,8 @@ function DatesLoading({ testID }: { testID: string }) {
   const { t } = useTranslation();
 
   return (
-    <View style={styles.inset} testID={testID}>
-      <ActivityIndicator color={tokens.colorAccent} {...HIDDEN} />
-      <Text size={tokens.typeBodyPhone.size} muted style={styles.insetWords}>
-        {t('timeline.loading')}
-      </Text>
+    <View testID={testID}>
+      <Skeleton words={t('timeline.loading')} shape="rows" rowHeight={56} rows={3} inCard />
     </View>
   );
 }
@@ -357,6 +351,7 @@ function Pill({ tone, shape, word }: { tone: PillTone; shape: string | null; wor
 }
 
 const styles = StyleSheet.create({
+  allDates: { gap: tokens.spaceLg },
   head: {
     flexDirection: 'row',
     flexWrap: 'wrap',

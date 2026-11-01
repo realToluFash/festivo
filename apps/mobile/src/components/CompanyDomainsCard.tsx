@@ -15,6 +15,7 @@ import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { type StepClosed, stepClosed, useFocusBackToOpener } from './Screen.tsx';
+import { Arrived, Skeleton } from './Skeleton.tsx';
 
 /** `takesFocus` where the tap's button went with it: a removal, or the domain that fills the list (sc-11173). */
 type Flash = { kind: 'added' | 'removed'; domain: string; takesFocus: boolean } | null;
@@ -31,6 +32,7 @@ export function CompanyDomainsCard({
 }) {
   const { t } = useTranslation();
   const [list, setList] = useState<CompanyDomains | null>(null);
+  const [unread, setUnread] = useState(false);
   const [typed, setTyped] = useState('');
   const [error, setError] = useState<Refusal | undefined>(undefined);
   const [busy, setBusy] = useState(false);
@@ -46,7 +48,7 @@ export function CompanyDomainsCard({
 
     api.companyDomains(organisation.id).then(
       (found) => current && setList(found),
-      () => undefined,
+      () => current && setUnread(true),
     );
 
     return () => {
@@ -54,7 +56,21 @@ export function CompanyDomainsCard({
     };
   }, [organisation.id]);
 
-  if (list == null) return null;
+  if (list == null) {
+    return unread ? null : (
+      <View style={cardFrame(kind)}>
+        <Text size={tokens.typeRowTitle.size} weight="bold" accessibilityRole="header">
+          {t('companyDomains.title')}
+        </Text>
+        <Skeleton
+          words={t('pending.loading')}
+          shape="cards"
+          cards={[{ lines: 2, fields: 1 }]}
+          inCard
+        />
+      </View>
+    );
+  }
 
   const on = list.domains.some((one) => !one.stopped);
   const full = list.domains.length >= list.most;
@@ -126,154 +142,161 @@ export function CompanyDomainsCard({
   }
 
   return (
-    <View style={cardFrame(kind)}>
-      <View style={styles.heading}>
-        <Text
-          size={tokens.typeRowTitle.size}
-          weight="bold"
-          accessibilityRole="header"
-          style={styles.title}
-        >
-          {t('companyDomains.title')}
+    <Arrived>
+      <View style={cardFrame(kind)}>
+        <View style={styles.heading}>
+          <Text
+            size={tokens.typeRowTitle.size}
+            weight="bold"
+            accessibilityRole="header"
+            style={styles.title}
+          >
+            {t('companyDomains.title')}
+          </Text>
+          <StateWord on={on} label={on ? t('companyDomains.on') : t('companyDomains.off')} />
+        </View>
+        <Text size={tokens.typeBodyPhone.size} muted>
+          {t('companyDomains.intro', { organisation: organisation.name })}
         </Text>
-        <StateWord on={on} label={on ? t('companyDomains.on') : t('companyDomains.off')} />
-      </View>
-      <Text size={tokens.typeBodyPhone.size} muted>
-        {t('companyDomains.intro', { organisation: organisation.name })}
-      </Text>
 
-      {flash?.takesFocus === true && (
-        <Notice
-          tone="done"
-          mark={tokens.marks.done.glyph}
-          title={flashTitle}
-          body={flashBody}
-          answer={flash}
-          takesFocus
-        />
-      )}
-      {flash?.takesFocus === false && (
-        <ReadOut words={`${flashTitle}\n${flashBody}`}>
-          <Notice tone="done" mark={tokens.marks.done.glyph} title={flashTitle} body={flashBody} />
-        </ReadOut>
-      )}
+        {flash?.takesFocus === true && (
+          <Notice
+            tone="done"
+            mark={tokens.marks.done.glyph}
+            title={flashTitle}
+            body={flashBody}
+            answer={flash}
+            takesFocus
+          />
+        )}
+        {flash?.takesFocus === false && (
+          <ReadOut words={`${flashTitle}\n${flashBody}`}>
+            <Notice
+              tone="done"
+              mark={tokens.marks.done.glyph}
+              title={flashTitle}
+              body={flashBody}
+            />
+          </ReadOut>
+        )}
 
-      {notRemoved != null && (
-        <Notice
-          tone="broken"
-          mark={tokens.marks.broken.glyph}
-          body={t('companyDomains.failed')}
-          answer={notRemoved}
-          takesFocus
-        />
-      )}
+        {notRemoved != null && (
+          <Notice
+            tone="broken"
+            mark={tokens.marks.broken.glyph}
+            body={t('companyDomains.failed')}
+            answer={notRemoved}
+            takesFocus
+          />
+        )}
 
-      {list.domains.map(({ domain, stopped }) => (
-        <View key={domain} style={styles.row}>
-          <View style={styles.rowHead}>
-            <View style={styles.naming}>
-              <Text size={tokens.typeRowTitle.size} weight="semibold">
-                {domain}
-              </Text>
-              <StateWord
-                on={!stopped}
-                label={stopped ? t('companyDomains.stopped') : t('companyDomains.working')}
-              />
-            </View>
-            {confirming !== domain && (
-              <SecondaryButton
-                ref={opener(domain)}
-                label={t('companyDomains.remove')}
-                accessibilityLabel={t('companyDomains.removeLabel', { domain })}
-                off={busy}
-                onPress={() => {
-                  setClosed(undefined);
-                  setConfirming(domain);
-                }}
-                testID={`companyDomains.remove.${domain}`}
-              />
-            )}
-          </View>
-          {stopped && (
-            <Text size={tokens.typeSmall.size} muted>
-              {t('companyDomains.stoppedBody', { domain })}
-            </Text>
-          )}
-          {confirming === domain && (
-            <View style={styles.confirm}>
-              <AnswerHeading answer={confirming} size={tokens.typeRowTitle.size} weight="bold">
-                {t('companyDomains.removeTitle', { domain })}
-              </AnswerHeading>
-              <Text size={tokens.typeBodyPhone.size}>
-                {t('companyDomains.removeBody', { domain })}
-              </Text>
-              <View style={styles.buttons}>
-                <QuietButton
-                  label={t('companyDomains.keep')}
-                  off={busy}
-                  onPress={() => {
-                    setConfirming(null);
-                    setClosed(stepClosed(domain));
-                  }}
-                  testID={`companyDomains.keep.${domain}`}
-                />
-                <DestructiveButton
-                  label={t('companyDomains.removeConfirm', { domain })}
-                  busy={busy}
-                  onPress={() => void remove(domain)}
-                  testID={`companyDomains.confirm.${domain}`}
+        {list.domains.map(({ domain, stopped }) => (
+          <View key={domain} style={styles.row}>
+            <View style={styles.rowHead}>
+              <View style={styles.naming}>
+                <Text size={tokens.typeRowTitle.size} weight="semibold">
+                  {domain}
+                </Text>
+                <StateWord
+                  on={!stopped}
+                  label={stopped ? t('companyDomains.stopped') : t('companyDomains.working')}
                 />
               </View>
+              {confirming !== domain && (
+                <SecondaryButton
+                  ref={opener(domain)}
+                  label={t('companyDomains.remove')}
+                  accessibilityLabel={t('companyDomains.removeLabel', { domain })}
+                  off={busy}
+                  onPress={() => {
+                    setClosed(undefined);
+                    setConfirming(domain);
+                  }}
+                  testID={`companyDomains.remove.${domain}`}
+                />
+              )}
             </View>
-          )}
-        </View>
-      ))}
+            {stopped && (
+              <Text size={tokens.typeSmall.size} muted>
+                {t('companyDomains.stoppedBody', { domain })}
+              </Text>
+            )}
+            {confirming === domain && (
+              <View style={styles.confirm}>
+                <AnswerHeading answer={confirming} size={tokens.typeRowTitle.size} weight="bold">
+                  {t('companyDomains.removeTitle', { domain })}
+                </AnswerHeading>
+                <Text size={tokens.typeBodyPhone.size}>
+                  {t('companyDomains.removeBody', { domain })}
+                </Text>
+                <View style={styles.buttons}>
+                  <QuietButton
+                    label={t('companyDomains.keep')}
+                    off={busy}
+                    onPress={() => {
+                      setConfirming(null);
+                      setClosed(stepClosed(domain));
+                    }}
+                    testID={`companyDomains.keep.${domain}`}
+                  />
+                  <DestructiveButton
+                    label={t('companyDomains.removeConfirm', { domain })}
+                    busy={busy}
+                    onPress={() => void remove(domain)}
+                    testID={`companyDomains.confirm.${domain}`}
+                  />
+                </View>
+              </View>
+            )}
+          </View>
+        ))}
 
-      {full ? (
-        <Text size={tokens.typeSmall.size} muted>
-          {t('companyDomains.full', { count: list.most })}
-        </Text>
-      ) : (
-        <>
-          <Field
-            label={t('companyDomains.addLabel')}
-            error={error?.message}
-            help={
-              list.ownAddress == null
-                ? t('companyDomains.helpNoAddress', { count: list.most })
-                : t('companyDomains.help', { email: list.ownAddress, count: list.most })
-            }
-          >
-            <TextField
-              ref={input}
-              wrong={error != null}
-              submitting={busy}
-              value={typed}
-              placeholder={example}
-              onChangeText={(text) => {
-                setTyped(text);
-                setError(undefined);
-              }}
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="off"
-              keyboardType="url"
-              returnKeyType="done"
-              submitBehavior="submit"
-              onSubmitEditing={() => void add()}
-              accessibilityLabel={t('companyDomains.addLabel')}
-              testID="companyDomains.domain"
+        {full ? (
+          <Text size={tokens.typeSmall.size} muted>
+            {t('companyDomains.full', { count: list.most })}
+          </Text>
+        ) : (
+          <>
+            <Field
+              label={t('companyDomains.addLabel')}
+              error={error?.message}
+              help={
+                list.ownAddress == null
+                  ? t('companyDomains.helpNoAddress', { count: list.most })
+                  : t('companyDomains.help', { email: list.ownAddress, count: list.most })
+              }
+            >
+              <TextField
+                ref={input}
+                wrong={error != null}
+                submitting={busy}
+                value={typed}
+                placeholder={example}
+                onChangeText={(text) => {
+                  setTyped(text);
+                  setError(undefined);
+                }}
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="off"
+                keyboardType="url"
+                returnKeyType="done"
+                submitBehavior="submit"
+                onSubmitEditing={() => void add()}
+                accessibilityLabel={t('companyDomains.addLabel')}
+                testID="companyDomains.domain"
+              />
+            </Field>
+            <PrimaryButton
+              label={t('companyDomains.add')}
+              busy={busy}
+              onPress={() => void add()}
+              testID="companyDomains.add"
             />
-          </Field>
-          <PrimaryButton
-            label={t('companyDomains.add')}
-            busy={busy}
-            onPress={() => void add()}
-            testID="companyDomains.add"
-          />
-        </>
-      )}
-    </View>
+          </>
+        )}
+      </View>
+    </Arrived>
   );
 }
 

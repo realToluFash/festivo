@@ -34,6 +34,7 @@ import {
 } from './Screen.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { useMarkSide } from './markSide.ts';
+import { Skeleton } from './Skeleton.tsx';
 
 /** Said once, as the tap it answers lands; `AtRest` mounts again after every reload. */
 interface Refusal {
@@ -137,9 +138,15 @@ export function TwoFactorCard({
   return (
     <View style={cardFrame(kind)}>
       {stage.kind === 'loading' && (
-        <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
-          {t('twoFactorCard.title')}
-        </Text>
+        <>
+          <Title text={t('twoFactorCard.title')} />
+          <Skeleton
+            words={t('pending.loading')}
+            shape="cards"
+            cards={[{ lines: 2, options: 1 }]}
+            inCard
+          />
+        </>
       )}
 
       {stage.kind === 'failed' && (

@@ -35,6 +35,7 @@ import { useReadOut } from './ReadOut.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Sheet } from './Sheet.tsx';
 import { Text, type TextHandle } from './Text.tsx';
+import { Skeleton } from './Skeleton.tsx';
 
 type Feed =
   | { status: 'loading' }
@@ -255,15 +256,7 @@ export function NotificationsFeed({ heading }: { heading: RefObject<TextHandle |
           )}
 
           {feed.status === 'loading' && (
-            <View
-              accessibilityState={{ busy: true }}
-              accessible
-              accessibilityLabel={t('notifications.loading')}
-            >
-              {[0, 1, 2].map((row) => (
-                <View key={row} style={styles.skeleton} />
-              ))}
-            </View>
+            <Skeleton words={t('notifications.loading')} shape="rows" rowHeight={64} />
           )}
 
           {feed.status === 'failed' && (
@@ -492,12 +485,6 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorInsetBorder,
   },
   askActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceLg },
-  skeleton: {
-    height: tokens.sizeHitPhonePrimary,
-    marginBottom: tokens.spaceSm,
-    borderRadius: tokens.radiusSmall,
-    backgroundColor: tokens.colorInset,
-  },
   empty: { paddingVertical: tokens.spaceXl },
   row: { gap: tokens.spaceXs },
   itemRow: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
