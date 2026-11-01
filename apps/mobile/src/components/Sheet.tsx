@@ -3,6 +3,7 @@ import {
   type ReactNode,
   type RefObject,
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useId,
@@ -22,7 +23,13 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { sheetKeysCover, sheetPadding, sheetUnderKeys } from '../kit/sheet.ts';
+import {
+  type SheetWindows,
+  sheetKeysCover,
+  sheetPadding,
+  sheetUnderKeys,
+  sheetWindows,
+} from '../kit/sheet.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { glide } from '../motion.ts';
@@ -48,6 +55,7 @@ type SheetPlaces = {
   put: (id: string, sheet: ReactNode) => void;
   subscribe: (heard: () => void) => () => void;
   current: () => ReadonlyMap<string, ReactNode>;
+  windows: SheetWindows;
 };
 
 const Places = createContext<SheetPlaces | null>(null);
@@ -69,6 +77,7 @@ function sheetPlaces(): SheetPlaces {
       return () => listeners.delete(heard);
     },
     current: () => sheets,
+    windows: sheetWindows(),
   };
 }
 
@@ -94,7 +103,7 @@ function PlacedSheets({ places }: { places: SheetPlaces }) {
 export function Sheet(props: SheetProps) {
   const places = useContext(Places);
   const id = useId();
-  const sheet = <SheetFrame {...props} />;
+  const sheet = <SheetFrame {...props} id={id} windows={places?.windows ?? null} />;
 
   useLayoutEffect(() => {
     places?.put(id, sheet);
@@ -104,7 +113,16 @@ export function Sheet(props: SheetProps) {
   return places == null ? sheet : null;
 }
 
-function SheetFrame({ open, onClose, scrimLabel, opener, testID, children }: SheetProps) {
+function SheetFrame({
+  open,
+  onClose,
+  scrimLabel,
+  opener,
+  testID,
+  children,
+  id,
+  windows,
+}: SheetProps & { id: string; windows: SheetWindows | null }) {
   const { kind, height } = useLayout();
   const insets = useSafeAreaInsets();
   const phone = kind === 'phone';
@@ -118,7 +136,8 @@ function SheetFrame({ open, onClose, scrimLabel, opener, testID, children }: She
   const reduced = useReducedMotion();
   const [onScreen, setOnScreen] = useState(false);
   const { present, scrim, frame } = useSheetMotion(open, onScreen, phone, reduced, height);
-  const shown = useModalOpen(present);
+  const ownTurn = useWindowTurn(id, windows, present);
+  const shown = useModalOpen(ownTurn);
   if (!shown && onScreen) setOnScreen(false);
 
   return (
@@ -133,6 +152,7 @@ function SheetFrame({ open, onClose, scrimLabel, opener, testID, children }: She
       navigationBarTranslucent
       onRequestClose={onClose}
       onShow={() => setOnScreen(true)}
+      onDismiss={() => windows?.lower(id)}
     >
       {/* A modal is its own window: iOS never resizes it for the keyboard, Android not with the props above. */}
       <KeyboardAvoidingView
@@ -250,6 +270,35 @@ function useSheetMotion(
   }, [shown, onScreen, present, slides, reduced, scrim, shift, fade]);
 
   return { present, scrim, frame: { opacity: fade, transform: [{ translateY: shift }] } };
+}
+
+/** iOS cannot put a window up while another is still going, so a sheet waits until the one before it has gone (sc-23267). */
+function useWindowTurn(id: string, windows: SheetWindows | null, wanted: boolean): boolean {
+  const subscribe = useCallback(
+    (heard: () => void) => windows?.subscribe(heard) ?? (() => undefined),
+    [windows],
+  );
+  const waits = useSyncExternalStore(subscribe, () => windows?.waits(id) ?? false);
+  const shown = wanted && !waits;
+
+  useLayoutEffect(() => {
+    if (windows == null) return;
+    if (shown) {
+      windows.raise(id);
+      return;
+    }
+    if (Platform.OS !== 'ios') {
+      windows.lower(id);
+      return;
+    }
+    // onDismiss comes once iOS has taken the window down; the timer keeps a lost one from holding every sheet back.
+    const lost = setTimeout(() => windows.lower(id), SETTLED_MS);
+
+    return () => clearTimeout(lost);
+  }, [id, windows, shown]);
+  useLayoutEffect(() => () => windows?.lower(id), [id, windows]);
+
+  return shown;
 }
 
 /** The keyboard's top edge in the sheet's window, or null while the keys are down. */
