@@ -1,5 +1,5 @@
 # Settings > Organisation in [fd] (sc-23176), turned to landscape: each card, then each confirm opened in place.
-# Needs an owner with one company domain, the request link on, and one other member.
+# Needs an owner with one company domain, soirely.test, the request link on, and one other member.
 appId: host.exp.Exponent
 ---
 - setOrientation: LANDSCAPE_LEFT
