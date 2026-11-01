@@ -49,6 +49,25 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **1 Nov 2026. Eventos y la navegación propia de un evento** (sc-26732 para sc-22103,
+  `web:events.*`, `mobile:eventsScreen.*`, `eventNav.*` web y app). Las áreas: «Resumen»,
+  «Invitados», «Menú», «Mesas», «Mensajes», «Programa», «Personal», «Presupuesto» e «Informes».
+  «Mesas», no «Distribución de mesas» como en Roles, porque en la barra y en las pastillas de la
+  tableta solo cabe la palabra; el panel sí dice «La distribución de mesas…». Un área por llegar:
+  «… de este evento llegará pronto.», como `eventPage.guestsComing`; el personal es «La
+  organización del personal…», porque «El personal llegará» lee como gente en camino. Una cifra
+  que aún no existe es «Próximamente». El resumen va sin verbo: «2 en curso · 3 próximos · 1
+  borrador». Los días, «Del {{first}} al {{last}}», como `calendar.range`; el pie concuerda:
+  «1 evento · Ordenado por fecha», «3 eventos · Ordenados por fecha». Las líneas de En pausa
+  y de fin pasado repiten `eventPause.notice` y `eventLive.endPassed`.
+
+- **1 Nov 2026. Cuándo termina un evento y los títulos de las tarjetas de Resumen** (sc-26608
+  para sc-25008). «Termina {{time}}», con la frase entera de `Intl` detrás: «Termina dentro de
+  3 horas», «Termina mañana», «Termina este minuto»; el verbo delante, como «Termina {name}».
+  Las tarjetas: «Según lo previsto» (no «En camino», que suena a trayecto), «Respuestas»,
+  «Pendiente de usted» (no «Le necesita», que lee como una persona) y «Equipo del evento»,
+  nunca «su equipo», que se confunde con el de la organización.
+
 - **01 Nov 2026. Lo que dice un botón mientras envía, en un evento** (sc-22578 para sc-22103,
   `eventLive.making`, `eventPause.pausing`, `.resuming`, `eventEnd.callingOff`, `.ending`,
   `eventDelete.deleting`, `eventEnd.callOffFailed`, web y app). El gerundio del verbo del botón

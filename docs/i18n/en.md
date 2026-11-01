@@ -64,6 +64,21 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **1 Nov 2026. Events and an event's own navigation** (sc-26732 for sc-22103,
+  `web:events.*`, `mobile:eventsScreen.*`, `eventNav.*` web and app). Settled as sc-22103 wrote
+  it, except one line: `staffComing` reads "Staffing for this event is coming.", since "The staff
+  … are coming" reads as people on their way. The areas are Overview, Guests, Menu, Seating,
+  Messages, Schedule, Staff, Budget and Reports; a figure the product lacks is "Coming soon". The
+  Draft and Paused next-step lines explain, so they keep "can't"; the end-passed line refuses,
+  so it says "cannot".
+- **1 Nov 2026. How soon an event ends, and the Overview's coming cards** (sc-26608 for
+  sc-25008, `events.endsIn`, `eventsScreen.endsIn`, `eventPage.onTrack`, `replies`, `needsYou`,
+  `team`). "Ends {{time}}", where {{time}} is `Intl.RelativeTimeFormat`'s whole phrase ("in 3
+  hours", "tomorrow", "this minute"), so the verb is the only word we write; each locale puts
+  its verb before the phrase. `thenSoon` ("{{when}} ·") is punctuation and stays as it is in
+  every locale. The card headings are "On track", "Replies", "Needs you" and "Team on this
+  event": short, sentence case, above "Coming soon" until the cards are built.
+
 - **31 Oct 2026. Who's here, for the floor lead** (sc-3918, settled on pm's #24454 and #24466).
   Empty states say what is true, not what is missing: "Everyone due by {time} has clocked in."
   and "Nobody has clocked in yet."; with nobody to move, "Everyone here is already on

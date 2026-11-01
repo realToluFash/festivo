@@ -41,6 +41,25 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **1 Nov 2026. Os eventos e a navegação própria de um evento** (sc-26732 para sc-22103,
+  `web:events.*`, `mobile:eventsScreen.*`, `eventNav.*` web e app). As áreas: "Vista geral",
+  "Convidados", "Menu", "Mesas", "Mensagens", "Programa", "Equipa", "Orçamento" e "Relatórios".
+  "Mesas", não "Lugares" como em Funções, porque na barra e nas pílulas do tablet só cabe uma
+  palavra e "Lugares" confunde-se com o local; o painel diz "A distribuição de lugares…".
+  "Menu" é a palavra portuguesa e fica igual ao inglês. Uma área por chegar: "… deste evento
+  estará disponível em breve.", como `eventPage.guestsComing`. Um número que ainda não existe é
+  "Brevemente". O resumo, sem verbo: "2 a decorrer · 3 próximos · 1 rascunho". Os dias, "De
+  {{first}} até {{last}}", como `calendar.range`; o rodapé concorda: "1 evento · Ordenado por
+  data", "3 eventos · Ordenados por data". A linha de um rascunho é impessoal: "Só é possível
+  convidar pessoas depois de publicar este evento."
+
+- **1 Nov 2026. Quando termina um evento e os títulos dos cartões da Vista geral** (sc-26608
+  para sc-25008). "Termina {{time}}", com a frase inteira do `Intl` a seguir: "Termina dentro
+  de 3 horas", "Termina amanhã", "Termina este minuto". O CLDR de pt-PT diz "dentro de", não o
+  "daqui a" das nossas datas; não é nosso, e lê-se bem. Os cartões: "Dentro do previsto",
+  "Respostas", "Precisa de si" (a forma formal pt-PT, nunca "Precisa de você") e "Equipa do
+  evento".
+
 - **01 Nov 2026. O que um botão diz enquanto envia, num evento** (sc-22578 para sc-22103,
   `eventLive.making`, `eventPause.pausing`, `.resuming`, `eventEnd.callingOff`, `.ending`,
   `eventDelete.deleting`, `eventEnd.callOffFailed`, web e app). "A" + infinitivo do verbo do
