@@ -63,7 +63,9 @@ workers as they are and removes the ticks.
   cost reckoned from `models.json`. A session runs under the account's Claude daemon, which
   sq starts in a unit of its own in the agents' slice (`soirely-claude-<hash>`), so a
   worker's end does not take the account's other sessions with it. `claude attach <id>`
-  shows a session's work. A background session needs the workspace trusted once per
+  shows a session's work. A session that starts without the Artifact tools (it happened once,
+  1 Nov) is stopped at its first reply and started once more; twice without them, the run
+  is reported as not started. A background session needs the workspace trusted once per
   account: run `claude` in the workspace folder with that `CLAUDE_CONFIG_DIR` and accept.
 - **One worker per role at a time.** While a role's worker runs, its tick is skipped.
 - **The run log.** Each run appends one line to `runs/<role>.jsonl`: time, item, exit code,

@@ -20,6 +20,14 @@ def assistant(message_id, text, **usage):
                                              "content": [{"type": "text", "text": text}]}}
 
 
+def tools(*names):
+    return {"type": "attachment", "attachment": {"type": "deferred_tools_delta",
+                                                 "addedNames": list(names)}}
+
+
+GIVEN = tools("ArtifactComments", "ArtifactData", "WebFetch")
+
+
 class Clock:
     def __init__(self):
         self.now = 0.0
@@ -137,9 +145,63 @@ class Run(unittest.TestCase):
             on_start=lambda short, full: started.append((short, full)),
             daemon=lambda env: commands.append(["daemon"]), run_command=run_command,
             clock=clock, sleep=clock.sleep, ls=lambda _: listing, rss=lambda _: 0,
-            lines_of=lambda _: [assistant("m1", "Half built.", output_tokens=10)])
+            lines_of=lambda _: [GIVEN, assistant("m1", "Half built.", output_tokens=10)])
         self.assertEqual(commands[0], ["daemon"])
         self.assertEqual(started, [("1d923fe2", SESSION)])
         self.assertEqual((why, code, session), ("timeout", 1, SESSION))
         self.assertEqual(commands[-1], ["claude", "stop", "1d923fe2"])
         self.assertEqual(result["result"], "Half built.")
+
+
+class ArtifactTools(unittest.TestCase):
+    def test_the_tools_are_known_only_once_the_session_has_replied(self):
+        self.assertIsNone(background.has_artifact_tools([GIVEN]))
+        self.assertTrue(background.has_artifact_tools([GIVEN, assistant("m1", "x")]))
+        self.assertFalse(background.has_artifact_tools(
+            [tools("WebFetch"), assistant("m1", "x"), GIVEN]))
+
+    def run_with(self, transcripts):
+        commands, started, given = [], [], iter(transcripts)
+        shorts = iter(["aaaa1111", "bbbb2222"])
+        listing = {}
+
+        def run_command(argv, **_):
+            commands.append(argv[:3])
+            if argv[:2] == ["claude", "--bg"]:
+                short = next(shorts)
+                listing.clear()
+                listing[short] = {"state": "working", "pid": 4, "sessionId": short + "-full",
+                                  "lines": next(given)}
+                return said(f"backgrounded · {short} · dev item 7\n")
+            if argv[:2] == ["claude", "stop"]:
+                listing[argv[2]]["state"] = "stopped"
+            return said()
+
+        def lines_of(session):
+            return next(s["lines"] for s in listing.values() if s["sessionId"] == session)
+
+        clock = Clock()
+        outcome = background.run(
+            dict(VALUES, maxRuntime="1m"), "/c", "dev item 7", "Build.", "/x", lambda: False,
+            on_start=lambda short, full: started.append(short), run_command=run_command,
+            clock=clock, sleep=clock.sleep, ls=lambda _: listing, rss=lambda _: 0,
+            lines_of=lines_of)
+        return outcome, started, commands
+
+    def test_a_session_without_the_tools_is_stopped_and_started_once_more(self):
+        bare = [tools("WebFetch"), assistant("m1", "No Artifact tool here.")]
+        (_, _, why, session), started, commands = self.run_with(
+            [bare, [GIVEN, assistant("m2", "Built.")]])
+        self.assertEqual(started, ["aaaa1111", "bbbb2222"])
+        self.assertIn(["claude", "stop", "aaaa1111"], commands)
+        self.assertEqual(session, "bbbb2222-full")
+
+    def test_twice_without_the_tools_is_reported_as_not_started(self):
+        bare = [tools("WebFetch"), assistant("m1", "No Artifact tool here.")]
+        with self.assertRaises(background.NotStarted) as raised:
+            self.run_with([bare, bare])
+        self.assertIn("without the Artifact tools", str(raised.exception))
+
+    def test_a_session_quiet_through_the_wait_is_left_to_work(self):
+        (_, _, why, session), started, _ = self.run_with([[GIVEN]])
+        self.assertEqual((started, why), (["aaaa1111"], "timeout"))

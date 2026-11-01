@@ -18,6 +18,11 @@ POLL_SECONDS = 5
 # Cache reads are billed at a tenth of input; writes at 1.25 times for five minutes, twice
 # for an hour.
 CACHE_READ, CACHE_WRITE_5M, CACHE_WRITE_1H = 0.1, 1.25, 2.0
+# A session sometimes starts without the Artifact tools (seen once, 1 Nov, sc-25203): it is
+# started once more, then reported. Artifact itself is not deferred; these two come with it.
+ARTIFACT_TOOLS = ("ArtifactComments", "ArtifactData")
+TOOLS_WAIT_SECONDS = 120
+TRIES = 2
 
 
 class NotStarted(RuntimeError):
@@ -156,6 +161,36 @@ def transcript_lines(folder, session_id):
     return sessions.read(path) if path else []
 
 
+def has_artifact_tools(lines):
+    """Whether the session was given the Artifact tools, or None before its first reply,
+    when its tool list is not all written yet."""
+    named = set()
+    for line in lines:
+        if line.get("type") == "assistant":
+            return any(tool in named for tool in ARTIFACT_TOOLS)
+        attachment = line.get("attachment") or {}
+        if attachment.get("type") == "deferred_tools_delta":
+            named.update(attachment.get("addedNames") or [])
+    return None
+
+
+def tools_given(short, env, lines_of, clock=time.monotonic, sleep=time.sleep, ls=listed,
+                poll=POLL_SECONDS, **_):
+    """Waits for the session's first reply and says whether it has the Artifact tools. A
+    session that ends first, or is still quiet at the wait's end, is given the benefit."""
+    began = clock()
+    while clock() - began < TOOLS_WAIT_SECONDS:
+        seen = ls(env).get(short) or {}
+        given = has_artifact_tools(lines_of(seen["sessionId"])) if seen.get("sessionId") \
+            else None
+        if given is not None:
+            return given
+        if (seen.get("state") or seen.get("status")) in ENDED:
+            return True
+        sleep(poll)
+    return True
+
+
 def run(values, folder, name, prompt, cwd, finished, allowed=(), denied=(), extra=None,
         on_start=None, daemon=None, run_command=subprocess.run, **watching):
     """Runs one worker's item as a background session. Returns `(result, exit status, why it
@@ -164,15 +199,22 @@ def run(values, folder, name, prompt, cwd, finished, allowed=(), denied=(), extr
     argv, env = command(values, folder, name, prompt, allowed, denied, extra)
     if daemon:
         daemon(env)
-    short = start(argv, cwd, env, run_command)
-    if on_start:
-        on_start(short, (watching.get("ls") or listed)(env).get(short, {}).get("sessionId"))
+    lines_of = watching.get("lines_of") or (lambda s: transcript_lines(folder, s))
+    for _ in range(TRIES):
+        short = start(argv, cwd, env, run_command)
+        if on_start:
+            on_start(short, (watching.get("ls") or listed)(env).get(short, {}).get("sessionId"))
+        if tools_given(short, env, **dict(watching, lines_of=lines_of)):
+            break
+        stop(short, env, run_command)
+    else:
+        raise NotStarted(f"the session started twice without the Artifact tools (last "
+                         f"{short}); see sc-25203")
     why, seen = watch(short, env, folder, finished, values, **watching)
     if why != "ended":
         stop(short, env, run_command)
     session = seen.get("sessionId")
-    lines = (watching.get("lines_of") or (lambda s: transcript_lines(folder, s)))(session) \
-        if session else []
+    lines = lines_of(session) if session else []
     result = summary(lines, values["model"])
     code = 0 if why in ("ended", "settled") and not result["is_error"] else 1
     return result, code, why, session
