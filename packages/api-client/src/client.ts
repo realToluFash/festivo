@@ -1652,36 +1652,32 @@ export class ApiClient {
 
   /** Every page of them, so a list can group them by the clock without one falling off a page (sc-3594). */
   async unfinishedEvents(organisationId: string): Promise<ListedEvent[]> {
+    return this.everyPage(organisationId, { finished: false });
+  }
+
+  /** Every event the organisation has, unfinished and Finished, as the Calendar places them all (sc-3625). */
+  async allEvents(organisationId: string): Promise<ListedEvent[]> {
+    const query = { itemsPerPage: MOST_EVENTS_PER_PAGE };
+
+    return [
+      ...(await this.everyPage(organisationId, { ...query, finished: false })),
+      ...(await this.everyPage(organisationId, { ...query, finished: true })),
+    ];
+  }
+
+  private async everyPage(
+    organisationId: string,
+    query: Omit<EventsQuery, 'page'>,
+  ): Promise<ListedEvent[]> {
     const events: ListedEvent[] = [];
 
     for (let page = 1; ; page++) {
-      const read = await this.events(organisationId, { page });
+      const read = await this.events(organisationId, { ...query, page });
 
       events.push(...read.events);
 
       if (read.events.length === 0 || events.length >= read.total) return events;
     }
-  }
-
-  /** Every event the organisation has, unfinished and Finished, as the Calendar places them all (sc-3625). */
-  async allEvents(organisationId: string): Promise<ListedEvent[]> {
-    const events: ListedEvent[] = [];
-
-    for (const finished of [false, true]) {
-      for (let page = 1; ; page++) {
-        const read = await this.events(organisationId, {
-          finished,
-          page,
-          itemsPerPage: MOST_EVENTS_PER_PAGE,
-        });
-
-        events.push(...read.events);
-
-        if (read.events.length < MOST_EVENTS_PER_PAGE) break;
-      }
-    }
-
-    return events;
   }
 
   /** Refused `validation_failed` with violations on name, type, startsAt, endsAt, timeZone or currency. */

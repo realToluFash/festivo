@@ -1,3 +1,5 @@
+import { dayDate, wallDay } from './calendar.ts';
+
 export const MILESTONE_OWNERS = ['event', 'you', 'automatic'] as const;
 
 export type MilestoneOwner = (typeof MILESTONE_OWNERS)[number];
@@ -101,15 +103,7 @@ function earliestFirst(milestones: readonly Milestone[]): Milestone[] {
 }
 
 function dayNumber(moment: Date, timeZone: string): number {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(moment);
-  const part = (type: string) => Number(parts.find((one) => one.type === type)?.value);
-
-  return Date.UTC(part('year'), part('month') - 1, part('day'));
+  return dayDate(wallDay(moment, timeZone)).getTime();
 }
 
 function canonicalZone(zone: string): string {

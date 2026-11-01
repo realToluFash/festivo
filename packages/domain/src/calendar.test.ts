@@ -34,10 +34,11 @@ const NOVEMBER = { year: 2026, month: 11 };
 
 describe('Placing dates', () => {
   it("puts a date on the event's own calendar day, not the reader's", () => {
-    const lagos = event('lagos', '2026-11-14T22:00:00Z', 'Africa/Lagos');
+    const lagos = event('lagos', '2026-11-14T23:30:00Z', 'Africa/Lagos');
 
-    expect(wallDay(lagos.startsAt, 'Europe/Istanbul')).toBe('2026-11-15');
-    expect([...calendarDays([lagos], 'all').keys()]).toEqual(['2026-11-14']);
+    expect(wallDay(lagos.startsAt, 'UTC')).toBe('2026-11-14');
+    expect(wallDay(lagos.startsAt, 'America/New_York')).toBe('2026-11-14');
+    expect([...calendarDays([lagos], 'all').keys()]).toEqual(['2026-11-15']);
   });
 
   it('lists a multi-day event on each of its days, across the end of a month', () => {
@@ -58,11 +59,11 @@ describe('Placing dates', () => {
   });
 
   it("puts a milestone on its event's day, and leaves it out under Events only", () => {
-    const dinner = event('dinner', '2026-11-20T19:00:00+01:00', 'Europe/Lisbon', 1, [
-      milestone('2026-11-10T23:30:00+00:00', 'Send numbers to the kitchen'),
+    const dinner = event('dinner', '2026-11-20T19:00:00+01:00', 'Africa/Lagos', 1, [
+      milestone('2026-11-10T23:30:00Z', 'Send numbers to the kitchen'),
     ]);
 
-    expect([...calendarDays([dinner], 'all').keys()]).toEqual(['2026-11-20', '2026-11-10']);
+    expect([...calendarDays([dinner], 'all').keys()]).toEqual(['2026-11-20', '2026-11-11']);
     expect([...calendarDays([dinner], 'events').keys()]).toEqual(['2026-11-20']);
   });
 
