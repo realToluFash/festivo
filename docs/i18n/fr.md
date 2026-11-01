@@ -642,3 +642,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   d’environ 50 px) et passait sur deux lignes sur le web à 390 px (QA, 1 nov.). Sous les barres
   de la case, « +3 » se lit seul ; le lecteur d’écran lit le nom de la journée, qui donne le
   nombre d’éléments, et ne lit pas ce texte.
+- **1 nov. 2026. S’abonner au Calendrier** (sc-25960 pour sc-3626, `calendarFeed.*`, web et app ;
+  `messages:calendar_feed.*` ; `messages+intl-icu:limits.calendar_feed`). « S’abonner dans votre
+  agenda », et « S’abonner » dans l’en-tête du téléphone : l’application de la personne est son
+  « agenda », jamais « calendrier », qui est le Calendrier de l’organisation. Les applications
+  portent leur nom français : « Google Agenda, Calendrier d’Apple ou Outlook » ; la touche du Mac
+  est « Commande ». Le lien est « votre lien privé », et on le « réinitialise », comme le mot de
+  passe. Les statuts de l’agenda abonné sont ceux de la liste des événements, au masculin avec
+  « événement » : Brouillon, Publié, En pause, Terminé, Annulé, Supprimé, après « Statut : ».
+  « Dietary notes » est « Les notes sur l’alimentation ».
