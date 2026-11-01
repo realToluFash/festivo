@@ -872,6 +872,7 @@
     "makePrimary": "Make primary",
     "makePrimaryPhone": "Make primary",
     "remove": "Remove",
+    "removeAsks": "Remove…",
     "removeLabel": "Remove {{address}}",
     "promoteTitle": "Make this your primary address?",
     "promoteBody": "You will sign in with it from now on, and account mail goes there. {{old}} stays linked and stops signing you in.",

@@ -1016,17 +1016,48 @@ describe('a contact confirmation shows its request running, its way back off (sc
   });
 
   it('on Keep and on Cancel under an add form, off until the answer', () => {
-    const off = selfClosing('QuietButton', text)
-      .filter(({ markup }) => /\boff=\{sending\}/u.test(markup))
-      .map(({ markup }) => propValue(markup, 'testID'));
+    const off = ['SecondaryButton', 'QuietButton'].flatMap((button) =>
+      selfClosing(button, text)
+        .filter(({ markup }) => /\boff=\{sending\}/u.test(markup))
+        .map(({ markup }) => propValue(markup, 'testID')),
+    );
 
-    expect(off).toEqual(['{`contacts.${row.id}.keep`}', '{`contacts.${kind}.cancel`}']);
+    expect(off).toEqual([
+      '{`contacts.${row.id}.keep`}',
+      '{`contacts.${row.id}.keep`}',
+      '{`contacts.${kind}.cancel`}',
+    ]);
   });
 
   it('back on Make this your primary address? when a change fails past the check', () => {
     expect(text).toMatch(
       /else if \(proof != null\) setAsking\(\{ id: row\.id, what: 'promote' \}\);/u,
     );
+  });
+});
+
+describe('a contact row ends Remove with an ellipsis only where it asks first (sc-23283)', () => {
+  const text = readFileSync(join('src', 'components', 'ContactsCard.tsx'), 'utf8');
+  const removeId = '{`contacts.${row.id}.remove`}';
+  const holding = (button: string) =>
+    selfClosing(button, text).filter(({ markup }) => propValue(markup, 'testID') === removeId);
+
+  it('as the destructive button, never the secondary', () => {
+    expect(holding('DestructiveButton')).toHaveLength(1);
+    expect(holding('SecondaryButton')).toHaveLength(0);
+  });
+
+  it('labelled Remove… on a row that asks, Remove on one that does not', () => {
+    const [remove] = holding('DestructiveButton');
+    expect(propValue(remove?.markup ?? '', 'label')).toBe(
+      "{t(offers.askBeforeRemoving ? 'contacts.removeAsks' : 'contacts.remove')}",
+    );
+
+    const { contacts } = JSON.parse(
+      readFileSync(join('src', 'i18n', 'locales', 'en.json'), 'utf8'),
+    ) as { contacts: Record<string, string> };
+    expect(contacts.removeAsks).toMatch(/…$/u);
+    expect(contacts.remove).not.toMatch(/…$/u);
   });
 });
 

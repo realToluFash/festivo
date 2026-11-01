@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { currentLocale } from '../../../i18n/index.ts';
-import { AccountSections } from '../../../components/AccountSections.tsx';
+import { AccountHeader } from '../../../components/AccountHeader.tsx';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
 
@@ -82,11 +82,7 @@ export function NotificationSettings() {
 
   return (
     <div className="account">
-      <div className="account-heading">
-        <h1>{t('notificationSettings.title')}</h1>
-      </div>
-
-      <AccountSections />
+      <AccountHeader title={t('notificationSettings.title')} />
 
       <div className="visually-hidden" aria-live="polite">
         {said}

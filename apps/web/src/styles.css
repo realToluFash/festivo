@@ -242,7 +242,10 @@ span {
 /* The width is used rather than reserved: a 1200px content column on a 2560px
    monitor is the layout this product exists to avoid. */
 .shell-content {
-  padding: var(--space4xl) var(--space5xl);
+  --shellBlock: var(--space4xl);
+  --shellInline: var(--space5xl);
+
+  padding: var(--shellBlock) var(--shellInline);
   max-width: 100rem;
 }
 
@@ -626,7 +629,8 @@ span {
   }
 
   .shell-content {
-    padding: var(--spaceXl);
+    --shellBlock: var(--spaceXl);
+    --shellInline: var(--spaceXl);
   }
 
   .public-header {
@@ -1005,7 +1009,58 @@ span {
   display: flex;
   flex-direction: column;
   gap: var(--spaceXxl);
+}
+
+.account > :not(.account-header) {
   max-width: 47.5rem;
+}
+
+.account-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.account-header h1 {
+  margin: 0;
+}
+
+/* The band runs to the content's edges, as Account-*, Security-* and Notifications-* draw it above 40rem. */
+@media (width > 40rem) {
+  .account-header {
+    margin-inline: calc(-1 * var(--shellInline));
+    padding: var(--space4xl) var(--shellInline) var(--spaceXxl);
+    background: var(--colorHeader);
+    border-bottom: var(--borderHeader);
+  }
+
+  .shell-content > .account:first-child > .account-header {
+    margin-top: calc(-1 * var(--shellBlock));
+  }
+
+  .account-header .account-sections {
+    flex-wrap: nowrap;
+    align-self: flex-start;
+    gap: var(--spaceHair);
+    min-width: 26.25rem;
+    padding: var(--spaceXxs);
+    border-radius: var(--radiusPill);
+    background: var(--colorHeaderTrack);
+  }
+
+  .account-header .account-section {
+    flex: 1;
+    justify-content: center;
+    border: 0;
+    white-space: nowrap;
+  }
+
+  .account-header .account-section[aria-current='page'] {
+    border: 0;
+    background: var(--colorCard);
+    box-shadow: var(--shadowCard);
+    color: var(--colorInk);
+  }
 }
 
 .account-heading {
@@ -3166,6 +3221,52 @@ span {
   flex-direction: column;
   gap: var(--spaceSm);
   align-items: flex-start;
+}
+
+/* ── Your account's cards, as `Account.dc.html` draws them (sc-23283) ─────── */
+
+.card.account-card {
+  gap: var(--spaceLg);
+  padding: var(--spaceXl) var(--spaceXxl);
+}
+
+.account-card h2 {
+  font: var(--typeLabel);
+  letter-spacing: var(--typeLabelTracking);
+  text-transform: uppercase;
+  color: var(--colorInkSecondary);
+}
+
+.account-card .current-value-label {
+  overflow-wrap: anywhere;
+}
+
+.card.contacts-card {
+  padding-inline: 0;
+}
+
+.contacts-card > * {
+  margin-inline: var(--spaceXxl);
+}
+
+.contacts-card > .ways-list {
+  margin-inline: 0;
+}
+
+.contacts-card .way {
+  padding: var(--spaceLg) var(--spaceXxl);
+  border-top: var(--borderDivider);
+}
+
+.actions-pair {
+  align-items: center;
+}
+
+@media (width <= 40rem) {
+  .actions-pair {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 /* ── An invitation to join ────────────────────────────────────────────────── */

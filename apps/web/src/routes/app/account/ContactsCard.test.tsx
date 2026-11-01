@@ -424,6 +424,53 @@ describe('email addresses and phone numbers', () => {
     expect(document.activeElement).toBe(screen.getByText('Remove this address?'));
   });
 
+  it('ends Remove with an ellipsis only where it asks first, as the outlined destructive button', async () => {
+    const mixed = {
+      ...ME,
+      phoneNumbers: [
+        ...ME.phoneNumbers,
+        {
+          ...ME.phoneNumbers[0],
+          id: 'p2',
+          number: '+2348035550199',
+          verified: false,
+          primary: false,
+        },
+      ],
+    };
+    answering({ 'GET /api/auth/me': () => json(mixed) });
+    open();
+
+    const asks = await screen.findByRole('button', { name: 'Remove folake.adeyemi@gmail.com' });
+    const atOnce = screen.getByRole('button', { name: 'Remove +234 803 555 0199' });
+
+    expect(asks.textContent).toBe('Remove…');
+    expect(atOnce.textContent).toBe('Remove');
+    expect(asks.className).toBe('button button-danger');
+    expect(atOnce.className).toBe('button button-danger');
+  });
+
+  it('leads a confirm with Keep in a row, and puts the confirming button on top when stacked', async () => {
+    answering({ 'GET /api/auth/me': () => json(ME) });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove folake.adeyemi@gmail.com' }));
+    const row = screen.getByRole('button', { name: 'Remove it' }).parentElement!;
+    expect([...row.children].map((button) => button.textContent)).toEqual(['Keep it', 'Remove it']);
+
+    vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query) =>
+        ({ matches: true, media: query, addEventListener() {}, removeEventListener() {} }) as never,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove folake.adeyemi@gmail.com' }));
+    const stack = screen.getByRole('button', { name: 'Remove it' }).parentElement!;
+    expect([...stack.children].map((button) => button.textContent)).toEqual([
+      'Remove it',
+      'Keep it',
+    ]);
+  });
+
   it('never offers to remove the primary', async () => {
     answering({ 'GET /api/auth/me': () => json(ME) });
     open();
