@@ -3,10 +3,12 @@
 A worker cannot be a child of the tick: when a oneshot service exits, systemd stops what is
 left in its control group (systemd.kill(5)), so the worker would die with the tick."""
 
+import hashlib
 import os
 import pathlib
 import shutil
 import subprocess
+import time
 
 from . import machine, remote
 
@@ -15,6 +17,13 @@ WEB = "soirely-web"
 SLICE = "soirely.slice"
 # What a notification needs to reach the desktop from a unit.
 DESKTOP = ("DBUS_SESSION_BUS_ADDRESS", "DISPLAY", "WAYLAND_DISPLAY")
+DAEMON_WAIT_SECONDS = 10
+
+
+def daemon_status(env, run=subprocess.run):
+    done = run(["claude", "daemon", "status"], capture_output=True, text=True, env=env,
+               check=False)
+    return (done.stdout or "") + (done.stderr or "")
 
 
 def unit_dir():
@@ -176,6 +185,25 @@ class Linux:
             command.append(f"--property=MemoryMax={values['memoryMax']}")
         subprocess.run(command + ["--", python, str(sq), "worker", role, str(item_id)],
                        capture_output=True, text=True, check=True)
+
+    def claude_daemon(self, env, run=subprocess.run, sleep=time.sleep):
+        """A background session runs under its account's Claude daemon. Started on demand by
+        `claude --bg` inside a worker's unit, the daemon would live in that unit, and the
+        unit's end would take it down with every other session of the account. So when none
+        runs, one is started in a unit of its own, in the agents' slice."""
+        if "not running" not in daemon_status(env, run):
+            return
+        folder = env.get("CLAUDE_CONFIG_DIR") or str(pathlib.Path.home() / ".claude")
+        unit = f"soirely-claude-{hashlib.sha1(folder.encode()).hexdigest()[:8]}"
+        run(["systemd-run", "--user", "--quiet", "--collect", f"--unit={unit}",
+             f"--slice={SLICE}", f"--setenv=PATH={search_path()}",
+             *[f"--setenv={key}={env[key]}" for key in ("CLAUDE_CONFIG_DIR", "HOME")
+               if key in env],
+             "--", "claude", "daemon", "run"], capture_output=True, text=True, check=False)
+        for _ in range(DAEMON_WAIT_SECONDS):
+            if "not running" not in daemon_status(env, run):
+                return
+            sleep(1)
 
     def stop_workers(self):
         systemctl("stop", "soirely-worker-*.service", check=False)

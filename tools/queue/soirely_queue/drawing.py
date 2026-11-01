@@ -3,18 +3,13 @@ lists what it could not draw (`sq ux to-draw`), and the manager draws the list o
 time in a background session (`claude --bg`), which has it. The session runs under ux's
 Claude account, in ux's checkout, and the manager stops it once the story is off the list."""
 
-import json
-import re
 import subprocess
 import time
 
-from . import machine, permissions, runlog, store
+from . import background, machine, permissions, runlog, store
 
 WORKER = "ux-draw"
 MAX_TRIES = 2
-# A background session in one of these has ended its turn: it will do nothing more unasked.
-ENDED = ("idle", "done", "completed", "stopped", "exited", "failed", "error")
-STARTED = re.compile(r"backgrounded · (\w+)")
 UNATTENDED = """
 
 You run unattended, started by sq: nobody answers here. Draw this one story, write its Design
@@ -32,39 +27,28 @@ def environment(config, values):
 
 
 def sessions(env, run=subprocess.run):
-    listed = run(["claude", "agents", "--json"], capture_output=True, text=True, env=env)
-    try:
-        return {s["id"]: s.get("state") or s.get("status") for s in json.loads(listed.stdout)
-                if s.get("kind") == "background"}
-    except (ValueError, KeyError, TypeError):
-        return {}
+    return {short: s.get("state") or s.get("status")
+            for short, s in (background.listed(env, run) or {}).items()}
 
 
-def start(drawing, values, home, config, cwd, run=subprocess.run):
+def start(drawing, values, home, config, cwd, run=subprocess.run, daemon=None):
+    """`daemon`, the platform's, starts the account's daemon outside the tick's unit, whose
+    end would otherwise take down every session of an account ux shares."""
     folder, env = environment(config, values)
-    argv = ["claude", "--bg", "--name", f"draw sc-{drawing['story_id']}",
-            "--model", values["model"], "--effort", values["effort"],
-            "--permission-mode", "auto"]
+    if daemon:
+        daemon(env)
     allowed = permissions.for_role(permissions.applied(), "ux")
     denied = permissions.denied(home / "sq" / "sq", folder)
-    if allowed:
-        argv += ["--allowedTools", *allowed]
-    if denied:
-        argv += ["--disallowedTools", *denied]
-    # The tool lists take every word after them, so `--` keeps the prompt out of the last one.
-    argv += ["--", drawing["prompt"] + UNATTENDED.format(story=drawing["story_id"])]
-    done = run(argv, capture_output=True, text=True, cwd=cwd, env=env)
-    found = STARTED.search(done.stdout or "")
-    if not found:
-        said = (done.stdout or done.stderr or "no output").strip()
-        if "not trusted" in said:
-            said += f" Run `claude` in {cwd} once as {folder} and accept the trust prompt."
-        raise RuntimeError(said[:300])
-    return found.group(1)
+    # ux draws in the artifact, so its session is the one not kept to reading.
+    argv, _ = background.command(
+        values, folder, f"draw sc-{drawing['story_id']}",
+        drawing["prompt"] + UNATTENDED.format(story=drawing["story_id"]), allowed, denied,
+        read_only=False)
+    return background.start(argv, cwd, env, run)
 
 
 def finish(session, env, keep, run=subprocess.run):
-    run(["claude", "stop", session], capture_output=True, env=env)
+    background.stop(session, env, run)
     if not keep:
         run(["claude", "rm", session], capture_output=True, env=env)
 
@@ -85,7 +69,7 @@ def tick(db, home, config, values, platform, now=None, say=print, run=subprocess
             store.set_meta(db, "drawing", current)
         if story not in {d["story_id"] for d in listed}:
             outcome, failed = f"drew sc-{story}", False
-        elif state is None or state in ENDED:
+        elif state is None or state in background.ENDED:
             outcome, failed = f"sc-{story}: the session ended without `sq ux drawn`", True
         elif now - current["at"] > limit:
             outcome, failed = f"sc-{story}: stopped at its time limit", True
@@ -117,7 +101,8 @@ def tick(db, home, config, values, platform, now=None, say=print, run=subprocess
     drawing = waiting[0]
     cwd = machine.checkout(config, "ux")
     try:
-        session = start(drawing, values, home, config, cwd, run)
+        session = start(drawing, values, home, config, cwd, run,
+                        daemon=getattr(platform, "claude_daemon", None))
     except (OSError, RuntimeError) as error:
         return say(f"error: {WORKER}: sc-{drawing['story_id']} did not start ({error})")
     store.set_meta(db, "drawing", {"story_id": drawing["story_id"], "session": session,

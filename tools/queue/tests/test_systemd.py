@@ -123,3 +123,28 @@ class Launch(unittest.TestCase):
                         side_effect=subprocess.CalledProcessError(1, "systemd-run")):
             with self.assertRaises(subprocess.CalledProcessError):
                 systemd.Linux().launch("ops", 1, VALUES, "sq", "python3", "/w", "/c/env")
+
+
+class ClaudeDaemon(unittest.TestCase):
+    def daemon(self, statuses):
+        calls, said = [], iter(statuses)
+
+        def run(argv, **_):
+            calls.append(argv)
+            out = next(said) if argv[:3] == ["claude", "daemon", "status"] else ""
+            return subprocess.CompletedProcess(argv, 0, out, "")
+
+        systemd.Linux().claude_daemon({"CLAUDE_CONFIG_DIR": "/home/x/.claude-2"}, run,
+                                      sleep=lambda _: None)
+        return [argv for argv in calls if argv[0] == "systemd-run"]
+
+    def test_a_running_daemon_is_left_alone(self):
+        self.assertEqual(self.daemon(["Daemon running, pid 42"]), [])
+
+    def test_a_missing_daemon_starts_in_a_unit_of_its_own_in_the_slice(self):
+        started = self.daemon(["Daemon not running", "Daemon not running", "Daemon running"])
+        self.assertEqual(len(started), 1)
+        self.assertIn(f"--slice={systemd.SLICE}", started[0])
+        self.assertIn("--setenv=CLAUDE_CONFIG_DIR=/home/x/.claude-2", started[0])
+        self.assertTrue(any(arg.startswith("--unit=soirely-claude-") for arg in started[0]))
+        self.assertEqual(started[0][-3:], ["claude", "daemon", "run"])

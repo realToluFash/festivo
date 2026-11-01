@@ -720,6 +720,12 @@ def status(db, platform, now):
             details.append(f"note: {role['note']}")
         if role["owner"]:
             details.append(f"waiting on the owner: {role['owner']}")
+        if role.get("artifact"):
+            seen = role["artifact"]
+            details.append(f"no board: {seen['worker']} on {seen['account'] or seen['folder']}, "
+                           f"{seen['why']}"
+                           + (" (share it from the artifact's Share menu)"
+                              if seen["why"] == runner.NOT_SHARED else ""))
         rows.append((role["role"], state, model, role["account"] or "not logged in", ran,
                      str(role["waiting"]), details))
     if rows:

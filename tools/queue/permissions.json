@@ -1,3 +1,9 @@
 {
-  "rules": []
+  "rules": [
+    {
+      "rule": "Artifact",
+      "roles": ["dev", "dev2", "dev3", "dev4", "lead", "qa", "qa2", "qa3"],
+      "ask": 25203
+    }
+  ]
 }

@@ -6,6 +6,7 @@ import os
 import pathlib
 import plistlib
 import signal
+import subprocess
 import sys
 import tempfile
 import time
@@ -278,3 +279,30 @@ class RunCommand(unittest.TestCase):
                 mock.patch.object(machine, "load_env"), mock.patch.object(cli, "status") as report:
             cli.admin(["status"])
         report.assert_called_once()
+
+
+class ClaudeDaemon(unittest.TestCase):
+    def daemon(self, answers):
+        status, spawned = iter(answers), []
+
+        def run(argv, **_):
+            return subprocess.CompletedProcess(argv, 0, next(status, "Daemon running"), "")
+
+        def spawn(argv, **kwargs):
+            spawned.append((argv, kwargs))
+
+        launchd.Mac("/tmp/home").claude_daemon(
+            {"CLAUDE_CONFIG_DIR": "/Users/x/.claude-2", "SOIRELY_WORKER": "dev"}, run, spawn,
+            sleep=lambda _: None)
+        return spawned
+
+    def test_a_running_daemon_is_left_alone(self):
+        self.assertEqual(self.daemon(["Daemon running, pid 42"]), [])
+
+    def test_a_missing_daemon_starts_in_a_session_of_its_own(self):
+        [(argv, kwargs)] = self.daemon(["Daemon not running", "Daemon running"])
+        self.assertEqual(argv, ["claude", "daemon", "run"])
+        self.assertTrue(kwargs["start_new_session"])
+        self.assertEqual(kwargs["env"]["CLAUDE_CONFIG_DIR"], "/Users/x/.claude-2")
+        self.assertNotIn("SOIRELY_WORKER", kwargs["env"])
+

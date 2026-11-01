@@ -160,6 +160,23 @@ class Snapshot(unittest.TestCase):
         self.assertIn(f"  ops   refused: not listed in {cli.machine.path()}: every machine runs "
                       "ops, for its own disk, Docker, stacks and manager (ops@here)", lines)
 
+    def test_status_names_a_role_whose_sessions_cannot_read_the_board(self):
+        from soirely_queue import cli
+        runner.set_started(self.db, ["ops", "dev2"], True)
+        store.set_meta(self.db, "artifact:dev2", {
+            "at": NOW, "worker": "dev2", "account": "ops@soirely.com", "folder": "/c",
+            "why": runner.NO_TOOL, "seen": "1d923fe2"})
+        view, out = self.snap(), io.StringIO()
+        with mock.patch.object(cli.dashboard, "snapshot", return_value=view), \
+                mock.patch.object(cli, "home", return_value=self.home), \
+                mock.patch.object(cli.shutil, "get_terminal_size",
+                                  return_value=cli.os.terminal_size((1000, 50))), \
+                redirect_stdout(out):
+            cli.status(self.db, self.platform, NOW)
+        self.assertIn("no board: dev2 on ops@soirely.com, its sessions have no Artifact tool",
+                      out.getvalue())
+        self.assertNotIn("Share menu", out.getvalue())
+
     def test_status_names_the_host_in_the_ops_refusal_of_an_unnamed_machine(self):
         from soirely_queue import cli
         self.settings["roles"] = {"dev2": {}}

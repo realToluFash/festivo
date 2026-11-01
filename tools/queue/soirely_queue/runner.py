@@ -13,8 +13,8 @@ import sys
 import threading
 import time
 
-from . import (checkout, drawing, harness, local, machine, permissions, review, roles, runlog,
-               sessions, shared, store, sync, update)
+from . import (background, checkout, drawing, harness, local, machine, permissions, review,
+               roles, runlog, sessions, shared, store, sync, update)
 
 VERSION_EVERY_SECONDS = 10 * 60
 # `claude -p` stays up while a background shell it started still runs, so a run whose item
@@ -334,6 +334,10 @@ def command(values, config_dir, allowed=(), denied=(), session=None):
         argv += ["--allowedTools", *allowed]
     if denied:
         argv += ["--disallowedTools", *denied]
+    return argv, account_env(config_dir)
+
+
+def account_env(config_dir):
     env = dict(os.environ)
     folder = machine.expand(config_dir)
     # Claude's own folder runs as Claude does by default, with nothing set.
@@ -341,7 +345,7 @@ def command(values, config_dir, allowed=(), denied=(), session=None):
         env.pop("CLAUDE_CONFIG_DIR", None)
     else:
         env["CLAUDE_CONFIG_DIR"] = str(folder)
-    return argv, env
+    return env
 
 
 def process_table():
@@ -464,12 +468,61 @@ def run_dir(home, name, item_id):
     return home / "scratch" / f"{name}-{item_id}"
 
 
+NO_TOOL = "its sessions have no Artifact tool"
+NOT_SHARED = "its Artifact read was refused: the artifact may not be shared with the account"
+
+
+def tell_ops(story_id, role, text, shortcut=None):
+    """A worker that never got a turn cannot say so on its story, so sq says it for it."""
+    from .shortcut import Shortcut
+    (shortcut or Shortcut()).comment(story_id, f"[ops] (from {role})\n{text}")
+
+
+def artifact_outcome(db, role, entry, why=None, seen=None, told=None):
+    """What `sq status` says of the role's sessions and the Artifact board: None once one has
+    read it, else the last account and why it could not. `told` lists the stories already
+    given the no-tool comment, kept until a session of the role reads a board."""
+    store.set_meta(db, f"artifact:{role}", None if not why else {
+        "at": entry["at"], "worker": entry.get("worker", role), "account": entry.get("account"),
+        "folder": entry.get("folder"), "told": sorted(told or ()), "why": why, "seen": seen})
+
+
+def told_stories(db, role):
+    return set((store.get_meta(db, f"artifact:{role}") or {}).get("told") or ())
+
+
+def in_background(db, platform, name, entry, values, folder, text, cwd, ids, allowed, denied,
+                  scratch, run_background):
+    """The worker's item as a background session. Returns what `claude -p` would have:
+    `(result, exit status, ended)`; `ended` is None, as no shell it left is ended here."""
+    def begun(short, session):
+        entry.update(bg=short, session=session)
+        sessions.begin(db, name, entry)
+
+    entry["session"] = None
+    result, code, why, _ = run_background(
+        values, folder, f"{name} item {entry['item']}", text, cwd,
+        lambda: settled(db, ids, name), allowed, denied, extra={"SQ_RUN_DIR": str(scratch)},
+        on_start=begun, daemon=getattr(platform, "claude_daemon", None))
+    if why not in ("ended", "settled"):
+        entry["stopped"] = why
+    refused = result.pop("artifact_refused", None)
+    read = result.pop("artifact_read", False)
+    if read:
+        artifact_outcome(db, entry["role"], entry)
+    elif refused:
+        artifact_outcome(db, entry["role"], entry, NOT_SHARED, refused,
+                         told_stories(db, entry["role"]))
+    return result, code, None
+
+
 def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=machine.load,
            prepare=checkout.prepare, make_review=review.make, refresh_harness=harness.refresh,
-           now=None):
+           now=None, run_background=None, tell=tell_ops):
     """Runs inside the worker's unit: prepares the checkout, runs the model, records the
     run. `name` is the role, or `pm-2` and on for a further worker of it."""
     role = machine.worker_role(name)
+    run_background = run_background or background.run
     config = load()
     row = store.item(db, item_id)
     batch = store.held(db, role, now, worker=name) if row else []
@@ -507,26 +560,49 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
     entry["account"] = machine.account(folder)
     entry.update(session=sessions.new_id(), folder=str(folder), cwd=str(cwd),
                  story=row["story_id"] if row else None)
-    argv, env = command(values, folder, permissions.for_role(permissions.applied(), role),
-                        permissions.denied(home / "sq" / "sq", folder), entry["session"])
-    sessions.begin(db, name, entry)
+    allowed = permissions.for_role(permissions.applied(), role)
+    denied = permissions.denied(home / "sq" / "sq", folder)
     scratch = run_dir(home, name, item_id)
     scratch.mkdir(parents=True, exist_ok=True)
-    env["SQ_RUN_DIR"] = str(scratch)
+    ids = [r["id"] for r in batch] if row else [item_id]
+    text = prompt(batch, role, main, note)
     try:
-        ids = [r["id"] for r in batch] if row else [item_id]
-        code, stdout, stderr, ended = run_claude(
-            argv, prompt(batch, role, main, note), cwd, env, lambda: settled(db, ids, name))
+        if roles.ROLES[role].get("background"):
+            result, code, ended = in_background(db, platform, name, entry, values, folder,
+                                                text, cwd, ids, allowed, denied, scratch,
+                                                run_background)
+        else:
+            argv, env = command(values, folder, allowed, denied, entry["session"])
+            sessions.begin(db, name, entry)
+            env["SQ_RUN_DIR"] = str(scratch)
+            code, stdout, stderr, ended = run_claude(argv, text, cwd, env,
+                                                     lambda: settled(db, ids, name))
+            every = results(stdout)
+            own = own_result([stdout])
+            if own:
+                result = dict(own, total_cost_usd=every[-1].get("total_cost_usd"))
+            else:
+                result = {"result": (stdout or stderr or "")[-2000:]}
+    except background.NotStarted as error:
+        entry["report"] = f"the worker's background session did not start: {error}"
+        if isinstance(error, background.NoArtifactTools):
+            # The item comes back on every lease; its story is told once, and only a
+            # comment that was posted counts as telling it.
+            told = told_stories(db, role)
+            if entry["story"] and entry["story"] not in told:
+                try:
+                    tell(entry["story"], role, no_tool_text(name, entry, error.short))
+                    told.add(entry["story"])
+                except (RuntimeError, OSError) as failed:
+                    entry["report"] += f"; the [ops] comment failed too: {failed}"
+            artifact_outcome(db, role, entry, NO_TOOL, error.short, told)
+        runlog.append(home, role, entry)
+        platform.notify(f"Soirely: {name}'s worker stopped", entry["report"][:300])
+        return entry
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
         if cwd != path:
             review.remove(path)
-    every = results(stdout)
-    own = own_result([stdout])
-    if own:
-        result = dict(own, total_cost_usd=every[-1].get("total_cost_usd"))
-    else:
-        result = {"result": (stdout or stderr or "")[-2000:]}
     entry.update(runlog.from_result(result, code))
     if ended is not None:
         entry["ended"] = ended
@@ -541,11 +617,23 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
     return entry
 
 
+def no_tool_text(name, entry, short):
+    return (f"{name}'s worker for item {entry['item']} never started: its `claude --bg` "
+            f"session under {entry.get('account') or entry['folder']} ({entry['folder']}) "
+            f"came up twice without the Artifact tools, last as {short}. Nothing was built, "
+            "passed or failed. sq posted this for the worker; `sq status` shows it until a "
+            "session of the role reads a board (sc-25203).")
+
+
 def worker_ended(home, platform, name, item_id, now=None, load=machine.load, db=None):
     """`ExecStopPost`: a run stopped by its memory or time limit, or a crash, writes no
     report of its own, so this leaves the record, and takes its review worktree away."""
     role = machine.worker_role(name)
     shutil.rmtree(run_dir(home, name, item_id), ignore_errors=True)
+    live = sessions.current(db, name) if db is not None else None
+    if live and live.get("bg") and live.get("item") == item_id:
+        # The session runs under the daemon, so the worker's end does not end it.
+        background.stop(live["bg"], account_env(live["folder"]))
     if role in review.ROLES:
         try:
             review.remove(machine.checkout(load(), role, name))

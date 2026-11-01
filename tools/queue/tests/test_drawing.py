@@ -69,6 +69,16 @@ class Tick(unittest.TestCase):
         self.assertEqual(kwargs["env"]["SOIRELY_WORKER"], "ux-draw")
         self.assertEqual(store.get_meta(self.db, "drawing")["session"], "ab12cd34")
 
+    def test_the_account_s_daemon_is_started_before_the_drawing(self):
+        store.add_drawing(self.db, 7, "Calendar", "p", NOW)
+        order = []
+        self.platform.claude_daemon = lambda env: order.append(("daemon",
+                                                                env["CLAUDE_CONFIG_DIR"]))
+        claude = self.claude
+        self.claude = lambda argv, **kw: order.append(("claude", argv[1])) or claude(argv, **kw)
+        self.tick()
+        self.assertEqual([o[0] for o in order[:2]], ["daemon", "claude"])
+
     def test_the_prompt_follows_the_tool_lists_after_a_double_dash(self):
         store.add_drawing(self.db, 7, "Calendar", "p", NOW)
         with mock.patch("soirely_queue.permissions.denied", return_value=["Bash(sq ux down)"]):

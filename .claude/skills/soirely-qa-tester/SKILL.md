@@ -125,6 +125,11 @@ use `--again` only if you truly need its full text again.
 - **The artboards**, when the story names them — `.claude/skills/screen-from-design`
   explains where the design lives. A screen that does not match the design fails, even
   when it satisfies the AC.
+  An [fd] story's "as the board draws them" bullets are tested against the board it names
+  in Soirely — Redesign (`https://claude.ai/artifact/5cRzwbgmEK6wqbxp4j1zqx`), read with the
+  `Artifact` tool (`canvas.json`, then the board), never the Claude Docs tools or
+  `DesignSync`. If the read is refused or finds no board, say so on the story tagged
+  `[ops]`, with the refusal, and pass or fail nothing from memory or an older design.
 - `docs/architecture/` for the rule behind a behaviour. `api-contract.md` is how every
   error is shaped; `sessions.md` is how a session is held.
 

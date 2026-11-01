@@ -11,7 +11,8 @@ import time
 import unittest
 from unittest import mock
 
-from soirely_queue import checkout, github, review, runlog, runner, sessions, shared, store
+from soirely_queue import (background, checkout, github, review, roles, runlog, runner,
+                           sessions, shared, store)
 
 from .fakes import FakeRefs
 
@@ -827,7 +828,7 @@ class Worker(unittest.TestCase):
         runner.worker(self.db, self.home, self.platform, name, item_id, run_claude=claude,
                       load=lambda: config(self.root, roles={name: {}}),
                       prepare=lambda *_: ("c" * 40, "Your checkout has changes."),
-                      refresh_harness=refresh, now=ON_ZERO)
+                      refresh_harness=refresh, now=ON_ZERO, run_background=as_background(claude))
         return prompts[0], asked
 
     def test_a_testers_start_refreshes_its_harness_and_says_so(self):
@@ -870,9 +871,9 @@ class Worker(unittest.TestCase):
         with mock.patch("soirely_queue.review.remove") as removed:
             try:
                 runner.worker(self.db, self.home, self.platform, "lead-2", item_id,
-                              run_claude=claude, load=lambda: config(self.root),
+                              load=lambda: config(self.root),
                               prepare=lambda *_: ("c" * 40, None), make_review=make,
-                              now=ON_ZERO)
+                              now=ON_ZERO, run_background=as_background(claude))
             finally:
                 self.removed = [call.args[0].name for call in removed.call_args_list]
         return made
@@ -952,6 +953,214 @@ class Worker(unittest.TestCase):
             entry = runner.worker_ended(self.home, self.platform, "ops", 1, now=ON_ZERO,
                                         db=self.db)
         self.assertNotIn("session", entry)
+
+
+def as_background(claude):
+    """A `claude -p` fake run as the background runner would run it."""
+    def run(values, folder, name, text, cwd, finished, allowed=(), denied=(), extra=None,
+            on_start=None, daemon=None):
+        if on_start:
+            on_start("1d923fe2", SESSION)
+        code, stdout, _, _ = claude([], text, cwd, dict(extra or {}), finished)
+        found = runner.own_result([stdout]) or {}
+        return found, code, "ended", SESSION
+    return run
+
+
+class BackgroundWorker(unittest.TestCase):
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.root = pathlib.Path(self.folder.name)
+        (self.root / "festivo").mkdir()
+        self.home = self.root / "home"
+        self.db = store.connect(":memory:")
+        store.record(self.db, [work("dev")], ON_ZERO)
+        self.item = store.waiting(self.db, "dev")[0]["id"]
+        store.claim(self.db, "dev", ON_ZERO)
+        self.platform = FakePlatform()
+
+    def tearDown(self):
+        self.folder.cleanup()
+
+    def run_dev(self, result, why="ended", code=0):
+        calls, seen = [], []
+
+        def run(values, folder, name, text, cwd, finished, allowed=(), denied=(), extra=None,
+                on_start=None, daemon=None):
+            calls.append({"name": name, "cwd": cwd, "extra": extra, "daemon": daemon,
+                          "run_dir_there": pathlib.Path(extra["SQ_RUN_DIR"]).is_dir()})
+            on_start("1d923fe2", SESSION)
+            seen.append(sessions.current(self.db, "dev"))
+            return result, code, why, SESSION
+
+        claude = mock.Mock()
+        entry = runner.worker(self.db, self.home, self.platform, "dev", self.item,
+                              run_claude=claude, load=lambda: config(self.root, roles={"dev": {}}),
+                              prepare=lambda *_: ("c" * 40, None), now=ON_ZERO,
+                              run_background=run)
+        claude.assert_not_called()
+        return entry, calls, seen
+
+    def test_a_developer_runs_as_a_background_session_recorded_as_it_starts(self):
+        entry, calls, seen = self.run_dev({"result": "Built.", "total_cost_usd": 0.31,
+                                           "num_turns": 4})
+        self.assertEqual(calls[0]["name"], f"dev item {self.item}")
+        self.assertTrue(calls[0]["run_dir_there"])
+        self.assertEqual((seen[0]["bg"], seen[0]["session"]), ("1d923fe2", SESSION))
+        logged = runlog.last(self.home, "dev")
+        self.assertEqual((logged["report"], logged["cost_usd"], logged["session"], logged["exit"]),
+                         ("Built.", 0.31, SESSION, 0))
+        self.assertNotIn("stopped", logged)
+
+    def test_a_session_stopped_at_a_limit_says_which(self):
+        entry, _, _ = self.run_dev({"result": None, "is_error": True}, why="oom-kill", code=1)
+        self.assertEqual((entry["stopped"], entry["exit"]), ("oom-kill", 1))
+
+    def test_a_session_that_will_not_start_is_reported(self):
+        def run(*_, **__):
+            raise background.NotStarted("Workspace not trusted.")
+
+        entry = runner.worker(self.db, self.home, self.platform, "dev", self.item,
+                              load=lambda: config(self.root, roles={"dev": {}}),
+                              prepare=lambda *_: ("c" * 40, None), now=ON_ZERO,
+                              run_background=run)
+        self.assertIn("Workspace not trusted.", entry["report"])
+        self.assertEqual(self.platform.notes[0][0], "Soirely: dev's worker stopped")
+        self.assertFalse(runner.run_dir(self.home, "dev", self.item).exists())
+
+    def on_story(self):
+        self.db.execute("update work set story_id = 42 where id = ?", (self.item,))
+
+    def test_a_session_without_the_tools_is_said_on_the_story_for_ops(self):
+        self.on_story()
+        told = []
+
+        def run(*_, **__):
+            raise background.NoArtifactTools("bbbb2222")
+
+        entry = runner.worker(self.db, self.home, self.platform, "dev", self.item,
+                              load=lambda: config(self.root, roles={"dev": {}}),
+                              prepare=lambda *_: ("c" * 40, None), now=ON_ZERO,
+                              run_background=run, tell=lambda *a: told.append(a))
+        self.assertIn("without the Artifact tools", entry["report"])
+        (story, role, text), = told
+        self.assertEqual((story, role), (42, "dev"))
+        self.assertIn("bbbb2222", text)
+        self.assertIn("Nothing was built, passed or failed", text)
+        seen = store.get_meta(self.db, "artifact:dev")
+        self.assertEqual((seen["why"], seen["seen"], seen["worker"]),
+                         (runner.NO_TOOL, "bbbb2222", "dev"))
+
+    def test_a_failed_ops_comment_is_kept_in_the_report(self):
+        self.on_story()
+
+        def run(*_, **__):
+            raise background.NoArtifactTools("bbbb2222")
+
+        def tell(*_):
+            raise RuntimeError("SHORTCUT_API_TOKEN is not set")
+
+        entry = runner.worker(self.db, self.home, self.platform, "dev", self.item,
+                              load=lambda: config(self.root, roles={"dev": {}}),
+                              prepare=lambda *_: ("c" * 40, None), now=ON_ZERO,
+                              run_background=run, tell=tell)
+        self.assertIn("the [ops] comment failed too: SHORTCUT_API_TOKEN", entry["report"])
+        self.assertIn("the [ops] comment failed too", runlog.last(self.home, "dev")["report"])
+
+    def test_the_story_is_told_once_however_often_its_item_comes_back(self):
+        self.on_story()
+        told = []
+
+        def run(*_, **__):
+            raise background.NoArtifactTools("bbbb2222")
+
+        for _ in range(2):
+            runner.worker(self.db, self.home, self.platform, "dev", self.item,
+                          load=lambda: config(self.root, roles={"dev": {}}),
+                          prepare=lambda *_: ("c" * 40, None), now=ON_ZERO,
+                          run_background=run, tell=lambda *a: told.append(a))
+        self.assertEqual(len(told), 1)
+
+    def test_each_story_is_told_once_until_a_board_is_read(self):
+        told = []
+
+        def run(*_, **__):
+            raise background.NoArtifactTools("bbbb2222")
+
+        def lease(story_id):
+            key = f"inbox:dev:{story_id}-{len(told)}"
+            store.record(self.db, [work("dev", key)], ON_ZERO)
+            item, = self.db.execute("select id from work where fingerprint = ?", (key,)).fetchone()
+            self.db.execute("update work set story_id = ? where id = ?", (story_id, item))
+            runner.worker(self.db, self.home, self.platform, "dev", item,
+                          load=lambda: config(self.root, roles={"dev": {}}),
+                          prepare=lambda *_: ("c" * 40, None), now=ON_ZERO,
+                          run_background=run, tell=lambda *a: told.append(a[0]))
+
+        for story_id in (101, 102, 101):
+            lease(story_id)
+        self.assertEqual(told, [101, 102])
+
+    def test_a_story_whose_comment_failed_is_told_on_the_next_lease(self):
+        self.on_story()
+        told = []
+
+        def run(*_, **__):
+            raise background.NoArtifactTools("bbbb2222")
+
+        def tell(*args):
+            told.append(args)
+            if len(told) == 1:
+                raise RuntimeError("Shortcut answered 503")
+
+        for _ in range(3):
+            runner.worker(self.db, self.home, self.platform, "dev", self.item,
+                          load=lambda: config(self.root, roles={"dev": {}}),
+                          prepare=lambda *_: ("c" * 40, None), now=ON_ZERO,
+                          run_background=run, tell=tell)
+        self.assertEqual(len(told), 2)
+
+    def test_a_refused_read_is_kept_and_a_clean_read_clears_it(self):
+        self.run_dev({"result": "Stopped.", "artifact_refused": "No access."})
+        seen = store.get_meta(self.db, "artifact:dev")
+        self.assertEqual((seen["why"], seen["seen"]), (runner.NOT_SHARED, "No access."))
+        self.assertNotIn("artifact_refused", runlog.last(self.home, "dev"))
+        store.record(self.db, [work("dev", "inbox:dev:2")], ON_ZERO + 1)
+        self.item = store.waiting(self.db, "dev")[0]["id"]
+        store.claim(self.db, "dev", ON_ZERO + 1)
+        self.run_dev({"result": "Built.", "artifact_read": True})
+        self.assertIsNone(store.get_meta(self.db, "artifact:dev"))
+
+    def next_dev_item(self, key):
+        store.record(self.db, [work("dev", key)], ON_ZERO + 1)
+        self.item = store.waiting(self.db, "dev")[0]["id"]
+        store.claim(self.db, "dev", ON_ZERO + 1)
+
+    def test_a_session_that_never_read_a_board_keeps_the_record(self):
+        self.run_dev({"result": "Stopped.", "artifact_refused": "No access."})
+        self.next_dev_item("inbox:dev:2")
+        self.run_dev({"result": "Reviewed a PR with no screens."})
+        self.assertEqual(store.get_meta(self.db, "artifact:dev")["why"], runner.NOT_SHARED)
+
+    def test_an_answered_read_outranks_a_refusal_in_the_same_session(self):
+        self.run_dev({"result": "Stopped.", "artifact_refused": "No access."})
+        self.next_dev_item("inbox:dev:2")
+        self.run_dev({"result": "Built.", "artifact_read": True,
+                      "artifact_refused": "No access."})
+        self.assertIsNone(store.get_meta(self.db, "artifact:dev"))
+
+    def test_a_worker_stopped_at_its_limit_stops_its_session_too(self):
+        sessions.begin(self.db, "dev", {"item": self.item, "bg": "1d923fe2", "session": SESSION,
+                                        "folder": str(self.root / "claude")})
+        with mock.patch.dict("os.environ", {"SERVICE_RESULT": "timeout"}), \
+                mock.patch("soirely_queue.background.stop") as stopped:
+            runner.worker_ended(self.home, self.platform, "dev", self.item, now=ON_ZERO,
+                                db=self.db)
+        self.assertEqual(stopped.call_args.args[0], "1d923fe2")
+
+    def test_only_the_developers_the_lead_and_the_testers_run_in_the_background(self):
+        found = {role for role, values in roles.ROLES.items() if values.get("background")}
+        self.assertEqual(found, set(roles.DEVS) | {"lead"} | set(roles.TESTERS))
 
 
 FAKE_CLAUDE = textwrap.dedent("""
