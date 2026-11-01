@@ -43,5 +43,8 @@ appId: host.exp.Exponent
 - takeScreenshot: event-overview
 - tapOn:
     id: event.nav.seating
-- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'events.area.seating'
+    timeout: 15000
 - takeScreenshot: seating-coming

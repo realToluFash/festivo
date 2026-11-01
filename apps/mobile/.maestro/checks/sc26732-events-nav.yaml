@@ -50,5 +50,8 @@ appId: host.exp.Exponent
 - takeScreenshot: more-sheet
 - tapOn:
     id: 'event.nav.more.staff'
-- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'events.area.staff'
+    timeout: 15000
 - takeScreenshot: staff-coming
