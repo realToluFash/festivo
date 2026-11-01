@@ -72,7 +72,7 @@ export function EventNav({
             to={eventAreaPath(inside.eventId, area)}
             className={current ? 'active' : undefined}
             aria-current={current ? 'page' : undefined}
-            replace={!inside.onPage && !(area === 'overview' && cameFromPage)}
+            replace={current || (!inside.onPage && !(area === 'overview' && cameFromPage))}
             state={inside.onPage || cameFromPage ? { fromEventPage: true } : undefined}
             onClick={area === 'overview' && !inside.onPage ? backToPage : onFollow}
           >
