@@ -73,7 +73,16 @@
     "mobile:notificationSettings.push",
     "mobile:notificationSettings.category.messages",
     "mobile:notifications.bell",
-    "mobile:notifications.heading"
+    "mobile:notifications.heading",
+    "web:events.columnDates",
+    "web:eventPage.dates",
+    "mobile:eventPage.dates",
+    "web:eventNav.menu",
+    "mobile:eventNav.menu",
+    "web:eventNav.messages",
+    "mobile:eventNav.messages",
+    "web:eventNav.budget",
+    "mobile:eventNav.budget"
   ],
   "pt": [
     "web:nav.menu",
@@ -86,6 +95,8 @@
     "web:notificationSettings.push",
     "mobile:notificationSettings.push",
     "web:calendar.agenda",
-    "mobile:calendar.agenda"
+    "mobile:calendar.agenda",
+    "web:eventNav.menu",
+    "mobile:eventNav.menu"
   ]
 }
