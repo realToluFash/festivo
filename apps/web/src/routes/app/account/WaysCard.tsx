@@ -27,6 +27,7 @@ import {
 import { heldProof, holdProof } from '../../../recentProof.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { ActionPair } from '../../../components/ActionPair.tsx';
+import { Changing, Setting } from './PasswordCard.tsx';
 
 type Act = { action: 'link' | 'unlink'; provider: Provider };
 
@@ -37,22 +38,25 @@ type Notice =
       provider: Provider;
     }
   | { kind: 'keptByRule'; provider: Provider; organisation: string }
+  | { kind: 'passwordChanged'; signedOut: number }
+  | { kind: 'passwordAdded'; provider: string }
   | { kind: 'failed' };
 
 type Stage =
   | { kind: 'list'; notice: Notice | null; answers?: boolean }
   | { kind: 'proving'; act: Act; returned: ProviderSignInAttempt | null }
   | { kind: 'confirming'; act: Act }
+  | { kind: 'password'; step: 'changing' | 'setting'; opener: string }
   | { kind: 'working' };
 
-/** Settings > Security, between Password and Two-factor: link or unlink Google and Apple (sc-510). */
+/** Settings > Security's first card: the password, set or changed (sc-116, sc-391), then Google and Apple, linked or unlinked (sc-510). */
 export function WaysCard({
   email,
   hasPassword,
   providers,
   onChanged,
   onRefused,
-  onSetPassword,
+  onPasswordChanged,
   onSignedOutHere,
   onCodeSpent,
 }: {
@@ -62,8 +66,8 @@ export function WaysCard({
   onChanged: () => Promise<void>;
   /** The server refused an unlink, so the rows on screen may be stale; a failed read leaves them. */
   onRefused: () => Promise<void>;
-  /** `opener` finds the Set a password that was clicked, for Cancel to go back to. */
-  onSetPassword: (opener: () => HTMLElement | null) => void;
+  /** Changing the password signed the other devices out. */
+  onPasswordChanged: () => void;
   onSignedOutHere: () => void;
   /** A two-factor or recovery code was accepted, so the two-factor card's count may be stale. */
   onCodeSpent: () => void;
@@ -87,6 +91,10 @@ export function WaysCard({
   const find = (way: string) => () =>
     card.current?.querySelector<HTMLElement>(`[data-way="${way}"]`) ?? heading.current;
   const back = (way: string) => land(find(way));
+  const first = providers[0]?.provider;
+  const linkedName = first == null ? '' : PROVIDER_NAMES[first];
+  const openPassword = (opener: string) =>
+    setStage({ kind: 'password', step: hasPassword ? 'changing' : 'setting', opener });
 
   function begin(act: Act): void {
     if (heldProof() == null) setStage({ kind: 'proving', act, returned: null });
@@ -213,7 +221,41 @@ export function WaysCard({
 
   return (
     <section className="card" ref={card} aria-labelledby="ways-title">
-      {stage.kind === 'proving' ? (
+      {stage.kind === 'password' && stage.step === 'changing' ? (
+        <Changing
+          email={email}
+          onChanged={(signedOut) => {
+            setStage({
+              kind: 'list',
+              notice: { kind: 'passwordChanged', signedOut },
+              answers: true,
+            });
+            onPasswordChanged();
+            land(() => said.current);
+          }}
+          onCancel={() => {
+            setStage({ kind: 'list', notice: null });
+            back(stage.opener);
+          }}
+        />
+      ) : stage.kind === 'password' ? (
+        <Setting
+          email={email}
+          onAdded={async () => {
+            await onChanged();
+            setStage({
+              kind: 'list',
+              notice: { kind: 'passwordAdded', provider: linkedName },
+              answers: true,
+            });
+            land(() => said.current);
+          }}
+          onCancel={() => {
+            setStage({ kind: 'list', notice: null });
+            back(stage.opener);
+          }}
+        />
+      ) : stage.kind === 'proving' ? (
         <Proving
           act={stage.act}
           email={email}
@@ -261,17 +303,21 @@ export function WaysCard({
                   on={hasPassword}
                   word={hasPassword ? t('waysCard.setUp') : t('waysCard.notSetUp')}
                 />
+                <p className="way-line">
+                  {hasPassword
+                    ? t('passwordCard.intro')
+                    : t('passwordCard.setRest', { provider: linkedName })}
+                </p>
               </div>
-              {!hasPassword && (
-                <button
-                  className="button"
-                  type="button"
-                  data-way="set-password"
-                  onClick={() => onSetPassword(find('set-password'))}
-                >
-                  {t('waysCard.setPassword')}
-                </button>
-              )}
+              <button
+                className="button"
+                type="button"
+                data-way="password"
+                disabled={stage.kind === 'working'}
+                onClick={() => openPassword('password')}
+              >
+                {hasPassword ? t('passwordCard.change') : t('passwordCard.set')}
+              </button>
             </li>
 
             {rows.map((row) => (
@@ -281,7 +327,7 @@ export function WaysCard({
                 busy={stage.kind === 'working'}
                 onLink={() => begin({ action: 'link', provider: row.provider })}
                 onUnlink={() => begin({ action: 'unlink', provider: row.provider })}
-                onSetPassword={() => onSetPassword(find(`set-password-${row.provider}`))}
+                onSetPassword={() => openPassword(`set-password-${row.provider}`)}
               />
             ))}
           </ul>
@@ -408,6 +454,21 @@ function Said({
               : t('waysCard.unlinkedNext')}
           </p>
         </div>
+      </div>
+    );
+  }
+
+  if (notice.kind === 'passwordChanged' || notice.kind === 'passwordAdded') {
+    return (
+      <div className="status-done" role={answers == null ? 'status' : undefined} {...focusable}>
+        <span className="mark mark-done" aria-hidden="true">
+          ✓
+        </span>
+        <p>
+          {notice.kind === 'passwordAdded'
+            ? t('passwordCard.added', { provider: notice.provider })
+            : t('passwordCard.done', { count: notice.signedOut })}
+        </p>
       </div>
     );
   }

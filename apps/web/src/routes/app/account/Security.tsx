@@ -18,7 +18,6 @@ import { AccountHeader } from '../../../components/AccountHeader.tsx';
 import { LateStatus } from '../../../components/LateStatus.tsx';
 import { StillSignedIn } from '../../../components/StillSignedIn.tsx';
 import { EverywhereElse } from './EverywhereElse.tsx';
-import { PasswordCard } from './PasswordCard.tsx';
 import { TwoFactorCard } from './TwoFactorCard.tsx';
 import { WaysCard } from './WaysCard.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
@@ -56,10 +55,8 @@ export function Security() {
   const failedNotice = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLUListElement>(null);
   const loaded = () => list.current != null || failedNotice.current != null;
-  const passwordOpener = useRef<(() => HTMLElement | null) | null>(null);
   const land = useFocusOnceShown();
   const [settingUp, setSettingUp] = useState(false);
-  const [settingPassword, setSettingPassword] = useState(false);
   const [returned] = useState<ProviderReturn | null>(() => heldProviderReturn(['signOutOthers']));
   const [everywhere, setEverywhere] = useState(
     returned != null && !('failed' in returned && returned.failed === 'cancelled'),
@@ -158,33 +155,18 @@ export function Security() {
     <div className="account">
       <AccountHeader title={t('account.title')} email={session.email} />
 
-      <PasswordCard
-        email={session.email}
-        hasPassword={session.hasPassword}
-        providers={session.providers}
-        onChanged={() => {
-          setEnded(null);
-          setRetried(false);
-          setAfterStep(true);
-          setDevices({ kind: 'loading' });
-          setAttempt((n) => n + 1);
-        }}
-        onAdded={() => refreshAccount()}
-        setting={settingPassword}
-        onSetting={setSettingPassword}
-        returnTo={() => passwordOpener.current?.() ?? null}
-      />
-
       <WaysCard
         email={session.email}
         hasPassword={session.hasPassword}
         providers={session.providers}
         onChanged={() => refreshAccount()}
         onRefused={rereadCredentials}
-        onSetPassword={(opener) => {
-          passwordOpener.current = opener;
-          setSettingPassword(true);
-          document.getElementById('password-title')?.scrollIntoView({ block: 'start' });
+        onPasswordChanged={() => {
+          setEnded(null);
+          setRetried(false);
+          setAfterStep(true);
+          setDevices({ kind: 'loading' });
+          setAttempt((n) => n + 1);
         }}
         onSignedOutHere={() => {
           forgetSession();

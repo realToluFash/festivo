@@ -3206,6 +3206,12 @@ span {
   overflow-wrap: anywhere;
 }
 
+.way-line {
+  margin: 0;
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
+}
+
 .signed-in .notice-title {
   color: var(--colorAccentText);
 }
