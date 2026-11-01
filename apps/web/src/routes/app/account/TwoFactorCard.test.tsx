@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { __setSessionState } from '../../../session.ts';
@@ -117,6 +117,9 @@ describe('turning two-factor on', () => {
     );
     expect(document.activeElement).toBe(save);
     expect(screen.getAllByRole('listitem')).toHaveLength(10);
+    const overlay = screen.getByRole('dialog', { name: 'Save your recovery codes' });
+    expect(overlay.getAttribute('aria-modal')).toBe('true');
+    expect(within(overlay).getAllByRole('listitem')).toHaveLength(10);
 
     const finish = screen.getByRole('button', { name: 'Finish' }) as HTMLButtonElement;
     expect(finish.disabled).toBe(true);
