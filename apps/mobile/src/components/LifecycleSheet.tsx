@@ -1,5 +1,5 @@
 import { type OrganisationEvent } from '@soirely/api-client';
-import { type ReactNode, type RefObject, useEffect, useState } from 'react';
+import { type ReactNode, type RefObject, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -7,7 +7,7 @@ import { api } from '../api.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
-import { readOut } from './ReadOut.tsx';
+import { useSendingWords } from './ReadOut.tsx';
 import { Sheet, SheetActions } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 import { type ScreenReaderTarget } from './screenReaderFocus.ts';
@@ -121,9 +121,7 @@ export function LifecycleSheet({
   const sending = confirm?.pending === true ? confirm.sending : undefined;
   const label = sending ?? confirm?.label ?? '';
 
-  useEffect(() => {
-    if (sending != null) readOut(sending);
-  }, [sending]);
+  useSendingWords(sending);
 
   const go =
     confirm == null ? null : confirm.ends === true ? (

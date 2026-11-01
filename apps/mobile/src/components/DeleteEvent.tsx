@@ -20,7 +20,7 @@ import { tokens } from '../theme/tokens.ts';
 import { DestructiveButton, QuietButton } from './Buttons.tsx';
 import { Field, FieldError, TextField, focusChecked, focusRefused } from './Field.tsx';
 import { Notice } from './Notice.tsx';
-import { ReadOut } from './ReadOut.tsx';
+import { ReadOut, useSendingWords } from './ReadOut.tsx';
 import { SETTLED_MS } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Sheet, SheetActions } from './Sheet.tsx';
@@ -111,6 +111,7 @@ function Confirm({
 }) {
   const { t } = useTranslation();
   const name = event.name;
+  useSendingWords(pending ? t('eventDelete.deleting') : undefined);
   const title = useRef<TextHandle>(null);
   const body = useRef<ScrollViewInstance>(null);
   const input = useRef<TextInputInstance>(null);

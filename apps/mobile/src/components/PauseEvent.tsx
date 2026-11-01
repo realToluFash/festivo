@@ -11,6 +11,7 @@ import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { LifecycleSheet, useLifecycleAction } from './LifecycleSheet.tsx';
 import { Notice } from './Notice.tsx';
+import { useSendingWords } from './ReadOut.tsx';
 
 const PAUSE_BARS = '‖';
 
@@ -102,6 +103,7 @@ export function PausedRow({
   const [state, setState] = useState<'idle' | 'pending' | 'failed'>('idle');
   const [changedTo, setChangedTo] = useState<EventStatus | null>(null);
   const changed = changedTo === event.status;
+  useSendingWords(state === 'pending' ? t('eventPause.resuming') : undefined);
 
   if (phase !== 'paused' && !changed) return null;
 
