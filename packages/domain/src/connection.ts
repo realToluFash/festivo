@@ -49,3 +49,25 @@ export function createConnection(
 
 /** The one each client feeds from its fetch and the device's network state. */
 export const connection = createConnection();
+
+/** Rejects with `unanswered()` once `ms` pass with no answer, while the load itself carries on unwatched. */
+export function answeredWithin<T>(
+  load: Promise<T>,
+  unanswered: () => unknown,
+  ms: number = NO_ANSWER_MS,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(unanswered()), ms);
+
+    load.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}

@@ -1,5 +1,5 @@
 import { ApiUnreachableError } from '@soirely/api-client';
-import { connection } from '@soirely/domain';
+import { answeredWithin, connection } from '@soirely/domain';
 import {
   type RefObject,
   createContext,
@@ -44,24 +44,31 @@ export function useOffline({
   const [out, setOut] = useState(0);
   const [unanswered, setUnanswered] = useState(0);
   const pressed = useRef(false);
+  const outNow = useRef(0);
   const askedWhileOut = useRef(false);
-  const live = useRef({ loaded, reload, out, stale });
+  const live = useRef({ loaded, reload, stale });
 
   useLayoutEffect(() => {
-    live.current = { loaded, reload, out, stale };
+    live.current = { loaded, reload, stale };
   });
 
+  // A press while a load is out joins it: no second load, and the 20 s keep counting from the first.
   const retry = useCallback(() => {
     pressed.current = true;
-    live.current.reload();
+    if (outNow.current === 0) live.current.reload();
   }, []);
 
   const watch = useCallback(
     <T>(load: Promise<T>): Promise<T> => {
+      outNow.current += 1;
       setOut((n) => n + 1);
+      const asked = live.current.loaded
+        ? answeredWithin(load, () => new ApiUnreachableError())
+        : load;
 
-      return load.then(
+      return asked.then(
         (value) => {
+          outNow.current -= 1;
           setOut((n) => n - 1);
           askedWhileOut.current = false;
           setAt(new Date());
@@ -75,6 +82,7 @@ export function useOffline({
           return value;
         },
         (error: unknown) => {
+          outNow.current -= 1;
           setOut((n) => n - 1);
 
           if (!keepsWhatLoaded(error)) setStale(false);
@@ -99,7 +107,7 @@ export function useOffline({
     const askAgain = () => {
       if (!live.current.stale) return;
 
-      if (live.current.out === 0) live.current.reload();
+      if (outNow.current === 0) live.current.reload();
       else askedWhileOut.current = true;
     };
     const stop = connection.subscribe((change) => {

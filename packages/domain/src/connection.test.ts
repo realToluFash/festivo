@@ -1,6 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { type ConnectionChange, NO_ANSWER_MS, createConnection } from './connection.ts';
+import {
+  type ConnectionChange,
+  NO_ANSWER_MS,
+  answeredWithin,
+  createConnection,
+} from './connection.ts';
 
 function watched() {
   const pending = new Map<number, () => void>();
@@ -84,5 +89,30 @@ describe('the connection', () => {
     connection.deviceOnline();
 
     expect(heard).toEqual(['lost', 'deviceBack']);
+  });
+});
+
+describe('a load given the 20 s', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it(`gives up on it after ${NO_ANSWER_MS / 1000} s with no answer, and not before`, async () => {
+    vi.useFakeTimers();
+    const outcome = vi.fn();
+
+    answeredWithin(new Promise(() => {}), () => new Error('no answer')).catch(outcome);
+    await vi.advanceTimersByTimeAsync(NO_ANSWER_MS - 1);
+    expect(outcome).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(outcome).toHaveBeenCalledWith(new Error('no answer'));
+  });
+
+  it('passes an answer or a failure on as it came', async () => {
+    await expect(answeredWithin(Promise.resolve('loaded'), () => 'late')).resolves.toBe('loaded');
+    await expect(answeredWithin(Promise.reject(new Error('503')), () => 'late')).rejects.toThrow(
+      '503',
+    );
   });
 });

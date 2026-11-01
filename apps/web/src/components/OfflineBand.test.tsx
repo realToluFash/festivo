@@ -167,6 +167,38 @@ describe('the offline band (sc-22586)', () => {
     );
   });
 
+  it('joins a second press to the load already out, and gives that load up 20 s after the first press', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    signedIn();
+    const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde' };
+    const fetched = serving(state);
+    await onEvents();
+
+    goOffline();
+    await waitFor(() => expect(band()).not.toBeNull());
+    fetched.mockImplementation(() => new Promise<Response>(() => {}));
+    const asked = fetched.mock.calls.length;
+    const said = document.querySelector('.offline-band [aria-live]');
+
+    act(() => screen.getByRole('button', { name: 'Try again' }).click());
+    await screen.findByText('Refreshing…');
+    const askedByFirstPress = fetched.mock.calls.length - asked;
+    expect(askedByFirstPress).toBeGreaterThan(0);
+
+    await act(() => vi.advanceTimersByTimeAsync(5_000));
+    act(() => screen.getByRole('button', { name: 'Try again' }).click());
+    await act(() => vi.advanceTimersByTimeAsync(14_000));
+    expect(fetched.mock.calls.length - asked).toBe(askedByFirstPress);
+    expect(screen.getByText('Refreshing…')).toBeDefined();
+
+    await act(() => vi.advanceTimersByTimeAsync(1_000));
+    expect(screen.queryByText('Refreshing…')).toBeNull();
+    expect(band()).not.toBeNull();
+    expect(document.activeElement).not.toBe(screen.getByRole('heading', { name: 'Events' }));
+    await act(() => vi.advanceTimersByTimeAsync(100));
+    expect(said?.textContent).toMatch(/^Offline · as of /);
+  });
+
   it('never shows for an answer, a 5xx included: the screen keeps its own words', async () => {
     signedIn();
     const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde' };
