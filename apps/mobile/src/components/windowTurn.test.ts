@@ -32,3 +32,22 @@ describe('the switcher and every sheet take turns for the window', () => {
     expect(text).toMatch(/const \{ shown, gone \} = useWindowTurn\(/);
   });
 });
+
+describe('a sheet’s entry, on a cold first open', () => {
+  const sheet = readFileSync(join(import.meta.dirname, 'Sheet.tsx'), 'utf8');
+
+  it('starts once the window’s views are laid out, not when the sheet is asked for', () => {
+    expect(sheet).toMatch(/onLayout=\{\(event\) => \{[\s\S]*?setLaidOut\(true\);/);
+    expect(sheet).toContain('if (!laidOut) return;');
+  });
+
+  it('waits again on the next open, once its window has gone', () => {
+    expect(sheet).toMatch(
+      /if \(!shown && \(onScreen \|\| laidOut\)\) \{[\s\S]*?setLaidOut\(false\);/,
+    );
+  });
+
+  it('ends on the values it set out to reach', () => {
+    expect(sheet).toMatch(/if \(!finished\) return;[\s\S]*?fade\.setValue\(1\);/);
+  });
+});
