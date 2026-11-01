@@ -392,7 +392,7 @@
     "unreachable": "Não foi possível contactar a API.",
     "check": "Verificação",
     "state": "Estado",
-    "retry": "Tente novamente"
+    "retry": "Tentar novamente"
   },
   "pending": {
     "loading": "A carregar…"
@@ -400,7 +400,7 @@
   "error": {
     "title": "Ocorreu um erro",
     "body": "Não foi possível mostrar esta parte da página. O resto da aplicação não é afectado.",
-    "retry": "Tente novamente",
+    "retry": "Tentar novamente",
     "details": "Detalhes técnicos"
   },
   "forbidden": {
@@ -1113,7 +1113,7 @@
     "askAgain": "Pedir de novo",
     "failedTitle": "Não funcionou",
     "failedBody": "Algo correu mal pelo caminho. Tente de novo dentro de momentos.",
-    "retry": "Tentar de novo",
+    "retry": "Tentar novamente",
     "setupTitle": "Configure de novo a autenticação de dois fatores",
     "setupIntro": "A autenticação de dois fatores foi desativada para poder voltar a entrar. Configure-a de novo para que uma palavra-passe sozinha não abra a sua conta.",
     "setup": "Configurar a autenticação de dois fatores",

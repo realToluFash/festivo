@@ -43,6 +43,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Unverified                | À vérifier              | Settled 18 Oct: no agreement     |
 | Account mail              | Les e-mails du compte   | Settled 18 Oct                   |
 | Sign-in rules             | Règles de connexion     | Settled 19 Oct                   |
+| Try again (button)        | Réessayer               | Settled 1 Nov, sc-26974          |
 
 - **« e-mail » keeps a plain hyphen (U+002D)**, never U+2011, even where it wraps as « e- » /
   « mail » (sc-20577, #20957). A break at a hyphen is ordinary French typography; U+2011 is

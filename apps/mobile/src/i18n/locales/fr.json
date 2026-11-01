@@ -28,7 +28,7 @@
     "healthy": "Tous les services répondent.",
     "degraded": "Certains services ne répondent pas.",
     "unreachable": "L’API n’a pas pu être contactée.",
-    "retry": "Veuillez réessayer",
+    "retry": "Réessayer",
     "check": "Vérification",
     "state": "État",
     "usingFallback": "Aucune URL d’API n’est configurée : localhost est donc utilisé. Cela fonctionne sur un simulateur, mais pas sur un appareil. Veuillez consulter le fichier README."
@@ -352,7 +352,7 @@
     "keepItOn": "La garder activée",
     "failedTitle": "La double authentification n’a pas pu se charger",
     "failedBody": "Un problème est survenu de notre côté. Réessayez dans un instant.",
-    "retry": "Veuillez réessayer",
+    "retry": "Réessayer",
     "phoneSetupTitle": "Ajoutez Soirely à votre application d’authentification",
     "phoneCantScan": "Scannez le code depuis un autre écran, ou saisissez cette clé dans l’application.",
     "phoneKeepElsewhere": "Conservez-les ailleurs que sur ce téléphone.",
@@ -676,7 +676,7 @@
     "everywhereFailedTitle": "Aucun appareil n’a été déconnecté",
     "everywhereFailedBody": "Cela concerne l’accès à l’API et non votre compte. Réessayez.",
     "loading": "Chargement…",
-    "retry": "Veuillez réessayer"
+    "retry": "Réessayer"
   },
   "frame": {
     "home": "Accueil",

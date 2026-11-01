@@ -392,7 +392,7 @@
     "unreachable": "L’API n’a pas pu être contactée.",
     "check": "Vérification",
     "state": "État",
-    "retry": "Veuillez réessayer"
+    "retry": "Réessayer"
   },
   "pending": {
     "loading": "Chargement…"
@@ -400,7 +400,7 @@
   "error": {
     "title": "Une erreur s’est produite",
     "body": "Cette partie de la page n’a pas pu être affichée. Le reste de l’application n’est pas affecté.",
-    "retry": "Veuillez réessayer",
+    "retry": "Réessayer",
     "details": "Détails techniques"
   },
   "forbidden": {

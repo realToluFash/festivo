@@ -38,6 +38,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Time zone                                                       | Zona horaria                                                                 | Settled, sc-1585                                     |
 | Contact address                                                 | Dirección de contacto                                                        | Settled, sc-1585                                     |
 | Role (Settings > Roles), built-in role                          | Rol, rol predefinido                                                         | Settled, sc-2150; the switcher's «Su función» is not |
+| Try again (button)                                              | Reintentar                                                                   | Settled, sc-26974; never «Inténtelo de nuevo»        |
 
 ## Never translated
 
