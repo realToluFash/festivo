@@ -6,8 +6,7 @@ import { AppFrame, BackButton } from '../../../src/components/AppFrame.tsx';
 import { bodyEdges } from '../../../src/components/bodyEdges.ts';
 import { Screen } from '../../../src/components/Screen.tsx';
 import { AllDates } from '../../../src/components/Timeline.tsx';
-import { EVENT_AREA } from '../../../src/kit/eventNav.ts';
-import { goUpToEvent } from '../../../src/kit/upToEvent.ts';
+import { goToArea, goUpToEvent } from '../../../src/kit/upToEvent.ts';
 import { useServerNow } from '../../../src/kit/serverNow.ts';
 import { useLayout } from '../../../src/layout/useLayout.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
@@ -30,10 +29,7 @@ export default function EventDates() {
       backInBody
       inEvent={{
         area: 'overview',
-        onArea: (area) =>
-          area === 'overview'
-            ? back()
-            : router.dismissTo({ pathname: '/events/[id]', params: { id, [EVENT_AREA]: area } }),
+        onArea: (area) => (area === 'overview' ? back() : goToArea(navigation, router, id, area)),
       }}
     >
       <Screen edges={bodyEdges(kind)} contentStyle={styles.content}>

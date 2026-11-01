@@ -6,9 +6,9 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { DESTINATION_HREF } from '../kit/appNav.ts';
-import { EVENT_AREA, eventHref } from '../kit/eventNav.ts';
+import { eventHref } from '../kit/eventNav.ts';
 import { formTitles } from '../kit/formTitles.ts';
-import { goUpToEvent } from '../kit/upToEvent.ts';
+import { goToArea, goUpToEvent } from '../kit/upToEvent.ts';
 import { markSaved } from '../kit/eventSaved.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { useSignedIn } from '../signedIn.ts';
@@ -98,10 +98,7 @@ export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt |
         onArea: (area) =>
           area === 'overview'
             ? goUpToEvent(navigation, router, eventId)
-            : router.dismissTo({
-                pathname: '/events/[id]',
-                params: { id: eventId, [EVENT_AREA]: area },
-              }),
+            : goToArea(navigation, router, eventId, area),
       }}
     >
       {'kind' in load && load.kind === 'loading' && (
