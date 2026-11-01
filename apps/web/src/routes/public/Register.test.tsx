@@ -121,6 +121,7 @@ describe('the way back from Create your account (sc-23277)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Back to sign in' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/sign-in'));
+    expect(router.state.historyAction).toBe('REPLACE');
   });
 });
 

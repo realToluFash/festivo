@@ -118,7 +118,9 @@ export function Register() {
           className="link-button auth-back"
           aria-label={t('register.back')}
           onClick={() =>
-            location.key === 'default' ? void navigate('/sign-in') : void navigate(-1)
+            location.key === 'default'
+              ? void navigate('/sign-in', { replace: true })
+              : void navigate(-1)
           }
         >
           <span aria-hidden="true">‹ </span>
