@@ -225,6 +225,23 @@ export function howSoonWords(soon: HowSoon, locale: LocaleCode): string {
   }).format(soon.count, soon.unit);
 }
 
+/** "in 32 days", or `endsIn` around it once under way; null where the event has no phrase (sc-25008). */
+export function howSoonPhrase(
+  event: { startsAt: string; endsAt: string; timeZone: string },
+  phase: EventPhase,
+  now: Date,
+  locale: LocaleCode,
+  endsIn: (time: string) => string,
+): string | null {
+  const soon = howSoon(event, phase, now);
+
+  if (soon == null) return null;
+
+  const words = howSoonWords(soon, locale);
+
+  return soon.to === 'end' ? endsIn(words) : words;
+}
+
 /** When it was ended or called off, or its end, for one the clock has finished since it was loaded. */
 function finishedAt(event: HomeEvent): number {
   return Date.parse(event.concludedAt ?? event.endsAt);

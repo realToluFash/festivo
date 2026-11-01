@@ -8,8 +8,7 @@ import {
   formatEventClock,
   formatEventShortDay,
   formatEventWeekday,
-  howSoon,
-  howSoonWords,
+  howSoonPhrase,
   nextStep,
   rememberEventsTab,
   rememberedEventsTab,
@@ -543,13 +542,8 @@ function EventDates({
 function useHowSoon(event: ListedEvent, phase: EventPhase, now: Date): string | null {
   const { t } = useTranslation();
   const language = useShownLanguage();
-  const soon = howSoon(event, phase, now);
 
-  if (soon == null) return null;
-
-  const words = howSoonWords(soon, language);
-
-  return soon.to === 'end' ? t('events.endsIn', { time: words }) : words;
+  return howSoonPhrase(event, phase, now, language, (time) => t('events.endsIn', { time }));
 }
 
 function NextStep({ event, phase, now }: { event: ListedEvent; phase: EventPhase; now: Date }) {

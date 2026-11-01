@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { eventDatesWords, howSoonPhrase, nextStepWords, summaryWords } from './eventsHome.ts';
+import { eventDatesWords, nextStepWords, summaryWords } from './eventsHome.ts';
 
 const t = ((key: string, values: Record<string, unknown> = {}) =>
   `${key} ${JSON.stringify(values)}`) as unknown as TFunction;
@@ -63,22 +63,5 @@ describe('nextStepWords', () => {
     expect(nextStepWords({ kind: 'changeDates' }, t)).toBe('eventsScreen.nextChangeDates {}');
     expect(nextStepWords({ kind: 'resume' }, t)).toBe('eventsScreen.nextResume {}');
     expect(nextStepWords(null, t)).toBeNull();
-  });
-});
-
-describe('howSoonPhrase', () => {
-  it('says how soon it starts in the shown language, and how soon it ends once under way', () => {
-    expect(howSoonPhrase(EVENT, 'live', new Date('2026-11-13T08:00:00+01:00'), 'pt', t)).toBe(
-      'amanhã',
-    );
-    expect(
-      howSoonPhrase(EVENT, 'happening_now', new Date('2026-11-14T22:59:20+01:00'), 'en', t),
-    ).toBe('eventsScreen.endsIn {"time":"this minute"}');
-  });
-
-  it('has no phrase for a finished event', () => {
-    expect(
-      howSoonPhrase(EVENT, 'finished', new Date('2026-11-13T12:00:00+01:00'), 'en', t),
-    ).toBeNull();
   });
 });

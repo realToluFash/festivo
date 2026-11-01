@@ -8,6 +8,7 @@ import {
   eventsHome,
   forgetEventsTab,
   howSoon,
+  howSoonPhrase,
   howSoonWords,
   nextStep,
   rememberEventsTab,
@@ -459,5 +460,29 @@ describe('howSoonWords', () => {
     expect(words(1, 'day', locale)).toBe(tomorrow);
     expect(words(40, 'minute', locale)).toBe(minutes);
     expect(words(0, 'minute', locale)).toBe(thisMinute);
+  });
+});
+
+describe('howSoonPhrase', () => {
+  const event = {
+    startsAt: '2026-11-14T09:00:00+01:00',
+    endsAt: '2026-11-14T23:00:00+01:00',
+    timeZone: 'Europe/Madrid',
+  };
+  const endsIn = (time: string) => `Ends ${time}`;
+
+  it('says how soon it starts, and how soon it ends once under way', () => {
+    expect(howSoonPhrase(event, 'live', new Date('2026-11-13T08:00:00+01:00'), 'pt', endsIn)).toBe(
+      'amanhã',
+    );
+    expect(
+      howSoonPhrase(event, 'happening_now', new Date('2026-11-14T22:59:20+01:00'), 'en', endsIn),
+    ).toBe('Ends this minute');
+  });
+
+  it('has no phrase for a finished event', () => {
+    expect(
+      howSoonPhrase(event, 'finished', new Date('2026-11-13T12:00:00+01:00'), 'en', endsIn),
+    ).toBeNull();
   });
 });

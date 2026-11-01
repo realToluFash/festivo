@@ -4,6 +4,7 @@ import {
   type EventPhase,
   type EventsTab,
   eventsHome,
+  howSoonPhrase,
   nextStep,
   shownPhase,
 } from '@soirely/domain';
@@ -11,9 +12,10 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale, useShownLanguage } from '../i18n/index.ts';
-import { eventDatesWords, howSoonPhrase, nextStepWords, summaryWords } from '../kit/eventsHome.ts';
+import { eventDatesWords, nextStepWords, summaryWords } from '../kit/eventsHome.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
+import { type WeightName } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { SecondaryButton } from './Buttons.tsx';
 import { EventState } from './Events.tsx';
@@ -244,9 +246,19 @@ function Card({
         <TypeAndPlace event={event} />
       </View>
       <View style={styles.cardDates}>
-        <Text size={tokens.typeSmall.size}>{dates.days}</Text>
+        <WithSoon
+          line={dates.days}
+          soon={howSoonPhrase(event, phase, now, language, (time) =>
+            t('eventsScreen.endsIn', { time }),
+          )}
+          size={kind === 'phone' ? tokens.typeMeta.size : tokens.typeSmall.size}
+          weight="medium"
+          lineMuted={false}
+        />
         {dates.time != null && (
-          <WithSoon line={dates.time} soon={howSoonPhrase(event, phase, now, language, t)} />
+          <Text size={tokens.typeSmall.size} muted>
+            {dates.time}
+          </Text>
         )}
       </View>
       <EventState phase={phase} />
@@ -296,7 +308,9 @@ function HappeningNow({
       {dates.time != null && (
         <WithSoon
           line={dates.time}
-          soon={howSoonPhrase(event, 'happening_now', now, language, t)}
+          soon={howSoonPhrase(event, 'happening_now', now, language, (time) =>
+            t('eventsScreen.endsIn', { time }),
+          )}
         />
       )}
       <View style={styles.figures}>
@@ -314,12 +328,24 @@ function HappeningNow({
 }
 
 /** The phrase goes to the next line whole rather than split, and the separator stays where the line before ends. */
-function WithSoon({ line, soon }: { line: string; soon: string | null }) {
+function WithSoon({
+  line,
+  soon,
+  size = tokens.typeSmall.size,
+  weight = 'regular',
+  lineMuted = true,
+}: {
+  line: string;
+  soon: string | null;
+  size?: number;
+  weight?: WeightName;
+  lineMuted?: boolean;
+}) {
   const { t } = useTranslation();
 
   if (soon == null) {
     return (
-      <Text size={tokens.typeSmall.size} muted>
+      <Text size={size} weight={weight} muted={lineMuted}>
         {line}
       </Text>
     );
@@ -327,10 +353,10 @@ function WithSoon({ line, soon }: { line: string; soon: string | null }) {
 
   return (
     <View style={styles.withSoon}>
-      <Text size={tokens.typeSmall.size} muted>
+      <Text size={size} weight={weight} muted={lineMuted}>
         {t('eventsScreen.thenSoon', { when: line })}
       </Text>
-      <Text size={tokens.typeSmall.size} muted>
+      <Text size={size} weight={weight} muted>
         {soon}
       </Text>
     </View>
