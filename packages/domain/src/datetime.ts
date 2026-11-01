@@ -39,6 +39,20 @@ export function fallsOnLaterDay(moment: string | Date, now: Date = new Date()): 
   return date.getTime() >= tomorrow.getTime();
 }
 
+/** The mirror of `fallsOnLaterDay`: before today began in the reader's own zone. */
+export function fallsOnEarlierDay(moment: string | Date, now: Date = new Date()): boolean {
+  const date = asDate(moment);
+
+  if (date == null) return false;
+
+  return date.getTime() < new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+}
+
+/** The next local midnight after `now`, when an earlier-day wording turns over by itself. */
+export function nextMidnight(now: Date = new Date()): Date {
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+}
+
 export function secondsUntil(moment: string | Date, now: Date = new Date()): number {
   const date = asDate(moment);
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  fallsOnEarlierDay,
   fallsOnLaterDay,
   formatCountdown,
   formatDay,
@@ -16,6 +17,7 @@ import {
   formatWallClock,
   formatWallDay,
   lockLiftsAt,
+  nextMidnight,
   secondsUntil,
 } from './datetime.ts';
 
@@ -269,5 +271,22 @@ describe('the length of a copy, as its form gives it (sc-3593)', () => {
     expect(durationWords(45, 'en')).toEqual({ hours: null, minutes: '45 minutes' });
     expect(durationWords(0, 'en')).toEqual({ hours: '0 hours', minutes: null });
     expect(durationWords(105, 'fr').minutes).toBe('45 minutes');
+  });
+});
+
+describe('whether a moment falls on an earlier day', () => {
+  const justAfterMidnight = new Date(2026, 9, 27, 0, 1);
+
+  it('is, two minutes before local midnight', () => {
+    expect(fallsOnEarlierDay(new Date(2026, 9, 26, 23, 58), justAfterMidnight)).toBe(true);
+  });
+
+  it('is not, at midnight itself or later', () => {
+    expect(fallsOnEarlierDay(new Date(2026, 9, 27, 0, 0), justAfterMidnight)).toBe(false);
+    expect(fallsOnEarlierDay(new Date(2026, 9, 27, 0, 1), justAfterMidnight)).toBe(false);
+  });
+
+  it('turns over at the next local midnight', () => {
+    expect(nextMidnight(new Date(2026, 9, 26, 23, 58))).toEqual(new Date(2026, 9, 27));
   });
 });
