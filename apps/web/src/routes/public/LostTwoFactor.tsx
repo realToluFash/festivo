@@ -224,7 +224,7 @@ function Replaced({ onStartAgain }: { onStartAgain: () => void }) {
         intro={t('lostTwoFactor.replacedIntro')}
         mark={{ outcome: 'ended', word: t('lostTwoFactor.replacedMark') }}
       />
-      <p className="muted">{t('lostTwoFactor.replacedNote')}</p>
+      <p className="auth-note muted">{t('lostTwoFactor.replacedNote')}</p>
       <button className="button button-primary" type="button" onClick={onStartAgain}>
         {t('lostTwoFactor.startAgain')}
       </button>
@@ -310,7 +310,7 @@ function Start({
           <span>{t('lostTwoFactor.step3', { organisations })}</span>
         </li>
       </ol>
-      <p>{t('lostTwoFactor.startNote')}</p>
+      <p className="auth-note">{t('lostTwoFactor.startNote')}</p>
 
       <button
         className="button button-primary"
@@ -426,7 +426,7 @@ function Request({
             <p>{t('lostTwoFactor.endsBy', { when: state.expires })}</p>
           </div>
         </div>
-        <p>{t('lostTwoFactor.stayOut', { email: state.email })}</p>
+        <p className="auth-note">{t('lostTwoFactor.stayOut', { email: state.email })}</p>
         {state.nobody && supportAddress !== '' && (
           <a className="button" href={`mailto:${supportAddress}`}>
             {t('lostTwoFactor.emailSupport', { address: supportAddress })}
