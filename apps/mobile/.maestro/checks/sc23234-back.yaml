@@ -1,0 +1,17 @@
+# Notification settings' ‹ Settings goes back to the Settings list (sc-23234).
+appId: host.exp.Exponent
+---
+- runFlow: ../open-settings.yaml
+- tapOn:
+    id: settings.notifications
+- extendedWaitUntil:
+    visible:
+      id: notificationSettings.guest_replies.push
+    timeout: 30000
+- tapOn:
+    id: frame.back
+- extendedWaitUntil:
+    visible:
+      id: settings.account
+    timeout: 15000
+- takeScreenshot: ns-back

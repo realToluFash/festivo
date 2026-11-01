@@ -678,6 +678,7 @@
   "frame": {
     "home": "Accueil",
     "events": "Événements",
+    "calendar": "Calendrier",
     "settings": "Paramètres",
     "organisation": "Organisation"
   },
@@ -1777,6 +1778,33 @@
     "key_you": "Ce que vous devez faire",
     "key_automatic": "Soirely s’en charge pour vous",
     "backToEvent": "Événement"
+  },
+  "calendar": {
+    "title": "Calendrier",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "today": "Aujourd’hui",
+    "todayDay": "Aujourd’hui, {{day}}",
+    "dayWithItems_one": "{{day}}, {{count, number}} élément",
+    "dayWithItems_other": "{{day}}, {{count, number}} éléments",
+    "dayWithItems_many": "{{day}}, {{count, number}} d’éléments",
+    "month": "Mois",
+    "agenda": "Planning",
+    "view": "Affichage",
+    "show": "Afficher",
+    "choiceIn": "{{group}} : {{choice}}",
+    "showAll": "Événements et jalons",
+    "showEvents": "Événements seulement",
+    "more_one": "+{{count, number}}",
+    "more_other": "+{{count, number}}",
+    "more_many": "+{{count, number}}",
+    "close": "Fermer",
+    "timeInZone": "{{time}} {{timeZone}}",
+    "range": "Du {{from}} au {{to}}",
+    "loading": "Chargement du calendrier…",
+    "failed": "Le calendrier n’a pas pu être chargé. Vérifiez votre connexion, puis réessayez. Rien n’a été modifié.",
+    "emptyMonth": "Rien au calendrier en {{month}}.",
+    "emptyDay": "Rien ce jour-là."
   },
   "notifications": {
     "bell": "Notifications",

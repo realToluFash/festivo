@@ -63,7 +63,8 @@ def involves(role, thread, story, testers=None):
 
 
 def latest_verdict(pr):
-    return max(pr["lead"], key=lambda v: v["at"]) if pr["lead"] else None
+    """The newest by review id: GitHub moves an old review's time forward, never its id."""
+    return max(pr["lead"], key=lambda v: (v.get("id") or 0, v["at"])) if pr["lead"] else None
 
 
 def covers(verdict, sha, carried=None):

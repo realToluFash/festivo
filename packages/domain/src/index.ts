@@ -40,6 +40,7 @@ export * from './hosts.ts';
 export * from './hostWords.ts';
 export * from './makeLiveHost.ts';
 export * from './timeline.ts';
+export * from './calendar.ts';
 export * from './eventsHome.ts';
 export * from './notificationFeed.ts';
 export * from './notificationSettings.ts';

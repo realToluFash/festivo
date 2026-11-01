@@ -13,6 +13,7 @@
   "nav": {
     "dashboard": "Painel",
     "events": "Eventos",
+    "calendar": "Calendário",
     "guests": "Convidados",
     "settings": "Definições",
     "account": "A sua conta",
@@ -2082,6 +2083,33 @@
     "key_event": "O próprio evento",
     "key_you": "Algo que tem de fazer",
     "key_automatic": "O Soirely trata disso por si"
+  },
+  "calendar": {
+    "title": "Calendário",
+    "previous": "Anterior",
+    "next": "Seguinte",
+    "today": "Hoje",
+    "todayDay": "Hoje, {{day}}",
+    "dayWithItems_one": "{{day}}, {{count, number}} elemento",
+    "dayWithItems_other": "{{day}}, {{count, number}} elementos",
+    "dayWithItems_many": "{{day}}, {{count, number}} de elementos",
+    "view": "Vista",
+    "month": "Mês",
+    "agenda": "Agenda",
+    "show": "Mostrar",
+    "showAll": "Eventos e marcos",
+    "showEvents": "Só eventos",
+    "more_one": "+{{count, number}} mais",
+    "more_other": "+{{count, number}} mais",
+    "more_many": "+{{count, number}} mais",
+    "close": "Fechar",
+    "timeInZone": "{{time}} {{timeZone}}",
+    "range": "De {{from}} até {{to}}",
+    "loading": "A carregar o calendário…",
+    "failed": "Não foi possível carregar o calendário. Verifique a ligação e tente novamente. Nada foi alterado.",
+    "retry": "Tentar novamente",
+    "emptyMonth": "Nada no calendário em {{month}}.",
+    "emptyDay": "Nada neste dia."
   },
   "saveLabel": {
     "saved": "Guardado"

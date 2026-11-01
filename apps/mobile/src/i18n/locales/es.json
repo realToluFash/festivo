@@ -678,6 +678,7 @@
   "frame": {
     "home": "Inicio",
     "events": "Eventos",
+    "calendar": "Calendario",
     "settings": "Configuración",
     "organisation": "Organización"
   },
@@ -1777,6 +1778,33 @@
     "key_you": "Algo que debe hacer usted",
     "key_automatic": "Soirely se encarga por usted",
     "backToEvent": "Evento"
+  },
+  "calendar": {
+    "title": "Calendario",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "today": "Hoy",
+    "todayDay": "Hoy, {{day}}",
+    "dayWithItems_one": "{{day}}, {{count, number}} elemento",
+    "dayWithItems_other": "{{day}}, {{count, number}} elementos",
+    "dayWithItems_many": "{{day}}, {{count, number}} de elementos",
+    "month": "Mes",
+    "agenda": "Agenda",
+    "view": "Vista",
+    "show": "Mostrar",
+    "choiceIn": "{{group}}: {{choice}}",
+    "showAll": "Eventos e hitos",
+    "showEvents": "Solo eventos",
+    "more_one": "+{{count, number}} más",
+    "more_other": "+{{count, number}} más",
+    "more_many": "+{{count, number}} más",
+    "close": "Cerrar",
+    "timeInZone": "{{time}} {{timeZone}}",
+    "range": "Del {{from}} al {{to}}",
+    "loading": "Cargando el calendario…",
+    "failed": "No se ha podido cargar el calendario. Compruebe su conexión y vuelva a intentarlo. No ha cambiado nada.",
+    "emptyMonth": "En {{month}} no hay nada en el calendario.",
+    "emptyDay": "No hay nada este día."
   },
   "notifications": {
     "bell": "Notificaciones",

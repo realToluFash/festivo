@@ -33,6 +33,7 @@ import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { EventCoverImage } from './EventCoverImage.tsx';
 import { typeLabel } from './eventTypes.ts';
 import { StatusPill } from './MakeLive.tsx';
+import { FirstRun } from './FirstRun.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { distanceWords } from './distanceWords.ts';
 import { Skeleton } from '../../../components/Skeleton.tsx';
@@ -452,48 +453,6 @@ function CardDate({
         distance: distanceWords(t, date.startsAt, event.timeZone, now),
       });
   }
-}
-
-function FirstRun({
-  creates,
-  title,
-}: {
-  creates: boolean;
-  title: RefObject<HTMLHeadingElement | null>;
-}) {
-  const { t } = useTranslation();
-  const steps = [
-    'events.firstRunStepName',
-    'events.firstRunStepDefaults',
-    'events.firstRunStepOpen',
-  ];
-
-  return (
-    <section className="card events-first-run" aria-labelledby="events-first-run-title">
-      <h2 id="events-first-run-title" ref={title} tabIndex={-1}>
-        {t('events.firstRunTitle')}
-      </h2>
-      <ol className="steps-list">
-        {steps.map((step, index) => (
-          <li key={step}>
-            <span className="step-mark" aria-hidden="true">
-              {index + 1}
-            </span>
-            <span>{t(step)}</span>
-          </li>
-        ))}
-      </ol>
-      {creates ? (
-        <Link className="button button-primary events-first-run-create" to="/app/events/new">
-          {t('events.firstRunCreate')}
-        </Link>
-      ) : (
-        <div className="notice notice-quiet">
-          <p>{t('events.firstRunAskOwner')}</p>
-        </div>
-      )}
-    </section>
-  );
 }
 
 /** Set by Delete event on its way to the Events list, which says the event was deleted. */

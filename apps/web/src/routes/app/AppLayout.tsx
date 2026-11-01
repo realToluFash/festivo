@@ -358,6 +358,9 @@ function ShellLinks({ onFollow }: { onFollow?: () => void }) {
         <NavLink to="/app/events" onClick={onFollow}>
           {t('nav.events')}
         </NavLink>
+        <NavLink to="/app/calendar" onClick={onFollow}>
+          {t('nav.calendar')}
+        </NavLink>
         <NavLink to="/app/guests" onClick={onFollow}>
           {t('nav.guests')}
         </NavLink>

@@ -103,16 +103,18 @@ export function NotificationSettings() {
           </span>
           <div className="notice-body">
             <p className="notice-title">{t('notificationSettings.couldNotLoad')}</p>
-            <button
-              type="button"
-              className="link-button"
-              onClick={() => {
-                setGrid({ status: 'loading' });
-                setAttempt((tries) => tries + 1);
-              }}
-            >
-              {t('notificationSettings.tryAgain')}
-            </button>
+            <p className="notice-action">
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => {
+                  setGrid({ status: 'loading' });
+                  setAttempt((tries) => tries + 1);
+                }}
+              >
+                {t('notificationSettings.tryAgain')}
+              </button>
+            </p>
           </div>
         </div>
       )}

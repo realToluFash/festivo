@@ -60,3 +60,34 @@ export function sheetPadding({
     frameBottom: 0,
   };
 }
+
+/** Which sheets have their own window up, so a sheet opened as another leaves waits for that window to go (sc-23267). */
+export interface SheetWindows {
+  raise: (id: string) => void;
+  lower: (id: string) => void;
+  /** True while another sheet's window is up and this one's is not. */
+  waits: (id: string) => boolean;
+  subscribe: (heard: () => void) => () => void;
+}
+
+export function sheetWindows(): SheetWindows {
+  const up = new Set<string>();
+  const listeners = new Set<() => void>();
+  const told = () => listeners.forEach((heard) => heard());
+
+  return {
+    raise: (id) => {
+      if (up.has(id)) return;
+      up.add(id);
+      told();
+    },
+    lower: (id) => {
+      if (up.delete(id)) told();
+    },
+    waits: (id) => !up.has(id) && up.size > 0,
+    subscribe: (heard) => {
+      listeners.add(heard);
+      return () => listeners.delete(heard);
+    },
+  };
+}

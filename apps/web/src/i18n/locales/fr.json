@@ -13,6 +13,7 @@
   "nav": {
     "dashboard": "Tableau de bord",
     "events": "Événements",
+    "calendar": "Calendrier",
     "guests": "Invités",
     "settings": "Paramètres",
     "account": "Votre compte",
@@ -2082,6 +2083,33 @@
     "key_event": "L’événement lui-même",
     "key_you": "Ce que vous devez faire",
     "key_automatic": "Soirely s’en charge pour vous"
+  },
+  "calendar": {
+    "title": "Calendrier",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "today": "Aujourd’hui",
+    "todayDay": "Aujourd’hui, {{day}}",
+    "dayWithItems_one": "{{day}}, {{count, number}} élément",
+    "dayWithItems_other": "{{day}}, {{count, number}} éléments",
+    "dayWithItems_many": "{{day}}, {{count, number}} d’éléments",
+    "view": "Affichage",
+    "month": "Mois",
+    "agenda": "Planning",
+    "show": "Afficher",
+    "showAll": "Événements et jalons",
+    "showEvents": "Événements seulement",
+    "more_one": "+{{count, number}}",
+    "more_other": "+{{count, number}}",
+    "more_many": "+{{count, number}}",
+    "close": "Fermer",
+    "timeInZone": "{{time}} {{timeZone}}",
+    "range": "Du {{from}} au {{to}}",
+    "loading": "Chargement du calendrier…",
+    "failed": "Le calendrier n’a pas pu être chargé. Vérifiez votre connexion, puis réessayez. Rien n’a été modifié.",
+    "retry": "Réessayer",
+    "emptyMonth": "Rien au calendrier en {{month}}.",
+    "emptyDay": "Rien ce jour-là."
   },
   "saveLabel": {
     "saved": "Enregistré"

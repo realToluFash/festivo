@@ -318,6 +318,17 @@ describe('every Modal stays under the update-required state (sc-22962)', () => {
     expect(modalsLeftOpen("import { Modal, type TextInputInstance } from 'react-native';")).toBe(0);
   });
 
+  it('passes a Modal whose turn for the window comes after useModalOpen', () => {
+    expect(
+      modalsLeftOpen(
+        'const { shown, gone } = useWindowTurn(useModalOpen(open));\n<Modal visible={shown}>\n</Modal>',
+      ),
+    ).toBe(0);
+    expect(
+      modalsLeftOpen('const { shown } = useWindowTurn(open);\n<Modal visible={shown}>\n</Modal>'),
+    ).toBe(1);
+  });
+
   it('notices a Modal that shows over the update-required state', () => {
     expect(modalsLeftOpen('<Modal visible={open}>\n</Modal>')).toBe(1);
     expect(modalsLeftOpen('<Modal transparent>\n</Modal>')).toBe(1);
@@ -940,6 +951,43 @@ describe('a Cancel is off while the change beside it runs (sc-12545)', () => {
   });
 });
 
+describe('Create an organisation cannot be closed while it sends (sc-25667)', () => {
+  const text = () => readFileSync(join('src', 'components', 'CreateOrganisation.tsx'), 'utf8');
+
+  it('so Cancel is off while it sends', () => {
+    const cancel = selfClosing('SecondaryButton', text()).find(
+      ({ markup }) => propValue(markup, 'testID') === '"createOrganisation.cancel"',
+    );
+
+    expect(cancel && propValue(cancel.markup, 'off')).toBe('{saving}');
+  });
+
+  it('so the sheet holds back, the escape and the scrim while it sends', () => {
+    const source = text();
+    const start = source.indexOf('<Sheet');
+    const sheet = source.slice(start, tagEnd(source, start));
+
+    expect(propValue(sheet, 'held')).toBe('{sending}');
+    expect(source).toMatch(/onSending\(saving\);\s*return \(\) => onSending\(false\);/u);
+  });
+
+  it('where a held sheet ignores back, the escape and the scrim, and reads its scrim as off', () => {
+    const source = readFileSync(join('src', 'components', 'Sheet.tsx'), 'utf8');
+    const frame = source.slice(source.indexOf('function SheetFrame('));
+    const tag = (name: string) => {
+      const start = frame.indexOf(name);
+      return frame.slice(start, tagEnd(frame, start));
+    };
+
+    expect(frame).toContain('const close = held ? () => undefined : onClose;');
+    expect(propValue(tag('<Modal'), 'onRequestClose')).toBe('{close}');
+    expect(propValue(tag('<Pressable'), 'onPress')).toBe('{close}');
+    expect(propValue(tag('<Pressable'), 'disabled')).toBe('{held}');
+    expect(propValue(tag('<Pressable'), 'accessibilityState')).toBe('{{ disabled: held }}');
+    expect(propValue(tag('accessibilityViewIsModal'), 'onAccessibilityEscape')).toBe('{close}');
+  });
+});
+
 describe("a lapsed proof at Unlink goes back to Confirm it's you (sc-12545)", () => {
   it('in the ways card, before the refusal reaches the list', () => {
     const text = readFileSync(join('src', 'components', 'WaysCard.tsx'), 'utf8');
@@ -1166,6 +1214,13 @@ function modalsLeftOpen(text: string): number {
   const held = [...text.matchAll(/\bconst (\w+) = useModalOpen\([^()]*\);/gu)].map(
     (match) => `{${match[1]}}`,
   );
+  // A window's turn comes after the gate (sc-23267), so what it shows is held too.
+  for (const turn of text.matchAll(
+    /\bconst \{ shown(?:, \w+)* \} = useWindowTurn\((\w+|useModalOpen\([^()]*\))\);/gu,
+  )) {
+    const gated = turn[1] ?? '';
+    if (gated.startsWith('useModalOpen(') || held.includes(`{${gated}}`)) held.push('{shown}');
+  }
 
   return modalTags(text)
     .map((match) => propValue(text.slice(match.index, tagEnd(text, match.index)), 'visible') ?? '')

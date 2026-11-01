@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { tokens } from '../theme/tokens.ts';
-import { sheetKeysCover, sheetPadding, sheetUnderKeys } from './sheet.ts';
+import { sheetKeysCover, sheetPadding, sheetUnderKeys, sheetWindows } from './sheet.ts';
 
 const notched = { top: 59, bottom: 34, left: 0, right: 0 };
 const sideways = { top: 0, bottom: 21, left: 59, right: 59 };
@@ -68,5 +68,41 @@ describe('a tablet card', () => {
       scrimRight: tokens.spaceXxl,
       frameBottom: 0,
     });
+  });
+});
+
+describe('one sheet window at a time', () => {
+  it('lets the first sheet up at once', () => {
+    expect(sheetWindows().waits('create')).toBe(false);
+  });
+
+  it('holds a sheet opened while the switcher’s window is still up, until it has gone', () => {
+    const windows = sheetWindows();
+    windows.raise('switcher');
+
+    expect(windows.waits('create')).toBe(true);
+    windows.lower('switcher');
+    expect(windows.waits('create')).toBe(false);
+  });
+
+  it('never holds a sheet whose own window is up', () => {
+    const windows = sheetWindows();
+    windows.raise('create');
+    windows.raise('switcher');
+
+    expect(windows.waits('create')).toBe(false);
+  });
+
+  it('tells its listeners only when a window comes or goes', () => {
+    const windows = sheetWindows();
+    let heard = 0;
+    windows.subscribe(() => (heard += 1));
+
+    windows.raise('switcher');
+    windows.raise('switcher');
+    windows.lower('switcher');
+    windows.lower('switcher');
+
+    expect(heard).toBe(2);
   });
 });

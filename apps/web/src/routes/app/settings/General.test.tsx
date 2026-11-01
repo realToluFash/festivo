@@ -302,10 +302,17 @@ describe('Settings > General', () => {
     );
     settings();
 
-    fireEvent.change(screen.getByLabelText('Time zone'), { target: { value: 'Europe/Lisbon' } });
+    const timezone = screen.getByLabelText('Time zone');
+    const describedAsItLands: (string | null)[] = [];
+    timezone.addEventListener('focus', () =>
+      describedAsItLands.push(timezone.getAttribute('aria-describedby')),
+    );
+
+    fireEvent.change(timezone, { target: { value: 'Europe/Lisbon' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
     await waitFor(() => expect(screen.getByText('Elija una zona horaria.')).toBeDefined());
+    expect(describedAsItLands).toEqual([null]);
     expect(screen.getByLabelText('Time zone').getAttribute('aria-invalid')).toBe('true');
     expect(document.activeElement).toBe(screen.getByLabelText('Time zone'));
   });

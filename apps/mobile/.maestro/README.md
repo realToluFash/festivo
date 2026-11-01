@@ -145,6 +145,14 @@ code step before each of the two (`EMAIL`, `PASSWORD` of a two-factor account), 
 `sc23279-lost-landscape-content` checks the lost two-factor outcome shows inside the card in
 landscape (`EMAIL`, `PASSWORD`).
 
+Three check the Loading… state (testID `pending`) while a screen waits on the API, and each needs
+a step done by hand: during its 20-second hold, run `docker compose pause api`, and keep it paused
+until the flow has ended, then run `docker compose unpause api`. The flow taps on and waits for
+`pending` after the hold, so unpausing when the hold ends lets the request through; without the
+pause, or with it lifted too soon, they fail on `pending`, which is not a regression. `sc23279-lost-loading` opens lost two-factor from the code step and
+`sc23279-lost-loading-landscape` runs it with the tablet in landscape (`EMAIL`, `PASSWORD` of a
+two-factor account); `sc23279-reset-loading` opens a reset link and needs nothing.
+
 Signing in and signing up (sc-23277), as qa posted them. None starts from a cold `/sign-in`
 link, which in Expo Go lands on Home (sc-22740): each starts from Home or from a held screen.
 

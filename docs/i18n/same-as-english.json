@@ -13,7 +13,9 @@
     "web:eventTypes.baby_shower",
     "mobile:eventTypes.baby_shower",
     "web:notificationSettings.push",
-    "mobile:notificationSettings.push"
+    "mobile:notificationSettings.push",
+    "web:calendar.agenda",
+    "mobile:calendar.agenda"
   ],
   "fr": [
     "web:nav.menu",
@@ -82,6 +84,8 @@
     "web:rolesScreen.area.menu",
     "mobile:rolesScreen.area.menu",
     "web:notificationSettings.push",
-    "mobile:notificationSettings.push"
+    "mobile:notificationSettings.push",
+    "web:calendar.agenda",
+    "mobile:calendar.agenda"
   ]
 }

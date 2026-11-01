@@ -566,3 +566,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   anuncia «Cerrar». El botón de guardar pasa a «✓ Guardado», en masculino invariable, porque
   el botón no sabe qué se guarda; se descartó «Cambios guardados», demasiado largo para el
   botón del teléfono.
+- **1 nov 2026. El Calendario de la organización** (`calendar.*`, `nav.calendar`,
+  `frame.calendar`, web y app, sc-25787 para sc-3625). «Calendario» a secas es el de la
+  organización; las fechas de un evento siguen siendo «Todas las fechas». Las vistas son «Mes» y
+  «Agenda» (igual que en inglés, en `same-as-english.json`), con el grupo «Vista». El filtro dice
+  «Eventos e hitos» | «Solo eventos», «hito» como `timeline.*` («e» ante «hi»). Un
+  intervalo es «Del {{from}} al {{to}}»; la celda llena dice «+{{count}} más», corto para la
+  celda de unos 50 px del teléfono. El mes vacío abre con el mes, «En {{month}} no hay nada en
+  el calendario.», para no repetir «en el calendario en». «Elemento» cuenta eventos y fechas a la
+  vez en el nombre del día para el lector de pantalla.

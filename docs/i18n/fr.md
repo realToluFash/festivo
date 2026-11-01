@@ -631,3 +631,14 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   ce qui a été fait, elle ne se lit pas comme « renoncer ». Le bouton de fermeture s’annonce
   « Fermer ». Le bouton d’enregistrement passe à « ✓ Enregistré » : sur le bouton, le participe
   seul suffit et tient sur téléphone ; la région live garde « Modifications enregistrées ».
+- **1 nov. 2026. Le Calendrier de l’organisation** (`calendar.*`, `nav.calendar`,
+  `frame.calendar`, web et app, sc-25787 pour sc-3625). « Calendrier » seul est celui de
+  l’organisation ; les dates d’un événement restent « Toutes les dates ». Les vues sont « Mois »
+  et « Planning » (pas « Agenda », qui se lit comme un carnet, ni « Programme », qui est le
+  Schedule), sous « Affichage ». Le filtre dit « Événements et jalons » | « Événements
+  seulement », « jalon » comme `timeline.*`. Le nom lu d’un choix est « {{group}} : {{choice}} »,
+  U+00A0 avant les deux-points. Un intervalle est « Du {{from}} au {{to}} ». La case pleine dit
+  « +{{count}} », sans nom : « +3 autres » était coupé en « +3 aut… » sur iPhone SE (case
+  d’environ 50 px) et passait sur deux lignes sur le web à 390 px (QA, 1 nov.). Sous les barres
+  de la case, « +3 » se lit seul ; le lecteur d’écran lit le nom de la journée, qui donne le
+  nombre d’éléments, et ne lit pas ce texte.

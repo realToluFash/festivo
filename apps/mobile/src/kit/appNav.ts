@@ -1,21 +1,22 @@
 import { roleHolds } from '@soirely/domain';
 
-export type Destination = 'home' | 'events' | 'settings';
+export type Destination = 'home' | 'events' | 'calendar' | 'settings';
 
 export const DESTINATION_HREF = {
   home: '/',
   events: '/events',
+  calendar: '/calendar',
   settings: '/settings',
 } as const satisfies Record<Destination, string>;
 
-/** Only what a story has built (sc-722, #727), and Events only for a role that can read them (sc-1593). */
+/** Only what a story has built (sc-722, #727), and Events and Calendar only for a role that can read events (sc-1593, sc-3625). */
 export function destinations(
   organisation: { permissions: readonly string[] } | null,
 ): readonly Destination[] {
   return [
     'home',
     ...(organisation != null && roleHolds(organisation, 'events.read')
-      ? (['events'] as const)
+      ? (['events', 'calendar'] as const)
       : []),
     'settings',
   ];
@@ -47,7 +48,9 @@ export function destinationOf(pathname: string): Destination {
     ? 'settings'
     : under(DESTINATION_HREF.events)
       ? 'events'
-      : 'home';
+      : under(DESTINATION_HREF.calendar)
+        ? 'calendar'
+        : 'home';
 }
 
 export interface SettingsGroup {

@@ -50,7 +50,7 @@ import { useModalOpen } from '../updateRequired.ts';
 import { BellButton } from './BellButton.tsx';
 import { CreateOrganisation } from './CreateOrganisation.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
-import { useFocusBack } from './Sheet.tsx';
+import { useFocusBack, useWindowTurn } from './Sheet.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
 import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
@@ -101,6 +101,10 @@ const ICONS: Record<Destination, readonly [string, string]> = {
   events: [
     'M2 9a3 3 0 0 0 0 6v3a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3a3 3 0 0 0 0-6V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z',
     'M13 5v2M13 17v2M13 11v2',
+  ],
+  calendar: [
+    'M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
+    'M3 10h18M8 2v4M16 2v4',
   ],
   settings: [
     'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
@@ -764,7 +768,8 @@ function Switcher({
   );
   useFocusBackToOpener(offerClosed, afterOffer);
   useFocusBack(open, opener);
-  const shown = useModalOpen(open);
+  // Create an organisation opens as this goes, and its sheet waits for this window to go (sc-23267).
+  const { shown, gone } = useWindowTurn(useModalOpen(open));
   // The modal runs behind the bars, the cutout and the home indicator, so the card keeps its margin from them, not from the edge.
   const fit =
     Platform.OS === 'android'
@@ -794,6 +799,7 @@ function Switcher({
       statusBarTranslucent
       navigationBarTranslucent
       onRequestClose={onClose}
+      onDismiss={gone}
     >
       <View style={[styles.scrim, fit]} accessibilityViewIsModal onAccessibilityEscape={onClose}>
         {/* A sibling, not a parent: iOS reads a labelled button as one item and nothing inside it (sc-10712).
