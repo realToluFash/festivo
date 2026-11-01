@@ -152,6 +152,12 @@ there is drawn in [fd]'s language. An epic, a story or a brief that asks for a n
 direction or a restyle does not override it: that is the owner's call, asked on the story
 before anything is drawn.
 
+**The signed-out sign-in flow is the one exception** (owner, 1 Nov 2026; sc-26511,
+sc-26512): every screen in `AuthPage` (web) and `AuthFrame` (app) keeps its look from main at
+`8126d8aa`, with [fd]'s **‹** back controls and sc-22092's components. A new signed-out
+screen uses that frame and is not drawn in [fd]. `SignIn.dc.html` and `GetBackIn.dc.html`
+on page 27 are superseded and design nothing.
+
 Take exact values from `docs/design/tokens.mjs`.
 
 - **Instrument Sans** for everything a person reads; **JetBrains Mono** only for step
