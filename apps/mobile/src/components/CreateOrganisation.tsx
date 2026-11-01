@@ -17,7 +17,13 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
-import { fieldKeptInSight, offsetToFocus, titleScrollsWhileTyping } from '../kit/keyboard.ts';
+import {
+  fieldKeptInSight,
+  offsetIntoView,
+  offsetToFocus,
+  settledAnswer,
+  titleScrollsWhileTyping,
+} from '../kit/keyboard.ts';
 import {
   NEW_ORGANISATION_FIELDS,
   createOrganisation,
@@ -33,6 +39,7 @@ import { Field, focusChecked, focusRefused, TextField } from './Field.tsx';
 import { type SettledLift, settledLift, useKeysUp } from './keyboardWatch.ts';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
+import { SETTLED_MS } from './Screen.tsx';
 import { Sheet } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 
@@ -85,31 +92,51 @@ export function CreateOrganisation({
   );
 }
 
-/** Keeps the name field, and its notices while they fit, in the body's sight as the body shrinks or they grow, again each time the keys move. */
-function useFocusInSight(keysUp: boolean, inSight: boolean) {
+/** Keeps the name field, and its notices while they fit, in the body's sight as the body shrinks or they grow, again each time the keys move. For a while after each `answer`, the notice answering it comes wholly into sight instead, as far as it needs and no further, as it comes before the field (sc-25897). */
+function useFocusInSight(keysUp: boolean, inSight: boolean, answer: number) {
   const body = useRef<ScrollViewInstance>(null);
   const bodyHeight = useRef<number | null>(null);
+  const offset = useRef(0);
   const group = useRef<LayoutRectangle | null>(null);
   const field = useRef<LayoutRectangle | null>(null);
+  const notice = useRef<LayoutRectangle | null>(null);
+  const answering = useRef(false);
   const lift = useRef<SettledLift | null>(null);
+
+  function bringNotice(): void {
+    if (bodyHeight.current == null || group.current == null || notice.current == null) return;
+    const to = offsetIntoView({
+      contentY: group.current.y + notice.current.y,
+      height: notice.current.height,
+      offset: offset.current,
+      shown: bodyHeight.current,
+      margin: tokens.spaceLg,
+    });
+    if (to != null) body.current?.scrollTo({ y: to, animated: true });
+  }
+
+  function liftField(): void {
+    if (bodyHeight.current == null) return;
+    if (group.current == null || field.current == null) return;
+    body.current?.scrollTo({
+      y: offsetToFocus(
+        {
+          contentY: group.current.y,
+          height: group.current.height,
+          scrollTop: 0,
+          keyboardTop: bodyHeight.current,
+          margin: tokens.spaceLg,
+        },
+        { contentY: group.current.y + field.current.y, height: field.current.height },
+      ),
+      animated: true,
+    });
+  }
 
   useEffect(() => {
     const settled = settledLift(() => {
-      if (!inSight || bodyHeight.current == null) return;
-      if (group.current == null || field.current == null) return;
-      body.current?.scrollTo({
-        y: offsetToFocus(
-          {
-            contentY: group.current.y,
-            height: group.current.height,
-            scrollTop: 0,
-            keyboardTop: bodyHeight.current,
-            margin: tokens.spaceLg,
-          },
-          { contentY: group.current.y + field.current.y, height: field.current.height },
-        ),
-        animated: true,
-      });
+      if (answering.current) bringNotice();
+      else if (inSight) liftField();
     });
     lift.current = settled;
     settled.lift();
@@ -120,11 +147,26 @@ function useFocusInSight(keysUp: boolean, inSight: boolean) {
     };
   }, [keysUp, inSight]);
 
+  useEffect(() => {
+    if (answer === 0) return;
+
+    return settledAnswer(
+      () => lift.current?.lift(),
+      SETTLED_MS,
+      (on) => {
+        answering.current = on;
+      },
+    );
+  }, [answer]);
+
   return {
     body,
     onBodyLayout: (height: number) => {
       bodyHeight.current = height;
       lift.current?.lift();
+    },
+    onBodyScroll: (y: number) => {
+      offset.current = y;
     },
     onGroupLayout: (layout: LayoutRectangle) => {
       group.current = layout;
@@ -132,6 +174,10 @@ function useFocusInSight(keysUp: boolean, inSight: boolean) {
     },
     onFieldLayout: (layout: LayoutRectangle) => {
       field.current = layout;
+      lift.current?.lift();
+    },
+    onNoticeLayout: (layout: LayoutRectangle) => {
+      notice.current = layout;
       lift.current?.lift();
     },
   };
@@ -175,6 +221,7 @@ function Form({
   );
   const [limited, setLimited] = useState<ReturnType<typeof limitNotice> | null>(null);
   const [failed, setFailed] = useState(false);
+  const [answer, setAnswer] = useState(0);
   const [saving, setSaving] = useState(false);
   useEffect(() => {
     onSending(saving);
@@ -191,7 +238,8 @@ function Form({
       field === 'name' ? focusChecked(nameInput) : focusPicker(countryPicker, countryField),
   );
   const errors = { ...refused, ...checks.errors };
-  const { body, onBodyLayout, onGroupLayout, onFieldLayout } = useFocusInSight(keysUp, inSight);
+  const { body, onBodyLayout, onBodyScroll, onGroupLayout, onFieldLayout, onNoticeLayout } =
+    useFocusInSight(keysUp, inSight, answer);
 
   function change(field: NewOrganisationField, value: string): void {
     setValues((previous) => ({ ...previous, [field]: value }));
@@ -224,6 +272,7 @@ function Form({
     if (dropsKeysAfter(outcome.kind, Platform.OS)) nameInput.current?.blur();
     if (outcome.kind === 'limited') setLimited(limitNotice(outcome.until, locale, t));
     if (outcome.kind === 'failed') setFailed(true);
+    if (outcome.kind === 'limited' || outcome.kind === 'failed') setAnswer((sent) => sent + 1);
     if (outcome.kind === 'refused') {
       setRefused(outcome.errors);
       if (outcome.errors.name != null) focusRefused(nameInput);
@@ -263,24 +312,28 @@ function Form({
   const fields = (
     <>
       <View style={styles.group} onLayout={(event) => onGroupLayout(event.nativeEvent.layout)}>
-        {limited != null && (
-          <ReadOut
-            words={[limited.title, limited.body].filter((line) => line != null).join(' ')}
-            interrupts
-            accessibilityRole="alert"
-          >
-            <Notice
-              tone="attention"
-              mark="!"
-              title={limited.title}
-              {...(limited.body == null ? {} : { body: limited.body })}
-            />
-          </ReadOut>
-        )}
-        {failed && (
-          <ReadOut words={notCreated} interrupts accessibilityRole="alert">
-            <Notice tone="broken" mark={tokens.marks.broken.glyph} body={notCreated} />
-          </ReadOut>
+        {(limited != null || failed) && (
+          <View onLayout={(event) => onNoticeLayout(event.nativeEvent.layout)}>
+            {limited != null && (
+              <ReadOut
+                words={[limited.title, limited.body].filter((line) => line != null).join(' ')}
+                interrupts
+                accessibilityRole="alert"
+              >
+                <Notice
+                  tone="attention"
+                  mark="!"
+                  title={limited.title}
+                  {...(limited.body == null ? {} : { body: limited.body })}
+                />
+              </ReadOut>
+            )}
+            {failed && (
+              <ReadOut words={notCreated} interrupts accessibilityRole="alert">
+                <Notice tone="broken" mark={tokens.marks.broken.glyph} body={notCreated} />
+              </ReadOut>
+            )}
+          </View>
         )}
 
         <View onLayout={(event) => onFieldLayout(event.nativeEvent.layout)}>
@@ -351,6 +404,8 @@ function Form({
         contentContainerStyle={[styles.form, titleScrolls && styles.formTitled]}
         keyboardShouldPersistTaps="handled"
         onLayout={(event) => onBodyLayout(event.nativeEvent.layout.height)}
+        onScroll={(event) => onBodyScroll(event.nativeEvent.contentOffset.y)}
+        scrollEventThrottle={16}
         testID="createOrganisation"
       >
         {titleScrolls && title}

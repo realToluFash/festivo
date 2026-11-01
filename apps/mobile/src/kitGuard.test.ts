@@ -1524,6 +1524,40 @@ describe('a notice answering a send comes into view (sc-24496)', () => {
   });
 });
 
+describe('a notice answering Create organisation comes into view (sc-25897)', () => {
+  const text = () => readFileSync(join('src', 'components', 'CreateOrganisation.tsx'), 'utf8');
+
+  it('measures both notices in the view the body brings into sight', () => {
+    const source = text();
+    const opened = source.indexOf('onNoticeLayout(event.nativeEvent.layout)');
+    const closed = source.indexOf('\n          </View>', opened);
+
+    expect(opened).toBeGreaterThan(0);
+    for (const said of ['words={[limited.title', 'words={notCreated}']) {
+      const at = source.indexOf(said);
+      expect(at > opened && at < closed, said).toBe(true);
+    }
+  });
+
+  it('counts each answer that shows a notice, so a second one comes in too', () => {
+    expect(text()).toContain(
+      "if (outcome.kind === 'limited' || outcome.kind === 'failed') setAnswer((sent) => sent + 1);",
+    );
+  });
+
+  it('holds the answering window for each answer, which brings the notice in', () => {
+    expect(text()).toMatch(
+      /if \(answer === 0\) return;\s*return settledAnswer\(\s*\(\) => lift\.current\?\.lift\(\),\s*SETTLED_MS,\s*\(on\) => \{\s*answering\.current = on;\s*\},\s*\);\s*\}, \[answer\]\);/u,
+    );
+  });
+
+  it('brings the notice in before lifting the field while it is answering', () => {
+    expect(text()).toMatch(
+      /if \(answering\.current\) bringNotice\(\);\s*else if \(inSight\) liftField\(\);/u,
+    );
+  });
+});
+
 /** Whether the ReadOut saying `said` opens straight inside an AnswerInView. */
 function answersInView(text: string, said: string): boolean {
   const at = text.indexOf(said);

@@ -24,6 +24,7 @@ import {
   keyboardInWindow,
   keyboardLift,
   keysDownThen,
+  settledAnswer,
   keysOver,
   liftNeeded,
   listRoom,
@@ -767,6 +768,48 @@ describe('a key typed on Android leaves the field its text, so TalkBack says onl
   it('is handed its value on every render on iOS, where VoiceOver says only the key', () => {
     expect(nextGiven('ios', 'Gal', { ...opened, typed: 'Ga' })).toEqual({ ...opened, typed: 'Ga' });
     expect(valueHanded('ios', 'Galx', undefined)).toBe('Galx');
+  });
+});
+
+describe('an answer holds the scroll for two settles (sc-25897)', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  function opened() {
+    const said: string[] = [];
+    let on = false;
+    const end = settledAnswer(
+      () => said.push(on ? 'brought while answering' : 'brought after'),
+      500,
+      (answering) => {
+        on = answering;
+        said.push(answering ? 'on' : 'off');
+      },
+    );
+
+    return { said, end };
+  }
+
+  it('is answering as it brings the notice in, now and once settled, and ends after two settles', () => {
+    const { said } = opened();
+    expect(said).toEqual(['on', 'brought while answering']);
+
+    vi.advanceTimersByTime(500);
+    expect(said).toEqual(['on', 'brought while answering', 'brought while answering']);
+
+    vi.advanceTimersByTime(499);
+    expect(said.at(-1)).toBe('brought while answering');
+    vi.advanceTimersByTime(1);
+    expect(said).toEqual(['on', 'brought while answering', 'brought while answering', 'off']);
+  });
+
+  it('ends sooner when asked, says so once only, and brings nothing after', () => {
+    const { said, end } = opened();
+    end();
+    end();
+    vi.advanceTimersByTime(2000);
+
+    expect(said).toEqual(['on', 'brought while answering', 'off']);
   });
 });
 
