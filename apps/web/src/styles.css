@@ -6654,6 +6654,58 @@ button.members-row {
   }
 }
 
+/* ── Dashboard in [fd]: a heading block, no card (SignedInHome.dc, sc-23301) ── */
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  max-width: 47.5rem;
+}
+
+.dashboard h1,
+.dashboard p {
+  margin: 0;
+}
+
+.dashboard p {
+  font: var(--typeBodyPhone);
+}
+
+.dashboard .dashboard-count {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The organisation's name is the phone's crumb; above 40rem the header bar carries it. */
+.dashboard-organisation {
+  display: none;
+}
+
+@media (width <= 40rem) {
+  .dashboard {
+    max-width: none;
+    margin-inline: calc(-1 * var(--shellInline));
+    padding: var(--spaceXl);
+    background: var(--colorHeader);
+    border-block: var(--borderHeader);
+  }
+
+  .shell-content > .dashboard:first-child {
+    margin-top: calc(-1 * var(--shellBlock));
+  }
+
+  .dashboard h1 {
+    font: var(--typeTitlePhone);
+    letter-spacing: var(--typeTitlePhoneTracking);
+  }
+
+  .dashboard .dashboard-organisation {
+    display: block;
+    color: var(--colorInkSecondary);
+    overflow-wrap: anywhere;
+  }
+}
+
 /* ── Subscribe in your calendar app (sc-3626) ─────────────────────────────── */
 
 .calendar-heading {

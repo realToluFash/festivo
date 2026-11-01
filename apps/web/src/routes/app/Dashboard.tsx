@@ -41,7 +41,10 @@ export function Dashboard() {
   }, [organisationId, attempt]);
 
   return (
-    <>
+    <div className="dashboard">
+      {session.organisation != null && (
+        <p className="dashboard-organisation">{session.organisation.name}</p>
+      )}
       <h1 tabIndex={-1}>{t('nav.dashboard')}</h1>
       <p className="muted">{t('nav.signedInAs', { name: session.name })}</p>
       {organisationId != null &&
@@ -60,10 +63,10 @@ export function Dashboard() {
             }}
           />
         ) : (
-          <p ref={count} className="arrives" tabIndex={-1}>
+          <p ref={count} className="arrives dashboard-count" tabIndex={-1}>
             {t('nav.eventCount', { count: counted.count })}
           </p>
         ))}
-    </>
+    </div>
   );
 }
