@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { ActionPair } from '../../../components/ActionPair.tsx';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { PasswordField } from '../../../components/PasswordField.tsx';
 import { AppleMark, GoogleMark } from '../../../components/ProviderSignIn.tsx';
@@ -148,12 +149,12 @@ export function OwnershipCard({ organisation }: { organisation: Membership }) {
             </div>
             <button
               type="button"
-              className="button"
+              className="button button-danger"
               ref={leaveButton}
               onClick={() => setStep({ kind: 'leave' })}
             >
               <span className="button-label">
-                {t('ownership.leave', { organisation: organisation.name })}
+                {t('ownership.leaveOpener', { organisation: organisation.name })}
               </span>
             </button>
           </div>
@@ -169,7 +170,7 @@ export function OwnershipCard({ organisation }: { organisation: Membership }) {
                 ref={deleteButton}
                 onClick={() => setStep({ kind: 'delete' })}
               >
-                {t('ownership.delete')}
+                {t('ownership.deleteOpener')}
               </button>
             </div>
           )}
@@ -531,31 +532,35 @@ function Transfer({
         })}
       </p>
 
-      <div className="actions">
-        <button className="button" type="button" {...offButton(busy)} onClick={onCancel}>
-          {t('ownership.keep')}
-        </button>
-        {provider != null && vouched == null ? (
-          <button
-            className={provider === 'google' ? 'button button-google' : 'button button-apple'}
-            type="button"
-            aria-busy={busy}
-            {...offButton(busy, { dim: false })}
-            onClick={() => continueWith(provider)}
-          >
-            {provider === 'google' ? <GoogleMark /> : <AppleMark />}
-            <span>{t('waysCard.continueWith', { provider: PROVIDER_NAMES[provider] })}</span>
+      <ActionPair
+        dismiss={
+          <button className="button" type="button" {...offButton(busy)} onClick={onCancel}>
+            {t('ownership.keep')}
           </button>
-        ) : (
-          <button className="button button-primary" type="submit" aria-busy={busy}>
-            <span className="button-label">
-              {chosen == null
-                ? t('ownership.transfer')
-                : t('ownership.makeOwner', { name: chosen.user.name })}
-            </span>
-          </button>
-        )}
-      </div>
+        }
+        confirm={
+          provider != null && vouched == null ? (
+            <button
+              className={provider === 'google' ? 'button button-google' : 'button button-apple'}
+              type="button"
+              aria-busy={busy}
+              {...offButton(busy, { dim: false })}
+              onClick={() => continueWith(provider)}
+            >
+              {provider === 'google' ? <GoogleMark /> : <AppleMark />}
+              <span>{t('waysCard.continueWith', { provider: PROVIDER_NAMES[provider] })}</span>
+            </button>
+          ) : (
+            <button className="button button-primary" type="submit" aria-busy={busy}>
+              <span className="button-label">
+                {chosen == null
+                  ? t('ownership.transfer')
+                  : t('ownership.makeOwner', { name: chosen.user.name })}
+              </span>
+            </button>
+          )
+        }
+      />
     </form>
   );
 }
@@ -622,35 +627,43 @@ function Leave({
               <p>{t('ownership.onlyOwnerBody')}</p>
             </div>
           </div>
-          <div className="actions">
-            <button type="button" className="button" onClick={onStay}>
-              {t('ownership.stay')}
-            </button>
-            <button type="button" className="button button-primary" onClick={onTransfer}>
-              {t('ownership.transfer')}
-            </button>
-          </div>
+          <ActionPair
+            dismiss={
+              <button type="button" className="link-button" onClick={onStay}>
+                {t('ownership.stay')}
+              </button>
+            }
+            confirm={
+              <button type="button" className="button button-primary" onClick={onTransfer}>
+                {t('ownership.transfer')}
+              </button>
+            }
+          />
         </>
       ) : (
         <>
           <p>{t('ownership.leaveBody', { organisation: organisation.name })}</p>
           {refused != null && <FieldError id="leave-failed" message={refused} />}
-          <div className="actions actions-confirm">
-            <button type="button" className="link-button" {...offButton(busy)} onClick={onStay}>
-              {t('ownership.stay')}
-            </button>
-            <button
-              type="button"
-              className="button button-danger"
-              aria-busy={busy}
-              {...offButton(busy)}
-              onClick={() => void leave()}
-            >
-              <span className="button-label">
-                {t('ownership.leave', { organisation: organisation.name })}
-              </span>
-            </button>
-          </div>
+          <ActionPair
+            dismiss={
+              <button type="button" className="link-button" {...offButton(busy)} onClick={onStay}>
+                {t('ownership.stay')}
+              </button>
+            }
+            confirm={
+              <button
+                type="button"
+                className="button button-danger"
+                aria-busy={busy}
+                {...offButton(busy)}
+                onClick={() => void leave()}
+              >
+                <span className="button-label">
+                  {t('ownership.leave', { organisation: organisation.name })}
+                </span>
+              </button>
+            }
+          />
         </>
       )}
     </div>
@@ -808,18 +821,22 @@ function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: ()
         </p>
       </div>
 
-      <div className="actions actions-confirm">
-        <button className="link-button" type="button" {...offButton(busy)} onClick={onKeep}>
-          <span className="button-label">
-            {t('ownership.deleteKeep', { organisation: organisation.name })}
-          </span>
-        </button>
-        <button className="button button-danger" type="submit" aria-busy={busy}>
-          <span className="button-label">
-            {t('ownership.deleteButton', { organisation: organisation.name })}
-          </span>
-        </button>
-      </div>
+      <ActionPair
+        dismiss={
+          <button className="link-button" type="button" {...offButton(busy)} onClick={onKeep}>
+            <span className="button-label">
+              {t('ownership.deleteKeep', { organisation: organisation.name })}
+            </span>
+          </button>
+        }
+        confirm={
+          <button className="button button-danger" type="submit" aria-busy={busy}>
+            <span className="button-label">
+              {t('ownership.deleteButton', { organisation: organisation.name })}
+            </span>
+          </button>
+        }
+      />
     </form>
   );
 }

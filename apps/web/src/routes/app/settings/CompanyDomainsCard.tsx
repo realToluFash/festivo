@@ -4,6 +4,7 @@ import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
+import { ActionPair } from '../../../components/ActionPair.tsx';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { useStepFocus } from '../../../stepFocus.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
@@ -199,7 +200,7 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
                   </div>
                   {confirming !== domain && (
                     <button
-                      className="button"
+                      className="button button-danger"
                       type="button"
                       disabled={busy}
                       aria-label={t('companyDomains.removeLabel', { domain })}
@@ -217,25 +218,29 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
                       {t('companyDomains.removeTitle', { domain })}
                     </h3>
                     <p>{t('companyDomains.removeBody', { domain })}</p>
-                    <div className="company-domain-buttons">
-                      <button
-                        className="link-button"
-                        type="button"
-                        disabled={busy}
-                        onClick={() => keep(domain)}
-                      >
-                        {t('companyDomains.keep')}
-                      </button>
-                      <button
-                        className="button button-danger"
-                        type="button"
-                        aria-busy={busy}
-                        disabled={busy}
-                        onClick={() => void remove(domain)}
-                      >
-                        {t('companyDomains.removeConfirm', { domain })}
-                      </button>
-                    </div>
+                    <ActionPair
+                      dismiss={
+                        <button
+                          className="link-button"
+                          type="button"
+                          disabled={busy}
+                          onClick={() => keep(domain)}
+                        >
+                          {t('companyDomains.keep')}
+                        </button>
+                      }
+                      confirm={
+                        <button
+                          className="button button-danger"
+                          type="button"
+                          aria-busy={busy}
+                          disabled={busy}
+                          onClick={() => void remove(domain)}
+                        >
+                          {t('companyDomains.removeConfirm', { domain })}
+                        </button>
+                      }
+                    />
                   </div>
                 )}
               </li>

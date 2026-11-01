@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
+import { ActionPair } from '../../../components/ActionPair.tsx';
 import { useStepFocus } from '../../../stepFocus.ts';
 
 type Asking = { id: string; answer: 'approve' | 'turnDown' } | null;
@@ -170,28 +171,34 @@ export function RecoveryRequestsCard() {
                             : t('recoveryRequests.turnDownBody')}
                         </p>
                         {problem != null && <p role="alert">{problem}</p>}
-                        <div className="actions">
-                          <button
-                            className={here === 'approve' ? 'button' : 'link-button'}
-                            type="button"
-                            onClick={() => keep(request, here)}
-                          >
-                            {here === 'approve'
-                              ? t('recoveryRequests.cancel')
-                              : t('recoveryRequests.keep')}
-                          </button>
-                          <button
-                            className={
-                              here === 'approve' ? 'button button-primary' : 'button button-danger'
-                            }
-                            type="button"
-                            onClick={() => void answer(request, here)}
-                          >
-                            {here === 'approve'
-                              ? t('recoveryRequests.approveConfirm')
-                              : t('recoveryRequests.turnDownConfirm')}
-                          </button>
-                        </div>
+                        <ActionPair
+                          dismiss={
+                            <button
+                              className={here === 'approve' ? 'button' : 'link-button'}
+                              type="button"
+                              onClick={() => keep(request, here)}
+                            >
+                              {here === 'approve'
+                                ? t('recoveryRequests.cancel')
+                                : t('recoveryRequests.keep')}
+                            </button>
+                          }
+                          confirm={
+                            <button
+                              className={
+                                here === 'approve'
+                                  ? 'button button-primary'
+                                  : 'button button-danger'
+                              }
+                              type="button"
+                              onClick={() => void answer(request, here)}
+                            >
+                              {here === 'approve'
+                                ? t('recoveryRequests.approveConfirm')
+                                : t('recoveryRequests.turnDownConfirm')}
+                            </button>
+                          }
+                        />
                       </div>
                     </div>
                   )}

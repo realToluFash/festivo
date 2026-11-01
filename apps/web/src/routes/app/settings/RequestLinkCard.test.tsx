@@ -92,11 +92,11 @@ describe('Settings > General > Requests to join (sc-562)', () => {
     });
     settings();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Replace link' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Replace link…' }));
     expect(screen.getByText('This link stops working as soon as you replace it.')).toBeDefined();
     expect(sent.some((one) => one.path.endsWith('/replace'))).toBe(false);
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Replace link' })[0]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Replace link' }));
 
     expect(
       await screen.findByText('The link is replaced. The old one no longer works.'),
@@ -111,10 +111,10 @@ describe('Settings > General > Requests to join (sc-562)', () => {
     });
     settings();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Replace link' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Replace link…' }));
     fireEvent.click(screen.getByRole('button', { name: 'Keep it' }));
 
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Replace link' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Replace link…' }));
   });
 
   it('takes focus to the line that says the link is replaced (sc-11369)', async () => {
@@ -126,7 +126,7 @@ describe('Settings > General > Requests to join (sc-562)', () => {
     });
     settings();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Replace link' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Replace link…' }));
     fireEvent.click(screen.getByRole('button', { name: 'Replace link' }));
 
     const notice = (
@@ -143,7 +143,7 @@ describe('Settings > General > Requests to join (sc-562)', () => {
     });
     settings();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Replace link' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Replace link…' }));
     fireEvent.click(screen.getByRole('button', { name: 'Replace link' }));
 
     const notice = (await screen.findByText('That did not work. Try again in a moment.')).closest(
