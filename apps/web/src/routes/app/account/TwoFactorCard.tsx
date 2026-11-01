@@ -13,7 +13,7 @@ import { focusWhereSent, offField } from '../../../offField.ts';
 import { refreshAccount, useSessionState } from '../../../session.ts';
 import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
-import { Choices } from '../../../components/Choices.tsx';
+import { ActionPair } from '../../../components/ActionPair.tsx';
 
 type Stage =
   | { kind: 'loading' }
@@ -409,14 +409,23 @@ function SettingUp({
               </p>
             </div>
 
-            <Choices>
-              <button className="button" type="button" {...offButton(checking)} onClick={onCancel}>
-                {t('twoFactorCard.cancel')}
-              </button>
-              <button className="button button-primary" type="submit" aria-busy={checking}>
-                {t('twoFactorCard.checkCode')}
-              </button>
-            </Choices>
+            <ActionPair
+              dismiss={
+                <button
+                  className="button"
+                  type="button"
+                  {...offButton(checking)}
+                  onClick={onCancel}
+                >
+                  {t('twoFactorCard.cancel')}
+                </button>
+              }
+              confirm={
+                <button className="button button-primary" type="submit" aria-busy={checking}>
+                  {t('twoFactorCard.checkCode')}
+                </button>
+              }
+            />
           </form>
         </li>
       </ol>
@@ -596,14 +605,18 @@ function TurningOff({
           </p>
         </div>
 
-        <Choices>
-          <button className="link-button" type="button" {...offButton(checking)} onClick={onKeep}>
-            {t('twoFactorCard.keepItOn')}
-          </button>
-          <button className="button button-danger" type="submit" aria-busy={checking}>
-            {t('twoFactorCard.turnItOff')}
-          </button>
-        </Choices>
+        <ActionPair
+          dismiss={
+            <button className="link-button" type="button" {...offButton(checking)} onClick={onKeep}>
+              {t('twoFactorCard.keepItOn')}
+            </button>
+          }
+          confirm={
+            <button className="button button-danger" type="submit" aria-busy={checking}>
+              {t('twoFactorCard.turnItOff')}
+            </button>
+          }
+        />
       </form>
     </>
   );
@@ -694,14 +707,18 @@ function ConfirmNewCodes({
           </p>
         </div>
 
-        <Choices>
-          <button className="button" type="button" {...offButton(checking)} onClick={onKeep}>
-            {t('twoFactorCard.keepCodes')}
-          </button>
-          <button className="button button-primary" type="submit" aria-busy={checking}>
-            {t('twoFactorCard.makeNewCodes')}
-          </button>
-        </Choices>
+        <ActionPair
+          dismiss={
+            <button className="button" type="button" {...offButton(checking)} onClick={onKeep}>
+              {t('twoFactorCard.keepCodes')}
+            </button>
+          }
+          confirm={
+            <button className="button button-primary" type="submit" aria-busy={checking}>
+              {t('twoFactorCard.makeNewCodes')}
+            </button>
+          }
+        />
       </form>
     </>
   );

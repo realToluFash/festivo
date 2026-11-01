@@ -31,7 +31,7 @@ import { forgetSession, refreshAccount, rereadCredentials, useSession } from '..
 import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { useSignOut } from '../../../signOut.ts';
 import { Skeleton } from '../../../components/Skeleton.tsx';
-import { Choices } from '../../../components/Choices.tsx';
+import { ActionPair } from '../../../components/ActionPair.tsx';
 
 type Devices =
   { kind: 'loading' } | { kind: 'failed' } | { kind: 'ready'; sessions: DeviceSession[] };
@@ -482,14 +482,18 @@ function Check({
         </div>
       </div>
 
-      <Choices>
-        <button className="link-button" type="button" onClick={onKeep}>
-          {t('devices.keep')}
-        </button>
-        <button className="button button-danger" type="button" onClick={onEnd}>
-          {t('devices.end')}
-        </button>
-      </Choices>
+      <ActionPair
+        dismiss={
+          <button className="link-button" type="button" onClick={onKeep}>
+            {t('devices.keep')}
+          </button>
+        }
+        confirm={
+          <button className="button button-danger" type="button" onClick={onEnd}>
+            {t('devices.end')}
+          </button>
+        }
+      />
     </>
   );
 }

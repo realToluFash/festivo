@@ -23,7 +23,7 @@ import { dateLocale } from '../../../i18n/index.ts';
 import { PROVIDER_NAMES } from '../../../providerSignIn.ts';
 import { focusStep, useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { currentSessionId } from '../../../tokens.ts';
-import { Choices } from '../../../components/Choices.tsx';
+import { ActionPair } from '../../../components/ActionPair.tsx';
 
 type Stage =
   | { kind: 'at-rest'; signedOut: number | null; added: string | null }
@@ -325,14 +325,18 @@ function Setting({
 
           <p className="muted">{t('passwordCard.setEmailed', { email })}</p>
 
-          <Choices>
-            <button className="button" type="button" onClick={onCancel} disabled={busy}>
-              {t('passwordCard.cancel')}
-            </button>
-            <button className="button button-primary" type="submit" aria-busy={busy}>
-              {busy ? t('passwordCard.saving') : t('passwordCard.setSave')}
-            </button>
-          </Choices>
+          <ActionPair
+            dismiss={
+              <button className="button" type="button" onClick={onCancel} disabled={busy}>
+                {t('passwordCard.cancel')}
+              </button>
+            }
+            confirm={
+              <button className="button button-primary" type="submit" aria-busy={busy}>
+                {busy ? t('passwordCard.saving') : t('passwordCard.setSave')}
+              </button>
+            }
+          />
         </form>
       </>
     );
@@ -408,22 +412,28 @@ function Setting({
 
         <p className="muted">{t('passwordCard.setCodeNote')}</p>
 
-        <Choices>
-          <button className="button" type="button" onClick={onCancel}>
-            {t('passwordCard.cancel')}
-          </button>
-          <button
-            className="button"
-            type="button"
-            {...resending.button}
-            onClick={() => void send(true)}
-          >
-            {resending.label}
-          </button>
-          <button className="button button-primary" type="submit" aria-busy={busy}>
-            {t('passwordCard.continue')}
-          </button>
-        </Choices>
+        <ActionPair
+          dismiss={
+            <button className="button" type="button" onClick={onCancel}>
+              {t('passwordCard.cancel')}
+            </button>
+          }
+          between={
+            <button
+              className="button"
+              type="button"
+              {...resending.button}
+              onClick={() => void send(true)}
+            >
+              {resending.label}
+            </button>
+          }
+          confirm={
+            <button className="button button-primary" type="submit" aria-busy={busy}>
+              {t('passwordCard.continue')}
+            </button>
+          }
+        />
         <span className="visually-hidden" role="status">
           {resending.status}
         </span>
@@ -632,14 +642,18 @@ function Changing({
         <p className="muted">{t('passwordCard.signsOut')}</p>
         <p className="muted">{t('passwordCard.emailed', { email })}</p>
 
-        <Choices>
-          <button className="button" type="button" onClick={onCancel} disabled={saving}>
-            {t('passwordCard.cancel')}
-          </button>
-          <button className="button button-primary" type="submit" aria-busy={saving}>
-            {saving ? t('passwordCard.saving') : t('passwordCard.save')}
-          </button>
-        </Choices>
+        <ActionPair
+          dismiss={
+            <button className="button" type="button" onClick={onCancel} disabled={saving}>
+              {t('passwordCard.cancel')}
+            </button>
+          }
+          confirm={
+            <button className="button button-primary" type="submit" aria-busy={saving}>
+              {saving ? t('passwordCard.saving') : t('passwordCard.save')}
+            </button>
+          }
+        />
       </form>
     </>
   );

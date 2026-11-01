@@ -26,7 +26,7 @@ import {
 } from '../../../providerSignIn.ts';
 import { heldProof, holdProof } from '../../../recentProof.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
-import { Choices } from '../../../components/Choices.tsx';
+import { ActionPair } from '../../../components/ActionPair.tsx';
 
 type Act = { action: 'link' | 'unlink'; provider: Provider };
 
@@ -561,14 +561,18 @@ function Confirming({
         </div>
       </div>
 
-      <Choices>
-        <button className="link-button" type="button" onClick={onKeep}>
-          {t('waysCard.keep')}
-        </button>
-        <button className="button button-danger" type="button" onClick={onUnlink}>
-          {t('waysCard.confirmUnlink', { provider: name })}
-        </button>
-      </Choices>
+      <ActionPair
+        dismiss={
+          <button className="link-button" type="button" onClick={onKeep}>
+            {t('waysCard.keep')}
+          </button>
+        }
+        confirm={
+          <button className="button button-danger" type="button" onClick={onUnlink}>
+            {t('waysCard.confirmUnlink', { provider: name })}
+          </button>
+        }
+      />
     </>
   );
 }

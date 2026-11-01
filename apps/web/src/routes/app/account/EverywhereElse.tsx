@@ -23,7 +23,7 @@ import {
   type ProviderReturn,
   startProviderSignIn,
 } from '../../../providerSignIn.ts';
-import { Choices } from '../../../components/Choices.tsx';
+import { ActionPair } from '../../../components/ActionPair.tsx';
 
 type Field = 'password' | 'code';
 
@@ -289,49 +289,53 @@ export function EverywhereElse({
           </div>
         </div>
 
-        <Choices>
-          <button className="link-button" type="button" onClick={onKeep} disabled={working}>
-            {t('devices.everywhereKeep', { count })}
-          </button>
-          {viaProvider ? (
-            <button
-              className={provider === 'google' ? 'button button-google' : 'button button-apple'}
-              type="button"
-              onClick={() => {
-                void startProviderSignIn(provider, { kind: 'signOutOthers' }).catch(() =>
-                  setRefusal({
-                    kind: 'failed',
-                    message: t('devices.everywhereProviderFailed', {
-                      provider: PROVIDER_NAMES[provider],
+        <ActionPair
+          dismiss={
+            <button className="link-button" type="button" onClick={onKeep} disabled={working}>
+              {t('devices.everywhereKeep', { count })}
+            </button>
+          }
+          confirm={
+            viaProvider ? (
+              <button
+                className={provider === 'google' ? 'button button-google' : 'button button-apple'}
+                type="button"
+                onClick={() => {
+                  void startProviderSignIn(provider, { kind: 'signOutOthers' }).catch(() =>
+                    setRefusal({
+                      kind: 'failed',
+                      message: t('devices.everywhereProviderFailed', {
+                        provider: PROVIDER_NAMES[provider],
+                      }),
                     }),
-                  }),
-                );
-              }}
-            >
-              {provider === 'google' ? <GoogleMark /> : <AppleMark />}
-              <span>
-                {t('devices.everywhereContinueWith', { provider: PROVIDER_NAMES[provider] })}
-              </span>
-            </button>
-          ) : (
-            <button
-              className="button button-danger"
-              type="submit"
-              aria-busy={working}
-              {...offButton(refusal?.kind === 'limited')}
-            >
-              {refusal?.kind === 'limited'
-                ? until == null
-                  ? t('devices.everywhereRetrySoon')
-                  : t('devices.everywhereRetryAt', { time: until })
-                : working
-                  ? t('devices.everywhereWorking')
-                  : keepsThisDevice
-                    ? t('devices.everywhereConfirm', { count })
-                    : t('devices.everywhereConfirmAll', { count })}
-            </button>
-          )}
-        </Choices>
+                  );
+                }}
+              >
+                {provider === 'google' ? <GoogleMark /> : <AppleMark />}
+                <span>
+                  {t('devices.everywhereContinueWith', { provider: PROVIDER_NAMES[provider] })}
+                </span>
+              </button>
+            ) : (
+              <button
+                className="button button-danger"
+                type="submit"
+                aria-busy={working}
+                {...offButton(refusal?.kind === 'limited')}
+              >
+                {refusal?.kind === 'limited'
+                  ? until == null
+                    ? t('devices.everywhereRetrySoon')
+                    : t('devices.everywhereRetryAt', { time: until })
+                  : working
+                    ? t('devices.everywhereWorking')
+                    : keepsThisDevice
+                      ? t('devices.everywhereConfirm', { count })
+                      : t('devices.everywhereConfirmAll', { count })}
+              </button>
+            )
+          }
+        />
       </form>
     </>
   );
