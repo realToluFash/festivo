@@ -1081,6 +1081,25 @@ class BackgroundWorker(unittest.TestCase):
                           run_background=run, tell=lambda *a: told.append(a))
         self.assertEqual(len(told), 1)
 
+    def test_a_story_whose_comment_failed_is_told_on_the_next_lease(self):
+        self.on_story()
+        told = []
+
+        def run(*_, **__):
+            raise background.NoArtifactTools("bbbb2222")
+
+        def tell(*args):
+            told.append(args)
+            if len(told) == 1:
+                raise RuntimeError("Shortcut answered 503")
+
+        for _ in range(3):
+            runner.worker(self.db, self.home, self.platform, "dev", self.item,
+                          load=lambda: config(self.root, roles={"dev": {}}),
+                          prepare=lambda *_: ("c" * 40, None), now=ON_ZERO,
+                          run_background=run, tell=tell)
+        self.assertEqual(len(told), 2)
+
     def test_a_refused_read_is_kept_and_a_clean_read_clears_it(self):
         self.run_dev({"result": "Stopped.", "artifact_refused": "No access."})
         seen = store.get_meta(self.db, "artifact:dev")
