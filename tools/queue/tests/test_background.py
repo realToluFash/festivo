@@ -251,6 +251,11 @@ class ArtifactTools(unittest.TestCase):
         self.assertEqual(background.board_read([turn(read), turn(refused)]),
                          (False, "You do not have access to this artifact."))
         self.assertEqual(background.board_read([turn(read), turn(answered)]), (True, None))
+        again = dict(read, id="t2")
+        self.assertEqual(
+            background.board_read([turn(read), turn(answered), turn(again),
+                                   turn(dict(refused, tool_use_id="t2"))]),
+            (True, "You do not have access to this artifact."))
         other = dict(read, input={"action": "publish"})
         self.assertEqual(background.board_read([turn(other), turn(refused)]), (False, None))
         self.assertEqual(background.board_read([]), (False, None))

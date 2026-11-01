@@ -508,11 +508,11 @@ def in_background(db, platform, name, entry, values, folder, text, cwd, ids, all
         entry["stopped"] = why
     refused = result.pop("artifact_refused", None)
     read = result.pop("artifact_read", False)
-    if refused:
+    if read:
+        artifact_outcome(db, entry["role"], entry)
+    elif refused:
         artifact_outcome(db, entry["role"], entry, NOT_SHARED, refused,
                          told_stories(db, entry["role"]))
-    elif read:
-        artifact_outcome(db, entry["role"], entry)
     return result, code, None
 
 

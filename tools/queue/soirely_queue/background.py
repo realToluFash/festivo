@@ -217,7 +217,7 @@ def board_read(lines):
     """`(answered, refused)`: whether an Artifact read or list the session made was answered,
     and the first one it was refused, as the tool answered it, or None. A refused read is
     most often an artifact not shared with the account."""
-    asked, answered = {}, False
+    asked, answered, refused = {}, False, None
     for line in lines:
         for part in (line.get("message") or {}).get("content") or []:
             if not isinstance(part, dict):
@@ -226,11 +226,12 @@ def board_read(lines):
                     and (part.get("input") or {}).get("action", "read") in ("read", "list"):
                 asked[part.get("id")] = part
             elif part.get("type") == "tool_result" and part.get("tool_use_id") in asked:
-                if part.get("is_error"):
-                    return answered, \
-                        sessions.output_text(part.get("content")).strip()[:200] or "refused"
-                answered = True
-    return answered, None
+                if not part.get("is_error"):
+                    answered = True
+                elif refused is None:
+                    refused = sessions.output_text(part.get("content")).strip()[:200] \
+                        or "refused"
+    return answered, refused
 
 
 def tools_given(short, env, lines_of, clock=time.monotonic, sleep=time.sleep, ls=listed,

@@ -1142,6 +1142,13 @@ class BackgroundWorker(unittest.TestCase):
         self.run_dev({"result": "Reviewed a PR with no screens."})
         self.assertEqual(store.get_meta(self.db, "artifact:dev")["why"], runner.NOT_SHARED)
 
+    def test_an_answered_read_outranks_a_refusal_in_the_same_session(self):
+        self.run_dev({"result": "Stopped.", "artifact_refused": "No access."})
+        self.next_dev_item("inbox:dev:2")
+        self.run_dev({"result": "Built.", "artifact_read": True,
+                      "artifact_refused": "No access."})
+        self.assertIsNone(store.get_meta(self.db, "artifact:dev"))
+
     def test_a_worker_stopped_at_its_limit_stops_its_session_too(self):
         sessions.begin(self.db, "dev", {"item": self.item, "bg": "1d923fe2", "session": SESSION,
                                         "folder": str(self.root / "claude")})
