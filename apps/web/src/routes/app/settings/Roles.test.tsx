@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import i18next from 'i18next';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,6 +6,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
+import { STYLES } from '../../../test-styles.ts';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -715,7 +713,7 @@ describe('Settings > Roles', () => {
   describe('where a role opens on its own page', () => {
     // The query that hides the list once a role is open, as styles.css has it, not as Roles.tsx copies it.
     const onePane = /@media (\([^)]*\)) \{[^@]*\.roles\[data-open='true'\] \.roles-list/u.exec(
-      readFileSync(join(import.meta.dirname, '../../../styles.css'), 'utf8'),
+      STYLES,
     )?.[1];
 
     beforeEach(() => {
