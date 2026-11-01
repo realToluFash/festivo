@@ -55,7 +55,7 @@ function HomeBody() {
       )}
       {account != null && organisation == null && <NoOrganisation titleRef={heading} />}
       {account != null && organisation != null && (
-        <View style={[cardFrame(kind), styles.card]}>
+        <View style={cardFrame(kind)}>
           <SignedInHeading organisation={organisation} headingRef={heading} />
           <View style={styles.lines}>
             <Text size={tokens.typeBodyPhone.size}>
@@ -69,6 +69,8 @@ function HomeBody() {
             <PrimaryButton
               label={t('home.openSettings')}
               onPress={() => router.navigate(DESTINATION_HREF.settings)}
+              paired
+              grow={kind === 'phone'}
               testID="home.openSettings"
             />
             {openSwitcher != null && (
@@ -76,6 +78,8 @@ function HomeBody() {
                 label={t('home.switchOrganisation')}
                 onPress={() => openSwitcher(switchButton)}
                 ref={switchButton}
+                paired
+                grow={kind === 'phone'}
                 testID="home.switchOrganisation"
               />
             )}
@@ -151,7 +155,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.space5xl,
     paddingBottom: tokens.space6xl,
   },
-  card: { gap: 14 },
   lines: { gap: tokens.spaceXxs },
   actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
 });

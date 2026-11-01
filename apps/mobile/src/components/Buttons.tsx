@@ -27,6 +27,8 @@ export function PrimaryButton({
   onPress,
   busy = false,
   off = false,
+  paired = false,
+  grow = false,
   accessibilityLabel,
   ref,
   testID,
@@ -35,6 +37,10 @@ export function PrimaryButton({
   onPress: () => void;
   busy?: boolean;
   off?: boolean;
+  /** Beside a paired secondary, both labels at the phone primary's 15 (SignedInHome.dc). */
+  paired?: boolean;
+  /** Fills its line once a wrapping row breaks. */
+  grow?: boolean;
   accessibilityLabel?: string;
   ref?: Ref<ViewInstance> | undefined;
   testID: string;
@@ -45,7 +51,12 @@ export function PrimaryButton({
   return (
     <PressFade
       ref={ref}
-      style={[styles.primary, off && styles.primaryOff, { opacity: fade.opacity }]}
+      style={[
+        styles.primary,
+        off && styles.primaryOff,
+        grow && styles.grow,
+        { opacity: fade.opacity },
+      ]}
       onPressIn={inactive ? undefined : fade.onPressIn}
       onPressOut={fade.onPressOut}
       onPress={busy ? undefined : onPress}
@@ -59,7 +70,7 @@ export function PrimaryButton({
       testID={testID}
     >
       <Text
-        size={CONTROL_TEXT_SIZE}
+        size={paired ? tokens.typeBodyPhone.size : CONTROL_TEXT_SIZE}
         weight="semibold"
         style={[styles.label, off ? styles.secondaryInk : styles.onAccent]}
       >
@@ -74,6 +85,8 @@ export function SecondaryButton({
   onPress,
   off = false,
   stacked = false,
+  paired = false,
+  grow = false,
   accessibilityLabel,
   ref,
   testID,
@@ -83,6 +96,10 @@ export function SecondaryButton({
   off?: boolean;
   /** Full width at the primary button's height, whether under a primary or alone. */
   stacked?: boolean;
+  /** In a row beside the primary, at its height and label size. */
+  paired?: boolean;
+  /** Fills its line once a wrapping row breaks. */
+  grow?: boolean;
   /** When the visible label leans on its row, as "Unlink" does beside "Google". */
   accessibilityLabel?: string;
   ref?: Ref<ViewInstance> | undefined;
@@ -96,6 +113,8 @@ export function SecondaryButton({
       style={[
         styles.secondary,
         stacked && styles.secondaryStacked,
+        paired && styles.inRow,
+        grow && styles.grow,
         off && styles.secondaryOff,
         { opacity: fade.opacity },
       ]}
@@ -109,7 +128,7 @@ export function SecondaryButton({
       testID={testID}
     >
       <Text
-        size={tokens.typeButton.size}
+        size={paired ? tokens.typeBodyPhone.size : tokens.typeButton.size}
         weight="semibold"
         style={[styles.label, off ? styles.secondaryInk : styles.ink]}
       >
@@ -148,7 +167,7 @@ export function DestructiveButton({
       ref={ref}
       style={[
         styles.secondary,
-        stacked ? styles.secondaryStacked : styles.destructiveInRow,
+        stacked ? styles.secondaryStacked : styles.inRow,
         off && styles.secondaryOff,
         { opacity: fade.opacity },
       ]}
@@ -337,11 +356,13 @@ const styles = StyleSheet.create({
     minHeight: tokens.sizeHitPhonePrimary,
     borderRadius: tokens.sizeHitPhonePrimary / 2,
   },
-  destructiveInRow: {
+  inRow: {
+    alignItems: 'center',
     minHeight: tokens.sizeHitPhonePrimary,
     paddingHorizontal: tokens.spaceXxl,
     borderRadius: tokens.sizeHitPhonePrimary / 2,
   },
+  grow: { flexGrow: 1 },
   secondaryOff: { backgroundColor: tokens.colorInset, borderColor: tokens.colorBorder },
   quiet: { minHeight: tokens.sizeHit, alignItems: 'center', justifyContent: 'center' },
   footnote: {
