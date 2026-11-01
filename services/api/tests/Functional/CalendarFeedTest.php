@@ -24,6 +24,9 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\DBAL\Connection;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use Monolog\Handler\TestHandler;
+use Monolog\Level;
+use Monolog\Logger;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
 use Psl\Str;
@@ -335,6 +338,25 @@ final class CalendarFeedTest extends ApiTestCase
         self::assertSame(403, $this->statusCode());
         $this->request($guestsOnly, 'POST', $this->panel() . '/reset');
         self::assertSame(403, $this->statusCode());
+    }
+
+    #[Test]
+    public function theTokenIsInNoLogRecordAFetchWrites(): void
+    {
+        $path = $this->link($this->owner);
+        $token = Str\slice(Str\after($path, FeedLinkIssuer::PATH) ?? '', 0, 43);
+        $records = new TestHandler();
+        foreach (['logger', 'monolog.logger.request'] as $channel) {
+            self::serviceById($channel, Logger::class)->pushHandler($records);
+        }
+
+        $this->fetch($path);
+
+        self::assertSame(200, $this->statusCode());
+        self::assertTrue($records->hasRecordThatContains('Matched route', Level::Info), 'the router logged nothing, so nothing was checked');
+        foreach ($records->getRecords() as $record) {
+            self::assertStringNotContainsString($token, Json\encode([$record->message, $record->context, $record->extra]));
+        }
     }
 
     #[Test]
