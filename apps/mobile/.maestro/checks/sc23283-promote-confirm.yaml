@@ -1,4 +1,4 @@
-# sc-23283: Make primary on ${ROW} opens its confirm in the row, then Keep closes it.
+# sc-23283: Make primary on ${ROW} (a verified email row, not the primary) opens its confirm in the row, then Keep closes it.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/account
@@ -22,3 +22,12 @@ appId: host.exp.Exponent
 - takeScreenshot: promote-confirm
 - tapOn:
     id: 'contacts.${ROW}.keep'
+- extendedWaitUntil:
+    notVisible:
+      id: 'contacts.${ROW}.keep'
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: 'contacts.${ROW}.primary'
+    timeout: 10000
+- takeScreenshot: promote-kept
