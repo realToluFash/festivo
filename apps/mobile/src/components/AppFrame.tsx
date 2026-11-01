@@ -55,6 +55,7 @@ import { tokens } from '../theme/tokens.ts';
 import { useTwoFactorStanding } from '../twoFactorStanding.ts';
 import { useModalOpen } from '../updateRequired.ts';
 import { BellButton } from './BellButton.tsx';
+import { Brand } from './Brand.tsx';
 import { CreateOrganisation } from './CreateOrganisation.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { Sheet, useFocusBack, useWindowTurn } from './Sheet.tsx';
@@ -768,7 +769,7 @@ function Rail({
       ]}
     >
       <View style={styles.brand}>
-        <Title size={tokens.typeTitleDialog.size}>{t('app.name')}</Title>
+        <Brand width={RAIL_BRAND_WIDTH} />
       </View>
       {organisation != null && (
         <OrgPill
@@ -1162,6 +1163,8 @@ function OfferCard({
     </View>
   );
 }
+
+const RAIL_BRAND_WIDTH = 119;
 
 const STROKE = { strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 

@@ -6,7 +6,6 @@
     "loading": "Cargando…"
   },
   "home": {
-    "title": "Soirely",
     "subtitle": "La noche, desde su bolsillo.",
     "openSignIn": "Iniciar sesión",
     "signedInTo": "Ha iniciado sesión en {{name}}",
