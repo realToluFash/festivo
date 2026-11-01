@@ -1545,6 +1545,12 @@ describe('a notice answering Create organisation comes into view (sc-25897)', ()
     );
   });
 
+  it('holds the answering window for each answer, which brings the notice in', () => {
+    expect(text()).toMatch(
+      /if \(answer === 0\) return;\s*return settledAnswer\(\s*\(\) => lift\.current\?\.lift\(\),\s*SETTLED_MS,\s*\(on\) => \{\s*answering\.current = on;\s*\},\s*\);\s*\}, \[answer\]\);/u,
+    );
+  });
+
   it('brings the notice in before lifting the field while it is answering', () => {
     expect(text()).toMatch(
       /if \(answering\.current\) bringNotice\(\);\s*else if \(inSight\) liftField\(\);/u,

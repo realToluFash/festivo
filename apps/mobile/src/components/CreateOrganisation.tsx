@@ -21,6 +21,7 @@ import {
   fieldKeptInSight,
   offsetIntoView,
   offsetToFocus,
+  settledAnswer,
   titleScrollsWhileTyping,
 } from '../kit/keyboard.ts';
 import {
@@ -149,19 +150,13 @@ function useFocusInSight(keysUp: boolean, inSight: boolean, answer: number) {
   useEffect(() => {
     if (answer === 0) return;
 
-    answering.current = true;
-    lift.current?.lift();
-    // A notice that mounts as the content around it shrinks can stop the first scroll short (sc-9382).
-    const settled = setTimeout(() => lift.current?.lift(), SETTLED_MS);
-    const done = setTimeout(() => {
-      answering.current = false;
-    }, 2 * SETTLED_MS);
-
-    return () => {
-      clearTimeout(settled);
-      clearTimeout(done);
-      answering.current = false;
-    };
+    return settledAnswer(
+      () => lift.current?.lift(),
+      SETTLED_MS,
+      (on) => {
+        answering.current = on;
+      },
+    );
   }, [answer]);
 
   return {
