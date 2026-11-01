@@ -424,7 +424,7 @@ describe('creating an organisation', () => {
 
     const alert = await screen.findByText('Too many new organisations for now.');
     expect(alert.nextElementSibling?.textContent).toMatch(/^Try again at \d{2}:\d{2}\.$/);
-    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(within(screen.getByRole('dialog')).getAllByRole('alert')).toHaveLength(1);
     const name = screen.getByLabelText('Organisation name') as HTMLInputElement;
     expect(name.value).toBe('Six');
     await waitFor(() => expect(document.activeElement).toBe(name));
@@ -456,7 +456,7 @@ describe('creating an organisation', () => {
         'Creating the organisation did not work. Nothing was created. Try again in a moment.',
       ),
     ).toBeDefined();
-    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(within(screen.getByRole('dialog')).getAllByRole('alert')).toHaveLength(1);
     const name = screen.getByLabelText('Organisation name') as HTMLInputElement;
     expect(name.value).toBe('Supper');
     await waitFor(() => expect(document.activeElement).toBe(name));

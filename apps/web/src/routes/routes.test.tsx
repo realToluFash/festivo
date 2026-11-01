@@ -105,7 +105,7 @@ describe('the application tree', () => {
     expect(screen.getByText('Signed in as Ada Okonkwo')).toBeDefined();
   });
 
-  it("shows the Dashboard's event count as one waiting row from one second, gone with nothing when it fails (sc-23303)", async () => {
+  it("shows the Dashboard's event count as one waiting row from one second, then its failure line when it fails (sc-23303, sc-24696)", async () => {
     let fail: () => void = () => {};
     const counted = new Promise<Response>((_, reject) => {
       fail = () => reject(new TypeError('Failed to fetch'));
@@ -126,7 +126,57 @@ describe('the application tree', () => {
 
     await waitFor(() => expect(container.querySelector('#content [aria-busy="true"]')).toBeNull());
     expect(screen.queryByText(/events?$/u)).toBeNull();
+    expect(screen.getByRole('alert').textContent).toContain(
+      'The events did not load. Try again in a moment.',
+    );
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeDefined();
     expect(screen.getByText('Signed in as Ada Okonkwo')).toBeDefined();
+  });
+
+  it("never shows half the Dashboard's count, and Try again reloads both halves (sc-24696)", async () => {
+    let finishedFails = true;
+    const asked: string[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname !== '/api/orgs/org_1/events') return new Promise<Response>(() => {});
+      const finished = url.searchParams.get('finished') === 'true';
+      asked.push(finished ? 'finished' : 'unfinished');
+      if (finished && finishedFails) throw new TypeError('Failed to fetch');
+
+      return new Response(JSON.stringify({ events: [], total: finished ? 2 : 3 }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+    at('/app');
+
+    const retry = await screen.findByRole('button', { name: 'Try again' });
+    expect(screen.queryByText(/events?$/u)).toBeNull();
+
+    finishedFails = false;
+    fireEvent.click(retry);
+
+    const count = await screen.findByText('5 events');
+    expect([...asked].sort()).toEqual(['finished', 'finished', 'unfinished', 'unfinished']);
+    await waitFor(() => expect(document.activeElement).toBe(count));
+  });
+
+  it("moves focus to the Dashboard's failure line when Try again fails again (sc-24696)", async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      if (new URL(String(input)).pathname !== '/api/orgs/org_1/events') {
+        return new Promise<Response>(() => {});
+      }
+      throw new TypeError('Failed to fetch');
+    });
+    at('/app');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toBe(
+        'The events did not load. Try again in a moment.',
+      ),
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('opens in the account language, with no Automatic, after Automatic was picked outside (sc-9797)', async () => {
