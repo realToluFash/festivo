@@ -58,12 +58,14 @@ export function CreateOrganisation({
   const keysUp = useKeysUp();
   const typing = phone && keysUp;
   const turned = { os: Platform.OS, phone, width, height, keysUp };
+  const [sending, setSending] = useState(false);
 
   return (
     <Sheet
       open={open}
       onClose={onCancel}
       scrimLabel={t('createOrganisation.cancel')}
+      held={sending}
       opener={opener}
     >
       {open && (
@@ -76,6 +78,7 @@ export function CreateOrganisation({
           titleScrolls={titleScrollsWhileTyping(turned)}
           onCreated={onCreated}
           onCancel={onCancel}
+          onSending={setSending}
         />
       )}
     </Sheet>
@@ -143,6 +146,7 @@ function Form({
   titleScrolls,
   onCreated,
   onCancel,
+  onSending,
 }: {
   email: string;
   /** The buttons stack, Create organisation on top (`create_keyboard`). */
@@ -154,6 +158,7 @@ function Form({
   titleScrolls: boolean;
   onCreated: (created: Membership) => void;
   onCancel: () => void;
+  onSending: (sending: boolean) => void;
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
@@ -171,6 +176,11 @@ function Form({
   const [limited, setLimited] = useState<ReturnType<typeof limitNotice> | null>(null);
   const [failed, setFailed] = useState(false);
   const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    onSending(saving);
+
+    return () => onSending(false);
+  }, [saving, onSending]);
   const nameInput = useRef<TextInputInstance>(null);
   const countryPicker = useRef<ViewInstance>(null);
   const countryField = useRef<ViewInstance>(null);
@@ -233,6 +243,7 @@ function Form({
     <SecondaryButton
       label={t('createOrganisation.cancel')}
       onPress={onCancel}
+      off={saving}
       stacked={drawn}
       testID="createOrganisation.cancel"
     />
