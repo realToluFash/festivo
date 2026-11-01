@@ -21,7 +21,7 @@ appId: host.exp.Exponent
 - takeScreenshot: panel
 - tapOn:
     id: 'calendarFeed.copy'
-- assertVisible: 'Copied'
+- assertVisible: '{{t:calendarFeed.copied}}'
 - takeScreenshot: copied
 - tapOn:
     id: 'calendarFeed.openInApp'
@@ -29,7 +29,7 @@ appId: host.exp.Exponent
 - takeScreenshot: open-in-app
 - assertVisible:
     id: 'calendarFeed.url'
-- assertVisible: 'No calendar app opened the link.*'
+- assertVisible: '{{t:calendarFeed.noApp}}'
 - tapOn:
     id: 'calendarFeed.close'
 - waitForAnimationToEnd
@@ -76,7 +76,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'calendarFeed.resetConfirm'
 - extendedWaitUntil:
-    visible: 'New link made.*'
+    visible: '{{t:calendarFeed.newLink}}'
     timeout: 15000
 - scrollUntilVisible:
     element:
