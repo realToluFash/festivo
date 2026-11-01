@@ -6752,18 +6752,61 @@ button.members-row {
   align-items: start;
 }
 
-.event-overview-main {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space3xl);
-  min-width: 0;
+/* One column below 1280 × 800 takes the phone's order: Details, On track, Needs you, Replies, Coming up, Team, Manage (sc-25008). */
+.event-overview-main,
+.event-overview-side {
+  display: contents;
 }
 
-/* Manage beside Details and Coming up where there is room for both (1280 × 800), after them below it. */
+.event-details {
+  order: 1;
+}
+
+.event-soon-on-track {
+  order: 2;
+}
+
+.event-soon-needs-you {
+  order: 3;
+}
+
+.event-soon-replies {
+  order: 4;
+}
+
+.coming-up {
+  order: 5;
+}
+
+.event-soon-team {
+  order: 6;
+}
+
+/* Two columns that stack apart where there is room for both (1280 × 800). */
 @media (width >= 64rem) {
   .event-overview-columns {
     grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem);
   }
+
+  .event-overview-main,
+  .event-overview-side {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space3xl);
+    min-width: 0;
+  }
+}
+
+.event-soon-label {
+  margin: 0;
+  padding-bottom: var(--spaceLg);
+  border-bottom: var(--borderInset);
+  font-size: 16px;
+}
+
+.event-soon .placeholder-soon {
+  margin: 0;
+  font-size: 15px;
 }
 
 @media (width <= 40rem) {
@@ -6838,6 +6881,7 @@ button.members-row {
 }
 
 .event-manage {
+  order: 7;
   gap: var(--spaceXl);
 }
 

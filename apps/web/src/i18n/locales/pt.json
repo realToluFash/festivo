@@ -182,7 +182,11 @@
     "tileComing": "Vêm",
     "tileMealPicks": "Menus escolhidos",
     "tileSeated": "Sentados",
-    "tileBudgetUsed": "Orçamento usado"
+    "tileBudgetUsed": "Orçamento usado",
+    "onTrack": "On track",
+    "replies": "Replies",
+    "needsYou": "Needs you",
+    "team": "Team on this event"
   },
   "eventLive": {
     "guestsBlocked": "Só é possível convidar pessoas depois de este evento ser publicado.",

@@ -290,7 +290,29 @@ function TopVenue({ event }: { event: OrganisationEvent }) {
 
 const OVERVIEW_TILES = ['tileComing', 'tileMealPicks', 'tileSeated', 'tileBudgetUsed'] as const;
 
-/** The page's first area: [fd]'s tiles, then Details and Coming up, with Manage beside them where there is room. */
+const SOON_CARDS = {
+  onTrack: 'on-track',
+  replies: 'replies',
+  needsYou: 'needs-you',
+  team: 'team',
+} as const;
+
+/** [fd]'s Overview card with nothing to show yet: its label, then Coming soon, and nothing to press (sc-25008). */
+function SoonCard({ card }: { card: keyof typeof SOON_CARDS }) {
+  const { t } = useTranslation();
+  const id = `event-${SOON_CARDS[card]}-title`;
+
+  return (
+    <section className={`card event-soon event-soon-${SOON_CARDS[card]}`} aria-labelledby={id}>
+      <h2 id={id} className="event-soon-label">
+        {t(`eventPage.${card}`)}
+      </h2>
+      <p className="placeholder-soon">{t('events.comingSoon')}</p>
+    </section>
+  );
+}
+
+/** The page's first area: [fd]'s tiles, then its cards in two columns where there is room, and in the phone's order in one where there is not (sc-25008). */
 function Overview({
   event,
   heading,
@@ -324,6 +346,38 @@ function Overview({
     );
   }, [location, navigate]);
 
+  const manage = (
+    <section className="card event-manage" aria-labelledby="event-manage-title">
+      <h2 id="event-manage-title">{t('eventPage.manage')}</h2>
+      {manages && (
+        <div className="event-manage-actions">
+          <PauseButton
+            event={event}
+            phase={phase}
+            heading={heading}
+            onChange={onChange}
+            onPaused={() => setPaused(true)}
+          />
+          <EndButton
+            event={event}
+            phase={phase}
+            now={now}
+            heading={heading}
+            onChange={onChange}
+            onEnded={() => setEnded(true)}
+          />
+        </div>
+      )}
+      {creates && phase !== 'finished' && (
+        <div className="event-manage-actions">
+          <DuplicateEvent event={event} />
+        </div>
+      )}
+      <MuteEvent eventId={event.id} />
+      {creates && <DeleteEvent event={event} />}
+    </section>
+  );
+
   return (
     <div className="event-overview">
       <ul className="events-tiles event-tiles" aria-label={t('eventNav.overview')}>
@@ -354,37 +408,15 @@ function Overview({
       <div className="event-overview-columns">
         <div className="event-overview-main">
           <Details event={event} manages={manages} />
+          <SoonCard card="needsYou" />
           <ComingUp event={event} now={now} />
+          <SoonCard card="team" />
         </div>
-        <section className="card event-manage" aria-labelledby="event-manage-title">
-          <h2 id="event-manage-title">{t('eventPage.manage')}</h2>
-          {manages && (
-            <div className="event-manage-actions">
-              <PauseButton
-                event={event}
-                phase={phase}
-                heading={heading}
-                onChange={onChange}
-                onPaused={() => setPaused(true)}
-              />
-              <EndButton
-                event={event}
-                phase={phase}
-                now={now}
-                heading={heading}
-                onChange={onChange}
-                onEnded={() => setEnded(true)}
-              />
-            </div>
-          )}
-          {creates && phase !== 'finished' && (
-            <div className="event-manage-actions">
-              <DuplicateEvent event={event} />
-            </div>
-          )}
-          <MuteEvent eventId={event.id} />
-          {creates && <DeleteEvent event={event} />}
-        </section>
+        <div className="event-overview-side">
+          <SoonCard card="onTrack" />
+          <SoonCard card="replies" />
+          {manage}
+        </div>
       </div>
     </div>
   );

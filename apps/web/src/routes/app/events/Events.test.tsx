@@ -1565,8 +1565,31 @@ describe("An event's Overview (sc-22103)", () => {
     ]);
     expect(
       screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent),
-    ).toEqual(['Details', 'Coming up', 'Manage', 'Just for you']);
+    ).toEqual([
+      'Details',
+      'Needs you',
+      'Coming up',
+      'Team on this event',
+      'On track',
+      'Replies',
+      'Manage',
+      'Just for you',
+    ]);
     expect(screen.queryByRole('button', { name: /more/i })).toBeNull();
+  });
+
+  it('shows On track, Replies, Needs you and Team on this event as placeholders, with nothing to press and no hosts (sc-25008)', async () => {
+    signedIn();
+    answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    for (const label of ['On track', 'Replies', 'Needs you', 'Team on this event']) {
+      const card = screen.getByRole('region', { name: label });
+      expect(spaced(card.textContent)).toBe(`${label}Coming soon`);
+      expect(within(card).queryByRole('link')).toBeNull();
+      expect(within(card).queryByRole('button')).toBeNull();
+    }
   });
 
   it('opens Edit details at each row: Starts, the venue and the hosts', async () => {

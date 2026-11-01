@@ -1548,7 +1548,11 @@
     "tileComing": "Asistirán",
     "tileMealPicks": "Menús elegidos",
     "tileSeated": "Con asiento",
-    "tileBudgetUsed": "Presupuesto usado"
+    "tileBudgetUsed": "Presupuesto usado",
+    "onTrack": "On track",
+    "replies": "Replies",
+    "needsYou": "Needs you",
+    "team": "Team on this event"
   },
   "eventForm": {
     "title": "Nuevo evento",
