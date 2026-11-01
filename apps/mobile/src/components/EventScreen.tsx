@@ -192,6 +192,18 @@ export function EventScreen({
       title={t(`eventNav.${area}`)}
       titleRef={title}
       offline={opened.stale}
+      underTitle={
+        opened.refreshing ? (
+          <Text
+            size={tokens.typeBodyPhone.size}
+            muted
+            accessibilityRole="text"
+            testID="events.page.refreshing"
+          >
+            {t('eventsScreen.refreshing')}
+          </Text>
+        ) : undefined
+      }
       back={phone ? { label: backLabel, onPress: back } : undefined}
       backInBody
       inEvent={event == null ? undefined : { area, onArea: chooseArea }}
@@ -255,6 +267,7 @@ function useOpened(
   reload: () => void;
   change: (event: OrganisationEvent) => void;
   stale: Stale | null;
+  refreshing: boolean;
 } {
   const organisationId = organisation?.id;
   const settled = openedWithoutAsking(accountLoaded, organisation);
@@ -276,7 +289,7 @@ function useOpened(
     [key],
   );
 
-  const { watch, stale } = useOffline({
+  const { watch, stale, refreshing } = useOffline({
     loaded: held.for === key && held.opened.kind === 'loaded',
     reload,
     focusTitle,
@@ -302,7 +315,7 @@ function useOpened(
     };
   }, [eventId, organisationId, asks, key, attempt, watch]);
 
-  if (settled != null) return { ...settled, retry, reload, change, stale: null };
+  if (settled != null) return { ...settled, retry, reload, change, stale: null, refreshing: false };
 
   return {
     ...(held.for === key ? held.opened : { kind: 'loading' }),
@@ -310,6 +323,7 @@ function useOpened(
     reload,
     change,
     stale,
+    refreshing,
   };
 }
 
