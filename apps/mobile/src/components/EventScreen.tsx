@@ -9,7 +9,7 @@ import { api } from '../api.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { offersDelete } from '../kit/eventDelete.ts';
 import { backToOriginal } from '../kit/eventDuplicate.ts';
-import { EVENT_AREA, areaBack } from '../kit/eventNav.ts';
+import { type EditAt, EVENT_AREA, areaBack } from '../kit/eventNav.ts';
 import { markDeleted, takeCoverRefused, takeSaved } from '../kit/eventSaved.ts';
 import { type Opened, openedOf, openedWithoutAsking } from '../kit/eventsOpen.ts';
 import { SHOWN_EVENT, goUpToEvent } from '../kit/upToEvent.ts';
@@ -21,14 +21,7 @@ import { AppFrame, BackButton } from './AppFrame.tsx';
 import { bodyEdges } from './bodyEdges.ts';
 import { SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
-import {
-  type EditAt,
-  EventNotFound,
-  EventPage,
-  EventTop,
-  EventsFailed,
-  usePhaseOf,
-} from './Events.tsx';
+import { EventNotFound, EventPage, EventTop, EventsFailed, usePhaseOf } from './Events.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { Screen, useScrolledToTop } from './Screen.tsx';

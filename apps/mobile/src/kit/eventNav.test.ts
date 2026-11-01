@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { areaBack, areaOf, eventHref } from './eventNav.ts';
+import { areaBack, areaOf, editAtOf, eventHref } from './eventNav.ts';
 
 describe('areaOf', () => {
   it('reads an area the event has', () => {
@@ -28,5 +28,15 @@ describe('eventHref', () => {
   it('says when the event was opened from Happening now', () => {
     expect(eventHref('a b')).toBe('/events/a%20b');
     expect(eventHref('e1', true)).toBe('/events/e1?now=1');
+  });
+});
+
+describe('editAtOf', () => {
+  it('reads the field Edit details opens at, and nothing else', () => {
+    expect(editAtOf('starts')).toBe('starts');
+    expect(editAtOf('venue')).toBe('venue');
+    expect(editAtOf('hosts')).toBe('hosts');
+    expect(editAtOf('cover')).toBeUndefined();
+    expect(editAtOf(undefined)).toBeUndefined();
   });
 });

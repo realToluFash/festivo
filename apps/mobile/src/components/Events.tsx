@@ -13,6 +13,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
+import type { EditAt } from '../kit/eventNav.ts';
 import { PHASE_WORD } from '../kit/makeLive.ts';
 import { useLoadedAt, useServerNow } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
@@ -142,11 +143,9 @@ export function EventsFailed({
   );
 }
 
-/** [fd]'s Event view (sc-22103): the Top, then Overview's tiles, Details and Coming up, with Manage beside them on a tablet on its side. */
-export type EditAt = 'starts' | 'venue' | 'hosts';
-
 const OVERVIEW_TILES = ['tileComing', 'tileMealPicks', 'tileSeated', 'tileBudgetUsed'] as const;
 
+/** [fd]'s Event view (sc-22103): the Top, then Overview's tiles, Details and Coming up, with Manage beside them on a tablet on its side. */
 export function EventPage({
   kind,
   event,

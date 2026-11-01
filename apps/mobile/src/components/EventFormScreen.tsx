@@ -21,6 +21,7 @@ import { readOut } from './ReadOut.tsx';
 import { Screen } from './Screen.tsx';
 import { Text } from './Text.tsx';
 import { Arrived, Skeleton } from './Skeleton.tsx';
+import type { EditAt } from '../kit/eventNav.ts';
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'notFound' } | TaggedEvent;
 
@@ -63,7 +64,7 @@ export function NewEventScreen() {
 }
 
 /** An event's page > Edit details, `App event form` state Edit details (sc-3595). */
-export function EditEventScreen({ eventId, toHosts }: { eventId: string; toHosts: boolean }) {
+export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt | undefined }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
   const { organisation } = useSignedIn();
@@ -135,7 +136,7 @@ export function EditEventScreen({ eventId, toHosts }: { eventId: string; toHosts
             kind={kind}
             organisation={organisation}
             opened={load}
-            toHosts={toHosts && reads === 0}
+            arriveAt={reads === 0 ? at : undefined}
             onCreated={() => {}}
             onSaved={(outcome) => {
               if (outcome === 'saved') markSaved(eventId);
