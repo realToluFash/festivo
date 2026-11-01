@@ -3895,7 +3895,6 @@ button.members-row {
   background: var(--colorInset);
 }
 
-.company-domain-buttons,
 .company-domain-add {
   display: flex;
   flex-wrap: wrap;
