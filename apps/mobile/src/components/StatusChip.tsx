@@ -52,8 +52,6 @@ function Shape({ shape, tone }: { shape: StatusShape; tone: StatusTone }) {
         </View>
       );
     case 'tick':
-    case 'cross':
-    case 'dash':
       return (
         <Text
           size={tokens.typeSmall.size}
@@ -62,19 +60,16 @@ function Shape({ shape, tone }: { shape: StatusShape; tone: StatusTone }) {
           {...hidden}
           accessible={false}
         >
-          {GLYPH[shape]}
+          ✓
         </Text>
       );
   }
 }
 
-const GLYPH = { tick: '✓', cross: '✕', dash: '–' } as const;
-
 const INK: Record<StatusTone, string> = {
   accent: tokens.colorAccentText,
   attention: tokens.colorAttentionText,
   paused: tokens.colorPausedText,
-  broken: tokens.colorBrokenText,
   neutral: tokens.colorInkSecondary,
 };
 
@@ -85,7 +80,6 @@ const CHIP = StyleSheet.create({
     backgroundColor: tokens.colorAttentionTint,
   },
   paused: { borderColor: tokens.colorHeaderBorder, backgroundColor: tokens.colorPausedTint },
-  broken: { borderColor: tokens.colorBrokenTint, backgroundColor: tokens.colorBrokenTint },
   neutral: { borderColor: tokens.colorNeutralFill, backgroundColor: tokens.colorNeutralFill },
 });
 

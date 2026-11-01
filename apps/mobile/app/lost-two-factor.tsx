@@ -4,8 +4,6 @@ import {
   codeWording,
   formatCountdown,
   formatPhone,
-  RECOVERY_LOOK,
-  type RecoveryOutcome,
   recoveryIntroKey,
 } from '@soirely/domain';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
@@ -24,12 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../src/api.ts';
 import { heldChallenge } from '../src/challenge.ts';
 import { type AuthBack, AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
-import {
-  Footnote,
-  PrimaryButton,
-  QuietButton,
-  SecondaryButton,
-} from '../src/components/Buttons.tsx';
+import { PrimaryButton, QuietButton, SecondaryButton } from '../src/components/Buttons.tsx';
 import {
   CodeField,
   Field,
@@ -42,7 +35,7 @@ import { Notice } from '../src/components/Notice.tsx';
 import { Pending } from '../src/components/Pending.tsx';
 import { useFocusOnAnswer } from '../src/components/Screen.tsx';
 import { readOut } from '../src/components/ReadOut.tsx';
-import { StatusChip } from '../src/components/StatusChip.tsx';
+import { StatusMark, type MarkTone } from '../src/components/StatusMark.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { dropRecovery, heldRecovery, holdRecovery } from '../src/heldRecovery.ts';
 import { currentLocale } from '../src/i18n/index.ts';
@@ -221,14 +214,14 @@ function Saying({
 }: {
   title: string;
   intro: string;
-  mark?: { outcome: RecoveryOutcome; word: string };
+  mark?: { tone: MarkTone; word: string };
 }) {
   const tapped = useContext(Tapped);
 
   return (
     <View style={styles.saying}>
-      {mark != null && <StatusChip look={RECOVERY_LOOK[mark.outcome]} word={mark.word} />}
-      <AuthHeading apart title={title} intro={intro} answer={tapped} />
+      {mark != null && <StatusMark tone={mark.tone} word={mark.word} />}
+      <AuthHeading title={title} intro={intro} answer={tapped} />
     </View>
   );
 }
@@ -245,7 +238,7 @@ function Replaced({ onStartAgain }: { onStartAgain: () => void }) {
         <Saying
           title={t('lostTwoFactor.replacedTitle')}
           intro={t('lostTwoFactor.replacedIntro')}
-          mark={{ outcome: 'ended', word: t('lostTwoFactor.replacedMark') }}
+          mark={{ tone: 'skipped', word: t('lostTwoFactor.replacedMark') }}
         />
       }
     >
@@ -299,7 +292,7 @@ function Start({
   sending: boolean;
   onSend: () => void;
 }) {
-  const markSide = useMarkSide(tokens.space4xl);
+  const markSide = useMarkSide(tokens.sizeMark);
   const { t } = useTranslation();
   const back = useBackToCode();
   const steps = [
@@ -341,10 +334,9 @@ function Start({
               importantForAccessibility="no-hide-descendants"
             >
               <Text
-                size={tokens.typeCode.size}
+                size={tokens.typePill.size}
                 weight="bold"
-                family="mono"
-                style={styles.onDark}
+                style={styles.secondary}
                 accessible={false}
               >
                 {String(index + 1)}
@@ -408,7 +400,6 @@ function Failed({ failure, onRetry }: { failure: Shown; onRetry: () => void }) {
         takesFocus={tapped != null}
       />
       <SecondaryButton
-        stacked
         label={t('lostTwoFactor.retry')}
         onPress={onRetry}
         testID="lostTwoFactor.retry"
@@ -479,12 +470,12 @@ function Request({
           <Saying
             title={t('lostTwoFactor.waitingTitle')}
             intro={t(recoveryIntroKey('waiting', state.nobody), { organisations })}
-            mark={{ outcome: 'waiting', word: t('lostTwoFactor.waitingMark') }}
+            mark={{ tone: 'progress', word: t('lostTwoFactor.waitingMark') }}
           />
         }
       >
         <Notice
-          tone="plain"
+          tone="quiet"
           mark="…"
           body={`${t('lostTwoFactor.asked', { when: state.asked })} ${t('lostTwoFactor.endsBy', { when: state.expires })}`}
         />
@@ -493,16 +484,16 @@ function Request({
         </Text>
         {state.nobody && supportAddress !== '' && (
           <SecondaryButton
-            stacked
             label={t('lostTwoFactor.emailSupport', { address: supportAddress })}
             onPress={() => void Linking.openURL(`mailto:${supportAddress}`)}
             testID="lostTwoFactor.support"
           />
         )}
-        <Footnote
-          question={t('lostTwoFactor.notYou')}
-          action={t('lostTwoFactor.cancel')}
-          centred
+        <Text size={tokens.typeBodyPhone.size} weight="semibold">
+          {t('lostTwoFactor.notYou')}
+        </Text>
+        <SecondaryButton
+          label={t('lostTwoFactor.cancel')}
           onPress={() => {
             api
               .cancelRecovery(recovery)
@@ -531,7 +522,7 @@ function Request({
           <Saying
             title={t('lostTwoFactor.approvedTitle')}
             intro={t(recoveryIntroKey('approved', state.nobody), { organisations: anyOf })}
-            mark={{ outcome: 'approved', word: t('lostTwoFactor.approvedMark') }}
+            mark={{ tone: 'done', word: t('lostTwoFactor.approvedMark') }}
           />
         }
       >
@@ -554,13 +545,12 @@ function Request({
           <Saying
             title={t('lostTwoFactor.turnedDownTitle')}
             intro={t(recoveryIntroKey('turned_down', state.nobody), { organisations: anyOf })}
-            mark={{ outcome: 'turned_down', word: t('lostTwoFactor.turnedDownMark') }}
+            mark={{ tone: 'broken', word: t('lostTwoFactor.turnedDownMark') }}
           />
         }
       >
         {supportAddress !== '' && (
           <SecondaryButton
-            stacked
             label={t('lostTwoFactor.emailSupport', { address: supportAddress })}
             onPress={() => void Linking.openURL(`mailto:${supportAddress}`)}
             testID="lostTwoFactor.support"
@@ -579,13 +569,12 @@ function Request({
           <Saying
             title={t('lostTwoFactor.endedTitle')}
             intro={t(recoveryIntroKey('expired', state.nobody))}
-            mark={{ outcome: 'ended', word: t('lostTwoFactor.endedMark') }}
+            mark={{ tone: 'skipped', word: t('lostTwoFactor.endedMark') }}
           />
         }
       >
         {state.nobody && supportAddress !== '' && (
           <SecondaryButton
-            stacked
             label={t('lostTwoFactor.emailSupport', { address: supportAddress })}
             onPress={() => void Linking.openURL(`mailto:${supportAddress}`)}
             testID="lostTwoFactor.support"
@@ -610,7 +599,7 @@ function Request({
         <Saying
           title={t('lostTwoFactor.cancelledTitle')}
           intro={t('lostTwoFactor.cancelledIntro')}
-          mark={{ outcome: 'ended', word: t('lostTwoFactor.cancelledMark') }}
+          mark={{ tone: 'skipped', word: t('lostTwoFactor.cancelledMark') }}
         />
       }
     >
@@ -912,24 +901,21 @@ function Codes({
             busy={asking}
             testID="lostTwoFactor.ask"
           />
-          <View style={styles.resend}>
-            <QuietButton
-              label={
-                cooldown > 0
-                  ? t('lostTwoFactor.resendIn', { time: formatCountdown(cooldown) })
-                  : t('lostTwoFactor.resend')
-              }
-              onPress={() => void resend()}
-              off={cooldown > 0}
-              testID="lostTwoFactor.resend"
-            />
-            <Text size={tokens.typeSmall.size} style={styles.secondary}>
-              {t('lostTwoFactor.resendNote')}
-            </Text>
-          </View>
+          <SecondaryButton
+            label={
+              cooldown > 0
+                ? t('lostTwoFactor.resendIn', { time: formatCountdown(cooldown) })
+                : t('lostTwoFactor.resend')
+            }
+            onPress={() => void resend()}
+            off={cooldown > 0}
+            testID="lostTwoFactor.resend"
+          />
+          <Text size={tokens.typeSmall.size} style={styles.secondary}>
+            {t('lostTwoFactor.resendNote')}
+          </Text>
           {hasPhone && wording.offerText && (
             <SecondaryButton
-              stacked
               label={t('lostTwoFactor.textInstead')}
               onPress={() => void textInstead()}
               testID="lostTwoFactor.textInstead"
@@ -944,26 +930,16 @@ function Codes({
 }
 
 const styles = StyleSheet.create({
-  resend: { alignItems: 'flex-start', gap: tokens.spaceXs },
-  saying: { gap: tokens.spaceXxl },
-  steps: { gap: tokens.spaceSm },
-  step: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: tokens.spaceLg,
-    padding: tokens.spaceLg,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
-    borderRadius: tokens.radiusCardDesktop,
-    backgroundColor: tokens.colorCard,
-  },
+  saying: { gap: tokens.spaceSm },
+  steps: { gap: tokens.spaceMd },
+  step: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceMd },
   stepMark: {
     borderRadius: tokens.radiusPill,
-    backgroundColor: tokens.colorDark,
+    borderWidth: 1.5,
+    borderColor: tokens.colorMarkEmpty,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  onDark: { color: tokens.colorInkOnDark },
   grow: { flex: 1 },
   secondary: { color: tokens.colorInkSecondary },
 });

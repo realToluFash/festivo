@@ -17,11 +17,7 @@ export default function TwoFactorAgain() {
   return (
     <AuthFrame
       saying={
-        <AuthHeading
-          apart
-          title={t('lostTwoFactor.setupTitle')}
-          intro={t('lostTwoFactor.setupIntro')}
-        />
+        <AuthHeading title={t('lostTwoFactor.setupTitle')} intro={t('lostTwoFactor.setupIntro')} />
       }
     >
       <PrimaryButton
@@ -30,7 +26,6 @@ export default function TwoFactorAgain() {
         testID="twoFactorAgain.setup"
       />
       <SecondaryButton
-        stacked
         label={t('lostTwoFactor.notNow')}
         off={skipping}
         onPress={() => {

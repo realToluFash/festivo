@@ -9,7 +9,7 @@ import { dateLocale } from '../i18n/index.ts';
 import { type CodeMode, codeRefusal, typedCodeProblem } from '../kit/twoFactor.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AuthFrame, AuthHeading } from './AuthFrame.tsx';
-import { Footnote, PrimaryButton, QuietButton, RowButton } from './Buttons.tsx';
+import { Footnote, PrimaryButton, QuietButton } from './Buttons.tsx';
 import { CodeField, Field, focusChecked, keysStayDown, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
@@ -142,7 +142,6 @@ export function SecondFactorStep({
     <AuthFrame
       saying={
         <AuthHeading
-          apart
           title={mode === 'app' ? (title ?? t('twoFactor.title')) : t('twoFactor.recoveryTitle')}
           intro={mode === 'app' ? intro : recoveryIntro}
         />
@@ -213,14 +212,14 @@ export function SecondFactorStep({
           testID="twoFactor.verify"
         />
 
-        <RowButton
+        <QuietButton
           label={mode === 'app' ? t('twoFactor.useRecovery') : t('twoFactor.useApp')}
           onPress={() => switchTo(mode === 'app' ? 'recovery' : 'app')}
           testID="twoFactor.switch"
         />
 
         {onLostBoth != null && (
-          <RowButton
+          <QuietButton
             label={t('twoFactor.lostBoth')}
             onPress={() => onLostBoth(mode)}
             testID="twoFactor.lostBoth"
@@ -234,7 +233,7 @@ export function SecondFactorStep({
         />
 
         {onLostBoth == null && (
-          <Text size={tokens.typeSmall.size} style={styles.lostBoth}>
+          <Text size={tokens.typeSmall.size} style={styles.secondary}>
             {t('twoFactor.lostBoth')}
           </Text>
         )}
@@ -244,8 +243,8 @@ export function SecondFactorStep({
 }
 
 const styles = StyleSheet.create({
-  form: { gap: tokens.spaceXxl },
+  form: { gap: tokens.spaceXl },
   paused: { gap: tokens.spaceSm },
   figures: { fontVariant: ['tabular-nums'] },
-  lostBoth: { color: tokens.colorInkSecondary, textAlign: 'center' },
+  secondary: { color: tokens.colorInkSecondary },
 });

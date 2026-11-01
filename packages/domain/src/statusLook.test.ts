@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { EVENT_PHASES } from './eventStates.ts';
-import { INVITATION_LOOK, PHASE_LOOK, RECOVERY_LOOK, memberStatusLook } from './statusLook.ts';
+import { INVITATION_LOOK, PHASE_LOOK, memberStatusLook } from './statusLook.ts';
 
 describe('status looks', () => {
   it('gives every event phase a shape of its own', () => {
@@ -24,12 +24,5 @@ describe('status looks', () => {
     expect(INVITATION_LOOK.pending).toEqual({ tone: 'attention', shape: 'half' });
     expect(INVITATION_LOOK.accepted).toEqual({ tone: 'accent', shape: 'tick' });
     expect(INVITATION_LOOK.expired.tone).toBe('neutral');
-  });
-
-  it('tells a lost two-factor request’s outcomes apart by shape (sc-23279)', () => {
-    const looks = Object.values(RECOVERY_LOOK);
-
-    expect(new Set(looks.map((look) => look.shape)).size).toBe(looks.length);
-    expect(RECOVERY_LOOK.turned_down).toEqual({ tone: 'broken', shape: 'cross' });
   });
 });
