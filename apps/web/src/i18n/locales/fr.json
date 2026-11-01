@@ -2164,7 +2164,6 @@
   },
   "calendarFeed": {
     "open": "S’abonner dans votre agenda",
-    "openShort": "S’abonner",
     "title": "S’abonner dans votre agenda",
     "close": "Fermer",
     "intro": "Les événements et les jalons de {{organisation}} s’affichent dans Google Agenda, Calendrier d’Apple ou Outlook, et restent à jour quand une date change. Votre application d’agenda cherche les modifications à quelques heures d’intervalle.",

@@ -162,7 +162,7 @@ function CalendarOf({
   };
   const closeDay = () => setOpenDay(null);
   const subscribe = (
-    <View style={styles.subscribe}>
+    <View style={phone ? styles.column : styles.subscribe}>
       <CalendarSubscribe
         organisationId={organisationId}
         organisationName={organisationName}

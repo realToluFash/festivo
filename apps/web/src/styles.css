@@ -1399,7 +1399,7 @@ span {
   width: 100%;
   min-height: var(--sizeHitPhoneHero);
   padding: 0 var(--spaceLg);
-  border: var(--borderControl);
+  border: var(--borderField);
   border-radius: var(--radiusInset);
   background: var(--colorCard);
   color: var(--colorInk);
@@ -1602,6 +1602,10 @@ span {
 .auth-card-even .auth-heading,
 .auth-card-even .auth-form {
   gap: var(--spaceXxl);
+}
+
+.auth-card-even .auth-note {
+  margin: 0;
 }
 
 .auth-card-even .resend {
@@ -6534,7 +6538,7 @@ button.members-row {
 }
 
 .arrives,
-.arrived > :not(.dialog, .dialog-scrim),
+.arrived > :not(h1, h2, .card-heading, .card, .members, .roles, .dialog, .dialog-scrim),
 .arrived > .members > :not(.members-head, .dialog, .dialog-scrim),
 .arrived > .roles > :not(.roles-list, .dialog, .dialog-scrim),
 .arrived .roles-list > :not(.roles-list-head, .dialog, .dialog-scrim),
@@ -6542,21 +6546,10 @@ button.members-row {
   animation: fade-in var(--motionBase) var(--motionEase);
 }
 
-/* A title drawn while its content loaded stays still when the content arrives. */
-.arrived > h1,
-.arrived > h2,
-.arrived > .card-heading,
-.arrived > .card,
-.arrived > .members,
-.arrived > .roles,
-.arrived > .roles > .roles-list {
-  animation: none;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .skeleton-shown .skeleton-blocks,
   .arrives,
-  .arrived > :not(.dialog, .dialog-scrim),
+  .arrived > :not(h1, h2, .card-heading, .card, .members, .roles, .dialog, .dialog-scrim),
   .arrived > .members > :not(.members-head, .dialog, .dialog-scrim),
   .arrived > .roles > :not(.roles-list, .dialog, .dialog-scrim),
   .arrived .roles-list > :not(.roles-list-head, .dialog, .dialog-scrim),
@@ -6577,6 +6570,12 @@ button.members-row {
 
 .calendar-subscribe-open {
   gap: var(--spaceSm);
+}
+
+@media (width <= 40rem) {
+  .calendar-subscribe-open {
+    flex-basis: 100%;
+  }
 }
 
 .calendar-subscribe-icon {

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { PHONE_WIDTH } from '../../../phoneWidth.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
@@ -75,6 +76,27 @@ afterEach(() => {
 });
 
 describe('Subscribe in your calendar app (sc-3626)', () => {
+  it('keeps the full label on the Calendar button at phone width', async () => {
+    vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query) =>
+        ({
+          matches: query === PHONE_WIDTH,
+          media: query,
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+        }) as unknown as MediaQueryList,
+    );
+    signedIn();
+    answering();
+    render(
+      <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/app/calendar'] })} />,
+    );
+
+    expect(
+      await screen.findByRole('button', { name: 'Subscribe in your calendar app' }),
+    ).toBeTruthy();
+  });
+
   it('shows the private link, as https to copy and as webcal to open', async () => {
     signedIn();
     answering();

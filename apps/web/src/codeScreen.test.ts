@@ -2,6 +2,7 @@ import { ApiError } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
 import { codeRefusal, openingStatus } from './codeScreen.ts';
+import { cssRule } from './test-styles.ts';
 
 function refused(code: string): ApiError {
   return new ApiError({ type: `https://soirely.com/errors/${code}`, title: code, status: 422 });
@@ -24,5 +25,11 @@ describe('a code screen', () => {
     expect(codeRefusal(refused('verification_code_expired'))).toEqual({ kind: 'expired' });
     expect(codeRefusal(refused('verification_code_exhausted'))).toEqual({ kind: 'exhausted' });
     expect(codeRefusal(new TypeError('Failed to fetch'))).toEqual({ kind: 'failed' });
+  });
+
+  it("draws its code field with every text field's edge, and a wrong code's in the same width (sc-26413)", () => {
+    expect(cssRule('.code-input')).toMatch(/\n {2}border: var\(--borderField\);/u);
+    expect(cssRule('.input')).toMatch(/\n {2}border: var\(--borderField\);/u);
+    expect(cssRule('.code-input.input-wrong')).toBe('\n  border-color: var(--colorBroken);\n');
   });
 });

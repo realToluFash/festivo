@@ -1,7 +1,5 @@
 import { type Account } from '@soirely/api-client';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -11,6 +9,7 @@ import { setLanguage } from '../i18n/index.ts';
 import { __setSessionState, type Session } from '../session.ts';
 import { routes } from './index.tsx';
 import { membership } from '../test-memberships.ts';
+import { STYLES } from '../test-styles.ts';
 
 const MEMBERSHIP = membership({ id: 'org_1', name: 'Okonkwo Events' });
 
@@ -380,9 +379,8 @@ describe('the application tree', () => {
   });
 
   it("stacks the sidebar from a tablet's width down only as tall as what it holds (sc-17608)", () => {
-    const styles = readFileSync(join(import.meta.dirname, '../styles.css'), 'utf8');
     const stacked = /@media \(width <= 60rem\) \{[^@]*?\n {2}\.shell \{([^}]*)\}/u.exec(
-      styles,
+      STYLES,
     )?.[1];
 
     expect(stacked).toMatch(/grid-template-columns: minmax\(0, 1fr\);/u);

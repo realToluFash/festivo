@@ -1873,7 +1873,6 @@
   },
   "calendarFeed": {
     "open": "Subscrever na sua aplicação de calendário",
-    "openShort": "Subscrever",
     "title": "Subscrever na sua aplicação de calendário",
     "close": "Fechar",
     "intro": "Os eventos e os marcos de {{organisation}} aparecem no Google Calendar, no Calendário da Apple ou no Outlook, e mantêm-se atualizados quando uma data muda. A sua aplicação de calendário procura alterações de poucas em poucas horas.",

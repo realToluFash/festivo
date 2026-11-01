@@ -1,9 +1,8 @@
 import { act, createEvent, fireEvent, render, screen } from '@testing-library/react';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Arrived, Skeleton } from './Skeleton.tsx';
+import { STYLES } from '../test-styles.ts';
 
 describe('a screen waiting for its content (sc-23303)', () => {
   beforeEach(() => {
@@ -82,23 +81,19 @@ describe('a screen waiting for its content (sc-23303)', () => {
 });
 
 describe('how a skeleton moves (sc-23303)', () => {
-  const styles = readFileSync(join(import.meta.dirname, '../styles.css'), 'utf8');
-
   it('pulses as the tokens say, and never when less motion is asked for', () => {
-    expect(styles).toMatch(
+    expect(STYLES).toMatch(
       /animation: skeleton-pulse var\(--motionPulse\) ease-in-out var\(--motionPulseTimes\);/u,
     );
-    expect(styles).toMatch(
+    expect(STYLES).toMatch(
       /@keyframes skeleton-pulse \{\s*50% \{\s*opacity: var\(--opacityPulse\);/u,
     );
-    const reduced = styles.slice(styles.lastIndexOf('@media (prefers-reduced-motion: reduce)'));
+    const reduced = STYLES.slice(STYLES.lastIndexOf('@media (prefers-reduced-motion: reduce)'));
     expect(reduced).toMatch(/\.skeleton-shown \.skeleton-blocks,[^}]*animation: none;/su);
   });
 });
 
 describe('what arrived with a load (sc-23303)', () => {
-  const styles = readFileSync(join(import.meta.dirname, '../styles.css'), 'utf8');
-
   it('fades once, so a view or a dialog that mounts later keeps its own motion', () => {
     const { container } = render(
       <Arrived>
@@ -112,16 +107,26 @@ describe('what arrived with a load (sc-23303)', () => {
     Object.defineProperty(faded, 'animationName', { value: 'fade-in' });
     fireEvent(screen.getByText('Members'), faded);
     expect(wrapper.className).toBe('arrived-settled');
-    expect(styles).not.toMatch(/\.arrived-settled[^{,]*>/u);
+    expect(STYLES).not.toMatch(/\.arrived-settled[^{,]*>/u);
   });
 
   it('never fades a dialog in its place, which rises in as sc-22092 drew it', () => {
-    const fade = styles.slice(styles.indexOf('.arrives,'));
+    const fade = STYLES.slice(STYLES.indexOf('.arrives,'));
     const selectors = fade.slice(0, fade.indexOf('{')).split(',\n').slice(1);
 
     expect(selectors).toHaveLength(5);
     for (const selector of selectors) {
       expect(selector).toMatch(/:not\([^)]*\.dialog, \.dialog-scrim\)/u);
     }
+  });
+
+  it('keeps a title drawn at open still when its content arrives, as Edit details is', () => {
+    const fade = STYLES.slice(STYLES.indexOf('.arrives,'));
+    const direct = fade
+      .slice(0, fade.indexOf('{'))
+      .split(',\n')
+      .find((selector) => selector.startsWith('.arrived > :not('));
+
+    expect(direct).toMatch(/:not\(h1, h2, \.card-heading, /u);
   });
 });

@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-
 import type { Membership } from '@soirely/api-client';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -9,6 +6,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setSessionState } from '../session.ts';
 import { membership } from '../test-memberships.ts';
 import { routes } from '../routes/index.tsx';
+import { cssRule } from '../test-styles.ts';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 const ADUNNI = membership({
@@ -157,8 +155,7 @@ describe('an invitation in the organisation switcher', () => {
   });
 
   it('cuts a long name in Open with an ellipsis, keeping Open in view (sc-15414)', () => {
-    const styles = readFileSync(join(import.meta.dirname, '../styles.css'), 'utf8');
-    const cut = /(?:^|\n)\.button-label-cut \{([^}]*)\}/u.exec(styles)?.[1] ?? '';
+    const cut = cssRule('.button-label-cut');
 
     expect(cut).toMatch(/min-width: 0;/u);
     expect(cut).toMatch(/overflow: hidden;/u);

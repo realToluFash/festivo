@@ -701,6 +701,7 @@ def status(db, platform, now):
             rows.append((role["role"], f"refused: {role['detail']}", "", "", "", "", []))
             continue
         state = {"busy": f"busy, item {(role['held'] or {}).get('id')}",
+                 "prompt": "stopped on a prompt",
                  "running": f"running {role.get('running')} of {role.get('workers')}"
                  if (role.get("workers") or 1) > 1 else "running",
                  "elsewhere": "on {machine}, seen {ago}".format(
@@ -726,6 +727,11 @@ def status(db, platform, now):
                            f"{seen['why']}"
                            + (" (share it from the artifact's Share menu)"
                               if seen["why"] == runner.NOT_SHARED else ""))
+        if role.get("prompt"):
+            held = role["prompt"]
+            details.append(f"stopped on a prompt: {held['worker']} item {held['item']}"
+                           + (f" (sc-{held['story']})" if held.get("story") else "")
+                           + f" wanted {held.get('wanted') or 'a command it did not name'}")
         rows.append((role["role"], state, model, role["account"] or "not logged in", ran,
                      str(role["waiting"]), details))
     if rows:
