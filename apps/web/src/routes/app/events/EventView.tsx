@@ -7,7 +7,7 @@ import {
   rememberTabHolding,
   shownPhase,
 } from '@soirely/domain';
-import { type RefObject, useEffect, useRef, useState } from 'react';
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 
@@ -23,12 +23,12 @@ import { type EditOutcome } from './EditEvent.tsx';
 import { DeleteEvent } from './DeleteEvent.tsx';
 import { DuplicateEvent } from './DuplicateEvent.tsx';
 import { CalledOffNotice, EndButton } from './EndEvent.tsx';
-import { EventCoverImage } from './EventCoverImage.tsx';
 import { PHASE_WORD } from './eventWords.ts';
 import { DraftRow, StatusPill } from './MakeLive.tsx';
 import { MuteEvent } from './MuteEvent.tsx';
 import { PauseButton, PausedRow } from './PauseEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
+import { Placeholder } from './Placeholder.tsx';
 import { typeLabel } from './eventTypes.ts';
 import { ComingUp, AllDates } from './Timeline.tsx';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
@@ -168,26 +168,30 @@ function EventOf({
 
       {load.kind === 'loaded' && (
         <Arrived>
+          <EventTop
+            event={load.event}
+            tag={load.tag}
+            heading={heading}
+            onChange={(event, tag = load.tag) => setLoad({ kind: 'loaded', event, tag })}
+          />
           {page === 'event' && (
-            <EventPage
+            <Overview
               event={load.event}
-              tag={load.tag}
               heading={heading}
               onChange={(event, tag = load.tag) => setLoad({ kind: 'loaded', event, tag })}
             />
           )}
-          {page === 'guests' && <GuestsComing event={load.event} heading={heading} />}
+          {page === 'guests' && <GuestsComing event={load.event} />}
           {page === 'dates' && <AllDatesPage event={load.event} heading={heading} />}
-          {isPlaceholderEventArea(page) && (
-            <AreaComing event={load.event} area={page} heading={heading} />
-          )}
+          {isPlaceholderEventArea(page) && <AreaComing event={load.event} area={page} />}
         </Arrived>
       )}
     </div>
   );
 }
 
-function EventPage({
+/** Above every area: the name, the phase, the dates, the venue, and the phase's one primary (sc-22103). */
+function EventTop({
   event,
   tag,
   heading,
@@ -200,19 +204,116 @@ function EventPage({
 }) {
   const { t } = useTranslation();
   const session = useSession();
+  const [madeLive, setMadeLive] = useState(false);
+  const [resumed, setResumed] = useState(false);
+  const now = useServerNow();
+  const loadedAt = useLoadedAt(event);
+  const phase = shownPhase(event, loadedAt, now);
+  const manages = can(session, 'events.manage');
+
+  useEffect(() => rememberTabHolding(event.organisationId, phase), [event.organisationId, phase]);
+
+  return (
+    <section className="event-top" aria-labelledby="event-title">
+      <div className="event-top-head">
+        <div className="event-top-title">
+          <h1 id="event-title" ref={heading} tabIndex={-1}>
+            {event.name}
+          </h1>
+          <StatusPill phase={phase} />
+          <PhaseChange key={loadedAt.getTime()} phase={phase} />
+        </div>
+        {phase === 'finished' && can(session, 'events.create') && (
+          <div className="event-top-primary">
+            <DuplicateEvent event={event} primary />
+          </div>
+        )}
+      </div>
+      <p className="event-top-type">{typeLabel(event.type, t)}</p>
+      <p className="event-top-when">
+        {t('eventPage.when', {
+          range: formatEventRange(event.startsAt, event.endsAt, event.timeZone, dateLocale()),
+          timeZone: event.timeZone,
+        })}
+      </p>
+      <TopVenue event={event} />
+      <p className="event-top-invited">
+        <Placeholder label={t('eventPage.invited')} />
+      </p>
+      <DraftRow
+        event={event}
+        tag={tag}
+        now={now}
+        manages={manages}
+        heading={heading}
+        onChange={onChange}
+        onMadeLive={() => setMadeLive(true)}
+      />
+      {madeLive && <OutcomeLine words={t('eventLive.madeLive')} />}
+      <PausedRow
+        event={event}
+        phase={phase}
+        manages={manages}
+        heading={heading}
+        onChange={onChange}
+        onResumed={() => setResumed(true)}
+      />
+      {resumed && <OutcomeLine words={t('eventPause.resumed', { name: event.name })} />}
+    </section>
+  );
+}
+
+/** The venue's name, else its address, else Venue to be confirmed; Open in maps when it has coordinates (sc-3589). */
+function TopVenue({ event }: { event: OrganisationEvent }) {
+  const { t } = useTranslation();
+  const venue = event.venue;
+  const address = venue?.address ?? null;
+  const { latitude, longitude } = address ?? { latitude: null, longitude: null };
+  const place = venue?.name ?? address?.formatted ?? null;
+
+  return (
+    <div className="event-top-venue" role="group" aria-label={t('eventPage.venue')}>
+      <p>{place ?? t('eventPage.venueToBeConfirmed')}</p>
+      {latitude != null && longitude != null && (
+        <a
+          className="link-button"
+          href={`https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {t('eventPage.openInMaps')}
+        </a>
+      )}
+    </div>
+  );
+}
+
+const OVERVIEW_TILES = ['tileComing', 'tileMealPicks', 'tileSeated', 'tileBudgetUsed'] as const;
+
+/** The page's first area: [fd]'s tiles, then Details and Coming up, with Manage beside them where there is room. */
+function Overview({
+  event,
+  heading,
+  onChange,
+}: {
+  event: OrganisationEvent;
+  heading: RefObject<HTMLHeadingElement | null>;
+  onChange: (event: OrganisationEvent, tag?: string) => void;
+}) {
+  const { t } = useTranslation();
+  const session = useSession();
   const location = useLocation();
   const navigate = useNavigate();
   const [outcome] = useState(() => editOutcome(location.state));
   const [coverRefused] = useState(() => coverRefusal(location.state));
   const coverLine = useRef<HTMLParagraphElement>(null);
-  const [madeLive, setMadeLive] = useState(false);
   const [ended, setEnded] = useState(false);
-  const [moved, setMoved] = useState<'paused' | 'resumed' | null>(null);
+  const [paused, setPaused] = useState(false);
   const now = useServerNow();
   const loadedAt = useLoadedAt(event);
   const phase = shownPhase(event, loadedAt, now);
-
-  useEffect(() => rememberTabHolding(event.organisationId, phase), [event.organisationId, phase]);
+  const manages = can(session, 'events.manage');
+  const creates = can(session, 'events.create');
 
   useEffect(() => {
     if (editOutcome(location.state) == null && coverRefusal(location.state) == null) return;
@@ -224,143 +325,152 @@ function EventPage({
   }, [location, navigate]);
 
   return (
-    <>
-      <section className="card event-page-card" aria-labelledby="event-title">
-        <EventCoverImage
-          photo={event.cover}
-          type={event.type}
-          sizes="(width <= 40rem) 100vw, 45rem"
-          className="event-page-cover"
+    <div className="event-overview">
+      <ul className="events-tiles event-tiles" aria-label={t('eventNav.overview')}>
+        {OVERVIEW_TILES.map((tile) => (
+          <li key={tile} className="events-tile">
+            <Placeholder label={t(`eventPage.${tile}`)} labelClass="events-tile-label" />
+          </li>
+        ))}
+      </ul>
+      <CalledOffNotice event={event} />
+      {ended && <OutcomeLine words={t(PHASE_WORD.finished)} />}
+      {paused && <OutcomeLine words={t('eventPause.paused', { name: event.name })} />}
+      {coverRefused != null && (
+        <ArrivalNotice
+          role="alert"
+          line={t('eventCover.createdWithout', { reason: coverRefused })}
+          lineRef={coverLine}
+          focusable={false}
+          retry={t('eventEdit.open')}
+          onRetry={() => void navigate(`/app/events/${encodeURIComponent(event.id)}/edit#cover`)}
         />
-        <div className="event-page-head">
-          <h1 id="event-title" ref={heading} tabIndex={-1}>
-            {event.name}
-          </h1>
-          <StatusPill phase={phase} />
-          <PhaseChange key={loadedAt.getTime()} phase={phase} />
+      )}
+      {outcome != null && (
+        <OutcomeLine
+          words={outcome === 'saved' ? t('eventEdit.saved') : t('eventEdit.nothingChanged')}
+        />
+      )}
+      <div className="event-overview-columns">
+        <div className="event-overview-main">
+          <Details event={event} manages={manages} />
+          <ComingUp event={event} now={now} />
         </div>
-        <p className="muted">{typeLabel(event.type, t)}</p>
-        <p>
-          {t('eventPage.when', {
-            range: formatEventRange(event.startsAt, event.endsAt, event.timeZone, dateLocale()),
-            timeZone: event.timeZone,
-          })}
-        </p>
-        <CalledOffNotice event={event} />
-        <DraftRow
-          event={event}
-          tag={tag}
-          now={now}
-          manages={can(session, 'events.manage')}
-          heading={heading}
-          onChange={onChange}
-          onMadeLive={() => setMadeLive(true)}
-        />
-        {madeLive && <OutcomeLine words={t('eventLive.madeLive')} />}
-        {ended && <OutcomeLine words={t(PHASE_WORD.finished)} />}
-        <PausedRow
-          event={event}
-          phase={phase}
-          manages={can(session, 'events.manage')}
-          heading={heading}
-          onChange={onChange}
-          onResumed={() => setMoved('resumed')}
-        />
-        {moved != null && (
-          <OutcomeLine key={moved} words={t(`eventPause.${moved}`, { name: event.name })} />
-        )}
-        <Venue event={event} manages={can(session, 'events.manage')} />
-        {coverRefused != null && (
-          <ArrivalNotice
-            role="alert"
-            line={t('eventCover.createdWithout', { reason: coverRefused })}
-            lineRef={coverLine}
-            focusable={false}
-            retry={t('eventEdit.open')}
-            onRetry={() => void navigate(`/app/events/${encodeURIComponent(event.id)}/edit#cover`)}
-          />
-        )}
-        {outcome != null && (
-          <OutcomeLine
-            words={outcome === 'saved' ? t('eventEdit.saved') : t('eventEdit.nothingChanged')}
-          />
-        )}
-        <div className="event-page-actions">
-          {can(session, 'events.manage') && (
-            <Link className="button" to={`/app/events/${encodeURIComponent(event.id)}/edit`}>
-              {t('eventEdit.open')}
-            </Link>
+        <section className="card event-manage" aria-labelledby="event-manage-title">
+          <h2 id="event-manage-title">{t('eventPage.manage')}</h2>
+          {manages && (
+            <div className="event-manage-actions">
+              <PauseButton
+                event={event}
+                phase={phase}
+                heading={heading}
+                onChange={onChange}
+                onPaused={() => setPaused(true)}
+              />
+              <EndButton
+                event={event}
+                phase={phase}
+                now={now}
+                heading={heading}
+                onChange={onChange}
+                onEnded={() => setEnded(true)}
+              />
+            </div>
           )}
-          {can(session, 'events.manage') && (
-            <PauseButton
-              event={event}
-              phase={phase}
-              heading={heading}
-              onChange={onChange}
-              onPaused={() => setMoved('paused')}
-            />
+          {creates && phase !== 'finished' && (
+            <div className="event-manage-actions">
+              <DuplicateEvent event={event} />
+            </div>
           )}
-          {can(session, 'events.manage') && (
-            <EndButton
-              event={event}
-              phase={phase}
-              now={now}
-              heading={heading}
-              onChange={onChange}
-              onEnded={() => setEnded(true)}
-            />
-          )}
-          <Link className="button" to={`/app/events/${encodeURIComponent(event.id)}/guests`}>
-            {t('eventPage.guests')}
-          </Link>
-          {can(session, 'events.create') && <DuplicateEvent event={event} />}
-        </div>
-        <MuteEvent eventId={event.id} />
-        {can(session, 'events.create') && <DeleteEvent event={event} />}
-      </section>
-      <ComingUp event={event} now={now} />
-    </>
+          <MuteEvent eventId={event.id} />
+          {creates && <DeleteEvent event={event} />}
+        </section>
+      </div>
+    </div>
   );
 }
 
-/** With coordinates, the address opens OpenStreetMap there; with no venue, somebody who manages events can go and add it (sc-3589). */
-function Venue({ event, manages }: { event: OrganisationEvent; manages: boolean }) {
+/** Each row opens Edit details at its own field for somebody who manages events, and nothing for anybody else. */
+function Details({ event, manages }: { event: OrganisationEvent; manages: boolean }) {
   const { t } = useTranslation();
+  const edit = `/app/events/${encodeURIComponent(event.id)}/edit`;
   const venue = event.venue;
-  const address = venue?.address ?? null;
-  const { latitude, longitude } = address ?? { latitude: null, longitude: null };
+  const address = venue?.address?.formatted ?? null;
 
-  if (venue == null) {
-    return (
-      <div className="event-page-venue" role="group" aria-label={t('eventPage.venue')}>
-        <p>{t('eventPage.venueToBeConfirmed')}</p>
+  return (
+    <section className="card event-details" aria-labelledby="event-details-title">
+      <div className="event-details-head">
+        <h2 id="event-details-title">{t('eventPage.details')}</h2>
         {manages && (
-          <Link
-            className="link-button event-page-venue-link"
-            to={`/app/events/${encodeURIComponent(event.id)}/edit#venue`}
-          >
-            {t('eventPage.addVenue')}
+          <Link className="link-button" to={edit}>
+            {t('eventEdit.open')}
           </Link>
         )}
       </div>
-    );
-  }
+      <ul className="event-details-rows">
+        <DetailRow label={t('eventPage.dates')} to={manages ? `${edit}#starts` : null}>
+          <p>
+            {t('eventPage.when', {
+              range: formatEventRange(event.startsAt, event.endsAt, event.timeZone, dateLocale()),
+              timeZone: event.timeZone,
+            })}
+          </p>
+        </DetailRow>
+        <DetailRow label={t('eventPage.venue')} to={manages ? `${edit}#venue` : null}>
+          {venue == null ? (
+            <>
+              <p>{t('eventPage.venueToBeConfirmed')}</p>
+              {manages && <p className="event-details-hint">{t('eventPage.addVenue')}</p>}
+            </>
+          ) : (
+            <>
+              {venue.name != null && <p className="event-details-strong">{venue.name}</p>}
+              {address != null && <p>{address}</p>}
+            </>
+          )}
+        </DetailRow>
+        <DetailRow label={t('eventHosts.heading')} to={manages ? `${edit}#hosts` : null}>
+          {event.hosts.length === 0 ? (
+            <p>{t('eventHosts.none')}</p>
+          ) : (
+            <p>{event.hosts.join(', ')}</p>
+          )}
+          {manages && <p className="event-details-hint">{t('eventHosts.add')}</p>}
+        </DetailRow>
+      </ul>
+    </section>
+  );
+}
+
+function DetailRow({
+  label,
+  to,
+  children,
+}: {
+  label: string;
+  to: string | null;
+  children: ReactNode;
+}) {
+  const body = (
+    <>
+      <span className="event-details-label">{label}</span>
+      <span className="event-details-value">{children}</span>
+    </>
+  );
 
   return (
-    <div className="event-page-venue" role="group" aria-label={t('eventPage.venue')}>
-      {venue.name != null && <p className="event-page-venue-name">{venue.name}</p>}
-      {address != null && <p>{address.formatted}</p>}
-      {latitude != null && longitude != null && (
-        <a
-          className="link-button event-page-venue-link"
-          href={`https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {t('eventPage.openInMaps')}
-        </a>
+    <li>
+      {to == null ? (
+        <div className="event-details-row">{body}</div>
+      ) : (
+        <Link className="event-details-row event-details-link" to={to}>
+          {body}
+          <span className="event-details-chevron" aria-hidden="true">
+            ›
+          </span>
+        </Link>
       )}
-    </div>
+    </li>
   );
 }
 
@@ -405,63 +515,35 @@ function AllDatesPage({
   usePageTitle(pageTitle(t, [t('timeline.allDates'), event.name]));
 
   return (
-    <section className="card timeline-page">
-      <h1 ref={heading} tabIndex={-1}>
-        {t('timeline.allDates')}
-      </h1>
+    <section className="card timeline-page" aria-labelledby="all-dates-title">
+      <h2 id="all-dates-title">{t('timeline.allDates')}</h2>
       <AllDates event={event} now={now} heading={heading} />
     </section>
   );
 }
 
-function GuestsComing({
-  event,
-  heading,
-}: {
-  event: OrganisationEvent;
-  heading: RefObject<HTMLHeadingElement | null>;
-}) {
+function GuestsComing({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
 
   usePageTitle(pageTitle(t, [t('eventPage.guests'), event.name]));
 
   return (
-    <section className="card">
-      <h1 ref={heading} tabIndex={-1}>
-        {t('eventPage.guests')}
-      </h1>
+    <section className="card event-area" aria-labelledby="event-area-title">
+      <h2 id="event-area-title">{t('eventPage.guests')}</h2>
       <p>{t('eventPage.guestsComing')}</p>
     </section>
   );
 }
 
-function AreaComing({
-  event,
-  area,
-  heading,
-}: {
-  event: OrganisationEvent;
-  area: PlaceholderEventArea;
-  heading: RefObject<HTMLHeadingElement | null>;
-}) {
+function AreaComing({ event, area }: { event: OrganisationEvent; area: PlaceholderEventArea }) {
   const { t } = useTranslation();
-  const now = useServerNow();
-  const loadedAt = useLoadedAt(event);
 
   usePageTitle(pageTitle(t, [t(`eventNav.${area}`), event.name]));
 
   return (
-    <>
-      <div className="event-page-head">
-        <h1 ref={heading} tabIndex={-1}>
-          {event.name}
-        </h1>
-        <StatusPill phase={shownPhase(event, loadedAt, now)} />
-      </div>
-      <section className="card event-area" aria-labelledby="event-area-title">
-        <h2 id="event-area-title">{t(`eventNav.${area}`)}</h2>
-        <p>{t(`eventNav.${area}Coming`)}</p>
-      </section>
-    </>
+    <section className="card event-area" aria-labelledby="event-area-title">
+      <h2 id="event-area-title">{t(`eventNav.${area}`)}</h2>
+      <p>{t(`eventNav.${area}Coming`)}</p>
+    </section>
   );
 }

@@ -16,7 +16,13 @@ import { StatusPill } from './MakeLive.tsx';
 const OPENING_AFTER = 700;
 
 /** `Duplicate` (sc-3593): how the event is set up, as a new Draft from a start the organiser chooses. */
-export function DuplicateEvent({ event }: { event: OrganisationEvent }) {
+export function DuplicateEvent({
+  event,
+  primary = false,
+}: {
+  event: OrganisationEvent;
+  primary?: boolean;
+}) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const opener = useRef<HTMLButtonElement>(null);
@@ -28,7 +34,12 @@ export function DuplicateEvent({ event }: { event: OrganisationEvent }) {
 
   return (
     <>
-      <button ref={opener} type="button" className="button" onClick={() => setOpen(true)}>
+      <button
+        ref={opener}
+        type="button"
+        className={primary ? 'button button-primary' : 'button'}
+        onClick={() => setOpen(true)}
+      >
         {t('eventDuplicate.open')}
       </button>
       {open && <DuplicateDialog event={event} onClose={close} />}

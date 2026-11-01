@@ -258,15 +258,19 @@ function DetailsForm({
   const [toVenue] = useState(() => location.hash === '#venue');
   const [toCover] = useState(() => location.hash === '#cover');
   const [toHosts] = useState(() => location.hash === '#hosts');
+  const [toStarts] = useState(() =>
+    location.hash === '#starts' ? inputFor('startsAt', draft) : null,
+  );
   const [firstHost] = useState(() => typed.hosts[0]);
 
   useEffect(() => {
     if (reread) document.getElementById('event-name')?.focus();
+    else if (toStarts != null) document.getElementById(toStarts)?.focus();
     else if (toVenue) document.getElementById('event-venue-name')?.focus();
     else if (toCover) document.getElementById('cover-upload')?.focus();
     else if (toHosts)
       document.getElementById(firstHost == null ? ADD_HOST_ID : hostInputId(firstHost))?.focus();
-  }, [reread, toVenue, toCover, toHosts, firstHost]);
+  }, [reread, toStarts, toVenue, toCover, toHosts, firstHost]);
 
   useEffect(() => {
     focusNext.current?.();

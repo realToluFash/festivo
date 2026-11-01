@@ -138,7 +138,7 @@ async function asking(
     'GET /api/events/ev_1/deletion': () => deletion(needsName),
     ...answers,
   });
-  fireEvent.click(screen.getByRole('button', { name: 'Delete event' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Delete event…' }));
 
   return {
     sent,
@@ -164,7 +164,7 @@ describe('Delete an event (sc-3592)', () => {
         "Removes the event and everything in it for your whole team. Guests following its link see that it isn't available.",
       ),
     ).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Delete event' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Delete event…' })).toBeDefined();
   });
 
   it('is not offered without events.create, even to somebody who manages events', async () => {
@@ -172,7 +172,7 @@ describe('Delete an event (sc-3592)', () => {
     await onTheEvent(event());
 
     expect(screen.getByRole('button', { name: 'Make live' })).toBeDefined();
-    expect(screen.queryByRole('button', { name: 'Delete event' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Delete event…' })).toBeNull();
   });
 
   it('deletes a Draft on its plain confirmation, with no name, and says so on Events', async () => {
@@ -315,7 +315,7 @@ describe('Delete an event (sc-3592)', () => {
 
     expect(screen.queryByRole('dialog')).toBeNull();
     await waitFor(() =>
-      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Delete event' })),
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Delete event…' })),
     );
     expect(deletes(sent)).toBe(false);
   });

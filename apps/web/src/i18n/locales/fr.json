@@ -168,7 +168,15 @@
     "venue": "Lieu",
     "venueToBeConfirmed": "Lieu à confirmer",
     "addVenue": "Ajouter le lieu",
-    "openInMaps": "Voir sur une carte"
+    "openInMaps": "Voir sur une carte",
+    "invited": "Invités",
+    "details": "Détails",
+    "dates": "Dates",
+    "manage": "Gérer",
+    "tileComing": "Présents",
+    "tileMealPicks": "Menus choisis",
+    "tileSeated": "Placés",
+    "tileBudgetUsed": "Budget utilisé"
   },
   "eventLive": {
     "guestsBlocked": "Vous ne pourrez inviter personne tant que cet événement n’est pas publié.",
@@ -196,7 +204,8 @@
     "hostEmpty": "Indiquez l’hôte pour publier cet événement.",
     "hostExplainer": "Les invités lisent ce nom sur leur invitation et sur la page de l’événement. Écrivez-le tel que vous voulez qu’ils le voient.",
     "notSavedChanged": "Non enregistré. Quelqu’un d’autre a modifié cet événement depuis que vous l’avez ouvert.",
-    "hostsNow": "Hôtes actuels, tels que les invités les verront :"
+    "hostsNow": "Hôtes actuels, tels que les invités les verront :",
+    "making": "Publication…"
   },
   "eventEnd": {
     "callOff": "Annuler l’événement",
@@ -210,7 +219,12 @@
     "failed": "Non terminé. Réessayez dans un instant.",
     "notEnded": "Non terminé.",
     "alreadyOver": "Cet événement est déjà terminé.",
-    "calledOffNotice": "Annulé le {{date}}, avant son début. Les invités qui ouvrent leur lien voient qu’il n’aura pas lieu."
+    "calledOffNotice": "Annulé le {{date}}, avant son début. Les invités qui ouvrent leur lien voient qu’il n’aura pas lieu.",
+    "callOffOpen": "Annuler l’événement…",
+    "endNowOpen": "Terminer maintenant…",
+    "callOffFailed": "Non annulé. Réessayez dans un instant.",
+    "callingOff": "Annulation…",
+    "ending": "Fin en cours…"
   },
   "eventPause": {
     "pause": "Mettre en pause",
@@ -223,10 +237,12 @@
     "notice": "En pause. Les invités ne peuvent ni répondre ni rien modifier jusqu’à la reprise. L’accueil des invités et le service continuent.",
     "resume": "Reprendre",
     "resumeFailed": "Non repris. Réessayez dans un instant.",
-    "resumed": "L’événement {{name}} est de nouveau publié."
+    "resumed": "L’événement {{name}} est de nouveau publié.",
+    "pausing": "Mise en pause…",
+    "resuming": "Reprise…"
   },
   "eventDelete": {
-    "open": "Supprimer l’événement",
+    "open": "Supprimer l’événement…",
     "note": "Supprime l’événement et tout son contenu pour toute votre équipe. Les invités qui ouvrent leur lien voient qu’il n’est plus disponible.",
     "title": "Supprimer {{event}} ?",
     "draftBody": "C’est un brouillon dont la liste d’invités est vide. Il sera supprimé pour toute votre équipe.",
@@ -239,7 +255,8 @@
     "mismatch": "Saisissez {{event}} exactement comme indiqué pour le supprimer.",
     "keep": "Le conserver",
     "delete": "Supprimer",
-    "deleted": "L’événement {{event}} a été supprimé."
+    "deleted": "L’événement {{event}} a été supprimé.",
+    "deleting": "Suppression…"
   },
   "eventDuplicate": {
     "open": "Dupliquer",

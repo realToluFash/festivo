@@ -3861,9 +3861,12 @@ button.members-row {
   min-width: 0;
 }
 
-.event-form-page,
-.event-page {
+.event-form-page {
   max-width: 47.5rem;
+}
+
+.event-page {
+  max-width: 72rem;
 }
 
 .events-head {
@@ -4407,8 +4410,7 @@ button.members-row {
   margin: 0;
 }
 
-.event-form-actions,
-.event-page-actions {
+.event-form-actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spaceMd);
@@ -4833,10 +4835,6 @@ button.members-row {
   width: 100%;
 }
 
-.event-page-cover {
-  margin-bottom: var(--spaceXl);
-}
-
 @media (width <= 40rem) {
   .cover-dialog {
     inset: 0;
@@ -4866,13 +4864,6 @@ button.members-row {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--spaceXl);
   }
-}
-
-.event-page-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spaceSm) var(--spaceMd);
 }
 
 /* ── Make live (sc-3584) ──────────────────────────────────────────────────── */
@@ -5135,26 +5126,6 @@ button.members-row {
 
 .venue-zone-offer {
   margin-top: var(--spaceLg);
-}
-
-.event-page-venue {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.event-page-venue p {
-  margin: 0;
-}
-
-.event-page-venue-name {
-  font: var(--typeRowTitle);
-}
-
-.event-page-venue-link {
-  display: inline-flex;
-  align-items: center;
-  text-decoration: none;
 }
 
 /* ── An event's timeline: Coming up and All dates (sc-3624) ─────────────── */
@@ -6760,4 +6731,173 @@ button.members-row {
   .calendar-subscribe-reset-button {
     min-height: var(--sizeHitPhonePrimary);
   }
+}
+
+/* ── An event's page: the Top, then Overview (sc-22103) ───────────────────── */
+
+.event-top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  min-width: 0;
+}
+
+.event-top > p,
+.event-top-venue p {
+  margin: 0;
+}
+
+.event-top-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spaceMd) var(--spaceXl);
+}
+
+.event-top-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceMd);
+  min-width: 0;
+}
+
+.event-top-title h1 {
+  font: var(--typeTitlePage);
+  letter-spacing: var(--typeTitlePageTracking);
+  overflow-wrap: anywhere;
+}
+
+.event-top-when,
+.event-top-venue {
+  color: var(--colorInkSecondary);
+}
+
+.event-top-venue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXxs) var(--spaceLg);
+  overflow-wrap: anywhere;
+}
+
+.event-top-invited .placeholder {
+  flex-flow: row wrap;
+  gap: var(--spaceXs);
+}
+
+.event-overview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space3xl);
+  min-width: 0;
+}
+
+.event-overview-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space3xl);
+  align-items: start;
+}
+
+.event-overview-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space3xl);
+  min-width: 0;
+}
+
+/* Manage beside Details and Coming up where there is room for both (1280 × 800), after them below it. */
+@media (width >= 64rem) {
+  .event-overview-columns {
+    grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem);
+  }
+}
+
+@media (width <= 40rem) {
+  .event-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.event-details-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceSm) var(--spaceXl);
+}
+
+.event-details-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.event-details-rows > li + li {
+  border-top: var(--borderInset);
+}
+
+.event-details-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--spaceXxs) var(--spaceXl);
+  padding-block: var(--spaceLg);
+  color: inherit;
+  text-decoration: none;
+}
+
+.event-details-link:hover {
+  background: var(--colorRowHover);
+}
+
+.event-details-label {
+  flex: 0 0 8rem;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+.event-details-value {
+  display: flex;
+  flex: 1 1 14rem;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.event-details-value p {
+  margin: 0;
+}
+
+.event-details-strong {
+  font-weight: 600;
+}
+
+.event-details-hint {
+  color: var(--colorAccentText);
+  font-weight: 500;
+}
+
+.event-details-chevron {
+  margin-left: auto;
+  color: var(--colorInkSecondary);
+}
+
+.event-manage {
+  gap: var(--spaceXl);
+}
+
+.event-manage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+}
+
+.event-manage .event-mute {
+  padding: var(--spaceXl);
+  border-radius: var(--radiusCardDesktop);
+  box-shadow: none;
 }

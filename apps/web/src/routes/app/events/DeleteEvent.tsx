@@ -200,8 +200,13 @@ function DeleteDialog({
               {t('eventDelete.keep')}
             </button>
             <button className="button button-danger" type="submit" aria-busy={busy}>
-              {t('eventDelete.delete')}
+              {busy ? t('eventDelete.deleting') : t('eventDelete.delete')}
             </button>
+            {busy && (
+              <p className="visually-hidden" role="status">
+                {t('eventDelete.deleting')}
+              </p>
+            )}
           </div>
         </form>
       </div>

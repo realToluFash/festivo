@@ -46,6 +46,7 @@ export function PauseButton({
           failed={t('eventPause.failed')}
           keep={t('eventPause.keepItLive')}
           confirm={t('eventPause.pause')}
+          sending={t('eventPause.pausing')}
           tone="primary"
           onGo={() => go({}, () => api.pauseEvent(event.id))}
           onClose={close}
@@ -131,8 +132,13 @@ export function PausedRow({
               aria-busy={state === 'pending'}
               onClick={resume}
             >
-              {t('eventPause.resume')}
+              {state === 'pending' ? t('eventPause.resuming') : t('eventPause.resume')}
             </button>
+            {state === 'pending' && (
+              <p className="visually-hidden" role="status">
+                {t('eventPause.resuming')}
+              </p>
+            )}
           </div>
         )}
       </div>

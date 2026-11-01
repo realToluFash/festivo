@@ -168,7 +168,15 @@
     "venue": "Local",
     "venueToBeConfirmed": "Local a confirmar",
     "addVenue": "Adicionar o local",
-    "openInMaps": "Ver no mapa"
+    "openInMaps": "Ver no mapa",
+    "invited": "Convidados",
+    "details": "Detalhes",
+    "dates": "Datas",
+    "manage": "Gerir",
+    "tileComing": "Vêm",
+    "tileMealPicks": "Menus escolhidos",
+    "tileSeated": "Sentados",
+    "tileBudgetUsed": "Orçamento usado"
   },
   "eventLive": {
     "guestsBlocked": "Só é possível convidar pessoas depois de este evento ser publicado.",
@@ -196,7 +204,8 @@
     "hostEmpty": "Indique o anfitrião para publicar este evento.",
     "hostExplainer": "Os convidados leem este nome no convite e na página do evento. Escreva-o tal como quer que o vejam.",
     "notSavedChanged": "Não foi guardado. Outra pessoa alterou este evento desde que o abriu.",
-    "hostsNow": "Anfitriões atuais, tal como os convidados os verão:"
+    "hostsNow": "Anfitriões atuais, tal como os convidados os verão:",
+    "making": "A publicar…"
   },
   "eventEnd": {
     "callOff": "Cancelar o evento",
@@ -210,7 +219,12 @@
     "failed": "Não foi terminado. Tente novamente daqui a pouco.",
     "notEnded": "Não foi terminado.",
     "alreadyOver": "Este evento já terminou.",
-    "calledOffNotice": "Cancelado no dia {{date}}, antes de começar. Os convidados que abrem a sua ligação são informados de que não se vai realizar."
+    "calledOffNotice": "Cancelado no dia {{date}}, antes de começar. Os convidados que abrem a sua ligação são informados de que não se vai realizar.",
+    "callOffOpen": "Cancelar o evento…",
+    "endNowOpen": "Terminar agora…",
+    "callOffFailed": "Não foi cancelado. Tente novamente daqui a pouco.",
+    "callingOff": "A cancelar…",
+    "ending": "A terminar…"
   },
   "eventPause": {
     "pause": "Pausar",
@@ -223,10 +237,12 @@
     "notice": "Em pausa. Os convidados não podem responder nem alterar nada até retomar o evento. O registo de entradas e o serviço continuam a funcionar.",
     "resume": "Retomar",
     "resumeFailed": "Não foi retomado. Tente novamente daqui a pouco.",
-    "resumed": "O evento {{name}} voltou a estar publicado."
+    "resumed": "O evento {{name}} voltou a estar publicado.",
+    "pausing": "A pausar…",
+    "resuming": "A retomar…"
   },
   "eventDelete": {
-    "open": "Eliminar o evento",
+    "open": "Eliminar o evento…",
     "note": "Elimina o evento e tudo o que contém para toda a equipa. Os convidados que abrirem a sua ligação veem que já não está disponível.",
     "title": "Eliminar {{event}}?",
     "draftBody": "É um rascunho sem ninguém na lista de convidados. Vai ser eliminado para toda a equipa.",
@@ -239,7 +255,8 @@
     "mismatch": "Escreva {{event}} exatamente como aparece para o eliminar.",
     "keep": "Manter o evento",
     "delete": "Eliminar",
-    "deleted": "O evento {{event}} foi eliminado."
+    "deleted": "O evento {{event}} foi eliminado.",
+    "deleting": "A eliminar…"
   },
   "eventDuplicate": {
     "open": "Duplicar",
