@@ -227,6 +227,7 @@ export function DraftRow({
           confirming != null
             ? {
                 label: t('eventLive.makeLive'),
+                sending: t('eventLive.making'),
                 keep: t('eventLive.notYet'),
                 pending: confirming.pending,
                 onGo: () => void go(confirming),

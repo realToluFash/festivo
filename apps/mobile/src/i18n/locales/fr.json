@@ -1671,7 +1671,8 @@
     "hostEmpty": "Indiquez l’hôte pour publier cet événement.",
     "hostExplainer": "Les invités lisent ce nom sur leur invitation et sur la page de l’événement. Écrivez-le tel que vous voulez qu’ils le voient.",
     "notSavedChanged": "Non enregistré. Quelqu’un d’autre a modifié cet événement depuis que vous l’avez ouvert.",
-    "hostsNow": "Hôtes actuels, tels que les invités les verront :"
+    "hostsNow": "Hôtes actuels, tels que les invités les verront :",
+    "making": "Publication…"
   },
   "eventHosts": {
     "heading": "Hôtes",
@@ -1707,7 +1708,10 @@
     "calledOffNotice": "Annulé le {{date}}, avant son début. Les invités qui ouvrent leur lien voient qu’il n’aura pas lieu.",
     "close": "Fermer",
     "callOffOpen": "Annuler l’événement…",
-    "endNowOpen": "Terminer maintenant…"
+    "endNowOpen": "Terminer maintenant…",
+    "callingOff": "Annulation…",
+    "ending": "Fin en cours…",
+    "callOffFailed": "Non annulé. Réessayez dans un instant."
   },
   "eventPause": {
     "pause": "Mettre en pause",
@@ -1719,7 +1723,9 @@
     "notPaused": "Non mis en pause.",
     "notice": "En pause. Les invités ne peuvent ni répondre ni rien modifier jusqu’à la reprise. L’accueil des invités et le service continuent.",
     "resume": "Reprendre",
-    "resumeFailed": "Non repris. Réessayez dans un instant."
+    "resumeFailed": "Non repris. Réessayez dans un instant.",
+    "pausing": "Mise en pause…",
+    "resuming": "Reprise…"
   },
   "eventDelete": {
     "open": "Supprimer l’événement…",
@@ -1736,7 +1742,8 @@
     "keep": "Le conserver",
     "delete": "Supprimer",
     "failed": "La demande n’a pas abouti, donc rien n’a été modifié. Réessayez.",
-    "deleted": "L’événement {{event}} a été supprimé."
+    "deleted": "L’événement {{event}} a été supprimé.",
+    "deleting": "Suppression…"
   },
   "eventDuplicate": {
     "open": "Dupliquer",

@@ -68,7 +68,9 @@ export function EndRow({
             ? [
                 t(callOff ? 'eventEnd.callOffBody' : 'eventEnd.endBody'),
                 t('eventEnd.final'),
-                ...(asking?.failed === true ? [t('eventEnd.failed')] : []),
+                ...(asking?.failed === true
+                  ? [t(callOff ? 'eventEnd.callOffFailed' : 'eventEnd.failed')]
+                  : []),
               ]
             : asking.kind === 'changed'
               ? changedWords(event).map((line) => t(line))
@@ -78,6 +80,7 @@ export function EndRow({
           asking?.kind === 'confirm'
             ? {
                 label: t(callOff ? 'eventEnd.callOff' : 'eventEnd.endNow'),
+                sending: t(callOff ? 'eventEnd.callingOff' : 'eventEnd.ending'),
                 keep: t('eventEnd.keepItOn'),
                 pending: asking.pending,
                 ends: true,

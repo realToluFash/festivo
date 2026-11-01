@@ -1671,7 +1671,8 @@
     "hostEmpty": "Indique el anfitrión para publicar este evento.",
     "hostExplainer": "Los invitados leen este nombre en su invitación y en la página del evento. Escríbalo tal como quiera que lo vean.",
     "notSavedChanged": "No se ha guardado. Otra persona ha cambiado este evento desde que lo abrió.",
-    "hostsNow": "Anfitriones actuales, tal como los verán los invitados:"
+    "hostsNow": "Anfitriones actuales, tal como los verán los invitados:",
+    "making": "Publicando…"
   },
   "eventHosts": {
     "heading": "Anfitriones",
@@ -1707,7 +1708,10 @@
     "calledOffNotice": "Cancelado el {{date}}, antes de empezar. Los invitados que abren su enlace ven que no se celebrará.",
     "close": "Cerrar",
     "callOffOpen": "Cancelar el evento…",
-    "endNowOpen": "Finalizar ahora…"
+    "endNowOpen": "Finalizar ahora…",
+    "callingOff": "Cancelando…",
+    "ending": "Finalizando…",
+    "callOffFailed": "No se ha cancelado. Vuelva a intentarlo en un momento."
   },
   "eventPause": {
     "pause": "Pausar",
@@ -1719,7 +1723,9 @@
     "notPaused": "No se ha pausado.",
     "notice": "En pausa. Los invitados no pueden responder ni cambiar nada hasta que lo reanude. El registro de llegada y el servicio siguen funcionando.",
     "resume": "Reanudar",
-    "resumeFailed": "No se ha reanudado. Vuelva a intentarlo en un momento."
+    "resumeFailed": "No se ha reanudado. Vuelva a intentarlo en un momento.",
+    "pausing": "Pausando…",
+    "resuming": "Reanudando…"
   },
   "eventDelete": {
     "open": "Eliminar el evento…",
@@ -1736,7 +1742,8 @@
     "keep": "Conservarlo",
     "delete": "Eliminar",
     "failed": "No se ha podido completar, así que no se ha cambiado nada. Inténtelo de nuevo.",
-    "deleted": "Se ha eliminado {{event}}."
+    "deleted": "Se ha eliminado {{event}}.",
+    "deleting": "Eliminando…"
   },
   "eventDuplicate": {
     "open": "Duplicar",

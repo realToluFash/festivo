@@ -1626,7 +1626,8 @@
     "hostEmpty": "Enter who is hosting to make this event live.",
     "hostExplainer": "Guests read this name on their invitation and their page. Write it the way you want guests to see it.",
     "notSavedChanged": "Not saved. Somebody else changed this event since you opened it.",
-    "hostsNow": "Who is hosting now, as guests will see it:"
+    "hostsNow": "Who is hosting now, as guests will see it:",
+    "making": "Making live…"
   },
   "eventHosts": {
     "heading": "Hosted by",
@@ -1662,7 +1663,10 @@
     "calledOffNotice": "Called off on {{date}}, before it started. Guests following their link are told it won't go ahead.",
     "close": "Close",
     "callOffOpen": "Call off…",
-    "endNowOpen": "End now…"
+    "endNowOpen": "End now…",
+    "callingOff": "Calling off…",
+    "ending": "Ending…",
+    "callOffFailed": "Not called off. Try again in a moment."
   },
   "eventPause": {
     "pause": "Pause",
@@ -1674,7 +1678,9 @@
     "notPaused": "Not paused.",
     "notice": "Paused. Guests can't reply or change anything until you resume it. Check-in and service still work.",
     "resume": "Resume",
-    "resumeFailed": "Not resumed. Try again in a moment."
+    "resumeFailed": "Not resumed. Try again in a moment.",
+    "pausing": "Pausing…",
+    "resuming": "Resuming…"
   },
   "eventDelete": {
     "open": "Delete event…",
@@ -1691,7 +1697,8 @@
     "keep": "Keep it",
     "delete": "Delete",
     "failed": "That did not go through, so nothing was changed. Try again.",
-    "deleted": "{{event}} was deleted."
+    "deleted": "{{event}} was deleted.",
+    "deleting": "Deleting…"
   },
   "eventDuplicate": {
     "open": "Duplicate",

@@ -183,7 +183,7 @@ function Confirm({
   );
   const go = (
     <DestructiveButton
-      label={t('eventDelete.delete')}
+      label={pending ? t('eventDelete.deleting') : t('eventDelete.delete')}
       onPress={() => void submit()}
       busy={pending}
       testID="events.deleteGo"

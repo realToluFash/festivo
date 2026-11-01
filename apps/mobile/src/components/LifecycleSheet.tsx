@@ -1,5 +1,5 @@
 import { type OrganisationEvent } from '@soirely/api-client';
-import { type ReactNode, type RefObject, useState } from 'react';
+import { type ReactNode, type RefObject, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -7,6 +7,7 @@ import { api } from '../api.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { readOut } from './ReadOut.tsx';
 import { Sheet, SheetActions } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 import { type ScreenReaderTarget } from './screenReaderFocus.ts';
@@ -105,6 +106,8 @@ export function LifecycleSheet({
     label: string;
     keep: string;
     pending: boolean;
+    /** Its own words while it sends, on the confirming button and announced (sc-22103). */
+    sending?: string;
     /** Something ends: the destructive button confirms, and keeping it is a text action. */
     ends?: boolean;
     onGo: () => void;
@@ -115,17 +118,24 @@ export function LifecycleSheet({
   children?: ReactNode;
 }) {
   const { t } = useTranslation();
+  const sending = confirm?.pending === true ? confirm.sending : undefined;
+  const label = sending ?? confirm?.label ?? '';
+
+  useEffect(() => {
+    if (sending != null) readOut(sending);
+  }, [sending]);
+
   const go =
     confirm == null ? null : confirm.ends === true ? (
       <DestructiveButton
-        label={confirm.label}
+        label={label}
         onPress={confirm.onGo}
         busy={confirm.pending}
         testID={`${testID}Yes`}
       />
     ) : (
       <PrimaryButton
-        label={confirm.label}
+        label={label}
         onPress={confirm.onGo}
         busy={confirm.pending}
         testID={`${testID}Yes`}

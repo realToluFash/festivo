@@ -73,6 +73,7 @@ export function PauseButton({
           asking?.kind === 'confirm'
             ? {
                 label: t('eventPause.pause'),
+                sending: t('eventPause.pausing'),
                 keep: t('eventPause.keepItLive'),
                 pending: asking.pending,
                 onGo: () => go({}, () => api.pauseEvent(event.id)),
@@ -147,7 +148,7 @@ export function PausedRow({
       />
       {manages && eventAllows(phase, 'resume') && (
         <PrimaryButton
-          label={t('eventPause.resume')}
+          label={state === 'pending' ? t('eventPause.resuming') : t('eventPause.resume')}
           onPress={resume}
           busy={state === 'pending'}
           testID="events.resume"
