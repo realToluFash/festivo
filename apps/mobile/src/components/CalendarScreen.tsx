@@ -47,10 +47,10 @@ import { bodyEdges } from './bodyEdges.ts';
 import { QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { EventState, EventsFailed, NoEvents } from './Events.tsx';
-import { Screen } from './Screen.tsx';
+import { Screen, useBroughtIntoViewOn } from './Screen.tsx';
 import { Sheet } from './Sheet.tsx';
 import { useReadOut } from './ReadOut.tsx';
-import { Text } from './Text.tsx';
+import { type TextHandle, Text } from './Text.tsx';
 
 const KEPT = 'soirely.calendar';
 
@@ -118,6 +118,7 @@ function CalendarOf({
   const [kept, setKept] = useState<CalendarPlace | null>(null);
   const [show, setShow] = useState<CalendarShow>('all');
   const [openDay, setOpenDay] = useState<string | null>(null);
+  const [todayAsked, setTodayAsked] = useState(0);
   const opener = useRef<ViewInstance>(null);
   const view: CalendarView = kept?.view ?? (phone ? 'agenda' : 'month');
   const month: CalendarMonth = kept?.month ?? monthOfDay(today);
@@ -183,7 +184,10 @@ function CalendarOf({
         view={view}
         show={show}
         onMonth={(next) => keep({ view, month: next })}
-        onToday={() => keep({ view, month: monthOfDay(today) })}
+        onToday={() => {
+          keep({ view, month: monthOfDay(today) });
+          setTodayAsked((n) => n + 1);
+        }}
         onView={(next) => keep({ view: next, month })}
         onShow={setShow}
       />
@@ -221,7 +225,13 @@ function CalendarOf({
         </View>
       )}
       {load.kind === 'loaded' && view === 'agenda' && (
-        <Agenda kind={kind} month={month} days={agendaDays(month, days)} today={today} />
+        <Agenda
+          kind={kind}
+          month={month}
+          days={agendaDays(month, days)}
+          today={today}
+          todayAsked={todayAsked}
+        />
       )}
       {!landscape && (
         <Sheet
@@ -294,12 +304,14 @@ function Toolbar({
             value: one,
             word: t(one === 'month' ? 'calendar.month' : 'calendar.agenda'),
           }))}
+          label={t('calendar.view')}
           chosen={view}
           onChoose={onView}
           testID="calendar.view"
         />
         <Segments
           options={CALENDAR_SHOWS.map((one) => ({ value: one, word: t(SHOW_WORD[one]) }))}
+          label={t('calendar.show')}
           chosen={show}
           onChoose={onShow}
           testID="calendar.show"
@@ -337,17 +349,19 @@ function Step({
 
 function Segments<V extends string>({
   options,
+  label,
   chosen,
   onChoose,
   testID,
 }: {
   options: { value: V; word: string }[];
+  label: string;
   chosen: V;
   onChoose: (value: V) => void;
   testID: string;
 }) {
   return (
-    <View style={styles.segments} accessibilityRole="radiogroup">
+    <View style={styles.segments} accessibilityRole="radiogroup" accessibilityLabel={label}>
       {options.map(({ value, word }) => {
         const on = value === chosen;
 
@@ -537,13 +551,17 @@ function Agenda({
   month,
   days,
   today,
+  todayAsked,
 }: {
   kind: LayoutKind;
   month: CalendarMonth;
   days: { day: string; items: Item[] }[];
   today: string;
+  todayAsked: number;
 }) {
   const { t } = useTranslation();
+  const { shown, read } = useBroughtIntoViewOn<TextHandle>(todayAsked);
+  const landing = (days.find(({ day }) => day >= today) ?? days.at(-1))?.day;
 
   if (days.length === 0) {
     return (
@@ -558,8 +576,13 @@ function Agenda({
   return (
     <View style={styles.stack} testID="calendar.agenda">
       {days.map(({ day, items }) => (
-        <View key={day} style={styles.agendaDay}>
-          <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+        <View key={day} ref={day === landing ? shown : undefined} style={styles.agendaDay}>
+          <Text
+            ref={day === landing ? read : undefined}
+            size={tokens.typeTitleSection.size}
+            weight="bold"
+            accessibilityRole="header"
+          >
             {day === today ? t('calendar.todayDay', { day: weekdayDay(day) }) : weekdayDay(day)}
           </Text>
           <View style={cardFrame(kind)}>

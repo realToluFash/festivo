@@ -464,6 +464,28 @@ export function useBroughtIntoView(readRef?: RefObject<ViewInstance | null>): Br
   return { shown: ref, read };
 }
 
+/** Each time `asked` counts up, brings `shown` wholly into sight and moves screen reader focus to `read`, as a tap on Today does in the Calendar's Agenda (sc-3625). */
+export function useBroughtIntoViewOn<Read extends ScreenReaderTarget = ViewInstance>(
+  asked: number,
+): FocusedOnAnswer<Read> {
+  const scroll = useContext(ScreenScroll);
+  const shown = useRef<ViewInstance>(null);
+  const read = useRef<Read>(null);
+
+  useEffect(() => {
+    if (asked === 0) return;
+
+    return settleOnto(
+      scroll,
+      () => shown.current ?? read.current,
+      () => read.current,
+      true,
+    );
+  }, [asked, scroll]);
+
+  return { shown, read };
+}
+
 /** Brings `shown`, a notice answering a send, wholly into sight between the header and the keys once it mounts, and again with the keys moving or the scroll view resizing in the settle; screen reader focus stays where it is (sc-24496). */
 export function useAnswerInView(): RefObject<ViewInstance | null> {
   const scroll = useContext(ScreenScroll);

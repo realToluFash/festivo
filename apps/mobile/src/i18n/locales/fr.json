@@ -1790,6 +1790,8 @@
     "dayWithItems_many": "{{day}}, {{count, number}} items",
     "month": "Month",
     "agenda": "Agenda",
+    "view": "View",
+    "show": "Show",
     "showAll": "Events and milestones",
     "showEvents": "Events only",
     "more_one": "+{{count, number}} more",
