@@ -6,7 +6,7 @@ import {
   type ProviderSignInAttempt,
 } from '@soirely/api-client';
 import { proveWith, providerRows, remainingWay, type ProviderRow } from '@soirely/domain';
-import { type Ref, useEffect, useRef, useState } from 'react';
+import { type Ref, useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -21,9 +21,11 @@ import { DestructiveButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { ConfirmItsYou } from './ConfirmItsYou.tsx';
 import { Notice } from './Notice.tsx';
+import { PasswordCard } from './PasswordCard.tsx';
 import { type StepClosed, stepClosed, useFocusBackToOpener } from './Screen.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { useMarkSide } from './markSide.ts';
+import { wayRow } from './wayRow.ts';
 
 type Act = { action: 'link' | 'unlink'; provider: Provider };
 
@@ -39,7 +41,7 @@ type Stage =
   | { kind: 'confirming'; act: Act; proof: string }
   | { kind: 'working' };
 
-/** Settings > Security, between Password and Two-factor: link or unlink Google and Apple (sc-510). */
+/** Settings > Security's first card: the password, set or changed, then Google and Apple, linked or unlinked (sc-510). */
 export function WaysCard({
   email,
   hasPassword,
@@ -47,8 +49,8 @@ export function WaysCard({
   kind,
   onChanged,
   onRefused,
-  onSetPassword,
-  setPasswordClosed,
+  onPasswordAdded,
+  onPasswordChanged,
   onSignedOutHere,
   onCodeSpent,
 }: {
@@ -59,10 +61,9 @@ export function WaysCard({
   onChanged: () => Promise<void>;
   /** The server refused an unlink, so the rows on screen may be stale; a failed read leaves them. */
   onRefused: () => Promise<void>;
-  /** `from` names the Set a password tapped, for focus to go back to it. */
-  onSetPassword: (from: string) => void;
-  /** Setting a password from here was cancelled, back to the Set a password that opened it. */
-  setPasswordClosed?: StepClosed | undefined;
+  onPasswordAdded: () => Promise<void>;
+  /** Changing the password signed the other devices out. */
+  onPasswordChanged: () => void;
   onSignedOutHere: () => void;
   /** A two-factor or recovery code was accepted, so the two-factor card's count may be stale. */
   onCodeSpent: () => void;
@@ -70,16 +71,12 @@ export function WaysCard({
   const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>({ kind: 'list', said: null });
   const [twoFactorOn, setTwoFactorOn] = useState(false);
-  const [closedFor, setClosedFor] = useState(setPasswordClosed);
+  const [settingFrom, setSettingFrom] = useState<string | null>(null);
+  const [passwordStep, setPasswordStep] = useState(false);
+  const onPasswordStep = useCallback((open: boolean) => setPasswordStep(open), []);
   const title = useRef<TextHandle>(null);
   const opener = useFocusBackToOpener(stage.kind === 'list' ? stage.closed : undefined, title);
   const frame = cardFrame(kind);
-
-  if (closedFor !== setPasswordClosed) {
-    setClosedFor(setPasswordClosed);
-    if (setPasswordClosed != null)
-      setStage({ kind: 'list', said: null, closed: setPasswordClosed });
-  }
   const rows = providerRows(hasPassword, providers);
 
   useEffect(() => {
@@ -203,52 +200,65 @@ export function WaysCard({
 
   return (
     <View style={frame}>
-      <Text
-        ref={title}
-        size={tokens.typeTitleSection.size}
-        weight="bold"
-        accessibilityRole="header"
-      >
-        {t('waysCard.title')}
-      </Text>
-      <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
-        {t('waysCard.intro', { email })}
-      </Text>
+      {!passwordStep && (
+        <>
+          <Text
+            ref={title}
+            size={tokens.typeTitleSection.size}
+            weight="bold"
+            accessibilityRole="header"
+          >
+            {t('waysCard.title')}
+          </Text>
+          <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
+            {t('waysCard.intro', { email })}
+          </Text>
 
-      {stage.kind === 'list' && stage.said != null && <SaidNotice said={stage.said} />}
+          {stage.kind === 'list' && stage.said != null && <SaidNotice said={stage.said} />}
+        </>
+      )}
 
       <View>
-        <View style={styles.row}>
-          <View style={styles.detail}>
-            <Text size={tokens.typeRowTitle.size} weight="semibold">
-              {t('waysCard.password')}
-            </Text>
-            <State
-              on={hasPassword}
-              word={hasPassword ? t('waysCard.setUp') : t('waysCard.notSetUp')}
-            />
-          </View>
-          {!hasPassword && (
-            <SecondaryButton
-              ref={opener('setPassword')}
-              label={t('waysCard.setPassword')}
-              onPress={() => onSetPassword('setPassword')}
-              testID="ways.password.set"
-            />
-          )}
-        </View>
+        <PasswordCard
+          email={email}
+          hasPassword={hasPassword}
+          providers={providers}
+          heading={
+            <>
+              <Text size={tokens.typeRowTitle.size} weight="semibold">
+                {t('waysCard.password')}
+              </Text>
+              <State
+                on={hasPassword}
+                word={hasPassword ? t('waysCard.setUp') : t('waysCard.notSetUp')}
+              />
+            </>
+          }
+          onStep={onPasswordStep}
+          onAdded={onPasswordAdded}
+          setting={settingFrom != null}
+          onSetting={(on) => {
+            if (!on) setSettingFrom(null);
+          }}
+          onSetCancelled={() => {
+            if (settingFrom != null)
+              setStage({ kind: 'list', said: null, closed: stepClosed(settingFrom) });
+          }}
+          onChanged={onPasswordChanged}
+        />
 
-        {rows.map((row) => (
-          <Row
-            key={row.provider}
-            row={row}
-            busy={stage.kind === 'working'}
-            onLink={() => begin({ action: 'link', provider: row.provider })}
-            onUnlink={() => begin({ action: 'unlink', provider: row.provider })}
-            onSetPassword={() => onSetPassword(`setPassword.${row.provider}`)}
-            opener={opener}
-          />
-        ))}
+        {!passwordStep &&
+          rows.map((row) => (
+            <Row
+              key={row.provider}
+              row={row}
+              busy={stage.kind === 'working'}
+              onLink={() => begin({ action: 'link', provider: row.provider })}
+              onUnlink={() => begin({ action: 'unlink', provider: row.provider })}
+              onSetPassword={() => setSettingFrom(`setPassword.${row.provider}`)}
+              opener={opener}
+            />
+          ))}
       </View>
     </View>
   );
@@ -273,8 +283,8 @@ function Row({
   const name = PROVIDER_NAMES[row.provider];
 
   return (
-    <View style={styles.row}>
-      <View style={styles.detail}>
+    <View style={wayRow.row}>
+      <View style={wayRow.detail}>
         <Text size={tokens.typeRowTitle.size} weight="semibold">
           {name}
         </Text>
@@ -546,16 +556,6 @@ const styles = StyleSheet.create({
   group: { gap: tokens.spaceLg },
   secondary: { color: tokens.colorInkSecondary },
   on: { color: tokens.colorAccentText },
-  row: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: tokens.spaceMd,
-    paddingVertical: tokens.spaceLg,
-    borderTopWidth: 1,
-    borderTopColor: tokens.colorBorder,
-  },
-  detail: { flex: 1, minWidth: 160, gap: tokens.spaceXxs },
   state: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceXs },
   markOn: {
     borderRadius: tokens.radiusPill,

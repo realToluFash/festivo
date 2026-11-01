@@ -1,7 +1,16 @@
 import { ApiError, type LinkedProvider } from '@soirely/api-client';
 import { cleanCode, codeProblem, formatCountdown, meetsPasswordLength } from '@soirely/domain';
 import { router } from 'expo-router';
-import { type RefCallback, type RefObject, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type RefCallback,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   type HostInstance,
   StyleSheet,
@@ -13,7 +22,6 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
-import { type LayoutKind } from '../layout/useLayout.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
 import { retryAfter } from '../kit/code.ts';
 import {
@@ -25,7 +33,6 @@ import { tokens } from '../theme/tokens.ts';
 import { currentSessionId } from '../tokens.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
-import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field, focusChecked, keysStayDown } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PasswordField } from './PasswordField.tsx';
@@ -39,6 +46,7 @@ import {
   useStepClose,
 } from './Screen.tsx';
 import { Text } from './Text.tsx';
+import { wayRow } from './wayRow.ts';
 
 const PROVIDER_NAMES: Record<string, string> = { google: 'Google', apple: 'Apple' };
 
@@ -52,12 +60,13 @@ type Stage =
   | { kind: 'changing' }
   | { kind: 'setting' };
 
-/** Settings > Security, the first card, in the app: change the password (sc-116), or add one (sc-391). */
+/** The first row of Ways to sign in, in the app: change the password (sc-116), or add one (sc-391). */
 export function PasswordCard({
   email,
   hasPassword,
   providers,
-  kind,
+  heading,
+  onStep,
   onAdded,
   setting = false,
   onSetting,
@@ -67,7 +76,10 @@ export function PasswordCard({
   email: string;
   hasPassword: boolean;
   providers: readonly LinkedProvider[];
-  kind: LayoutKind;
+  /** The row's name and status, as the other ways show theirs. */
+  heading: ReactNode;
+  /** A step is open, so the card shows it alone. */
+  onStep: (open: boolean) => void;
   onAdded: () => Promise<void>;
   /** Opened from elsewhere too: the ways-to-sign-in card offers Set a password for the last way in. */
   setting?: boolean;
@@ -95,13 +107,31 @@ export function PasswordCard({
   } = useStepClose(opener, 'change', (closed) =>
     setStage({ kind: 'atRest', signedOut: null, added: null, closed }),
   );
-  const frame = cardFrame(kind);
   const first = providers[0]?.provider;
   const provider = first == null ? '' : (PROVIDER_NAMES[first] ?? first);
+  const stepOpen = hasPassword
+    ? stage.kind === 'changing' && !closing
+    : stage.kind === 'setting' || setting;
+
+  useLayoutEffect(() => onStep(stepOpen), [onStep, stepOpen]);
+
+  const done = stage.kind === 'atRest' && (stage.signedOut != null || stage.added != null) && (
+    <Notice
+      tone="done"
+      mark={tokens.marks.done.glyph}
+      body={
+        stage.added != null
+          ? t('passwordCard.added', { provider: stage.added })
+          : t('passwordCard.done', { count: stage.signedOut ?? 0 })
+      }
+      answer={stage}
+      takesFocus
+    />
+  );
 
   if (!hasPassword) {
     return (
-      <View style={frame}>
+      <View>
         {stage.kind === 'setting' || setting ? (
           <Setting
             email={email}
@@ -121,52 +151,46 @@ export function PasswordCard({
             }}
           />
         ) : (
-          <>
-            <Title text={t('passwordCard.title')} />
-            <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
-              {t('passwordCard.setRest', { provider })}
-            </Text>
+          <View style={wayRow.row}>
+            <View style={wayRow.detail}>
+              {heading}
+              <Text size={tokens.typeSmall.size} style={styles.secondary}>
+                {t('passwordCard.setRest', { provider })}
+              </Text>
+            </View>
             <SecondaryButton
               ref={opener('set')}
               label={t('passwordCard.set')}
               onPress={() => open({ kind: 'setting' })}
               testID="password.set"
             />
-          </>
+          </View>
         )}
       </View>
     );
   }
 
   return (
-    <View style={frame}>
+    <View>
       {(stage.kind !== 'changing' || closing) && (
         <>
-          <Title text={t('passwordCard.title')} />
-          {stage.kind === 'atRest' && (stage.signedOut != null || stage.added != null) && (
-            <Notice
-              tone="done"
-              mark={tokens.marks.done.glyph}
-              body={
-                stage.added != null
-                  ? t('passwordCard.added', { provider: stage.added })
-                  : t('passwordCard.done', { count: stage.signedOut ?? 0 })
-              }
-              answer={stage}
-              takesFocus
-            />
-          )}
-          <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
-            {t('passwordCard.intro')}
-          </Text>
-          <View>
-            {changeHolder}
-            <SecondaryButton
-              ref={changeOpener}
-              label={t('passwordCard.change')}
-              onPress={() => setStage({ kind: 'changing' })}
-              testID="password.change"
-            />
+          {done}
+          <View style={wayRow.row}>
+            <View style={wayRow.detail}>
+              {heading}
+              <Text size={tokens.typeSmall.size} style={styles.secondary}>
+                {t('passwordCard.intro')}
+              </Text>
+            </View>
+            <View>
+              {changeHolder}
+              <SecondaryButton
+                ref={changeOpener}
+                label={t('passwordCard.change')}
+                onPress={() => setStage({ kind: 'changing' })}
+                testID="password.change"
+              />
+            </View>
           </View>
         </>
       )}
