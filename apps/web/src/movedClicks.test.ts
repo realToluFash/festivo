@@ -83,6 +83,22 @@ describe('a click the layout moved away from (sc-25852)', () => {
     expect(clicks).toBe(0);
   });
 
+  it('leaves a press with a modifier key held to the browser', () => {
+    for (const modifier of ['ctrlKey', 'metaKey', 'shiftKey', 'altKey']) {
+      button.dispatchEvent(
+        new MouseEvent('mousedown', {
+          bubbles: true,
+          clientX: 150,
+          clientY: 320,
+          [modifier]: true,
+        }),
+      );
+      release(below, 150, 320);
+    }
+
+    expect(clicks).toBe(0);
+  });
+
   it('stops holding once the last form lets go', () => {
     const other = holdMovedClicks();
     letGo();

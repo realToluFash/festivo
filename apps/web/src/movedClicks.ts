@@ -8,7 +8,8 @@ function pointerDown(event: PointerEvent): void {
 
 function mouseDown(event: MouseEvent): void {
   pressed = null;
-  if (touched || event.button !== 0 || !(event.target instanceof Element)) return;
+  const modified = event.ctrlKey || event.metaKey || event.shiftKey || event.altKey;
+  if (touched || modified || event.button !== 0 || !(event.target instanceof Element)) return;
 
   const target = event.target.closest<HTMLElement>('button, a[href]');
   if (target != null) pressed = { target, place: target.getBoundingClientRect() };

@@ -635,6 +635,25 @@ describe('a click that leaves a field counts when its re-check moves the button 
     expect(logins(sent)).toHaveLength(1);
   });
 
+  it('checks Password alone and keeps focus there when Sign in moved down under the click', () => {
+    const sent: Sent[] = [];
+    answering({}, sent);
+    at('/sign-in');
+    const email = screen.getByLabelText('Email');
+    const password = screen.getByLabelText('Password');
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    fireEvent.change(email, { target: { value: 'folake@ire.events' } });
+    fireEvent.change(password, { target: { value: 'lagos-evenings' } });
+    fireEvent.change(password, { target: { value: '' } });
+
+    pressFrom(password, screen.getByRole('button', { name: 'Sign in' }));
+
+    expect(screen.getByText('Enter your password.')).toBeDefined();
+    expect(screen.queryByText('Enter your email address.')).toBeNull();
+    expect(document.activeElement).toBe(password);
+    expect(logins(sent)).toHaveLength(0);
+  });
+
   it('opens Create your account when the link moved under the click', async () => {
     await refusedOnce([]);
     const password = screen.getByLabelText('Password');
@@ -660,10 +679,12 @@ describe('a click that leaves a field counts when its re-check moves the button 
     expect(logins(sent)).toHaveLength(1);
   });
 
-  it('sends one request for a click that nothing moved', async () => {
+  it('submits once for a click that nothing moved', async () => {
     const sent: Sent[] = [];
     await refusedOnce(sent);
     const button = screen.getByRole('button', { name: 'Sign in' });
+    let submits = 0;
+    button.closest('form')!.addEventListener('submit', () => submits++);
     placed(button);
 
     fireEvent.mouseDown(button, { clientX: 200, clientY: 420 });
@@ -671,6 +692,7 @@ describe('a click that leaves a field counts when its re-check moves the button 
     fireEvent.mouseUp(button, { clientX: 200, clientY: 420 });
     fireEvent.click(button);
 
+    expect(submits).toBe(1);
     await waitFor(() => expect(logins(sent)).toHaveLength(2));
   });
 });
