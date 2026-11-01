@@ -27,6 +27,7 @@ import { heldProof } from '../recentProof.ts';
 import { rereadAccount } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { SmallCapsLabel } from './SmallCapsLabel.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { ConfirmItsYou } from './ConfirmItsYou.tsx';
 import { Field, FieldError, focusChecked, keysStayDown, TextField } from './Field.tsx';
@@ -229,14 +230,9 @@ function ContactsCard({
   return (
     <View style={cardFrame(layout)}>
       <View style={styles.head}>
-        <Text
-          ref={title}
-          size={tokens.typeTitleSection.size}
-          weight="bold"
-          accessibilityRole="header"
-        >
+        <SmallCapsLabel ref={title}>
           {email ? t('contacts.emailsTitle') : t('contacts.phonesTitle')}
-        </Text>
+        </SmallCapsLabel>
         <Text size={tokens.typeSmall.size} style={styles.secondary}>
           {t('contacts.count', { count: rows.length, most: CONTACTS_MOST })}
         </Text>
@@ -302,39 +298,48 @@ function ContactsCard({
                 </View>
               </View>
 
-              {here == null && offers.verify && (
-                <SecondaryButton
-                  label={t('contacts.sendCode')}
-                  onPress={() =>
-                    router.push(
-                      email ? `/verify-email?address=${row.id}` : `/verify-phone?phone=${row.id}`,
-                    )
-                  }
-                  testID={`contacts.${row.id}.verify`}
-                />
-              )}
-              {here == null && offers.makePrimary && (
-                <SecondaryButton
-                  ref={opener(`primary.${row.id}`)}
-                  label={t(email ? 'contacts.makePrimary' : 'contacts.makePrimaryPhone')}
-                  onPress={() =>
-                    email ? ask({ id: row.id, what: 'promote' }) : void act(row, 'promote')
-                  }
-                  testID={`contacts.${row.id}.primary`}
-                />
-              )}
-              {here == null && offers.remove && (
-                <DestructiveButton
-                  ref={opener(`remove.${row.id}`)}
-                  label={t(offers.askBeforeRemoving ? 'contacts.removeAsks' : 'contacts.remove')}
-                  accessibilityLabel={t('contacts.removeLabel', { address: row.shown })}
-                  onPress={() =>
-                    offers.askBeforeRemoving
-                      ? ask({ id: row.id, what: 'remove' })
-                      : void act(row, 'remove')
-                  }
-                  testID={`contacts.${row.id}.remove`}
-                />
+              {here == null && (offers.verify || offers.makePrimary || offers.remove) && (
+                <View style={[styles.actions, layout === 'phone' ? styles.full : styles.beside]}>
+                  {offers.verify && (
+                    <SecondaryButton
+                      label={t('contacts.sendCode')}
+                      onPress={() =>
+                        router.push(
+                          email
+                            ? `/verify-email?address=${row.id}`
+                            : `/verify-phone?phone=${row.id}`,
+                        )
+                      }
+                      testID={`contacts.${row.id}.verify`}
+                    />
+                  )}
+                  {offers.makePrimary && (
+                    <SecondaryButton
+                      ref={opener(`primary.${row.id}`)}
+                      label={t(email ? 'contacts.makePrimary' : 'contacts.makePrimaryPhone')}
+                      onPress={() =>
+                        email ? ask({ id: row.id, what: 'promote' }) : void act(row, 'promote')
+                      }
+                      testID={`contacts.${row.id}.primary`}
+                    />
+                  )}
+                  {offers.remove && (
+                    <DestructiveButton
+                      stacked={false}
+                      ref={opener(`remove.${row.id}`)}
+                      label={t(
+                        offers.askBeforeRemoving ? 'contacts.removeAsks' : 'contacts.remove',
+                      )}
+                      accessibilityLabel={t('contacts.removeLabel', { address: row.shown })}
+                      onPress={() =>
+                        offers.askBeforeRemoving
+                          ? ask({ id: row.id, what: 'remove' })
+                          : void act(row, 'remove')
+                      }
+                      testID={`contacts.${row.id}.remove`}
+                    />
+                  )}
+                </View>
               )}
 
               {here === 'prove' && confirming != null && (
@@ -634,7 +639,14 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: tokens.colorBorder,
   },
-  detail: { flex: 1, minWidth: 160, gap: tokens.spaceXxs },
+  detail: { flexGrow: 1, flexShrink: 1, flexBasis: 220, minWidth: 0, gap: tokens.spaceXxs },
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: tokens.spaceSm,
+  },
+  beside: { flexShrink: 0, maxWidth: '100%' },
   state: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceXs },
   markOn: {
     borderRadius: tokens.radiusPill,

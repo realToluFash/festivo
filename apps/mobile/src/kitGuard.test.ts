@@ -1060,8 +1060,8 @@ describe('a contact row ends Remove with an ellipsis only where it asks first (s
 
   it('labelled Remove… on a row that asks, Remove on one that does not', () => {
     const [remove] = holding('DestructiveButton');
-    expect(propValue(remove?.markup ?? '', 'label')).toBe(
-      "{t(offers.askBeforeRemoving ? 'contacts.removeAsks' : 'contacts.remove')}",
+    expect((propValue(remove?.markup ?? '', 'label') ?? '').replace(/[\s,]+/gu, '')).toBe(
+      "{t(offers.askBeforeRemoving?'contacts.removeAsks':'contacts.remove')}",
     );
 
     const { contacts } = JSON.parse(

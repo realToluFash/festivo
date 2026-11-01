@@ -28,7 +28,7 @@ import {
 } from '../layout/useLayout.ts';
 import { signOutHere, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
-import { tracking } from '../theme/tracking.ts';
+import { SmallCapsLabel } from './SmallCapsLabel.tsx';
 import { Text } from './Text.tsx';
 
 /** The section keeps its place in the tree on every layout, so a rotation keeps what was typed. */
@@ -84,11 +84,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
   };
   const groups = settingsGroups(organisation).map(({ heading, sections }, group) => ({
     heading: (
-      <Text
-        size={tokens.typeLabel.size}
-        weight="semibold"
-        muted
-        accessibilityRole="header"
+      <SmallCapsLabel
         style={[
           styles.label,
           !alone && styles.labelTablet,
@@ -96,7 +92,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
         ]}
       >
         {t(`settings.${heading}`)}
-      </Text>
+      </SmallCapsLabel>
     ),
     key: heading,
     rows: sections.map((section, index) => (
@@ -247,11 +243,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row' },
   center: { textAlign: 'center' },
   phoneList: { gap: tokens.spaceLg },
-  label: {
-    paddingHorizontal: tokens.spaceXxs,
-    letterSpacing: tracking(tokens.typeLabel),
-    textTransform: 'uppercase',
-  },
+  label: { paddingHorizontal: tokens.spaceXxs },
   labelTablet: { paddingHorizontal: 14, paddingVertical: tokens.spaceXxs },
   labelLater: { paddingTop: tokens.spaceLg },
   card: {
