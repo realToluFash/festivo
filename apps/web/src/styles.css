@@ -2434,7 +2434,7 @@ span {
   max-width: 85rem;
 }
 
-/* Company domain joining and Requests to join side by side from about 900 wide (General.dc). */
+/* Company domain joining and Requests to join side by side from about 900 wide (General.dc). The basis is on the cards, since a card that loaded sits in a display: contents wrapper. */
 .settings-pair {
   display: flex;
   flex-wrap: wrap;
@@ -2442,7 +2442,7 @@ span {
   gap: var(--spaceXxl);
 }
 
-.settings-pair > * {
+.settings-pair .settings-card {
   flex: 1 1 26.25rem;
   min-width: 0;
 }

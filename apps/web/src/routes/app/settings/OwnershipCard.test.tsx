@@ -144,6 +144,21 @@ describe('Settings > General, ownership and leaving', () => {
     expect(sent.filter((one) => one.line.startsWith('POST'))).toHaveLength(0);
   });
 
+  it('offers each new owner as a radio card that takes the chosen look (sc-23176)', async () => {
+    signedIn();
+    answering({ 'GET /api/orgs/org_1/members': () => json(MEMBERS) });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Transfer ownership' }));
+    const bisi = await screen.findByRole('radio', { name: /Bisi Adeyemi/ });
+    fireEvent.click(bisi);
+
+    const card = bisi.closest('label');
+    expect(card?.className).toBe('option-card');
+    expect(card?.querySelector('.option-card-name')?.textContent).toBe('Bisi Adeyemi');
+    expect(card?.matches('.option-card:has(input:checked)')).toBe(true);
+  });
+
   it('proves it is you, then makes the chosen member the owner', async () => {
     signedIn();
     const sent = answering({

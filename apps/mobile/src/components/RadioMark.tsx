@@ -16,7 +16,7 @@ const styles = StyleSheet.create({
     height: SIZE,
     borderRadius: SIZE / 2,
     borderWidth: tokens.spaceHair,
-    borderColor: tokens.colorControlBorder,
+    borderColor: tokens.colorFieldBorder,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: tokens.colorCard,

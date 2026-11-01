@@ -428,7 +428,7 @@ function Transfer({
       >
         <legend>{t('ownership.newOwner')}</legend>
         {candidates.map((one) => (
-          <label key={one.id} className="members-role">
+          <label key={one.id} className="option-card">
             <input
               type="radio"
               aria-label={one.user.name}
@@ -441,10 +441,8 @@ function Transfer({
                 checks.edited('owner', one.id);
               }}
             />
-            <span className="members-role-text">
-              <span className="members-row-name">{one.user.name}</span>
-              <span className="muted">{roleName(t, one.role)}</span>
-            </span>
+            <span className="members-row-name option-card-name">{one.user.name}</span>
+            <span className="muted option-card-means">{roleName(t, one.role)}</span>
           </label>
         ))}
         {ownerError != null && <FieldError id="transfer-owner-error" message={ownerError} />}
