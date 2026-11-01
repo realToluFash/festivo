@@ -247,8 +247,32 @@ span {
 }
 
 .brand {
-  font: var(--typeTitleSection);
-  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+}
+
+/* The wordmark is as wide as [fd]'s 22 px name would be, at 6.6 times its size (sc-23330). */
+.brand img {
+  display: block;
+  width: 146px;
+  height: auto;
+}
+
+/* The lockup leaves the bell room in the sidebar's 192 px row. */
+.brand-lockup img {
+  width: 140px;
+}
+
+/* Up to 40rem the brand shares a bar, so it is exactly as wide as the name it replaces. */
+@media (width <= 40rem) {
+  .brand img,
+  .brand-lockup img {
+    width: 51px;
+  }
+
+  .auth-header .brand img {
+    width: 63px;
+  }
 }
 
 .language-picker select {
@@ -627,7 +651,7 @@ span {
 
   /* An account in no organisation has no switcher, so the bar says whose it is instead. */
   .shell-sidebar:not(:has(.org-switcher)) .brand {
-    display: block;
+    display: flex;
     flex: 1;
   }
 
@@ -1133,10 +1157,6 @@ span {
     padding: var(--spaceXl) var(--space3xl) 0;
     background: none;
     border-bottom: 0;
-  }
-
-  .auth-header .brand {
-    font: var(--typeTitleDialog);
   }
 
   .auth-main {

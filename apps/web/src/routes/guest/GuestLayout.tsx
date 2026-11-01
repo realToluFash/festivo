@@ -1,6 +1,6 @@
-import { useTranslation } from 'react-i18next';
 import { Outlet, useParams } from 'react-router';
 
+import { Brand } from '../../components/Brand.tsx';
 import { LanguagePicker } from '../../components/LanguagePicker.tsx';
 import { InvalidInvitation } from './InvalidInvitation.tsx';
 
@@ -20,13 +20,12 @@ import { InvalidInvitation } from './InvalidInvitation.tsx';
 const TOKEN_SHAPE = /^[A-Za-z0-9_-]{16,128}$/;
 
 export function GuestLayout() {
-  const { t } = useTranslation();
   const { token } = useParams<{ token: string }>();
 
   return (
     <div className="guest">
       <header className="public-header">
-        <span className="brand">{t('app.name')}</span>
+        <Brand />
         <LanguagePicker />
       </header>
 

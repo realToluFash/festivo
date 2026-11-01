@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router';
 
 import { followSavedLanguage } from '../../accountLanguage.ts';
+import { Brand } from '../../components/Brand.tsx';
 import { CreateOrganisation } from '../../components/CreateOrganisation.tsx';
 import { ErrorBoundary } from '../../components/ErrorBoundary.tsx';
 import { LanguagePicker } from '../../components/LanguagePicker.tsx';
@@ -191,7 +192,7 @@ function Shell() {
       <div className="no-organisation-page">
         <SkipLink />
         <header className="public-header">
-          <span className="brand">{t('app.name')}</span>
+          <Brand />
           <LanguagePicker automatic={false} />
         </header>
         {atAccount ? (
@@ -243,7 +244,7 @@ function Shell() {
 
       <aside className="shell-sidebar" inert={menuOpen}>
         <div className="shell-brand-row">
-          <div className="brand">{t('app.name')}</div>
+          <Brand lockup />
           <NotificationsBell userId={session.userId} />
         </div>
 
@@ -439,7 +440,7 @@ function ShellMenu({
         >
           ✕
         </button>
-        <div className="brand">{t('app.name')}</div>
+        <Brand />
         <ShellLinks onFollow={onClose} />
       </div>
     </>
