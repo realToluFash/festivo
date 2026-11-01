@@ -1,0 +1,10 @@
+# sc-23330: the app frame's title is the wordmark, at ${ORIENT}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible: 'Soirely'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: rail
