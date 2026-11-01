@@ -684,3 +684,10 @@ startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the sa
   (`timeline.*`); the filter reads "Events and milestones" | "Events only". A range is
   "{{from}} to {{to}}" in words around two `formatWallDay` values, since Hermes has no
   `formatRange`.
+- **1 Nov 2026. Subscribing to the Calendar** (sc-25960 for sc-3626, `calendarFeed.*`, web and
+  app; `messages:calendar_feed.*`; `messages+intl-icu:limits.calendar_feed`). The link is "your
+  private link", reset (never "regenerate" or "revoke"). Two errors lost their contractions:
+  "Your link did not load. Try again.", the house "did not load", and "Could not copy here."
+  `confirmBody` keeps "you'll": it explains, it does not refuse. The feed's status words are the
+  Events list's (Draft, Live, Paused, Finished) plus "Called off" and "Deleted", each a word
+  about the event.

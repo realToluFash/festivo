@@ -208,13 +208,13 @@
     "timeline.event_starts": "{name} commence",
     "timeline.event_ends": "{name} se termine",
     "timeline.event_called_off": "Annulation : {name}",
-    "calendar_feed.status.draft": "Draft",
-    "calendar_feed.status.live": "Live",
-    "calendar_feed.status.paused": "Paused",
-    "calendar_feed.status.finished": "Finished",
-    "calendar_feed.status.called_off": "Called off",
-    "calendar_feed.status.deleted": "Deleted",
-    "calendar_feed.paused_summary": "{name} (paused)",
-    "calendar_feed.status_line": "Status: {status}",
-    "calendar_feed.open_line": "Open in Soirely: {link}"
+    "calendar_feed.status.draft": "Brouillon",
+    "calendar_feed.status.live": "Publié",
+    "calendar_feed.status.paused": "En pause",
+    "calendar_feed.status.finished": "Terminé",
+    "calendar_feed.status.called_off": "Annulé",
+    "calendar_feed.status.deleted": "Supprimé",
+    "calendar_feed.paused_summary": "{name} (en pause)",
+    "calendar_feed.status_line": "Statut : {status}",
+    "calendar_feed.open_line": "Ouvrir dans Soirely : {link}"
 }
