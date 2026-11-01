@@ -8,7 +8,6 @@ import { dateLocale } from '../i18n/index.ts';
 import { offButton } from '../offButton.ts';
 import { focusWhereSent, offField } from '../offField.ts';
 import type { ForgotFrom } from '../forgotFrom.ts';
-import { AuthRow } from './AuthRow.tsx';
 import { FieldError } from './FieldError.tsx';
 
 type Mode = 'app' | 'recovery';
@@ -164,7 +163,7 @@ export function SecondFactorStep({
             {mode === 'app' ? t('twoFactor.code') : t('twoFactor.recoveryCode')}
           </label>
           <input
-            className={inputClass(mode, error != null)}
+            className={error == null ? 'input input-figures' : 'input input-figures input-wrong'}
             id="code"
             name="code"
             type="text"
@@ -200,31 +199,27 @@ export function SecondFactorStep({
         </button>
       </form>
 
-      <AuthRow onClick={() => switchTo(mode === 'app' ? 'recovery' : 'app')}>
+      <button
+        className="link-button"
+        type="button"
+        onClick={() => switchTo(mode === 'app' ? 'recovery' : 'app')}
+      >
         {mode === 'app' ? t('twoFactor.useRecovery') : t('twoFactor.useApp')}
-      </AuthRow>
+      </button>
 
-      {onLostBoth != null && <AuthRow onClick={onLostBoth}>{t('twoFactor.lostBoth')}</AuthRow>}
-
-      <div className="auth-footnote auth-footnote-plain auth-footnote-centred">
-        <Link className="link-button" to="/sign-in">
-          {t('twoFactor.back')}
-        </Link>
-      </div>
-
-      {onLostBoth == null && (
-        <p className="auth-footnote auth-footnote-plain auth-footnote-centred">
+      {onLostBoth != null && (
+        <button className="link-button" type="button" onClick={onLostBoth}>
           {t('twoFactor.lostBoth')}
-        </p>
+        </button>
       )}
+
+      <Link className="link-button" to="/sign-in">
+        {t('twoFactor.back')}
+      </Link>
+
+      {onLostBoth == null && <p className="auth-footnote">{t('twoFactor.lostBoth')}</p>}
     </>
   );
-}
-
-function inputClass(mode: Mode, wrong: boolean): string {
-  const field = mode === 'app' ? 'code-input' : 'input input-figures';
-
-  return wrong ? `${field} input-wrong` : field;
 }
 
 function statusFrom(refusal: unknown, mode: Mode, t: (key: string) => string): Status {

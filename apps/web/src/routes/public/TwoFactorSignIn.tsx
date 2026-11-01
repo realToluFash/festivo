@@ -17,7 +17,7 @@ export function TwoFactorSignIn() {
   if (challenge?.challenge == null) return <Navigate to="/sign-in" replace />;
 
   return (
-    <AuthPage even>
+    <AuthPage>
       <SecondFactorStep
         intro={t('twoFactor.intro', { email: challenge.email })}
         recoveryIntro={t('twoFactor.recoveryIntro')}
