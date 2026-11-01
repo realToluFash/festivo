@@ -6,15 +6,16 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { DESTINATION_HREF } from '../kit/appNav.ts';
+import { EVENT_AREA, eventHref } from '../kit/eventNav.ts';
 import { formTitles } from '../kit/formTitles.ts';
 import { goUpToEvent } from '../kit/upToEvent.ts';
 import { markSaved } from '../kit/eventSaved.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
-import { AppFrame } from './AppFrame.tsx';
+import { AppFrame, type InsideEvent } from './AppFrame.tsx';
 import { bodyEdges } from './bodyEdges.ts';
-import { QuietButton, SecondaryButton } from './Buttons.tsx';
+import { PrimaryButton, QuietButton } from './Buttons.tsx';
 import { EventForm, readTagged } from './EventForm.tsx';
 import { Notice } from './Notice.tsx';
 import { readOut } from './ReadOut.tsx';
@@ -24,10 +25,6 @@ import { Arrived, Skeleton } from './Skeleton.tsx';
 import type { EditAt } from '../kit/eventNav.ts';
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'notFound' } | TaggedEvent;
-
-function eventHref(eventId: string): `/events/${string}` {
-  return `/events/${encodeURIComponent(eventId)}`;
-}
 
 /** Cancel asks first while anything is typed; a form opened by a link has nothing behind it to go back to. */
 function leave(to: '/events' | `/events/${string}`): void {
@@ -92,7 +89,21 @@ export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt |
   if (organisation != null && !manages) return <Redirect href={eventHref(eventId)} />;
 
   return (
-    <FormFrame kind={kind} title={t('eventEdit.title')} onCancel={() => leave(eventHref(eventId))}>
+    <FormFrame
+      kind={kind}
+      title={t('eventEdit.title')}
+      onCancel={() => leave(eventHref(eventId))}
+      inEvent={{
+        area: 'overview',
+        onArea: (area) =>
+          area === 'overview'
+            ? goUpToEvent(navigation, router, eventId)
+            : router.dismissTo({
+                pathname: '/events/[id]',
+                params: { id: eventId, [EVENT_AREA]: area },
+              }),
+      }}
+    >
       {'kind' in load && load.kind === 'loading' && (
         <Skeleton
           words={t('eventsScreen.loadingEvent')}
@@ -111,7 +122,7 @@ export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt |
             body={t('eventsScreen.failedLoad')}
             announce
           />
-          <SecondaryButton
+          <PrimaryButton
             label={t('eventsScreen.retry')}
             onPress={() => {
               setLoad({ kind: 'loading' });
@@ -160,6 +171,7 @@ export function FormFrame({
   shortTitle,
   onCancel,
   cancelOff = false,
+  inEvent,
   children,
 }: {
   kind: LayoutKind;
@@ -167,6 +179,7 @@ export function FormFrame({
   shortTitle?: string;
   onCancel: () => void;
   cancelOff?: boolean;
+  inEvent?: InsideEvent;
   children: React.ReactNode;
 }) {
   const { t } = useTranslation();
@@ -183,6 +196,7 @@ export function FormFrame({
           : undefined
       }
       backInBody={!cancelOff}
+      inEvent={inEvent}
     >
       <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
         {heading != null && (
