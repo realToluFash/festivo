@@ -173,6 +173,114 @@ span {
   }
 }
 
+/* ── The offline band (sc-22586) ──────────────────────────────────────────── */
+
+/* Full width under the header: it cancels the content column's own padding, and takes its own room. */
+.offline-band {
+  margin: calc(-1 * var(--shellBlock)) calc(-1 * var(--shellInline)) var(--shellBlock);
+}
+
+.offline-band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceMd) var(--spaceXl);
+  min-height: var(--sizeHit);
+  padding: var(--spaceLg) var(--space5xl);
+  background: var(--colorAttentionTint);
+  border-bottom: 1px solid var(--colorAttentionBorder);
+  color: var(--colorAttentionText);
+  animation: offline-band-in var(--motionBase) var(--motionEase);
+}
+
+.offline-band-words {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  margin: 0;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.offline-band-mark {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+
+.offline-band-retry {
+  flex: none;
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceXl);
+  font: var(--typeButton);
+  letter-spacing: var(--typeButtonTracking);
+  white-space: nowrap;
+  color: var(--colorAttentionText);
+  background: transparent;
+  border: 1px solid currentcolor;
+  border-radius: var(--radiusPill);
+  cursor: pointer;
+}
+
+.offline-band-retry:hover {
+  background: var(--colorAttentionWash);
+}
+
+.offline-refreshing {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  color: var(--colorInkSecondary);
+}
+
+.offline-refreshing-mark {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid currentcolor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: offline-turn 900ms linear infinite;
+}
+
+@keyframes offline-band-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes offline-turn {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .offline-band {
+    animation-duration: var(--motionFast);
+    animation-name: offline-band-fade;
+  }
+
+  .offline-refreshing-mark {
+    animation: none;
+  }
+}
+
+@keyframes offline-band-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (width <= 40rem) {
+  .offline-band {
+    padding-inline: var(--spaceXl);
+  }
+}
+
 /* ── The signed-in shell ──────────────────────────────────────────────────── */
 
 .shell {

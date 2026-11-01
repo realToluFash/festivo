@@ -12,6 +12,7 @@ import { Pending } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { LinkedNotice } from '../../components/LinkedNotice.tsx';
 import { NotificationsBell } from '../../components/NotificationsBell.tsx';
+import { OfflineBand, OfflineProvider } from '../../components/OfflineBand.tsx';
 import { SignInRulesNotices } from '../../components/SignInRulesNotices.tsx';
 import { AccessPaused } from '../../components/AccessPaused.tsx';
 import { TwoFactorOverdue } from '../../components/TwoFactorOverdue.tsx';
@@ -239,110 +240,113 @@ function Shell() {
   }
 
   return (
-    <div className="shell">
-      <SkipLink inert={menuOpen} />
+    <OfflineProvider>
+      <div className="shell">
+        <SkipLink inert={menuOpen} />
 
-      <aside className="shell-sidebar" inert={menuOpen}>
-        <div className="shell-brand-row">
-          <Brand lockup />
-          <NotificationsBell userId={session.userId} />
-        </div>
+        <aside className="shell-sidebar" inert={menuOpen}>
+          <div className="shell-brand-row">
+            <Brand lockup />
+            <NotificationsBell userId={session.userId} />
+          </div>
 
-        {organisation != null && (
-          <OrganisationSwitcher
-            current={organisation}
-            organisations={session.organisations}
-            waiting={waiting}
-            offer={offer}
+          {organisation != null && (
+            <OrganisationSwitcher
+              current={organisation}
+              organisations={session.organisations}
+              waiting={waiting}
+              offer={offer}
+              email={session.email}
+              paused={session.pausedIn != null}
+              opened={choosing}
+              onSwitch={switchInto}
+              onCreate={() => setCreating(true)}
+            />
+          )}
+
+          <button
+            type="button"
+            className="shell-menu-button"
+            aria-haspopup="dialog"
+            aria-expanded={menuOpen}
+            aria-controls={menuOpen ? menuId : undefined}
+            onClick={() => setMenuOpen(true)}
+          >
+            <svg
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              aria-hidden="true"
+            >
+              <path d="M2 4h12M2 8h12M2 12h12" strokeLinecap="round" />
+            </svg>
+            {t('nav.menu')}
+          </button>
+
+          <div ref={sidebarLinks} className="shell-links">
+            <ShellLinks />
+          </div>
+        </aside>
+
+        <main id="content" className="shell-content" inert={menuOpen}>
+          <OfflineBand />
+          <LinkedNotice />
+          {organisation != null && session.pausedIn == null && (
+            <SignInRulesNotices key={organisation.id} organisation={organisation} />
+          )}
+          {/* Said on the page it happened on, and gone once the person moves on. */}
+          {switched != null && switched.at === pathname && switched.id === organisation?.id && (
+            <div
+              className="notice notice-done"
+              role={switched.takesFocus === true ? undefined : 'status'}
+              ref={switchedNotice}
+              tabIndex={switched.takesFocus === true ? -1 : undefined}
+            >
+              <span className="mark mark-done" aria-hidden="true">
+                ✓
+              </span>
+              <p className="notice-title" data-notice-lead tabIndex={-1}>
+                {t('switcher.switched', { name: switched.name })}
+              </p>
+            </div>
+          )}
+
+          <ErrorBoundary>
+            {session.pausedIn != null && !atAccount ? (
+              <AccessPaused
+                paused={session.pausedIn}
+                others={session.organisations}
+                onSwitch={(next) => {
+                  switchOrganisation(next.id);
+                  setSwitched({ id: next.id, name: next.name, at: pathname, takesFocus: true });
+                  arriveAtSwitched();
+                }}
+                onChoose={() => setChoosing((times) => times + 1)}
+              />
+            ) : organisation != null && overdue && !atAccount ? (
+              <TwoFactorOverdue organisation={organisation} />
+            ) : (
+              <Outlet />
+            )}
+          </ErrorBoundary>
+        </main>
+
+        {menuOpen && <ShellMenu id={menuId} onClose={closeMenu} returnFocus={returnFromMenu} />}
+
+        {creating && (
+          <CreateOrganisation
             email={session.email}
-            paused={session.pausedIn != null}
-            opened={choosing}
-            onSwitch={switchInto}
-            onCreate={() => setCreating(true)}
+            onCancel={closeCreate}
+            onCreated={(created) => {
+              setCreating(false);
+              joinOrganisation(created);
+              switchInto(created);
+            }}
           />
         )}
-
-        <button
-          type="button"
-          className="shell-menu-button"
-          aria-haspopup="dialog"
-          aria-expanded={menuOpen}
-          aria-controls={menuOpen ? menuId : undefined}
-          onClick={() => setMenuOpen(true)}
-        >
-          <svg
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            aria-hidden="true"
-          >
-            <path d="M2 4h12M2 8h12M2 12h12" strokeLinecap="round" />
-          </svg>
-          {t('nav.menu')}
-        </button>
-
-        <div ref={sidebarLinks} className="shell-links">
-          <ShellLinks />
-        </div>
-      </aside>
-
-      <main id="content" className="shell-content" inert={menuOpen}>
-        <LinkedNotice />
-        {organisation != null && session.pausedIn == null && (
-          <SignInRulesNotices key={organisation.id} organisation={organisation} />
-        )}
-        {/* Said on the page it happened on, and gone once the person moves on. */}
-        {switched != null && switched.at === pathname && switched.id === organisation?.id && (
-          <div
-            className="notice notice-done"
-            role={switched.takesFocus === true ? undefined : 'status'}
-            ref={switchedNotice}
-            tabIndex={switched.takesFocus === true ? -1 : undefined}
-          >
-            <span className="mark mark-done" aria-hidden="true">
-              ✓
-            </span>
-            <p className="notice-title" data-notice-lead tabIndex={-1}>
-              {t('switcher.switched', { name: switched.name })}
-            </p>
-          </div>
-        )}
-
-        <ErrorBoundary>
-          {session.pausedIn != null && !atAccount ? (
-            <AccessPaused
-              paused={session.pausedIn}
-              others={session.organisations}
-              onSwitch={(next) => {
-                switchOrganisation(next.id);
-                setSwitched({ id: next.id, name: next.name, at: pathname, takesFocus: true });
-                arriveAtSwitched();
-              }}
-              onChoose={() => setChoosing((times) => times + 1)}
-            />
-          ) : organisation != null && overdue && !atAccount ? (
-            <TwoFactorOverdue organisation={organisation} />
-          ) : (
-            <Outlet />
-          )}
-        </ErrorBoundary>
-      </main>
-
-      {menuOpen && <ShellMenu id={menuId} onClose={closeMenu} returnFocus={returnFromMenu} />}
-
-      {creating && (
-        <CreateOrganisation
-          email={session.email}
-          onCancel={closeCreate}
-          onCreated={(created) => {
-            setCreating(false);
-            joinOrganisation(created);
-            switchInto(created);
-          }}
-        />
-      )}
-    </div>
+      </div>
+    </OfflineProvider>
   );
 }
 

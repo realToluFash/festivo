@@ -3,6 +3,11 @@
     "name": "Soirely",
     "skipToContent": "Ir al contenido"
   },
+  "offline": {
+    "asOf": "Offline · as of {{time}}",
+    "asOfDay": "Offline · as of {{day}} at {{time}}",
+    "refreshing": "Refreshing…"
+  },
   "release": {
     "updated": "Soirely se ha actualizado.",
     "reload": "Recargar"
