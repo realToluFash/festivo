@@ -684,6 +684,27 @@
     "settings": "Paramètres",
     "organisation": "Organisation"
   },
+  "eventNav": {
+    "overview": "Overview",
+    "guests": "Guests",
+    "menu": "Menu",
+    "seating": "Seating",
+    "messages": "Messages",
+    "schedule": "Schedule",
+    "staff": "Staff",
+    "budget": "Budget",
+    "reports": "Reports",
+    "more": "More",
+    "closeMore": "Close More",
+    "guestsComing": "The guest list for this event is coming.",
+    "menuComing": "The menu for this event is coming.",
+    "seatingComing": "The seating plan for this event is coming.",
+    "messagesComing": "Messages for this event are coming.",
+    "scheduleComing": "The schedule for this event is coming.",
+    "staffComing": "The staff for this event are coming.",
+    "budgetComing": "The budget for this event is coming.",
+    "reportsComing": "Reports for this event are coming."
+  },
   "settings": {
     "title": "Paramètres",
     "yourAccount": "Votre compte",
@@ -1448,7 +1469,6 @@
   "eventsScreen": {
     "title": "Événements",
     "back": "‹ Événements",
-    "backToEvent": "‹ Événement",
     "loading": "Chargement des événements…",
     "refreshing": "Actualisation…",
     "draft": "Brouillon",
@@ -1460,7 +1480,6 @@
     "firstRunStepOpen": "Ouvrez-le depuis cette liste pour poursuivre l’organisation.",
     "firstRunCreate": "Créer un événement",
     "firstRunAskOwner": "Les événements créés par votre organisation s’afficheront ici. Pour en créer un, adressez-vous à une personne ayant le rôle Propriétaire.",
-    "choose": "Choisissez un événement",
     "loadingEvent": "Chargement de l’événement…",
     "when": "{{range}} · {{timeZone}}",
     "notFound": "Cet événement n’est pas disponible",
@@ -1480,9 +1499,6 @@
     "emptyPastTitle": "Aucun événement terminé",
     "emptyPast": "Les événements terminés restent ici : vous pouvez les revoir ou vous en servir pour préparer le suivant.",
     "typeAndPlace": "{{type}} · {{place}}",
-    "dateAway": "{{date}} · {{distance}}",
-    "startedToday": "Aujourd’hui · a commencé à {{time}} {{timeZone}}",
-    "startedOn": "A commencé le {{date}} · {{time}} {{timeZone}}",
     "calledOffOn": "Annulé le {{date}}",
     "nextUp": "Prochaine étape : {{title}}",
     "showMore": "Afficher plus",
@@ -1490,7 +1506,47 @@
     "moreShown_one": "{{count, number}} événement terminé supplémentaire affiché.",
     "moreShown_other": "{{count, number}} événements terminés supplémentaires affichés.",
     "moreFailed": "Les événements terminés suivants n’ont pas pu être chargés. Vérifiez votre connexion, puis réessayez.",
-    "moreShown_many": "{{count, number}} d’événements terminés supplémentaires affichés."
+    "moreShown_many": "{{count, number}} d’événements terminés supplémentaires affichés.",
+    "summaryHappeningNow_one": "{{count, number}} happening now",
+    "summaryHappeningNow_other": "{{count, number}} happening now",
+    "summaryHappeningNow_many": "{{count, number}} happening now",
+    "summaryUpcoming_one": "{{count, number}} upcoming",
+    "summaryUpcoming_other": "{{count, number}} upcoming",
+    "summaryUpcoming_many": "{{count, number}} upcoming",
+    "summaryDrafts_one": "{{count, number}} draft",
+    "summaryDrafts_other": "{{count, number}} drafts",
+    "summaryDrafts_many": "{{count, number}} drafts",
+    "summaryJoin": "{{first}} · {{rest}}",
+    "tileUpcoming": "Upcoming events",
+    "tileGuestsInvited": "Guests invited",
+    "tileRepliesIn": "Replies in",
+    "tileNeedAttention": "Need attention",
+    "comingSoon": "Coming soon",
+    "columnGuests": "Guests",
+    "columnReplies": "Replies",
+    "arrived": "Arrived",
+    "course": "Course",
+    "nextCue": "Next cue",
+    "days": "{{first}} to {{last}}",
+    "timeAndZone": "{{time}} · {{timeZone}}",
+    "nextMakeLive": "Guests can’t be invited until this event is live.",
+    "nextChangeDates": "This event’s end has passed, so it cannot be made live. Change its dates first.",
+    "nextResume": "Paused. Guests can’t reply or change anything until you resume it.",
+    "footer_one": "{{count, number}} event · Sorted by date",
+    "footer_other": "{{count, number}} events · Sorted by date",
+    "footer_many": "{{count, number}} events · Sorted by date"
+  },
+  "eventPage": {
+    "venue": "Lieu",
+    "venueToBeConfirmed": "Lieu à confirmer",
+    "invited": "Invités",
+    "details": "Détails",
+    "dates": "Dates",
+    "manage": "Gérer",
+    "tileComing": "Présents",
+    "tileMealPicks": "Menus choisis",
+    "tileSeated": "Placés",
+    "tileBudgetUsed": "Budget utilisé"
   },
   "eventForm": {
     "title": "Nouvel événement",
@@ -1617,7 +1673,8 @@
     "hostEmpty": "Indiquez l’hôte pour publier cet événement.",
     "hostExplainer": "Les invités lisent ce nom sur leur invitation et sur la page de l’événement. Écrivez-le tel que vous voulez qu’ils le voient.",
     "notSavedChanged": "Non enregistré. Quelqu’un d’autre a modifié cet événement depuis que vous l’avez ouvert.",
-    "hostsNow": "Hôtes actuels, tels que les invités les verront :"
+    "hostsNow": "Hôtes actuels, tels que les invités les verront :",
+    "making": "Publication…"
   },
   "eventHosts": {
     "heading": "Hôtes",
@@ -1651,7 +1708,12 @@
     "notEnded": "Non terminé.",
     "alreadyOver": "Cet événement est déjà terminé.",
     "calledOffNotice": "Annulé le {{date}}, avant son début. Les invités qui ouvrent leur lien voient qu’il n’aura pas lieu.",
-    "close": "Fermer"
+    "close": "Fermer",
+    "callOffOpen": "Annuler l’événement…",
+    "endNowOpen": "Terminer maintenant…",
+    "callingOff": "Annulation…",
+    "ending": "Fin en cours…",
+    "callOffFailed": "Non annulé. Réessayez dans un instant."
   },
   "eventPause": {
     "pause": "Mettre en pause",
@@ -1663,10 +1725,12 @@
     "notPaused": "Non mis en pause.",
     "notice": "En pause. Les invités ne peuvent ni répondre ni rien modifier jusqu’à la reprise. L’accueil des invités et le service continuent.",
     "resume": "Reprendre",
-    "resumeFailed": "Non repris. Réessayez dans un instant."
+    "resumeFailed": "Non repris. Réessayez dans un instant.",
+    "pausing": "Mise en pause…",
+    "resuming": "Reprise…"
   },
   "eventDelete": {
-    "open": "Supprimer l’événement",
+    "open": "Supprimer l’événement…",
     "note": "Supprime l’événement et tout son contenu pour toute votre équipe. Les invités qui ouvrent leur lien voient qu’il n’est plus disponible.",
     "title": "Supprimer {{event}} ?",
     "draftBody": "C’est un brouillon dont la liste d’invités est vide. Il sera supprimé pour toute votre équipe.",
@@ -1680,7 +1744,8 @@
     "keep": "Le conserver",
     "delete": "Supprimer",
     "failed": "La demande n’a pas abouti, donc rien n’a été modifié. Réessayez.",
-    "deleted": "L’événement {{event}} a été supprimé."
+    "deleted": "L’événement {{event}} a été supprimé.",
+    "deleting": "Suppression…"
   },
   "eventDuplicate": {
     "open": "Dupliquer",

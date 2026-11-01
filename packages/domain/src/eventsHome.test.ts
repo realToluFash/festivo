@@ -3,9 +3,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   type HomeEvent,
   cardDate,
+  eventDays,
   eventsHome,
   forgetEventsTab,
+  nextStep,
   rememberEventsTab,
+  rememberTabHolding,
   rememberedEventsTab,
   withPastPage,
 } from './eventsHome.ts';
@@ -212,6 +215,19 @@ describe('the tab chosen', () => {
     expect(rememberedEventsTab('org_2')).toBe('upcoming');
   });
 
+  it('opens on the tab that holds the event last opened, and as it was after one Happening now (sc-22103)', () => {
+    rememberEventsTab('org_1', 'past');
+    rememberTabHolding('org_1', 'draft');
+    expect(rememberedEventsTab('org_1')).toBe('drafts');
+
+    rememberTabHolding('org_1', 'paused');
+    expect(rememberedEventsTab('org_1')).toBe('upcoming');
+
+    rememberTabHolding('org_1', 'finished');
+    rememberTabHolding('org_1', 'happening_now');
+    expect(rememberedEventsTab('org_1')).toBe('past');
+  });
+
   it('opens on Upcoming once forgotten', () => {
     rememberEventsTab('org_1', 'drafts');
     forgetEventsTab();
@@ -299,5 +315,68 @@ describe('cardDate', () => {
       kind: 'dateAway',
       startsAt: ended.startsAt,
     });
+  });
+});
+
+describe('nextStep', () => {
+  const NOW = new Date('2026-11-01T12:00:00Z');
+  const ends = {
+    at: '2026-11-15T02:00:00+01:00',
+    title: 'Gala ends',
+    note: null,
+    owner: 'event' as const,
+    area: 'event',
+    action: null,
+  };
+  const draft = {
+    status: 'draft' as const,
+    endsAt: '2026-11-15T02:00:00+01:00',
+    milestones: [ends],
+  };
+
+  it('asks a Draft to be made live, or its dates changed once its end has passed', () => {
+    expect(nextStep(draft, 'draft', NOW)).toEqual({ kind: 'makeLive' });
+    expect(nextStep({ ...draft, endsAt: '2026-10-09T23:30:00+01:00' }, 'draft', NOW)).toEqual({
+      kind: 'changeDates',
+    });
+  });
+
+  it('asks a Paused event to be resumed', () => {
+    expect(nextStep({ ...draft, status: 'paused' }, 'paused', NOW)).toEqual({ kind: 'resume' });
+  });
+
+  it('names the next milestone of any other event, and nothing once none is next', () => {
+    const live = { ...draft, status: 'live' as const };
+
+    expect(nextStep(live, 'live', NOW)).toEqual({ kind: 'nextUp', milestone: ends });
+    expect(nextStep({ ...live, milestones: [] }, 'happening_now', NOW)).toBeNull();
+    expect(nextStep({ ...live, status: 'ended' }, 'finished', NOW)).toBeNull();
+  });
+});
+
+describe('eventDays', () => {
+  const lagos = {
+    status: 'live' as const,
+    startsAt: '2026-10-31T19:00:00+01:00',
+    endsAt: '2026-10-31T23:30:00+01:00',
+    timeZone: 'Africa/Lagos',
+    concludedAt: null,
+  };
+
+  it('reads one day in the event’s own zone, wherever the reader is', () => {
+    expect(eventDays({ ...lagos, endsAt: '2026-11-01T00:30:00+02:00' })).toEqual({
+      kind: 'oneDay',
+      startsAt: lagos.startsAt,
+    });
+  });
+
+  it('reads the first and last day of one that runs past midnight there', () => {
+    expect(eventDays({ ...lagos, endsAt: '2026-11-01T02:00:00+01:00' }).kind).toBe('days');
+  });
+
+  it('reads when it was called off', () => {
+    expect(
+      eventDays({ ...lagos, status: 'ended', concludedAt: '2026-09-30T10:00:00+01:00' }),
+    ).toEqual({ kind: 'calledOffOn', concludedAt: '2026-09-30T10:00:00+01:00' });
   });
 });

@@ -17,10 +17,10 @@ import { type DeleteAnswer, deleteEvent } from '../kit/eventDelete.ts';
 import { refusalTitle } from '../kit/refusal.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { DestructiveButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { DestructiveButton, QuietButton } from './Buttons.tsx';
 import { Field, FieldError, TextField, focusChecked, focusRefused } from './Field.tsx';
 import { Notice } from './Notice.tsx';
-import { ReadOut } from './ReadOut.tsx';
+import { ReadOut, useSendingWords } from './ReadOut.tsx';
 import { SETTLED_MS } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Sheet, SheetActions } from './Sheet.tsx';
@@ -61,14 +61,11 @@ export function DeleteEventSection({
 
   return (
     <View style={styles.section} testID="events.deleteSection">
-      <Text size={tokens.typeButton.size} weight="semibold">
-        {t('eventDelete.open')}
-      </Text>
       <Text size={tokens.typeSmall.size} muted>
         {t('eventDelete.note')}
       </Text>
       {openFailed != null && <FieldError message={openFailed} />}
-      <SecondaryButton
+      <DestructiveButton
         ref={opener}
         label={t('eventDelete.open')}
         onPress={open}
@@ -114,6 +111,7 @@ function Confirm({
 }) {
   const { t } = useTranslation();
   const name = event.name;
+  useSendingWords(pending ? t('eventDelete.deleting') : undefined);
   const title = useRef<TextHandle>(null);
   const body = useRef<ScrollViewInstance>(null);
   const input = useRef<TextInputInstance>(null);
@@ -186,7 +184,7 @@ function Confirm({
   );
   const go = (
     <DestructiveButton
-      label={t('eventDelete.delete')}
+      label={pending ? t('eventDelete.deleting') : t('eventDelete.delete')}
       onPress={() => void submit()}
       busy={pending}
       testID="events.deleteGo"

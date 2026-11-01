@@ -6,27 +6,25 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { DESTINATION_HREF } from '../kit/appNav.ts';
+import { eventHref } from '../kit/eventNav.ts';
 import { formTitles } from '../kit/formTitles.ts';
-import { goUpToEvent } from '../kit/upToEvent.ts';
+import { goToArea, goUpToEvent } from '../kit/upToEvent.ts';
 import { markSaved } from '../kit/eventSaved.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
-import { AppFrame } from './AppFrame.tsx';
+import { AppFrame, type InsideEvent } from './AppFrame.tsx';
 import { bodyEdges } from './bodyEdges.ts';
-import { QuietButton, SecondaryButton } from './Buttons.tsx';
+import { PrimaryButton, QuietButton } from './Buttons.tsx';
 import { EventForm, readTagged } from './EventForm.tsx';
 import { Notice } from './Notice.tsx';
 import { readOut } from './ReadOut.tsx';
 import { Screen } from './Screen.tsx';
 import { Text } from './Text.tsx';
 import { Arrived, Skeleton } from './Skeleton.tsx';
+import type { EditAt } from '../kit/eventNav.ts';
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'notFound' } | TaggedEvent;
-
-function eventHref(eventId: string): `/events/${string}` {
-  return `/events/${encodeURIComponent(eventId)}`;
-}
 
 /** Cancel asks first while anything is typed; a form opened by a link has nothing behind it to go back to. */
 function leave(to: '/events' | `/events/${string}`): void {
@@ -63,7 +61,7 @@ export function NewEventScreen() {
 }
 
 /** An event's page > Edit details, `App event form` state Edit details (sc-3595). */
-export function EditEventScreen({ eventId, toHosts }: { eventId: string; toHosts: boolean }) {
+export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt | undefined }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
   const { organisation } = useSignedIn();
@@ -91,7 +89,18 @@ export function EditEventScreen({ eventId, toHosts }: { eventId: string; toHosts
   if (organisation != null && !manages) return <Redirect href={eventHref(eventId)} />;
 
   return (
-    <FormFrame kind={kind} title={t('eventEdit.title')} onCancel={() => leave(eventHref(eventId))}>
+    <FormFrame
+      kind={kind}
+      title={t('eventEdit.title')}
+      onCancel={() => leave(eventHref(eventId))}
+      inEvent={{
+        area: 'overview',
+        onArea: (area) =>
+          area === 'overview'
+            ? goUpToEvent(navigation, router, eventId)
+            : goToArea(navigation, router, eventId, area),
+      }}
+    >
       {'kind' in load && load.kind === 'loading' && (
         <Skeleton
           words={t('eventsScreen.loadingEvent')}
@@ -110,7 +119,7 @@ export function EditEventScreen({ eventId, toHosts }: { eventId: string; toHosts
             body={t('eventsScreen.failedLoad')}
             announce
           />
-          <SecondaryButton
+          <PrimaryButton
             label={t('eventsScreen.retry')}
             onPress={() => {
               setLoad({ kind: 'loading' });
@@ -135,7 +144,7 @@ export function EditEventScreen({ eventId, toHosts }: { eventId: string; toHosts
             kind={kind}
             organisation={organisation}
             opened={load}
-            toHosts={toHosts && reads === 0}
+            arriveAt={reads === 0 ? at : undefined}
             onCreated={() => {}}
             onSaved={(outcome) => {
               if (outcome === 'saved') markSaved(eventId);
@@ -159,6 +168,7 @@ export function FormFrame({
   shortTitle,
   onCancel,
   cancelOff = false,
+  inEvent,
   children,
 }: {
   kind: LayoutKind;
@@ -166,6 +176,7 @@ export function FormFrame({
   shortTitle?: string;
   onCancel: () => void;
   cancelOff?: boolean;
+  inEvent?: InsideEvent;
   children: React.ReactNode;
 }) {
   const { t } = useTranslation();
@@ -182,6 +193,7 @@ export function FormFrame({
           : undefined
       }
       backInBody={!cancelOff}
+      inEvent={inEvent}
     >
       <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
         {heading != null && (

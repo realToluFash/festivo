@@ -1,42 +1,35 @@
 import { type ListedEvent } from '@soirely/api-client';
 import {
   EVENTS_TABS,
+  type EventPhase,
   type EventsTab,
-  cardDate,
+  eventDays,
   eventsHome,
   formatEventClock,
   formatEventShortDay,
   formatEventWeekday,
-  nextUp,
+  nextStep,
   rememberEventsTab,
   rememberedEventsTab,
   serverClock,
   shownPhase,
   withPastPage,
 } from '@soirely/domain';
-import {
-  type KeyboardEvent,
-  type ReactNode,
-  type RefObject,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { Skeleton } from '../../../components/Skeleton.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
 import { useServerNow } from '../../../serverNow.ts';
 import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
-import { EventCoverImage } from './EventCoverImage.tsx';
 import { typeLabel } from './eventTypes.ts';
-import { StatusPill } from './MakeLive.tsx';
 import { FirstRun } from './FirstRun.tsx';
+import { StatusPill } from './MakeLive.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
-import { distanceWords } from './distanceWords.ts';
-import { Skeleton } from '../../../components/Skeleton.tsx';
+import { Placeholder } from './Placeholder.tsx';
 
 const PAST_PAGE = 10;
 
@@ -52,6 +45,14 @@ const EMPTY: Record<EventsTab, { title: string; line: string }> = {
   past: { title: 'events.emptyPastTitle', line: 'events.emptyPast' },
 };
 
+const PLACEHOLDER_TILES = [
+  'events.tileGuestsInvited',
+  'events.tileRepliesIn',
+  'events.tileNeedAttention',
+];
+
+const NOW_FIGURES = ['events.arrived', 'events.course', 'events.nextCue'];
+
 type Load =
   | { kind: 'loading' }
   | { kind: 'failed' }
@@ -65,10 +66,8 @@ type Load =
     };
 
 export function Events() {
-  const { t } = useTranslation();
   const session = useSession();
   const organisation = session.organisation;
-  const title = useRef<HTMLHeadingElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const [deleted] = useState(() => deletedEvent(location.state));
@@ -84,39 +83,24 @@ export function Events() {
 
   if (organisation == null) return null;
 
-  const creates = can(session, 'events.create');
-
   return (
-    <div className="events">
-      <div className="events-head">
-        <h1 ref={title} tabIndex={-1}>
-          {t('events.title')}
-        </h1>
-        {creates && (
-          <Link className="button button-primary" to="/app/events/new">
-            {t('events.newEvent')}
-          </Link>
-        )}
-      </div>
-      {deleted != null && <OutcomeLine words={t('eventDelete.deleted', { event: deleted })} />}
-      <EventsOf
-        key={organisation.id}
-        organisationId={organisation.id}
-        creates={creates}
-        title={title}
-      />
-    </div>
+    <EventsOf
+      key={organisation.id}
+      organisationId={organisation.id}
+      creates={can(session, 'events.create')}
+      deleted={deleted}
+    />
   );
 }
 
 function EventsOf({
   organisationId,
   creates,
-  title,
+  deleted,
 }: {
   organisationId: string;
   creates: boolean;
-  title: RefObject<HTMLHeadingElement | null>;
+  deleted: string | null;
 }) {
   const { t } = useTranslation();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
@@ -124,6 +108,7 @@ function EventsOf({
   const [more, setMore] = useState<'idle' | 'loading' | 'failed'>('idle');
   const [shown, setShown] = useState('');
   const [tab, setTab] = useState<EventsTab>(() => rememberedEventsTab(organisationId));
+  const title = useRef<HTMLHeadingElement>(null);
   const failedLine = useRef<HTMLParagraphElement>(null);
   const firstRunTitle = useRef<HTMLHeadingElement>(null);
   const home = useRef<HTMLDivElement>(null);
@@ -155,12 +140,33 @@ function EventsOf({
     };
   }, [organisationId, attempt]);
 
+  const page = (summary: string | null, body: ReactNode) => (
+    <div className="events">
+      <div className="events-head">
+        <div className="events-title">
+          <h1 ref={title} tabIndex={-1}>
+            {t('events.title')}
+          </h1>
+          {summary != null && <p className="events-summary">{summary}</p>}
+        </div>
+        {creates && (
+          <Link className="button button-primary" to="/app/events/new">
+            {t('events.newEvent')}
+          </Link>
+        )}
+      </div>
+      {deleted != null && <OutcomeLine words={t('eventDelete.deleted', { event: deleted })} />}
+      {body}
+    </div>
+  );
+
   if (load.kind === 'loading') {
-    return <Skeleton words={t('events.loading')} shape="rows" rowHeight={76} picture />;
+    return page(null, <Skeleton words={t('events.loading')} shape="rows" rowHeight={76} />);
   }
 
   if (load.kind === 'failed') {
-    return (
+    return page(
+      null,
       <div className="notice notice-broken" role={attempt > 0 ? undefined : 'alert'}>
         <span className="mark mark-broken" aria-hidden="true">
           ✕
@@ -171,7 +177,7 @@ function EventsOf({
           </p>
           <button
             type="button"
-            className="button"
+            className="button button-primary"
             onClick={() => {
               setLoad({ kind: 'loading' });
               setAttempt((n) => n + 1);
@@ -186,18 +192,33 @@ function EventsOf({
             {t('events.retry')}
           </button>
         </div>
-      </div>
+      </div>,
     );
   }
 
   if (load.unfinished.length === 0 && load.pastTotal === 0) {
-    return <FirstRun creates={creates} title={firstRunTitle} />;
+    return page(null, <FirstRun creates={creates} title={firstRunTitle} />);
   }
 
   const grouped = eventsHome(load, now, dateLocale());
   const loaded = load;
+  const counts: Record<EventsTab, number> = {
+    upcoming: grouped.upcoming.length,
+    drafts: grouped.drafts.length,
+    past: grouped.pastCount,
+  };
   const events =
     tab === 'upcoming' ? grouped.upcoming : tab === 'drafts' ? grouped.drafts : grouped.past;
+  const parts = [
+    grouped.happeningNow.length > 0 &&
+      t('events.summaryHappeningNow', { count: grouped.happeningNow.length }),
+    counts.upcoming > 0 && t('events.summaryUpcoming', { count: counts.upcoming }),
+    counts.drafts > 0 && t('events.summaryDrafts', { count: counts.drafts }),
+  ].filter((part) => part !== false);
+  const summary =
+    parts.length === 0
+      ? null
+      : parts.reduceRight((rest, first) => t('events.summaryJoin', { first, rest }));
 
   const showMore = () => {
     setMore('loading');
@@ -208,8 +229,8 @@ function EventsOf({
         itemsPerPage: PAST_PAGE,
       })
       .then(
-        (page) => {
-          const read = withPastPage(loaded, page, PAST_PAGE);
+        (next) => {
+          const read = withPastPage(loaded, next, PAST_PAGE);
 
           setLoad(read.load);
           setShown(t('events.moreShown', { count: read.added }));
@@ -219,8 +240,20 @@ function EventsOf({
       );
   };
 
-  return (
+  return page(
+    summary,
     <div className="events-home arrives" ref={home}>
+      <ul className="events-tiles">
+        <li className="events-tile">
+          <span className="events-tile-label">{t('events.tileUpcoming')}</span>
+          <span className="events-tile-number">{counts.upcoming}</span>
+        </li>
+        {PLACEHOLDER_TILES.map((label) => (
+          <li key={label} className="events-tile">
+            <Placeholder label={t(label)} labelClass="events-tile-label" />
+          </li>
+        ))}
+      </ul>
       {grouped.happeningNow.length > 0 && (
         <section className="events-now" aria-labelledby="events-now-title">
           <h2 id="events-now-title" className="visually-hidden">
@@ -229,7 +262,7 @@ function EventsOf({
           <ul className="events-now-list">
             {grouped.happeningNow.map((event) => (
               <li key={event.id}>
-                <EventCard event={event} phase="happening_now" now={now} large />
+                <HappeningNow event={event} now={now} />
               </li>
             ))}
           </ul>
@@ -237,47 +270,56 @@ function EventsOf({
       )}
       <Tabs
         tab={tab}
-        counts={{
-          upcoming: grouped.upcoming.length,
-          drafts: grouped.drafts.length,
-          past: grouped.pastCount,
-        }}
+        counts={counts}
         onChoose={(next) => {
           rememberEventsTab(organisationId, next);
           setTab(next);
         }}
       >
-        {events.length === 0 ? (
-          <EmptyTab tab={tab} />
-        ) : (
-          <ul className="card events-list">
-            {events.map((event) => (
-              <li key={event.id}>
-                <EventCard event={event} phase={shownPhase(event, loaded.at, now)} now={now} />
-              </li>
-            ))}
-          </ul>
-        )}
-        {tab === 'past' && grouped.past.length < grouped.pastCount && (
-          <div className="events-more">
-            <button
-              type="button"
-              className="button"
-              disabled={more === 'loading'}
-              onClick={showMore}
-            >
-              {t('events.showMore')}
-            </button>
-            {more === 'failed' && <p role="alert">{t('events.moreFailed')}</p>}
+        <div className="events-table">
+          <div className="events-table-head" aria-hidden="true">
+            <span>{t('events.columnEvent')}</span>
+            <span>{t('events.columnDates')}</span>
+            <span>{t('events.columnStatus')}</span>
+            <span>{t('events.columnGuests')}</span>
+            <span>{t('events.columnReplies')}</span>
+            <span>{t('events.columnNextStep')}</span>
           </div>
-        )}
-        {tab === 'past' && (
-          <p className="visually-hidden" aria-live="polite">
-            {shown}
-          </p>
-        )}
+          {events.length === 0 ? (
+            <EmptyTab tab={tab} />
+          ) : (
+            <ul className="events-list">
+              {events.map((event) => (
+                <li key={event.id}>
+                  <EventRow event={event} phase={shownPhase(event, loaded.at, now)} now={now} />
+                </li>
+              ))}
+            </ul>
+          )}
+          {tab === 'past' && grouped.past.length < grouped.pastCount && (
+            <div className="events-more">
+              <button
+                type="button"
+                className="button"
+                disabled={more === 'loading'}
+                onClick={showMore}
+              >
+                {t('events.showMore')}
+              </button>
+              {more === 'failed' && <p role="alert">{t('events.moreFailed')}</p>}
+            </div>
+          )}
+          {tab === 'past' && (
+            <p className="visually-hidden" aria-live="polite">
+              {shown}
+            </p>
+          )}
+          {counts[tab] > 0 && (
+            <p className="events-footer">{t('events.footer', { count: counts[tab] })}</p>
+          )}
+        </div>
       </Tabs>
-    </div>
+    </div>,
   );
 }
 
@@ -356,102 +398,153 @@ function EmptyTab({ tab }: { tab: EventsTab }) {
   const { t } = useTranslation();
 
   return (
-    <div className="card events-empty">
+    <div className="events-empty">
       <h3>{t(EMPTY[tab].title)}</h3>
       <p className="muted">{t(EMPTY[tab].line)}</p>
     </div>
   );
 }
 
-function EventCard({
-  event,
-  phase,
-  now,
-  large = false,
-}: {
-  event: ListedEvent;
-  phase: ReturnType<typeof shownPhase>;
-  now: Date;
-  large?: boolean;
-}) {
+function eventLink(event: ListedEvent): string {
+  return `/app/events/${encodeURIComponent(event.id)}`;
+}
+
+/** One link for the whole event, with nothing to press inside it (sc-22103). */
+function EventRow({ event, phase, now }: { event: ListedEvent; phase: EventPhase; now: Date }) {
   const { t } = useTranslation();
-  const next = nextUp(event.milestones, now, event.status === 'ended');
-  const place = event.venue?.name ?? event.venue?.address?.formatted ?? null;
 
   return (
-    <article className={large ? 'events-card events-card-now' : 'events-card'}>
-      <EventCoverImage
-        photo={event.cover}
-        type={event.type}
-        sizes={large ? '12rem' : '6rem'}
-        className="events-card-cover"
-      />
-      <div className="events-card-body">
-        <StatusPill phase={phase} />
-        <Link className="events-card-name" to={`/app/events/${encodeURIComponent(event.id)}`}>
-          {event.name}
-        </Link>
-        <span className="muted">
-          {place == null
-            ? typeLabel(event.type, t)
-            : t('events.typeAndPlace', { type: typeLabel(event.type, t), place })}
-        </span>
-        {next != null && (
-          <span className="events-card-next">
-            <span className="events-card-next-word">{t('timeline.nextUp')}</span> {next.title}
-            {next.action != null && (
-              <>
-                {' '}
-                <Link className="events-card-action" to={next.action.link}>
-                  {next.action.label}
-                </Link>
-              </>
-            )}
-          </span>
-        )}
-      </div>
-      <span className="muted events-card-date">
-        <CardDate event={event} phase={phase} now={now} />
+    <Link className="events-row" to={eventLink(event)}>
+      <span className="events-row-event">
+        <span className="events-row-name">{event.name}</span>
+        <TypeAndPlace event={event} />
       </span>
-    </article>
+      <span className="events-row-dates">
+        <EventDates event={event} />
+      </span>
+      <span className="events-row-status">
+        <StatusPill phase={phase} />
+      </span>
+      <Placeholder label={t('events.columnGuests')} labelHidden />
+      <Placeholder label={t('events.columnReplies')} labelHidden />
+      <span className="events-row-next">
+        <NextStep event={event} phase={phase} now={now} />
+      </span>
+    </Link>
   );
 }
 
-function CardDate({
+function HappeningNow({ event, now }: { event: ListedEvent; now: Date }) {
+  const { t } = useTranslation();
+  const step = nextStep(event, 'happening_now', now);
+
+  return (
+    <Link className="events-now-card" to={eventLink(event)}>
+      <span className="events-now-body">
+        <span className="events-now-main">
+          <span className="events-now-when">
+            <span className="events-now-dates">
+              <EventDates event={event} part="days" />
+            </span>
+            <StatusPill phase="happening_now" />
+          </span>
+          <span className="events-now-name">
+            <span className="events-now-title">{event.name}</span>
+            <TypeAndPlace event={event} />
+          </span>
+          <span className="muted">
+            <EventDates event={event} part="time" />
+          </span>
+        </span>
+        <span className="events-now-figures">
+          {NOW_FIGURES.map((label) => (
+            <Placeholder key={label} label={t(label)} />
+          ))}
+        </span>
+      </span>
+      {step?.kind === 'nextUp' && (
+        <span className="events-now-next">
+          <span className="events-now-next-word">{t('timeline.nextUp')}</span>{' '}
+          <span>{step.milestone.title}</span>
+        </span>
+      )}
+    </Link>
+  );
+}
+
+function TypeAndPlace({ event }: { event: ListedEvent }) {
+  const { t } = useTranslation();
+  const place = event.venue?.name ?? event.venue?.address?.formatted ?? null;
+  const type = typeLabel(event.type, t);
+
+  return (
+    <span className="events-type-place">
+      {place == null ? type : t('events.typeAndPlace', { type, place })}
+    </span>
+  );
+}
+
+/** Its day or its first and last day, then its start and zone, all in the event's own zone. */
+function EventDates({
   event,
-  phase,
-  now,
+  part = 'both',
 }: {
   event: ListedEvent;
-  phase: ReturnType<typeof shownPhase>;
-  now: Date;
+  part?: 'days' | 'time' | 'both';
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
+  const days = eventDays(event);
 
-  const date = cardDate(event, phase, now);
+  if (days.kind === 'calledOffOn') {
+    return part === 'time'
+      ? null
+      : t('events.calledOffOn', {
+          date: formatEventShortDay(days.concludedAt, event.timeZone, locale),
+        });
+  }
 
-  switch (date.kind) {
-    case 'startedToday':
-      return t('events.startedToday', {
-        time: formatEventClock(date.startsAt, event.timeZone, locale),
-        timeZone: event.timeZone,
-      });
-    case 'startedOn':
-      return t('events.startedOn', {
-        date: formatEventWeekday(date.startsAt, event.timeZone, locale),
-        time: formatEventClock(date.startsAt, event.timeZone, locale),
-        timeZone: event.timeZone,
-      });
-    case 'calledOffOn':
-      return t('events.calledOffOn', {
-        date: formatEventShortDay(date.concludedAt, event.timeZone, locale),
-      });
-    case 'dateAway':
-      return t('events.dateAway', {
-        date: formatEventWeekday(date.startsAt, event.timeZone, locale),
-        distance: distanceWords(t, date.startsAt, event.timeZone, now),
-      });
+  const first = formatEventWeekday(days.startsAt, event.timeZone, locale);
+  const dates =
+    days.kind === 'oneDay'
+      ? first
+      : t('events.days', { first, last: formatEventWeekday(days.endsAt, event.timeZone, locale) });
+  const time = t('events.timeAndZone', {
+    time: formatEventClock(event.startsAt, event.timeZone, locale),
+    timeZone: event.timeZone,
+  });
+
+  if (part === 'days') return dates;
+  if (part === 'time') return time;
+
+  return (
+    <>
+      <span>{dates}</span>
+      <span className="muted events-row-time">{time}</span>
+    </>
+  );
+}
+
+function NextStep({ event, phase, now }: { event: ListedEvent; phase: EventPhase; now: Date }) {
+  const { t } = useTranslation();
+  const step = nextStep(event, phase, now);
+
+  switch (step?.kind) {
+    case undefined:
+      return null;
+    case 'makeLive':
+      return t('events.nextMakeLive');
+    case 'changeDates':
+      return t('events.nextChangeDates');
+    case 'resume':
+      return t('events.nextResume');
+    case 'nextUp':
+      return (
+        <>
+          <span className="events-row-next-word">{t('timeline.nextUp')}</span>{' '}
+          {step.milestone.title}
+        </>
+      );
   }
 }
 

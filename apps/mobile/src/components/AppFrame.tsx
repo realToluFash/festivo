@@ -1,5 +1,12 @@
 import { type Membership, primaryEmailAddress } from '@soirely/api-client';
-import { roleName, waitingInvitations } from '@soirely/domain';
+import {
+  EVENT_AREAS,
+  type EventArea,
+  MORE_EVENT_AREAS,
+  PHONE_EVENT_TABS,
+  roleName,
+  waitingInvitations,
+} from '@soirely/domain';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
 import {
   type ReactNode,
@@ -50,7 +57,7 @@ import { useModalOpen } from '../updateRequired.ts';
 import { BellButton } from './BellButton.tsx';
 import { CreateOrganisation } from './CreateOrganisation.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
-import { useFocusBack, useWindowTurn } from './Sheet.tsx';
+import { Sheet, useFocusBack, useWindowTurn } from './Sheet.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
 import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
@@ -96,7 +103,9 @@ export function useHeaderWithoutBack(hidden: boolean): void {
   }, [hide, hidden]);
 }
 
-const ICONS: Record<Destination, readonly [string, string]> = {
+type IconPaths = readonly [string, string];
+
+const ICONS: Record<Destination, IconPaths> = {
   home: ['M3 10.5 12 3l9 7.5', 'M5 9.5V21h14V9.5M10 21v-6h4v6'],
   events: [
     'M2 9a3 3 0 0 0 0 6v3a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3a3 3 0 0 0 0-6V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z',
@@ -112,6 +121,69 @@ const ICONS: Record<Destination, readonly [string, string]> = {
   ],
 };
 
+const AREA_ICONS: Record<EventArea | 'more', IconPaths> = {
+  overview: ['M3 3h7v7H3zM14 3h7v7h-7z', 'M14 14h7v7h-7zM3 14h7v7H3z'],
+  guests: [
+    'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+    'M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+  ],
+  menu: [
+    'M3 2v7a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V2M7 2v20',
+    'M21 15V2a5 5 0 0 0-5 5v6a2 2 0 0 0 2 2h3v7',
+  ],
+  seating: ['M4 10h16v4H4z', 'M6 14v6M18 14v6M8 6h8'],
+  messages: ['M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z', 'M8 9h8M8 13h5'],
+  schedule: ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M12 6v6l4 2'],
+  staff: ['M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2', 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'],
+  budget: [
+    'M21 12V7H5a2 2 0 0 1 0-4h14v4',
+    'M3 5v14a2 2 0 0 0 2 2h16v-5M18 12a2 2 0 0 0 0 4h4v-4z',
+  ],
+  reports: ['M3 3v18h18', 'M8 17v-5M13 17V8M18 17v-9'],
+  more: ['M5 12h.01M12 12h.01', 'M19 12h.01'],
+};
+
+/** Inside an event the navigation is the event's areas, in each layout's own form (sc-22103, #24878). */
+export interface InsideEvent {
+  area: EventArea;
+  onArea: (area: EventArea) => void;
+}
+
+interface NavEntry {
+  key: string;
+  label: string;
+  icon: IconPaths;
+  on: boolean;
+  onPress: () => void;
+  testID: string;
+}
+
+function areaEntry(t: (key: string) => string, inside: InsideEvent, area: EventArea): NavEntry {
+  return {
+    key: area,
+    label: t(`eventNav.${area}`),
+    icon: AREA_ICONS[area],
+    on: area === inside.area,
+    onPress: () => inside.onArea(area),
+    testID: `event.nav.${area}`,
+  };
+}
+
+function destinationEntry(
+  t: (key: string) => string,
+  current: Destination,
+  destination: Destination,
+): NavEntry {
+  return {
+    key: destination,
+    label: t(`frame.${destination}`),
+    icon: ICONS[destination],
+    on: destination === current,
+    onPress: () => goTo(destination),
+    testID: `frame.${destination}`,
+  };
+}
+
 /** The body keeps its place in the tree on every layout, so a rotation keeps what was typed. */
 export function AppFrame({
   current,
@@ -121,9 +193,12 @@ export function AppFrame({
   titleRef,
   aboutTheAccount = false,
   bodyTakesSwitch = false,
+  inEvent,
   children,
 }: {
   current: Destination;
+  /** Inside an event, its areas take the navigation's place. */
+  inEvent?: InsideEvent | undefined;
   title: string;
   /** The title on a phone, where it stands for the page's own heading. */
   titleRef?: RefObject<TextHandle | null> | undefined;
@@ -170,6 +245,10 @@ export function AppFrame({
   useEffect(() => navigation.setOptions({ gestureEnabled: stackSwipe }), [navigation, stackSwipe]);
   const signedIn = useSignedIn();
   usePushTaps(signedIn.account?.id);
+  const entries =
+    inEvent == null
+      ? destinations(signedIn.organisation).map((d) => destinationEntry(t, current, d))
+      : EVENT_AREAS.map((area) => areaEntry(t, inEvent, area));
   const waiting = useWaitingInvitations();
   const offer = useDomainOffer();
   const count = waitingInvitations(waiting.invitations, waiting.outcomes);
@@ -225,7 +304,8 @@ export function AppFrame({
     >
       {kind === 'tabletLandscape' && (
         <Rail
-          current={current}
+          entries={entries}
+          inEvent={inEvent != null}
           organisation={signedIn.organisation}
           waiting={count}
           onSwitch={switchFromPill}
@@ -236,6 +316,8 @@ export function AppFrame({
         <FrameHeader
           kind={kind}
           current={current}
+          entries={entries}
+          inEvent={inEvent != null}
           title={title}
           titleRef={frameTitle}
           switchAnswer={bodyTakesSwitch || standIn != null ? undefined : switchAnswer}
@@ -287,7 +369,7 @@ export function AppFrame({
             </StartOrganisation.Provider>
           </OpenSwitcher.Provider>
         </View>
-        {kind === 'phone' && <TabBar current={current} />}
+        {kind === 'phone' && <TabBar entries={entries} inEvent={inEvent} />}
       </View>
       {edgeSwipe != null && (
         <View
@@ -334,6 +416,8 @@ export function AppFrame({
 function FrameHeader({
   kind,
   current,
+  entries,
+  inEvent,
   title,
   titleRef,
   switchAnswer,
@@ -347,6 +431,8 @@ function FrameHeader({
 }: {
   kind: LayoutKind;
   current: Destination;
+  entries: readonly NavEntry[];
+  inEvent: boolean;
   title: string;
   titleRef: RefObject<TextHandle | null> | undefined;
   /** A tapped switch of organisation, which takes screen reader focus to the title. */
@@ -359,7 +445,6 @@ function FrameHeader({
   onSwitch: (() => void) | undefined;
   pill: Ref<ViewInstance>;
 }) {
-  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const top = { paddingTop: insets.top + (kind === 'tabletLandscape' ? 0 : tokens.spaceXxs) };
   const { read } = useFocusOnAnswer<TextHandle>(switchAnswer, titleRef);
@@ -386,31 +471,7 @@ function FrameHeader({
         {organisation != null && (
           <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
         )}
-        <View style={styles.pills} accessibilityRole="tablist">
-          {destinations(organisation).map((destination) => {
-            const on = destination === current;
-
-            return (
-              <Pressable
-                key={destination}
-                style={[styles.pill, on && styles.pillOn]}
-                onPress={() => goTo(destination)}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: on }}
-                testID={`frame.${destination}`}
-              >
-                <Icon destination={destination} on={on} size={tokens.sizeMark} />
-                <Text
-                  size={tokens.typeBody.size}
-                  weight={on ? 'semibold' : 'medium'}
-                  style={on ? styles.ink : styles.secondaryInk}
-                >
-                  {t(`frame.${destination}`)}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <Pills entries={entries} scrolls={inEvent} />
         {back != null && !backHidden && (
           <BackButton
             label={back.label}
@@ -504,16 +565,38 @@ function goTo(destination: Destination): void {
   leaveThen((discarding) => (discarding ? router.dismissTo(href) : router.navigate(href)));
 }
 
-function TabBar({ current }: { current: Destination }) {
+function TabBar({
+  entries,
+  inEvent,
+}: {
+  entries: readonly NavEntry[];
+  inEvent: InsideEvent | undefined;
+}) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { organisation } = useSignedIn();
   const { fontScale } = useWindowDimensions();
-  const shown = destinations(organisation);
+  const [more, setMore] = useState(false);
+  const moreTab = useRef<ViewInstance>(null);
+  const underMore =
+    inEvent != null && !(PHONE_EVENT_TABS as readonly EventArea[]).includes(inEvent.area);
+  const shown: readonly NavEntry[] =
+    inEvent == null
+      ? entries
+      : [
+          ...entries.filter((entry) => (PHONE_EVENT_TABS as readonly string[]).includes(entry.key)),
+          {
+            key: 'more',
+            label: t('eventNav.more'),
+            icon: AREA_ICONS.more,
+            on: underMore,
+            onPress: () => setMore(true),
+            testID: 'event.nav.more',
+          },
+        ];
   const words = useWholeWords(
     tokens.typeMeta.size,
     tokens.typeMeta.size * fontScale,
-    shown.map((destination) => t(`frame.${destination}`)),
+    shown.map((entry) => entry.label),
     { weight: 'bold' },
   );
 
@@ -523,80 +606,154 @@ function TabBar({ current }: { current: Destination }) {
       accessibilityRole="tablist"
     >
       {words.measure}
-      {shown.map((destination, index) => {
-        const on = destination === current;
-
-        return (
-          <Pressable
-            key={destination}
-            style={styles.tab}
-            onPress={() => goTo(destination)}
-            onLayout={
-              index === 0 ? (event) => words.room(event.nativeEvent.layout.width) : undefined
-            }
-            accessibilityRole="tab"
-            accessibilityState={{ selected: on }}
-            testID={`frame.${destination}`}
+      {shown.map((entry, index) => (
+        <Pressable
+          key={entry.key}
+          ref={entry.key === 'more' ? moreTab : undefined}
+          style={styles.tab}
+          onPress={entry.onPress}
+          onLayout={index === 0 ? (event) => words.room(event.nativeEvent.layout.width) : undefined}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: entry.on }}
+          testID={entry.testID}
+        >
+          <View style={[styles.tabMark, entry.on && styles.tabMarkOn]} />
+          <Icon paths={entry.icon} on={entry.on} size={tokens.space3xl} />
+          <Text
+            size={tokens.typeMeta.size}
+            weight={entry.on ? 'bold' : 'medium'}
+            style={[styles.centred, entry.on ? styles.ink : styles.secondaryInk]}
+            maxFontSizeMultiplier={words.maxFontSizeMultiplier}
           >
-            <View style={[styles.tabMark, on && styles.tabMarkOn]} />
-            <Icon destination={destination} on={on} size={tokens.space3xl} />
-            <Text
-              size={tokens.typeMeta.size}
-              weight={on ? 'bold' : 'medium'}
-              style={[styles.centred, on ? styles.ink : styles.secondaryInk]}
-              maxFontSizeMultiplier={words.maxFontSizeMultiplier}
-            >
-              {t(`frame.${destination}`)}
-            </Text>
-          </Pressable>
-        );
-      })}
+            {entry.label}
+          </Text>
+        </Pressable>
+      ))}
+      {inEvent != null && (
+        <Sheet
+          open={more}
+          onClose={() => setMore(false)}
+          scrimLabel={t('eventNav.closeMore')}
+          opener={moreTab}
+          testID="event.nav.moreSheet"
+        >
+          <Title size={tokens.typeTitleDialog.size} accessibilityRole="header">
+            {t('eventNav.more')}
+          </Title>
+          <View accessibilityRole="tablist" style={styles.moreList}>
+            {MORE_EVENT_AREAS.map((area) => {
+              const on = area === inEvent.area;
+
+              return (
+                <Pressable
+                  key={area}
+                  style={[styles.railItem, on && styles.railItemOn]}
+                  onPress={() => {
+                    setMore(false);
+                    inEvent.onArea(area);
+                  }}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: on }}
+                  testID={`event.nav.more.${area}`}
+                >
+                  <Icon paths={AREA_ICONS[area]} on={on} size={tokens.sizeMark} />
+                  <Text
+                    size={tokens.typeBodyPhone.size}
+                    weight={on ? 'semibold' : 'medium'}
+                    style={on ? styles.ink : styles.secondaryInk}
+                  >
+                    {t(`eventNav.${area}`)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Sheet>
+      )}
+    </View>
+  );
+}
+
+/** The header band's pills in tablet portrait; inside an event they scroll sideways, so no area's name is cut. */
+function Pills({ entries, scrolls }: { entries: readonly NavEntry[]; scrolls: boolean }) {
+  const pills = entries.map((entry) => (
+    <Pressable
+      key={entry.key}
+      style={[styles.pill, entry.on && styles.pillOn]}
+      onPress={entry.onPress}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: entry.on }}
+      testID={entry.testID}
+    >
+      <Icon paths={entry.icon} on={entry.on} size={tokens.sizeMark} />
+      <Text
+        size={tokens.typeBody.size}
+        weight={entry.on ? 'semibold' : 'medium'}
+        style={entry.on ? styles.ink : styles.secondaryInk}
+      >
+        {entry.label}
+      </Text>
+    </Pressable>
+  ));
+
+  return scrolls ? (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.pillsInEvent}
+      accessibilityRole="tablist"
+    >
+      {pills}
+    </ScrollView>
+  ) : (
+    <View style={styles.pills} accessibilityRole="tablist">
+      {pills}
     </View>
   );
 }
 
 function Rail({
-  current,
+  entries,
+  inEvent,
   organisation,
   waiting,
   onSwitch,
   pill,
 }: {
-  current: Destination;
+  entries: readonly NavEntry[];
+  inEvent: boolean;
   organisation: Membership | null;
   waiting: number;
   onSwitch: (() => void) | undefined;
   pill: Ref<ViewInstance>;
 }) {
-  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { account } = useSignedIn();
   const { fontScale } = useWindowDimensions();
   const large = useAccessibilitySizes();
   const lines = useNameLines();
-  const item = (destination: Destination) => {
-    const on = destination === current;
-
-    return (
-      <Pressable
-        key={destination}
-        style={[styles.railItem, on && styles.railItemOn]}
-        onPress={() => goTo(destination)}
-        accessibilityRole="tab"
-        accessibilityState={{ selected: on }}
-        testID={`frame.${destination}`}
+  const item = (entry: NavEntry) => (
+    <Pressable
+      key={entry.key}
+      style={[styles.railItem, entry.on && styles.railItemOn]}
+      onPress={entry.onPress}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: entry.on }}
+      testID={entry.testID}
+    >
+      <Icon paths={entry.icon} on={entry.on} size={tokens.sizeMark} />
+      <Text
+        size={tokens.typeBodyPhone.size}
+        weight={entry.on ? 'semibold' : 'medium'}
+        style={entry.on ? styles.ink : styles.secondaryInk}
       >
-        <Icon destination={destination} on={on} size={tokens.sizeMark} />
-        <Text
-          size={tokens.typeBodyPhone.size}
-          weight={on ? 'semibold' : 'medium'}
-          style={on ? styles.ink : styles.secondaryInk}
-        >
-          {t(`frame.${destination}`)}
-        </Text>
-      </Pressable>
-    );
-  };
+        {entry.label}
+      </Text>
+    </Pressable>
+  );
+  const settings = entries.find((entry) => entry.key === 'settings');
+  const group = entries.filter((entry) => entry.key !== 'settings').map(item);
 
   return (
     <View
@@ -622,14 +779,18 @@ function Rail({
           ref={pill}
         />
       )}
-      <View style={styles.railGroup}>
-        {destinations(organisation)
-          .filter((d) => d !== 'settings')
-          .map(item)}
-      </View>
-      <View style={styles.fill} />
+      {inEvent ? (
+        <ScrollView style={styles.fill} contentContainerStyle={styles.railGroup}>
+          {group}
+        </ScrollView>
+      ) : (
+        <>
+          <View style={styles.railGroup}>{group}</View>
+          <View style={styles.fill} />
+        </>
+      )}
       <View style={[styles.railGroup, styles.railFoot]}>
-        {item('settings')}
+        {settings != null && item(settings)}
         {account != null && (
           <View style={styles.person}>
             {!large && (
@@ -1004,13 +1165,13 @@ function OfferCard({
 
 const STROKE = { strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 
-function Icon({ destination, on, size }: { destination: Destination; on: boolean; size: number }) {
+function Icon({ paths, on, size }: { paths: IconPaths; on: boolean; size: number }) {
   const stroke = on ? tokens.colorInk : tokens.colorInkSecondary;
 
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d={ICONS[destination][0]} {...STROKE} stroke={stroke} />
-      <Path d={ICONS[destination][1]} {...STROKE} stroke={stroke} />
+      <Path d={paths[0]} {...STROKE} stroke={stroke} />
+      <Path d={paths[1]} {...STROKE} stroke={stroke} />
     </Svg>
   );
 }
@@ -1132,6 +1293,8 @@ const styles = StyleSheet.create({
   },
   brand: { minHeight: tokens.sizeHit, justifyContent: 'center', paddingHorizontal: tokens.spaceMd },
   railGroup: { gap: tokens.spaceHair },
+  moreList: { gap: tokens.spaceHair },
+  pillsInEvent: { flexDirection: 'row', gap: tokens.spaceHair },
   railFoot: {
     paddingTop: tokens.spaceLg,
     borderTopWidth: 1,

@@ -6,12 +6,12 @@ import { AppFrame, BackButton } from '../../../src/components/AppFrame.tsx';
 import { bodyEdges } from '../../../src/components/bodyEdges.ts';
 import { Screen } from '../../../src/components/Screen.tsx';
 import { AllDates } from '../../../src/components/Timeline.tsx';
-import { goUpToEvent } from '../../../src/kit/upToEvent.ts';
+import { goToArea, goUpToEvent } from '../../../src/kit/upToEvent.ts';
 import { useServerNow } from '../../../src/kit/serverNow.ts';
 import { useLayout } from '../../../src/layout/useLayout.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 
-/** Every milestone on the event, opened from Coming up's All dates (sc-3624). */
+/** Every milestone on the event, opened from Coming up's All dates (sc-3624); inside the event, so Overview is current. */
 export default function EventDates() {
   const { t } = useTranslation();
   const { kind } = useLayout();
@@ -27,6 +27,10 @@ export default function EventDates() {
       title={t('timeline.allDates')}
       back={phone ? { label: t('timeline.backToEvent'), onPress: back } : undefined}
       backInBody
+      inEvent={{
+        area: 'overview',
+        onArea: (area) => (area === 'overview' ? back() : goToArea(navigation, router, id, area)),
+      }}
     >
       <Screen edges={bodyEdges(kind)} contentStyle={styles.content}>
         {!phone && (

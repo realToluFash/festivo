@@ -47,7 +47,7 @@ export function EndButton({
     <>
       {label != null && (
         <button ref={opener} type="button" className="button" onClick={() => ask({ label })}>
-          {t(`eventEnd.${label}`)}
+          {t(label === 'callOff' ? 'eventEnd.callOffOpen' : 'eventEnd.endNowOpen')}
         </button>
       )}
       {asking != null && (
@@ -56,9 +56,10 @@ export function EndButton({
           asking={asking}
           title={t(callOff ? 'eventEnd.callOffTitle' : 'eventEnd.endTitle', { name: event.name })}
           lines={[t(callOff ? 'eventEnd.callOffBody' : 'eventEnd.endBody'), t('eventEnd.final')]}
-          failed={t('eventEnd.failed')}
+          failed={t(callOff ? 'eventEnd.callOffFailed' : 'eventEnd.failed')}
           keep={t('eventEnd.keepItOn')}
           confirm={t(callOff ? 'eventEnd.callOff' : 'eventEnd.endNow')}
+          sending={t(callOff ? 'eventEnd.callingOff' : 'eventEnd.ending')}
           tone="danger"
           onGo={() =>
             asking.kind === 'confirm' && go({ label: asking.label }, () => api.endEvent(event.id))

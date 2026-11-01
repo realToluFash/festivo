@@ -34,6 +34,7 @@ import { heldRegistration } from '../../pendingRegistration.ts';
 import { useTwoFactorStanding } from '../../twoFactorStanding.ts';
 import { useDialogKeys } from '../../dialogFocus.ts';
 import { PHONE_WIDTH } from '../../phoneWidth.ts';
+import { EventNav, useInsideEvent } from './events/EventNav.tsx';
 
 /**
  * The signed-in shell, built for a desk.
@@ -348,22 +349,28 @@ function Shell() {
 function ShellLinks({ onFollow }: { onFollow?: () => void }) {
   const { t } = useTranslation();
   const session = useSession();
+  const inside = useInsideEvent();
 
   return (
     <>
+      {inside != null && <EventNav inside={inside} onFollow={onFollow} />}
       <nav className="shell-nav">
-        <NavLink to="/app" end onClick={onFollow}>
-          {t('nav.dashboard')}
-        </NavLink>
-        <NavLink to="/app/events" onClick={onFollow}>
-          {t('nav.events')}
-        </NavLink>
-        <NavLink to="/app/calendar" onClick={onFollow}>
-          {t('nav.calendar')}
-        </NavLink>
-        <NavLink to="/app/guests" onClick={onFollow}>
-          {t('nav.guests')}
-        </NavLink>
+        {inside == null && (
+          <>
+            <NavLink to="/app" end onClick={onFollow}>
+              {t('nav.dashboard')}
+            </NavLink>
+            <NavLink to="/app/events" onClick={onFollow}>
+              {t('nav.events')}
+            </NavLink>
+            <NavLink to="/app/calendar" onClick={onFollow}>
+              {t('nav.calendar')}
+            </NavLink>
+            <NavLink to="/app/guests" onClick={onFollow}>
+              {t('nav.guests')}
+            </NavLink>
+          </>
+        )}
         <NavLink to="/app/settings" onClick={onFollow}>
           {t('nav.settings')}
         </NavLink>

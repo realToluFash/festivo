@@ -52,6 +52,7 @@ appId: host.exp.Exponent
 - takeScreenshot: upright-list
 - setOrientation: LANDSCAPE_LEFT
 - waitForAnimationToEnd
-- assertVisible: '{{t:eventsScreen.choose}}'
+- assertNotVisible:
+    id: 'events.page'
 - takeScreenshot: side-choose
 - setOrientation: PORTRAIT

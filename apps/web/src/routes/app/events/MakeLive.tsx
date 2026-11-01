@@ -152,7 +152,14 @@ export function DraftRow({
       });
     } else if (problem?.is('event_concluded') === true) {
       await reread();
-      refused({ title: t('eventLive.notMadeLive'), lines: [t('eventLive.endPassed')] });
+      refused({
+        title: t('eventLive.notMadeLive'),
+        lines: [t('eventLive.endPassed')],
+        link: {
+          label: t('eventLive.changeDates'),
+          to: `/app/events/${encodeURIComponent(event.id)}/edit#starts`,
+        },
+      });
     } else {
       setAsking({
         ...settled,
@@ -190,7 +197,10 @@ export function DraftRow({
                 {t('eventLive.makeLive')}
               </button>
             ) : (
-              <Link className="button" to={`/app/events/${encodeURIComponent(event.id)}/edit`}>
+              <Link
+                className="button button-primary"
+                to={`/app/events/${encodeURIComponent(event.id)}/edit#starts`}
+              >
                 {t('eventLive.changeDates')}
               </Link>
             ))}
@@ -205,6 +215,7 @@ export function DraftRow({
           failed=""
           keep=""
           confirm=""
+          sending=""
           tone="primary"
           onGo={() => undefined}
           onClose={close}
@@ -365,8 +376,13 @@ function MakeLiveDialog({
             aria-busy={pending}
             onClick={onGo}
           >
-            {t('eventLive.makeLive')}
+            {pending ? t('eventLive.making') : t('eventLive.makeLive')}
           </button>
+          {pending && (
+            <p className="visually-hidden" role="status">
+              {t('eventLive.making')}
+            </p>
+          )}
         </div>
       </div>
     </>

@@ -15,5 +15,4 @@ appId: host.exp.Exponent
 - assertVisible: '{{t:eventsScreen.firstRunAskOwner}}'
 - assertNotVisible:
     id: 'events.none.new'
-- assertNotVisible: '{{t:eventsScreen.choose}}.*'
 - takeScreenshot: member

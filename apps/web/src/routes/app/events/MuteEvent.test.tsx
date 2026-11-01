@@ -112,7 +112,7 @@ describe('Mute this event on the event page (sc-3980)', () => {
     expect(
       within(card()).getByRole('link', { name: 'Notification settings' }).getAttribute('href'),
     ).toBe('/app/account/notifications');
-    expect(screen.queryByRole('button', { name: 'Delete event' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Delete event…' })).toBeNull();
   });
 
   it('sits below the page buttons and above Delete event', async () => {
@@ -122,7 +122,7 @@ describe('Mute this event on the event page (sc-3980)', () => {
     const guests = screen
       .getAllByRole('link', { name: 'Guests' })
       .find((link) => link.getAttribute('href') === '/app/events/ev_1/guests');
-    const remove = screen.getByRole('button', { name: 'Delete event' });
+    const remove = screen.getByRole('button', { name: 'Delete event…' });
 
     expect(
       (guests?.compareDocumentPosition(card()) ?? 0) & Node.DOCUMENT_POSITION_FOLLOWING,

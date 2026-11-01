@@ -11,6 +11,7 @@ import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { LifecycleSheet, useLifecycleAction } from './LifecycleSheet.tsx';
 import { Notice } from './Notice.tsx';
+import { useSendingWords } from './ReadOut.tsx';
 
 const PAUSE_BARS = '‖';
 
@@ -73,6 +74,7 @@ export function PauseButton({
           asking?.kind === 'confirm'
             ? {
                 label: t('eventPause.pause'),
+                sending: t('eventPause.pausing'),
                 keep: t('eventPause.keepItLive'),
                 pending: asking.pending,
                 onGo: () => go({}, () => api.pauseEvent(event.id)),
@@ -101,6 +103,7 @@ export function PausedRow({
   const [state, setState] = useState<'idle' | 'pending' | 'failed'>('idle');
   const [changedTo, setChangedTo] = useState<EventStatus | null>(null);
   const changed = changedTo === event.status;
+  useSendingWords(state === 'pending' ? t('eventPause.resuming') : undefined);
 
   if (phase !== 'paused' && !changed) return null;
 
@@ -147,7 +150,7 @@ export function PausedRow({
       />
       {manages && eventAllows(phase, 'resume') && (
         <PrimaryButton
-          label={t('eventPause.resume')}
+          label={state === 'pending' ? t('eventPause.resuming') : t('eventPause.resume')}
           onPress={resume}
           busy={state === 'pending'}
           testID="events.resume"

@@ -1,14 +1,22 @@
 import { useLocalSearchParams } from 'expo-router';
 
-import { EventsScreen } from '../../../src/components/EventsScreen.tsx';
+import { EventScreen } from '../../../src/components/EventScreen.tsx';
 import { COPIED_FROM } from '../../../src/kit/eventDuplicate.ts';
+import { EVENT_AREA, FROM_HAPPENING_NOW, areaOf } from '../../../src/kit/eventNav.ts';
 
-/** A link to one event opens Events with it chosen; back leads to the list, or from a copy to its original. */
-export default function LinkedEvent() {
-  const { id = '', [COPIED_FROM]: from } = useLocalSearchParams<{
+/** An event's page, pushed over whatever opened it; from a copy, back leads to its original. */
+export default function EventPage() {
+  const {
+    id = '',
+    [COPIED_FROM]: from,
+    [EVENT_AREA]: area,
+    [FROM_HAPPENING_NOW]: now,
+  } = useLocalSearchParams<{
     id?: string;
     [COPIED_FROM]?: string;
+    [EVENT_AREA]?: string;
+    [FROM_HAPPENING_NOW]?: string;
   }>();
 
-  return <EventsScreen linked={id} copiedFrom={from} />;
+  return <EventScreen eventId={id} area={areaOf(area)} copiedFrom={from} keepsTab={now != null} />;
 }

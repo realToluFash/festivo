@@ -83,6 +83,7 @@ import { useBroughtIntoView } from './Screen.tsx';
 import { Sheet } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 import { VenueFields } from './VenueFields.tsx';
+import type { EditAt } from '../kit/eventNav.ts';
 
 type Status = 'editing' | 'sending' | 'failed' | 'changedElsewhere' | 'created';
 
@@ -94,7 +95,7 @@ export function EventForm({
   kind,
   organisation,
   opened,
-  toHosts = false,
+  arriveAt,
   onCreated,
   onSaved,
   onLatest,
@@ -102,8 +103,8 @@ export function EventForm({
   kind: LayoutKind;
   organisation: Membership;
   opened?: TaggedEvent | undefined;
-  /** Opened from Make live's Add who is hosting (sc-15497). */
-  toHosts?: boolean;
+  /** The field it opens with focus on. */
+  arriveAt?: EditAt | undefined;
   onCreated: (eventId: string) => void;
   onSaved: (outcome: 'saved' | 'unchanged') => void;
   /** Show the latest: the event is read again and the form starts over from it. */
@@ -154,7 +155,13 @@ export function EventForm({
   const endField = useRef<ViewInstance>(null);
   const zoneField = useRef<ViewInstance>(null);
   const currencyField = useRef<ViewInstance>(null);
-  const [focusOn, setFocusOn] = useState<{ field: EventFormField } | null>(null);
+  const [focusOn, setFocusOn] = useState<{ field: EventFormField } | null>(() =>
+    arriveAt === 'starts'
+      ? { field: 'startsAt' }
+      : arriveAt === 'venue'
+        ? { field: 'venueName' }
+        : null,
+  );
 
   useEffect(() => {
     if (focusOn == null) return;
@@ -484,7 +491,7 @@ export function EventForm({
           errors={hostErrors}
           saved={opened?.event ?? NO_HOSTS}
           busy={busy}
-          arrive={toHosts}
+          arrive={arriveAt === 'hosts'}
           focusHost={focusHost}
           onRows={editHosts}
           onLeave={leaveHost}

@@ -30,6 +30,13 @@ export function readOut(
   return () => clearTimeout(timer);
 }
 
+/** A button's sending words, said as they replace its label: a screen reader does not say a focused label that changes (WCAG 2.2, 4.1.3). */
+export function useSendingWords(sending: string | undefined): void {
+  useEffect(() => {
+    if (sending != null) readOut(sending);
+  }, [sending]);
+}
+
 export interface ReadOutOptions {
   /** The field being typed in: the words wait until it has stopped changing, and are said only when they differ from the last said. */
   afterTyping?: string | undefined;

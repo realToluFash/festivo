@@ -15,6 +15,7 @@ export function LifecycleDialog<C>({
   failed,
   keep,
   confirm,
+  sending,
   tone,
   onGo,
   onClose,
@@ -26,6 +27,7 @@ export function LifecycleDialog<C>({
   failed: string;
   keep: string;
   confirm: string;
+  sending: string;
   tone: 'primary' | 'danger';
   onGo: () => void;
   onClose: () => void;
@@ -81,8 +83,13 @@ export function LifecycleDialog<C>({
                 aria-busy={pending}
                 onClick={onGo}
               >
-                {confirm}
+                {pending ? sending : confirm}
               </button>
+              {pending && (
+                <p className="visually-hidden" role="status">
+                  {sending}
+                </p>
+              )}
             </>
           ) : asking.link != null ? (
             <>

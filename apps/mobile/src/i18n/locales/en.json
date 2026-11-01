@@ -667,6 +667,27 @@
     "settings": "Settings",
     "organisation": "Organisation"
   },
+  "eventNav": {
+    "overview": "Overview",
+    "guests": "Guests",
+    "menu": "Menu",
+    "seating": "Seating",
+    "messages": "Messages",
+    "schedule": "Schedule",
+    "staff": "Staff",
+    "budget": "Budget",
+    "reports": "Reports",
+    "more": "More",
+    "closeMore": "Close More",
+    "guestsComing": "The guest list for this event is coming.",
+    "menuComing": "The menu for this event is coming.",
+    "seatingComing": "The seating plan for this event is coming.",
+    "messagesComing": "Messages for this event are coming.",
+    "scheduleComing": "The schedule for this event is coming.",
+    "staffComing": "The staff for this event are coming.",
+    "budgetComing": "The budget for this event is coming.",
+    "reportsComing": "Reports for this event are coming."
+  },
   "settings": {
     "title": "Settings",
     "yourAccount": "Your account",
@@ -1411,7 +1432,6 @@
   "eventsScreen": {
     "title": "Events",
     "back": "‹ Events",
-    "backToEvent": "‹ Event",
     "loading": "Loading events…",
     "refreshing": "Refreshing…",
     "draft": "Draft",
@@ -1423,7 +1443,6 @@
     "firstRunStepOpen": "Open it from this list to carry on planning.",
     "firstRunCreate": "Create an event",
     "firstRunAskOwner": "Events your organisation creates will show here. Ask an owner if you need to create one.",
-    "choose": "Choose an event",
     "loadingEvent": "Loading the event…",
     "when": "{{range}} · {{timeZone}}",
     "notFound": "This event is not available",
@@ -1443,16 +1462,49 @@
     "emptyPastTitle": "Nothing finished yet",
     "emptyPast": "Finished events stay here, so you can look back or start the next one from them.",
     "typeAndPlace": "{{type}} · {{place}}",
-    "dateAway": "{{date}} · {{distance}}",
-    "startedToday": "Today · started {{time}} {{timeZone}}",
-    "startedOn": "Started {{date}} · {{time}} {{timeZone}}",
     "calledOffOn": "Called off on {{date}}",
     "nextUp": "Next up: {{title}}",
     "showMore": "Show more",
     "showingMore": "Showing more…",
     "moreShown_one": "{{count, number}} more finished event shown.",
     "moreShown_other": "{{count, number}} more finished events shown.",
-    "moreFailed": "More finished events did not load. Check your connection and try again."
+    "moreFailed": "More finished events did not load. Check your connection and try again.",
+    "summaryHappeningNow_one": "{{count, number}} happening now",
+    "summaryHappeningNow_other": "{{count, number}} happening now",
+    "summaryUpcoming_one": "{{count, number}} upcoming",
+    "summaryUpcoming_other": "{{count, number}} upcoming",
+    "summaryDrafts_one": "{{count, number}} draft",
+    "summaryDrafts_other": "{{count, number}} drafts",
+    "summaryJoin": "{{first}} · {{rest}}",
+    "tileUpcoming": "Upcoming events",
+    "tileGuestsInvited": "Guests invited",
+    "tileRepliesIn": "Replies in",
+    "tileNeedAttention": "Need attention",
+    "comingSoon": "Coming soon",
+    "columnGuests": "Guests",
+    "columnReplies": "Replies",
+    "arrived": "Arrived",
+    "course": "Course",
+    "nextCue": "Next cue",
+    "days": "{{first}} to {{last}}",
+    "timeAndZone": "{{time}} · {{timeZone}}",
+    "nextMakeLive": "Guests can’t be invited until this event is live.",
+    "nextChangeDates": "This event’s end has passed, so it cannot be made live. Change its dates first.",
+    "nextResume": "Paused. Guests can’t reply or change anything until you resume it.",
+    "footer_one": "{{count, number}} event · Sorted by date",
+    "footer_other": "{{count, number}} events · Sorted by date"
+  },
+  "eventPage": {
+    "venue": "Venue",
+    "venueToBeConfirmed": "Venue to be confirmed",
+    "invited": "Invited",
+    "details": "Details",
+    "dates": "Dates",
+    "manage": "Manage",
+    "tileComing": "Coming",
+    "tileMealPicks": "Meal picks in",
+    "tileSeated": "Seated",
+    "tileBudgetUsed": "Budget used"
   },
   "eventForm": {
     "title": "New event",
@@ -1576,7 +1628,8 @@
     "hostEmpty": "Enter who is hosting to make this event live.",
     "hostExplainer": "Guests read this name on their invitation and their page. Write it the way you want guests to see it.",
     "notSavedChanged": "Not saved. Somebody else changed this event since you opened it.",
-    "hostsNow": "Who is hosting now, as guests will see it:"
+    "hostsNow": "Who is hosting now, as guests will see it:",
+    "making": "Making live…"
   },
   "eventHosts": {
     "heading": "Hosted by",
@@ -1610,7 +1663,12 @@
     "notEnded": "Not ended.",
     "alreadyOver": "This event is already over.",
     "calledOffNotice": "Called off on {{date}}, before it started. Guests following their link are told it won't go ahead.",
-    "close": "Close"
+    "close": "Close",
+    "callOffOpen": "Call off…",
+    "endNowOpen": "End now…",
+    "callingOff": "Calling off…",
+    "ending": "Ending…",
+    "callOffFailed": "Not called off. Try again in a moment."
   },
   "eventPause": {
     "pause": "Pause",
@@ -1622,10 +1680,12 @@
     "notPaused": "Not paused.",
     "notice": "Paused. Guests can't reply or change anything until you resume it. Check-in and service still work.",
     "resume": "Resume",
-    "resumeFailed": "Not resumed. Try again in a moment."
+    "resumeFailed": "Not resumed. Try again in a moment.",
+    "pausing": "Pausing…",
+    "resuming": "Resuming…"
   },
   "eventDelete": {
-    "open": "Delete event",
+    "open": "Delete event…",
     "note": "Removes the event and everything in it for your whole team. Guests following its link see that it isn't available.",
     "title": "Delete {{event}}?",
     "draftBody": "It's a draft with nobody on its guest list. It will be removed for your whole team.",
@@ -1639,7 +1699,8 @@
     "keep": "Keep it",
     "delete": "Delete",
     "failed": "That did not go through, so nothing was changed. Try again.",
-    "deleted": "{{event}} was deleted."
+    "deleted": "{{event}} was deleted.",
+    "deleting": "Deleting…"
   },
   "eventDuplicate": {
     "open": "Duplicate",

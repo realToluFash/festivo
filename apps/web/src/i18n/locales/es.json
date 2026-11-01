@@ -61,7 +61,39 @@
     "moreShown_one": "Se muestra {{count, number}} evento finalizado más.",
     "moreShown_other": "Se muestran {{count, number}} eventos finalizados más.",
     "moreShown_many": "Se muestran {{count, number}} de eventos finalizados más.",
-    "moreFailed": "No se han podido cargar más eventos finalizados. Vuelva a intentarlo en un momento."
+    "moreFailed": "No se han podido cargar más eventos finalizados. Vuelva a intentarlo en un momento.",
+    "summaryHappeningNow_one": "{{count, number}} happening now",
+    "summaryHappeningNow_other": "{{count, number}} happening now",
+    "summaryHappeningNow_many": "{{count, number}} happening now",
+    "summaryUpcoming_one": "{{count, number}} upcoming",
+    "summaryUpcoming_other": "{{count, number}} upcoming",
+    "summaryUpcoming_many": "{{count, number}} upcoming",
+    "summaryDrafts_one": "{{count, number}} draft",
+    "summaryDrafts_other": "{{count, number}} drafts",
+    "summaryDrafts_many": "{{count, number}} drafts",
+    "summaryJoin": "{{first}} · {{rest}}",
+    "tileUpcoming": "Upcoming events",
+    "tileGuestsInvited": "Guests invited",
+    "tileRepliesIn": "Replies in",
+    "tileNeedAttention": "Need attention",
+    "comingSoon": "Coming soon",
+    "arrived": "Arrived",
+    "course": "Course",
+    "nextCue": "Next cue",
+    "columnEvent": "Event",
+    "columnDates": "Dates",
+    "columnStatus": "Status",
+    "columnGuests": "Guests",
+    "columnReplies": "Replies",
+    "columnNextStep": "Next step",
+    "days": "{{first}} to {{last}}",
+    "timeAndZone": "{{time}} · {{timeZone}}",
+    "nextMakeLive": "Guests can’t be invited until this event is live.",
+    "nextChangeDates": "This event’s end has passed, so it cannot be made live. Change its dates first.",
+    "nextResume": "Paused. Guests can’t reply or change anything until you resume it.",
+    "footer_one": "{{count, number}} event · Sorted by date",
+    "footer_other": "{{count, number}} events · Sorted by date",
+    "footer_many": "{{count, number}} events · Sorted by date"
   },
   "eventForm": {
     "title": "Nuevo evento",
@@ -140,7 +172,15 @@
     "venue": "Lugar",
     "venueToBeConfirmed": "Lugar por confirmar",
     "addVenue": "Añadir el lugar",
-    "openInMaps": "Abrir en mapas"
+    "openInMaps": "Abrir en mapas",
+    "invited": "Invitados",
+    "details": "Detalles",
+    "dates": "Fechas",
+    "manage": "Gestionar",
+    "tileComing": "Asistirán",
+    "tileMealPicks": "Menús elegidos",
+    "tileSeated": "Con asiento",
+    "tileBudgetUsed": "Presupuesto usado"
   },
   "eventLive": {
     "guestsBlocked": "No se puede invitar a nadie hasta que este evento esté publicado.",
@@ -168,7 +208,8 @@
     "hostEmpty": "Indique el anfitrión para publicar este evento.",
     "hostExplainer": "Los invitados leen este nombre en su invitación y en la página del evento. Escríbalo tal como quiera que lo vean.",
     "notSavedChanged": "No se ha guardado. Otra persona ha cambiado este evento desde que lo abrió.",
-    "hostsNow": "Anfitriones actuales, tal como los verán los invitados:"
+    "hostsNow": "Anfitriones actuales, tal como los verán los invitados:",
+    "making": "Publicando…"
   },
   "eventEnd": {
     "callOff": "Cancelar el evento",
@@ -182,7 +223,12 @@
     "failed": "No se ha finalizado. Vuelva a intentarlo en un momento.",
     "notEnded": "No se ha finalizado.",
     "alreadyOver": "Este evento ya ha terminado.",
-    "calledOffNotice": "Cancelado el {{date}}, antes de empezar. Los invitados que abren su enlace ven que no se celebrará."
+    "calledOffNotice": "Cancelado el {{date}}, antes de empezar. Los invitados que abren su enlace ven que no se celebrará.",
+    "callOffOpen": "Cancelar el evento…",
+    "endNowOpen": "Finalizar ahora…",
+    "callOffFailed": "No se ha cancelado. Vuelva a intentarlo en un momento.",
+    "callingOff": "Cancelando…",
+    "ending": "Finalizando…"
   },
   "eventPause": {
     "pause": "Pausar",
@@ -195,10 +241,12 @@
     "notice": "En pausa. Los invitados no pueden responder ni cambiar nada hasta que lo reanude. El registro de llegada y el servicio siguen funcionando.",
     "resume": "Reanudar",
     "resumeFailed": "No se ha reanudado. Vuelva a intentarlo en un momento.",
-    "resumed": "El evento {{name}} vuelve a estar publicado."
+    "resumed": "El evento {{name}} vuelve a estar publicado.",
+    "pausing": "Pausando…",
+    "resuming": "Reanudando…"
   },
   "eventDelete": {
-    "open": "Eliminar el evento",
+    "open": "Eliminar el evento…",
     "note": "Elimina el evento y todo su contenido para todo el equipo. Los invitados que abran su enlace verán que ya no está disponible.",
     "title": "¿Eliminar {{event}}?",
     "draftBody": "Es un borrador sin nadie en la lista de invitados. Se eliminará para todo el equipo.",
@@ -211,7 +259,8 @@
     "mismatch": "Escriba {{event}} exactamente como aparece para eliminarlo.",
     "keep": "Conservarlo",
     "delete": "Eliminar",
-    "deleted": "Se ha eliminado {{event}}."
+    "deleted": "Se ha eliminado {{event}}.",
+    "deleting": "Eliminando…"
   },
   "eventDuplicate": {
     "open": "Duplicar",
@@ -2156,5 +2205,25 @@
   "toast": {
     "undo": "Deshacer",
     "close": "Cerrar"
+  },
+  "eventNav": {
+    "label": "Event",
+    "back": "‹ Events",
+    "overview": "Overview",
+    "guests": "Guests",
+    "menu": "Menu",
+    "seating": "Seating",
+    "messages": "Messages",
+    "schedule": "Schedule",
+    "staff": "Staff",
+    "budget": "Budget",
+    "reports": "Reports",
+    "menuComing": "The menu for this event is coming.",
+    "seatingComing": "The seating plan for this event is coming.",
+    "messagesComing": "Messages for this event are coming.",
+    "scheduleComing": "The schedule for this event is coming.",
+    "staffComing": "The staff for this event are coming.",
+    "budgetComing": "The budget for this event is coming.",
+    "reportsComing": "Reports for this event are coming."
   }
 }
