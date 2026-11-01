@@ -5,6 +5,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
+import { STYLES } from '../../../test-styles.ts';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -661,5 +662,25 @@ describe('Settings > General > Company domain joining (sc-561)', () => {
       expect(await screen.findByText('ire.co added.')).toBeDefined();
       expect(screen.queryByText('That did not work. Try again in a moment.')).toBeNull();
     });
+  });
+});
+
+describe('Company domain joining beside Requests to join (sc-23176)', () => {
+  it("gives the pair's basis to each card, as loaded, never to its display: contents wrapper", async () => {
+    answering({
+      'GET /api/orgs/org_1/domains': () => json(listed([])),
+      'GET /api/orgs/org_1/request-link': () => json({ on: false, url: null }),
+    });
+    settings();
+
+    await waitFor(() => {
+      for (const name of ['Company domain joining', 'Requests to join']) {
+        const card = screen.getByRole('region', { name });
+        expect(card.parentElement?.className).toMatch(/^arrived/u);
+        expect(card.matches('.settings-pair .settings-card')).toBe(true);
+      }
+    });
+    expect(STYLES).toMatch(/\.settings-pair \.settings-card \{\s*flex: 1 1 26\.25rem;/u);
+    expect(STYLES).not.toMatch(/\.settings-pair > \*/u);
   });
 });
