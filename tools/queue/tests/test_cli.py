@@ -1,5 +1,6 @@
 import io
 import json
+import os
 import pathlib
 import tempfile
 import unittest
@@ -18,6 +19,16 @@ class FormerLinguists(unittest.TestCase):
             cli.main(["fr", "tick"])
         self.assertTrue(out.getvalue().startswith("error: the fr linguist is now l10n."))
         self.assertEqual(stopped.exception.code, 2)
+
+
+class RoleCommandsReadTheEnvFile(unittest.TestCase):
+    def test_a_role_command_loads_sq_s_env_file(self):
+        with tempfile.TemporaryDirectory() as folder, \
+                mock.patch.dict("os.environ", {"SOIRELY_CONFIG": folder}, clear=False):
+            pathlib.Path(folder, "env").write_text("SQ_TEST_ONLY_TOKEN=from-the-file\n")
+            with redirect_stdout(io.StringIO()):
+                cli.main(["dev", "help"])
+            self.assertEqual(os.environ.pop("SQ_TEST_ONLY_TOKEN"), "from-the-file")
 
 
 class States(unittest.TestCase):

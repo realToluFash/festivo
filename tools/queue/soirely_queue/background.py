@@ -8,6 +8,7 @@ budget. Claude writes no result for a background session, so the run log's entry
 from its transcript, and its cost reckoned from `models.json`."""
 
 import json
+import os
 import pathlib
 import re
 import shlex
@@ -46,19 +47,31 @@ class NoArtifactTools(NotStarted):
         self.short = short
 
 
-def read_only_settings(python=None):
-    """Settings whose PreToolUse hook refuses any Artifact call that does not only read."""
-    hook = f"{shlex.quote(python or sys.executable)} {shlex.quote(str(GUARD))}"
-    return json.dumps({"hooks": {"PreToolUse": [
-        {"matcher": "Artifact.*", "hooks": [{"type": "command", "command": hook}]}]}})
+# A session takes its environment from the account's daemon, not from `claude --bg`, so what
+# a worker's shell needs goes in its settings. Tokens stay out of argv: sq reads them from
+# its env file itself.
+PASSED = ("SOIRELY_WORKER", "SOIRELY_CONFIG", "GH_CONFIG_DIR")
+
+
+def settings(extra=None, read_only=True, python=None, environ=None):
+    """The session's settings: the worker's variables, and for every session but the
+    drawing's, a PreToolUse hook that refuses any Artifact call that does not only read."""
+    environ = os.environ if environ is None else environ
+    found = {key: environ[key] for key in PASSED if environ.get(key)}
+    found.update(extra or {})
+    given = {"env": found}
+    if read_only:
+        hook = f"{shlex.quote(python or sys.executable)} {shlex.quote(str(GUARD))}"
+        given["hooks"] = {"PreToolUse": [
+            {"matcher": "Artifact.*", "hooks": [{"type": "command", "command": hook}]}]}
+    return json.dumps(given)
 
 
 def command(values, folder, name, prompt, allowed=(), denied=(), extra=None, read_only=True):
     """`read_only` is every worker's but the drawing's: their Artifact calls only read."""
     argv = ["claude", "--bg", "--name", name, "--model", values["model"],
-            "--effort", values["effort"], "--permission-mode", "auto"]
-    if read_only:
-        argv += ["--settings", read_only_settings()]
+            "--effort", values["effort"], "--permission-mode", "auto",
+            "--settings", settings(extra, read_only)]
     if allowed:
         argv += ["--allowedTools", *allowed]
     if denied:

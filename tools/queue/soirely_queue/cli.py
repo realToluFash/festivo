@@ -926,6 +926,8 @@ def main(argv=None):
             sys.exit(2)
         if role not in roles.ROLES:
             sys.exit(f"unknown role {role}: one of {', '.join(roles.ROLES)}")
+        # A background worker's shell has no unit's EnvironmentFile behind it.
+        machine.load_env()
         parser = role_parser(role)
         a = parser.parse_args(argv[1:])
         if a.command in (None, "help"):
