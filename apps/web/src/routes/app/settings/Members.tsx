@@ -58,11 +58,13 @@ import {
   heldProviderReturn,
 } from '../../../providerSignIn.ts';
 import { type Proving, dropProof, heldProof, howToProve } from '../../../recentProof.ts';
+import { useOffline } from '../../../offline.ts';
 import { can, useSession } from '../../../session.ts';
 import { focusStep, useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { Forbidden } from '../Forbidden.tsx';
 import { ConfirmDialog } from '../../../components/ConfirmDialog.tsx';
 import { useDialogKeys } from '../../../dialogFocus.ts';
+import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
 
@@ -100,18 +102,24 @@ export function Members() {
   const manages = can(session, 'members.manage');
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const [refresh, setRefresh] = useState(0);
   const language = useShownLanguage();
   const loadedFor = useRef<string | null>(null);
   const retrying = useRef(false);
   const [heading, arriveAtHeading] = useStepFocus();
   const [failedLine, arriveAtFailed] = useStepFocus<HTMLParagraphElement>();
+  const { watch, refreshing } = useOffline({
+    loaded: load.kind === 'loaded',
+    reload: () => setRefresh((n) => n + 1),
+    title: heading,
+  });
 
   useEffect(() => {
     if (organisationId == null) return;
     let current = true;
     const askedAgain = loadedFor.current === organisationId;
 
-    Promise.all([api.members(organisationId), api.roles(organisationId)]).then(
+    watch(Promise.all([api.members(organisationId), api.roles(organisationId)])).then(
       ([list, catalogue]) => {
         if (!current) return;
         loadedFor.current = organisationId;
@@ -133,7 +141,7 @@ export function Members() {
     return () => {
       current = false;
     };
-  }, [organisationId, attempt, language, arriveAtHeading, arriveAtFailed]);
+  }, [organisationId, attempt, refresh, language, arriveAtHeading, arriveAtFailed, watch]);
 
   if (organisation == null) return null;
   if (!can(session, 'members.read')) return <Forbidden />;
@@ -141,6 +149,7 @@ export function Members() {
   return (
     <div className="settings settings-wide">
       <SettingsSections />
+      {refreshing && <Refreshing />}
       {load.kind === 'loading' && (
         <div className="members">
           <div className="members-head">

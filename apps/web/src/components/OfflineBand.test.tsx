@@ -211,4 +211,38 @@ describe('the offline band (sc-22586)', () => {
 
     expect(band()?.textContent).toContain('Offline · as of Monday, Oct 26 at 23:58');
   });
+
+  it("shows on an event's page, with Refreshing… beside Back while it loads again", async () => {
+    signedIn();
+    let soirely: 'answers' | 'unreachable' | 'silent' = 'answers';
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = new URL(String(input));
+
+      if (soirely === 'unreachable') throw new TypeError('Failed to fetch');
+      if (soirely === 'silent') return new Promise<Response>(() => {});
+      if (url.pathname !== '/api/events/ev_1') return new Response('{}', { status: 200 });
+
+      return new Response(JSON.stringify({ event: draft('Adaeze and Tunde') }), {
+        status: 200,
+        headers: { ETag: '"1"' },
+      });
+    });
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1'] })}
+      />,
+    );
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    soirely = 'unreachable';
+    goOffline();
+    await waitFor(() => expect(band()?.textContent).toMatch(/^Offline · as of /));
+
+    soirely = 'silent';
+    comeBack();
+
+    await screen.findByText('Refreshing…');
+    expect(band()).not.toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Adaeze and Tunde' })).toBeDefined();
+  });
 });

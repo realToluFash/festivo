@@ -44,6 +44,7 @@ export function useOffline({
   const [out, setOut] = useState(0);
   const [unanswered, setUnanswered] = useState(0);
   const pressed = useRef(false);
+  const askedWhileOut = useRef(false);
   const live = useRef({ loaded, reload, out, stale });
 
   useLayoutEffect(() => {
@@ -62,6 +63,7 @@ export function useOffline({
       return load.then(
         (value) => {
           setOut((n) => n - 1);
+          askedWhileOut.current = false;
           setAt(new Date());
           setStale(false);
 
@@ -81,6 +83,11 @@ export function useOffline({
             setUnanswered((n) => n + 1);
           }
 
+          if (askedWhileOut.current && keepsWhatLoaded(error))
+            setTimeout(() => live.current.reload(), 0);
+
+          askedWhileOut.current = false;
+
           throw error;
         },
       );
@@ -90,7 +97,10 @@ export function useOffline({
 
   useEffect(() => {
     const askAgain = () => {
-      if (live.current.stale && live.current.out === 0) live.current.reload();
+      if (!live.current.stale) return;
+
+      if (live.current.out === 0) live.current.reload();
+      else askedWhileOut.current = true;
     };
     const stop = connection.subscribe((change) => {
       if (change !== 'lost') askAgain();
@@ -110,11 +120,11 @@ export function useOffline({
 
   const showing = stale && loaded && at != null;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     show(showing ? { at, retry, unanswered } : null);
   }, [show, showing, at, retry, unanswered]);
 
-  useEffect(() => () => show(null), [show]);
+  useLayoutEffect(() => () => show(null), [show]);
 
   return { watch, refreshing: out > 0 && loaded };
 }

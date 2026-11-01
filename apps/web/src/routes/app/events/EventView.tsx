@@ -13,6 +13,8 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router';
 
 import { BackControl } from '../../../components/BackControl.tsx';
 import { api } from '../../../api.ts';
+import { Refreshing } from '../../../components/OfflineBand.tsx';
+import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
@@ -91,14 +93,20 @@ function EventOf({
   const { t } = useTranslation();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const [refresh, setRefresh] = useState(0);
   const heading = useRef<HTMLHeadingElement>(null);
   const failedLine = useRef<HTMLParagraphElement>(null);
   const land = useFocusOnceShown();
+  const { watch, refreshing } = useOffline({
+    loaded: load.kind === 'loaded',
+    reload: () => setRefresh((n) => n + 1),
+    title: heading,
+  });
 
   useEffect(() => {
     let current = true;
 
-    api.taggedEvent(eventId).then(
+    watch(api.taggedEvent(eventId)).then(
       ({ event, tag }) =>
         current &&
         setLoad(
@@ -108,29 +116,34 @@ function EventOf({
         ),
       (error: unknown) =>
         current &&
-        setLoad(
-          error instanceof ApiError && error.status === 404
-            ? { kind: 'notFound' }
-            : { kind: 'failed' },
+        setLoad((was) =>
+          was.kind === 'loaded' && keepsWhatLoaded(error)
+            ? was
+            : error instanceof ApiError && error.status === 404
+              ? { kind: 'notFound' }
+              : { kind: 'failed' },
         ),
     );
 
     return () => {
       current = false;
     };
-  }, [organisationId, eventId, attempt]);
+  }, [organisationId, eventId, attempt, refresh, watch]);
 
   return (
     <div className="event-page">
-      {page === 'event' ? (
-        <BackControl className="event-back" label={t('events.title')} to="/app/events" />
-      ) : (
-        <BackControl
-          className="event-back"
-          label={t('eventPage.backToEvent')}
-          to={`/app/events/${encodeURIComponent(eventId)}`}
-        />
-      )}
+      <div className="event-crumbs">
+        {page === 'event' ? (
+          <BackControl className="event-back" label={t('events.title')} to="/app/events" />
+        ) : (
+          <BackControl
+            className="event-back"
+            label={t('eventPage.backToEvent')}
+            to={`/app/events/${encodeURIComponent(eventId)}`}
+          />
+        )}
+        {refreshing && <Refreshing />}
+      </div>
 
       {load.kind === 'loading' &&
         (page === 'event' ? (

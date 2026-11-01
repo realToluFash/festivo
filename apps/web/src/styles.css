@@ -4500,6 +4500,13 @@ button.members-row {
   align-self: flex-start;
 }
 
+.event-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXl);
+}
+
 .event-form {
   display: flex;
   flex-direction: column;
