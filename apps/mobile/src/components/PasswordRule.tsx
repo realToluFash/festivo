@@ -15,7 +15,7 @@ export function PasswordRule({ met, testID }: { met: boolean; testID: string }) 
 
   return (
     <View style={styles.ruleInset}>
-      <SmallCapsLabel>{t('register.ruleHeading')}</SmallCapsLabel>
+      <SmallCapsLabel accessibilityRole={undefined}>{t('register.ruleHeading')}</SmallCapsLabel>
       <View style={styles.rule} testID={lengthMet ? `${testID}.ruleMet` : `${testID}.ruleNotYet`}>
         <View
           style={[styles.ruleMark, markSide, lengthMet && styles.ruleMarkMet]}
