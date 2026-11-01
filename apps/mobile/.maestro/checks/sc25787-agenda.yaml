@@ -1,0 +1,25 @@
+# The Calendar's Agenda, then an empty month.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: calendar.view.agenda
+    timeout: 30000
+- tapOn:
+    id: calendar.view.agenda
+- extendedWaitUntil:
+    visible:
+      id: calendar.agenda
+    timeout: 15000
+- takeScreenshot: agenda
+- tapOn:
+    id: calendar.show.events
+- takeScreenshot: agenda-events-only
+- tapOn:
+    id: calendar.show.all
+- tapOn:
+    id: calendar.next
+- takeScreenshot: agenda-empty-month
+- tapOn:
+    id: calendar.previous

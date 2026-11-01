@@ -1,0 +1,31 @@
+# The Calendar's Month grid, with a busy day's "+n more", in the account's language.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: calendar.view.month
+    timeout: 30000
+- tapOn:
+    id: calendar.view.month
+- extendedWaitUntil:
+    visible:
+      id: calendar.day.2026-11-14
+    timeout: 15000
+- takeScreenshot: month
+- tapOn:
+    id: calendar.day.2026-11-14
+- extendedWaitUntil:
+    visible:
+      id: calendar.dayList
+    timeout: 10000
+- takeScreenshot: day-list
+- tapOn:
+    id: calendar.dayList.close
+- tapOn:
+    id: calendar.day.2026-11-10
+- extendedWaitUntil:
+    visible:
+      id: calendar.dayList
+    timeout: 10000
+- takeScreenshot: day-empty
