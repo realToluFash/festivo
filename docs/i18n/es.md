@@ -49,6 +49,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **1 Nov 2026. Cuándo termina un evento y los títulos de las tarjetas de Resumen** (sc-26608
+  para sc-25008). «Termina {{time}}», con la frase entera de `Intl` detrás: «Termina dentro de
+  3 horas», «Termina mañana», «Termina este minuto»; el verbo delante, como «Termina {name}».
+  Las tarjetas: «Según lo previsto» (no «En camino», que suena a trayecto), «Respuestas»,
+  «Pendiente de usted» (no «Le necesita», que lee como una persona) y «Equipo del evento»,
+  nunca «su equipo», que se confunde con el de la organización.
+
 - **01 Nov 2026. Lo que dice un botón mientras envía, en un evento** (sc-22578 para sc-22103,
   `eventLive.making`, `eventPause.pausing`, `.resuming`, `eventEnd.callingOff`, `.ending`,
   `eventDelete.deleting`, `eventEnd.callOffFailed`, web y app). El gerundio del verbo del botón
