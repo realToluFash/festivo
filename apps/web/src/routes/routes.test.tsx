@@ -318,11 +318,12 @@ describe('the application tree', () => {
       expect(links.map((link) => link.textContent)).toEqual([
         'Dashboard',
         'Events',
+        'Calendar',
         'Guests',
         'Settings',
         'Your account',
       ]);
-      expect(links[3]!.getAttribute('aria-current')).toBe('page');
+      expect(links[4]!.getAttribute('aria-current')).toBe('page');
       expect(dialog.textContent).toContain('ada@example.com');
       expect(dialog.querySelector('select[aria-label="Language"]')).not.toBeNull();
       expect(document.activeElement).toBe(
