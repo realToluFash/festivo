@@ -1,4 +1,4 @@
-# sc-23282: another device's Sign out… opens Sign it out on top of Keep it signed in, and Keep it signed in keeps the row. Needs ${METRO_URL} and another session of the account.
+# sc-23282: another device's Sign out… opens Sign it out on top of Keep it signed in, and Keep it signed in keeps the row. Needs ${METRO_URL} and another session of the account, which Sign it out ends: create a fresh one before each run.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/security
@@ -10,7 +10,7 @@ appId: host.exp.Exponent
     timeout: 3000
 - takeScreenshot: rows
 - tapOn:
-    point: '78%,35%'
+    id: 'devices\.row\..+\.signOut'
 - waitForAnimationToEnd
 - takeScreenshot: after-tap
 - waitForAnimationToEnd
@@ -37,7 +37,7 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 3000
 - tapOn:
-    point: '78%,35%'
+    id: 'devices\.row\..+\.signOut'
 - scrollUntilVisible:
     element:
       id: 'devices.end'

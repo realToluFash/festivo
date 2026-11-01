@@ -16,7 +16,7 @@ appId: host.exp.Exponent
     timeout: 3000
 - takeScreenshot: landscape-devices
 - tapOn:
-    text: 'Sign out…'
+    id: 'devices\.row\..+\.signOut'
     rightOf: 'Chrome on Windows'
 - waitForAnimationToEnd
 - takeScreenshot: landscape-device-tapped
@@ -52,7 +52,7 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 3000
 - tapOn:
-    text: 'Sign out…'
+    id: 'devices\.row\..+\.signOut'
     rightOf: 'Chrome on Windows'
 - waitForAnimationToEnd
 - takeScreenshot: portrait-device-tapped

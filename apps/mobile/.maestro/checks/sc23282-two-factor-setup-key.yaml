@@ -45,3 +45,9 @@ appId: host.exp.Exponent
     id: 'twoFactor.cancel'
 - waitForAnimationToEnd
 - takeScreenshot: cancelled
+- scrollUntilVisible:
+    element:
+      id: 'twoFactor.turnOn'
+    timeout: 15000
+- assertVisible:
+    id: 'twoFactor.turnOn'

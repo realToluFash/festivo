@@ -19,3 +19,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'twoFactor.keepItOn'
 - takeScreenshot: kept
+- assertVisible:
+    id: 'twoFactor.turnOff'
+- assertNotVisible:
+    id: 'twoFactor.keepItOn'
