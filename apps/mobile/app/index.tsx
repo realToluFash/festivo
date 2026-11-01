@@ -9,10 +9,12 @@ import { Home as SignedInHome } from '../src/components/Home.tsx';
 import { PrimaryButton, SecondaryButton } from '../src/components/Buttons.tsx';
 import { cardFrame } from '../src/components/cardFrame.ts';
 import { Notice } from '../src/components/Notice.tsx';
+import { useReadOut } from '../src/components/ReadOut.tsx';
 import { Screen } from '../src/components/Screen.tsx';
 import { GlyphMark, type Mark } from '../src/components/StatusMark.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { Title } from '../src/components/Title.tsx';
+import { useShownAfter } from '../src/components/useShownAfter.ts';
 import { config } from '../src/config.ts';
 import { followAccount } from '../src/accountLanguage.ts';
 import { landingFor } from '../src/landing.ts';
@@ -20,6 +22,7 @@ import { useLayout } from '../src/layout/useLayout.ts';
 import { dropRegistration, heldRegistration } from '../src/pendingRegistration.ts';
 import { launchRoute } from '../src/resumeSignUp.ts';
 import { ruleRefusal, signInRoute } from '../src/kit/signInRules.ts';
+import { SKELETON_AFTER_MS } from '../src/kit/skeleton.ts';
 import { launchSignedIn } from '../src/signedIn.ts';
 import { tokens } from '../src/theme/tokens.ts';
 import { unreachableFrom } from '../src/unreachable.ts';
@@ -135,15 +138,35 @@ export default function Home() {
 
   if (launching === 'signedIn') return <SignedInHome />;
 
-  if (launching === 'deciding') {
-    return (
-      <View style={styles.deciding}>
-        <ActivityIndicator color={tokens.colorAccent} />
-      </View>
-    );
-  }
+  if (launching === 'deciding') return <Deciding />;
 
   return <SignedOut state={state} onRetry={retry} />;
+}
+
+/** The page colour alone for a second, then the spinner over its loading words (sc-26325). */
+function Deciding() {
+  const { t } = useTranslation();
+  const shown = useShownAfter(SKELETON_AFTER_MS);
+  const loading = t('pending.loading');
+
+  useReadOut(shown ? loading : null);
+
+  return (
+    <View style={styles.deciding} accessibilityState={{ busy: true }} testID="launch.deciding">
+      {shown && (
+        <>
+          <ActivityIndicator
+            color={tokens.colorAccent}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
+          <Text size={tokens.typeBodyPhone.size} muted>
+            {loading}
+          </Text>
+        </>
+      )}
+    </View>
+  );
 }
 
 const ATTENTION: Mark = {
@@ -273,6 +296,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: tokens.spaceSm,
     backgroundColor: tokens.colorPage,
   },
   phone: { flexGrow: 1 },
