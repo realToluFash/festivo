@@ -73,7 +73,15 @@ export function Events() {
   const organisation = session.organisation;
   const location = useLocation();
   const navigate = useNavigate();
-  const [deleted] = useState(() => deletedEvent(location.state));
+  const [notice, setNotice] = useState(() => arrival(location.state));
+  const [shownAt, setShownAt] = useState(location.key);
+
+  if (location.key !== shownAt) {
+    setShownAt(location.key);
+    setNotice(
+      arrival(location.state) ?? (notice?.replacing ? { ...notice, replacing: false } : null),
+    );
+  }
 
   useEffect(() => {
     if (deletedEvent(location.state) == null) return;
@@ -91,7 +99,7 @@ export function Events() {
       key={organisation.id}
       organisationId={organisation.id}
       creates={can(session, 'events.create')}
-      deleted={deleted}
+      deleted={notice?.event ?? null}
     />
   );
 }
@@ -587,6 +595,13 @@ function NextStep({ event, phase, now }: { event: ListedEvent; phase: EventPhase
         </>
       );
   }
+}
+
+/** The deleted notice belongs to the entry Delete event lands on, which Events replaces once to drop its state, and to no other (sc-22103). */
+function arrival(state: unknown): { event: string; replacing: boolean } | null {
+  const event = deletedEvent(state);
+
+  return event == null ? null : { event, replacing: true };
 }
 
 /** Set by Delete event on its way to the Events list, which says the event was deleted. */
