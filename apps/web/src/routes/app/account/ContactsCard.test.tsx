@@ -169,6 +169,32 @@ describe('email addresses and phone numbers', () => {
     );
   });
 
+  it('waits on the two-factor read again on Try again, as a first load does (sc-24696)', async () => {
+    let fails = true;
+    let twoFactorAnswers: (response: Response) => void = () => {};
+    answering({
+      'GET /api/auth/me': () => (fails ? problem('server_error', 500) : json(ME)),
+      'GET /api/auth/two-factor': () =>
+        fails
+          ? problem('server_error', 500)
+          : new Promise<Response>((resolve) => {
+              twoFactorAnswers = resolve;
+            }),
+    });
+    open();
+
+    await screen.findByText('Your email addresses did not load. Try again in a moment.');
+    const emailCard = screen.getByRole('region', { name: 'Email addresses' });
+    const retry = await within(emailCard).findByRole('button', { name: 'Try again' });
+    fails = false;
+    fireEvent.click(retry);
+
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull());
+    expect(screen.queryByText('folake.adeyemi@gmail.com')).toBeNull();
+    twoFactorAnswers(json({ on: true, recoveryCodesLeft: 10 }));
+    expect(await screen.findByText('folake.adeyemi@gmail.com')).toBeDefined();
+  });
+
   it('says so again in both when Try again fails, with focus on the pressed card’s line (sc-24696)', async () => {
     answering({ 'GET /api/auth/me': () => problem('server_error', 500) });
     open();

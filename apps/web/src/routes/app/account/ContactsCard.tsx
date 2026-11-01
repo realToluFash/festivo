@@ -89,6 +89,7 @@ export function ContactsCards({ onPrimaryChanged }: { onPrimaryChanged: () => Pr
   // Only a filled card's heading takes focus; the waiting and failed cards' headings never do.
   function retry(kind: Kind): void {
     setAccount(null);
+    setTwoFactorOn(null);
     setAttempt((n) => n + 1);
     land(
       () =>
