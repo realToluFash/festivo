@@ -34,7 +34,7 @@ import {
 } from './Screen.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { useMarkSide } from './markSide.ts';
-import { Skeleton } from './Skeleton.tsx';
+import { Arrived, Skeleton } from './Skeleton.tsx';
 
 /** Said once, as the tap it answers lands; `AtRest` mounts again after every reload. */
 interface Refusal {
@@ -276,7 +276,7 @@ function AtRest({
           <Title text={t('twoFactorCard.title')} ref={title} />
         </View>
         {/* A mark and the word, never the colour alone. */}
-        <View style={styles.state}>
+        <Arrived style={styles.state}>
           <View
             style={[styles.mark, markSide, status.on ? styles.markOn : styles.markOff]}
             accessibilityElementsHidden
@@ -300,57 +300,59 @@ function AtRest({
           >
             {status.on ? t('twoFactorCard.on') : t('twoFactorCard.off')}
           </Text>
-        </View>
+        </Arrived>
       </View>
 
-      {status.on ? (
-        <>
-          <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
-            {t('twoFactorCard.onIntro')}
-          </Text>
-          <View style={styles.inset}>
-            <Text size={tokens.typeBodyPhone.size} weight="semibold">
-              {t('twoFactorCard.recoveryCodes')}
+      <Arrived style={styles.arrived}>
+        {status.on ? (
+          <>
+            <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
+              {t('twoFactorCard.onIntro')}
             </Text>
-            <Text size={tokens.typeSmall.size} style={styles.secondary}>
-              {t('twoFactorCard.unused', { left: status.recoveryCodesLeft, total: 10 })}
-            </Text>
+            <View style={styles.inset}>
+              <Text size={tokens.typeBodyPhone.size} weight="semibold">
+                {t('twoFactorCard.recoveryCodes')}
+              </Text>
+              <Text size={tokens.typeSmall.size} style={styles.secondary}>
+                {t('twoFactorCard.unused', { left: status.recoveryCodesLeft, total: 10 })}
+              </Text>
+              <SecondaryButton
+                ref={opener('newCodes')}
+                label={t('twoFactorCard.makeNewCodes')}
+                onPress={onNewCodes}
+                testID="twoFactor.newCodes"
+              />
+            </View>
             <SecondaryButton
-              ref={opener('newCodes')}
-              label={t('twoFactorCard.makeNewCodes')}
-              onPress={onNewCodes}
-              testID="twoFactor.newCodes"
+              ref={opener('turnOff')}
+              label={t('twoFactorCard.turnOff')}
+              onPress={onTurnOff}
+              testID="twoFactor.turnOff"
             />
-          </View>
-          <SecondaryButton
-            ref={opener('turnOff')}
-            label={t('twoFactorCard.turnOff')}
-            onPress={onTurnOff}
-            testID="twoFactor.turnOff"
-          />
-          {refusedBy != null && (
-            <Notice
-              tone="attention"
-              mark="!"
-              body={t('twoFactorCard.keptByRule', { organisation: refusedBy.organisation })}
-              answer={refusedBy.said ? undefined : refusedBy}
-              takesFocus={refusedBy.takesFocus}
+            {refusedBy != null && (
+              <Notice
+                tone="attention"
+                mark="!"
+                body={t('twoFactorCard.keptByRule', { organisation: refusedBy.organisation })}
+                answer={refusedBy.said ? undefined : refusedBy}
+                takesFocus={refusedBy.takesFocus}
+              />
+            )}
+          </>
+        ) : (
+          <>
+            <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
+              {t('twoFactorCard.offIntro')}
+            </Text>
+            <PrimaryButton
+              ref={opener('turnOn')}
+              label={t('twoFactorCard.turnOn')}
+              onPress={onTurnOn}
+              testID="twoFactor.turnOn"
             />
-          )}
-        </>
-      ) : (
-        <>
-          <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
-            {t('twoFactorCard.offIntro')}
-          </Text>
-          <PrimaryButton
-            ref={opener('turnOn')}
-            label={t('twoFactorCard.turnOn')}
-            onPress={onTurnOn}
-            testID="twoFactor.turnOn"
-          />
-        </>
-      )}
+          </>
+        )}
+      </Arrived>
     </>
   );
 }
@@ -735,6 +737,7 @@ function refusalMessage(refusal: unknown, wrong: string, t: TFunction): string {
 }
 
 const styles = StyleSheet.create({
+  arrived: { gap: tokens.spaceLg },
   codeAndCheck: { gap: tokens.spaceLg },
   heading: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   grow: { flex: 1 },

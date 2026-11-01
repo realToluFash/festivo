@@ -113,17 +113,17 @@ export function RequestLinkCard({
   const notChanged = t('requestLink.failed');
 
   return (
-    <Arrived>
-      <View style={cardFrame(kind)}>
-        <View style={styles.heading}>
-          <Text
-            size={tokens.typeRowTitle.size}
-            weight="bold"
-            accessibilityRole="header"
-            style={styles.title}
-          >
-            {t('requestLink.title')}
-          </Text>
+    <View style={cardFrame(kind)}>
+      <View style={styles.heading}>
+        <Text
+          size={tokens.typeRowTitle.size}
+          weight="bold"
+          accessibilityRole="header"
+          style={styles.title}
+        >
+          {t('requestLink.title')}
+        </Text>
+        <Arrived>
           <OnOffSwitch
             on={link.on}
             words={{ on: t('requestLink.on'), off: t('requestLink.off') }}
@@ -133,7 +133,9 @@ export function RequestLinkCard({
             onChange={toggle}
             testID="requestLink.switch"
           />
-        </View>
+        </Arrived>
+      </View>
+      <Arrived style={styles.arrived}>
         <Text size={tokens.typeBodyPhone.size} muted>
           {t('requestLink.intro', { organisation: organisation.name })}
         </Text>
@@ -228,12 +230,13 @@ export function RequestLinkCard({
             )}
           </View>
         )}
-      </View>
-    </Arrived>
+      </Arrived>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  arrived: { gap: tokens.spaceLg },
   heading: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   title: { flex: 1 },
   link: { gap: tokens.spaceSm },

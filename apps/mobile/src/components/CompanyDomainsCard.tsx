@@ -142,19 +142,21 @@ export function CompanyDomainsCard({
   }
 
   return (
-    <Arrived>
-      <View style={cardFrame(kind)}>
-        <View style={styles.heading}>
-          <Text
-            size={tokens.typeRowTitle.size}
-            weight="bold"
-            accessibilityRole="header"
-            style={styles.title}
-          >
-            {t('companyDomains.title')}
-          </Text>
+    <View style={cardFrame(kind)}>
+      <View style={styles.heading}>
+        <Text
+          size={tokens.typeRowTitle.size}
+          weight="bold"
+          accessibilityRole="header"
+          style={styles.title}
+        >
+          {t('companyDomains.title')}
+        </Text>
+        <Arrived>
           <StateWord on={on} label={on ? t('companyDomains.on') : t('companyDomains.off')} />
-        </View>
+        </Arrived>
+      </View>
+      <Arrived style={styles.arrived}>
         <Text size={tokens.typeBodyPhone.size} muted>
           {t('companyDomains.intro', { organisation: organisation.name })}
         </Text>
@@ -295,8 +297,8 @@ export function CompanyDomainsCard({
             />
           </>
         )}
-      </View>
-    </Arrived>
+      </Arrived>
+    </View>
   );
 }
 
@@ -316,6 +318,7 @@ function StateWord({ on, label }: { on: boolean; label: string }) {
 }
 
 const styles = StyleSheet.create({
+  arrived: { gap: tokens.spaceLg },
   heading: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   title: { flex: 1 },
   state: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
