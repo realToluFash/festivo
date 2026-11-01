@@ -1,4 +1,4 @@
-import { ApiError, type LinkedProvider } from '@soirely/api-client';
+import { ApiError } from '@soirely/api-client';
 import {
   cleanCode,
   codeProblem,
@@ -20,142 +20,15 @@ import { useFormChecks } from '../../../formChecks.ts';
 import { focusWhereSent } from '../../../offField.ts';
 import { useResendCountdown } from '../../../resendCountdown.ts';
 import { dateLocale } from '../../../i18n/index.ts';
-import { PROVIDER_NAMES } from '../../../providerSignIn.ts';
 import { focusStep, useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { currentSessionId } from '../../../tokens.ts';
-
-type Stage =
-  | { kind: 'at-rest'; signedOut: number | null; added: string | null }
-  | { kind: 'changing' }
-  | { kind: 'setting' };
-
-/** Settings > Security, the first card: change the password (sc-116), or add one to a Google or Apple account (sc-391). */
-export function PasswordCard({
-  email,
-  hasPassword,
-  providers,
-  onChanged,
-  onAdded,
-  setting = false,
-  onSetting,
-  returnTo,
-}: {
-  email: string;
-  hasPassword: boolean;
-  providers: readonly LinkedProvider[];
-  onChanged: () => void;
-  onAdded: () => void | Promise<void>;
-  /** Opened from elsewhere too: the ways-to-sign-in card offers Set a password for the last way in. */
-  setting?: boolean;
-  onSetting?: (on: boolean) => void;
-  /** Where Cancel on Set a password goes back to when another card opened it. */
-  returnTo?: () => HTMLElement | null;
-}) {
-  const { t } = useTranslation();
-  const [stage, setStage] = useState<Stage>({ kind: 'at-rest', signedOut: null, added: null });
-  const heading = useRef<HTMLHeadingElement>(null);
-  const opener = useRef<HTMLButtonElement>(null);
-  const said = useRef<HTMLParagraphElement>(null);
-  const land = useFocusOnceShown();
-  const open = (next: Stage) => {
-    setStage(next);
-    onSetting?.(next.kind === 'setting');
-  };
-  const first = providers[0]?.provider;
-  const provider = first == null ? '' : PROVIDER_NAMES[first];
-
-  if (!hasPassword) {
-    return (
-      <section className="card" aria-labelledby="password-title">
-        {stage.kind === 'setting' || setting ? (
-          <Setting
-            email={email}
-            onAdded={async () => {
-              await onAdded();
-              open({ kind: 'at-rest', signedOut: null, added: provider });
-              land(() => said.current);
-            }}
-            onCancel={() => {
-              const back = stage.kind === 'setting' ? null : returnTo;
-              open({ kind: 'at-rest', signedOut: null, added: null });
-              land(() => back?.() ?? opener.current ?? heading.current);
-            }}
-          />
-        ) : (
-          <>
-            <h2 id="password-title" ref={heading} tabIndex={-1}>
-              {t('passwordCard.title')}
-            </h2>
-            <p>{t('passwordCard.setRest', { provider })}</p>
-            <div className="actions">
-              <button
-                className="button"
-                type="button"
-                ref={opener}
-                onClick={() => open({ kind: 'setting' })}
-              >
-                {t('passwordCard.set')}
-              </button>
-            </div>
-          </>
-        )}
-      </section>
-    );
-  }
-
-  return (
-    <section className="card" aria-labelledby="password-title">
-      {stage.kind === 'changing' ? (
-        <Changing
-          email={email}
-          onChanged={(signedOut) => {
-            setStage({ kind: 'at-rest', signedOut, added: null });
-            onChanged();
-            land(() => said.current);
-          }}
-          onCancel={() => {
-            setStage({ kind: 'at-rest', signedOut: null, added: null });
-            land(() => opener.current ?? heading.current);
-          }}
-        />
-      ) : (
-        <>
-          <h2 id="password-title" ref={heading} tabIndex={-1}>
-            {t('passwordCard.title')}
-          </h2>
-          {stage.kind === 'at-rest' && (stage.signedOut != null || stage.added != null) && (
-            <p className="status-done" ref={said} tabIndex={-1}>
-              <span className="mark mark-done" aria-hidden="true">
-                ✓
-              </span>
-              {stage.added != null
-                ? t('passwordCard.added', { provider: stage.added })
-                : t('passwordCard.done', { count: stage.signedOut ?? 0 })}
-            </p>
-          )}
-          <p>{t('passwordCard.intro')}</p>
-          <div className="actions">
-            <button
-              className="button"
-              type="button"
-              ref={opener}
-              onClick={() => setStage({ kind: 'changing' })}
-            >
-              {t('passwordCard.change')}
-            </button>
-          </div>
-        </>
-      )}
-    </section>
-  );
-}
+import { ActionPair } from '../../../components/ActionPair.tsx';
 
 type SetStep =
   | { kind: 'code'; refusal: string | null; paused: string | null; expired?: boolean }
   | { kind: 'password'; stepUp: string };
 
-/** The code from the email first, then the password: the provider session alone may not add one. */
-function Setting({
+export function Setting({
   email,
   onAdded,
   onCancel,
@@ -293,7 +166,7 @@ function Setting({
 
     return (
       <>
-        <h2 id="password-title" ref={stepHeading} tabIndex={-1}>
+        <h2 id="ways-title" ref={stepHeading} tabIndex={-1}>
           {t('passwordCard.setNewTitle')}
         </h2>
         <form className="auth-form" noValidate onSubmit={(event) => void save(event)}>
@@ -324,14 +197,18 @@ function Setting({
 
           <p className="muted">{t('passwordCard.setEmailed', { email })}</p>
 
-          <div className="actions">
-            <button className="button" type="button" onClick={onCancel} disabled={busy}>
-              {t('passwordCard.cancel')}
-            </button>
-            <button className="button button-primary" type="submit" aria-busy={busy}>
-              {busy ? t('passwordCard.saving') : t('passwordCard.setSave')}
-            </button>
-          </div>
+          <ActionPair
+            dismiss={
+              <button className="button" type="button" onClick={onCancel} disabled={busy}>
+                {t('passwordCard.cancel')}
+              </button>
+            }
+            confirm={
+              <button className="button button-primary" type="submit" aria-busy={busy}>
+                {busy ? t('passwordCard.saving') : t('passwordCard.setSave')}
+              </button>
+            }
+          />
         </form>
       </>
     );
@@ -341,7 +218,7 @@ function Setting({
 
   return (
     <>
-      <h2 id="password-title" ref={stepHeading} tabIndex={-1}>
+      <h2 id="ways-title" ref={stepHeading} tabIndex={-1}>
         {t('passwordCard.setCodeTitle')}
       </h2>
 
@@ -407,22 +284,28 @@ function Setting({
 
         <p className="muted">{t('passwordCard.setCodeNote')}</p>
 
-        <div className="actions">
-          <button className="button" type="button" onClick={onCancel}>
-            {t('passwordCard.cancel')}
-          </button>
-          <button
-            className="button"
-            type="button"
-            {...resending.button}
-            onClick={() => void send(true)}
-          >
-            {resending.label}
-          </button>
-          <button className="button button-primary" type="submit" aria-busy={busy}>
-            {t('passwordCard.continue')}
-          </button>
-        </div>
+        <ActionPair
+          dismiss={
+            <button className="button" type="button" onClick={onCancel}>
+              {t('passwordCard.cancel')}
+            </button>
+          }
+          between={
+            <button
+              className="button"
+              type="button"
+              {...resending.button}
+              onClick={() => void send(true)}
+            >
+              {resending.label}
+            </button>
+          }
+          confirm={
+            <button className="button button-primary" type="submit" aria-busy={busy}>
+              {t('passwordCard.continue')}
+            </button>
+          }
+        />
         <span className="visually-hidden" role="status">
           {resending.status}
         </span>
@@ -472,7 +355,7 @@ type Refusal =
   | { field: 'paused'; message: string }
   | { field: 'failed'; message: string };
 
-function Changing({
+export function Changing({
   email,
   onChanged,
   onCancel,
@@ -542,7 +425,7 @@ function Changing({
 
   return (
     <>
-      <h2 id="password-title" ref={heading} tabIndex={-1}>
+      <h2 id="ways-title" ref={heading} tabIndex={-1}>
         {t('passwordCard.formTitle')}
       </h2>
 
@@ -631,14 +514,18 @@ function Changing({
         <p className="muted">{t('passwordCard.signsOut')}</p>
         <p className="muted">{t('passwordCard.emailed', { email })}</p>
 
-        <div className="actions">
-          <button className="button" type="button" onClick={onCancel} disabled={saving}>
-            {t('passwordCard.cancel')}
-          </button>
-          <button className="button button-primary" type="submit" aria-busy={saving}>
-            {saving ? t('passwordCard.saving') : t('passwordCard.save')}
-          </button>
-        </div>
+        <ActionPair
+          dismiss={
+            <button className="button" type="button" onClick={onCancel} disabled={saving}>
+              {t('passwordCard.cancel')}
+            </button>
+          }
+          confirm={
+            <button className="button button-primary" type="submit" aria-busy={saving}>
+              {saving ? t('passwordCard.saving') : t('passwordCard.save')}
+            </button>
+          }
+        />
       </form>
     </>
   );

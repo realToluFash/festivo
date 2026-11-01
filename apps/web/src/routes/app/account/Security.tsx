@@ -18,7 +18,6 @@ import { AccountHeader } from '../../../components/AccountHeader.tsx';
 import { LateStatus } from '../../../components/LateStatus.tsx';
 import { StillSignedIn } from '../../../components/StillSignedIn.tsx';
 import { EverywhereElse } from './EverywhereElse.tsx';
-import { PasswordCard } from './PasswordCard.tsx';
 import { TwoFactorCard } from './TwoFactorCard.tsx';
 import { WaysCard } from './WaysCard.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
@@ -31,6 +30,7 @@ import { forgetSession, refreshAccount, rereadCredentials, useSession } from '..
 import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { useSignOut } from '../../../signOut.ts';
 import { Skeleton } from '../../../components/Skeleton.tsx';
+import { ActionPair } from '../../../components/ActionPair.tsx';
 
 type Devices =
   { kind: 'loading' } | { kind: 'failed' } | { kind: 'ready'; sessions: DeviceSession[] };
@@ -55,10 +55,8 @@ export function Security() {
   const failedNotice = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLUListElement>(null);
   const loaded = () => list.current != null || failedNotice.current != null;
-  const passwordOpener = useRef<(() => HTMLElement | null) | null>(null);
   const land = useFocusOnceShown();
   const [settingUp, setSettingUp] = useState(false);
-  const [settingPassword, setSettingPassword] = useState(false);
   const [returned] = useState<ProviderReturn | null>(() => heldProviderReturn(['signOutOthers']));
   const [everywhere, setEverywhere] = useState(
     returned != null && !('failed' in returned && returned.failed === 'cancelled'),
@@ -157,33 +155,18 @@ export function Security() {
     <div className="account">
       <AccountHeader title={t('account.title')} email={session.email} />
 
-      <PasswordCard
-        email={session.email}
-        hasPassword={session.hasPassword}
-        providers={session.providers}
-        onChanged={() => {
-          setEnded(null);
-          setRetried(false);
-          setAfterStep(true);
-          setDevices({ kind: 'loading' });
-          setAttempt((n) => n + 1);
-        }}
-        onAdded={() => refreshAccount()}
-        setting={settingPassword}
-        onSetting={setSettingPassword}
-        returnTo={() => passwordOpener.current?.() ?? null}
-      />
-
       <WaysCard
         email={session.email}
         hasPassword={session.hasPassword}
         providers={session.providers}
         onChanged={() => refreshAccount()}
         onRefused={rereadCredentials}
-        onSetPassword={(opener) => {
-          passwordOpener.current = opener;
-          setSettingPassword(true);
-          document.getElementById('password-title')?.scrollIntoView({ block: 'start' });
+        onPasswordChanged={() => {
+          setEnded(null);
+          setRetried(false);
+          setAfterStep(true);
+          setDevices({ kind: 'loading' });
+          setAttempt((n) => n + 1);
         }}
         onSignedOutHere={() => {
           forgetSession();
@@ -343,7 +326,7 @@ export function Security() {
               {devices.kind === 'ready' && othersOf(devices.sessions).count > 0 && (
                 <div className="device-footer">
                   <button
-                    className="button"
+                    className="button button-danger"
                     type="button"
                     ref={everywhereButton}
                     onClick={() => {
@@ -431,8 +414,13 @@ function Row({
       {/* Your own signs out at once and lands on sign-in. Another device opens
           a check first: you cannot see it, the row is only what it claimed,
           and it may be mid-event. */}
-      <button className="button" type="button" ref={button} onClick={here ? onEndHere : onCheck}>
-        {t('devices.signOut')}
+      <button
+        className="button button-danger"
+        type="button"
+        ref={button}
+        onClick={here ? onEndHere : onCheck}
+      >
+        {here ? t('devices.signOut') : t('devices.signOutAsks')}
       </button>
     </li>
   );
@@ -476,14 +464,18 @@ function Check({
         </div>
       </div>
 
-      <div className="actions">
-        <button className="link-button" type="button" onClick={onKeep}>
-          {t('devices.keep')}
-        </button>
-        <button className="button button-danger" type="button" onClick={onEnd}>
-          {t('devices.end')}
-        </button>
-      </div>
+      <ActionPair
+        dismiss={
+          <button className="link-button" type="button" onClick={onKeep}>
+            {t('devices.keep')}
+          </button>
+        }
+        confirm={
+          <button className="button button-danger" type="button" onClick={onEnd}>
+            {t('devices.end')}
+          </button>
+        }
+      />
     </>
   );
 }

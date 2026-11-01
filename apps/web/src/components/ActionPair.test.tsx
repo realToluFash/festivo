@@ -78,4 +78,25 @@ describe('a pair of actions', () => {
 
     expect(document.activeElement).toBe(elsewhere);
   });
+
+  it('keeps a third choice between the two in a row and stacked', () => {
+    const turn = aWindowThatTurns();
+    render(
+      <ActionPair
+        dismiss={<button type="button">Cancel</button>}
+        between={<button type="button">Send a new code</button>}
+        confirm={<button type="button">Continue</button>}
+      />,
+    );
+    const seen = () =>
+      [...screen.getByRole('button', { name: 'Cancel' }).parentElement!.children].map(
+        (button) => button.textContent,
+      );
+
+    expect(seen()).toEqual(['Cancel', 'Send a new code', 'Continue']);
+
+    turn(true);
+
+    expect(seen()).toEqual(['Continue', 'Send a new code', 'Cancel']);
+  });
 });

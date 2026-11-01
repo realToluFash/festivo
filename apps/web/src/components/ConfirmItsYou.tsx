@@ -19,6 +19,7 @@ import { dropProof, holdProof } from '../recentProof.ts';
 import { FieldError } from './FieldError.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import { AppleMark, GoogleMark } from './ProviderSignIn.tsx';
+import { ActionPair } from './ActionPair.tsx';
 
 type ProvingField = 'password' | 'code';
 
@@ -282,46 +283,54 @@ export function ConfirmItsYou({
         {note}
 
         {askPassword || signIn != null ? (
-          <div className="actions">
-            <button className="button" type="button" onClick={onCancel} disabled={checking}>
-              {t('waysCard.cancel')}
-            </button>
-            <button className="button button-primary" type="submit" aria-busy={checking}>
-              {checking ? t('waysCard.checking') : t('waysCard.continue')}
-            </button>
-          </div>
+          <ActionPair
+            dismiss={
+              <button className="button" type="button" onClick={onCancel} disabled={checking}>
+                {t('waysCard.cancel')}
+              </button>
+            }
+            confirm={
+              <button className="button button-primary" type="submit" aria-busy={checking}>
+                {checking ? t('waysCard.checking') : t('waysCard.continue')}
+              </button>
+            }
+          />
         ) : (
           viaProvider != null && (
             <>
               <p className="muted">
                 {t('waysCard.proveWithProvider', { provider: PROVIDER_NAMES[viaProvider] })}
               </p>
-              <div className="actions">
-                <button
-                  className={
-                    viaProvider === 'google' ? 'button button-google' : 'button button-apple'
-                  }
-                  type="button"
-                  onClick={() => {
-                    void startProviderSignIn(viaProvider, purpose).catch(() =>
-                      setRefusal({
-                        field: 'failed',
-                        message: t('waysCard.providerFailed', {
-                          provider: PROVIDER_NAMES[viaProvider],
+              <ActionPair
+                dismiss={
+                  <button className="button" type="button" onClick={onCancel}>
+                    {t('waysCard.cancel')}
+                  </button>
+                }
+                confirm={
+                  <button
+                    className={
+                      viaProvider === 'google' ? 'button button-google' : 'button button-apple'
+                    }
+                    type="button"
+                    onClick={() => {
+                      void startProviderSignIn(viaProvider, purpose).catch(() =>
+                        setRefusal({
+                          field: 'failed',
+                          message: t('waysCard.providerFailed', {
+                            provider: PROVIDER_NAMES[viaProvider],
+                          }),
                         }),
-                      }),
-                    );
-                  }}
-                >
-                  {viaProvider === 'google' ? <GoogleMark /> : <AppleMark />}
-                  <span>
-                    {t('waysCard.continueWith', { provider: PROVIDER_NAMES[viaProvider] })}
-                  </span>
-                </button>
-                <button className="button" type="button" onClick={onCancel}>
-                  {t('waysCard.cancel')}
-                </button>
-              </div>
+                      );
+                    }}
+                  >
+                    {viaProvider === 'google' ? <GoogleMark /> : <AppleMark />}
+                    <span>
+                      {t('waysCard.continueWith', { provider: PROVIDER_NAMES[viaProvider] })}
+                    </span>
+                  </button>
+                }
+              />
             </>
           )
         )}

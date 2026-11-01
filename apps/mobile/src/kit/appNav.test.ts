@@ -70,7 +70,7 @@ describe('the frame shows only what is built', () => {
 });
 
 describe('Settings > Security holds every card', () => {
-  it.each(['PasswordCard', 'WaysCard', 'TwoFactorCard', 'DevicesCard'])('%s', (card) => {
+  it.each(['WaysCard', 'TwoFactorCard', 'DevicesCard'])('%s', (card) => {
     expect(source(join(APP, 'settings', 'security.tsx'))).toMatch(new RegExp(`<${card}\\b`, 'u'));
   });
 });

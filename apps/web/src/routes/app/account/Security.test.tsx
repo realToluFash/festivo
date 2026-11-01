@@ -93,9 +93,9 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-/** The Password card alone: Ways to sign in offers Set a password too. */
-function passwordCard() {
-  return within(screen.getByRole('region', { name: 'Password' }));
+/** The Password row alone: the last way in offers Set a password too. */
+function passwordRow() {
+  return within(screen.getAllByRole('listitem')[0]!);
 }
 
 function openSecurity() {
@@ -228,6 +228,16 @@ describe('the devices signed in to an account', () => {
       expect(screen.getByText('A device that did not name itself')).toBeDefined(),
     );
     expect(screen.getByText(/an address it did not give/)).toBeDefined();
+  });
+
+  it('ends Sign out with an ellipsis only where it asks first (sc-23282)', async () => {
+    answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByText('Chrome on Windows')).toBeDefined());
+    expect(endOf('Chrome on Windows').textContent).toBe('Sign out…');
+    expect(endOf('This device').textContent).toBe('Sign out');
   });
 
   it('asks before ending another device, naming it and what follows', async () => {
@@ -610,7 +620,7 @@ describe('signing out everywhere else', () => {
 
   async function openCheck(): Promise<void> {
     openSecurity();
-    fireEvent.click(await screen.findByRole('button', { name: 'Sign out everywhere else' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign out everywhere else…' }));
     await screen.findByRole('heading', { name: 'Sign out everywhere else?' });
   }
 
@@ -623,7 +633,7 @@ describe('signing out everywhere else', () => {
 
     openSecurity();
 
-    expect(await screen.findByRole('button', { name: 'Sign out everywhere else' })).toBeDefined();
+    expect(await screen.findByRole('button', { name: 'Sign out everywhere else…' })).toBeDefined();
     expect(
       screen.getByText('Every device except this one. Asks you to confirm it is you first.'),
     ).toBeDefined();
@@ -635,7 +645,7 @@ describe('signing out everywhere else', () => {
     openSecurity();
 
     await screen.findByText('This device');
-    expect(screen.queryByRole('button', { name: 'Sign out everywhere else' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Sign out everywhere else…' })).toBeNull();
   });
 
   it('asks for the password, counts the others, and says they are signed out at once', async () => {
@@ -704,7 +714,7 @@ describe('signing out everywhere else', () => {
     ]);
     expect(await screen.findByText('Chrome on macOS')).toBeDefined();
     expect(screen.queryByText('Chrome on Windows')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Sign out everywhere else' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Sign out everywhere else…' })).toBeNull();
     expect(document.body.textContent).not.toMatch(/15 minutes/);
   });
 
@@ -1095,18 +1105,20 @@ describe('changing the password', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save new password' }));
   }
 
-  it('comes first on the page, and says what changing it does', () => {
+  it('is the first row of the first card, and says what changing it does', () => {
     answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
 
     openSecurity();
 
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    expect(headings[0]).toBe('Password');
+    expect(headings[0]).toBe('Ways to sign in');
+    expect(passwordRow().getByText('Password')).toBeDefined();
     expect(
-      screen.getByText(
+      passwordRow().getByText(
         'Used with your email to sign in. Changing it signs out your other devices; this one stays signed in.',
       ),
     ).toBeDefined();
+    expect(passwordRow().getByRole('button', { name: 'Change password' })).toBeDefined();
   });
 
   it('names Your account in the back control of Reset your password, and goes back to it (sc-23279)', async () => {
@@ -1332,7 +1344,7 @@ describe('changing the password', () => {
         'You sign in with Google. Add a password so you can also sign in with your email if you ever lose that Google account.',
       ),
     ).toBeDefined();
-    expect(passwordCard().getByRole('button', { name: 'Set a password' })).toBeDefined();
+    expect(passwordRow().getByRole('button', { name: 'Set a password' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Change password' })).toBeNull();
   });
 });
@@ -1376,7 +1388,7 @@ describe('adding a password to a Google account', () => {
     });
 
     openSecurity();
-    fireEvent.click(passwordCard().getByRole('button', { name: 'Set a password' }));
+    fireEvent.click(passwordRow().getByRole('button', { name: 'Set a password' }));
     expect(document.activeElement).toBe(
       screen.getByRole('heading', { level: 2, name: 'Check your email' }),
     );
@@ -1419,7 +1431,7 @@ describe('adding a password to a Google account', () => {
     const said = () => screen.queryAllByRole('status').map(({ textContent }) => textContent);
 
     openSecurity();
-    fireEvent.click(passwordCard().getByRole('button', { name: 'Set a password' }));
+    fireEvent.click(passwordRow().getByRole('button', { name: 'Set a password' }));
 
     expect(await screen.findByRole('button', { name: 'Send a new code in 0:01' })).toBeDefined();
     expect(said()).not.toContain('Send a new code in 0:01');
@@ -1453,7 +1465,7 @@ describe('adding a password to a Google account', () => {
     });
 
     openSecurity();
-    fireEvent.click(passwordCard().getByRole('button', { name: 'Set a password' }));
+    fireEvent.click(passwordRow().getByRole('button', { name: 'Set a password' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
 
     expect(screen.getByText('Enter the 6-digit code from the email.')).toBeDefined();
@@ -1557,11 +1569,11 @@ describe('where focus carries on (sc-11369)', () => {
 
     openSecurity();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Sign out everywhere else' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign out everywhere else…' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Keep it signed in' }));
 
     expect(document.activeElement).toBe(
-      screen.getByRole('button', { name: 'Sign out everywhere else' }),
+      screen.getByRole('button', { name: 'Sign out everywhere else…' }),
     );
   });
 
@@ -1574,7 +1586,7 @@ describe('where focus carries on (sc-11369)', () => {
 
     openSecurity();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Sign out everywhere else' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign out everywhere else…' }));
     fireEvent.change(await screen.findByLabelText('Your password'), {
       target: { value: 'a decent passphrase' },
     });
@@ -1646,7 +1658,9 @@ describe('where focus carries on (sc-11369)', () => {
         '✓Password changed. No other device was signed in.',
       ),
     );
-    expect(passwordCard().queryByRole('status')).toBeNull();
+    expect(
+      within(screen.getByRole('region', { name: 'Ways to sign in' })).queryByRole('status'),
+    ).toBeNull();
   });
 
   describe('on an account with Google and no password', () => {
@@ -1661,19 +1675,19 @@ describe('where focus carries on (sc-11369)', () => {
       });
     });
 
-    it("goes back to the Password card's Set a password after Cancel", async () => {
+    it("goes back to the Password row's Set a password after Cancel", async () => {
       answering({
         'GET /api/auth/sessions': () => json(SESSIONS),
         'POST /api/auth/password/set/start': () => json({ cooldownSeconds: 60 }),
       });
       openSecurity();
 
-      fireEvent.click(passwordCard().getByRole('button', { name: 'Set a password' }));
+      fireEvent.click(passwordRow().getByRole('button', { name: 'Set a password' }));
       await screen.findByRole('button', { name: 'Send a new code in 1:00' });
       fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
       expect(document.activeElement).toBe(
-        passwordCard().getByRole('button', { name: 'Set a password' }),
+        passwordRow().getByRole('button', { name: 'Set a password' }),
       );
     });
 
@@ -1688,7 +1702,7 @@ describe('where focus carries on (sc-11369)', () => {
       });
       openSecurity();
 
-      fireEvent.click(passwordCard().getByRole('button', { name: 'Set a password' }));
+      fireEvent.click(passwordRow().getByRole('button', { name: 'Set a password' }));
       fireEvent.change(screen.getByLabelText('Code from the email'), {
         target: { value: '123456' },
       });
@@ -1714,7 +1728,7 @@ describe('where focus carries on (sc-11369)', () => {
       });
       openSecurity();
 
-      fireEvent.click(passwordCard().getByRole('button', { name: 'Set a password' }));
+      fireEvent.click(passwordRow().getByRole('button', { name: 'Set a password' }));
       fireEvent.change(screen.getByLabelText('Code from the email'), {
         target: { value: '123456' },
       });

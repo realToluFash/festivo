@@ -2946,6 +2946,7 @@ span {
 
 .two-factor-key,
 .recovery-codes {
+  font-family: var(--fontFamilyMono);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
 }
@@ -3203,6 +3204,12 @@ span {
 
 .way-address {
   overflow-wrap: anywhere;
+}
+
+.way-line {
+  margin: 0;
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
 }
 
 .signed-in .notice-title {

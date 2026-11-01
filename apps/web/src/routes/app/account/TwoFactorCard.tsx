@@ -8,10 +8,12 @@ import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
 import { offButton } from '../../../offButton.ts';
+import { useDialogKeys } from '../../../dialogFocus.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
 import { refreshAccount, useSessionState } from '../../../session.ts';
 import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
+import { ActionPair } from '../../../components/ActionPair.tsx';
 
 type Stage =
   | { kind: 'loading' }
@@ -159,6 +161,7 @@ export function TwoFactorCard({
             turnOnButton={turnOnButton}
             turnOffButton={turnOffButton}
             newCodesButton={newCodesButton}
+            asksFirst={keptBy == null}
             onTurnOn={() => void turnOn()}
             refusedBy={refusedBy}
             onTurnOff={() =>
@@ -222,6 +225,7 @@ function AtRest({
   turnOnButton,
   turnOffButton,
   newCodesButton,
+  asksFirst,
   refusedBy,
   onTurnOn,
   onTurnOff,
@@ -233,6 +237,7 @@ function AtRest({
   turnOnButton: RefObject<HTMLButtonElement | null>;
   turnOffButton: RefObject<HTMLButtonElement | null>;
   newCodesButton: RefObject<HTMLButtonElement | null>;
+  asksFirst: boolean;
   refusedBy: { organisation: string; landed: boolean } | null;
   onTurnOn: () => void;
   onTurnOff: () => void;
@@ -270,8 +275,13 @@ function AtRest({
             </button>
           </div>
           <div className="actions">
-            <button className="button" type="button" ref={turnOffButton} onClick={onTurnOff}>
-              {t('twoFactorCard.turnOff')}
+            <button
+              className="button button-danger"
+              type="button"
+              ref={turnOffButton}
+              onClick={onTurnOff}
+            >
+              {asksFirst ? t('twoFactorCard.turnOffAsks') : t('twoFactorCard.turnOff')}
             </button>
           </div>
           {refusedBy != null && (
@@ -399,14 +409,23 @@ function SettingUp({
               </p>
             </div>
 
-            <div className="actions">
-              <button className="button" type="button" {...offButton(checking)} onClick={onCancel}>
-                {t('twoFactorCard.cancel')}
-              </button>
-              <button className="button button-primary" type="submit" aria-busy={checking}>
-                {t('twoFactorCard.checkCode')}
-              </button>
-            </div>
+            <ActionPair
+              dismiss={
+                <button
+                  className="button"
+                  type="button"
+                  {...offButton(checking)}
+                  onClick={onCancel}
+                >
+                  {t('twoFactorCard.cancel')}
+                </button>
+              }
+              confirm={
+                <button className="button button-primary" type="submit" aria-busy={checking}>
+                  {t('twoFactorCard.checkCode')}
+                </button>
+              }
+            />
           </form>
         </li>
       </ol>
@@ -426,6 +445,9 @@ function SavingCodes({
   const { t } = useTranslation();
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const dialog = useRef<HTMLDivElement>(null);
+
+  useDialogKeys(dialog, onFinish, false);
 
   async function copyAll(): Promise<void> {
     try {
@@ -438,50 +460,60 @@ function SavingCodes({
 
   return (
     <>
-      <h2 id="two-factor-title" ref={headingRef} tabIndex={-1}>
-        {t('twoFactorCard.saveTitle')}
-      </h2>
-      <p>{t('twoFactorCard.saveIntro')}</p>
+      <h2 id="two-factor-title">{t('twoFactorCard.title')}</h2>
+      <div className="dialog-scrim" aria-hidden="true" />
+      <div
+        ref={dialog}
+        className="dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="recovery-codes-title"
+      >
+        <h2 id="recovery-codes-title" ref={headingRef} tabIndex={-1}>
+          {t('twoFactorCard.saveTitle')}
+        </h2>
+        <p>{t('twoFactorCard.saveIntro')}</p>
 
-      <ul className="recovery-codes" aria-label={t('twoFactorCard.recoveryCodes')}>
-        {codes.map((code) => (
-          <li key={code}>{code}</li>
-        ))}
-      </ul>
+        <ul className="recovery-codes" aria-label={t('twoFactorCard.recoveryCodes')}>
+          {codes.map((code) => (
+            <li key={code}>{code}</li>
+          ))}
+        </ul>
 
-      <div className="actions">
-        <button className="button" type="button" onClick={() => void copyAll()}>
-          {copied ? `✓ ${t('twoFactorCard.copied')}` : t('twoFactorCard.copyAll')}
-        </button>
-      </div>
-      {copied && (
-        <p className="status-done" role="status">
-          {t('twoFactorCard.copiedAll', { count: codes.length })}
+        <div className="actions">
+          <button className="button" type="button" onClick={() => void copyAll()}>
+            {copied ? `✓ ${t('twoFactorCard.copied')}` : t('twoFactorCard.copyAll')}
+          </button>
+        </div>
+        {copied && (
+          <p className="status-done" role="status">
+            {t('twoFactorCard.copiedAll', { count: codes.length })}
+          </p>
+        )}
+
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={saved}
+            onChange={(event) => setSaved(event.target.checked)}
+          />
+          {t('twoFactorCard.savedThem')}
+        </label>
+
+        <p className="field-help" id="finish-note">
+          {saved ? t('twoFactorCard.finishReady') : t('twoFactorCard.finishLocked')}
         </p>
-      )}
-
-      <label className="checkbox">
-        <input
-          type="checkbox"
-          checked={saved}
-          onChange={(event) => setSaved(event.target.checked)}
-        />
-        {t('twoFactorCard.savedThem')}
-      </label>
-
-      <p className="field-help" id="finish-note">
-        {saved ? t('twoFactorCard.finishReady') : t('twoFactorCard.finishLocked')}
-      </p>
-      <div className="actions">
-        <button
-          className="button button-primary"
-          type="button"
-          disabled={!saved}
-          aria-describedby="finish-note"
-          onClick={onFinish}
-        >
-          {t('twoFactorCard.finish')}
-        </button>
+        <div className="actions">
+          <button
+            className="button button-primary"
+            type="button"
+            disabled={!saved}
+            aria-describedby="finish-note"
+            onClick={onFinish}
+          >
+            {t('twoFactorCard.finish')}
+          </button>
+        </div>
       </div>
     </>
   );
@@ -573,14 +605,18 @@ function TurningOff({
           </p>
         </div>
 
-        <div className="actions">
-          <button className="link-button" type="button" {...offButton(checking)} onClick={onKeep}>
-            {t('twoFactorCard.keepItOn')}
-          </button>
-          <button className="button button-danger" type="submit" aria-busy={checking}>
-            {t('twoFactorCard.turnItOff')}
-          </button>
-        </div>
+        <ActionPair
+          dismiss={
+            <button className="link-button" type="button" {...offButton(checking)} onClick={onKeep}>
+              {t('twoFactorCard.keepItOn')}
+            </button>
+          }
+          confirm={
+            <button className="button button-danger" type="submit" aria-busy={checking}>
+              {t('twoFactorCard.turnItOff')}
+            </button>
+          }
+        />
       </form>
     </>
   );
@@ -671,14 +707,18 @@ function ConfirmNewCodes({
           </p>
         </div>
 
-        <div className="actions">
-          <button className="button" type="button" {...offButton(checking)} onClick={onKeep}>
-            {t('twoFactorCard.keepCodes')}
-          </button>
-          <button className="button button-primary" type="submit" aria-busy={checking}>
-            {t('twoFactorCard.makeNewCodes')}
-          </button>
-        </div>
+        <ActionPair
+          dismiss={
+            <button className="button" type="button" {...offButton(checking)} onClick={onKeep}>
+              {t('twoFactorCard.keepCodes')}
+            </button>
+          }
+          confirm={
+            <button className="button button-primary" type="submit" aria-busy={checking}>
+              {t('twoFactorCard.makeNewCodes')}
+            </button>
+          }
+        />
       </form>
     </>
   );
