@@ -94,7 +94,7 @@
     "footer_one": "{{count, number}} event · Sorted by date",
     "footer_other": "{{count, number}} events · Sorted by date",
     "footer_many": "{{count, number}} events · Sorted by date",
-    "endsIn": "Ends {{time}}",
+    "endsIn": "Termina {{time}}",
     "thenSoon": "{{when}} ·"
   },
   "eventForm": {
@@ -183,10 +183,10 @@
     "tileMealPicks": "Menús elegidos",
     "tileSeated": "Con asiento",
     "tileBudgetUsed": "Presupuesto usado",
-    "onTrack": "On track",
-    "replies": "Replies",
-    "needsYou": "Needs you",
-    "team": "Team on this event"
+    "onTrack": "Según lo previsto",
+    "replies": "Respuestas",
+    "needsYou": "Pendiente de usted",
+    "team": "Equipo del evento"
   },
   "eventLive": {
     "guestsBlocked": "No se puede invitar a nadie hasta que este evento esté publicado.",

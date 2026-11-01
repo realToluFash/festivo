@@ -59,6 +59,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **1 Nov 2026. Quand un événement se termine, et les titres des cartes de l’aperçu**
+  (sc-26608 pour sc-25008). « Se termine {{time}} », suivi de la phrase entière d’`Intl` :
+  « Se termine dans 3 heures », « Se termine demain », « Se termine cette minute-ci ». Le verbe
+  vient d’abord, sans sujet, comme une ligne d’état. Les cartes : « Dans les temps »,
+  « Réponses », « À traiter » (plutôt que « Vous attend », plus long et trop familier pour un
+  titre) et « Équipe de l’événement ».
+
 - **01 Nov 2026. Ce que dit un bouton pendant l’envoi, sur un événement** (sc-22578 pour
   sc-22103, `eventLive.making`, `eventPause.pausing`, `.resuming`, `eventEnd.callingOff`,
   `.ending`, `eventDelete.deleting`, `eventEnd.callOffFailed`, web et app). Le nom de l’action
