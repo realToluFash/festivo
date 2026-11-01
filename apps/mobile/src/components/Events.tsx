@@ -138,7 +138,7 @@ export function EventsFailed({
         body={words ?? t('eventsScreen.failedLoad')}
         announce
       />
-      <SecondaryButton label={t('eventsScreen.retry')} onPress={onRetry} testID={testID} />
+      <PrimaryButton label={t('eventsScreen.retry')} onPress={onRetry} testID={testID} />
     </View>
   );
 }
@@ -302,7 +302,14 @@ export function EventTop({
       <Placeholder label={t('eventPage.invited')} />
       {onChange != null && (
         <>
-          <DraftRow kind={kind} event={event} manages={manages} now={now} onChange={onChange} />
+          <DraftRow
+            kind={kind}
+            event={event}
+            manages={manages}
+            now={now}
+            onChange={onChange}
+            onEdit={onEdit}
+          />
           {endPassed && onEdit != null && (
             <PrimaryButton
               label={t('eventLive.changeDates')}

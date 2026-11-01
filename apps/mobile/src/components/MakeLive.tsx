@@ -11,6 +11,7 @@ import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'rea
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
+import { type EditAt } from '../kit/eventNav.ts';
 import { changedSinceOpening, draftRowOf, refusalOf } from '../kit/makeLive.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -38,6 +39,7 @@ interface Told {
   kind: 'told';
   title: string;
   lines: string[];
+  changeDates?: boolean;
 }
 
 /** `EventView-*` (tweak: Draft) and `Lifecycle-*` (sc-3584): the Draft's row, and Make live's confirmation; with no host it asks for one in Host 1 (sc-22143). */
@@ -47,12 +49,14 @@ export function DraftRow({
   manages,
   now,
   onChange,
+  onEdit,
 }: {
   kind: LayoutKind;
   event: OrganisationEvent;
   manages: boolean;
   now: Date;
   onChange: (event: OrganisationEvent) => void;
+  onEdit?: ((at?: EditAt) => void) | undefined;
 }) {
   const { t } = useTranslation();
   const makeLive = useRef<ViewInstance>(null);
@@ -168,6 +172,7 @@ export function DraftRow({
         kind: 'told',
         title: t('eventLive.notMadeLive'),
         lines: [t('eventLive.endPassed')],
+        changeDates: true,
       });
     } else {
       setAsking({
@@ -235,6 +240,17 @@ export function DraftRow({
             : null
         }
         retold={asking?.kind === 'told' ? asking : undefined}
+        onward={
+          asking?.kind === 'told' && asking.changeDates === true && onEdit != null
+            ? {
+                label: t('eventLive.changeDates'),
+                onPress: () => {
+                  setAsking(null);
+                  onEdit('starts');
+                },
+              }
+            : null
+        }
         onClose={close}
       >
         {confirming?.notice === 'nowHosted' && (
