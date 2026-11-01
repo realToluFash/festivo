@@ -22,8 +22,14 @@ appId: host.exp.Exponent
     commands:
       - tapOn:
           id: calendar.previous
+- extendedWaitUntil:
+    visible:
+      id: calendar.day.2026-11-14
+    timeout: 15000
 - scrollUntilVisible:
     element:
       id: calendar.day.2026-11-30
     direction: DOWN
+- assertVisible:
+    id: calendar.day.2026-11-25
 - takeScreenshot: month-busy
