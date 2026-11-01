@@ -1604,6 +1604,10 @@ span {
   gap: var(--spaceXxl);
 }
 
+.auth-card-even .auth-note {
+  margin: 0;
+}
+
 .auth-card-even .resend {
   gap: var(--spaceSm);
 }

@@ -248,7 +248,9 @@ export function ResetPassword() {
           <span className="mark mark-info" aria-hidden="true">
             i
           </span>
-          <p>{t('recovery.signsOut')}</p>
+          <div className="notice-body">
+            <p>{t('recovery.signsOut')}</p>
+          </div>
         </div>
 
         <button className="button button-primary" type="submit" aria-busy={saving}>
