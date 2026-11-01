@@ -677,3 +677,10 @@ startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the sa
 - **27 Oct 2026. A called-off event's milestone** (sc-16725 for sc-16709,
   `messages:timeline.event_called_off`). "{name} called off", as pm wrote it, beside
   "{name} starts" and "{name} ends"; the act stays "Call off" (sc-3585).
+- **1 Nov 2026. The organisation's Calendar** (sc-25787 for sc-3625, `calendar.*`,
+  `nav.calendar`, `frame.calendar`, web and app). Kept as dev2 wrote it. "Calendar" alone is the
+  organisation's Calendar; an event's own dates stay "All dates". "Agenda" is the Calendar's
+  list view only, beside "Month", and never the Schedule. A milestone is an event's dated step
+  (`timeline.*`); the filter reads "Events and milestones" | "Events only". A range is
+  "{{from}} to {{to}}" in words around two `formatWallDay` values, since Hermes has no
+  `formatRange`.
