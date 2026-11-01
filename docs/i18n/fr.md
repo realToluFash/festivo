@@ -59,6 +59,18 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **1 nov. 2026. Les événements et la navigation propre à un événement** (sc-26732 pour
+  sc-22103, `web:events.*`, `mobile:eventsScreen.*`, `eventNav.*`, web et app). Les espaces :
+  « Aperçu », « Invités », « Menu », « Plan de table », « Messages », « Programme », « Équipe »,
+  « Budget » et « Rapports » ; « Menu », « Messages », « Budget » et « Dates » sont les mots
+  français et restent identiques à l’anglais. Un espace à venir : « … de cet événement arrive
+  bientôt. », comme `eventPage.guestsComing` ; l’équipe est « La gestion de l’équipe… », car
+  « L’équipe arrive » se lit comme des gens en route. Une donnée encore absente est « Bientôt
+  disponible ». Le résumé, sans verbe : « 2 en cours · 3 à venir · 1 brouillon ». Les jours,
+  « Du {{first}} au {{last}} », comme `calendar.range` ; le pied s’accorde : « 1 événement · Trié
+  par date », « 3 événements · Triés par date ». Le Plus du téléphone se ferme par « Fermer
+  « Plus » ».
+
 - **1 Nov 2026. Quand un événement se termine, et les titres des cartes de l’aperçu**
   (sc-26608 pour sc-25008). « Se termine {{time}} », suivi de la phrase entière d’`Intl` :
   « Se termine dans 3 heures », « Se termine demain », « Se termine cette minute-ci ». Le verbe
