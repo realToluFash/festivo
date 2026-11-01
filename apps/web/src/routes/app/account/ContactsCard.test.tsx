@@ -128,24 +128,64 @@ function problem(code: string, status: number): Response {
 }
 
 describe('email addresses and phone numbers', () => {
-  it('takes their skeleton away when the account does not load (sc-23303)', async () => {
-    let fail: () => void = () => {};
-    const me = new Promise<Response>((resolve) => {
-      fail = () => resolve(problem('server_error', 500));
-    });
-    answering({ 'GET /api/auth/me': () => me });
+  it('keeps both cards, each saying it did not load, when the account does not load (sc-24696)', async () => {
+    answering({ 'GET /api/auth/me': () => problem('server_error', 500) });
     open();
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Email addresses' })).toBeDefined();
-    expect(screen.getByRole('heading', { level: 2, name: 'Phone numbers' })).toBeDefined();
+    const emails = await screen.findByText(
+      'Your email addresses did not load. Try again in a moment.',
+    );
+    const emailCard = screen.getByRole('region', { name: 'Email addresses' });
+    const phoneCard = screen.getByRole('region', { name: 'Phone numbers' });
+    expect(emailCard.contains(emails)).toBe(true);
+    expect(
+      within(phoneCard).getByText('Your phone numbers did not load. Try again in a moment.'),
+    ).toBeDefined();
+    expect(within(emailCard).getByRole('alert')).toBeDefined();
+    expect(within(emailCard).getByRole('button', { name: 'Try again' })).toBeDefined();
+    expect(within(phoneCard).getByRole('button', { name: 'Try again' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: /^Add an? / })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Remove|Make primary|Verify/ })).toBeNull();
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+  });
 
-    fail();
+  it('reloads both from Try again in either, landing on the heading of the one pressed (sc-24696)', async () => {
+    let fails = true;
+    answering({ 'GET /api/auth/me': () => (fails ? problem('server_error', 500) : json(ME)) });
+    open();
+
+    await screen.findByText('Your phone numbers did not load. Try again in a moment.');
+    const phoneCard = screen.getByRole('region', { name: 'Phone numbers' });
+    const retry = await within(phoneCard).findByRole('button', { name: 'Try again' });
+    fails = false;
+    fireEvent.click(retry);
+
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+    expect(await screen.findByText('folake.adeyemi@gmail.com')).toBeDefined();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 2, name: 'Phone numbers' }),
+      ),
+    );
+  });
+
+  it('says so again in both when Try again fails, with focus on the pressed card’s line (sc-24696)', async () => {
+    answering({ 'GET /api/auth/me': () => problem('server_error', 500) });
+    open();
+
+    await screen.findByText('Your email addresses did not load. Try again in a moment.');
+    const emailCard = screen.getByRole('region', { name: 'Email addresses' });
+    fireEvent.click(await within(emailCard).findByRole('button', { name: 'Try again' }));
 
     await waitFor(() =>
-      expect(screen.queryByRole('heading', { level: 2, name: 'Email addresses' })).toBeNull(),
+      expect(document.activeElement?.textContent).toBe(
+        'Your email addresses did not load. Try again in a moment.',
+      ),
     );
-    expect(screen.queryByRole('heading', { level: 2, name: 'Phone numbers' })).toBeNull();
-    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+    expect(
+      screen.getByText('Your phone numbers did not load. Try again in a moment.'),
+    ).toBeDefined();
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('lists each with its state in a word, the primary marked, and how many more fit', async () => {
