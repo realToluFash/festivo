@@ -1,0 +1,26 @@
+# sc-23172 on an iPad: Members open upright, turned to landscape and back; landscape with nothing open shows Choose a section.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- runFlow: ../open-settings.yaml
+- tapOn:
+    id: 'settings.members'
+- extendedWaitUntil:
+    visible: '{{t:membersScreen.title}}'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: turn-up-members
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- takeScreenshot: turn-land-members
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd
+- takeScreenshot: turn-up-members-again
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- takeScreenshot: turn-up-list
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- takeScreenshot: turn-land-none
+- setOrientation: PORTRAIT

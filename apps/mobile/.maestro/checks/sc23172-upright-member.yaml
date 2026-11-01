@@ -1,0 +1,25 @@
+# sc-23172 on an iPad, upright: a member's page opens in Members' place with one back to the members list, then ‹ Settings to the list.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- runFlow: ../open-settings.yaml
+- tapOn:
+    id: 'settings.members'
+- extendedWaitUntil:
+    visible: '{{t:membersScreen.title}}'
+    timeout: 30000
+- tapOn:
+    id: 'members.row.*'
+    index: 0
+- waitForAnimationToEnd
+- takeScreenshot: member-up
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- takeScreenshot: member-up-back
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- takeScreenshot: member-up-list
+- assertVisible:
+    id: 'settings.members'
