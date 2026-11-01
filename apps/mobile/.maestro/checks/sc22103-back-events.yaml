@@ -1,0 +1,25 @@
+# sc-22103: opened from Events (Upcoming), All dates, two areas, Back to Overview, Back to Events on Upcoming: no second copy of the page. Needs ${METRO_URL}, ${LIVE}.
+appId: host.exp.Exponent
+---
+- runFlow: ../checks/sc22103/to-upcoming.yaml
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${LIVE}'
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.row.${LIVE}'
+- runFlow: ../checks/sc22103/alldates-areas-back.yaml
+- extendedWaitUntil:
+    notVisible:
+      id: 'events.page'
+    timeout: 15000
+- takeScreenshot: landed
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${LIVE}'
+    centerElement: true
+    timeout: 20000
+- assertNotVisible:
+    id: 'events.page'
+- takeScreenshot: back-events

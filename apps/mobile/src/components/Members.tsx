@@ -41,6 +41,7 @@ import { breakableEmail } from '../layout/textSize.ts';
 import { type LayoutKind, useAccessibilitySizes } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { RadioMark } from './RadioMark.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { useComeForward } from './comeForward.ts';
 import { FieldError } from './Field.tsx';
@@ -775,9 +776,7 @@ function JoinRequestAnswer({
             accessibilityState={{ checked: picked === one.id, disabled: busy }}
             testID={`members.approve.role.${one.seededAs ?? one.id}`}
           >
-            <View style={[styles.radio, picked === one.id && styles.radioOn]}>
-              {picked === one.id && <View style={styles.radioDot} />}
-            </View>
+            <RadioMark on={picked === one.id} />
             <View style={styles.rowText}>
               <Text size={tokens.typeRowTitle.size} weight="semibold">
                 {roleName(t, one)}
@@ -1005,9 +1004,7 @@ function RolePicker({
             accessibilityState={{ checked: picked === one.id, disabled: busy }}
             testID={`members.role.${one.seededAs ?? one.id}`}
           >
-            <View style={[styles.radio, picked === one.id && styles.radioOn]}>
-              {picked === one.id && <View style={styles.radioDot} />}
-            </View>
+            <RadioMark on={picked === one.id} />
             <View style={styles.rowText}>
               <Text size={tokens.typeRowTitle.size} weight="semibold">
                 {roleName(t, one)}
@@ -1346,17 +1343,5 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorAccent,
     backgroundColor: tokens.colorAccentTint,
   },
-  radio: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: tokens.colorControlBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.colorCard,
-  },
-  radioOn: { borderColor: tokens.colorAccent },
-  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: tokens.colorAccent },
   actions: { gap: tokens.spaceSm },
 });

@@ -175,7 +175,7 @@ export function EditableDetails({
   const failed = t('orgGeneral.failed');
 
   return (
-    <>
+    <View style={cardFrame(kind)}>
       {status === 'saved' && (
         <AnswerInView>
           <ReadOut words={saved}>
@@ -191,109 +191,107 @@ export function EditableDetails({
         </AnswerInView>
       )}
 
-      <View style={cardFrame(kind)}>
-        <Field label={t('orgGeneral.name')} error={errors.name}>
-          <TextField
-            ref={nameInput}
-            value={values.name}
-            onChangeText={(value) => change('name', value)}
-            onBlur={() => checks.left('name', values.name)}
-            onSubmitEditing={() => contactInput.current?.focus()}
-            wrong={errors.name != null}
-            submitting={busy}
-            maxLength={ORGANISATION_NAME_MAXIMUM}
-            autoComplete="organization"
-            textContentType="organizationName"
-            autoCorrect={false}
-            returnKeyType="next"
-            accessibilityLabel={t('orgGeneral.name')}
-            testID="organisation.name"
-          />
-        </Field>
-        <Field ref={countryField} label={t('orgGeneral.country')} error={errors.countryCode}>
-          <CountryPicker
-            label={t('orgGeneral.country')}
-            value={values.countryCode}
-            onChange={(code) => change('countryCode', code)}
-            disabled={busy}
-            pickerRef={countryPicker}
-            testID="organisation.country"
-          />
-        </Field>
-        <Field label={t('orgGeneral.contact')} error={errors.contactAddress}>
-          <TextField
-            ref={contactInput}
-            value={values.contactAddress}
-            onChangeText={(value) => change('contactAddress', value)}
-            onBlur={() => checks.left('contactAddress', values.contactAddress)}
-            wrong={errors.contactAddress != null}
-            submitting={busy}
-            keyboardType="email-address"
-            autoComplete="email"
-            textContentType="emailAddress"
-            autoCapitalize="none"
-            autoCorrect={false}
-            spellCheck={false}
-            accessibilityLabel={t('orgGeneral.contact')}
-            testID="organisation.contact"
-          />
-        </Field>
-        <Field ref={currencyField} label={t('orgGeneral.currency')} error={errors.currency}>
-          <ListPicker
-            label={t('orgGeneral.currency')}
-            placeholder={t('orgGeneral.currencyPlaceholder')}
-            searchLabel={t('orgGeneral.searchCurrency')}
-            choices={currencies}
-            value={values.currency}
-            onChange={(code) => change('currency', code)}
-            disabled={busy}
-            pickerRef={currencyPicker}
-            testID="organisation.currency"
-          />
-        </Field>
-        <Field ref={timezoneField} label={t('orgGeneral.timezone')} error={errors.timezone}>
-          <ListPicker
-            label={t('orgGeneral.timezone')}
-            searchLabel={t('orgGeneral.searchTimezone')}
-            choices={timezones}
-            value={values.timezone}
-            onChange={(zone) => change('timezone', zone)}
-            disabled={busy}
-            pickerRef={timezonePicker}
-            testID="organisation.timezone"
-          />
-        </Field>
+      <Field label={t('orgGeneral.name')} error={errors.name}>
+        <TextField
+          ref={nameInput}
+          value={values.name}
+          onChangeText={(value) => change('name', value)}
+          onBlur={() => checks.left('name', values.name)}
+          onSubmitEditing={() => contactInput.current?.focus()}
+          wrong={errors.name != null}
+          submitting={busy}
+          maxLength={ORGANISATION_NAME_MAXIMUM}
+          autoComplete="organization"
+          textContentType="organizationName"
+          autoCorrect={false}
+          returnKeyType="next"
+          accessibilityLabel={t('orgGeneral.name')}
+          testID="organisation.name"
+        />
+      </Field>
+      <Field ref={countryField} label={t('orgGeneral.country')} error={errors.countryCode}>
+        <CountryPicker
+          label={t('orgGeneral.country')}
+          value={values.countryCode}
+          onChange={(code) => change('countryCode', code)}
+          disabled={busy}
+          pickerRef={countryPicker}
+          testID="organisation.country"
+        />
+      </Field>
+      <Field label={t('orgGeneral.contact')} error={errors.contactAddress}>
+        <TextField
+          ref={contactInput}
+          value={values.contactAddress}
+          onChangeText={(value) => change('contactAddress', value)}
+          onBlur={() => checks.left('contactAddress', values.contactAddress)}
+          wrong={errors.contactAddress != null}
+          submitting={busy}
+          keyboardType="email-address"
+          autoComplete="email"
+          textContentType="emailAddress"
+          autoCapitalize="none"
+          autoCorrect={false}
+          spellCheck={false}
+          accessibilityLabel={t('orgGeneral.contact')}
+          testID="organisation.contact"
+        />
+      </Field>
+      <Field ref={currencyField} label={t('orgGeneral.currency')} error={errors.currency}>
+        <ListPicker
+          label={t('orgGeneral.currency')}
+          placeholder={t('orgGeneral.currencyPlaceholder')}
+          searchLabel={t('orgGeneral.searchCurrency')}
+          choices={currencies}
+          value={values.currency}
+          onChange={(code) => change('currency', code)}
+          disabled={busy}
+          pickerRef={currencyPicker}
+          testID="organisation.currency"
+        />
+      </Field>
+      <Field ref={timezoneField} label={t('orgGeneral.timezone')} error={errors.timezone}>
+        <ListPicker
+          label={t('orgGeneral.timezone')}
+          searchLabel={t('orgGeneral.searchTimezone')}
+          choices={timezones}
+          value={values.timezone}
+          onChange={(zone) => change('timezone', zone)}
+          disabled={busy}
+          pickerRef={timezonePicker}
+          testID="organisation.timezone"
+        />
+      </Field>
 
-        <Notice tone="quiet" mark={tokens.marks.info.glyph} body={t('orgGeneral.defaultsNote')} />
+      <Notice tone="quiet" mark={tokens.marks.info.glyph} body={t('orgGeneral.defaultsNote')} />
 
-        <Field
-          ref={languageField}
+      <Field
+        ref={languageField}
+        label={t('orgGeneral.language')}
+        error={errors.locale}
+        help={t('orgGeneral.languageHint')}
+      >
+        <ListPicker
           label={t('orgGeneral.language')}
-          error={errors.locale}
-          help={t('orgGeneral.languageHint')}
-        >
-          <ListPicker
-            label={t('orgGeneral.language')}
-            searchLabel={t('orgGeneral.searchLanguage')}
-            choices={languages}
-            value={values.locale}
-            onChange={(code) => change('locale', code)}
-            disabled={busy}
-            pickerRef={languagePicker}
-            testID="organisation.language"
-          />
-        </Field>
+          searchLabel={t('orgGeneral.searchLanguage')}
+          choices={languages}
+          value={values.locale}
+          onChange={(code) => change('locale', code)}
+          disabled={busy}
+          pickerRef={languagePicker}
+          testID="organisation.language"
+        />
+      </Field>
 
-        <View style={kind === 'phone' ? undefined : styles.leading}>
-          <PrimaryButton
-            label={busy ? t('orgGeneral.saving') : t('orgGeneral.save')}
-            onPress={() => void save()}
-            busy={busy}
-            testID="organisation.save"
-          />
-        </View>
+      <View style={kind === 'phone' ? undefined : styles.leading}>
+        <PrimaryButton
+          label={busy ? t('orgGeneral.saving') : t('orgGeneral.save')}
+          onPress={() => void save()}
+          busy={busy}
+          testID="organisation.save"
+        />
       </View>
-    </>
+    </View>
   );
 }
 

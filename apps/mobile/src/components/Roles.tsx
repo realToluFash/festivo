@@ -43,6 +43,7 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { LEVEL_BORDER_ON, LEVEL_PADDING, roomBeside, stacksRows } from '../rowArrangement.ts';
 import { tokens } from '../theme/tokens.ts';
 import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { RadioMark } from './RadioMark.tsx';
 import { Field, FieldError, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
@@ -795,9 +796,7 @@ export function RemoveRole({
                 accessibilityState={{ checked: replacement === one.id }}
                 testID={`roles.replacement.${one.seededAs ?? one.id}`}
               >
-                <View style={[styles.radio, replacement === one.id && styles.radioOn]}>
-                  {replacement === one.id && <View style={styles.radioDot} />}
-                </View>
+                <RadioMark on={replacement === one.id} />
                 <View style={[styles.fill, styles.rowText]}>
                   <Text size={tokens.typeBodyPhone.size} weight="semibold">
                     {roleName(t, one)}
@@ -877,7 +876,6 @@ function Unsaved({
   );
 }
 
-const RADIO = tokens.sizeMark + tokens.spaceHair;
 const STROKE = 2;
 
 const styles = StyleSheet.create({
@@ -1006,22 +1004,5 @@ const styles = StyleSheet.create({
     borderWidth: STROKE,
     borderColor: tokens.colorAccent,
     backgroundColor: tokens.colorAccentTint,
-  },
-  radio: {
-    width: RADIO,
-    height: RADIO,
-    borderRadius: RADIO / 2,
-    borderWidth: STROKE,
-    borderColor: tokens.colorControlBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.colorCard,
-  },
-  radioOn: { borderColor: tokens.colorAccent },
-  radioDot: {
-    width: tokens.spaceMd,
-    height: tokens.spaceMd,
-    borderRadius: tokens.spaceMd / 2,
-    backgroundColor: tokens.colorAccent,
   },
 });

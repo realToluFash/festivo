@@ -32,6 +32,7 @@ import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { reloadSignedIn, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { RadioMark } from './RadioMark.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field, FieldError, focusChecked, keysStayDown, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
@@ -137,7 +138,8 @@ export function OwnershipCard({
           <Row
             title={t('ownership.leave', { organisation: name })}
             note={t('ownership.leaveNote', { organisation: name })}
-            action={t('ownership.leave', { organisation: name })}
+            action={t('ownership.leaveOpener', { organisation: name })}
+            destructive
             opener={opener('leave')}
             onPress={() => setStep({ kind: 'leave' })}
             testID="ownership.leave"
@@ -146,7 +148,8 @@ export function OwnershipCard({
             <Row
               title={t('ownership.delete')}
               note={t('ownership.deleteNote')}
-              action={t('ownership.delete')}
+              action={t('ownership.deleteOpener')}
+              destructive
               opener={opener('delete')}
               onPress={() => setStep({ kind: 'delete' })}
               testID="ownership.delete"
@@ -194,6 +197,7 @@ function Row({
   action,
   opener,
   onPress,
+  destructive = false,
   testID,
 }: {
   title: string;
@@ -201,6 +205,7 @@ function Row({
   action: string;
   opener: Ref<ViewInstance>;
   onPress: () => void;
+  destructive?: boolean;
   testID: string;
 }) {
   return (
@@ -211,7 +216,11 @@ function Row({
       <Text size={tokens.typeSmall.size} style={styles.secondary}>
         {note}
       </Text>
-      <SecondaryButton ref={opener} label={action} onPress={onPress} testID={testID} />
+      {destructive ? (
+        <DestructiveButton ref={opener} label={action} onPress={onPress} testID={testID} />
+      ) : (
+        <SecondaryButton ref={opener} label={action} onPress={onPress} testID={testID} />
+      )}
     </View>
   );
 }
@@ -398,12 +407,15 @@ function Transfer({
             accessibilityState={{ checked: picked === one.id, disabled: busy }}
             testID={`ownership.owner.${one.id}`}
           >
-            <Text size={tokens.typeButton.size} weight="semibold">
-              {one.user.name}
-            </Text>
-            <Text size={tokens.typeSmall.size} style={styles.secondary}>
-              {roleName(t, one.role)}
-            </Text>
+            <RadioMark on={picked === one.id} />
+            <View style={styles.choiceText}>
+              <Text size={tokens.typeButton.size} weight="semibold">
+                {one.user.name}
+              </Text>
+              <Text size={tokens.typeSmall.size} style={styles.secondary}>
+                {roleName(t, one.role)}
+              </Text>
+            </View>
           </Pressable>
         ))}
         {ownerError != null && <FieldError message={ownerError} />}
@@ -792,13 +804,20 @@ const styles = StyleSheet.create({
   form: { gap: tokens.spaceLg },
   choices: { gap: tokens.spaceSm },
   choice: {
-    gap: tokens.spaceXxs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
     padding: tokens.spaceLg,
     borderRadius: tokens.radiusCardPhone,
     borderWidth: 1,
     borderColor: tokens.colorBorder,
     backgroundColor: tokens.colorCard,
   },
-  choiceOn: { borderWidth: 2, borderColor: tokens.colorAccent },
+  choiceOn: {
+    borderWidth: 2,
+    borderColor: tokens.colorAccent,
+    backgroundColor: tokens.colorRowSelected,
+  },
+  choiceText: { flex: 1, gap: tokens.spaceXxs },
   secondary: { color: tokens.colorInkSecondary },
 });

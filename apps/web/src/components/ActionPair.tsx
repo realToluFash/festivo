@@ -5,10 +5,13 @@ import { usePhoneWidth } from '../phoneWidth.ts';
 /** Swapped in the markup, never by `column-reverse`, so Tab follows what is seen. */
 export function ActionPair({
   dismiss,
+  between,
   confirm,
   className,
 }: {
   dismiss: ReactNode;
+  /** A third choice, kept between the two whichever way they run. */
+  between?: ReactNode;
   confirm: ReactNode;
   className?: string;
 }) {
@@ -27,6 +30,7 @@ export function ActionPair({
 
   const pair = [
     <Fragment key="dismiss">{dismiss}</Fragment>,
+    ...(between == null ? [] : [<Fragment key="between">{between}</Fragment>]),
     <Fragment key="confirm">{confirm}</Fragment>,
   ];
 

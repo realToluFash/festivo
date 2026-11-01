@@ -565,7 +565,7 @@ describe('Settings > General > Company domain joining (sc-561)', () => {
       await waitFor(() => expect(document.activeElement).toBe(notice));
       expect(screen.getByRole('list', { name: /domains/i }).previousElementSibling).toBe(notice);
       expect(screen.getByRole('button', { name: 'Remove ireweddings.com' }).textContent).toBe(
-        'Remove',
+        'Remove…',
       );
       expect(scrolled).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest' });
       expect(scrolled.mock.contexts).toEqual([notice]);

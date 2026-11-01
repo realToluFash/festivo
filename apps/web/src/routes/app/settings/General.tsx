@@ -53,7 +53,7 @@ export function General() {
   const refused = refusedIn?.id === organisation.id ? refusedIn.refusal : null;
 
   return (
-    <div className="settings settings-general">
+    <div className="settings settings-wide settings-general">
       <SettingsSections />
       <div className="settings-heading">
         <h1>{t('orgGeneral.title')}</h1>
@@ -89,11 +89,10 @@ export function General() {
       </section>
 
       {can(session, 'members.manage') && (
-        <CompanyDomainsCard key={organisation.id} organisation={organisation} />
-      )}
-
-      {can(session, 'members.manage') && (
-        <RequestLinkCard key={organisation.id} organisation={organisation} />
+        <div className="settings-pair">
+          <CompanyDomainsCard key={organisation.id} organisation={organisation} />
+          <RequestLinkCard key={organisation.id} organisation={organisation} />
+        </div>
       )}
 
       <OwnershipCard key={organisation.id} organisation={organisation} />

@@ -578,6 +578,17 @@ describe('a way back in Two-factor authentication is off while its request runs 
   });
 });
 
+describe('the ten recovery codes show in the sheet, a dialog on an iPad (sc-23282)', () => {
+  it('with the codes and Finish inside it', () => {
+    const text = readFileSync(join('src', 'components', 'TwoFactorCard.tsx'), 'utf8');
+    const sheet = /<Sheet\b[\s\S]*?<\/Sheet>/u.exec(text)?.[0] ?? '';
+
+    expect(sheet).toContain('testID="twoFactor.codesSheet"');
+    expect(sheet).toContain('<SavingCodes');
+    expect(text.match(/<SavingCodes\b/gu)).toHaveLength(1);
+  });
+});
+
 const FOCUS_THROUGH =
   'A refusal focuses through focusChecked or focusRefused: focus() skips a field Android left focused with the keys hidden.';
 
@@ -1058,6 +1069,75 @@ describe('a contact row ends Remove with an ellipsis only where it asks first (s
     ) as { contacts: Record<string, string> };
     expect(contacts.removeAsks).toMatch(/…$/u);
     expect(contacts.remove).not.toMatch(/…$/u);
+  });
+});
+
+describe('Organisation asks before it destroys, the confirming button on top (sc-23176)', () => {
+  const read = (file: string) => readFileSync(join('src', 'components', file), 'utf8');
+  const ownership = read('OwnershipCard.tsx');
+  const domains = read('CompanyDomainsCard.tsx');
+  const link = read('RequestLinkCard.tsx');
+  const holding = (button: string, text: string, testID: string) =>
+    selfClosing(button, text).filter(({ markup }) => propValue(markup, 'testID') === testID);
+
+  it('opens each step with the destructive button, never the secondary', () => {
+    for (const testID of ['"ownership.leave"', '"ownership.delete"']) {
+      const [row] = selfClosing('Row', ownership).filter(
+        ({ markup }) => propValue(markup, 'testID') === testID,
+      );
+      expect(row?.markup, testID).toMatch(/^\s*destructive$/mu);
+    }
+    expect(ownership).toMatch(
+      /\{destructive \? \(\s*<DestructiveButton ref=\{opener\} label=\{action\}/u,
+    );
+
+    const openers: [string, string][] = [
+      [domains, '{`companyDomains.remove.${domain}`}'],
+      [link, '"requestLink.replace"'],
+    ];
+    for (const [text, testID] of openers) {
+      expect(holding('DestructiveButton', text, testID), testID).toHaveLength(1);
+      expect(holding('SecondaryButton', text, testID), testID).toHaveLength(0);
+    }
+  });
+
+  it('lists each confirm’s destructive button before its quiet one', () => {
+    const confirms: [string, string, string][] = [
+      [domains, '{`companyDomains.confirm.${domain}`}', '{`companyDomains.keep.${domain}`}'],
+      [link, '"requestLink.replaceConfirm"', '"requestLink.keep"'],
+      [ownership, '"ownership.leave.send"', '"ownership.leave.stay"'],
+      [ownership, '"ownership.delete.send"', '"ownership.delete.keep"'],
+    ];
+    for (const [text, confirm, keep] of confirms) {
+      const [destructive] = holding('DestructiveButton', text, confirm);
+      const quiet = holding('QuietButton', text, keep).map(({ line }) => line);
+      expect(destructive, confirm).toBeDefined();
+      expect(
+        quiet.some((line) => line > (destructive?.line ?? Infinity)),
+        keep,
+      ).toBe(true);
+    }
+  });
+
+  it('ends every opener that asks first with an ellipsis', () => {
+    const en = JSON.parse(readFileSync(join('src', 'i18n', 'locales', 'en.json'), 'utf8')) as {
+      ownership: Record<string, string>;
+      companyDomains: Record<string, string>;
+      requestLink: Record<string, string>;
+    };
+    expect(en.ownership.leaveOpener).toMatch(/…$/u);
+    expect(en.ownership.deleteOpener).toMatch(/…$/u);
+    expect(en.companyDomains.remove).toMatch(/…$/u);
+    expect(en.requestLink.replace).toMatch(/…$/u);
+  });
+
+  it('draws a radio with the kit’s RadioMark, never a copy of it', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(
+        ({ path, text }) => !path.endsWith('RadioMark.tsx') && /^\s{2}radioDot: /mu.test(text),
+      )
+      .map(({ path }) => path);
+    expect(offenders).toEqual([]);
   });
 });
 

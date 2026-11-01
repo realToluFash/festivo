@@ -143,6 +143,7 @@ describe('the ways an account signs in', () => {
     expect(list.getByText('Set up')).toBeDefined();
     expect(list.getByText(`· ${GMAIL}`)).toBeDefined();
     expect(list.getByRole('button', { name: 'Unlink Google' })).toBeDefined();
+    expect(list.getByRole('button', { name: 'Unlink Google' }).textContent).toBe('Unlink…');
     expect(list.getByRole('button', { name: 'Link Apple' })).toBeDefined();
     expect(list.getByText('Not linked')).toBeDefined();
   });
@@ -346,7 +347,10 @@ describe('linking a provider', () => {
     expect(
       screen.getByText('You sign in with Google, so confirm with Google instead.'),
     ).toBeDefined();
-    fireEvent.click(ways().getByRole('button', { name: 'Continue with Google' }));
+    const cancel = ways().getByRole('button', { name: 'Cancel' });
+    const google = ways().getByRole('button', { name: 'Continue with Google' });
+    expect(cancel.compareDocumentPosition(google)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    fireEvent.click(google);
 
     await waitFor(() => expect(leave).toHaveBeenCalledOnce());
     const saved = JSON.parse(sessionStorage.getItem('soirely.google.attempt') ?? '{}');

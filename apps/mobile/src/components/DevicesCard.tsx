@@ -273,7 +273,8 @@ export function DevicesCard({
 
       {devices.kind === 'ready' && othersOf(devices.sessions).count > 0 && (
         <View style={styles.footer}>
-          <SecondaryButton
+          <DestructiveButton
+            stacked={false}
             label={t('devices.everywhere')}
             ref={opener('everywhere')}
             onPress={() => show({ kind: 'everywhere' })}
@@ -338,9 +339,10 @@ function Row({
       </View>
 
       {/* Your own signs out at once; another device opens a check first, since it may be mid-event. */}
-      <SecondaryButton
+      <DestructiveButton
         ref={here ? undefined : opener}
-        label={t('devices.signOut')}
+        stacked={false}
+        label={here ? t('devices.signOut') : t('devices.signOutAsks')}
         onPress={here ? onEndHere : onCheck}
         testID={here ? 'devices.here.signOut' : `devices.row.${device.id}.signOut`}
       />

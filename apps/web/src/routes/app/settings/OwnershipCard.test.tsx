@@ -199,8 +199,8 @@ describe('Settings > General, ownership and leaving', () => {
 
   it.each([
     ['Transfer ownership', 'Keep ownership'],
-    ['Leave Ìrè Events', 'Stay'],
-    ['Delete organisation', 'Keep Ìrè Events'],
+    ['Leave Ìrè Events…', 'Stay'],
+    ['Delete organisation…', 'Keep Ìrè Events'],
   ])('puts focus back on %s after %s (sc-11369)', async (opener, closer) => {
     signedIn();
     answering({ 'GET /api/orgs/org_1/members': () => json(MEMBERS) });
@@ -217,12 +217,12 @@ describe('Settings > General, ownership and leaving', () => {
     answering({ 'GET /api/orgs/org_1/members': () => json(MEMBERS) });
     settings();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Leave Ìrè Events' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave Ìrè Events…' }));
     await screen.findByText('You are the only owner');
     fireEvent.click(screen.getByRole('button', { name: 'Transfer ownership' }));
     fireEvent.click(screen.getByRole('button', { name: 'Keep ownership' }));
 
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Leave Ìrè Events' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Leave Ìrè Events…' }));
   });
 
   it('puts focus back on Leave after Stay under "You are the only owner" (sc-11369)', async () => {
@@ -230,11 +230,11 @@ describe('Settings > General, ownership and leaving', () => {
     answering({ 'GET /api/orgs/org_1/members': () => json(MEMBERS) });
     settings();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Leave Ìrè Events' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave Ìrè Events…' }));
     await screen.findByText('You are the only owner');
     fireEvent.click(screen.getByRole('button', { name: 'Stay' }));
 
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Leave Ìrè Events' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Leave Ìrè Events…' }));
   });
 
   it('takes focus to "You are the only owner" when leaving is refused for it (sc-11369)', async () => {
@@ -257,7 +257,7 @@ describe('Settings > General, ownership and leaving', () => {
     });
     settings();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Leave Ìrè Events' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave Ìrè Events…' }));
     expect(screen.queryByText('You are the only owner')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Leave Ìrè Events' }));
 
@@ -304,7 +304,7 @@ describe('Settings > General, ownership and leaving', () => {
     const sent = answering({ 'GET /api/orgs/org_1/members': () => json(MEMBERS) });
     settings();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Leave Ìrè Events' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave Ìrè Events…' }));
 
     expect(await screen.findByText('You are the only owner')).toBeDefined();
     expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Leave Ìrè Events?' }));
@@ -322,7 +322,7 @@ describe('Settings > General, ownership and leaving', () => {
     answering({ 'GET /api/orgs/org_1/members': () => held });
     settings();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Leave Ìrè Events' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave Ìrè Events…' }));
     expect(screen.queryByText('You are the only owner')).toBeNull();
     release();
 
@@ -347,8 +347,8 @@ describe('Settings > General, ownership and leaving', () => {
     settings();
 
     expect(screen.queryByRole('button', { name: 'Transfer ownership' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Delete organisation' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Leave Ìrè Events' }));
+    expect(screen.queryByRole('button', { name: 'Delete organisation…' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Leave Ìrè Events…' }));
     expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Leave Ìrè Events?' }));
     expect(screen.getByText('You lose access to Ìrè Events as soon as you leave.')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Leave Ìrè Events' }));
@@ -371,7 +371,7 @@ describe('Settings > General, ownership and leaving', () => {
     answering({});
     settings();
 
-    fireEvent.click(screen.getByRole('button', { name: `Leave ${name}` }));
+    fireEvent.click(screen.getByRole('button', { name: `Leave ${name}…` }));
 
     const shown = within(screen.getByRole('main')).getAllByText(new RegExp(name, 'u'));
 
@@ -384,8 +384,8 @@ describe('Settings > General, ownership and leaving', () => {
     answering({});
     settings();
 
-    const card = screen.getByRole('button', { name: 'Leave Ìrè Events' });
-    expect(card.querySelector('.button-label')?.textContent).toBe('Leave Ìrè Events');
+    const card = screen.getByRole('button', { name: 'Leave Ìrè Events…' });
+    expect(card.querySelector('.button-label')?.textContent).toBe('Leave Ìrè Events…');
 
     fireEvent.click(card);
     const confirm = screen.getByRole('button', { name: 'Leave Ìrè Events' });
@@ -409,7 +409,7 @@ describe('Settings > General, ownership and leaving', () => {
     });
     settings();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Leave Ìrè Events' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Leave Ìrè Events…' }));
     fireEvent.click(screen.getByRole('button', { name: 'Leave Ìrè Events' }));
 
     expect(
@@ -432,7 +432,7 @@ describe('Settings > General, ownership and leaving', () => {
     });
     settings();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation…' }));
     expect(document.activeElement).toBe(
       screen.getByRole('heading', { name: 'Delete Ìrè Events?' }),
     );
@@ -459,7 +459,7 @@ describe('Settings > General, ownership and leaving', () => {
       });
       settings();
 
-      fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation…' }));
       expect(screen.getByText('Counting what it holds…')).toBeDefined();
       fireEvent.click(screen.getByRole('button', { name: 'Keep Ìrè Events' }));
 
@@ -468,9 +468,9 @@ describe('Settings > General, ownership and leaving', () => {
       await new Promise((settled) => setTimeout(settled, 0));
 
       expect(screen.queryByRole('heading', { name: 'Delete Ìrè Events?' })).toBeNull();
-      expect(screen.getByRole('button', { name: 'Delete organisation' })).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Delete organisation…' })).toBeDefined();
 
-      fireEvent.click(screen.getByRole('button', { name: 'Delete organisation' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Delete organisation…' }));
       expect(screen.getByRole('heading', { name: 'Delete Ìrè Events?' })).toBeDefined();
       expect(screen.getByText('Counting what it holds…')).toBeDefined();
     },
@@ -491,7 +491,7 @@ describe('Settings > General, ownership and leaving', () => {
     });
     settings();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation…' }));
 
     const failure = await screen.findByText(
       'We could not count what it holds. Deleting it still deletes every event, guest and member in it, for everybody, now. Soirely support can restore it for 30 days.',
@@ -514,7 +514,7 @@ describe('Settings > General, ownership and leaving', () => {
     });
     settings();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation…' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
     expect(screen.getByText('Counting what it holds…')).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
@@ -545,7 +545,7 @@ describe('Settings > General, ownership and leaving', () => {
     });
     settings();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation…' }));
     await screen.findByRole('button', { name: 'Try again' });
     fireEvent.change(screen.getByLabelText('Type Ìrè Events to confirm'), {
       target: { value: 'Ìrè Events' },
@@ -570,7 +570,7 @@ describe('Settings > General, ownership and leaving', () => {
     });
     settings();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation…' }));
     act(() => switchOrganisation('org_2'));
     await waitFor(() => expect(answers).toHaveLength(1));
     answers[0]!(json(DELETION));
@@ -578,7 +578,7 @@ describe('Settings > General, ownership and leaving', () => {
 
     expect(screen.queryByRole('heading', { name: 'Delete Ọ̀ṣun Weddings?' })).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Delete Ìrè Events?' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Delete organisation' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Delete organisation…' })).toBeDefined();
   });
 
   it('sends nothing until the name is typed exactly, case and accents included, a curly apostrophe typing a straight one', async () => {
@@ -602,7 +602,7 @@ describe('Settings > General, ownership and leaving', () => {
     });
     settings();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation…' }));
     const button = screen.getByRole('button', { name: "Delete Ìrè's Events" });
     expect(button.hasAttribute('disabled')).toBe(false);
 
@@ -766,7 +766,7 @@ describe('The way back is off while its request runs (sc-12511)', () => {
     answering({ 'POST /api/orgs/org_1/leave': leave.answer });
     settings();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Leave Ìrè Events' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Leave Ìrè Events…' }));
     const stay = screen.getByRole('button', { name: 'Stay' });
     fireEvent.click(screen.getByRole('button', { name: 'Leave Ìrè Events' }));
     await waitFor(() => expectOff(stay, true));
@@ -790,7 +790,7 @@ describe('The way back is off while its request runs (sc-12511)', () => {
     });
     settings();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation…' }));
     const keep = screen.getByRole('button', { name: 'Keep Ìrè Events' });
     const name = screen.getByLabelText('Type Ìrè Events to confirm');
     fireEvent.click(screen.getByRole('button', { name: 'Delete Ìrè Events' }));

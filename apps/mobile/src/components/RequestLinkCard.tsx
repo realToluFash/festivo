@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { DestructiveButton, PrimaryButton, QuietButton } from './Buttons.tsx';
 import { CardFailed, type Unread } from './CardFailed.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
@@ -207,7 +207,15 @@ export function RequestLinkCard({
                   {t('requestLink.replaceTitle')}
                 </AnswerHeading>
                 <Text size={tokens.typeBodyPhone.size}>{t('requestLink.replaceBody')}</Text>
-                <View style={styles.buttons}>
+                <View style={styles.stack}>
+                  <DestructiveButton
+                    label={t('requestLink.replaceConfirm')}
+                    busy={busy}
+                    onPress={() =>
+                      void change(() => api.replaceRequestLink(organisation.id), 'replaced', true)
+                    }
+                    testID="requestLink.replaceConfirm"
+                  />
                   <QuietButton
                     label={t('requestLink.keep')}
                     off={busy}
@@ -217,24 +225,16 @@ export function RequestLinkCard({
                     }}
                     testID="requestLink.keep"
                   />
-                  <DestructiveButton
-                    label={t('requestLink.replaceConfirm')}
-                    busy={busy}
-                    onPress={() =>
-                      void change(() => api.replaceRequestLink(organisation.id), 'replaced', true)
-                    }
-                    testID="requestLink.replaceConfirm"
-                  />
                 </View>
               </View>
             ) : (
-              <View style={styles.buttons}>
+              <View style={styles.stack}>
                 <PrimaryButton
                   label={t('requestLink.copy')}
                   onPress={() => void copy(link.url ?? '')}
                   testID="requestLink.copy"
                 />
-                <SecondaryButton
+                <DestructiveButton
                   ref={opener('replace')}
                   label={t('requestLink.replace')}
                   off={busy}
@@ -271,5 +271,5 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorInsetBorder,
     backgroundColor: tokens.colorInset,
   },
-  buttons: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
+  stack: { gap: tokens.spaceSm },
 });

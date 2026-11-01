@@ -133,7 +133,7 @@ export function DestructiveButton({
   onPress: () => void;
   busy?: boolean;
   off?: boolean;
-  /** Off, it sits in a row beside secondary buttons at their label size, as Remove… does on an address. */
+  /** Off, it sits in a row beside secondary buttons at their label size, as Remove… and Unlink… do. */
   stacked?: boolean;
   accessibilityLabel?: string;
   ref?: Ref<ViewInstance> | undefined;
