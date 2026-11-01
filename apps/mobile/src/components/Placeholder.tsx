@@ -2,15 +2,18 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { tokens } from '../theme/tokens.ts';
+import { tracking } from '../theme/tracking.ts';
 import { Text } from './Text.tsx';
 
 /** A figure the product has no data for yet: its label, then Coming soon in its place, never a number, and nothing to press (sc-22103). */
 export function Placeholder({
   label,
+  look = 'stacked',
   labelSize = tokens.typeSmall.size,
   testID,
 }: {
   label: string;
+  look?: 'stacked' | 'tile' | 'figure';
   labelSize?: number;
   testID?: string;
 }) {
@@ -19,15 +22,26 @@ export function Placeholder({
 
   return (
     <View
-      style={styles.placeholder}
+      style={look === 'figure' ? styles.figure : look === 'tile' ? styles.tile : styles.stacked}
       accessible
       accessibilityLabel={`${label}, ${soon}`}
       testID={testID}
     >
-      <Text size={labelSize} muted>
-        {label}
-      </Text>
-      <Text size={tokens.typeSmall.size} weight="semibold" muted>
+      {look === 'tile' ? (
+        <Text size={tokens.typeLabel.size} weight="semibold" muted style={styles.caps}>
+          {label}
+        </Text>
+      ) : (
+        <Text size={labelSize} weight={look === 'figure' ? 'semibold' : 'regular'} muted>
+          {label}
+        </Text>
+      )}
+      <Text
+        size={look === 'stacked' ? tokens.typeSmall.size : tokens.typeBody.size}
+        weight={look === 'stacked' ? 'semibold' : 'medium'}
+        muted
+        style={look === 'tile' && styles.soon}
+      >
         {soon}
       </Text>
     </View>
@@ -35,5 +49,14 @@ export function Placeholder({
 }
 
 const styles = StyleSheet.create({
-  placeholder: { gap: tokens.spaceHair },
+  stacked: { gap: tokens.spaceHair },
+  tile: { gap: tokens.spaceXs },
+  figure: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    columnGap: tokens.spaceXs,
+  },
+  caps: { textTransform: 'uppercase', letterSpacing: tracking(tokens.typeLabel) },
+  soon: { minHeight: 28, textAlignVertical: 'center' },
 });

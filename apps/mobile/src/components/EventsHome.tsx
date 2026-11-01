@@ -17,13 +17,13 @@ import { useServerNow } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { type WeightName } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
+import { tracking } from '../theme/tracking.ts';
 import { SecondaryButton } from './Buttons.tsx';
 import { EventState } from './Events.tsx';
 import { Notice } from './Notice.tsx';
 import { Placeholder } from './Placeholder.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
-import { cardFrame } from './cardFrame.ts';
 
 const TAB_WORD: Record<EventsTab, string> = {
   upcoming: 'eventsScreen.tabUpcoming',
@@ -43,13 +43,7 @@ const PLACEHOLDER_TILES = [
   'eventsScreen.tileNeedAttention',
 ] as const;
 
-const CARD_FIGURES = ['eventsScreen.columnGuests', 'eventsScreen.columnReplies'] as const;
-
-const NOW_FIGURES = [
-  'eventsScreen.arrived',
-  'eventsScreen.course',
-  'eventsScreen.nextCue',
-] as const;
+const NOW_FIGURES = ['eventsScreen.arrived', 'eventsScreen.course'] as const;
 
 export interface HomeLoad {
   unfinished: ListedEvent[];
@@ -59,7 +53,34 @@ export interface HomeLoad {
   at: Date;
 }
 
-/** Events, [fd]'s `EventsHome-fd` (sc-22103): the summary, the tiles, Happening now on every tab, the tabs, the cards and the footer. */
+/** Events' summary and its tabs group the events in one place (sc-22103). */
+function useEventsHome(load: HomeLoad) {
+  const now = useServerNow();
+
+  return { grouped: eventsHome(load, now, dateLocale()), now };
+}
+
+/** The line under Events' title: only the counts that are not 0, and none on a first visit (sc-22103). */
+export function EventsSummary({ load }: { load: HomeLoad }) {
+  const { t } = useTranslation();
+  const { grouped } = useEventsHome(load);
+  const summary = summaryWords(
+    {
+      happeningNow: grouped.happeningNow.length,
+      upcoming: grouped.upcoming.length,
+      drafts: grouped.drafts.length,
+    },
+    t,
+  );
+
+  return summary == null ? null : (
+    <Text size={tokens.typeBodyPhone.size} muted testID="events.summary">
+      {summary}
+    </Text>
+  );
+}
+
+/** Events, [fd]'s `EventsHome-fd` (sc-22103): the tiles, Happening now on every tab, the tabs, the cards and the footer. */
 export function EventsHome({
   kind,
   load,
@@ -81,8 +102,7 @@ export function EventsHome({
   onShowMore: () => void;
 }) {
   const { t } = useTranslation();
-  const now = useServerNow();
-  const grouped = eventsHome(load, now, dateLocale());
+  const { grouped, now } = useEventsHome(load);
   const counts: Record<EventsTab, number> = {
     upcoming: grouped.upcoming.length,
     drafts: grouped.drafts.length,
@@ -90,19 +110,10 @@ export function EventsHome({
   };
   const events =
     tab === 'upcoming' ? grouped.upcoming : tab === 'drafts' ? grouped.drafts : grouped.past;
-  const summary = summaryWords(
-    { happeningNow: grouped.happeningNow.length, upcoming: counts.upcoming, drafts: counts.drafts },
-    t,
-  );
   const phone = kind === 'phone';
 
   return (
     <View style={styles.stack}>
-      {summary != null && (
-        <Text size={tokens.typeBody.size} muted testID="events.summary">
-          {summary}
-        </Text>
-      )}
       <View style={styles.tiles}>
         <View
           style={[styles.tile, phone && styles.tileHalf]}
@@ -110,35 +121,32 @@ export function EventsHome({
           accessibilityLabel={`${t('eventsScreen.tileUpcoming')}, ${counts.upcoming}`}
           testID="events.tile.upcoming"
         >
-          <Text size={tokens.typeSmall.size} muted>
+          <Text size={tokens.typeLabel.size} weight="semibold" muted style={styles.caps}>
             {t('eventsScreen.tileUpcoming')}
           </Text>
-          <Text size={tokens.typeNumberTile.size} weight="bold">
+          <Text
+            size={phone ? tokens.typeTitlePhone.size : tokens.typeNumberTile.size}
+            weight="bold"
+            style={styles.number}
+          >
             {String(counts.upcoming)}
           </Text>
         </View>
         {PLACEHOLDER_TILES.map((label) => (
           <View key={label} style={[styles.tile, phone && styles.tileHalf]}>
-            <Placeholder label={t(label)} />
+            <Placeholder label={t(label)} look="tile" />
           </View>
         ))}
       </View>
-      {grouped.happeningNow.length > 0 && (
-        <View style={styles.stack}>
-          <Text size={tokens.typeRowTitle.size} weight="semibold" accessibilityRole="header">
-            {t('eventsScreen.happeningNow')}
-          </Text>
-          {grouped.happeningNow.map((event) => (
-            <HappeningNow
-              key={event.id}
-              kind={kind}
-              event={event}
-              now={now}
-              onOpen={() => onOpen(event.id, true)}
-            />
-          ))}
-        </View>
-      )}
+      {grouped.happeningNow.map((event) => (
+        <HappeningNow
+          key={event.id}
+          kind={kind}
+          event={event}
+          now={now}
+          onOpen={() => onOpen(event.id, true)}
+        />
+      ))}
       <View style={styles.tabs} accessibilityRole="tablist">
         {EVENTS_TABS.map((one) => {
           const selected = one === tab;
@@ -153,29 +161,27 @@ export function EventsHome({
               accessibilityLabel={`${t(TAB_WORD[one])}, ${counts[one]}`}
               testID={`events.tab.${one}`}
             >
-              <Text size={tokens.typeSmall.size} weight="semibold" muted={!selected}>
+              <Text size={tokens.typeBody.size} weight="semibold" muted={!selected}>
                 {t(TAB_WORD[one])}
               </Text>
-              <View style={styles.count}>
-                <Text size={tokens.typeSmall.size} muted>
-                  {String(counts[one])}
-                </Text>
-              </View>
+              <Text size={tokens.typeSmall.size} weight="medium" muted style={styles.number}>
+                {String(counts[one])}
+              </Text>
             </Pressable>
           );
         })}
       </View>
       {events.length === 0 ? (
-        <View style={cardFrame(kind)}>
+        <View style={styles.empty}>
           <Text size={tokens.typeRowTitle.size} weight="semibold" accessibilityRole="header">
             {t(EMPTY[tab].title)}
           </Text>
-          <Text size={tokens.typeBody.size} muted>
+          <Text size={tokens.typeBody.size} muted style={styles.centred}>
             {t(EMPTY[tab].line)}
           </Text>
         </View>
       ) : (
-        <View style={[styles.cards, !phone && styles.grid]}>
+        <View style={styles.cards}>
           {events.map((event) => (
             <Card
               key={event.id}
@@ -213,7 +219,7 @@ export function EventsHome({
   );
 }
 
-/** The whole card opens the event, with nothing else to press in it; no cover (sc-22103). */
+/** [fd]'s card, one link with nothing else to press in it and no cover: the chip and the dates, the name with its type and place, Guests to come, then the next step (sc-22103). */
 function Card({
   kind,
   event,
@@ -231,47 +237,59 @@ function Card({
   const language = useShownLanguage();
   const dates = eventDatesWords(event, dateLocale(), t);
   const next = nextStepWords(nextStep(event, phase, now), t);
+  const phone = kind === 'phone';
+  const small = phone ? tokens.typeMeta.size : tokens.typeSmall.size;
 
   return (
     <Pressable
-      style={[cardFrame(kind), styles.card, kind !== 'phone' && styles.gridCard]}
+      style={[
+        styles.card,
+        phone
+          ? styles.cardPhone
+          : kind === 'tabletPortrait'
+            ? styles.cardPortrait
+            : styles.cardWide,
+      ]}
       onPress={onOpen}
       accessibilityRole="button"
       testID={`events.row.${event.id}`}
     >
-      <View style={styles.cardHead}>
-        <Text size={tokens.typeRowTitle.size} weight="semibold">
-          {event.name}
-        </Text>
-        <TypeAndPlace event={event} />
-      </View>
-      <View style={styles.cardDates}>
+      <View style={styles.when}>
+        <EventState phase={phase} />
         <WithSoon
           line={dates.days}
           soon={howSoonPhrase(event, phase, now, language, (time) =>
             t('eventsScreen.endsIn', { time }),
           )}
-          size={kind === 'phone' ? tokens.typeMeta.size : tokens.typeSmall.size}
+          size={small}
           weight="medium"
-          lineMuted={false}
         />
         {dates.time != null && (
-          <Text size={tokens.typeSmall.size} muted>
+          <Text size={small} weight="medium" muted>
             {dates.time}
           </Text>
         )}
       </View>
-      <EventState phase={phase} />
-      <View style={styles.figures}>
-        {CARD_FIGURES.map((label) => (
-          <Placeholder key={label} label={t(label)} />
-        ))}
+      <View style={styles.cardHead}>
+        <Text
+          size={phone ? tokens.typeRowTitle.size : tokens.typeTitleSection.size}
+          weight="semibold"
+        >
+          {event.name}
+        </Text>
+        <TypeAndPlace event={event} size={small} />
       </View>
-      {next != null && <Text size={tokens.typeSmall.size}>{next}</Text>}
+      <Placeholder label={t('eventsScreen.columnGuests')} labelSize={small} look="figure" />
+      {next != null && (
+        <View style={styles.next}>
+          <Text size={small}>{next}</Text>
+        </View>
+      )}
     </Pressable>
   );
 }
 
+/** [fd]'s Happening now: the chip, the dates and the time, the name, its figures to come, and Next up when there is one (sc-22103). */
 function HappeningNow({
   kind,
   event,
@@ -287,41 +305,47 @@ function HappeningNow({
   const language = useShownLanguage();
   const dates = eventDatesWords(event, dateLocale(), t);
   const step = nextStep(event, 'happening_now', now);
+  const phone = kind === 'phone';
+  const figures = NOW_FIGURES.slice(0, phone ? 1 : 2);
 
   return (
     <Pressable
-      style={[cardFrame(kind), styles.card, styles.now]}
+      style={[styles.card, styles.now]}
       onPress={onOpen}
       accessibilityRole="button"
       testID={`events.now.${event.id}`}
     >
-      <View style={styles.nowWhen}>
-        <Text size={tokens.typeSmall.size}>{dates.days}</Text>
+      <View style={styles.when}>
         <EventState phase="happening_now" />
+        <Text size={tokens.typeSmall.size} muted>
+          {dates.days}
+        </Text>
+        {dates.time != null && (
+          <WithSoon
+            line={dates.time}
+            soon={howSoonPhrase(event, 'happening_now', now, language, (time) =>
+              t('eventsScreen.endsIn', { time }),
+            )}
+          />
+        )}
       </View>
       <View style={styles.cardHead}>
-        <Text size={tokens.typeRowTitle.size} weight="semibold">
+        <Text size={phone ? tokens.typeBodyGuest.size : tokens.typeTitleDialog.size} weight="bold">
           {event.name}
         </Text>
-        <TypeAndPlace event={event} />
+        <TypeAndPlace event={event} size={tokens.typeSmall.size} />
       </View>
-      {dates.time != null && (
-        <WithSoon
-          line={dates.time}
-          soon={howSoonPhrase(event, 'happening_now', now, language, (time) =>
-            t('eventsScreen.endsIn', { time }),
-          )}
-        />
-      )}
       <View style={styles.figures}>
-        {NOW_FIGURES.map((label) => (
-          <Placeholder key={label} label={t(label)} />
+        {figures.map((label) => (
+          <Placeholder key={label} label={t(label)} look="figure" />
         ))}
       </View>
       {step?.kind === 'nextUp' && (
-        <Text size={tokens.typeSmall.size}>
-          {t('eventsScreen.nextUp', { title: step.milestone.title })}
-        </Text>
+        <View style={styles.next}>
+          <Text size={tokens.typeSmall.size}>
+            {t('eventsScreen.nextUp', { title: step.milestone.title })}
+          </Text>
+        </View>
       )}
     </Pressable>
   );
@@ -333,19 +357,17 @@ function WithSoon({
   soon,
   size = tokens.typeSmall.size,
   weight = 'regular',
-  lineMuted = true,
 }: {
   line: string;
   soon: string | null;
   size?: number;
   weight?: WeightName;
-  lineMuted?: boolean;
 }) {
   const { t } = useTranslation();
 
   if (soon == null) {
     return (
-      <Text size={size} weight={weight} muted={lineMuted}>
+      <Text size={size} weight={weight} muted>
         {line}
       </Text>
     );
@@ -353,7 +375,7 @@ function WithSoon({
 
   return (
     <View style={styles.withSoon}>
-      <Text size={size} weight={weight} muted={lineMuted}>
+      <Text size={size} weight={weight} muted>
         {t('eventsScreen.thenSoon', { when: line })}
       </Text>
       <Text size={size} weight={weight} muted>
@@ -363,63 +385,109 @@ function WithSoon({
   );
 }
 
-function TypeAndPlace({ event }: { event: ListedEvent }) {
+function TypeAndPlace({ event, size }: { event: ListedEvent; size: number }) {
   const { t } = useTranslation();
   const place = event.venue?.name ?? event.venue?.address?.formatted ?? null;
   const type = t(`eventTypes.${event.type}`);
 
   return (
-    <Text size={tokens.typeSmall.size} muted>
+    <Text size={size} muted>
       {place == null ? type : t('eventsScreen.typeAndPlace', { type, place })}
     </Text>
   );
 }
 
+const LIFT = {
+  shadowColor: tokens.colorInk,
+  shadowOpacity: 0.05,
+  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 4 },
+  elevation: 1,
+} as const;
+
 const styles = StyleSheet.create({
-  stack: { gap: tokens.spaceMd },
-  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
+  stack: { gap: 14 },
+  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceMd },
   tile: {
     flexGrow: 1,
     flexBasis: 0,
     minWidth: 140,
     gap: tokens.spaceXs,
-    padding: tokens.spaceLg,
+    padding: tokens.spaceXl,
     borderRadius: tokens.radiusCardPhone,
     borderWidth: 1,
     borderColor: tokens.colorBorder,
     backgroundColor: tokens.colorCard,
   },
-  tileHalf: { flexBasis: '40%' },
-  now: { borderLeftWidth: 4, borderLeftColor: tokens.colorAttention },
-  nowWhen: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
+  tileHalf: { flexBasis: '40%', padding: 14 },
+  caps: { textTransform: 'uppercase', letterSpacing: tracking(tokens.typeLabel) },
+  number: { fontVariant: ['tabular-nums'] },
+  card: {
+    gap: tokens.spaceSm,
+    padding: tokens.spaceLg,
+    borderRadius: tokens.radiusCardPhone,
+    borderWidth: 1,
+    borderColor: tokens.colorBorder,
+    backgroundColor: tokens.colorCard,
+    ...LIFT,
+  },
+  cardPhone: { flexGrow: 1, flexBasis: '40%' },
+  cardPortrait: { flexGrow: 1, flexBasis: 220 },
+  cardWide: { flexGrow: 1, flexBasis: 260 },
+  now: { paddingVertical: 14, paddingHorizontal: tokens.spaceXl },
+  when: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceXxs },
   tabs: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: tokens.spaceXs,
-    borderBottomWidth: 1,
-    borderBottomColor: tokens.colorInsetBorder,
+    gap: tokens.spaceHair,
+    padding: 3,
+    borderRadius: tokens.radiusPill,
+    backgroundColor: tokens.colorBorder,
   },
   tab: {
+    flexGrow: 1,
+    flexShrink: 1,
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    columnGap: 5,
+    minHeight: tokens.sizeHit,
+    paddingHorizontal: tokens.spaceXs,
+    paddingVertical: tokens.spaceXxs,
+    borderRadius: tokens.radiusPill,
+  },
+  tabSelected: {
+    backgroundColor: tokens.colorCard,
+    shadowColor: tokens.colorInk,
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
+  },
+  empty: {
     alignItems: 'center',
     gap: tokens.spaceXs,
-    minHeight: tokens.sizeHit,
-    paddingHorizontal: tokens.spaceMd,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    paddingVertical: tokens.space5xl,
+    paddingHorizontal: 18,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: tokens.colorBorder,
+    borderRadius: tokens.radiusCardLarge,
   },
-  tabSelected: { borderBottomColor: tokens.colorAccent },
-  count: {
-    paddingHorizontal: tokens.spaceXs,
-    borderRadius: tokens.radiusPill,
-    backgroundColor: tokens.colorInset,
-  },
-  cards: { gap: tokens.spaceMd },
-  grid: { flexDirection: 'row', flexWrap: 'wrap' },
-  card: { gap: tokens.spaceSm, alignItems: 'flex-start' },
-  gridCard: { flexGrow: 1, flexBasis: 280 },
+  centred: { textAlign: 'center' },
+  cards: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceMd },
   cardHead: { gap: tokens.spaceHair, alignSelf: 'stretch' },
-  cardDates: { gap: tokens.spaceHair },
+  next: {
+    alignSelf: 'stretch',
+    paddingTop: tokens.spaceSm,
+    borderTopWidth: 1,
+    borderTopColor: tokens.colorInsetBorder,
+  },
   withSoon: { flexDirection: 'row', flexWrap: 'wrap', columnGap: tokens.spaceXs },
-  figures: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceXl },
+  figures: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: tokens.spaceXl,
+    rowGap: tokens.spaceXxs,
+  },
 });

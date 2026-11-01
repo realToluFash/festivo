@@ -101,7 +101,7 @@ function DeleteDialog({
 
     try {
       await api.deleteEvent(event.id, needsName ? typed : undefined);
-      void navigate('/app/events', { state: { deletedEvent: name } });
+      void navigate('/app/events', { replace: true, state: { deletedEvent: name } });
     } catch (error) {
       setBusy(false);
       const refusedName =

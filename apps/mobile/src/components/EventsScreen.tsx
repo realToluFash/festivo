@@ -19,12 +19,12 @@ import { hasNoEvents } from '../kit/eventsOpen.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AppFrame } from './AppFrame.tsx';
-import { PrimaryButton } from './Buttons.tsx';
 import { EventsFailed, NoEvents } from './Events.tsx';
-import { EventsHome, type HomeLoad } from './EventsHome.tsx';
+import { EventsHome, EventsSummary, type HomeLoad } from './EventsHome.tsx';
 import { type ListAndPageSpacing, ListAndPage, useListAndPageLayout } from './ListAndPage.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
+import { AnswerInView } from './Screen.tsx';
 import { Text } from './Text.tsx';
 import { Arrived, Skeleton } from './Skeleton.tsx';
 
@@ -163,55 +163,61 @@ export function EventsScreen() {
   ) : (
     <Arrived style={styles.stack}>
       {deleted != null && (
-        <ReadOut words={t('eventDelete.deleted', { event: deleted })}>
-          <Notice
-            tone="done"
-            mark={tokens.marks.done.glyph}
-            body={t('eventDelete.deleted', { event: deleted })}
-          />
-        </ReadOut>
-      )}
-      {load.refreshing && (
-        <Text
-          size={tokens.typeSmall.size}
-          muted
-          accessibilityRole="text"
-          testID="events.refreshing"
-        >
-          {t('eventsScreen.refreshing')}
-        </Text>
+        <AnswerInView key={deleted}>
+          <ReadOut words={t('eventDelete.deleted', { event: deleted })}>
+            <Notice
+              tone="done"
+              mark={tokens.marks.done.glyph}
+              body={t('eventDelete.deleted', { event: deleted })}
+            />
+          </ReadOut>
+        </AnswerInView>
       )}
       {hasNoEvents(load) ? (
         <NoEvents kind={kind} onCreate={creates ? newEvent : undefined} />
       ) : (
-        <>
-          {creates && (
-            <PrimaryButton
-              label={t('eventsScreen.newEvent')}
-              onPress={newEvent}
-              testID="events.new"
-            />
-          )}
-          <EventsHome
-            kind={kind}
-            load={load}
-            tab={tab.tab}
-            onTab={(next) => {
-              if (organisationId != null) rememberEventsTab(organisationId, next);
-              setTab({ in: organisationId, tab: next });
-            }}
-            onOpen={openEvent}
-            more={more}
-            shown={moreShown}
-            onShowMore={showMore}
-          />
-        </>
+        <EventsHome
+          kind={kind}
+          load={load}
+          tab={tab.tab}
+          onTab={(next) => {
+            if (organisationId != null) rememberEventsTab(organisationId, next);
+            setTab({ in: organisationId, tab: next });
+          }}
+          onOpen={openEvent}
+          more={more}
+          shown={moreShown}
+          onShowMore={showMore}
+        />
       )}
     </Arrived>
   );
+  const firstVisit = load.kind === 'loaded' && hasNoEvents(load);
+  const underTitle =
+    !reads || load.kind !== 'loaded' ? null : load.refreshing ? (
+      <Text
+        size={tokens.typeBodyPhone.size}
+        muted
+        accessibilityRole="text"
+        testID="events.refreshing"
+      >
+        {t('eventsScreen.refreshing')}
+      </Text>
+    ) : !firstVisit ? (
+      <EventsSummary load={load} />
+    ) : null;
 
   return (
-    <AppFrame current="events" title={t('eventsScreen.title')}>
+    <AppFrame
+      current="events"
+      title={t('eventsScreen.title')}
+      underTitle={underTitle}
+      primary={
+        creates && !firstVisit
+          ? { label: t('eventsScreen.newEvent'), onPress: newEvent, testID: 'events.new' }
+          : undefined
+      }
+    >
       <ListAndPage
         kind={kind}
         list={list}

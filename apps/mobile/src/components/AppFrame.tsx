@@ -57,7 +57,12 @@ import { useModalOpen } from '../updateRequired.ts';
 import { BellButton } from './BellButton.tsx';
 import { Brand } from './Brand.tsx';
 import { CreateOrganisation } from './CreateOrganisation.tsx';
-import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
+import {
+  HeaderPrimary,
+  type HeaderPrimaryProps,
+  PrimaryButton,
+  SecondaryButton,
+} from './Buttons.tsx';
 import { Sheet, useFocusBack, useWindowTurn } from './Sheet.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
 import { Initials } from './Initials.tsx';
@@ -195,9 +200,15 @@ export function AppFrame({
   aboutTheAccount = false,
   bodyTakesSwitch = false,
   inEvent,
+  primary,
+  underTitle,
   children,
 }: {
   current: Destination;
+  /** The screen's one primary, in the header band where [fd] puts it (sc-22103). */
+  primary?: HeaderPrimaryProps | undefined;
+  /** A line under the title, in the header band, as Events' summary. */
+  underTitle?: ReactNode;
   /** Inside an event, its areas take the navigation's place. */
   inEvent?: InsideEvent | undefined;
   title: string;
@@ -329,6 +340,8 @@ export function AppFrame({
           waiting={count}
           onSwitch={switchFromPill}
           pill={pill}
+          primary={primary}
+          underTitle={underTitle}
         />
         <View style={styles.body}>
           {switched != null &&
@@ -429,9 +442,13 @@ function FrameHeader({
   waiting,
   onSwitch,
   pill,
+  primary,
+  underTitle,
 }: {
   kind: LayoutKind;
   current: Destination;
+  primary: HeaderPrimaryProps | undefined;
+  underTitle: ReactNode;
   entries: readonly NavEntry[];
   inEvent: boolean;
   title: string;
@@ -454,10 +471,14 @@ function FrameHeader({
   if (kind === 'tabletLandscape') {
     return (
       <View style={[styles.header, styles.landscapeHeader, large && styles.stacked, top]}>
-        <Title size={tokens.typeTitlePhone.size} accessibilityRole="header" ref={read}>
-          {title}
-        </Title>
+        <View style={styles.titled}>
+          <Title size={tokens.typeTitlePhone.size} accessibilityRole="header" ref={read}>
+            {title}
+          </Title>
+          {underTitle}
+        </View>
         {!large && <View style={styles.fill} />}
+        {primary != null && <HeaderPrimary {...primary} round={false} />}
         <Text size={tokens.typeBody.size} muted>
           {email}
         </Text>
@@ -469,8 +490,24 @@ function FrameHeader({
   if (kind === 'tabletPortrait') {
     return (
       <View style={[styles.header, styles.portraitHeader, top]}>
-        {organisation != null && (
+        {organisation != null && primary == null && (
           <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
+        )}
+        {primary != null && (
+          <View style={styles.titleRow}>
+            {organisation != null && (
+              <View style={styles.shrink}>
+                <OrgPill
+                  organisation={organisation}
+                  waiting={waiting}
+                  onSwitch={onSwitch}
+                  ref={pill}
+                />
+              </View>
+            )}
+            <View style={styles.fill} />
+            <HeaderPrimary {...primary} round={false} />
+          </View>
         )}
         <Pills entries={entries} scrolls={inEvent} />
         {back != null && !backHidden && (
@@ -486,6 +523,7 @@ function FrameHeader({
             <Title size={tokens.typeTitlePage.size} accessibilityRole="header" ref={read}>
               {title}
             </Title>
+            {underTitle}
           </View>
           <BellButton />
         </View>
@@ -495,8 +533,24 @@ function FrameHeader({
 
   return (
     <View style={[styles.header, styles.phoneHeader, top]}>
-      {current === 'home' && organisation != null && (
+      {current === 'home' && organisation != null && primary == null && (
         <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
+      )}
+      {primary != null && (
+        <View style={styles.titleRow}>
+          {organisation != null && (
+            <View style={styles.shrink}>
+              <OrgPill
+                organisation={organisation}
+                waiting={waiting}
+                onSwitch={onSwitch}
+                ref={pill}
+              />
+            </View>
+          )}
+          <View style={styles.fill} />
+          <HeaderPrimary {...primary} round />
+        </View>
       )}
       {back != null && !backHidden && (
         <BackButton label={back.label} onPress={back.onPress} off={back.off} testID="frame.back" />
@@ -510,6 +564,7 @@ function FrameHeader({
           >
             {title}
           </Title>
+          {underTitle}
         </View>
         <BellButton />
       </View>
@@ -1186,6 +1241,7 @@ const styles = StyleSheet.create({
   column: { flex: 1, minWidth: 0 },
   body: { flex: 1, minHeight: 0 },
   fill: { flex: 1 },
+  titled: { gap: tokens.spaceXxs, flexShrink: 1 },
   shrink: { flexShrink: 1, minWidth: 0 },
   ink: { color: tokens.colorInk },
   secondaryInk: { color: tokens.colorInkSecondary },
