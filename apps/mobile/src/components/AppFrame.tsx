@@ -50,7 +50,7 @@ import { useModalOpen } from '../updateRequired.ts';
 import { BellButton } from './BellButton.tsx';
 import { CreateOrganisation } from './CreateOrganisation.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
-import { useFocusBack } from './Sheet.tsx';
+import { useFocusBack, useWindowTurn } from './Sheet.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
 import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
@@ -764,7 +764,8 @@ function Switcher({
   );
   useFocusBackToOpener(offerClosed, afterOffer);
   useFocusBack(open, opener);
-  const shown = useModalOpen(open);
+  // Create an organisation opens as this goes, and its sheet waits for this window to go (sc-23267).
+  const { shown, gone } = useWindowTurn(useModalOpen(open));
   // The modal runs behind the bars, the cutout and the home indicator, so the card keeps its margin from them, not from the edge.
   const fit =
     Platform.OS === 'android'
@@ -794,6 +795,7 @@ function Switcher({
       statusBarTranslucent
       navigationBarTranslucent
       onRequestClose={onClose}
+      onDismiss={gone}
     >
       <View style={[styles.scrim, fit]} accessibilityViewIsModal onAccessibilityEscape={onClose}>
         {/* A sibling, not a parent: iOS reads a labelled button as one item and nothing inside it (sc-10712).

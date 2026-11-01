@@ -23,13 +23,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import {
-  type SheetWindows,
-  sheetKeysCover,
-  sheetPadding,
-  sheetUnderKeys,
-  sheetWindows,
-} from '../kit/sheet.ts';
+import { sheetKeysCover, sheetPadding, sheetUnderKeys, sheetWindows } from '../kit/sheet.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { glide } from '../motion.ts';
@@ -55,7 +49,6 @@ type SheetPlaces = {
   put: (id: string, sheet: ReactNode) => void;
   subscribe: (heard: () => void) => () => void;
   current: () => ReadonlyMap<string, ReactNode>;
-  windows: SheetWindows;
 };
 
 const Places = createContext<SheetPlaces | null>(null);
@@ -77,7 +70,6 @@ function sheetPlaces(): SheetPlaces {
       return () => listeners.delete(heard);
     },
     current: () => sheets,
-    windows: sheetWindows(),
   };
 }
 
@@ -103,7 +95,7 @@ function PlacedSheets({ places }: { places: SheetPlaces }) {
 export function Sheet(props: SheetProps) {
   const places = useContext(Places);
   const id = useId();
-  const sheet = <SheetFrame {...props} id={id} windows={places?.windows ?? null} />;
+  const sheet = <SheetFrame {...props} />;
 
   useLayoutEffect(() => {
     places?.put(id, sheet);
@@ -113,16 +105,7 @@ export function Sheet(props: SheetProps) {
   return places == null ? sheet : null;
 }
 
-function SheetFrame({
-  open,
-  onClose,
-  scrimLabel,
-  opener,
-  testID,
-  children,
-  id,
-  windows,
-}: SheetProps & { id: string; windows: SheetWindows | null }) {
+function SheetFrame({ open, onClose, scrimLabel, opener, testID, children }: SheetProps) {
   const { kind, height } = useLayout();
   const insets = useSafeAreaInsets();
   const phone = kind === 'phone';
@@ -136,8 +119,7 @@ function SheetFrame({
   const reduced = useReducedMotion();
   const [onScreen, setOnScreen] = useState(false);
   const { present, scrim, frame } = useSheetMotion(open, onScreen, phone, reduced, height);
-  const ownTurn = useWindowTurn(id, windows, present);
-  const shown = useModalOpen(ownTurn);
+  const { shown, gone } = useWindowTurn(useModalOpen(present));
   if (!shown && onScreen) setOnScreen(false);
 
   return (
@@ -152,7 +134,7 @@ function SheetFrame({
       navigationBarTranslucent
       onRequestClose={onClose}
       onShow={() => setOnScreen(true)}
-      onDismiss={() => windows?.lower(id)}
+      onDismiss={gone}
     >
       {/* A modal is its own window: iOS never resizes it for the keyboard, Android not with the props above. */}
       <KeyboardAvoidingView
@@ -272,33 +254,33 @@ function useSheetMotion(
   return { present, scrim, frame: { opacity: fade, transform: [{ translateY: shift }] } };
 }
 
-/** iOS cannot put a window up while another is still going, so a sheet waits until the one before it has gone (sc-23267). */
-function useWindowTurn(id: string, windows: SheetWindows | null, wanted: boolean): boolean {
-  const subscribe = useCallback(
-    (heard: () => void) => windows?.subscribe(heard) ?? (() => undefined),
-    [windows],
-  );
-  const waits = useSyncExternalStore(subscribe, () => windows?.waits(id) ?? false);
+/** Every modal window in the app, wherever it is drawn: iOS has one stack of them, not one per SheetsAtRoot. */
+const appWindows = sheetWindows();
+
+/** iOS cannot put a window up while another is going, so a modal waits its turn; `gone` is its onDismiss (sc-23267). */
+export function useWindowTurn(wanted: boolean): { shown: boolean; gone: () => void } {
+  const id = useId();
+  const waits = useSyncExternalStore(appWindows.subscribe, () => appWindows.waits(id));
   const shown = wanted && !waits;
+  const gone = useCallback(() => appWindows.lower(id), [id]);
 
   useLayoutEffect(() => {
-    if (windows == null) return;
     if (shown) {
-      windows.raise(id);
+      appWindows.raise(id);
       return;
     }
     if (Platform.OS !== 'ios') {
-      windows.lower(id);
+      appWindows.lower(id);
       return;
     }
     // onDismiss comes once iOS has taken the window down; the timer keeps a lost one from holding every sheet back.
-    const lost = setTimeout(() => windows.lower(id), SETTLED_MS);
+    const lost = setTimeout(() => appWindows.lower(id), SETTLED_MS);
 
     return () => clearTimeout(lost);
-  }, [id, windows, shown]);
-  useLayoutEffect(() => () => windows?.lower(id), [id, windows]);
+  }, [id, shown]);
+  useLayoutEffect(() => gone, [gone]);
 
-  return shown;
+  return { shown, gone };
 }
 
 /** The keyboard's top edge in the sheet's window, or null while the keys are down. */
