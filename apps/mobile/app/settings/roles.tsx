@@ -26,6 +26,7 @@ import { Text, type TextHandle } from '../../src/components/Text.tsx';
 import { cardFrame } from '../../src/components/cardFrame.ts';
 import { DESTINATION_HREF } from '../../src/kit/appNav.ts';
 import { useSignedIn } from '../../src/signedIn.ts';
+import { settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
 type Load =
@@ -43,6 +44,7 @@ export default function RolesScreen() {
   const { t } = useTranslation();
   const backToSettings = useBackToSettings();
   const { kind, givesWay } = useListAndPageLayout(SPACING, 'settingsList');
+  const alone = !settingsListBeside(useLayout().kind);
   const { organisation } = useSignedIn();
   const organisationId = organisation?.id;
   const [held, setHeld] = useState<{ in: string | undefined; load: Load }>({
@@ -131,7 +133,7 @@ export default function RolesScreen() {
 
   const heading = (
     <View style={styles.heading}>
-      {!phone && (
+      {!alone && (
         <Text
           ref={rolesTitle}
           size={tokens.typeTitlePhone.size}
@@ -268,14 +270,22 @@ export default function RolesScreen() {
   return (
     <AppFrame
       current="settings"
-      title={phone ? (inDetail ? pageTitle : t('rolesScreen.title')) : t('settings.title')}
-      titleRef={phone ? (inDetail ? pageTitleRef : rolesTitle) : undefined}
-      back={
+      title={
         phone
           ? inDetail
-            ? { label: t('rolesScreen.title'), onPress: toList }
-            : backToSettings(t('settings.title'))
-          : undefined
+            ? pageTitle
+            : t('rolesScreen.title')
+          : alone
+            ? t('rolesScreen.title')
+            : t('settings.title')
+      }
+      titleRef={phone ? (inDetail ? pageTitleRef : rolesTitle) : alone ? rolesTitle : undefined}
+      back={
+        phone && inDetail
+          ? { label: t('rolesScreen.title'), onPress: toList }
+          : alone && !inDetail
+            ? backToSettings(t('settings.title'))
+            : undefined
       }
     >
       <SettingsSplit open="roles" givesWay={givesWay}>

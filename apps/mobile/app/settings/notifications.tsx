@@ -7,7 +7,7 @@ import { NotificationSettingsGrid } from '../../src/components/NotificationSetti
 import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { Text } from '../../src/components/Text.tsx';
-import { type LayoutKind, useLayout } from '../../src/layout/useLayout.ts';
+import { type LayoutKind, settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
 /** Settings > Notifications in the app (sc-3980), under Your account. */
@@ -15,25 +15,19 @@ export default function Notifications() {
   const { t } = useTranslation();
   const backToSettings = useBackToSettings();
   const { kind } = useLayout();
-  const phone = kind === 'phone';
+  const alone = !settingsListBeside(kind);
 
   return (
     <AppFrame
       current="settings"
       aboutTheAccount
-      title={phone ? t('notificationSettings.title') : t('settings.title')}
-      back={phone ? backToSettings(t('settings.title')) : undefined}
+      title={alone ? t('notificationSettings.title') : t('settings.title')}
+      back={alone ? backToSettings(t('settings.title')) : undefined}
     >
       <SettingsSplit open="notifications">
         <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
-          {!phone && (
-            <Text
-              size={
-                kind === 'tabletLandscape' ? tokens.typeTitlePage.size : tokens.typeTitlePhone.size
-              }
-              weight="bold"
-              accessibilityRole="header"
-            >
+          {!alone && (
+            <Text size={tokens.typeTitlePage.size} weight="bold" accessibilityRole="header">
               {t('notificationSettings.title')}
             </Text>
           )}

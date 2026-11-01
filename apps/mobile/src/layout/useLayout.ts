@@ -50,6 +50,7 @@ export {
   isTablet,
   listAndPageKind,
   SETTINGS_LIST_WIDTH,
+  settingsListBeside,
   settingsListGivesWay,
   TABLET_MIN_DIMENSION,
 } from './classify.ts';

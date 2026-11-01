@@ -5,7 +5,18 @@ export function pageTakesBack(kind: LayoutKind, pageInFront: boolean): boolean {
   return pageInFront && kind !== 'tabletLandscape';
 }
 
-/** iOS's own swipe from the left edge is the drawn back's, unless the page has taken the swipe or the back is off; with no back drawn, as on a tab's own screen, it does nothing (sc-23777). `back` is the header's, drawn only on a phone. */
+/** The header draws the page's back on a phone, and on an upright tablet unless the body draws its own, as Notifications does (sc-23814). */
+export function headerDrawsBack<Back>(
+  kind: LayoutKind,
+  back: Back | undefined,
+  backInBody: boolean,
+): Back | undefined {
+  if (kind === 'phone') return back;
+
+  return kind === 'tabletPortrait' && !backInBody ? back : undefined;
+}
+
+/** iOS's own swipe from the left edge is the drawn back's, unless the page has taken the swipe or the back is off; with no back drawn, as on a tab's own screen, it does nothing (sc-23777). */
 export function stackSwipes(
   kind: LayoutKind,
   back: { off?: boolean } | undefined,
@@ -13,7 +24,7 @@ export function stackSwipes(
   pageTookSwipe: boolean,
 ): boolean {
   if (pageTookSwipe) return false;
-  const drawnBack = kind === 'phone' ? back : undefined;
+  const drawnBack = headerDrawsBack(kind, back, backInBody);
 
   return drawnBack == null ? backInBody : drawnBack.off !== true;
 }
