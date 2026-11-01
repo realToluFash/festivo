@@ -594,3 +594,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   PT-PT usam para desfazer o que acabou de ser feito; o botão de fecho anuncia-se "Fechar",
   como `switcher.close`. O botão de guardar passa a "✓ Guardado", no masculino invariável,
   porque o botão não sabe o que guarda.
+- **1 Nov 2026. O Calendário da organização** (`calendar.*`, `nav.calendar`,
+  `frame.calendar`, web e app, sc-25787 para sc-3625). "Calendário" sozinho é o da organização;
+  as datas de um evento continuam a ser "Todas as datas". As vistas são "Mês" e "Agenda" (igual
+  ao inglês, em `same-as-english.json`), sob "Vista". O filtro diz "Eventos e marcos" | "Só
+  eventos", "marco" como `timeline.*`. Um intervalo é "De {{from}} até {{to}}", com o "até" da
+  casa. A célula cheia diz "+{{count}} mais", curto para a célula de cerca de 50 px do telemóvel.

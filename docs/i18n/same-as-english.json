@@ -84,6 +84,8 @@
     "web:rolesScreen.area.menu",
     "mobile:rolesScreen.area.menu",
     "web:notificationSettings.push",
-    "mobile:notificationSettings.push"
+    "mobile:notificationSettings.push",
+    "web:calendar.agenda",
+    "mobile:calendar.agenda"
   ]
 }

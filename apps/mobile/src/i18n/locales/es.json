@@ -1793,7 +1793,7 @@
     "view": "Vista",
     "show": "Mostrar",
     "choiceIn": "{{group}}: {{choice}}",
-    "showAll": "Eventos y fechas clave",
+    "showAll": "Eventos e hitos",
     "showEvents": "Solo eventos",
     "more_one": "+{{count, number}} más",
     "more_other": "+{{count, number}} más",
