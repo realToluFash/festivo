@@ -96,17 +96,22 @@ export function NotificationSettings() {
 
       {grid.status === 'failed' && (
         <div className="notice notice-broken" role="alert">
-          <p className="notice-title">{t('notificationSettings.couldNotLoad')}</p>
-          <button
-            type="button"
-            className="link-button"
-            onClick={() => {
-              setGrid({ status: 'loading' });
-              setAttempt((tries) => tries + 1);
-            }}
-          >
-            {t('notificationSettings.tryAgain')}
-          </button>
+          <span className="mark mark-broken" aria-hidden="true">
+            ✕
+          </span>
+          <div className="notice-body">
+            <p className="notice-title">{t('notificationSettings.couldNotLoad')}</p>
+            <button
+              type="button"
+              className="link-button"
+              onClick={() => {
+                setGrid({ status: 'loading' });
+                setAttempt((tries) => tries + 1);
+              }}
+            >
+              {t('notificationSettings.tryAgain')}
+            </button>
+          </div>
         </div>
       )}
 
@@ -191,11 +196,13 @@ export function NotificationSettings() {
                               void change(category, channel, event.currentTarget.checked)
                             }
                           />
-                          <span aria-hidden="true">
-                            {setting[channel].on
-                              ? t('notificationSettings.on')
-                              : t('notificationSettings.off')}
-                          </span>
+                          <SwitchPill
+                            on={setting[channel].on}
+                            words={{
+                              on: t('notificationSettings.on'),
+                              off: t('notificationSettings.off'),
+                            }}
+                          />
                         </label>
                       </td>
                     ))}
@@ -205,11 +212,26 @@ export function NotificationSettings() {
             </tbody>
           </table>
 
-          <p className="muted">
+          <p className="notification-settings-footer">
             {t('notificationSettings.quietHours', quietHoursIn(currentLocale()))}
           </p>
         </section>
       )}
     </div>
+  );
+}
+
+/** The app's `OnOffSwitch` drawn over the checkbox: its dot and its word, as wide as the longer word. */
+function SwitchPill({ on, words }: { on: boolean; words: { on: string; off: string } }) {
+  return (
+    <span className="notification-switch-pill" aria-hidden="true">
+      <span className="notification-switch-track">
+        <span className="notification-switch-dot" />
+      </span>
+      <span className="notification-switch-words">
+        <span>{on ? words.on : words.off}</span>
+        <span className="notification-switch-reserved">{on ? words.off : words.on}</span>
+      </span>
+    </span>
   );
 }
