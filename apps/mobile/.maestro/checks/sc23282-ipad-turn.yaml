@@ -1,0 +1,66 @@
+# sc-23282 on an iPad: Security beside the Settings list in landscape, another device's Sign out… and Unlink…'s confirm, then the tablet turned to portrait with the step open, which stays open on its own screen with ‹ Settings. Needs ${METRO_URL}, ${PW}, an account with a password, Google linked and other sessions.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/settings/security
+- extendedWaitUntil:
+    visible: '{{t:security.title}}'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: landscape-top
+- scrollUntilVisible:
+    element: 'Chrome on Windows'
+    timeout: 30000
+    centerElement: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: landscape-devices
+- tapOn:
+    text: 'Sign out…'
+    rightOf: 'Chrome on Windows'
+- waitForAnimationToEnd
+- takeScreenshot: landscape-device-tapped
+- openLink: ${METRO_URL}/--/settings/security
+- scrollUntilVisible:
+    element:
+      id: 'ways.google.unlink'
+    direction: UP
+    timeout: 30000
+- tapOn:
+    id: 'ways.google.unlink'
+- waitForAnimationToEnd
+- takeScreenshot: landscape-confirm-its-you
+- tapOn:
+    id: 'ways.password'
+- inputText: ${PW}
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: 'ways.unlink'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: landscape-confirm-unlink
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd
+- takeScreenshot: portrait-confirm-unlink
+- tapOn:
+    id: 'ways.keep'
+- scrollUntilVisible:
+    element: 'Chrome on Windows'
+    timeout: 30000
+    centerElement: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    text: 'Sign out…'
+    rightOf: 'Chrome on Windows'
+- waitForAnimationToEnd
+- takeScreenshot: portrait-device-tapped
+- scrollUntilVisible:
+    element:
+      id: 'devices.everywhere'
+    timeout: 15000
+- tapOn:
+    id: 'devices.everywhere'
+- waitForAnimationToEnd
+- takeScreenshot: portrait-everywhere

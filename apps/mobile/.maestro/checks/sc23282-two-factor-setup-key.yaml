@@ -1,0 +1,47 @@
+# sc-23282: Turn on two-factor reaches its setup step with the setup key in JetBrains Mono and Check the code on top of Cancel; Cancel leaves it off. Needs ${METRO_URL}, ${PW}, an account with a password and two-factor off.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- scrollUntilVisible:
+    element:
+      id: 'twoFactor.turnOn'
+    timeout: 30000
+    centerElement: true
+- tapOn:
+    id: 'twoFactor.turnOn'
+- runFlow:
+    when:
+      visible:
+        id: 'ways.password'
+    commands:
+      - takeScreenshot: confirm-its-you
+      - tapOn:
+          id: 'ways.password'
+      - inputText: ${PW}
+      - pressKey: Enter
+- scrollUntilVisible:
+    element:
+      id: 'twoFactor.checkCode'
+    timeout: 20000
+    centerElement: true
+- takeScreenshot: setup-step
+- swipe:
+    start: 50%, 35%
+    end: 50%, 75%
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: setup-key
+- swipe:
+    start: 50%, 35%
+    end: 50%, 75%
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: setup-key-top
+- scrollUntilVisible:
+    element:
+      id: 'twoFactor.cancel'
+    timeout: 15000
+- tapOn:
+    id: 'twoFactor.cancel'
+- waitForAnimationToEnd
+- takeScreenshot: cancelled
