@@ -1144,3 +1144,54 @@ describe('a language change with the name error showing', () => {
     expect(screen.getByText('Not this name.')).toBeDefined();
   });
 });
+
+describe('opening Roles by a click while the list loads (sc-23303)', () => {
+  function held(): { answer: (response: Response) => void } {
+    let answer: (response: Response) => void = () => {};
+    const list = new Promise<Response>((resolve) => {
+      answer = resolve;
+    });
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) =>
+      new URL(String(input)).pathname === '/api/orgs/org_1/roles'
+        ? list
+        : new Promise<Response>(() => {}),
+    );
+
+    return { answer };
+  }
+
+  async function openedByClick(): Promise<void> {
+    const router = createMemoryRouter(routes, { initialEntries: ['/app'] });
+    render(<RouterProvider router={router} />);
+    fireEvent.click(document.body);
+    await act(() => router.navigate('/app/settings/roles'));
+    await screen.findByRole('heading', { level: 1, name: 'Roles' });
+    expect(document.activeElement).toBe(document.body);
+  }
+
+  it('takes focus to the heading of the list once it arrives', async () => {
+    const { answer } = held();
+    await openedByClick();
+
+    answer(new Response(JSON.stringify({ roles: ROLES, areas: AREAS })));
+
+    await waitFor(() => expect(document.querySelector('[aria-busy="true"]')).toBeNull());
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Roles' })),
+    );
+  });
+
+  it('takes focus to the line that says the list did not load', async () => {
+    const { answer } = held();
+    await openedByClick();
+
+    answer(new Response('{}', { status: 500 }));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByText('The roles did not load. Try again in a moment.'),
+      ),
+    );
+  });
+});

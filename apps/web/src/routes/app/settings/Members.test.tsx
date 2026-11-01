@@ -2302,3 +2302,56 @@ describe('making somebody an owner asks for a recent proof (sc-18930)', () => {
     expect(sessionStorage.getItem('soirely.provider.returned')).toBeNull();
   });
 });
+
+describe('opening Members by a click while the list loads (sc-23303)', () => {
+  function held(): { answer: (response: Response) => void } {
+    let answer: (response: Response) => void = () => {};
+    const members = new Promise<Response>((resolve) => {
+      answer = resolve;
+    });
+
+    answering({
+      'GET /api/orgs/org_1/members': () => members,
+      'GET /api/orgs/org_1/roles': () => json(ROLES),
+    });
+
+    return { answer };
+  }
+
+  async function openedByClick(): Promise<void> {
+    signedIn();
+    const router = createMemoryRouter(routes, { initialEntries: ['/app/account/security'] });
+    render(<RouterProvider router={router} />);
+    fireEvent.click(document.body);
+    await act(() => router.navigate('/app/settings/members'));
+    await screen.findByRole('heading', { level: 1, name: 'Members' });
+    expect(document.activeElement).toBe(document.body);
+  }
+
+  it('takes focus to the heading of the list once it arrives', async () => {
+    const { answer } = held();
+    await openedByClick();
+
+    answer(json(LIST));
+
+    await screen.findByText('Ìrè Events · 1 active · 1 invited');
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'Members' }),
+      ),
+    );
+  });
+
+  it('takes focus to the line that says the list did not load', async () => {
+    const { answer } = held();
+    await openedByClick();
+
+    answer(json({}, 500));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByText('We could not load the members. Check your connection and try again.'),
+      ),
+    );
+  });
+});
