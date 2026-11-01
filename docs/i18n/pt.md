@@ -599,4 +599,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   as datas de um evento continuam a ser "Todas as datas". As vistas são "Mês" e "Agenda" (igual
   ao inglês, em `same-as-english.json`), sob "Vista". O filtro diz "Eventos e marcos" | "Só
   eventos", "marco" como `timeline.*`. Um intervalo é "De {{from}} até {{to}}", com o "até" da
-  casa. A célula cheia diz "+{{count}} mais", curto para a célula de cerca de 50 px do telemóvel.
+  casa. A célula cheia diz "+{{count}}", sem mais: "+43 mais" era cortado em "+43 m…" no iPhone SE
+  (célula de cerca de 50 px) e passava a duas linhas na web a 390 px (QA, 1 nov., como em
+  francês). Sob as barras, "+3" lê-se sozinho; o leitor de ecrã lê o nome do dia, que dá o
+  número de elementos.
