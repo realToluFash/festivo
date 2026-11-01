@@ -6,7 +6,8 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'settings.members'
 - extendedWaitUntil:
-    visible: '{{t:membersScreen.title}}'
+    visible:
+      id: 'members.row.*'
     timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: turn-up-members
@@ -16,11 +17,16 @@ appId: host.exp.Exponent
 - setOrientation: PORTRAIT
 - waitForAnimationToEnd
 - takeScreenshot: turn-up-members-again
+- assertNotVisible:
+    id: 'settings.signOut'
 - tapOn:
     id: 'frame.back'
 - waitForAnimationToEnd
 - takeScreenshot: turn-up-list
+- assertVisible:
+    id: 'settings.members'
 - setOrientation: LANDSCAPE_LEFT
 - waitForAnimationToEnd
 - takeScreenshot: turn-land-none
+- assertVisible: '{{t:settings.choose}}'
 - setOrientation: PORTRAIT

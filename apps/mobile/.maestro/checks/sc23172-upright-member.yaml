@@ -6,17 +6,22 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'settings.members'
 - extendedWaitUntil:
-    visible: '{{t:membersScreen.title}}'
+    visible:
+      id: 'members.row.*'
     timeout: 30000
 - tapOn:
     id: 'members.row.*'
     index: 0
 - waitForAnimationToEnd
 - takeScreenshot: member-up
+- assertNotVisible:
+    id: 'members.row.*'
 - tapOn:
     id: 'frame.back'
 - waitForAnimationToEnd
 - takeScreenshot: member-up-back
+- assertVisible:
+    id: 'members.row.*'
 - tapOn:
     id: 'frame.back'
 - waitForAnimationToEnd
