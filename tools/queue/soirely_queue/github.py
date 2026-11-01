@@ -45,6 +45,7 @@ PASSED = re.compile(r"Review passed at ([0-9a-f]{7,40})")
 # Reviews from before the code review states end "Back to In Progress", and still count.
 BACK = re.compile(r"(?:Failed code review|Back to In Progress): (\d+) blocking")
 STORY = re.compile(r"sc-(\d+)")
+SUFFIX = re.compile(r"\(sc-(\d+)\)\s*$")
 REMOTE = re.compile(r"github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?/?$")
 LIMITED = re.compile(r"rate limit", re.I)
 # A thread read over REST has no GraphQL id until the next GraphQL sync.
@@ -145,8 +146,9 @@ def lead_verdicts(reviews):
 
 
 def story_of(branch, title):
-    """The story a pull request is for: its branch names it, or failing that its title."""
-    found = STORY.search(branch) or STORY.search(title or "")
+    """The story a pull request is for: the (sc-N) its title ends with, else its branch, else
+    the first story its title names. A title may mention another story it works on."""
+    found = SUFFIX.search(title or "") or STORY.search(branch) or STORY.search(title or "")
     return int(found.group(1)) if found else None
 
 
