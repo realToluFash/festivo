@@ -3249,6 +3249,11 @@ span {
 
 /* ── Your account's cards, as `Account.dc.html` draws them (sc-23283) ─────── */
 
+/* The address and number cards arrive inside a box-less `.arrived`, out of `.account > *`'s reach. */
+.account .card {
+  max-width: 47.5rem;
+}
+
 .card.account-card {
   gap: var(--spaceLg);
   padding: var(--spaceXl) var(--spaceXxl);
@@ -3269,12 +3274,8 @@ span {
   padding-inline: 0;
 }
 
-.contacts-card > * {
+.card.contacts-card > :not(.ways-list) {
   margin-inline: var(--spaceXxl);
-}
-
-.contacts-card > .ways-list {
-  margin-inline: 0;
 }
 
 .contacts-card .way {
@@ -4230,6 +4231,7 @@ button.members-row {
 }
 
 .events-table {
+  container: events-table / inline-size;
   display: flex;
   flex-direction: column;
   margin-top: var(--space3xl);
@@ -4363,7 +4365,10 @@ button.members-row {
   .events-tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
 
+/* By the table's own width, not the window's: beside the sidebar at 1024, its two shared columns kept 80 px between them. */
+@container events-table (width < 60rem) {
   .events-table-head {
     display: none;
   }

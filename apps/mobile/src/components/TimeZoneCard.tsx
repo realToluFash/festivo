@@ -20,6 +20,7 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useHeaderWithoutBack } from './AppFrame.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { SmallCapsLabel } from './SmallCapsLabel.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Field, focusChecked, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
@@ -135,16 +136,13 @@ export function TimeZoneCard({
 
   return (
     <View style={frame}>
-      <Text
-        size={tokens.typeTitleSection.size}
-        weight="bold"
-        accessibilityRole="header"
+      <SmallCapsLabel
         accessibilityElementsHidden={savedClosing}
         importantForAccessibility={offWhileSaving}
         accessible={savedClosing ? false : undefined}
       >
         {t('timeZone.title')}
-      </Text>
+      </SmallCapsLabel>
       <Text
         size={tokens.typeBodyPhone.size}
         style={styles.secondary}
@@ -156,22 +154,35 @@ export function TimeZoneCard({
       </Text>
 
       {(!editing || opening || closing || savedClosing) && (
-        <View style={styles.group} {...savedHidden}>
-          <Text
-            size={tokens.typeRowTitle.size}
-            weight="semibold"
-            accessible={savedClosing ? false : undefined}
-          >
-            {label ?? t('timeZone.unset')}
-          </Text>
-          {timezone != null && (
+        <View style={styles.current}>
+          <View style={[styles.group, styles.value]} {...savedHidden}>
             <Text
-              size={tokens.typeSmall.size}
-              style={styles.secondary}
+              size={tokens.typeRowTitle.size}
+              weight="semibold"
               accessible={savedClosing ? false : undefined}
             >
-              {timezone.replace(/_/g, ' ')}
+              {label ?? t('timeZone.unset')}
             </Text>
+            {timezone != null && (
+              <Text
+                size={tokens.typeSmall.size}
+                style={styles.secondary}
+                accessible={savedClosing ? false : undefined}
+              >
+                {timezone.replace(/_/g, ' ')}
+              </Text>
+            )}
+          </View>
+          {(!editing || opening || closing) && (
+            <View>
+              {changeHolder}
+              <SecondaryButton
+                ref={change}
+                label={t('timeZone.change')}
+                onPress={open}
+                testID="timeZone.change"
+              />
+            </View>
           )}
         </View>
       )}
@@ -190,17 +201,6 @@ export function TimeZoneCard({
               wordsRef={savedGiven ? savedLine : undefined}
             />
           )}
-        </View>
-      )}
-      {(!editing || opening || closing) && (
-        <View>
-          {changeHolder}
-          <SecondaryButton
-            ref={change}
-            label={t('timeZone.change')}
-            onPress={open}
-            testID="timeZone.change"
-          />
         </View>
       )}
       {editing && (
@@ -454,6 +454,13 @@ function Choosing({
 
 const styles = StyleSheet.create({
   group: { gap: tokens.spaceXxs },
+  current: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: tokens.spaceLg,
+  },
+  value: { flexGrow: 1, flexShrink: 1, flexBasis: 200, minWidth: 0 },
   gone: { position: 'absolute' },
   choosing: { gap: tokens.spaceLg },
   secondary: { color: tokens.colorInkSecondary },

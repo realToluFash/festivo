@@ -153,7 +153,7 @@ export function DestructiveButton({
   onPress: () => void;
   busy?: boolean;
   off?: boolean;
-  /** Off for an opener that sits in its row at the secondary button's size, as "Unlink…" does. */
+  /** Off, it sits in a row beside secondary buttons at their label size, as Remove… and Unlink… do. */
   stacked?: boolean;
   accessibilityLabel?: string;
   ref?: Ref<ViewInstance> | undefined;
@@ -167,7 +167,7 @@ export function DestructiveButton({
       ref={ref}
       style={[
         styles.secondary,
-        stacked && styles.secondaryStacked,
+        stacked ? styles.secondaryStacked : styles.destructiveInRow,
         off && styles.secondaryOff,
         { opacity: fade.opacity },
       ]}
@@ -358,6 +358,11 @@ const styles = StyleSheet.create({
   },
   secondaryPaired: {
     alignItems: 'center',
+    minHeight: tokens.sizeHitPhonePrimary,
+    paddingHorizontal: tokens.spaceXxl,
+    borderRadius: tokens.sizeHitPhonePrimary / 2,
+  },
+  destructiveInRow: {
     minHeight: tokens.sizeHitPhonePrimary,
     paddingHorizontal: tokens.spaceXxl,
     borderRadius: tokens.sizeHitPhonePrimary / 2,
