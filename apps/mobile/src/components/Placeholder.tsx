@@ -37,8 +37,8 @@ export function Placeholder({
         </Text>
       )}
       <Text
-        size={tokens.typeBody.size}
-        weight="medium"
+        size={look === 'stacked' ? tokens.typeSmall.size : tokens.typeBody.size}
+        weight={look === 'stacked' ? 'semibold' : 'medium'}
         muted
         style={look === 'tile' && styles.soon}
       >
