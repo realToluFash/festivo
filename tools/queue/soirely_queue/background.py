@@ -34,6 +34,14 @@ CACHE_READ, CACHE_WRITE_5M, CACHE_WRITE_1H = 0.1, 1.25, 2.0
 ARTIFACT_TOOLS = ("ArtifactComments", "ArtifactData")
 TOOLS_WAIT_SECONDS = 120
 TRIES = 2
+# Nobody answers a background session's permission prompt (sc-26428): one still held on it
+# after this long is stopped, and its item handed back.
+PROMPT_GRACE_SECONDS = 180
+WANTED_CHARS = 300
+SECRET_NAME = r"[\w-]*(?:token|secret|password|passwd|api[_-]?key|auth)[\w-]*"
+SECRET_VALUE = re.compile(rf"(?i)(\b{SECRET_NAME}\s*[=:]\s*|--{SECRET_NAME}[\s=]+)"
+                          r"(['\"]?)[^\s'\"]+\2")
+BEARER = re.compile(r"(?i)\b(bearer|basic)\s+[\w.~+/=-]+")
 
 
 class NotStarted(RuntimeError):
@@ -108,6 +116,52 @@ def listed(env, run=subprocess.run):
         return None
 
 
+def on_prompt(seen):
+    """Whether the daemon lists the session as held on a permission prompt."""
+    return (seen.get("state") or seen.get("status")) == "blocked" \
+        and "permission" in str(seen.get("waitingFor") or "").lower()
+
+
+def needs_text(needs):
+    """The command or tool a prompt asks for, out of whatever shape `needs` takes."""
+    if isinstance(needs, str):
+        return needs
+    if isinstance(needs, list):
+        return "; ".join(filter(None, map(needs_text, needs)))
+    if isinstance(needs, dict):
+        given = needs.get("input") if isinstance(needs.get("input"), dict) else needs
+        for key in ("command", "file_path", "url", "pattern", "description"):
+            if isinstance(given.get(key), str) and given[key]:
+                tool = needs.get("tool") or needs.get("toolName") or needs.get("name")
+                return f"{tool}: {given[key]}" if tool and key != "command" else given[key]
+        for key in ("tool", "toolName", "name", "message", "summary"):
+            if isinstance(needs.get(key), str) and needs[key]:
+                return needs[key]
+    return ""
+
+
+def masked(text):
+    """The command as safe to log and post: a value given to anything named like a secret,
+    and a bearer or basic credential, are replaced."""
+    text = BEARER.sub(lambda m: f"{m.group(1)} …", text)
+    text = SECRET_VALUE.sub(lambda m: f"{m.group(1)}…", text)
+    text = " ".join(text.split())
+    return text if len(text) <= WANTED_CHARS else text[:WANTED_CHARS - 1] + "…"
+
+
+def wanted(short, seen, folder):
+    """What the session held on its prompt wanted to run, from its listing or else its job's
+    `state.json`, masked; None when neither says."""
+    needs = seen.get("needs")
+    if not needs:
+        path = pathlib.Path(folder).expanduser() / "jobs" / short / "state.json"
+        try:
+            needs = json.loads(path.read_text()).get("needs")
+        except (OSError, ValueError, AttributeError):
+            needs = None
+    return masked(needs_text(needs)) or None
+
+
 def stop(short, env, run=subprocess.run):
     """Ends the session but keeps it, so `claude attach` can still show what it did."""
     run(["claude", "stop", short], capture_output=True, env=env)
@@ -170,14 +224,15 @@ def watch(short, env, folder, finished, values, clock=time.monotonic, sleep=time
           ls=listed, rss=tree_rss, lines_of=None, poll=POLL_SECONDS, on_session=None):
     """Waits for the session's turn to end, or for its item to be done and settled, or for a
     limit. Returns `(why it stopped, the session as last listed)`: `ended`, `settled`,
-    `timeout`, `oom-kill`, `budget`, or `gone` when the daemon no longer lists it. An empty
-    or failed listing in the first polls is not yet gone. `on_session` hears the full session
+    `timeout`, `oom-kill`, `budget`, `prompt` when it has been held on a permission prompt
+    for `PROMPT_GRACE_SECONDS`, or `gone` when the daemon no longer lists it. An empty or
+    failed listing in the first polls is not yet gone. `on_session` hears the full session
     id from the first listing that has one."""
     limit = machine.minutes(values["maxRuntime"]) * 60 if values.get("maxRuntime") else None
     memory = launchd.size_bytes(values.get("memoryMax"))
     budget = values.get("maxBudgetUsd")
     lines_of = lines_of or (lambda session: transcript_lines(folder, session))
-    began, settled, seen, polls, told = clock(), None, {}, 0, False
+    began, settled, seen, polls, told, held = clock(), None, {}, 0, False, None
     while True:
         polls += 1
         sessions_now = ls(env)
@@ -201,6 +256,9 @@ def watch(short, env, folder, finished, values, clock=time.monotonic, sleep=time
                 return "budget", seen
         if state in ENDED:
             return "ended", seen
+        held = (held if held is not None else clock()) if on_prompt(seen) else None
+        if held is not None and clock() - held >= PROMPT_GRACE_SECONDS:
+            return "prompt", seen
         if settled is None and finished():
             settled = clock()
         if settled is not None and clock() - settled >= runner.SETTLE_SECONDS:
@@ -293,5 +351,7 @@ def run(values, folder, name, prompt, cwd, finished, allowed=(), denied=(), extr
     lines = lines_of(session) if session else []
     result = summary(lines, values["model"])
     result["artifact_read"], result["artifact_refused"] = board_read(lines)
+    if why == "prompt":
+        result["wanted"] = wanted(short, seen, folder)
     code = 0 if why in ("ended", "settled") and not result["is_error"] else 1
     return result, code, why, session

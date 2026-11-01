@@ -1,7 +1,9 @@
 """A worker as a background session, against fakes: nothing here starts claude."""
 
 import json
+import pathlib
 import subprocess
+import tempfile
 import unittest
 
 from soirely_queue import background
@@ -171,8 +173,77 @@ class Watch(unittest.TestCase):
                          lines_of=lambda _: [], on_session=told.append)
         self.assertEqual(told, [SESSION])
 
+    def prompted(self, polls, then=("working",)):
+        blocked = {"state": "blocked", "waitingFor": "permission prompt", "pid": 4,
+                   "sessionId": SESSION}
+        answers = iter([{"1d923fe2": blocked}] * polls
+                       + [{"1d923fe2": {"state": s, "sessionId": SESSION}} for s in then])
+        clock = Clock()
+        return background.watch("1d923fe2", {}, "/c", lambda: False, VALUES, clock=clock,
+                                sleep=clock.sleep, ls=lambda _: next(answers),
+                                rss=lambda _: 0, lines_of=lambda _: [])
+
+    def test_a_session_held_on_a_permission_prompt_past_the_grace_is_stopped(self):
+        why, seen = self.prompted(1000)
+        self.assertEqual((why, seen["state"]), ("prompt", "blocked"))
+
+    def test_a_session_blocked_briefly_that_carries_on_is_left_to_work(self):
+        polls = background.PROMPT_GRACE_SECONDS // background.POLL_SECONDS - 2
+        why, _ = self.prompted(polls, then=["working"] * polls + ["done"])
+        self.assertEqual(why, "ended")
+
+    def test_two_short_prompts_do_not_add_up_to_the_grace(self):
+        polls = background.PROMPT_GRACE_SECONDS // background.POLL_SECONDS - 2
+        blocked = {"state": "blocked", "waitingFor": "permission prompt"}
+        answers = iter([{"1d923fe2": blocked}] * polls + [{"1d923fe2": {"state": "working"}}]
+                       + [{"1d923fe2": blocked}] * polls + [{"1d923fe2": {"state": "done"}}])
+        clock = Clock()
+        why, _ = background.watch("1d923fe2", {}, "/c", lambda: False, VALUES, clock=clock,
+                                  sleep=clock.sleep, ls=lambda _: next(answers),
+                                  rss=lambda _: 0, lines_of=lambda _: [])
+        self.assertEqual(why, "ended")
+
+    def test_a_session_blocked_on_something_else_is_not_a_prompt(self):
+        self.assertFalse(background.on_prompt({"state": "blocked", "waitingFor": "a monitor"}))
+        self.assertTrue(background.on_prompt({"state": "blocked",
+                                              "waitingFor": "permission prompt"}))
+
     def test_a_failed_listing_reads_as_none(self):
         self.assertIsNone(background.listed({}, lambda *_, **__: said("not json")))
+
+
+class Wanted(unittest.TestCase):
+    def test_the_command_is_read_from_the_job_s_state_when_the_listing_lacks_it(self):
+        with tempfile.TemporaryDirectory() as folder:
+            job = pathlib.Path(folder) / "jobs" / "1d923fe2"
+            job.mkdir(parents=True)
+            (job / "state.json").write_text(json.dumps(
+                {"state": "blocked", "needs": {"tool": "Bash", "input": {
+                    "command": "rm node_modules apps/web/node_modules; git add -A"}}}))
+            self.assertEqual(background.wanted("1d923fe2", {}, folder),
+                             "rm node_modules apps/web/node_modules; git add -A")
+
+    def test_the_listing_s_own_needs_come_first(self):
+        self.assertEqual(background.wanted("x", {"needs": "rm -rf build"}, "/nowhere"),
+                         "rm -rf build")
+
+    def test_nothing_said_is_none(self):
+        self.assertIsNone(background.wanted("x", {}, "/nowhere"))
+
+    def test_a_tool_without_a_command_is_named_with_its_target(self):
+        self.assertEqual(background.needs_text({"toolName": "Write",
+                                                "input": {"file_path": "/etc/hosts"}}),
+                         "Write: /etc/hosts")
+
+    def test_secrets_never_leave_in_the_command(self):
+        said = background.masked("GH_TOKEN=ghp_x1 sq --api-key 'k3y' && curl -H "
+                                 "'Authorization: Bearer abc.def' https://x")
+        for secret in ("ghp_x1", "k3y", "abc.def"):
+            self.assertNotIn(secret, said)
+        self.assertIn("GH_TOKEN=…", said)
+
+    def test_a_long_command_is_clipped(self):
+        self.assertEqual(len(background.masked("x" * 1000)), background.WANTED_CHARS)
 
 
 class Run(unittest.TestCase):
@@ -196,6 +267,23 @@ class Run(unittest.TestCase):
         self.assertEqual((why, code, session), ("timeout", 1, SESSION))
         self.assertEqual(commands[-1], ["claude", "stop", "1d923fe2"])
         self.assertEqual(result["result"], "Half built.")
+
+    def test_a_session_stopped_on_a_prompt_says_what_it_wanted(self):
+        commands = []
+
+        def run_command(argv, **_):
+            commands.append(argv[:3])
+            return said("backgrounded · 1d923fe2 · dev item 7\n")
+
+        clock = Clock()
+        listing = {"1d923fe2": {"state": "blocked", "waitingFor": "permission prompt",
+                                "needs": "rm node_modules", "pid": 4, "sessionId": SESSION}}
+        result, code, why, _ = background.run(
+            VALUES, "/c", "dev item 7", "Build.", "/x", lambda: False, run_command=run_command,
+            clock=clock, sleep=clock.sleep, ls=lambda _: listing, rss=lambda _: 0,
+            lines_of=lambda _: [GIVEN, assistant("m1", "Committing.", output_tokens=10)])
+        self.assertEqual((why, code, result["wanted"]), ("prompt", 1, "rm node_modules"))
+        self.assertEqual(commands[-1], ["claude", "stop", "1d923fe2"])
 
 
 class ArtifactTools(unittest.TestCase):

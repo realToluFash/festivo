@@ -177,6 +177,31 @@ class Snapshot(unittest.TestCase):
                       out.getvalue())
         self.assertNotIn("Share menu", out.getvalue())
 
+    def test_status_shows_a_role_stopped_on_a_prompt_and_what_it_wanted(self):
+        from soirely_queue import cli
+        runner.set_started(self.db, ["ops", "dev2"], True)
+        store.set_meta(self.db, "prompt:dev2", {
+            "at": NOW, "worker": "dev2", "item": 7, "story": 42, "wanted": "rm node_modules",
+            "told": [42]})
+        view, out = self.snap(), io.StringIO()
+        dev2, = [r for r in view["roles"] if r["role"] == "dev2"]
+        self.assertEqual(dev2["state"], "prompt")
+        with mock.patch.object(cli.dashboard, "snapshot", return_value=view), \
+                mock.patch.object(cli, "home", return_value=self.home), \
+                mock.patch.object(cli.shutil, "get_terminal_size",
+                                  return_value=cli.os.terminal_size((1000, 50))), \
+                redirect_stdout(out):
+            cli.status(self.db, self.platform, NOW)
+        self.assertIn("stopped on a prompt", out.getvalue())
+        self.assertIn("stopped on a prompt: dev2 item 7 (sc-42) wanted rm node_modules",
+                      out.getvalue())
+
+    def test_a_prompt_already_cleared_leaves_the_state_alone(self):
+        runner.set_started(self.db, ["ops", "dev2"], True)
+        store.set_meta(self.db, "prompt:dev2", {"told": [42]})
+        dev2, = [r for r in self.snap()["roles"] if r["role"] == "dev2"]
+        self.assertEqual((dev2["state"], dev2["prompt"]), ("started", None))
+
     def test_status_names_the_host_in_the_ops_refusal_of_an_unnamed_machine(self):
         from soirely_queue import cli
         self.settings["roles"] = {"dev2": {}}
