@@ -10,7 +10,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * One person's subscription link to one organisation's calendar (sc-3626). The link's token is never stored: the seed it is signed from is, with the token's SHA-256 to find the row by.
+ * One person's subscription link to one organisation's calendar (sc-3626). The link's token is never stored: the seed it is signed from is, with the token's SHA-256 to find the row by. Rows are made only by FeedLinkIssuer's insert, which two first asks at once must agree on.
  */
 #[ORM\Entity]
 #[ORM\HasLifecycleCallbacks]
@@ -39,15 +39,6 @@ class CalendarFeed
     #[ORM\Column(type: Types::STRING, length: 64)]
     private string $tokenHash;
 
-    public function __construct(User $user, Organisation $organisation, string $seed, string $tokenHash)
-    {
-        $this->id = Uuid::v7();
-        $this->user = $user;
-        $this->organisation = $organisation;
-        $this->seed = $seed;
-        $this->tokenHash = $tokenHash;
-    }
-
     public function getId(): Uuid
     {
         return $this->id;
@@ -68,18 +59,15 @@ class CalendarFeed
         return $this->seed;
     }
 
-    public function setSeed(string $seed): void
-    {
-        $this->seed = $seed;
-    }
-
     public function getTokenHash(): string
     {
         return $this->tokenHash;
     }
 
-    public function setTokenHash(string $tokenHash): void
+    /** The seed and the hash change together, so no row holds a link that resolves to nothing. */
+    public function reissue(string $seed, string $tokenHash): void
     {
+        $this->seed = $seed;
         $this->tokenHash = $tokenHash;
     }
 }

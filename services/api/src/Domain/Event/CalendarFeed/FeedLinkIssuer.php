@@ -61,8 +61,7 @@ final readonly class FeedLinkIssuer
     public function reset(CalendarFeed $feed): void
     {
         $seed = self::seed();
-        $feed->setSeed($seed);
-        $feed->setTokenHash(self::hash($this->token($seed)));
+        $feed->reissue($seed, self::hash($this->token($seed)));
     }
 
     public function pathOf(CalendarFeed $feed): string
