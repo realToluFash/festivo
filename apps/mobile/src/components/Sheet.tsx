@@ -116,8 +116,10 @@ function SheetFrame({ open, onClose, scrimLabel, opener, testID, children }: She
   const padding = sheetPadding({ phone, keysCover, insets });
   useFocusBack(open, opener);
   const reduced = useReducedMotion();
-  const { present, scrim, frame } = useSheetMotion(open, phone, reduced, height);
+  const [onScreen, setOnScreen] = useState(false);
+  const { present, scrim, frame } = useSheetMotion(open, onScreen, phone, reduced, height);
   const shown = useModalOpen(present);
+  if (!shown && onScreen) setOnScreen(false);
 
   return (
     <Modal
@@ -130,6 +132,7 @@ function SheetFrame({ open, onClose, scrimLabel, opener, testID, children }: She
       statusBarTranslucent
       navigationBarTranslucent
       onRequestClose={onClose}
+      onShow={() => setOnScreen(true)}
     >
       {/* A modal is its own window: iOS never resizes it for the keyboard, Android not with the props above. */}
       <KeyboardAvoidingView
@@ -195,7 +198,13 @@ export function SheetActions({ children }: { children: ReactNode }) {
 }
 
 /** Keeps the Modal up until its exit has played, so the sheet can leave rather than vanish. */
-function useSheetMotion(shown: boolean, phone: boolean, reduced: boolean, height: number) {
+function useSheetMotion(
+  shown: boolean,
+  onScreen: boolean,
+  phone: boolean,
+  reduced: boolean,
+  height: number,
+) {
   const [present, setPresent] = useState(shown);
   const [scrim] = useState(() => new Animated.Value(0));
   const [shift] = useState(() => new Animated.Value(0));
@@ -215,6 +224,8 @@ function useSheetMotion(shown: boolean, phone: boolean, reduced: boolean, height
 
     if (shown) {
       shift.setValue(reduced ? 0 : away);
+      // Started before the Modal's window is up, an iPad lost the native-driven entry and kept the card at opacity 0 (sc-23267).
+      if (!onScreen) return;
       const run = Animated.parallel([
         glide(scrim, 1, tokens.motionBase),
         glide(fade, 1, slides ? 0 : tokens.motionBase),
@@ -233,7 +244,7 @@ function useSheetMotion(shown: boolean, phone: boolean, reduced: boolean, height
       if (finished) setPresent(false);
     });
     return () => run.stop();
-  }, [shown, present, slides, reduced, scrim, shift, fade]);
+  }, [shown, onScreen, present, slides, reduced, scrim, shift, fade]);
 
   return { present, scrim, frame: { opacity: fade, transform: [{ translateY: shift }] } };
 }
