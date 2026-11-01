@@ -29,20 +29,20 @@ final readonly class EventDates implements MilestoneSourceInterface
         $endedAt = $event->getEndedAt()?->setTimezone($zone);
 
         if (null !== $endedAt && EventPhase::calledOff($endedAt, $event->getStartsAt())) {
-            return [$this->milestone($event, $endedAt, 'timeline.event_called_off')];
+            return [$this->milestone($event, 'called_off', $endedAt, 'timeline.event_called_off')];
         }
 
-        $milestones = [$this->milestone($event, $event->getStartsAt(), 'timeline.event_starts')];
+        $milestones = [$this->milestone($event, 'starts', $event->getStartsAt(), 'timeline.event_starts')];
 
         if (EventDayCount::of($event->getStartsAt(), $event->getEndsAt(), $zone) > 1) {
-            $milestones[] = $this->milestone($event, $endedAt ?? $event->getEndsAt(), 'timeline.event_ends');
+            $milestones[] = $this->milestone($event, 'ends', $endedAt ?? $event->getEndsAt(), 'timeline.event_ends');
         }
 
         return $milestones;
     }
 
-    private function milestone(Event $event, DateTimeImmutable $at, string $title): Milestone
+    private function milestone(Event $event, string $key, DateTimeImmutable $at, string $title): Milestone
     {
-        return new Milestone($at, $this->translator->trans($title, ['{name}' => $event->getName()]), null, MilestoneOwner::Event, PermissionArea::Events);
+        return new Milestone('event.' . $key, $at, $this->translator->trans($title, ['{name}' => $event->getName()]), null, MilestoneOwner::Event, PermissionArea::Events);
     }
 }
