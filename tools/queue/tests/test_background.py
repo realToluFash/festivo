@@ -235,9 +235,24 @@ class ArtifactTools(unittest.TestCase):
 
     def test_twice_without_the_tools_is_reported_as_not_started(self):
         bare = [tools("WebFetch"), assistant("m1", "No Artifact tool here.")]
-        with self.assertRaises(background.NotStarted) as raised:
+        with self.assertRaises(background.NoArtifactTools) as raised:
             self.run_with([bare, bare])
         self.assertIn("without the Artifact tools", str(raised.exception))
+        self.assertEqual(raised.exception.short, "bbbb2222")
+
+    def test_a_refused_artifact_read_is_found_in_the_transcript(self):
+        def turn(*content):
+            return {"type": "assistant", "message": {"content": list(content)}}
+        read = {"type": "tool_use", "id": "t1", "name": "Artifact",
+                "input": {"action": "read", "url": "https://claude.ai/artifact/x"}}
+        refused = {"type": "tool_result", "tool_use_id": "t1", "is_error": True,
+                   "content": "You do not have access to this artifact."}
+        self.assertEqual(background.refused_read([turn(read), turn(refused)]),
+                         "You do not have access to this artifact.")
+        self.assertIsNone(background.refused_read([turn(read), turn(dict(refused,
+                                                                          is_error=False))]))
+        other = dict(read, input={"action": "publish"})
+        self.assertIsNone(background.refused_read([turn(other), turn(refused)]))
 
     def test_a_session_quiet_through_the_wait_is_left_to_work(self):
         (_, _, why, session), started, _ = self.run_with([[GIVEN]])

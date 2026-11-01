@@ -468,6 +468,24 @@ def run_dir(home, name, item_id):
     return home / "scratch" / f"{name}-{item_id}"
 
 
+NO_TOOL = "its sessions have no Artifact tool"
+NOT_SHARED = "its Artifact read was refused: the artifact may not be shared with the account"
+
+
+def tell_ops(story_id, role, text, shortcut=None):
+    """A worker that never got a turn cannot say so on its story, so sq says it for it."""
+    from .shortcut import Shortcut
+    (shortcut or Shortcut()).comment(story_id, f"[ops] (from {role})\n{text}")
+
+
+def artifact_outcome(db, role, entry, why=None, seen=None):
+    """What `sq status` says of the role's last board-reading session: None when it read,
+    else the account and why it could not."""
+    store.set_meta(db, f"artifact:{role}", None if not why else {
+        "at": entry["at"], "worker": entry.get("worker", role), "account": entry.get("account"),
+        "folder": entry.get("folder"), "why": why, "seen": seen})
+
+
 def in_background(db, platform, name, entry, values, folder, text, cwd, ids, allowed, denied,
                   scratch, run_background):
     """The worker's item as a background session. Returns what `claude -p` would have:
@@ -483,12 +501,14 @@ def in_background(db, platform, name, entry, values, folder, text, cwd, ids, all
         on_start=begun, daemon=getattr(platform, "claude_daemon", None))
     if why not in ("ended", "settled"):
         entry["stopped"] = why
+    refused = result.pop("artifact_refused", None)
+    artifact_outcome(db, entry["role"], entry, NOT_SHARED if refused else None, refused)
     return result, code, None
 
 
 def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=machine.load,
            prepare=checkout.prepare, make_review=review.make, refresh_harness=harness.refresh,
-           now=None, run_background=None):
+           now=None, run_background=None, tell=tell_ops):
     """Runs inside the worker's unit: prepares the checkout, runs the model, records the
     run. `name` is the role, or `pm-2` and on for a further worker of it."""
     role = machine.worker_role(name)
@@ -556,6 +576,13 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
     except background.NotStarted as error:
         entry["report"] = f"the worker's background session did not start: {error}"
         runlog.append(home, role, entry)
+        if isinstance(error, background.NoArtifactTools):
+            artifact_outcome(db, role, entry, NO_TOOL, error.short)
+            if entry["story"]:
+                try:
+                    tell(entry["story"], role, no_tool_text(name, entry, error.short))
+                except (RuntimeError, OSError) as failed:
+                    entry["report"] += f"; the [ops] comment failed too: {failed}"
         platform.notify(f"Soirely: {name}'s worker stopped", entry["report"][:300])
         return entry
     finally:
@@ -574,6 +601,14 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
         # Another worker's question stays until that worker's next run settles it.
         store.set_meta(db, f"owner:{role}", None)
     return entry
+
+
+def no_tool_text(name, entry, short):
+    return (f"{name}'s worker for item {entry['item']} never started: its `claude --bg` "
+            f"session under {entry.get('account') or entry['folder']} ({entry['folder']}) "
+            f"came up twice without the Artifact tools, last as {short}. Nothing was built, "
+            "passed or failed. sq posted this for the worker; `sq status` shows it until a "
+            "session of the role reads a board (sc-25203).")
 
 
 def worker_ended(home, platform, name, item_id, now=None, load=machine.load, db=None):

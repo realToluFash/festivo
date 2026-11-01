@@ -1028,6 +1028,55 @@ class BackgroundWorker(unittest.TestCase):
         self.assertEqual(self.platform.notes[0][0], "Soirely: dev's worker stopped")
         self.assertFalse(runner.run_dir(self.home, "dev", self.item).exists())
 
+    def on_story(self):
+        self.db.execute("update work set story_id = 42 where id = ?", (self.item,))
+
+    def test_a_session_without_the_tools_is_said_on_the_story_for_ops(self):
+        self.on_story()
+        told = []
+
+        def run(*_, **__):
+            raise background.NoArtifactTools("bbbb2222")
+
+        entry = runner.worker(self.db, self.home, self.platform, "dev", self.item,
+                              load=lambda: config(self.root, roles={"dev": {}}),
+                              prepare=lambda *_: ("c" * 40, None), now=ON_ZERO,
+                              run_background=run, tell=lambda *a: told.append(a))
+        self.assertIn("without the Artifact tools", entry["report"])
+        (story, role, text), = told
+        self.assertEqual((story, role), (42, "dev"))
+        self.assertIn("bbbb2222", text)
+        self.assertIn("Nothing was built, passed or failed", text)
+        seen = store.get_meta(self.db, "artifact:dev")
+        self.assertEqual((seen["why"], seen["seen"], seen["worker"]),
+                         (runner.NO_TOOL, "bbbb2222", "dev"))
+
+    def test_a_failed_ops_comment_is_kept_in_the_report(self):
+        self.on_story()
+
+        def run(*_, **__):
+            raise background.NoArtifactTools("bbbb2222")
+
+        def tell(*_):
+            raise RuntimeError("SHORTCUT_API_TOKEN is not set")
+
+        entry = runner.worker(self.db, self.home, self.platform, "dev", self.item,
+                              load=lambda: config(self.root, roles={"dev": {}}),
+                              prepare=lambda *_: ("c" * 40, None), now=ON_ZERO,
+                              run_background=run, tell=tell)
+        self.assertIn("the [ops] comment failed too: SHORTCUT_API_TOKEN", entry["report"])
+
+    def test_a_refused_read_is_kept_and_a_clean_read_clears_it(self):
+        self.run_dev({"result": "Stopped.", "artifact_refused": "No access."})
+        seen = store.get_meta(self.db, "artifact:dev")
+        self.assertEqual((seen["why"], seen["seen"]), (runner.NOT_SHARED, "No access."))
+        self.assertNotIn("artifact_refused", runlog.last(self.home, "dev"))
+        store.record(self.db, [work("dev", "inbox:dev:2")], ON_ZERO + 1)
+        self.item = store.waiting(self.db, "dev")[0]["id"]
+        store.claim(self.db, "dev", ON_ZERO + 1)
+        self.run_dev({"result": "Built."})
+        self.assertIsNone(store.get_meta(self.db, "artifact:dev"))
+
     def test_a_worker_stopped_at_its_limit_stops_its_session_too(self):
         sessions.begin(self.db, "dev", {"item": self.item, "bg": "1d923fe2", "session": SESSION,
                                         "folder": str(self.root / "claude")})

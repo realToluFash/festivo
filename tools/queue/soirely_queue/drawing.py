@@ -7,7 +7,6 @@ import subprocess
 import time
 
 from . import background, machine, permissions, runlog, store
-from .background import ENDED
 
 WORKER = "ux-draw"
 MAX_TRIES = 2
@@ -32,8 +31,12 @@ def sessions(env, run=subprocess.run):
             for short, s in (background.listed(env, run) or {}).items()}
 
 
-def start(drawing, values, home, config, cwd, run=subprocess.run):
+def start(drawing, values, home, config, cwd, run=subprocess.run, daemon=None):
+    """`daemon`, the platform's, starts the account's daemon outside the tick's unit, whose
+    end would otherwise take down every session of an account ux shares."""
     folder, env = environment(config, values)
+    if daemon:
+        daemon(env)
     allowed = permissions.for_role(permissions.applied(), "ux")
     denied = permissions.denied(home / "sq" / "sq", folder)
     # ux draws in the artifact, so its session is the one not kept to reading.
@@ -66,7 +69,7 @@ def tick(db, home, config, values, platform, now=None, say=print, run=subprocess
             store.set_meta(db, "drawing", current)
         if story not in {d["story_id"] for d in listed}:
             outcome, failed = f"drew sc-{story}", False
-        elif state is None or state in ENDED:
+        elif state is None or state in background.ENDED:
             outcome, failed = f"sc-{story}: the session ended without `sq ux drawn`", True
         elif now - current["at"] > limit:
             outcome, failed = f"sc-{story}: stopped at its time limit", True
@@ -98,7 +101,8 @@ def tick(db, home, config, values, platform, now=None, say=print, run=subprocess
     drawing = waiting[0]
     cwd = machine.checkout(config, "ux")
     try:
-        session = start(drawing, values, home, config, cwd, run)
+        session = start(drawing, values, home, config, cwd, run,
+                        daemon=getattr(platform, "claude_daemon", None))
     except (OSError, RuntimeError) as error:
         return say(f"error: {WORKER}: sc-{drawing['story_id']} did not start ({error})")
     store.set_meta(db, "drawing", {"story_id": drawing["story_id"], "session": session,

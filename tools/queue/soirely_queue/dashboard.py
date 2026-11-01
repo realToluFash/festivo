@@ -130,6 +130,7 @@ def snapshot(db, platform, now, home, load=machine.load):
                 ("started", None) if role in on else ("stopped", None)
             last = runlog.last(home, role)
             owner = store.get_meta(db, f"owner:{role}")
+            artifact = store.get_meta(db, f"artifact:{role}")
             view["roles"].append({
                 "role": role, "state": state, "detail": detail,
                 "model": ready[role]["model"], "effort": ready[role]["effort"],
@@ -143,7 +144,8 @@ def snapshot(db, platform, now, home, load=machine.load):
                 "waiting": len(waiting),
                 "next": [{"id": w["id"], "reason": w["reason"]} for w in waiting[:NEXT]],
                 "note": machine.price_note(role, ready[role]["model"], config),
-                "owner": owner["lines"][0] if owner else None})
+                "owner": owner["lines"][0] if owner else None,
+                "artifact": artifact})
             shown.add(role)
     for role in roles.ROLES:
         if role in shown:

@@ -39,6 +39,13 @@ class NotStarted(RuntimeError):
     pass
 
 
+class NoArtifactTools(NotStarted):
+    def __init__(self, short):
+        super().__init__(f"the session started twice without the Artifact tools (last "
+                         f"{short}); see sc-25203")
+        self.short = short
+
+
 def read_only_settings(python=None):
     """Settings whose PreToolUse hook refuses any Artifact call that does not only read."""
     hook = f"{shlex.quote(python or sys.executable)} {shlex.quote(str(GUARD))}"
@@ -206,6 +213,23 @@ def has_artifact_tools(lines):
     return None
 
 
+def refused_read(lines):
+    """The first Artifact read or list the session was refused, as the tool answered it, or
+    None. A refused read is most often an artifact not shared with the account."""
+    asked = {}
+    for line in lines:
+        for part in (line.get("message") or {}).get("content") or []:
+            if not isinstance(part, dict):
+                continue
+            if part.get("type") == "tool_use" and part.get("name") == "Artifact" \
+                    and (part.get("input") or {}).get("action", "read") in ("read", "list"):
+                asked[part.get("id")] = part
+            elif part.get("type") == "tool_result" and part.get("is_error") \
+                    and part.get("tool_use_id") in asked:
+                return sessions.output_text(part.get("content")).strip()[:200] or "refused"
+    return None
+
+
 def tools_given(short, env, lines_of, clock=time.monotonic, sleep=time.sleep, ls=listed,
                 poll=POLL_SECONDS, **_):
     """Waits for the session's first reply and says whether it has the Artifact tools. A
@@ -242,8 +266,7 @@ def run(values, folder, name, prompt, cwd, finished, allowed=(), denied=(), extr
             break
         stop(short, env, run_command)
     else:
-        raise NotStarted(f"the session started twice without the Artifact tools (last "
-                         f"{short}); see sc-25203")
+        raise NoArtifactTools(short)
     on_session = (lambda session: on_start(short, session)) if on_start and not first \
         else None
     why, seen = watch(short, env, folder, finished, values, on_session=on_session, **watching)
@@ -252,5 +275,6 @@ def run(values, folder, name, prompt, cwd, finished, allowed=(), denied=(), extr
     session = seen.get("sessionId")
     lines = lines_of(session) if session else []
     result = summary(lines, values["model"])
+    result["artifact_refused"] = refused_read(lines)
     code = 0 if why in ("ended", "settled") and not result["is_error"] else 1
     return result, code, why, session
