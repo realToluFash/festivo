@@ -1,0 +1,32 @@
+# sc-3625: with the API stopped the Calendar says it did not load and offers Try again, never a blank grid; Try again recovers once the API is back. Needs ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow: ../return-home.yaml
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.retry'
+    timeout: 60000
+- assertNotVisible:
+    id: 'calendar.grid|calendar.agenda'
+- takeScreenshot: failed
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- tapOn:
+    id: 'calendar.view.month'
+- tapOn:
+    id: 'calendar.retry'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.grid'
+    timeout: 30000
+- assertNotVisible:
+    id: 'calendar.retry'
+- takeScreenshot: recovered
