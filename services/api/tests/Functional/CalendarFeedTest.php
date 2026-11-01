@@ -42,6 +42,7 @@ use Symfony\Component\RateLimiter\LimiterInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\RateLimiter\Storage\InMemoryStorage;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** Subscribe in your calendar app (sc-3626): the link, the feed a calendar app fetches, and who stops getting it. */
 final class CalendarFeedTest extends ApiTestCase
@@ -65,9 +66,10 @@ final class CalendarFeedTest extends ApiTestCase
     }
 
     #[Test]
-    public function theFeedValidatesAsICalendarWithEachEventItsMilestonesAndItsZone(): void
+    public function theFeedValidatesAsICalendarWithEachEventOnceItsMilestonesAndItsZone(): void
     {
         $id = $this->create('Boda en Madrid', '2026-10-24T18:00', '2026-10-26T02:00', 'Europe/Madrid');
+        $this->balanceDue($id, '2026-10-20T12:00:00+02:00');
         self::service(Connection::class)->executeStatement("UPDATE events SET venue_name = 'Finca La Concepción', venue_address = 'Calle Mayor 1, 28013 Madrid, Spain' WHERE id = :id", ['id' => $id]);
         $this->create('Adé at 40', '2030-11-14T16:00', '2030-11-14T23:00', 'Africa/Lagos');
 
@@ -80,10 +82,8 @@ final class CalendarFeedTest extends ApiTestCase
         self::assertSame(['Africa/Lagos', 'Europe/Madrid'], Vec\map(Vec\filter(Vec\values($calendar->select('VTIMEZONE')), static fn (mixed $zone): bool => $zone instanceof Component), static fn (Component $zone): string => self::value($zone, 'TZID')));
         self::assertSame([
             ['Boda en Madrid', '2026-10-24T18:00:00+02:00', 'Europe/Madrid'],
-            ['Boda en Madrid starts', '2026-10-24T18:00:00+02:00', 'Europe/Madrid'],
-            ['Boda en Madrid ends', '2026-10-26T02:00:00+01:00', 'Europe/Madrid'],
+            ['Balance due', '2026-10-20T12:00:00+02:00', 'Europe/Madrid'],
             ['Adé at 40', '2030-11-14T16:00:00+01:00', 'Africa/Lagos'],
-            ['Adé at 40 starts', '2030-11-14T16:00:00+01:00', 'Africa/Lagos'],
         ], Vec\map($this->events($calendar), static fn (VEvent $event): array => [self::value($event, 'SUMMARY'), self::start($event), self::zoneOf($event)]));
 
         $wedding = $this->event($calendar, 'event-' . $id . '@soirely');
@@ -91,13 +91,14 @@ final class CalendarFeedTest extends ApiTestCase
         self::assertSame('2026-10-26T02:00:00+01:00', self::moment($wedding, 'DTEND'));
         self::assertSame("Status: Draft\nOpen in Soirely: https://app.soirely.test/app/events/" . $id, self::value($wedding, 'DESCRIPTION'));
         self::assertSame('CONFIRMED', self::value($wedding, 'STATUS'));
-        self::assertSame("Open in Soirely: https://app.soirely.test/app/events/{$id}/dates", self::value($this->event($calendar, 'milestone-' . $id . '-event.starts@soirely'), 'DESCRIPTION'));
+        self::assertSame("Open in Soirely: https://app.soirely.test/app/events/{$id}/dates", self::value($this->event($calendar, 'milestone-' . $id . '-budget.balance@soirely'), 'DESCRIPTION'));
     }
 
     #[Test]
     public function aMovedDateUpdatesInPlaceUnderTheSameUidWithAHigherSequence(): void
     {
         $id = $this->create('Owambe', '2030-11-14T16:00', '2030-11-14T23:00', 'Africa/Lagos');
+        $this->balanceDue($id, '2030-11-10T12:00:00+01:00');
         $path = $this->link($this->owner);
         $before = $this->event($this->parse($this->fetch($path)), 'event-' . $id . '@soirely');
 
@@ -107,8 +108,8 @@ final class CalendarFeedTest extends ApiTestCase
         self::assertSame('2030-11-14T16:00:00+01:00', self::start($before));
         self::assertSame('2030-11-21T16:00:00+01:00', self::start($after));
         self::assertGreaterThan((int) self::value($before, 'SEQUENCE'), (int) self::value($after, 'SEQUENCE'));
-        $milestone = $this->event($this->parse($this->fetch($path)), 'milestone-' . $id . '-event.starts@soirely');
-        self::assertSame('2030-11-21T16:00:00+01:00', self::start($milestone));
+        $milestone = $this->event($this->parse($this->fetch($path)), 'milestone-' . $id . '-budget.balance@soirely');
+        self::assertSame('2030-11-10T12:00:00+01:00', self::start($milestone));
         self::assertSame(self::value($after, 'SEQUENCE'), self::value($milestone, 'SEQUENCE'));
     }
 
@@ -182,15 +183,15 @@ final class CalendarFeedTest extends ApiTestCase
     public function aMemberSeesOnlyTheMilestonesTheirRoleReadsAndOnlyThisOrganisation(): void
     {
         $id = $this->create('Owambe', '2030-11-14T16:00', '2030-11-14T23:00', 'Africa/Lagos');
-        self::service(ScriptedMilestones::class)->add($id, new Milestone('budget.balance', new DateTimeImmutable('2030-11-10T12:00:00+01:00'), 'Balance due', null, MilestoneOwner::You, PermissionArea::Budget));
+        $this->balanceDue($id, '2030-11-10T12:00:00+01:00');
         $eventsOnly = $this->member('events@ire.events', $this->role('Events only', [Permission::EventsRead]));
         $stranger = $this->account('stranger@elsewhere.events');
         $elsewhere = self::service(OrganisationFounder::class)->found($stranger, 'Elsewhere', 'NG', 'Africa/Lagos');
         self::em()->flush();
         $this->create('Their party', '2030-11-14T16:00', '2030-11-14T23:00', 'Africa/Lagos', $stranger, $elsewhere);
 
-        self::assertSame(['Owambe', 'Balance due', 'Owambe starts'], $this->summaries($this->link($this->owner)));
-        self::assertSame(['Owambe', 'Owambe starts'], $this->summaries($this->link($eventsOnly)));
+        self::assertSame(['Owambe', 'Balance due'], $this->summaries($this->link($this->owner)));
+        self::assertSame(['Owambe'], $this->summaries($this->link($eventsOnly)));
     }
 
     #[Test]
@@ -372,9 +373,16 @@ final class CalendarFeedTest extends ApiTestCase
     {
         $this->owner->setLocale('es');
         self::em()->flush();
-        $this->create('Boda', '2030-11-14T16:00', '2030-11-14T23:00', 'Africa/Lagos');
+        $id = $this->create('Boda', '2030-11-14T16:00', '2030-11-14T23:00', 'Africa/Lagos');
+        $translator = self::service(TranslatorInterface::class);
+        self::service(ScriptedMilestones::class)->addRead($id, static fn (): Milestone => new Milestone('budget.balance', new DateTimeImmutable('2030-11-10T12:00:00+01:00'), $translator->trans('timeline.event_starts', ['{name}' => 'Boda']), null, MilestoneOwner::You, PermissionArea::Budget));
 
         self::assertContains('Empieza Boda', $this->summaries($this->link($this->owner)));
+    }
+
+    private function balanceDue(string $eventId, string $at): void
+    {
+        self::service(ScriptedMilestones::class)->add($eventId, new Milestone('budget.balance', new DateTimeImmutable($at), 'Balance due', null, MilestoneOwner::You, PermissionArea::Budget));
     }
 
     private function create(string $name, string $startsAt, string $endsAt, string $timeZone, ?User $by = null, ?Organisation $in = null): string

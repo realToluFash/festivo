@@ -18,6 +18,8 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 /** The event's own dates as they happened: its start, its end when it runs over more than one day, or the moment it was called off (sc-16709). */
 final readonly class EventDates implements MilestoneSourceInterface
 {
+    public const string KEY_PREFIX = 'event.';
+
     public function __construct(
         private TranslatorInterface $translator,
     ) {
@@ -43,6 +45,6 @@ final readonly class EventDates implements MilestoneSourceInterface
 
     private function milestone(Event $event, string $key, DateTimeImmutable $at, string $title): Milestone
     {
-        return new Milestone('event.' . $key, $at, $this->translator->trans($title, ['{name}' => $event->getName()]), null, MilestoneOwner::Event, PermissionArea::Events);
+        return new Milestone(self::KEY_PREFIX . $key, $at, $this->translator->trans($title, ['{name}' => $event->getName()]), null, MilestoneOwner::Event, PermissionArea::Events);
     }
 }

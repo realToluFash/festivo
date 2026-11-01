@@ -127,7 +127,9 @@ place of `http(s)://` for **Open in calendar app**.
   screen.
 - **What it holds**: each event's name, start and end with its `TZID` and a `VTIMEZONE`
   written from PHP's own transitions, its venue line, its status word and a link back; each
-  milestone as an instant `VEVENT` with its title, note and a link. Nothing about guests,
+  milestone as an instant `VEVENT` with its title, note and a link, except the event's own
+  dates (`EventDates`, keys `event.*`), which its `DTSTART` and `DTEND` already say, so an
+  event shows once. The in-app Calendar and the timeline keep them. Nothing about guests,
   contacts, dietary notes or money.
 - **Changes update in place**: an event's `UID` is its id and a milestone's is its event and
   key; `SEQUENCE` is the event's version. A Paused event's summary says so. A called-off or

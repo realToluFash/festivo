@@ -6,6 +6,7 @@ namespace App\Domain\Event\CalendarFeed;
 
 use App\Deletion\RestoreWindow;
 use App\Domain\Event\EventVenue;
+use App\Domain\Event\Timeline\EventDates;
 use App\Domain\Event\Timeline\EventTimeline;
 use App\Domain\Event\Timeline\Model\Milestone;
 use App\Entity\Event;
@@ -22,7 +23,7 @@ use Psl\Vec;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * An organisation's events and their milestones as one iCalendar (RFC 5545) for one reader (sc-3626). It holds only names, times, venue lines, status words and links: nothing about guests and no money.
+ * An organisation's events and the milestones the areas add to them as one iCalendar (RFC 5545) for one reader (sc-3626). It holds only names, times, venue lines, status words and links: nothing about guests and no money.
  */
 final readonly class CalendarFeedWriter
 {
@@ -51,7 +52,7 @@ final readonly class CalendarFeedWriter
             }
 
             $zone = new DateTimeZone($event->getTimeZone());
-            $milestones = FeedEntryStatus::Confirmed === $status ? $this->eventTimeline->of($event, $grants) : [];
+            $milestones = FeedEntryStatus::Confirmed === $status ? $this->areaMilestones($event, $grants) : [];
             $entries = [...$entries, ...$this->event($event, $zone, $status, $now)];
 
             foreach ($milestones as $milestone) {
@@ -85,6 +86,12 @@ final readonly class CalendarFeedWriter
             ...$entries,
             'END:VCALENDAR',
         ]);
+    }
+
+    /** @return list<Milestone> its timeline less the event's own dates, which its DTSTART and DTEND already say, so it shows once in a calendar app (sc-3626) */
+    private function areaMilestones(Event $event, Grants $grants): array
+    {
+        return Vec\filter($this->eventTimeline->of($event, $grants), static fn (Milestone $milestone): bool => !Str\starts_with($milestone->key, EventDates::KEY_PREFIX));
     }
 
     /** @return list<string> */
