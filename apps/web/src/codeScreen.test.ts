@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { ApiError } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
@@ -24,5 +27,17 @@ describe('a code screen', () => {
     expect(codeRefusal(refused('verification_code_expired'))).toEqual({ kind: 'expired' });
     expect(codeRefusal(refused('verification_code_exhausted'))).toEqual({ kind: 'exhausted' });
     expect(codeRefusal(new TypeError('Failed to fetch'))).toEqual({ kind: 'failed' });
+  });
+
+  it("draws its code field with every text field's edge, and a wrong code's in the same width (sc-26413)", () => {
+    const styles = readFileSync(join(import.meta.dirname, 'styles.css'), 'utf8');
+    const rule = (selector: string) =>
+      new RegExp(`\\n${selector.replace('.', '\\.')} \\{([^}]*)\\}`, 'u').exec(styles)?.[1];
+
+    expect(rule('.code-input')).toMatch(/\n {2}border: var\(--borderField\);/u);
+    expect(rule('.input')).toMatch(/\n {2}border: var\(--borderField\);/u);
+    expect(styles).toMatch(
+      /\n\.code-input\.input-wrong \{\n {2}border-color: var\(--colorBroken\);\n\}/u,
+    );
   });
 });
