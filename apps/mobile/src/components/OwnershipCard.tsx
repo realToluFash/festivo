@@ -32,6 +32,7 @@ import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { reloadSignedIn, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { RadioMark } from './RadioMark.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field, FieldError, focusChecked, keysStayDown, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
@@ -406,9 +407,7 @@ function Transfer({
             accessibilityState={{ checked: picked === one.id, disabled: busy }}
             testID={`ownership.owner.${one.id}`}
           >
-            <View style={[styles.radio, picked === one.id && styles.radioOn]}>
-              {picked === one.id && <View style={styles.radioDot} />}
-            </View>
+            <RadioMark on={picked === one.id} />
             <View style={styles.choiceText}>
               <Text size={tokens.typeButton.size} weight="semibold">
                 {one.user.name}
@@ -820,17 +819,5 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorRowSelected,
   },
   choiceText: { flex: 1, gap: tokens.spaceXxs },
-  radio: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: tokens.colorFieldBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.colorCard,
-  },
-  radioOn: { borderColor: tokens.colorAccent },
-  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: tokens.colorAccent },
   secondary: { color: tokens.colorInkSecondary },
 });
