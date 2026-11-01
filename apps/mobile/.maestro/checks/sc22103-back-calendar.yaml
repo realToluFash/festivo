@@ -1,0 +1,24 @@
+# sc-22103: opened from Calendar's agenda, All dates, two areas, Back to Overview, Back to Calendar.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'frame.calendar'
+    timeout: 30000
+- tapOn:
+    id: 'frame.calendar'
+- scrollUntilVisible:
+    element:
+      id: 'calendar.row.event-${LIVE}'
+    timeout: 30000
+- tapOn:
+    id: 'calendar.row.event-${LIVE}'
+- runFlow: ../checks/sc22103/alldates-areas-back.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.agenda'
+    timeout: 15000
+- assertNotVisible:
+    id: 'events.page'
+- takeScreenshot: back-calendar

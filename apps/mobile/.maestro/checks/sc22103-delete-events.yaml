@@ -1,0 +1,66 @@
+# sc-22103: Delete event on a draft opened from Events (Drafts) lands on Events with the notice once, on Drafts.
+appId: host.exp.Exponent
+---
+- runFlow: ../checks/sc22103/to-drafts.yaml
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${GONE_EVENTS}'
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.row.${GONE_EVENTS}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.delete'
+    centerElement: true
+    timeout: 30000
+- tapOn:
+    id: 'events.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'events.deleteGo'
+    timeout: 15000
+- runFlow:
+    when:
+      visible:
+        id: 'events.deleteName'
+    commands:
+      - tapOn:
+          id: 'events.deleteName'
+      - inputText: ${GONE_NAME}
+- takeScreenshot: confirm
+- tapOn:
+    id: 'events.deleteGo'
+- extendedWaitUntil:
+    notVisible:
+      id: 'events.page'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: landed
+- scrollUntilVisible:
+    element:
+      text: '.*${GONE_NAME} was deleted\.'
+    direction: UP
+    timeout: 20000
+- takeScreenshot: deleted
+- swipe:
+    start: 1%, 50%
+    end: 80%, 50%
+    duration: 400
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'events.page'
+- takeScreenshot: after-swipe
+- tapOn:
+    id: 'frame.calendar'
+- waitForAnimationToEnd
+- assertNotVisible: '.*was deleted\.'
+- tapOn:
+    id: 'frame.events'
+- waitForAnimationToEnd
+- assertNotVisible: '.*was deleted\.'
+- takeScreenshot: later

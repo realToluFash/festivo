@@ -1,0 +1,69 @@
+# sc-22103: Duplicate an event from its page, then Delete event on the copy: Events with the notice, never the original's page.
+appId: host.exp.Exponent
+---
+- runFlow: ../checks/sc22103/to-drafts.yaml
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${ORIG}'
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.row.${ORIG}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- runFlow: ../duplicate-open.yaml
+- runFlow: ../duplicate-create-draft.yaml
+- takeScreenshot: copy-page
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.delete'
+    centerElement: true
+    timeout: 30000
+- tapOn:
+    id: 'events.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'events.deleteGo'
+    timeout: 15000
+- runFlow:
+    when:
+      visible:
+        id: 'events.deleteName'
+    commands:
+      - tapOn:
+          id: 'events.deleteName'
+      - inputText: ${ORIG_NAME}
+- takeScreenshot: confirm
+- tapOn:
+    id: 'events.deleteGo'
+- extendedWaitUntil:
+    notVisible:
+      id: 'events.page'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: landed
+- scrollUntilVisible:
+    element:
+      text: '.*${ORIG_NAME} was deleted\.'
+    direction: UP
+    timeout: 20000
+- takeScreenshot: deleted
+- swipe:
+    start: 1%, 50%
+    end: 80%, 50%
+    duration: 400
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'events.page'
+- takeScreenshot: after-swipe
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${ORIG}'
+    centerElement: true
+    timeout: 20000

@@ -1,0 +1,47 @@
+# sc-22103: Edit details from the Venue row, what navigation shows over it, then Back to the page and Back to Events.
+appId: host.exp.Exponent
+---
+- runFlow: ../checks/sc22103/to-upcoming.yaml
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${LIVE}'
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.row.${LIVE}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- takeScreenshot: page
+- scrollUntilVisible:
+    element:
+      id: 'events.details.venue'
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.details.venue'
+- waitForAnimationToEnd
+- takeScreenshot: edit
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 15000
+- takeScreenshot: back-page
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    notVisible:
+      id: 'events.page'
+    timeout: 15000
+- takeScreenshot: landed
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${LIVE}'
+    centerElement: true
+    timeout: 20000
+- takeScreenshot: back-events
