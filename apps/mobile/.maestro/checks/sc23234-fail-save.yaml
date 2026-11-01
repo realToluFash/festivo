@@ -15,13 +15,15 @@ appId: host.exp.Exponent
       ASK: /api?to=stopped
 - tapOn:
     id: notificationSettings.guest_replies.push
-- waitForAnimationToEnd:
-    timeout: 8000
+- extendedWaitUntil:
+    visible: '{{t:notificationSettings.pushNotSaved}}'
+    timeout: 15000
 - takeScreenshot: ns-fail-1
 - tapOn:
     id: notificationSettings.guest_replies.push
-- waitForAnimationToEnd:
-    timeout: 8000
+- extendedWaitUntil:
+    visible: '{{t:notificationSettings.pushNotSaved}}'
+    timeout: 15000
 - takeScreenshot: ns-fail-2
 - runScript:
     file: ../batch/helper.js

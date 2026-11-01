@@ -14,21 +14,38 @@ appId: host.exp.Exponent
       id: notificationSettings.account_security.email
     timeout: 15000
     centerElement: true
+- assertVisible:
+    id: notificationSettings.account_security.email
+    checked: true
 - tapOn:
     id: notificationSettings.account_security.email
 - waitForAnimationToEnd
+- assertVisible:
+    id: notificationSettings.account_security.email
+    checked: true
 - takeScreenshot: ns-locked-tapped
 - scrollUntilVisible:
     element:
       id: notificationSettings.guest_replies.push
     direction: UP
     timeout: 15000
+- assertVisible:
+    id: notificationSettings.guest_replies.push
+    checked: true
 - tapOn:
     id: notificationSettings.guest_replies.push
-- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: notificationSettings.guest_replies.push
+      checked: false
+    timeout: 15000
 - takeScreenshot: ns-switched
 - tapOn:
     id: notificationSettings.guest_replies.push
-- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: notificationSettings.guest_replies.push
+      checked: true
+    timeout: 15000
 - scroll
 - takeScreenshot: ns-end

@@ -16,7 +16,8 @@ appId: host.exp.Exponent
       id: notificationSettings.guest_replies.push
     timeout: 15000
 - takeScreenshot: ns-portrait
-- tapOn: '.*Settings'
+- tapOn:
+    id: frame.back
 - extendedWaitUntil:
     visible:
       id: settings.account
