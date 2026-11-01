@@ -2910,6 +2910,32 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     expect(screen.queryByText(/Called off on/)).toBeNull();
   });
 
+  it('says Calling off… while it sends, and Not called off when the API fails (sc-22103)', async () => {
+    signedIn();
+    let fail: (response: Response) => void = () => {};
+    await onThePage(live(), {
+      'POST /api/events/ev_1/end': () =>
+        new Promise<Response>((resolve) => {
+          fail = resolve;
+        }),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Call off…' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Call off Adaeze and Tunde?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Call off' }));
+
+    await waitFor(() =>
+      expect(within(dialog).getByRole('status').textContent).toBe('Calling off…'),
+    );
+    expect(within(dialog).getByRole('button', { name: 'Calling off…' })).toBeDefined();
+
+    fail(problem(500, 'internal'));
+
+    expect(await within(dialog).findByText('Not called off. Try again in a moment.')).toBeDefined();
+    expect(within(dialog).getByRole('button', { name: 'Call off' })).toBeDefined();
+    expect(screen.getByText('Live', { selector: '.pill-quiet' })).toBeDefined();
+  });
+
   it('says the event is already over when the API refuses it event_concluded', async () => {
     signedIn();
     let reads = 0;
