@@ -221,7 +221,7 @@ export function RowButton({
       accessibilityRole="button"
       testID={testID}
     >
-      <Text size={tokens.typeButton.size} weight="semibold" style={styles.rowLabel}>
+      <Text size={tokens.typeRowTitle.size} weight="semibold" style={styles.rowLabel}>
         {label}
       </Text>
       <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
@@ -245,6 +245,7 @@ export function Footnote({
   role = 'button',
   testID,
   after,
+  centred = false,
 }: {
   question?: string;
   action: string;
@@ -252,9 +253,11 @@ export function Footnote({
   role?: 'button' | 'link';
   testID: string;
   after?: string;
+  /** The card's last line, centred with no rule above it, as getting back in draws it. */
+  centred?: boolean;
 }) {
   return (
-    <View style={styles.footnote}>
+    <View style={[styles.footnote, centred && styles.footnoteCentred]}>
       {question != null && (
         <Text size={tokens.typeBodyPhone.size} style={styles.secondaryInk}>
           {question}
@@ -318,6 +321,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: tokens.colorInsetBorder,
   },
+  footnoteCentred: { justifyContent: 'center', paddingTop: 0, borderTopWidth: 0 },
   footnoteAction: { minHeight: tokens.sizeHit, justifyContent: 'center' },
   row: {
     flexDirection: 'row',

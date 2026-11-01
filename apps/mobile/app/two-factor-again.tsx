@@ -30,6 +30,7 @@ export default function TwoFactorAgain() {
         testID="twoFactorAgain.setup"
       />
       <SecondaryButton
+        stacked
         label={t('lostTwoFactor.notNow')}
         off={skipping}
         onPress={() => {

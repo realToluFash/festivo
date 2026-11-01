@@ -40,16 +40,16 @@ export function RecoveryNotMe() {
   }
 
   return (
-    <AuthPage>
+    <AuthPage even>
       {status.kind === 'done' ? (
-        <div className="auth-heading auth-heading-apart">
+        <div className="auth-heading">
           <h1 ref={doneHeading} tabIndex={-1}>
             {t('lostTwoFactor.notMeDoneTitle')}
           </h1>
           <p>{t('lostTwoFactor.notMeDone')}</p>
         </div>
       ) : status.kind === 'broken' ? (
-        <div className="auth-heading auth-heading-apart">
+        <div className="auth-heading">
           <h1>{t('lostTwoFactor.notMeTitle')}</h1>
           {status.pressed ? (
             <p ref={brokenLine} tabIndex={-1}>
@@ -61,7 +61,7 @@ export function RecoveryNotMe() {
         </div>
       ) : (
         <>
-          <div className="auth-heading auth-heading-apart">
+          <div className="auth-heading">
             <h1>{t('lostTwoFactor.notMeTitle')}</h1>
             <p>{t('lostTwoFactor.notMeIntro')}</p>
           </div>
@@ -75,9 +75,11 @@ export function RecoveryNotMe() {
           </button>
         </>
       )}
-      <Link className="link-button" to="/sign-in">
-        {t('lostTwoFactor.back')}
-      </Link>
+      <div className="auth-footnote auth-footnote-plain auth-footnote-centred">
+        <Link className="link-button" to="/sign-in">
+          {t('lostTwoFactor.back')}
+        </Link>
+      </div>
     </AuthPage>
   );
 }

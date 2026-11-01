@@ -1590,9 +1590,14 @@ span {
   color: var(--colorInkSecondary);
 }
 
-/* Getting back in sets its title apart from the body, as GetBackIn.dc.html draws it (sc-23279). */
-.auth-heading.auth-heading-apart {
+/* Getting back in spaces every part of its card alike, as GetBackIn.dc.html draws it (sc-23279). */
+.auth-card-even .auth-heading,
+.auth-card-even .auth-form {
   gap: var(--spaceXxl);
+}
+
+.auth-card-even .resend {
+  gap: var(--spaceSm);
 }
 
 .auth-footnote.auth-footnote-centred {
@@ -1600,7 +1605,16 @@ span {
   text-align: center;
 }
 
-/* Another way through this step: a bordered row with a chevron, not a link. */
+.notice.notice-plain {
+  padding: var(--spaceLg);
+  background: var(--colorCard);
+  border: var(--borderCard);
+}
+
+.notice-plain .notice-body {
+  gap: var(--spaceXs);
+}
+
 .auth-row {
   display: flex;
   align-items: center;
@@ -1612,19 +1626,43 @@ span {
   border: var(--borderControl);
   border-radius: var(--radiusInset);
   color: var(--colorInk);
-  font: var(--typeButton);
+  font: var(--typeRowTitle);
   text-align: left;
   cursor: pointer;
 }
 
-.auth-row::after {
-  margin-left: auto;
-  color: var(--colorInkSecondary);
-  content: '›';
-}
-
 .auth-row:hover {
   background: var(--colorInset);
+}
+
+.auth-row-label {
+  flex: 1;
+}
+
+.auth-row-chevron {
+  flex: none;
+  color: var(--colorInkSecondary);
+}
+
+.steps-list.steps-cards {
+  gap: var(--spaceSm);
+}
+
+.steps-cards li {
+  gap: var(--spaceLg);
+  padding: var(--spaceLg);
+  background: var(--colorCard);
+  border: var(--borderCard);
+  border-radius: var(--radiusCardDesktop);
+}
+
+.steps-cards .step-mark {
+  width: var(--space4xl);
+  height: var(--space4xl);
+  border: 0;
+  background: var(--colorDark);
+  color: var(--colorInkOnDark);
+  font: var(--typeCode);
 }
 
 /* The rule is stated with a mark and a word, never by colour alone. */

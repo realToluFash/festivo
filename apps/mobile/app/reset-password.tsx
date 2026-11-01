@@ -129,6 +129,7 @@ export default function ResetPassword() {
           onPress={() => router.replace('/sign-in')}
           role="link"
           testID="recovery.signIn"
+          centred
         />
       </AuthFrame>
     );
@@ -233,7 +234,7 @@ export default function ResetPassword() {
 
         <PasswordRule met={lengthMet} testID="recovery" />
 
-        <Notice tone="quiet" mark="i" body={t('recovery.signsOut')} />
+        <Notice tone="plain" mark="i" body={t('recovery.signsOut')} />
 
         <PrimaryButton
           label={saving ? t('recovery.saving') : t('recovery.save')}
@@ -256,5 +257,5 @@ function deadFrom(error: unknown): 'used' | 'expired' | 'invalid' | null {
 }
 
 const styles = StyleSheet.create({
-  form: { gap: tokens.spaceXl },
+  form: { gap: tokens.spaceXxl },
 });

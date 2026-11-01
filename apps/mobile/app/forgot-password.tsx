@@ -82,7 +82,7 @@ export default function ForgotPassword() {
         }
       >
         <Notice
-          tone="quiet"
+          tone="plain"
           mark="i"
           title={t('recovery.nothingTitle')}
           body={t('recovery.nothingBody')}
@@ -105,6 +105,7 @@ export default function ForgotPassword() {
           onPress={() => router.replace('/sign-in')}
           role="link"
           testID="recovery.backToSignIn"
+          centred
         />
       </AuthFrame>
     );
@@ -174,6 +175,7 @@ export default function ForgotPassword() {
           onPress={() => router.replace('/sign-in')}
           role="link"
           testID="recovery.signIn"
+          centred
         />
       </View>
     </AuthFrame>
@@ -216,7 +218,7 @@ function refusalFrom(error: unknown, again: boolean): Status {
 }
 
 const styles = StyleSheet.create({
-  form: { gap: tokens.spaceXl },
+  form: { gap: tokens.spaceXxl },
   sendAgain: { alignItems: 'flex-start' },
   secondary: { color: tokens.colorInkSecondary },
 });

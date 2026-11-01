@@ -65,15 +65,15 @@ export function ForgotPassword() {
 
   if (status.kind === 'sent') {
     return (
-      <AuthPage back={back}>
-        <div className="auth-heading auth-heading-apart">
+      <AuthPage even back={back}>
+        <div className="auth-heading">
           <h1 ref={sentHeading} tabIndex={-1}>
             {t('recovery.sentTitle')}
           </h1>
           <p>{t('recovery.sentBody')}</p>
         </div>
 
-        <div className="notice notice-quiet">
+        <div className="notice notice-plain">
           <div className="notice-body">
             <p className="notice-title">{t('recovery.nothingTitle')}</p>
             <p>{t('recovery.nothingBody')}</p>
@@ -102,8 +102,8 @@ export function ForgotPassword() {
   }
 
   return (
-    <AuthPage back={back}>
-      <div className="auth-heading auth-heading-apart">
+    <AuthPage even back={back}>
+      <div className="auth-heading">
         <h1>{t('recovery.title')}</h1>
         <p>{t('recovery.intro')}</p>
       </div>

@@ -8,7 +8,7 @@ import { useFocusOnAnswer } from './Screen.tsx';
 import { Text } from './Text.tsx';
 import { useMarkSide } from './markSide.ts';
 
-export type NoticeTone = 'quiet' | 'attention' | 'broken' | 'done';
+export type NoticeTone = 'quiet' | 'plain' | 'attention' | 'broken' | 'done';
 
 export function Notice({
   tone,
@@ -64,24 +64,28 @@ export function Notice({
   const wordsAsOne = announce || takesFocus || wordsRef != null;
   const surface = {
     quiet: styles.quiet,
+    plain: styles.plain,
     attention: styles.attention,
     broken: styles.broken,
     done: styles.done,
   }[tone];
   const ring = {
     quiet: styles.ringInfo,
+    plain: styles.ringInfo,
     attention: styles.ringAttention,
     broken: styles.ringBroken,
     done: styles.ringDone,
   }[markTone];
   const ink = {
     quiet: styles.inkInfo,
+    plain: styles.inkInfo,
     attention: styles.inkAttention,
     broken: styles.inkBroken,
     done: styles.inkDone,
   };
   const toneInk = {
     quiet: undefined,
+    plain: undefined,
     attention: styles.inkAttention,
     broken: styles.inkBroken,
     done: styles.accent,
@@ -158,6 +162,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   quiet: { backgroundColor: tokens.colorInset, borderColor: tokens.colorInsetBorder },
+  plain: { backgroundColor: tokens.colorCard, borderColor: tokens.colorBorder },
   attention: {
     backgroundColor: tokens.colorAttentionTint,
     borderColor: tokens.colorAttentionBorder,

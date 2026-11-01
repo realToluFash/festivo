@@ -153,7 +153,7 @@ export function LostTwoFactor() {
   if (view.kind === 'loading') return <Pending />;
 
   return (
-    <AuthPage back={{ label: t('twoFactor.title') }}>
+    <AuthPage even back={{ label: t('twoFactor.title') }}>
       {view.kind === 'start' && (
         <Start
           opening={view.opening}
@@ -194,7 +194,7 @@ function Heading({ title, intro, mark }: { title: string; intro: string; mark?: 
   useLayoutEffect(() => heading.current?.focus(), [title]);
 
   return (
-    <div className="auth-heading auth-heading-apart">
+    <div className="auth-heading">
       {mark != null && (
         <p className="request-state">
           <StatusChip look={RECOVERY_LOOK[mark.outcome]}>{mark.word}</StatusChip>
@@ -241,9 +241,11 @@ function BackToSignIn() {
   const { t } = useTranslation();
 
   return (
-    <Link className="link-button" to="/sign-in" onClick={() => dropRecovery()}>
-      {t('lostTwoFactor.back')}
-    </Link>
+    <div className="auth-footnote auth-footnote-plain auth-footnote-centred">
+      <Link className="link-button" to="/sign-in" onClick={() => dropRecovery()}>
+        {t('lostTwoFactor.back')}
+      </Link>
+    </div>
   );
 }
 
@@ -281,7 +283,7 @@ function Start({
         </div>
       )}
 
-      <ol className="steps-list">
+      <ol className="steps-list steps-cards">
         <li>
           <span className="step-mark" aria-hidden="true">
             1
@@ -418,7 +420,7 @@ function Request({
           intro={t(recoveryIntroKey('waiting', state.nobody), { organisations })}
           mark={{ outcome: 'waiting', word: t('lostTwoFactor.waitingMark') }}
         />
-        <div className="notice notice-quiet">
+        <div className="notice notice-plain">
           <div className="notice-body">
             <p>{t('lostTwoFactor.asked', { when: state.asked })}</p>
             <p>{t('lostTwoFactor.endsBy', { when: state.expires })}</p>

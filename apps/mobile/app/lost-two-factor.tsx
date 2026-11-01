@@ -24,7 +24,12 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../src/api.ts';
 import { heldChallenge } from '../src/challenge.ts';
 import { type AuthBack, AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
-import { PrimaryButton, QuietButton, SecondaryButton } from '../src/components/Buttons.tsx';
+import {
+  Footnote,
+  PrimaryButton,
+  QuietButton,
+  SecondaryButton,
+} from '../src/components/Buttons.tsx';
 import {
   CodeField,
   Field,
@@ -288,7 +293,7 @@ function Start({
   sending: boolean;
   onSend: () => void;
 }) {
-  const markSide = useMarkSide(tokens.sizeMark);
+  const markSide = useMarkSide(tokens.space4xl);
   const { t } = useTranslation();
   const back = useBackToCode();
   const steps = [
@@ -330,9 +335,10 @@ function Start({
               importantForAccessibility="no-hide-descendants"
             >
               <Text
-                size={tokens.typePill.size}
+                size={tokens.typeCode.size}
                 weight="bold"
-                style={styles.secondary}
+                family="mono"
+                style={styles.onDark}
                 accessible={false}
               >
                 {String(index + 1)}
@@ -396,6 +402,7 @@ function Failed({ failure, onRetry }: { failure: Shown; onRetry: () => void }) {
         takesFocus={tapped != null}
       />
       <SecondaryButton
+        stacked
         label={t('lostTwoFactor.retry')}
         onPress={onRetry}
         testID="lostTwoFactor.retry"
@@ -471,7 +478,7 @@ function Request({
         }
       >
         <Notice
-          tone="quiet"
+          tone="plain"
           mark="…"
           body={`${t('lostTwoFactor.asked', { when: state.asked })} ${t('lostTwoFactor.endsBy', { when: state.expires })}`}
         />
@@ -480,16 +487,16 @@ function Request({
         </Text>
         {state.nobody && supportAddress !== '' && (
           <SecondaryButton
+            stacked
             label={t('lostTwoFactor.emailSupport', { address: supportAddress })}
             onPress={() => void Linking.openURL(`mailto:${supportAddress}`)}
             testID="lostTwoFactor.support"
           />
         )}
-        <Text size={tokens.typeBodyPhone.size} weight="semibold">
-          {t('lostTwoFactor.notYou')}
-        </Text>
-        <SecondaryButton
-          label={t('lostTwoFactor.cancel')}
+        <Footnote
+          question={t('lostTwoFactor.notYou')}
+          action={t('lostTwoFactor.cancel')}
+          centred
           onPress={() => {
             api
               .cancelRecovery(recovery)
@@ -547,6 +554,7 @@ function Request({
       >
         {supportAddress !== '' && (
           <SecondaryButton
+            stacked
             label={t('lostTwoFactor.emailSupport', { address: supportAddress })}
             onPress={() => void Linking.openURL(`mailto:${supportAddress}`)}
             testID="lostTwoFactor.support"
@@ -571,6 +579,7 @@ function Request({
       >
         {state.nobody && supportAddress !== '' && (
           <SecondaryButton
+            stacked
             label={t('lostTwoFactor.emailSupport', { address: supportAddress })}
             onPress={() => void Linking.openURL(`mailto:${supportAddress}`)}
             testID="lostTwoFactor.support"
@@ -914,6 +923,7 @@ function Codes({
           </View>
           {hasPhone && wording.offerText && (
             <SecondaryButton
+              stacked
               label={t('lostTwoFactor.textInstead')}
               onPress={() => void textInstead()}
               testID="lostTwoFactor.textInstead"
@@ -929,16 +939,25 @@ function Codes({
 
 const styles = StyleSheet.create({
   resend: { alignItems: 'flex-start', gap: tokens.spaceXs },
-  saying: { gap: tokens.spaceSm },
-  steps: { gap: tokens.spaceMd },
-  step: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceMd },
+  saying: { gap: tokens.spaceXxl },
+  steps: { gap: tokens.spaceSm },
+  step: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: tokens.spaceLg,
+    padding: tokens.spaceLg,
+    borderWidth: 1,
+    borderColor: tokens.colorBorder,
+    borderRadius: tokens.radiusCardDesktop,
+    backgroundColor: tokens.colorCard,
+  },
   stepMark: {
     borderRadius: tokens.radiusPill,
-    borderWidth: 1.5,
-    borderColor: tokens.colorMarkEmpty,
+    backgroundColor: tokens.colorDark,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  onDark: { color: tokens.colorInkOnDark },
   grow: { flex: 1 },
   secondary: { color: tokens.colorInkSecondary },
 });
