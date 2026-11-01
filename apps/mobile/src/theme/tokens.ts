@@ -57,6 +57,7 @@ export const tokens = {
   "colorBrandSaffron": "#F2B22C",
   "colorBrandJade": "#00A37A",
   "colorBrandUltramarine": "#3E3FD6",
+  "colorBrandViolet": "#5B4FE6",
   "fontFamily": "'Instrument Sans', sans-serif",
   "fontFamilyMono": "'JetBrains Mono', monospace",
   "typeDisplay": {
