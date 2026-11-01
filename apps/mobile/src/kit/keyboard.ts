@@ -313,3 +313,26 @@ export function keysDownThen(keys: Keys, then: () => void, settledMs: number): (
     clearTimeout(settle);
   };
 }
+
+/** The window an answer holds the scroll for: `answering(true)`, `bring` now and once `settledMs` has passed, as content that shrinks around a notice mounting can stop the first scroll short (sc-9382), then `answering(false)` once two settles have passed. Returns what ends it sooner, which says false once only (sc-25897). */
+export function settledAnswer(
+  bring: () => void,
+  settledMs: number,
+  answering: (on: boolean) => void = () => {},
+): () => void {
+  let ended = false;
+  answering(true);
+  bring();
+  const settled = setTimeout(bring, settledMs);
+  const done = setTimeout(end, 2 * settledMs);
+
+  function end(): void {
+    if (ended) return;
+    ended = true;
+    clearTimeout(settled);
+    clearTimeout(done);
+    answering(false);
+  }
+
+  return end;
+}

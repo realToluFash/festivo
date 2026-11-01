@@ -6744,6 +6744,7 @@ button.members-row {
 
 @media (width <= 40rem) {
   .calendar-subscribe {
+    width: 100%;
     border-radius: var(--radiusSheet) var(--radiusSheet) 0 0;
   }
 

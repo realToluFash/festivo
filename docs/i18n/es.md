@@ -577,3 +577,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   pantalla lee el nombre del día, que da el número de elementos. El mes vacío abre con el mes, «En {{month}} no hay nada en
   el calendario.», para no repetir «en el calendario en». «Elemento» cuenta eventos y fechas a la
   vez en el nombre del día para el lector de pantalla.
+- **1 nov 2026. Suscribirse al Calendario** (sc-25960 para sc-3626, `calendarFeed.*`, web y app;
+  `messages:calendar_feed.*`; `messages+intl-icu:limits.calendar_feed`). «Suscribirse en su
+  aplicación de calendario»; en la cabecera del teléfono, «Suscribirse». El enlace es «su enlace
+  privado», masculino («Cópielo», «Conservar este enlace»), y se «restablece», como la
+  contraseña. Las aplicaciones se nombran como las ve el usuario: «Google Calendar, Calendario de
+  Apple u Outlook»; la tecla del Mac es «Comando». Los estados del calendario suscrito son los de
+  la lista de eventos, en masculino con «evento»: Borrador, Publicado, En pausa, Finalizado,
+  Cancelado, Eliminado. "Dietary notes" es «Las notas sobre alimentación». El límite concuerda el
+  artículo con la hora, como `limits.tries`.

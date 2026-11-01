@@ -208,13 +208,13 @@
     "timeline.event_starts": "Empieza {name}",
     "timeline.event_ends": "Termina {name}",
     "timeline.event_called_off": "Se cancela {name}",
-    "calendar_feed.status.draft": "Draft",
-    "calendar_feed.status.live": "Live",
-    "calendar_feed.status.paused": "Paused",
-    "calendar_feed.status.finished": "Finished",
-    "calendar_feed.status.called_off": "Called off",
-    "calendar_feed.status.deleted": "Deleted",
-    "calendar_feed.paused_summary": "{name} (paused)",
-    "calendar_feed.status_line": "Status: {status}",
-    "calendar_feed.open_line": "Open in Soirely: {link}"
+    "calendar_feed.status.draft": "Borrador",
+    "calendar_feed.status.live": "Publicado",
+    "calendar_feed.status.paused": "En pausa",
+    "calendar_feed.status.finished": "Finalizado",
+    "calendar_feed.status.called_off": "Cancelado",
+    "calendar_feed.status.deleted": "Eliminado",
+    "calendar_feed.paused_summary": "{name} (en pausa)",
+    "calendar_feed.status_line": "Estado: {status}",
+    "calendar_feed.open_line": "Abrir en Soirely: {link}"
 }

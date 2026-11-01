@@ -1,7 +1,7 @@
 import { type CalendarFeedLink } from '@soirely/api-client';
 import { setStringAsync } from 'expo-clipboard';
 import { useEffect, useRef, useState } from 'react';
-import { Linking, StyleSheet, View, type ViewInstance } from 'react-native';
+import { Linking, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -144,7 +144,11 @@ function SubscribePanel({
 
   if (confirming) {
     return (
-      <View style={styles.panel} testID="calendarFeed.confirm">
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.panel}
+        testID="calendarFeed.confirm"
+      >
         <Text size={tokens.typeRowTitle.size} weight="bold" accessibilityRole="header">
           {t('calendarFeed.confirmTitle')}
         </Text>
@@ -175,12 +179,16 @@ function SubscribePanel({
             testID="calendarFeed.resetConfirm"
           />
         </View>
-      </View>
+      </ScrollView>
     );
   }
 
   return (
-    <View style={styles.panel}>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.panel}
+      testID="calendarFeed.panel"
+    >
       <View style={styles.head}>
         <Text
           size={tokens.typeRowTitle.size}
@@ -318,12 +326,13 @@ function SubscribePanel({
       )}
 
       <ReadOut words={announce} />
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  panel: { gap: tokens.spaceXl },
+  scroll: { flexShrink: 1, flexGrow: 0 },
+  panel: { gap: tokens.spaceXl, padding: tokens.space3xl },
   head: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   fill: { flex: 1 },
   section: { gap: tokens.spaceSm },
