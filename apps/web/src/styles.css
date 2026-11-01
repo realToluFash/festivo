@@ -5337,7 +5337,7 @@ button.members-row {
   overflow: hidden;
 }
 
-.notification-settings-blocked {
+.card.notification-settings > .notification-settings-blocked {
   display: flex;
   align-items: flex-start;
   gap: var(--spaceSm);
@@ -5358,14 +5358,17 @@ button.members-row {
 .notification-settings-grid th,
 .notification-settings-grid td {
   padding: var(--spaceLg) var(--spaceSm);
-  border-top: var(--borderInset);
   text-align: left;
   vertical-align: top;
 }
 
+/* The rule is the row's, so it runs unbroken from the name through both switches. */
+.notification-settings-grid tbody tr {
+  border-top: var(--borderInset);
+}
+
 .notification-settings-grid thead th,
 .notification-settings-grid thead td {
-  border-top: 0;
   font: var(--typeLabel);
   color: var(--colorInkSecondary);
 }
@@ -5558,7 +5561,7 @@ button.members-row {
 /* Below 390 the category column is too narrow for a whole word, so each name takes a line
    of its own above its two switches. Subgrid keeps every row on the header's columns. */
 @media (width < 24.375rem) {
-  .notification-settings-blocked {
+  .card.notification-settings > .notification-settings-blocked {
     overflow-wrap: normal;
     hyphens: manual;
   }
@@ -5581,18 +5584,9 @@ button.members-row {
     grid-template-columns: subgrid;
   }
 
-  .notification-settings-grid tbody tr {
-    border-top: var(--borderInset);
-  }
-
-  .notification-settings-grid tbody th,
-  .notification-settings-grid tbody td {
-    border-top: 0;
-  }
-
   .notification-settings-grid tbody th {
     grid-column: 1 / -1;
-    padding: var(--spaceLg) var(--spaceLg) var(--spaceXs);
+    padding: var(--spaceLg) var(--spaceLg) var(--spaceXs) var(--spaceXl);
     overflow-wrap: normal;
     word-break: normal;
     hyphens: manual;
