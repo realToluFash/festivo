@@ -6,7 +6,6 @@
     "loading": "Loading…"
   },
   "home": {
-    "title": "Soirely",
     "subtitle": "The night, from your pocket.",
     "openSignIn": "Sign in",
     "signedInTo": "You’re signed in to {{name}}",

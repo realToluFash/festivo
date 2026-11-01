@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 
 import { tokens } from '../docs/design/tokens.mjs';
-import { IMAGES, onDisk, pixels } from './draw-logo.mjs';
+import { IMAGES, MOBILE_GEOMETRY, SVGS, mobileGeometry, onDisk, pixels } from './draw-logo.mjs';
 import { decodePng } from './qa-env.mjs';
 
 describe('the logo images', () => {
@@ -21,6 +21,19 @@ describe('the logo images', () => {
     });
   }
 
+  for (const [path, draw] of Object.entries(SVGS)) {
+    it(`${path} is the wordmark as drawn from the tokens`, () => {
+      expect(
+        onDisk(path).toString('utf8'),
+        `${path} has drifted — run: node scripts/draw-logo.mjs`,
+      ).toBe(draw());
+    });
+  }
+
+  it(`${MOBILE_GEOMETRY} is the wordmark's outlines as drawn`, () => {
+    expect(onDisk(MOBILE_GEOMETRY).toString('utf8')).toBe(mobileGeometry());
+  });
+
   it('gives iOS one 1024 px icon with no alpha channel', () => {
     const icon = onDisk('apps/mobile/assets/icon.png');
 
@@ -37,6 +50,7 @@ describe('the brand colours', () => {
     tokens.colorBrandSaffron,
     tokens.colorBrandJade,
     tokens.colorBrandUltramarine,
+    tokens.colorBrandViolet,
   ];
 
   it('leave the app ink and the action green as they were', () => {
@@ -55,6 +69,8 @@ describe('the brand colours', () => {
 
     expect(named.sort()).toEqual([
       'apps/mobile/src/theme/tokens.ts',
+      'apps/web/src/brand/lockup.svg',
+      'apps/web/src/brand/wordmark.svg',
       'apps/web/src/tokens.css',
       'docs/design/tokens.mjs',
     ]);

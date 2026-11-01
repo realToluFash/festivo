@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
-import { useTranslation } from 'react-i18next';
 
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { BackButton } from './AppFrame.tsx';
+import { Brand } from './Brand.tsx';
 import { LanguageChoice } from './LanguageChoice.tsx';
 import { useMarkSide } from './markSide.ts';
 import { useReadOut } from './ReadOut.tsx';
@@ -86,6 +86,8 @@ export interface AuthBack {
   testID: string;
 }
 
+const BRAND_WIDTH = 200;
+
 /** Every auth screen at three sizes: phone stacks with no card, portrait centres one, landscape splits saying from doing. */
 export function AuthFrame({
   saying = null,
@@ -100,18 +102,11 @@ export function AuthFrame({
   atFoot?: boolean;
   children: ReactNode;
 }) {
-  const { t } = useTranslation();
   const { kind } = useLayout();
 
   const brand = (
     <View style={styles.brandRow}>
-      {back != null ? (
-        <BackButton {...back} />
-      ) : (
-        <Title size={tokens.typeTitleDialog.size} style={styles.brand}>
-          {t('app.name')}
-        </Title>
-      )}
+      {back != null ? <BackButton {...back} /> : <Brand width={BRAND_WIDTH} lockup />}
     </View>
   );
 
@@ -160,7 +155,6 @@ const styles = StyleSheet.create({
     padding: tokens.space6xl,
   },
   brandRow: { minHeight: tokens.sizeHit, alignItems: 'flex-start', justifyContent: 'center' },
-  brand: { letterSpacing: -0.4 },
   heading: { gap: tokens.spaceXs },
   title: { letterSpacing: -0.5 },
   secondary: { color: tokens.colorInkSecondary },

@@ -6,7 +6,6 @@
     "loading": "Chargement…"
   },
   "home": {
-    "title": "Soirely",
     "subtitle": "La soirée, depuis votre poche.",
     "openSignIn": "Se connecter",
     "signedInTo": "Vous êtes connecté à {{name}}",
