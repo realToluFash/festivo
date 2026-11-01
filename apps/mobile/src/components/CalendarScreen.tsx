@@ -241,7 +241,7 @@ function CalendarOf({
           opener={opener}
           testID="calendar.daySheet"
         >
-          {dayList}
+          <View style={styles.sheet}>{dayList}</View>
         </Sheet>
       )}
     </Screen>
@@ -725,6 +725,7 @@ const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
   split: { flexDirection: 'row', gap: tokens.spaceXl, alignItems: 'flex-start' },
   panel: { width: tokens.sizePanel },
+  sheet: { flexShrink: 1, padding: tokens.space3xl },
   fill: { flex: 1 },
   column: { flexDirection: 'column', alignItems: 'stretch' },
   toolbar: { gap: tokens.spaceMd },
