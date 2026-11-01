@@ -59,7 +59,7 @@ export function Refreshing({ testID }: { testID: string }) {
           />
         </Svg>
       </Animated.View>
-      <Text size={tokens.typeBodyPhone.size} muted accessibilityRole="text">
+      <Text size={tokens.typeBody.size} muted accessibilityRole="text">
         {t('eventsScreen.refreshing')}
       </Text>
     </View>
