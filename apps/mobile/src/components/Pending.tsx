@@ -12,7 +12,11 @@ export function Pending() {
 
   return (
     <ReadOut words={loading} style={styles.pending} testID="pending">
-      <ActivityIndicator color={tokens.colorAccent} accessibilityElementsHidden />
+      <ActivityIndicator
+        color={tokens.colorAccent}
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+      />
       <Text muted>{loading}</Text>
     </ReadOut>
   );
