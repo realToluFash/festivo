@@ -1,5 +1,5 @@
 import { type EventPhase, type EventState, calledOff, shownPhase } from './eventStates.ts';
-import { milestoneDistance } from './timeline.ts';
+import { type Milestone, milestoneDistance, nextUp } from './timeline.ts';
 
 export interface HomeEvent {
   id: string;
@@ -107,6 +107,57 @@ export function cardDate(
   }
 
   return { kind: 'dateAway', startsAt: event.startsAt };
+}
+
+export type NextStep =
+  | { kind: 'makeLive' }
+  | { kind: 'changeDates' }
+  | { kind: 'resume' }
+  | { kind: 'nextUp'; milestone: Milestone };
+
+/** An event's last line on Events Home: what its phase asks for next, else its next milestone (sc-22103). */
+export function nextStep(
+  event: { status: EventState; endsAt: string; milestones: readonly Milestone[] },
+  phase: EventPhase,
+  now: Date,
+): NextStep | null {
+  if (phase === 'draft') {
+    return now.getTime() >= Date.parse(event.endsAt)
+      ? { kind: 'changeDates' }
+      : { kind: 'makeLive' };
+  }
+
+  if (phase === 'paused') return { kind: 'resume' };
+
+  if (phase === 'finished') return null;
+
+  const milestone = nextUp(event.milestones, now, event.status === 'ended');
+
+  return milestone == null ? null : { kind: 'nextUp', milestone };
+}
+
+export type EventDays =
+  | { kind: 'oneDay'; startsAt: string }
+  | { kind: 'days'; startsAt: string; endsAt: string }
+  | { kind: 'calledOffOn'; concludedAt: string };
+
+/** "Saturday, Oct 31", or a first and last day, in the event's own zone (sc-22103). */
+export function eventDays(event: {
+  status: EventState;
+  startsAt: string;
+  endsAt: string;
+  timeZone: string;
+  concludedAt: string | null;
+}): EventDays {
+  if (calledOff(event) && event.concludedAt != null) {
+    return { kind: 'calledOffOn', concludedAt: event.concludedAt };
+  }
+
+  const day = new Intl.DateTimeFormat('en-CA', { dateStyle: 'short', timeZone: event.timeZone });
+
+  return day.format(new Date(event.startsAt)) === day.format(new Date(event.endsAt))
+    ? { kind: 'oneDay', startsAt: event.startsAt }
+    : { kind: 'days', startsAt: event.startsAt, endsAt: event.endsAt };
 }
 
 /** When it was ended or called off, or its end, for one the clock has finished since it was loaded. */

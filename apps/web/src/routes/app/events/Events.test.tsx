@@ -128,7 +128,7 @@ afterEach(() => {
 });
 
 describe('Events', () => {
-  it('lists each draft with Draft, its type, and its date with how far away it is', async () => {
+  it('lists each draft as one link: its type, its dates and start, Draft, placeholders and its next step (sc-22103)', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-10-13T12:00:00Z'));
     serverClock.observe(new Date().toUTCString());
@@ -149,13 +149,15 @@ describe('Events', () => {
     at('/app/events');
 
     fireEvent.click(await screen.findByRole('tab', { name: 'Drafts 2' }));
-    const rows = await screen.findAllByRole('listitem');
+    const rows = within(screen.getByRole('tabpanel')).getAllByRole('listitem');
 
     expect(rows.map((row) => spaced(row.textContent))).toEqual([
-      'DraftAdaeze and TundeWeddingSaturday, Nov 14 · in 32 days',
-      'DraftBoard dinnerCorporate eventTuesday, Dec 1 · in 49 days',
+      'Adaeze and TundeWeddingSaturday, Nov 14 to Sunday, Nov 1516:00 · Africa/LagosDraftGuests Coming soonReplies Coming soonGuests can’t be invited until this event is live.',
+      'Board dinnerCorporate eventTuesday, Dec 119:00 · Europe/LondonDraftGuests Coming soonReplies Coming soonGuests can’t be invited until this event is live.',
     ]);
+    expect(within(rows[0]!).getAllByRole('link')).toHaveLength(1);
     expect(within(rows[0]!).getByRole('link').getAttribute('href')).toBe('/app/events/ev_1');
+    expect(within(rows[0]!).queryByRole('img')).toBeNull();
     expect(screen.getByRole('link', { name: 'New event' }).getAttribute('href')).toBe(
       '/app/events/new',
     );
@@ -301,7 +303,7 @@ describe('Events Home (sc-3594)', () => {
     serverClock.observe(new Date().toUTCString());
   });
 
-  it('shows Happening now above the tabs, with its start and Next up, on every tab', async () => {
+  it('shows Happening now above the tabs as one link, with its dates, placeholders and Next up, on every tab', async () => {
     signedIn();
     answering({
       'GET /api/orgs/org_1/events': listed([
@@ -321,20 +323,22 @@ describe('Events Home (sc-3594)', () => {
     at('/app/events');
 
     const now = (await screen.findByRole('heading', { name: 'Happening now' })).parentElement!;
-    expect(spaced(within(now).getByRole('listitem').textContent)).toBe(
-      'Happening nowTonightWeddingNext up Tonight endsToday · started 09:00 Europe/Madrid',
+    const card = within(now).getByRole('listitem');
+    expect(spaced(card.textContent)).toBe(
+      'Sunday, Nov 1 to Tuesday, Nov 3Happening nowTonightWedding09:00 · Europe/MadridArrived Coming soonCourse Coming soonNext cue Coming soonNext up Tonight ends',
     );
+    expect(within(card).getAllByRole('link')).toHaveLength(1);
 
     const upcoming = screen.getByRole('tabpanel');
     expect(spaced(within(upcoming).getByRole('listitem').textContent)).toBe(
-      'LiveLaterWeddingNext up Later startsSaturday, Nov 14 · in 13 days',
+      'LaterWeddingSaturday, Nov 14 to Sunday, Nov 1516:00 · Africa/LagosLiveGuests Coming soonReplies Coming soonNext up Later starts',
     );
 
     fireEvent.click(screen.getByRole('tab', { name: 'Past 0' }));
     expect(screen.getByRole('heading', { name: 'Happening now' })).toBeDefined();
   });
 
-  it('names the day a Happening now event started when that was before today in its zone', async () => {
+  it('reads a Happening now event that started before today as its first and last day', async () => {
     signedIn();
     answering({
       'GET /api/orgs/org_1/events': listed([
@@ -351,7 +355,7 @@ describe('Events Home (sc-3594)', () => {
 
     const now = (await screen.findByRole('heading', { name: 'Happening now' })).parentElement!;
     expect(spaced(within(now).getByRole('listitem').textContent)).toBe(
-      'Happening nowWeekendWeddingNext up Weekend endsStarted Saturday, Oct 31 · 09:00 Europe/Madrid',
+      'Saturday, Oct 31 to Monday, Nov 2Happening nowWeekendWedding09:00 · Europe/MadridArrived Coming soonCourse Coming soonNext cue Coming soonNext up Weekend ends',
     );
   });
 
@@ -391,7 +395,7 @@ describe('Events Home (sc-3594)', () => {
     expect(
       within(screen.getByRole('tabpanel'))
         .getAllByRole('link')
-        .map((link) => link.textContent),
+        .map((link) => link.querySelector('.events-row-name')?.textContent),
     ).toEqual(['Paused', 'Later']);
 
     fireEvent.keyDown(upcoming, { key: 'ArrowRight' });
@@ -405,6 +409,65 @@ describe('Events Home (sc-3594)', () => {
 
     fireEvent.keyDown(document.activeElement!, { key: 'ArrowRight' });
     expect(document.activeElement).toBe(upcoming);
+  });
+
+  it('sums up what is happening, upcoming and in draft, with the Upcoming tile and the footer counting the same (sc-22103)', async () => {
+    signedIn();
+    answering({
+      'GET /api/orgs/org_1/events': listed(
+        [
+          live('Tonight', {
+            phase: 'happening_now',
+            startsAt: '2026-11-01T09:00:00+01:00',
+            endsAt: '2026-11-01T23:00:00+01:00',
+          }),
+          live('Later'),
+          live('Paused', { status: 'paused', phase: 'paused' }),
+          event({ id: 'draft', name: 'Draft' }),
+          event({ id: 'ended', name: 'Ended draft', endsAt: '2026-10-09T23:30:00+01:00' }),
+        ],
+        finished(14),
+        14,
+      ),
+    });
+    at('/app/events');
+
+    expect(await screen.findByText('1 happening now · 2 upcoming · 2 drafts')).toBeDefined();
+    const tiles = document.querySelectorAll('.events-tile');
+    expect([...tiles].map((tile) => spaced(tile.textContent))).toEqual([
+      'Upcoming events2',
+      'Guests invited Coming soon',
+      'Replies in Coming soon',
+      'Need attention Coming soon',
+    ]);
+    expect(tiles[1]!.querySelector('a, button, [tabindex]')).toBeNull();
+    expect(screen.getByText('2 events · Sorted by date')).toBeDefined();
+    expect(screen.getByRole('link', { name: /^Paused/ }).textContent).toContain(
+      'Paused. Guests can’t reply or change anything until you resume it.',
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Drafts 2' }));
+    expect(screen.getByRole('link', { name: /^Ended draft/ }).textContent).toContain(
+      'This event’s end has passed, so it cannot be made live. Change its dates first.',
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Past 14' }));
+    expect(screen.getByText('14 events · Sorted by date')).toBeDefined();
+  });
+
+  it('leaves out each part of the summary at 0, the whole line with only past events, and the footer on an empty tab', async () => {
+    signedIn();
+    answering({ 'GET /api/orgs/org_1/events': listed([], finished(1), 1) });
+    at('/app/events');
+
+    await screen.findByRole('tab', { name: 'Upcoming 0' });
+
+    expect(document.querySelector('.events-summary')).toBeNull();
+    expect(spaced(document.querySelector('.events-tile')!.textContent)).toBe('Upcoming events0');
+    expect(screen.queryByText(/Sorted by date/)).toBeNull();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Past 1' }));
+    expect(screen.getByText('1 event · Sorted by date')).toBeDefined();
   });
 
   it.each([
@@ -512,7 +575,9 @@ describe('Events Home (sc-3594)', () => {
 
     fireEvent.click(await screen.findByRole('tab', { name: 'Past 1' }));
 
-    expect(spaced(screen.getByRole('listitem').textContent)).toContain('Called off on Sep 30');
+    expect(
+      spaced(within(screen.getByRole('tabpanel')).getByRole('listitem').textContent),
+    ).toContain('Called off on Sep 30');
     expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
   });
 
@@ -2405,8 +2470,8 @@ describe('Make live (sc-3584)', () => {
     answering({ 'GET /api/orgs/org_1/events': listed([live()]) });
     at('/app/events');
 
-    const [row] = await screen.findAllByRole('listitem');
-    expect(within(row!).getByText('Live')).toBeDefined();
+    const row = await screen.findByRole('link', { name: /Adaeze and Tunde/ });
+    expect(within(row).getByText('Live')).toBeDefined();
   });
 });
 
@@ -2463,8 +2528,8 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     at('/app/events');
     if (phase === 'finished') fireEvent.click(await screen.findByRole('tab', { name: /Past/ }));
 
-    const [row] = await screen.findAllByRole('listitem');
-    expect(within(row!).getByText(word)).toBeDefined();
+    const row = await screen.findByRole('link', { name: /Adaeze and Tunde/ });
+    expect(within(row).getByText(word)).toBeDefined();
   });
 
   it("shows the server's phase on load, whatever the device clock says", async () => {
@@ -3294,7 +3359,7 @@ describe('The cover (sc-3590)', () => {
     expect(sent.filter(({ line }) => line.includes('/cover'))).toEqual([]);
   });
 
-  it('shows the photo on the event page and in the list, decorative when it has no description', async () => {
+  it('shows the photo on the event page, decorative when it has no description, and no cover in the list (sc-22103)', async () => {
     signedIn();
     answering({
       'GET /api/events/ev_1': () =>
@@ -3314,10 +3379,10 @@ describe('The cover (sc-3590)', () => {
 
     at('/app/events');
     fireEvent.click(await screen.findByRole('tab', { name: /Drafts/ }));
-    const rows = await screen.findAllByRole('listitem');
+    await screen.findAllByRole('link', { name: /Adaeze and Tunde/ });
 
-    expect(within(rows[0]!).getByRole('img').getAttribute('alt')).toBe(PHOTO.description);
-    expect(rows[1]!.querySelector('.cover-default-gala')).not.toBeNull();
+    expect(screen.queryByRole('img')).toBeNull();
+    expect(document.querySelector('.events [class*="cover"]')).toBeNull();
   });
 
   it('a new event sends its staged photo once it is created', async () => {
@@ -3763,16 +3828,6 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
     expect(screen.getByTestId('cover-default').className).toContain('cover-default-wedding');
     expect(screen.queryByRole('img')).toBeNull();
     expect(screen.queryByText(PHOTO.description)).toBeNull();
-    cleanup();
-
-    at('/app/events');
-    fireEvent.click(await screen.findByRole('tab', { name: /Drafts/ }));
-    const rows = await screen.findAllByRole('listitem');
-    fireEvent.error(within(rows[1]!).getByRole('img'));
-
-    expect(rows[1]!.querySelector('.cover-default-gala')).not.toBeNull();
-    expect(within(rows[1]!).queryByRole('img')).toBeNull();
-    expect(within(rows[0]!).getByRole('img').getAttribute('alt')).toBe(PHOTO.description);
   });
 
   it('a saved photo that fails to load shows the default in the Cover section and the Cover photo frame', async () => {
