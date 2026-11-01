@@ -27,8 +27,8 @@ def pr(number=7, story_id=1, head=HEAD, checks="green", lead=(), threads=(), sta
             "lead": list(lead), "threads": list(threads), "carried": carried}
 
 
-def verdict(kind, sha, at="2026-10-18T11:00:00Z"):
-    return {"verdict": kind, "sha": sha, "at": at, "id": 1}
+def verdict(kind, sha, at="2026-10-18T11:00:00Z", id=1):
+    return {"verdict": kind, "sha": sha, "at": at, "id": id}
 
 
 def kinds(items, role=None):
@@ -104,6 +104,13 @@ class Review(unittest.TestCase):
 
     def test_a_pass_at_the_head_needs_nothing(self):
         self.assertEqual(work.review_items([story()], [pr(lead=[verdict("pass", HEAD[:7])])]), [])
+
+    def test_the_newest_review_wins_when_an_older_one_reads_later(self):
+        stale = verdict("back", OLD, at="2026-11-01T09:59:33Z", id=5727296759)
+        passed = verdict("pass", HEAD, at="2026-11-01T09:50:51Z", id=5727472450)
+        self.assertIs(work.latest_verdict(pr(lead=[passed, stale])), passed)
+        self.assertEqual(work.review_items([story(state="Passed Code Review")],
+                                           [pr(lead=[stale, passed])]), [])
 
     def test_a_pass_carried_over_a_merge_of_main_needs_nothing(self):
         carried = pr(lead=[verdict("pass", OLD[:7])], carried=OLD[:7])
