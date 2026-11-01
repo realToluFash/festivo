@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spaceXl,
     backgroundColor: tokens.colorCard,
     borderWidth: 1,
-    borderColor: tokens.colorAttentionBorder,
+    borderColor: tokens.colorAttentionText,
     borderRadius: tokens.radiusPill,
   },
   retryPressed: { backgroundColor: tokens.colorInset },

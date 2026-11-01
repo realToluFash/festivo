@@ -219,7 +219,9 @@ span {
   white-space: nowrap;
   color: var(--colorAttentionText);
   background: var(--colorCard);
-  border: 1px solid var(--colorAttentionBorder);
+
+  /* The band's own border colour is 1.15:1 against its tint, so the pill's edge takes the words' colour. */
+  border: 1px solid var(--colorAttentionText);
   border-radius: var(--radiusPill);
   cursor: pointer;
 }
