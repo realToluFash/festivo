@@ -124,6 +124,7 @@ export function DestructiveButton({
   onPress,
   busy = false,
   off = false,
+  stacked = true,
   accessibilityLabel,
   ref,
   testID,
@@ -132,6 +133,8 @@ export function DestructiveButton({
   onPress: () => void;
   busy?: boolean;
   off?: boolean;
+  /** Off, it sits in a row beside secondary buttons at their label size, as Remove… does on an address. */
+  stacked?: boolean;
   accessibilityLabel?: string;
   ref?: Ref<ViewInstance> | undefined;
   testID: string;
@@ -144,7 +147,7 @@ export function DestructiveButton({
       ref={ref}
       style={[
         styles.secondary,
-        styles.secondaryStacked,
+        stacked ? styles.secondaryStacked : styles.destructiveInRow,
         off && styles.secondaryOff,
         { opacity: fade.opacity },
       ]}
@@ -158,7 +161,7 @@ export function DestructiveButton({
       testID={testID}
     >
       <Text
-        size={CONTROL_TEXT_SIZE}
+        size={stacked ? CONTROL_TEXT_SIZE : tokens.typeButton.size}
         weight="semibold"
         style={[styles.label, off ? styles.secondaryInk : styles.ink]}
       >
@@ -271,6 +274,11 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     alignItems: 'center',
     minHeight: tokens.sizeHitPhonePrimary,
+    borderRadius: tokens.sizeHitPhonePrimary / 2,
+  },
+  destructiveInRow: {
+    minHeight: tokens.sizeHitPhonePrimary,
+    paddingHorizontal: tokens.spaceXxl,
     borderRadius: tokens.sizeHitPhonePrimary / 2,
   },
   secondaryOff: { backgroundColor: tokens.colorInset, borderColor: tokens.colorBorder },

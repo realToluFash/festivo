@@ -15,6 +15,7 @@ import { focusBackMs } from '../kit/focusBack.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { CardTitle } from './CardTitle.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Field, focusChecked, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
@@ -93,26 +94,36 @@ export function NameCard({
 
   return (
     <View style={frame}>
-      <Text
-        size={tokens.typeTitleSection.size}
-        weight="bold"
-        accessibilityRole="header"
+      <CardTitle
         accessibilityElementsHidden={savedClosing}
         importantForAccessibility={offWhileSaving}
         accessible={savedClosing ? false : undefined}
       >
         {t('nameCard.title')}
-      </Text>
+      </CardTitle>
 
       {(!editing || opening || closing || savedClosing) && (
-        <View {...savedHidden}>
-          <Text
-            size={tokens.typeRowTitle.size}
-            weight="semibold"
-            accessible={savedClosing ? false : undefined}
-          >
-            {name}
-          </Text>
+        <View style={styles.current}>
+          <View style={styles.value} {...savedHidden}>
+            <Text
+              size={tokens.typeRowTitle.size}
+              weight="semibold"
+              accessible={savedClosing ? false : undefined}
+            >
+              {name}
+            </Text>
+          </View>
+          {(!editing || opening || closing) && (
+            <View>
+              {changeHolder}
+              <SecondaryButton
+                ref={change}
+                label={t('nameCard.change')}
+                onPress={open}
+                testID="nameCard.change"
+              />
+            </View>
+          )}
         </View>
       )}
       {saved != null && (!editing || opening || savedClosing) && (
@@ -129,17 +140,6 @@ export function NameCard({
               wordsRef={savedGiven ? savedLine : undefined}
             />
           )}
-        </View>
-      )}
-      {(!editing || opening || closing) && (
-        <View>
-          {changeHolder}
-          <SecondaryButton
-            ref={change}
-            label={t('nameCard.change')}
-            onPress={open}
-            testID="nameCard.change"
-          />
         </View>
       )}
       {editing && (
@@ -291,5 +291,12 @@ function Editing({
 
 const styles = StyleSheet.create({
   gone: { position: 'absolute' },
+  current: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: tokens.spaceLg,
+  },
+  value: { flexGrow: 1, flexShrink: 1, flexBasis: 200, minWidth: 0 },
   editing: { gap: tokens.spaceLg },
 });
