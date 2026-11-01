@@ -1036,6 +1036,31 @@ describe('a contact confirmation shows its request running, its way back off (sc
   });
 });
 
+describe('a contact row ends Remove with an ellipsis only where it asks first (sc-23283)', () => {
+  const text = readFileSync(join('src', 'components', 'ContactsCard.tsx'), 'utf8');
+  const removeId = '{`contacts.${row.id}.remove`}';
+  const holding = (button: string) =>
+    selfClosing(button, text).filter(({ markup }) => propValue(markup, 'testID') === removeId);
+
+  it('as the destructive button, never the secondary', () => {
+    expect(holding('DestructiveButton')).toHaveLength(1);
+    expect(holding('SecondaryButton')).toHaveLength(0);
+  });
+
+  it('labelled Remove… on a row that asks, Remove on one that does not', () => {
+    const [remove] = holding('DestructiveButton');
+    expect(propValue(remove?.markup ?? '', 'label')).toBe(
+      "{t(offers.askBeforeRemoving ? 'contacts.removeAsks' : 'contacts.remove')}",
+    );
+
+    const { contacts } = JSON.parse(
+      readFileSync(join('src', 'i18n', 'locales', 'en.json'), 'utf8'),
+    ) as { contacts: Record<string, string> };
+    expect(contacts.removeAsks).toMatch(/…$/u);
+    expect(contacts.remove).not.toMatch(/…$/u);
+  });
+});
+
 describe('a screen is a composition of the kit', () => {
   it('takes its fields from the kit, never a bare TextInput', () => {
     const offenders = sources(['app'])
