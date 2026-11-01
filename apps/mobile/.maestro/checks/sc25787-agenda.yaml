@@ -1,4 +1,4 @@
-# The Calendar's Agenda on November 2026, then an empty month. Needs an account with events in November 2026 and none in December 2026; steps back from today's month to November, so it holds while today is November 2026 or later.
+# iPad only. Not yet run on the iPhone SE, where it timed out at its old calendar.agenda wait; it now waits on an agenda row, so drop this line once it passes on the SE. The Calendar's Agenda on November 2026, then an empty month. Needs an account with events in November 2026 and none in December 2026; steps back from today's month to November, so it holds while today is November 2026 or later.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/calendar
