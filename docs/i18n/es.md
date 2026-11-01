@@ -612,3 +612,6 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   la lista de eventos, en masculino con «evento»: Borrador, Publicado, En pausa, Finalizado,
   Cancelado, Eliminado. "Dietary notes" es «Las notas sobre alimentación». El límite concuerda el
   artículo con la hora, como `limits.tries`.
+- **La banda sin conexión** (sc-22586): «Sin conexión · actualizado a las {{time}}», y «… el {{day}}
+  a las {{time}}» cuando la carga fue otro día. «Actualizado» dice de cuándo es lo que se ve, en
+  vez de calcar «as of». Mientras se reintenta, «Actualizando…», como en la app.
