@@ -171,15 +171,6 @@ function Form({
   const [limited, setLimited] = useState<ReturnType<typeof limitNotice> | null>(null);
   const [failed, setFailed] = useState(false);
   const [saving, setSaving] = useState(false);
-  // Cancel while it sends closes the sheet, and an answer that comes after is not acted on (sc-23267).
-  const cancelled = useRef(false);
-  useEffect(() => {
-    cancelled.current = false;
-
-    return () => {
-      cancelled.current = true;
-    };
-  }, []);
   const nameInput = useRef<TextInputInstance>(null);
   const countryPicker = useRef<ViewInstance>(null);
   const countryField = useRef<ViewInstance>(null);
@@ -213,7 +204,6 @@ function Form({
       values,
       getCalendars()[0]?.timeZone ?? 'UTC',
     );
-    if (cancelled.current) return;
 
     if (outcome.kind === 'created') {
       onCreated(outcome.organisation);
