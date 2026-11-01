@@ -1,0 +1,53 @@
+# sc-25667: on an account at its limit, Cancel is off while it sends; once Too many new organisations for now. shows, Cancel is live and closes the sheet, and nothing named Held Limited is in the switcher.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createOrganisation.name'
+- inputText: 'Held Limited'
+- hideKeyboard:
+    optional: true
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- tapOn:
+    id: 'createOrganisation.create'
+- assertVisible:
+    id: 'createOrganisation.cancel'
+    enabled: false
+- tapOn:
+    id: 'createOrganisation.cancel'
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: 'createOrganisation'
+- takeScreenshot: limited-held
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    visible: '{{t:createOrganisation.limitedTitle}}'
+    timeout: 30000
+- hideKeyboard:
+    optional: true
+- takeScreenshot: limited-answer
+- assertVisible:
+    id: 'createOrganisation.cancel'
+    enabled: true
+- tapOn:
+    id: 'createOrganisation.cancel'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation'
+    timeout: 10000
+- tapOn:
+    id: 'home.switchOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 20000
+- waitForAnimationToEnd
+- assertNotVisible: '.*Held Limited.*'
+- takeScreenshot: limited-switcher
