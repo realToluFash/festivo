@@ -11,7 +11,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'twoFactor.turnOff'
 - extendedWaitUntil:
-    visible: '.*(?:requires two-factor, so you cannot turn it off|exige la verificación en dos pasos|exige la double authentification|exige a autenticação de dois fatores).*'
+    visible: '{{t:twoFactorCard.keptByRule}}'
     timeout: 10000
 - takeScreenshot: refused
 - assertNotVisible:

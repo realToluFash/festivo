@@ -11,6 +11,7 @@ appId: host.exp.Exponent
 - takeScreenshot: rows
 - tapOn:
     id: 'devices\.row\..+\.signOut'
+    rightOf: 'Safari on iPad'
 - waitForAnimationToEnd
 - takeScreenshot: after-tap
 - waitForAnimationToEnd
@@ -38,6 +39,7 @@ appId: host.exp.Exponent
     timeout: 3000
 - tapOn:
     id: 'devices\.row\..+\.signOut'
+    rightOf: 'Safari on iPad'
 - scrollUntilVisible:
     element:
       id: 'devices.end'

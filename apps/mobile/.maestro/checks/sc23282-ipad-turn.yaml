@@ -4,14 +4,20 @@ appId: host.exp.Exponent
 - setOrientation: LANDSCAPE_LEFT
 - openLink: ${METRO_URL}/--/settings/security
 - extendedWaitUntil:
-    visible: '{{t:security.title}}'
+    visible:
+      id: 'ways.google.unlink'
     timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: landscape-top
-- scrollUntilVisible:
-    element: 'Chrome on Windows'
-    timeout: 30000
-    centerElement: true
+- repeat:
+    while:
+      notVisible: 'Chrome on Windows'
+    times: 10
+    commands:
+      - swipe:
+          start: 85%, 80%
+          end: 85%, 30%
+- assertVisible: 'Chrome on Windows'
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: landscape-devices
@@ -21,11 +27,17 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - takeScreenshot: landscape-device-tapped
 - openLink: ${METRO_URL}/--/settings/security
-- scrollUntilVisible:
-    element:
-      id: 'ways.google.unlink'
-    direction: UP
-    timeout: 30000
+- repeat:
+    while:
+      notVisible:
+        id: 'ways.google.unlink'
+    times: 10
+    commands:
+      - swipe:
+          start: 85%, 30%
+          end: 85%, 80%
+- assertVisible:
+    id: 'ways.google.unlink'
 - tapOn:
     id: 'ways.google.unlink'
 - waitForAnimationToEnd
@@ -45,10 +57,15 @@ appId: host.exp.Exponent
 - takeScreenshot: portrait-confirm-unlink
 - tapOn:
     id: 'ways.keep'
-- scrollUntilVisible:
-    element: 'Chrome on Windows'
-    timeout: 30000
-    centerElement: true
+- repeat:
+    while:
+      notVisible: 'Chrome on Windows'
+    times: 10
+    commands:
+      - swipe:
+          start: 85%, 80%
+          end: 85%, 30%
+- assertVisible: 'Chrome on Windows'
 - waitForAnimationToEnd:
     timeout: 3000
 - tapOn:
@@ -56,10 +73,17 @@ appId: host.exp.Exponent
     rightOf: 'Chrome on Windows'
 - waitForAnimationToEnd
 - takeScreenshot: portrait-device-tapped
-- scrollUntilVisible:
-    element:
-      id: 'devices.everywhere'
-    timeout: 15000
+- repeat:
+    while:
+      notVisible:
+        id: 'devices.everywhere'
+    times: 10
+    commands:
+      - swipe:
+          start: 85%, 80%
+          end: 85%, 30%
+- assertVisible:
+    id: 'devices.everywhere'
 - tapOn:
     id: 'devices.everywhere'
 - waitForAnimationToEnd
