@@ -95,6 +95,8 @@
     "web:notificationSettings.push",
     "mobile:notificationSettings.push",
     "web:calendar.agenda",
-    "mobile:calendar.agenda"
+    "mobile:calendar.agenda",
+    "web:eventNav.menu",
+    "mobile:eventNav.menu"
   ]
 }
