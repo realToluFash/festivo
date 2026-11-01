@@ -1,6 +1,9 @@
 # sc-26512: every getting-back-in screen, signed out, one screenshot per state, in LANGUAGE.
 # Pass LANGUAGE, P (screenshot prefix), EMAIL and PASSWORD (two-factor on), TOKEN (a reset link's),
 # BTOKEN (an approver's access token), API_URL and ORIENT (PORTRAIT or LANDSCAPE_LEFT).
+# One run uses up EMAIL: approving turns its two-factor off, and each run starts two of the three
+# recovery requests a day allows. Give every run, each LANGUAGE and ORIENT, a fresh two-factor
+# account from qa-account.mjs.
 # The taps on 50%,6% dismiss the iPad's floating number pad, which hideKeyboard cannot.
 appId: host.exp.Exponent
 ---
