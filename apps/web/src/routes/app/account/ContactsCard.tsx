@@ -18,7 +18,7 @@ import {
   refusedPhoneField,
   rereadAfterRefusal,
 } from '@soirely/domain';
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { type FormEvent, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
 
@@ -34,6 +34,7 @@ import { offButton } from '../../../offButton.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
 import { phoneProblemMessage } from '../../../phoneProblem.ts';
 import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
+import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
 
 type Kind = 'email' | 'phone';
@@ -74,8 +75,27 @@ export function ContactsCards({ onPrimaryChanged }: { onPrimaryChanged: () => Pr
     if (returned != null) dropProviderReturn();
   }, [returned]);
 
+  const [attempt, setAttempt] = useState(0);
+  const failedLines = useRef<Record<Kind, HTMLParagraphElement | null>>({
+    email: null,
+    phone: null,
+  });
+  const land = useFocusOnceShown();
+
   async function reload(): Promise<void> {
     setAccount(await api.me());
+  }
+
+  // Only a filled card's heading takes focus; the waiting and failed cards' headings never do.
+  function retry(kind: Kind): void {
+    setAccount(null);
+    setTwoFactorOn(null);
+    setAttempt((n) => n + 1);
+    land(
+      () =>
+        failedLines.current[kind] ??
+        document.querySelector<HTMLElement>(`#${kind}s-title[tabindex]`),
+    );
   }
 
   useEffect(() => {
@@ -101,9 +121,11 @@ export function ContactsCards({ onPrimaryChanged }: { onPrimaryChanged: () => Pr
     return () => {
       live = false;
     };
-  }, []);
+  }, [attempt]);
 
-  if (account === 'failed') return null;
+  if (account === 'failed') {
+    return <ContactsFailed retried={attempt > 0} lines={failedLines} onRetry={retry} />;
+  }
   if (account == null || twoFactorOn == null) return <ContactsWaiting />;
 
   const confirming: Confirming = {
@@ -155,6 +177,42 @@ function ContactsWaiting() {
             </h2>
           </div>
           <Skeleton words={t('pending.loading')} shape="rows" rowHeight={56} rows={2} inCard />
+        </section>
+      ))}
+    </>
+  );
+}
+
+function ContactsFailed({
+  retried,
+  lines,
+  onRetry,
+}: {
+  retried: boolean;
+  lines: RefObject<Record<Kind, HTMLParagraphElement | null>>;
+  onRetry: (kind: Kind) => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {(['email', 'phone'] as const).map((kind) => (
+        <section key={kind} className="card settings-card" aria-labelledby={`${kind}s-title`}>
+          <div className="contacts-head">
+            <h2 id={`${kind}s-title`}>
+              {kind === 'email' ? t('contacts.emailsTitle') : t('contacts.phonesTitle')}
+            </h2>
+          </div>
+          <ArrivalNotice
+            role={retried ? undefined : 'alert'}
+            line={kind === 'email' ? t('contacts.emailsFailed') : t('contacts.phonesFailed')}
+            lineRef={(line) => {
+              lines.current[kind] = line;
+            }}
+            focusable
+            retry={t('error.retry')}
+            onRetry={() => onRetry(kind)}
+          />
         </section>
       ))}
     </>

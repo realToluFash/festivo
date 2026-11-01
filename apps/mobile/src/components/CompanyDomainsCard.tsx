@@ -8,6 +8,7 @@ import { api } from '../api.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { CardFailed, type Unread } from './CardFailed.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Field, focusChecked, focusRefused, keysStayDown, TextField } from './Field.tsx';
 import { AnswerHeading } from './AnswerHeading.tsx';
@@ -32,7 +33,9 @@ export function CompanyDomainsCard({
 }) {
   const { t } = useTranslation();
   const [list, setList] = useState<CompanyDomains | null>(null);
-  const [unread, setUnread] = useState(false);
+  const [unread, setUnread] = useState<Unread | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const [retried, setRetried] = useState<object | null>(null);
   const [typed, setTyped] = useState('');
   const [error, setError] = useState<Refusal | undefined>(undefined);
   const [busy, setBusy] = useState(false);
@@ -48,16 +51,31 @@ export function CompanyDomainsCard({
 
     api.companyDomains(organisation.id).then(
       (found) => current && setList(found),
-      () => current && setUnread(true),
+      () => current && setUnread({ tapped: attempt > 0 }),
     );
 
     return () => {
       current = false;
     };
-  }, [organisation.id]);
+  }, [organisation.id, attempt]);
+
+  function retry(): void {
+    setUnread(null);
+    setRetried({});
+    setAttempt((n) => n + 1);
+  }
 
   if (list == null) {
-    return unread ? null : (
+    return unread != null ? (
+      <CardFailed
+        kind={kind}
+        title={t('companyDomains.title')}
+        words={t('companyDomains.unreadable')}
+        unread={unread}
+        onRetry={retry}
+        testID="companyDomains.retry"
+      />
+    ) : (
       <View style={cardFrame(kind)}>
         <Text size={tokens.typeRowTitle.size} weight="bold" accessibilityRole="header">
           {t('companyDomains.title')}
@@ -144,14 +162,14 @@ export function CompanyDomainsCard({
   return (
     <View style={cardFrame(kind)}>
       <View style={styles.heading}>
-        <Text
+        <AnswerHeading
+          answer={retried ?? undefined}
           size={tokens.typeRowTitle.size}
           weight="bold"
-          accessibilityRole="header"
           style={styles.title}
         >
           {t('companyDomains.title')}
-        </Text>
+        </AnswerHeading>
         <Arrived>
           <StateWord on={on} label={on ? t('companyDomains.on') : t('companyDomains.off')} />
         </Arrived>

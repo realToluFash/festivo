@@ -1439,9 +1439,11 @@
   },
   "contacts": {
     "emailsTitle": "Direcciones de correo electrónico",
+    "emailsFailed": "Your email addresses did not load. Try again in a moment.",
     "emailsIntro": "Con su dirección principal inicia sesión y recibe el correo de la cuenta. Las demás sirven para contactarle, pero no para iniciar sesión.",
     "emailsList": "Direcciones de correo electrónico de esta cuenta",
     "phonesTitle": "Números de teléfono",
+    "phonesFailed": "Your phone numbers did not load. Try again in a moment.",
     "phonesIntro": "Su número principal es el que figura en su perfil. Los demás también pueden servir para contactarle.",
     "phonesList": "Números de teléfono de esta cuenta",
     "count": "{{count, number}} de {{most, number}}",

@@ -1167,7 +1167,7 @@
     "removed": "{{domain}} a été retiré.",
     "removedNext": "Les personnes de ce domaine ne peuvent plus demander à rejoindre l’organisation de cette façon.",
     "failed": "Cela n’a pas fonctionné. Réessayez dans un instant.",
-    "unreadable": "Impossible de charger la liste. Rechargez la page pour réessayer."
+    "unreadable": "Impossible de charger la liste."
   },
   "membersScreen": {
     "proveOwner_one": "Pour donner à quelqu’un le rôle de Propriétaire de {{organisation}}, confirmez que c’est bien vous. Cela ne vous sera pas redemandé pendant une minute.",
@@ -1342,7 +1342,7 @@
       "copied": "Lien copié."
     },
     "failed": "Cela n’a pas fonctionné. Réessayez dans un instant.",
-    "unreadable": "Impossible de charger le lien d’adhésion. Rechargez la page pour réessayer."
+    "unreadable": "Impossible de charger le lien d’adhésion."
   },
   "requestToJoin": {
     "title": "Demander à rejoindre {{organisation}}",

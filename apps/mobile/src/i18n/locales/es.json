@@ -1167,7 +1167,7 @@
     "removed": "Se ha quitado {{domain}}.",
     "removedNext": "Quienes usen este dominio ya no pueden solicitar unirse de esta forma.",
     "failed": "No ha funcionado. Vuelva a intentarlo en un momento.",
-    "unreadable": "No se ha podido cargar la lista. Recargue la página para volver a intentarlo."
+    "unreadable": "No se ha podido cargar la lista."
   },
   "membersScreen": {
     "proveOwner_one": "Para dar a alguien el rol de Propietario de {{organisation}}, confirme que es usted. No se lo volveremos a pedir en un minuto.",
@@ -1342,7 +1342,7 @@
       "copied": "Enlace copiado."
     },
     "failed": "No ha funcionado. Vuelva a intentarlo en un momento.",
-    "unreadable": "No se ha podido cargar el enlace de solicitud. Recargue la página para volver a intentarlo."
+    "unreadable": "No se ha podido cargar el enlace de solicitud."
   },
   "requestToJoin": {
     "title": "Solicitar unirse a {{organisation}}",

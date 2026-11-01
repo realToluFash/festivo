@@ -1409,9 +1409,11 @@
   },
   "contacts": {
     "emailsTitle": "Email addresses",
+    "emailsFailed": "Your email addresses did not load. Try again in a moment.",
     "emailsIntro": "Your primary address signs you in and gets account mail. Other addresses can reach you, but they cannot sign you in.",
     "emailsList": "Email addresses on this account",
     "phonesTitle": "Phone numbers",
+    "phonesFailed": "Your phone numbers did not load. Try again in a moment.",
     "phonesIntro": "Your primary number is the one on your profile. Other numbers can reach you too.",
     "phonesList": "Phone numbers on this account",
     "count": "{{count, number}} of {{most, number}}",

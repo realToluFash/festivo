@@ -1133,7 +1133,7 @@
     "removed": "{{domain}} removed.",
     "removedNext": "People at it can no longer ask to join this way.",
     "failed": "That did not work. Try again in a moment.",
-    "unreadable": "The list could not be loaded. Reload the page to try again."
+    "unreadable": "The list could not be loaded."
   },
   "membersScreen": {
     "proveOwner_one": "To make somebody an owner of {{organisation}}, confirm it's you. You won't be asked again for a minute.",
@@ -1305,7 +1305,7 @@
       "copied": "Link copied."
     },
     "failed": "That did not work. Try again in a moment.",
-    "unreadable": "The request link could not be loaded. Reload the page to try again."
+    "unreadable": "The request link could not be loaded."
   },
   "requestToJoin": {
     "title": "Ask to join {{organisation}}",
