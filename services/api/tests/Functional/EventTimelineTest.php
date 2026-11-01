@@ -203,7 +203,7 @@ final class EventTimelineTest extends ApiTestCase
 
     private function add(string $eventId, string $at, string $title, PermissionArea $area, MilestoneOwner $owner, ?MilestoneAction $action = null): void
     {
-        self::service(ScriptedMilestones::class)->add($eventId, new Milestone(new DateTimeImmutable($at), $title, null, $owner, $area, $action));
+        self::service(ScriptedMilestones::class)->add($eventId, new Milestone($area->value . '.' . $title, new DateTimeImmutable($at), $title, null, $owner, $area, $action));
     }
 
     /** Ended at `$at` UTC, as End now or Call off leaves it (sc-3585), without waiting for the clock. */

@@ -119,6 +119,7 @@
         "doctrine/doctrine-fixtures-bundle": "^4.3",
         "nikic/php-parser": "^5.7",
         "phpunit/phpunit": "^11",
+        "sabre/vobject": "^4.5",
         "symfony/browser-kit": "7.4.*",
         "symfony/css-selector": "7.4.*"
     }

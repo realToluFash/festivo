@@ -64,5 +64,6 @@
     "eventChanges.email.settings": "Notification settings",
     "eventChanges.email.link": "{label}: {url}",
     "eventChanges.email.footer": "You're getting this because you are on {event} at {organisation}. To stop these emails, turn off Event changes email in Notification settings.",
-    "eventChanges.email.footerEventDay": "You're getting this because you are on {event} at {organisation}. To stop these emails, turn off Event day email in Notification settings."
+    "eventChanges.email.footerEventDay": "You're getting this because you are on {event} at {organisation}. To stop these emails, turn off Event day email in Notification settings.",
+    "limits.calendar_feed": "This calendar link has been fetched too often. Try again {hour, plural, other {at {time}}}."
 }

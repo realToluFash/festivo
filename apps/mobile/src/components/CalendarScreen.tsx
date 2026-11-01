@@ -44,6 +44,7 @@ import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AppFrame } from './AppFrame.tsx';
 import { bodyEdges } from './bodyEdges.ts';
+import { CalendarSubscribe } from './CalendarSubscribe.tsx';
 import { calendarGrid } from './calendarGrid.ts';
 import { QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
@@ -93,6 +94,7 @@ export function CalendarScreen() {
         <CalendarOf
           key={organisation.id}
           organisationId={organisation.id}
+          organisationName={organisation.name}
           creates={roleHolds(organisation, 'events.create')}
           kind={kind}
         />
@@ -103,10 +105,12 @@ export function CalendarScreen() {
 
 function CalendarOf({
   organisationId,
+  organisationName,
   creates,
   kind,
 }: {
   organisationId: string;
+  organisationName: string;
   creates: boolean;
   kind: LayoutKind;
 }) {
@@ -157,10 +161,20 @@ function CalendarOf({
     void AsyncStorage.setItem(KEPT, keptCalendarPlace(place)).catch(() => undefined);
   };
   const closeDay = () => setOpenDay(null);
+  const subscribe = (
+    <View style={styles.subscribe}>
+      <CalendarSubscribe
+        organisationId={organisationId}
+        organisationName={organisationName}
+        phone={phone}
+      />
+    </View>
+  );
 
   if (load.kind === 'loaded' && load.events.length === 0) {
     return (
       <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
+        {subscribe}
         <NoEvents
           kind={kind}
           createLabel={t('eventsScreen.newEvent')}
@@ -180,6 +194,7 @@ function CalendarOf({
 
   return (
     <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
+      {subscribe}
       <Toolbar
         phone={phone}
         month={month}
@@ -735,6 +750,7 @@ const BAR = {
 } as const;
 
 const styles = StyleSheet.create({
+  subscribe: { flexDirection: 'row', justifyContent: 'flex-end' },
   stack: { gap: tokens.spaceMd },
   split: { flexDirection: 'row', gap: tokens.spaceXl, alignItems: 'flex-start' },
   panel: { width: tokens.sizePanel },

@@ -6360,3 +6360,170 @@ button.members-row {
     animation: none;
   }
 }
+
+/* ── Subscribe in your calendar app (sc-3626) ─────────────────────────────── */
+
+.calendar-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceLg);
+}
+
+.calendar-subscribe-open {
+  gap: var(--spaceSm);
+}
+
+.calendar-subscribe-icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.calendar-subscribe {
+  gap: 0;
+  width: 37.5rem;
+  padding: 0;
+}
+
+.calendar-subscribe-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceLg);
+  padding: var(--spaceXl) var(--spaceXxl) var(--spaceXl) var(--space3xl);
+  background: var(--colorHeader);
+  border-bottom: 1px solid var(--colorHeaderBorder);
+}
+
+.calendar-subscribe-head h2 {
+  margin: 0;
+  font: var(--typeTitleDialog);
+  letter-spacing: var(--typeTitleDialogTracking);
+}
+
+.calendar-subscribe-head h2:focus {
+  outline: none;
+}
+
+.calendar-subscribe-close {
+  flex: none;
+  width: var(--sizeHit);
+  height: var(--sizeHit);
+  border: 1px solid var(--colorHeaderBorder);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  cursor: pointer;
+}
+
+.calendar-subscribe-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+  padding: var(--spaceXxl) var(--space3xl) var(--space3xl);
+}
+
+.calendar-subscribe-body p {
+  margin: 0;
+}
+
+.calendar-subscribe-link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.calendar-subscribe-link label {
+  color: var(--colorInkSecondary);
+  font: var(--typeLabel);
+}
+
+.calendar-subscribe-url {
+  font-family: var(--fontFamilyMono);
+  text-overflow: ellipsis;
+}
+
+.calendar-subscribe-line {
+  display: flex;
+  gap: var(--spaceSm);
+  align-items: flex-start;
+}
+
+.calendar-subscribe-renewed {
+  color: var(--colorAccentText);
+  font-weight: 600;
+}
+
+.calendar-subscribe-warning {
+  color: var(--colorAttentionText);
+}
+
+.calendar-subscribe-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceMd);
+}
+
+.calendar-subscribe-lists {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spaceLg) var(--spaceXxl);
+  padding: var(--spaceLg) var(--spaceXl);
+  border: var(--borderInset);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.calendar-subscribe-subtitle {
+  margin: 0 0 var(--spaceXs);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.calendar-subscribe-lists ul {
+  margin: 0;
+  padding-left: var(--spaceXl);
+}
+
+.calendar-subscribe-access {
+  grid-column: 1 / -1;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+.calendar-subscribe-reset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding-top: var(--spaceLg);
+  border-top: var(--borderInset);
+}
+
+.calendar-subscribe-reset p {
+  color: var(--colorInkSecondary);
+}
+
+.calendar-subscribe-reset-button {
+  color: var(--colorBrokenText);
+}
+
+@media (width <= 40rem) {
+  .calendar-subscribe {
+    border-radius: var(--radiusSheet) var(--radiusSheet) 0 0;
+  }
+
+  .calendar-subscribe-lists {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .calendar-subscribe-buttons {
+    flex-direction: column;
+  }
+
+  .calendar-subscribe-buttons .button,
+  .calendar-subscribe-reset-button {
+    min-height: var(--sizeHitPhonePrimary);
+  }
+}

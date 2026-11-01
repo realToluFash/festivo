@@ -81,6 +81,38 @@ final class EventRepository extends ServiceEntityRepository
             ->setParameter('now', $now->setTimezone(new DateTimeZone('UTC')), 'datetime_immutable');
     }
 
+    /**
+     * Every event of the organisation, and those deleted after $deletedAfter, which a subscribed calendar is told are cancelled (sc-3626).
+     *
+     * @return list<Event> soonest first
+     */
+    public function findForCalendarFeed(Organisation $organisation, DateTimeImmutable $deletedAfter): array
+    {
+        $filters = $this->getEntityManager()->getFilters();
+        $filtered = $filters->isEnabled('soft_delete');
+
+        if ($filtered) {
+            $filters->disable('soft_delete');
+        }
+
+        try {
+            /** @var list<Event> */
+            return $this->createQueryBuilder('e')
+                ->andWhere('e.organisation = :organisation')
+                ->andWhere('e.deletedAt IS NULL OR e.deletedAt > :since')
+                ->setParameter('organisation', $organisation)
+                ->setParameter('since', $deletedAfter->setTimezone(new DateTimeZone('UTC')), 'datetime_immutable')
+                ->orderBy('e.startsAtUtc', 'ASC')
+                ->addOrderBy('e.id', 'ASC')
+                ->getQuery()
+                ->getResult();
+        } finally {
+            if ($filtered) {
+                $filters->enable('soft_delete');
+            }
+        }
+    }
+
     public function findOrganisationIdOf(Uuid $eventId): ?Uuid
     {
         $id = $this->createQueryBuilder('e')
