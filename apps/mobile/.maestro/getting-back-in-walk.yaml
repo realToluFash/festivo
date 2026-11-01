@@ -1,0 +1,107 @@
+# sc-26512: every getting-back-in screen, signed out, one screenshot per state, in LANGUAGE.
+# Pass LANGUAGE, P (screenshot prefix), EMAIL and PASSWORD (two-factor on), TOKEN (a reset link's),
+# BTOKEN (an approver's access token), API_URL and ORIENT (PORTRAIT or LANDSCAPE_LEFT).
+# The taps on 50%,6% dismiss the iPad's floating number pad, which hideKeyboard cannot.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow: sign-in-screen-language.yaml
+- openLink: ${METRO_URL}/--/forgot-password
+- extendedWaitUntil: { visible: { id: 'recovery.email' }, timeout: 30000 }
+- takeScreenshot: ${P}-01-forgot
+- tapOn: { id: 'recovery.send' }
+- takeScreenshot: ${P}-02-forgot-blank
+- tapOn: { id: 'recovery.email' }
+- inputText: ${EMAIL}
+- tapOn: { point: '50%,6%' }
+- tapOn: { id: 'recovery.send' }
+- extendedWaitUntil:
+    { visible: { id: 'recovery.sendAgain|recovery.signIn|recovery.backToSignIn' }, timeout: 15000 }
+- tapOn: { point: '50%,6%' }
+- takeScreenshot: ${P}-04-forgot-sent
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN}
+- extendedWaitUntil: { visible: { id: 'recovery.password|twoFactor.code' }, timeout: 30000 }
+- takeScreenshot: ${P}-05-reset-step
+- runFlow:
+    when: { visible: { id: 'twoFactor.code' } }
+    commands:
+      - tapOn: { id: 'twoFactor.code' }
+      - inputText: '000000'
+      - tapOn: { point: '50%,6%' }
+      - tapOn: { id: 'twoFactor.verify' }
+      - waitForAnimationToEnd
+      - takeScreenshot: ${P}-09-reset-code-wrong
+      - tapOn: { id: 'twoFactor.back' }
+      - takeScreenshot: ${P}-09b-reset-code-back
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil: { visible: { id: 'signIn.email' }, timeout: 30000 }
+- tapOn: { id: 'signIn.email' }
+- eraseText: 80
+- inputText: ${EMAIL}
+- tapOn: { point: '50%,6%' }
+- tapOn: { id: 'signIn.password' }
+- inputText: ${PASSWORD}
+- tapOn: { point: '50%,6%' }
+- tapOn: { id: 'signIn.submit' }
+- extendedWaitUntil: { visible: { id: 'twoFactor.code' }, timeout: 30000 }
+- tapOn: { point: '50%,6%' }
+- takeScreenshot: ${P}-11-code
+- tapOn: { id: 'twoFactor.verify' }
+- takeScreenshot: ${P}-12-code-blank
+- tapOn: { id: 'twoFactor.code' }
+- inputText: '000000'
+- tapOn: { point: '50%,6%' }
+- tapOn: { id: 'twoFactor.verify' }
+- waitForAnimationToEnd
+- takeScreenshot: ${P}-13-code-wrong
+- tapOn: { id: 'twoFactor.switch' }
+- waitForAnimationToEnd
+- takeScreenshot: ${P}-14-recovery
+- tapOn: { id: 'twoFactor.switch' }
+- waitForAnimationToEnd
+- tapOn: { id: 'twoFactor.lostBoth' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor.send' }, timeout: 20000 }
+- takeScreenshot: ${P}-18-lost-start
+- tapOn: { id: 'lostTwoFactor.send' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor.emailCode' }, timeout: 20000 }
+- takeScreenshot: ${P}-19-lost-proving
+- runScript: { file: scripts/latest-code.js }
+- tapOn: { id: 'lostTwoFactor.emailCode' }
+- inputText: ${output.code}
+- tapOn: { point: '50%,6%' }
+- tapOn: { id: 'lostTwoFactor.ask' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor.cancel' }, timeout: 20000 }
+- takeScreenshot: ${P}-19-lost-waiting
+- runScript:
+    file: scripts/answer-recovery-request.js
+    env: { ANSWER: turn-down }
+- extendedWaitUntil: { notVisible: { id: 'lostTwoFactor.cancel' }, timeout: 40000 }
+- takeScreenshot: ${P}-20-lost-turned-down
+# a second request, approved
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil: { visible: { id: 'signIn.email' }, timeout: 30000 }
+- tapOn: { id: 'signIn.email' }
+- eraseText: 80
+- inputText: ${EMAIL}
+- tapOn: { point: '50%,6%' }
+- tapOn: { id: 'signIn.password' }
+- inputText: ${PASSWORD}
+- tapOn: { point: '50%,6%' }
+- tapOn: { id: 'signIn.submit' }
+- extendedWaitUntil: { visible: { id: 'twoFactor.lostBoth' }, timeout: 30000 }
+- tapOn: { point: '50%,6%' }
+- tapOn: { id: 'twoFactor.lostBoth' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor.send' }, timeout: 20000 }
+- tapOn: { id: 'lostTwoFactor.send' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor.emailCode' }, timeout: 20000 }
+- runScript: { file: scripts/latest-code.js }
+- tapOn: { id: 'lostTwoFactor.emailCode' }
+- inputText: ${output.code}
+- tapOn: { point: '50%,6%' }
+- tapOn: { id: 'lostTwoFactor.ask' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor.cancel' }, timeout: 20000 }
+- runScript:
+    file: scripts/answer-recovery-request.js
+    env: { ANSWER: approve }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor.signIn' }, timeout: 40000 }
+- takeScreenshot: ${P}-23-lost-approved
