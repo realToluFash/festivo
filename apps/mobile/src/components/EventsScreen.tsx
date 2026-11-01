@@ -200,7 +200,6 @@ export function EventsScreen() {
               if (organisationId != null) rememberEventsTab(organisationId, next);
               setTab({ in: organisationId, tab: next });
             }}
-            open={null}
             onOpen={openEvent}
             more={more}
             shown={moreShown}
