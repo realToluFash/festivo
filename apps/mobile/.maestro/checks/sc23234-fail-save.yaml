@@ -16,6 +16,11 @@ appId: host.exp.Exponent
 - tapOn:
     id: notificationSettings.guest_replies.push
 - extendedWaitUntil:
+    visible:
+      id: notificationSettings.guest_replies.push
+      checked: true
+    timeout: 15000
+- extendedWaitUntil:
     visible: '{{t:notificationSettings.pushNotSaved}}'
     timeout: 15000
 - takeScreenshot: ns-fail-1

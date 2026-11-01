@@ -9,6 +9,8 @@ appId: host.exp.Exponent
     visible:
       id: notificationSettings.guest_replies.push
     timeout: 30000
+- assertVisible:
+    id: settings.account
 - takeScreenshot: ns-landscape
 - setOrientation: PORTRAIT
 - extendedWaitUntil:
