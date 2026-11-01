@@ -7,8 +7,6 @@ namespace App\Repository;
 use App\Entity\Event;
 use App\Entity\Organisation;
 use App\Enum\EventStatus;
-use App\Enum\FeedEntryStatus;
-use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -84,11 +82,11 @@ final class EventRepository extends ServiceEntityRepository
     }
 
     /**
-     * Every event of the organisation, and those deleted within the last 30 days, which a subscribed calendar is told are cancelled (sc-3626).
+     * Every event of the organisation, and those deleted after $deletedAfter, which a subscribed calendar is told are cancelled (sc-3626).
      *
      * @return list<Event> soonest first
      */
-    public function findForCalendarFeed(Organisation $organisation, DateTimeImmutable $now): array
+    public function findForCalendarFeed(Organisation $organisation, DateTimeImmutable $deletedAfter): array
     {
         $filters = $this->getEntityManager()->getFilters();
         $filtered = $filters->isEnabled('soft_delete');
@@ -103,7 +101,7 @@ final class EventRepository extends ServiceEntityRepository
                 ->andWhere('e.organisation = :organisation')
                 ->andWhere('e.deletedAt IS NULL OR e.deletedAt > :since')
                 ->setParameter('organisation', $organisation)
-                ->setParameter('since', $now->setTimezone(new DateTimeZone('UTC'))->sub(new DateInterval(FeedEntryStatus::KEPT_CANCELLED)), 'datetime_immutable')
+                ->setParameter('since', $deletedAfter->setTimezone(new DateTimeZone('UTC')), 'datetime_immutable')
                 ->orderBy('e.startsAtUtc', 'ASC')
                 ->addOrderBy('e.id', 'ASC')
                 ->getQuery()

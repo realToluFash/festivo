@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Event\CalendarFeed\Controller;
 
+use App\Deletion\RestoreWindow;
 use App\Domain\Event\CalendarFeed\CalendarFeedWriter;
 use App\Domain\Event\CalendarFeed\FeedLinkIssuer;
 use App\Domain\User\Mail\AccountLanguage;
@@ -62,7 +63,7 @@ final readonly class CalendarFeedFetchController
         }
 
         $now = $this->clock->now();
-        $events = $this->eventRepository->findForCalendarFeed($organisation, $now);
+        $events = $this->eventRepository->findForCalendarFeed($organisation, RestoreWindow::openForDeletionsAfter($now));
         $body = $this->localeSwitcher->runWithLocale(
             $this->accountLanguage->of($user),
             fn (): string => $this->calendarFeedWriter->write($organisation, $events, $grants, $now),

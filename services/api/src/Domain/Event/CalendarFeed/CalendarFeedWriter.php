@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Event\CalendarFeed;
 
+use App\Deletion\RestoreWindow;
 use App\Domain\Event\EventVenue;
 use App\Domain\Event\Timeline\EventTimeline;
 use App\Domain\Event\Timeline\Model\Milestone;
@@ -40,9 +41,10 @@ final readonly class CalendarFeedWriter
     {
         $entries = [];
         $instants = [];
+        $keptAfter = RestoreWindow::openForDeletionsAfter($now);
 
         foreach ($events as $event) {
-            $status = FeedEntryStatus::of($event->getDeletedAt(), $event->getEndedAt(), $event->getStartsAt(), $now);
+            $status = FeedEntryStatus::of($event->getDeletedAt(), $event->getEndedAt(), $event->getStartsAt(), $keptAfter);
 
             if (null === $status) {
                 continue;

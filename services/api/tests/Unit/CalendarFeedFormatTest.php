@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit;
 
+use App\Deletion\RestoreWindow;
 use App\Domain\Event\CalendarFeed\FeedTokenRedactor;
 use App\Domain\Event\CalendarFeed\ICalendarLines;
 use App\Domain\Event\CalendarFeed\TimeZoneDefinition;
@@ -76,13 +77,14 @@ final class CalendarFeedFormatTest extends TestCase
     {
         $now = new DateTimeImmutable('2030-11-01T12:00:00Z');
         $startsAt = new DateTimeImmutable('2030-12-01T18:00:00Z');
+        $keptAfter = RestoreWindow::openForDeletionsAfter($now);
 
-        self::assertSame(FeedEntryStatus::Confirmed, FeedEntryStatus::of(null, null, $startsAt, $now));
-        self::assertSame(FeedEntryStatus::Confirmed, FeedEntryStatus::of(null, new DateTimeImmutable('2030-12-01T20:00:00Z'), $startsAt, $now), 'ended after its start is not called off');
-        self::assertSame(FeedEntryStatus::Cancelled, FeedEntryStatus::of(null, new DateTimeImmutable('2030-10-02T12:00:01Z'), $startsAt, $now), 'called off just under 30 days ago');
-        self::assertNull(FeedEntryStatus::of(null, new DateTimeImmutable('2030-10-02T12:00:00Z'), $startsAt, $now), 'called off 30 days ago to the second');
-        self::assertSame(FeedEntryStatus::Cancelled, FeedEntryStatus::of(new DateTimeImmutable('2030-10-15T00:00:00Z'), null, $startsAt, $now), 'deleted');
-        self::assertNull(FeedEntryStatus::of(new DateTimeImmutable('2030-10-01T00:00:00Z'), null, $startsAt, $now), 'deleted over 30 days ago');
+        self::assertSame(FeedEntryStatus::Confirmed, FeedEntryStatus::of(null, null, $startsAt, $keptAfter));
+        self::assertSame(FeedEntryStatus::Confirmed, FeedEntryStatus::of(null, new DateTimeImmutable('2030-12-01T20:00:00Z'), $startsAt, $keptAfter), 'ended after its start is not called off');
+        self::assertSame(FeedEntryStatus::Cancelled, FeedEntryStatus::of(null, new DateTimeImmutable('2030-10-02T12:00:01Z'), $startsAt, $keptAfter), 'called off just under 30 days ago');
+        self::assertNull(FeedEntryStatus::of(null, new DateTimeImmutable('2030-10-02T12:00:00Z'), $startsAt, $keptAfter), 'called off 30 days ago to the second');
+        self::assertSame(FeedEntryStatus::Cancelled, FeedEntryStatus::of(new DateTimeImmutable('2030-10-15T00:00:00Z'), null, $startsAt, $keptAfter), 'deleted');
+        self::assertNull(FeedEntryStatus::of(new DateTimeImmutable('2030-10-01T00:00:00Z'), null, $startsAt, $keptAfter), 'deleted over 30 days ago');
     }
 
     #[Test]

@@ -18,6 +18,12 @@ final readonly class RestoreWindow
         return $deletedAt->add(new DateInterval(self::LENGTH));
     }
 
+    /** A deletion after this instant is still inside its window; one at it or before has closed. */
+    public static function openForDeletionsAfter(DateTimeImmutable $now): DateTimeImmutable
+    {
+        return $now->sub(new DateInterval(self::LENGTH));
+    }
+
     /** Closed at the instant itself, not a second after. */
     public static function isOpen(DateTimeImmutable $deletedAt, DateTimeImmutable $now): bool
     {
