@@ -96,7 +96,7 @@ function SubscribeDialog({
     };
   }, [organisationId, attempt]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (selectLink === 0) return;
 
     linkField.current?.focus();
