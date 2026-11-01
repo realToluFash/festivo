@@ -21,6 +21,7 @@ import { markRulesSeen } from '../../src/signInRulesSeen.ts';
 import { useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 import { tracking } from '../../src/theme/tracking.ts';
+import { Arrived, Skeleton } from '../../src/components/Skeleton.tsx';
 
 /** `tapped` when it answers Try again, so focus moves to it (sc-11173). */
 type Load =
@@ -101,7 +102,13 @@ export default function SignInRules() {
             {t('signInRules.readIntro')}
           </Text>
 
-          {load.kind === 'loading' && <Text muted>{t('signInRules.loading')}</Text>}
+          {load.kind === 'loading' && (
+            <Skeleton
+              words={t('signInRules.loading')}
+              shape="cards"
+              cards={[{ options: 2 }, { options: 2 }, { fields: 1 }, { lines: 2 }]}
+            />
+          )}
 
           {load.kind === 'failed' && (
             <View style={styles.cards}>
@@ -125,7 +132,7 @@ export default function SignInRules() {
           )}
 
           {load.kind === 'loaded' && organisation != null && (
-            <View style={styles.cards}>
+            <Arrived style={styles.cards}>
               {elsewhere != null && (
                 <Notice
                   tone="quiet"
@@ -171,7 +178,7 @@ export default function SignInRules() {
                   {t('signInRules.askOwner', { organisation: organisation.name })}
                 </Text>
               </View>
-            </View>
+            </Arrived>
           )}
         </Screen>
       </SettingsSplit>

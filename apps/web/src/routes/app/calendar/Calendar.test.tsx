@@ -143,6 +143,47 @@ afterEach(() => {
 });
 
 describe('Calendar', () => {
+  it('waits a second while it loads, then shows the shape of its month under its loading words', async () => {
+    signedIn();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>(() => {}));
+    at('/app/calendar');
+
+    const busy = await screen.findByText(
+      (_, element) => element?.getAttribute('aria-busy') === 'true',
+    );
+
+    expect(screen.queryByText('Loading the calendar…')).toBeNull();
+    expect((await screen.findByRole('status', {}, { timeout: 2000 })).textContent).toBe(
+      'Loading the calendar…',
+    );
+    expect(busy.querySelectorAll('.skeleton-month tbody tr')).toHaveLength(5);
+    expect(busy.querySelectorAll('.skeleton-month .skeleton-bar-weekday')).toHaveLength(7);
+    expect(busy.querySelectorAll('.skeleton-month .skeleton-bar-day')).toHaveLength(35);
+    expect(busy.querySelector('button, [tabindex]')).toBeNull();
+    expect(screen.queryByRole('grid')).toBeNull();
+  });
+
+  it("redraws the waiting month's weeks as the toolbar moves, and swaps to rows for Agenda, saying its words once", async () => {
+    signedIn();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>(() => {}));
+    at('/app/calendar');
+
+    const status = await screen.findByRole('status', {}, { timeout: 2000 });
+    const busy = () => document.querySelector('[aria-busy="true"]');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.getByRole('heading', { name: 'January 2027' })).toBeTruthy();
+    expect(busy()?.querySelectorAll('.skeleton-month tbody tr')).toHaveLength(6);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Agenda' }));
+
+    expect(busy()?.querySelector('.skeleton-month')).toBeNull();
+    expect(busy()?.querySelectorAll('.skeleton-row-60').length).toBeGreaterThan(0);
+    expect(screen.getByRole('status')).toBe(status);
+  });
+
   it('is in the navigation, and opens on this month', async () => {
     signedIn();
     answering({ org_1: [WEDDING] });

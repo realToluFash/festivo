@@ -38,9 +38,12 @@ export function arriveAt(find: () => HTMLElement | null, done: () => void): () =
 
 /** A notice that answers the click, or says the page did not load, comes before the heading. */
 export function pageStart(): HTMLElement | null {
+  const heading = document.querySelector<HTMLElement>('h1');
+
   return (
     document.querySelector<HTMLElement>('[data-page-focus]') ??
-    document.querySelector<HTMLElement>('h1')
+    // A heading drawn while the page loads is replaced by the loaded page's, so focus waits for that one.
+    (heading?.hasAttribute('data-page-waits') === true ? null : heading)
   );
 }
 

@@ -17,6 +17,7 @@ import { api } from '../../../api.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { distanceWords } from './distanceWords.ts';
+import { Skeleton } from '../../../components/Skeleton.tsx';
 
 type Load =
   { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; timeline: Timeline; at: Date };
@@ -100,7 +101,7 @@ export function ComingUp({ event, now: tick }: { event: OrganisationEvent; now: 
         {load.kind === 'loading' && <DatesLoading />}
         {load.kind === 'failed' && <DatesFailed announced={retried} onRetry={retry} />}
         {load.kind === 'loaded' && shown.length === 0 && (
-          <p className="timeline-inset timeline-finished">
+          <p className="timeline-inset timeline-finished arrives">
             <span className="timeline-finished-mark" aria-hidden="true">
               ✓
             </span>
@@ -108,7 +109,7 @@ export function ComingUp({ event, now: tick }: { event: OrganisationEvent; now: 
           </p>
         )}
         {load.kind === 'loaded' && shown.length > 0 && (
-          <ol className="timeline-list">
+          <ol className="timeline-list arrives">
             {shown.map((marked, index) => (
               <MilestoneRow
                 key={index}
@@ -145,7 +146,7 @@ export function AllDates({
       {load.kind === 'loaded' && (
         <>
           <p className="muted">{t('timeline.intro', { timeZone: load.timeline.timeZone })}</p>
-          <ol className="timeline-list">
+          <ol className="timeline-list arrives">
             {markedMilestones(load.timeline.milestones, now, event.status === 'ended').map(
               (marked, index) => (
                 <MilestoneRow
@@ -177,12 +178,7 @@ export function AllDates({
 function DatesLoading() {
   const { t } = useTranslation();
 
-  return (
-    <p className="timeline-inset" role="status">
-      <span className="pending-spinner" aria-hidden="true" />
-      {t('timeline.loading')}
-    </p>
-  );
+  return <Skeleton words={t('timeline.loading')} shape="rows" rowHeight={56} rows={3} inCard />;
 }
 
 /** Said aloud only when a retry fails: on arrival the page's own heading comes first. */

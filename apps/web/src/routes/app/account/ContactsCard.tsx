@@ -34,6 +34,7 @@ import { offButton } from '../../../offButton.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
 import { phoneProblemMessage } from '../../../phoneProblem.ts';
 import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
+import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
 
 type Kind = 'email' | 'phone';
 
@@ -56,7 +57,7 @@ interface Confirming {
 
 /** Settings > Account: email addresses and phone numbers (sc-113). A primary address signs in; nothing else here does. */
 export function ContactsCards({ onPrimaryChanged }: { onPrimaryChanged: () => Promise<void> }) {
-  const [account, setAccount] = useState<Account | null>(null);
+  const [account, setAccount] = useState<Account | 'failed' | null>(null);
   const [twoFactorOn, setTwoFactorOn] = useState<boolean | null>(null);
   // Back from Google or Apple, started by "Make primary": once, on arrival.
   const [returned] = useState(() => heldProviderReturn(['makePrimary']));
@@ -85,7 +86,9 @@ export function ContactsCards({ onPrimaryChanged }: { onPrimaryChanged: () => Pr
       .then((me) => {
         if (live) setAccount(me);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (live) setAccount((held) => held ?? 'failed');
+      });
     api
       .twoFactorStatus()
       .then((status) => {
@@ -100,7 +103,8 @@ export function ContactsCards({ onPrimaryChanged }: { onPrimaryChanged: () => Pr
     };
   }, []);
 
-  if (account == null || twoFactorOn == null) return null;
+  if (account === 'failed') return null;
+  if (account == null || twoFactorOn == null) return <ContactsWaiting />;
 
   const confirming: Confirming = {
     via: confirmWith(account.hasPassword, account.providers),
@@ -112,7 +116,7 @@ export function ContactsCards({ onPrimaryChanged }: { onPrimaryChanged: () => Pr
   };
 
   return (
-    <>
+    <Arrived>
       <ContactsCard
         kind="email"
         rows={account.emailAddresses.map((held) => ({ ...held, shown: held.address }))}
@@ -133,6 +137,26 @@ export function ContactsCards({ onPrimaryChanged }: { onPrimaryChanged: () => Pr
         onChanged={reload}
         onPrimaryChanged={reload}
       />
+    </Arrived>
+  );
+}
+
+/** Both cards wait on one load, so they show their skeletons together and fill together. */
+function ContactsWaiting() {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {(['email', 'phone'] as const).map((kind) => (
+        <section key={kind} className="card settings-card" aria-labelledby={`${kind}s-title`}>
+          <div className="contacts-head">
+            <h2 id={`${kind}s-title`}>
+              {kind === 'email' ? t('contacts.emailsTitle') : t('contacts.phonesTitle')}
+            </h2>
+          </div>
+          <Skeleton words={t('pending.loading')} shape="rows" rowHeight={56} rows={2} inCard />
+        </section>
+      ))}
     </>
   );
 }

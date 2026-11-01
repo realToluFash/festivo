@@ -15,6 +15,7 @@ import { OnOffSwitch } from './OnOffSwitch.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { type StepClosed, stepClosed, useFocusBackToOpener } from './Screen.tsx';
 import { Text } from './Text.tsx';
+import { Arrived, Skeleton } from './Skeleton.tsx';
 
 type Flash = 'on' | 'off' | 'replaced' | 'copied' | null;
 
@@ -28,6 +29,7 @@ export function RequestLinkCard({
 }) {
   const { t } = useTranslation();
   const [link, setLink] = useState<RequestLink | null>(null);
+  const [unread, setUnread] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -42,7 +44,7 @@ export function RequestLinkCard({
 
     api.requestLink(organisation.id).then(
       (found) => current && setLink(found),
-      () => undefined,
+      () => current && setUnread(true),
     );
 
     return () => {
@@ -50,7 +52,21 @@ export function RequestLinkCard({
     };
   }, [organisation.id]);
 
-  if (link == null) return null;
+  if (link == null) {
+    return unread ? null : (
+      <View style={cardFrame(kind)}>
+        <Text size={tokens.typeRowTitle.size} weight="bold" accessibilityRole="header">
+          {t('requestLink.title')}
+        </Text>
+        <Skeleton
+          words={t('pending.loading')}
+          shape="cards"
+          cards={[{ lines: 2, fields: 1 }]}
+          inCard
+        />
+      </View>
+    );
+  }
 
   async function change(
     next: () => Promise<RequestLink>,
@@ -107,115 +123,120 @@ export function RequestLinkCard({
         >
           {t('requestLink.title')}
         </Text>
-        <OnOffSwitch
-          on={link.on}
-          words={{ on: t('requestLink.on'), off: t('requestLink.off') }}
-          label={t('requestLink.switchLabel')}
-          disabled={busy}
-          busy={busy && !confirming}
-          onChange={toggle}
-          testID="requestLink.switch"
-        />
+        <Arrived>
+          <OnOffSwitch
+            on={link.on}
+            words={{ on: t('requestLink.on'), off: t('requestLink.off') }}
+            label={t('requestLink.switchLabel')}
+            disabled={busy}
+            busy={busy && !confirming}
+            onChange={toggle}
+            testID="requestLink.switch"
+          />
+        </Arrived>
       </View>
-      <Text size={tokens.typeBodyPhone.size} muted>
-        {t('requestLink.intro', { organisation: organisation.name })}
-      </Text>
+      <Arrived style={styles.arrived}>
+        <Text size={tokens.typeBodyPhone.size} muted>
+          {t('requestLink.intro', { organisation: organisation.name })}
+        </Text>
 
-      {changed != null && replaced != null && (
-        <Notice
-          tone="done"
-          mark={tokens.marks.done.glyph}
-          body={changed}
-          answer={replaced}
-          takesFocus
-        />
-      )}
-      {changed != null && replaced == null && (
-        <ReadOut words={changed}>
-          <Notice tone="done" mark={tokens.marks.done.glyph} body={changed} />
-        </ReadOut>
-      )}
+        {changed != null && replaced != null && (
+          <Notice
+            tone="done"
+            mark={tokens.marks.done.glyph}
+            body={changed}
+            answer={replaced}
+            takesFocus
+          />
+        )}
+        {changed != null && replaced == null && (
+          <ReadOut words={changed}>
+            <Notice tone="done" mark={tokens.marks.done.glyph} body={changed} />
+          </ReadOut>
+        )}
 
-      {failed && replaced != null && (
-        <Notice
-          tone="broken"
-          mark={tokens.marks.broken.glyph}
-          body={notChanged}
-          answer={replaced}
-          takesFocus
-        />
-      )}
-      {failed && replaced == null && (
-        <ReadOut words={notChanged} interrupts accessibilityRole="alert">
-          <Notice tone="broken" mark={tokens.marks.broken.glyph} body={notChanged} />
-        </ReadOut>
-      )}
+        {failed && replaced != null && (
+          <Notice
+            tone="broken"
+            mark={tokens.marks.broken.glyph}
+            body={notChanged}
+            answer={replaced}
+            takesFocus
+          />
+        )}
+        {failed && replaced == null && (
+          <ReadOut words={notChanged} interrupts accessibilityRole="alert">
+            <Notice tone="broken" mark={tokens.marks.broken.glyph} body={notChanged} />
+          </ReadOut>
+        )}
 
-      {link.on && link.url != null && (
-        <View style={styles.link}>
-          <Text size={tokens.typeSmall.size} weight="semibold">
-            {t('requestLink.linkLabel')}
-          </Text>
-          <View style={styles.url}>
-            <Text size={tokens.typeBodyPhone.size} selectable testID="requestLink.url">
-              {link.url}
+        {link.on && link.url != null && (
+          <View style={styles.link}>
+            <Text size={tokens.typeSmall.size} weight="semibold">
+              {t('requestLink.linkLabel')}
             </Text>
-          </View>
-          <Text size={tokens.typeSmall.size} muted>
-            {t('requestLink.help')}
-          </Text>
-          {confirming ? (
-            <View style={styles.confirm}>
-              <AnswerHeading answer={confirming} size={tokens.typeRowTitle.size} weight="bold">
-                {t('requestLink.replaceTitle')}
-              </AnswerHeading>
-              <Text size={tokens.typeBodyPhone.size}>{t('requestLink.replaceBody')}</Text>
+            <View style={styles.url}>
+              <Text size={tokens.typeBodyPhone.size} selectable testID="requestLink.url">
+                {link.url}
+              </Text>
+            </View>
+            <Text size={tokens.typeSmall.size} muted>
+              {t('requestLink.help')}
+            </Text>
+            {confirming ? (
+              <View style={styles.confirm}>
+                <AnswerHeading answer={confirming} size={tokens.typeRowTitle.size} weight="bold">
+                  {t('requestLink.replaceTitle')}
+                </AnswerHeading>
+                <Text size={tokens.typeBodyPhone.size}>{t('requestLink.replaceBody')}</Text>
+                <View style={styles.buttons}>
+                  <QuietButton
+                    label={t('requestLink.keep')}
+                    off={busy}
+                    onPress={() => {
+                      setConfirming(false);
+                      setClosed(stepClosed('replace'));
+                    }}
+                    testID="requestLink.keep"
+                  />
+                  <DestructiveButton
+                    label={t('requestLink.replaceConfirm')}
+                    busy={busy}
+                    onPress={() =>
+                      void change(() => api.replaceRequestLink(organisation.id), 'replaced', true)
+                    }
+                    testID="requestLink.replaceConfirm"
+                  />
+                </View>
+              </View>
+            ) : (
               <View style={styles.buttons}>
-                <QuietButton
-                  label={t('requestLink.keep')}
+                <PrimaryButton
+                  label={t('requestLink.copy')}
+                  onPress={() => void copy(link.url ?? '')}
+                  testID="requestLink.copy"
+                />
+                <SecondaryButton
+                  ref={opener('replace')}
+                  label={t('requestLink.replace')}
                   off={busy}
                   onPress={() => {
-                    setConfirming(false);
-                    setClosed(stepClosed('replace'));
+                    setClosed(undefined);
+                    setConfirming(true);
                   }}
-                  testID="requestLink.keep"
-                />
-                <DestructiveButton
-                  label={t('requestLink.replaceConfirm')}
-                  busy={busy}
-                  onPress={() =>
-                    void change(() => api.replaceRequestLink(organisation.id), 'replaced', true)
-                  }
-                  testID="requestLink.replaceConfirm"
+                  testID="requestLink.replace"
                 />
               </View>
-            </View>
-          ) : (
-            <View style={styles.buttons}>
-              <PrimaryButton
-                label={t('requestLink.copy')}
-                onPress={() => void copy(link.url ?? '')}
-                testID="requestLink.copy"
-              />
-              <SecondaryButton
-                ref={opener('replace')}
-                label={t('requestLink.replace')}
-                off={busy}
-                onPress={() => {
-                  setClosed(undefined);
-                  setConfirming(true);
-                }}
-                testID="requestLink.replace"
-              />
-            </View>
-          )}
-        </View>
-      )}
+            )}
+          </View>
+        )}
+      </Arrived>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  arrived: { gap: tokens.spaceLg },
   heading: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   title: { flex: 1 },
   link: { gap: tokens.spaceSm },

@@ -17,12 +17,13 @@ import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { focusPicker } from './CountryPicker.tsx';
 import { InSight, Moment } from './EventForm.tsx';
-import { FormFrame } from './EventFormScreen.tsx';
+import { FormFrame, formGap } from './EventFormScreen.tsx';
 import { EventState } from './Events.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
 import { useSystemBack } from './useSystemBack.ts';
+import { Arrived, Skeleton } from './Skeleton.tsx';
 
 const OPENING_AFTER = 700;
 
@@ -87,9 +88,15 @@ export function DuplicateEventScreen({ eventId }: { eventId: string }) {
       cancelOff={busy}
     >
       {held.kind === 'loading' && (
-        <Text size={tokens.typeBodyPhone.size} muted>
-          {t('eventsScreen.loadingEvent')}
-        </Text>
+        <Skeleton
+          words={t('eventsScreen.loadingEvent')}
+          shape="cards"
+          cards={[
+            { lines: 0, fields: 2 },
+            { lines: 0, fields: 2 },
+            { lines: 1, options: 1 },
+          ]}
+        />
       )}
       {held.kind === 'failed' && (
         <View style={styles.stack} accessibilityRole="alert">
@@ -117,7 +124,11 @@ export function DuplicateEventScreen({ eventId }: { eventId: string }) {
           heading
         />
       )}
-      {held.kind === 'loaded' && <DuplicateForm kind={kind} event={held.event} onBusy={setBusy} />}
+      {held.kind === 'loaded' && (
+        <Arrived style={formGap(kind)}>
+          <DuplicateForm kind={kind} event={held.event} onBusy={setBusy} />
+        </Arrived>
+      )}
     </FormFrame>
   );
 }

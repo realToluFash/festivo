@@ -53,6 +53,7 @@ import { HostsSection } from './HostsSection.tsx';
 import { useLeaveGuard } from './useLeaveGuard.tsx';
 import { useStartCarriesEnd } from './useStartCarriesEnd.ts';
 import { VenueSection } from './VenueSection.tsx';
+import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
 
 /** What the event page announces once the form has closed (sc-3587). */
 export type EditOutcome = 'saved' | 'unchanged';
@@ -122,9 +123,17 @@ function EditOf({ organisationId, eventId }: { organisationId: string; eventId: 
       <BackControl className="event-back" label={t('eventPage.backToEvent')} to={eventPath} />
 
       {'kind' in load && load.kind === 'loading' && (
-        <p className="muted" role="status">
-          {t('eventPage.loading')}
-        </p>
+        <>
+          <h1 data-page-waits>{t('eventEdit.title')}</h1>
+          <Skeleton
+            words={t('eventPage.loading')}
+            shape="cards"
+            cards={[
+              { lines: 0, fields: 3 },
+              { lines: 0, fields: 2 },
+            ]}
+          />
+        </>
       )}
 
       {'kind' in load && load.kind === 'failed' && (
@@ -151,17 +160,19 @@ function EditOf({ organisationId, eventId }: { organisationId: string; eventId: 
       )}
 
       {'event' in load && (
-        <DetailsForm
-          key={reads}
-          opened={load}
-          reread={reads > 0}
-          eventPath={eventPath}
-          heading={heading}
-          onLatest={(latest) => {
-            setLoad(latest);
-            setReads((n) => n + 1);
-          }}
-        />
+        <Arrived>
+          <DetailsForm
+            key={reads}
+            opened={load}
+            reread={reads > 0}
+            eventPath={eventPath}
+            heading={heading}
+            onLatest={(latest) => {
+              setLoad(latest);
+              setReads((n) => n + 1);
+            }}
+          />
+        </Arrived>
       )}
     </div>
   );

@@ -20,6 +20,7 @@ import { Notice } from './Notice.tsx';
 import { readOut } from './ReadOut.tsx';
 import { Screen } from './Screen.tsx';
 import { Text } from './Text.tsx';
+import { Arrived, Skeleton } from './Skeleton.tsx';
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'notFound' } | TaggedEvent;
 
@@ -92,9 +93,14 @@ export function EditEventScreen({ eventId, toHosts }: { eventId: string; toHosts
   return (
     <FormFrame kind={kind} title={t('eventEdit.title')} onCancel={() => leave(eventHref(eventId))}>
       {'kind' in load && load.kind === 'loading' && (
-        <Text size={tokens.typeBodyPhone.size} muted>
-          {t('eventsScreen.loadingEvent')}
-        </Text>
+        <Skeleton
+          words={t('eventsScreen.loadingEvent')}
+          shape="cards"
+          cards={[
+            { lines: 0, fields: 3 },
+            { lines: 0, fields: 2 },
+          ]}
+        />
       )}
       {'kind' in load && load.kind === 'failed' && (
         <View style={styles.stack} accessibilityRole="alert">
@@ -123,22 +129,24 @@ export function EditEventScreen({ eventId, toHosts }: { eventId: string; toHosts
         />
       )}
       {'event' in load && organisation != null && (
-        <EventForm
-          key={reads}
-          kind={kind}
-          organisation={organisation}
-          opened={load}
-          toHosts={toHosts && reads === 0}
-          onCreated={() => {}}
-          onSaved={(outcome) => {
-            if (outcome === 'saved') markSaved(eventId);
-            goUpToEvent(navigation, router, eventId);
-          }}
-          onLatest={(latest) => {
-            setLoad(latest);
-            setReads((n) => n + 1);
-          }}
-        />
+        <Arrived style={formGap(kind)}>
+          <EventForm
+            key={reads}
+            kind={kind}
+            organisation={organisation}
+            opened={load}
+            toHosts={toHosts && reads === 0}
+            onCreated={() => {}}
+            onSaved={(outcome) => {
+              if (outcome === 'saved') markSaved(eventId);
+              goUpToEvent(navigation, router, eventId);
+            }}
+            onLatest={(latest) => {
+              setLoad(latest);
+              setReads((n) => n + 1);
+            }}
+          />
+        </Arrived>
       )}
     </FormFrame>
   );
@@ -217,6 +225,17 @@ const styles = StyleSheet.create({
     maxWidth: 760,
   },
 });
+
+/** A form's sections keep the frame's spacing while they fade in under one wrapper. */
+export function formGap(kind: LayoutKind) {
+  return {
+    gap: {
+      phone: tokens.spaceLg,
+      tabletPortrait: tokens.spaceXl,
+      tabletLandscape: tokens.spaceXxl,
+    }[kind],
+  };
+}
 
 const CONTENT: Record<LayoutKind, object> = {
   phone: styles.phone,

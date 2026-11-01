@@ -16,7 +16,6 @@ import { useNavigate } from 'react-router';
 import { api } from '../../../api.ts';
 import { AccountSections } from '../../../components/AccountSections.tsx';
 import { LateStatus } from '../../../components/LateStatus.tsx';
-import { Pending } from '../../../components/Pending.tsx';
 import { StillSignedIn } from '../../../components/StillSignedIn.tsx';
 import { EverywhereElse } from './EverywhereElse.tsx';
 import { PasswordCard } from './PasswordCard.tsx';
@@ -31,6 +30,7 @@ import {
 import { forgetSession, refreshAccount, rereadCredentials, useSession } from '../../../session.ts';
 import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { useSignOut } from '../../../signOut.ts';
+import { Skeleton } from '../../../components/Skeleton.tsx';
 
 type Devices =
   { kind: 'loading' } | { kind: 'failed' } | { kind: 'ready'; sessions: DeviceSession[] };
@@ -274,7 +274,15 @@ export function Security() {
 
               {here.unreached && <StillSignedIn />}
 
-              {devices.kind === 'loading' && <Pending />}
+              {devices.kind === 'loading' && (
+                <Skeleton
+                  words={t('pending.loading')}
+                  shape="rows"
+                  rowHeight={64}
+                  rows={2}
+                  inCard
+                />
+              )}
 
               {/* After a step succeeded, its success is read first, so this waits on the page as
                   a polite status: VoiceOver skips one added with its words already inside. */}
@@ -318,7 +326,7 @@ export function Security() {
               )}
 
               {devices.kind === 'ready' && (
-                <ul className="device-list" ref={list} aria-label={t('devices.listLabel')}>
+                <ul className="device-list arrives" ref={list} aria-label={t('devices.listLabel')}>
                   {thisDeviceFirst(devices.sessions).map((device) => (
                     <Row
                       key={device.id}

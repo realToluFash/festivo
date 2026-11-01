@@ -447,6 +447,9 @@ export const tokens = {
   "motionMax": 500,
   "motionRise": 8,
   "opacityPressed": 0.85,
+  "motionPulse": 1400,
+  "motionPulseTimes": 3,
+  "opacityPulse": 0.55,
   "toastLifetime": 10000
 } as const;
 

@@ -64,6 +64,7 @@ import { Forbidden } from '../Forbidden.tsx';
 import { ConfirmDialog } from '../../../components/ConfirmDialog.tsx';
 import { useDialogKeys } from '../../../dialogFocus.ts';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
+import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
 
 type Load =
   | { kind: 'loading' }
@@ -141,9 +142,12 @@ export function Members() {
     <div className="settings settings-wide">
       <SettingsSections />
       {load.kind === 'loading' && (
-        <p className="muted" role="status">
-          {t('membersScreen.loading')}
-        </p>
+        <div className="members">
+          <div className="members-head">
+            <h1 data-page-waits>{t('membersScreen.title')}</h1>
+          </div>
+          <Skeleton words={t('membersScreen.loading')} shape="rows" rowHeight={64} picture />
+        </div>
       )}
       {load.kind === 'failed' && (
         <ArrivalNotice
@@ -160,15 +164,17 @@ export function Members() {
         />
       )}
       {load.kind === 'loaded' && (
-        <MembersLoaded
-          key={organisation.id}
-          organisation={organisation}
-          list={load.list}
-          roles={load.roles}
-          manages={manages}
-          headingRef={heading}
-          onChange={(list) => setLoad({ ...load, list })}
-        />
+        <Arrived>
+          <MembersLoaded
+            key={organisation.id}
+            organisation={organisation}
+            list={load.list}
+            roles={load.roles}
+            manages={manages}
+            headingRef={heading}
+            onChange={(list) => setLoad({ ...load, list })}
+          />
+        </Arrived>
       )}
     </div>
   );

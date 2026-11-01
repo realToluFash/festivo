@@ -23,6 +23,7 @@ import { OnOffSwitch } from './OnOffSwitch.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
+import { Arrived, Skeleton } from './Skeleton.tsx';
 
 const CHANNELS: readonly Channel[] = ['push', 'email'];
 
@@ -57,7 +58,9 @@ export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
     answer: tap,
   });
 
-  if (grid.status === 'loading') return null;
+  if (grid.status === 'loading') {
+    return <Skeleton words={t('pending.loading')} shape="rows" rowHeight={56} />;
+  }
 
   if (grid.status === 'failed') {
     return (
@@ -91,104 +94,116 @@ export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
   };
 
   return (
-    <View style={[cardFrame(kind), styles.flush]} testID="notificationSettings">
-      {blocked && (
-        <View style={[styles.blocked, inset]}>
-          <BellBlocked />
-          <Text
-            size={tokens.typeBody.size}
-            style={styles.blockedInk}
-            accessibilityRole="text"
-            testID="notificationSettings.pushBlocked"
-          >
-            {t('notificationSettings.pushBlocked')}
-          </Text>
-        </View>
-      )}
-      <View
-        style={[styles.row, styles.headings, inset]}
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      >
-        <View style={styles.name} />
-        {CHANNELS.map((channel) => (
-          <Text
-            key={channel}
-            size={tokens.typeLabel.size}
-            weight="semibold"
-            muted
-            style={[styles.heading, { width }, width == null && styles.unmeasured]}
-            accessible={false}
-          >
-            {t(`notificationSettings.${channel}`)}
-          </Text>
-        ))}
-      </View>
-      {settingRows(grid.settings).map((setting, index) => {
-        const name = t(`notificationSettings.category.${setting.category}`);
-        const note = t(`notificationSettings.note.${setting.category}`, usageThresholdsIn(locale));
-        const failed = grid.unsaved?.category === setting.category ? grid.unsaved.channel : null;
-
-        return (
-          <View
-            key={setting.category}
-            style={[styles.category, styles.divided, inset, index === 0 && styles.first]}
-          >
-            <View style={styles.row}>
-              <View style={styles.name}>
-                <Text size={tokens.typeBodyPhone.size} weight="semibold" accessibilityRole="header">
-                  {name}
-                </Text>
-                <Text size={tokens.typeBody.size} muted>
-                  {note}
-                </Text>
-              </View>
-              {CHANNELS.map((channel) => (
-                <View
-                  key={`${channel}:${measured}`}
-                  style={[styles.cell, phone ? styles.cellPhone : styles.cellTablet]}
-                  onLayout={(event) => {
-                    const cell = event.nativeEvent.layout.width;
-                    setColumn((widest) => ({
-                      measured,
-                      width: Math.max(widest?.measured === measured ? widest.width : 0, cell),
-                    }));
-                  }}
-                >
-                  <OnOffSwitch
-                    on={setting[channel].on}
-                    words={{ on: t('notificationSettings.on'), off: t('notificationSettings.off') }}
-                    label={t('notificationSettings.switchName', {
-                      category: name,
-                      channel: t(`notificationSettings.${channel}`),
-                    })}
-                    hint={note}
-                    locked={!setting[channel].switchable}
-                    stacked={phone}
-                    steady
-                    busy={isSaving(grid, { category: setting.category, channel })}
-                    onChange={(on) => change(setting.category, channel, on)}
-                    testID={`notificationSettings.${setting.category}.${channel}`}
-                  />
-                </View>
-              ))}
-            </View>
-            {failed != null && (
-              <FieldError
-                message={t(
-                  failed === 'push'
-                    ? 'notificationSettings.pushNotSaved'
-                    : 'notificationSettings.emailNotSaved',
-                )}
-              />
-            )}
+    <Arrived>
+      <View style={[cardFrame(kind), styles.flush]} testID="notificationSettings">
+        {blocked && (
+          <View style={[styles.blocked, inset]}>
+            <BellBlocked />
+            <Text
+              size={tokens.typeBody.size}
+              style={styles.blockedInk}
+              accessibilityRole="text"
+              testID="notificationSettings.pushBlocked"
+            >
+              {t('notificationSettings.pushBlocked')}
+            </Text>
           </View>
-        );
-      })}
-      <Text size={tokens.typeBody.size} muted style={[styles.footer, inset]}>
-        {t('notificationSettings.quietHours', quietHoursIn(locale))}
-      </Text>
-    </View>
+        )}
+        <View
+          style={[styles.row, styles.headings, inset]}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          <View style={styles.name} />
+          {CHANNELS.map((channel) => (
+            <Text
+              key={channel}
+              size={tokens.typeLabel.size}
+              weight="semibold"
+              muted
+              style={[styles.heading, { width }, width == null && styles.unmeasured]}
+              accessible={false}
+            >
+              {t(`notificationSettings.${channel}`)}
+            </Text>
+          ))}
+        </View>
+        {settingRows(grid.settings).map((setting, index) => {
+          const name = t(`notificationSettings.category.${setting.category}`);
+          const note = t(
+            `notificationSettings.note.${setting.category}`,
+            usageThresholdsIn(locale),
+          );
+          const failed = grid.unsaved?.category === setting.category ? grid.unsaved.channel : null;
+
+          return (
+            <View
+              key={setting.category}
+              style={[styles.category, styles.divided, inset, index === 0 && styles.first]}
+            >
+              <View style={styles.row}>
+                <View style={styles.name}>
+                  <Text
+                    size={tokens.typeBodyPhone.size}
+                    weight="semibold"
+                    accessibilityRole="header"
+                  >
+                    {name}
+                  </Text>
+                  <Text size={tokens.typeBody.size} muted>
+                    {note}
+                  </Text>
+                </View>
+                {CHANNELS.map((channel) => (
+                  <View
+                    key={`${channel}:${measured}`}
+                    style={[styles.cell, phone ? styles.cellPhone : styles.cellTablet]}
+                    onLayout={(event) => {
+                      const cell = event.nativeEvent.layout.width;
+                      setColumn((widest) => ({
+                        measured,
+                        width: Math.max(widest?.measured === measured ? widest.width : 0, cell),
+                      }));
+                    }}
+                  >
+                    <OnOffSwitch
+                      on={setting[channel].on}
+                      words={{
+                        on: t('notificationSettings.on'),
+                        off: t('notificationSettings.off'),
+                      }}
+                      label={t('notificationSettings.switchName', {
+                        category: name,
+                        channel: t(`notificationSettings.${channel}`),
+                      })}
+                      hint={note}
+                      locked={!setting[channel].switchable}
+                      stacked={phone}
+                      steady
+                      busy={isSaving(grid, { category: setting.category, channel })}
+                      onChange={(on) => change(setting.category, channel, on)}
+                      testID={`notificationSettings.${setting.category}.${channel}`}
+                    />
+                  </View>
+                ))}
+              </View>
+              {failed != null && (
+                <FieldError
+                  message={t(
+                    failed === 'push'
+                      ? 'notificationSettings.pushNotSaved'
+                      : 'notificationSettings.emailNotSaved',
+                  )}
+                />
+              )}
+            </View>
+          );
+        })}
+        <Text size={tokens.typeBody.size} muted style={[styles.footer, inset]}>
+          {t('notificationSettings.quietHours', quietHoursIn(locale))}
+        </Text>
+      </View>
+    </Arrived>
   );
 }
 
