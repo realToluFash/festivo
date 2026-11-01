@@ -1109,10 +1109,14 @@ span {
   color: var(--colorInkSecondary);
 }
 
-.status-done {
+.status-done,
+.status-off {
   display: flex;
   align-items: flex-start;
   gap: var(--spaceSm);
+}
+
+.status-done {
   font-weight: 600;
   color: var(--colorAccentText);
 }
