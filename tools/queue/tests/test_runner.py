@@ -1081,6 +1081,26 @@ class BackgroundWorker(unittest.TestCase):
                           run_background=run, tell=lambda *a: told.append(a))
         self.assertEqual(len(told), 1)
 
+    def test_each_story_is_told_once_until_a_board_is_read(self):
+        told = []
+
+        def run(*_, **__):
+            raise background.NoArtifactTools("bbbb2222")
+
+        def lease(story_id):
+            key = f"inbox:dev:{story_id}-{len(told)}"
+            store.record(self.db, [work("dev", key)], ON_ZERO)
+            item, = self.db.execute("select id from work where fingerprint = ?", (key,)).fetchone()
+            self.db.execute("update work set story_id = ? where id = ?", (story_id, item))
+            runner.worker(self.db, self.home, self.platform, "dev", item,
+                          load=lambda: config(self.root, roles={"dev": {}}),
+                          prepare=lambda *_: ("c" * 40, None), now=ON_ZERO,
+                          run_background=run, tell=lambda *a: told.append(a[0]))
+
+        for story_id in (101, 102, 101):
+            lease(story_id)
+        self.assertEqual(told, [101, 102])
+
     def test_a_story_whose_comment_failed_is_told_on_the_next_lease(self):
         self.on_story()
         told = []
@@ -1108,8 +1128,19 @@ class BackgroundWorker(unittest.TestCase):
         store.record(self.db, [work("dev", "inbox:dev:2")], ON_ZERO + 1)
         self.item = store.waiting(self.db, "dev")[0]["id"]
         store.claim(self.db, "dev", ON_ZERO + 1)
-        self.run_dev({"result": "Built."})
+        self.run_dev({"result": "Built.", "artifact_read": True})
         self.assertIsNone(store.get_meta(self.db, "artifact:dev"))
+
+    def next_dev_item(self, key):
+        store.record(self.db, [work("dev", key)], ON_ZERO + 1)
+        self.item = store.waiting(self.db, "dev")[0]["id"]
+        store.claim(self.db, "dev", ON_ZERO + 1)
+
+    def test_a_session_that_never_read_a_board_keeps_the_record(self):
+        self.run_dev({"result": "Stopped.", "artifact_refused": "No access."})
+        self.next_dev_item("inbox:dev:2")
+        self.run_dev({"result": "Reviewed a PR with no screens."})
+        self.assertEqual(store.get_meta(self.db, "artifact:dev")["why"], runner.NOT_SHARED)
 
     def test_a_worker_stopped_at_its_limit_stops_its_session_too(self):
         sessions.begin(self.db, "dev", {"item": self.item, "bg": "1d923fe2", "session": SESSION,

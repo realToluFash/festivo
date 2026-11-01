@@ -247,12 +247,13 @@ class ArtifactTools(unittest.TestCase):
                 "input": {"action": "read", "url": "https://claude.ai/artifact/x"}}
         refused = {"type": "tool_result", "tool_use_id": "t1", "is_error": True,
                    "content": "You do not have access to this artifact."}
-        self.assertEqual(background.refused_read([turn(read), turn(refused)]),
-                         "You do not have access to this artifact.")
-        self.assertIsNone(background.refused_read([turn(read), turn(dict(refused,
-                                                                          is_error=False))]))
+        answered = dict(refused, is_error=False)
+        self.assertEqual(background.board_read([turn(read), turn(refused)]),
+                         (False, "You do not have access to this artifact."))
+        self.assertEqual(background.board_read([turn(read), turn(answered)]), (True, None))
         other = dict(read, input={"action": "publish"})
-        self.assertIsNone(background.refused_read([turn(other), turn(refused)]))
+        self.assertEqual(background.board_read([turn(other), turn(refused)]), (False, None))
+        self.assertEqual(background.board_read([]), (False, None))
 
     def test_a_session_quiet_through_the_wait_is_left_to_work(self):
         (_, _, why, session), started, _ = self.run_with([[GIVEN]])

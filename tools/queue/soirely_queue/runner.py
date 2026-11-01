@@ -479,11 +479,16 @@ def tell_ops(story_id, role, text, shortcut=None):
 
 
 def artifact_outcome(db, role, entry, why=None, seen=None, told=None):
-    """What `sq status` says of the role's last board-reading session: None when it read,
-    else the account and why it could not."""
+    """What `sq status` says of the role's sessions and the Artifact board: None once one has
+    read it, else the last account and why it could not. `told` lists the stories already
+    given the no-tool comment, kept until a session of the role reads a board."""
     store.set_meta(db, f"artifact:{role}", None if not why else {
         "at": entry["at"], "worker": entry.get("worker", role), "account": entry.get("account"),
-        "folder": entry.get("folder"), "told": told, "why": why, "seen": seen})
+        "folder": entry.get("folder"), "told": sorted(told or ()), "why": why, "seen": seen})
+
+
+def told_stories(db, role):
+    return set((store.get_meta(db, f"artifact:{role}") or {}).get("told") or ())
 
 
 def in_background(db, platform, name, entry, values, folder, text, cwd, ids, allowed, denied,
@@ -502,7 +507,12 @@ def in_background(db, platform, name, entry, values, folder, text, cwd, ids, all
     if why not in ("ended", "settled"):
         entry["stopped"] = why
     refused = result.pop("artifact_refused", None)
-    artifact_outcome(db, entry["role"], entry, NOT_SHARED if refused else None, refused)
+    read = result.pop("artifact_read", False)
+    if refused:
+        artifact_outcome(db, entry["role"], entry, NOT_SHARED, refused,
+                         told_stories(db, entry["role"]))
+    elif read:
+        artifact_outcome(db, entry["role"], entry)
     return result, code, None
 
 
@@ -578,11 +588,11 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
         if isinstance(error, background.NoArtifactTools):
             # The item comes back on every lease; its story is told once, and only a
             # comment that was posted counts as telling it.
-            told = (store.get_meta(db, f"artifact:{role}") or {}).get("told")
-            if entry["story"] and told != entry["story"]:
+            told = told_stories(db, role)
+            if entry["story"] and entry["story"] not in told:
                 try:
                     tell(entry["story"], role, no_tool_text(name, entry, error.short))
-                    told = entry["story"]
+                    told.add(entry["story"])
                 except (RuntimeError, OSError) as failed:
                     entry["report"] += f"; the [ops] comment failed too: {failed}"
             artifact_outcome(db, role, entry, NO_TOOL, error.short, told)

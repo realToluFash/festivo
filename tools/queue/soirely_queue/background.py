@@ -213,10 +213,11 @@ def has_artifact_tools(lines):
     return None
 
 
-def refused_read(lines):
-    """The first Artifact read or list the session was refused, as the tool answered it, or
-    None. A refused read is most often an artifact not shared with the account."""
-    asked = {}
+def board_read(lines):
+    """`(answered, refused)`: whether an Artifact read or list the session made was answered,
+    and the first one it was refused, as the tool answered it, or None. A refused read is
+    most often an artifact not shared with the account."""
+    asked, answered = {}, False
     for line in lines:
         for part in (line.get("message") or {}).get("content") or []:
             if not isinstance(part, dict):
@@ -224,10 +225,12 @@ def refused_read(lines):
             if part.get("type") == "tool_use" and part.get("name") == "Artifact" \
                     and (part.get("input") or {}).get("action", "read") in ("read", "list"):
                 asked[part.get("id")] = part
-            elif part.get("type") == "tool_result" and part.get("is_error") \
-                    and part.get("tool_use_id") in asked:
-                return sessions.output_text(part.get("content")).strip()[:200] or "refused"
-    return None
+            elif part.get("type") == "tool_result" and part.get("tool_use_id") in asked:
+                if part.get("is_error"):
+                    return answered, \
+                        sessions.output_text(part.get("content")).strip()[:200] or "refused"
+                answered = True
+    return answered, None
 
 
 def tools_given(short, env, lines_of, clock=time.monotonic, sleep=time.sleep, ls=listed,
@@ -275,6 +278,6 @@ def run(values, folder, name, prompt, cwd, finished, allowed=(), denied=(), extr
     session = seen.get("sessionId")
     lines = lines_of(session) if session else []
     result = summary(lines, values["model"])
-    result["artifact_refused"] = refused_read(lines)
+    result["artifact_read"], result["artifact_refused"] = board_read(lines)
     code = 0 if why in ("ended", "settled") and not result["is_error"] else 1
     return result, code, why, session
