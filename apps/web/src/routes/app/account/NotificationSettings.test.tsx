@@ -210,4 +210,46 @@ describe('Notification settings (sc-3980)', () => {
     expect(await screen.findByText('Saved.')).toBeTruthy();
     expect(push.checked).toBe(false);
   });
+
+  it('a grid that did not load shows the ✕ beside its words, read once as an alert, and Try again loads it', async () => {
+    let reads = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
+      reads++ === 0 ? json({}, 500) : json({ categories: CATEGORIES }),
+    );
+    const router = createMemoryRouter(
+      [{ path: '/app/account/notifications', element: <NotificationSettings /> }],
+      { initialEntries: ['/app/account/notifications'] },
+    );
+    render(<RouterProvider router={router} />);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain('Your notification settings did not load.');
+    expect(alert.querySelector('.mark-broken')?.getAttribute('aria-hidden')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByRole('switch', { name: 'Guest replies Push' })).toBeTruthy();
+  });
+
+  it('each switch draws its word in a pill over the checkbox, and the checkbox still takes the change', async () => {
+    settings(() =>
+      json({
+        categories: CATEGORIES.map((row) =>
+          row.category === 'guest_replies'
+            ? { ...row, push: { on: false, switchable: true } }
+            : row,
+        ),
+      }),
+    );
+
+    const push = (await screen.findByRole('switch', {
+      name: 'Guest replies Push',
+    })) as HTMLInputElement;
+    const pill = push.closest('label')?.querySelector('.notification-switch-pill');
+    expect(pill?.getAttribute('aria-hidden')).toBe('true');
+    expect(pill?.textContent).toBe('OnOff');
+    fireEvent.click(push);
+
+    expect(await screen.findByText('Saved.')).toBeTruthy();
+    expect(push.checked).toBe(false);
+  });
 });
