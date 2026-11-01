@@ -324,9 +324,9 @@ function ContactsCard({
                 />
               )}
               {here == null && offers.remove && (
-                <SecondaryButton
+                <DestructiveButton
                   ref={opener(`remove.${row.id}`)}
-                  label={t('contacts.remove')}
+                  label={t(offers.askBeforeRemoving ? 'contacts.removeAsks' : 'contacts.remove')}
                   accessibilityLabel={t('contacts.removeLabel', { address: row.shown })}
                   onPress={() =>
                     offers.askBeforeRemoving
@@ -380,18 +380,21 @@ function ContactsCard({
                       testID={`contacts.${row.id}.confirm`}
                     />
                   )}
-                  <QuietButton
-                    label={
-                      here === 'promote'
-                        ? t('contacts.promoteKeep', { old: primary?.shown ?? '' })
-                        : t(email ? 'contacts.removeKeep' : 'contacts.removeKeepPhone')
-                    }
-                    onPress={() =>
-                      closeTo(here === 'promote' ? `primary.${row.id}` : `remove.${row.id}`)
-                    }
-                    off={sending}
-                    testID={`contacts.${row.id}.keep`}
-                  />
+                  {here === 'promote' ? (
+                    <SecondaryButton
+                      label={t('contacts.promoteKeep', { old: primary?.shown ?? '' })}
+                      onPress={() => closeTo(`primary.${row.id}`)}
+                      off={sending}
+                      testID={`contacts.${row.id}.keep`}
+                    />
+                  ) : (
+                    <QuietButton
+                      label={t(email ? 'contacts.removeKeep' : 'contacts.removeKeepPhone')}
+                      onPress={() => closeTo(`remove.${row.id}`)}
+                      off={sending}
+                      testID={`contacts.${row.id}.keep`}
+                    />
+                  )}
                 </View>
               )}
 

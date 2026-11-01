@@ -898,6 +898,7 @@
     "makePrimary": "Hacer principal",
     "makePrimaryPhone": "Hacer principal",
     "remove": "Quitar",
+    "removeAsks": "Quitar…",
     "removeLabel": "Quitar {{address}}",
     "promoteTitle": "¿Hacer principal esta dirección?",
     "promoteBody": "A partir de ahora iniciará sesión con ella y recibirá ahí el correo de la cuenta. La dirección {{old}} seguirá vinculada, pero ya no servirá para iniciar sesión.",
