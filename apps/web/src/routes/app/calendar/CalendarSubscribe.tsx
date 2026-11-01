@@ -25,7 +25,6 @@ export function CalendarSubscribe({
   organisationName: string;
 }) {
   const { t } = useTranslation();
-  const phone = usePhoneWidth();
   const [open, setOpen] = useState(false);
   const opener = useRef<HTMLButtonElement>(null);
 
@@ -43,7 +42,7 @@ export function CalendarSubscribe({
         onClick={() => setOpen(true)}
       >
         <CalendarIcon />
-        {phone ? t('calendarFeed.openShort') : t('calendarFeed.open')}
+        {t('calendarFeed.open')}
       </button>
       {open && (
         <SubscribeDialog
@@ -97,7 +96,7 @@ function SubscribeDialog({
     };
   }, [organisationId, attempt]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (selectLink === 0) return;
 
     linkField.current?.focus();

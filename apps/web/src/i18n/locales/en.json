@@ -2062,7 +2062,6 @@
   },
   "calendarFeed": {
     "open": "Subscribe in your calendar app",
-    "openShort": "Subscribe",
     "title": "Subscribe in your calendar app",
     "close": "Close",
     "intro": "Events and milestones from {{organisation}} show in Google Calendar, Apple Calendar or Outlook, and stay up to date when a date moves. Your calendar app checks for changes every few hours.",

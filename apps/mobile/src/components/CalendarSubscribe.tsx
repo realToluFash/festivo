@@ -37,7 +37,8 @@ export function CalendarSubscribe({
     <>
       <SecondaryButton
         ref={opener}
-        label={phone ? t('calendarFeed.openShort') : t('calendarFeed.open')}
+        label={t('calendarFeed.open')}
+        stacked={phone}
         onPress={() => setOpen(true)}
         testID="calendarFeed.open"
       />
