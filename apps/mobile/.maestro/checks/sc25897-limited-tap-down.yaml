@@ -1,0 +1,29 @@
+# sc-25897 Android, an account at its limit: keys hidden with back, body scrolled to its end, Create organisation tapped. The limit notice comes wholly into view and the keys stay down.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createOrganisation.name'
+- inputText: 'Notice In View'
+- waitForAnimationToEnd
+- pressKey: back
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'createOrganisation'
+- swipe:
+    from:
+      id: 'createOrganisation'
+    direction: UP
+- waitForAnimationToEnd
+- takeScreenshot: before
+- tapOn:
+    id: 'createOrganisation.create'
+- extendedWaitUntil:
+    visible: '.*{{t:createOrganisation.limitedTitle}}.*'
+    timeout: 45000
+- extendedWaitUntil:
+    visible:
+      id: 'sc25897.never'
+    timeout: 3000
+    optional: true
+- takeScreenshot: answered

@@ -70,7 +70,16 @@ workers as they are and removes the ticks.
   started it, so the worker's variables (`SOIRELY_WORKER`, `SQ_RUN_DIR`, `GH_CONFIG_DIR`) go
   in the session's `--settings`, and sq reads its tokens from its env file itself. A session that starts without the Artifact tools (it happened once,
   1 Nov) is stopped at its first reply and started once more; twice without them, the run
-  is reported as not started. A background session needs the workspace trusted once per
+  is reported as not started. Nobody answers a background session's permission prompt, so a
+  session that `claude agents` lists as blocked on one for 3 minutes is stopped, on Linux
+  and the Mac alike (sc-26428). Its run-log line says it stopped on a prompt and names the
+  command it wanted (from the listing or the job's `state.json`, any value named like a
+  secret masked). sq posts an `[ops]` comment on the story once, the item goes back to the
+  queue for the role's next run, and `sq status` shows the role as stopped on a prompt
+  until a later run ends without one. What the session had not committed stays in its
+  worktree. Ops then allows the command (permissions.json, which the owner merges and
+  applies, or the worker's `--allowedTools`) or says in the role's skill how to do without
+  it. A background session needs the workspace trusted once per
   account, in the main checkout every role checkout is a worktree of: run `claude` there with
   that `CLAUDE_CONFIG_DIR` and accept. Trusting a folder above it does not count.
 - **One worker per role at a time.** While a role's worker runs, its tick is skipped.

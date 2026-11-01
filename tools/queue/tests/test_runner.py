@@ -1149,6 +1149,70 @@ class BackgroundWorker(unittest.TestCase):
                       "artifact_refused": "No access."})
         self.assertIsNone(store.get_meta(self.db, "artifact:dev"))
 
+    def stuck(self, tell, wanted="rm node_modules apps/web/node_modules"):
+        def run(values, folder, name, text, cwd, finished, allowed=(), denied=(), extra=None,
+                on_start=None, daemon=None):
+            on_start("1d923fe2", SESSION)
+            return {"result": "Committing.", "is_error": False, "wanted": wanted}, 1, \
+                "prompt", SESSION
+
+        return runner.worker(self.db, self.home, self.platform, "dev", self.item,
+                             load=lambda: config(self.root, roles={"dev": {}}),
+                             prepare=lambda *_: ("c" * 40, None), now=ON_ZERO,
+                             run_background=run, tell=tell)
+
+    def test_a_session_stopped_on_a_prompt_tells_ops_and_hands_the_item_back(self):
+        self.on_story()
+        told = []
+        self.stuck(lambda *a: told.append(a))
+        logged = runlog.last(self.home, "dev")
+        self.assertEqual(logged["stopped"], "prompt")
+        self.assertIn("stopped on a permission prompt, wanting rm node_modules", logged["report"])
+        (story, role, text), = told
+        self.assertEqual((story, role), (42, "dev"))
+        self.assertIn("`rm node_modules apps/web/node_modules`", text)
+        self.assertIn(f"item {self.item} (sc-42)", text)
+        self.assertEqual(store.item(self.db, self.item)["status"], "open")
+        seen = store.get_meta(self.db, "prompt:dev")
+        self.assertEqual((seen["story"], seen["told"]), (42, [42]))
+
+    def test_ops_is_told_of_a_prompt_once_per_story(self):
+        self.on_story()
+        told = []
+        for _ in range(2):
+            store.claim(self.db, "dev", ON_ZERO)
+            self.stuck(lambda *a: told.append(a))
+        self.assertEqual(len(told), 1)
+
+    def test_a_failed_prompt_comment_is_kept_and_tried_again(self):
+        self.on_story()
+        told = []
+
+        def tell(*args):
+            told.append(args)
+            if len(told) == 1:
+                raise RuntimeError("Shortcut answered 503")
+
+        entry = self.stuck(tell)
+        self.assertIn("the [ops] comment failed too: Shortcut answered 503", entry["report"])
+        store.claim(self.db, "dev", ON_ZERO)
+        self.stuck(tell)
+        self.assertEqual(len(told), 2)
+
+    def test_the_next_clean_run_clears_the_prompt_but_remembers_the_story(self):
+        self.on_story()
+        self.stuck(lambda *a: None)
+        store.claim(self.db, "dev", ON_ZERO)
+        self.run_dev({"result": "Built."})
+        self.assertEqual(store.get_meta(self.db, "prompt:dev"), {"told": [42]})
+
+    def test_another_workers_clean_run_leaves_the_prompt(self):
+        held = {"at": "2026-11-01T10:00:00", "worker": "dev-2", "item": 9, "story": 42,
+                "wanted": "rm x", "told": [42]}
+        store.set_meta(self.db, "prompt:dev", held)
+        self.run_dev({"result": "Built."})
+        self.assertEqual(store.get_meta(self.db, "prompt:dev"), held)
+
     def test_a_worker_stopped_at_its_limit_stops_its_session_too(self):
         sessions.begin(self.db, "dev", {"item": self.item, "bg": "1d923fe2", "session": SESSION,
                                         "folder": str(self.root / "claude")})
