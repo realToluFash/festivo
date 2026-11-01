@@ -41,6 +41,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
+import { BackControl } from '../../../components/BackControl.tsx';
 import { api } from '../../../api.ts';
 import { ConfirmItsYou } from '../../../components/ConfirmItsYou.tsx';
 import { FieldError } from '../../../components/FieldError.tsx';
@@ -846,10 +847,7 @@ function MemberDetail({
 
   return (
     <div className="members">
-      <button type="button" className="link-button members-back" onClick={onBack}>
-        <span aria-hidden="true">‹ </span>
-        {t('membersScreen.title')}
-      </button>
+      <BackControl className="members-back" label={t('membersScreen.title')} onClick={onBack} />
       <div className="members-person">
         <span className="person-tile" aria-hidden="true">
           {initials(member.user.name)}

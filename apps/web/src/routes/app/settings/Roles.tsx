@@ -41,6 +41,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { BackControl } from '../../../components/BackControl.tsx';
 import { api } from '../../../api.ts';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
@@ -264,10 +265,7 @@ function RolesLoaded({
       </section>
 
       <section className="card roles-detail" aria-labelledby="role-title">
-        <button type="button" className="link-button roles-back" onClick={backToList}>
-          <span aria-hidden="true">‹ </span>
-          {t('rolesScreen.title')}
-        </button>
+        <BackControl className="roles-back" label={t('rolesScreen.title')} onClick={backToList} />
         {pane.kind === 'removing' && selected != null ? (
           <Removing
             organisation={organisation}
