@@ -6379,6 +6379,12 @@ button.members-row {
   gap: var(--spaceSm);
 }
 
+@media (width <= 40rem) {
+  .calendar-subscribe-open {
+    flex-basis: 100%;
+  }
+}
+
 .calendar-subscribe-icon {
   width: 16px;
   height: 16px;

@@ -1808,7 +1808,6 @@
   },
   "calendarFeed": {
     "open": "Suscribirse en su aplicación de calendario",
-    "openShort": "Suscribirse",
     "title": "Suscribirse en su aplicación de calendario",
     "close": "Cerrar",
     "intro": "Los eventos y los hitos de {{organisation}} aparecen en Google Calendar, Calendario de Apple u Outlook, y se mantienen al día cuando cambia una fecha. Su aplicación de calendario busca cambios cada pocas horas.",
