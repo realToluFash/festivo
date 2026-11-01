@@ -1,0 +1,24 @@
+# Notification settings on an iPad: beside the list in landscape, its own screen in portrait, kept open across the turn (sc-23234).
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runFlow: ../open-settings.yaml
+- tapOn:
+    id: settings.notifications
+- extendedWaitUntil:
+    visible:
+      id: notificationSettings.guest_replies.push
+    timeout: 30000
+- takeScreenshot: ns-landscape
+- setOrientation: PORTRAIT
+- extendedWaitUntil:
+    visible:
+      id: notificationSettings.guest_replies.push
+    timeout: 15000
+- takeScreenshot: ns-portrait
+- tapOn: '.*Settings'
+- extendedWaitUntil:
+    visible:
+      id: settings.account
+    timeout: 15000
+- takeScreenshot: ns-portrait-back

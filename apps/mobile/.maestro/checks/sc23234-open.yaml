@@ -1,0 +1,34 @@
+# Notification settings, reached from Settings, its grid, the locked Email ignoring a tap, and a switch saved (sc-23234).
+appId: host.exp.Exponent
+---
+- runFlow: ../open-settings.yaml
+- tapOn:
+    id: settings.notifications
+- extendedWaitUntil:
+    visible:
+      id: notificationSettings.guest_replies.push
+    timeout: 30000
+- takeScreenshot: ns-open
+- scrollUntilVisible:
+    element:
+      id: notificationSettings.account_security.email
+    timeout: 15000
+    centerElement: true
+- tapOn:
+    id: notificationSettings.account_security.email
+- waitForAnimationToEnd
+- takeScreenshot: ns-locked-tapped
+- scrollUntilVisible:
+    element:
+      id: notificationSettings.guest_replies.push
+    direction: UP
+    timeout: 15000
+- tapOn:
+    id: notificationSettings.guest_replies.push
+- waitForAnimationToEnd
+- takeScreenshot: ns-switched
+- tapOn:
+    id: notificationSettings.guest_replies.push
+- waitForAnimationToEnd
+- scroll
+- takeScreenshot: ns-end
