@@ -138,6 +138,13 @@ The back controls getting back in (sc-23279): `sc23279-lost-back-code` and
 `sc23279-lost-back` (`RECOVERY`, `BACK`, `SHOT`). `sc23279-dead-link-no-back` checks Reset your
 password shows no back control after a dead link's **Send a new link**.
 
+Since `qa-env maestro` relaunches the app, qa's `sc23279-lost-back-from-sign-in` signs in to the
+code step before each of the two (`EMAIL`, `PASSWORD` of a two-factor account), and
+`sc23279-landscape` runs it and the dead link with the tablet in landscape.
+`sc23279-lost-cold-no-back` cold-opens `/lost-two-factor` and checks it has no back control, and
+`sc23279-lost-landscape-content` checks the lost two-factor outcome shows inside the card in
+landscape (`EMAIL`, `PASSWORD`).
+
 Signing in and signing up (sc-23277), as qa posted them. None starts from a cold `/sign-in`
 link, which in Expo Go lands on Home (sc-22740): each starts from Home or from a held screen.
 
