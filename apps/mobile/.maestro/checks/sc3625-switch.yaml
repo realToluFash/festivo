@@ -1,0 +1,31 @@
+# sc-3625: Switch organisation changes the calendar: ${OTHER_ORG} shows its own event, ${EMPTY_ORG} the Events empty state with New event; back to ${ORG}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${OTHER_ORG}
+- tapOn:
+    id: 'frame.calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.month'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: other-org
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${EMPTY_ORG}
+- tapOn:
+    id: 'frame.calendar'
+- extendedWaitUntil:
+    visible:
+      text: 'Set up your first event'
+    timeout: 30000
+- takeScreenshot: empty-org
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}

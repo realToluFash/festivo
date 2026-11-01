@@ -1,0 +1,32 @@
+# sc-3625: after a reload the Calendar opens on the view and month chosen last (Month, December 2026), and an event row opens its page.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'frame.calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.month'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: kept
+- assertVisible:
+    id: 'calendar.grid'
+- assertVisible:
+    text: 'December 2026'
+- tapOn:
+    id: 'calendar.today'
+- waitForAnimationToEnd
+- assertVisible:
+    text: 'November 2026'
+- tapOn:
+    id: 'calendar.day.2026-11-07'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'calendar.row.event-${EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- takeScreenshot: event-page

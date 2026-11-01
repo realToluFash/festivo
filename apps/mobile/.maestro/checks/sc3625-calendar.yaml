@@ -1,0 +1,75 @@
+# sc-3625: Calendar in the navigation opens the calendar on its device default, Month and Agenda, a busy day's list, Next, Today and Show.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'frame.calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.month'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: opened
+- runFlow:
+    when:
+      visible:
+        id: 'calendar.agenda'
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: 'Lagos rooftop night'
+          direction: DOWN
+          timeout: 20000
+      - takeScreenshot: agenda-lagos
+      - scrollUntilVisible:
+          element:
+            text: '.*28 Nov to Tue, 1 Dec.*'
+          direction: DOWN
+          timeout: 20000
+      - takeScreenshot: agenda-multi-day
+      - scrollUntilVisible:
+          element:
+            id: 'calendar.previous'
+          direction: UP
+          timeout: 20000
+- tapOn:
+    id: 'calendar.view.month'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.grid'
+    timeout: 20000
+- takeScreenshot: month
+- scrollUntilVisible:
+    element:
+      id: 'calendar.day.2026-11-14'
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: 'calendar.day.2026-11-14'
+- waitForAnimationToEnd
+- takeScreenshot: busy-day
+- tapOn:
+    id: 'calendar.dayList.close'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'calendar.day.2026-11-07'
+- waitForAnimationToEnd
+- takeScreenshot: lagos-day
+- tapOn:
+    id: 'calendar.dayList.close'
+- scrollUntilVisible:
+    element:
+      id: 'calendar.previous'
+    direction: UP
+    timeout: 20000
+- tapOn:
+    id: 'calendar.show.events'
+- waitForAnimationToEnd
+- takeScreenshot: events-only
+- tapOn:
+    id: 'calendar.show.all'
+- tapOn:
+    id: 'calendar.next'
+- waitForAnimationToEnd
+- takeScreenshot: december
