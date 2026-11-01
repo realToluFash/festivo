@@ -25,6 +25,7 @@ import { EventsHome, type HomeLoad } from './EventsHome.tsx';
 import { type ListAndPageSpacing, ListAndPage, useListAndPageLayout } from './ListAndPage.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
+import { AnswerInView } from './Screen.tsx';
 import { Text } from './Text.tsx';
 import { Arrived, Skeleton } from './Skeleton.tsx';
 
@@ -163,13 +164,15 @@ export function EventsScreen() {
   ) : (
     <Arrived style={styles.stack}>
       {deleted != null && (
-        <ReadOut words={t('eventDelete.deleted', { event: deleted })}>
-          <Notice
-            tone="done"
-            mark={tokens.marks.done.glyph}
-            body={t('eventDelete.deleted', { event: deleted })}
-          />
-        </ReadOut>
+        <AnswerInView>
+          <ReadOut words={t('eventDelete.deleted', { event: deleted })}>
+            <Notice
+              tone="done"
+              mark={tokens.marks.done.glyph}
+              body={t('eventDelete.deleted', { event: deleted })}
+            />
+          </ReadOut>
+        </AnswerInView>
       )}
       {load.refreshing && (
         <Text
