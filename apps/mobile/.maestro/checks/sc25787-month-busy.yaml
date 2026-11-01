@@ -1,0 +1,29 @@
+# The Calendar's Month grid scrolled to its last weeks, for a double-digit "+n more" in the account's language. Needs an account with many events on 25 Nov 2026; steps back from today's month to November.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: calendar.view.month
+    timeout: 30000
+- tapOn:
+    id: calendar.view.month
+- tapOn:
+    id: calendar.today
+- extendedWaitUntil:
+    visible:
+      id: calendar.grid
+    timeout: 15000
+- repeat:
+    while:
+      notVisible:
+        id: calendar.day.2026-11-14
+    times: 24
+    commands:
+      - tapOn:
+          id: calendar.previous
+- scrollUntilVisible:
+    element:
+      id: calendar.day.2026-11-30
+    direction: DOWN
+- takeScreenshot: month-busy
