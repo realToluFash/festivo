@@ -49,6 +49,7 @@ import { usePhoneWidth } from '../../../phoneWidth.ts';
 import { useServerNow } from '../../../serverNow.ts';
 import { can, useSession } from '../../../session.ts';
 import { PHASE_WORD } from '../events/eventWords.ts';
+import { FirstRun } from '../events/FirstRun.tsx';
 import { StatusPill } from '../events/MakeLive.tsx';
 
 const KEPT = 'soirely.calendar';
@@ -168,7 +169,7 @@ function CalendarOf({ organisationId, creates }: { organisationId: string; creat
         <h1 ref={title} tabIndex={-1}>
           {t('calendar.title')}
         </h1>
-        <CalendarEmpty creates={creates} />
+        <FirstRun creates={creates} createLabel="events.newEvent" />
       </div>
     );
   }
@@ -631,40 +632,6 @@ function CalendarLoading({ view }: { view: CalendarView }) {
         {t('calendar.loading')}
       </p>
     </div>
-  );
-}
-
-function CalendarEmpty({ creates }: { creates: boolean }) {
-  const { t } = useTranslation();
-  const steps = [
-    'events.firstRunStepName',
-    'events.firstRunStepDefaults',
-    'events.firstRunStepOpen',
-  ];
-
-  return (
-    <section className="card events-first-run" aria-labelledby="calendar-first-run-title">
-      <h2 id="calendar-first-run-title">{t('events.firstRunTitle')}</h2>
-      <ol className="steps-list">
-        {steps.map((step, index) => (
-          <li key={step}>
-            <span className="step-mark" aria-hidden="true">
-              {index + 1}
-            </span>
-            <span>{t(step)}</span>
-          </li>
-        ))}
-      </ol>
-      {creates ? (
-        <Link className="button button-primary events-first-run-create" to="/app/events/new">
-          {t('events.newEvent')}
-        </Link>
-      ) : (
-        <div className="notice notice-quiet">
-          <p>{t('events.firstRunAskOwner')}</p>
-        </div>
-      )}
-    </section>
   );
 }
 
