@@ -1119,7 +1119,7 @@ describe('changing the password', () => {
 
     expect(screen.queryByRole('button', { name: 'Back to sign in' })).toBeNull();
     const back = screen.getByRole('button', { name: 'Your account' });
-    expect(back.textContent).toBe('‹ Your account');
+    expect(back.textContent).toBe('‹Your account');
     fireEvent.click(back);
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Your account' })).toBeDefined();
