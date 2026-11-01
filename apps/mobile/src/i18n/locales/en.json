@@ -50,7 +50,6 @@
   },
   "signIn": {
     "title": "Sign in",
-    "landscapeIntro": "With your email and password. Your language follows you to every device.",
     "email": "Email",
     "password": "Password",
     "reveal": "Show",
@@ -100,7 +99,6 @@
     "limitedTitle": "Too many sign-ups from this network",
     "limitedBody": "Try again at {{time}}.",
     "orWithEmail": "or with email",
-    "landscapeNote": "Or use your email and a password on the right.",
     "haveAccount": "Already have an account?",
     "back": "Back to sign in",
     "failedTitle": "Creating your account did not work",

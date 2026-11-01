@@ -51,7 +51,6 @@
   },
   "signIn": {
     "title": "Iniciar sessão",
-    "landscapeIntro": "Com o seu e-mail e a sua palavra-passe. O seu idioma acompanha-o em todos os dispositivos.",
     "email": "Endereço de e-mail",
     "password": "Palavra-passe",
     "reveal": "Mostrar",
@@ -102,7 +101,6 @@
     "limitedTitle": "Demasiados registos a partir desta rede",
     "limitedBody": "Tente novamente às {{time}}.",
     "orWithEmail": "ou com o seu e-mail",
-    "landscapeNote": "Ou use o seu e-mail e uma palavra-passe, à direita.",
     "haveAccount": "Já tem uma conta?",
     "back": "Voltar ao início de sessão",
     "failedTitle": "Não foi possível criar a sua conta",

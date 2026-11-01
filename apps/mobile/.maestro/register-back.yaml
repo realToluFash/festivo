@@ -5,6 +5,9 @@
 appId: host.exp.Exponent
 ---
 - runFlow: sign-in-screen-english.yaml
+- scrollUntilVisible:
+    element:
+      id: 'signIn.register'
 - tapOn:
     id: 'signIn.register'
 - extendedWaitUntil:

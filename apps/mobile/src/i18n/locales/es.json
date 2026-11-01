@@ -51,7 +51,6 @@
   },
   "signIn": {
     "title": "Iniciar sesión",
-    "landscapeIntro": "Con su correo electrónico y su contraseña. Su idioma le sigue en todos los dispositivos.",
     "email": "Correo electrónico",
     "password": "Contraseña",
     "reveal": "Mostrar",
@@ -102,7 +101,6 @@
     "limitedTitle": "Demasiados registros desde esta red",
     "limitedBody": "Inténtelo de nuevo a las {{time}}.",
     "orWithEmail": "o con su correo",
-    "landscapeNote": "O use su correo electrónico y una contraseña a la derecha.",
     "haveAccount": "¿Ya tiene una cuenta?",
     "back": "Volver a iniciar sesión",
     "failedTitle": "No se ha podido crear su cuenta",

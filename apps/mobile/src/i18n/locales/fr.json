@@ -51,7 +51,6 @@
   },
   "signIn": {
     "title": "Se connecter",
-    "landscapeIntro": "Avec votre adresse e-mail et votre mot de passe. Votre langue vous suit sur tous vos appareils.",
     "email": "Adresse e-mail",
     "password": "Mot de passe",
     "reveal": "Afficher",
@@ -102,7 +101,6 @@
     "limitedTitle": "Trop d’inscriptions depuis ce réseau",
     "limitedBody": "Réessayez à {{time}}.",
     "orWithEmail": "ou avec votre e-mail",
-    "landscapeNote": "Ou utilisez votre adresse e-mail et un mot de passe, à droite.",
     "haveAccount": "Vous avez déjà un compte ?",
     "back": "Retour à la connexion",
     "failedTitle": "La création du compte n’a pas abouti",

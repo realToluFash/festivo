@@ -72,8 +72,15 @@ export default function SignIn() {
 
   return (
     <AuthFrame
-      saying={
-        <AuthHeading title={t('signIn.title')} intro={t('signIn.landscapeIntro')} introBeside />
+      saying={<AuthHeading title={t('signIn.title')} />}
+      foot={
+        <Footnote
+          question={t('signIn.newHere')}
+          action={t('signIn.createAccount')}
+          onPress={() => router.push('/register')}
+          role="link"
+          testID="signIn.register"
+        />
       }
     >
       <Credentials
@@ -351,14 +358,6 @@ function Credentials({
       ) : (
         <ProviderSignIn onFailed={onProviderFailed} />
       )}
-
-      <Footnote
-        question={t('signIn.newHere')}
-        action={t('signIn.createAccount')}
-        onPress={() => router.push('/register')}
-        role="link"
-        testID="signIn.register"
-      />
     </View>
   );
 }
