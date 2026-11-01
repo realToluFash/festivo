@@ -4231,6 +4231,7 @@ button.members-row {
 }
 
 .events-table {
+  container: events-table / inline-size;
   display: flex;
   flex-direction: column;
   margin-top: var(--space3xl);
@@ -4364,7 +4365,10 @@ button.members-row {
   .events-tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
 
+/* By the table's own width, not the window's: beside the sidebar at 1024, its two shared columns kept 80 px between them. */
+@container events-table (width < 60rem) {
   .events-table-head {
     display: none;
   }
