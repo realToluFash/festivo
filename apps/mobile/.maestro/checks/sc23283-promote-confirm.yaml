@@ -1,0 +1,24 @@
+# sc-23283: Make primary on ${ROW} opens its confirm in the row, then Keep closes it.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'nameCard.change'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'contacts.${ROW}.primary'
+    direction: DOWN
+    timeout: 20000
+    centerElement: true
+- takeScreenshot: row-buttons
+- tapOn:
+    id: 'contacts.${ROW}.primary'
+- extendedWaitUntil:
+    visible:
+      id: 'contacts.${ROW}.keep'
+    timeout: 10000
+- takeScreenshot: promote-confirm
+- tapOn:
+    id: 'contacts.${ROW}.keep'

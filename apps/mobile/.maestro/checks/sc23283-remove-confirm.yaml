@@ -1,0 +1,23 @@
+# sc-23283: Remove… on ${ROW} opens its confirm in the row, then Keep it closes it.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'nameCard.change'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'contacts.${ROW}.remove'
+    direction: DOWN
+    timeout: 20000
+    centerElement: true
+- tapOn:
+    id: 'contacts.${ROW}.remove'
+- extendedWaitUntil:
+    visible:
+      id: 'contacts.${ROW}.keep'
+    timeout: 10000
+- takeScreenshot: remove-confirm
+- tapOn:
+    id: 'contacts.${ROW}.keep'
