@@ -43,7 +43,7 @@ def start(drawing, values, home, config, cwd, run=subprocess.run, daemon=None):
     argv, _ = background.command(
         values, folder, f"draw sc-{drawing['story_id']}",
         drawing["prompt"] + UNATTENDED.format(story=drawing["story_id"]), allowed, denied,
-        read_only=False)
+        extra={"SOIRELY_WORKER": WORKER}, read_only=False)
     return background.start(argv, cwd, env, run)
 
 
