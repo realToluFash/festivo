@@ -9,11 +9,10 @@ appId: host.exp.Exponent
       id: notificationSettings.guest_replies.push
     timeout: 30000
 - takeScreenshot: ns-before-stop
-- extendedWaitUntil:
-    visible:
-      id: never.there
-    timeout: 40000
-    optional: true
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
 - tapOn:
     id: notificationSettings.guest_replies.push
 - waitForAnimationToEnd:
@@ -24,3 +23,7 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 8000
 - takeScreenshot: ns-fail-2
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
