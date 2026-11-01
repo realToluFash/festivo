@@ -318,6 +318,17 @@ describe('every Modal stays under the update-required state (sc-22962)', () => {
     expect(modalsLeftOpen("import { Modal, type TextInputInstance } from 'react-native';")).toBe(0);
   });
 
+  it('passes a Modal whose turn for the window comes after useModalOpen', () => {
+    expect(
+      modalsLeftOpen(
+        'const { shown, gone } = useWindowTurn(useModalOpen(open));\n<Modal visible={shown}>\n</Modal>',
+      ),
+    ).toBe(0);
+    expect(
+      modalsLeftOpen('const { shown } = useWindowTurn(open);\n<Modal visible={shown}>\n</Modal>'),
+    ).toBe(1);
+  });
+
   it('notices a Modal that shows over the update-required state', () => {
     expect(modalsLeftOpen('<Modal visible={open}>\n</Modal>')).toBe(1);
     expect(modalsLeftOpen('<Modal transparent>\n</Modal>')).toBe(1);
@@ -1166,6 +1177,13 @@ function modalsLeftOpen(text: string): number {
   const held = [...text.matchAll(/\bconst (\w+) = useModalOpen\([^()]*\);/gu)].map(
     (match) => `{${match[1]}}`,
   );
+  // A window's turn comes after the gate (sc-23267), so what it shows is held too.
+  for (const turn of text.matchAll(
+    /\bconst \{ shown(?:, \w+)* \} = useWindowTurn\((\w+|useModalOpen\([^()]*\))\);/gu,
+  )) {
+    const gated = turn[1] ?? '';
+    if (gated.startsWith('useModalOpen(') || held.includes(`{${gated}}`)) held.push('{shown}');
+  }
 
   return modalTags(text)
     .map((match) => propValue(text.slice(match.index, tagEnd(text, match.index)), 'visible') ?? '')

@@ -3,6 +3,7 @@ import {
   type ReactNode,
   type RefObject,
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useId,
@@ -22,7 +23,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { sheetKeysCover, sheetPadding, sheetUnderKeys } from '../kit/sheet.ts';
+import { sheetKeysCover, sheetPadding, sheetUnderKeys, sheetWindows } from '../kit/sheet.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { glide } from '../motion.ts';
@@ -118,7 +119,7 @@ function SheetFrame({ open, onClose, scrimLabel, opener, testID, children }: She
   const reduced = useReducedMotion();
   const [onScreen, setOnScreen] = useState(false);
   const { present, scrim, frame } = useSheetMotion(open, onScreen, phone, reduced, height);
-  const shown = useModalOpen(present);
+  const { shown, gone } = useWindowTurn(useModalOpen(present));
   if (!shown && onScreen) setOnScreen(false);
 
   return (
@@ -133,6 +134,7 @@ function SheetFrame({ open, onClose, scrimLabel, opener, testID, children }: She
       navigationBarTranslucent
       onRequestClose={onClose}
       onShow={() => setOnScreen(true)}
+      onDismiss={gone}
     >
       {/* A modal is its own window: iOS never resizes it for the keyboard, Android not with the props above. */}
       <KeyboardAvoidingView
@@ -250,6 +252,35 @@ function useSheetMotion(
   }, [shown, onScreen, present, slides, reduced, scrim, shift, fade]);
 
   return { present, scrim, frame: { opacity: fade, transform: [{ translateY: shift }] } };
+}
+
+/** Every modal window in the app, wherever it is drawn: iOS has one stack of them, not one per SheetsAtRoot. */
+const appWindows = sheetWindows();
+
+/** iOS cannot put a window up while another is going, so a modal waits its turn; `gone` is its onDismiss (sc-23267). */
+export function useWindowTurn(wanted: boolean): { shown: boolean; gone: () => void } {
+  const id = useId();
+  const waits = useSyncExternalStore(appWindows.subscribe, () => appWindows.waits(id));
+  const shown = wanted && !waits;
+  const gone = useCallback(() => appWindows.lower(id), [id]);
+
+  useLayoutEffect(() => {
+    if (shown) {
+      appWindows.raise(id);
+      return;
+    }
+    if (Platform.OS !== 'ios') {
+      appWindows.lower(id);
+      return;
+    }
+    // onDismiss comes once iOS has taken the window down; the timer keeps a lost one from holding every sheet back.
+    const lost = setTimeout(() => appWindows.lower(id), SETTLED_MS);
+
+    return () => clearTimeout(lost);
+  }, [id, shown]);
+  useLayoutEffect(() => gone, [gone]);
+
+  return { shown, gone };
 }
 
 /** The keyboard's top edge in the sheet's window, or null while the keys are down. */
