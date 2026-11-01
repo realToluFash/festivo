@@ -1399,7 +1399,7 @@ span {
   width: 100%;
   min-height: var(--sizeHitPhoneHero);
   padding: 0 var(--spaceLg);
-  border: var(--borderControl);
+  border: var(--borderField);
   border-radius: var(--radiusInset);
   background: var(--colorCard);
   color: var(--colorInk);
