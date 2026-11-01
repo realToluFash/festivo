@@ -6797,6 +6797,13 @@ button.members-row {
   font: var(--typeBodyPhone);
 }
 
+.dashboard-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
 .dashboard .dashboard-count {
   font-variant-numeric: tabular-nums;
 }
@@ -6839,6 +6846,10 @@ button.members-row {
   align-items: center;
   justify-content: space-between;
   gap: var(--spaceLg);
+}
+
+.calendar-heading .offline-refreshing {
+  margin-inline-end: auto;
 }
 
 .calendar-subscribe-open {

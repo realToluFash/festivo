@@ -27,6 +27,8 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 
 import { BackControl } from '../../../components/BackControl.tsx';
 import { api } from '../../../api.ts';
+import { Refreshing } from '../../../components/OfflineBand.tsx';
+import { useOffline } from '../../../offline.ts';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
 import { can, useSession } from '../../../session.ts';
@@ -91,36 +93,54 @@ function EditOf({ organisationId, eventId }: { organisationId: string; eventId: 
   const { t } = useTranslation();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const [refresh, setRefresh] = useState(0);
   const [reads, setReads] = useState(0);
   const heading = useRef<HTMLHeadingElement>(null);
   const failedLine = useRef<HTMLParagraphElement>(null);
   const land = useFocusOnceShown();
   const eventPath = `/app/events/${encodeURIComponent(eventId)}`;
+  const { watch, refreshing } = useOffline({
+    loaded: 'event' in load,
+    reload: () => setRefresh((n) => n + 1),
+    title: heading,
+  });
 
+  // Once the form shows, a load only asks whether Soirely answers: the form and the tag it saves against stay as opened.
   useEffect(() => {
     let current = true;
 
-    api.taggedEvent(eventId).then(
+    watch(api.taggedEvent(eventId)).then(
       (tagged) =>
         current &&
-        setLoad(tagged.event.organisationId === organisationId ? tagged : { kind: 'notFound' }),
+        setLoad((was) =>
+          'event' in was
+            ? was
+            : tagged.event.organisationId === organisationId
+              ? tagged
+              : { kind: 'notFound' },
+        ),
       (error: unknown) =>
         current &&
-        setLoad(
-          error instanceof ApiError && error.status === 404
-            ? { kind: 'notFound' }
-            : { kind: 'failed' },
+        setLoad((was) =>
+          'event' in was
+            ? was
+            : error instanceof ApiError && error.status === 404
+              ? { kind: 'notFound' }
+              : { kind: 'failed' },
         ),
     );
 
     return () => {
       current = false;
     };
-  }, [organisationId, eventId, attempt]);
+  }, [organisationId, eventId, attempt, refresh, watch]);
 
   return (
     <div className="event-form-page">
-      <BackControl className="event-back" label={t('eventPage.backToEvent')} to={eventPath} />
+      <div className="event-crumbs">
+        <BackControl className="event-back" label={t('eventPage.backToEvent')} to={eventPath} />
+        {refreshing && <Refreshing />}
+      </div>
 
       {'kind' in load && load.kind === 'loading' && (
         <>
