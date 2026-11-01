@@ -128,6 +128,26 @@ function problem(code: string, status: number): Response {
 }
 
 describe('email addresses and phone numbers', () => {
+  it('takes their skeleton away when the account does not load (sc-23303)', async () => {
+    let fail: () => void = () => {};
+    const me = new Promise<Response>((resolve) => {
+      fail = () => resolve(problem('server_error', 500));
+    });
+    answering({ 'GET /api/auth/me': () => me });
+    open();
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Email addresses' })).toBeDefined();
+    expect(screen.getByRole('heading', { level: 2, name: 'Phone numbers' })).toBeDefined();
+
+    fail();
+
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { level: 2, name: 'Email addresses' })).toBeNull(),
+    );
+    expect(screen.queryByRole('heading', { level: 2, name: 'Phone numbers' })).toBeNull();
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+  });
+
   it('lists each with its state in a word, the primary marked, and how many more fit', async () => {
     answering({ 'GET /api/auth/me': () => json(ME) });
     open();

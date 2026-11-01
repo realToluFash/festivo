@@ -310,6 +310,25 @@ describe('the application tree', () => {
     expect(screen.queryByRole('heading', { level: 1, name: 'Sign in' })).toBeNull();
   });
 
+  it('says Loading… in the middle of the window only from one second on a refresh (sc-23303)', () => {
+    vi.useFakeTimers();
+    try {
+      __setSessionState({ status: 'unknown' });
+      vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
+
+      at('/app');
+
+      act(() => vi.advanceTimersByTime(999));
+      expect(screen.queryByText('Loading…')).toBeNull();
+
+      act(() => vi.advanceTimersByTime(1));
+      expect(screen.getByRole('status').textContent).toBe('Loading…');
+      expect(screen.getByRole('status').classList.contains('pending-centred')).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("stacks the sidebar from a tablet's width down only as tall as what it holds (sc-17608)", () => {
     const styles = readFileSync(join(import.meta.dirname, '../styles.css'), 'utf8');
     const stacked = /@media \(width <= 60rem\) \{[^@]*?\n {2}\.shell \{([^}]*)\}/u.exec(
