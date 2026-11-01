@@ -1037,9 +1037,9 @@ class BackgroundWorker(unittest.TestCase):
                                 db=self.db)
         self.assertEqual(stopped.call_args.args[0], "1d923fe2")
 
-    def test_only_the_developers_and_the_lead_run_in_the_background(self):
+    def test_only_the_developers_the_lead_and_the_testers_run_in_the_background(self):
         found = {role for role, values in roles.ROLES.items() if values.get("background")}
-        self.assertEqual(found, set(roles.DEVS) | {"lead"})
+        self.assertEqual(found, set(roles.DEVS) | {"lead"} | set(roles.TESTERS))
 
 
 FAKE_CLAUDE = textwrap.dedent("""

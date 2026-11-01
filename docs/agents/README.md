@@ -55,9 +55,9 @@ workers as they are and removes the ticks.
   role's own checkout, with the same model, effort, skills and prompt as today's workers.
   It runs apart from the tick that started it, so it outlives it: as its own systemd unit
   on Linux, and on a Mac as a process in a session of its own, run by `sq worker-supervise`.
-- **The developers and the lead run as background sessions** (`claude --bg`) instead,
-  because only those have the `Artifact` tool, and the screens they build and review are
-  in an Artifact, Soirely — Redesign (sc-25203). The worker starts the session, records its
+- **The developers, the lead and the testers run as background sessions** (`claude --bg`)
+  instead, because only those have the `Artifact` tool, and the screens they build, review
+  and test are in an Artifact, Soirely — Redesign (sc-25203). The worker starts the session, records its
   id in the run, and watches it with `claude agents` until the turn ends, the item is done,
   or a limit is reached, then stops it. Its run-log line is read from the transcript, its
   cost reckoned from `models.json`. A session runs under the account's Claude daemon, which

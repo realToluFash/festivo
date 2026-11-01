@@ -26,8 +26,11 @@ a request, not a push.
 (`https://claude.ai/artifact/5cRzwbgmEK6wqbxp4j1zqx`), one page per epic, which a story's
 Design section links to. Read it with the `Artifact` tool: `action: "read"` with `path:
 "canvas.json"` for the pages, then the board the story names. It is not a doc, so the Claude
-Docs tools fail on it. Never publish to it; it is the designer's. A worker without the
-`Artifact` tool says so in its report rather than building from memory.
+Docs tools are not for artifacts and fail on it. Never publish to it; it is the designer's.
+The epics' boards are read here, not in the old Claude Design project through `DesignSync`.
+**A refused read stops you.** Without the `Artifact` tool, or when the read is refused or
+finds no board at the path the story gives, say so on the story tagged `[ops]`, with the
+refusal, and build nothing from memory, from `DesignSync` or from an older design.
 
 Read in this order, every time, before writing any markup:
 
