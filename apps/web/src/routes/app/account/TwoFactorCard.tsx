@@ -252,7 +252,7 @@ function AtRest({
           {t('twoFactorCard.title')}
         </h2>
         {/* A mark and the word, never the colour alone. */}
-        <span className={status.on ? 'status-done' : 'card-count'}>
+        <span className={status.on ? 'status-done' : 'card-count status-off'}>
           <span className={status.on ? 'mark mark-done' : 'mark mark-off'} aria-hidden="true">
             {status.on ? '✓' : ''}
           </span>

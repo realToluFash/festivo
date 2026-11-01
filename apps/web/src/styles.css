@@ -2935,6 +2935,12 @@ span {
   border: var(--borderMark) var(--colorInkSecondary);
 }
 
+.status-off {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+}
+
 .two-factor-steps {
   display: flex;
   flex-direction: column;
