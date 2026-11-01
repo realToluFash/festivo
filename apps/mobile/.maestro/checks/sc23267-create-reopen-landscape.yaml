@@ -22,3 +22,4 @@ appId: host.exp.Exponent
     notVisible:
       id: 'createOrganisation'
     timeout: 10000
+- setOrientation: PORTRAIT
