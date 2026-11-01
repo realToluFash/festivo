@@ -12,6 +12,7 @@ import { Footnote, PrimaryButton } from '../src/components/Buttons.tsx';
 import { Field, focusChecked, keysStayDown } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { PasswordField } from '../src/components/PasswordField.tsx';
+import { Pending } from '../src/components/Pending.tsx';
 import { PasswordRule } from '../src/components/PasswordRule.tsx';
 import { SecondFactorStep } from '../src/components/SecondFactorStep.tsx';
 import { useFormChecks } from '../src/kit/formChecks.ts';
@@ -104,7 +105,13 @@ export default function ResetPassword() {
     }
   }
 
-  if (status.kind === 'checking') return null;
+  if (status.kind === 'checking') {
+    return (
+      <AuthFrame>
+        <Pending />
+      </AuthFrame>
+    );
+  }
 
   if (status.kind === 'used' || status.kind === 'expired' || status.kind === 'invalid') {
     return (

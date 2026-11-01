@@ -2,6 +2,9 @@
   "app": {
     "name": "Soirely"
   },
+  "pending": {
+    "loading": "Cargando…"
+  },
   "home": {
     "title": "Soirely",
     "subtitle": "La noche, desde su bolsillo.",

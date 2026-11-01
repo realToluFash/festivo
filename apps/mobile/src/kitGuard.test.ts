@@ -1477,3 +1477,31 @@ function answersInView(text: string, said: string): boolean {
 
   return /<AnswerInView\b[^>]*>\s*$/u.test(text.slice(0, opened));
 }
+
+describe('a screen still reading says so in words (sc-23279)', () => {
+  it.each([
+    ['app/lost-two-factor.tsx', "view.kind === 'loading'"],
+    ['app/reset-password.tsx', "status.kind === 'checking'"],
+  ])('%s shows Pending while %s', (file, reading) => {
+    expect(showsPending(readFileSync(join(...file.split('/')), 'utf8'), reading)).toBe(true);
+  });
+
+  it('notices a read that shows an empty card or nothing', () => {
+    expect(showsPending('if (a) return <AuthFrame>{null}</AuthFrame>;', 'a')).toBe(false);
+    expect(showsPending('if (a) return null;\n  if (b) return <Pending />;', 'a')).toBe(false);
+    expect(showsPending('if (a)\n    return (\n      <AuthFrame>\n        <Pending />', 'a')).toBe(
+      true,
+    );
+  });
+});
+
+/** Whether the branch that `reading` opens renders Pending before the next branch starts. */
+function showsPending(text: string, reading: string): boolean {
+  const at = text.indexOf(`if (${reading})`);
+  if (at < 0) return false;
+
+  const rest = text.slice(at + 1);
+  const next = /\n\s*if \(/u.exec(rest);
+
+  return rest.slice(0, next?.index).includes('<Pending />');
+}
