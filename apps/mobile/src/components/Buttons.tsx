@@ -113,7 +113,7 @@ export function SecondaryButton({
       style={[
         styles.secondary,
         stacked && styles.secondaryStacked,
-        paired && styles.secondaryPaired,
+        paired && styles.inRow,
         grow && styles.grow,
         off && styles.secondaryOff,
         { opacity: fade.opacity },
@@ -167,7 +167,7 @@ export function DestructiveButton({
       ref={ref}
       style={[
         styles.secondary,
-        stacked ? styles.secondaryStacked : styles.destructiveInRow,
+        stacked ? styles.secondaryStacked : styles.inRow,
         off && styles.secondaryOff,
         { opacity: fade.opacity },
       ]}
@@ -356,13 +356,8 @@ const styles = StyleSheet.create({
     minHeight: tokens.sizeHitPhonePrimary,
     borderRadius: tokens.sizeHitPhonePrimary / 2,
   },
-  secondaryPaired: {
+  inRow: {
     alignItems: 'center',
-    minHeight: tokens.sizeHitPhonePrimary,
-    paddingHorizontal: tokens.spaceXxl,
-    borderRadius: tokens.sizeHitPhonePrimary / 2,
-  },
-  destructiveInRow: {
     minHeight: tokens.sizeHitPhonePrimary,
     paddingHorizontal: tokens.spaceXxl,
     borderRadius: tokens.sizeHitPhonePrimary / 2,

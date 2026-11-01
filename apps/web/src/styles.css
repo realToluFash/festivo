@@ -6669,11 +6669,11 @@ button.members-row {
 }
 
 .dashboard h1,
-.dashboard p {
+.dashboard > p {
   margin: 0;
 }
 
-.dashboard p {
+.dashboard > p {
   font: var(--typeBodyPhone);
 }
 
