@@ -62,7 +62,15 @@ class Command(unittest.TestCase):
     def test_the_drawing_is_not_kept_to_reading(self):
         argv, _ = background.command(VALUES, "~/.claude-x", "draw sc-1", "Draw.",
                                      read_only=False)
-        self.assertNotIn("--settings", argv)
+        self.assertNotIn("hooks", json.loads(argv[argv.index("--settings") + 1]))
+
+    def test_the_worker_s_variables_reach_the_session_through_its_settings(self):
+        given = json.loads(background.settings(
+            {"SQ_RUN_DIR": "/tmp/run"}, environ={
+                "SOIRELY_WORKER": "dev", "GH_CONFIG_DIR": "/home/x/gh",
+                "SHORTCUT_API_TOKEN": "secret", "SQ_WEB_TOKEN": "secret", "PATH": "/bin"}))
+        self.assertEqual(given["env"], {"SOIRELY_WORKER": "dev", "GH_CONFIG_DIR": "/home/x/gh",
+                                        "SQ_RUN_DIR": "/tmp/run"})
 
 
 class Start(unittest.TestCase):

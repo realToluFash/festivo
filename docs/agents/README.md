@@ -66,7 +66,9 @@ workers as they are and removes the ticks.
   account's other sessions with it. A worker's session is launched with a PreToolUse hook
   (`artifact_guard.py`, through `--settings`) that refuses any Artifact call other than
   `read` or `list`, publish included, before it runs; only ux's drawing goes without it. `claude attach <id>`
-  shows a session's work. A session that starts without the Artifact tools (it happened once,
+  shows a session's work. A session takes its environment from the daemon, not from the command that
+  started it, so the worker's variables (`SOIRELY_WORKER`, `SQ_RUN_DIR`, `GH_CONFIG_DIR`) go
+  in the session's `--settings`, and sq reads its tokens from its env file itself. A session that starts without the Artifact tools (it happened once,
   1 Nov) is stopped at its first reply and started once more; twice without them, the run
   is reported as not started. A background session needs the workspace trusted once per
   account, in the main checkout every role checkout is a worktree of: run `claude` there with
