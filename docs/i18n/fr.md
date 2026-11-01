@@ -678,3 +678,6 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   passe. Les statuts de l’agenda abonné sont ceux de la liste des événements, au masculin avec
   « événement » : Brouillon, Publié, En pause, Terminé, Annulé, Supprimé, après « Statut : ».
   « Dietary notes » est « Les notes sur l’alimentation ».
+- **Le bandeau hors ligne** (sc-22586) : « Hors ligne · mis à jour à {{time}} », et « … le {{day}}
+  à {{time}} » quand le chargement date d’un autre jour. « Mis à jour » dit de quand date ce qui
+  s’affiche, plutôt que de calquer « as of ». Pendant la nouvelle tentative, « Actualisation… ».
