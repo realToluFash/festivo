@@ -94,6 +94,21 @@ class RateLimit(unittest.TestCase):
             self.assertEqual(github.REMOTE.search(remote).groups(), ("o", "n"))
 
 
+class StoryOf(unittest.TestCase):
+    def test_the_title_suffix_wins_over_a_story_the_title_mentions(self):
+        self.assertEqual(github.story_of("ops-25929", "test(qa): qa2's sc-3625 checks (sc-25929)"),
+                         25929)
+
+    def test_the_title_suffix_wins_over_the_branch(self):
+        self.assertEqual(github.story_of("dev2/sc-3625-calendar", "fix: the calendar (sc-25929)"),
+                         25929)
+
+    def test_without_a_suffix_the_branch_then_the_title_names_it(self):
+        self.assertEqual(github.story_of("dev2/sc-3625-calendar", "fix: sc-12 calendar"), 3625)
+        self.assertEqual(github.story_of("ops-1", "fix: sc-12 calendar"), 12)
+        self.assertIsNone(github.story_of("ops-1", "fix: the calendar"))
+
+
 class RestSync(unittest.TestCase):
     def sync(self, fake, known=None):
         with mock.patch("soirely_queue.github.gh", fake):
