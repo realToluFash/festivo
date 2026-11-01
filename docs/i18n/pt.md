@@ -638,3 +638,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   "Comando". Os estados no calendário subscrito são os da lista de eventos, no masculino com
   "evento": Rascunho, Publicado, Em pausa, Terminado, Cancelado, Eliminado. "Dietary notes" é
   "As notas sobre alimentação". O limite concorda o artigo com a hora, como `limits.tries`.
+- **A faixa sem ligação** (sc-22586): "Sem ligação · atualizado às {{time}}", e "… no {{day}}, às
+  {{time}}" quando o carregamento foi noutro dia. "Sem ligação", não "offline" nem "sem conexão".
+  "Atualizado" diz de quando é o que se vê, em vez de decalcar "as of". Ao tentar de novo,
+  "A atualizar…", como na app.
