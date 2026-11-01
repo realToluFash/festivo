@@ -24,6 +24,7 @@ import { PauseButton, PausedRow } from './PauseEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { typeLabel } from './eventTypes.ts';
 import { ComingUp, AllDates } from './Timeline.tsx';
+import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
 
 type Load =
   | { kind: 'loading' }
@@ -115,11 +116,17 @@ function EventOf({
         />
       )}
 
-      {load.kind === 'loading' && (
-        <p className="muted" role="status">
-          {t('eventPage.loading')}
-        </p>
-      )}
+      {load.kind === 'loading' &&
+        (page === 'event' ? (
+          <Skeleton
+            words={t('eventPage.loading')}
+            shape="cards"
+            titled
+            cards={[{ cover: true, lines: 2 }, { lines: 3 }, { lines: 2 }]}
+          />
+        ) : (
+          <Skeleton words={t('eventPage.loading')} shape="rows" rowHeight={56} />
+        ))}
 
       {load.kind === 'failed' && (
         <ArrivalNotice
@@ -144,19 +151,19 @@ function EventOf({
         </section>
       )}
 
-      {load.kind === 'loaded' && page === 'event' && (
-        <EventPage
-          event={load.event}
-          tag={load.tag}
-          heading={heading}
-          onChange={(event, tag = load.tag) => setLoad({ kind: 'loaded', event, tag })}
-        />
-      )}
-      {load.kind === 'loaded' && page === 'guests' && (
-        <GuestsComing event={load.event} heading={heading} />
-      )}
-      {load.kind === 'loaded' && page === 'dates' && (
-        <AllDatesPage event={load.event} heading={heading} />
+      {load.kind === 'loaded' && (
+        <Arrived>
+          {page === 'event' && (
+            <EventPage
+              event={load.event}
+              tag={load.tag}
+              heading={heading}
+              onChange={(event, tag = load.tag) => setLoad({ kind: 'loaded', event, tag })}
+            />
+          )}
+          {page === 'guests' && <GuestsComing event={load.event} heading={heading} />}
+          {page === 'dates' && <AllDatesPage event={load.event} heading={heading} />}
+        </Arrived>
       )}
     </div>
   );

@@ -36,6 +36,7 @@ import { StatusPill } from './MakeLive.tsx';
 import { FirstRun } from './FirstRun.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { distanceWords } from './distanceWords.ts';
+import { Skeleton } from '../../../components/Skeleton.tsx';
 
 const PAST_PAGE = 10;
 
@@ -155,11 +156,7 @@ function EventsOf({
   }, [organisationId, attempt]);
 
   if (load.kind === 'loading') {
-    return (
-      <p className="muted" role="status">
-        {t('events.loading')}
-      </p>
-    );
+    return <Skeleton words={t('events.loading')} shape="rows" rowHeight={76} picture />;
   }
 
   if (load.kind === 'failed') {
@@ -223,7 +220,7 @@ function EventsOf({
   };
 
   return (
-    <div className="events-home" ref={home}>
+    <div className="events-home arrives" ref={home}>
       {grouped.happeningNow.length > 0 && (
         <section className="events-now" aria-labelledby="events-now-title">
           <h2 id="events-now-title" className="visually-hidden">

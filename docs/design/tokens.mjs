@@ -356,6 +356,9 @@ export const tokens = {
   motionMax: 500, // ms · SETTLED (sc-22092): no interface transition lasts longer, so motion never makes somebody wait
   motionRise: 8, // px · SETTLED (sc-22092): how far a page or a dialog rises as it fades in
   opacityPressed: 0.85, // SETTLED (sc-22092): a pressed button, back in motionFast
+  motionPulse: 1400, // ms · SETTLED (sc-23303): one breath of a waiting skeleton; a loop, not a transition, so not held to motionMax
+  motionPulseTimes: 3, // SETTLED (sc-23303): 4.2 s of breathing, inside WCAG 2.2.2's five seconds, then still
+  opacityPulse: 0.55, // SETTLED (sc-23303): how far a waiting skeleton dims at the middle of each breath
   toastLifetime: 10000, // ms · every undo toast in the screens lives 10 s (8 s on Insights – accident)
 };
 

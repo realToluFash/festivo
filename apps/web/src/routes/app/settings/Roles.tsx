@@ -50,6 +50,7 @@ import { can, useSession } from '../../../session.ts';
 import { focusStep, useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { Forbidden } from '../Forbidden.tsx';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
+import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
 
 type Load =
   | { kind: 'loading' }
@@ -124,9 +125,17 @@ export function Roles() {
     <div className="settings settings-wide">
       <SettingsSections />
       {load.kind === 'loading' && (
-        <p className="muted" role="status">
-          {t('rolesScreen.loading')}
-        </p>
+        <div className="roles">
+          <section className="card roles-list" aria-labelledby="roles-title">
+            <div className="roles-list-head">
+              <h1 id="roles-title" data-page-waits>
+                {t('rolesScreen.title')}
+              </h1>
+              <p className="muted">{t('rolesScreen.intro', { name: organisation.name })}</p>
+            </div>
+            <Skeleton words={t('rolesScreen.loading')} shape="rows" rowHeight={64} inCard />
+          </section>
+        </div>
       )}
       {load.kind === 'failed' && (
         <ArrivalNotice
@@ -143,16 +152,18 @@ export function Roles() {
         />
       )}
       {load.kind === 'loaded' && (
-        <RolesLoaded
-          key={organisation.id}
-          organisation={organisation}
-          catalogue={load.catalogue}
-          manages={can(session, 'members.manage')}
-          held={organisation.permissions}
-          headingRef={heading}
-          onChange={(catalogue) => setLoad({ kind: 'loaded', catalogue })}
-          onReload={() => setAttempt((n) => n + 1)}
-        />
+        <Arrived>
+          <RolesLoaded
+            key={organisation.id}
+            organisation={organisation}
+            catalogue={load.catalogue}
+            manages={can(session, 'members.manage')}
+            held={organisation.permissions}
+            headingRef={heading}
+            onChange={(catalogue) => setLoad({ kind: 'loaded', catalogue })}
+            onReload={() => setAttempt((n) => n + 1)}
+          />
+        </Arrived>
       )}
     </div>
   );

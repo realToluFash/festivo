@@ -13,7 +13,7 @@ import { api } from '../../../api.ts';
 import { currentLocale } from '../../../i18n/index.ts';
 import { AccountSections } from '../../../components/AccountSections.tsx';
 import { FieldError } from '../../../components/FieldError.tsx';
-import { Pending } from '../../../components/Pending.tsx';
+import { Skeleton } from '../../../components/Skeleton.tsx';
 
 type Channel = SettingChannel;
 
@@ -92,7 +92,9 @@ export function NotificationSettings() {
         {said}
       </div>
 
-      {grid.status === 'loading' && <Pending />}
+      {grid.status === 'loading' && (
+        <Skeleton words={t('pending.loading')} shape="rows" rowHeight={56} />
+      )}
 
       {grid.status === 'failed' && (
         <div className="notice notice-broken" role="alert">
@@ -101,22 +103,24 @@ export function NotificationSettings() {
           </span>
           <div className="notice-body">
             <p className="notice-title">{t('notificationSettings.couldNotLoad')}</p>
-            <button
-              type="button"
-              className="link-button"
-              onClick={() => {
-                setGrid({ status: 'loading' });
-                setAttempt((tries) => tries + 1);
-              }}
-            >
-              {t('notificationSettings.tryAgain')}
-            </button>
+            <p className="notice-action">
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => {
+                  setGrid({ status: 'loading' });
+                  setAttempt((tries) => tries + 1);
+                }}
+              >
+                {t('notificationSettings.tryAgain')}
+              </button>
+            </p>
           </div>
         </div>
       )}
 
       {grid.status === 'loaded' && (
-        <section className="card notification-settings">
+        <section className="card notification-settings arrives">
           {blocked && (
             <p className="notification-settings-blocked" role="note">
               <svg

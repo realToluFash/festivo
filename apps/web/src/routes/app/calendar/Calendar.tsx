@@ -43,6 +43,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
 import { useDialogKeys } from '../../../dialogFocus.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { usePhoneWidth } from '../../../phoneWidth.ts';
@@ -260,7 +261,16 @@ function CalendarOf({
         </label>
       </div>
 
-      {load.kind === 'loading' && <CalendarLoading view={view} />}
+      {load.kind === 'loading' &&
+        (view === 'month' ? (
+          <Skeleton
+            words={t('calendar.loading')}
+            shape="month"
+            weeks={monthGrid(month, firstDay, days).length}
+          />
+        ) : (
+          <Skeleton words={t('calendar.loading')} shape="rows" rowHeight={60} />
+        ))}
       {load.kind === 'failed' && (
         <div className="notice notice-broken" role={attempt > 0 ? 'alert' : undefined}>
           <span className="mark mark-broken" aria-hidden="true">
@@ -282,37 +292,41 @@ function CalendarOf({
         </div>
       )}
       {load.kind === 'loaded' && view === 'month' && (
-        <div
-          className={
-            openDay != null && wide ? 'calendar-body calendar-body-split' : 'calendar-body'
-          }
-        >
-          <MonthGrid
-            grid={grid}
-            weeks={monthGrid(month, firstDay, days)}
-            firstDay={firstDay}
-            fit={fit}
-            today={today}
-            focusDay={inMonth(focusDay, month) ? focusDay : `${monthKey(month)}-01`}
-            onMove={moveTo}
-            onOpen={(day) => {
-              setFocusDay(day);
-              setOpenDay(day);
-            }}
-          />
-          {openDay != null && (
-            <DayList
-              day={openDay}
+        <Arrived>
+          <div
+            className={
+              openDay != null && wide ? 'calendar-body calendar-body-split' : 'calendar-body'
+            }
+          >
+            <MonthGrid
+              grid={grid}
+              weeks={monthGrid(month, firstDay, days)}
+              firstDay={firstDay}
+              fit={fit}
               today={today}
-              items={openItems}
-              asPanel={wide}
-              onClose={closeDay}
+              focusDay={inMonth(focusDay, month) ? focusDay : `${monthKey(month)}-01`}
+              onMove={moveTo}
+              onOpen={(day) => {
+                setFocusDay(day);
+                setOpenDay(day);
+              }}
             />
-          )}
-        </div>
+            {openDay != null && (
+              <DayList
+                day={openDay}
+                today={today}
+                items={openItems}
+                asPanel={wide}
+                onClose={closeDay}
+              />
+            )}
+          </div>
+        </Arrived>
       )}
       {load.kind === 'loaded' && view === 'agenda' && (
-        <Agenda agenda={agenda} month={month} days={agendaDays(month, days)} today={today} />
+        <Arrived>
+          <Agenda agenda={agenda} month={month} days={agendaDays(month, days)} today={today} />
+        </Arrived>
       )}
     </div>
   );
@@ -639,19 +653,6 @@ function MilestoneRow({ item }: { item: Extract<Item, { kind: 'milestone' }> }) 
           : time}
       </span>
     </Link>
-  );
-}
-
-function CalendarLoading({ view }: { view: CalendarView }) {
-  const { t } = useTranslation();
-
-  return (
-    <div className={`calendar-skeleton calendar-skeleton-${view}`}>
-      <p className="muted" role="status">
-        <span className="pending-spinner" aria-hidden="true" />
-        {t('calendar.loading')}
-      </p>
-    </div>
   );
 }
 

@@ -1701,8 +1701,11 @@ describe("Editing an event's details (sc-3587)", () => {
     at('/app/events/ev_1/edit');
 
     fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
-    const title = await screen.findByRole('heading', { level: 1, name: 'Edit details' });
-    await waitFor(() => expect(document.activeElement).toBe(title));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'Edit details' }),
+      ),
+    );
 
     cleanup();
     calls = 5;
@@ -5071,7 +5074,7 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     expect(within(panel).queryByText('The dates did not load.')).toBeNull();
   });
 
-  it('says Loading the dates… in Coming up until the dates arrive, with All dates linked', async () => {
+  it('says Loading the dates… in Coming up from one second until the dates arrive, with All dates linked (sc-23303)', async () => {
     clockAt('2026-10-11T08:00:00Z');
     signedIn();
     let arrive = (): void => undefined;
@@ -5086,8 +5089,12 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
 
     const panel = await comingUp();
 
-    expect(within(panel).getByRole('status').textContent).toBe('Loading the dates…');
+    expect(within(panel).queryByRole('status')).toBeNull();
     expect(within(panel).getByRole('link', { name: 'All dates' })).toBeDefined();
+    await waitFor(() =>
+      expect(within(panel).getByRole('status').textContent).toBe('Loading the dates…'),
+    );
+    expect(panel.querySelector('[aria-busy="true"]')).not.toBeNull();
     arrive();
 
     await waitFor(() => expect(within(panel).getAllByRole('listitem')).toHaveLength(4));

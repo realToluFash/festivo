@@ -34,6 +34,7 @@ import { PasswordField } from './PasswordField.tsx';
 import { ProviderButton } from './ProviderSignIn.tsx';
 import { type StepClosed, stepClosed, useAboveKeyboard, useFocusBackToOpener } from './Screen.tsx';
 import { Text, type TextHandle } from './Text.tsx';
+import { Arrived, Skeleton } from './Skeleton.tsx';
 
 type Devices =
   | { kind: 'loading' }
@@ -238,9 +239,7 @@ export function DevicesCard({
       )}
 
       {devices.kind === 'loading' && (
-        <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
-          {t('devices.loading')}
-        </Text>
+        <Skeleton words={t('devices.loading')} shape="rows" rowHeight={64} rows={2} inCard />
       )}
 
       {devices.kind === 'failed' && (
@@ -258,7 +257,7 @@ export function DevicesCard({
       )}
 
       {devices.kind === 'ready' && (
-        <View>
+        <Arrived>
           {thisDeviceFirst(devices.sessions).map((device) => (
             <Row
               key={device.id}
@@ -269,7 +268,7 @@ export function DevicesCard({
               onCheck={() => show({ kind: 'checking', device })}
             />
           ))}
-        </View>
+        </Arrived>
       )}
 
       {devices.kind === 'ready' && othersOf(devices.sessions).count > 0 && (

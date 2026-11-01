@@ -25,12 +25,12 @@ import { type StepClosed, stepClosed, useFocusOnAnswer } from '../../src/compone
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { SheetsAtRoot } from '../../src/components/Sheet.tsx';
 import { type TextHandle, Text } from '../../src/components/Text.tsx';
-import { cardFrame } from '../../src/components/cardFrame.ts';
 import { useShownLanguage } from '../../src/i18n/index.ts';
 import { DESTINATION_HREF, SECTION_HREF } from '../../src/kit/appNav.ts';
 import { useSignedIn } from '../../src/signedIn.ts';
 import { settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { tokens } from '../../src/theme/tokens.ts';
+import { Arrived, Skeleton } from '../../src/components/Skeleton.tsx';
 
 type Load =
   | { kind: 'loading' }
@@ -173,11 +173,7 @@ export default function MembersScreen() {
 
   const waiting =
     load.kind === 'loading' ? (
-      <View style={cardFrame(kind)}>
-        <Text size={tokens.typeBodyPhone.size} muted>
-          {t('membersScreen.loading')}
-        </Text>
-      </View>
+      <Skeleton words={t('membersScreen.loading')} shape="rows" rowHeight={64} picture />
     ) : load.kind === 'failed' ? (
       <View style={styles.stack} accessibilityRole="alert">
         <Notice
@@ -279,7 +275,7 @@ export default function MembersScreen() {
             list={
               <ComeForward.Provider value={listForward}>
                 <FocusWhenBehind.Provider value={nameWhenBehind}>
-                  {waiting ?? list}
+                  {waiting ?? <Arrived>{list}</Arrived>}
                 </FocusWhenBehind.Provider>
               </ComeForward.Provider>
             }

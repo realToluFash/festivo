@@ -45,12 +45,14 @@ import { tokens } from '../theme/tokens.ts';
 import { AppFrame } from './AppFrame.tsx';
 import { bodyEdges } from './bodyEdges.ts';
 import { CalendarSubscribe } from './CalendarSubscribe.tsx';
+import { calendarGrid } from './calendarGrid.ts';
 import { QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { EventState, EventsFailed, NoEvents } from './Events.tsx';
 import { Screen, useBroughtIntoViewOn } from './Screen.tsx';
 import { Sheet } from './Sheet.tsx';
 import { useReadOut } from './ReadOut.tsx';
+import { Arrived, Skeleton } from './Skeleton.tsx';
 import { type TextHandle, Text } from './Text.tsx';
 
 const KEPT = 'soirely.calendar';
@@ -206,13 +208,16 @@ function CalendarOf({
         onView={(next) => keep({ view: next, month })}
         onShow={setShow}
       />
-      {load.kind === 'loading' && (
-        <View style={cardFrame(kind)}>
-          <Text size={tokens.typeBodyPhone.size} muted accessibilityRole="text">
-            {t('calendar.loading')}
-          </Text>
-        </View>
-      )}
+      {load.kind === 'loading' &&
+        (view === 'month' ? (
+          <Skeleton
+            words={t('calendar.loading')}
+            shape="month"
+            weeks={monthGrid(month, firstDay, days).length}
+          />
+        ) : (
+          <Skeleton words={t('calendar.loading')} shape="rows" rowHeight={60} />
+        ))}
       {load.kind === 'failed' && (
         <EventsFailed
           words={t('calendar.failed')}
@@ -224,7 +229,7 @@ function CalendarOf({
         />
       )}
       {load.kind === 'loaded' && view === 'month' && (
-        <View style={landscape && openDay != null ? styles.split : styles.stack}>
+        <Arrived style={landscape && openDay != null ? styles.split : styles.stack}>
           <MonthGrid
             weeks={monthGrid(month, firstDay, days)}
             firstDay={firstDay}
@@ -237,16 +242,18 @@ function CalendarOf({
           {landscape && dayList != null && (
             <View style={[cardFrame(kind), styles.panel]}>{dayList}</View>
           )}
-        </View>
+        </Arrived>
       )}
       {load.kind === 'loaded' && view === 'agenda' && (
-        <Agenda
-          kind={kind}
-          month={month}
-          days={agendaDays(month, days)}
-          today={today}
-          todayAsked={todayAsked}
-        />
+        <Arrived>
+          <Agenda
+            kind={kind}
+            month={month}
+            days={agendaDays(month, days)}
+            today={today}
+            todayAsked={todayAsked}
+          />
+        </Arrived>
       )}
       {!landscape && (
         <Sheet
@@ -428,16 +435,22 @@ function MonthGrid({
   const heads = weekdayNames(locale, firstDay, phone ? 'narrow' : 'short');
 
   return (
-    <View style={styles.grid} testID="calendar.grid">
-      <View style={styles.week} {...HIDDEN}>
+    <View style={calendarGrid.grid} testID="calendar.grid">
+      <View style={calendarGrid.week} {...HIDDEN}>
         {heads.map((name, index) => (
-          <Text key={index} size={tokens.typeMeta.size} weight="semibold" muted style={styles.head}>
+          <Text
+            key={index}
+            size={tokens.typeMeta.size}
+            weight="semibold"
+            muted
+            style={calendarGrid.head}
+          >
             {name}
           </Text>
         ))}
       </View>
       {weeks.map((week) => (
-        <View key={week[0]?.day} style={styles.week}>
+        <View key={week[0]?.day} style={calendarGrid.week}>
           {week.map((cell) => {
             const { shown, more } = cellShown(cell, phone ? 1 : 2);
             const isToday = cell.day === today;
@@ -447,8 +460,8 @@ function MonthGrid({
                 key={cell.day}
                 ref={cell.day === openDay ? opener : undefined}
                 style={({ pressed }) => [
-                  styles.cell,
-                  phone && styles.cellPhone,
+                  calendarGrid.cell,
+                  phone && calendarGrid.cellPhone,
                   pressed && styles.pressed,
                 ]}
                 onPress={() => onOpen(cell.day)}
@@ -457,7 +470,7 @@ function MonthGrid({
                 testID={`calendar.day.${cell.day}`}
               >
                 <View {...HIDDEN} style={styles.cellInside}>
-                  <View style={[styles.number, isToday && styles.numberToday]}>
+                  <View style={[calendarGrid.number, isToday && styles.numberToday]}>
                     <Text
                       size={tokens.typeMeta.size}
                       weight="semibold"
@@ -771,33 +784,8 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radiusPill,
   },
   segmentOn: { backgroundColor: tokens.colorCard },
-  grid: {
-    flex: 1,
-    overflow: 'hidden',
-    borderRadius: tokens.radiusCardDesktop,
-    backgroundColor: tokens.colorCard,
-  },
-  week: { flexDirection: 'row' },
-  head: { flex: 1, paddingVertical: tokens.spaceSm, textAlign: 'center' },
-  cell: {
-    flex: 1,
-    minHeight: 96,
-    padding: tokens.spaceXxs,
-    borderTopWidth: 1,
-    borderLeftWidth: 1,
-    borderColor: tokens.colorBorder,
-  },
-  cellPhone: { minHeight: 56, padding: 2 },
   cellInside: { gap: 2 },
   pressed: { backgroundColor: tokens.colorRowHover },
-  number: {
-    alignSelf: 'flex-start',
-    minWidth: tokens.sizeMark,
-    minHeight: tokens.sizeMark,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: tokens.sizeMark / 2,
-  },
   numberToday: { backgroundColor: tokens.colorAccent },
   bar: {
     minHeight: tokens.sizePill,

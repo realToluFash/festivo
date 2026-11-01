@@ -75,7 +75,7 @@ export function AppLayout() {
 
   if (state.status === 'unreachable') return <Unreachable signedIn />;
 
-  if (state.status !== 'signedIn') return <Pending />;
+  if (state.status !== 'signedIn') return <Pending late />;
 
   // The product is behind the onboarding gate: verified, then complete.
   const landing = landingFor(state.session.awaiting);

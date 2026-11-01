@@ -313,4 +313,11 @@ describe('settled: motion is short, and both clients use it', () => {
     expect(tokens.motionRise).toBe(8);
     expect(tokens.opacityPressed).toBe(0.85);
   });
+
+  it('breathes a waiting skeleton three times, down to 55%, inside five seconds (sc-23303)', () => {
+    expect([tokens.motionPulse, tokens.motionPulseTimes, tokens.opacityPulse]).toEqual([
+      1400, 3, 0.55,
+    ]);
+    expect(tokens.motionPulse * tokens.motionPulseTimes).toBeLessThan(5000);
+  });
 });
