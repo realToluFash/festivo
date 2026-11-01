@@ -1,7 +1,7 @@
 /** Under a second a person's flow is not broken, and a loading state that flashes up and away is noise. */
 export const SKELETON_AFTER_MS = 1000;
 
-export type SkeletonRowHeight = 56 | 64 | 76;
+export type SkeletonRowHeight = 56 | 60 | 64 | 76;
 
 type Width = `${number}%`;
 

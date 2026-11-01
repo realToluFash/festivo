@@ -50,6 +50,7 @@ import { EventState, EventsFailed, NoEvents } from './Events.tsx';
 import { Screen, useBroughtIntoViewOn } from './Screen.tsx';
 import { Sheet } from './Sheet.tsx';
 import { useReadOut } from './ReadOut.tsx';
+import { Arrived, Skeleton } from './Skeleton.tsx';
 import { type TextHandle, Text } from './Text.tsx';
 
 const KEPT = 'soirely.calendar';
@@ -192,11 +193,7 @@ function CalendarOf({
         onShow={setShow}
       />
       {load.kind === 'loading' && (
-        <View style={cardFrame(kind)}>
-          <Text size={tokens.typeBodyPhone.size} muted accessibilityRole="text">
-            {t('calendar.loading')}
-          </Text>
-        </View>
+        <Skeleton words={t('calendar.loading')} shape="rows" rowHeight={60} />
       )}
       {load.kind === 'failed' && (
         <EventsFailed
@@ -209,7 +206,7 @@ function CalendarOf({
         />
       )}
       {load.kind === 'loaded' && view === 'month' && (
-        <View style={landscape && openDay != null ? styles.split : styles.stack}>
+        <Arrived style={landscape && openDay != null ? styles.split : styles.stack}>
           <MonthGrid
             weeks={monthGrid(month, firstDay, days)}
             firstDay={firstDay}
@@ -222,16 +219,18 @@ function CalendarOf({
           {landscape && dayList != null && (
             <View style={[cardFrame(kind), styles.panel]}>{dayList}</View>
           )}
-        </View>
+        </Arrived>
       )}
       {load.kind === 'loaded' && view === 'agenda' && (
-        <Agenda
-          kind={kind}
-          month={month}
-          days={agendaDays(month, days)}
-          today={today}
-          todayAsked={todayAsked}
-        />
+        <Arrived>
+          <Agenda
+            kind={kind}
+            month={month}
+            days={agendaDays(month, days)}
+            today={today}
+            todayAsked={todayAsked}
+          />
+        </Arrived>
       )}
       {!landscape && (
         <Sheet

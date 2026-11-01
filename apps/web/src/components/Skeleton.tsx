@@ -2,7 +2,7 @@ import { type AnimationEvent, type ReactNode, useState } from 'react';
 
 import { SKELETON_AFTER_MS, useShownAfter } from '../shownAfter.ts';
 
-export type RowHeight = 56 | 64 | 76;
+export type RowHeight = 56 | 60 | 64 | 76;
 
 export type CardShape = { lines?: number; fields?: number; options?: number; cover?: boolean };
 
