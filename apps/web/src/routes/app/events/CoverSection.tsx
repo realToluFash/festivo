@@ -14,7 +14,6 @@ import {
   useEffect,
   useRef,
   useState,
-  useSyncExternalStore,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -23,6 +22,7 @@ import { FieldError } from '../../../components/FieldError.tsx';
 import { LateStatus } from '../../../components/LateStatus.tsx';
 import { useDialogKeys } from '../../../dialogFocus.ts';
 import { offButton } from '../../../offButton.ts';
+import { usePhoneWidth } from '../../../phoneWidth.ts';
 import { type CoverPhoto, EventCoverImage } from './EventCoverImage.tsx';
 import { checkCoverPick, discardCoverUpload, refusalOf } from './coverPhoto.ts';
 
@@ -37,20 +37,6 @@ export type CoverUse = {
 type Opened = { file: File | null; shows: boolean; from: 'cover' | 'upload' };
 
 const ACCEPT = 'image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif';
-const FULL_SCREEN = '(width <= 40rem)';
-
-/** Below 640 px the dialog fills the screen and Remove photo moves from the footer into the body. */
-function useFullScreen(): boolean {
-  return useSyncExternalStore(
-    (changed) => {
-      const query = window.matchMedia(FULL_SCREEN);
-      query.addEventListener('change', changed);
-
-      return () => query.removeEventListener('change', changed);
-    },
-    () => window.matchMedia(FULL_SCREEN).matches,
-  );
-}
 
 /** The form's Cover section (sc-3590): the cover at 16:9, Upload a photo, and the Cover photo dialog. */
 export function CoverSection({
@@ -268,7 +254,8 @@ function CoverDialog({
   const kept = useRef<Chosen | null>(null);
   const superseding = useRef(false);
   const parked = useRef<Chosen | null>(null);
-  const fullScreen = useFullScreen();
+  // Below 640 px the dialog fills the screen and Remove photo moves from the footer into the body.
+  const fullScreen = usePhoneWidth();
   const drag = useRef<{ y: number; start: number } | null>(null);
 
   useEffect(() => {

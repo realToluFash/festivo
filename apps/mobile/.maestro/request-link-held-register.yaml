@@ -13,8 +13,11 @@ appId: host.exp.Exponent
       - openLink: ${METRO_URL}/--/sign-in
 - extendedWaitUntil:
     visible:
-      id: 'signIn.register'
+      id: 'signIn.email'
     timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: 'signIn.register'
 - tapOn:
     id: 'signIn.register'
 - extendedWaitUntil:

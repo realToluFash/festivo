@@ -1,12 +1,12 @@
 import { ACCOUNT_NAME_MAXIMUM, meetsPasswordLength } from '@soirely/domain';
 import { router } from 'expo-router';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, type TextInputInstance, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import Svg, { Path } from 'react-native-svg';
 
 import { api } from '../src/api.ts';
 import { holdRegistration } from '../src/pendingRegistration.ts';
+import { BackButton } from '../src/components/AppFrame.tsx';
 import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { Footnote, PrimaryButton } from '../src/components/Buttons.tsx';
 import { Field, focusChecked, keysStayDown, TextField } from '../src/components/Field.tsx';
@@ -14,7 +14,6 @@ import { Notice } from '../src/components/Notice.tsx';
 import { PasswordField } from '../src/components/PasswordField.tsx';
 import { PasswordRule } from '../src/components/PasswordRule.tsx';
 import { OrRule, ProviderButtons } from '../src/components/ProviderSignIn.tsx';
-import { Text } from '../src/components/Text.tsx';
 import { dateLocale } from '../src/i18n/index.ts';
 import { emailMessage, useFormChecks } from '../src/kit/formChecks.ts';
 import { useLayout } from '../src/layout/useLayout.ts';
@@ -67,31 +66,10 @@ export default function Register() {
     />
   );
 
-  // Where Google sits differs by size: beside the form on landscape, under it on portrait, above it on a phone.
-  if (kind === 'tabletLandscape') {
+  // Where Google sits differs by size: under the form on a tablet, above it on a phone.
+  if (kind !== 'phone') {
     return (
-      <AuthFrame
-        saying={
-          <>
-            {heading}
-            <View style={styles.providers}>
-              <ProviderButtons />
-              <Text size={tokens.typeBody.size} style={styles.secondary}>
-                {t('register.landscapeNote')}
-              </Text>
-            </View>
-          </>
-        }
-      >
-        {form}
-        {haveAccount}
-      </AuthFrame>
-    );
-  }
-
-  if (kind === 'tabletPortrait') {
-    return (
-      <AuthFrame saying={heading}>
+      <AuthFrame saying={heading} back={<BackToSignIn />}>
         {form}
         <OrRule key="or" label={t('signIn.or')} />
         <ProviderButtons key="providers" />
@@ -101,7 +79,7 @@ export default function Register() {
   }
 
   return (
-    <AuthFrame saying={heading} phoneTop={<BackRow />}>
+    <AuthFrame saying={heading} back={<BackToSignIn />}>
       <ProviderButtons key="providers" />
       <OrRule key="or" label={t('register.orWithEmail')} />
       {form}
@@ -110,24 +88,16 @@ export default function Register() {
   );
 }
 
-function BackRow() {
+function BackToSignIn() {
   const { t } = useTranslation();
 
   return (
-    <View style={styles.backRow}>
-      <Pressable
-        style={styles.back}
-        onPress={() => (router.canGoBack() ? router.back() : router.replace('/sign-in'))}
-        accessibilityRole="button"
-        accessibilityLabel={t('register.back')}
-        testID="register.back"
-      >
-        <BackChevron />
-      </Pressable>
-      <Text size={tokens.typeTitleDialog.size} weight="bold">
-        {t('app.name')}
-      </Text>
-    </View>
+    <BackButton
+      label={t('signIn.title')}
+      heard={t('register.back')}
+      onPress={() => (router.canGoBack() ? router.back() : router.replace('/sign-in'))}
+      testID="register.back"
+    />
   );
 }
 
@@ -291,33 +261,9 @@ function refusalWords(
   return error.message;
 }
 
-function BackChevron(): ReactNode {
-  return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="m15 18-6-6 6-6"
-        stroke={tokens.colorInk}
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
 const styles = StyleSheet.create({
-  backRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
-  back: {
-    width: tokens.sizeHit,
-    height: tokens.sizeHit,
-    marginLeft: -tokens.spaceLg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: tokens.sizeHit / 2,
-  },
   secondary: { color: tokens.colorInkSecondary },
   accentText: { color: tokens.colorAccentText },
   onAccent: { color: tokens.colorInkOnDark },
-  providers: { gap: tokens.spaceMd, paddingTop: tokens.spaceSm },
   form: { gap: tokens.spaceXl },
 });
