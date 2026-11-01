@@ -26,7 +26,7 @@ export function useAuthBack(back: AuthBackTo | undefined) {
         opened && fallback != null ? void navigate(fallback, { replace: true }) : void navigate(-1)
       }
     >
-      <span aria-hidden="true">‹ </span>
+      <span aria-hidden="true">‹</span>
       {label}
     </button>
   );
