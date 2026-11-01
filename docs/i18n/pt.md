@@ -41,6 +41,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **1 Nov 2026. Quando termina um evento e os títulos dos cartões da Vista geral** (sc-26608
+  para sc-25008). "Termina {{time}}", com a frase inteira do `Intl` a seguir: "Termina dentro
+  de 3 horas", "Termina amanhã", "Termina este minuto". O CLDR de pt-PT diz "dentro de", não o
+  "daqui a" das nossas datas; não é nosso, e lê-se bem. Os cartões: "Dentro do previsto",
+  "Respostas", "Precisa de si" (a forma formal pt-PT, nunca "Precisa de você") e "Equipa do
+  evento".
+
 - **01 Nov 2026. O que um botão diz enquanto envia, num evento** (sc-22578 para sc-22103,
   `eventLive.making`, `eventPause.pausing`, `.resuming`, `eventEnd.callingOff`, `.ending`,
   `eventDelete.deleting`, `eventEnd.callOffFailed`, web e app). "A" + infinitivo do verbo do
