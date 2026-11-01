@@ -64,10 +64,13 @@
     "moreFailed": "No se han podido cargar más eventos finalizados. Vuelva a intentarlo en un momento.",
     "summaryHappeningNow_one": "{{count, number}} happening now",
     "summaryHappeningNow_other": "{{count, number}} happening now",
+    "summaryHappeningNow_many": "{{count, number}} happening now",
     "summaryUpcoming_one": "{{count, number}} upcoming",
     "summaryUpcoming_other": "{{count, number}} upcoming",
+    "summaryUpcoming_many": "{{count, number}} upcoming",
     "summaryDrafts_one": "{{count, number}} draft",
     "summaryDrafts_other": "{{count, number}} drafts",
+    "summaryDrafts_many": "{{count, number}} drafts",
     "summaryJoin": "{{first}} · {{rest}}",
     "tileUpcoming": "Upcoming events",
     "tileGuestsInvited": "Guests invited",
@@ -89,7 +92,8 @@
     "nextChangeDates": "This event’s end has passed, so it cannot be made live. Change its dates first.",
     "nextResume": "Paused. Guests can’t reply or change anything until you resume it.",
     "footer_one": "{{count, number}} event · Sorted by date",
-    "footer_other": "{{count, number}} events · Sorted by date"
+    "footer_other": "{{count, number}} events · Sorted by date",
+    "footer_many": "{{count, number}} events · Sorted by date"
   },
   "eventForm": {
     "title": "Nuevo evento",
