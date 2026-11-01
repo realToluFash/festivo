@@ -195,8 +195,9 @@ link, which in Expo Go lands on Home (sc-22740): each starts from Home or from a
   where it sends nothing. On Android, Enter can type into the field instead (sc-18648), so
   a flow uses `hideKeyboard` and then the tap. Split the two by platform, as
   `batch/sign-in-form.yaml` does. The one exception is a check whose outcome is the
-  keyboard put away by hand: `checks/sc13408-change-dismiss.yaml` and
-  `checks/sc13408-choose-dismiss.yaml`, and the `sc9674-*` checks, whose outcome is what the
+  keyboard put away by hand: `checks/sc13408-change-dismiss.yaml`,
+  `checks/sc13408-choose-dismiss.yaml` and `checks/sc22103-edit-keeps-event-nav.yaml`,
+  whose outcome is what shows once the keys are down, and the `sc9674-*` checks, whose outcome is what the
   keys do after a refused send: on an iPhone they put the keys away with a tap on blank page,
   `tapOn: point: '2%,45%'`, since `hideKeyboard` hangs there. That point is for a phone only: on a
   tablet it lands in the settings split list and opens another section. Their Android copies,

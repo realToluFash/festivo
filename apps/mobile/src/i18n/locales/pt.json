@@ -3,8 +3,8 @@
     "name": "Soirely"
   },
   "offline": {
-    "asOf": "Offline · as of {{time}}",
-    "asOfDay": "Offline · as of {{day}} at {{time}}"
+    "asOf": "Sem ligação · atualizado às {{time}}",
+    "asOfDay": "Sem ligação · atualizado no {{day}}, às {{time}}"
   },
   "pending": {
     "loading": "A carregar…"

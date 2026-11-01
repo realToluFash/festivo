@@ -4,9 +4,9 @@
     "skipToContent": "Aller au contenu"
   },
   "offline": {
-    "asOf": "Offline · as of {{time}}",
-    "asOfDay": "Offline · as of {{day}} at {{time}}",
-    "refreshing": "Refreshing…"
+    "asOf": "Hors ligne · mis à jour à {{time}}",
+    "asOfDay": "Hors ligne · mis à jour le {{day}} à {{time}}",
+    "refreshing": "Actualisation…"
   },
   "release": {
     "updated": "Une nouvelle version de Soirely est en ligne.",

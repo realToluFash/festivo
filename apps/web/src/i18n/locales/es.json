@@ -4,9 +4,9 @@
     "skipToContent": "Ir al contenido"
   },
   "offline": {
-    "asOf": "Offline · as of {{time}}",
-    "asOfDay": "Offline · as of {{day}} at {{time}}",
-    "refreshing": "Refreshing…"
+    "asOf": "Sin conexión · actualizado a las {{time}}",
+    "asOfDay": "Sin conexión · actualizado el {{day}} a las {{time}}",
+    "refreshing": "Actualizando…"
   },
   "release": {
     "updated": "Soirely se ha actualizado.",
