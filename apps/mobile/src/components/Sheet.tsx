@@ -129,9 +129,19 @@ function SheetFrame({
   useFocusBack(open, opener);
   const reduced = useReducedMotion();
   const [onScreen, setOnScreen] = useState(false);
-  const { present, scrim, frame } = useSheetMotion(open, onScreen, phone, reduced, height);
+  const [laidOut, setLaidOut] = useState(false);
+  const { present, scrim, frame } = useSheetMotion(
+    open,
+    { laidOut, onScreen },
+    phone,
+    reduced,
+    height,
+  );
   const { shown, gone } = useWindowTurn(useModalOpen(present));
-  if (!shown && onScreen) setOnScreen(false);
+  if (!shown && (onScreen || laidOut)) {
+    setOnScreen(false);
+    setLaidOut(false);
+  }
 
   return (
     <Modal
@@ -152,7 +162,10 @@ function SheetFrame({
         style={styles.fill}
         behavior="padding"
         enabled={!underKeys}
-        onLayout={(event) => setWindowHeight(event.nativeEvent.layout.height)}
+        onLayout={(event) => {
+          setWindowHeight(event.nativeEvent.layout.height);
+          setLaidOut(true);
+        }}
       >
         <View
           style={[
@@ -215,11 +228,12 @@ export function SheetActions({ children }: { children: ReactNode }) {
 /** Keeps the Modal up until its exit has played, so the sheet can leave rather than vanish. */
 function useSheetMotion(
   shown: boolean,
-  onScreen: boolean,
+  window: { laidOut: boolean; onScreen: boolean },
   phone: boolean,
   reduced: boolean,
   height: number,
 ) {
+  const { laidOut, onScreen } = window;
   const [present, setPresent] = useState(shown);
   const [scrim] = useState(() => new Animated.Value(0));
   const [shift] = useState(() => new Animated.Value(0));
@@ -238,19 +252,33 @@ function useSheetMotion(
     const away = travel.current;
 
     if (shown) {
-      // onShow can fail to come for a sheet opened while another is up or leaving; an iPad loses an entry started before it, so onShow replays it (sc-23267).
-      if (onScreen) {
+      // An entry started before the window's views exist is lost on an iPad, so it waits for their layout, and onShow, when it comes, replays it (sc-23267).
+      if (!laidOut || onScreen) {
         scrim.setValue(0);
         fade.setValue(0);
       }
       shift.setValue(reduced ? 0 : away);
-      const run = Animated.parallel([
-        glide(scrim, 1, tokens.motionBase),
-        glide(fade, 1, slides ? 0 : tokens.motionBase),
-        glide(shift, 0, slides ? tokens.motionSlow : tokens.motionBase),
-      ]);
-      run.start();
-      return () => run.stop();
+      if (!laidOut) return;
+
+      let run: Animated.CompositeAnimation | undefined;
+      const next = requestAnimationFrame(() => {
+        run = Animated.parallel([
+          glide(scrim, 1, tokens.motionBase),
+          glide(fade, 1, slides ? 0 : tokens.motionBase),
+          glide(shift, 0, slides ? tokens.motionSlow : tokens.motionBase),
+        ]);
+        run.start(({ finished }) => {
+          if (!finished) return;
+          scrim.setValue(1);
+          fade.setValue(1);
+          shift.setValue(0);
+        });
+      });
+
+      return () => {
+        cancelAnimationFrame(next);
+        run?.stop();
+      };
     }
 
     const leave = slides || reduced ? tokens.motionBase : tokens.motionFast;
@@ -262,7 +290,7 @@ function useSheetMotion(
       if (finished) setPresent(false);
     });
     return () => run.stop();
-  }, [shown, onScreen, present, slides, reduced, scrim, shift, fade]);
+  }, [shown, laidOut, onScreen, present, slides, reduced, scrim, shift, fade]);
 
   return { present, scrim, frame: { opacity: fade, transform: [{ translateY: shift }] } };
 }
