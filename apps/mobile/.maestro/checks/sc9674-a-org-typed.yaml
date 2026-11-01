@@ -1,0 +1,25 @@
+# Android: Organisation with a..b@ire.events in Contact address, focus in Name, keys up, Save changes in view, for a send by hand. sc-9674.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          id: organisation.contact
+      - eraseText: 80
+- inputText: a..b@ire.events
+- tapOn:
+    id: organisation.name
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: organisation.save
+    centerElement: true
+- waitForAnimationToEnd
+- assertVisible: '(?i)(shift|delete)'
+- takeScreenshot: typed

@@ -1,0 +1,19 @@
+# sc-20824: with the API stopped, Save changes says Not saved and keeps the form and what was typed.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'eventForm.send'
+- extendedWaitUntil:
+    visible: 'Not saved\..*'
+    timeout: 30000
+- takeScreenshot: offline-not-saved
+- assertVisible:
+    id: 'eventForm.send'
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.name'
+    direction: UP
+- assertVisible:
+    id: 'eventForm.name'
+    text: '.*Offline.*'
+- takeScreenshot: offline-kept

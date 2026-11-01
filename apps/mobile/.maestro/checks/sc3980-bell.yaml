@@ -1,0 +1,33 @@
+# The bell: its badge, the push ask on first opening, the feed and Show more (sc-3980).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: frame.bell
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- takeScreenshot: notifications-badge
+# Expo Go's floating gear sits over the bell, so the screen is opened by its link.
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil:
+    visible:
+      id: notifications.markAllRead
+    timeout: 15000
+- takeScreenshot: notifications-feed-first-open
+- runFlow:
+    when:
+      visible:
+        id: notifications.pushAsk.notNow
+    commands:
+      - tapOn:
+          id: notifications.pushAsk.notNow
+- takeScreenshot: notifications-feed
+- scrollUntilVisible:
+    element:
+      id: notifications.showMore
+    timeout: 30000
+- takeScreenshot: notifications-show-more
+- tapOn:
+    id: notifications.showMore
+- takeScreenshot: notifications-more-loaded

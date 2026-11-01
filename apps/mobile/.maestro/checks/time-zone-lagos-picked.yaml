@@ -1,0 +1,19 @@
+# Find your time zone open, "lag" typed, Lagos picked, keys still up on the field. sc-18587.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible: '{{t:account.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'timeZone.change'
+    timeout: 30000
+- tapOn:
+    id: 'timeZone.change'
+- tapOn:
+    id: 'timeZone.search'
+- inputText: 'lag'
+- tapOn:
+    id: 'timeZone.option.Africa/Lagos'
+- takeScreenshot: time-zone-lagos-picked
