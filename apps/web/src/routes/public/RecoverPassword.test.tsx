@@ -76,6 +76,25 @@ describe('asking for a reset link', () => {
     );
   });
 
+  it('goes back to sign-in from ‹ Sign in, heard as Back to sign in (sc-23279)', async () => {
+    at('/sign-in');
+
+    fireEvent.click(screen.getByRole('link', { name: 'Forgot it?' }));
+    const back = await screen.findByRole('button', { name: 'Back to sign in' });
+    expect(back.textContent).toBe('‹ Sign in');
+    fireEvent.click(back);
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined();
+  });
+
+  it('goes to sign-in from ‹ Sign in when the page was opened on its own', async () => {
+    at('/forgot-password');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to sign in' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined();
+  });
+
   it('checks the address before sending, and sends nothing while it fails', async () => {
     const sent = answering({});
     at('/forgot-password');
@@ -453,6 +472,21 @@ describe('setting a new password from the link', () => {
     );
     // Shown as the page opens: nobody clicked, so focus is not moved.
     expect(document.activeElement).toBe(document.body);
+  });
+
+  it('names the dead link in the back control of the page it sends to, and goes back to it (sc-23279)', async () => {
+    answering({
+      'POST /api/auth/password/reset/check': () => problem('reset_link_expired', 410),
+    });
+    at('/reset-password?token=t1');
+
+    fireEvent.click(await screen.findByRole('link', { name: 'Send a new link' }));
+    await screen.findByRole('heading', { level: 1, name: 'Reset your password' });
+    fireEvent.click(screen.getByRole('button', { name: 'This link has expired' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'This link has expired' }),
+    ).toBeDefined();
   });
 
   it.each([

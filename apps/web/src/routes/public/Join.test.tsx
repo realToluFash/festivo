@@ -220,6 +220,29 @@ describe('an invitation, signed out', () => {
     expect(sessionStorage.getItem('soirely.invitation')).toBe(TOKEN);
   });
 
+  it('heads back from Reset your password with the invitation’s title, the step Back reopens', async () => {
+    __setSessionState({ status: 'signedOut', ended: false });
+    answering({
+      [LINK]: () => json(PREVIEW),
+      'POST /api/auth/register': () => problem(409, 'email_taken'),
+    });
+    open();
+
+    fireEvent.change(await screen.findByLabelText('Full name'), { target: { value: 'Kemi' } });
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'lagos-evening-air' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create account and join' }));
+    fireEvent.click(await screen.findByRole('link', { name: 'Forgot your password?' }));
+
+    await screen.findByRole('heading', { level: 1, name: 'Reset your password' });
+    const back = screen.getByRole('button', { name: 'Join Ìrè Events' });
+    expect(back.textContent).toBe('‹ Join Ìrè Events');
+    fireEvent.click(back);
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Join Ìrè Events' })).toBeDefined();
+  });
+
   it('takes focus to “We could not find that invitation” when a newer invitation replaced the link', async () => {
     __setSessionState({ status: 'signedOut', ended: false });
     answering({

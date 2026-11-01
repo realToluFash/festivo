@@ -4,20 +4,6 @@ import { tokens } from '../theme/tokens.ts';
 import { Text } from './Text.tsx';
 import { useMarkSide } from './markSide.ts';
 
-export type MarkTone = 'progress' | 'done' | 'broken' | 'skipped';
-
-/** A state as a shape and a word, never colour alone: "… Waiting for an answer", "✓ Confirmed". */
-export function StatusMark({ tone, word }: { tone: MarkTone; word: string }) {
-  return (
-    <View style={styles.row}>
-      <GlyphMark mark={tokens.marks[tone]} />
-      <Text size={tokens.typeSmall.size} weight="semibold" style={WORD[tone]}>
-        {word}
-      </Text>
-    </View>
-  );
-}
-
 export interface Mark {
   glyph: string;
   fill: string;
@@ -47,15 +33,7 @@ export function GlyphMark({ mark, side = tokens.sizeMark }: { mark: Mark; side?:
   );
 }
 
-const WORD = StyleSheet.create({
-  progress: { color: tokens.colorAttentionText },
-  done: { color: tokens.colorAccentText },
-  broken: { color: tokens.colorBrokenText },
-  skipped: { color: tokens.colorInkSecondary },
-});
-
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   mark: {
     borderRadius: tokens.radiusPill,
     borderWidth: 1.5,

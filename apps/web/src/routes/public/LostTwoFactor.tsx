@@ -9,6 +9,8 @@ import {
   codeProblem,
   codeWording,
   formatPhone,
+  RECOVERY_LOOK,
+  type RecoveryOutcome,
   recoveryFirstStep,
   recoveryIntroKey,
 } from '@soirely/domain';
@@ -24,6 +26,7 @@ import { focusWhereSent, offField } from '../../offField.ts';
 import { useOneAtATime } from '../../oneAtATime.ts';
 import { useResendCountdown } from '../../resendCountdown.ts';
 import { Pending } from '../../components/Pending.tsx';
+import { StatusChip } from '../../components/StatusChip.tsx';
 import { dropRecovery, heldRecovery, holdRecovery } from '../../heldRecovery.ts';
 import { currentLocale } from '../../i18n/index.ts';
 
@@ -38,6 +41,7 @@ type View =
 
 /** Lost both the authenticator and the recovery codes (sc-509): nothing on this page signs anybody in. */
 export function LostTwoFactor() {
+  const { t } = useTranslation();
   const challenge = (useLocation().state as TwoFactorChallenge | null)?.challenge ?? null;
   const [view, setView] = useState<View>({ kind: 'loading' });
   const starting = useOneAtATime();
@@ -149,7 +153,7 @@ export function LostTwoFactor() {
   if (view.kind === 'loading') return <Pending />;
 
   return (
-    <AuthPage>
+    <AuthPage even back={{ label: t('twoFactor.title') }}>
       {view.kind === 'start' && (
         <Start
           opening={view.opening}
@@ -192,11 +196,8 @@ function Heading({ title, intro, mark }: { title: string; intro: string; mark?: 
   return (
     <div className="auth-heading">
       {mark != null && (
-        <p className={`request-state request-state-${mark.tone}`}>
-          <span className={`mark mark-${mark.tone}`} aria-hidden="true">
-            {mark.glyph}
-          </span>
-          <span>{mark.word}</span>
+        <p className="request-state">
+          <StatusChip look={RECOVERY_LOOK[mark.outcome]}>{mark.word}</StatusChip>
         </p>
       )}
       <h1 ref={heading} tabIndex={-1}>
@@ -208,8 +209,7 @@ function Heading({ title, intro, mark }: { title: string; intro: string; mark?: 
 }
 
 interface Mark {
-  tone: 'attention' | 'done' | 'broken' | 'ended';
-  glyph: string;
+  outcome: RecoveryOutcome;
   word: string;
 }
 
@@ -222,7 +222,7 @@ function Replaced({ onStartAgain }: { onStartAgain: () => void }) {
       <Heading
         title={t('lostTwoFactor.replacedTitle')}
         intro={t('lostTwoFactor.replacedIntro')}
-        mark={{ tone: 'ended', glyph: '–', word: t('lostTwoFactor.replacedMark') }}
+        mark={{ outcome: 'ended', word: t('lostTwoFactor.replacedMark') }}
       />
       <p className="muted">{t('lostTwoFactor.replacedNote')}</p>
       <button className="button button-primary" type="button" onClick={onStartAgain}>
@@ -241,9 +241,11 @@ function BackToSignIn() {
   const { t } = useTranslation();
 
   return (
-    <Link className="link-button" to="/sign-in" onClick={() => dropRecovery()}>
-      {t('lostTwoFactor.back')}
-    </Link>
+    <div className="auth-footnote auth-footnote-plain auth-footnote-centred">
+      <Link className="link-button" to="/sign-in" onClick={() => dropRecovery()}>
+        {t('lostTwoFactor.back')}
+      </Link>
+    </div>
   );
 }
 
@@ -281,7 +283,7 @@ function Start({
         </div>
       )}
 
-      <ol className="steps-list">
+      <ol className="steps-list steps-cards">
         <li>
           <span className="step-mark" aria-hidden="true">
             1
@@ -416,9 +418,9 @@ function Request({
         <Heading
           title={t('lostTwoFactor.waitingTitle')}
           intro={t(recoveryIntroKey('waiting', state.nobody), { organisations })}
-          mark={{ tone: 'attention', glyph: '…', word: t('lostTwoFactor.waitingMark') }}
+          mark={{ outcome: 'waiting', word: t('lostTwoFactor.waitingMark') }}
         />
-        <div className="notice notice-quiet">
+        <div className="notice notice-plain">
           <div className="notice-body">
             <p>{t('lostTwoFactor.asked', { when: state.asked })}</p>
             <p>{t('lostTwoFactor.endsBy', { when: state.expires })}</p>
@@ -430,7 +432,7 @@ function Request({
             {t('lostTwoFactor.emailSupport', { address: supportAddress })}
           </a>
         )}
-        <div className="auth-footnote">
+        <div className="auth-footnote auth-footnote-plain auth-footnote-centred">
           <span>{t('lostTwoFactor.notYou')}</span>
           <button
             className="link-button"
@@ -458,7 +460,7 @@ function Request({
         <Heading
           title={t('lostTwoFactor.approvedTitle')}
           intro={t(recoveryIntroKey('approved', state.nobody), { organisations: anyOf })}
-          mark={{ tone: 'done', glyph: '✓', word: t('lostTwoFactor.approvedMark') }}
+          mark={{ outcome: 'approved', word: t('lostTwoFactor.approvedMark') }}
         />
         <button
           className="button button-primary"
@@ -480,7 +482,7 @@ function Request({
         <Heading
           title={t('lostTwoFactor.turnedDownTitle')}
           intro={t(recoveryIntroKey('turned_down', state.nobody), { organisations: anyOf })}
-          mark={{ tone: 'broken', glyph: '✕', word: t('lostTwoFactor.turnedDownMark') }}
+          mark={{ outcome: 'turned_down', word: t('lostTwoFactor.turnedDownMark') }}
         />
         {supportAddress !== '' && (
           <a className="button" href={`mailto:${supportAddress}`}>
@@ -498,7 +500,7 @@ function Request({
         <Heading
           title={t('lostTwoFactor.endedTitle')}
           intro={t(recoveryIntroKey('expired', state.nobody))}
-          mark={{ tone: 'ended', glyph: '–', word: t('lostTwoFactor.endedMark') }}
+          mark={{ outcome: 'ended', word: t('lostTwoFactor.endedMark') }}
         />
         {state.nobody && supportAddress !== '' && (
           <a className="button" href={`mailto:${supportAddress}`}>
@@ -520,7 +522,7 @@ function Request({
       <Heading
         title={t('lostTwoFactor.cancelledTitle')}
         intro={t('lostTwoFactor.cancelledIntro')}
-        mark={{ tone: 'ended', glyph: '–', word: t('lostTwoFactor.cancelledMark') }}
+        mark={{ outcome: 'ended', word: t('lostTwoFactor.cancelledMark') }}
       />
       <BackToSignIn />
     </>
@@ -823,7 +825,7 @@ function Codes({
 
           <div className="resend">
             <button
-              className="button"
+              className="link-button"
               type="button"
               {...resending.button}
               onClick={() => void resend()}

@@ -40,7 +40,7 @@ export function RecoveryNotMe() {
   }
 
   return (
-    <AuthPage>
+    <AuthPage even>
       {status.kind === 'done' ? (
         <div className="auth-heading">
           <h1 ref={doneHeading} tabIndex={-1}>
@@ -75,9 +75,11 @@ export function RecoveryNotMe() {
           </button>
         </>
       )}
-      <Link className="link-button" to="/sign-in">
-        {t('lostTwoFactor.back')}
-      </Link>
+      <div className="auth-footnote auth-footnote-plain auth-footnote-centred">
+        <Link className="link-button" to="/sign-in">
+          {t('lostTwoFactor.back')}
+        </Link>
+      </div>
     </AuthPage>
   );
 }

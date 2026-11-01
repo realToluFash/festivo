@@ -9,7 +9,7 @@ import { dateLocale } from '../i18n/index.ts';
 import { type CodeMode, codeRefusal, typedCodeProblem } from '../kit/twoFactor.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AuthFrame, AuthHeading } from './AuthFrame.tsx';
-import { Footnote, PrimaryButton, QuietButton } from './Buttons.tsx';
+import { Footnote, PrimaryButton, QuietButton, RowButton } from './Buttons.tsx';
 import { CodeField, Field, focusChecked, keysStayDown, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
@@ -42,7 +42,7 @@ export function SecondFactorStep({
   failedTitle: string;
   failedBody: string;
   /** Only where a sign-in asks: the way back in for somebody who has neither (sc-509). */
-  onLostBoth?: () => void;
+  onLostBoth?: (from: CodeMode) => void;
   onVerify: (factor: SecondFactor) => Promise<void>;
   onExpired: () => void;
 }) {
@@ -142,18 +142,13 @@ export function SecondFactorStep({
     <AuthFrame
       saying={
         <AuthHeading
+          apart
           title={mode === 'app' ? (title ?? t('twoFactor.title')) : t('twoFactor.recoveryTitle')}
           intro={mode === 'app' ? intro : recoveryIntro}
         />
       }
     >
       <View style={styles.form}>
-        <QuietButton
-          label={t('twoFactor.back')}
-          onPress={() => router.replace('/sign-in')}
-          testID="twoFactor.back"
-        />
-
         {status.kind === 'paused' && (
           <View style={styles.paused}>
             <Notice
@@ -170,7 +165,9 @@ export function SecondFactorStep({
             <Footnote
               question={t('twoFactor.notYou')}
               action={t('twoFactor.resetPassword')}
-              onPress={() => router.push('/forgot-password')}
+              onPress={() =>
+                router.push(`/forgot-password?from=${mode === 'app' ? 'code' : 'recovery'}`)
+              }
               role="link"
               testID="twoFactor.reset"
             />
@@ -197,6 +194,7 @@ export function SecondFactorStep({
               accessibilityLabel={label}
               autoCapitalize="none"
               autoComplete="off"
+              style={styles.figures}
             />
           )}
         </Field>
@@ -215,22 +213,30 @@ export function SecondFactorStep({
           testID="twoFactor.verify"
         />
 
-        <QuietButton
+        <RowButton
           label={mode === 'app' ? t('twoFactor.useRecovery') : t('twoFactor.useApp')}
           onPress={() => switchTo(mode === 'app' ? 'recovery' : 'app')}
           testID="twoFactor.switch"
         />
 
-        {onLostBoth == null ? (
-          <Text size={tokens.typeSmall.size} style={styles.secondary}>
-            {t('twoFactor.lostBoth')}
-          </Text>
-        ) : (
-          <QuietButton
+        {onLostBoth != null && (
+          <RowButton
             label={t('twoFactor.lostBoth')}
-            onPress={onLostBoth}
+            onPress={() => onLostBoth(mode)}
             testID="twoFactor.lostBoth"
           />
+        )}
+
+        <QuietButton
+          label={t('twoFactor.back')}
+          onPress={() => router.replace('/sign-in')}
+          testID="twoFactor.back"
+        />
+
+        {onLostBoth == null && (
+          <Text size={tokens.typeSmall.size} style={styles.lostBoth}>
+            {t('twoFactor.lostBoth')}
+          </Text>
         )}
       </View>
     </AuthFrame>
@@ -238,7 +244,8 @@ export function SecondFactorStep({
 }
 
 const styles = StyleSheet.create({
-  form: { gap: tokens.spaceXl },
+  form: { gap: tokens.spaceXxl },
   paused: { gap: tokens.spaceSm },
-  secondary: { color: tokens.colorInkSecondary },
+  figures: { fontVariant: ['tabular-nums'] },
+  lostBoth: { color: tokens.colorInkSecondary, textAlign: 'center' },
 });

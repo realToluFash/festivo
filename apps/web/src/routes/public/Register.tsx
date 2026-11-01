@@ -7,7 +7,7 @@ import {
 } from '@soirely/domain';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation, useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
@@ -34,7 +34,6 @@ type FieldErrors = Partial<Record<'name' | 'email' | 'password', FieldError>>;
 export function Register() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const location = useLocation();
   const [status, setStatus] = useState<Status>({ kind: 'ready' });
   const [password, setPassword] = useState('');
   const passwordInput = useRef<HTMLInputElement>(null);
@@ -111,23 +110,7 @@ export function Register() {
   }
 
   return (
-    <AuthPage
-      back={
-        <button
-          type="button"
-          className="link-button auth-back"
-          aria-label={t('register.back')}
-          onClick={() =>
-            location.key === 'default'
-              ? void navigate('/sign-in', { replace: true })
-              : void navigate(-1)
-          }
-        >
-          <span aria-hidden="true">‹ </span>
-          {t('signIn.title')}
-        </button>
-      }
-    >
+    <AuthPage back={{ label: t('signIn.title'), heard: t('register.back'), fallback: '/sign-in' }}>
       <div className="auth-heading">
         <h1>{t('register.title')}</h1>
         <p>{t('register.intro')}</p>

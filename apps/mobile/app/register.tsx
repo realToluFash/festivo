@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
 import { holdRegistration } from '../src/pendingRegistration.ts';
-import { BackButton } from '../src/components/AppFrame.tsx';
 import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { Footnote, PrimaryButton } from '../src/components/Buttons.tsx';
 import { Field, focusChecked, keysStayDown, TextField } from '../src/components/Field.tsx';
@@ -52,6 +51,12 @@ export default function Register() {
     }
   }
 
+  const back = {
+    label: t('signIn.title'),
+    heard: t('register.back'),
+    onPress: () => (router.canGoBack() ? router.back() : router.replace('/sign-in')),
+    testID: 'register.back',
+  };
   const heading = <AuthHeading title={t('register.title')} intro={t('register.intro')} />;
   // Keyed, so the form keeps what was typed when a rotation moves it among the other pieces.
   const form = <Form key="form" status={status} onSubmit={register} />;
@@ -69,7 +74,7 @@ export default function Register() {
   // Where Google sits differs by size: under the form on a tablet, above it on a phone.
   if (kind !== 'phone') {
     return (
-      <AuthFrame saying={heading} back={<BackToSignIn />}>
+      <AuthFrame saying={heading} back={back}>
         {form}
         <OrRule key="or" label={t('signIn.or')} />
         <ProviderButtons key="providers" />
@@ -79,25 +84,12 @@ export default function Register() {
   }
 
   return (
-    <AuthFrame saying={heading} back={<BackToSignIn />}>
+    <AuthFrame saying={heading} back={back}>
       <ProviderButtons key="providers" />
       <OrRule key="or" label={t('register.orWithEmail')} />
       {form}
       {haveAccount}
     </AuthFrame>
-  );
-}
-
-function BackToSignIn() {
-  const { t } = useTranslation();
-
-  return (
-    <BackButton
-      label={t('signIn.title')}
-      heard={t('register.back')}
-      onPress={() => (router.canGoBack() ? router.back() : router.replace('/sign-in'))}
-      testID="register.back"
-    />
   );
 }
 

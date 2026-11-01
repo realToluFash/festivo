@@ -25,7 +25,7 @@ export function TwoFactorAgain() {
   }
 
   return (
-    <AuthPage>
+    <AuthPage even>
       <div className="auth-heading">
         <h1>{t('lostTwoFactor.setupTitle')}</h1>
         <p>{t('lostTwoFactor.setupIntro')}</p>

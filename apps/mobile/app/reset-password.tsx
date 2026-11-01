@@ -111,6 +111,7 @@ export default function ResetPassword() {
       <AuthFrame
         saying={
           <AuthHeading
+            apart
             title={t(`recovery.${status.kind}Title`)}
             intro={t(`recovery.${status.kind}Body`)}
             answer={status.tapped ? status : undefined}
@@ -119,7 +120,7 @@ export default function ResetPassword() {
       >
         <PrimaryButton
           label={t('recovery.sendNew')}
-          onPress={() => router.replace('/forgot-password')}
+          onPress={() => router.replace('/forgot-password?from=link')}
           testID="recovery.sendNew"
         />
         <Footnote
@@ -128,6 +129,7 @@ export default function ResetPassword() {
           onPress={() => router.replace('/sign-in')}
           role="link"
           testID="recovery.signIn"
+          centred
         />
       </AuthFrame>
     );
@@ -166,6 +168,7 @@ export default function ResetPassword() {
         atFoot
         saying={
           <AuthHeading
+            apart
             done
             title={t('recovery.doneTitle')}
             intro={t('recovery.doneBody', { email: status.email })}
@@ -189,6 +192,7 @@ export default function ResetPassword() {
     <AuthFrame
       saying={
         <AuthHeading
+          apart
           title={t('recovery.newTitle')}
           intro={t('recovery.newFor', { email: status.email })}
           answer={status.kind === 'ready' && status.tapped === true ? status : undefined}
@@ -230,7 +234,7 @@ export default function ResetPassword() {
 
         <PasswordRule met={lengthMet} testID="recovery" />
 
-        <Notice tone="quiet" mark="i" body={t('recovery.signsOut')} />
+        <Notice tone="plain" mark="i" body={t('recovery.signsOut')} />
 
         <PrimaryButton
           label={saving ? t('recovery.saving') : t('recovery.save')}
@@ -253,5 +257,5 @@ function deadFrom(error: unknown): 'used' | 'expired' | 'invalid' | null {
 }
 
 const styles = StyleSheet.create({
-  form: { gap: tokens.spaceXl },
+  form: { gap: tokens.spaceXxl },
 });

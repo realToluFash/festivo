@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
+import { BackButton } from './AppFrame.tsx';
 import { LanguageChoice } from './LanguageChoice.tsx';
 import { useMarkSide } from './markSide.ts';
 import { useReadOut } from './ReadOut.tsx';
@@ -23,6 +24,7 @@ export function AuthHeading({
   done = false,
   answer,
   introAnswer,
+  apart = false,
 }: {
   title: string;
   intro?: string | undefined;
@@ -34,6 +36,8 @@ export function AuthHeading({
   answer?: unknown;
   /** The tap the intro answers, where the tap's button went: the intro takes focus in place of being read out (sc-11173). */
   introAnswer?: unknown;
+  /** Getting back in sets the title apart from the intro, as GetBackIn.dc.html draws it (sc-23279). */
+  apart?: boolean;
 }) {
   const { kind } = useLayout();
   const doneMarkSide = useMarkSide(tokens.sizeHitPhoneHero);
@@ -63,7 +67,7 @@ export function AuthHeading({
           </Text>
         </View>
       )}
-      <View ref={shown} style={styles.heading}>
+      <View ref={shown} style={[styles.heading, apart && styles.headingApart]}>
         <Title ref={read} size={size} style={styles.title} accessibilityRole="header">
           {title}
         </Title>
@@ -77,6 +81,14 @@ export function AuthHeading({
   );
 }
 
+/** The step the system's back returns to, drawn as ‹ and its title in place of the brand. */
+export interface AuthBack {
+  label: string;
+  heard?: string;
+  onPress: () => void;
+  testID: string;
+}
+
 /** Every auth screen at three sizes: phone stacks with no card, a tablet centres one, its languages and `foot` under it. */
 export function AuthFrame({
   saying = null,
@@ -87,7 +99,7 @@ export function AuthFrame({
 }: {
   saying?: ReactNode;
   /** In the brand row's place at every size, such as register's ‹ Sign in. */
-  back?: ReactNode;
+  back?: AuthBack | null | undefined;
   /** On a phone, the content sits at the foot: a done state's way on. */
   atFoot?: boolean;
   /** After the languages, last on the page, such as sign-in's New here?. */
@@ -104,7 +116,9 @@ export function AuthFrame({
   return (
     <Screen style={styles.page} contentStyle={CONTENT[kind]}>
       <View style={[styles.brandRow, column]}>
-        {back ?? (
+        {back != null ? (
+          <BackButton {...back} />
+        ) : (
           <Title size={tokens.typeTitleDialog.size} style={styles.brand}>
             {t('app.name')}
           </Title>
@@ -143,6 +157,7 @@ const styles = StyleSheet.create({
   brandRow: { minHeight: tokens.sizeHit, justifyContent: 'center' },
   brand: { letterSpacing: -0.4 },
   heading: { gap: tokens.spaceXs },
+  headingApart: { gap: tokens.spaceXxl },
   title: { letterSpacing: -0.5 },
   secondary: { color: tokens.colorInkSecondary },
   onAccent: { color: tokens.colorInkOnDark },

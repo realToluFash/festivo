@@ -7,6 +7,8 @@ import { Link } from 'react-router';
 import { dateLocale } from '../i18n/index.ts';
 import { offButton } from '../offButton.ts';
 import { focusWhereSent, offField } from '../offField.ts';
+import type { ForgotFrom } from '../forgotFrom.ts';
+import { AuthRow } from './AuthRow.tsx';
 import { FieldError } from './FieldError.tsx';
 
 type Mode = 'app' | 'recovery';
@@ -116,10 +118,6 @@ export function SecondFactorStep({
 
   return (
     <>
-      <Link className="link-button" to="/sign-in">
-        {t('twoFactor.back')}
-      </Link>
-
       <div className="auth-heading">
         <h1>{mode === 'app' ? t('twoFactor.title') : t('twoFactor.recoveryTitle')}</h1>
         <p>{mode === 'app' ? intro : recoveryIntro}</p>
@@ -136,7 +134,11 @@ export function SecondFactorStep({
             {pausedNote != null && <p>{pausedNote}</p>}
             <div className="auth-footnote">
               <span>{t('twoFactor.notYou')}</span>
-              <Link className="link-button" to="/forgot-password">
+              <Link
+                className="link-button"
+                to="/forgot-password"
+                state={{ back: 'code' } satisfies ForgotFrom}
+              >
                 {t('twoFactor.resetPassword')}
               </Link>
             </div>
@@ -162,7 +164,7 @@ export function SecondFactorStep({
             {mode === 'app' ? t('twoFactor.code') : t('twoFactor.recoveryCode')}
           </label>
           <input
-            className={error == null ? 'input' : 'input input-wrong'}
+            className={inputClass(mode, error != null)}
             id="code"
             name="code"
             type="text"
@@ -198,23 +200,31 @@ export function SecondFactorStep({
         </button>
       </form>
 
-      <button
-        className="link-button"
-        type="button"
-        onClick={() => switchTo(mode === 'app' ? 'recovery' : 'app')}
-      >
+      <AuthRow onClick={() => switchTo(mode === 'app' ? 'recovery' : 'app')}>
         {mode === 'app' ? t('twoFactor.useRecovery') : t('twoFactor.useApp')}
-      </button>
+      </AuthRow>
 
-      {onLostBoth == null ? (
-        <p className="auth-footnote">{t('twoFactor.lostBoth')}</p>
-      ) : (
-        <button className="link-button" type="button" onClick={onLostBoth}>
+      {onLostBoth != null && <AuthRow onClick={onLostBoth}>{t('twoFactor.lostBoth')}</AuthRow>}
+
+      <div className="auth-footnote auth-footnote-plain auth-footnote-centred">
+        <Link className="link-button" to="/sign-in">
+          {t('twoFactor.back')}
+        </Link>
+      </div>
+
+      {onLostBoth == null && (
+        <p className="auth-footnote auth-footnote-plain auth-footnote-centred">
           {t('twoFactor.lostBoth')}
-        </button>
+        </p>
       )}
     </>
   );
+}
+
+function inputClass(mode: Mode, wrong: boolean): string {
+  const field = mode === 'app' ? 'code-input' : 'input input-figures';
+
+  return wrong ? `${field} input-wrong` : field;
 }
 
 function statusFrom(refusal: unknown, mode: Mode, t: (key: string) => string): Status {

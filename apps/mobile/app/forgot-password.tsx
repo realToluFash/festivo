@@ -1,19 +1,24 @@
 import { ApiError } from '@soirely/api-client';
 import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View } from 'react-native';
+import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
-import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
-import { Footnote, PrimaryButton, SecondaryButton } from '../src/components/Buttons.tsx';
+import { type AuthBack, AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
+import { Footnote, PrimaryButton, QuietButton } from '../src/components/Buttons.tsx';
 import { Field, focusChecked, keysStayDown, TextField } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { dateLocale } from '../src/i18n/index.ts';
 import { emailMessage, useFormChecks } from '../src/kit/formChecks.ts';
+import { useLayout } from '../src/layout/useLayout.ts';
 import { tokens } from '../src/theme/tokens.ts';
+
+/** The step that pushed this one, when it is not Sign in; `link`, a dead reset link, replaced itself with it. */
+export type ForgotFrom = 'code' | 'recovery' | 'security' | 'link';
 
 type Status =
   | { kind: 'asking' }
@@ -25,6 +30,8 @@ type Status =
 /** "Reset your password": an address in, and the same answer whether or not it has an account. */
 export default function ForgotPassword() {
   const { t } = useTranslation();
+  const { from } = useLocalSearchParams<{ from?: ForgotFrom }>();
+  const { kind } = useLayout();
   const [status, setStatus] = useState<Status>({ kind: 'asking' });
   // Uncontrolled: a `value` prop re-renders between keystrokes and drops characters.
   const typed = useRef('');
@@ -59,11 +66,15 @@ export default function ForgotPassword() {
     void send(email, false);
   }
 
+  const back = backTo(from, kind === 'phone', t);
+
   if (status.kind === 'sent') {
     return (
       <AuthFrame
+        back={back}
         saying={
           <AuthHeading
+            apart
             title={t('recovery.sentTitle')}
             intro={t('recovery.sentBody')}
             answer={status}
@@ -71,15 +82,19 @@ export default function ForgotPassword() {
         }
       >
         <Notice
-          tone="quiet"
+          tone="plain"
           mark="i"
           title={t('recovery.nothingTitle')}
           body={t('recovery.nothingBody')}
-        />
-        <SecondaryButton
-          label={t('recovery.sendAgain')}
-          onPress={() => void send(status.email, true)}
-          testID="recovery.sendAgain"
+          button={
+            <View style={styles.sendAgain}>
+              <QuietButton
+                label={t('recovery.sendAgain')}
+                onPress={() => void send(status.email, true)}
+                testID="recovery.sendAgain"
+              />
+            </View>
+          }
         />
         <Text size={tokens.typeSmall.size} style={styles.secondary}>
           {t('recovery.providerNote')}
@@ -90,13 +105,17 @@ export default function ForgotPassword() {
           onPress={() => router.replace('/sign-in')}
           role="link"
           testID="recovery.backToSignIn"
+          centred
         />
       </AuthFrame>
     );
   }
 
   return (
-    <AuthFrame saying={<AuthHeading title={t('recovery.title')} intro={t('recovery.intro')} />}>
+    <AuthFrame
+      back={back}
+      saying={<AuthHeading apart title={t('recovery.title')} intro={t('recovery.intro')} />}
+    >
       <View style={styles.form}>
         {status.kind === 'limited' && (
           <Notice
@@ -156,10 +175,35 @@ export default function ForgotPassword() {
           onPress={() => router.replace('/sign-in')}
           role="link"
           testID="recovery.signIn"
+          centred
         />
       </View>
     </AuthFrame>
   );
+}
+
+function backTo(from: ForgotFrom | undefined, phone: boolean, t: TFunction): AuthBack | null {
+  if (from === 'link') return null;
+
+  if (from == null) {
+    return {
+      label: t('signIn.title'),
+      heard: t('twoFactor.back'),
+      onPress: () => (router.canGoBack() ? router.back() : router.replace('/sign-in')),
+      testID: 'recovery.back',
+    };
+  }
+
+  const title =
+    from === 'code'
+      ? t('twoFactor.title')
+      : from === 'recovery'
+        ? t('twoFactor.recoveryTitle')
+        : phone
+          ? t('security.title')
+          : t('settings.title');
+
+  return { label: title, onPress: () => router.back(), testID: 'recovery.back' };
 }
 
 function refusalFrom(error: unknown, again: boolean): Status {
@@ -174,6 +218,7 @@ function refusalFrom(error: unknown, again: boolean): Status {
 }
 
 const styles = StyleSheet.create({
-  form: { gap: tokens.spaceXl },
+  form: { gap: tokens.spaceXxl },
+  sendAgain: { alignItems: 'flex-start' },
   secondary: { color: tokens.colorInkSecondary },
 });
