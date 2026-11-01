@@ -124,4 +124,14 @@ describe('what arrived with a load (sc-23303)', () => {
       expect(selector).toMatch(/:not\([^)]*\.dialog, \.dialog-scrim\)/u);
     }
   });
+
+  it('keeps a title drawn at open still when its content arrives, as Edit details is', () => {
+    const fade = styles.slice(styles.indexOf('.arrives,'));
+    const direct = fade
+      .slice(0, fade.indexOf('{'))
+      .split(',\n')
+      .find((selector) => selector.startsWith('.arrived > :not('));
+
+    expect(direct).toMatch(/:not\(h1, h2, \.card-heading, /u);
+  });
 });
