@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -79,6 +79,50 @@ function fillIn(password = 'lagos-evening-air') {
 afterEach(() => {
   sessionStorage.clear();
   vi.restoreAllMocks();
+});
+
+describe('the way back from Create your account (sc-23277)', () => {
+  function from(entries: string[]) {
+    const router = createMemoryRouter(routes, {
+      initialEntries: entries,
+      initialIndex: entries.length - 1,
+    });
+    render(<RouterProvider router={router} />);
+
+    return router;
+  }
+
+  it('reads ‹ Sign in, and is heard as Back to sign in', () => {
+    from(['/register']);
+
+    const back = screen.getByRole('button', { name: 'Back to sign in' });
+    expect(back.textContent).toBe('‹ Sign in');
+  });
+
+  it('sits in the header in place of the brand', () => {
+    from(['/register']);
+
+    const header = screen.getByRole('banner');
+    expect(within(header).getByRole('button', { name: 'Back to sign in' })).toBeTruthy();
+    expect(within(header).queryByText('Soirely')).toBeNull();
+  });
+
+  it('does what the browser’s Back does, when there is a page to go back to', async () => {
+    const router = from(['/sign-in', '/forgot-password', '/register']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to sign in' }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/forgot-password'));
+  });
+
+  it('opens Sign in when the account form was the first page opened', async () => {
+    const router = from(['/register']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to sign in' }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/sign-in'));
+    expect(router.state.historyAction).toBe('REPLACE');
+  });
 });
 
 describe('creating an account', () => {

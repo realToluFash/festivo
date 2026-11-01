@@ -69,7 +69,7 @@ describe('asking for a reset link', () => {
   it('is reached from sign-in', async () => {
     at('/sign-in');
 
-    fireEvent.click(screen.getByRole('link', { name: 'Forgot your password?' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Forgot it?' }));
 
     await waitFor(() =>
       expect(screen.getByRole('heading', { level: 1, name: 'Reset your password' })).toBeDefined(),
@@ -79,7 +79,7 @@ describe('asking for a reset link', () => {
   it('goes back to sign-in from ‹ Sign in, heard as Back to sign in (sc-23279)', async () => {
     at('/sign-in');
 
-    fireEvent.click(screen.getByRole('link', { name: 'Forgot your password?' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Forgot it?' }));
     const back = await screen.findByRole('button', { name: 'Back to sign in' });
     expect(back.textContent).toBe('‹ Sign in');
     fireEvent.click(back);

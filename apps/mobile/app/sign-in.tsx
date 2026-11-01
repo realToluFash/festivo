@@ -24,7 +24,6 @@ import {
   refusalFromParams,
   ruleRefusal,
 } from '../src/kit/signInRules.ts';
-import { useLayout } from '../src/layout/useLayout.ts';
 
 type Status =
   /** `another`: Sign in with another account brought the form back in its place. */
@@ -74,7 +73,16 @@ export default function SignIn() {
   return (
     <AuthFrame
       saying={
-        <AuthHeading title={t('signIn.title')} intro={t('signIn.landscapeIntro')} introBeside />
+        <AuthHeading title={t('signIn.title')} intro={t('signIn.landscapeIntro')} landscapeOnly />
+      }
+      foot={
+        <Footnote
+          question={t('signIn.newHere')}
+          action={t('signIn.createAccount')}
+          onPress={() => router.push('/register')}
+          role="link"
+          testID="signIn.register"
+        />
       }
     >
       <Credentials
@@ -109,7 +117,6 @@ function Credentials({
   onAnotherAccount: () => void;
 }) {
   const { t } = useTranslation();
-  const { kind } = useLayout();
   const email = useRef<TextInputInstance>(null);
   const password = useRef<TextInputInstance>(null);
 
@@ -271,7 +278,7 @@ function Credentials({
           <Field
             label={t('signIn.password')}
             labelAction={{
-              label: kind === 'phone' ? t('recovery.forgotShort') : t('recovery.forgot'),
+              label: t('recovery.forgotShort'),
               onPress: () => router.push('/forgot-password'),
               testID: 'signIn.forgot',
             }}
@@ -353,14 +360,6 @@ function Credentials({
       ) : (
         <ProviderSignIn onFailed={onProviderFailed} />
       )}
-
-      <Footnote
-        question={t('signIn.newHere')}
-        action={t('signIn.createAccount')}
-        onPress={() => router.push('/register')}
-        role="link"
-        testID="signIn.register"
-      />
     </View>
   );
 }

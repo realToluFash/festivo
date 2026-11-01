@@ -218,7 +218,7 @@ describe('the pages Soirely has', () => {
     at('/sign-in');
 
     expect(document.title).toBe('Sign in – Soirely');
-    fireEvent.click(screen.getByRole('link', { name: 'Forgot your password?' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Forgot it?' }));
 
     const heading = await screen.findByRole('heading', { level: 1, name: 'Reset your password' });
     await waitFor(() => expect(document.activeElement).toBe(heading));

@@ -22,7 +22,9 @@ export function useAuthBack(back: AuthBackTo | undefined) {
       type="button"
       className="link-button auth-back"
       aria-label={heard}
-      onClick={() => (opened && fallback != null ? void navigate(fallback) : void navigate(-1))}
+      onClick={() =>
+        opened && fallback != null ? void navigate(fallback, { replace: true }) : void navigate(-1)
+      }
     >
       <span aria-hidden="true">‹ </span>
       {label}

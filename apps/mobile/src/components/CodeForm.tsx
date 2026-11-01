@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import { type CodeStatus, asksForCode } from '../kit/code.ts';
 import { tokens } from '../theme/tokens.ts';
-import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
+import { PrimaryButton, QuietButton } from './Buttons.tsx';
 import { CodeField, Field } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { useFocusOnAnswer } from './Screen.tsx';
@@ -131,7 +131,7 @@ export function CodeForm({
           />
 
           <View style={styles.resend}>
-            <SecondaryButton
+            <QuietButton
               label={
                 cooldown > 0
                   ? t(`${copy}.resendIn`, { time: formatCountdown(cooldown) })
@@ -158,6 +158,6 @@ export function CodeForm({
 
 const styles = StyleSheet.create({
   form: { gap: tokens.spaceXl },
-  resend: { gap: tokens.spaceXs },
+  resend: { alignItems: 'flex-start', gap: tokens.spaceXs },
   secondary: { color: tokens.colorInkSecondary },
 });

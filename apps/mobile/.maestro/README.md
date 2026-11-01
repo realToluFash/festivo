@@ -72,6 +72,7 @@ Signing in, each on its own outcome:
 | Flow                   | Needs                                         | Leaves the app on                             |
 | ---------------------- | --------------------------------------------- | --------------------------------------------- |
 | `register-check-email` | `NAME`, `EMAIL` (a fresh address), `PASSWORD` | Check your email, after a sign-up on Register |
+| `register-back`        | nothing                                       | sign-in, after ‹ Sign in pushed and linked    |
 | `verify-email`         | the same                                      | A few details, verified with the newest code  |
 | `verify-email-refused` | the same                                      | Check your email, a new code counting down    |
 | `sign-in-locked`       | `EMAIL`, a fresh address                      | sign-in, past the limit                       |

@@ -1,3 +1,5 @@
+import { PHONE_WIDTH } from './phoneWidth.ts';
+
 /** The built stylesheet may write `120ms` as `.12s`, so the unit is read, not assumed. */
 export function duration(
   name: 'motionFast' | 'motionBase' | 'motionSlow' | 'toastLifetime',
@@ -21,7 +23,7 @@ export function leaveDialog(dialog: HTMLElement, scrim: Element | null, parent: 
   if (typeof dialog.animate !== 'function') return;
 
   const host = parent.isConnected ? parent : document.body;
-  const sheet = window.matchMedia('(width <= 40rem)').matches && !lessMotion();
+  const sheet = window.matchMedia(PHONE_WIDTH).matches && !lessMotion();
   const length = sheet ? duration('motionBase') : duration('motionFast');
   const copies = [scrim, dialog].flatMap((node) => {
     if (node == null) return [];

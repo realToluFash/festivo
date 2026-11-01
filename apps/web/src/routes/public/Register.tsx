@@ -110,7 +110,7 @@ export function Register() {
   }
 
   return (
-    <AuthPage>
+    <AuthPage back={{ label: t('signIn.title'), heard: t('register.back'), fallback: '/sign-in' }}>
       <div className="auth-heading">
         <h1>{t('register.title')}</h1>
         <p>{t('register.intro')}</p>
@@ -214,7 +214,7 @@ export function Register() {
 
       <ProviderSignIn />
 
-      <div className="auth-footnote">
+      <div className="auth-footnote auth-footnote-plain">
         <span>{t('register.haveAccount')}</span>
         <Link className="link-button" to="/sign-in">
           {t('register.signIn')}

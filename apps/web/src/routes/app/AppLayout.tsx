@@ -33,8 +33,7 @@ import { NoOrganisation } from './NoOrganisation.tsx';
 import { heldRegistration } from '../../pendingRegistration.ts';
 import { useTwoFactorStanding } from '../../twoFactorStanding.ts';
 import { useDialogKeys } from '../../dialogFocus.ts';
-
-const PHONE = '(width <= 40rem)';
+import { PHONE_WIDTH } from '../../phoneWidth.ts';
 
 /**
  * The signed-in shell, built for a desk.
@@ -130,7 +129,7 @@ function Shell() {
   useEffect(() => {
     if (!menuOpen) return;
 
-    const phone = window.matchMedia(PHONE);
+    const phone = window.matchMedia(PHONE_WIDTH);
     const widened = (): void => {
       if (phone.matches) return;
       widenedOpen.current = true;

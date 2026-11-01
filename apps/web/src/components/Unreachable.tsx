@@ -5,7 +5,7 @@ import type { LinkRetry } from '../linkRetry.ts';
 import { usePageTitle } from '../pageTitle.ts';
 import { retrySession, useSessionState } from '../session.ts';
 import { focusStep, useStepFocus } from '../stepFocus.ts';
-import { LanguageChoice } from './LanguageChoice.tsx';
+import { AuthPage } from './AuthPage.tsx';
 
 /** No sign-in heading or form, which would tell somebody signed in otherwise. Without `retry`, Try again reads the account. */
 export function Unreachable({ signedIn, retry }: { signedIn: boolean; retry?: LinkRetry }) {
@@ -41,43 +41,32 @@ export function Unreachable({ signedIn, retry }: { signedIn: boolean; retry?: Li
   }
 
   return (
-    <div className="auth">
-      <header className="auth-header">
-        <span className="brand">{t('app.name')}</span>
-        <LanguageChoice />
-      </header>
+    <AuthPage>
+      <div
+        ref={linkNotice}
+        className="notice notice-quiet"
+        role={pressed ? undefined : 'status'}
+        tabIndex={linked ? -1 : undefined}
+      >
+        <span className="mark mark-info" aria-hidden="true">
+          i
+        </span>
+        <div className="notice-body" ref={notice} tabIndex={pressed ? -1 : undefined}>
+          <h1 className="notice-heading">{t('session.unreachableTitle')}</h1>
+          <p>{signedIn ? t('session.unreachableBody') : t('session.unreachableBodySignedOut')}</p>
+        </div>
+      </div>
 
-      <main id="content" className="auth-main">
-        <section className="auth-card">
-          <div
-            ref={linkNotice}
-            className="notice notice-quiet"
-            role={pressed ? undefined : 'status'}
-            tabIndex={linked ? -1 : undefined}
-          >
-            <span className="mark mark-info" aria-hidden="true">
-              i
-            </span>
-            <div className="notice-body" ref={notice} tabIndex={pressed ? -1 : undefined}>
-              <h1 className="notice-heading">{t('session.unreachableTitle')}</h1>
-              <p>
-                {signedIn ? t('session.unreachableBody') : t('session.unreachableBodySignedOut')}
-              </p>
-            </div>
-          </div>
-
-          <button
-            className="button button-primary"
-            type="button"
-            disabled={retrying}
-            aria-busy={retrying}
-            onClick={() => void (retry == null ? retryAccount() : retry.again())}
-          >
-            {retrying ? t('session.retrying') : t('error.retry')}
-          </button>
-        </section>
-      </main>
-    </div>
+      <button
+        className="button button-primary"
+        type="button"
+        disabled={retrying}
+        aria-busy={retrying}
+        onClick={() => void (retry == null ? retryAccount() : retry.again())}
+      >
+        {retrying ? t('session.retrying') : t('error.retry')}
+      </button>
+    </AuthPage>
   );
 }
 
