@@ -61,7 +61,7 @@ type Stage =
   | { kind: 'setting' };
 
 /** The first row of Ways to sign in, in the app: change the password (sc-116), or add one (sc-391). */
-export function PasswordCard({
+export function PasswordRow({
   email,
   hasPassword,
   providers,

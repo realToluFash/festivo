@@ -21,7 +21,7 @@ import { DestructiveButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { ConfirmItsYou } from './ConfirmItsYou.tsx';
 import { Notice } from './Notice.tsx';
-import { PasswordCard } from './PasswordCard.tsx';
+import { PasswordRow } from './PasswordCard.tsx';
 import { type StepClosed, stepClosed, useFocusBackToOpener } from './Screen.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { useMarkSide } from './markSide.ts';
@@ -219,7 +219,7 @@ export function WaysCard({
       )}
 
       <View>
-        <PasswordCard
+        <PasswordRow
           email={email}
           hasPassword={hasPassword}
           providers={providers}
