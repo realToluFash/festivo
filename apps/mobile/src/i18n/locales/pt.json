@@ -1534,7 +1534,9 @@
     "nextResume": "Paused. Guests can’t reply or change anything until you resume it.",
     "footer_one": "{{count, number}} event · Sorted by date",
     "footer_other": "{{count, number}} events · Sorted by date",
-    "footer_many": "{{count, number}} events · Sorted by date"
+    "footer_many": "{{count, number}} events · Sorted by date",
+    "endsIn": "Ends {{time}}",
+    "thenSoon": "{{when}} ·"
   },
   "eventPage": {
     "venue": "Local",
@@ -1546,7 +1548,11 @@
     "tileComing": "Vêm",
     "tileMealPicks": "Menus escolhidos",
     "tileSeated": "Sentados",
-    "tileBudgetUsed": "Orçamento usado"
+    "tileBudgetUsed": "Orçamento usado",
+    "onTrack": "On track",
+    "replies": "Replies",
+    "needsYou": "Needs you",
+    "team": "Team on this event"
   },
   "eventForm": {
     "title": "Novo evento",

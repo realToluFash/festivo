@@ -1,4 +1,4 @@
-// Hermes has no Intl.DisplayNames, Intl.ListFormat or Intl.supportedValuesOf: country names fell back to
+// Hermes has no Intl.DisplayNames, Intl.ListFormat, Intl.RelativeTimeFormat or Intl.supportedValuesOf: country names fell back to
 // their codes, a list of organisations crashed the screen (sc-509), and the organisation page had no
 // currencies or time zones to offer (sc-1427). Each polyfill installs only where the engine lacks it,
 // except plural rules and numbers, forced so every device counts and writes by the same CLDR: an older
@@ -29,3 +29,9 @@ import '@formatjs/intl-numberformat/locale-data/es.js';
 import '@formatjs/intl-numberformat/locale-data/fr.js';
 import '@formatjs/intl-numberformat/locale-data/pt.js';
 import '@formatjs/intl-numberformat/locale-data/pt-PT.js';
+import '@formatjs/intl-relativetimeformat/polyfill.js';
+import '@formatjs/intl-relativetimeformat/locale-data/en.js';
+import '@formatjs/intl-relativetimeformat/locale-data/es.js';
+import '@formatjs/intl-relativetimeformat/locale-data/fr.js';
+import '@formatjs/intl-relativetimeformat/locale-data/pt.js';
+import '@formatjs/intl-relativetimeformat/locale-data/pt-PT.js';

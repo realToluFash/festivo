@@ -36,7 +36,6 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  useSyncExternalStore,
 } from 'react';
 import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -46,7 +45,7 @@ import { api } from '../../../api.ts';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
 import { useDialogKeys } from '../../../dialogFocus.ts';
 import { dateLocale } from '../../../i18n/index.ts';
-import { usePhoneWidth } from '../../../phoneWidth.ts';
+import { usePhoneWidth, useWideWidth } from '../../../phoneWidth.ts';
 import { useServerNow } from '../../../serverNow.ts';
 import { can, useSession } from '../../../session.ts';
 import { PHASE_WORD } from '../events/eventWords.ts';
@@ -55,8 +54,6 @@ import { StatusPill } from '../events/MakeLive.tsx';
 import { CalendarSubscribe } from './CalendarSubscribe.tsx';
 
 const KEPT = 'soirely.calendar';
-
-const WIDE = '(width >= 64rem)';
 
 const SHOW_WORD: Record<CalendarShow, string> = {
   all: 'calendar.showAll',
@@ -100,7 +97,7 @@ function CalendarOf({
 }) {
   const { t } = useTranslation();
   const phone = usePhoneWidth();
-  const wide = useWide();
+  const wide = useWideWidth();
   const now = useServerNow();
   const locale = dateLocale();
   const today = wallDay(now, readerZone());
@@ -653,18 +650,6 @@ function MilestoneRow({ item }: { item: Extract<Item, { kind: 'milestone' }> }) 
           : time}
       </span>
     </Link>
-  );
-}
-
-function useWide(): boolean {
-  return useSyncExternalStore(
-    (changed) => {
-      const query = window.matchMedia(WIDE);
-      query.addEventListener('change', changed);
-
-      return () => query.removeEventListener('change', changed);
-    },
-    () => window.matchMedia(WIDE).matches,
   );
 }
 

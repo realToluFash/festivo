@@ -87,7 +87,9 @@
     "nextChangeDates": "This event’s end has passed, so it cannot be made live. Change its dates first.",
     "nextResume": "Paused. Guests can’t reply or change anything until you resume it.",
     "footer_one": "{{count, number}} event · Sorted by date",
-    "footer_other": "{{count, number}} events · Sorted by date"
+    "footer_other": "{{count, number}} events · Sorted by date",
+    "endsIn": "Ends {{time}}",
+    "thenSoon": "{{when}} ·"
   },
   "eventForm": {
     "title": "New event",
@@ -172,7 +174,11 @@
     "tileComing": "Coming",
     "tileMealPicks": "Meal picks in",
     "tileSeated": "Seated",
-    "tileBudgetUsed": "Budget used"
+    "tileBudgetUsed": "Budget used",
+    "onTrack": "On track",
+    "replies": "Replies",
+    "needsYou": "Needs you",
+    "team": "Team on this event"
   },
   "eventLive": {
     "guestsBlocked": "Guests can't be invited until this event is live.",

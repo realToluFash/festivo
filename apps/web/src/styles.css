@@ -4271,6 +4271,12 @@ button.members-row {
   font: var(--typeSmall);
 }
 
+/* How soon moves to the next line whole, leaving the separator where the line before ends (sc-25008). */
+.events-soon {
+  display: inline-block;
+  max-width: 100%;
+}
+
 .events-row-dates {
   font: var(--typeBody);
   line-height: 1.35;
@@ -6867,18 +6873,31 @@ button.members-row {
   align-items: start;
 }
 
-.event-overview-main {
+/* Two columns that stack apart where there is room for both (1280 × 800); below it, one column in the phone's order (sc-25008). */
+@media (width >= 64rem) {
+  .event-overview-columns {
+    grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem);
+  }
+}
+
+.event-overview-main,
+.event-overview-side {
   display: flex;
   flex-direction: column;
   gap: var(--space3xl);
   min-width: 0;
 }
 
-/* Manage beside Details and Coming up where there is room for both (1280 × 800), after them below it. */
-@media (width >= 64rem) {
-  .event-overview-columns {
-    grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem);
-  }
+.event-soon-label {
+  margin: 0;
+  padding-bottom: var(--spaceLg);
+  border-bottom: var(--borderInset);
+}
+
+.event-soon .placeholder-soon {
+  margin: 0;
+  font: var(--typeBodyPhone);
+  font-weight: 500;
 }
 
 @media (width <= 40rem) {
