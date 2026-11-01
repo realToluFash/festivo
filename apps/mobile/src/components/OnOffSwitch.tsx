@@ -10,6 +10,7 @@ export function OnOffSwitch({
   label,
   hint,
   disabled = false,
+  locked = false,
   busy = false,
   stacked = false,
   steady = false,
@@ -21,6 +22,8 @@ export function OnOffSwitch({
   label: string;
   hint?: string;
   disabled?: boolean;
+  /** A setting in force that cannot be changed: it ignores a press and is unavailable to a screen reader, but its word stays at full strength. */
+  locked?: boolean;
   busy?: boolean;
   stacked?: boolean;
   steady?: boolean;
@@ -28,7 +31,7 @@ export function OnOffSwitch({
   testID: string;
 }) {
   const lit = on === true;
-  const off = disabled || busy || on == null;
+  const off = disabled || locked || busy || on == null;
   const dot = <View style={[styles.dot, lit ? styles.dotOn : styles.dotOff]} />;
   const pill = [styles.pill, lit && styles.pillOn];
 
@@ -88,7 +91,7 @@ const styles = StyleSheet.create({
   pill: {
     borderRadius: tokens.radiusPill,
     borderWidth: 1,
-    borderColor: tokens.colorInsetBorder,
+    borderColor: tokens.colorControlBorder,
   },
   pillOn: { backgroundColor: tokens.colorAccentTint },
   track: {

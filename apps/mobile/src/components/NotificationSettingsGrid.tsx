@@ -16,6 +16,8 @@ import {
 } from '../kit/notificationSettings.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
+import { BellMark } from './BellMark.tsx';
+import { FieldError } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { OnOffSwitch } from './OnOffSwitch.tsx';
 import { useReadOut } from './ReadOut.tsx';
@@ -36,6 +38,7 @@ export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
   const locale = currentLocale();
   const measured = `${kind}:${locale}`;
   const width = column?.measured === measured ? column.width : undefined;
+  const inset = phone ? styles.insetPhone : styles.insetTablet;
 
   useEffect(() => {
     let current = true;
@@ -88,18 +91,22 @@ export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
   };
 
   return (
-    <View style={cardFrame(kind)} testID="notificationSettings">
+    <View style={[cardFrame(kind), styles.flush]} testID="notificationSettings">
       {blocked && (
-        <Text
-          size={tokens.typeBody.size}
-          accessibilityRole="text"
-          testID="notificationSettings.pushBlocked"
-        >
-          {t('notificationSettings.pushBlocked')}
-        </Text>
+        <View style={[styles.blocked, inset]}>
+          <BellBlocked />
+          <Text
+            size={tokens.typeBody.size}
+            style={styles.blockedInk}
+            accessibilityRole="text"
+            testID="notificationSettings.pushBlocked"
+          >
+            {t('notificationSettings.pushBlocked')}
+          </Text>
+        </View>
       )}
       <View
-        style={styles.row}
+        style={[styles.row, styles.headings, inset]}
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
@@ -123,7 +130,10 @@ export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
         const failed = grid.unsaved?.category === setting.category ? grid.unsaved.channel : null;
 
         return (
-          <View key={setting.category} style={[styles.category, index > 0 && styles.divided]}>
+          <View
+            key={setting.category}
+            style={[styles.category, styles.divided, inset, index === 0 && styles.first]}
+          >
             <View style={styles.row}>
               <View style={styles.name}>
                 <Text size={tokens.typeBodyPhone.size} weight="semibold" accessibilityRole="header">
@@ -153,7 +163,7 @@ export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
                       channel: t(`notificationSettings.${channel}`),
                     })}
                     hint={note}
-                    disabled={!setting[channel].switchable}
+                    locked={!setting[channel].switchable}
                     stacked={phone}
                     steady
                     busy={isSaving(grid, { category: setting.category, channel })}
@@ -164,29 +174,54 @@ export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
               ))}
             </View>
             {failed != null && (
-              <Notice
-                tone="broken"
-                mark={tokens.marks.broken.glyph}
-                body={t(
+              <FieldError
+                message={t(
                   failed === 'push'
                     ? 'notificationSettings.pushNotSaved'
                     : 'notificationSettings.emailNotSaved',
                 )}
-                answer={tap}
               />
             )}
           </View>
         );
       })}
-      <Text size={tokens.typeBody.size} muted>
+      <Text size={tokens.typeBody.size} muted style={[styles.footer, inset]}>
         {t('notificationSettings.quietHours', quietHoursIn(locale))}
       </Text>
     </View>
   );
 }
 
+/** The bell with a slash beside the push-blocked words, decoration only. */
+function BellBlocked() {
+  return (
+    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <BellMark ink={tokens.marks.info.ink} slashed />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
+  flush: { gap: 0, padding: 0, overflow: 'hidden' },
+  insetPhone: { paddingHorizontal: tokens.spaceXl },
+  insetTablet: { paddingHorizontal: tokens.spaceXxl },
+  blocked: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: tokens.spaceSm,
+    paddingVertical: tokens.spaceLg,
+    backgroundColor: tokens.colorInset,
+    borderBottomWidth: 1,
+    borderBottomColor: tokens.colorInsetBorder,
+  },
+  blockedInk: { flex: 1, color: tokens.marks.info.ink },
+  headings: { paddingTop: tokens.spaceLg, paddingBottom: tokens.spaceSm },
+  footer: {
+    paddingVertical: tokens.spaceLg,
+    borderTopWidth: 1,
+    borderTopColor: tokens.colorInsetBorder,
+  },
+  row: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
   name: { flex: 1, minWidth: 0, gap: tokens.spaceXxs },
   heading: { textAlign: 'center' },
   unmeasured: { opacity: 0 },
@@ -195,8 +230,9 @@ const styles = StyleSheet.create({
   cellTablet: { minWidth: 88 },
   category: { gap: tokens.spaceSm },
   divided: {
-    paddingTop: tokens.spaceLg,
+    paddingVertical: tokens.spaceLg,
     borderTopWidth: 1,
     borderTopColor: tokens.colorInsetBorder,
   },
+  first: { borderTopWidth: 0, paddingTop: tokens.spaceSm },
 });
