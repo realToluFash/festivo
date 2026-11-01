@@ -1,0 +1,59 @@
+# sc-25960: the Calendar's Subscribe sheet (phone) or dialog (iPad) in the account's language: the header button, the panel scrolled top to bottom, Copied, the reset confirmation, and Keep this link. Screenshots only, no text assertions, so it runs under --lang. Needs ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'frame.calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.open'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: header
+- tapOn:
+    id: 'calendarFeed.open'
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.copy'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: panel
+- tapOn:
+    id: 'calendarFeed.copy'
+- waitForAnimationToEnd
+- takeScreenshot: copied
+- scrollUntilVisible:
+    element:
+      id: 'calendarFeed.reset'
+    direction: DOWN
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: panel-bottom
+- tapOn:
+    id: 'calendarFeed.reset'
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.keep'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: confirm
+- tapOn:
+    id: 'calendarFeed.keep'
+- waitForAnimationToEnd
+- takeScreenshot: kept
+- scrollUntilVisible:
+    element:
+      id: 'calendarFeed.reset'
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: 'calendarFeed.reset'
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.resetConfirm'
+    timeout: 10000
+- tapOn:
+    id: 'calendarFeed.resetConfirm'
+- waitForAnimationToEnd
+- takeScreenshot: new-link
