@@ -175,9 +175,9 @@ function Editable({
 
       if (error instanceof ApiError && error.is('validation_failed')) {
         const refused = error.fieldErrors() as Errors;
-        setErrors(refused);
         flushSync(() => setStatus({ kind: 'editing' }));
         focusFirst(refused, land);
+        setErrors(refused);
         return;
       }
 
