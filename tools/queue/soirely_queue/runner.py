@@ -652,8 +652,10 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
         entry["ended"] = ended
     if entry.get("stopped") == "prompt":
         stopped_on_prompt(db, name, entry, ids, tell)
-    elif (store.get_meta(db, f"prompt:{role}") or {}).get("at"):
-        prompt_outcome(db, role, None, store.get_meta(db, f"prompt:{role}").get("told"))
+    elif ((held := store.get_meta(db, f"prompt:{role}") or {}).get("at")
+          and held.get("worker", role) == name):
+        # Another worker's prompt stays until that worker's next run settles it.
+        prompt_outcome(db, role, None, held.get("told"))
     runlog.append(home, role, entry)
     waits = runlog.waits_on_owner(entry["report"])
     if waits:

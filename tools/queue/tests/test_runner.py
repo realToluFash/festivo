@@ -1206,6 +1206,13 @@ class BackgroundWorker(unittest.TestCase):
         self.run_dev({"result": "Built."})
         self.assertEqual(store.get_meta(self.db, "prompt:dev"), {"told": [42]})
 
+    def test_another_workers_clean_run_leaves_the_prompt(self):
+        held = {"at": "2026-11-01T10:00:00", "worker": "dev-2", "item": 9, "story": 42,
+                "wanted": "rm x", "told": [42]}
+        store.set_meta(self.db, "prompt:dev", held)
+        self.run_dev({"result": "Built."})
+        self.assertEqual(store.get_meta(self.db, "prompt:dev"), held)
+
     def test_a_worker_stopped_at_its_limit_stops_its_session_too(self):
         sessions.begin(self.db, "dev", {"item": self.item, "bg": "1d923fe2", "session": SESSION,
                                         "folder": str(self.root / "claude")})

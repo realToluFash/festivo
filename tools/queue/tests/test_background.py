@@ -242,6 +242,18 @@ class Wanted(unittest.TestCase):
             self.assertNotIn(secret, said)
         self.assertIn("GH_TOKEN=…", said)
 
+    def test_every_documented_credential_form_is_masked(self):
+        said = background.masked(
+            'curl -H "Authorization: token ghp_abc123" https://api.github.com/user; '
+            "curl -u bob:pa55 https://x; git clone https://bob:pa66@host/r; "
+            'curl -d \'{"token":"t0k"}\' https://x; echo github_pat_11AB sk-ant-api03-zz '
+            "xoxb-1-2")
+        for secret in ("ghp_abc123", "pa55", "pa66", "t0k", "github_pat_11AB",
+                       "sk-ant-api03-zz", "xoxb-1-2"):
+            self.assertNotIn(secret, said)
+        self.assertIn("Authorization: …", said)
+        self.assertIn("https://bob:…@host/r", said)
+
     def test_a_long_command_is_clipped(self):
         self.assertEqual(len(background.masked("x" * 1000)), background.WANTED_CHARS)
 

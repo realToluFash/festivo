@@ -39,9 +39,15 @@ TRIES = 2
 PROMPT_GRACE_SECONDS = 180
 WANTED_CHARS = 300
 SECRET_NAME = r"[\w-]*(?:token|secret|password|passwd|api[_-]?key|auth)[\w-]*"
-SECRET_VALUE = re.compile(rf"(?i)(\b{SECRET_NAME}\s*[=:]\s*|--{SECRET_NAME}[\s=]+)"
+SECRET_VALUE = re.compile(rf"(?i)(\b{SECRET_NAME}['\"]?\s*[=:]\s*|--{SECRET_NAME}[\s=]+)"
                           r"(['\"]?)[^\s'\"]+\2")
-BEARER = re.compile(r"(?i)\b(bearer|basic)\s+[\w.~+/=-]+")
+BEARER = re.compile(r"(?i)\b(bearer|basic|token)\s+[\w.~+/=-]+")
+# A header's whole value, whatever its scheme, to the end of its quotes or its line.
+AUTH_HEADER = re.compile(r"(?i)\b((?:proxy-)?authorization\s*:\s*)[^'\"\n]+")
+USER_FLAG = re.compile(r"(\s-u\s*|--user[\s=]+)(['\"]?)[^\s'\"]+\2")
+URL_USER = re.compile(r"(://[^/\s:@]+:)[^/\s@]+@")
+# Tokens known by their shape, whatever they are given to.
+TOKEN_SHAPE = re.compile(r"\b(?:gh[pousr]_\w+|github_pat_\w+|sk-ant-[\w-]+|xox[abposr]-[\w-]+)")
 
 
 class NotStarted(RuntimeError):
@@ -142,9 +148,14 @@ def needs_text(needs):
 
 def masked(text):
     """The command as safe to log and post: a value given to anything named like a secret,
-    and a bearer or basic credential, are replaced."""
+    an Authorization header, a credential in `-u` or a URL, and a known token shape, are
+    replaced."""
+    text = TOKEN_SHAPE.sub("…", text)
+    text = AUTH_HEADER.sub(lambda m: f"{m.group(1)}…", text)
     text = BEARER.sub(lambda m: f"{m.group(1)} …", text)
     text = SECRET_VALUE.sub(lambda m: f"{m.group(1)}…", text)
+    text = USER_FLAG.sub(lambda m: f"{m.group(1)}…", text)
+    text = URL_USER.sub(lambda m: f"{m.group(1)}…@", text)
     text = " ".join(text.split())
     return text if len(text) <= WANTED_CHARS else text[:WANTED_CHARS - 1] + "…"
 
