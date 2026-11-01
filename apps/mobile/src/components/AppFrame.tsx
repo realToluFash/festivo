@@ -496,12 +496,14 @@ function FrameHeader({
         {primary != null && (
           <View style={styles.titleRow}>
             {organisation != null && (
-              <OrgPill
-                organisation={organisation}
-                waiting={waiting}
-                onSwitch={onSwitch}
-                ref={pill}
-              />
+              <View style={styles.shrink}>
+                <OrgPill
+                  organisation={organisation}
+                  waiting={waiting}
+                  onSwitch={onSwitch}
+                  ref={pill}
+                />
+              </View>
             )}
             <View style={styles.fill} />
             <HeaderPrimary {...primary} round={false} />
@@ -537,7 +539,14 @@ function FrameHeader({
       {primary != null && (
         <View style={styles.titleRow}>
           {organisation != null && (
-            <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
+            <View style={styles.shrink}>
+              <OrgPill
+                organisation={organisation}
+                waiting={waiting}
+                onSwitch={onSwitch}
+                ref={pill}
+              />
+            </View>
           )}
           <View style={styles.fill} />
           <HeaderPrimary {...primary} round />

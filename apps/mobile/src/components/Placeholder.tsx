@@ -2,6 +2,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { tokens } from '../theme/tokens.ts';
+import { tracking } from '../theme/tracking.ts';
 import { Text } from './Text.tsx';
 
 /** A figure the product has no data for yet: its label, then Coming soon in its place, never a number, and nothing to press (sc-22103). */
@@ -56,6 +57,6 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     columnGap: tokens.spaceXs,
   },
-  caps: { textTransform: 'uppercase', letterSpacing: 0.96 },
+  caps: { textTransform: 'uppercase', letterSpacing: tracking(tokens.typeLabel) },
   soon: { minHeight: 28, textAlignVertical: 'center' },
 });

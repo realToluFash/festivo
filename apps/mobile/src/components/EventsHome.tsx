@@ -17,6 +17,7 @@ import { useServerNow } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { type WeightName } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
+import { tracking } from '../theme/tracking.ts';
 import { SecondaryButton } from './Buttons.tsx';
 import { EventState } from './Events.tsx';
 import { Notice } from './Notice.tsx';
@@ -42,11 +43,7 @@ const PLACEHOLDER_TILES = [
   'eventsScreen.tileNeedAttention',
 ] as const;
 
-const NOW_FIGURES = [
-  'eventsScreen.arrived',
-  'eventsScreen.course',
-  'eventsScreen.nextCue',
-] as const;
+const NOW_FIGURES = ['eventsScreen.arrived', 'eventsScreen.course'] as const;
 
 export interface HomeLoad {
   unfinished: ListedEvent[];
@@ -56,11 +53,17 @@ export interface HomeLoad {
   at: Date;
 }
 
+/** Events' summary and its tabs group the events in one place (sc-22103). */
+function useEventsHome(load: HomeLoad) {
+  const now = useServerNow();
+
+  return { grouped: eventsHome(load, now, dateLocale()), now };
+}
+
 /** The line under Events' title: only the counts that are not 0, and none on a first visit (sc-22103). */
 export function EventsSummary({ load }: { load: HomeLoad }) {
   const { t } = useTranslation();
-  const now = useServerNow();
-  const grouped = eventsHome(load, now, dateLocale());
+  const { grouped } = useEventsHome(load);
   const summary = summaryWords(
     {
       happeningNow: grouped.happeningNow.length,
@@ -99,8 +102,7 @@ export function EventsHome({
   onShowMore: () => void;
 }) {
   const { t } = useTranslation();
-  const now = useServerNow();
-  const grouped = eventsHome(load, now, dateLocale());
+  const { grouped, now } = useEventsHome(load);
   const counts: Record<EventsTab, number> = {
     upcoming: grouped.upcoming.length,
     drafts: grouped.drafts.length,
@@ -269,7 +271,10 @@ function Card({
         )}
       </View>
       <View style={styles.cardHead}>
-        <Text size={phone ? tokens.typeRowTitle.size : 16} weight="semibold">
+        <Text
+          size={phone ? tokens.typeRowTitle.size : tokens.typeTitleSection.size}
+          weight="semibold"
+        >
           {event.name}
         </Text>
         <TypeAndPlace event={event} size={small} />
@@ -325,7 +330,7 @@ function HappeningNow({
         )}
       </View>
       <View style={styles.cardHead}>
-        <Text size={phone ? 17 : 20} weight="bold">
+        <Text size={phone ? tokens.typeBodyGuest.size : tokens.typeTitleDialog.size} weight="bold">
           {event.name}
         </Text>
         <TypeAndPlace event={event} size={tokens.typeSmall.size} />
@@ -415,7 +420,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   tileHalf: { flexBasis: '40%', padding: 14 },
-  caps: { textTransform: 'uppercase', letterSpacing: 0.96 },
+  caps: { textTransform: 'uppercase', letterSpacing: tracking(tokens.typeLabel) },
   number: { fontVariant: ['tabular-nums'] },
   card: {
     gap: tokens.spaceSm,
@@ -435,7 +440,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: tokens.spaceHair,
     padding: 3,
-    borderRadius: 25,
+    borderRadius: tokens.radiusPill,
     backgroundColor: tokens.colorBorder,
   },
   tab: {
@@ -449,7 +454,7 @@ const styles = StyleSheet.create({
     minHeight: tokens.sizeHit,
     paddingHorizontal: tokens.spaceXs,
     paddingVertical: tokens.spaceXxs,
-    borderRadius: 22,
+    borderRadius: tokens.radiusPill,
   },
   tabSelected: {
     backgroundColor: tokens.colorCard,
@@ -467,7 +472,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: tokens.colorBorder,
-    borderRadius: 22,
+    borderRadius: tokens.radiusCardLarge,
   },
   centred: { textAlign: 'center' },
   cards: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceMd },

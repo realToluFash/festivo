@@ -193,19 +193,19 @@ export function EventsScreen() {
     </Arrived>
   );
   const firstVisit = load.kind === 'loaded' && hasNoEvents(load);
-  const underTitle = !reads ? null : load.kind === 'loading' ||
-    (load.kind === 'loaded' && load.refreshing) ? (
-    <Text
-      size={tokens.typeBodyPhone.size}
-      muted
-      accessibilityRole="text"
-      testID={load.kind === 'loading' ? 'events.loadingLine' : 'events.refreshing'}
-    >
-      {t(load.kind === 'loading' ? 'eventsScreen.loading' : 'eventsScreen.refreshing')}
-    </Text>
-  ) : load.kind === 'loaded' && !firstVisit ? (
-    <EventsSummary load={load} />
-  ) : null;
+  const underTitle =
+    !reads || load.kind !== 'loaded' ? null : load.refreshing ? (
+      <Text
+        size={tokens.typeBodyPhone.size}
+        muted
+        accessibilityRole="text"
+        testID="events.refreshing"
+      >
+        {t('eventsScreen.refreshing')}
+      </Text>
+    ) : !firstVisit ? (
+      <EventsSummary load={load} />
+    ) : null;
 
   return (
     <AppFrame
