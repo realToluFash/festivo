@@ -72,7 +72,9 @@ export default function SignIn() {
 
   return (
     <AuthFrame
-      saying={<AuthHeading title={t('signIn.title')} />}
+      saying={
+        <AuthHeading title={t('signIn.title')} intro={t('signIn.landscapeIntro')} landscapeOnly />
+      }
       foot={
         <Footnote
           question={t('signIn.newHere')}

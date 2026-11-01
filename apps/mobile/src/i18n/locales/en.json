@@ -50,6 +50,7 @@
   },
   "signIn": {
     "title": "Sign in",
+    "landscapeIntro": "With your email and password. Your language follows you to every device.",
     "email": "Email",
     "password": "Password",
     "reveal": "Show",

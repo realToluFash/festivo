@@ -14,10 +14,11 @@ import { Title } from './Title.tsx';
 const PORTRAIT_COLUMN_WIDTH = 560;
 const LANDSCAPE_COLUMN_WIDTH = 520;
 
-/** The screen's title, sized for the layout. */
+/** The screen's title, sized for the layout; `landscapeOnly` keeps the intro to a landscape tablet. */
 export function AuthHeading({
   title,
   intro,
+  landscapeOnly = false,
   introLive = false,
   done = false,
   answer,
@@ -25,6 +26,7 @@ export function AuthHeading({
 }: {
   title: string;
   intro?: string | undefined;
+  landscapeOnly?: boolean;
   /** The intro is a status that changes in place, announced politely (WCAG 2.2 SC 4.1.3). */
   introLive?: boolean;
   done?: boolean;
@@ -38,7 +40,7 @@ export function AuthHeading({
   const { shown, read } = useFocusOnAnswer<TextHandle>(answer);
   const { read: introRead } = useFocusOnAnswer<TextHandle>(introAnswer);
   const size = kind === 'phone' ? tokens.typeTitlePhone.size : tokens.typeTitlePage.size;
-  const showIntro = intro != null;
+  const showIntro = intro != null && (!landscapeOnly || kind === 'tabletLandscape');
   useReadOut(introLive && showIntro && introAnswer === undefined ? intro : null, {
     quietAtMount: true,
   });

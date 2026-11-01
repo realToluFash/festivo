@@ -51,6 +51,7 @@
   },
   "signIn": {
     "title": "Se connecter",
+    "landscapeIntro": "Avec votre adresse e-mail et votre mot de passe. Votre langue vous suit sur tous vos appareils.",
     "email": "Adresse e-mail",
     "password": "Mot de passe",
     "reveal": "Afficher",

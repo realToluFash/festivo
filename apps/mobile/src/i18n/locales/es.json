@@ -51,6 +51,7 @@
   },
   "signIn": {
     "title": "Iniciar sesión",
+    "landscapeIntro": "Con su correo electrónico y su contraseña. Su idioma le sigue en todos los dispositivos.",
     "email": "Correo electrónico",
     "password": "Contraseña",
     "reveal": "Mostrar",
