@@ -1792,6 +1792,7 @@
     "agenda": "Agenda",
     "view": "View",
     "show": "Show",
+    "choiceIn": "{{group}}: {{choice}}",
     "showAll": "Events and milestones",
     "showEvents": "Events only",
     "more_one": "+{{count, number}} more",

@@ -360,8 +360,10 @@ function Segments<V extends string>({
   onChoose: (value: V) => void;
   testID: string;
 }) {
+  const { t } = useTranslation();
+
   return (
-    <View style={styles.segments} accessibilityRole="radiogroup" accessibilityLabel={label}>
+    <View style={styles.segments} accessibilityRole="radiogroup">
       {options.map(({ value, word }) => {
         const on = value === chosen;
 
@@ -371,6 +373,7 @@ function Segments<V extends string>({
             style={[styles.segment, on && styles.segmentOn]}
             onPress={() => onChoose(value)}
             accessibilityRole="radio"
+            accessibilityLabel={t('calendar.choiceIn', { group: label, choice: word })}
             accessibilityState={{ checked: on }}
             testID={`${testID}.${value}`}
           >
