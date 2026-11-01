@@ -1,4 +1,4 @@
-# sc-25667: Create organisation with the name blank, then over 100 characters, sends nothing and leaves Cancel live; Cancel closes the sheet, then the scrim closes it after the over-100 message.
+# sc-25667: Create organisation with the name blank, then over 100 characters, sends nothing and leaves Cancel live; the scrim closes the sheet after the blank message, Cancel after the over-100 one.
 appId: host.exp.Exponent
 ---
 - runFlow: ../open-create-organisation.yaml

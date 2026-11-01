@@ -17,7 +17,7 @@ appId: host.exp.Exponent
 - runFlow: ../open-create-organisation.yaml
 - tapOn:
     id: 'createOrganisation.name'
-- inputText: 'Before Scrim'
+- inputText: 'Before Back'
 - back
 - waitForAnimationToEnd
 - back
@@ -32,5 +32,5 @@ appId: host.exp.Exponent
       id: 'switcher.heading'
     timeout: 20000
 - waitForAnimationToEnd
-- assertNotVisible: '.*Before (Cancel|Scrim).*'
+- assertNotVisible: '.*Before (Cancel|Back).*'
 - takeScreenshot: before-switcher
