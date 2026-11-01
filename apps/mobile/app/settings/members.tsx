@@ -29,6 +29,7 @@ import { cardFrame } from '../../src/components/cardFrame.ts';
 import { useShownLanguage } from '../../src/i18n/index.ts';
 import { DESTINATION_HREF, SECTION_HREF } from '../../src/kit/appNav.ts';
 import { useSignedIn } from '../../src/signedIn.ts';
+import { settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
 type Load =
@@ -50,6 +51,7 @@ export default function MembersScreen() {
   const backToSettings = useBackToSettings();
   const { from } = useLocalSearchParams<{ from?: string }>();
   const { kind, givesWay } = useListAndPageLayout(SPACING, 'settingsList');
+  const alone = !settingsListBeside(useLayout().kind);
   const { organisation } = useSignedIn();
   const organisationId = organisation?.id;
   const [held, setHeld] = useState<{ in: string | undefined; load: Load }>({
@@ -153,7 +155,7 @@ export default function MembersScreen() {
 
   const heading = (
     <View style={styles.heading}>
-      {!phone && (
+      {!alone && (
         <Text
           ref={membersTitle}
           size={tokens.typeTitlePhone.size}
@@ -251,14 +253,22 @@ export default function MembersScreen() {
   return (
     <AppFrame
       current="settings"
-      title={phone ? (inFront?.user.name ?? t('membersScreen.title')) : t('settings.title')}
-      titleRef={phone ? (inFront != null ? memberName : membersTitle) : undefined}
-      back={
+      title={
         phone
-          ? inFront != null
-            ? { label: t('membersScreen.title'), onPress: toList }
-            : backToSettings(t('settings.title'))
-          : undefined
+          ? (inFront?.user.name ?? t('membersScreen.title'))
+          : alone
+            ? t('membersScreen.title')
+            : t('settings.title')
+      }
+      titleRef={
+        phone ? (inFront != null ? memberName : membersTitle) : alone ? membersTitle : undefined
+      }
+      back={
+        phone && inFront != null
+          ? { label: t('membersScreen.title'), onPress: toList }
+          : alone && inFront == null
+            ? backToSettings(t('settings.title'))
+            : undefined
       }
     >
       <SettingsSplit open="members" givesWay={givesWay}>

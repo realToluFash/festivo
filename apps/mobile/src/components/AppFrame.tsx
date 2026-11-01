@@ -32,7 +32,7 @@ import { type WaitingInvitations, useWaitingInvitations } from '../invitations.t
 import { type DomainOffer, useDomainOffer } from '../joinOffers.ts';
 import { DESTINATION_HREF, type Destination, destinations } from '../kit/appNav.ts';
 import { backRowHiding } from '../kit/backRow.ts';
-import { EDGE_SWIPE_WIDTH, stackSwipes } from '../kit/systemBack.ts';
+import { EDGE_SWIPE_WIDTH, headerDrawsBack, stackSwipes } from '../kit/systemBack.ts';
 import { leaveThen } from '../leaveHeld.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { backLabelSize, railWidth } from '../layout/textSize.ts';
@@ -127,7 +127,7 @@ export function AppFrame({
   aboutTheAccount?: boolean;
   /** A heading in the body takes screen reader focus after a tapped switch of organisation, in place of the title (sc-11032). */
   bodyTakesSwitch?: boolean;
-  /** On a phone, the page this one was opened from, as Security's "Settings"; with `systemBack`, Android's Back runs it too. */
+  /** The page this one was opened from, drawn in the header where `headerDrawsBack` says, as Security's "Settings"; with `systemBack`, Android's Back runs it too. */
   back?: { label: string; onPress: () => void; systemBack?: boolean; off?: boolean } | undefined;
   /** On a tablet, the body draws this page's back, and is false while that back is off. */
   backInBody?: boolean;
@@ -235,7 +235,7 @@ export function AppFrame({
           title={title}
           titleRef={frameTitle}
           switchAnswer={bodyTakesSwitch || standIn != null ? undefined : switchAnswer}
-          back={back}
+          back={headerDrawsBack(kind, back, backInBody)}
           backHidden={backHidden}
           email={email}
           organisation={signedIn.organisation}
@@ -407,6 +407,14 @@ function FrameHeader({
             );
           })}
         </View>
+        {back != null && !backHidden && (
+          <BackButton
+            label={back.label}
+            onPress={back.onPress}
+            off={back.off}
+            testID="frame.back"
+          />
+        )}
         <View style={styles.titleRow}>
           <View style={styles.fill}>
             <Title size={tokens.typeTitlePage.size} accessibilityRole="header" ref={read}>

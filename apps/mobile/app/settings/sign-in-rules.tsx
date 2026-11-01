@@ -16,7 +16,7 @@ import { Text } from '../../src/components/Text.tsx';
 import { cardFrame } from '../../src/components/cardFrame.ts';
 import { dateLocale, useShownLanguage } from '../../src/i18n/index.ts';
 import { limitFromElsewhere, ruleValue } from '../../src/kit/signInRules.ts';
-import { type LayoutKind, useLayout } from '../../src/layout/useLayout.ts';
+import { type LayoutKind, settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { markRulesSeen } from '../../src/signInRulesSeen.ts';
 import { useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
@@ -36,7 +36,7 @@ export default function SignInRules() {
   const { organisation } = useSignedIn();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
-  const phone = kind === 'phone';
+  const alone = !settingsListBeside(kind);
   const organisationId = organisation?.id;
   const language = useShownLanguage();
   const loadedFor = useRef<string | null>(null);
@@ -83,8 +83,8 @@ export default function SignInRules() {
   return (
     <AppFrame
       current="settings"
-      title={phone ? t('settings.signInRules') : t('settings.title')}
-      back={phone ? backToSettings(t('settings.title')) : undefined}
+      title={alone ? t('settings.signInRules') : t('settings.title')}
+      back={alone ? backToSettings(t('settings.title')) : undefined}
     >
       <SettingsSplit open="signInRules">
         <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>

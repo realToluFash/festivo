@@ -22,6 +22,7 @@ import { breakableEmail } from '../layout/textSize.ts';
 import {
   type LayoutKind,
   SETTINGS_LIST_WIDTH,
+  settingsListBeside,
   useLayout,
   useSideListWidth,
 } from '../layout/useLayout.ts';
@@ -42,10 +43,11 @@ export function SettingsSplit({
   children: ReactNode;
 }) {
   const { kind } = useLayout();
+  const beside = settingsListBeside(kind);
 
   return (
-    <View style={[styles.fill, kind !== 'phone' && styles.row]}>
-      {kind !== 'phone' && !givesWay && <SettingsList kind={kind} open={open} />}
+    <View style={[styles.fill, beside && styles.row]}>
+      {beside && !givesWay && <SettingsList kind={kind} open={open} />}
       <View style={styles.fill}>{children}</View>
     </View>
   );
@@ -55,7 +57,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
   const { t } = useTranslation();
   const { account, organisation } = useSignedIn();
   const width = useSideListWidth(SETTINGS_LIST_WIDTH);
-  const phone = kind === 'phone';
+  const alone = !settingsListBeside(kind);
   const scroll = useRef<ScrollViewInstance>(null);
   // Each section mounts the list afresh at its top, so the open row is brought into view once.
   const seen = useRef<{ viewport?: number; row?: LayoutRectangle; revealed?: boolean }>({});
@@ -89,8 +91,8 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
         accessibilityRole="header"
         style={[
           styles.label,
-          !phone && styles.labelTablet,
-          !phone && group > 0 && styles.labelLater,
+          !alone && styles.labelTablet,
+          !alone && group > 0 && styles.labelLater,
         ]}
       >
         {t(`settings.${heading}`)}
@@ -101,20 +103,20 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
       <View
         key={section}
         onLayout={
-          !phone && open === section
+          !alone && open === section
             ? (event) => reveal({ row: event.nativeEvent.layout })
             : undefined
         }
       >
-        {phone && index > 0 && <View style={styles.divider} />}
+        {alone && index > 0 && <View style={styles.divider} />}
         <Pressable
           style={[
             styles.section,
-            !phone && styles.sectionTablet,
+            !alone && styles.sectionTablet,
             open === section && styles.sectionOpen,
           ]}
           onPress={() =>
-            phone
+            alone
               ? router.push(SECTION_HREF[section])
               : router.replace({
                   pathname: SECTION_HREF[section],
@@ -151,7 +153,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
     )),
   }));
   const signOut = (
-    <View style={[styles.foot, !phone && styles.footTablet]}>
+    <View style={[styles.foot, !alone && styles.footTablet]}>
       {kind !== 'tabletLandscape' && account != null && (
         <Text
           size={tokens.typeBody.size}
@@ -176,7 +178,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
     </View>
   );
 
-  if (phone) {
+  if (alone) {
     return (
       <View style={styles.phoneList}>
         {groups.map(({ key, heading, rows }) => (
@@ -209,7 +211,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
   );
 }
 
-// A tablet opens a section in place of the last, so a window shrunk to a phone may have no Settings under it, for the header's back or Android's (sc-19104).
+// A tablet on its side opens a section in place of the last, so a window shrunk to a phone or turned upright may have no Settings under it, for the header's back or Android's (sc-19104).
 export function useBackToSettings() {
   const { from } = useLocalSearchParams<{ from?: string }>();
   const systemBack = sectionTakesBack(from);

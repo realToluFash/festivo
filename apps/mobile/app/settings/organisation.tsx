@@ -15,7 +15,7 @@ import { RequestLinkCard } from '../../src/components/RequestLinkCard.tsx';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { Text } from '../../src/components/Text.tsx';
-import { type LayoutKind, useLayout } from '../../src/layout/useLayout.ts';
+import { type LayoutKind, settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { replaceOrganisation, useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
@@ -25,7 +25,7 @@ export default function Organisation() {
   const backToSettings = useBackToSettings();
   const { kind } = useLayout();
   const { organisation } = useSignedIn();
-  const phone = kind === 'phone';
+  const alone = !settingsListBeside(kind);
   const [refusedIn, setRefusedIn] = useState<{ from: Membership; byRule: boolean } | null>(null);
   // Until the reread lands the refused membership stands; after it, only a fresh one still without the permission does.
   const refused =
@@ -39,19 +39,13 @@ export default function Organisation() {
   return (
     <AppFrame
       current="settings"
-      title={phone ? t('settings.organisation') : t('settings.title')}
-      back={phone ? backToSettings(t('settings.title')) : undefined}
+      title={alone ? t('settings.organisation') : t('settings.title')}
+      back={alone ? backToSettings(t('settings.title')) : undefined}
     >
       <SettingsSplit open="organisation">
         <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
-          {!phone && (
-            <Text
-              size={
-                kind === 'tabletLandscape' ? tokens.typeTitlePage.size : tokens.typeTitlePhone.size
-              }
-              weight="bold"
-              accessibilityRole="header"
-            >
+          {!alone && (
+            <Text size={tokens.typeTitlePage.size} weight="bold" accessibilityRole="header">
               {t('settings.organisation')}
             </Text>
           )}

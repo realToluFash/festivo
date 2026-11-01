@@ -4,6 +4,7 @@ import {
   OPENED_IN_PLACE_OF_SETTINGS,
   edgeSwipeCompletes,
   edgeSwipeStarts,
+  headerDrawsBack,
   pageTakesBack,
   sectionTakesBack,
   stackSwipes,
@@ -22,9 +23,28 @@ describe('pageTakesBack', () => {
   });
 });
 
+describe('headerDrawsBack', () => {
+  const back = { label: 'Back' };
+
+  it('draws the back in the header on a phone, and on an upright tablet whose body has none', () => {
+    expect(headerDrawsBack('phone', back, false)).toBe(back);
+    expect(headerDrawsBack('phone', back, true)).toBe(back);
+    expect(headerDrawsBack('tabletPortrait', back, false)).toBe(back);
+  });
+
+  it('leaves it to the body on an upright tablet, so Notifications shows one back, not two', () => {
+    expect(headerDrawsBack('tabletPortrait', back, true)).toBeUndefined();
+  });
+
+  it('never draws it on a tablet on its side', () => {
+    expect(headerDrawsBack('tabletLandscape', back, false)).toBeUndefined();
+  });
+});
+
 describe('stackSwipes', () => {
   it('swipes back where a back is drawn, in the header or the body', () => {
     expect(stackSwipes('phone', {}, false, false)).toBe(true);
+    expect(stackSwipes('tabletPortrait', {}, false, false)).toBe(true);
     expect(stackSwipes('tabletPortrait', undefined, true, false)).toBe(true);
   });
 
@@ -32,8 +52,7 @@ describe('stackSwipes', () => {
     expect(stackSwipes('phone', undefined, false, false)).toBe(false);
   });
 
-  it('does nothing for a header back on a tablet, which never draws it, with nothing in the body', () => {
-    expect(stackSwipes('tabletPortrait', {}, false, false)).toBe(false);
+  it('does nothing for a header back on a tablet on its side, which never draws it, with nothing in the body', () => {
     expect(stackSwipes('tabletLandscape', {}, false, false)).toBe(false);
   });
 

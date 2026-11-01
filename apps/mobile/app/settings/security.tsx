@@ -12,7 +12,7 @@ import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsL
 import { Text } from '../../src/components/Text.tsx';
 import { TwoFactorCard } from '../../src/components/TwoFactorCard.tsx';
 import { WaysCard } from '../../src/components/WaysCard.tsx';
-import { type LayoutKind, useLayout } from '../../src/layout/useLayout.ts';
+import { type LayoutKind, settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import {
   endedHere,
   reloadSignedIn,
@@ -35,26 +35,20 @@ export default function Security() {
   const [codesSpent, setCodesSpent] = useState(0);
   const codeSpent = () => setCodesSpent((n) => n + 1);
 
-  const phone = kind === 'phone';
+  const alone = !settingsListBeside(kind);
   const email = account == null ? '' : (primaryEmailAddress(account) ?? '');
 
   return (
     <AppFrame
       current="settings"
       aboutTheAccount
-      title={phone ? t('security.title') : t('settings.title')}
-      back={phone ? backToSettings(t('settings.title')) : undefined}
+      title={alone ? t('security.title') : t('settings.title')}
+      back={alone ? backToSettings(t('settings.title')) : undefined}
     >
       <SettingsSplit open="security">
         <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
-          {!phone && (
-            <Text
-              size={
-                kind === 'tabletLandscape' ? tokens.typeTitlePage.size : tokens.typeTitlePhone.size
-              }
-              weight="bold"
-              accessibilityRole="header"
-            >
+          {!alone && (
+            <Text size={tokens.typeTitlePage.size} weight="bold" accessibilityRole="header">
               {t('security.title')}
             </Text>
           )}

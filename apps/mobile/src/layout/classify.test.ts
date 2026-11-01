@@ -10,6 +10,7 @@ import {
   listAndPageKind,
   listFitsBeside,
   sectionWidth,
+  settingsListBeside,
   settingsListGivesWay,
 } from './classify.ts';
 
@@ -122,12 +123,10 @@ describe('a list beside its page', () => {
     expect(listAndPageKind(side(1267), 'settingsList', MEMBERS)).toBe('tabletPortrait');
   });
 
-  it('gives a section the window less the rail, and less the Settings list in Settings', () => {
+  it('gives a section the window less the rail, and less the Settings list on its side in Settings', () => {
     expect(sectionWidth(side(1133), 'nothing')).toBe(1133 - 220);
     expect(sectionWidth(side(1133), 'settingsList')).toBe(1133 - 220 - 320);
-    expect(sectionWidth({ width: 834, height: 1194, fontScale: 1 }, 'settingsList')).toBe(
-      834 - 320,
-    );
+    expect(sectionWidth({ width: 834, height: 1194, fontScale: 1 }, 'settingsList')).toBe(834);
     expect(sectionWidth({ width: 430, height: 932, fontScale: 1 }, 'settingsList')).toBe(430);
   });
 
@@ -200,5 +199,13 @@ describe('isTablet', () => {
     expect(isTablet('tabletPortrait')).toBe(true);
     expect(isTablet('tabletLandscape')).toBe(true);
     expect(isTablet('phone')).toBe(false);
+  });
+});
+
+describe('settingsListBeside', () => {
+  it('keeps the Settings list beside a section only on its side; upright it is its own screen, as on a phone', () => {
+    expect(settingsListBeside('tabletLandscape')).toBe(true);
+    expect(settingsListBeside('tabletPortrait')).toBe(false);
+    expect(settingsListBeside('phone')).toBe(false);
   });
 });
