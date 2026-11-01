@@ -9,7 +9,7 @@ import { AppLayout } from './app/AppLayout.tsx';
 import { Calendar } from './app/calendar/Calendar.tsx';
 import { Dashboard } from './app/Dashboard.tsx';
 import { EditEvent } from './app/events/EditEvent.tsx';
-import { EventGuests, EventDates, EventView } from './app/events/EventView.tsx';
+import { EventAreaPage, EventGuests, EventDates, EventView } from './app/events/EventView.tsx';
 import { Events } from './app/events/Events.tsx';
 import { NewEvent } from './app/events/NewEvent.tsx';
 import { General } from './app/settings/General.tsx';
@@ -84,6 +84,7 @@ export const routes = [
           { path: 'events/:eventId/edit', element: <EditEvent /> },
           { path: 'events/:eventId/guests', element: <EventGuests /> },
           { path: 'events/:eventId/dates', element: <EventDates /> },
+          { path: 'events/:eventId/:area', element: <EventAreaPage /> },
           { path: 'calendar', element: <Calendar /> },
           { path: 'guests', element: <Dashboard /> },
           { path: 'account', element: <Account /> },

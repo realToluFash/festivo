@@ -8,6 +8,7 @@ import {
   forgetEventsTab,
   nextStep,
   rememberEventsTab,
+  rememberTabHolding,
   rememberedEventsTab,
   withPastPage,
 } from './eventsHome.ts';
@@ -212,6 +213,19 @@ describe('the tab chosen', () => {
 
     expect(rememberedEventsTab('org_1')).toBe('past');
     expect(rememberedEventsTab('org_2')).toBe('upcoming');
+  });
+
+  it('opens on the tab that holds the event last opened, and as it was after one Happening now (sc-22103)', () => {
+    rememberEventsTab('org_1', 'past');
+    rememberTabHolding('org_1', 'draft');
+    expect(rememberedEventsTab('org_1')).toBe('drafts');
+
+    rememberTabHolding('org_1', 'paused');
+    expect(rememberedEventsTab('org_1')).toBe('upcoming');
+
+    rememberTabHolding('org_1', 'finished');
+    rememberTabHolding('org_1', 'happening_now');
+    expect(rememberedEventsTab('org_1')).toBe('past');
   });
 
   it('opens on Upcoming once forgotten', () => {

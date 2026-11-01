@@ -1,5 +1,12 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
-import { type EventPhase, formatEventRange, shownPhase } from '@soirely/domain';
+import {
+  type EventPhase,
+  type PlaceholderEventArea,
+  formatEventRange,
+  isPlaceholderEventArea,
+  rememberTabHolding,
+  shownPhase,
+} from '@soirely/domain';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
@@ -25,6 +32,7 @@ import { OutcomeLine } from './OutcomeLine.tsx';
 import { typeLabel } from './eventTypes.ts';
 import { ComingUp, AllDates } from './Timeline.tsx';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
+import { NotFound } from '../../public/NotFound.tsx';
 
 type Load =
   | { kind: 'loading' }
@@ -32,7 +40,7 @@ type Load =
   | { kind: 'notFound' }
   | { kind: 'loaded'; event: OrganisationEvent; tag: string };
 
-type Page = 'event' | 'guests' | 'dates';
+type Page = 'event' | 'guests' | 'dates' | PlaceholderEventArea;
 
 export function EventView() {
   return <ForEvent page="event" />;
@@ -44,6 +52,13 @@ export function EventGuests() {
 
 export function EventDates() {
   return <ForEvent page="dates" />;
+}
+
+/** One of the areas not built yet: its panel says it is coming (sc-22103). */
+export function EventAreaPage() {
+  const { area = '' } = useParams();
+
+  return isPlaceholderEventArea(area) ? <ForEvent page={area} /> : <NotFound />;
 }
 
 function ForEvent({ page }: { page: Page }) {
@@ -163,6 +178,9 @@ function EventOf({
           )}
           {page === 'guests' && <GuestsComing event={load.event} heading={heading} />}
           {page === 'dates' && <AllDatesPage event={load.event} heading={heading} />}
+          {isPlaceholderEventArea(page) && (
+            <AreaComing event={load.event} area={page} heading={heading} />
+          )}
         </Arrived>
       )}
     </div>
@@ -193,6 +211,8 @@ function EventPage({
   const now = useServerNow();
   const loadedAt = useLoadedAt(event);
   const phase = shownPhase(event, loadedAt, now);
+
+  useEffect(() => rememberTabHolding(event.organisationId, phase), [event.organisationId, phase]);
 
   useEffect(() => {
     if (editOutcome(location.state) == null && coverRefusal(location.state) == null) return;
@@ -412,5 +432,36 @@ function GuestsComing({
       </h1>
       <p>{t('eventPage.guestsComing')}</p>
     </section>
+  );
+}
+
+function AreaComing({
+  event,
+  area,
+  heading,
+}: {
+  event: OrganisationEvent;
+  area: PlaceholderEventArea;
+  heading: RefObject<HTMLHeadingElement | null>;
+}) {
+  const { t } = useTranslation();
+  const now = useServerNow();
+  const loadedAt = useLoadedAt(event);
+
+  usePageTitle(pageTitle(t, [t(`eventNav.${area}`), event.name]));
+
+  return (
+    <>
+      <div className="event-page-head">
+        <h1 ref={heading} tabIndex={-1}>
+          {event.name}
+        </h1>
+        <StatusPill phase={shownPhase(event, loadedAt, now)} />
+      </div>
+      <section className="card event-area" aria-labelledby="event-area-title">
+        <h2 id="event-area-title">{t(`eventNav.${area}`)}</h2>
+        <p>{t(`eventNav.${area}Coming`)}</p>
+      </section>
+    </>
   );
 }

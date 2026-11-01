@@ -1369,6 +1369,120 @@ describe('A time the clocks skip, in New event (sc-10638)', () => {
   });
 });
 
+describe("Inside an event, the navigation menu is the event's (sc-22103)", () => {
+  const AREAS = [
+    'Overview',
+    'Guests',
+    'Menu',
+    'Seating',
+    'Messages',
+    'Schedule',
+    'Staff',
+    'Budget',
+    'Reports',
+  ];
+
+  function eventNav() {
+    return within(screen.getByRole('navigation', { name: 'Event' }));
+  }
+
+  function current(): string | null {
+    return document.querySelector('[aria-current="page"]')?.textContent ?? null;
+  }
+
+  it('holds ‹ Events and the nine areas in place of the app’s entries, with Settings and Your account kept', async () => {
+    signedIn();
+    answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    expect(
+      eventNav()
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['‹ Events', ...AREAS]);
+    expect(current()).toBe('Overview');
+    expect(screen.queryByRole('link', { name: 'Dashboard' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Calendar' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Settings' })).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Your account' })).toBeDefined();
+  });
+
+  it('opens an area that is not built as a panel saying it is coming, with nothing to press, and marks it current', async () => {
+    signedIn();
+    answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    fireEvent.click(eventNav().getByRole('link', { name: 'Seating' }));
+
+    const panel = (await screen.findByRole('heading', { level: 2, name: 'Seating' })).closest(
+      'section',
+    )!;
+    expect(within(panel).getByText('The seating plan for this event is coming.')).toBeDefined();
+    expect(within(panel).queryAllByRole('button')).toHaveLength(0);
+    expect(within(panel).queryAllByRole('link')).toHaveLength(0);
+    expect(screen.getByRole('heading', { level: 1, name: 'Adaeze and Tunde' })).toBeDefined();
+    expect(current()).toBe('Seating');
+  });
+
+  it.each([
+    ['/app/events/ev_1/guests', 'Guests'],
+    ['/app/events/ev_1/dates', 'Overview'],
+  ])('marks the area of %s as current', async (path, area) => {
+    signedIn();
+    answering({ 'GET /api/events/ev_1': () => json({ event: event({ milestones: [] }) }) });
+    at(path);
+    await screen.findByRole('navigation', { name: 'Event' });
+
+    expect(current()).toBe(area);
+  });
+
+  it('returns to the page on Overview by Back, however many areas were chosen on the way', async () => {
+    signedIn();
+    answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
+    const router = createMemoryRouter(routes, {
+      initialEntries: ['/app/events', '/app/events/ev_1'],
+      initialIndex: 1,
+    });
+    render(<RouterProvider router={router} />);
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    fireEvent.click(eventNav().getByRole('link', { name: 'Menu' }));
+    await screen.findByRole('heading', { level: 2, name: 'Menu' });
+    fireEvent.click(eventNav().getByRole('link', { name: 'Staff' }));
+    await screen.findByRole('heading', { level: 2, name: 'Staff' });
+    fireEvent.click(eventNav().getByRole('link', { name: 'Reports' }));
+    await screen.findByRole('heading', { level: 2, name: 'Reports' });
+
+    await act(() => router.navigate(-1));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app/events/ev_1'));
+    expect(current()).toBe('Overview');
+
+    await act(() => router.navigate(-1));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app/events'));
+  });
+
+  it('leaves for Events on the tab that holds the event, with the app’s navigation back', async () => {
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/orgs/org_1/events': listed([event()]),
+    });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    fireEvent.click(eventNav().getByRole('link', { name: '‹ Events' }));
+
+    expect(
+      (await screen.findByRole('tab', { name: 'Drafts 1' })).getAttribute('aria-selected'),
+    ).toBe('true');
+    expect(screen.queryByRole('navigation', { name: 'Event' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Events' }).getAttribute('aria-current')).toBe('page');
+  });
+});
+
 describe("An event's page", () => {
   it("shows the name, Draft, and the start and end in the event's zone", async () => {
     signedIn();
@@ -1889,7 +2003,7 @@ describe("Editing an event's details (sc-3587)", () => {
     await editing();
 
     fireEvent.change(screen.getByLabelText('Event name'), { target: { value: 'Unsaved' } });
-    const sidebarEvents = screen.getByRole('link', { name: 'Events' });
+    const sidebarEvents = screen.getByRole('link', { name: '‹ Events' });
     sidebarEvents.focus();
     fireEvent.click(sidebarEvents);
     fireEvent.click(
@@ -1908,7 +2022,7 @@ describe("Editing an event's details (sc-3587)", () => {
     await editing();
 
     fireEvent.change(screen.getByLabelText('Event name'), { target: { value: 'Unsaved' } });
-    const sidebarEvents = screen.getByRole('link', { name: 'Events' });
+    const sidebarEvents = screen.getByRole('link', { name: '‹ Events' });
     sidebarEvents.focus();
     fireEvent.click(sidebarEvents);
     fireEvent.click(

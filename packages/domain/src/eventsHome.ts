@@ -83,6 +83,28 @@ export function forgetEventsTab(): void {
   chosen = null;
 }
 
+/** The tab an event is listed under, so Back from its page lands where it now is; Happening now is above every tab (sc-22103). */
+export function tabHolding(phase: EventPhase): EventsTab | null {
+  switch (phase) {
+    case 'draft':
+      return 'drafts';
+    case 'live':
+    case 'paused':
+      return 'upcoming';
+    case 'finished':
+      return 'past';
+    case 'happening_now':
+      return null;
+  }
+}
+
+/** An event's page sets the tab Events opens on to the one holding it, and leaves it be when none does. */
+export function rememberTabHolding(organisationId: string, phase: EventPhase): void {
+  const tab = tabHolding(phase);
+
+  if (tab != null) rememberEventsTab(organisationId, tab);
+}
+
 export type CardDate =
   | { kind: 'startedToday'; startsAt: string }
   | { kind: 'startedOn'; startsAt: string }
