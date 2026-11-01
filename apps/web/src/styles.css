@@ -716,6 +716,7 @@ span {
 .auth-back {
   display: inline-flex;
   align-items: center;
+  gap: var(--spaceXs);
   min-height: var(--sizeHit);
 }
 

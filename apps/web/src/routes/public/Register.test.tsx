@@ -96,7 +96,7 @@ describe('the way back from Create your account (sc-23277)', () => {
     from(['/register']);
 
     const back = screen.getByRole('button', { name: 'Back to sign in' });
-    expect(back.textContent).toBe('‹ Sign in');
+    expect(back.textContent).toBe('‹Sign in');
   });
 
   it('sits in the header in place of the brand', () => {

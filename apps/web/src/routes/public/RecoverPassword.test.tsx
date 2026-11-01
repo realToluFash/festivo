@@ -81,7 +81,7 @@ describe('asking for a reset link', () => {
 
     fireEvent.click(screen.getByRole('link', { name: 'Forgot it?' }));
     const back = await screen.findByRole('button', { name: 'Back to sign in' });
-    expect(back.textContent).toBe('‹ Sign in');
+    expect(back.textContent).toBe('‹Sign in');
     fireEvent.click(back);
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined();

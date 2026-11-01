@@ -237,7 +237,7 @@ describe('an invitation, signed out', () => {
 
     await screen.findByRole('heading', { level: 1, name: 'Reset your password' });
     const back = screen.getByRole('button', { name: 'Join Ìrè Events' });
-    expect(back.textContent).toBe('‹ Join Ìrè Events');
+    expect(back.textContent).toBe('‹Join Ìrè Events');
     fireEvent.click(back);
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Join Ìrè Events' })).toBeDefined();
