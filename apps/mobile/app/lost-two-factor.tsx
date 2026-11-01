@@ -217,7 +217,7 @@ function Saying({
   return (
     <View style={styles.saying}>
       {mark != null && <StatusChip look={RECOVERY_LOOK[mark.outcome]} word={mark.word} />}
-      <AuthHeading title={title} intro={intro} answer={tapped} />
+      <AuthHeading apart title={title} intro={intro} answer={tapped} />
     </View>
   );
 }

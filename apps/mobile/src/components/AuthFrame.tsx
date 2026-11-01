@@ -24,6 +24,7 @@ export function AuthHeading({
   done = false,
   answer,
   introAnswer,
+  apart = false,
 }: {
   title: string;
   intro?: string | undefined;
@@ -35,6 +36,8 @@ export function AuthHeading({
   answer?: unknown;
   /** The tap the intro answers, where the tap's button went: the intro takes focus in place of being read out (sc-11173). */
   introAnswer?: unknown;
+  /** Getting back in sets the title apart from the intro, as GetBackIn.dc.html draws it (sc-23279). */
+  apart?: boolean;
 }) {
   const { kind } = useLayout();
   const doneMarkSide = useMarkSide(tokens.sizeHitPhoneHero);
@@ -64,7 +67,7 @@ export function AuthHeading({
           </Text>
         </View>
       )}
-      <View ref={shown} style={styles.heading}>
+      <View ref={shown} style={[styles.heading, apart && styles.headingApart]}>
         <Title ref={read} size={size} style={styles.title} accessibilityRole="header">
           {title}
         </Title>
@@ -154,6 +157,7 @@ const styles = StyleSheet.create({
   brandRow: { minHeight: tokens.sizeHit, justifyContent: 'center' },
   brand: { letterSpacing: -0.4 },
   heading: { gap: tokens.spaceXs },
+  headingApart: { gap: tokens.spaceXxl },
   title: { letterSpacing: -0.5 },
   secondary: { color: tokens.colorInkSecondary },
   onAccent: { color: tokens.colorInkOnDark },

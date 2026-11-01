@@ -117,11 +117,7 @@ export function SecondFactorStep({
 
   return (
     <>
-      <Link className="link-button" to="/sign-in">
-        {t('twoFactor.back')}
-      </Link>
-
-      <div className="auth-heading">
+      <div className="auth-heading auth-heading-apart">
         <h1>{mode === 'app' ? t('twoFactor.title') : t('twoFactor.recoveryTitle')}</h1>
         <p>{mode === 'app' ? intro : recoveryIntro}</p>
       </div>
@@ -204,19 +200,29 @@ export function SecondFactorStep({
       </form>
 
       <button
-        className="link-button"
+        className="auth-row"
         type="button"
         onClick={() => switchTo(mode === 'app' ? 'recovery' : 'app')}
       >
         {mode === 'app' ? t('twoFactor.useRecovery') : t('twoFactor.useApp')}
       </button>
 
-      {onLostBoth == null ? (
-        <p className="auth-footnote">{t('twoFactor.lostBoth')}</p>
-      ) : (
-        <button className="link-button" type="button" onClick={onLostBoth}>
+      {onLostBoth != null && (
+        <button className="auth-row" type="button" onClick={onLostBoth}>
           {t('twoFactor.lostBoth')}
         </button>
+      )}
+
+      <div className="auth-footnote auth-footnote-plain auth-footnote-centred">
+        <Link className="link-button" to="/sign-in">
+          {t('twoFactor.back')}
+        </Link>
+      </div>
+
+      {onLostBoth == null && (
+        <p className="auth-footnote auth-footnote-plain auth-footnote-centred">
+          {t('twoFactor.lostBoth')}
+        </p>
       )}
     </>
   );

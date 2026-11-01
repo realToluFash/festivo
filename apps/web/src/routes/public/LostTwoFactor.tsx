@@ -194,7 +194,7 @@ function Heading({ title, intro, mark }: { title: string; intro: string; mark?: 
   useLayoutEffect(() => heading.current?.focus(), [title]);
 
   return (
-    <div className="auth-heading">
+    <div className="auth-heading auth-heading-apart">
       {mark != null && (
         <p className="request-state">
           <StatusChip look={RECOVERY_LOOK[mark.outcome]}>{mark.word}</StatusChip>
@@ -430,7 +430,7 @@ function Request({
             {t('lostTwoFactor.emailSupport', { address: supportAddress })}
           </a>
         )}
-        <div className="auth-footnote">
+        <div className="auth-footnote auth-footnote-plain auth-footnote-centred">
           <span>{t('lostTwoFactor.notYou')}</span>
           <button
             className="link-button"

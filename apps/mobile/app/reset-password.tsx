@@ -111,6 +111,7 @@ export default function ResetPassword() {
       <AuthFrame
         saying={
           <AuthHeading
+            apart
             title={t(`recovery.${status.kind}Title`)}
             intro={t(`recovery.${status.kind}Body`)}
             answer={status.tapped ? status : undefined}
@@ -166,6 +167,7 @@ export default function ResetPassword() {
         atFoot
         saying={
           <AuthHeading
+            apart
             done
             title={t('recovery.doneTitle')}
             intro={t('recovery.doneBody', { email: status.email })}
@@ -189,6 +191,7 @@ export default function ResetPassword() {
     <AuthFrame
       saying={
         <AuthHeading
+          apart
           title={t('recovery.newTitle')}
           intro={t('recovery.newFor', { email: status.email })}
           answer={status.kind === 'ready' && status.tapped === true ? status : undefined}

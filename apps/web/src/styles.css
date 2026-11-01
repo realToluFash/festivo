@@ -1590,6 +1590,43 @@ span {
   color: var(--colorInkSecondary);
 }
 
+/* Getting back in sets its title apart from the body, as GetBackIn.dc.html draws it (sc-23279). */
+.auth-heading.auth-heading-apart {
+  gap: var(--spaceXxl);
+}
+
+.auth-footnote.auth-footnote-centred {
+  justify-content: center;
+  text-align: center;
+}
+
+/* Another way through this step: a bordered row with a chevron, not a link. */
+.auth-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+  width: 100%;
+  min-height: var(--sizeHitPhoneHero);
+  padding: 0 var(--spaceLg);
+  background: var(--colorCard);
+  border: var(--borderControl);
+  border-radius: var(--radiusInset);
+  color: var(--colorInk);
+  font: var(--typeButton);
+  text-align: left;
+  cursor: pointer;
+}
+
+.auth-row::after {
+  margin-left: auto;
+  color: var(--colorInkSecondary);
+  content: '›';
+}
+
+.auth-row:hover {
+  background: var(--colorInset);
+}
+
 /* The rule is stated with a mark and a word, never by colour alone. */
 .rule-inset {
   display: flex;

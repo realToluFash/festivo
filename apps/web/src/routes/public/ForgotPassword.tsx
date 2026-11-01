@@ -66,7 +66,7 @@ export function ForgotPassword() {
   if (status.kind === 'sent') {
     return (
       <AuthPage back={back}>
-        <div className="auth-heading">
+        <div className="auth-heading auth-heading-apart">
           <h1 ref={sentHeading} tabIndex={-1}>
             {t('recovery.sentTitle')}
           </h1>
@@ -91,7 +91,7 @@ export function ForgotPassword() {
 
         <p className="field-help">{t('recovery.providerNote')}</p>
 
-        <div className="auth-footnote">
+        <div className="auth-footnote auth-footnote-plain auth-footnote-centred">
           <span>{t('recovery.gotIt')}</span>
           <Link className="link-button" to="/sign-in">
             {t('recovery.backToSignIn')}
@@ -103,7 +103,7 @@ export function ForgotPassword() {
 
   return (
     <AuthPage back={back}>
-      <div className="auth-heading">
+      <div className="auth-heading auth-heading-apart">
         <h1>{t('recovery.title')}</h1>
         <p>{t('recovery.intro')}</p>
       </div>
@@ -178,7 +178,7 @@ export function ForgotPassword() {
         </button>
       </form>
 
-      <div className="auth-footnote">
+      <div className="auth-footnote auth-footnote-plain auth-footnote-centred">
         <span>{t('recovery.remembered')}</span>
         <Link className="link-button" to="/sign-in">
           {t('recovery.signIn')}

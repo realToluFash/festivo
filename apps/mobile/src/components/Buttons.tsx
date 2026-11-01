@@ -1,5 +1,6 @@
 import { type Ref, useState } from 'react';
 import { Animated, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 import { tokens } from '../theme/tokens.ts';
 import { CONTROL_TEXT_SIZE } from './Field.tsx';
@@ -203,6 +204,39 @@ export function QuietButton({
   );
 }
 
+/** Another way through a step, such as Use a recovery code: a bordered row with a chevron. */
+export function RowButton({
+  label,
+  onPress,
+  testID,
+}: {
+  label: string;
+  onPress: () => void;
+  testID: string;
+}) {
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+      onPress={onPress}
+      accessibilityRole="button"
+      testID={testID}
+    >
+      <Text size={tokens.typeButton.size} weight="semibold" style={styles.rowLabel}>
+        {label}
+      </Text>
+      <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+        <Path
+          d="m9 18 6-6-6-6"
+          stroke={tokens.colorInkSecondary}
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
+    </Pressable>
+  );
+}
+
 /** "New here? Create an account": the question, the action, and anything said after it. */
 export function Footnote({
   question,
@@ -285,6 +319,19 @@ const styles = StyleSheet.create({
     borderTopColor: tokens.colorInsetBorder,
   },
   footnoteAction: { minHeight: tokens.sizeHit, justifyContent: 'center' },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceLg,
+    minHeight: tokens.sizeHitPhoneHero,
+    paddingHorizontal: tokens.spaceLg,
+    borderWidth: 1,
+    borderColor: tokens.colorControlBorder,
+    borderRadius: tokens.radiusInset,
+    backgroundColor: tokens.colorCard,
+  },
+  rowPressed: { backgroundColor: tokens.colorInset },
+  rowLabel: { flex: 1, color: tokens.colorInk },
   label: { textAlign: 'center' },
   onAccent: { color: tokens.colorInkOnDark },
   ink: { color: tokens.colorInk },

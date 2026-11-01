@@ -17,7 +17,11 @@ export default function TwoFactorAgain() {
   return (
     <AuthFrame
       saying={
-        <AuthHeading title={t('lostTwoFactor.setupTitle')} intro={t('lostTwoFactor.setupIntro')} />
+        <AuthHeading
+          apart
+          title={t('lostTwoFactor.setupTitle')}
+          intro={t('lostTwoFactor.setupIntro')}
+        />
       }
     >
       <PrimaryButton

@@ -74,6 +74,7 @@ export default function ForgotPassword() {
         back={back}
         saying={
           <AuthHeading
+            apart
             title={t('recovery.sentTitle')}
             intro={t('recovery.sentBody')}
             answer={status}
@@ -112,7 +113,7 @@ export default function ForgotPassword() {
   return (
     <AuthFrame
       back={back}
-      saying={<AuthHeading title={t('recovery.title')} intro={t('recovery.intro')} />}
+      saying={<AuthHeading apart title={t('recovery.title')} intro={t('recovery.intro')} />}
     >
       <View style={styles.form}>
         {status.kind === 'limited' && (

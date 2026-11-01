@@ -116,7 +116,7 @@ export function ResetPassword() {
   if (status.kind === 'used' || status.kind === 'expired' || status.kind === 'invalid') {
     return (
       <AuthPage>
-        <div className="auth-heading">
+        <div className="auth-heading auth-heading-apart">
           <h1 ref={stepHeading} tabIndex={-1}>
             {t(`recovery.${status.kind}Title`)}
           </h1>
@@ -129,7 +129,7 @@ export function ResetPassword() {
         >
           {t('recovery.sendNew')}
         </Link>
-        <div className="auth-footnote">
+        <div className="auth-footnote auth-footnote-plain auth-footnote-centred">
           {status.kind === 'expired' && <span>{t('recovery.rememberedAfterAll')}</span>}
           <Link className="link-button" to="/sign-in">
             {t('recovery.signIn')}
@@ -179,7 +179,7 @@ export function ResetPassword() {
         <span className="verified-mark" aria-hidden="true">
           ✓
         </span>
-        <div className="auth-heading">
+        <div className="auth-heading auth-heading-apart">
           <h1 ref={stepHeading} tabIndex={-1}>
             {t('recovery.doneTitle')}
           </h1>
@@ -201,7 +201,7 @@ export function ResetPassword() {
 
   return (
     <AuthPage>
-      <div className="auth-heading">
+      <div className="auth-heading auth-heading-apart">
         <h1 ref={stepHeading} tabIndex={-1}>
           {t('recovery.newTitle')}
         </h1>
