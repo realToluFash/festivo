@@ -20,7 +20,7 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useHeaderWithoutBack } from './AppFrame.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
-import { CardTitle } from './CardTitle.tsx';
+import { SmallCapsLabel } from './SmallCapsLabel.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Field, focusChecked, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
@@ -136,13 +136,13 @@ export function TimeZoneCard({
 
   return (
     <View style={frame}>
-      <CardTitle
+      <SmallCapsLabel
         accessibilityElementsHidden={savedClosing}
         importantForAccessibility={offWhileSaving}
         accessible={savedClosing ? false : undefined}
       >
         {t('timeZone.title')}
-      </CardTitle>
+      </SmallCapsLabel>
       <Text
         size={tokens.typeBodyPhone.size}
         style={styles.secondary}

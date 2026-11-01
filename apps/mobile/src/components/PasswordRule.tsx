@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { tokens } from '../theme/tokens.ts';
-import { tracking } from '../theme/tracking.ts';
+import { SmallCapsLabel } from './SmallCapsLabel.tsx';
 import { Text } from './Text.tsx';
 import { useMarkSide } from './markSide.ts';
 
@@ -15,9 +15,7 @@ export function PasswordRule({ met, testID }: { met: boolean; testID: string }) 
 
   return (
     <View style={styles.ruleInset}>
-      <Text size={tokens.typeLabel.size} weight="semibold" style={styles.ruleHeading}>
-        {t('register.ruleHeading')}
-      </Text>
+      <SmallCapsLabel>{t('register.ruleHeading')}</SmallCapsLabel>
       <View style={styles.rule} testID={lengthMet ? `${testID}.ruleMet` : `${testID}.ruleNotYet`}>
         <View
           style={[styles.ruleMark, markSide, lengthMet && styles.ruleMarkMet]}
@@ -62,11 +60,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokens.colorInsetBorder,
     backgroundColor: tokens.colorInset,
-  },
-  ruleHeading: {
-    color: tokens.colorInkSecondary,
-    letterSpacing: tracking(tokens.typeLabel),
-    textTransform: 'uppercase',
   },
   rule: {
     flexDirection: 'row',

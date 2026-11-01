@@ -27,7 +27,7 @@ import { heldProof } from '../recentProof.ts';
 import { rereadAccount } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
-import { CardTitle } from './CardTitle.tsx';
+import { SmallCapsLabel } from './SmallCapsLabel.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { ConfirmItsYou } from './ConfirmItsYou.tsx';
 import { Field, FieldError, focusChecked, keysStayDown, TextField } from './Field.tsx';
@@ -230,9 +230,9 @@ function ContactsCard({
   return (
     <View style={cardFrame(layout)}>
       <View style={styles.head}>
-        <CardTitle ref={title}>
+        <SmallCapsLabel ref={title}>
           {email ? t('contacts.emailsTitle') : t('contacts.phonesTitle')}
-        </CardTitle>
+        </SmallCapsLabel>
         <Text size={tokens.typeSmall.size} style={styles.secondary}>
           {t('contacts.count', { count: rows.length, most: CONTACTS_MOST })}
         </Text>

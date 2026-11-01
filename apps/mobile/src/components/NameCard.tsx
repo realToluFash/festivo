@@ -15,7 +15,7 @@ import { focusBackMs } from '../kit/focusBack.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
-import { CardTitle } from './CardTitle.tsx';
+import { SmallCapsLabel } from './SmallCapsLabel.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Field, focusChecked, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
@@ -94,13 +94,13 @@ export function NameCard({
 
   return (
     <View style={frame}>
-      <CardTitle
+      <SmallCapsLabel
         accessibilityElementsHidden={savedClosing}
         importantForAccessibility={offWhileSaving}
         accessible={savedClosing ? false : undefined}
       >
         {t('nameCard.title')}
-      </CardTitle>
+      </SmallCapsLabel>
 
       {(!editing || opening || closing || savedClosing) && (
         <View style={styles.current}>

@@ -4,8 +4,8 @@ import { tokens } from '../theme/tokens.ts';
 import { tracking } from '../theme/tracking.ts';
 import { Text, type TextProps } from './Text.tsx';
 
-/** An Account card's heading, in the small caps label the [fd] board gives every card (sc-23283). */
-export function CardTitle({ style, ...rest }: Omit<TextProps, 'size' | 'weight' | 'muted'>) {
+/** The small caps label the [fd] boards head a card or a group with, announced as a heading. */
+export function SmallCapsLabel({ style, ...rest }: Omit<TextProps, 'size' | 'weight' | 'muted'>) {
   return (
     <Text
       size={tokens.typeLabel.size}
