@@ -1,0 +1,14 @@
+# sc-3625 subflow: from the Calendar on Month, step back to November 2026, where the checks' events are, whatever today is.
+appId: host.exp.Exponent
+---
+- repeat:
+    while:
+      notVisible:
+        id: 'calendar.day.2026-11-14'
+    times: 36
+    commands:
+      - tapOn:
+          id: 'calendar.previous'
+      - waitForAnimationToEnd
+- assertVisible:
+    id: 'calendar.day.2026-11-14'

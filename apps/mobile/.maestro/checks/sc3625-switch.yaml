@@ -1,4 +1,4 @@
-# sc-3625: Switch organisation changes the calendar: ${OTHER_ORG} shows its own event, ${EMPTY_ORG} the Events empty state with New event; back to ${ORG}.
+# sc-3625: Switch organisation changes the calendar: OTHER_ORG shows its own event OTHER_EVENT (10 Nov 2026), EMPTY_ORG (one the account may create events in, with none) the Events empty state with New event; then back to ORG. Needs ORIENT, ORG, OTHER_ORG, OTHER_EVENT and EMPTY_ORG.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
@@ -12,8 +12,22 @@ appId: host.exp.Exponent
     visible:
       id: 'calendar.month'
     timeout: 30000
-- waitForAnimationToEnd
+- tapOn:
+    id: 'calendar.view.month'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.grid'
+    timeout: 20000
+- runFlow: ../checks/sc3625/to-november.yaml
+- tapOn:
+    id: 'calendar.day.2026-11-10'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.row.event-${OTHER_EVENT}'
+    timeout: 10000
 - takeScreenshot: other-org
+- tapOn:
+    id: 'calendar.dayList.close'
 - runFlow:
     file: ../switch-organisation.yaml
     env:
@@ -22,8 +36,10 @@ appId: host.exp.Exponent
     id: 'frame.calendar'
 - extendedWaitUntil:
     visible:
-      text: 'Set up your first event'
+      id: 'events.firstRun'
     timeout: 30000
+- assertVisible:
+    id: 'events.none.new'
 - takeScreenshot: empty-org
 - runFlow:
     file: ../switch-organisation.yaml
