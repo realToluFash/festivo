@@ -7,6 +7,7 @@
  * before load() ran, which is nothing.
  */
 import { ApiClient } from '@soirely/api-client';
+import { connection } from '@soirely/domain';
 
 import { config } from './config.ts';
 import { currentLocale } from './i18n/index.ts';
@@ -32,4 +33,14 @@ export const api = new ApiClient({
   onGate: () => {
     window.dispatchEvent(new Event(GATED));
   },
+  // Every request tells the offline band whether Soirely answered (sc-22586).
+  fetch: (input, init) => {
+    const answer = fetch(input, init);
+    connection.observe(answer, init);
+
+    return answer;
+  },
 });
+
+window.addEventListener('offline', () => connection.deviceOffline());
+window.addEventListener('online', () => connection.deviceOnline());

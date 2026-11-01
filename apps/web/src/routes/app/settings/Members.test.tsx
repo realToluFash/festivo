@@ -2355,3 +2355,64 @@ describe('opening Members by a click while the list loads (sc-23303)', () => {
     );
   });
 });
+
+describe('offline (sc-22586)', () => {
+  it('refuses an invitation pressed offline with its own words, keeps the address, and sends nothing on coming back', async () => {
+    signedIn();
+    let reachable = true;
+    const sent = answering({
+      'GET /api/orgs/org_1/members': () => {
+        if (!reachable) throw new TypeError('Failed to fetch');
+        return json(LIST);
+      },
+      'GET /api/orgs/org_1/roles': () => {
+        if (!reachable) throw new TypeError('Failed to fetch');
+        return json(ROLES);
+      },
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Invite somebody' }));
+    reachable = false;
+    act(() => {
+      window.dispatchEvent(new Event('offline'));
+    });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'amara.o@gmail.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }));
+
+    expect(
+      await screen.findByText(
+        'We could not send the invitation. Check your connection and try again.',
+      ),
+    ).toBeDefined();
+    expect(document.querySelector('.offline-band')?.textContent).toMatch(/^Offline · as of /);
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('amara.o@gmail.com');
+    expect(
+      (screen.getByRole('button', { name: 'Send invitation' }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+
+    reachable = true;
+    act(() => {
+      window.dispatchEvent(new Event('online'));
+    });
+
+    await waitFor(() => expect(document.querySelector('.offline-band')).toBeNull());
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('amara.o@gmail.com');
+    expect(sent.filter((one) => one.line === 'POST /api/orgs/org_1/members/invite')).toHaveLength(
+      1,
+    );
+  });
+
+  it('shows no band on a first load that never reached Soirely', async () => {
+    signedIn();
+    answering({});
+    open();
+
+    await screen.findByText('We could not load the members. Check your connection and try again.');
+    act(() => {
+      window.dispatchEvent(new Event('offline'));
+    });
+
+    expect(document.querySelector('.offline-band')).toBeNull();
+  });
+});

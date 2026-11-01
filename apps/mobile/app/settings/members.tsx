@@ -21,11 +21,13 @@ import {
   useListAndPageLayout,
 } from '../../src/components/ListAndPage.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
+import { moveScreenReaderFocus } from '../../src/components/screenReaderFocus.ts';
 import { type StepClosed, stepClosed, useFocusOnAnswer } from '../../src/components/Screen.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { SheetsAtRoot } from '../../src/components/Sheet.tsx';
 import { type TextHandle, Text } from '../../src/components/Text.tsx';
 import { useShownLanguage } from '../../src/i18n/index.ts';
+import { useOffline } from '../../src/offline.ts';
 import { DESTINATION_HREF, SECTION_HREF } from '../../src/kit/appNav.ts';
 import { useSignedIn } from '../../src/signedIn.ts';
 import { settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
@@ -88,6 +90,12 @@ export default function MembersScreen() {
     () => () => (listBehindNow.current ? memberName.current : null),
   );
   const language = useShownLanguage();
+  const [refresh, setRefresh] = useState(0);
+  const { watch, stale } = useOffline({
+    loaded: load.kind === 'loaded',
+    reload: () => setRefresh((n) => n + 1),
+    focusTitle: () => moveScreenReaderFocus(membersTitle.current),
+  });
 
   useEffect(() => {
     if (organisationId == null) return;
@@ -95,7 +103,7 @@ export default function MembersScreen() {
 
     const settle = (next: Load) => live && setHeld({ in: organisationId, load: next });
 
-    Promise.all([api.members(organisationId), api.roles(organisationId)]).then(
+    watch(Promise.all([api.members(organisationId), api.roles(organisationId)])).then(
       ([list, catalogue]) => settle({ kind: 'loaded', list, roles: catalogue.roles }),
       () =>
         live &&
@@ -109,7 +117,7 @@ export default function MembersScreen() {
     return () => {
       live = false;
     };
-  }, [organisationId, attempt, language]);
+  }, [organisationId, attempt, refresh, language, watch]);
 
   const member =
     load.kind === 'loaded' && showing.kind === 'member'
@@ -249,6 +257,7 @@ export default function MembersScreen() {
   return (
     <AppFrame
       current="settings"
+      offline={stale}
       title={
         phone
           ? (inFront?.user.name ?? t('membersScreen.title'))

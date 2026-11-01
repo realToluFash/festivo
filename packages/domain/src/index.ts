@@ -11,6 +11,8 @@ export * from './sentenceStops.ts';
 export * from './guestName.ts';
 export * from './userAgent.ts';
 export * from './contacts.ts';
+export * from './connection.ts';
+export * from './offlineWatch.ts';
 export * from './datetime.ts';
 export * from './devices.ts';
 export * from './password.ts';

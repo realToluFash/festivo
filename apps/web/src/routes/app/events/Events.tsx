@@ -21,8 +21,10 @@ import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
 import { dateLocale, useShownLanguage } from '../../../i18n/index.ts';
+import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
 import { useServerNow } from '../../../serverNow.ts';
 import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
@@ -106,6 +108,7 @@ function EventsOf({
   const { t } = useTranslation();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const [refresh, setRefresh] = useState(0);
   const [more, setMore] = useState<'idle' | 'loading' | 'failed'>('idle');
   const [shown, setShown] = useState('');
   const [tab, setTab] = useState<EventsTab>(() => rememberedEventsTab(organisationId));
@@ -115,14 +118,21 @@ function EventsOf({
   const home = useRef<HTMLDivElement>(null);
   const land = useFocusOnceShown();
   const now = useServerNow();
+  const { watch, refreshing } = useOffline({
+    loaded: load.kind === 'loaded',
+    reload: () => setRefresh((n) => n + 1),
+    title,
+  });
 
   useEffect(() => {
     let current = true;
 
-    Promise.all([
-      api.unfinishedEvents(organisationId),
-      api.events(organisationId, { finished: true, itemsPerPage: PAST_PAGE }),
-    ]).then(
+    watch(
+      Promise.all([
+        api.unfinishedEvents(organisationId),
+        api.events(organisationId, { finished: true, itemsPerPage: PAST_PAGE }),
+      ]),
+    ).then(
       ([unfinished, past]) =>
         current &&
         setLoad({
@@ -133,13 +143,17 @@ function EventsOf({
           pastPages: 1,
           at: serverClock.now(),
         }),
-      () => current && setLoad({ kind: 'failed' }),
+      (error: unknown) =>
+        current &&
+        setLoad((was) =>
+          was.kind === 'loaded' && keepsWhatLoaded(error) ? was : { kind: 'failed' },
+        ),
     );
 
     return () => {
       current = false;
     };
-  }, [organisationId, attempt]);
+  }, [organisationId, attempt, refresh, watch]);
 
   const page = (summary: string | null, body: ReactNode) => (
     <div className="events">
@@ -148,7 +162,13 @@ function EventsOf({
           <h1 ref={title} tabIndex={-1}>
             {t('events.title')}
           </h1>
-          {summary != null && <p className="events-summary">{summary}</p>}
+          {refreshing ? (
+            <p className="events-summary">
+              <Refreshing />
+            </p>
+          ) : (
+            summary != null && <p className="events-summary">{summary}</p>
+          )}
         </div>
         {creates && (
           <Link className="button button-primary" to="/app/events/new">

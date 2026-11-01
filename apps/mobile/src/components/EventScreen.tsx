@@ -1,11 +1,12 @@
 import type { Membership, OrganisationEvent } from '@soirely/api-client';
 import { type EventArea, rememberTabHolding, roleHolds } from '@soirely/domain';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
-import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
+import { type Stale, keepsWhatLoaded, useOffline } from '../offline.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { offersDelete } from '../kit/eventDelete.ts';
 import { backToOriginal } from '../kit/eventDuplicate.ts';
@@ -26,7 +27,8 @@ import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { Screen, useScrolledToTop } from './Screen.tsx';
 import { Arrived, Skeleton } from './Skeleton.tsx';
-import { Text } from './Text.tsx';
+import { moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { Text, type TextHandle } from './Text.tsx';
 import { useEdgeSwipeBack } from './useEdgeSwipeBack.ts';
 import { useSystemBack } from './useSystemBack.ts';
 
@@ -61,7 +63,10 @@ export function EventScreen({
   const [coverRefused, setCoverRefused] = useState<{ eventId: string; reason: string } | null>(
     null,
   );
-  const opened = useOpened(eventId, account != null, organisation);
+  const title = useRef<TextHandle>(null);
+  const opened = useOpened(eventId, account != null, organisation, () =>
+    moveScreenReaderFocus(title.current),
+  );
   const { reload, change } = opened;
   const event = opened.kind === 'loaded' ? opened.event : null;
   const now = useServerNow();
@@ -185,6 +190,20 @@ export function EventScreen({
     <AppFrame
       current="events"
       title={t(`eventNav.${area}`)}
+      titleRef={title}
+      offline={opened.stale}
+      underTitle={
+        opened.refreshing ? (
+          <Text
+            size={tokens.typeBodyPhone.size}
+            muted
+            accessibilityRole="text"
+            testID="events.page.refreshing"
+          >
+            {t('eventsScreen.refreshing')}
+          </Text>
+        ) : undefined
+      }
       back={phone ? { label: backLabel, onPress: back } : undefined}
       backInBody
       inEvent={event == null ? undefined : { area, onArea: chooseArea }}
@@ -242,10 +261,13 @@ function useOpened(
   eventId: string,
   accountLoaded: boolean,
   organisation: Membership | null,
+  focusTitle: () => void,
 ): Opened & {
   retry: () => void;
   reload: () => void;
   change: (event: OrganisationEvent) => void;
+  stale: Stale | null;
+  refreshing: boolean;
 } {
   const organisationId = organisation?.id;
   const settled = openedWithoutAsking(accountLoaded, organisation);
@@ -267,16 +289,22 @@ function useOpened(
     [key],
   );
 
+  const { watch, stale, refreshing } = useOffline({
+    loaded: held.for === key && held.opened.kind === 'loaded',
+    reload,
+    focusTitle,
+  });
+
   useEffect(() => {
     if (eventId === '' || organisationId == null || !asks) return;
     let live = true;
 
-    api.event(eventId).then(
+    watch(api.event(eventId)).then(
       (event) => live && setHeld({ for: key, opened: openedOf({ event }, organisationId) }),
       (error: unknown) =>
         live &&
         setHeld((before) =>
-          before.for === key && before.opened.kind === 'loaded'
+          before.for === key && before.opened.kind === 'loaded' && keepsWhatLoaded(error)
             ? before
             : { for: key, opened: openedOf({ error }, organisationId) },
         ),
@@ -285,11 +313,18 @@ function useOpened(
     return () => {
       live = false;
     };
-  }, [eventId, organisationId, asks, key, attempt]);
+  }, [eventId, organisationId, asks, key, attempt, watch]);
 
-  if (settled != null) return { ...settled, retry, reload, change };
+  if (settled != null) return { ...settled, retry, reload, change, stale: null, refreshing: false };
 
-  return { ...(held.for === key ? held.opened : { kind: 'loading' }), retry, reload, change };
+  return {
+    ...(held.for === key ? held.opened : { kind: 'loading' }),
+    retry,
+    reload,
+    change,
+    stale,
+    refreshing,
+  };
 }
 
 const styles = StyleSheet.create({

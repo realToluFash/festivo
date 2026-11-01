@@ -7,7 +7,7 @@ import {
   withPastPage,
 } from '@soirely/domain';
 import { Redirect, router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, RefreshControl, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -16,6 +16,8 @@ import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { eventHref } from '../kit/eventNav.ts';
 import { takeDeleted } from '../kit/eventSaved.ts';
 import { hasNoEvents } from '../kit/eventsOpen.ts';
+import { useOffline } from '../offline.ts';
+import { afterFailedLoad } from '../offlineLoad.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AppFrame } from './AppFrame.tsx';
@@ -25,7 +27,8 @@ import { type ListAndPageSpacing, ListAndPage, useListAndPageLayout } from './Li
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { AnswerInView } from './Screen.tsx';
-import { Text } from './Text.tsx';
+import { moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { Text, type TextHandle } from './Text.tsx';
 import { Arrived, Skeleton } from './Skeleton.tsx';
 
 type Load =
@@ -51,6 +54,7 @@ export function EventsScreen() {
   });
   const load = held.in === organisationId ? held.load : LOADING;
   const [attempt, setAttempt] = useState(0);
+  const title = useRef<TextHandle>(null);
 
   // The rows stay in place while they reload; a failed load gives way to loading.
   const reload = useCallback(() => {
@@ -91,14 +95,22 @@ export function EventsScreen() {
     return () => listener.remove();
   }, [reload]);
 
+  const { watch, stale } = useOffline({
+    loaded: load.kind === 'loaded',
+    reload,
+    focusTitle: () => moveScreenReaderFocus(title.current),
+  });
+
   useEffect(() => {
     if (organisationId == null || !reads || attempt === 0) return;
     let live = true;
 
-    Promise.all([
-      api.unfinishedEvents(organisationId),
-      api.events(organisationId, { finished: true, itemsPerPage: PAST_PAGE }),
-    ]).then(
+    watch(
+      Promise.all([
+        api.unfinishedEvents(organisationId),
+        api.events(organisationId, { finished: true, itemsPerPage: PAST_PAGE }),
+      ]),
+    ).then(
       ([unfinished, past]) =>
         live &&
         setHeld({
@@ -113,13 +125,22 @@ export function EventsScreen() {
             refreshing: false,
           },
         }),
-      () => live && setHeld({ in: organisationId, load: { kind: 'failed' } }),
+      (error: unknown) =>
+        live &&
+        setHeld((before) => ({
+          in: organisationId,
+          load: afterFailedLoad(
+            before.load.kind === 'loaded' ? { ...before.load, refreshing: false } : before.load,
+            error,
+            { kind: 'failed' },
+          ),
+        })),
     );
 
     return () => {
       live = false;
     };
-  }, [organisationId, reads, attempt]);
+  }, [organisationId, reads, attempt, watch]);
 
   const [more, setMore] = useState<'idle' | 'loading' | 'failed'>('idle');
   const [moreShown, setMoreShown] = useState<string | null>(null);
@@ -211,6 +232,8 @@ export function EventsScreen() {
     <AppFrame
       current="events"
       title={t('eventsScreen.title')}
+      titleRef={title}
+      offline={stale}
       underTitle={underTitle}
       primary={
         creates && !firstVisit

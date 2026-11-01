@@ -3,6 +3,11 @@
     "name": "Soirely",
     "skipToContent": "Ir para o conteúdo"
   },
+  "offline": {
+    "asOf": "Offline · as of {{time}}",
+    "asOfDay": "Offline · as of {{day}} at {{time}}",
+    "refreshing": "Refreshing…"
+  },
   "release": {
     "updated": "A Soirely foi atualizada.",
     "reload": "Recarregar"
