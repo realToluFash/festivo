@@ -19,6 +19,8 @@ import { offButton } from '../../../offButton.ts';
 import { markRulesSeen } from '../../../signInRulesSeen.ts';
 import { useStepFocus } from '../../../stepFocus.ts';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
+import { useOffline } from '../../../offline.ts';
+import { Refreshing } from '../../../components/OfflineBand.tsx';
 
 type Load =
   | { kind: 'loading' }
@@ -40,13 +42,19 @@ export function SignInRules() {
   const retrying = useRef(false);
   const [heading, arriveAtHeading] = useStepFocus();
   const [failedLine, arriveAtFailed] = useStepFocus<HTMLParagraphElement>();
+  const [refresh, setRefresh] = useState(0);
+  const { watch, refreshing } = useOffline({
+    loaded: load.kind === 'loaded',
+    reload: () => setRefresh((n) => n + 1),
+    title: heading,
+  });
 
   useEffect(() => {
     if (organisationId == null) return;
     let current = true;
     const askedAgain = loadedFor.current === organisationId;
 
-    api.signInRules(organisationId).then(
+    watch(api.signInRules(organisationId)).then(
       (page) => {
         if (!current) return;
         loadedFor.current = organisationId;
@@ -68,7 +76,7 @@ export function SignInRules() {
     return () => {
       current = false;
     };
-  }, [organisationId, attempt, language, arriveAtHeading, arriveAtFailed]);
+  }, [organisationId, attempt, refresh, language, arriveAtHeading, arriveAtFailed, watch]);
 
   useEffect(() => {
     if (organisation != null) markRulesSeen(organisation);
@@ -81,6 +89,7 @@ export function SignInRules() {
   return (
     <div className="settings settings-wide">
       <SettingsSections />
+      {refreshing && <Refreshing />}
       <div className="settings-heading">
         <h1 ref={heading} tabIndex={-1}>
           {manages

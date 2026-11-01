@@ -1,15 +1,26 @@
+import { type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { SectionNav } from './SectionNav.tsx';
 
 /** Your account's band, its title and its three sections, as `Account`, `Security` and `Notifications` draw it. */
-export function AccountHeader({ title, email }: { title: string; email?: string }) {
+export function AccountHeader({
+  title,
+  email,
+  titleRef,
+}: {
+  title: string;
+  email?: string;
+  titleRef?: RefObject<HTMLHeadingElement | null>;
+}) {
   const { t } = useTranslation();
 
   return (
     <header className="account-header">
       <div className="account-heading">
-        <h1>{title}</h1>
+        <h1 ref={titleRef} tabIndex={titleRef == null ? undefined : -1}>
+          {title}
+        </h1>
         {email != null && <p>{email}</p>}
       </div>
 
