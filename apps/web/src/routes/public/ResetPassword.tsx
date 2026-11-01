@@ -115,7 +115,7 @@ export function ResetPassword() {
 
   if (status.kind === 'used' || status.kind === 'expired' || status.kind === 'invalid') {
     return (
-      <AuthPage even>
+      <AuthPage>
         <div className="auth-heading">
           <h1 ref={stepHeading} tabIndex={-1}>
             {t(`recovery.${status.kind}Title`)}
@@ -129,7 +129,7 @@ export function ResetPassword() {
         >
           {t('recovery.sendNew')}
         </Link>
-        <div className="auth-footnote auth-footnote-plain auth-footnote-centred">
+        <div className="auth-footnote">
           {status.kind === 'expired' && <span>{t('recovery.rememberedAfterAll')}</span>}
           <Link className="link-button" to="/sign-in">
             {t('recovery.signIn')}
@@ -143,7 +143,7 @@ export function ResetPassword() {
     const email = status.email;
 
     return (
-      <AuthPage even>
+      <AuthPage>
         <SecondFactorStep
           intro={t('recovery.codeIntro', { email })}
           recoveryIntro={t('recovery.codeRecoveryIntro')}
@@ -175,7 +175,7 @@ export function ResetPassword() {
 
   if (status.kind === 'done') {
     return (
-      <AuthPage even>
+      <AuthPage>
         <span className="verified-mark" aria-hidden="true">
           ✓
         </span>
@@ -200,7 +200,7 @@ export function ResetPassword() {
   const error = checks.errors.password ?? refusal;
 
   return (
-    <AuthPage even>
+    <AuthPage>
       <div className="auth-heading">
         <h1 ref={stepHeading} tabIndex={-1}>
           {t('recovery.newTitle')}
@@ -244,7 +244,7 @@ export function ResetPassword() {
 
         <PasswordRule met={meetsPasswordLength(password)} id="password-rule" />
 
-        <div className="notice notice-plain">
+        <div className="notice notice-quiet">
           <span className="mark mark-info" aria-hidden="true">
             i
           </span>

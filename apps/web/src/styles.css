@@ -1373,6 +1373,23 @@ span {
   color: var(--colorAttentionText);
 }
 
+.request-state-done {
+  color: var(--colorAccentText);
+}
+
+.request-state-broken {
+  color: var(--colorBrokenText);
+}
+
+.request-state-ended {
+  color: var(--colorInkSecondary);
+}
+
+.mark-ended {
+  border: var(--borderMark) var(--colorInkSecondary);
+  color: var(--colorInkSecondary);
+}
+
 .button-danger {
   color: var(--colorInk);
 }
@@ -1527,12 +1544,6 @@ span {
   cursor: default;
 }
 
-/* A footnote standing alone, with no rule above it: under the card, or the card's last line. */
-.auth-footnote.auth-footnote-plain {
-  padding-top: 0;
-  border-top: 0;
-}
-
 .auth-footnote .link-button {
   display: inline-flex;
   align-items: center;
@@ -1610,85 +1621,6 @@ span {
 
 .auth-heading p {
   color: var(--colorInkSecondary);
-}
-
-/* Getting back in spaces every part of its card alike, as GetBackIn.dc.html draws it (sc-23279). */
-.auth-card-even .auth-heading,
-.auth-card-even .auth-form {
-  gap: var(--spaceXxl);
-}
-
-.auth-card-even .auth-note {
-  margin: 0;
-}
-
-.auth-card-even .resend {
-  gap: var(--spaceSm);
-}
-
-.auth-footnote.auth-footnote-centred {
-  justify-content: center;
-  text-align: center;
-}
-
-.notice.notice-plain {
-  padding: var(--spaceLg);
-  background: var(--colorCard);
-  border: var(--borderCard);
-}
-
-.notice-plain .notice-body {
-  gap: var(--spaceXs);
-}
-
-.auth-row {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceLg);
-  width: 100%;
-  min-height: var(--sizeHitPhoneHero);
-  padding: 0 var(--spaceLg);
-  background: var(--colorCard);
-  border: var(--borderControl);
-  border-radius: var(--radiusInset);
-  color: var(--colorInk);
-  font: var(--typeRowTitle);
-  text-align: left;
-  cursor: pointer;
-}
-
-.auth-row:hover {
-  background: var(--colorInset);
-}
-
-.auth-row-label {
-  flex: 1;
-}
-
-.auth-row-chevron {
-  flex: none;
-  color: var(--colorInkSecondary);
-}
-
-.steps-list.steps-cards {
-  gap: var(--spaceSm);
-}
-
-.steps-cards li {
-  gap: var(--spaceLg);
-  padding: var(--spaceLg);
-  background: var(--colorCard);
-  border: var(--borderCard);
-  border-radius: var(--radiusCardDesktop);
-}
-
-.steps-cards .step-mark {
-  width: var(--space4xl);
-  height: var(--space4xl);
-  border: 0;
-  background: var(--colorDark);
-  color: var(--colorInkOnDark);
-  font: var(--typeCode);
 }
 
 /* The rule is stated with a mark and a word, never by colour alone. */
@@ -4738,26 +4670,11 @@ button.members-row {
   border-radius: 0;
 }
 
-.status-chip[data-tone='broken'] {
-  background: var(--colorBrokenTint);
-  color: var(--colorBrokenText);
-}
-
-.status-chip[data-shape='tick']::before,
-.status-chip[data-shape='cross']::before,
-.status-chip[data-shape='dash']::before {
+.status-chip[data-shape='tick']::before {
   width: auto;
   height: auto;
   border-radius: 0;
   content: '✓';
-}
-
-.status-chip[data-shape='cross']::before {
-  content: '✕';
-}
-
-.status-chip[data-shape='dash']::before {
-  content: '–';
 }
 
 .mark-paused::before {

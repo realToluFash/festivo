@@ -142,10 +142,8 @@ describe('getting back in without the authenticator', () => {
     ).toBeDefined();
     expect(screen.getByLabelText('Code from the email')).toBeDefined();
     expect(screen.getByLabelText('Code from the text')).toBeDefined();
-    // A text-only action, with no fill and no edge (sc-23279).
-    expect(screen.getByRole('button', { name: 'Send new codes in 0:42' }).className).toBe(
-      'link-button',
-    );
+    // An outlined button, as before [fd] (sc-26512).
+    expect(screen.getByRole('button', { name: 'Send new codes in 0:42' }).className).toBe('button');
     expect(screen.getByText('New codes replace the last ones.')).toBeDefined();
   });
 
@@ -246,7 +244,7 @@ describe('getting back in without the authenticator', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Waiting for your organisation' }),
     ).toBeDefined();
-    expect(screen.getByText('Waiting for an answer').getAttribute('data-shape')).toBe('ring');
+    expect(screen.getByText('Waiting for an answer').previousElementSibling?.textContent).toBe('…');
     expect(screen.getByText('Asked Saturday, Oct 17 at 14:20 WAT.')).toBeDefined();
     expect(
       screen.getByText('If nobody answers by Saturday, Oct 24 at 14:20 WAT, the request ends.'),
@@ -355,7 +353,7 @@ describe('getting back in without the authenticator', () => {
       screen.getByText('Nobody in your organisation can confirm this. Contact Soirely support.'),
     ).toBeDefined();
     expect(screen.queryByText(/Ask an owner or admin of/)).toBeNull();
-    expect(screen.getByText('Turned down').getAttribute('data-shape')).toBe('cross');
+    expect(screen.getByText('Turned down').previousElementSibling?.textContent).toBe('✕');
     expect(screen.getAllByRole('link', { name: 'Email support@soirely.com' })).toHaveLength(1);
   });
 
