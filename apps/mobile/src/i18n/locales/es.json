@@ -28,7 +28,7 @@
     "healthy": "Todos los servicios responden.",
     "degraded": "Algunos servicios no responden.",
     "unreachable": "No se ha podido contactar con la API.",
-    "retry": "Inténtelo de nuevo",
+    "retry": "Reintentar",
     "check": "Comprobación",
     "state": "Estado",
     "usingFallback": "No hay ninguna URL de API configurada, por lo que se está intentando localhost. Eso funciona en un simulador, pero no en un dispositivo. Consulte el archivo README."
@@ -352,7 +352,7 @@
     "keepItOn": "Mantenerla activada",
     "failedTitle": "No se pudo cargar la verificación en dos pasos",
     "failedBody": "Algo ha fallado por nuestra parte. Vuelva a intentarlo en un momento.",
-    "retry": "Inténtelo de nuevo",
+    "retry": "Reintentar",
     "phoneSetupTitle": "Añada Soirely a su aplicación de autenticación",
     "phoneCantScan": "Escanee el código desde otra pantalla o introduzca esta clave en la aplicación.",
     "phoneKeepElsewhere": "Guárdelos en otro lugar que no sea este teléfono.",
@@ -586,7 +586,7 @@
     "askAgain": "Volver a pedirlo",
     "failedTitle": "No ha funcionado",
     "failedBody": "Algo ha fallado por el camino. Vuelva a intentarlo en un momento.",
-    "retry": "Volver a intentarlo",
+    "retry": "Reintentar",
     "setupTitle": "Configure de nuevo la verificación en dos pasos",
     "setupIntro": "Se desactivó la verificación en dos pasos para que pudiera volver a entrar. Configúrela de nuevo para que una contraseña sola no abra su cuenta.",
     "setup": "Configurar la verificación en dos pasos",
@@ -676,7 +676,7 @@
     "everywhereFailedTitle": "No se ha cerrado ninguna sesión",
     "everywhereFailedBody": "Se trata del acceso a la API y no de su cuenta. Inténtelo de nuevo.",
     "loading": "Cargando…",
-    "retry": "Inténtelo de nuevo"
+    "retry": "Reintentar"
   },
   "frame": {
     "home": "Inicio",
@@ -1030,7 +1030,7 @@
     "readIntro": "Las fijan los propietarios de la organización. Puede consultarlas aquí; solo ellos pueden cambiarlas.",
     "loading": "Cargando las normas de inicio de sesión…",
     "failedLoad": "No se han podido cargar las normas de inicio de sesión.",
-    "retry": "Inténtelo de nuevo",
+    "retry": "Reintentar",
     "methodTitle": "Cómo se inicia sesión",
     "idleTitle": "Cuánto dura una sesión sin uso",
     "twoFactorShort": "Verificación en dos pasos",
@@ -1477,7 +1477,7 @@
     "refreshing": "Actualizando…",
     "draft": "Borrador",
     "failedLoad": "No se han podido cargar sus eventos. Compruebe su conexión y vuelva a intentarlo.",
-    "retry": "Inténtelo de nuevo",
+    "retry": "Reintentar",
     "firstRunTitle": "Prepare su primer evento",
     "firstRunStepName": "Póngale un nombre y elija cuándo empieza y cuándo termina.",
     "firstRunStepDefaults": "Revise la zona horaria y la moneda.",

@@ -392,7 +392,7 @@
     "unreachable": "No se ha podido contactar con la API.",
     "check": "Comprobación",
     "state": "Estado",
-    "retry": "Inténtelo de nuevo"
+    "retry": "Reintentar"
   },
   "pending": {
     "loading": "Cargando…"
@@ -400,7 +400,7 @@
   "error": {
     "title": "Se ha producido un error",
     "body": "No se ha podido mostrar esta parte de la página. El resto de la aplicación no está afectado.",
-    "retry": "Inténtelo de nuevo",
+    "retry": "Reintentar",
     "details": "Detalles técnicos"
   },
   "forbidden": {
@@ -1113,7 +1113,7 @@
     "askAgain": "Volver a pedirlo",
     "failedTitle": "No ha funcionado",
     "failedBody": "Algo ha fallado por el camino. Vuelva a intentarlo en un momento.",
-    "retry": "Volver a intentarlo",
+    "retry": "Reintentar",
     "setupTitle": "Configure de nuevo la verificación en dos pasos",
     "setupIntro": "Se desactivó la verificación en dos pasos para que pudiera volver a entrar. Configúrela de nuevo para que una contraseña sola no abra su cuenta.",
     "setup": "Configurar la verificación en dos pasos",
@@ -1695,7 +1695,7 @@
     "readIntro": "Las fijan los propietarios de la organización. Puede consultarlas aquí; solo ellos pueden cambiarlas.",
     "loading": "Cargando las normas de inicio de sesión…",
     "failedLoad": "No se han podido cargar las normas de inicio de sesión.",
-    "retry": "Inténtelo de nuevo",
+    "retry": "Reintentar",
     "saved": "Normas guardadas. Todas las personas afectadas reciben un correo electrónico con lo que ha cambiado.",
     "failedSave": "No se han guardado las normas, así que no ha cambiado nada. Inténtelo de nuevo en un momento.",
     "methodTitle": "Cómo se inicia sesión",
