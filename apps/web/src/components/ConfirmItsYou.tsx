@@ -19,6 +19,7 @@ import { dropProof, holdProof } from '../recentProof.ts';
 import { FieldError } from './FieldError.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import { AppleMark, GoogleMark } from './ProviderSignIn.tsx';
+import { Choices } from './Choices.tsx';
 
 type ProvingField = 'password' | 'code';
 
@@ -282,21 +283,24 @@ export function ConfirmItsYou({
         {note}
 
         {askPassword || signIn != null ? (
-          <div className="actions">
+          <Choices>
             <button className="button" type="button" onClick={onCancel} disabled={checking}>
               {t('waysCard.cancel')}
             </button>
             <button className="button button-primary" type="submit" aria-busy={checking}>
               {checking ? t('waysCard.checking') : t('waysCard.continue')}
             </button>
-          </div>
+          </Choices>
         ) : (
           viaProvider != null && (
             <>
               <p className="muted">
                 {t('waysCard.proveWithProvider', { provider: PROVIDER_NAMES[viaProvider] })}
               </p>
-              <div className="actions">
+              <Choices>
+                <button className="button" type="button" onClick={onCancel}>
+                  {t('waysCard.cancel')}
+                </button>
                 <button
                   className={
                     viaProvider === 'google' ? 'button button-google' : 'button button-apple'
@@ -318,10 +322,7 @@ export function ConfirmItsYou({
                     {t('waysCard.continueWith', { provider: PROVIDER_NAMES[viaProvider] })}
                   </span>
                 </button>
-                <button className="button" type="button" onClick={onCancel}>
-                  {t('waysCard.cancel')}
-                </button>
-              </div>
+              </Choices>
             </>
           )
         )}

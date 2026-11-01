@@ -481,6 +481,12 @@ span {
     margin-block: auto;
   }
 
+  /* Choices stacked, the confirming one on top: the markup is already in that order. */
+  .actions-stacked {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   /* A confirm's pair stacked: the confirming button on top, the dismissive one under it. */
   .actions-confirm {
     flex-direction: column-reverse;
@@ -2871,6 +2877,7 @@ span {
 
 .two-factor-key,
 .recovery-codes {
+  font-family: var(--fontFamilyMono);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
 }

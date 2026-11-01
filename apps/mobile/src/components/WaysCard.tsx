@@ -296,8 +296,9 @@ function Row({
       )}
 
       {row.canUnlink && (
-        <SecondaryButton
+        <DestructiveButton
           ref={opener(`unlink.${row.provider}`)}
+          stacked={false}
           label={t('waysCard.unlink')}
           accessibilityLabel={t('waysCard.unlinkLabel', { provider: name })}
           onPress={onUnlink}

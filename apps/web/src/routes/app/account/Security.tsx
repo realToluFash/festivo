@@ -31,6 +31,7 @@ import { forgetSession, refreshAccount, rereadCredentials, useSession } from '..
 import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { useSignOut } from '../../../signOut.ts';
 import { Skeleton } from '../../../components/Skeleton.tsx';
+import { Choices } from '../../../components/Choices.tsx';
 
 type Devices =
   { kind: 'loading' } | { kind: 'failed' } | { kind: 'ready'; sessions: DeviceSession[] };
@@ -348,7 +349,7 @@ export function Security() {
               {devices.kind === 'ready' && othersOf(devices.sessions).count > 0 && (
                 <div className="device-footer">
                   <button
-                    className="button"
+                    className="button button-danger"
                     type="button"
                     ref={everywhereButton}
                     onClick={() => {
@@ -436,8 +437,13 @@ function Row({
       {/* Your own signs out at once and lands on sign-in. Another device opens
           a check first: you cannot see it, the row is only what it claimed,
           and it may be mid-event. */}
-      <button className="button" type="button" ref={button} onClick={here ? onEndHere : onCheck}>
-        {t('devices.signOut')}
+      <button
+        className="button button-danger"
+        type="button"
+        ref={button}
+        onClick={here ? onEndHere : onCheck}
+      >
+        {here ? t('devices.signOut') : t('devices.signOutAsks')}
       </button>
     </li>
   );
@@ -481,14 +487,14 @@ function Check({
         </div>
       </div>
 
-      <div className="actions">
+      <Choices>
         <button className="link-button" type="button" onClick={onKeep}>
           {t('devices.keep')}
         </button>
         <button className="button button-danger" type="button" onClick={onEnd}>
           {t('devices.end')}
         </button>
-      </div>
+      </Choices>
     </>
   );
 }

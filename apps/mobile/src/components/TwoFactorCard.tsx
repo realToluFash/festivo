@@ -173,6 +173,7 @@ export function TwoFactorCard({
           status={stage.status}
           title={title}
           opener={opener}
+          asksFirst={keptBy == null}
           onTurnOn={() => {
             leaveAtRest();
             void turnOn();
@@ -253,6 +254,7 @@ function AtRest({
   status,
   title,
   opener,
+  asksFirst,
   refusedBy,
   onTurnOn,
   onTurnOff,
@@ -261,6 +263,7 @@ function AtRest({
   status: TwoFactorStatus;
   title: RefObject<TextHandle | null>;
   opener: (key: string) => Ref<ViewInstance>;
+  asksFirst: boolean;
   refusedBy: Refusal | null;
   onTurnOn: () => void;
   onTurnOff: () => void;
@@ -323,9 +326,10 @@ function AtRest({
                 testID="twoFactor.newCodes"
               />
             </View>
-            <SecondaryButton
+            <DestructiveButton
               ref={opener('turnOff')}
-              label={t('twoFactorCard.turnOff')}
+              stacked={false}
+              label={asksFirst ? t('twoFactorCard.turnOffAsks') : t('twoFactorCard.turnOff')}
               onPress={onTurnOff}
               testID="twoFactor.turnOff"
             />
@@ -414,7 +418,13 @@ function SettingUp({
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
         {phone ? t('twoFactorCard.phoneCantScan') : t('twoFactorCard.cantScan')}
       </Text>
-      <Text size={tokens.typeBodyPhone.size} weight="semibold" selectable style={styles.key}>
+      <Text
+        size={tokens.typeBodyPhone.size}
+        weight="semibold"
+        family="mono"
+        selectable
+        style={styles.key}
+      >
         {keyInGroups(enrolment.secret)}
       </Text>
 
@@ -491,7 +501,13 @@ function SavingCodes({
 
       <View style={styles.codes}>
         {codes.map((code) => (
-          <Text key={code} size={tokens.typeBodyPhone.size} selectable style={styles.code}>
+          <Text
+            key={code}
+            size={tokens.typeBodyPhone.size}
+            family="mono"
+            selectable
+            style={styles.code}
+          >
             {code}
           </Text>
         ))}

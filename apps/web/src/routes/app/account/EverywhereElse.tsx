@@ -23,6 +23,7 @@ import {
   type ProviderReturn,
   startProviderSignIn,
 } from '../../../providerSignIn.ts';
+import { Choices } from '../../../components/Choices.tsx';
 
 type Field = 'password' | 'code';
 
@@ -288,7 +289,7 @@ export function EverywhereElse({
           </div>
         </div>
 
-        <div className="actions actions-confirm">
+        <Choices>
           <button className="link-button" type="button" onClick={onKeep} disabled={working}>
             {t('devices.everywhereKeep', { count })}
           </button>
@@ -330,7 +331,7 @@ export function EverywhereElse({
                     : t('devices.everywhereConfirmAll', { count })}
             </button>
           )}
-        </div>
+        </Choices>
       </form>
     </>
   );

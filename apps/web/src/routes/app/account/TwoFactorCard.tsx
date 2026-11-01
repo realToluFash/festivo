@@ -12,6 +12,7 @@ import { focusWhereSent, offField } from '../../../offField.ts';
 import { refreshAccount, useSessionState } from '../../../session.ts';
 import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
+import { Choices } from '../../../components/Choices.tsx';
 
 type Stage =
   | { kind: 'loading' }
@@ -159,6 +160,7 @@ export function TwoFactorCard({
             turnOnButton={turnOnButton}
             turnOffButton={turnOffButton}
             newCodesButton={newCodesButton}
+            asksFirst={keptBy == null}
             onTurnOn={() => void turnOn()}
             refusedBy={refusedBy}
             onTurnOff={() =>
@@ -222,6 +224,7 @@ function AtRest({
   turnOnButton,
   turnOffButton,
   newCodesButton,
+  asksFirst,
   refusedBy,
   onTurnOn,
   onTurnOff,
@@ -233,6 +236,7 @@ function AtRest({
   turnOnButton: RefObject<HTMLButtonElement | null>;
   turnOffButton: RefObject<HTMLButtonElement | null>;
   newCodesButton: RefObject<HTMLButtonElement | null>;
+  asksFirst: boolean;
   refusedBy: { organisation: string; landed: boolean } | null;
   onTurnOn: () => void;
   onTurnOff: () => void;
@@ -270,8 +274,13 @@ function AtRest({
             </button>
           </div>
           <div className="actions">
-            <button className="button" type="button" ref={turnOffButton} onClick={onTurnOff}>
-              {t('twoFactorCard.turnOff')}
+            <button
+              className="button button-danger"
+              type="button"
+              ref={turnOffButton}
+              onClick={onTurnOff}
+            >
+              {asksFirst ? t('twoFactorCard.turnOffAsks') : t('twoFactorCard.turnOff')}
             </button>
           </div>
           {refusedBy != null && (
@@ -399,14 +408,14 @@ function SettingUp({
               </p>
             </div>
 
-            <div className="actions">
+            <Choices>
               <button className="button" type="button" {...offButton(checking)} onClick={onCancel}>
                 {t('twoFactorCard.cancel')}
               </button>
               <button className="button button-primary" type="submit" aria-busy={checking}>
                 {t('twoFactorCard.checkCode')}
               </button>
-            </div>
+            </Choices>
           </form>
         </li>
       </ol>
@@ -573,14 +582,14 @@ function TurningOff({
           </p>
         </div>
 
-        <div className="actions">
+        <Choices>
           <button className="link-button" type="button" {...offButton(checking)} onClick={onKeep}>
             {t('twoFactorCard.keepItOn')}
           </button>
           <button className="button button-danger" type="submit" aria-busy={checking}>
             {t('twoFactorCard.turnItOff')}
           </button>
-        </div>
+        </Choices>
       </form>
     </>
   );
@@ -671,14 +680,14 @@ function ConfirmNewCodes({
           </p>
         </div>
 
-        <div className="actions">
+        <Choices>
           <button className="button" type="button" {...offButton(checking)} onClick={onKeep}>
             {t('twoFactorCard.keepCodes')}
           </button>
           <button className="button button-primary" type="submit" aria-busy={checking}>
             {t('twoFactorCard.makeNewCodes')}
           </button>
-        </div>
+        </Choices>
       </form>
     </>
   );

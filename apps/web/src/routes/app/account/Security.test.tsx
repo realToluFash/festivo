@@ -230,6 +230,16 @@ describe('the devices signed in to an account', () => {
     expect(screen.getByText(/an address it did not give/)).toBeDefined();
   });
 
+  it('ends Sign out with an ellipsis only where it asks first (sc-23282)', async () => {
+    answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByText('Chrome on Windows')).toBeDefined());
+    expect(endOf('Chrome on Windows').textContent).toBe('Sign out…');
+    expect(endOf('This device').textContent).toBe('Sign out');
+  });
+
   it('asks before ending another device, naming it and what follows', async () => {
     answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
 
@@ -610,7 +620,7 @@ describe('signing out everywhere else', () => {
 
   async function openCheck(): Promise<void> {
     openSecurity();
-    fireEvent.click(await screen.findByRole('button', { name: 'Sign out everywhere else' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign out everywhere else…' }));
     await screen.findByRole('heading', { name: 'Sign out everywhere else?' });
   }
 
@@ -623,7 +633,7 @@ describe('signing out everywhere else', () => {
 
     openSecurity();
 
-    expect(await screen.findByRole('button', { name: 'Sign out everywhere else' })).toBeDefined();
+    expect(await screen.findByRole('button', { name: 'Sign out everywhere else…' })).toBeDefined();
     expect(
       screen.getByText('Every device except this one. Asks you to confirm it is you first.'),
     ).toBeDefined();
@@ -635,7 +645,7 @@ describe('signing out everywhere else', () => {
     openSecurity();
 
     await screen.findByText('This device');
-    expect(screen.queryByRole('button', { name: 'Sign out everywhere else' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Sign out everywhere else…' })).toBeNull();
   });
 
   it('asks for the password, counts the others, and says they are signed out at once', async () => {
@@ -704,7 +714,7 @@ describe('signing out everywhere else', () => {
     ]);
     expect(await screen.findByText('Chrome on macOS')).toBeDefined();
     expect(screen.queryByText('Chrome on Windows')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Sign out everywhere else' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Sign out everywhere else…' })).toBeNull();
     expect(document.body.textContent).not.toMatch(/15 minutes/);
   });
 
@@ -1557,11 +1567,11 @@ describe('where focus carries on (sc-11369)', () => {
 
     openSecurity();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Sign out everywhere else' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign out everywhere else…' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Keep it signed in' }));
 
     expect(document.activeElement).toBe(
-      screen.getByRole('button', { name: 'Sign out everywhere else' }),
+      screen.getByRole('button', { name: 'Sign out everywhere else…' }),
     );
   });
 
@@ -1574,7 +1584,7 @@ describe('where focus carries on (sc-11369)', () => {
 
     openSecurity();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Sign out everywhere else' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign out everywhere else…' }));
     fireEvent.change(await screen.findByLabelText('Your password'), {
       target: { value: 'a decent passphrase' },
     });

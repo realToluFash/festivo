@@ -26,6 +26,7 @@ import {
 } from '../../../providerSignIn.ts';
 import { heldProof, holdProof } from '../../../recentProof.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
+import { Choices } from '../../../components/Choices.tsx';
 
 type Act = { action: 'link' | 'unlink'; provider: Provider };
 
@@ -334,7 +335,7 @@ function Row({
 
       {row.canUnlink && (
         <button
-          className="button"
+          className="button button-danger"
           type="button"
           data-way={`unlink-${row.provider}`}
           disabled={busy}
@@ -560,14 +561,14 @@ function Confirming({
         </div>
       </div>
 
-      <div className="actions">
+      <Choices>
         <button className="link-button" type="button" onClick={onKeep}>
           {t('waysCard.keep')}
         </button>
         <button className="button button-danger" type="button" onClick={onUnlink}>
           {t('waysCard.confirmUnlink', { provider: name })}
         </button>
-      </div>
+      </Choices>
     </>
   );
 }
