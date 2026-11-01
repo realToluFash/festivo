@@ -5935,17 +5935,18 @@ button.members-row {
   }
 }
 
-/* What a load brings replaces its skeleton with a fade; the frame and the title stay still. */
-.arrived {
+/* What a load brings replaces its skeleton with a fade, once; the frame, the title and a dialog opened later keep their own motion. */
+.arrived,
+.arrived-settled {
   display: contents;
 }
 
 .arrives,
-.arrived > *,
-.arrived > .members > :not(.members-head),
-.arrived > .roles > :not(.roles-list),
-.arrived .roles-list > :not(.roles-list-head),
-.arrived > .card > :not(h2, .card-heading, .contacts-head) {
+.arrived > :not(.dialog, .dialog-scrim),
+.arrived > .members > :not(.members-head, .dialog, .dialog-scrim),
+.arrived > .roles > :not(.roles-list, .dialog, .dialog-scrim),
+.arrived .roles-list > :not(.roles-list-head, .dialog, .dialog-scrim),
+.arrived > .card > :not(h2, .card-heading, .contacts-head, .dialog, .dialog-scrim) {
   animation: fade-in var(--motionBase) var(--motionEase);
 }
 
@@ -5963,11 +5964,11 @@ button.members-row {
 @media (prefers-reduced-motion: reduce) {
   .skeleton-shown .skeleton-blocks,
   .arrives,
-  .arrived > *,
-  .arrived > .members > :not(.members-head),
-  .arrived > .roles > :not(.roles-list),
-  .arrived .roles-list > :not(.roles-list-head),
-  .arrived > .card > :not(h2, .card-heading, .contacts-head) {
+  .arrived > :not(.dialog, .dialog-scrim),
+  .arrived > .members > :not(.members-head, .dialog, .dialog-scrim),
+  .arrived > .roles > :not(.roles-list, .dialog, .dialog-scrim),
+  .arrived .roles-list > :not(.roles-list-head, .dialog, .dialog-scrim),
+  .arrived > .card > :not(h2, .card-heading, .contacts-head, .dialog, .dialog-scrim) {
     animation: none;
   }
 }

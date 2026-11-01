@@ -1,9 +1,9 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, createEvent, fireEvent, render, screen } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Skeleton } from './Skeleton.tsx';
+import { Arrived, Skeleton } from './Skeleton.tsx';
 
 describe('a screen waiting for its content (sc-23303)', () => {
   beforeEach(() => {
@@ -79,5 +79,35 @@ describe('how a skeleton moves (sc-23303)', () => {
     );
     const reduced = styles.slice(styles.lastIndexOf('@media (prefers-reduced-motion: reduce)'));
     expect(reduced).toMatch(/\.skeleton-shown \.skeleton-blocks,[^}]*animation: none;/su);
+  });
+});
+
+describe('what arrived with a load (sc-23303)', () => {
+  const styles = readFileSync(join(import.meta.dirname, '../styles.css'), 'utf8');
+
+  it('fades once, so a view or a dialog that mounts later keeps its own motion', () => {
+    const { container } = render(
+      <Arrived>
+        <p>Members</p>
+      </Arrived>,
+    );
+    const wrapper = container.firstElementChild as HTMLElement;
+
+    expect(wrapper.className).toBe('arrived');
+    const faded = createEvent.animationEnd(screen.getByText('Members'));
+    Object.defineProperty(faded, 'animationName', { value: 'fade-in' });
+    fireEvent(screen.getByText('Members'), faded);
+    expect(wrapper.className).toBe('arrived-settled');
+    expect(styles).not.toMatch(/\.arrived-settled[^{,]*>/u);
+  });
+
+  it('never fades a dialog in its place, which rises in as sc-22092 drew it', () => {
+    const fade = styles.slice(styles.indexOf('.arrives,'));
+    const selectors = fade.slice(0, fade.indexOf('{')).split(',\n').slice(1);
+
+    expect(selectors).toHaveLength(5);
+    for (const selector of selectors) {
+      expect(selector).toMatch(/:not\([^)]*\.dialog, \.dialog-scrim\)/u);
+    }
   });
 });

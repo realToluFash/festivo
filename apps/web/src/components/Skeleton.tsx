@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { type AnimationEvent, type ReactNode, useState } from 'react';
 
 import { SKELETON_AFTER_MS, useShownAfter } from '../shownAfter.ts';
 
@@ -96,5 +96,18 @@ function fillingRows(rowHeight: RowHeight): number {
 
 /** Holds what a load brought, so it fades in where its skeleton stood without changing the layout around it. */
 export function Arrived({ children }: { children: ReactNode }) {
-  return <div className="arrived">{children}</div>;
+  const [settled, setSettled] = useState(false);
+
+  function faded(event: AnimationEvent): void {
+    if (event.animationName === 'fade-in') setSettled(true);
+  }
+
+  return (
+    <div
+      className={settled ? 'arrived-settled' : 'arrived'}
+      onAnimationEnd={settled ? undefined : faded}
+    >
+      {children}
+    </div>
+  );
 }
