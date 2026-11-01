@@ -9,7 +9,8 @@ export type CardShape = { lines?: number; fields?: number; options?: number; cov
 type Shape =
   | { shape: 'rows'; rowHeight: RowHeight; picture?: boolean; rows?: number }
   | { shape: 'cards'; cards: readonly CardShape[]; titled?: boolean }
-  | { shape: 'line' };
+  | { shape: 'line' }
+  | { shape: 'month'; weeks: number };
 
 /** Nothing for a second, then the content's shape under its loading words; `inCard` draws inside a card already there. */
 export function Skeleton({
@@ -36,6 +37,7 @@ export function Skeleton({
             />
           ))}
         {shape.shape === 'line' && <span className="skeleton-bar skeleton-bar-count" />}
+        {shape.shape === 'month' && <Month weeks={shape.weeks} />}
       </div>
     </div>
   );
@@ -86,6 +88,40 @@ function Card({ card, titled, framed }: { card: CardShape; titled: boolean; fram
         <span key={`option-${index}`} className="skeleton-option" />
       ))}
     </div>
+  );
+}
+
+/** The month grid's own card and cells, one bar where each weekday and each day number will be; never a button. */
+function Month({ weeks }: { weeks: number }) {
+  const days = Array.from({ length: 7 }, (_, index) => index);
+
+  return (
+    <table className="calendar-grid skeleton-month" role="presentation">
+      <thead>
+        <tr>
+          {days.map((index) => (
+            <th key={index} className="calendar-head">
+              <span className="skeleton-month-mark">
+                <span className="skeleton-bar skeleton-bar-weekday" />
+              </span>
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {Array.from({ length: weeks }, (_, week) => (
+          <tr key={week}>
+            {days.map((index) => (
+              <td key={index} className="calendar-cell">
+                <span className="skeleton-month-day">
+                  <span className="skeleton-bar skeleton-bar-day" />
+                </span>
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 

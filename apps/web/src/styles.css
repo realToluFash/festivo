@@ -6279,6 +6279,41 @@ button.members-row {
   height: 160px;
 }
 
+.skeleton-month-mark {
+  display: flex;
+  align-items: center;
+  height: 1lh;
+}
+
+.skeleton-month-day {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: calc(var(--sizeMark) + 2 * var(--spaceXs));
+  padding: var(--spaceXs) calc(var(--spaceXs) + var(--spaceHair));
+}
+
+.skeleton-bar-weekday {
+  height: 12px;
+  width: 24px;
+}
+
+.skeleton-bar-day {
+  height: 12px;
+  width: 16px;
+}
+
+@media (width <= 40rem) {
+  .skeleton-month-mark {
+    justify-content: center;
+  }
+
+  .skeleton-month-day {
+    height: calc(var(--sizeMark) + 2 * var(--spaceHair));
+    padding: var(--spaceHair) calc(var(--spaceHair) + var(--spaceHair));
+  }
+}
+
 /* Opacity only, ending where it started, so holding still afterwards changes nothing on screen. */
 @keyframes skeleton-pulse {
   50% {

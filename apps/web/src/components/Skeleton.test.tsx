@@ -57,6 +57,20 @@ describe('a screen waiting for its content (sc-23303)', () => {
     expect(container.querySelectorAll('.skeleton-option')).toHaveLength(3);
   });
 
+  it("draws a month as the grid's own weeks, one bar in each head and each day, and nothing to press", () => {
+    const { container } = render(
+      <Skeleton words="Loading the calendar…" shape="month" weeks={6} />,
+    );
+
+    expect(container.querySelector('table.calendar-grid')?.getAttribute('role')).toBe(
+      'presentation',
+    );
+    expect(container.querySelectorAll('.skeleton-bar-weekday')).toHaveLength(7);
+    expect(container.querySelectorAll('tbody tr')).toHaveLength(6);
+    expect(container.querySelectorAll('.calendar-cell .skeleton-bar-day')).toHaveLength(42);
+    expect(container.querySelector('button, [tabindex]')).toBeNull();
+  });
+
   it('inside a card that is already there, draws no card of its own', () => {
     const { container } = render(
       <Skeleton words="Loading…" shape="rows" rowHeight={56} rows={2} inCard />,

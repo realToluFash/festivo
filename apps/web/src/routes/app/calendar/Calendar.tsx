@@ -241,9 +241,16 @@ function CalendarOf({ organisationId, creates }: { organisationId: string; creat
         </label>
       </div>
 
-      {load.kind === 'loading' && (
-        <Skeleton words={t('calendar.loading')} shape="rows" rowHeight={60} />
-      )}
+      {load.kind === 'loading' &&
+        (view === 'month' ? (
+          <Skeleton
+            words={t('calendar.loading')}
+            shape="month"
+            weeks={monthGrid(month, firstDay, days).length}
+          />
+        ) : (
+          <Skeleton words={t('calendar.loading')} shape="rows" rowHeight={60} />
+        ))}
       {load.kind === 'failed' && (
         <div className="notice notice-broken" role={attempt > 0 ? 'alert' : undefined}>
           <span className="mark mark-broken" aria-hidden="true">
