@@ -116,7 +116,8 @@ export function EventScreen({
   const onDeleted = deletes
     ? (gone: OrganisationEvent) => {
         markDeleted(gone.name);
-        leave();
+        // Events, wherever the page was opened from, and the deleted page never behind it.
+        router.dismissTo(DESTINATION_HREF.events);
       }
     : undefined;
 

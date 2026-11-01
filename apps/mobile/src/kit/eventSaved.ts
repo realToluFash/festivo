@@ -28,7 +28,7 @@ export function takeCoverRefused(): { eventId: string; reason: string } | null {
 
 let deleted: string | null = null;
 
-/** An event's page hands the deleted event's name to Events, which it goes back to (sc-22103). */
+/** An event's page hands the deleted event's name to Events, where Delete event always lands (sc-22103). */
 export function markDeleted(name: string): void {
   deleted = name;
 }
