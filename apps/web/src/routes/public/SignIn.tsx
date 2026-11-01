@@ -98,7 +98,16 @@ export function SignIn() {
   }
 
   return (
-    <AuthPage>
+    <AuthPage
+      foot={
+        <div className="auth-footnote auth-footnote-plain">
+          <span>{t('signIn.newHere')}</span>
+          <Link className="link-button" to="/register">
+            {t('signIn.createAccount')}
+          </Link>
+        </div>
+      }
+    >
       <h1>{t('signIn.title')}</h1>
 
       {status.kind === 'sessionEnded' && (
@@ -302,13 +311,6 @@ export function SignIn() {
           <ProviderSignIn />
         </>
       )}
-
-      <div className="auth-footnote">
-        <span>{t('signIn.newHere')}</span>
-        <Link className="link-button" to="/register">
-          {t('signIn.createAccount')}
-        </Link>
-      </div>
     </AuthPage>
   );
 }

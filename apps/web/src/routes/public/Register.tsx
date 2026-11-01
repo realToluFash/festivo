@@ -229,7 +229,7 @@ export function Register() {
 
       <ProviderSignIn />
 
-      <div className="auth-footnote">
+      <div className="auth-footnote auth-footnote-plain">
         <span>{t('register.haveAccount')}</span>
         <Link className="link-button" to="/sign-in">
           {t('register.signIn')}

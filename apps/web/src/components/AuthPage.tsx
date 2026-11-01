@@ -4,8 +4,16 @@ import { useTranslation } from 'react-i18next';
 import { usePhoneWidth } from '../phoneWidth.ts';
 import { LanguageChoice } from './LanguageChoice.tsx';
 
-/** Every auth screen's page: the brand, or a way back in its place, then the card; on a phone the languages come last. */
-export function AuthPage({ back, children }: { back?: ReactNode; children: ReactNode }) {
+/** Every auth screen's page; `foot` goes under the card, or after a phone's languages. */
+export function AuthPage({
+  back,
+  foot,
+  children,
+}: {
+  back?: ReactNode;
+  foot?: ReactNode;
+  children: ReactNode;
+}) {
   const { t } = useTranslation();
   const phone = usePhoneWidth();
 
@@ -18,11 +26,13 @@ export function AuthPage({ back, children }: { back?: ReactNode; children: React
 
       <main id="content" className="auth-main">
         <section className="auth-card">{children}</section>
+        {!phone && foot != null && <div className="auth-after">{foot}</div>}
       </main>
 
       {phone ? (
         <footer className="auth-foot">
-          <LanguageChoice />
+          <LanguageChoice labelled />
+          {foot}
         </footer>
       ) : null}
     </div>

@@ -528,7 +528,7 @@ describe('signing in under an organisation’s sign-in rules (sc-69)', () => {
   });
 });
 
-describe('the language buttons (sc-23277)', () => {
+describe('the frame, as the board draws it (sc-23277)', () => {
   function phoneWide(matches: boolean): void {
     vi.spyOn(window, 'matchMedia').mockImplementation(
       (query) =>
@@ -557,5 +557,41 @@ describe('the language buttons (sc-23277)', () => {
     expect(content.compareDocumentPosition(languages) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
+  });
+
+  it('names the languages on a phone with words on the page', () => {
+    phoneWide(true);
+    at('/sign-in');
+
+    const languages = screen.getByRole('group', { name: 'Language' });
+
+    expect(languages.textContent).toMatch(/^Language/);
+  });
+
+  it('sets New here? under the card, outside it, wider than a phone', () => {
+    phoneWide(false);
+    at('/sign-in');
+
+    const createAccount = screen.getByRole('link', { name: 'Create an account' });
+    const card = screen.getByRole('heading', { name: 'Sign in' }).closest('section');
+
+    expect(card?.contains(createAccount)).toBe(false);
+    expect(screen.getByRole('main').contains(createAccount)).toBe(true);
+    expect(card!.compareDocumentPosition(createAccount) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it('sets New here? after the languages on a phone', () => {
+    phoneWide(true);
+    at('/sign-in');
+
+    const createAccount = screen.getByRole('link', { name: 'Create an account' });
+    const languages = screen.getByRole('group', { name: 'Language' });
+
+    expect(screen.getByRole('main').contains(createAccount)).toBe(false);
+    expect(
+      languages.compareDocumentPosition(createAccount) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 });

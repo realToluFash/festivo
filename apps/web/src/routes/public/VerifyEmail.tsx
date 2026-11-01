@@ -460,7 +460,7 @@ function CodeScreen({
           {stillSignedIn && <StillSignedIn />}
 
           {wrongAddress != null && (
-            <div className="auth-footnote">
+            <div className="auth-footnote auth-footnote-plain">
               <span>{t('verifyEmail.wrongAddress')}</span>
               <button className="link-button" type="button" onClick={() => void wrongAddress()}>
                 {registersAgain ? t('verifyEmail.registerAgain') : t('verifyEmail.signOut')}
