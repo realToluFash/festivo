@@ -192,6 +192,13 @@ to its README's rules. The web's version of the same control has a test beside i
 app's has no suite that walks the stack, so without the flow nothing checks it. Two pull
 requests in a row shipped an app back control with no step (#1108, #1110).
 
+## A web test reads a CSS rule through `cssRule`
+
+A web test that pins a style reads `apps/web/src/styles.css` through `cssRule(selector)` and
+`STYLES` from `apps/web/src/test-styles.ts`, never its own `readFileSync` and regex. Four tests
+had their own copy and they had drifted: one escaped only the first dot, one missed an indented
+rule inside `@media` (#1172).
+
 ## Browser checks only on request
 
 Never drive the app in a browser to confirm something unless asked. `tsc --noEmit`, the

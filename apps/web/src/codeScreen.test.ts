@@ -1,10 +1,8 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-
 import { ApiError } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
 import { codeRefusal, openingStatus } from './codeScreen.ts';
+import { cssRule } from './test-styles.ts';
 
 function refused(code: string): ApiError {
   return new ApiError({ type: `https://soirely.com/errors/${code}`, title: code, status: 422 });
@@ -30,14 +28,8 @@ describe('a code screen', () => {
   });
 
   it("draws its code field with every text field's edge, and a wrong code's in the same width (sc-26413)", () => {
-    const styles = readFileSync(join(import.meta.dirname, 'styles.css'), 'utf8');
-    const rule = (selector: string) =>
-      new RegExp(`\\n${selector.replace('.', '\\.')} \\{([^}]*)\\}`, 'u').exec(styles)?.[1];
-
-    expect(rule('.code-input')).toMatch(/\n {2}border: var\(--borderField\);/u);
-    expect(rule('.input')).toMatch(/\n {2}border: var\(--borderField\);/u);
-    expect(styles).toMatch(
-      /\n\.code-input\.input-wrong \{\n {2}border-color: var\(--colorBroken\);\n\}/u,
-    );
+    expect(cssRule('.code-input')).toMatch(/\n {2}border: var\(--borderField\);/u);
+    expect(cssRule('.input')).toMatch(/\n {2}border: var\(--borderField\);/u);
+    expect(cssRule('.code-input.input-wrong')).toBe('\n  border-color: var(--colorBroken);\n');
   });
 });

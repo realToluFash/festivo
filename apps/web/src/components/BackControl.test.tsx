@@ -5,6 +5,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 
+import { cssRule } from '../test-styles.ts';
 import { BackControl } from './BackControl.tsx';
 
 const SOURCE = join(import.meta.dirname, '..');
@@ -40,8 +41,7 @@ describe('BackControl', () => {
   });
 
   it('keeps its ‹ apart from the title, at least 44px tall and never underlined', () => {
-    const styles = readFileSync(join(SOURCE, 'styles.css'), 'utf8');
-    const rule = /\n\.back-control \{([^}]*)\}/u.exec(styles)?.[1] ?? '';
+    const rule = cssRule('.back-control');
 
     expect(rule).toMatch(/display: inline-flex;/u);
     expect(rule).toMatch(/gap: var\(--spaceXs\);/u);

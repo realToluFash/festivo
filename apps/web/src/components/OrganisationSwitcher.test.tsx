@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-
 import type { Membership } from '@soirely/api-client';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -11,6 +8,7 @@ import { __setSessionState, adoptAccount } from '../session.ts';
 import { membership } from '../test-memberships.ts';
 import { BREAKS_ANYWHERE } from '../test-wrapping.ts';
 import { routes } from '../routes/index.tsx';
+import { STYLES, cssRule } from '../test-styles.ts';
 import { OrganisationSwitcher } from './OrganisationSwitcher.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
@@ -265,11 +263,6 @@ describe('switching away from a paused organisation (sc-564)', () => {
 describe('a 100-character name (sc-486)', () => {
   const SPACED = 'Adeyemi Okafor Events '.repeat(5).slice(0, 99).concat('X');
   const WORD = 'A'.repeat(100);
-  const styles = readFileSync(join(import.meta.dirname, '../styles.css'), 'utf8');
-  const rule = (selector: string): string =>
-    new RegExp(`(?:^|\\n)\\s*${selector.replaceAll('.', '\\.')} \\{([^}]*)\\}`, 'u').exec(
-      styles,
-    )?.[1] ?? '';
 
   function inLong(name: string): void {
     const long = membership({ id: 'org_3', name });
@@ -316,15 +309,17 @@ describe('a 100-character name (sc-486)', () => {
   });
 
   it('cuts it to one line with an ellipsis in the trigger and every row', () => {
-    expect(rule('.org-name,\n.org-role')).toMatch(/white-space: nowrap;/u);
-    expect(rule('.org-name,\n.org-role')).toMatch(/text-overflow: ellipsis;/u);
-    expect(rule('.org-naming')).toMatch(/min-width: 0;/u);
+    expect(cssRule('.org-name,\n.org-role')).toMatch(/white-space: nowrap;/u);
+    expect(cssRule('.org-name,\n.org-role')).toMatch(/text-overflow: ellipsis;/u);
+    expect(cssRule('.org-naming')).toMatch(/min-width: 0;/u);
   });
 
   it('never lets the frame grow past the viewport, nor the open list', () => {
-    expect(rule('.shell')).toMatch(/grid-template-columns: var\(--sizeRail\) minmax\(0, 1fr\);/u);
-    expect(styles).toMatch(/\.shell \{\s*grid-template-columns: minmax\(0, 1fr\);/u);
-    expect(rule('.org-switcher-menu')).toMatch(/max-width: calc\(100vw - /u);
+    expect(cssRule('.shell')).toMatch(
+      /grid-template-columns: var\(--sizeRail\) minmax\(0, 1fr\);/u,
+    );
+    expect(STYLES).toMatch(/\.shell \{\s*grid-template-columns: minmax\(0, 1fr\);/u);
+    expect(cssRule('.org-switcher-menu')).toMatch(/max-width: calc\(100vw - /u);
   });
 
   it('breaks a long word in any paragraph, heading, list, definition, button, label or span, and in a notice', () => {
@@ -340,7 +335,7 @@ describe('a 100-character name (sc-486)', () => {
       'label',
       'span',
     ]);
-    expect(rule('.notice')).toMatch(/overflow-wrap: anywhere;/u);
+    expect(cssRule('.notice')).toMatch(/overflow-wrap: anywhere;/u);
   });
 });
 
