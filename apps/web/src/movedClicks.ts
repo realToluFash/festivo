@@ -31,11 +31,7 @@ function mouseUp(event: MouseEvent): void {
   if (inPlace && down.target.isConnected) down.target.click();
 }
 
-/**
- * A field's re-check runs as the mouse goes down on a button, and the line it changes can move the button before the
- * mouse comes up, so the browser's own click misses (sc-25852). A release inside the place the button filled when the
- * mouse went down is its click; a release outside it still cancels (WCAG 2.5.2).
- */
+/** A field's re-check can move the button between mouse down and up; a release where it was still clicks it (sc-25852). */
 export function holdMovedClicks(): () => void {
   if (holders++ === 0) {
     document.addEventListener('pointerdown', pointerDown, true);
