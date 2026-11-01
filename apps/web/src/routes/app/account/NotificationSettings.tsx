@@ -179,7 +179,7 @@ export function NotificationSettings() {
                     </th>
                     {(['push', 'email'] as const).map((channel) => (
                       <td key={channel} className="notification-settings-channel">
-                        <label className="notification-switch">
+                        <label className="notification-settings-switch">
                           <input
                             type="checkbox"
                             role="switch"
@@ -224,13 +224,13 @@ export function NotificationSettings() {
 /** The app's `OnOffSwitch` drawn over the checkbox: its dot and its word, as wide as the longer word. */
 function SwitchPill({ on, words }: { on: boolean; words: { on: string; off: string } }) {
   return (
-    <span className="notification-switch-pill" aria-hidden="true">
-      <span className="notification-switch-track">
-        <span className="notification-switch-dot" />
+    <span className="notification-settings-switch-pill" aria-hidden="true">
+      <span className="notification-settings-switch-track">
+        <span className="notification-settings-switch-dot" />
       </span>
-      <span className="notification-switch-words">
+      <span className="notification-settings-switch-words">
         <span>{on ? words.on : words.off}</span>
-        <span className="notification-switch-reserved">{on ? words.off : words.on}</span>
+        <span className="notification-settings-switch-reserved">{on ? words.off : words.on}</span>
       </span>
     </span>
   );

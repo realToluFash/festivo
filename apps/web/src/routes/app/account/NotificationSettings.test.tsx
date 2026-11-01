@@ -244,12 +244,15 @@ describe('Notification settings (sc-3980)', () => {
     const push = (await screen.findByRole('switch', {
       name: 'Guest replies Push',
     })) as HTMLInputElement;
-    const pill = push.closest('label')?.querySelector('.notification-switch-pill');
+    const pill = push.closest('label')?.querySelector('.notification-settings-switch-pill');
     expect(pill?.getAttribute('aria-hidden')).toBe('true');
     expect(pill?.textContent).toBe('OnOff');
     fireEvent.click(push);
 
     expect(await screen.findByText('Saved.')).toBeTruthy();
     expect(push.checked).toBe(false);
+    const words = pill?.querySelector('.notification-settings-switch-words');
+    expect(words?.firstElementChild?.textContent).toBe('Off');
+    expect(words?.lastElementChild?.textContent).toBe('On');
   });
 });

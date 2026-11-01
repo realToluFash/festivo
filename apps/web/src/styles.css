@@ -5406,15 +5406,28 @@ button.members-row {
   color: var(--colorInkSecondary);
 }
 
-/* The checkbox lies over the pill it draws, so a click and Space still switch it. */
 .notification-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  min-width: 88px;
+  min-height: var(--sizeHit);
+}
+
+.notification-switch span {
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+
+/* The checkbox lies over the pill it draws, so a click and Space still switch it. */
+.notification-settings-switch {
   position: relative;
   display: flex;
   justify-content: center;
   min-width: 88px;
 }
 
-.notification-switch input {
+.notification-settings-switch input {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -5424,12 +5437,12 @@ button.members-row {
   cursor: pointer;
 }
 
-.notification-switch input:disabled,
-.notification-switch input[aria-disabled='true'] {
+.notification-settings-switch input:disabled,
+.notification-settings-switch input[aria-disabled='true'] {
   cursor: default;
 }
 
-.notification-switch-pill {
+.notification-settings-switch-pill {
   display: inline-flex;
   flex: 1;
   align-items: center;
@@ -5444,22 +5457,22 @@ button.members-row {
   color: var(--colorInkSecondary);
 }
 
-.notification-switch:has(input:checked) .notification-switch-pill {
+.notification-settings-switch:has(input:checked) .notification-settings-switch-pill {
   background: var(--colorAccentTint);
   color: var(--colorAccentText);
 }
 
-.notification-switch:has(input:focus-visible) .notification-switch-pill {
+.notification-settings-switch:has(input:focus-visible) .notification-settings-switch-pill {
   outline: 2px solid var(--colorAccent);
   outline-offset: 2px;
 }
 
 /* Only the stacked switch draws its track; beside the word, the pill is the track. */
-.notification-switch-track {
+.notification-settings-switch-track {
   display: contents;
 }
 
-.notification-switch-dot {
+.notification-settings-switch-dot {
   flex: none;
   width: 10px;
   height: 10px;
@@ -5467,24 +5480,24 @@ button.members-row {
   border-radius: var(--radiusPill);
 }
 
-.notification-switch:has(input:checked) .notification-switch-dot {
+.notification-settings-switch:has(input:checked) .notification-settings-switch-dot {
   background: var(--colorAccent);
   border-color: var(--colorAccent);
 }
 
 /* Both words in one cell, the other one hidden, so the pill never changes width as it switches. */
-.notification-switch-words {
+.notification-settings-switch-words {
   display: grid;
   overflow-wrap: normal;
   white-space: nowrap;
 }
 
-.notification-switch-words > * {
+.notification-settings-switch-words > * {
   grid-area: 1 / 1;
   text-align: center;
 }
 
-.notification-switch-reserved {
+.notification-settings-switch-reserved {
   visibility: hidden;
 }
 
@@ -5495,11 +5508,17 @@ button.members-row {
   }
 
   .notification-switch {
+    flex-direction: column;
+    justify-content: center;
+    min-width: var(--sizeHit);
+  }
+
+  .notification-settings-switch {
     min-width: var(--sizeHit);
   }
 
   /* The dot's track above the word, as the app draws it on a phone. */
-  .notification-switch-pill {
+  .notification-settings-switch-pill {
     flex-direction: column;
     gap: var(--spaceXs);
     min-height: var(--sizeHit);
@@ -5508,11 +5527,11 @@ button.members-row {
     background: none;
   }
 
-  .notification-switch:has(input:checked) .notification-switch-pill {
+  .notification-settings-switch:has(input:checked) .notification-settings-switch-pill {
     background: none;
   }
 
-  .notification-switch-track {
+  .notification-settings-switch-track {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -5522,15 +5541,15 @@ button.members-row {
     border-radius: var(--radiusPill);
   }
 
-  .notification-switch:has(input:checked) .notification-switch-track {
+  .notification-settings-switch:has(input:checked) .notification-settings-switch-track {
     background: var(--colorAccentTint);
   }
 
-  .notification-switch:has(input:focus-visible) .notification-switch-pill {
+  .notification-settings-switch:has(input:focus-visible) .notification-settings-switch-pill {
     outline: 0;
   }
 
-  .notification-switch:has(input:focus-visible) .notification-switch-track {
+  .notification-settings-switch:has(input:focus-visible) .notification-settings-switch-track {
     outline: 2px solid var(--colorAccent);
     outline-offset: 2px;
   }
