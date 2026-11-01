@@ -282,7 +282,7 @@ describe('the application tree', () => {
 
     at('/app');
 
-    await waitFor(() => expect(screen.getByText('Loading…')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('Loading…')).toBeDefined(), { timeout: 2000 });
     expect(screen.queryByRole('heading', { level: 1, name: 'Sign in' })).toBeNull();
   });
 

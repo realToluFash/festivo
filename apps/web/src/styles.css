@@ -538,6 +538,12 @@ span {
   color: var(--colorInkSecondary);
 }
 
+.pending-centred {
+  justify-content: center;
+  min-height: 100vh;
+  padding: 0;
+}
+
 .unreachable {
   max-width: 30rem;
   margin: 0 auto;
@@ -5754,4 +5760,214 @@ button.members-row {
 .save-label[data-saved='false'] > .save-label-saved,
 .save-label[data-saved='true'] > .save-label-words {
   opacity: 0;
+}
+
+/* ── Waiting for content (sc-23303): nothing for a second, then its shape ── */
+
+.skeleton-blocks {
+  visibility: hidden;
+}
+
+.skeleton-words:empty {
+  margin: 0;
+}
+
+.skeleton-shown .skeleton-blocks {
+  visibility: visible;
+  animation: skeleton-pulse 1400ms ease-in-out 3;
+}
+
+.skeleton-words {
+  margin: 0 0 var(--spaceLg);
+  color: var(--colorInkSecondary);
+  font: var(--typeBody);
+}
+
+.skeleton-card {
+  background: var(--colorCard);
+  border: var(--borderCard);
+  border-radius: var(--radiusCardDesktop);
+  overflow: hidden;
+}
+
+.skeleton-card + .skeleton-card {
+  margin-top: var(--spaceXl);
+}
+
+.skeleton-cardful {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+}
+
+.skeleton-card.skeleton-cardful {
+  padding: var(--space3xl);
+}
+
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+  padding: 0 var(--spaceXl);
+}
+
+.skeleton-card .skeleton-row + .skeleton-row,
+.skeleton-rows .skeleton-row + .skeleton-row {
+  border-top: var(--borderDivider);
+}
+
+.skeleton-row-56 {
+  height: 56px;
+}
+
+.skeleton-row-64 {
+  height: 64px;
+}
+
+.skeleton-row-76 {
+  height: 76px;
+}
+
+.skeleton-row-bars {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.skeleton-bar,
+.skeleton-tile,
+.skeleton-field,
+.skeleton-option,
+.skeleton-cover {
+  display: block;
+  background: var(--colorInset);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusSmall);
+}
+
+.skeleton-tile {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+
+.skeleton-bar-first {
+  height: 14px;
+  width: 62%;
+}
+
+.skeleton-bar-second {
+  height: 12px;
+  width: 38%;
+}
+
+.skeleton-row:nth-child(4n + 2) .skeleton-bar-first {
+  width: 48%;
+}
+
+.skeleton-row:nth-child(4n + 2) .skeleton-bar-second {
+  width: 30%;
+}
+
+.skeleton-row:nth-child(4n + 3) .skeleton-bar-first {
+  width: 70%;
+}
+
+.skeleton-row:nth-child(4n + 3) .skeleton-bar-second {
+  width: 44%;
+}
+
+.skeleton-row:nth-child(4n) .skeleton-bar-first {
+  width: 55%;
+}
+
+.skeleton-row:nth-child(4n) .skeleton-bar-second {
+  width: 34%;
+}
+
+.skeleton-bar-title {
+  height: 24px;
+  width: 42%;
+}
+
+.skeleton-bar-heading {
+  height: 18px;
+  width: 36%;
+}
+
+.skeleton-bar-line {
+  height: 12px;
+  width: 92%;
+}
+
+.skeleton-bar-line:nth-of-type(3n) {
+  width: 78%;
+}
+
+.skeleton-bar-line:nth-of-type(3n + 1) {
+  width: 64%;
+}
+
+.skeleton-bar-count {
+  height: 21px;
+  width: 24%;
+}
+
+.skeleton-field {
+  height: 44px;
+  border-radius: var(--radiusField);
+}
+
+.skeleton-option {
+  height: 52px;
+}
+
+.skeleton-cover {
+  height: 160px;
+}
+
+/* Opacity only, ending where it started, so holding still afterwards changes nothing on screen. */
+@keyframes skeleton-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* What a load brings replaces its skeleton with a fade; the frame and the title stay still. */
+.arrived {
+  display: contents;
+}
+
+.arrives,
+.arrived > *,
+.arrived > .members > :not(.members-head),
+.arrived > .roles > :not(.roles-list),
+.arrived .roles-list > :not(.roles-list-head),
+.arrived > .card > :not(h2, .card-heading, .contacts-head) {
+  animation: fade-in var(--motionBase) var(--motionEase);
+}
+
+/* A title drawn while its content loaded stays still when the content arrives. */
+.arrived > h1,
+.arrived > h2,
+.arrived > .card-heading,
+.arrived > .card,
+.arrived > .members,
+.arrived > .roles,
+.arrived > .roles > .roles-list {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shown .skeleton-blocks,
+  .arrives,
+  .arrived > *,
+  .arrived > .members > :not(.members-head),
+  .arrived > .roles > :not(.roles-list),
+  .arrived .roles-list > :not(.roles-list-head),
+  .arrived > .card > :not(h2, .card-heading, .contacts-head) {
+    animation: none;
+  }
 }

@@ -6,12 +6,12 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
-import { Pending } from '../../../components/Pending.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
 import { offButton } from '../../../offButton.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
 import { refreshAccount, useSessionState } from '../../../session.ts';
 import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
+import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
 
 type Stage =
   | { kind: 'loading' }
@@ -114,7 +114,19 @@ export function TwoFactorCard({
 
   return (
     <section className="card" aria-labelledby="two-factor-title">
-      {stage.kind === 'loading' && <Pending />}
+      {stage.kind === 'loading' && (
+        <>
+          <div className="card-heading">
+            <h2 id="two-factor-title">{t('twoFactorCard.title')}</h2>
+          </div>
+          <Skeleton
+            words={t('pending.loading')}
+            shape="cards"
+            cards={[{ lines: 2, options: 1 }]}
+            inCard
+          />
+        </>
+      )}
 
       {stage.kind === 'failed' && (
         <>
@@ -139,22 +151,24 @@ export function TwoFactorCard({
       )}
 
       {stage.kind === 'at-rest' && (
-        <AtRest
-          status={stage.status}
-          heading={restHeading}
-          refusal={refusal}
-          turnOnButton={turnOnButton}
-          turnOffButton={turnOffButton}
-          newCodesButton={newCodesButton}
-          onTurnOn={() => void turnOn()}
-          refusedBy={refusedBy}
-          onTurnOff={() =>
-            keptBy == null
-              ? bring({ kind: 'turning-off' })
-              : setRefusedBy({ organisation: keptBy, landed: false })
-          }
-          onNewCodes={() => bring({ kind: 'new-codes' })}
-        />
+        <Arrived>
+          <AtRest
+            status={stage.status}
+            heading={restHeading}
+            refusal={refusal}
+            turnOnButton={turnOnButton}
+            turnOffButton={turnOffButton}
+            newCodesButton={newCodesButton}
+            onTurnOn={() => void turnOn()}
+            refusedBy={refusedBy}
+            onTurnOff={() =>
+              keptBy == null
+                ? bring({ kind: 'turning-off' })
+                : setRefusedBy({ organisation: keptBy, landed: false })
+            }
+            onNewCodes={() => bring({ kind: 'new-codes' })}
+          />
+        </Arrived>
       )}
 
       {stage.kind === 'setting-up' && (
