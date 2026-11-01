@@ -39,6 +39,8 @@ type SheetProps = {
   onClose: () => void;
   /** Given, a tap on the scrim closes the sheet, and a screen reader names it so. */
   scrimLabel?: string;
+  /** While a request that closing would not stop runs, back, the escape and the scrim do nothing (sc-25667). */
+  held?: boolean;
   /** Where screen reader focus goes back to once the sheet has gone. */
   opener: RefObject<ScreenReaderTarget | null>;
   testID?: string;
@@ -105,7 +107,16 @@ export function Sheet(props: SheetProps) {
   return places == null ? sheet : null;
 }
 
-function SheetFrame({ open, onClose, scrimLabel, opener, testID, children }: SheetProps) {
+function SheetFrame({
+  open,
+  onClose,
+  scrimLabel,
+  held = false,
+  opener,
+  testID,
+  children,
+}: SheetProps) {
+  const close = held ? () => undefined : onClose;
   const { kind, height } = useLayout();
   const insets = useSafeAreaInsets();
   const phone = kind === 'phone';
@@ -132,7 +143,7 @@ function SheetFrame({ open, onClose, scrimLabel, opener, testID, children }: She
       // Load-bearing for the keys too: without them Android fits the modal to the bars and ends it at the keys.
       statusBarTranslucent
       navigationBarTranslucent
-      onRequestClose={onClose}
+      onRequestClose={close}
       onShow={() => setOnScreen(true)}
       onDismiss={gone}
     >
@@ -164,9 +175,11 @@ function SheetFrame({ open, onClose, scrimLabel, opener, testID, children }: She
           {scrimLabel != null && (
             <Pressable
               style={StyleSheet.absoluteFill}
-              onPress={onClose}
+              onPress={close}
+              disabled={held}
               accessibilityRole="button"
               accessibilityLabel={scrimLabel}
+              accessibilityState={{ disabled: held }}
             />
           )}
           <Animated.View
@@ -177,7 +190,7 @@ function SheetFrame({ open, onClose, scrimLabel, opener, testID, children }: She
               frame,
             ]}
             accessibilityViewIsModal
-            onAccessibilityEscape={onClose}
+            onAccessibilityEscape={close}
             testID={testID}
           >
             {children}
