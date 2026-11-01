@@ -1139,6 +1139,11 @@ describe('Organisation asks before it destroys, the confirming button on top (sc
       .map(({ path }) => path);
     expect(offenders).toEqual([]);
   });
+
+  it('rings a radio at rest with the text field’s edge', () => {
+    const text = readFileSync(join('src', 'components', 'RadioMark.tsx'), 'utf8');
+    expect(text).toMatch(/^\s{2}ring: \{[^}]*borderColor: tokens\.colorFieldBorder,/mu);
+  });
 });
 
 describe('a screen is a composition of the kit', () => {
