@@ -105,6 +105,30 @@ describe('the application tree', () => {
     expect(screen.getByText('Signed in as Ada Okonkwo')).toBeDefined();
   });
 
+  it("shows the Dashboard's event count as one waiting row from one second, gone with nothing when it fails (sc-23303)", async () => {
+    let fail: () => void = () => {};
+    const counted = new Promise<Response>((_, reject) => {
+      fail = () => reject(new TypeError('Failed to fetch'));
+    });
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      new URL(String(input)).pathname === '/api/orgs/org_1/events'
+        ? counted
+        : new Promise<Response>(() => {}),
+    );
+    const { container } = at('/app');
+
+    const count = container.querySelector('#content [aria-busy="true"]');
+    expect(count).not.toBeNull();
+    expect(screen.queryByText('Loading…')).toBeNull();
+    await waitFor(() => expect(screen.getByText('Loading…')).toBeDefined());
+
+    fail();
+
+    await waitFor(() => expect(container.querySelector('#content [aria-busy="true"]')).toBeNull());
+    expect(screen.queryByText(/events?$/u)).toBeNull();
+    expect(screen.getByText('Signed in as Ada Okonkwo')).toBeDefined();
+  });
+
   it('opens in the account language, with no Automatic, after Automatic was picked outside (sc-9797)', async () => {
     vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
     await followAccount({ ...ADA_ACCOUNT, locale: 'es' });
@@ -282,7 +306,7 @@ describe('the application tree', () => {
 
     at('/app');
 
-    await waitFor(() => expect(screen.getByText('Loading…')).toBeDefined(), { timeout: 2000 });
+    await waitFor(() => expect(screen.getByText('Loading…')).toBeDefined());
     expect(screen.queryByRole('heading', { level: 1, name: 'Sign in' })).toBeNull();
   });
 

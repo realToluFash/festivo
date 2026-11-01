@@ -130,6 +130,7 @@ async function roles(): Promise<void> {
     />,
   );
   await screen.findByRole('heading', { level: 1, name: 'Roles' });
+  await waitFor(() => expect(document.querySelector('[aria-busy="true"]')).toBeNull());
 }
 
 function nameTaken(): Response {
@@ -958,8 +959,9 @@ describe('where focus goes once a click on Roles is answered (sc-11369)', () => 
     expect(again.closest('[role="alert"]')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    const heading = await screen.findByRole('heading', { level: 1, name: 'Roles' });
-    await waitFor(() => expect(document.activeElement).toBe(heading));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Roles' })),
+    );
   });
 
   describe('in a window 960 pixels wide or less', () => {

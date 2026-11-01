@@ -1,7 +1,6 @@
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode } from 'react';
 
-/** Under a second a person's flow is not broken, and a loading state that flashes up and away is noise. */
-export const SKELETON_AFTER_MS = 1000;
+import { SKELETON_AFTER_MS, useShownAfter } from '../shownAfter.ts';
 
 export type RowHeight = 56 | 64 | 76;
 
@@ -27,7 +26,7 @@ export function Skeleton({
 
   return (
     <div className={shown ? 'skeleton skeleton-shown' : 'skeleton'} aria-busy="true">
-      <p className="skeleton-words" role="status" aria-live="polite">
+      <p className="skeleton-words" role={shown ? 'status' : undefined} aria-live="polite">
         {shown ? words : ''}
       </p>
       <div className="skeleton-blocks" aria-hidden="true">
@@ -98,18 +97,6 @@ function Card({ card, titled, framed }: { card: CardShape; titled: boolean; fram
 /** As many rows as fill the window, never the real count, so the skeleton never scrolls. */
 function fillingRows(rowHeight: RowHeight): number {
   return Math.min(10, Math.max(3, Math.floor((window.innerHeight - 260) / rowHeight)));
-}
-
-export function useShownAfter(ms: number): boolean {
-  const [shown, setShown] = useState(false);
-
-  useEffect(() => {
-    const id = window.setTimeout(() => setShown(true), ms);
-
-    return () => window.clearTimeout(id);
-  }, [ms]);
-
-  return shown;
 }
 
 /** Holds what a load brought, so it fades in where its skeleton stood without changing the layout around it. */

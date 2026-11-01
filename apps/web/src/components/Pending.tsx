@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
-import { SKELETON_AFTER_MS, useShownAfter } from './Skeleton.tsx';
+import { SKELETON_AFTER_MS, useShownAfter } from '../shownAfter.ts';
 
 /**
  * The shell's loading state.

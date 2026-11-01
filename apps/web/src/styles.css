@@ -5768,10 +5768,6 @@ button.members-row {
   visibility: hidden;
 }
 
-.skeleton-words:empty {
-  margin: 0;
-}
-
 .skeleton-shown .skeleton-blocks {
   visibility: visible;
   animation: skeleton-pulse 1400ms ease-in-out 3;
@@ -5781,6 +5777,10 @@ button.members-row {
   margin: 0 0 var(--spaceLg);
   color: var(--colorInkSecondary);
   font: var(--typeBody);
+}
+
+.skeleton-words:empty {
+  margin: 0;
 }
 
 .skeleton-card {

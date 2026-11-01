@@ -124,9 +124,7 @@ function EditOf({ organisationId, eventId }: { organisationId: string; eventId: 
 
       {'kind' in load && load.kind === 'loading' && (
         <>
-          <h1 ref={heading} tabIndex={-1}>
-            {t('eventEdit.title')}
-          </h1>
+          <h1 tabIndex={-1}>{t('eventEdit.title')}</h1>
           <Skeleton
             words={t('eventPage.loading')}
             shape="cards"

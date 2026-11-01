@@ -144,9 +144,7 @@ export function Members() {
       {load.kind === 'loading' && (
         <div className="members">
           <div className="members-head">
-            <h1 ref={heading} tabIndex={-1}>
-              {t('membersScreen.title')}
-            </h1>
+            <h1 tabIndex={-1}>{t('membersScreen.title')}</h1>
           </div>
           <Skeleton words={t('membersScreen.loading')} shape="rows" rowHeight={64} picture />
         </div>

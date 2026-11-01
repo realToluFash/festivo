@@ -128,7 +128,7 @@ export function Roles() {
         <div className="roles">
           <section className="card roles-list" aria-labelledby="roles-title">
             <div className="roles-list-head">
-              <h1 id="roles-title" ref={heading} tabIndex={-1}>
+              <h1 id="roles-title" tabIndex={-1}>
                 {t('rolesScreen.title')}
               </h1>
               <p className="muted">{t('rolesScreen.intro', { name: organisation.name })}</p>

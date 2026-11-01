@@ -2088,8 +2088,11 @@ describe('where focus goes once a click on Members is answered (sc-11369)', () =
     expect(again.closest('[role="alert"]')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    const heading = await screen.findByRole('heading', { level: 1, name: 'Members' });
-    await waitFor(() => expect(document.activeElement).toBe(heading));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'Members' }),
+      ),
+    );
   });
 });
 
