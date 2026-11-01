@@ -187,6 +187,13 @@ function SheetFrame({ open, onClose, scrimLabel, opener, testID, children }: She
   );
 }
 
+/** A dialog's buttons as [fd]'s dialog sets them: stacked on a phone, and on a tablet a row at the card's end. */
+export function SheetActions({ children }: { children: ReactNode }) {
+  const phone = useLayout().kind === 'phone';
+
+  return <View style={phone ? styles.actionsStacked : styles.actionsRow}>{children}</View>;
+}
+
 /** Keeps the Modal up until its exit has played, so the sheet can leave rather than vanish. */
 function useSheetMotion(shown: boolean, phone: boolean, reduced: boolean, height: number) {
   const [present, setPresent] = useState(shown);
@@ -279,6 +286,14 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 480,
     borderRadius: tokens.radiusCardPhone,
+  },
+  actionsStacked: { gap: tokens.spaceSm },
+  actionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: tokens.spaceMd,
   },
   skirt: {
     position: 'absolute',

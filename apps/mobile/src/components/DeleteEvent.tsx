@@ -2,6 +2,7 @@ import { type EventDeletion, type OrganisationEvent } from '@soirely/api-client'
 import { typedNameMatches } from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
 import {
+  Keyboard,
   ScrollView,
   type ScrollViewInstance,
   StyleSheet,
@@ -22,7 +23,7 @@ import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { SETTLED_MS } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
-import { Sheet } from './Sheet.tsx';
+import { Sheet, SheetActions } from './Sheet.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 
 /** sc-3592: at the foot of the event page, apart from its everyday actions, to a role with Create events. */
@@ -140,6 +141,13 @@ function Confirm({
   const fieldInSight = () => {
     if (typing.current) body.current?.scrollToEnd({ animated: true });
   };
+
+  useEffect(() => {
+    // iOS lifts the sheet over the keys' rise, so a scroll asked for as it starts stops short of the help (sc-22092).
+    const risen = Keyboard.addListener('keyboardDidShow', fieldInSight);
+
+    return () => risen.remove();
+  }, []);
 
   async function submit(): Promise<void> {
     if (pending) return;
@@ -269,17 +277,10 @@ function Confirm({
             <Notice tone="broken" mark={tokens.marks.broken.glyph} body={failed} />
           </ReadOut>
         )}
-        {phone ? (
-          <View style={styles.stacked}>
-            {go}
-            {keep}
-          </View>
-        ) : (
-          <View style={styles.actions}>
-            {keep}
-            {go}
-          </View>
-        )}
+        <SheetActions>
+          {phone ? go : keep}
+          {phone ? keep : go}
+        </SheetActions>
       </View>
     </>
   );
@@ -308,12 +309,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.space3xl,
     paddingTop: tokens.spaceSm,
     paddingBottom: tokens.space3xl,
-  },
-  stacked: { gap: tokens.spaceSm },
-  actions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
-    gap: tokens.spaceMd,
   },
 });

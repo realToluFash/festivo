@@ -89,6 +89,8 @@ import {
   mp4Duration,
   launchTime,
   launchRecorded,
+  launchStarted,
+  retakeReason,
   surfaceOrientation,
   iosBundle,
   clearIosRelease,
@@ -384,11 +386,19 @@ describe('a commit checkout asks for', () => {
 
 describe('the simulator ios opens', () => {
   it.each([
-    [[], { open: 'phone', shut: 'ipad' }],
-    [['--phone'], { open: 'phone', shut: 'ipad' }],
-    [['--ipad'], { open: 'ipad', shut: 'phone' }],
-  ])('%j opens one and shuts the other', (args, expected) => {
+    [[], { open: 'phone', shut: ['ipad', 'se'] }],
+    [['--phone'], { open: 'phone', shut: ['ipad', 'se'] }],
+    [['--ipad'], { open: 'ipad', shut: ['phone', 'se'] }],
+    [['--se'], { open: 'se', shut: ['phone', 'ipad'] }],
+  ])('%j opens one and shuts the others', (args, expected) => {
     expect(simulatorFor(args)).toEqual(expected);
+  });
+
+  it.each(TESTERS)("opens tester %i's own iPhone SE, with nothing renamed", (tester) => {
+    const { simulators } = qaConfig(tester);
+    const label = tester === 1 ? 'Soirely QA' : `Soirely QA${tester}`;
+    expect(simulators[simulatorFor(['--se']).open].name).toBe(`${label} iPhone SE`);
+    expect(simulators.phone.name).toBe(`${label} iPhone`);
   });
 });
 
@@ -595,9 +605,31 @@ describe('a release build', () => {
       2310,
     );
     expect(launchTime('Error: Activity not started')).toBeNull();
+    expect(
+      launchTime(
+        'Status: timeout\nLaunchState: UNKNOWN (-1)\nActivity: id/.MainActivity\nWaitTime: 11978\nComplete\n',
+      ),
+    ).toBeNull();
     expect(launchRecorded(0.7, 1000, 2310)).toBe(false);
     expect(launchRecorded(4.96, 1000, 2310)).toBe(true);
     expect(launchRecorded(null, 1000, 2310)).toBe(false);
+  });
+
+  it('takes a timed-out launch as started only while the app is running', () => {
+    const timedOut =
+      'Status: timeout\nLaunchState: UNKNOWN (-1)\nActivity: id/.MainActivity\nWaitTime: 11978\nComplete\n';
+    expect(launchStarted(timedOut, '4242\n')).toBe(true);
+    expect(launchStarted(timedOut, '')).toBe(false);
+    expect(launchStarted(timedOut, null)).toBe(false);
+    expect(launchStarted('Error: Activity not started', '4242')).toBe(false);
+    expect(launchStarted('Status: ok\nTotalTime: 2310\nComplete\n', null)).toBe(true);
+  });
+
+  it('records again every take that did not show the first screen, and only those', () => {
+    expect(retakeReason('not recorded')).toMatch(/no video/);
+    expect(retakeReason('cut short')).toMatch(/recording ended/);
+    expect(retakeReason('timed out')).toMatch(/timed out/);
+    expect(retakeReason('recorded')).toBeNull();
   });
 
   it('names the launch video by platform and device, so every launch of a commit is kept', () => {
@@ -1662,6 +1694,18 @@ describe('the batch command', () => {
     ).toEqual([
       'node .qa/bin/qa-env.mjs batch tour-settings-es settings --lang es --cold --ipad EMAIL=a@b.test PASSWORD=… TOTP_SECRET=…',
       'node .qa/bin/qa-env.mjs batch tour-home-en home --lang en --cold --ipad EMAIL=a@b.test PASSWORD=… TOTP_SECRET=…',
+    ]);
+  });
+
+  it('re-runs a failed check on the iPhone SE it ran on', () => {
+    expect(
+      rerunHints('tour', [{ check: 'home', language: 'any' }], {
+        args: ['--se'],
+        email: 'a@b.test',
+        secret: null,
+      }),
+    ).toEqual([
+      'node .qa/bin/qa-env.mjs batch tour-home home --cold --se EMAIL=a@b.test PASSWORD=…',
     ]);
   });
 

@@ -29,7 +29,7 @@ import {
   useFocusBackToOpener,
   useFocusOnAnswer,
 } from './Screen.tsx';
-import { Sheet } from './Sheet.tsx';
+import { Sheet, SheetActions } from './Sheet.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 
 const TONES: Record<OwnerClaimView['tone'], { tone: NoticeTone; mark: string }> = {
@@ -514,7 +514,7 @@ function WithdrawConfirm({
         <Text size={tokens.typeBodyPhone.size}>
           {t('ownerClaim.withdrawBody', { organisation })}
         </Text>
-        <View style={phone ? styles.stacked : styles.actions}>
+        <SheetActions>
           {phone ? (
             <>
               {withdraw}
@@ -526,7 +526,7 @@ function WithdrawConfirm({
               {withdraw}
             </>
           )}
-        </View>
+        </SheetActions>
       </View>
     </Sheet>
   );
@@ -700,6 +700,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   clearOfClose: { marginRight: tokens.sizeHit },
-  stacked: { gap: tokens.spaceSm },
   wraps: { flexShrink: 1 },
 });
