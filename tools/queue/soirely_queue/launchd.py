@@ -16,6 +16,7 @@ import subprocess
 import time
 
 from . import machine, remote
+from .systemd import DAEMON_WAIT_SECONDS, daemon_status
 
 LABEL = "com.soirely.routine"
 WEB_LABEL = "com.soirely.web"
@@ -267,6 +268,24 @@ class Mac:
             child = subprocess.Popen(command, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
                                      stdout=log, stderr=log, start_new_session=True)
         self.pidfile(role).write_text(str(child.pid))
+
+    def claude_daemon(self, env, run=subprocess.run, spawn=subprocess.Popen, sleep=time.sleep):
+        """A background session runs under its account's Claude daemon. Started on demand by
+        `claude --bg` inside a worker, the daemon would sit in the worker's process group,
+        which `supervise` kills at a limit, and every session of the account would go with
+        it: dev and lead share one. So when none runs, one is started in a session of its
+        own."""
+        if "not running" not in daemon_status(env, run):
+            return
+        spawn(["claude", "daemon", "run"],
+              env={"PATH": search_path(), **{key: env[key] for key in ("CLAUDE_CONFIG_DIR", "HOME")
+                                             if key in env}},
+              stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+              start_new_session=True)
+        for _ in range(DAEMON_WAIT_SECONDS):
+            if "not running" not in daemon_status(env, run):
+                return
+            sleep(1)
 
     def stop_workers(self, wait=60, sleep=time.sleep):
         """Tells each supervisor to stop its worker, and waits for them, as `systemctl stop`

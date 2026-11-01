@@ -3,18 +3,14 @@ lists what it could not draw (`sq ux to-draw`), and the manager draws the list o
 time in a background session (`claude --bg`), which has it. The session runs under ux's
 Claude account, in ux's checkout, and the manager stops it once the story is off the list."""
 
-import json
-import re
 import subprocess
 import time
 
-from . import machine, permissions, runlog, store
+from . import background, machine, permissions, runlog, store
+from .background import ENDED
 
 WORKER = "ux-draw"
 MAX_TRIES = 2
-# A background session in one of these has ended its turn: it will do nothing more unasked.
-ENDED = ("idle", "done", "completed", "stopped", "exited", "failed", "error")
-STARTED = re.compile(r"backgrounded · (\w+)")
 UNATTENDED = """
 
 You run unattended, started by sq: nobody answers here. Draw this one story, write its Design
@@ -32,39 +28,24 @@ def environment(config, values):
 
 
 def sessions(env, run=subprocess.run):
-    listed = run(["claude", "agents", "--json"], capture_output=True, text=True, env=env)
-    try:
-        return {s["id"]: s.get("state") or s.get("status") for s in json.loads(listed.stdout)
-                if s.get("kind") == "background"}
-    except (ValueError, KeyError, TypeError):
-        return {}
+    return {short: s.get("state") or s.get("status")
+            for short, s in (background.listed(env, run) or {}).items()}
 
 
 def start(drawing, values, home, config, cwd, run=subprocess.run):
     folder, env = environment(config, values)
-    argv = ["claude", "--bg", "--name", f"draw sc-{drawing['story_id']}",
-            "--model", values["model"], "--effort", values["effort"],
-            "--permission-mode", "auto"]
     allowed = permissions.for_role(permissions.applied(), "ux")
     denied = permissions.denied(home / "sq" / "sq", folder)
-    if allowed:
-        argv += ["--allowedTools", *allowed]
-    if denied:
-        argv += ["--disallowedTools", *denied]
-    # The tool lists take every word after them, so `--` keeps the prompt out of the last one.
-    argv += ["--", drawing["prompt"] + UNATTENDED.format(story=drawing["story_id"])]
-    done = run(argv, capture_output=True, text=True, cwd=cwd, env=env)
-    found = STARTED.search(done.stdout or "")
-    if not found:
-        said = (done.stdout or done.stderr or "no output").strip()
-        if "not trusted" in said:
-            said += f" Run `claude` in {cwd} once as {folder} and accept the trust prompt."
-        raise RuntimeError(said[:300])
-    return found.group(1)
+    # ux draws in the artifact, so its session is the one not kept to reading.
+    argv, _ = background.command(
+        values, folder, f"draw sc-{drawing['story_id']}",
+        drawing["prompt"] + UNATTENDED.format(story=drawing["story_id"]), allowed, denied,
+        read_only=False)
+    return background.start(argv, cwd, env, run)
 
 
 def finish(session, env, keep, run=subprocess.run):
-    run(["claude", "stop", session], capture_output=True, env=env)
+    background.stop(session, env, run)
     if not keep:
         run(["claude", "rm", session], capture_output=True, env=env)
 

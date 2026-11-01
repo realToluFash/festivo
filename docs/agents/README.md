@@ -61,8 +61,11 @@ workers as they are and removes the ticks.
   id in the run, and watches it with `claude agents` until the turn ends, the item is done,
   or a limit is reached, then stops it. Its run-log line is read from the transcript, its
   cost reckoned from `models.json`. A session runs under the account's Claude daemon, which
-  sq starts in a unit of its own in the agents' slice (`soirely-claude-<hash>`), so a
-  worker's end does not take the account's other sessions with it. `claude attach <id>`
+  sq starts in a unit of its own in the agents' slice (`soirely-claude-<hash>`) on Linux,
+  and in a process session of its own on the Mac, so a worker's end does not take the
+  account's other sessions with it. A worker's session is launched with a PreToolUse hook
+  (`artifact_guard.py`, through `--settings`) that refuses any Artifact call other than
+  `read` or `list`, publish included, before it runs; only ux's drawing goes without it. `claude attach <id>`
   shows a session's work. A session that starts without the Artifact tools (it happened once,
   1 Nov) is stopped at its first reply and started once more; twice without them, the run
   is reported as not started. A background session needs the workspace trusted once per

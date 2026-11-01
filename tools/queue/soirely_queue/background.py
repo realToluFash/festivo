@@ -8,13 +8,23 @@ budget. Claude writes no result for a background session, so the run log's entry
 from its transcript, and its cost reckoned from `models.json`."""
 
 import json
+import pathlib
+import re
+import shlex
 import subprocess
+import sys
 import time
 
 from . import launchd, machine, runner, sessions
-from .drawing import ENDED, STARTED
 
 POLL_SECONDS = 5
+# A background session in one of these has ended its turn: it will do nothing more unasked.
+ENDED = ("idle", "done", "completed", "stopped", "exited", "failed", "error")
+STARTED = re.compile(r"backgrounded · (\w+)")
+# The daemon can take a few polls to list a session it has just started, and one listing can
+# fail; neither is the session gone.
+FIRST_POLLS = 6
+GUARD = pathlib.Path(__file__).with_name("artifact_guard.py")
 # Cache reads are billed at a tenth of input; writes at 1.25 times for five minutes, twice
 # for an hour.
 CACHE_READ, CACHE_WRITE_5M, CACHE_WRITE_1H = 0.1, 1.25, 2.0
@@ -29,9 +39,19 @@ class NotStarted(RuntimeError):
     pass
 
 
-def command(values, folder, name, prompt, allowed=(), denied=(), extra=None):
+def read_only_settings(python=None):
+    """Settings whose PreToolUse hook refuses any Artifact call that does not only read."""
+    hook = f"{shlex.quote(python or sys.executable)} {shlex.quote(str(GUARD))}"
+    return json.dumps({"hooks": {"PreToolUse": [
+        {"matcher": "Artifact.*", "hooks": [{"type": "command", "command": hook}]}]}})
+
+
+def command(values, folder, name, prompt, allowed=(), denied=(), extra=None, read_only=True):
+    """`read_only` is every worker's but the drawing's: their Artifact calls only read."""
     argv = ["claude", "--bg", "--name", name, "--model", values["model"],
             "--effort", values["effort"], "--permission-mode", "auto"]
+    if read_only:
+        argv += ["--settings", read_only_settings()]
     if allowed:
         argv += ["--allowedTools", *allowed]
     if denied:
@@ -59,12 +79,13 @@ def start(argv, cwd, env, run=subprocess.run):
 
 
 def listed(env, run=subprocess.run):
-    """Every background session the account's daemon knows, ended ones too, by short id."""
+    """Every background session the account's daemon knows, ended ones too, by short id, or
+    None when `claude agents` could not say."""
     out = run(["claude", "agents", "--json", "--all"], capture_output=True, text=True, env=env)
     try:
         return {s["id"]: s for s in json.loads(out.stdout) if s.get("kind") == "background"}
     except (ValueError, KeyError, TypeError):
-        return {}
+        return None
 
 
 def stop(short, env, run=subprocess.run):
@@ -126,20 +147,30 @@ def summary(lines, model, known=None):
 
 
 def watch(short, env, folder, finished, values, clock=time.monotonic, sleep=time.sleep,
-          ls=listed, rss=tree_rss, lines_of=None, poll=POLL_SECONDS):
+          ls=listed, rss=tree_rss, lines_of=None, poll=POLL_SECONDS, on_session=None):
     """Waits for the session's turn to end, or for its item to be done and settled, or for a
     limit. Returns `(why it stopped, the session as last listed)`: `ended`, `settled`,
-    `timeout`, `oom-kill`, `budget`, or `gone` when the daemon no longer lists it."""
+    `timeout`, `oom-kill`, `budget`, or `gone` when the daemon no longer lists it. An empty
+    or failed listing in the first polls is not yet gone. `on_session` hears the full session
+    id from the first listing that has one."""
     limit = machine.minutes(values["maxRuntime"]) * 60 if values.get("maxRuntime") else None
     memory = launchd.size_bytes(values.get("memoryMax"))
     budget = values.get("maxBudgetUsd")
     lines_of = lines_of or (lambda session: transcript_lines(folder, session))
-    began, settled, seen = clock(), None, {}
+    began, settled, seen, polls, told = clock(), None, {}, 0, False
     while True:
-        seen = ls(env).get(short) or seen
+        polls += 1
+        sessions_now = ls(env)
+        seen = (sessions_now or {}).get(short) or seen
         state = seen.get("state") or seen.get("status")
         if not seen:
+            if polls <= FIRST_POLLS:
+                sleep(poll)
+                continue
             return "gone", seen
+        if on_session and not told and seen.get("sessionId"):
+            told = True
+            on_session(seen["sessionId"])
         if limit and clock() - began > limit:
             return "timeout", seen
         if memory and rss(seen.get("pid")) > memory:
@@ -181,7 +212,7 @@ def tools_given(short, env, lines_of, clock=time.monotonic, sleep=time.sleep, ls
     session that ends first, or is still quiet at the wait's end, is given the benefit."""
     began = clock()
     while clock() - began < TOOLS_WAIT_SECONDS:
-        seen = ls(env).get(short) or {}
+        seen = (ls(env) or {}).get(short) or {}
         given = has_artifact_tools(lines_of(seen["sessionId"])) if seen.get("sessionId") \
             else None
         if given is not None:
@@ -203,15 +234,19 @@ def run(values, folder, name, prompt, cwd, finished, allowed=(), denied=(), extr
     lines_of = watching.get("lines_of") or (lambda s: transcript_lines(folder, s))
     for _ in range(TRIES):
         short = start(argv, cwd, env, run_command)
+        first = None
         if on_start:
-            on_start(short, (watching.get("ls") or listed)(env).get(short, {}).get("sessionId"))
+            first = ((watching.get("ls") or listed)(env) or {}).get(short, {}).get("sessionId")
+            on_start(short, first)
         if tools_given(short, env, **dict(watching, lines_of=lines_of)):
             break
         stop(short, env, run_command)
     else:
         raise NotStarted(f"the session started twice without the Artifact tools (last "
                          f"{short}); see sc-25203")
-    why, seen = watch(short, env, folder, finished, values, **watching)
+    on_session = (lambda session: on_start(short, session)) if on_start and not first \
+        else None
+    why, seen = watch(short, env, folder, finished, values, on_session=on_session, **watching)
     if why != "ended":
         stop(short, env, run_command)
     session = seen.get("sessionId")

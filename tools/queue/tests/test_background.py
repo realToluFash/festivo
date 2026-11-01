@@ -1,5 +1,6 @@
 """A worker as a background session, against fakes: nothing here starts claude."""
 
+import json
 import subprocess
 import unittest
 
@@ -49,6 +50,19 @@ class Command(unittest.TestCase):
         self.assertLess(argv.index("--disallowedTools"), argv.index("--"))
         self.assertEqual(env["SQ_RUN_DIR"], "/tmp/run")
         self.assertNotIn("--session-id", argv)
+
+    def test_a_worker_s_artifact_calls_go_through_the_read_only_hook(self):
+        argv, _ = background.command(VALUES, "~/.claude-x", "dev item 7", "Build sc-1.")
+        settings = json.loads(argv[argv.index("--settings") + 1])
+        [hook] = settings["hooks"]["PreToolUse"]
+        self.assertEqual(hook["matcher"], "Artifact.*")
+        self.assertIn("artifact_guard.py", hook["hooks"][0]["command"])
+        self.assertLess(argv.index("--settings"), argv.index("--"))
+
+    def test_the_drawing_is_not_kept_to_reading(self):
+        argv, _ = background.command(VALUES, "~/.claude-x", "draw sc-1", "Draw.",
+                                     read_only=False)
+        self.assertNotIn("--settings", argv)
 
 
 class Start(unittest.TestCase):
@@ -128,6 +142,29 @@ class Watch(unittest.TestCase):
 
     def test_a_session_the_daemon_forgets_is_gone(self):
         self.assertEqual(self.watch([None]), "gone")
+
+    def test_a_session_not_listed_yet_is_waited_for(self):
+        self.assertEqual(self.watch([None, None, "working", "done"]), "ended")
+
+    def test_a_listing_that_fails_is_not_the_session_gone(self):
+        clock, answers = Clock(), iter([None, None, {"1d923fe2": {"state": "done"}}])
+        why, _ = background.watch("1d923fe2", {}, "/c", lambda: False, VALUES, clock=clock,
+                                  sleep=clock.sleep, ls=lambda _: next(answers),
+                                  rss=lambda _: 0, lines_of=lambda _: [])
+        self.assertEqual(why, "ended")
+
+    def test_the_session_id_is_told_from_the_first_listing_that_has_it(self):
+        clock, told = Clock(), []
+        answers = iter([{"1d923fe2": {"state": "working"}},
+                        {"1d923fe2": {"state": "working", "sessionId": SESSION}},
+                        {"1d923fe2": {"state": "done", "sessionId": SESSION}}])
+        background.watch("1d923fe2", {}, "/c", lambda: False, VALUES, clock=clock,
+                         sleep=clock.sleep, ls=lambda _: next(answers), rss=lambda _: 0,
+                         lines_of=lambda _: [], on_session=told.append)
+        self.assertEqual(told, [SESSION])
+
+    def test_a_failed_listing_reads_as_none(self):
+        self.assertIsNone(background.listed({}, lambda *_, **__: said("not json")))
 
 
 class Run(unittest.TestCase):
