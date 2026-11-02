@@ -333,6 +333,8 @@ function sheetDrag(first: SheetDragNow) {
   let now = first;
   // The scrim fills the modal's window from its top, so the frame's y there is where a touch's pageY meets it.
   let frame = { top: 0, height: 0 };
+  // The grant zeroes dy, so the travel that won the capture is carried over.
+  let before = 0;
   const back = () => {
     const { shift, fade, reduced } = now;
     if (!reduced) {
@@ -345,12 +347,22 @@ function sheetDrag(first: SheetDragNow) {
     });
   };
   const { panHandlers } = PanResponder.create({
-    onMoveShouldSetPanResponderCapture: (_, { moveY, dx, dy }) =>
-      sheetDragStarts({ frameTop: frame.top, moveY, dx, dy }),
-    onPanResponderMove: (_, { dy }) => now.shift.setValue(Math.max(0, dy)),
+    onMoveShouldSetPanResponderCapture: (_, { moveY, dx, dy }) => {
+      const starts = sheetDragStarts({ frameTop: frame.top, moveY, dx, dy });
+      if (starts) before = dy;
+      return starts;
+    },
+    onPanResponderMove: (_, { dy }) => now.shift.setValue(Math.max(0, before + dy)),
     onPanResponderRelease: (_, { dy, vy }) => {
+      const travelled = before + dy;
       if (
-        sheetDragCloses({ dy, vy, height: frame.height, keysCover: now.keysCover, held: now.held })
+        sheetDragCloses({
+          dy: travelled,
+          vy,
+          height: frame.height,
+          keysCover: now.keysCover,
+          held: now.held,
+        })
       )
         now.onClose();
       else back();
