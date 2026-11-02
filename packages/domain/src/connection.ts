@@ -75,7 +75,7 @@ let current = createConnection();
 export const connection: Connection = {
   observe: (answer, asked) => current.observe(answer, asked),
   deviceOffline: () => current.deviceOffline(),
-  deviceOnline: () => current.deviceOnline(),
+  deviceOnline: (kind) => current.deviceOnline(kind),
   subscribe: (listener) => current.subscribe(listener),
 };
 
