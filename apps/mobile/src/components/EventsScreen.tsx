@@ -178,7 +178,7 @@ export function EventsScreen() {
   };
 
   const list = !reads ? null : load.kind === 'loading' ? (
-    <Skeleton words={t('eventsScreen.loading')} shape="rows" rowHeight={76} picture />
+    <Skeleton words={t('eventsScreen.loading')} shape="eventCards" kind={kind} />
   ) : load.kind === 'failed' ? (
     <EventsFailed onRetry={reload} testID="events.retry" />
   ) : (
