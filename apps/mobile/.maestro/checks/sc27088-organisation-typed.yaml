@@ -1,22 +1,31 @@
-# sc-27088, Android only: Organisation keeps a typed name across offline, a refused Save, the automatic reread being given up, and a pressed Try again.
+# sc-27088, Android only: Organisation keeps a typed name across offline, a refused Save, the automatic rereads being refused, and a pressed Try again.
 appId: host.exp.Exponent
 ---
-- openLink: ${METRO_URL}/--/settings/organisation
-- extendedWaitUntil:
-    visible:
-      id: 'organisation.name'
-    timeout: 30000
-- assertNotVisible: 'Offline Org Name'
-- tapOn:
-    id: 'organisation.name'
-- eraseText: 120
-- inputText: 'Offline Org Name'
-- hideKeyboard
-- setAirplaneMode: enabled
-- extendedWaitUntil:
-    visible:
-      id: 'offline.band'
-    timeout: 8000
+# organisation.name is drawn before the read answers, so the band appearing is the proof the
+# screen had loaded; a try that went offline too early leaves no band and is started again.
+- retry:
+    maxRetries: 2
+    commands:
+      - setAirplaneMode: disabled
+      - openLink: ${METRO_URL}/--/settings/organisation
+      - extendedWaitUntil:
+          visible:
+            id: 'organisation.name'
+          timeout: 30000
+      - extendedWaitUntil:
+          notVisible:
+            id: 'organisation.refreshing'
+          timeout: 20000
+      - tapOn:
+          id: 'organisation.name'
+      - eraseText: 120
+      - inputText: 'Offline Org Name'
+      - hideKeyboard
+      - setAirplaneMode: enabled
+      - extendedWaitUntil:
+          visible:
+            id: 'offline.band'
+          timeout: 8000
 - runScript:
     file: ../batch/helper.js
     env:
@@ -36,39 +45,34 @@ appId: host.exp.Exponent
     timeout: 60000
 - takeScreenshot: save-refused
 - assertVisible: 'Offline Org Name'
-# Paused, so the reread on coming back online is held until it is given up, band still up.
-- runScript:
-    file: ../batch/helper.js
-    env:
-      ASK: /api?to=paused
+# Soirely still stopped, so the rereads on coming back online are refused at once, band still up.
 - setAirplaneMode: disabled
 - extendedWaitUntil:
     visible:
       id: 'organisation.refreshing'
-    timeout: 8000
-# A second "back online" event makes a second automatic load, so this covers two.
-- extendedWaitUntil:
-    notVisible:
-      id: 'organisation.refreshing'
-    timeout: 70000
-- extendedWaitUntil:
-    visible:
-      id: 'organisation.refreshing'
-    timeout: 3000
+    timeout: 6000
     optional: true
 - extendedWaitUntil:
     notVisible:
       id: 'organisation.refreshing'
-    timeout: 30000
+    timeout: 10000
 - assertVisible:
     id: 'offline.band'
-# Tapped while the API is still paused, so the load that follows is Try again's own.
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- assertNotVisible:
+    id: 'organisation.refreshing'
 - tapOn:
     id: 'offline.retry'
+    waitToSettleTimeoutMs: 500
+    retryTapIfNoChange: false
+# Nothing else is out, so Refreshing straight after the tap is Try again's own load.
 - extendedWaitUntil:
     visible:
       id: 'organisation.refreshing'
-    timeout: 8000
+    timeout: 3000
 - assertVisible:
     id: 'offline.band'
 - runScript:

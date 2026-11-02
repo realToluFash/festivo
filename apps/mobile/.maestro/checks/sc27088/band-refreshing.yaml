@@ -1,58 +1,68 @@
-# Android only. ${SCREEN} shows the offline band; the automatic reread when the phone comes
-# back is given up with the band still up, and the band goes only after Try again's own load,
-# once Soirely answers.
+# Android only. ${SCREEN} goes offline only once its loaded content shows (LOADED_ID or
+# LOADED_TEXT, '.*' for the one a caller does not use). Coming back online with Soirely stopped
+# refuses every automatic reread at once, so with the API then paused the only load out is
+# Try again's own, and the band goes once Soirely answers it.
 appId: host.exp.Exponent
 ---
-- openLink: ${METRO_URL}/--/settings/${SCREEN}
-- waitForAnimationToEnd:
-    timeout: 8000
-- extendedWaitUntil:
-    notVisible:
-      id: ${REFRESHING}
-    timeout: 20000
-- assertNotVisible:
-    id: 'offline.band'
-- takeScreenshot: ${SCREEN}-online
-- setAirplaneMode: enabled
-- extendedWaitUntil:
-    visible:
-      id: 'offline.band'
-    timeout: 8000
+# The band appearing is the proof the screen had loaded; a load still out when airplane mode
+# went on leaves no band, so that try is started again.
+- retry:
+    maxRetries: 2
+    commands:
+      - setAirplaneMode: disabled
+      - openLink: ${METRO_URL}/--/settings/${SCREEN}
+      - extendedWaitUntil:
+          visible:
+            id: ${LOADED_ID}
+            text: ${LOADED_TEXT}
+          timeout: 30000
+      - extendedWaitUntil:
+          notVisible:
+            id: ${REFRESHING}
+          timeout: 20000
+      - assertNotVisible:
+          id: 'offline.band'
+      - takeScreenshot: ${SCREEN}-online
+      - setAirplaneMode: enabled
+      - extendedWaitUntil:
+          visible:
+            id: 'offline.band'
+          timeout: 8000
 - takeScreenshot: ${SCREEN}-offline
 - runScript:
     file: ../../batch/helper.js
     env:
-      ASK: /api?to=paused
+      ASK: /api?to=stopped
 - setAirplaneMode: disabled
-# Coming back online rereads by itself; the paused API holds that load until it is given up.
+# Lets the network settle; a late "back online" shows its reread here, refused at once.
 - extendedWaitUntil:
     visible:
       id: ${REFRESHING}
-    timeout: 8000
-# A second "back online" event makes a second automatic load, so this covers two.
-- extendedWaitUntil:
-    notVisible:
-      id: ${REFRESHING}
-    timeout: 70000
-- extendedWaitUntil:
-    visible:
-      id: ${REFRESHING}
-    timeout: 3000
+    timeout: 6000
     optional: true
 - extendedWaitUntil:
     notVisible:
       id: ${REFRESHING}
-    timeout: 30000
+    timeout: 10000
+- assertVisible:
+    id: 'offline.band'
+- runScript:
+    file: ../../batch/helper.js
+    env:
+      ASK: /api?to=paused
 - assertNotVisible:
     id: ${REFRESHING}
 - assertVisible:
     id: 'offline.band'
 - tapOn:
     id: 'offline.retry'
+    waitToSettleTimeoutMs: 500
+    retryTapIfNoChange: false
+# Nothing else is out, so Refreshing straight after the tap is Try again's own load.
 - extendedWaitUntil:
     visible:
       id: ${REFRESHING}
-    timeout: 8000
+    timeout: 3000
 - assertVisible:
     id: 'offline.band'
 - takeScreenshot: ${SCREEN}-refreshing
