@@ -218,6 +218,48 @@ describe('The bell in [fd] (sc-23233)', () => {
     }
   });
 
+  it('draws the rows in one card, its top and foot on whichever row or block is there', () => {
+    const source = feed();
+
+    expect(source).toMatch(/opensCard=\{index === 0 && !asking\}/u);
+    expect(source).toMatch(/closesCard=\{index === rows\.length - 1\}/u);
+    expect(source).toMatch(
+      /\[styles\.card, opensCard && styles\.cardTop, closesCard && styles\.cardFoot\]/u,
+    );
+    expect(source).toMatch(
+      /\(asking \|\| rows\.length === 0\) && \(\s*<View style=\{\[styles\.card, styles\.cardTop, rows\.length === 0 && styles\.cardFoot\]\}>/u,
+    );
+    expect(source).toMatch(/cardTop: \{\s*paddingTop: tokens\.spaceXxs,/u);
+    expect(source).toMatch(/borderTopLeftRadius: tokens\.radiusCardPhone/u);
+    expect(source).not.toMatch(/ItemSeparatorComponent/u);
+  });
+
+  it('keeps Mark all read and its line above the card, the push ask and the states inside it', () => {
+    const source = feed();
+    const card = source.indexOf('(asking || rows.length === 0) && (');
+
+    expect(source.indexOf("t('notifications.markAllRead')")).toBeLessThan(card);
+    expect(source.indexOf('body={notSaved}')).toBeLessThan(card);
+    for (const state of [
+      'notifications.pushAsk.title',
+      'notifications.loading',
+      'notifications.couldNotLoad',
+      'notifications.empty',
+    ]) {
+      expect(source.indexOf(state)).toBeGreaterThan(card);
+    }
+    expect(source).toMatch(/rowHeight=\{64\} inCard/u);
+  });
+
+  it('insets a row 12 by 16 under a rule, with no gap to the next', () => {
+    const source = feed();
+
+    expect(source).toMatch(
+      /row: \{\s*gap: tokens\.spaceXs,\s*paddingHorizontal: tokens\.spaceXl,\s*borderTopWidth: 1,\s*borderTopColor: tokens\.colorInsetBorder,/u,
+    );
+    expect(source).toMatch(/minHeight: tokens\.sizeHit,\s*paddingVertical: tokens\.spaceLg,/u);
+  });
+
   it('starts Mark all read 12pt under the tablet Back, and leaves the phone as it was', () => {
     const source = feed();
 

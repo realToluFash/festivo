@@ -130,7 +130,7 @@ export function Notice({
           )}
           {body != null && (
             <Text
-              size={tokens.typeBodyPhone.size}
+              size={line ? tokens.typeBody.size : tokens.typeBodyPhone.size}
               weight={wordsInTone ? 'semibold' : 'regular'}
               style={bodyInk}
             >
