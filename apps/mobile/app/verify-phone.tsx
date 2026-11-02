@@ -12,7 +12,7 @@ import {
   BackToAccountButton,
   RemoveInAccount,
 } from '../src/components/BackToAccount.tsx';
-import { Footnote, PrimaryButton, SecondaryButton } from '../src/components/Buttons.tsx';
+import { Footnote, Footnotes, PrimaryButton, SecondaryButton } from '../src/components/Buttons.tsx';
 import { CodeForm } from '../src/components/CodeForm.tsx';
 import { focusChecked, keysStayDown } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
@@ -248,25 +248,27 @@ export default function VerifyPhone() {
             />
           )}
 
-          {alternative == null ? (
-            <Footnote
-              question={t('verifyPhone.wrongNumber')}
-              action={t('verifyPhone.changeIt')}
-              onPress={() => router.push(onboarding ? '/phone?from=onboarding' : '/phone')}
-              testID="verifyPhone.change"
-            />
-          ) : (
-            <RemoveInAccount kind="phone" />
-          )}
+          <Footnotes>
+            {alternative == null ? (
+              <Footnote
+                question={t('verifyPhone.wrongNumber')}
+                action={t('verifyPhone.changeIt')}
+                onPress={() => router.push(onboarding ? '/phone?from=onboarding' : '/phone')}
+                testID="verifyPhone.change"
+              />
+            ) : (
+              <RemoveInAccount kind="phone" />
+            )}
 
-          {onboarding && (
-            <Footnote
-              question={t('verifyPhone.cantGetTexts')}
-              action={t('verifyPhone.carryOnWithout')}
-              onPress={() => void withoutPhone(account.name)}
-              testID="verifyPhone.carryOn"
-            />
-          )}
+            {onboarding && (
+              <Footnote
+                question={t('verifyPhone.cantGetTexts')}
+                action={t('verifyPhone.carryOnWithout')}
+                onPress={() => void withoutPhone(account.name)}
+                testID="verifyPhone.carryOn"
+              />
+            )}
+          </Footnotes>
         </CodeForm>
       )}
     </AuthFrame>
