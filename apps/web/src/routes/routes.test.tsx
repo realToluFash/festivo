@@ -378,13 +378,13 @@ describe('the application tree', () => {
     }
   });
 
-  it("stacks the sidebar from a tablet's width down only as tall as what it holds (sc-17608)", () => {
+  it("stacks the sidebar and the band from a tablet's width down only as tall as what they hold (sc-17608, sc-26270)", () => {
     const stacked = /@media \(width <= 60rem\) \{[^@]*?\n {2}\.shell \{([^}]*)\}/u.exec(
       STYLES,
     )?.[1];
 
     expect(stacked).toMatch(/grid-template-columns: minmax\(0, 1fr\);/u);
-    expect(stacked).toMatch(/grid-template-rows: auto 1fr;/u);
+    expect(stacked).toMatch(/grid-template-rows: auto auto 1fr;/u);
   });
 
   describe("at a phone's width, the menu (sc-13413)", () => {
