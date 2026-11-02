@@ -182,6 +182,12 @@ Take exact values from `docs/design/tokens.mjs`.
   closes on its labelled scrim, Android's back and its own button. A sheet that does not
   close on a tap outside (a confirm such as **Delete …?**, **Cover photo**, **Save your
   recovery codes**) draws none, and neither does the tablet's centred card.
+- **A sheet's content sits 24 in from its edges** (`space3xl`), top, sides and bottom, the
+  safe area added below (ux, 2 Nov 2026, sc-27948). The title starts on that 24 line, so it
+  clears the grabber, which ends 13 from the top. A list of selectable rows with their own
+  12 padding and fill sits 12 in from the sides instead, so its icons and words start on
+  the title's 24 line and the chosen row's fill runs to 12 from each side. Nothing starts
+  flush against a sheet's edge.
 - **A text field's edge is `#80868F`** at rest and focused (3.67 on white, 3.39 on the page,
   3.20 on the header band). Focused, the ring sits outside it: 2px `#1E9A64` at a 2px
   offset. On an error the edge is `#C2410C`. A secondary button's and a chip's edge stay
