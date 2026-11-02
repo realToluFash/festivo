@@ -1,0 +1,10 @@
+# Enter your code → Lost your authenticator… → ‹ Enter your code, in English. Starts on the
+# code step (sign-in-code-step-open). sc-23279.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: sc23279-lost-back.yaml
+    env:
+      RECOVERY: 'false'
+      BACK: 'Enter your code'
+      SHOT: mobile-lost-back-code

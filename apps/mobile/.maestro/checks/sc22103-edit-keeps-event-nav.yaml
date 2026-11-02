@@ -1,0 +1,30 @@
+# sc-22103: Edit details, opened from the Venue row with the keyboard put away, keeps the event's navigation under it with Overview current. Needs ${METRO_URL}, ${LIVE}.
+appId: host.exp.Exponent
+---
+- runFlow: ../checks/sc22103/to-upcoming.yaml
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${LIVE}'
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.row.${LIVE}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.venue'
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.details.venue'
+- waitForAnimationToEnd
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: edit-no-keyboard
+- assertVisible:
+    id: 'event.nav.overview'
+- assertNotVisible:
+    id: 'frame.calendar'

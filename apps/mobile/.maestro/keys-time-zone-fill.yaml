@@ -1,0 +1,16 @@
+# Find your time zone open, Lisbon picked, keys up on the field. sc-13408.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- scrollUntilVisible:
+    element:
+      id: 'timeZone.change'
+    timeout: 30000
+- tapOn:
+    id: 'timeZone.change'
+- tapOn:
+    id: 'timeZone.search'
+- inputText: 'Lisbon'
+- tapOn:
+    id: 'timeZone.option.Europe/Lisbon'
+- takeScreenshot: mobile-13408-time-zone-fill

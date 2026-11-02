@@ -1,0 +1,28 @@
+# From the original's page: scroll to Duplicar, bring it clear of an iPhone's header, tap it, and wait for Duplicate {event}'s form. sc-23911.
+appId: host.exp.Exponent
+---
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - swipe:
+          start: 50%, 45%
+          end: 50%, 60%
+          duration: 1000
+      - waitForAnimationToEnd
+      - assertVisible:
+          id: 'events.page.duplicate'
+- takeScreenshot: duplicate-before-tap
+- tapOn:
+    id: 'events.page.duplicate'
+- takeScreenshot: duplicate-after-tap
+- scrollUntilVisible:
+    element:
+      id: 'eventDuplicate.start.date'
+    timeout: 10000
