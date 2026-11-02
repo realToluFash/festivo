@@ -1,4 +1,4 @@
-# Mark all read not saved, then the feed not loading, with the API stopped from outside during the pauses (sc-23233).
+# Mark all read not saved, then the feed not loading, with the API stopped through the harness (sc-23233).
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events
@@ -20,26 +20,23 @@ appId: host.exp.Exponent
       - tapOn:
           id: notifications.pushAsk.notNow
 - takeScreenshot: offline-before
-# The API is stopped from the shell during this pause.
-- extendedWaitUntil:
-    visible:
-      id: never.there
-    timeout: 30000
-    optional: true
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
 - tapOn:
     id: notifications.markAllRead
 - extendedWaitUntil:
-    visible:
-      id: never.there
-    timeout: 6000
-    optional: true
+    visible: '.*{{t:eventMute.notSaved}}.*'
+    timeout: 45000
+- waitForAnimationToEnd
 - takeScreenshot: offline-readall-not-saved
 - tapOn:
     id: frame.back
 - openLink: ${METRO_URL}/--/notifications
 - extendedWaitUntil:
     visible:
-      id: never.there
-    timeout: 20000
-    optional: true
+      id: notifications.tryAgain
+    timeout: 45000
+- waitForAnimationToEnd
 - takeScreenshot: offline-feed-failed
