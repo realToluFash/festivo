@@ -99,3 +99,7 @@ class Permissions(unittest.TestCase):
         self.assertIn("Bash(just agents:*)", denied)
         self.assertIn("Edit(~/.claude-b/**)", denied)
         self.assertTrue(any(rule.startswith("Write(") and "config" in rule for rule in denied))
+
+    def test_no_worker_gets_the_artifacts_server_in_place_of_the_built_in_tools(self):
+        denied = permissions.denied(self.home / "sq" / "sq", pathlib.Path("~/.claude-b"))
+        self.assertIn("mcp__claude-artifacts", denied)

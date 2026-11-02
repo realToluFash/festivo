@@ -97,6 +97,9 @@ def denied(sq, claude_folder):
         rules += [f"Bash(python3 {sq} {command}:*)", f"Bash({sq} {command}:*)",
                   f"Bash(sq {command}:*)"]
     rules += ["Bash(just agents:*)", "Bash(systemctl --user:*)", "Bash(launchctl:*)"]
+    # Some accounts get this server in place of the built-in Artifact tools, which the
+    # workers need and artifact_guard keeps read-only. Denying it brings those back.
+    rules.append("mcp__claude-artifacts")
     for folder in (machine.config_dir(), claude_folder):
         if folder:
             rules += [f"Edit({as_path(folder)}/**)", f"Write({as_path(folder)}/**)"]
