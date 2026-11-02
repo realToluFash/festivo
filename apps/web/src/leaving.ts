@@ -49,6 +49,27 @@ export function leaveDialog(dialog: HTMLElement, scrim: Element | null, parent: 
   }
 }
 
+/** A menu that drops from its button fades out in its place, as `leaveDialog` does for a dialog. */
+export function leaveMenu(menu: HTMLElement, parent: Element): void {
+  if (typeof menu.animate !== 'function' || !parent.isConnected) return;
+
+  const copy = menu.cloneNode(true) as HTMLElement;
+  copy.setAttribute('aria-hidden', 'true');
+  copy.inert = true;
+  for (const named of copy.querySelectorAll('[id]')) named.removeAttribute('id');
+  copy.style.animation = 'none';
+  copy.style.pointerEvents = 'none';
+  parent.append(copy);
+
+  const run = copy.animate([{ opacity: 1 }, { opacity: 0 }], {
+    duration: duration('motionFast'),
+    easing: easing(),
+    fill: 'forwards',
+  });
+  run.onfinish = () => copy.remove();
+  run.oncancel = () => copy.remove();
+}
+
 export function rowArrives(row: HTMLElement | null): void {
   if (row == null || typeof row.animate !== 'function') return;
 
