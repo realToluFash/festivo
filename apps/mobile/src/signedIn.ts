@@ -68,6 +68,11 @@ export function useSignedIn(): SignedIn {
   return current;
 }
 
+/** Somebody is already signed in here: Home tapped from the frame pushes the launch screen again, and it is not a launch (sc-28178). */
+export function inSession(): boolean {
+  return state.account != null && !ended;
+}
+
 /** Read again after something on a screen changed the account, such as a password set or a provider linked. */
 export function reloadSignedIn(): Promise<void> {
   return launchSignedIn().then(() => {});

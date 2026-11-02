@@ -27,6 +27,7 @@ vi.mock('react', () => ({
 
 const {
   joinOrganisation,
+  inSession,
   launchSignedIn,
   reloadSignedIn,
   replaceOrganisation,
@@ -120,6 +121,19 @@ describe('opening the signed-in home at launch', () => {
 
     await expect(launchSignedIn()).resolves.toBe(true);
     expect(useSignedIn().organisation).toEqual(organisation);
+  });
+
+  it('is not run again by a Home tap once somebody is in, and is after signing out (sc-28178)', async () => {
+    api.me.mockResolvedValue(account);
+    api.organisationsWithPaused.mockResolvedValue({ organisations: [organisation], paused: [] });
+    api.signOut.mockResolvedValue(undefined);
+
+    await launchSignedIn();
+    expect(inSession()).toBe(true);
+
+    signOutHere();
+    await settle();
+    expect(inSession()).toBe(false);
   });
 
   it('shows the organisation access is paused in when there is nothing else to open', async () => {
