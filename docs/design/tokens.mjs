@@ -118,6 +118,8 @@ export const tokens = {
   typeDisplay: { size: 48, weight: 700, lineHeight: 1, letterSpacing: '-0.03em' }, // one big number per panel (Messaging reach, Import count); 52 once
   typeTitlePage: { size: 28, weight: 700, lineHeight: 1.1, letterSpacing: '-0.02em' }, // desktop page title; phone uses 26
   typeTitlePhone: { size: 26, weight: 700, lineHeight: 1.1, letterSpacing: '-0.02em' }, // phone page title (Events Home, RSVP use 26/28 inconsistently)
+  typeTitleFrame: { size: 34, weight: 700, lineHeight: 1.1, letterSpacing: '-0.02em' }, // the app's header band title on a phone, every screen (page 29, sc-26270)
+  typeTitleFrameCompact: { size: 30, weight: 700, lineHeight: 1.1, letterSpacing: '-0.02em' }, // the same on an iPhone SE and both iPads (page 29, sc-26270)
   typeTitleSection: { size: 16, weight: 700, lineHeight: 1.3, letterSpacing: '0' }, // card title
   typeTitleDialog: { size: 20, weight: 700, lineHeight: 1.2, letterSpacing: '0' }, // dialog and sheet titles; 22 on tablet sheets
   typeNumberTile: { size: 30, weight: 700, lineHeight: 1, letterSpacing: '-0.02em' }, // tile numbers; 32 and 34 also appear
@@ -147,6 +149,7 @@ export const tokens = {
   spaceSm: 8, // the default gap (352 uses)
   spaceMd: 10, // row content gap on phone
   spaceLg: 12, // card inner stacks, grid gaps
+  spacePillEnd: 14, // the app's organisation pill, from its chevron to its edge (sc-23301)
   spaceXl: 16, // between cards, phone side padding
   spaceXxl: 20, // desktop content gap, phone card padding, column gaps
   space3xl: 24, // desktop card padding
@@ -158,6 +161,7 @@ export const tokens = {
   sizeHit: 44, // every button, chip, row, checkbox, stepper; desktop included (482 uses)
   sizeHitPhonePrimary: 48, // phone primary buttons and inputs
   sizeHitPhoneHero: 52, // one-per-screen phone CTA ("I'm here" uses 56 – accident)
+  sizeListRow: 56, // sc-22092's List row, as the organisation switcher's rows (sc-26270)
   sizeSegmentInner: 38, // button inside a 44px segmented track (track padding 3)
   // SETTLED (sc-80). The design flagged this as violating the 44 rule. It does
   // not: 36 is how tall the control LOOKS, and 44 is how big the target must

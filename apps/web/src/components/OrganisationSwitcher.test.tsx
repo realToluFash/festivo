@@ -308,9 +308,9 @@ describe('a 100-character name (sc-486)', () => {
     expect(screen.getAllByTitle(name)).toHaveLength(2);
   });
 
-  it('cuts it to one line with an ellipsis in the trigger and every row', () => {
-    expect(cssRule('.org-name,\n.org-role')).toMatch(/white-space: nowrap;/u);
-    expect(cssRule('.org-name,\n.org-role')).toMatch(/text-overflow: ellipsis;/u);
+  it('wraps it whole in the trigger and every row, never cut with an ellipsis (sc-26270)', () => {
+    expect(cssRule('.org-name,\n.org-role')).toMatch(/overflow-wrap: anywhere;/u);
+    expect(cssRule('.org-name,\n.org-role')).not.toMatch(/ellipsis|nowrap/u);
     expect(cssRule('.org-naming')).toMatch(/min-width: 0;/u);
   });
 
@@ -318,7 +318,7 @@ describe('a 100-character name (sc-486)', () => {
     expect(cssRule('.shell')).toMatch(
       /grid-template-columns: var\(--sizeRail\) minmax\(0, 1fr\);/u,
     );
-    expect(STYLES).toMatch(/\.shell \{\s*grid-template-columns: minmax\(0, 1fr\);/u);
+    expect(STYLES).toMatch(/\.shell \{[^}]*grid-template-columns: minmax\(0, 1fr\);/u);
     expect(cssRule('.org-switcher-menu')).toMatch(/max-width: calc\(100vw - /u);
   });
 

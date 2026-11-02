@@ -34,6 +34,7 @@ import { OutcomeLine } from './OutcomeLine.tsx';
 import { Placeholder } from './Placeholder.tsx';
 import { typeLabel } from './eventTypes.ts';
 import { ComingUp, AllDates } from './Timeline.tsx';
+import { useShowEventName } from './EventNav.tsx';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
 import { NotFound } from '../../public/NotFound.tsx';
 
@@ -135,6 +136,7 @@ function EventOf({
       current = false;
     };
   }, [organisationId, eventId, attempt, refresh, watch]);
+  useShowEventName(eventId, load.kind === 'loaded' ? load.event.name : undefined);
 
   return (
     <div className="event-page">
