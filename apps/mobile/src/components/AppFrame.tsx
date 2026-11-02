@@ -37,7 +37,7 @@ import { useTranslation } from 'react-i18next';
 import { usePushTaps } from '../appPush.ts';
 import { type WaitingInvitations, useWaitingInvitations } from '../invitations.ts';
 import { type DomainOffer, useDomainOffer } from '../joinOffers.ts';
-import { DESTINATION_HREF, type Destination, destinations } from '../kit/appNav.ts';
+import { DESTINATION_HREF, type Destination, HOME_TAPPED, destinations } from '../kit/appNav.ts';
 import { backRowHiding } from '../kit/backRow.ts';
 import { EDGE_SWIPE_WIDTH, headerDrawsBack, stackSwipes } from '../kit/systemBack.ts';
 import { leaveThen } from '../leaveHeld.ts';
@@ -697,7 +697,7 @@ export const besideRow = StyleSheet.create({
 });
 
 function goTo(destination: Destination): void {
-  const href = DESTINATION_HREF[destination];
+  const href = destination === 'home' ? HOME_TAPPED : DESTINATION_HREF[destination];
   leaveThen((discarding) => (discarding ? router.dismissTo(href) : router.navigate(href)));
 }
 

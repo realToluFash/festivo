@@ -33,11 +33,13 @@ const {
   onMovedOn,
   rereadAccount,
   rereadOrganisations,
+  resumesSession,
   signOutHere,
   switchOrganisation,
   useSignedIn,
 } = await import('./signedIn.ts');
 const { rememberEventsTab, rememberedEventsTab } = await import('@soirely/domain');
+const { HOME_TAPPED } = await import('./kit/appNav.ts');
 const { useWaitingInvitations } = await import('./invitations.ts');
 const { default: i18next } = await import('i18next');
 
@@ -120,6 +122,36 @@ describe('opening the signed-in home at launch', () => {
 
     await expect(launchSignedIn()).resolves.toBe(true);
     expect(useSignedIn().organisation).toEqual(organisation);
+  });
+
+  it('resumes the session when Home is tapped from the frame while signed in (sc-28178)', async () => {
+    api.me.mockResolvedValue(account);
+    api.organisationsWithPaused.mockResolvedValue({ organisations: [organisation], paused: [] });
+
+    await launchSignedIn();
+
+    expect(resumesSession(HOME_TAPPED.params.tapped)).toBe(true);
+  });
+
+  it('launches when the launch screen is opened without a Home tap (sc-28178)', async () => {
+    api.me.mockResolvedValue(account);
+    api.organisationsWithPaused.mockResolvedValue({ organisations: [organisation], paused: [] });
+
+    await launchSignedIn();
+
+    expect(resumesSession(undefined)).toBe(false);
+  });
+
+  it('launches when Home is tapped after signing out (sc-28178)', async () => {
+    api.me.mockResolvedValue(account);
+    api.organisationsWithPaused.mockResolvedValue({ organisations: [organisation], paused: [] });
+    api.signOut.mockResolvedValue(undefined);
+
+    await launchSignedIn();
+    signOutHere();
+    await settle();
+
+    expect(resumesSession(HOME_TAPPED.params.tapped)).toBe(false);
   });
 
   it('shows the organisation access is paused in when there is nothing else to open', async () => {
