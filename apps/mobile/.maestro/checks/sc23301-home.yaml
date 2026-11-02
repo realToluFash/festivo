@@ -1,0 +1,64 @@
+# sc-23301: Home's card in [fd] (heading, role, signed in as, Open Settings and Switch organisation), then the switcher opened from the card and closed on the scrim, then a pick of ${OTHER} updating the card to ${OTHER_NAME}, back to ${ORG} and ${ORG_NAME}, and Open Settings opening Settings. Needs an account in two organisations, ${ORG} current: ORG and OTHER are their ids, ORG_NAME and OTHER_NAME their names. ORIENT=PORTRAIT|LANDSCAPE_LEFT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: home
+- tapOn:
+    id: 'home.switchOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: switcher
+- tapOn:
+    point: '3%,50%'
+- extendedWaitUntil:
+    notVisible:
+      id: 'switcher.heading'
+    timeout: 10000
+- takeScreenshot: switcher-closed
+- tapOn:
+    id: 'home.switchOrganisation'
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: switcher.${OTHER}
+- extendedWaitUntil:
+    notVisible:
+      id: 'switcher\..+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: switched
+- assertVisible: '.*${OTHER_NAME}.*'
+- tapOn:
+    id: 'home.switchOrganisation'
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: switcher.${ORG}
+- extendedWaitUntil:
+    notVisible:
+      id: 'switcher\..+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: '.*${ORG_NAME}.*'
+- takeScreenshot: switched-back
+- tapOn:
+    id: 'home.openSettings'
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 30000
+- takeScreenshot: settings

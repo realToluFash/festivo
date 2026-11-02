@@ -1,0 +1,47 @@
+# Android only. sc-25667: while Create organisation is held, Android back does nothing; once the API is back the sheet closes into the new organisation with Now working in it.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createOrganisation.name'
+- inputText: 'Held Back'
+- hideKeyboard:
+    optional: true
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- tapOn:
+    id: 'createOrganisation.create'
+- tapOn:
+    id: 'createOrganisation.create'
+- takeScreenshot: held-creating
+- assertVisible: '{{t:createOrganisation.creating}}'
+- assertVisible:
+    id: 'createOrganisation.cancel'
+    enabled: false
+- tapOn:
+    id: 'createOrganisation.cancel'
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: 'createOrganisation'
+- takeScreenshot: held-after-cancel
+- back
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: 'createOrganisation'
+- takeScreenshot: held-after-back
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation'
+    timeout: 30000
+- extendedWaitUntil:
+    visible: '{{t:switcher.switched}}'
+    timeout: 20000
+- takeScreenshot: held-created-home

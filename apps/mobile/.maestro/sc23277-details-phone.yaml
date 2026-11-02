@@ -1,0 +1,130 @@
+# sc-23277 regression on the app: A few details (blank refusal, Country list, Code list), then Verify your phone
+# by WhatsApp, the resend counting down, a wrong code refused, and Text me instead. Needs a verified account
+# whose profile is not complete. NUMBER is a UK mobile without its leading 0.
+#
+#   node .qa/bin/qa-env.mjs maestro sc23277-details-phone EMAIL=… PASSWORD=… NUMBER=…
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-screen-english.yaml
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.submit'
+    timeout: 60000
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- eraseText: 120
+- inputText: ${PASSWORD}
+- tapOn:
+    id: 'signIn.submit'
+- runFlow:
+    when:
+      visible: 'Save Password?'
+    commands:
+      - tapOn: 'Not Now'
+- extendedWaitUntil:
+    visible: 'A few details'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: details-start
+- scrollUntilVisible:
+    element:
+      id: 'completeProfile.save'
+- tapOn:
+    id: 'completeProfile.save'
+- waitForAnimationToEnd
+- takeScreenshot: details-blank-refused
+- scrollUntilVisible:
+    element:
+      id: 'completeProfile.country'
+    direction: UP
+- tapOn:
+    id: 'completeProfile.country'
+- extendedWaitUntil:
+    visible:
+      id: 'completeProfile.country.search'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: country-list
+- tapOn:
+    id: 'completeProfile.country.search'
+- inputText: 'kingdom'
+- waitForAnimationToEnd
+- takeScreenshot: country-list-search
+- tapOn:
+    id: 'completeProfile.country.GB'
+- extendedWaitUntil:
+    notVisible:
+      id: 'completeProfile.country.search'
+    timeout: 10000
+- tapOn:
+    id: 'completeProfile.country'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'completeProfile.country.search'
+- inputText: 'kingdom'
+- waitForAnimationToEnd
+- takeScreenshot: country-list-chosen
+- tapOn:
+    id: 'completeProfile.country.GB'
+- extendedWaitUntil:
+    notVisible:
+      id: 'completeProfile.country.search'
+    timeout: 10000
+- tapOn:
+    id: 'completeProfile.organisation'
+- inputText: 'QA 23277 Org'
+- pressKey: Enter
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'completeProfile.phone.country'
+- tapOn:
+    id: 'completeProfile.phone.country'
+- extendedWaitUntil:
+    visible:
+      id: 'completeProfile.phone.country.search'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: code-list
+- tapOn:
+    id: 'completeProfile.phone.country.search'
+- inputText: 'United Kingdom'
+- tapOn:
+    id: 'completeProfile.phone.country.GB'
+- tapOn:
+    id: 'completeProfile.phone.number'
+- inputText: ${NUMBER}
+- takeScreenshot: details-filled
+- tapOn:
+    point: '87%,62%'
+- waitForAnimationToEnd
+- takeScreenshot: details-submitted-by-done
+- extendedWaitUntil:
+    visible:
+      id: 'verifyPhone.code'
+    timeout: 20000
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'verifyPhone.resendSoon'
+- takeScreenshot: verify-phone-whatsapp
+- tapOn:
+    id: 'verifyPhone.code'
+- inputText: '000000'
+- tapOn:
+    id: 'verifyPhone.submit'
+- waitForAnimationToEnd
+- takeScreenshot: verify-phone-wrong
+- runFlow:
+    when:
+      visible:
+        id: 'verifyPhone.textInstead'
+    commands:
+      - tapOn:
+          id: 'verifyPhone.textInstead'
+      - waitForAnimationToEnd
+      - takeScreenshot: verify-phone-sms-chosen

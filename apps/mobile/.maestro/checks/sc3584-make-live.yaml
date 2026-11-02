@@ -1,0 +1,97 @@
+# sc-3584: in ${ORG}, opening each event from the list, the draft ${DRAFT} shows the row and Make live, whose sheet closes on Not yet; the draft ${PAST}, whose end has passed, says so with no Make live; then ${EVENT} is made live and reads Live with Make live gone. DRAFT and EVENT are drafts with a host and an end still to come: on a draft with no host Make live opens the refused sheet, which has no Not yet. EVENT stays live after a run, so each run needs a new draft for it.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/events
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${DRAFT}'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'events.row.${DRAFT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.draftRow'
+    timeout: 30000
+- assertVisible:
+    id: 'events.phase.draft'
+- takeScreenshot: draft
+- tapOn:
+    id: 'events.makeLive'
+- extendedWaitUntil:
+    visible:
+      id: 'events.makeLiveSheet'
+    timeout: 10000
+- takeScreenshot: confirm
+- tapOn:
+    id: 'events.makeLiveNo'
+- extendedWaitUntil:
+    notVisible:
+      id: 'events.makeLiveSheet'
+    timeout: 10000
+- assertVisible:
+    id: 'events.phase.draft'
+- takeScreenshot: not-yet
+- openLink: ${METRO_URL}/--/events
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${PAST}'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'events.row.${PAST}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.draftLine'
+    timeout: 30000
+- assertVisible: '{{t:eventLive.endPassed}}'
+- assertNotVisible:
+    id: 'events.makeLive'
+- takeScreenshot: past-end
+- openLink: ${METRO_URL}/--/events
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${EVENT}'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'events.row.${EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.makeLive'
+    timeout: 30000
+- tapOn:
+    id: 'events.makeLive'
+- extendedWaitUntil:
+    visible:
+      id: 'events.makeLiveYes'
+    timeout: 10000
+- tapOn:
+    id: 'events.makeLiveYes'
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.live'
+    timeout: 20000
+- assertNotVisible:
+    id: 'events.makeLive'
+- assertNotVisible:
+    id: 'events.draftRow'
+- takeScreenshot: made-live
+- runFlow:
+    when:
+      visible:
+        id: 'events.back'
+    commands:
+      - tapOn:
+          id: 'events.back'
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${EVENT}'
+    direction: DOWN
+    timeout: 30000
+- takeScreenshot: list

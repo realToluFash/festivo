@@ -1,0 +1,36 @@
+# Notification settings with the API stopped once the grid shows: a press fails, twice (sc-23234).
+appId: host.exp.Exponent
+---
+- runFlow: ../open-settings.yaml
+- tapOn:
+    id: settings.notifications
+- extendedWaitUntil:
+    visible:
+      id: notificationSettings.guest_replies.push
+    timeout: 30000
+- takeScreenshot: ns-before-stop
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    id: notificationSettings.guest_replies.push
+- extendedWaitUntil:
+    visible:
+      id: notificationSettings.guest_replies.push
+      checked: true
+    timeout: 15000
+- extendedWaitUntil:
+    visible: '{{t:notificationSettings.pushNotSaved}}'
+    timeout: 15000
+- takeScreenshot: ns-fail-1
+- tapOn:
+    id: notificationSettings.guest_replies.push
+- extendedWaitUntil:
+    visible: '{{t:notificationSettings.pushNotSaved}}'
+    timeout: 15000
+- takeScreenshot: ns-fail-2
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
