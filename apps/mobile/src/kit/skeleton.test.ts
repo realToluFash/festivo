@@ -9,7 +9,7 @@ describe('a screen waiting for its content (sc-23303)', () => {
 
   it('fills the room it has with rows, never fewer than three or more than ten', () => {
     expect(fillingRows(600, 64)).toBe(9);
-    expect(fillingRows(100, 76)).toBe(3);
+    expect(fillingRows(100, 60)).toBe(3);
     expect(fillingRows(2000, 56)).toBe(10);
   });
 

@@ -19,6 +19,7 @@ import { type WeightName } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { tracking } from '../theme/tracking.ts';
 import { SecondaryButton } from './Buttons.tsx';
+import { EventCardGrid } from './EventCardGrid.tsx';
 import { EventState } from './Events.tsx';
 import { Notice } from './Notice.tsx';
 import { Placeholder } from './Placeholder.tsx';
@@ -181,18 +182,21 @@ export function EventsHome({
           </Text>
         </View>
       ) : (
-        <View style={styles.cards}>
-          {events.map((event) => (
-            <Card
-              key={event.id}
-              kind={kind}
-              event={event}
-              phase={shownPhase(event, load.at, now)}
-              now={now}
-              onOpen={() => onOpen(event.id, false)}
-            />
-          ))}
-        </View>
+        <EventCardGrid kind={kind}>
+          {(width) =>
+            events.map((event) => (
+              <Card
+                key={event.id}
+                kind={kind}
+                width={width}
+                event={event}
+                phase={shownPhase(event, load.at, now)}
+                now={now}
+                onOpen={() => onOpen(event.id, false)}
+              />
+            ))
+          }
+        </EventCardGrid>
       )}
       {tab === 'past' && grouped.past.length < grouped.pastCount && (
         <SecondaryButton
@@ -222,12 +226,14 @@ export function EventsHome({
 /** [fd]'s card, one link with nothing else to press in it and no cover: the chip and the dates, the name with its type and place, Guests to come, then the next step (sc-22103). */
 function Card({
   kind,
+  width,
   event,
   phase,
   now,
   onOpen,
 }: {
   kind: LayoutKind;
+  width: number;
   event: ListedEvent;
   phase: EventPhase;
   now: Date;
@@ -260,14 +266,7 @@ function Card({
 
   return (
     <Pressable
-      style={[
-        styles.card,
-        phone
-          ? styles.cardPhone
-          : kind === 'tabletPortrait'
-            ? styles.cardPortrait
-            : styles.cardWide,
-      ]}
+      style={[styles.card, !phone && styles.cardTablet, { width }]}
       onPress={onOpen}
       accessibilityRole="button"
       testID={`events.row.${event.id}`}
@@ -446,9 +445,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
     ...LIFT,
   },
-  cardPhone: { flexGrow: 1, flexBasis: '40%' },
-  cardPortrait: { flexGrow: 1, flexBasis: 220 },
-  cardWide: { flexGrow: 1, flexBasis: 260 },
+  cardTablet: { gap: tokens.spaceMd, padding: tokens.spaceXl },
   now: { paddingVertical: 14, paddingHorizontal: tokens.spaceXl },
   when: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceXxs },
   whenAcross: {
@@ -497,7 +494,6 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radiusCardLarge,
   },
   centred: { textAlign: 'center' },
-  cards: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceMd },
   cardHead: { gap: tokens.spaceHair, alignSelf: 'stretch' },
   next: {
     alignSelf: 'stretch',
