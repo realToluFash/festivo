@@ -388,7 +388,7 @@ describe('the offline band (sc-22586)', () => {
 });
 
 describe('the offline band on the planning screens (sc-27086)', () => {
-  function servingEvents(state: { soirely: Soirely; name: string }) {
+  function servingEvents(state: { soirely: Soirely; name: string; finished?: number }) {
     return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = new URL(String(input));
 
@@ -396,7 +396,12 @@ describe('the offline band on the planning screens (sc-27086)', () => {
       if (url.pathname !== '/api/orgs/org_1/events') return new Response('{}', { status: 200 });
 
       const finished = url.searchParams.get('finished') === 'true';
-      const events = finished ? [] : [draft(state.name)];
+      const events = finished
+        ? Array.from({ length: state.finished ?? 0 }, (_, i) => ({
+            ...draft(state.name),
+            id: `ev_f${i}`,
+          }))
+        : [draft(state.name)];
 
       return new Response(JSON.stringify({ events, total: events.length }), { status: 200 });
     });
@@ -489,6 +494,28 @@ describe('the offline band on the planning screens (sc-27086)', () => {
 
     await screen.findByText('Refreshing…');
     expect(screen.getByText(/1 event/)).toBeDefined();
+  });
+
+  it('shows the new count once Try again on the Dashboard is answered, and lands on Dashboard', async () => {
+    signedIn();
+    const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde', finished: 0 };
+    servingEvents(state);
+    open('/app');
+    await screen.findByText(/1 event/);
+
+    state.soirely = 'unreachable';
+    goOffline();
+    await waitFor(() => expect(band()?.textContent).toMatch(/^Offline · as of /));
+
+    state.soirely = 'answers';
+    state.finished = 2;
+    act(() => screen.getByRole('button', { name: 'Try again' }).click());
+
+    await screen.findByText(/3 events/);
+    expect(band()).toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Dashboard' })),
+    );
   });
 
   it('keeps the count and the band, its time unchanged, when Try again on the Dashboard does not reach Soirely', async () => {
