@@ -1,15 +1,17 @@
-# Android only. ${SCREEN} goes offline only once its loaded content shows (LOADED_ID or
-# LOADED_TEXT, '.*' for the one a caller does not use). Coming back online with Soirely stopped
+# Android only. ${SCREEN} goes offline once its loaded content shows (LOADED_ID or LOADED_TEXT,
+# '.*' for the one a caller does not use). Coming back online with Soirely stopped
 # refuses every automatic reread at once, so with the API then paused the only load out is
 # Try again's own, and the band goes once Soirely answers it.
 appId: host.exp.Exponent
 ---
-# The band appearing is the proof the screen had loaded; a load still out when airplane mode
-# went on leaves no band, so that try is started again.
+# Account, security and organisation draw their loaded content before their read answers, so
+# only the band proves the screen had loaded. A read still out when airplane mode went on
+# leaves no band, and neither coming back online nor openLink reads again, so each try
+# reloads the bundle to remount the screen.
 - retry:
     maxRetries: 2
     commands:
-      - setAirplaneMode: disabled
+      - runFlow: ../../batch/reset.yaml
       - openLink: ${METRO_URL}/--/settings/${SCREEN}
       - extendedWaitUntil:
           visible:

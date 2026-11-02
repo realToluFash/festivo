@@ -1,17 +1,19 @@
 # sc-27088, Android only: Organisation keeps a typed name across offline, a refused Save, the automatic rereads being refused, and a pressed Try again.
 appId: host.exp.Exponent
 ---
-# organisation.name is drawn before the read answers, so the band appearing is the proof the
-# screen had loaded; a try that went offline too early leaves no band and is started again.
+# organisation.name is drawn before the read answers, so only the band proves the screen had
+# loaded. A try that went offline too early leaves no band and nothing reads again, so each
+# try reloads the bundle to remount the screen.
 - retry:
     maxRetries: 2
     commands:
-      - setAirplaneMode: disabled
+      - runFlow: ../batch/reset.yaml
       - openLink: ${METRO_URL}/--/settings/organisation
       - extendedWaitUntil:
           visible:
             id: 'organisation.name'
           timeout: 30000
+      - assertNotVisible: 'Offline Org Name'
       - extendedWaitUntil:
           notVisible:
             id: 'organisation.refreshing'
