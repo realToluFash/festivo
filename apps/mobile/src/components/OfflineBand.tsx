@@ -83,6 +83,8 @@ export function OfflineBand({ stale, inFront }: { stale: Stale | null; inFront: 
 
   const tryAgain = t('eventsScreen.retry');
   const [band, setBand] = useState<number | null>(null);
+  // The phone may turn while the band is gone, so a width from before says nothing of where it comes back.
+  if (!showing && band != null) setBand(null);
   const [wordWidths, setWordWidths] = useState<Readonly<Record<string, number>>>({});
   const [tryAgainWidths, setTryAgainWidths] = useState<Readonly<Record<string, number>>>({});
   const scaled = (text: string) => `${fontScale}|${text}`;
