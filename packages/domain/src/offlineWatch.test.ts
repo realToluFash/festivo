@@ -301,4 +301,83 @@ describe('the offline watch', () => {
     expect(page.reload).toHaveBeenCalledTimes(1);
     expect(feed.reload).toHaveBeenCalledTimes(1);
   });
+  describe('moving between Wi-Fi and mobile data (sc-27750)', () => {
+    /** Loaded on Wi-Fi, then Soirely fell silent with no offline, and the band's own load has ended. */
+    async function silentOnWifi() {
+      const it = screen();
+      it.connection.deviceOnline('wifi');
+      it.reload();
+      await vi.advanceTimersByTimeAsync(0);
+      it.soirely.now = 'silent';
+      it.watch.retry();
+      await vi.advanceTimersByTimeAsync(NO_ANSWER_MS);
+      it.reload.mockClear();
+
+      return it;
+    }
+
+    it('loads the screen when the move finds Soirely answering, and the band goes', async () => {
+      const { watch, soirely, connection, reload } = await silentOnWifi();
+      expect(watch.state().stale).toBe(true);
+
+      soirely.now = 'answers';
+      connection.deviceOnline('cellular');
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(reload).toHaveBeenCalledTimes(1);
+      expect(watch.state()).toMatchObject({ out: 0, stale: false });
+    });
+
+    it('gives a move to a silent Soirely one load and no more, and the move back one of its own', async () => {
+      const { watch, connection, reload } = await silentOnWifi();
+      const before = watch.state();
+
+      connection.deviceOnline('cellular');
+      await vi.advanceTimersByTimeAsync(NO_ANSWER_MS);
+      connection.deviceOnline('cellular');
+      await vi.advanceTimersByTimeAsync(TWO_MINUTES_MS);
+      expect(reload).toHaveBeenCalledTimes(1);
+      expect(watch.state()).toEqual(before);
+
+      connection.deviceOnline('wifi');
+      await vi.advanceTimersByTimeAsync(NO_ANSWER_MS + TWO_MINUTES_MS);
+      expect(reload).toHaveBeenCalledTimes(2);
+    });
+
+    it('joins a load already out when the move comes during it', async () => {
+      const { watch, connection, reload } = await silentOnWifi();
+
+      watch.retry();
+      await vi.advanceTimersByTimeAsync(3_000);
+      connection.deviceOnline('cellular');
+      await vi.advanceTimersByTimeAsync(NO_ANSWER_MS - 3_000);
+      expect(watch.state().out).toBe(0);
+
+      await vi.advanceTimersByTimeAsync(TWO_MINUTES_MS);
+      expect(reload).toHaveBeenCalledTimes(1);
+    });
+
+    it('starts nothing when the connection stays on the kind in use', async () => {
+      const { connection, reload } = await silentOnWifi();
+
+      connection.deviceOnline('wifi');
+      connection.deviceOnline(null);
+      await vi.advanceTimersByTimeAsync(TWO_MINUTES_MS);
+
+      expect(reload).not.toHaveBeenCalled();
+    });
+
+    it('starts no load on a screen with no band', async () => {
+      const { connection, reload } = screen();
+      connection.deviceOnline('wifi');
+      reload();
+      await vi.advanceTimersByTimeAsync(0);
+      reload.mockClear();
+
+      connection.deviceOnline('cellular');
+      connection.deviceOnline('wifi');
+
+      expect(reload).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -67,6 +67,43 @@ describe('the connection', () => {
     expect(heard).toEqual(['lost', 'deviceBack', 'lost', 'deviceBack']);
   });
 
+  it('hears a move between Wi-Fi and mobile data as the device coming back, each way, with no offline between', () => {
+    const { connection, heard } = watched();
+
+    connection.deviceOnline('wifi');
+    expect(heard).toEqual([]);
+
+    connection.deviceOnline('cellular');
+    connection.deviceOnline('cellular');
+    expect(heard).toEqual(['deviceBack']);
+
+    connection.deviceOnline('wifi');
+    expect(heard).toEqual(['deviceBack', 'deviceBack']);
+  });
+
+  it('hears nothing from a report that names no kind, or the kind already in use', () => {
+    const { connection, heard } = watched();
+
+    connection.deviceOnline('wifi');
+    connection.deviceOnline(null);
+    connection.deviceOnline();
+    connection.deviceOnline('wifi');
+    expect(heard).toEqual([]);
+
+    connection.deviceOnline('cellular');
+    expect(heard).toEqual(['deviceBack']);
+  });
+
+  it('hears a return on another kind once, not as a return and a move', () => {
+    const { connection, heard } = watched();
+
+    connection.deviceOnline('wifi');
+    connection.deviceOffline();
+    connection.deviceOnline('cellular');
+    connection.deviceOnline('cellular');
+    expect(heard).toEqual(['lost', 'deviceBack']);
+  });
+
   it('hears nothing from a request the client itself aborted', async () => {
     const { connection, heard } = watched();
     const controller = new AbortController();
