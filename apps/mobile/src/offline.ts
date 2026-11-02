@@ -11,15 +11,26 @@ export interface Stale {
   unanswered: number;
 }
 
+/** What a screen's load hands up to the frame drawn around it: the band and Refreshing…. */
+export interface ScreenOffline {
+  stale: Stale | null;
+  refreshing: boolean;
+}
+
+export const NOT_OFFLINE: ScreenOffline = { stale: null, refreshing: false };
+
 /** The web's `useOffline`, with the app's foreground in place of the tab's; every load goes through `watch`. */
 export function useOffline({
   loaded,
   reload,
   focusTitle,
+  since = null,
 }: {
   loaded: boolean;
   reload: () => void;
   focusTitle: () => void;
+  /** The minute of what the screen shows, where a load that answers does not replace it: Edit details. */
+  since?: Date | null;
 }): { watch: <T>(load: Promise<T>) => Promise<T>; stale: Stale | null; refreshing: boolean } {
   const [offline] = useState(() => createOfflineWatch({ connection }));
   const state = useSyncExternalStore(offline.subscribe, offline.state);
@@ -42,9 +53,24 @@ export function useOffline({
 
   const { at, unanswered } = state;
   const stale = useMemo(
-    () => (state.stale && loaded && at != null ? { at, retry: offline.retry, unanswered } : null),
-    [state.stale, loaded, at, offline, unanswered],
+    () =>
+      state.stale && loaded && at != null
+        ? { at: since ?? at, retry: offline.retry, unanswered }
+        : null,
+    [state.stale, loaded, at, since, offline, unanswered],
   );
 
   return { watch: offline.watch, stale, refreshing: state.out > 0 && loaded };
+}
+
+/** Hands a load's band up to the frame drawn around it, and takes it back when the load unmounts under that frame. */
+export function useHandOffline(
+  onOffline: (offline: ScreenOffline) => void,
+  { stale, refreshing }: ScreenOffline,
+): void {
+  useLayoutEffect(() => {
+    onOffline({ stale, refreshing });
+  }, [onOffline, stale, refreshing]);
+
+  useLayoutEffect(() => () => onOffline(NOT_OFFLINE), [onOffline]);
 }

@@ -386,3 +386,340 @@ describe('the offline band (sc-22586)', () => {
     });
   });
 });
+
+describe('the offline band on the planning screens (sc-27086)', () => {
+  function servingEvents(state: { soirely: Soirely; name: string; finished?: number }) {
+    return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = new URL(String(input));
+
+      if (state.soirely === 'unreachable') throw new TypeError('Failed to fetch');
+      if (url.pathname !== '/api/orgs/org_1/events') return new Response('{}', { status: 200 });
+
+      const finished = url.searchParams.get('finished') === 'true';
+      const events = finished
+        ? Array.from({ length: state.finished ?? 0 }, (_, i) => ({
+            ...draft(state.name),
+            id: `ev_f${i}`,
+          }))
+        : [draft(state.name)];
+
+      return new Response(JSON.stringify({ events, total: events.length }), { status: 200 });
+    });
+  }
+
+  function open(path: string): void {
+    render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
+  }
+
+  /** Try again pressed with Soirely still down: the press reaches fetch, and its rejection settles. */
+  async function tryAgainUnanswered(fetched: { mock: { calls: unknown[] } }): Promise<void> {
+    const asked = fetched.mock.calls.length;
+    act(() => screen.getByRole('button', { name: 'Try again' }).click());
+    await waitFor(() => expect(fetched.mock.calls.length).toBeGreaterThan(asked));
+    await waitFor(() => expect(screen.queryByText('Refreshing…')).toBeNull());
+  }
+
+  it("shows the minute Calendar loaded, and Try again shows the event's new name and lands on Calendar", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 10, 10, 9, 41, 5));
+    signedIn();
+    const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde' };
+    servingEvents(state);
+    open('/app/calendar');
+    expect(await screen.findAllByText('Adaeze and Tunde')).not.toHaveLength(0);
+
+    vi.setSystemTime(new Date(2026, 10, 10, 9, 47, 0));
+    state.soirely = 'unreachable';
+    goOffline();
+    await waitFor(() => expect(band()?.textContent).toContain('Offline · as of 09:41'));
+    expect(screen.getAllByText('Adaeze and Tunde')).not.toHaveLength(0);
+
+    state.soirely = 'answers';
+    state.name = 'Adaeze and Tunde, renamed';
+    act(() => screen.getByRole('button', { name: 'Try again' }).click());
+
+    expect(await screen.findAllByText('Adaeze and Tunde, renamed')).not.toHaveLength(0);
+    expect(band()).toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Calendar' })),
+    );
+  });
+
+  it('keeps the calendar and the band, its time unchanged, when Try again does not reach Soirely', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 10, 10, 9, 41, 5));
+    signedIn();
+    const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde' };
+    const fetched = servingEvents(state);
+    open('/app/calendar');
+    expect(await screen.findAllByText('Adaeze and Tunde')).not.toHaveLength(0);
+
+    vi.setSystemTime(new Date(2026, 10, 10, 9, 47, 0));
+    state.soirely = 'unreachable';
+    goOffline();
+    await waitFor(() => expect(band()?.textContent).toContain('Offline · as of 09:41'));
+
+    vi.setSystemTime(new Date(2026, 10, 10, 9, 52, 0));
+    await tryAgainUnanswered(fetched);
+
+    expect(band()?.textContent).toContain('Offline · as of 09:41');
+    expect(screen.getAllByText('Adaeze and Tunde')).not.toHaveLength(0);
+  });
+
+  it('shows no band on a Calendar that loaded nothing', async () => {
+    signedIn();
+    servingEvents({ soirely: 'unreachable', name: '' });
+    open('/app/calendar');
+
+    await screen.findByRole('button', { name: 'Try again' });
+    goOffline();
+
+    expect(band()).toBeNull();
+  });
+
+  it('shows on the Dashboard, keeps the count, and says Refreshing… by its title while it loads again', async () => {
+    signedIn();
+    const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde' };
+    const fetched = servingEvents(state);
+    open('/app');
+    await screen.findByText(/1 event/);
+
+    state.soirely = 'unreachable';
+    goOffline();
+    await waitFor(() => expect(band()?.textContent).toMatch(/^Offline · as of /));
+    expect(screen.getByText(/1 event/)).toBeDefined();
+
+    fetched.mockImplementation(() => new Promise<Response>(() => {}));
+    act(() => screen.getByRole('button', { name: 'Try again' }).click());
+
+    await screen.findByText('Refreshing…');
+    expect(screen.getByText(/1 event/)).toBeDefined();
+  });
+
+  it('shows the new count once Try again on the Dashboard is answered, and lands on Dashboard', async () => {
+    signedIn();
+    const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde', finished: 0 };
+    servingEvents(state);
+    open('/app');
+    await screen.findByText(/1 event/);
+
+    state.soirely = 'unreachable';
+    goOffline();
+    await waitFor(() => expect(band()?.textContent).toMatch(/^Offline · as of /));
+
+    state.soirely = 'answers';
+    state.finished = 2;
+    act(() => screen.getByRole('button', { name: 'Try again' }).click());
+
+    await screen.findByText(/3 events/);
+    expect(band()).toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Dashboard' })),
+    );
+  });
+
+  it('keeps the count and the band, its time unchanged, when Try again on the Dashboard does not reach Soirely', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 10, 10, 9, 41, 5));
+    signedIn();
+    const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde' };
+    const fetched = servingEvents(state);
+    open('/app');
+    await screen.findByText(/1 event/);
+
+    vi.setSystemTime(new Date(2026, 10, 10, 9, 47, 0));
+    state.soirely = 'unreachable';
+    goOffline();
+    await waitFor(() => expect(band()?.textContent).toContain('Offline · as of 09:41'));
+
+    vi.setSystemTime(new Date(2026, 10, 10, 9, 52, 0));
+    await tryAgainUnanswered(fetched);
+
+    expect(band()?.textContent).toContain('Offline · as of 09:41');
+    expect(screen.getByText(/1 event/)).toBeDefined();
+  });
+
+  describe('Edit details', () => {
+    function servingEvent(state: { soirely: Soirely; name: string; tag: string }) {
+      return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+        const url = new URL(String(input));
+
+        if (state.soirely === 'unreachable') throw new TypeError('Failed to fetch');
+        if (url.pathname !== '/api/events/ev_1') return new Response('{}', { status: 200 });
+        if (init?.method === 'PATCH') {
+          const sent = new Headers(init.headers).get('If-Match');
+
+          return sent === state.tag
+            ? new Response(JSON.stringify({ event: draft(state.name) }), {
+                status: 200,
+                headers: { ETag: state.tag },
+              })
+            : new Response('{}', { status: 412 });
+        }
+
+        return new Response(JSON.stringify({ event: draft(state.name) }), {
+          status: 200,
+          headers: { ETag: state.tag },
+        });
+      });
+    }
+
+    async function typeName(name: string): Promise<HTMLInputElement> {
+      const field = await screen.findByLabelText<HTMLInputElement>('Event name');
+      fireEvent.change(field, { target: { value: name } });
+
+      return field;
+    }
+
+    it('keeps what was typed through the reload, and lands on Edit details', async () => {
+      signedIn();
+      const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde', tag: '"1"' };
+      servingEvent(state);
+      open('/app/events/ev_1/edit');
+      await typeName('Adaeze and Tunde at Eko');
+
+      state.soirely = 'unreachable';
+      goOffline();
+      await waitFor(() => expect(band()?.textContent).toMatch(/^Offline · as of /));
+
+      state.soirely = 'answers';
+      act(() => screen.getByRole('button', { name: 'Try again' }).click());
+
+      await waitFor(() => expect(band()).toBeNull());
+      await waitFor(() =>
+        expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Edit details' })),
+      );
+      expect(screen.getByLabelText<HTMLInputElement>('Event name').value).toBe(
+        'Adaeze and Tunde at Eko',
+      );
+    });
+
+    it('keeps the form, what was typed and the band, its time unchanged, when Try again does not reach Soirely', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+      vi.setSystemTime(new Date(2026, 10, 10, 9, 41, 5));
+      signedIn();
+      const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde', tag: '"1"' };
+      const fetched = servingEvent(state);
+      open('/app/events/ev_1/edit');
+      await typeName('Adaeze and Tunde at Eko');
+
+      vi.setSystemTime(new Date(2026, 10, 10, 9, 47, 0));
+      state.soirely = 'unreachable';
+      goOffline();
+      await waitFor(() => expect(band()?.textContent).toContain('Offline · as of 09:41'));
+
+      vi.setSystemTime(new Date(2026, 10, 10, 9, 52, 0));
+      await tryAgainUnanswered(fetched);
+
+      expect(band()?.textContent).toContain('Offline · as of 09:41');
+      expect(screen.getByLabelText<HTMLInputElement>('Event name').value).toBe(
+        'Adaeze and Tunde at Eko',
+      );
+    });
+
+    it('keeps the minute the form opened after a Try again that answers, as the form keeps its fields', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+      vi.setSystemTime(new Date(2026, 10, 10, 9, 0, 5));
+      signedIn();
+      const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde', tag: '"1"' };
+      servingEvent(state);
+      open('/app/events/ev_1/edit');
+      await typeName('Adaeze and Tunde at Eko');
+
+      vi.setSystemTime(new Date(2026, 10, 10, 9, 30, 0));
+      state.soirely = 'unreachable';
+      goOffline();
+      await waitFor(() => expect(band()?.textContent).toContain('Offline · as of 09:00'));
+
+      vi.setSystemTime(new Date(2026, 10, 10, 9, 35, 0));
+      state.soirely = 'answers';
+      act(() => screen.getByRole('button', { name: 'Try again' }).click());
+      await waitFor(() => expect(band()).toBeNull());
+
+      vi.setSystemTime(new Date(2026, 10, 10, 9, 40, 0));
+      state.soirely = 'unreachable';
+      goOffline();
+
+      await waitFor(() => expect(band()?.textContent).toContain('Offline · as of 09:00'));
+    });
+
+    it('moves the time to the minute the form took Show the latest', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+      vi.setSystemTime(new Date(2026, 10, 10, 9, 0, 5));
+      signedIn();
+      const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde', tag: '"1"' };
+      servingEvent(state);
+      open('/app/events/ev_1/edit');
+      await typeName('Adaeze and Tunde at Eko');
+
+      state.name = 'Renamed by a co-host';
+      state.tag = '"2"';
+      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+      await screen.findByText(/Somebody else changed this event since you opened it/);
+
+      vi.setSystemTime(new Date(2026, 10, 10, 9, 20, 0));
+      fireEvent.click(screen.getByRole('button', { name: 'Show the latest' }));
+      const dialog = await screen.findByRole('alertdialog', { name: 'Show the latest version?' });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Show the latest' }));
+      await waitFor(() =>
+        expect(screen.getByLabelText<HTMLInputElement>('Event name').value).toBe(
+          'Renamed by a co-host',
+        ),
+      );
+
+      vi.setSystemTime(new Date(2026, 10, 10, 9, 30, 0));
+      state.soirely = 'unreachable';
+      goOffline();
+
+      await waitFor(() => expect(band()?.textContent).toContain('Offline · as of 09:20'));
+    });
+
+    it('saves against the tag the form opened with, so a change made elsewhere meanwhile is still caught', async () => {
+      signedIn();
+      const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde', tag: '"1"' };
+      servingEvent(state);
+      open('/app/events/ev_1/edit');
+      await typeName('Adaeze and Tunde at Eko');
+
+      state.soirely = 'unreachable';
+      goOffline();
+      await waitFor(() => expect(band()).not.toBeNull());
+
+      state.soirely = 'answers';
+      state.name = 'Renamed by a co-host';
+      state.tag = '"2"';
+      act(() => screen.getByRole('button', { name: 'Try again' }).click());
+      await waitFor(() => expect(band()).toBeNull());
+
+      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+      await screen.findByText(/Somebody else changed this event since you opened it/);
+      expect(screen.getByLabelText<HTMLInputElement>('Event name').value).toBe(
+        'Adaeze and Tunde at Eko',
+      );
+    });
+
+    it('refuses a save pressed offline, keeps the name, and sends nothing on coming back', async () => {
+      signedIn();
+      const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde', tag: '"1"' };
+      const fetched = servingEvent(state);
+      open('/app/events/ev_1/edit');
+      await typeName('Adaeze and Tunde at Eko');
+
+      state.soirely = 'unreachable';
+      goOffline();
+      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+      await screen.findByText('Not saved. Your changes are still here. Try again.');
+      expect(screen.getByLabelText<HTMLInputElement>('Event name').value).toBe(
+        'Adaeze and Tunde at Eko',
+      );
+
+      state.soirely = 'answers';
+      comeBack();
+      await waitFor(() => expect(band()).toBeNull());
+      const patched = fetched.mock.calls.filter(([, init]) => init?.method === 'PATCH');
+      expect(patched).toHaveLength(1);
+    });
+  });
+});

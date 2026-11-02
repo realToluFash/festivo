@@ -2,7 +2,7 @@ import { ApiClient, type TokenStore } from '@soirely/api-client';
 import { NO_ANSWER_MS, createConnection, createOfflineWatch } from '@soirely/domain';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { afterFailedLoad } from './offlineLoad.ts';
+import { afterFailedLoad, bandReadOut, formAfterLoad, formShownAt } from './offlineLoad.ts';
 
 type Soirely = 'answers' | 'unreachable' | 'silent' | 'refresh503';
 
@@ -123,5 +123,106 @@ describe("the app's Events, offline", () => {
     await vi.advanceTimersByTimeAsync(NO_ANSWER_MS - 5_000);
     expect(offline.state()).toMatchObject({ out: 0, unanswered: 1, stale: true });
     expect(screen.load).toEqual({ kind: 'loaded', rows: 3 });
+  });
+});
+
+describe('Edit details, once its form shows (Decided, 2 Nov)', () => {
+  type Form = { kind: 'loading' } | { kind: 'failed' } | { event: { name: string }; etag: string };
+  const opened: Form = { event: { name: 'Adaeze and Tunde' }, etag: '"1"' };
+
+  it('fills the form from the first load', () => {
+    expect(formAfterLoad<Form>({ kind: 'loading' }, opened)).toBe(opened);
+  });
+
+  it('keeps the form and the tag it opened with when a reload answers with a newer one', () => {
+    const renamed: Form = { event: { name: 'Renamed by a co-host' }, etag: '"2"' };
+
+    expect(formAfterLoad<Form>(opened, renamed)).toBe(opened);
+  });
+
+  it('keeps the form when a reload fails', () => {
+    expect(formAfterLoad<Form>(opened, { kind: 'failed' })).toBe(opened);
+  });
+});
+
+describe("the band's time on Edit details (Decided, 2 Nov)", () => {
+  const nine = new Date(2026, 10, 10, 9, 0);
+  const nineThirtyFive = new Date(2026, 10, 10, 9, 35);
+
+  it('is the minute the form first showed', () => {
+    expect(formShownAt(null, 'loaded', nine)).toBe(nine);
+  });
+
+  it('stays there when a Try again answers, as the form keeps its fields and tag', () => {
+    expect(formShownAt(nine, 'loaded', nineThirtyFive)).toBe(nine);
+  });
+
+  it('moves to the minute the form took Show the latest', () => {
+    expect(formShownAt(nine, 'latest', nineThirtyFive)).toBe(nineThirtyFive);
+  });
+});
+
+describe('what the band says, screen by screen in the stack', () => {
+  /** Plays a screen's band through its states, returning each time it spoke. */
+  function played(steps: { showing: boolean; unanswered: number; inFront: boolean }[]): number[] {
+    let said: number | null = null;
+    const spoke: number[] = [];
+    steps.forEach((band, i) => {
+      const next = bandReadOut(said, band);
+      said = next.said;
+      if (next.speaks) spoke.push(i);
+    });
+
+    return spoke;
+  }
+
+  it('speaks once as it appears on the screen in front, and not as it re-renders', () => {
+    expect(
+      played([
+        { showing: false, unanswered: 0, inFront: true },
+        { showing: true, unanswered: 0, inFront: true },
+        { showing: true, unanswered: 0, inFront: true },
+      ]),
+    ).toEqual([1]);
+  });
+
+  it('says nothing from a screen behind, as Events under Calendar, while the one in front speaks', () => {
+    expect(
+      played([
+        { showing: false, unanswered: 0, inFront: false },
+        { showing: true, unanswered: 0, inFront: false },
+      ]),
+    ).toEqual([]);
+  });
+
+  it('speaks again after each unanswered Try again', () => {
+    expect(
+      played([
+        { showing: true, unanswered: 0, inFront: true },
+        { showing: true, unanswered: 1, inFront: true },
+        { showing: true, unanswered: 2, inFront: true },
+      ]),
+    ).toEqual([0, 1, 2]);
+  });
+
+  it('says a band that came up while the screen was behind once, as it returns to the front', () => {
+    expect(
+      played([
+        { showing: true, unanswered: 0, inFront: false },
+        { showing: true, unanswered: 0, inFront: true },
+        { showing: true, unanswered: 0, inFront: false },
+        { showing: true, unanswered: 0, inFront: true },
+      ]),
+    ).toEqual([1]);
+  });
+
+  it('speaks again when the band goes and comes back', () => {
+    expect(
+      played([
+        { showing: true, unanswered: 0, inFront: true },
+        { showing: false, unanswered: 0, inFront: true },
+        { showing: true, unanswered: 0, inFront: true },
+      ]),
+    ).toEqual([0, 2]);
   });
 });

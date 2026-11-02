@@ -29,10 +29,12 @@ export function useOffline(screen: {
   loaded: boolean;
   reload: () => void;
   title: RefObject<HTMLElement | null>;
+  /** The minute of what the screen shows, where a load that answers does not replace it: Edit details. */
+  since?: Date | null;
 }): { watch: <T>(load: Promise<T>) => Promise<T>; refreshing: boolean } {
   const { show } = useContext(StaleScreen);
   const { watch, stale, refreshing } = useStaleWatch(screen);
-  const at = stale?.at;
+  const at = stale == null ? undefined : (screen.since ?? stale.at);
   const unanswered = stale?.unanswered;
   const retry = stale?.retry;
 

@@ -1,17 +1,21 @@
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
+import { useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { AppFrame, BackButton } from '../../../src/components/AppFrame.tsx';
 import { bodyEdges } from '../../../src/components/bodyEdges.ts';
+import { Refreshing } from '../../../src/components/Refreshing.tsx';
 import { Screen } from '../../../src/components/Screen.tsx';
+import { type TextHandle } from '../../../src/components/Text.tsx';
 import { AllDates } from '../../../src/components/Timeline.tsx';
 import { goToArea, goUpToEvent } from '../../../src/kit/upToEvent.ts';
 import { useServerNow } from '../../../src/kit/serverNow.ts';
 import { useLayout } from '../../../src/layout/useLayout.ts';
+import { NOT_OFFLINE, type ScreenOffline } from '../../../src/offline.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 
-/** Every milestone on the event, opened from Coming up's All dates (sc-3624); inside the event, so Overview is current. */
+/** Every milestone on the event, opened from Coming up's All dates (sc-3624); inside the event, so Overview is current; with its band and Refreshing… (sc-27086). */
 export default function EventDates() {
   const { t } = useTranslation();
   const { kind } = useLayout();
@@ -20,11 +24,20 @@ export default function EventDates() {
   const now = useServerNow();
   const phone = kind === 'phone';
   const back = () => goUpToEvent(navigation, router, id);
+  const title = useRef<TextHandle>(null);
+  const [offline, setOffline] = useState<ScreenOffline>(NOT_OFFLINE);
+  const refreshing = offline.refreshing ? (
+    <Refreshing testID="timeline.allDates.refreshing" />
+  ) : null;
 
   return (
     <AppFrame
       current="events"
       title={t('timeline.allDates')}
+      titleRef={title}
+      offline={offline.stale}
+      besideBack={phone ? refreshing : undefined}
+      besideTitle={phone ? undefined : refreshing}
       back={phone ? { label: t('timeline.backToEvent'), onPress: back } : undefined}
       backInBody
       inEvent={{
@@ -40,7 +53,7 @@ export default function EventDates() {
             testID="timeline.allDates.back"
           />
         )}
-        <AllDates kind={kind} eventId={id} now={now} />
+        <AllDates kind={kind} eventId={id} now={now} heading={title} onOffline={setOffline} />
       </Screen>
     </AppFrame>
   );

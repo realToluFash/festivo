@@ -42,9 +42,11 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
 import { useDialogKeys } from '../../../dialogFocus.ts';
 import { dateLocale } from '../../../i18n/index.ts';
+import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
 import { usePhoneWidth, useWideWidth } from '../../../phoneWidth.ts';
 import { useServerNow } from '../../../serverNow.ts';
 import { can, useSession } from '../../../session.ts';
@@ -103,6 +105,7 @@ function CalendarOf({
   const today = wallDay(now, readerZone());
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const [refresh, setRefresh] = useState(0);
   const [kept, setKept] = useState(() => readCalendarPlace(readKept()));
   const [show, setShow] = useState<CalendarShow>('all');
   const [openDay, setOpenDay] = useState<string | null>(null);
@@ -113,19 +116,28 @@ function CalendarOf({
   const moveFocus = useRef<'grid' | 'today' | null>(null);
   const view: CalendarView = kept?.view ?? (phone ? 'agenda' : 'month');
   const month: CalendarMonth = kept?.month ?? monthOfDay(today);
+  const { watch, refreshing } = useOffline({
+    loaded: load.kind === 'loaded',
+    reload: () => setRefresh((n) => n + 1),
+    title,
+  });
 
   useEffect(() => {
     let current = true;
 
-    api.allEvents(organisationId).then(
+    watch(api.allEvents(organisationId)).then(
       (events) => current && setLoad({ kind: 'loaded', events }),
-      () => current && setLoad({ kind: 'failed' }),
+      (error: unknown) =>
+        current &&
+        setLoad((was) =>
+          was.kind === 'loaded' && keepsWhatLoaded(error) ? was : { kind: 'failed' },
+        ),
     );
 
     return () => {
       current = false;
     };
-  }, [organisationId, attempt]);
+  }, [organisationId, attempt, refresh, watch]);
 
   useLayoutEffect(() => {
     const target = moveFocus.current;
@@ -182,6 +194,7 @@ function CalendarOf({
           <h1 ref={title} tabIndex={-1}>
             {t('calendar.title')}
           </h1>
+          {refreshing && <Refreshing />}
           {subscribe}
         </div>
         <FirstRun creates={creates} createLabel="events.newEvent" />
@@ -200,6 +213,7 @@ function CalendarOf({
         <h1 className="calendar-title" ref={title} tabIndex={-1}>
           {t('calendar.title')}
         </h1>
+        {refreshing && <Refreshing />}
         {subscribe}
       </div>
       <div className="calendar-toolbar">

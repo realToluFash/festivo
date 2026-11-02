@@ -5,11 +5,12 @@ import { useTranslation } from 'react-i18next';
 
 import { AppFrame, BackButton } from '../src/components/AppFrame.tsx';
 import { bodyEdges } from '../src/components/bodyEdges.ts';
-import { type FeedOffline, NotificationsFeed } from '../src/components/NotificationsFeed.tsx';
+import { NotificationsFeed } from '../src/components/NotificationsFeed.tsx';
 import { Refreshing } from '../src/components/Refreshing.tsx';
 import { Screen } from '../src/components/Screen.tsx';
 import { type TextHandle } from '../src/components/Text.tsx';
 import { useLayout } from '../src/layout/useLayout.ts';
+import { NOT_OFFLINE, type ScreenOffline } from '../src/offline.ts';
 import { tokens } from '../src/theme/tokens.ts';
 
 /** The bell's own screen, back to where it was opened from (sc-3980), on a tablet from the top of the body (sc-23814), with the feed's band and Refreshing… (sc-27096). */
@@ -19,7 +20,7 @@ export default function Notifications() {
   const title = useRef<TextHandle>(null);
   const phone = kind === 'phone';
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
-  const [offline, setOffline] = useState<FeedOffline>({ stale: null, refreshing: false });
+  const [offline, setOffline] = useState<ScreenOffline>(NOT_OFFLINE);
   const refreshing = offline.refreshing ? <Refreshing testID="notifications.refreshing" /> : null;
 
   return (
