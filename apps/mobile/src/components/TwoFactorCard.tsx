@@ -209,6 +209,7 @@ export function TwoFactorCard({
         open={stage.kind === 'savingCodes'}
         onClose={finishCodes}
         opener={noOpener}
+        headingTakesFocus
         testID="twoFactor.codesSheet"
       >
         {stage.kind === 'savingCodes' && (
