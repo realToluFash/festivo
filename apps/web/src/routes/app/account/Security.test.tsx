@@ -498,7 +498,13 @@ describe('the devices signed in to an account', () => {
     await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/could not be/));
     expect(screen.getByRole('alert').textContent).toMatch(/rather than about your account/);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    const words = screen.getByText('The devices could not be listed').parentElement;
+    const retry = screen.getByRole('button', { name: 'Try again' });
+
+    expect(words?.nextElementSibling).toBe(retry);
+    expect(retry.parentElement?.className).toBe('notice-body');
+
+    fireEvent.click(retry);
 
     await waitFor(() => expect(screen.getByText('Chrome on macOS')).toBeDefined());
   });
