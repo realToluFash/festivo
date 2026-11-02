@@ -3987,13 +3987,21 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
 
   it("shows the server's copy in the frame after Uploading…, and saves the HEIC itself", async () => {
     signedIn();
-    const sent = serving(null);
+    let release: (() => void) | null = null;
+    const sent = serving(null, {
+      [PREVIEW]: () =>
+        new Promise((resolve) => {
+          release = () => resolve(json({ preview: COPY }));
+        }),
+    });
     await editing();
 
     chooseHeic();
     const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    await waitFor(() => expect(release).not.toBeNull());
 
     expect(within(dialog).getByText('Uploading…')).toBeDefined();
+    release!();
     await waitFor(() =>
       expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(COPY),
     );
