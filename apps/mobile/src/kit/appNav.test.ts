@@ -330,12 +330,15 @@ describe('The bell in [fd] (sc-23233)', () => {
     expect(skeleton()).toMatch(/row: \{[^}]*paddingHorizontal: tokens\.spaceXl,/u);
   });
 
-  it('starts Mark all read 12pt under the tablet Back, and leaves the phone as it was', () => {
+  it('starts Mark all read 12pt under the tablet Back, with no gap from the route body, and leaves the phone as it was', () => {
     const source = feed();
 
     expect(source).toMatch(/\[styles\.feed, kind !== 'phone' && styles\.feedUnderBack\]/u);
     expect(source).toMatch(/feedUnderBack: \{ paddingTop: tokens\.spaceXxs \}/u);
     expect(source).toMatch(/part: \{ gap: tokens\.spaceLg, paddingVertical: tokens\.spaceSm \}/u);
     expect(source).toMatch(/feed: \{\s*paddingTop: tokens\.spaceXl,/u);
+    expect(readFileSync(join(APP, 'notifications.tsx'), 'utf8')).toMatch(
+      /body: \{ padding: 0, gap: 0 \}/u,
+    );
   });
 });
