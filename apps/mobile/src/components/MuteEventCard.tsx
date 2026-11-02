@@ -1,0 +1,134 @@
+import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+
+import { api } from '../api.ts';
+import { announceMute, useMutes } from '../eventMutes.ts';
+import { SECTION_HREF } from '../kit/appNav.ts';
+import {
+  type HeldMute,
+  type MuteState,
+  answeredMute,
+  heardMute,
+  readMute,
+  saveMute,
+  shownMute,
+} from '../kit/eventMute.ts';
+import { type LayoutKind } from '../layout/useLayout.ts';
+import { tokens } from '../theme/tokens.ts';
+import { Footnote } from './Buttons.tsx';
+import { Notice } from './Notice.tsx';
+import { OnOffSwitch } from './OnOffSwitch.tsx';
+import { Text } from './Text.tsx';
+import { cardFrame } from './cardFrame.ts';
+
+/** `MuteEvent-*` (sc-3980): per person, on the event's page below its buttons, for everyone who can open it. */
+export function MuteEventCard({ kind, eventId }: { kind: LayoutKind; eventId: string }) {
+  const { t } = useTranslation();
+
+  return (
+    <View style={cardFrame(kind)} testID="events.mute">
+      <Text size={tokens.typeRowTitle.size} weight="bold" accessibilityRole="header">
+        {t('eventMute.heading')}
+      </Text>
+      <Text size={tokens.typeBodyPhone.size} muted>
+        {t('eventMute.note')}
+      </Text>
+      <MuteEventSwitch eventId={eventId} testID="events.mute" />
+      <Footnote
+        action={t('eventMute.settings')}
+        role="link"
+        onPress={() => router.push(SECTION_HREF.notifications)}
+        testID="events.mute.settings"
+      />
+    </View>
+  );
+}
+
+/** The one Mute this event switch, on the event's page and in a bell item's More. */
+export function MuteEventSwitch({ eventId, testID }: { eventId: string; testID: string }) {
+  const { t } = useTranslation();
+  const [held, setHeld] = useState<HeldMute>({ eventId, state: { status: 'loading' } });
+  const mute = shownMute(held, eventId);
+  const setMute = (state: MuteState): void => setHeld({ eventId, state });
+  const [attempt, setAttempt] = useState(0);
+  const [tap, setTap] = useState<object | undefined>(undefined);
+
+  useMutes((changed, saved) => {
+    const heard = heardMute(eventId, changed, saved);
+    if (heard != null) setMute(heard);
+  });
+
+  useEffect(() => {
+    let current = true;
+    void readMute(api, eventId).then((read) => {
+      if (current) setHeld({ eventId, state: read });
+    });
+
+    return () => {
+      current = false;
+    };
+  }, [eventId, attempt]);
+
+  const change = (next: boolean): void => {
+    setMute({ status: 'loaded', muted: next, saving: true, unsaved: false });
+    void saveMute(api, eventId, next).then(({ state, saved }) => {
+      setHeld((current) => answeredMute(current, eventId, state));
+      if (saved == null) setTap({});
+      else announceMute(eventId, saved);
+    });
+  };
+
+  const loaded = mute.status === 'loaded';
+  const muted = loaded && mute.muted;
+  const busy = mute.status === 'loading' || (loaded && mute.saving);
+
+  return (
+    <>
+      <View style={styles.row}>
+        <Text size={tokens.typeBodyPhone.size} style={styles.label}>
+          {t('eventMute.switch')}
+        </Text>
+        <OnOffSwitch
+          on={loaded ? muted : null}
+          words={{ on: t('eventMute.on'), off: t('eventMute.off') }}
+          label={t('eventMute.switch')}
+          disabled={!loaded}
+          busy={busy}
+          onChange={change}
+          testID={`${testID}.switch`}
+        />
+      </View>
+      {mute.status === 'failed' && (
+        <Notice
+          tone="broken"
+          mark={tokens.marks.broken.glyph}
+          body={t('eventMute.notLoaded')}
+          announce
+          action={{
+            label: t('eventMute.tryAgain'),
+            onPress: () => {
+              setMute({ status: 'loading' });
+              setAttempt((tries) => tries + 1);
+            },
+            testID: `${testID}.tryAgain`,
+          }}
+        />
+      )}
+      {loaded && mute.unsaved && (
+        <Notice
+          tone="broken"
+          mark={tokens.marks.broken.glyph}
+          body={t('eventMute.notSaved')}
+          answer={tap}
+        />
+      )}
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
+  label: { flex: 1 },
+});

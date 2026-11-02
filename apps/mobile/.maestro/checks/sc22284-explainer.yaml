@@ -1,0 +1,28 @@
+# sc-22284: on a new Draft with no host, Make live's sheet shows hostExplainer under Host 1 with the keyboard up, and Make live with Host 1 empty adds hostEmpty.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../scripts/sc22284-draft.js
+    env:
+      NAME: Gala sans hôte
+- openLink: ${METRO_URL}/--/events/${output.event}
+- extendedWaitUntil:
+    visible:
+      id: 'events.makeLive'
+    timeout: 30000
+- tapOn:
+    id: 'events.makeLive'
+- extendedWaitUntil:
+    visible:
+      id: 'events.makeLiveHost'
+    timeout: 10000
+- assertVisible: '{{t:eventLive.hostExplainer}}'
+- assertNotVisible: '{{t:eventLive.hostEmpty}}'
+- takeScreenshot: explainer
+- tapOn:
+    id: 'events.makeLiveYes'
+- extendedWaitUntil:
+    visible: '{{t:eventLive.hostEmpty}}'
+    timeout: 10000
+- assertVisible: '{{t:eventLive.hostExplainer}}'
+- takeScreenshot: empty

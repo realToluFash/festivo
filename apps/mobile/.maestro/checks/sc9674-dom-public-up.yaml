@@ -1,0 +1,58 @@
+# Add domain: gmail.com sent by the button with the keys up, held, then refused. Keys stay up, the next key goes into the field. sc-9674.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: companyDomains.add
+    centerElement: true
+- swipe:
+    start: '50%,40%'
+    end: '50%,60%'
+- waitForAnimationToEnd
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          id: companyDomains.domain
+      - eraseText: 80
+- inputText: 'gmail.com'
+- waitForAnimationToEnd
+- takeScreenshot: keys-up
+- assertVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- scrollUntilVisible:
+    element:
+      id: companyDomains.add
+    centerElement: true
+- tapOn:
+    id: companyDomains.add
+- waitForAnimationToEnd
+- takeScreenshot: at-tap
+- assertVisible: '(?i)(shift|delete)'
+- tapOn:
+    id: companyDomains.add
+- waitForAnimationToEnd
+- takeScreenshot: while-held
+- assertVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    visible: '(?:You cannot use a public email domain|No puede usar un dominio de correo electrónico público|Vous ne pouvez pas utiliser un domaine de messagerie public|Não pode usar um domínio de e-mail público).*'
+    timeout: 45000
+- waitForAnimationToEnd
+- takeScreenshot: refused
+- assertVisible: '(?i)(shift|delete)'
+- inputText: x
+- assertVisible:
+    id: companyDomains.domain
+    text: 'gmail.comx'

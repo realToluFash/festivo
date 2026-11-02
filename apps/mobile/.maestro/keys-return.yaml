@@ -1,0 +1,7 @@
+# Presses the keyboard's return key, as a key event. sc-13408.
+appId: host.exp.Exponent
+---
+- pressKey: Enter
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: mobile-13408-return

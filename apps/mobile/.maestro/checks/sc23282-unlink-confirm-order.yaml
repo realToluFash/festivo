@@ -1,0 +1,37 @@
+# sc-23282: Unlink… asks Confirm it's you, then Unlink Google stacked on top of Keep it linked; Keep it linked leaves Google linked. Needs ${METRO_URL}, ${PW}, an account with a password and Google linked.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- scrollUntilVisible:
+    element:
+      id: 'ways.google.unlink'
+    timeout: 30000
+    centerElement: true
+- takeScreenshot: opener
+- tapOn:
+    id: 'ways.google.unlink'
+- scrollUntilVisible:
+    element:
+      id: 'ways.password'
+    direction: UP
+    timeout: 15000
+    centerElement: true
+- takeScreenshot: confirm-its-you
+- tapOn:
+    id: 'ways.password'
+- inputText: ${PW}
+- pressKey: Enter
+- scrollUntilVisible:
+    element:
+      id: 'ways.unlink'
+    timeout: 15000
+    centerElement: true
+- takeScreenshot: confirm-unlink
+- tapOn:
+    id: 'ways.keep'
+- scrollUntilVisible:
+    element:
+      id: 'ways.google.unlink'
+    timeout: 15000
+    centerElement: true
+- takeScreenshot: kept

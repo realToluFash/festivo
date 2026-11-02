@@ -1,0 +1,13 @@
+# sc-23361 on an iPhone: the event ${EVENT}'s page shows its whole back, ‹ Events, for its width to be read at a text size set before the batch.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'frame.back'
+    text: '{{t:eventsScreen.title}}'
+- takeScreenshot: back

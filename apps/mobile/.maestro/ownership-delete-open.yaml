@@ -1,0 +1,18 @@
+# Settings > Organisation > Ownership and leaving: Delete organisation open, not yet sent.
+# On a signed-in phone, as the owner. sc-12511.
+#
+#   node .qa/bin/qa-env.mjs maestro ownership-delete-open --android
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- scrollUntilVisible:
+    element:
+      id: 'ownership.delete'
+    timeout: 60000
+- tapOn:
+    id: 'ownership.delete'
+- scrollUntilVisible:
+    element:
+      id: 'ownership.delete.keep'
+    timeout: 30000
+- takeScreenshot: ownership-delete-open

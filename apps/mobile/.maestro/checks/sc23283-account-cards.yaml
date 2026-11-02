@@ -1,0 +1,15 @@
+# sc-23283: Your account's four cards, top and scrolled, for the board's titles, Change at the row's end and a row's buttons.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'nameCard.change'
+    timeout: 30000
+- takeScreenshot: cards-top
+- scrollUntilVisible:
+    element:
+      id: 'timeZone.change'
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: cards-bottom

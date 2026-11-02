@@ -1,0 +1,10 @@
+# Roles in landscape, once the list has loaded, then back to portrait.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/settings/roles
+- extendedWaitUntil:
+    visible: '.*{{t:roles.event_manager}}.*'
+    timeout: 30000
+- takeScreenshot: roles-landscape
+- setOrientation: PORTRAIT

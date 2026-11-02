@@ -1,0 +1,118 @@
+# sc-19104, iPhone: each Settings section from the Settings list, then the header's back shows the list again.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-settings.yaml
+- scrollUntilVisible:
+    element:
+      id: 'settings.account'
+    timeout: 20000
+- tapOn:
+    id: 'settings.account'
+- waitForAnimationToEnd
+- takeScreenshot: account-open
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'settings.account'
+    direction: UP
+    timeout: 20000
+- assertVisible:
+    id: 'settings.account'
+- takeScreenshot: account-back-list
+- scrollUntilVisible:
+    element:
+      id: 'settings.security'
+    timeout: 20000
+- tapOn:
+    id: 'settings.security'
+- waitForAnimationToEnd
+- takeScreenshot: security-open
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'settings.security'
+    direction: UP
+    timeout: 20000
+- assertVisible:
+    id: 'settings.account'
+- takeScreenshot: security-back-list
+- scrollUntilVisible:
+    element:
+      id: 'settings.organisation'
+    timeout: 20000
+- tapOn:
+    id: 'settings.organisation'
+- waitForAnimationToEnd
+- takeScreenshot: organisation-open
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'settings.organisation'
+    direction: UP
+    timeout: 20000
+- assertVisible:
+    id: 'settings.account'
+- takeScreenshot: organisation-back-list
+- scrollUntilVisible:
+    element:
+      id: 'settings.members'
+    timeout: 20000
+- tapOn:
+    id: 'settings.members'
+- waitForAnimationToEnd
+- takeScreenshot: members-open
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'settings.members'
+    direction: UP
+    timeout: 20000
+- assertVisible:
+    id: 'settings.account'
+- takeScreenshot: members-back-list
+- scrollUntilVisible:
+    element:
+      id: 'settings.roles'
+    timeout: 20000
+- tapOn:
+    id: 'settings.roles'
+- waitForAnimationToEnd
+- takeScreenshot: roles-open
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'settings.roles'
+    direction: UP
+    timeout: 20000
+- assertVisible:
+    id: 'settings.account'
+- takeScreenshot: roles-back-list
+- scrollUntilVisible:
+    element:
+      id: 'settings.signInRules'
+    timeout: 20000
+- tapOn:
+    id: 'settings.signInRules'
+- waitForAnimationToEnd
+- takeScreenshot: signInRules-open
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'settings.signInRules'
+    direction: UP
+    timeout: 20000
+- assertVisible:
+    id: 'settings.account'
+- takeScreenshot: signInRules-back-list

@@ -1,0 +1,41 @@
+# Roles on a tablet, a held role's remove panel in the detail pane, with Remove pressed before a replacement is chosen. ROLE_ID names the role.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/roles
+- extendedWaitUntil:
+    visible:
+      id: roles.role.owner
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: roles.role.${ROLE_ID}
+- tapOn:
+    id: roles.role.${ROLE_ID}
+- scrollUntilVisible:
+    element:
+      id: roles.remove
+- tapOn:
+    id: roles.remove
+- extendedWaitUntil:
+    visible:
+      id: roles.replacement.owner
+    timeout: 10000
+- takeScreenshot: role-remove-panel
+- repeat:
+    while:
+      notVisible:
+        id: roles.remove.confirm
+    times: 6
+    commands:
+      - swipe:
+          start: 80%, 80%
+          end: 80%, 35%
+- tapOn:
+    id: roles.remove.confirm
+- extendedWaitUntil:
+    visible: '{{t:rolesScreen.removeNoReplacement}}'
+    timeout: 10000
+- swipe:
+    start: 80%, 80%
+    end: 80%, 40%
+- takeScreenshot: role-remove-no-replacement
