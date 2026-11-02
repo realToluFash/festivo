@@ -15,10 +15,13 @@ appId: host.exp.Exponent
       id: 'calendarFeed.url'
     timeout: 20000
 - waitForAnimationToEnd
+- assertVisible: '{{t:calendarFeed.private}}'
+- assertVisible: '{{t:calendarFeed.linkLabel}}'
 - takeScreenshot: panel
 - tapOn:
     id: 'calendarFeed.openInApp'
 - waitForAnimationToEnd
+- assertVisible: '{{t:calendarFeed.noApp}}'
 - takeScreenshot: no-app
 - scrollUntilVisible:
     element:
