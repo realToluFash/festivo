@@ -2616,6 +2616,13 @@ async function batch(args) {
   });
 
   const apiState = composeApi(root, onAndroid);
+  // A batch killed inside withoutReverse left the API's port unreversed.
+  if (onAndroid)
+    adbOut(androidTools(), [
+      'reverse',
+      `tcp:${CONFIG.ports.API_PORT}`,
+      `tcp:${CONFIG.ports.API_PORT}`,
+    ]);
   await apiState.move('up');
   const named = languages[0] !== 'any';
   const signedIn = named ? apiSession(email, password, secret) : null;
