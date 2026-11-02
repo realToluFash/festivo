@@ -3569,7 +3569,7 @@ describe('The cover (sc-3590)', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
     const slider = within(dialog).getByLabelText('Photo position');
 
-    expect(document.activeElement).toBe(slider);
+    await waitFor(() => expect(document.activeElement).toBe(slider));
     expect(within(dialog).queryByRole('button', { name: 'Remove photo' })).toBeNull();
     await waitFor(() => expect(sent.map(({ line }) => line)).toContain('PUT /upload/1'));
 
