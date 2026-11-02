@@ -204,6 +204,8 @@ export function AppFrame({
   inEvent,
   primary,
   underTitle,
+  besideTitle,
+  besideBack,
   offline = null,
   children,
 }: {
@@ -214,6 +216,10 @@ export function AppFrame({
   primary?: HeaderPrimaryProps | undefined;
   /** A line under the title, in the header band, as Events' summary. */
   underTitle?: ReactNode;
+  /** At the end of the title's row, as Members' Refreshing… (sc-27046). */
+  besideTitle?: ReactNode;
+  /** At the end of the header's back row, where it has one, as an event page's Refreshing… (sc-27046). */
+  besideBack?: ReactNode;
   /** Inside an event, its areas take the navigation's place. */
   inEvent?: InsideEvent | undefined;
   title: string;
@@ -347,6 +353,8 @@ export function AppFrame({
           pill={pill}
           primary={primary}
           underTitle={underTitle}
+          besideTitle={besideTitle}
+          besideBack={besideBack}
         />
         <OfflineBand stale={offline} />
         <View style={styles.body}>
@@ -450,11 +458,15 @@ function FrameHeader({
   pill,
   primary,
   underTitle,
+  besideTitle,
+  besideBack,
 }: {
   kind: LayoutKind;
   current: Destination;
   primary: HeaderPrimaryProps | undefined;
   underTitle: ReactNode;
+  besideTitle: ReactNode;
+  besideBack: ReactNode;
   entries: readonly NavEntry[];
   inEvent: boolean;
   title: string;
@@ -478,9 +490,14 @@ function FrameHeader({
     return (
       <View style={[styles.header, styles.landscapeHeader, large && styles.stacked, top]}>
         <View style={styles.titled}>
-          <Title size={tokens.typeTitlePhone.size} accessibilityRole="header" ref={read}>
-            {title}
-          </Title>
+          <View style={styles.titleRow}>
+            <View style={styles.shrink}>
+              <Title size={tokens.typeTitlePhone.size} accessibilityRole="header" ref={read}>
+                {title}
+              </Title>
+            </View>
+            {besideTitle}
+          </View>
           {underTitle}
         </View>
         {!large && <View style={styles.fill} />}
@@ -521,14 +538,20 @@ function FrameHeader({
             label={back.label}
             onPress={back.onPress}
             off={back.off}
+            beside={besideBack}
             testID="frame.back"
           />
         )}
         <View style={styles.titleRow}>
           <View style={styles.fill}>
-            <Title size={tokens.typeTitlePage.size} accessibilityRole="header" ref={read}>
-              {title}
-            </Title>
+            <View style={styles.titleRow}>
+              <View style={styles.fill}>
+                <Title size={tokens.typeTitlePage.size} accessibilityRole="header" ref={read}>
+                  {title}
+                </Title>
+              </View>
+              {besideTitle}
+            </View>
             {underTitle}
           </View>
           <BellButton />
@@ -559,17 +582,28 @@ function FrameHeader({
         </View>
       )}
       {back != null && !backHidden && (
-        <BackButton label={back.label} onPress={back.onPress} off={back.off} testID="frame.back" />
+        <BackButton
+          label={back.label}
+          onPress={back.onPress}
+          off={back.off}
+          beside={besideBack}
+          testID="frame.back"
+        />
       )}
       <View style={styles.titleRow}>
         <View style={styles.fill}>
-          <Title
-            size={back == null ? tokens.typeTitlePage.size : tokens.typeTitlePhone.size}
-            accessibilityRole="header"
-            ref={read}
-          >
-            {title}
-          </Title>
+          <View style={styles.titleRow}>
+            <View style={styles.fill}>
+              <Title
+                size={back == null ? tokens.typeTitlePage.size : tokens.typeTitlePhone.size}
+                accessibilityRole="header"
+                ref={read}
+              >
+                {title}
+              </Title>
+            </View>
+            {besideTitle}
+          </View>
           {underTitle}
         </View>
         <BellButton />
@@ -583,17 +617,19 @@ export function BackButton({
   heard,
   onPress,
   off = false,
+  beside,
   testID,
 }: {
   label: string;
   heard?: string;
   onPress: () => void;
   off?: boolean | undefined;
+  /** Null while the slot is empty, never undefined: the row stays, so Back is not remounted and keeps screen reader focus (sc-27046). */
+  beside?: ReactNode;
   testID: string;
 }) {
   const { fontScale } = useWindowDimensions();
-
-  return (
+  const button = (
     <Pressable
       style={styles.back}
       onPress={onPress}
@@ -620,7 +656,26 @@ export function BackButton({
       </Text>
     </Pressable>
   );
+
+  if (beside === undefined) return button;
+
+  return (
+    <View style={besideRow.row}>
+      {button}
+      {beside}
+    </View>
+  );
 }
+
+/** A heading or Back at the start, something small at the far end: Back beside Refreshing…, a title beside Refreshing… (sc-27046). */
+export const besideRow = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tokens.spaceMd,
+  },
+});
 
 function goTo(destination: Destination): void {
   const href = DESTINATION_HREF[destination];
