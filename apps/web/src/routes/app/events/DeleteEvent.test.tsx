@@ -261,6 +261,20 @@ describe('Delete an event (sc-3592)', () => {
     expect(screen.queryByText('Adaeze and Tunde was deleted.')).toBeNull();
   });
 
+  it('says nothing when Events opens on an entry still holding the deleted state, as on a reload (sc-22103)', async () => {
+    signedIn();
+    answering({ 'GET /api/orgs/org_1/events': () => json({ events: [], total: 0 }) });
+    const router = createMemoryRouter(routes, {
+      initialEntries: [{ pathname: '/app/events', state: { deletedEvent: 'Adaeze and Tunde' } }],
+    });
+    render(<RouterProvider router={router} />);
+    await screen.findByRole('heading', { level: 1, name: 'Events' });
+
+    expect(screen.queryByText('Adaeze and Tunde was deleted.')).toBeNull();
+    await waitFor(() => expect(router.state.location.state).toBeNull());
+    expect(screen.queryByText('Adaeze and Tunde was deleted.')).toBeNull();
+  });
+
   it('asks for the name of an event past Draft, and says until when support can restore it', async () => {
     signedIn();
     const { dialog } = await asking(live(), true);
