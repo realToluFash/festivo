@@ -27,6 +27,7 @@ export function createConnection(
   const tell = (change: ConnectionChange) => {
     for (const listener of [...listeners]) listener(change);
   };
+  let deviceIsOffline = false;
 
   return {
     observe(answer, asked) {
@@ -44,8 +45,16 @@ export function createConnection(
         },
       );
     },
-    deviceOffline: () => tell('lost'),
-    deviceOnline: () => tell('deviceBack'),
+    deviceOffline() {
+      deviceIsOffline = true;
+      tell('lost');
+    },
+    // A device can report itself connected again and again with no change of network: only a return counts.
+    deviceOnline() {
+      if (!deviceIsOffline) return;
+      deviceIsOffline = false;
+      tell('deviceBack');
+    },
     subscribe(listener) {
       listeners.add(listener);
 

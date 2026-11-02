@@ -68,7 +68,7 @@ export function EventScreen({
   const opened = useOpened(eventId, account != null, organisation, () =>
     moveScreenReaderFocus(title.current),
   );
-  const { reload, change } = opened;
+  const { freshen, change } = opened;
   const event = opened.kind === 'loaded' ? opened.event : null;
   const now = useServerNow();
   const phase = usePhaseOf(event, now);
@@ -88,11 +88,11 @@ export function EventScreen({
     useCallback(() => {
       setSavedEvent(takeSaved());
       setCoverRefused(takeCoverRefused());
-      reload();
+      freshen();
 
       // Gone while the page is covered, so the next save mounts Saved afresh and scrolls up to it.
       return () => setSavedEvent(null);
-    }, [reload]),
+    }, [freshen]),
   );
 
   const chooseArea = (next: EventArea) => navigation.setParams({ [EVENT_AREA]: next });
@@ -257,7 +257,7 @@ function useOpened(
   focusTitle: () => void,
 ): Opened & {
   retry: () => void;
-  reload: () => void;
+  freshen: () => void;
   change: (event: OrganisationEvent) => void;
   stale: Stale | null;
   refreshing: boolean;
@@ -282,7 +282,7 @@ function useOpened(
     [key],
   );
 
-  const { watch, stale, refreshing } = useOffline({
+  const { watch, freshen, stale, refreshing } = useOffline({
     loaded: held.for === key && held.opened.kind === 'loaded',
     reload,
     focusTitle,
@@ -308,12 +308,13 @@ function useOpened(
     };
   }, [eventId, organisationId, asks, key, attempt, watch]);
 
-  if (settled != null) return { ...settled, retry, reload, change, stale: null, refreshing: false };
+  if (settled != null)
+    return { ...settled, retry, freshen, change, stale: null, refreshing: false };
 
   return {
     ...(held.for === key ? held.opened : { kind: 'loading' }),
     retry,
-    reload,
+    freshen,
     change,
     stale,
     refreshing,
