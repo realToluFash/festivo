@@ -1,5 +1,5 @@
 import { ApiUnreachableError, type Health, awaiting } from '@soirely/api-client';
-import { router, useNavigation } from 'expo-router';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -41,7 +41,8 @@ type Launching = 'deciding' | 'signedIn' | 'signedOut';
 export default function Home() {
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
-  const [resumed] = useState(inSession);
+  const { tapped } = useLocalSearchParams<{ tapped?: string }>();
+  const [resumed] = useState(() => tapped === '1' && inSession());
   const [launching, setLaunching] = useState<Launching>(resumed ? 'signedIn' : 'deciding');
   const navigation = useNavigation();
   const left = useRef(false);

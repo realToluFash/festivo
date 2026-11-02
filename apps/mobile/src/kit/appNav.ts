@@ -9,6 +9,9 @@ export const DESTINATION_HREF = {
   settings: '/settings',
 } as const satisfies Record<Destination, string>;
 
+/** The frame's Home tap, told apart from a replace to Home, which is a launch and reads the account again (sc-28178). */
+export const HOME_TAPPED = { pathname: '/', params: { tapped: '1' } } as const;
+
 /** Only what a story has built (sc-722, #727), and Events and Calendar only for a role that can read events (sc-1593, sc-3625). */
 export function destinations(
   organisation: { permissions: readonly string[] } | null,

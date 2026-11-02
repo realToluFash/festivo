@@ -68,7 +68,7 @@ export function useSignedIn(): SignedIn {
   return current;
 }
 
-/** Somebody is already signed in here: Home tapped from the frame pushes the launch screen again, and it is not a launch (sc-28178). */
+/** Somebody is already signed in here, so Home tapped from the frame, which pushes the launch screen again, is not a launch (sc-28178). */
 export function inSession(): boolean {
   return state.account != null && !ended;
 }
