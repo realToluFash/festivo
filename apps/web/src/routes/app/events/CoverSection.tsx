@@ -319,7 +319,7 @@ function CoverDialog({
         promoted = true;
         const next = { key: signed.key, url: url ?? copy, local: url != null };
         held.current.add(next);
-        uploading.current = null;
+        if (uploading.current === trying) uploading.current = null;
         if (awaited.current !== trying.pick) {
           parked.current = { chosen: next };
           return;
@@ -330,7 +330,7 @@ function CoverDialog({
       })
       .catch((error: unknown) => {
         if (!current) return;
-        uploading.current = null;
+        if (uploading.current === trying) uploading.current = null;
         if (awaited.current !== trying.pick) parked.current = { chosen: null };
         else refuse(refusalOf(error, t));
       });

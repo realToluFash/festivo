@@ -4648,7 +4648,7 @@ describe('Every pick is held under Uploading… until the server has read it (sc
       });
     }
 
-    return { waiting, signed, answer, answerTaken };
+    return { waiting, read, signed, answer, answerTaken };
   }
 
   function jpeg(name: string): File {
@@ -5023,6 +5023,64 @@ describe('Every pick is held under Uploading… until the server has read it (sc
     expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(PHOTO.sizes[0]!.url);
     expect(signed).not.toContain('small.jpg');
   });
+
+  it.each(['first.jpg', 'damaged.jpg'])(
+    'a %s answer landing before the second pick commits never strands the second behind a refused third',
+    async (first) => {
+      signedIn();
+      const { waiting, read, signed, answer } = serving(PHOTO);
+      const sizers = new Map<string, () => void>();
+      vi.stubGlobal(
+        'Image',
+        class {
+          naturalWidth = 2400;
+          naturalHeight = 1600;
+          onload: (() => void) | null = null;
+          set src(url: string) {
+            const name = url.replace('blob:', '');
+            if (name === 'small.jpg') this.naturalWidth = 10;
+            if (name === first) queueMicrotask(() => this.onload?.());
+            else sizers.set(name, () => this.onload?.());
+          }
+        },
+      );
+      const made: string[] = [];
+      URL.createObjectURL = (chosen: Blob) => {
+        made.push((chosen as File).name);
+        return `blob:${(chosen as File).name}`;
+      };
+      const dialog = await changing();
+
+      pickInDialog(jpeg(first));
+      await waitFor(() => expect(waiting.has(first)).toBe(true));
+      pickInDialog(jpeg('second.jpg'));
+      await waitFor(() => expect(sizers.has('second.jpg')).toBe(true));
+      let committedFirst = true;
+      await act(async () => {
+        sizers.get('second.jpg')!();
+        await waitFor(() => expect(made.filter((name) => name === 'second.jpg')).toHaveLength(2));
+        waiting.get(first)!();
+        await read.get(first)!.catch(() => undefined);
+        for (let turn = 0; turn < 5; turn++) await Promise.resolve();
+        committedFirst = signed.includes('second.jpg');
+      });
+      expect(committedFirst).toBe(false);
+
+      await waitFor(() => expect(signed).toContain('second.jpg'));
+      pickInDialog(jpeg('small.jpg'));
+      await waitFor(() => expect(sizers.has('small.jpg')).toBe(true));
+      act(() => sizers.get('small.jpg')!());
+      expect(await within(dialog).findByText(TOO_SMALL)).toBeDefined();
+      await answer('second.jpg');
+
+      await waitFor(() =>
+        expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(
+          'blob:second.jpg',
+        ),
+      );
+      expect(within(dialog).queryByText('Uploading…')).toBeNull();
+    },
+  );
 });
 
 describe('Hosted by, in Edit details (sc-6713)', () => {
