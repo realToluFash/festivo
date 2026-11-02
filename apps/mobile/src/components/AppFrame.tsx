@@ -624,6 +624,7 @@ export function BackButton({
   heard?: string;
   onPress: () => void;
   off?: boolean | undefined;
+  /** Null while the slot is empty, never undefined: the row stays, so Back is not remounted and keeps screen reader focus (sc-27046). */
   beside?: ReactNode;
   testID: string;
 }) {
@@ -656,7 +657,7 @@ export function BackButton({
     </Pressable>
   );
 
-  if (beside == null) return button;
+  if (beside === undefined) return button;
 
   return (
     <View style={besideRow.row}>
