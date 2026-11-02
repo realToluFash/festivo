@@ -224,6 +224,22 @@ export function listRoom({ room, rest, oneRow, most }: ListRoom): number {
   return Math.max(oneRow, Math.min(most, room - rest));
 }
 
+export interface NotesGiveWay {
+  /** The height above the keys, or null while they are down. */
+  room: number | null;
+  /** The step's height as laid out. */
+  step: number;
+  /** The notes' last height, with the gap before them. */
+  notes: number;
+  /** Whether the step was laid out with its notes away. */
+  away: boolean;
+}
+
+/** Whether a step's notes give way: while the keys are up and the step, notes added back, would not fit above them (sc-28122). */
+export function notesGiveWay({ room, step, notes, away }: NotesGiveWay): boolean {
+  return room != null && step + (away ? notes : 0) > room;
+}
+
 export interface Turned {
   os: string;
   phone: boolean;

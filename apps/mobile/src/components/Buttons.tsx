@@ -30,6 +30,7 @@ export function PrimaryButton({
   paired = false,
   grow = false,
   accessibilityLabel,
+  accessibilityHint,
   ref,
   testID,
 }: {
@@ -42,6 +43,7 @@ export function PrimaryButton({
   /** Fills its line once a wrapping row breaks. */
   grow?: boolean;
   accessibilityLabel?: string;
+  accessibilityHint?: string | undefined;
   ref?: Ref<ViewInstance> | undefined;
   testID: string;
 }) {
@@ -65,6 +67,7 @@ export function PrimaryButton({
       disabled={off || undefined}
       // Android names an unlabelled busy view "busy" alone, and keeps that name once it is idle.
       accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityHint={accessibilityHint}
       accessibilityRole="button"
       accessibilityState={{ disabled: inactive, busy }}
       testID={testID}
