@@ -68,7 +68,10 @@ export function MuteSwitch({ eventId }: { eventId: string }) {
           aria-describedby={unsaved ? errorId : undefined}
           onChange={(event) => void change(event.currentTarget.checked)}
         />
-        <span>{t('notifications.muteEvent')}</span>
+        <span className="notification-switch-track" aria-hidden="true">
+          <span className="notification-switch-knob" />
+        </span>
+        <span className="notification-switch-name">{t('notifications.muteEvent')}</span>
       </label>
       {mute.status === 'failed' && (
         <FieldError id={`${errorId}-load`} message={t('notifications.muteNotLoaded')}>

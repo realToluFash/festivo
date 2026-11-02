@@ -46,7 +46,7 @@ function answering(answers: Record<string, () => Response | Promise<Response>>) 
   return sent;
 }
 
-function bell() {
+function renderedBell() {
   const router = createMemoryRouter(
     [
       { path: '/app', element: <NotificationsBell userId="u1" /> },
@@ -55,9 +55,11 @@ function bell() {
     { initialEntries: ['/app'] },
   );
 
-  render(<RouterProvider router={router} />);
+  return { router, ...render(<RouterProvider router={router} />) };
+}
 
-  return router;
+function bell() {
+  return renderedBell().router;
 }
 
 afterEach(() => {
@@ -199,6 +201,85 @@ describe('the bell (sc-3980)', () => {
     expect(screen.queryByText('All read.')).toBeNull();
     expect(screen.getByRole('button', { name: 'Notifications, 1 unread' })).toBeTruthy();
     expect(screen.getByText('Unread')).toBeTruthy();
+  });
+
+  it('shows Mark all read that does not save with a mark, heard once as an alert, not in the polite region (sc-23233)', async () => {
+    answering({
+      'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
+    });
+    const { container } = renderedBell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark all read' }));
+
+    const line = await screen.findByRole('alert');
+    expect(line.textContent).toBe('!Could not mark them all read. Try again.');
+    expect(line.querySelector('.mark')?.getAttribute('aria-hidden')).toBe('true');
+    expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe('');
+  });
+
+  it('keeps that line until the next action in the bell (sc-23233)', async () => {
+    answering({
+      'GET /api/notifications': () =>
+        json({
+          items: [item(), item({ id: 'n2', eventId: null, eventName: null, place: null })],
+          unreadCount: 2,
+          next: null,
+        }),
+      'POST /api/notifications/n2/read': () => json({ unreadCount: 1 }),
+    });
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 2 unread' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark all read' }));
+    await screen.findByRole('alert');
+
+    fireEvent.click(document.querySelector('[data-notification="n2"]') as Element);
+
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('keeps that line until the bell closes, and opening again does not bring it back (sc-23233)', async () => {
+    answering({
+      'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
+    });
+    bell();
+
+    const bellButton = await screen.findByRole('button', { name: 'Notifications, 1 unread' });
+    fireEvent.click(bellButton);
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark all read' }));
+    await screen.findByRole('alert');
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    fireEvent.click(bellButton);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('a feed that did not load is the broken notice, the mark, the words and Try again under them (sc-23233)', async () => {
+    let attempts = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      attempts += 1;
+      if (attempts === 1) return new Response('{}', { status: 500 });
+
+      return json({ items: [item()], unreadCount: 1, next: null });
+    });
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications' }));
+
+    const notice = await screen.findByRole('alert');
+    expect(notice.className).toContain('notice-broken');
+    expect(notice.querySelector('.mark-broken')?.getAttribute('aria-hidden')).toBe('true');
+    expect(within(notice).getByText('Your notifications did not load.').className).toBe(
+      'notice-title',
+    );
+
+    fireEvent.click(within(notice).getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByText('Ada Obi changed the event')).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('More mutes the event, leaves the items already delivered unmarked, and Escape goes back to More', async () => {
