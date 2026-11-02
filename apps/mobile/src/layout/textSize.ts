@@ -79,6 +79,11 @@ export function drawnLine(
   return pixelRatio == null ? scaled : Math.ceil(scaled * pixelRatio) / pixelRatio;
 }
 
+/** The padding above and below a line that sets its middle at the middle of a row `row` tall; none once the line is taller. */
+export function paddingToCentre(row: number, line: number): number {
+  return Math.max(0, (row - line) / 2);
+}
+
 /** The height of two upcoming rows, held while loading, failed or Finished so the panels below do not move; worked from the lines the rows are set in, not measured on one screen. */
 export function rowsFloor(fontScale: number, pixelRatio: number | null): number {
   const line = (height: number) => drawnLine(height, fontScale, pixelRatio);

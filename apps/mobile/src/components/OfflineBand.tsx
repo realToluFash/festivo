@@ -1,10 +1,18 @@
 import { fallsOnEarlierDay, formatDay, formatTimeOfDay, nextMidnight } from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import {
+  PixelRatio,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 
 import { dateLocale } from '../i18n/index.ts';
+import { TITLE_LINE, drawnLine, paddingToCentre } from '../layout/textSize.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { type Stale } from '../offline.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -15,6 +23,7 @@ import { Text } from './Text.tsx';
 export function OfflineBand({ stale }: { stale: Stale | null }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
+  const { fontScale } = useWindowDimensions();
   const [now, setNow] = useState(() => new Date());
   const at = stale?.at ?? null;
   const unanswered = stale?.unanswered ?? 0;
@@ -52,28 +61,39 @@ export function OfflineBand({ stale }: { stale: Stale | null }) {
 
   if (stale == null) return null;
 
+  const line = drawnLine(
+    TITLE_LINE,
+    fontScale,
+    Platform.OS === 'android' ? PixelRatio.get() : null,
+  );
+
   return (
     <View
       style={[styles.band, kind === 'phone' ? styles.phone : styles.tablet]}
       testID="offline.band"
     >
-      <View style={styles.words}>
+      <View
+        style={[
+          styles.words,
+          { paddingVertical: paddingToCentre(tokens.sizeHitPhonePrimary, line) },
+        ]}
+      >
         <Svg
-          width={18}
-          height={18}
+          width={MARK}
+          height={MARK}
           viewBox="0 0 16 16"
           fill="none"
           stroke={tokens.colorAttentionText}
           strokeWidth={1.5}
           strokeLinecap="round"
-          style={styles.mark}
+          style={{ marginVertical: (line - MARK) / 2 }}
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
           <Path d="M1.5 6a9.5 9.5 0 0 1 13 0M3.8 8.6a6.2 6.2 0 0 1 8.4 0M6.1 11.1a2.9 2.9 0 0 1 3.8 0" />
           <Path d="M2 2l12 12" />
         </Svg>
-        <Text size={15} weight="semibold" style={styles.ink}>
+        <Text size={15} weight="semibold" style={[styles.ink, styles.wordsLine]}>
           {words}
         </Text>
       </View>
@@ -91,8 +111,7 @@ export function OfflineBand({ stale }: { stale: Stale | null }) {
   );
 }
 
-// The line 15/600 takes at the default text size; a larger size only drops the words a little below the middle.
-const WORDS_LINE = 20;
+const MARK = 18;
 
 const styles = StyleSheet.create({
   band: {
@@ -114,9 +133,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: tokens.spaceMd,
     flexShrink: 1,
-    paddingVertical: (tokens.sizeHitPhonePrimary - WORDS_LINE) / 2,
   },
-  mark: { marginTop: 1 },
+  wordsLine: { lineHeight: TITLE_LINE },
   ink: { color: tokens.colorAttentionText, flexShrink: 1 },
   retry: {
     flexShrink: 0,
