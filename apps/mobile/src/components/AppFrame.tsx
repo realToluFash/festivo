@@ -1084,7 +1084,11 @@ function Switcher({
             >
               {!large && <OrgTile name={organisation.name} />}
               <View style={[styles.fill, styles.shrink]}>
-                <Text size={tokens.typeBodyPhone.size} weight="semibold" numberOfLines={lines}>
+                <Text
+                  size={tokens.typeBodyPhone.size}
+                  weight={isCurrent ? 'semibold' : 'medium'}
+                  numberOfLines={lines}
+                >
                   {organisation.name}
                 </Text>
                 <Text size={tokens.typeBody.size} muted numberOfLines={large ? 0 : 1}>
@@ -1457,7 +1461,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorInkSecondary,
   },
   option: {
-    minHeight: tokens.sizeHitPhoneHero,
+    minHeight: tokens.sizeListRow,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceLg,

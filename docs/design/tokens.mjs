@@ -161,6 +161,7 @@ export const tokens = {
   sizeHit: 44, // every button, chip, row, checkbox, stepper; desktop included (482 uses)
   sizeHitPhonePrimary: 48, // phone primary buttons and inputs
   sizeHitPhoneHero: 52, // one-per-screen phone CTA ("I'm here" uses 56 – accident)
+  sizeListRow: 56, // sc-22092's List row, as the organisation switcher's rows (sc-26270)
   sizeSegmentInner: 38, // button inside a 44px segmented track (track padding 3)
   // SETTLED (sc-80). The design flagged this as violating the 44 rule. It does
   // not: 36 is how tall the control LOOKS, and 44 is how big the target must

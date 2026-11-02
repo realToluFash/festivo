@@ -202,6 +202,7 @@ export const tokens = {
   "sizeHit": 44,
   "sizeHitPhonePrimary": 48,
   "sizeHitPhoneHero": 52,
+  "sizeListRow": 56,
   "sizeSegmentInner": 38,
   "sizeControlDense": 36,
   "hitSlopDense": 4,

@@ -2048,7 +2048,7 @@ span {
   align-items: center;
   gap: var(--spaceLg);
   width: 100%;
-  min-height: var(--sizeHitPhonePrimary);
+  min-height: var(--sizeListRow);
   padding: var(--spaceXs) var(--spaceXl);
   border: 0;
   background: var(--colorCard);
@@ -2060,6 +2060,11 @@ span {
 .org-switcher-option:hover,
 .org-switcher-option-current {
   background: var(--colorInset);
+}
+
+/* The current row differs in fill and in weight, never by colour alone (1.4.1). */
+.org-switcher-option:not(.org-switcher-option-current) .org-name {
+  font-weight: 500;
 }
 
 .org-switcher-current {
