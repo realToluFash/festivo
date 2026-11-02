@@ -503,7 +503,7 @@ describe('Settings > General, a request to get back in', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Turn off two-factor' }));
     expect(await screen.findByText('Tope Bello’s two-factor is off.')).toBeDefined();
-    expect(sent.at(-1)).toEqual({
+    expect(sent.filter((request) => request.path !== '/api/notifications').at(-1)).toEqual({
       method: 'POST',
       path: '/api/auth/recovery-requests/rq_1/approve',
       body: null,

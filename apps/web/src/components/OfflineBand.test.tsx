@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { forgetEventsTab } from '@soirely/domain';
@@ -301,5 +301,88 @@ describe('the offline band (sc-22586)', () => {
     await screen.findByText('Refreshing…');
     expect(band()).not.toBeNull();
     expect(screen.getByRole('heading', { level: 1, name: 'Adaeze and Tunde' })).toBeDefined();
+  });
+
+  describe("beside the bell's own band (sc-27096)", () => {
+    function servingWithFeed(state: { soirely: Soirely; name: string }) {
+      const events = serving(state);
+      const answer = events.getMockImplementation()!;
+      events.mockImplementation(async (input, init) => {
+        if (state.soirely !== 'answers' || new URL(String(input)).pathname !== '/api/notifications')
+          return answer(input, init);
+
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: 'n1',
+                category: 'messages',
+                title: 'Kemi replied',
+                lines: [],
+                eventId: null,
+                eventName: null,
+                eventAvailable: true,
+                muted: false,
+                place: null,
+                read: false,
+                createdAt: new Date().toISOString(),
+              },
+            ],
+            unreadCount: 1,
+            next: null,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      });
+
+      return events;
+    }
+
+    const eventsBand = () => document.querySelector('.offline-band:not(.notifications-band)');
+    const feedBand = () => document.querySelector('.notifications-band');
+    const panel = () => document.querySelector<HTMLElement>('.notifications-panel')!;
+    const asked = (fetched: ReturnType<typeof serving>, path: string) =>
+      fetched.mock.calls.filter(([input]) => new URL(String(input)).pathname === path).length;
+
+    async function bothOffline(state: { soirely: Soirely }): Promise<void> {
+      state.soirely = 'unreachable';
+      goOffline();
+      await waitFor(() => expect(eventsBand()).not.toBeNull());
+      await waitFor(() => expect(feedBand()?.textContent).toMatch(/^Offline · as of /));
+    }
+
+    it('each Try again reloads only its own load, and the other band stays', async () => {
+      signedIn();
+      const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde' };
+      const fetched = servingWithFeed(state);
+      await onEvents();
+      fireEvent.click(screen.getByRole('button', { name: /^Notifications, 1 unread/ }));
+      await within(panel()).findByText('Kemi replied');
+
+      await bothOffline(state);
+      state.soirely = 'answers';
+      fetched.mockClear();
+      act(() => within(panel()).getByRole('button', { name: 'Try again' }).click());
+
+      await waitFor(() => expect(feedBand()?.textContent ?? '').toBe(''));
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(asked(fetched, '/api/notifications')).toBe(1);
+      expect(asked(fetched, '/api/orgs/org_1/events')).toBe(0);
+      expect(eventsBand()).not.toBeNull();
+
+      await bothOffline(state);
+      state.soirely = 'answers';
+      fetched.mockClear();
+      const eventsTryAgain = screen
+        .getAllByRole('button', { name: 'Try again' })
+        .find((button) => !panel().contains(button))!;
+      act(() => eventsTryAgain.click());
+
+      await waitFor(() => expect(eventsBand()).toBeNull());
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(asked(fetched, '/api/orgs/org_1/events')).toBeGreaterThan(0);
+      expect(asked(fetched, '/api/notifications')).toBe(0);
+      expect(feedBand()?.textContent).toMatch(/^Offline · as of /);
+    });
   });
 });

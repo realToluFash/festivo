@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { NO_ANSWER_MS, createConnection } from './connection.ts';
+import { type Connection, NO_ANSWER_MS, createConnection } from './connection.ts';
 import {
   ASK_AGAIN_FLOOR_MS,
   NotReached,
@@ -12,9 +12,8 @@ import {
 type Soirely = 'answers' | 'unreachable' | 'broken' | 'silent';
 
 /** A screen with one watched load per reload, and a Soirely the test can switch between answering and not. */
-function screen() {
+function screen(connection = createConnection()) {
   vi.useFakeTimers({ now: new Date('2026-11-01T20:00:00Z') });
-  const connection = createConnection();
   const soirely: { now: Soirely } = { now: 'answers' };
   const failures: unknown[] = [];
   const pressAnswered = vi.fn();
@@ -61,8 +60,8 @@ function screen() {
   return { watch, connection, soirely, reload, failures, pressAnswered, stop };
 }
 
-async function loadedThenOffline() {
-  const it = screen();
+async function loadedThenOffline(connection?: Connection) {
+  const it = screen(connection);
   it.reload();
   await vi.advanceTimersByTimeAsync(0);
   it.soirely.now = 'unreachable';
@@ -193,5 +192,33 @@ describe('the offline watch', () => {
 
     expect(reload).toHaveBeenCalledTimes(1);
     expect(watch.state().stale).toBe(true);
+  });
+
+  it("reloads one screen on its own load's answer, not on another's on the same page, and both when the network returns", async () => {
+    const page = await loadedThenOffline();
+    const feed = await loadedThenOffline(page.connection);
+
+    page.soirely.now = 'answers';
+    page.watch.retry();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(page.watch.state().stale).toBe(false);
+    expect(feed.reload).not.toHaveBeenCalled();
+    expect(feed.watch.state().stale).toBe(true);
+
+    page.connection.deviceOffline();
+    page.reload.mockClear();
+    feed.soirely.now = 'answers';
+    feed.watch.retry();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(feed.watch.state().stale).toBe(false);
+    expect(page.reload).not.toHaveBeenCalled();
+    expect(page.watch.state().stale).toBe(true);
+
+    page.connection.deviceOffline();
+    page.reload.mockClear();
+    feed.reload.mockClear();
+    page.connection.deviceOnline();
+    expect(page.reload).toHaveBeenCalledTimes(1);
+    expect(feed.reload).toHaveBeenCalledTimes(1);
   });
 });

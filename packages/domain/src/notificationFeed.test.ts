@@ -5,11 +5,14 @@ import {
   type LoadedFeed,
   badgeOf,
   feedAllRead,
+  feedWithAllReadRefused,
   feedWithArrival,
   feedWithLiveRead,
   feedWithMissed,
   feedWithPage,
   feedWithRead,
+  feedWithReadsUndone,
+  readSettled,
   whenShown,
 } from './notificationFeed.ts';
 
@@ -67,6 +70,74 @@ describe('the bell feed (sc-3980)', () => {
 
     expect(after.items.map((shown) => shown.id)).toEqual(['far', 'a', 'b']);
     expect(after.unread).toBe(91);
+  });
+
+  test('a read that did not save puts its row back to unread, and the count up', () => {
+    const loaded = feed([item('a'), item('b')]);
+
+    expect(feedWithReadsUndone(feedWithRead(loaded, 'a'), ['a'])).toEqual(loaded);
+  });
+
+  test('undoing leaves alone a row no longer shown, or already unread', () => {
+    const loaded = feed([item('a')]);
+
+    expect(feedWithReadsUndone(loaded, ['a'])).toBe(loaded);
+    expect(feedWithReadsUndone(loaded, ['gone'])).toBe(loaded);
+  });
+
+  test('a refused Mark all read with nothing arriving meanwhile is the feed as it was (sc-27096)', () => {
+    const before = { ...feed([item('a'), item('b', { read: true })], 'cursor'), unread: 7 };
+
+    expect(feedWithAllReadRefused(feedAllRead(before), before, false)).toBe(before);
+  });
+
+  test('a refused Mark all read keeps an arrival on top, unread, and the count the server published (sc-27096)', () => {
+    const before = feed([item('a'), item('b', { read: true })]);
+    const current = feedWithArrival(feedAllRead(before), { item: item('new'), unreadCount: 2 });
+    const after = feedWithAllReadRefused(current, before, true);
+
+    expect(after.items.map((shown) => [shown.id, shown.read])).toEqual([
+      ['new', false],
+      ['a', false],
+      ['b', true],
+    ]);
+    expect(after.unread).toBe(2);
+  });
+
+  test('reads page one again when an item arrived while it loaded', async () => {
+    let arrivals = 0;
+    const pages = ['without B', 'with B'];
+    const asked: string[] = [];
+
+    const page = await readSettled(
+      () => {
+        const next = pages[asked.length] ?? 'none';
+        asked.push(next);
+        if (asked.length === 1) arrivals += 1;
+
+        return Promise.resolve(next);
+      },
+      () => arrivals,
+    );
+
+    expect(asked).toEqual(['without B', 'with B']);
+    expect(page).toBe('with B');
+  });
+
+  test('reads once when nothing arrived meanwhile', async () => {
+    let asked = 0;
+
+    const page = await readSettled(
+      () => {
+        asked += 1;
+
+        return Promise.resolve('page');
+      },
+      () => 0,
+    );
+
+    expect(asked).toBe(1);
+    expect(page).toBe('page');
   });
 
   test('opening an unread item reads it once', () => {
