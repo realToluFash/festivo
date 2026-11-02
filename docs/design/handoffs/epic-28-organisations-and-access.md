@@ -24,9 +24,13 @@ and switch between them constantly. There are eight ways in, and one state machi
 
 ## Layouts, and why
 
-**Desktop first, and mostly desktop only.** This is administration, and the narrow web
-carries organisation settings, so member management needs a narrow form too. The apps need
-only enough to see who is who.
+**Desktop web only for organisation settings and member management.** They are the
+signed-in web, which has no layout for a phone's or a tablet's browser (epic 22091,
+"Decided, 2 Nov (pm, on ux's #28764)"). Down to 320 CSS px a page is the desktop page
+reflowed (WCAG 2.2 §1.4.10), with nothing lost or cut off, and a 320 frame on a board is
+that check. **A page someone opens from a link or a code with nothing to install keeps its
+phone layout**: redeeming a join code (sc-72) is one. The apps need only enough to see who
+is who.
 
 ## What these screens must honour
 
