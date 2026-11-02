@@ -63,8 +63,20 @@ export function createConnection(
   };
 }
 
+let current = createConnection();
+
 /** The one each client feeds from its fetch and the device's network state. */
-export const connection = createConnection();
+export const connection: Connection = {
+  observe: (answer, asked) => current.observe(answer, asked),
+  deviceOffline: () => current.deviceOffline(),
+  deviceOnline: () => current.deviceOnline(),
+  subscribe: (listener) => current.subscribe(listener),
+};
+
+/** Tests only: a request the last test left unanswered still says `lost` after 20 s, to nobody listening now (sc-28117). */
+export function __freshConnection(): void {
+  current = createConnection();
+}
 
 /** Rejects with `unanswered()` once `ms` pass with no answer, while the load itself carries on unwatched. */
 export function answeredWithin<T>(
