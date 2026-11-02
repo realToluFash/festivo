@@ -1,0 +1,42 @@
+# Mark all read not saved, then the feed not loading, with the API stopped through the harness (sc-23233).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: frame.bell
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil:
+    visible:
+      id: notifications.markAllRead
+    timeout: 15000
+- runFlow:
+    when:
+      visible:
+        id: notifications.pushAsk.notNow
+    commands:
+      - tapOn:
+          id: notifications.pushAsk.notNow
+- takeScreenshot: offline-before
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    id: notifications.markAllRead
+- extendedWaitUntil:
+    visible: '.*{{t:eventMute.notSaved}}.*'
+    timeout: 45000
+- waitForAnimationToEnd
+- takeScreenshot: offline-readall-not-saved
+- tapOn:
+    id: frame.back
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil:
+    visible:
+      id: notifications.tryAgain
+    timeout: 45000
+- waitForAnimationToEnd
+- takeScreenshot: offline-feed-failed
