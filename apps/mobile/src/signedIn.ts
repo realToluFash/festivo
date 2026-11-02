@@ -68,9 +68,9 @@ export function useSignedIn(): SignedIn {
   return current;
 }
 
-/** Somebody is already signed in here, so Home tapped from the frame, which pushes the launch screen again, is not a launch (sc-28178). */
-export function inSession(): boolean {
-  return state.account != null && !ended;
+/** Home tapped from the frame, which pushes the launch screen again, is not a launch while somebody is signed in here (sc-28178). */
+export function resumesSession(tapped: string | undefined): boolean {
+  return tapped === '1' && state.account != null && !ended;
 }
 
 /** Read again after something on a screen changed the account, such as a password set or a provider linked. */

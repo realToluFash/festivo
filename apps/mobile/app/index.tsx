@@ -22,7 +22,7 @@ import { dropRegistration, heldRegistration } from '../src/pendingRegistration.t
 import { launchRoute } from '../src/resumeSignUp.ts';
 import { ruleRefusal, signInRoute } from '../src/kit/signInRules.ts';
 import { SKELETON_AFTER_MS } from '../src/kit/skeleton.ts';
-import { inSession, launchSignedIn } from '../src/signedIn.ts';
+import { launchSignedIn, resumesSession } from '../src/signedIn.ts';
 import { tokens } from '../src/theme/tokens.ts';
 import { unreachableFrom } from '../src/unreachable.ts';
 
@@ -42,7 +42,7 @@ export default function Home() {
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const { tapped } = useLocalSearchParams<{ tapped?: string }>();
-  const [resumed] = useState(() => tapped === '1' && inSession());
+  const [resumed] = useState(() => resumesSession(tapped));
   const [launching, setLaunching] = useState<Launching>(resumed ? 'signedIn' : 'deciding');
   const navigation = useNavigation();
   const left = useRef(false);
