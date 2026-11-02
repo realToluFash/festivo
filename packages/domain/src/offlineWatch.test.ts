@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { type Connection, NO_ANSWER_MS, createConnection } from './connection.ts';
 import {
-  ASK_AGAIN_FLOOR_MS,
   NotReached,
   type OfflineWatch,
   createOfflineWatch,
@@ -10,6 +9,8 @@ import {
 } from './offlineWatch.ts';
 
 type Soirely = 'answers' | 'unreachable' | 'broken' | 'silent';
+
+const TWO_MINUTES_MS = 120_000;
 
 /** A screen with one watched load per reload, and a Soirely the test can switch between answering and not. */
 function screen(connection = createConnection()) {
@@ -103,7 +104,7 @@ describe('the offline watch', () => {
     soirely.now = 'broken';
     connection.deviceOnline();
     await vi.advanceTimersByTimeAsync(0);
-    await vi.advanceTimersByTimeAsync(ASK_AGAIN_FLOOR_MS * 10);
+    await vi.advanceTimersByTimeAsync(TWO_MINUTES_MS);
 
     expect(reload).toHaveBeenCalledTimes(1);
     expect(keepsWhatLoaded(failures.at(-1))).toBe(false);
@@ -151,23 +152,102 @@ describe('the offline watch', () => {
     expect(watch.state()).toMatchObject({ stale: false, unanswered: 0 });
   });
 
-  it('asks again once a load that was out when the network came back has failed, never faster than the floor', async () => {
+  it('loads once when the network returns to a silent Soirely, then waits, however often the device says it is connected', async () => {
     const { watch, soirely, connection, reload } = await loadedThenOffline();
+    const at = watch.state().at;
 
     soirely.now = 'silent';
-    reload();
     connection.deviceOnline();
     expect(reload).toHaveBeenCalledTimes(1);
 
-    soirely.now = 'unreachable';
-    await vi.advanceTimersByTimeAsync(NO_ANSWER_MS + 1);
+    await vi.advanceTimersByTimeAsync(5_000);
+    connection.deviceOnline();
+
+    await vi.advanceTimersByTimeAsync(NO_ANSWER_MS - 5_000);
+    expect(watch.state()).toMatchObject({ out: 0, stale: true, unanswered: 0, at });
+
+    connection.deviceOnline();
+    await vi.advanceTimersByTimeAsync(TWO_MINUTES_MS);
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(watch.state()).toMatchObject({ out: 0, stale: true, unanswered: 0, at });
+  });
+
+  it('follows no load with another when the same load was joined while out', async () => {
+    const { watch, soirely, reload } = await loadedThenOffline();
+
+    soirely.now = 'silent';
+    watch.retry();
+    await vi.advanceTimersByTimeAsync(3_000);
+    watch.askAgain();
+    watch.freshen();
+
+    await vi.advanceTimersByTimeAsync(NO_ANSWER_MS - 3_000);
+    expect(watch.state().out).toBe(0);
+
+    await vi.advanceTimersByTimeAsync(TWO_MINUTES_MS);
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives each new event one load of its own once the last has ended', async () => {
+    const { watch, soirely, connection, reload } = await loadedThenOffline();
+
+    soirely.now = 'silent';
+    connection.deviceOnline();
+    await vi.advanceTimersByTimeAsync(NO_ANSWER_MS);
+    expect(reload).toHaveBeenCalledTimes(1);
+
+    connection.deviceOffline();
+    connection.deviceOnline();
+    await vi.advanceTimersByTimeAsync(NO_ANSWER_MS + TWO_MINUTES_MS);
     expect(reload).toHaveBeenCalledTimes(2);
 
-    // Each of these loads fails, and the network keeps saying it is back: still one load per floor.
-    for (let turn = 0; turn < 5; turn += 1) connection.deviceOnline();
-    await vi.advanceTimersByTimeAsync(ASK_AGAIN_FLOOR_MS - 1);
-    expect(reload.mock.calls.length).toBeLessThanOrEqual(3);
-    expect(watch.state().stale).toBe(true);
+    watch.askAgain();
+    await vi.advanceTimersByTimeAsync(NO_ANSWER_MS + TWO_MINUTES_MS);
+    expect(reload).toHaveBeenCalledTimes(3);
+    expect(watch.state()).toMatchObject({ out: 0, stale: true, unanswered: 0 });
+  });
+
+  it('loads again when another request is answered, and joins the load that starts', async () => {
+    const { watch, soirely, connection, reload } = await loadedThenOffline();
+
+    soirely.now = 'silent';
+    connection.observe(Promise.resolve(new Response('{}')));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(reload).toHaveBeenCalledTimes(1);
+
+    connection.observe(Promise.resolve(new Response('{}')));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(watch.state().out).toBe(1);
+  });
+
+  it('freshens a screen with no band, and joins a load already out', async () => {
+    const { watch, soirely, reload } = screen();
+
+    watch.freshen();
+    expect(reload).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(watch.state().stale).toBe(false);
+
+    soirely.now = 'silent';
+    watch.freshen();
+    watch.freshen();
+    expect(reload).toHaveBeenCalledTimes(2);
+  });
+
+  it('counts a press as unanswered, and an event that joined no press as nothing', async () => {
+    const { watch, soirely, connection } = await loadedThenOffline();
+
+    soirely.now = 'silent';
+    connection.deviceOnline();
+    await vi.advanceTimersByTimeAsync(NO_ANSWER_MS);
+    expect(watch.state().unanswered).toBe(0);
+
+    watch.retry();
+    await vi.advanceTimersByTimeAsync(NO_ANSWER_MS);
+    watch.retry();
+    await vi.advanceTimersByTimeAsync(NO_ANSWER_MS);
+    expect(watch.state().unanswered).toBe(2);
   });
 
   it('wraps what a load threw when the connection fell silent during it', async () => {

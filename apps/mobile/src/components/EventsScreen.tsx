@@ -65,6 +65,12 @@ export function EventsScreen() {
     setAttempt((n) => n + 1);
   }, []);
 
+  const { watch, freshen, stale } = useOffline({
+    loaded: load.kind === 'loaded',
+    reload,
+    focusTitle: () => moveScreenReaderFocus(title.current),
+  });
+
   const [tab, setTab] = useState<{ in: string | undefined; tab: EventsTab }>(() => ({
     in: organisationId,
     tab: organisationId == null ? 'upcoming' : rememberedEventsTab(organisationId),
@@ -78,28 +84,25 @@ export function EventsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      setDeleted(takeDeleted());
+      const gone = takeDeleted();
+      setDeleted(gone);
       // Back from an event's page lands on the tab that now holds it.
       if (organisationId != null) {
         setTab({ in: organisationId, tab: rememberedEventsTab(organisationId) });
       }
-      reload();
-    }, [reload, organisationId]),
+      // A load already out may have left before the delete, so it cannot be joined.
+      if (gone != null) reload();
+      else freshen();
+    }, [reload, freshen, organisationId]),
   );
 
   useEffect(() => {
     const listener = AppState.addEventListener('change', (state) => {
-      if (state === 'active') reload();
+      if (state === 'active') freshen();
     });
 
     return () => listener.remove();
-  }, [reload]);
-
-  const { watch, stale } = useOffline({
-    loaded: load.kind === 'loaded',
-    reload,
-    focusTitle: () => moveScreenReaderFocus(title.current),
-  });
+  }, [freshen]);
 
   useEffect(() => {
     if (organisationId == null || !reads || attempt === 0) return;
@@ -246,7 +249,7 @@ export function EventsScreen() {
         list={list}
         listRefresh={
           reads && load.kind === 'loaded' ? (
-            <RefreshControl refreshing={load.refreshing} onRefresh={reload} />
+            <RefreshControl refreshing={load.refreshing} onRefresh={stale?.retry ?? freshen} />
           ) : undefined
         }
         page={null}

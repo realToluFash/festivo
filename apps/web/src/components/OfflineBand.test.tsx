@@ -141,6 +141,7 @@ describe('the offline band (sc-22586)', () => {
     comeBack();
     await waitFor(() => expect(band()).not.toBeNull());
 
+    goOffline();
     state.soirely = 'answers';
     state.name = 'Adaeze and Tunde, renamed';
     comeBack();

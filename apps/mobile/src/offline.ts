@@ -31,7 +31,12 @@ export function useOffline({
   focusTitle: () => void;
   /** The minute of what the screen shows, where a load that answers does not replace it: Edit details. */
   since?: Date | null;
-}): { watch: <T>(load: Promise<T>) => Promise<T>; stale: Stale | null; refreshing: boolean } {
+}): {
+  watch: <T>(load: Promise<T>) => Promise<T>;
+  freshen: () => void;
+  stale: Stale | null;
+  refreshing: boolean;
+} {
   const [offline] = useState(() => createOfflineWatch({ connection }));
   const state = useSyncExternalStore(offline.subscribe, offline.state);
 
@@ -60,7 +65,12 @@ export function useOffline({
     [state.stale, loaded, at, since, offline, unanswered],
   );
 
-  return { watch: offline.watch, stale, refreshing: state.out > 0 && loaded };
+  return {
+    watch: offline.watch,
+    freshen: offline.freshen,
+    stale,
+    refreshing: state.out > 0 && loaded,
+  };
 }
 
 /** Hands a load's band up to the frame drawn around it, and takes it back when the load unmounts under that frame. */

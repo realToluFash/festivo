@@ -110,6 +110,22 @@ describe("the app's Events, offline", () => {
     expect(offline.state().stale).toBe(false);
   });
 
+  it('asks once when the network returns to a silent Soirely, then waits', async () => {
+    const { offline, connection, soirely, requests, screen } = await loadedThenOffline();
+
+    soirely.now = 'silent';
+    connection.deviceOnline();
+    await vi.advanceTimersByTimeAsync(NO_ANSWER_MS / 2);
+    connection.deviceOnline();
+    await vi.advanceTimersByTimeAsync(NO_ANSWER_MS / 2);
+    connection.deviceOnline();
+    await vi.advanceTimersByTimeAsync(120_000);
+
+    expect(requests).toEqual(['/api/orgs/org_1/events']);
+    expect(offline.state()).toMatchObject({ out: 0, stale: true, unanswered: 0 });
+    expect(screen.load).toEqual({ kind: 'loaded', rows: 3 });
+  });
+
   it('joins the load already out on a second Try again: one request, given up 20 s after the first press', async () => {
     const { offline, soirely, requests, screen } = await loadedThenOffline();
 

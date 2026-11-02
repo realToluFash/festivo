@@ -22,14 +22,14 @@ export interface OfflineState {
   unanswered: number;
 }
 
-/** The least time between two loads the watch starts by itself, so a flaky network cannot spin it. */
-export const ASK_AGAIN_FLOOR_MS = 2_000;
-
 export interface OfflineWatch {
   /** Every load of the screen goes through here, or the band never learns that Soirely answered again. */
   watch<T>(load: Promise<T>): Promise<T>;
   retry(): void;
+  /** Something new happened, so a screen under the band loads once; a load out is joined, and one that ends unanswered is not followed by another (sc-27673). */
   askAgain(): void;
+  /** The screen's own reason to load, band or no band: coming back to it, or to the foreground. A load out is joined. */
+  freshen(): void;
   /** The screen as it stands this render: whether it shows a load, how it loads again, and where focus goes after a press. */
   setScreen(screen: Screen): void;
   state(): OfflineState;
@@ -56,10 +56,6 @@ export function createOfflineWatch({
   let state: OfflineState = { at: null, stale: false, out: 0, unanswered: 0 };
   let screen: Screen = { loaded: false, reload: () => {}, pressAnswered: () => {} };
   let pressed = false;
-  let askedWhileOut = false;
-  let lastStart = Number.NEGATIVE_INFINITY;
-  let askLater: ReturnType<typeof setTimeout> | null = null;
-  let stopped = false;
   const outLoads = new Set<{ lost: boolean }>();
   const listeners = new Set<() => void>();
   const asking = () => [...outLoads].some((load) => !load.lost);
@@ -70,29 +66,18 @@ export function createOfflineWatch({
     for (const listener of [...listeners]) listener();
   };
 
-  const askAgainSoon = () => {
-    if (askLater != null || stopped) return;
-    askLater = setTimeout(
-      () => {
-        askLater = null;
-        screen.reload();
-      },
-      Math.max(0, lastStart + ASK_AGAIN_FLOOR_MS - now().getTime()),
-    );
+  const freshen = () => {
+    if (state.out === 0) screen.reload();
   };
 
   const askAgain = () => {
-    if (!state.stale) return;
-
-    if (state.out === 0) screen.reload();
-    else askedWhileOut = true;
+    if (state.stale) freshen();
   };
 
   return {
     watch<T>(load: Promise<T>): Promise<T> {
       const heard = { lost: false };
       outLoads.add(heard);
-      lastStart = now().getTime();
       set({ out: state.out + 1 });
       const asked = screen.loaded
         ? answeredWithin(load, () => new NotReached(), NO_ANSWER_MS)
@@ -101,7 +86,6 @@ export function createOfflineWatch({
       return asked.then(
         (value) => {
           outLoads.delete(heard);
-          askedWhileOut = false;
           set({ out: state.out - 1, at: now(), stale: false });
 
           if (pressed) {
@@ -122,9 +106,6 @@ export function createOfflineWatch({
             ...(pressAnsweredNot ? { unanswered: state.unanswered + 1 } : {}),
           });
 
-          if (askedWhileOut && !reached) askAgainSoon();
-          askedWhileOut = false;
-
           throw reached || error instanceof NotReached ? error : new NotReached(error);
         },
       );
@@ -132,9 +113,10 @@ export function createOfflineWatch({
     retry() {
       pressed = true;
       // A press while a load is out joins it: no second load, and its 20 s keep counting from the first.
-      if (state.out === 0) screen.reload();
+      freshen();
     },
     askAgain,
+    freshen,
     setScreen(now) {
       screen = now;
     },
@@ -145,7 +127,6 @@ export function createOfflineWatch({
       return () => listeners.delete(listener);
     },
     start() {
-      stopped = false;
       const others = watching.get(connection) ?? new Set();
       watching.set(connection, others.add(self));
       const stop = connection.subscribe((change) => {
@@ -164,9 +145,6 @@ export function createOfflineWatch({
       return () => {
         stop();
         others.delete(self);
-        stopped = true;
-        if (askLater != null) clearTimeout(askLater);
-        askLater = null;
       };
     },
   };

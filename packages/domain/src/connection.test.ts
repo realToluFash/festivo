@@ -51,6 +51,22 @@ describe('the connection', () => {
     expect(heard).toEqual(['lost']);
   });
 
+  it('hears the device come back once for each time it went offline, however often it says it is connected', () => {
+    const { connection, heard } = watched();
+
+    connection.deviceOnline();
+    expect(heard).toEqual([]);
+
+    connection.deviceOffline();
+    connection.deviceOnline();
+    connection.deviceOnline();
+    expect(heard).toEqual(['lost', 'deviceBack']);
+
+    connection.deviceOffline();
+    connection.deviceOnline();
+    expect(heard).toEqual(['lost', 'deviceBack', 'lost', 'deviceBack']);
+  });
+
   it('hears nothing from a request the client itself aborted', async () => {
     const { connection, heard } = watched();
     const controller = new AbortController();
