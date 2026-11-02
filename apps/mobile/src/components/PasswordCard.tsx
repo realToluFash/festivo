@@ -43,6 +43,7 @@ import {
   stepClosed,
   useAboveKeyboard,
   useFocusBackToOpener,
+  useRoomAboveKeyboard,
   useStepClose,
 } from './Screen.tsx';
 import { Text } from './Text.tsx';
@@ -245,6 +246,15 @@ function Changing({
   const [saving, setSaving] = useState(false);
   const [refusal, setRefusal] = useState<PasswordRefusal | null>(null);
   const aboveKeyboard = useAboveKeyboard(closing);
+  const room = useRoomAboveKeyboard();
+  // The step's height with its notes, measured with them or without them and their last height added back.
+  const [stepHeight, setStepHeight] = useState(0);
+  const notesHeight = useRef(0);
+  // While the keys are up, the notes give way when the field and both buttons could not fit above the keys with them (sc-28122).
+  // A closing step keeps them as they were, so Cancel does not jump as the keys go down (sc-18588).
+  const [notesAway, setNotesAway] = useState(false);
+  const away = room != null && stepHeight > room;
+  if (!closing && away !== notesAway) setNotesAway(away);
   const checks = useFormChecks(
     ['currentPassword', 'newPassword'] as const,
     (field, value) =>
@@ -290,7 +300,12 @@ function Changing({
     checks.errors.newPassword ?? (refusal?.field === 'newPassword' ? refusal.message : null);
 
   return (
-    <View style={styles.group}>
+    <View
+      style={styles.group}
+      onLayout={(event) =>
+        setStepHeight(event.nativeEvent.layout.height + (notesAway ? notesHeight.current : 0))
+      }
+    >
       <View {...hidden} style={styles.group}>
         <Title text={t('passwordCard.formTitle')} answer="changing" />
 
@@ -368,20 +383,29 @@ function Changing({
 
           <PasswordRule met={lengthMet} testID="password" />
 
-          <Text
-            size={tokens.typeBodyPhone.size}
-            style={styles.secondary}
-            accessible={closing ? false : undefined}
-          >
-            {t('passwordCard.signsOut')}
-          </Text>
-          <Text
-            size={tokens.typeBodyPhone.size}
-            style={styles.secondary}
-            accessible={closing ? false : undefined}
-          >
-            {t('passwordCard.emailed', { email })}
-          </Text>
+          {!notesAway && (
+            <View
+              style={styles.group}
+              onLayout={(event) => {
+                notesHeight.current = event.nativeEvent.layout.height + tokens.spaceLg;
+              }}
+            >
+              <Text
+                size={tokens.typeBodyPhone.size}
+                style={styles.secondary}
+                accessible={closing ? false : undefined}
+              >
+                {t('passwordCard.signsOut')}
+              </Text>
+              <Text
+                size={tokens.typeBodyPhone.size}
+                style={styles.secondary}
+                accessible={closing ? false : undefined}
+              >
+                {t('passwordCard.emailed', { email })}
+              </Text>
+            </View>
+          )}
 
           <PrimaryButton
             label={saving ? t('passwordCard.saving') : t('passwordCard.save')}
