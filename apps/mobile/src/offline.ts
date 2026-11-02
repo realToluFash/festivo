@@ -11,6 +11,14 @@ export interface Stale {
   unanswered: number;
 }
 
+/** What a screen's load hands up to the frame drawn around it: the band and Refreshing…. */
+export interface ScreenOffline {
+  stale: Stale | null;
+  refreshing: boolean;
+}
+
+export const NOT_OFFLINE: ScreenOffline = { stale: null, refreshing: false };
+
 /** The web's `useOffline`, with the app's foreground in place of the tab's; every load goes through `watch`. */
 export function useOffline({
   loaded,

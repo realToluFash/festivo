@@ -37,7 +37,7 @@ import { currentLocale } from '../i18n/index.ts';
 import { SECTION_HREF } from '../kit/appNav.ts';
 import { markAllRead } from '../kit/notificationFeed.ts';
 import { appPlace } from '../kit/notificationPlace.ts';
-import { type Stale, keepsWhatLoaded, useOffline } from '../offline.ts';
+import { type ScreenOffline, keepsWhatLoaded, useOffline } from '../offline.ts';
 import { arrivalsSeen, countedSince, setUnread, useArrivals } from '../notificationsUnread.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Footnote, PrimaryButton, QuietButton } from './Buttons.tsx';
@@ -54,18 +54,13 @@ type Feed =
   | { status: 'failed' }
   | { status: 'loaded'; items: NotificationItem[]; unread: number; next: string | null };
 
-export interface FeedOffline {
-  stale: Stale | null;
-  refreshing: boolean;
-}
-
 /** `NotificationsBell-*` in the app (sc-3980): the feed, live, with its push ask, Mark all read and Show more; `heading` is the frame's title, and `onOffline` hands the screen the feed's band and Refreshing… (sc-27096). */
 export function NotificationsFeed({
   heading,
   onOffline,
 }: {
   heading: RefObject<TextHandle | null>;
-  onOffline: (offline: FeedOffline) => void;
+  onOffline: (offline: ScreenOffline) => void;
 }) {
   const { t } = useTranslation();
   const [feed, setFeed] = useState<Feed>({ status: 'loading' });

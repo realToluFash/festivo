@@ -9,7 +9,7 @@ import {
   serverClock,
 } from '@soirely/domain';
 import { type EventStatus, type OrganisationEvent } from '@soirely/api-client';
-import { useEffect, useState } from 'react';
+import { type RefObject, useEffect, useLayoutEffect, useState } from 'react';
 import { PixelRatio, Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -17,10 +17,12 @@ import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { SMALL_LINE, TITLE_LINE, rowsFloor } from '../layout/textSize.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
+import { type ScreenOffline, keepsWhatLoaded, useOffline } from '../offline.ts';
 import { tokens } from '../theme/tokens.ts';
 import { QuietButton, SecondaryButton } from './Buttons.tsx';
 import { Notice } from './Notice.tsx';
-import { Text } from './Text.tsx';
+import { moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { Text, type TextHandle } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { distanceWords } from '../kit/distanceWords.ts';
 import { Arrived, Skeleton } from './Skeleton.tsx';
@@ -46,31 +48,47 @@ const OWNER_SHAPE: Record<MilestoneOwner, string> = { event: '▦', you: '●', 
 
 const HIDDEN = { accessibilityElementsHidden: true, importantForAccessibility: 'no' } as const;
 
+/** A screen that shows its own band reads through its watch, and keeps the dates it showed when a read does not reach Soirely (sc-27086). */
+interface Watched {
+  watch: <T>(load: Promise<T>) => Promise<T>;
+  refresh: number;
+}
+
 /** Read again when the event's status moves, so a Call off or End now shows its dates without a reload; judged by a clock no older than the read, so a date it stamped is never still ahead. */
 function useTimeline(
   eventId: string,
   now: Date,
   status?: EventStatus,
+  watched?: Watched,
 ): { load: Load; now: Date; ended: boolean; retried: boolean; retry: () => void } {
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const watch = watched?.watch;
+  const refresh = watched?.refresh ?? 0;
 
   useEffect(() => {
     let live = true;
-
-    Promise.all([
+    const read = Promise.all([
       api.eventTimeline(eventId),
       status ?? api.event(eventId).then((event) => event.status),
-    ]).then(
-      ([timeline, read]) =>
-        live && setLoad({ kind: 'loaded', timeline, status: read, at: serverClock.now() }),
-      () => live && setLoad({ kind: 'failed' }),
+    ]);
+
+    (watch == null ? read : watch(read)).then(
+      ([timeline, standing]) =>
+        live && setLoad({ kind: 'loaded', timeline, status: standing, at: serverClock.now() }),
+      (error: unknown) =>
+        live &&
+        setLoad((was) =>
+          watch != null && was.kind === 'loaded' && keepsWhatLoaded(error)
+            ? was
+            : { kind: 'failed' },
+        ),
     );
 
     return () => {
       live = false;
     };
-  }, [eventId, status, attempt]);
+  }, [eventId, status, attempt, watch, refresh]);
 
   return {
     load,
@@ -168,18 +186,37 @@ export function ComingUp({
   );
 }
 
-/** Every milestone, earliest first, under the line naming the event's zone. */
+/** Every milestone, earliest first, under the line naming the event's zone; `onOffline` hands the screen its band and Refreshing…, `heading` takes focus once Try again answers (sc-27086). */
 export function AllDates({
   kind,
   eventId,
   now: tick,
+  heading,
+  onOffline,
 }: {
   kind: LayoutKind;
   eventId: string;
   now: Date;
+  heading: RefObject<TextHandle | null>;
+  onOffline: (offline: ScreenOffline) => void;
 }) {
   const { t } = useTranslation();
-  const { load, now, ended, retried, retry } = useTimeline(eventId, tick);
+  const [refresh, setRefresh] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  const { watch, stale, refreshing } = useOffline({
+    loaded,
+    reload: () => setRefresh((n) => n + 1),
+    focusTitle: () => moveScreenReaderFocus(heading.current),
+  });
+  const { load, now, ended, retried, retry } = useTimeline(eventId, tick, undefined, {
+    watch,
+    refresh,
+  });
+  if (loaded !== (load.kind === 'loaded')) setLoaded(load.kind === 'loaded');
+
+  useLayoutEffect(() => {
+    onOffline({ stale, refreshing });
+  }, [onOffline, stale, refreshing]);
 
   return (
     <View style={cardFrame(kind)} testID="timeline.allDates.page">

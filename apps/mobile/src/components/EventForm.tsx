@@ -1,5 +1,4 @@
 import {
-  ApiError,
   type EventCover as EventCoverPhoto,
   type Membership,
   type TaggedEvent,
@@ -863,22 +862,6 @@ export function Moment({
       )}
     </View>
   );
-}
-
-/** Opened for editing, the event is read with its tag, as the web's form reads it (sc-3587). */
-export async function readTagged(
-  eventId: string,
-  organisationId: string,
-): Promise<TaggedEvent | 'notFound' | 'failed'> {
-  try {
-    const tagged = await api.taggedEvent(eventId);
-
-    return tagged.event.organisationId === organisationId ? tagged : 'notFound';
-  } catch (error) {
-    return error instanceof ApiError && (error.status === 404 || error.status === 403)
-      ? 'notFound'
-      : 'failed';
-  }
 }
 
 const styles = StyleSheet.create({

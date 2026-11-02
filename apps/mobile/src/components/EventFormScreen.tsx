@@ -1,7 +1,7 @@
-import { type TaggedEvent } from '@soirely/api-client';
+import { ApiError, type TaggedEvent } from '@soirely/api-client';
 import { roleHolds } from '@soirely/domain';
 import { Redirect, router, useNavigation } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -11,16 +11,20 @@ import { formTitles } from '../kit/formTitles.ts';
 import { goToArea, goUpToEvent } from '../kit/upToEvent.ts';
 import { markSaved } from '../kit/eventSaved.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
+import { type Stale, useOffline } from '../offline.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
-import { AppFrame, type InsideEvent } from './AppFrame.tsx';
+import { api } from '../api.ts';
+import { AppFrame, type InsideEvent, besideRow } from './AppFrame.tsx';
 import { bodyEdges } from './bodyEdges.ts';
 import { PrimaryButton, QuietButton } from './Buttons.tsx';
-import { EventForm, readTagged } from './EventForm.tsx';
+import { EventForm } from './EventForm.tsx';
 import { Notice } from './Notice.tsx';
 import { readOut } from './ReadOut.tsx';
+import { Refreshing } from './Refreshing.tsx';
+import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Screen } from './Screen.tsx';
-import { Text } from './Text.tsx';
+import { Text, type TextHandle } from './Text.tsx';
 import { Arrived, Skeleton } from './Skeleton.tsx';
 import type { EditAt } from '../kit/eventNav.ts';
 
@@ -60,7 +64,7 @@ export function NewEventScreen() {
   );
 }
 
-/** An event's page > Edit details, `App event form` state Edit details (sc-3595). */
+/** An event's page > Edit details, `App event form` state Edit details (sc-3595), with its band and Refreshing… (sc-27086). */
 export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt | undefined }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
@@ -68,23 +72,38 @@ export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt |
   const organisationId = organisation?.id;
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const [refresh, setRefresh] = useState(0);
   const [reads, setReads] = useState(0);
   const manages = organisation != null && roleHolds(organisation, 'events.manage');
   const navigation = useNavigation();
+  const title = useRef<TextHandle>(null);
+  const { watch, stale, refreshing } = useOffline({
+    loaded: 'event' in load,
+    reload: () => setRefresh((n) => n + 1),
+    focusTitle: () => moveScreenReaderFocus(title.current),
+  });
 
+  // Once the form shows, a load only asks whether Soirely answers: the form and the tag it saves against stay as opened (Decided, 2 Nov).
   useEffect(() => {
     if (organisationId == null || !manages) return;
     let live = true;
+    const settle = (read: Load) => live && setLoad((was) => ('event' in was ? was : read));
 
-    void readTagged(eventId, organisationId).then((read) => {
-      if (!live) return;
-      setLoad(typeof read === 'string' ? { kind: read } : read);
-    });
+    watch(api.taggedEvent(eventId)).then(
+      (tagged) =>
+        settle(tagged.event.organisationId === organisationId ? tagged : { kind: 'notFound' }),
+      (error: unknown) =>
+        settle(
+          error instanceof ApiError && (error.status === 404 || error.status === 403)
+            ? { kind: 'notFound' }
+            : { kind: 'failed' },
+        ),
+    );
 
     return () => {
       live = false;
     };
-  }, [eventId, organisationId, manages, attempt]);
+  }, [eventId, organisationId, manages, attempt, refresh, watch]);
 
   if (organisation != null && !manages) return <Redirect href={eventHref(eventId)} />;
 
@@ -92,6 +111,9 @@ export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt |
     <FormFrame
       kind={kind}
       title={t('eventEdit.title')}
+      titleRef={title}
+      offline={stale}
+      refreshing={refreshing ? <Refreshing testID="eventForm.refreshing" /> : undefined}
       onCancel={() => leave(eventHref(eventId))}
       inEvent={{
         area: 'overview',
@@ -169,6 +191,9 @@ export function FormFrame({
   onCancel,
   cancelOff = false,
   inEvent,
+  titleRef,
+  offline = null,
+  refreshing,
   children,
 }: {
   kind: LayoutKind;
@@ -177,16 +202,32 @@ export function FormFrame({
   onCancel: () => void;
   cancelOff?: boolean;
   inEvent?: InsideEvent;
-  children: React.ReactNode;
+  /** The form's own title, wherever the layout draws it: it takes focus once Try again answers. */
+  titleRef?: RefObject<TextHandle | null>;
+  offline?: Stale | null;
+  /** Beside Cancel, the form's Back (sc-27086). */
+  refreshing?: ReactNode;
+  children: ReactNode;
 }) {
   const { t } = useTranslation();
   const phone = kind === 'phone';
   const { bar, heading } = formTitles(kind, title, shortTitle, t('eventsScreen.title'));
+  const cancel = !phone && (
+    <QuietButton
+      label={t('eventEdit.cancel')}
+      onPress={onCancel}
+      off={cancelOff}
+      testID="eventForm.cancel"
+    />
+  );
 
   return (
     <AppFrame
       current="events"
       title={bar}
+      titleRef={heading == null ? titleRef : undefined}
+      offline={offline}
+      besideBack={phone ? refreshing : undefined}
       back={
         phone
           ? { label: t('eventEdit.cancel'), onPress: () => cancelOff || onCancel(), off: cancelOff }
@@ -198,16 +239,21 @@ export function FormFrame({
       <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
         {heading != null && (
           <View style={styles.head}>
-            {!phone && (
-              <QuietButton
-                label={t('eventEdit.cancel')}
-                onPress={onCancel}
-                off={cancelOff}
-                testID="eventForm.cancel"
-              />
+            {!phone && refreshing != null ? (
+              <View style={[besideRow.row, styles.across]}>
+                {cancel}
+                {refreshing}
+              </View>
+            ) : (
+              cancel
             )}
             {heading != null && (
-              <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
+              <Text
+                size={tokens.typeTitlePhone.size}
+                weight="bold"
+                accessibilityRole="header"
+                ref={titleRef}
+              >
                 {heading}
               </Text>
             )}
@@ -222,6 +268,7 @@ export function FormFrame({
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
   head: { gap: tokens.spaceSm, alignItems: 'flex-start' },
+  across: { alignSelf: 'stretch' },
   phone: {
     gap: tokens.spaceLg,
     paddingTop: tokens.spaceXl,

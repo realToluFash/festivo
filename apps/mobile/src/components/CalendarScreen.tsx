@@ -30,7 +30,7 @@ import {
   weekdayNames,
 } from '@soirely/domain';
 import { Redirect, router } from 'expo-router';
-import { type RefObject, useEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -40,6 +40,7 @@ import { dateLocale } from '../i18n/index.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { PHASE_WORD } from '../kit/makeLive.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
+import { NOT_OFFLINE, type ScreenOffline, keepsWhatLoaded, useOffline } from '../offline.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AppFrame } from './AppFrame.tsx';
@@ -47,6 +48,8 @@ import { bodyEdges } from './bodyEdges.ts';
 import { CalendarSubscribe } from './CalendarSubscribe.tsx';
 import { calendarGrid } from './calendarGrid.ts';
 import { QuietButton, SecondaryButton } from './Buttons.tsx';
+import { Refreshing } from './Refreshing.tsx';
+import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { cardFrame } from './cardFrame.ts';
 import { EventState, EventsFailed, NoEvents } from './Events.tsx';
 import { Screen, useBroughtIntoViewOn } from './Screen.tsx';
@@ -79,17 +82,25 @@ type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; events:
 
 type Item = CalendarItem<ListedEvent>;
 
-/** Calendar, `Calendar-*` (sc-3625): the organisation's events and their milestones, by month or by day. */
+/** Calendar, `Calendar-*` (sc-3625): the organisation's events and their milestones, by month or by day, with its band and Refreshing… (sc-27086). */
 export function CalendarScreen() {
   const { t } = useTranslation();
   const { kind } = useLayout();
   const { organisation } = useSignedIn();
+  const title = useRef<TextHandle>(null);
+  const [offline, setOffline] = useState<ScreenOffline>(NOT_OFFLINE);
   const reads = organisation != null && roleHolds(organisation, 'events.read');
 
   if (organisation != null && !reads) return <Redirect href={DESTINATION_HREF.home} />;
 
   return (
-    <AppFrame current="calendar" title={t('calendar.title')}>
+    <AppFrame
+      current="calendar"
+      title={t('calendar.title')}
+      titleRef={title}
+      offline={offline.stale}
+      besideTitle={offline.refreshing ? <Refreshing testID="calendar.refreshing" /> : undefined}
+    >
       {organisation != null && (
         <CalendarOf
           key={organisation.id}
@@ -97,6 +108,8 @@ export function CalendarScreen() {
           organisationName={organisation.name}
           creates={roleHolds(organisation, 'events.create')}
           kind={kind}
+          heading={title}
+          onOffline={setOffline}
         />
       )}
     </AppFrame>
@@ -108,11 +121,15 @@ function CalendarOf({
   organisationName,
   creates,
   kind,
+  heading,
+  onOffline,
 }: {
   organisationId: string;
   organisationName: string;
   creates: boolean;
   kind: LayoutKind;
+  heading: RefObject<TextHandle | null>;
+  onOffline: (offline: ScreenOffline) => void;
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
@@ -121,6 +138,7 @@ function CalendarOf({
   const landscape = kind === 'tabletLandscape';
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const [refresh, setRefresh] = useState(0);
   const [kept, setKept] = useState<CalendarPlace | null>(null);
   const [show, setShow] = useState<CalendarShow>('all');
   const [openDay, setOpenDay] = useState<string | null>(null);
@@ -128,6 +146,15 @@ function CalendarOf({
   const opener = useRef<ViewInstance>(null);
   const view: CalendarView = kept?.view ?? (phone ? 'agenda' : 'month');
   const month: CalendarMonth = kept?.month ?? monthOfDay(today);
+  const { watch, stale, refreshing } = useOffline({
+    loaded: load.kind === 'loaded',
+    reload: () => setRefresh((n) => n + 1),
+    focusTitle: () => moveScreenReaderFocus(heading.current),
+  });
+
+  useLayoutEffect(() => {
+    onOffline({ stale, refreshing });
+  }, [onOffline, stale, refreshing]);
 
   useEffect(() => {
     let live = true;
@@ -145,15 +172,19 @@ function CalendarOf({
   useEffect(() => {
     let live = true;
 
-    api.allEvents(organisationId).then(
+    watch(api.allEvents(organisationId)).then(
       (events) => live && setLoad({ kind: 'loaded', events }),
-      () => live && setLoad({ kind: 'failed' }),
+      (error: unknown) =>
+        live &&
+        setLoad((was) =>
+          was.kind === 'loaded' && keepsWhatLoaded(error) ? was : { kind: 'failed' },
+        ),
     );
 
     return () => {
       live = false;
     };
-  }, [organisationId, attempt]);
+  }, [organisationId, attempt, refresh, watch]);
 
   const keep = (place: CalendarPlace) => {
     setKept(place);
