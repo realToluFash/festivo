@@ -23,9 +23,12 @@ for several organisations at once. Plans are sold on the web only.
 
 ## Layouts, and why
 
-**Desktop and the narrow web only.** This is one of the three things the narrow web
-carries, so it needs a real phone-browser design. **Not in the apps at all** — app stores
-take a share of anything bought inside an app.
+**Desktop web only.** The web has no layout for a phone or a tablet (owner, 1 Nov 2026;
+epic 37, "Decided, 2 Nov (pm, on ux's #28753)"). Down to 320 CSS px it is the desktop page
+reflowed (WCAG 2.2 §1.4.10, 1280 at 400% zoom), with nothing lost or cut off. A board may
+keep a 320 frame as that check. It draws no frame, button or layout of its own for a
+phone's browser. **Not in the apps at all**: app stores take a share of anything bought
+inside an app.
 
 ## What these screens must honour
 
