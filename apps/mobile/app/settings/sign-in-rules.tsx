@@ -6,7 +6,8 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../src/api.ts';
 import { AnswerHeading } from '../../src/components/AnswerHeading.tsx';
-import { AppFrame } from '../../src/components/AppFrame.tsx';
+import { AppFrame, besideRow } from '../../src/components/AppFrame.tsx';
+import { Refreshing } from '../../src/components/Refreshing.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import { SecondaryButton } from '../../src/components/Buttons.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
@@ -46,7 +47,7 @@ export default function SignInRules() {
   const retried = useRef(false);
   const heading = useRef<TextHandle>(null);
   const [refresh, setRefresh] = useState(0);
-  const { watch, stale } = useOffline({
+  const { watch, stale, refreshing } = useOffline({
     loaded: load.kind === 'loaded',
     reload: () => setRefresh((n) => n + 1),
     focusTitle: () => moveScreenReaderFocus(heading.current),
@@ -89,26 +90,35 @@ export default function SignInRules() {
     load.kind === 'loaded' && organisationId != null
       ? limitFromElsewhere(load.page.inactivityLimit, organisationId)
       : null;
+  const refreshingWords = refreshing ? <Refreshing testID="signInRules.refreshing" /> : null;
 
   return (
     <AppFrame
       current="settings"
       offline={stale}
+      besideTitle={alone ? refreshingWords : undefined}
       title={alone ? t('settings.signInRules') : t('settings.title')}
       back={alone ? backToSettings(t('settings.title')) : undefined}
     >
       <SettingsSplit open="signInRules">
         <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
-          <AnswerHeading
-            ref={heading}
-            size={
-              kind === 'tabletLandscape' ? tokens.typeTitlePage.size : tokens.typeTitlePhone.size
-            }
-            weight="bold"
-            answer={load.kind === 'loaded' && load.tapped ? load : undefined}
-          >
-            {title}
-          </AnswerHeading>
+          <View style={besideRow.row}>
+            <View style={styles.shrink}>
+              <AnswerHeading
+                ref={heading}
+                size={
+                  kind === 'tabletLandscape'
+                    ? tokens.typeTitlePage.size
+                    : tokens.typeTitlePhone.size
+                }
+                weight="bold"
+                answer={load.kind === 'loaded' && load.tapped ? load : undefined}
+              >
+                {title}
+              </AnswerHeading>
+            </View>
+            {!alone && refreshingWords}
+          </View>
           <Text size={tokens.typeBodyPhone.size} style={styles.intro}>
             {t('signInRules.readIntro')}
           </Text>
@@ -251,6 +261,7 @@ function Rule({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
+  shrink: { flexShrink: 1, minWidth: 0 },
   phone: {
     gap: tokens.spaceLg,
     paddingTop: tokens.spaceXl,

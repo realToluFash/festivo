@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { AppFrame } from '../../src/components/AppFrame.tsx';
+import { AppFrame, besideRow } from '../../src/components/AppFrame.tsx';
+import { Refreshing } from '../../src/components/Refreshing.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import { api } from '../../src/api.ts';
 import { CompanyDomainsCard } from '../../src/components/CompanyDomainsCard.tsx';
@@ -41,7 +42,7 @@ export default function Organisation() {
   const organisationId = organisation?.id;
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const [refresh, setRefresh] = useState(0);
-  const { watch, stale } = useOffline({
+  const { watch, stale, refreshing } = useOffline({
     loaded: loadedFor != null && loadedFor === organisationId,
     reload: () => setRefresh((n) => n + 1),
     focusTitle: () => moveScreenReaderFocus(title.current),
@@ -67,10 +68,13 @@ export default function Organisation() {
     };
   }, [organisationId, refresh, watch]);
 
+  const refreshingWords = refreshing ? <Refreshing testID="organisation.refreshing" /> : null;
+
   return (
     <AppFrame
       current="settings"
       offline={stale}
+      besideTitle={alone ? refreshingWords : undefined}
       titleRef={alone ? title : undefined}
       title={alone ? t('settings.organisation') : t('settings.title')}
       back={alone ? backToSettings(t('settings.title')) : undefined}
@@ -78,14 +82,19 @@ export default function Organisation() {
       <SettingsSplit open="organisation">
         <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
           {!alone && (
-            <Text
-              ref={title}
-              size={tokens.typeTitlePage.size}
-              weight="bold"
-              accessibilityRole="header"
-            >
-              {t('settings.organisation')}
-            </Text>
+            <View style={besideRow.row}>
+              <View style={styles.shrink}>
+                <Text
+                  ref={title}
+                  size={tokens.typeTitlePage.size}
+                  weight="bold"
+                  accessibilityRole="header"
+                >
+                  {t('settings.organisation')}
+                </Text>
+              </View>
+              {refreshingWords}
+            </View>
           )}
           <Text size={tokens.typeBodyPhone.size} style={styles.intro}>
             {t('orgGeneral.intro')}
@@ -152,6 +161,7 @@ async function rereadOrganisation(id: string): Promise<void> {
 }
 
 const styles = StyleSheet.create({
+  shrink: { flexShrink: 1, minWidth: 0 },
   phone: {
     gap: tokens.spaceLg,
     paddingTop: tokens.spaceXl,

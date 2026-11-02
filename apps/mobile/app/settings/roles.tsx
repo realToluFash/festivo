@@ -6,7 +6,8 @@ import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../src/api.ts';
-import { AppFrame } from '../../src/components/AppFrame.tsx';
+import { AppFrame, besideRow } from '../../src/components/AppFrame.tsx';
+import { Refreshing } from '../../src/components/Refreshing.tsx';
 import { PrimaryButton, SecondaryButton } from '../../src/components/Buttons.tsx';
 import {
   type ListAndPageSpacing,
@@ -73,7 +74,7 @@ export default function RolesScreen() {
   const phone = kind === 'phone';
   const landscape = kind === 'tabletLandscape';
   const [refresh, setRefresh] = useState(0);
-  const { watch, stale } = useOffline({
+  const { watch, stale, refreshing } = useOffline({
     loaded: load.kind === 'loaded',
     reload: () => setRefresh((n) => n + 1),
     focusTitle: () => moveScreenReaderFocus(rolesTitle.current),
@@ -147,17 +148,23 @@ export default function RolesScreen() {
         : { in: organisationId, pane: { kind: 'role', id } },
     );
 
+  const refreshingWords = refreshing ? <Refreshing testID="roles.refreshing" /> : null;
   const heading = (
     <View style={styles.heading}>
       {!alone && (
-        <Text
-          ref={rolesTitle}
-          size={tokens.typeTitlePhone.size}
-          weight="bold"
-          accessibilityRole="header"
-        >
-          {t('rolesScreen.title')}
-        </Text>
+        <View style={besideRow.row}>
+          <View style={styles.shrink}>
+            <Text
+              ref={rolesTitle}
+              size={tokens.typeTitlePhone.size}
+              weight="bold"
+              accessibilityRole="header"
+            >
+              {t('rolesScreen.title')}
+            </Text>
+          </View>
+          {refreshingWords}
+        </View>
       )}
       <Text size={tokens.typeBody.size} muted>
         {t('rolesScreen.intro', { name: organisation?.name ?? '' })}
@@ -283,6 +290,7 @@ export default function RolesScreen() {
     <AppFrame
       current="settings"
       offline={stale}
+      besideTitle={alone ? refreshingWords : undefined}
       title={
         phone
           ? inDetail
@@ -333,6 +341,7 @@ function firstEditable(catalogue: RolesCatalogue): string {
 }
 
 const styles = StyleSheet.create({
+  shrink: { flexShrink: 1, minWidth: 0 },
   start: { alignSelf: 'flex-start' },
   stack: { gap: tokens.spaceMd },
   heading: { gap: tokens.spaceXxs },

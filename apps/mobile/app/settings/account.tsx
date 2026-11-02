@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { AppFrame } from '../../src/components/AppFrame.tsx';
+import { AppFrame, besideRow } from '../../src/components/AppFrame.tsx';
+import { Refreshing } from '../../src/components/Refreshing.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import { ContactsCards } from '../../src/components/ContactsCard.tsx';
 import { NameCard } from '../../src/components/NameCard.tsx';
@@ -29,7 +30,7 @@ export default function Account() {
   const title = useRef<TextHandle>(null);
   const [loaded, setLoaded] = useState(false);
   const [refresh, setRefresh] = useState(0);
-  const { watch, stale } = useOffline({
+  const { watch, stale, refreshing } = useOffline({
     loaded,
     reload: () => setRefresh((n) => n + 1),
     focusTitle: () => moveScreenReaderFocus(title.current),
@@ -49,11 +50,14 @@ export default function Account() {
     };
   }, [refresh, watch]);
 
+  const refreshingWords = refreshing ? <Refreshing testID="account.refreshing" /> : null;
+
   return (
     <AppFrame
       current="settings"
       aboutTheAccount
       offline={stale}
+      besideTitle={alone ? refreshingWords : undefined}
       titleRef={alone ? title : undefined}
       title={alone ? t('account.title') : t('settings.title')}
       back={alone ? backToSettings(t('settings.title')) : undefined}
@@ -61,14 +65,19 @@ export default function Account() {
       <SettingsSplit open="account">
         <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
           {!alone && (
-            <Text
-              ref={title}
-              size={tokens.typeTitlePage.size}
-              weight="bold"
-              accessibilityRole="header"
-            >
-              {t('account.title')}
-            </Text>
+            <View style={besideRow.row}>
+              <View style={styles.shrink}>
+                <Text
+                  ref={title}
+                  size={tokens.typeTitlePage.size}
+                  weight="bold"
+                  accessibilityRole="header"
+                >
+                  {t('account.title')}
+                </Text>
+              </View>
+              {refreshingWords}
+            </View>
           )}
           {account != null && (
             <View style={styles.cards}>
@@ -90,6 +99,7 @@ export default function Account() {
 }
 
 const styles = StyleSheet.create({
+  shrink: { flexShrink: 1, minWidth: 0 },
   phone: {
     gap: tokens.spaceLg,
     paddingTop: tokens.spaceXl,
