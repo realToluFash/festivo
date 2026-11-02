@@ -5627,6 +5627,24 @@ button.members-row {
   font: var(--typeTitleSection);
 }
 
+.notifications-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXs) var(--spaceMd);
+}
+
+/* The feed's own band (sc-27096): under the popover's header, at its width, with the popover's sides. */
+.notifications-band {
+  flex: none;
+  margin: 0;
+  padding-inline: var(--spaceXl);
+}
+
+.notifications-band.still {
+  animation: none;
+}
+
 .notifications-header .link-button {
   text-align: start;
 }

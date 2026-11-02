@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useState,
   useSyncExternalStore,
 } from 'react';
@@ -24,7 +25,28 @@ export const StaleScreen = createContext<{
 }>({ stale: null, show: () => {} });
 
 /** Every load of the screen goes through `watch`, or the band never learns that Soirely answered again. */
-export function useOffline({
+export function useOffline(screen: {
+  loaded: boolean;
+  reload: () => void;
+  title: RefObject<HTMLElement | null>;
+}): { watch: <T>(load: Promise<T>) => Promise<T>; refreshing: boolean } {
+  const { show } = useContext(StaleScreen);
+  const { watch, stale, refreshing } = useStaleWatch(screen);
+  const at = stale?.at;
+  const unanswered = stale?.unanswered;
+  const retry = stale?.retry;
+
+  useLayoutEffect(() => {
+    show(at == null || retry == null ? null : { at, retry, unanswered: unanswered ?? 0 });
+  }, [show, at, retry, unanswered]);
+
+  useLayoutEffect(() => () => show(null), [show]);
+
+  return { watch, refreshing };
+}
+
+/** A load of its own, with its own band: the bell's feed, which ages apart from the page under it (sc-27096). */
+export function useStaleWatch({
   loaded,
   reload,
   title,
@@ -32,8 +54,7 @@ export function useOffline({
   loaded: boolean;
   reload: () => void;
   title: RefObject<HTMLElement | null>;
-}): { watch: <T>(load: Promise<T>) => Promise<T>; refreshing: boolean } {
-  const { show } = useContext(StaleScreen);
+}): { watch: <T>(load: Promise<T>) => Promise<T>; stale: Stale | null; refreshing: boolean } {
   const [offline] = useState(() => createOfflineWatch({ connection }));
   const state = useSyncExternalStore(offline.subscribe, offline.state);
 
@@ -60,13 +81,10 @@ export function useOffline({
   }, [offline]);
 
   const { at, unanswered } = state;
-  const showing = state.stale && loaded && at != null;
+  const stale = useMemo(
+    () => (state.stale && loaded && at != null ? { at, retry: offline.retry, unanswered } : null),
+    [state.stale, loaded, at, offline, unanswered],
+  );
 
-  useLayoutEffect(() => {
-    show(showing ? { at, retry: offline.retry, unanswered } : null);
-  }, [show, showing, at, offline, unanswered]);
-
-  useLayoutEffect(() => () => show(null), [show]);
-
-  return { watch: offline.watch, refreshing: state.out > 0 && loaded };
+  return { watch: offline.watch, stale, refreshing: state.out > 0 && loaded };
 }

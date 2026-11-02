@@ -2,11 +2,14 @@ import type { NotificationArrival, NotificationItem, NotificationRead } from '@s
 import {
   badgeOf,
   feedAllRead,
+  feedWithAllReadRefused,
   feedWithArrival,
   feedWithLiveRead,
   feedWithMissed,
   feedWithPage,
   feedWithRead,
+  feedWithReadsUndone,
+  readSettled,
   whenShown,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
@@ -18,9 +21,11 @@ import { api } from '../api.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { useLiveNotifications } from '../liveNotifications.ts';
 import { offButton } from '../offButton.ts';
+import { type Stale, keepsWhatLoaded, useStaleWatch } from '../offline.ts';
 import { markPushAsked, pushAskDue } from '../pushAsk.ts';
 import { subscribeWebPush } from '../webPush.ts';
 import { MuteSwitch } from './MuteSwitch.tsx';
+import { Refreshing, StaleBand } from './OfflineBand.tsx';
 
 type Feed =
   | { status: 'loading' }
@@ -44,22 +49,38 @@ export function NotificationsBell({ userId }: { userId: string }) {
   const heading = useRef<HTMLHeadingElement>(null);
   const headingId = useId();
 
-  const load = useCallback(function load(): Promise<void> {
-    const seen = arrivals.current;
+  const reload = useRef(() => {});
+  const { watch, stale, refreshing } = useStaleWatch({
+    loaded: feed.status === 'loaded',
+    reload: () => reload.current(),
+    title: heading,
+  });
 
-    return api.notifications().then(
-      (loaded) => {
-        if (arrivals.current !== seen) return load();
+  /** The feed's band is its own (sc-27096): every read of page one goes through `watch`, and one Soirely never answered keeps what the feed showed. */
+  const load = useCallback((): Promise<void> => {
+    return watch(
+      readSettled(
+        () => api.notifications(),
+        () => arrivals.current,
+      ),
+    ).then(
+      (loaded) =>
         setFeed({
           status: 'loaded',
           items: loaded.items,
           unread: loaded.unreadCount,
           next: loaded.next,
-        });
-      },
-      () => setFeed({ status: 'failed' }),
+        }),
+      (error: unknown) =>
+        setFeed((current) =>
+          current.status === 'loaded' && keepsWhatLoaded(error) ? current : { status: 'failed' },
+        ),
     );
-  }, []);
+  }, [watch]);
+
+  useEffect(() => {
+    reload.current = () => void load();
+  }, [load]);
 
   useEffect(() => {
     void load();
@@ -93,13 +114,13 @@ export function NotificationsBell({ userId }: { userId: string }) {
 
   /** A page worked out before the latest arrival misses it, so it is read again rather than taken. */
   function reread(): void {
-    const seen = arrivals.current;
-    api.notifications().then(
+    watch(
+      readSettled(
+        () => api.notifications(),
+        () => arrivals.current,
+      ),
+    ).then(
       (page) => {
-        if (arrivals.current !== seen) {
-          reread();
-          return;
-        }
         setFeed((current) =>
           current.status === 'loaded'
             ? {
@@ -192,7 +213,12 @@ export function NotificationsBell({ userId }: { userId: string }) {
       const seen = arrivals.current;
       void api.readNotification(item.id).then(
         (answer) => countedSince(seen, answer.unreadCount),
-        () => undefined,
+        () =>
+          setFeed((current) =>
+            current.status === 'loaded'
+              ? { ...feedWithReadsUndone(current, [item.id]), status: 'loaded' }
+              : current,
+          ),
       );
     }
 
@@ -219,8 +245,14 @@ export function NotificationsBell({ userId }: { userId: string }) {
       setSaid(t('notifications.allRead'));
     } catch {
       setSaid(t('notifications.allReadNotSaved'));
-      if (arrivals.current === seen) setFeed(before);
-      else void load();
+      setFeed((current) =>
+        current.status === 'loaded'
+          ? {
+              ...feedWithAllReadRefused(current, before, arrivals.current !== seen),
+              status: 'loaded',
+            }
+          : current,
+      );
     }
   }
 
@@ -271,9 +303,12 @@ export function NotificationsBell({ userId }: { userId: string }) {
       {open && (
         <section className="notifications-panel" aria-labelledby={headingId}>
           <header className="notifications-header">
-            <h2 id={headingId} ref={heading} tabIndex={-1}>
-              {t('notifications.heading')}
-            </h2>
+            <div className="notifications-heading">
+              <h2 id={headingId} ref={heading} tabIndex={-1}>
+                {t('notifications.heading')}
+              </h2>
+              {refreshing && <Refreshing />}
+            </div>
             <button
               type="button"
               className="link-button"
@@ -283,6 +318,8 @@ export function NotificationsBell({ userId }: { userId: string }) {
               {t('notifications.markAllRead')}
             </button>
           </header>
+
+          <FeedBand stale={stale} />
 
           {asking && (
             <section className="notifications-push-ask" aria-labelledby={`${headingId}-push`}>
@@ -421,6 +458,22 @@ export function NotificationsBell({ userId }: { userId: string }) {
         </section>
       )}
     </div>
+  );
+}
+
+/** Already there when the bell opens on a stale feed, with no motion of its own; it moves only when it comes or goes with the popover open. */
+function FeedBand({ stale }: { stale: Stale | null }) {
+  const [still, setStill] = useState(stale != null);
+
+  if (still && stale == null) setStill(false);
+
+  return (
+    <StaleBand
+      stale={stale}
+      className={
+        still ? 'offline-band notifications-band still' : 'offline-band notifications-band'
+      }
+    />
   );
 }
 
