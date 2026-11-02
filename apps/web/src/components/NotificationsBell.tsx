@@ -269,6 +269,7 @@ export function NotificationsBell({ userId }: { userId: string }) {
       setSaid(t('notifications.allRead'));
     } catch {
       if (bellOpen.current) setNotSaved(true);
+      else setSaid(t('notifications.allReadNotSaved'));
       setFeed((current) =>
         current.status === 'loaded'
           ? {
@@ -491,7 +492,7 @@ export function NotificationsBell({ userId }: { userId: string }) {
 
 function AttentionLine({ words }: { words: string }) {
   return (
-    <div className="notice notice-attention notifications-line" role="alert">
+    <div className="notice notice-attention notifications-failure-line" role="alert">
       <span className="mark" aria-hidden="true">
         !
       </span>

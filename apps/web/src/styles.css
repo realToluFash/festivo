@@ -5612,6 +5612,7 @@ button.members-row {
   border: var(--borderCard);
   border-radius: var(--radiusCardDesktop);
   box-shadow: var(--shadowPopover);
+  animation: rise-in var(--motionBase) var(--motionEase);
 }
 
 .notifications-header {
@@ -5746,6 +5747,7 @@ button.members-row {
   margin: var(--spaceSm) var(--spaceXl);
   border-radius: var(--radiusSmall);
   background: var(--colorInset);
+  animation: skeleton-pulse var(--motionPulse) ease-in-out var(--motionPulseTimes);
 }
 
 .notifications-empty {
@@ -5765,6 +5767,7 @@ button.members-row {
 .notifications-failed {
   margin: var(--spaceLg) var(--spaceXl);
   padding: var(--spaceLg);
+  animation: drop-in var(--motionFast) var(--motionEase);
 }
 
 .notifications-failed .notice-body {
@@ -5779,28 +5782,29 @@ button.members-row {
 }
 
 /* The bell's two failure lines, Mark all read's and Show more's. */
-.notifications-line {
+.notifications-failure-line {
   gap: var(--spaceSm);
   padding: var(--spaceMd) var(--spaceLg);
   border-radius: var(--radiusField);
   color: var(--colorAttentionText);
   font: var(--typeBody);
   font-weight: 600;
+  animation: drop-in var(--motionFast) var(--motionEase);
 }
 
-.notifications-panel > .notifications-line {
+.notifications-panel > .notifications-failure-line {
   flex: none;
   margin: var(--spaceLg) var(--spaceXl) 0;
 }
 
-.notifications-line .mark {
+.notifications-failure-line .mark {
   width: var(--sizeMark);
   height: var(--sizeMark);
   background: var(--colorAttention);
   color: var(--colorInkOnDark);
 }
 
-.notifications-line p {
+.notifications-failure-line p {
   flex: 1;
   min-width: 0;
   margin: 0;
@@ -6147,6 +6151,7 @@ button.members-row {
 .notification-mute {
   padding: var(--spaceSm) var(--spaceXl) var(--spaceLg);
   background: var(--colorInset);
+  animation: rise-in var(--motionBase) var(--motionEase);
 }
 
 .notification-switch-track {
@@ -6194,7 +6199,7 @@ button.members-row {
   padding: var(--spaceHair);
   border-radius: var(--radiusPill);
   background: var(--colorMarkEmpty);
-  transition: background var(--motionFast) var(--motionEase);
+  transition: background var(--motionBase) var(--motionEase);
 }
 
 .notification-mute .notification-switch-knob {
@@ -6202,7 +6207,7 @@ button.members-row {
   height: var(--sizeToggleKnob);
   border-radius: var(--radiusPill);
   background: var(--colorCard);
-  transition: transform var(--motionFast) var(--motionEase);
+  transition: transform var(--motionBase) var(--motionEase);
 }
 
 .notification-mute .notification-switch:has(input:checked) .notification-switch-track {
@@ -6213,9 +6218,36 @@ button.members-row {
   transform: translateX(calc(var(--sizeToggleW) - var(--sizeToggleKnob) - var(--spaceHair) * 2));
 }
 
+.notification-mute .notification-switch:has(input:disabled) .notification-switch-track {
+  background: var(--colorInset);
+  box-shadow: inset 0 0 0 1px var(--colorBorder);
+}
+
+.notification-mute .notification-switch:has(input:disabled) .notification-switch-knob {
+  background: var(--colorBorder);
+}
+
 .notification-mute .notification-switch:has(input:focus-visible) .notification-switch-track {
   outline: 2px solid var(--colorAccent);
   outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notifications-panel,
+  .notification-mute,
+  .notifications-failure-line,
+  .notifications-failed {
+    animation-name: fade-in;
+  }
+
+  .notifications-skeleton {
+    animation: none;
+  }
+
+  .notification-mute .notification-switch-track,
+  .notification-mute .notification-switch-knob {
+    transition: none;
+  }
 }
 
 .notifications-push-ask {

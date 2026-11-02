@@ -257,6 +257,35 @@ describe('the bell (sc-3980)', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  it('says a Mark all read that fails after the bell has closed in the polite region, as no line can show (sc-23233)', async () => {
+    let refuse: (response: Response) => void = () => undefined;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) =>
+      init?.method === 'POST' && new URL(String(input)).pathname === '/api/notifications/read-all'
+        ? new Promise<Response>((resolve) => (refuse = resolve))
+        : json({ items: [item()], unreadCount: 1, next: null }),
+    );
+    const { container } = renderedBell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark all read' }));
+    await waitFor(() =>
+      expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+        expect.stringContaining('/api/notifications/read-all'),
+        expect.anything(),
+      ),
+    );
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    refuse(new Response('{}', { status: 500 }));
+
+    await waitFor(() =>
+      expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe(
+        'Could not mark them all read. Try again.',
+      ),
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('a feed that did not load is the broken notice, the mark, the words and Try again under them (sc-23233)', async () => {
     let attempts = 0;
     vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
@@ -561,6 +590,31 @@ describe('the push ask', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
     expect(screen.queryByText('Turn on push?')).toBeNull();
+  });
+});
+
+describe('the bell in [fd] (sc-23233)', () => {
+  it("dims More's switch while the mute has not loaded, when nothing else would say it does nothing", () => {
+    expect(
+      cssRule(
+        '.notification-mute .notification-switch:has(input:disabled) .notification-switch-track',
+      ),
+    ).toMatch(/background: var\(--colorInset\);/u);
+  });
+
+  it("moves in the board's motion", () => {
+    expect(cssRule('.notifications-panel')).toMatch(/animation: rise-in var\(--motionBase\)/u);
+    expect(cssRule('.notification-mute')).toMatch(/animation: rise-in var\(--motionBase\)/u);
+    expect(cssRule('.notifications-failure-line')).toMatch(
+      /animation: drop-in var\(--motionFast\)/u,
+    );
+    expect(cssRule('.notifications-failed')).toMatch(/animation: drop-in var\(--motionFast\)/u);
+    expect(cssRule('.notifications-skeleton')).toMatch(
+      /animation: skeleton-pulse var\(--motionPulse\)/u,
+    );
+    expect(cssRule('.notification-mute .notification-switch-knob')).toMatch(
+      /transition: transform var\(--motionBase\)/u,
+    );
   });
 });
 
