@@ -86,7 +86,7 @@ export function OfflineBand({ stale }: { stale: Stale | null }) {
           stroke={tokens.colorAttentionText}
           strokeWidth={1.5}
           strokeLinecap="round"
-          style={{ marginTop: (line - MARK) / 2 }}
+          style={{ marginVertical: (line - MARK) / 2 }}
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
