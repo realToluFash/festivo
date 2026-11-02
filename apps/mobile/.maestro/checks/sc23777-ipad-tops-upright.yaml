@@ -1,0 +1,5 @@
+# sc-23777 on an iPad, upright: the swipe from the left edge on Home, the Events list (Upcoming, Drafts, Past) and the Settings list does nothing.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- runFlow: ../checks/sc23777/tops.yaml

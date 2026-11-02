@@ -1,0 +1,25 @@
+# sc-11786: New role with a name typed, turned from ${FROM} to ${TO}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${FROM}
+- openLink: ${METRO_URL}/--/settings/roles
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'roles.new'
+    direction: DOWN
+- tapOn:
+    id: 'roles.new'
+- tapOn:
+    id: 'roles.name'
+- inputText: 'Turn Crew'
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: role-new-before
+- setOrientation: ${TO}
+- waitForAnimationToEnd
+- assertVisible: 'Turn Crew'
+- takeScreenshot: role-new-after

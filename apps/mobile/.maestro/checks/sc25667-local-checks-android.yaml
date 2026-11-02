@@ -1,0 +1,39 @@
+# Android only. sc-25667: Create organisation with the name blank, then over 100 characters, sends nothing and leaves Cancel live; Android back closes the sheet after the blank message, Cancel after the over-100 one.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createOrganisation.create'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: local-blank
+- assertVisible:
+    id: 'createOrganisation.cancel'
+    enabled: true
+- takeScreenshot: local-blank-before-back
+- back
+- waitForAnimationToEnd
+- back
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation'
+    timeout: 10000
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createOrganisation.name'
+- inputText: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+- tapOn:
+    id: 'createOrganisation.create'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: local-over-100
+- assertVisible:
+    id: 'createOrganisation.cancel'
+    enabled: true
+- tapOn:
+    id: 'createOrganisation.cancel'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation'
+    timeout: 10000
+- takeScreenshot: local-closed

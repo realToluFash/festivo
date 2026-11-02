@@ -1,0 +1,65 @@
+# sc-22103: Delete event on an event opened from Calendar lands on Events with the notice; Calendar shows none. Needs ${METRO_URL}, ${GONE_CAL}, ${CAL_NAME}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'frame.calendar'
+    timeout: 30000
+- tapOn:
+    id: 'frame.calendar'
+- scrollUntilVisible:
+    element:
+      id: 'calendar.row.event-${GONE_CAL}'
+    timeout: 30000
+- tapOn:
+    id: 'calendar.row.event-${GONE_CAL}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.delete'
+    centerElement: true
+    timeout: 30000
+- tapOn:
+    id: 'events.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'events.deleteGo'
+    timeout: 15000
+- runFlow:
+    when:
+      visible:
+        id: 'events.deleteName'
+    commands:
+      - tapOn:
+          id: 'events.deleteName'
+      - inputText: ${CAL_NAME}
+- takeScreenshot: confirm
+- tapOn:
+    id: 'events.deleteGo'
+- extendedWaitUntil:
+    notVisible:
+      id: 'events.page'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: landed
+- extendedWaitUntil:
+    visible: '{{t:eventDelete.deleted}}'
+    timeout: 20000
+- takeScreenshot: deleted
+- swipe:
+    start: 1%, 50%
+    end: 80%, 50%
+    duration: 400
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'events.page'
+- takeScreenshot: after-swipe
+- tapOn:
+    id: 'frame.calendar'
+- waitForAnimationToEnd
+- assertNotVisible: '{{t:eventDelete.deleted}}'
+- takeScreenshot: calendar-later

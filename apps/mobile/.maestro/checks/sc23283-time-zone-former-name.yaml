@@ -1,0 +1,38 @@
+# sc-23283: Time zone found by a former city name (Calcutta), then a no-match search, then Cancel.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'nameCard.change'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'timeZone.change'
+    direction: DOWN
+    timeout: 20000
+    centerElement: true
+- takeScreenshot: time-zone-value
+- tapOn:
+    id: 'timeZone.change'
+- tapOn:
+    id: 'timeZone.search'
+- inputText: 'Calcutta'
+- extendedWaitUntil:
+    visible:
+      id: 'timeZone.option.Asia/Kolkata'
+    timeout: 10000
+- takeScreenshot: time-zone-calcutta
+- eraseText: 30
+- inputText: 'Qqzzx'
+- extendedWaitUntil:
+    notVisible:
+      id: 'timeZone.option.Asia/Kolkata'
+    timeout: 10000
+- takeScreenshot: time-zone-no-match
+- tapOn:
+    id: 'timeZone.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'timeZone.change'
+    timeout: 10000

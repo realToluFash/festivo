@@ -1,0 +1,58 @@
+# sc-16389: turning the iPad keeps what is open: ${EVENT} beside the list on its side, upright in front with Events back, then on its side beside again; the list alone upright, on its side, beside Choose an event.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EVENT}'
+    timeout: 30000
+- tapOn:
+    id: 'events.row.${EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- assertVisible:
+    id: 'events.row.${EVENT}'
+- takeScreenshot: side-beside
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'events.back'
+    timeout: 10000
+- assertVisible:
+    id: 'events.page'
+- assertNotVisible:
+    id: 'events.row.${EVENT}'
+- takeScreenshot: upright-front
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EVENT}'
+    timeout: 10000
+- assertVisible:
+    id: 'events.page'
+- assertNotVisible:
+    id: 'events.back'
+- takeScreenshot: side-again
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd
+- tapOn:
+    id: 'events.back'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'events.row.${EVENT}'
+- takeScreenshot: upright-list
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'events.page'
+- takeScreenshot: side-choose
+- setOrientation: PORTRAIT
