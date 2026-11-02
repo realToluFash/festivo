@@ -1,0 +1,63 @@
+# More's sheet with Mute this event, on and off (sc-23233).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: frame.bell
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- takeScreenshot: bell-badge
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil:
+    visible:
+      id: notifications.markAllRead
+    timeout: 15000
+- runFlow:
+    when:
+      visible:
+        id: notifications.pushAsk.notNow
+    commands:
+      - tapOn:
+          id: notifications.pushAsk.notNow
+- tapOn:
+    id: notifications.item.${MUTED_ID}.more
+- extendedWaitUntil:
+    visible:
+      id: notifications.item.${MUTED_ID}.more.done
+    timeout: 10000
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: notifications.item.${MUTED_ID}.more.mute.switch
+      checked: true
+      enabled: true
+    timeout: 10000
+- takeScreenshot: more-on
+- tapOn:
+    id: notifications.item.${MUTED_ID}.more.mute.switch
+- extendedWaitUntil:
+    visible:
+      id: notifications.item.${MUTED_ID}.more.mute.switch
+      checked: false
+      enabled: true
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: more-off
+- tapOn:
+    id: notifications.item.${MUTED_ID}.more.mute.switch
+- extendedWaitUntil:
+    visible:
+      id: notifications.item.${MUTED_ID}.more.mute.switch
+      checked: true
+      enabled: true
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: more-on-again
+- tapOn:
+    id: notifications.item.${MUTED_ID}.more.done
+- extendedWaitUntil:
+    notVisible:
+      id: notifications.item.${MUTED_ID}.more.done
+    timeout: 10000
+- takeScreenshot: more-closed
