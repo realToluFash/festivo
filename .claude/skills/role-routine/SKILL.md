@@ -145,6 +145,13 @@ fails>'`, note it on your story, do what you can without it, and move on. Only t
   tested, one memo. Whatever else is waiting is already queued, and the next tick starts a
   fresh worker for it. Several small runs beat one long run whose context fills with the
   first story.
+- **The piece is the whole story, not a part of it.** A run that starts building a story
+  ends with its pull request open, or with a blocker it names. A branch pushed with half a
+  story on it, and no pull request, is not a place to stop: the next run picks the top of
+  the queue, which may be another story, and the half waits unseen. What this machine
+  cannot check (an iPhone on Linux, say) is not a blocker: build it, and list it in the
+  pull request for QA. A blocker is a question only another role or the owner can answer.
+  Ask it in a tagged comment, then build what it does not block.
 - **Never wait for an answer.** Wherever the skill says to ask or to show the owner first,
   do not stop. A question for another role is a tagged comment (`role-comments`). A decision
   only the owner can make — merging, Done, money, production, anything the skill reserves
