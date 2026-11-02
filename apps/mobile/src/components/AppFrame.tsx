@@ -489,9 +489,9 @@ function FrameHeader({
   if (kind === 'tabletLandscape') {
     return (
       <View style={[styles.header, styles.landscapeHeader, large && styles.stacked, top]}>
-        <View style={styles.titled}>
+        <View style={[styles.titled, !large && styles.fill]}>
           <View style={styles.titleRow}>
-            <View style={styles.shrink}>
+            <View style={large ? styles.shrink : styles.fill}>
               <Title size={tokens.typeTitlePhone.size} accessibilityRole="header" ref={read}>
                 {title}
               </Title>
@@ -500,7 +500,6 @@ function FrameHeader({
           </View>
           {underTitle}
         </View>
-        {!large && <View style={styles.fill} />}
         {primary != null && <HeaderPrimary {...primary} round={false} />}
         <Text size={tokens.typeBody.size} muted>
           {email}
