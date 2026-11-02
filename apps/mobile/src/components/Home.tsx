@@ -138,20 +138,20 @@ function SignedInHeading({
 
 const styles = StyleSheet.create({
   phone: {
-    gap: tokens.spaceLg,
-    paddingTop: tokens.spaceXxl,
+    gap: tokens.spaceXl,
+    paddingTop: tokens.spaceXl,
     paddingHorizontal: tokens.spaceXl,
     paddingBottom: tokens.space3xl,
   },
   portrait: {
-    gap: tokens.spaceXl,
+    gap: tokens.spaceXxl,
     paddingTop: tokens.space3xl,
     paddingHorizontal: tokens.space4xl,
     paddingBottom: tokens.space6xl,
   },
   landscape: {
     gap: tokens.spaceXxl,
-    paddingTop: tokens.space4xl,
+    paddingTop: tokens.space3xl,
     paddingHorizontal: tokens.space5xl,
     paddingBottom: tokens.space6xl,
   },

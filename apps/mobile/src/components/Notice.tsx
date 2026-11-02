@@ -20,6 +20,7 @@ export function Notice({
   detail,
   action,
   button,
+  actions,
   heading = false,
   announce = false,
   interrupts = false,
@@ -39,6 +40,8 @@ export function Notice({
   action?: FieldAction | undefined;
   /** A house button under the words, where the way out is a button rather than a text action. */
   button?: ReactNode;
+  /** A row of actions under the words, inside the notice; the notice then keeps 16 at its sides and 8 above the row (RuleNotices.dc). */
+  actions?: ReactNode;
   /** The notice is the screen's message, so its title is the screen's heading. */
   heading?: boolean;
   /** The notice appears in answer to something the person did, so a screen reader reads it out. */
@@ -94,7 +97,10 @@ export function Notice({
   const bodyInk = tone === 'done' ? styles.accent : wordsInTone ? toneInk : undefined;
 
   return (
-    <View ref={shown} style={[styles.notice, surface, line && styles.line]}>
+    <View
+      ref={shown}
+      style={[styles.notice, surface, line && styles.line, actions != null && styles.withActions]}
+    >
       {/* The words already say what the mark says (WCAG 2.2 SC 1.1.1). */}
       <View
         style={[styles.mark, markSide, ring, line && styles.solidMark]}
@@ -110,10 +116,10 @@ export function Notice({
           {mark}
         </Text>
       </View>
-      <View style={styles.body}>
+      <View style={[styles.body, actions != null && styles.bodyWithActions]}>
         <View
           ref={takesFocus ? read : wordsRef}
-          style={styles.words}
+          style={[styles.words, actions != null && styles.wordsWithActions]}
           accessible={wordsAsOne || undefined}
           // As one item, the words keep their title's "heading" only on the item itself.
           accessibilityRole={wordsAsOne && heading ? 'header' : undefined}
@@ -156,6 +162,7 @@ export function Notice({
           </Pressable>
         )}
         {button != null && <View style={styles.button}>{button}</View>}
+        {actions != null && <View style={styles.actions}>{actions}</View>}
       </View>
     </View>
   );
@@ -188,6 +195,16 @@ const styles = StyleSheet.create({
   body: { flex: 1, gap: tokens.spaceHair },
   words: { gap: tokens.spaceHair },
   button: { marginTop: tokens.spaceSm },
+  withActions: { paddingHorizontal: tokens.spaceXl },
+  bodyWithActions: { gap: tokens.spaceSm },
+  wordsWithActions: { gap: tokens.spaceXxs },
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: tokens.spaceSm,
+    rowGap: tokens.spaceXxs,
+  },
   action: { minHeight: tokens.sizeHit, justifyContent: 'center', alignSelf: 'flex-start' },
   accent: { color: tokens.colorAccentText },
 

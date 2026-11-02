@@ -2443,6 +2443,121 @@ span {
   margin-bottom: var(--spaceXl);
 }
 
+/* ── The sign-in rule notices and the overdue card (sc-23252) ─────────────── */
+
+.shell-content > .notice-rule:has(+ :not(.notice)) {
+  margin-bottom: var(--space3xl);
+}
+
+.notice-rule .notice-body {
+  flex: 1;
+  min-width: 0;
+  gap: var(--spaceSm);
+}
+
+.notice-words {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  max-width: 47.5rem;
+  border-radius: var(--radiusCheckbox);
+  font: var(--typeBody);
+}
+
+/* A click on Close rings where focus lands as a key does. A click on the words themselves does not. */
+[data-notice-landing]:focus {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
+.notice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXxs) var(--spaceSm);
+}
+
+.notice-actions .button {
+  padding: var(--spaceMd) var(--spaceXl);
+  overflow-wrap: anywhere;
+}
+
+.notice-text-action {
+  max-width: 100%;
+  padding: var(--spaceMd) var(--spaceLg);
+  border-radius: var(--radiusPill);
+  line-height: 1.3;
+  text-align: start;
+}
+
+.notice-text-action:hover {
+  background: var(--colorInsetBorder);
+}
+
+.two-factor-overdue {
+  gap: var(--spaceLg);
+  max-width: 40rem;
+  padding: var(--space4xl) var(--space5xl) var(--space5xl);
+  overflow-wrap: anywhere;
+}
+
+.two-factor-overdue h1,
+.two-factor-overdue p {
+  margin: 0;
+}
+
+.two-factor-overdue h1 {
+  font: var(--typeTitlePage);
+  letter-spacing: var(--typeTitlePageTracking);
+}
+
+.card > .two-factor-overdue-reason {
+  color: var(--colorInk);
+}
+
+.two-factor-overdue .notice-body {
+  flex: 1;
+  min-width: 0;
+  gap: var(--spaceXxs);
+}
+
+.two-factor-overdue-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceLg);
+  margin-top: var(--spaceSm);
+}
+
+.two-factor-overdue-actions .button {
+  padding: var(--spaceMd) var(--spaceXxl);
+}
+
+@media (width <= 40rem) {
+  .shell-content > .notice-rule:has(+ :not(.notice)) {
+    margin-bottom: var(--spaceXl);
+  }
+
+  .two-factor-overdue {
+    padding: var(--spaceXxl);
+  }
+
+  .two-factor-overdue h1 {
+    font: var(--typeTitlePhone);
+    letter-spacing: var(--typeTitlePhoneTracking);
+  }
+
+  .two-factor-overdue-actions {
+    flex-direction: column;
+    gap: var(--spaceMd);
+  }
+
+  .two-factor-overdue-actions .button {
+    font: var(--typeBodyPhone);
+    font-weight: 600;
+    line-height: 1.3;
+  }
+}
+
 /* ── Settings > General ───────────────────────────────────────────────────── */
 
 .settings {

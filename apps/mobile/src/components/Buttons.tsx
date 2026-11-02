@@ -87,6 +87,7 @@ export function SecondaryButton({
   stacked = false,
   paired = false,
   grow = false,
+  link = false,
   accessibilityLabel,
   ref,
   testID,
@@ -94,6 +95,8 @@ export function SecondaryButton({
   label: string;
   onPress: () => void;
   off?: boolean;
+  /** It goes somewhere rather than doing something, and a screen reader says so. */
+  link?: boolean;
   /** Full width at the primary button's height, whether under a primary or alone. */
   stacked?: boolean;
   /** In a row beside the primary, at its height and label size. */
@@ -123,7 +126,7 @@ export function SecondaryButton({
       onPress={onPress}
       disabled={off}
       accessibilityLabel={accessibilityLabel}
-      accessibilityRole="button"
+      accessibilityRole={link ? 'link' : 'button'}
       accessibilityState={{ disabled: off }}
       testID={testID}
     >
@@ -196,19 +199,22 @@ export function QuietButton({
   label,
   onPress,
   off = false,
+  inset = false,
   ref,
   testID,
 }: {
   label: string;
   onPress: () => void;
   off?: boolean;
+  /** Beside a pill, in a row: clear of it by its own padding, as a text action inside a notice is. */
+  inset?: boolean;
   ref?: Ref<ViewInstance> | undefined;
   testID: string;
 }) {
   return (
     <Pressable
       ref={ref}
-      style={styles.quiet}
+      style={[styles.quiet, inset && styles.quietInset]}
       onPress={onPress}
       disabled={off}
       accessibilityRole="button"
@@ -365,6 +371,7 @@ const styles = StyleSheet.create({
   grow: { flexGrow: 1 },
   secondaryOff: { backgroundColor: tokens.colorInset, borderColor: tokens.colorBorder },
   quiet: { minHeight: tokens.sizeHit, alignItems: 'center', justifyContent: 'center' },
+  quietInset: { paddingHorizontal: tokens.spaceLg },
   footnote: {
     flexDirection: 'row',
     flexWrap: 'wrap',

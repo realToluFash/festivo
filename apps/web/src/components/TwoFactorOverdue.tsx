@@ -13,12 +13,14 @@ export function TwoFactorOverdue({ organisation }: { organisation: Membership })
   const { signOut, unreached } = useSignOut(() => navigate('/sign-in'));
 
   return (
-    <section className="card settings-card two-factor-overdue" aria-labelledby="overdue-title">
+    <section className="card two-factor-overdue" aria-labelledby="overdue-title">
       <h1 id="overdue-title">{t('signInRules.overdueTitle')}</h1>
-      <p>{t('signInRules.overdueBody', { organisation: organisation.name })}</p>
+      <p className="two-factor-overdue-reason">
+        {t('signInRules.overdueBody', { organisation: organisation.name })}
+      </p>
       <p className="muted">{t('signInRules.overdueElsewhere')}</p>
       {unreached && <StillSignedIn />}
-      <div className="actions">
+      <div className="two-factor-overdue-actions">
         <Link className="button button-primary" to="/app/account/security">
           {t('signInRules.overdueTurnOn')}
         </Link>
