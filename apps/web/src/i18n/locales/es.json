@@ -2208,6 +2208,7 @@
     "resetTitle": "¿Lo ha compartido por error?",
     "resetBody": "Restablezca el enlace y el anterior dejará de funcionar al instante.",
     "reset": "Restablecer enlace",
+    "resetOpen": "Restablecer enlace…",
     "confirmTitle": "¿Restablecer su enlace?",
     "confirmBody": "El enlace actual dejará de funcionar de inmediato. Los calendarios suscritos con él dejarán de actualizarse y tendrá que volver a suscribirse con el enlace nuevo.",
     "keep": "Conservar este enlace",
