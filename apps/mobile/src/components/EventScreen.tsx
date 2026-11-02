@@ -196,20 +196,13 @@ export function EventScreen({
       titleRef={title}
       offline={opened.stale}
       besideBack={phone ? refreshing : undefined}
-      besideTitle={kind === 'tabletLandscape' ? refreshing : undefined}
+      besideTitle={phone ? undefined : refreshing}
       back={phone ? { label: backLabel, onPress: back } : undefined}
       backInBody
       inEvent={event == null ? undefined : { area, onArea: chooseArea }}
     >
       <Screen edges={bodyEdges(kind)} contentStyle={phone ? styles.phone : styles.tablet}>
-        {!phone && (
-          <BackButton
-            label={backLabel}
-            onPress={back}
-            beside={kind === 'tabletPortrait' ? refreshing : null}
-            testID="events.back"
-          />
-        )}
+        {!phone && <BackButton label={backLabel} onPress={back} testID="events.back" />}
         {body}
       </Screen>
     </AppFrame>
