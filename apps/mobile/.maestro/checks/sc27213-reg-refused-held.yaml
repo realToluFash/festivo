@@ -1,0 +1,65 @@
+# sc-27213 regression: a wrong current password sent by the return key is refused with the field focused and the keys up (sc-13408); then, with the API paused, Save leaves Cancel off and a tap on it closes nothing (sc-12545). Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- scrollUntilVisible:
+    element:
+      id: 'password.change'
+    timeout: 30000
+    centerElement: true
+- tapOn:
+    id: 'password.change'
+- waitForAnimationToEnd:
+    timeout: 3000
+- scrollUntilVisible:
+    element:
+      id: 'password.current'
+    direction: UP
+    timeout: 10000
+- tapOn:
+    id: 'password.current'
+- inputText: 'wrong-current-password-1'
+- takeScreenshot: current-typed-in-view
+- tapOn:
+    id: 'password.new'
+- inputText: 'brand-new-password-123'
+- takeScreenshot: new-typed-in-view
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: '{{t:passwordCard.wrongCurrent}}'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: refused-keys
+- assertVisible: '(?i)(shift|delete)'
+- assertVisible:
+    id: 'password.new'
+    focused: true
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: 'password.cancel'
+      enabled: false
+    timeout: 5000
+- takeScreenshot: held-cancel-off
+- tapOn:
+    id: 'password.cancel'
+    retryTapIfNoChange: false
+- assertVisible:
+    id: 'password.cancel'
+    enabled: false
+- assertVisible:
+    id: 'password.save'
+- takeScreenshot: held-cancel-tapped-still-open
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    visible: '{{t:passwordCard.wrongCurrent}}'
+    timeout: 30000
+- takeScreenshot: after-up
