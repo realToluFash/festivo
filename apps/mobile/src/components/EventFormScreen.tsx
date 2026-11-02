@@ -12,7 +12,7 @@ import { goToArea, goUpToEvent } from '../kit/upToEvent.ts';
 import { markSaved } from '../kit/eventSaved.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { type Stale, useOffline } from '../offline.ts';
-import { formAfterLoad } from '../offlineLoad.ts';
+import { formAfterLoad, formShownAt } from '../offlineLoad.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { api } from '../api.ts';
@@ -95,7 +95,7 @@ export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt |
     watch(api.taggedEvent(eventId)).then(
       (tagged) => {
         const ours = tagged.event.organisationId === organisationId;
-        if (ours && live) setShownAt((was) => was ?? new Date());
+        if (ours && live) setShownAt((was) => formShownAt(was, 'loaded', new Date()));
         settle(ours ? tagged : { kind: 'notFound' });
       },
       (error: unknown) =>
@@ -180,7 +180,7 @@ export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt |
             }}
             onLatest={(latest) => {
               setLoad(latest);
-              setShownAt(new Date());
+              setShownAt((was) => formShownAt(was, 'latest', new Date()));
               setReads((n) => n + 1);
             }}
           />

@@ -14,6 +14,11 @@ export function formAfterLoad<L extends object>(before: L, read: L): L {
   return 'event' in before ? before : read;
 }
 
+/** The minute the band dates a form by: when it first showed, or last took Show the latest; a load that answers once it shows leaves it, as it leaves the form (Decided, 2 Nov, the band's time on Edit details). */
+export function formShownAt(was: Date | null, change: 'loaded' | 'latest', now: Date): Date {
+  return change === 'loaded' && was != null ? was : now;
+}
+
 /** Whether the band speaks now, and the unanswered count it has said: once as it appears, again after an unanswered Try again, and only from the screen in front, which says a band that came up while it was behind as it returns (sc-27086). */
 export function bandReadOut(
   said: number | null,

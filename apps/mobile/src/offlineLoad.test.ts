@@ -2,7 +2,7 @@ import { ApiClient, type TokenStore } from '@soirely/api-client';
 import { NO_ANSWER_MS, createConnection, createOfflineWatch } from '@soirely/domain';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { afterFailedLoad, bandReadOut, formAfterLoad } from './offlineLoad.ts';
+import { afterFailedLoad, bandReadOut, formAfterLoad, formShownAt } from './offlineLoad.ts';
 
 type Soirely = 'answers' | 'unreachable' | 'silent' | 'refresh503';
 
@@ -142,6 +142,23 @@ describe('Edit details, once its form shows (Decided, 2 Nov)', () => {
 
   it('keeps the form when a reload fails', () => {
     expect(formAfterLoad<Form>(opened, { kind: 'failed' })).toBe(opened);
+  });
+});
+
+describe("the band's time on Edit details (Decided, 2 Nov)", () => {
+  const nine = new Date(2026, 10, 10, 9, 0);
+  const nineThirtyFive = new Date(2026, 10, 10, 9, 35);
+
+  it('is the minute the form first showed', () => {
+    expect(formShownAt(null, 'loaded', nine)).toBe(nine);
+  });
+
+  it('stays there when a Try again answers, as the form keeps its fields and tag', () => {
+    expect(formShownAt(nine, 'loaded', nineThirtyFive)).toBe(nine);
+  });
+
+  it('moves to the minute the form took Show the latest', () => {
+    expect(formShownAt(nine, 'latest', nineThirtyFive)).toBe(nineThirtyFive);
   });
 });
 
