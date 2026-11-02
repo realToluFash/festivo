@@ -2,7 +2,7 @@
 appId: host.exp.Exponent
 ---
 - runFlow:
-    file: sc27088/band-refreshing.yaml
+    file: ../checks/sc27088/band-refreshing.yaml
     env:
       SCREEN: sign-in-rules
       REFRESHING: 'signInRules.refreshing'

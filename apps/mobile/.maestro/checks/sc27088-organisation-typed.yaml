@@ -52,12 +52,19 @@ appId: host.exp.Exponent
     timeout: 30000
 - assertVisible:
     id: 'offline.band'
+# Tapped while the API is still paused, so the load that follows is Try again's own.
+- tapOn:
+    id: 'offline.retry'
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.refreshing'
+    timeout: 8000
+- assertVisible:
+    id: 'offline.band'
 - runScript:
     file: ../batch/helper.js
     env:
       ASK: /api?to=up
-- tapOn:
-    id: 'offline.retry'
 - extendedWaitUntil:
     notVisible:
       id: 'offline.band'

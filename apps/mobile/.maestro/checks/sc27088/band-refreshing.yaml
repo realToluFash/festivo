@@ -12,13 +12,13 @@ appId: host.exp.Exponent
     timeout: 20000
 - assertNotVisible:
     id: 'offline.band'
-- takeScreenshot: online
+- takeScreenshot: ${SCREEN}-online
 - setAirplaneMode: enabled
 - extendedWaitUntil:
     visible:
       id: 'offline.band'
     timeout: 8000
-- takeScreenshot: offline
+- takeScreenshot: ${SCREEN}-offline
 - runScript:
     file: ../../batch/helper.js
     env:
@@ -45,7 +45,7 @@ appId: host.exp.Exponent
     timeout: 8000
 - assertVisible:
     id: 'offline.band'
-- takeScreenshot: refreshing
+- takeScreenshot: ${SCREEN}-refreshing
 - runScript:
     file: ../../batch/helper.js
     env:
