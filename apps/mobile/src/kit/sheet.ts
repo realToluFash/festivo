@@ -95,23 +95,28 @@ export function sheetWindows(): SheetWindows {
 /** The top of a phone sheet a drag that moves it starts in, Apple's minimum hit target (sc-27948). */
 export const SHEET_DRAG_STRIP = 44;
 
-/** A drag that starts in the strip and moves more down or up than across moves the sheet; before the grant only moveY - dy says where it started. */
+/** A drag that lands in the strip and moves more down or up than across moves the sheet; `from` is where the finger landed, measured from the sheet's top. */
 export function sheetDragStarts({
-  frameTop,
-  moveY,
+  from,
   dx,
   dy,
 }: {
-  frameTop: number;
-  moveY: number;
+  from: number;
   dx: number;
   dy: number;
 }): boolean {
-  const fromTop = moveY - dy - frameTop;
+  return from >= 0 && from <= SHEET_DRAG_STRIP && Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx);
+}
 
-  return (
-    fromTop >= 0 && fromTop <= SHEET_DRAG_STRIP && Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx)
-  );
+/** How fast the finger was moving down as it let go, in pt per ms, over its last tenth of a second. */
+export function sheetDragSpeed(
+  moves: readonly { y: number; t: number }[],
+  letGo: { y: number; t: number },
+): number {
+  const first = [...moves, letGo].find((sample) => letGo.t - sample.t <= 100) ?? letGo;
+  if (letGo.t === first.t) return 0;
+
+  return (letGo.y - first.y) / (letGo.t - first.t);
 }
 
 /** Let go at half the height the keys leave showing, or still moving down at 1,000 pt a second (vy is pt per ms), it closes; a held sheet never does (sc-25667). */

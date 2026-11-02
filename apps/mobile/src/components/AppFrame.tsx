@@ -773,36 +773,38 @@ function TabBar({
           opener={moreTab}
           testID="event.nav.moreSheet"
         >
-          <Title size={tokens.typeTitleDialog.size} accessibilityRole="header">
-            {t('eventNav.more')}
-          </Title>
-          <View accessibilityRole="tablist" style={styles.moreList}>
-            {MORE_EVENT_AREAS.map((area) => {
-              const on = area === inEvent.area;
+          <View style={styles.moreSheet}>
+            <Title size={tokens.typeTitleDialog.size} accessibilityRole="header">
+              {t('eventNav.more')}
+            </Title>
+            <View accessibilityRole="tablist" style={styles.moreList}>
+              {MORE_EVENT_AREAS.map((area) => {
+                const on = area === inEvent.area;
 
-              return (
-                <Pressable
-                  key={area}
-                  style={[styles.railItem, on && styles.railItemOn]}
-                  onPress={() => {
-                    setMore(false);
-                    inEvent.onArea(area);
-                  }}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: on }}
-                  testID={`event.nav.more.${area}`}
-                >
-                  <Icon paths={AREA_ICONS[area]} on={on} size={tokens.sizeMark} />
-                  <Text
-                    size={tokens.typeBodyPhone.size}
-                    weight={on ? 'semibold' : 'medium'}
-                    style={on ? styles.ink : styles.secondaryInk}
+                return (
+                  <Pressable
+                    key={area}
+                    style={[styles.railItem, on && styles.railItemOn]}
+                    onPress={() => {
+                      setMore(false);
+                      inEvent.onArea(area);
+                    }}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: on }}
+                    testID={`event.nav.more.${area}`}
                   >
-                    {t(`eventNav.${area}`)}
-                  </Text>
-                </Pressable>
-              );
-            })}
+                    <Icon paths={AREA_ICONS[area]} on={on} size={tokens.sizeMark} />
+                    <Text
+                      size={tokens.typeBodyPhone.size}
+                      weight={on ? 'semibold' : 'medium'}
+                      style={on ? styles.ink : styles.secondaryInk}
+                    >
+                      {t(`eventNav.${area}`)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
         </Sheet>
       )}
@@ -1432,7 +1434,9 @@ const styles = StyleSheet.create({
   },
   brand: { minHeight: tokens.sizeHit, justifyContent: 'center', paddingHorizontal: tokens.spaceMd },
   railGroup: { gap: tokens.spaceHair },
-  moreList: { gap: tokens.spaceHair },
+  moreSheet: { gap: tokens.spaceLg, padding: tokens.space3xl },
+  // The rows keep their own 12 pt padding, so their icons start on the title's line.
+  moreList: { gap: tokens.spaceHair, marginHorizontal: -tokens.spaceLg },
   pillsInEvent: { flexDirection: 'row', gap: tokens.spaceHair },
   railFoot: {
     paddingTop: tokens.spaceLg,
