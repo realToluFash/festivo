@@ -221,6 +221,26 @@ describe('Delete an event (sc-3592)', () => {
     expect(router.state.location.pathname).toBe('/app/events');
   });
 
+  it('says the event was deleted on that arrival only, not after Back or Forward (sc-22103)', async () => {
+    signedIn();
+    const { router } = await onTheEvent(
+      event(),
+      { 'GET /api/events/ev_1/deletion': () => deletion(false) },
+      ['/app/events', '/app/events/ev_1'],
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Delete event…' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Delete Adaeze and Tunde?' });
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+    await screen.findByText('Adaeze and Tunde was deleted.');
+    await router.navigate(-1);
+
+    await waitFor(() => expect(screen.queryByText('Adaeze and Tunde was deleted.')).toBeNull());
+    await router.navigate(1);
+    expect(screen.getByRole('heading', { level: 1, name: 'Events' })).toBeDefined();
+    expect(screen.queryByText('Adaeze and Tunde was deleted.')).toBeNull();
+  });
+
   it('asks for the name of an event past Draft, and says until when support can restore it', async () => {
     signedIn();
     const { dialog } = await asking(live(), true);
