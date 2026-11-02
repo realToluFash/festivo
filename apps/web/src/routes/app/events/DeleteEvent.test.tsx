@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -233,11 +233,31 @@ describe('Delete an event (sc-3592)', () => {
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
     await screen.findByText('Adaeze and Tunde was deleted.');
-    await router.navigate(-1);
+    await act(() => router.navigate(-1));
 
-    await waitFor(() => expect(screen.queryByText('Adaeze and Tunde was deleted.')).toBeNull());
-    await router.navigate(1);
+    expect(screen.queryByText('Adaeze and Tunde was deleted.')).toBeNull();
+    await act(() => router.navigate(1));
     expect(screen.getByRole('heading', { level: 1, name: 'Events' })).toBeDefined();
+    expect(screen.queryByText('Adaeze and Tunde was deleted.')).toBeNull();
+  });
+
+  it('says nothing on Forward to an entry still holding the deleted state, and drops that state (sc-22103)', async () => {
+    signedIn();
+    answering({ 'GET /api/orgs/org_1/events': () => json({ events: [], total: 0 }) });
+    const router = createMemoryRouter(routes, {
+      initialEntries: [
+        '/app/events',
+        { pathname: '/app/events', state: { deletedEvent: 'Adaeze and Tunde' } },
+      ],
+      initialIndex: 0,
+    });
+    render(<RouterProvider router={router} />);
+    await screen.findByRole('heading', { level: 1, name: 'Events' });
+
+    await act(() => router.navigate(1));
+
+    expect(screen.queryByText('Adaeze and Tunde was deleted.')).toBeNull();
+    await waitFor(() => expect(router.state.location.state).toBeNull());
     expect(screen.queryByText('Adaeze and Tunde was deleted.')).toBeNull();
   });
 
