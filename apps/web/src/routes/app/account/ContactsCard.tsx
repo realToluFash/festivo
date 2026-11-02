@@ -63,11 +63,13 @@ export function ContactsCards({
   watch,
   refresh,
   onLoaded,
+  onRead,
 }: {
   onPrimaryChanged: () => Promise<void>;
   watch: <T>(load: Promise<T>) => Promise<T>;
   refresh: number;
   onLoaded: (loaded: boolean) => void;
+  onRead: (account: Account) => void;
 }) {
   const [account, setAccount] = useState<Account | 'failed' | null>(null);
   const [twoFactorOn, setTwoFactorOn] = useState<boolean | null>(null);
@@ -114,7 +116,9 @@ export function ContactsCards({
 
     watch(api.me())
       .then((me) => {
-        if (live) setAccount(me);
+        if (!live) return;
+        setAccount(me);
+        onRead(me);
       })
       .catch(() => {
         if (live) setAccount((held) => held ?? 'failed');
@@ -131,7 +135,7 @@ export function ContactsCards({
     return () => {
       live = false;
     };
-  }, [attempt, refresh, watch]);
+  }, [attempt, refresh, watch, onRead]);
 
   const loaded = account != null && account !== 'failed';
 

@@ -72,10 +72,10 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-function me({ timezone }: { timezone: string }): Response {
+function me({ timezone, name = 'Folake Ire' }: { timezone: string; name?: string }): Response {
   return json({
     id: 'acc_1',
-    name: 'Folake Ire',
+    name,
     businessName: null,
     countryCode: null,
     locale: 'en',
@@ -119,6 +119,41 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks();
   tokens.clear();
+});
+
+describe('offline (sc-27088)', () => {
+  it('draws the name and zone Try again fetched, not the ones from before the band', async () => {
+    let reachable = true;
+    let changedElsewhere = false;
+    answering({
+      'GET /api/auth/me': () => {
+        if (!reachable) throw new TypeError('Failed to fetch');
+
+        return changedElsewhere
+          ? me({ timezone: 'Europe/London', name: 'Folake Adeyemi' })
+          : me({ timezone: 'Africa/Lagos' });
+      },
+      'GET /api/auth/two-factor': () => json({ on: false }),
+    });
+    open();
+    expect(await screen.findByText('Lagos (UTC+01:00)')).toBeDefined();
+
+    reachable = false;
+    act(() => {
+      window.dispatchEvent(new Event('offline'));
+    });
+    await waitFor(() => expect(document.querySelector('.offline-band')).not.toBeNull());
+
+    changedElsewhere = true;
+    reachable = true;
+    const band = document.querySelector('.offline-band') as HTMLElement;
+    fireEvent.click(within(band).getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(document.querySelector('.offline-band')).toBeNull());
+    const nameCard = screen.getByRole('region', { name: 'Name' });
+    expect(within(nameCard).getByText('Folake Adeyemi')).toBeDefined();
+    expect(await screen.findByText('London (UTC+01:00)')).toBeDefined();
+  });
 });
 
 describe("the account's time zone", () => {

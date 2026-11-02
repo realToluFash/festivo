@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { AccountHeader } from '../../../components/AccountHeader.tsx';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { useOffline } from '../../../offline.ts';
-import { refreshAccount, useSession } from '../../../session.ts';
+import { followAccountRead, refreshAccount, useSession } from '../../../session.ts';
 import { ContactsCards } from './ContactsCard.tsx';
 import { NameCard } from './NameCard.tsx';
 import { TimeZoneCard } from './TimeZoneCard.tsx';
@@ -34,6 +34,7 @@ export function Account() {
         watch={watch}
         refresh={refresh}
         onLoaded={setLoaded}
+        onRead={followAccountRead}
       />
 
       <TimeZoneCard timezone={session.timezone} onSaved={() => refreshAccount()} />
