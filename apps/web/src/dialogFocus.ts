@@ -1,4 +1,4 @@
-import { type RefObject, useEffect } from 'react';
+import { type RefObject, useEffect, useLayoutEffect } from 'react';
 
 import { leaveDialog } from './leaving.ts';
 
@@ -8,7 +8,7 @@ export function useDialogKeys(
   onDismiss: () => void,
   locked: boolean,
 ): void {
-  useEffect(() => {
+  useLayoutEffect(() => {
     const keys = (event: KeyboardEvent): void => {
       if (event.key === 'Escape' && !locked) onDismiss();
       if (event.key === 'Tab' && dialog.current != null) keepFocusIn(dialog.current, event);
