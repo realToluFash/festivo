@@ -84,13 +84,16 @@ export function EventsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      setDeleted(takeDeleted());
+      const gone = takeDeleted();
+      setDeleted(gone);
       // Back from an event's page lands on the tab that now holds it.
       if (organisationId != null) {
         setTab({ in: organisationId, tab: rememberedEventsTab(organisationId) });
       }
-      freshen();
-    }, [freshen, organisationId]),
+      // A load already out may have left before the delete, so it cannot be joined.
+      if (gone != null) reload();
+      else freshen();
+    }, [reload, freshen, organisationId]),
   );
 
   useEffect(() => {
