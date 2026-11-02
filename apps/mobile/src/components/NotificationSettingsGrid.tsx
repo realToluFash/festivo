@@ -28,7 +28,17 @@ import { Arrived, Skeleton } from './Skeleton.tsx';
 const CHANNELS: readonly Channel[] = ['push', 'email'];
 
 /** `NotificationSettings-*` (sc-3980): six categories against Push and Email, each switch saved as it changes. */
-export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
+export function NotificationSettingsGrid({
+  kind,
+  watch,
+  refresh,
+  onLoaded,
+}: {
+  kind: LayoutKind;
+  watch: <T>(load: Promise<T>) => Promise<T>;
+  refresh: number;
+  onLoaded: (loaded: boolean) => void;
+}) {
   const { t } = useTranslation();
   const [grid, setGrid] = useState<SettingsGrid>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
@@ -43,14 +53,21 @@ export function NotificationSettingsGrid({ kind }: { kind: LayoutKind }) {
 
   useEffect(() => {
     let current = true;
-    void readSettings(api).then((read) => {
-      if (current) setGrid(read);
+    void readSettings({
+      notificationSettings: () => watch(api.notificationSettings()),
+      setNotificationSetting: (...change) => api.setNotificationSetting(...change),
+    }).then((apply) => {
+      if (current) setGrid(apply);
     });
 
     return () => {
       current = false;
     };
-  }, [attempt]);
+  }, [attempt, refresh, watch]);
+
+  const loaded = grid.status === 'loaded';
+
+  useEffect(() => onLoaded(loaded), [loaded, onLoaded]);
 
   useEffect(() => followPushBlocked(setBlocked), []);
 

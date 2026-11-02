@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -548,5 +548,57 @@ describe('Settings > General, a request to get back in', () => {
       screen.getByText('This is your own request. Somebody else in Ìrè Events has to answer it.'),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull();
+  });
+});
+
+describe('Settings > General, offline (sc-27088)', () => {
+  it('refuses a save pressed offline, keeps the typed name through the fresh organisation Try again reads, and saves nothing on coming back', async () => {
+    let reachable = true;
+    const sent: string[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      sent.push(line);
+      if (!reachable) throw new TypeError('Failed to fetch');
+
+      return new Response(
+        JSON.stringify(
+          line === 'GET /api/orgs'
+            ? { organisations: [membership({ id: 'org_1', name: 'Ìrè Events' })] }
+            : {},
+        ),
+        { status: 200 },
+      );
+    });
+    settings();
+    await waitFor(() => expect(sent).toContain('GET /api/orgs'));
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Ìrè Weddings' } });
+    reachable = false;
+    act(() => {
+      window.dispatchEvent(new Event('offline'));
+    });
+    await waitFor(() =>
+      expect(document.querySelector('.offline-band')?.textContent).toMatch(/^Offline · as of /),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(
+      await screen.findByText('Saving did not work. Nothing was changed. Try again in a moment.'),
+    ).toBeDefined();
+    expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('Ìrè Weddings');
+    expect(
+      (screen.getByRole('button', { name: 'Save changes' }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+
+    reachable = true;
+    const rereadsBefore = sent.filter((line) => line === 'GET /api/orgs').length;
+    const band = document.querySelector('.offline-band') as HTMLElement;
+    fireEvent.click(within(band).getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(document.querySelector('.offline-band')).toBeNull());
+    expect(sent.filter((line) => line === 'GET /api/orgs').length).toBeGreaterThan(rereadsBefore);
+    expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('Ìrè Weddings');
+    expect(sent.filter((line) => line === 'PATCH /api/orgs/org_1')).toHaveLength(1);
   });
 });

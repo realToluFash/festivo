@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import { fireEvent } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
@@ -1744,6 +1744,48 @@ describe('where focus carries on (sc-11369)', () => {
       expect(screen.getByRole('heading', { level: 2, name: 'Check your email' })).toBeDefined();
       expect(screen.queryByRole('alert')).toBeNull();
     });
+  });
+});
+
+describe('offline (sc-27088)', () => {
+  it('keeps the devices under the band, and drops one signed out elsewhere once Try again answers', async () => {
+    let reachable = true;
+    let signedOutElsewhere = false;
+    answering({
+      'GET /api/auth/sessions': () => {
+        if (!reachable) throw new TypeError('Failed to fetch');
+
+        return json(
+          signedOutElsewhere
+            ? { sessions: SESSIONS.sessions.filter((s) => s.thisDevice) }
+            : SESSIONS,
+        );
+      },
+    });
+    openSecurity();
+    await waitFor(() => expect(screen.getByText('Chrome on Windows')).toBeDefined());
+
+    reachable = false;
+    act(() => {
+      window.dispatchEvent(new Event('offline'));
+    });
+    await waitFor(() =>
+      expect(document.querySelector('.offline-band')?.textContent).toMatch(/^Offline · as of /),
+    );
+    expect(screen.getByText('Chrome on Windows')).toBeDefined();
+
+    signedOutElsewhere = true;
+    reachable = true;
+    const band = document.querySelector('.offline-band') as HTMLElement;
+    fireEvent.click(within(band).getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(document.querySelector('.offline-band')).toBeNull());
+    expect(screen.queryByText('Chrome on Windows')).toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'Your account' }),
+      ),
+    );
   });
 });
 

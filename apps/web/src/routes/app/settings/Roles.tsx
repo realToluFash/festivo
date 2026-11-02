@@ -49,6 +49,8 @@ import { offButton } from '../../../offButton.ts';
 import { can, useSession } from '../../../session.ts';
 import { focusStep, useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { Forbidden } from '../Forbidden.tsx';
+import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
+import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
 
@@ -92,23 +94,31 @@ export function Roles() {
   const retrying = useRef(false);
   const [heading, arriveAtHeading] = useStepFocus();
   const [failedLine, arriveAtFailed] = useStepFocus<HTMLParagraphElement>();
+  const [refresh, setRefresh] = useState(0);
+  const { watch, refreshing } = useOffline({
+    loaded: load.kind === 'loaded',
+    reload: () => setRefresh((n) => n + 1),
+    title: heading,
+  });
 
   useEffect(() => {
     if (organisationId == null) return;
     let current = true;
 
-    api.roles(organisationId).then(
+    watch(api.roles(organisationId)).then(
       (catalogue) => {
         if (!current) return;
         setLoad({ kind: 'loaded', catalogue });
         if (retrying.current) arriveAtHeading();
         retrying.current = false;
       },
-      () => {
+      (error: unknown) => {
         if (!current) return;
         const retried = retrying.current;
         retrying.current = false;
-        setLoad({ kind: 'failed', retried });
+        setLoad((was) =>
+          was.kind === 'loaded' && keepsWhatLoaded(error) ? was : { kind: 'failed', retried },
+        );
         if (retried) arriveAtFailed();
       },
     );
@@ -116,7 +126,7 @@ export function Roles() {
     return () => {
       current = false;
     };
-  }, [organisationId, attempt, arriveAtHeading, arriveAtFailed]);
+  }, [organisationId, attempt, refresh, arriveAtHeading, arriveAtFailed, watch]);
 
   if (organisation == null) return null;
   if (!can(session, 'members.read')) return <Forbidden />;
@@ -124,6 +134,7 @@ export function Roles() {
   return (
     <div className="settings settings-wide">
       <SettingsSections />
+      {refreshing && <Refreshing />}
       {load.kind === 'loading' && (
         <div className="roles">
           <section className="card roles-list" aria-labelledby="roles-title">

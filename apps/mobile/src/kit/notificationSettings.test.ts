@@ -1,7 +1,7 @@
 import type { NotificationSetting } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { settingFlipped } from '@soirely/domain';
+import { NotReached, settingFlipped } from '@soirely/domain';
 
 import {
   type SettingsGrid,
@@ -42,11 +42,21 @@ describe('Notification settings in the app', () => {
   };
 
   it('did not load when the read fails', async () => {
-    const state = await readSettings(
+    const apply = await readSettings(
       client({ notificationSettings: () => Promise.reject(new Error('down')) }),
     );
 
-    expect(state).toEqual({ status: 'failed' });
+    expect(apply({ status: 'loading' })).toEqual({ status: 'failed' });
+    expect(apply(loaded)).toEqual({ status: 'failed' });
+  });
+
+  it('keeps the switches it showed when a reload never reached Soirely (sc-27088)', async () => {
+    const apply = await readSettings(
+      client({ notificationSettings: () => Promise.reject(new NotReached()) }),
+    );
+
+    expect(apply(loaded)).toBe(loaded);
+    expect(apply({ status: 'loading' })).toEqual({ status: 'failed' });
   });
 
   it('keeps a switch busy while its own save is out, and frees it when the answer comes', async () => {

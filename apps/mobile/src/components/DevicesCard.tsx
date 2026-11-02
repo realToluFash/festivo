@@ -5,7 +5,13 @@ import {
   ProviderCancelled,
   type ProviderSignInAttempt,
 } from '@soirely/api-client';
-import { formatDay, formatTimeOfDay, othersOf, thisDeviceFirst } from '@soirely/domain';
+import {
+  formatDay,
+  formatTimeOfDay,
+  keepsWhatLoaded,
+  othersOf,
+  thisDeviceFirst,
+} from '@soirely/domain';
 import { type Ref, useEffect, useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -57,6 +63,9 @@ export function DevicesCard({
   providers,
   kind,
   reload,
+  watch,
+  refresh,
+  onLoaded,
   onSignOutHere,
   onEndedHere,
   onCodeSpent,
@@ -66,6 +75,10 @@ export function DevicesCard({
   kind: LayoutKind;
   /** Changes when something else on the screen ended sessions, so the list is asked for again. */
   reload: number;
+  /** The screen's offline watch, and the count it raises to load the list again under the band. */
+  watch: <T>(load: Promise<T>) => Promise<T>;
+  refresh: number;
+  onLoaded: (loaded: boolean) => void;
   onSignOutHere: () => void;
   /** This device's session has already ended on the server, so only the tokens are left to clear. */
   onEndedHere: () => void;
@@ -97,19 +110,26 @@ export function DevicesCard({
   useEffect(() => {
     let live = true;
 
-    api
-      .sessions()
+    watch(api.sessions())
       .then((sessions) => {
         if (live) setDevices({ kind: 'ready', sessions });
       })
-      .catch(() => {
-        if (live) setDevices({ kind: 'failed', tapped: tappedRetry.current });
+      .catch((error: unknown) => {
+        if (!live) return;
+        const failed: Devices = { kind: 'failed', tapped: tappedRetry.current };
+        setDevices((before) =>
+          before.kind === 'ready' && keepsWhatLoaded(error) ? before : failed,
+        );
       });
 
     return () => {
       live = false;
     };
-  }, [attempt, reload]);
+  }, [attempt, reload, refresh, watch]);
+
+  const loaded = devices.kind === 'ready';
+
+  useEffect(() => onLoaded(loaded), [loaded, onLoaded]);
 
   function retry(): void {
     tappedRetry.current = true;
