@@ -91,3 +91,43 @@ export function sheetWindows(): SheetWindows {
     },
   };
 }
+
+/** The top of a phone sheet a drag that moves it starts in, Apple's minimum hit target (sc-27948). */
+export const SHEET_DRAG_STRIP = 44;
+
+/** A drag that starts in the strip and moves more down or up than across moves the sheet; before the grant only moveY - dy says where it started. */
+export function sheetDragStarts({
+  frameTop,
+  moveY,
+  dx,
+  dy,
+}: {
+  frameTop: number;
+  moveY: number;
+  dx: number;
+  dy: number;
+}): boolean {
+  const fromTop = moveY - dy - frameTop;
+
+  return (
+    fromTop >= 0 && fromTop <= SHEET_DRAG_STRIP && Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx)
+  );
+}
+
+/** Let go at half the height the keys leave showing, or still moving down at 1,000 pt a second (vy is pt per ms), it closes; a held sheet never does (sc-25667). */
+export function sheetDragCloses({
+  dy,
+  vy,
+  height,
+  keysCover,
+  held,
+}: {
+  dy: number;
+  vy: number;
+  height: number;
+  /** How far the keys reach up into the sheet, or null while they are down. */
+  keysCover: number | null;
+  held: boolean;
+}): boolean {
+  return !held && (dy >= (height - (keysCover ?? 0)) / 2 || vy >= 1);
+}
