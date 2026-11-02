@@ -1,0 +1,37 @@
+# sc-28122: Name: Change, tap Full name, keys up: Save name and Cancel above the keys; Cancel with keys up closes to Change, name as it was; five in five. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- scrollUntilVisible:
+    element:
+      id: 'nameCard.change'
+    timeout: 30000
+    centerElement: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- repeat:
+    times: 5
+    commands:
+      - tapOn:
+          id: 'nameCard.change'
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - tapOn:
+          id: 'nameCard.field'
+      - inputText: ' Typed'
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - takeScreenshot: name-keys-up
+      - tapOn:
+          id: 'nameCard.cancel'
+          waitToSettleTimeoutMs: 0
+          retryTapIfNoChange: false
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - takeScreenshot: name-after-cancel
+      - assertNotVisible:
+          id: 'nameCard.cancel'
+      - assertNotVisible:
+          text: '.*Typed.*'
+      - assertVisible:
+          id: 'nameCard.change'
