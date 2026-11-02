@@ -10,6 +10,7 @@ import {
   asNotificationItem,
   asNotificationRead,
   awaiting,
+  eventVersion,
   phoneAwaitingCode,
   primaryEmailAddress,
 } from './client.ts';
@@ -56,6 +57,16 @@ function issued(overrides: Record<string, unknown> = {}): Response {
     { status: 200 },
   );
 }
+
+describe("an event's version (sc-28121)", () => {
+  test('reads it from the tag, with or without the coding Caddy adds', () => {
+    expect(eventVersion('"12"')).toBe(12);
+    expect(eventVersion('"12-zstd"')).toBe(12);
+    expect(eventVersion('"12-gzip"')).toBe(12);
+    expect(() => eventVersion('W/"12"')).toThrow(/not a version/);
+    expect(() => eventVersion('"abc"')).toThrow(/not a version/);
+  });
+});
 
 describe('errors arrive as problem documents', () => {
   test('a failure rejects with the code, not just a status', async () => {

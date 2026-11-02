@@ -1,4 +1,4 @@
-import { ApiError, type OrganisationEvent } from '@soirely/api-client';
+import { ApiError, type OrganisationEvent, eventVersion } from '@soirely/api-client';
 import {
   type EventPhase,
   type PlaceholderEventArea,
@@ -109,10 +109,12 @@ function EventOf({
     watch(api.taggedEvent(eventId)).then(
       ({ event, tag }) =>
         current &&
-        setLoad(
-          event.organisationId === organisationId
-            ? { kind: 'loaded', event, tag }
-            : { kind: 'notFound' },
+        setLoad((was) =>
+          event.organisationId !== organisationId
+            ? { kind: 'notFound' }
+            : was.kind === 'loaded' && eventVersion(tag) < eventVersion(was.tag)
+              ? was
+              : { kind: 'loaded', event, tag },
         ),
       (error: unknown) =>
         current &&
@@ -186,13 +188,13 @@ function EventOf({
             event={load.event}
             tag={load.tag}
             heading={heading}
-            onChange={(event, tag = load.tag) => setLoad({ kind: 'loaded', event, tag })}
+            onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
           />
           {page === 'event' && (
             <Overview
               event={load.event}
               heading={heading}
-              onChange={(event, tag = load.tag) => setLoad({ kind: 'loaded', event, tag })}
+              onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
             />
           )}
           {page === 'guests' && <GuestsComing event={load.event} />}
@@ -214,7 +216,7 @@ function EventTop({
   event: OrganisationEvent;
   tag: string;
   heading: RefObject<HTMLHeadingElement | null>;
-  onChange: (event: OrganisationEvent, tag?: string) => void;
+  onChange: (event: OrganisationEvent, tag: string) => void;
 }) {
   const { t } = useTranslation();
   const session = useSession();
@@ -334,7 +336,7 @@ function Overview({
 }: {
   event: OrganisationEvent;
   heading: RefObject<HTMLHeadingElement | null>;
-  onChange: (event: OrganisationEvent, tag?: string) => void;
+  onChange: (event: OrganisationEvent, tag: string) => void;
 }) {
   const { t } = useTranslation();
   const session = useSession();
