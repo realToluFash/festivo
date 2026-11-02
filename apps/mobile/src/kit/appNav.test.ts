@@ -181,3 +181,49 @@ describe('The bell titles itself once, in the frame header (sc-3980)', () => {
     expect(feed).toMatch(/moveScreenReaderFocus\(heading\.current\)/u);
   });
 });
+
+describe('The bell in [fd] (sc-23233)', () => {
+  const feed = (): string => source(join(SRC, 'components', 'NotificationsFeed.tsx'));
+
+  it('draws Muted with the slashed bell beside the word, hidden from a screen reader', () => {
+    expect(feed()).toMatch(
+      /accessibilityElementsHidden\s+importantForAccessibility="no-hide-descendants"\s*>\s*<BellMark [^>]*slashed[^>]*\/>\s*<\/View>\s*<Text[^>]*>\s*\{t\('notifications\.muted'\)\}/u,
+    );
+  });
+
+  it('shows Mark all read that did not save on screen, read out once by the notice alone', () => {
+    const source = feed();
+
+    expect(source).toMatch(
+      /<Notice tone="attention" mark="!" body=\{notSaved\} announce wordsInTone \/>/u,
+    );
+    expect(source).toMatch(/setNotSaved\(t\(outcome\.said\)\)/u);
+    expect(source.indexOf('setNotSaved(t(outcome.said))')).toBeLessThan(
+      source.indexOf('setSaid({ words: t(outcome.said) })'),
+    );
+    expect(source).toMatch(/if \(!\('left' in outcome\)\) \{[\s\S]*?return;\s*\}\s*setSaid/u);
+  });
+
+  it('takes the line down at each next action in the feed', () => {
+    const source = feed();
+
+    for (const action of [
+      /function load\(\): void \{\s*nextAction\(\);/u,
+      /async function answerPush\(turnOn: boolean\): Promise<void> \{\s*nextAction\(\);/u,
+      /function openItem\(item: NotificationItem\): void \{\s*nextAction\(\);/u,
+      /function showMore\(after: string\): void \{\s*nextAction\(\);/u,
+      /onPress=\{\(\) => \{\s*onOpened\(\);\s*setOpen\(true\);/u,
+    ]) {
+      expect(source).toMatch(action);
+    }
+  });
+
+  it('starts Mark all read 12pt under the tablet Back, and leaves the phone as it was', () => {
+    const source = feed();
+
+    expect(source).toMatch(/\[styles\.feed, kind !== 'phone' && styles\.feedUnderBack\]/u);
+    expect(source).toMatch(/feedUnderBack: \{ paddingTop: tokens\.spaceXxs \}/u);
+    expect(source).toMatch(/part: \{ gap: tokens\.spaceLg, paddingVertical: tokens\.spaceSm \}/u);
+    expect(source).toMatch(/feed: \{\s*paddingTop: tokens\.spaceXl,/u);
+  });
+});

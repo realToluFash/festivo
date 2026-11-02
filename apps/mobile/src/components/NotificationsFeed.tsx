@@ -39,7 +39,9 @@ import { markAllRead } from '../kit/notificationFeed.ts';
 import { appPlace } from '../kit/notificationPlace.ts';
 import { type Stale, keepsWhatLoaded, useOffline } from '../offline.ts';
 import { arrivalsSeen, countedSince, setUnread, useArrivals } from '../notificationsUnread.ts';
+import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
+import { BellMark } from './BellMark.tsx';
 import { Footnote, PrimaryButton, QuietButton } from './Buttons.tsx';
 import { MuteEventSwitch } from './MuteEventCard.tsx';
 import { Notice } from './Notice.tsx';
@@ -73,6 +75,9 @@ export function NotificationsFeed({
   const [more, setMore] = useState<'idle' | 'loading' | 'failed'>('idle');
   const [asking, setAsking] = useState(false);
   const [said, setSaid] = useState<{ words: string } | null>(null);
+  const [notSaved, setNotSaved] = useState<string | null>(null);
+  const { kind } = useLayout();
+  const nextAction = useCallback((): void => setNotSaved(null), []);
 
   const refetch = useRef(() => {});
   const { watch, stale, refreshing } = useOffline({
@@ -111,6 +116,7 @@ export function NotificationsFeed({
   }, [fetchFeed]);
 
   function load(): void {
+    nextAction();
     setFeed({ status: 'loading' });
     fetchFeed();
   }
@@ -175,12 +181,14 @@ export function NotificationsFeed({
   }, [feed]);
 
   async function answerPush(turnOn: boolean): Promise<void> {
+    nextAction();
     if (turnOn) await turnOnAppPush().catch(() => undefined);
     setAsking(false);
     moveScreenReaderFocus(heading.current);
   }
 
   function openItem(item: NotificationItem): void {
+    nextAction();
     if (!item.read) {
       setFeed((current) =>
         current.status === 'loaded'
@@ -217,11 +225,12 @@ export function NotificationsFeed({
     if (feed.status !== 'loaded' || feed.unread === 0) return;
 
     const before = feed;
+    nextAction();
     setFeed({ ...feedAllRead(feed), status: 'loaded' });
     const seen = arrivalsSeen();
     const outcome = await markAllRead(api);
-    setSaid({ words: t(outcome.said) });
     if (!('left' in outcome)) {
+      setNotSaved(t(outcome.said));
       setFeed((current) =>
         current.status === 'loaded'
           ? {
@@ -233,12 +242,14 @@ export function NotificationsFeed({
       return;
     }
 
+    setSaid({ words: t(outcome.said) });
     const { left } = outcome;
     if (!countedSince(seen, left)) return;
     setFeed((current) => (current.status === 'loaded' ? { ...current, unread: left } : current));
   }
 
   function showMore(after: string): void {
+    nextAction();
     setMore('loading');
     api.notifications(after).then(
       (page) => {
@@ -267,9 +278,11 @@ export function NotificationsFeed({
       data={feed.status === 'loaded' ? feed.items : []}
       keyExtractor={(item) => item.id}
       extraData={gone}
-      renderItem={({ item }) => <FeedRow item={item} gone={gone.has(item.id)} onOpen={onOpen} />}
+      renderItem={({ item }) => (
+        <FeedRow item={item} gone={gone.has(item.id)} onOpen={onOpen} onMore={nextAction} />
+      )}
       ItemSeparatorComponent={Between}
-      contentContainerStyle={styles.feed}
+      contentContainerStyle={[styles.feed, kind !== 'phone' && styles.feedUnderBack]}
       ListHeaderComponentStyle={styles.part}
       ListFooterComponentStyle={styles.part}
       ListHeaderComponent={
@@ -282,6 +295,10 @@ export function NotificationsFeed({
               testID="notifications.markAllRead"
             />
           </View>
+
+          {notSaved != null && (
+            <Notice tone="attention" mark="!" body={notSaved} announce wordsInTone />
+          )}
 
           {asking && (
             <View style={styles.ask} testID="notifications.pushAsk">
@@ -314,6 +331,7 @@ export function NotificationsFeed({
               mark={tokens.marks.broken.glyph}
               body={t('notifications.couldNotLoad')}
               announce
+              wordsInTone
               action={{
                 label: t('notifications.tryAgain'),
                 onPress: load,
@@ -348,7 +366,13 @@ export function NotificationsFeed({
                 </Text>
               </Pressable>
               {more === 'failed' && (
-                <Notice tone="attention" mark="!" body={t('notifications.moreFailed')} announce />
+                <Notice
+                  tone="attention"
+                  mark="!"
+                  body={t('notifications.moreFailed')}
+                  announce
+                  wordsInTone
+                />
               )}
             </View>
           )}
@@ -356,7 +380,10 @@ export function NotificationsFeed({
           <Footnote
             action={t('notifications.settings')}
             role="link"
-            onPress={() => router.push(SECTION_HREF.notifications)}
+            onPress={() => {
+              nextAction();
+              router.push(SECTION_HREF.notifications);
+            }}
             testID="notifications.settings"
           />
         </>
@@ -374,10 +401,12 @@ const FeedRow = memo(function FeedRow({
   item,
   gone,
   onOpen,
+  onMore,
 }: {
   item: NotificationItem;
   gone: boolean;
   onOpen: (item: NotificationItem) => void;
+  onMore: () => void;
 }) {
   const { t } = useTranslation();
 
@@ -417,9 +446,14 @@ const FeedRow = memo(function FeedRow({
                 </View>
               )}
               {item.muted && (
-                <Text size={tokens.typeSmall.size} muted>
-                  {t('notifications.muted')}
-                </Text>
+                <View style={styles.mark}>
+                  <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                    <BellMark ink={tokens.colorInkSecondary} slashed side={MUTED_MARK_SIDE} />
+                  </View>
+                  <Text size={tokens.typeSmall.size} muted>
+                    {t('notifications.muted')}
+                  </Text>
+                </View>
               )}
             </View>
           )}
@@ -430,6 +464,7 @@ const FeedRow = memo(function FeedRow({
             eventName={item.eventName}
             label={t('notifications.more', { title: item.title, event: item.eventName })}
             testID={`notifications.item.${item.id}.more`}
+            onOpened={onMore}
           />
         )}
       </View>
@@ -457,11 +492,13 @@ function MuteMore({
   eventName,
   label,
   testID,
+  onOpened,
 }: {
   eventId: string;
   eventName: string;
   label: string;
   testID: string;
+  onOpened: () => void;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -473,7 +510,10 @@ function MuteMore({
       <Pressable
         ref={opener}
         style={styles.moreButton}
-        onPress={() => setOpen(true)}
+        onPress={() => {
+          onOpened();
+          setOpen(true);
+        }}
         accessibilityRole="button"
         accessibilityLabel={label}
         accessibilityState={{ expanded: open }}
@@ -508,12 +548,15 @@ function MuteMore({
   );
 }
 
+const MUTED_MARK_SIDE = 14;
+
 const styles = StyleSheet.create({
   feed: {
     paddingTop: tokens.spaceXl,
     paddingHorizontal: tokens.spaceXl,
     paddingBottom: tokens.space3xl,
   },
+  feedUnderBack: { paddingTop: tokens.spaceXxs },
   part: { gap: tokens.spaceLg, paddingVertical: tokens.spaceSm },
   between: { height: tokens.spaceLg },
   header: { flexDirection: 'row', justifyContent: 'flex-end' },

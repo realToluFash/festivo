@@ -3,11 +3,19 @@ import Svg, { Path } from 'react-native-svg';
 import { tokens } from '../theme/tokens.ts';
 
 /** The one bell outline, as the web's `BellMark` draws it; `slashed` crosses it out. */
-export function BellMark({ ink, slashed = false }: { ink: string; slashed?: boolean }) {
+export function BellMark({
+  ink,
+  slashed = false,
+  side = tokens.sizeMark,
+}: {
+  ink: string;
+  slashed?: boolean;
+  side?: number;
+}) {
   return (
     <Svg
-      width={tokens.sizeMark}
-      height={tokens.sizeMark}
+      width={side}
+      height={side}
       viewBox="0 0 24 24"
       fill="none"
       stroke={ink}
