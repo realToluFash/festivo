@@ -10,10 +10,13 @@ export interface Asked {
   body?: unknown;
 }
 
+/** The kinds of network a move between counts as a new one (sc-27750); the browser reports none. */
+export type NetworkKind = 'wifi' | 'cellular';
+
 export interface Connection {
   observe(answer: Promise<unknown>, asked?: Asked): void;
   deviceOffline(): void;
-  deviceOnline(): void;
+  deviceOnline(kind?: NetworkKind | null): void;
   subscribe(listener: (change: ConnectionChange) => void): () => void;
 }
 
@@ -28,6 +31,7 @@ export function createConnection(
     for (const listener of [...listeners]) listener(change);
   };
   let deviceIsOffline = false;
+  let kindInUse: NetworkKind | null = null;
 
   return {
     observe(answer, asked) {
@@ -49,9 +53,11 @@ export function createConnection(
       deviceIsOffline = true;
       tell('lost');
     },
-    // A device can report itself connected again and again with no change of network: only a return counts.
-    deviceOnline() {
-      if (!deviceIsOffline) return;
+    // A device can report itself connected again and again with no change of network: only a return, or a move between Wi-Fi and mobile data, counts.
+    deviceOnline(kind = null) {
+      const moved = kind != null && kindInUse != null && kind !== kindInUse;
+      if (kind != null) kindInUse = kind;
+      if (!deviceIsOffline && !moved) return;
       deviceIsOffline = false;
       tell('deviceBack');
     },

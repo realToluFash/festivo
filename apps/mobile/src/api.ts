@@ -6,8 +6,13 @@
  * each grows its own error path and most of those are never exercised.
  */
 import { type Account, ApiClient, type Problem, awaiting } from '@soirely/api-client';
-import { connection } from '@soirely/domain';
-import { addNetworkStateListener } from 'expo-network';
+import { type NetworkKind, connection } from '@soirely/domain';
+import {
+  type NetworkState,
+  NetworkStateType,
+  addNetworkStateListener,
+  getNetworkStateAsync,
+} from 'expo-network';
 import { getCalendars } from 'expo-localization';
 import { router } from 'expo-router';
 
@@ -51,10 +56,29 @@ export const api = new ApiClient({
   },
 });
 
-addNetworkStateListener(({ isConnected }) => {
+function kindOf(type: NetworkState['type']): NetworkKind | null {
+  if (type === NetworkStateType.WIFI) return 'wifi';
+  if (type === NetworkStateType.CELLULAR) return 'cellular';
+
+  return null;
+}
+
+function reported({ isConnected, type }: NetworkState) {
   if (isConnected === false) connection.deviceOffline();
-  else if (isConnected === true) connection.deviceOnline();
+  else if (isConnected === true) connection.deviceOnline(kindOf(type));
+}
+
+let heardChange = false;
+addNetworkStateListener((state) => {
+  heardChange = true;
+  reported(state);
 });
+// The kind in use at launch, so the first move from it counts; a change heard first is newer.
+void getNetworkStateAsync()
+  .then((state) => {
+    if (!heardChange) reported(state);
+  })
+  .catch(() => {});
 
 /** Launch's own `me()`: an ended session is reported back rather than redirected (sc-927). */
 export async function meAtLaunch(): Promise<

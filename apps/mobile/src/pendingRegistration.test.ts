@@ -12,7 +12,11 @@ vi.mock('expo-secure-store', () => ({
 }));
 vi.mock('expo-router', () => ({ router: { replace: () => {} } }));
 vi.mock('expo-localization', () => ({ getCalendars: () => [] }));
-vi.mock('expo-network', () => ({ addNetworkStateListener: () => ({ remove: () => {} }) }));
+vi.mock('expo-network', () => ({
+  NetworkStateType: { WIFI: 'WIFI', CELLULAR: 'CELLULAR' },
+  addNetworkStateListener: () => ({ remove: () => {} }),
+  getNetworkStateAsync: () => new Promise(() => {}),
+}));
 vi.mock('./appAgent.ts', () => ({ appAgent: 'Soirely/test' }));
 vi.mock('./config.ts', () => ({ config: { apiBaseUrl: 'http://api.test' } }));
 vi.mock('./i18n/index.ts', () => ({ currentLocale: () => 'en' }));

@@ -51,3 +51,19 @@ describe('a sheet’s entry, on a cold first open', () => {
     expect(sheet).toMatch(/if \(!finished\) return;[\s\S]*?fade\.setValue\(1\);/);
   });
 });
+
+describe('a sheet whose heading takes focus as it opens (sc-11032)', () => {
+  const sheet = readFileSync(join(import.meta.dirname, 'Sheet.tsx'), 'utf8');
+  const twoFactor = readFileSync(join(import.meta.dirname, 'TwoFactorCard.tsx'), 'utf8');
+
+  it('opens on Android with nothing in it for TalkBack to name the window by', () => {
+    expect(sheet).toMatch(
+      /useUnnamedWindow\(Platform\.OS === 'android' && headingTakesFocus && shown\)/,
+    );
+    expect(sheet).toContain("importantForAccessibility={unnamed ? 'no-hide-descendants' : 'auto'}");
+  });
+
+  it('is how Save your recovery codes opens', () => {
+    expect(twoFactor).toMatch(/headingTakesFocus\s+testID="twoFactor\.codesSheet"/);
+  });
+});
