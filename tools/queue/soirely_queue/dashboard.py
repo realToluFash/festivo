@@ -12,7 +12,8 @@ import time
 import urllib.parse
 import webbrowser
 
-from . import drawing, machine, permissions, remote, roles, runlog, runner, sessions, store
+from . import (drawing, leftovers, local, machine, permissions, remote, roles, runlog, runner,
+               sessions, store)
 
 PAGE = pathlib.Path(__file__).with_name("dashboard.html")
 RECENT = 20
@@ -71,6 +72,10 @@ def snapshot(db, platform, now, home, load=machine.load):
         view["machine"] = config.get("machine") or "this machine"
         view["peers"] = sorted(remote.peers(config))
         view["warnings"] += remote.problems(config) + machine.tester_problems(config)
+        view["warnings"] += [f"a run that ended left {leftovers.describe(left)}"
+                             for left in leftovers.ended(home)]
+        view["warnings"] += [f"task output past 1 GB: {path} ({local.amount(size)})"
+                             for path, size in leftovers.oversized()]
         view["free_gb"] = round(machine.free_gb(config))
         view["errors"] += problems
         late = runner.drift(config, (store.get_meta(db, "claude_version") or {}).get("version"))
