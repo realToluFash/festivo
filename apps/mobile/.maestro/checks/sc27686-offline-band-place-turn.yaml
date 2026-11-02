@@ -1,4 +1,4 @@
-# Needs an organisation with at least one event. sc-27686: the offline band keeps the rule's place as the phone turns on its side and back.
+# Needs an organisation with at least one event, and on Android a sign-in at 100% text size before font_scale changes: Gboard's "font size updated" banner blocks the batch's sign-in. sc-27686: the offline band keeps the rule's place as the phone turns on its side and back.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events
