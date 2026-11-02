@@ -1,0 +1,13 @@
+# sc-3586: a Paused event edited so its end has passed: Finished, with no Resume and no paused line. Pass EV_PAST.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_PAST}
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.finished'
+    timeout: 30000
+- assertNotVisible:
+    id: 'events.resume'
+- assertNotVisible:
+    id: 'events.pausedRow'
+- takeScreenshot: past-end-finished

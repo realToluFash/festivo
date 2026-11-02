@@ -1,0 +1,18 @@
+# Settings > Organisation, Link Google or Apple opens Security.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible: '{{t:orgGeneral.intro}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'organisation.link'
+    timeout: 20000
+- tapOn:
+    id: 'organisation.link'
+- extendedWaitUntil:
+    visible:
+      id: 'ways.google.link'
+    timeout: 15000
+- takeScreenshot: sc16265-link-opens-security

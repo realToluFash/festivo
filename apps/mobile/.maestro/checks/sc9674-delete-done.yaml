@@ -1,0 +1,38 @@
+# Delete organisation: name typed, keys up, Delete. The home screen shows. sc-9674.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: ownership.delete
+    centerElement: true
+- tapOn:
+    id: ownership.delete
+- extendedWaitUntil:
+    visible:
+      id: ownership.delete.name
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: ownership.delete.name
+    centerElement: true
+- tapOn:
+    id: ownership.delete.name
+- inputText: ${ORG_NAME}
+- waitForAnimationToEnd
+- assertVisible: '(?i)(shift|delete)'
+- scrollUntilVisible:
+    element:
+      id: ownership.delete.send
+    centerElement: true
+- tapOn:
+    id: ownership.delete.send
+- extendedWaitUntil:
+    visible: '(?:You are not in an organisation|No pertenece a ninguna organización|Vous n’êtes dans aucune organisation|Não está em nenhuma organização).*'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: home

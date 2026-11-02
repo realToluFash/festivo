@@ -1,0 +1,34 @@
+# sc-23814, iPad: Notifications scrolled down, turned upright then on its side; the feed keeps its place and Back stays at the top. Needs Expo Go's Tools button off, as Maestro's tap on the bell otherwise lands on it.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'frame.bell'
+- extendedWaitUntil:
+    visible:
+      id: 'notifications.back'
+    timeout: 15000
+- runFlow:
+    when:
+      visible:
+        id: notifications.pushAsk.notNow
+    commands:
+      - tapOn:
+          id: notifications.pushAsk.notNow
+- swipe:
+    start: 50%, 80%
+    end: 50%, 40%
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: scrolled-side
+- assertVisible:
+    id: 'notifications.back'
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd
+- takeScreenshot: turned-up
+- assertVisible:
+    id: 'notifications.back'
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- takeScreenshot: turned-side

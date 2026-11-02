@@ -1,0 +1,113 @@
+# sc-3595: in ${ORG}, an organisation with no events, the empty list's New event opens the form; Create event with nothing typed puts every message under its field; then ${NAME}, a wedding, today 12:00 to tomorrow 12:00 through the platform pickers, is created and lands on its page.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.none.new'
+    timeout: 30000
+- takeScreenshot: empty
+- tapOn:
+    id: 'events.none.new'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 20000
+- takeScreenshot: form-new
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+- takeScreenshot: form-foot
+- tapOn:
+    id: 'eventForm.send'
+- waitForAnimationToEnd
+- takeScreenshot: errors
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.name'
+    direction: UP
+- takeScreenshot: errors-top
+- tapOn:
+    id: 'eventForm.name'
+- inputText: ${NAME}
+- takeScreenshot: keyboard-name
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.type'
+    direction: UP
+- tapOn:
+    id: 'eventForm.type'
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: eventForm.type.wedding
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.start.date'
+    direction: DOWN
+- tapOn:
+    id: 'eventForm.start.date'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.start.done'
+    timeout: 10000
+- takeScreenshot: start-date-picker
+- tapOn:
+    id: 'eventForm.start.done'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'eventForm.start.time'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.start.done'
+    timeout: 10000
+- takeScreenshot: start-time-picker
+- tapOn:
+    id: 'eventForm.start.done'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.end.date'
+    direction: DOWN
+- tapOn:
+    id: 'eventForm.end.date'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.end.done'
+    timeout: 10000
+- tapOn:
+    text: '${TOMORROW}'
+    optional: true
+- takeScreenshot: end-date-picker
+- tapOn:
+    id: 'eventForm.end.done'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'eventForm.end.time'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.end.done'
+    timeout: 10000
+- tapOn:
+    id: 'eventForm.end.done'
+- waitForAnimationToEnd
+- takeScreenshot: filled
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+- tapOn:
+    id: 'eventForm.send'
+- takeScreenshot: creating
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- takeScreenshot: created

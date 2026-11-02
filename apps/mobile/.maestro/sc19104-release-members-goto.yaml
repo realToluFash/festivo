@@ -1,0 +1,17 @@
+# sc-19104, Android release build, Settings > Members open: the Owner's own row, then 'Go to Organisation'.
+appId: com.soirely.app
+---
+- tapOn:
+    id: 'members.row.*'
+- extendedWaitUntil:
+    visible:
+      id: 'members.goToOrganisation'
+    timeout: 15000
+- tapOn:
+    id: 'members.goToOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.name'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: organisation-from-members

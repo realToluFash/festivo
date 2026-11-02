@@ -1,0 +1,49 @@
+# sc-3595: in ${ORG}, the Finished event ${FINISHED_ID}'s Edit details shows Starts, Ends and Time zone read-only with the web's line, and saves a venue name.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/events/${FINISHED_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page.edit'
+    timeout: 30000
+- tapOn:
+    id: 'events.page.edit'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.scheduleOver'
+    direction: DOWN
+- takeScreenshot: over
+- tapOn:
+    id: 'eventForm.start.date'
+- waitForAnimationToEnd
+- takeScreenshot: start-tapped
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.venueName'
+    direction: DOWN
+- tapOn:
+    id: 'eventForm.venueName'
+- inputText: Eko Hotel
+- takeScreenshot: keyboard-venue
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+- takeScreenshot: zone-currency
+- tapOn:
+    id: 'eventForm.send'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- takeScreenshot: saved

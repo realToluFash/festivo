@@ -1,0 +1,8 @@
+# Settings, its Notifications row (sc-14815).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible: '{{t:settings.notificationsLine}}'
+    timeout: 30000
+- takeScreenshot: settings-row

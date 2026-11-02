@@ -1,0 +1,90 @@
+# sc-23777 on an iPad on its side: with ${EVENT}'s page beside the Events list (by its row, then by its link), the member ${MEMBER}'s page beside Members, and the role ${ROLE}'s page beside Roles, the swipe from the left edge does nothing.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'frame.events'
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${EVENT}'
+    timeout: 30000
+- tapOn:
+    id: 'events.row.${EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- assertVisible:
+    id: 'events.row.${EVENT}'
+    selected: true
+- takeScreenshot: event-before
+- runFlow: ../checks/sc23777/swipe.yaml
+- assertVisible:
+    id: 'events.page'
+- assertVisible:
+    id: 'events.row.${EVENT}'
+    selected: true
+- takeScreenshot: event-after
+- runFlow: ../return-home.yaml
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- takeScreenshot: event-link-before
+- runFlow: ../checks/sc23777/swipe.yaml
+- assertVisible:
+    id: 'events.page'
+- assertNotVisible:
+    id: 'home.openSettings'
+- takeScreenshot: event-link-after
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'frame.settings'
+- tapOn:
+    id: 'settings.members'
+- extendedWaitUntil:
+    visible:
+      id: 'members.row.${MEMBER}'
+    timeout: 30000
+- tapOn:
+    id: 'members.row.${MEMBER}'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'members.row.${MEMBER}'
+    selected: true
+- takeScreenshot: member-before
+- runFlow: ../checks/sc23777/swipe.yaml
+- assertVisible:
+    id: 'members.row.${MEMBER}'
+    selected: true
+- assertNotVisible:
+    id: 'home.openSettings'
+- takeScreenshot: member-after
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'frame.settings'
+- tapOn:
+    id: 'settings.roles'
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'roles.role.${ROLE}'
+    direction: DOWN
+- tapOn:
+    id: 'roles.role.${ROLE}'
+- extendedWaitUntil:
+    visible:
+      id: 'roles.name'
+    timeout: 20000
+- takeScreenshot: role-before
+- runFlow: ../checks/sc23777/swipe.yaml
+- assertVisible:
+    id: 'roles.name'
+- assertVisible:
+    id: 'roles.role.${ROLE}'
+- takeScreenshot: role-after

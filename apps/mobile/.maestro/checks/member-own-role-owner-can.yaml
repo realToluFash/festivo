@@ -1,0 +1,23 @@
+# sc-13631: your own page, as somebody who is not an owner (${SELF_ID}), carries membersScreen.ownRoleOwnerCan and no Go to Organisation.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible: '{{t:membersScreen.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: members.row.${SELF_ID}
+    timeout: 20000
+- tapOn:
+    id: members.row.${SELF_ID}
+- scrollUntilVisible:
+    element: '{{t:membersScreen.ownRoleOwnerCan}}'
+    timeout: 20000
+- assertNotVisible:
+    id: members.goToOrganisation
+- assertNotVisible:
+    id: members.remove
+- assertNotVisible:
+    id: members.role.save
+- takeScreenshot: member-own-role-owner-can

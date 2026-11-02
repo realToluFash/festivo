@@ -1,0 +1,42 @@
+# iOS. sc-23327 (sc-18108's steps, Back as the swipe from the left edge): New role with a name typed and not saved; Back once, then again. MODE=header taps the header back first instead. BACK_ID is the page's own back: frame.back on a phone, members.back, roles.back or events.back held upright.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-settings.yaml
+- tapOn:
+    id: 'settings.roles'
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'roles.new'
+    direction: DOWN
+- tapOn:
+    id: 'roles.new'
+- tapOn:
+    id: 'roles.name'
+- inputText: 'Typed Crew'
+- takeScreenshot: typed
+- runFlow:
+    when:
+      true: ${MODE == 'header'}
+    commands:
+      - tapOn:
+          id: '${BACK_ID}'
+- runFlow:
+    when:
+      true: ${MODE != 'header'}
+    commands:
+      - swipe:
+          start: 1%, 50%
+          end: 85%, 50%
+          duration: 400
+- waitForAnimationToEnd
+- takeScreenshot: after-first
+- swipe:
+    start: 1%, 50%
+    end: 85%, 50%
+    duration: 400
+- waitForAnimationToEnd
+- takeScreenshot: after-second

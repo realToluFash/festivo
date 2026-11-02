@@ -1,0 +1,32 @@
+# sc-22741: Save name on a field of only spaces saves nothing and says Enter your name; typing clears it.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'nameCard.change'
+    timeout: 30000
+- tapOn:
+    id: 'nameCard.change'
+- extendedWaitUntil:
+    visible:
+      id: 'nameCard.field'
+    timeout: 5000
+- eraseText: 200
+- inputText: '   '
+- tapOn:
+    id: 'nameCard.save'
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: '{{t:nameCard.blank}}'
+- takeScreenshot: blank
+- tapOn:
+    id: 'nameCard.field'
+- inputText: 'x'
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertNotVisible: '{{t:nameCard.blank}}'
+- takeScreenshot: blank-cleared
+- hideKeyboard
+- tapOn:
+    id: 'nameCard.cancel'

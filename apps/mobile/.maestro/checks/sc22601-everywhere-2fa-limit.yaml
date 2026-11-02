@@ -1,0 +1,73 @@
+# sc-22601: with two-factor on, Google brings the person back to "Signed in with Google" and the code field, sent with the primary; limited at the code step, "Sign them out" reads "Try again at {time}" until then. Needs ${METRO_URL}, ${SUBJECT} (the linked Google subject on the QA sign-in page), a two-factor account in a batch holding its TOTP_SECRET, and its sign_out_elsewhere_account window already full.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- extendedWaitUntil:
+    visible: '{{t:security.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'devices.everywhere'
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- tapOn:
+    id: 'devices.everywhere'
+- scrollUntilVisible:
+    element:
+      id: 'devices.everywhere.confirm'
+    direction: DOWN
+    timeout: 15000
+    centerElement: true
+- tapOn:
+    id: 'devices.everywhere.confirm'
+- extendedWaitUntil:
+    visible: '.*Wants to Use.*'
+    timeout: 15000
+- tapOn: 'Continue'
+- extendedWaitUntil:
+    visible: '.*Each name is its own account.*'
+    timeout: 20000
+- takeScreenshot: google-page
+- tapOn:
+    text: '.*Each name is its own account.*'
+- inputText: ${SUBJECT}
+- tapOn: 'Sign in'
+- extendedWaitUntil:
+    visible:
+      id: 'devices.everywhere.code'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'devices.everywhere.code'
+    direction: UP
+    timeout: 15000
+    centerElement: true
+- takeScreenshot: code-step
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /code
+- tapOn:
+    id: 'devices.everywhere.code'
+- inputText: ${output.helper.code}
+- hideKeyboard
+- tapOn:
+    id: 'devices.everywhere.confirm'
+- extendedWaitUntil:
+    visible: '.*(Try again at|Tente novamente às|Inténtelo de nuevo a las|Réessayez à).*'
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: 'devices.everywhere.code'
+    direction: UP
+    timeout: 15000
+    centerElement: true
+- takeScreenshot: limited
+- tapOn:
+    id: 'devices.everywhere.confirm'
+- takeScreenshot: limited-pressed
+- extendedWaitUntil:
+    notVisible: '.*(Try again at|Tente novamente às|Inténtelo de nuevo a las|Réessayez à).*'
+    timeout: 400000
+- takeScreenshot: lifted

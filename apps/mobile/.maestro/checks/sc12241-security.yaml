@@ -1,0 +1,10 @@
+# sc-12241: Security in the current window.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'settings.security'
+    timeout: 30000
+- takeScreenshot: security

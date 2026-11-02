@@ -1,0 +1,13 @@
+# sc-23361 on a phone: the event ${EVENT}'s header shows ‹ Events on its back row, whole, over the title row.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'frame.back'
+    text: '{{t:eventsScreen.title}}'
+- takeScreenshot: event-top

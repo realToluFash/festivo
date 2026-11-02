@@ -1,0 +1,11 @@
+# The Calendar's toolbar, for its screen-reader names.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: calendar.view.month
+    timeout: 30000
+- tapOn:
+    id: calendar.view.month
+- takeScreenshot: toolbar

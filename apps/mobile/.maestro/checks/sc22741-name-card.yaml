@@ -1,0 +1,31 @@
+# sc-22741: Account opens with the Name card first; Change opens Full name holding the name; Cancel leaves it.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'nameCard.change'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: card
+- tapOn:
+    id: 'nameCard.change'
+- extendedWaitUntil:
+    visible:
+      id: 'nameCard.field'
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: editing
+- eraseText: 80
+- inputText: 'Should Not Save'
+- hideKeyboard
+- tapOn:
+    id: 'nameCard.cancel'
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: 'nameCard.change'
+- assertNotVisible: 'Should Not Save'
+- takeScreenshot: cancelled

@@ -1,0 +1,46 @@
+# Organisation: the same, then scrolled down and Save changes tapped again. The notice comes back into view. sc-24496.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: organisation.contact
+    centerElement: true
+- tapOn:
+    id: organisation.contact
+- waitForAnimationToEnd
+- assertVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- scrollUntilVisible:
+    element:
+      id: organisation.save
+    centerElement: true
+- tapOn:
+    id: organisation.save
+- extendedWaitUntil:
+    visible: '.*{{t:orgGeneral.failed}}.*'
+    timeout: 45000
+- waitForAnimationToEnd
+- takeScreenshot: answered
+- assertVisible: '(?i)(shift|delete)'
+- scrollUntilVisible:
+    element:
+      id: organisation.save
+    centerElement: true
+- waitForAnimationToEnd
+- takeScreenshot: scrolled
+- tapOn:
+    id: organisation.save
+- extendedWaitUntil:
+    visible: '.*{{t:orgGeneral.failed}}.*'
+    timeout: 45000
+- waitForAnimationToEnd
+- takeScreenshot: again
+- assertVisible: '(?i)(shift|delete)'

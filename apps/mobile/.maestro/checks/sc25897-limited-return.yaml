@@ -1,0 +1,22 @@
+# sc-25897 Android, an account at its limit: sent with the keyboard's return key (a tap on its ✓). Too many new organisations for now, with its time, comes wholly into view, the field keeps focus and the keys stay up.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createOrganisation.name'
+- inputText: 'Notice In View'
+- waitForAnimationToEnd
+- tapOn:
+    point: '92%,88%'
+- extendedWaitUntil:
+    visible: '.*{{t:createOrganisation.limitedTitle}}.*'
+    timeout: 45000
+- extendedWaitUntil:
+    visible:
+      id: 'sc25897.never'
+    timeout: 3000
+    optional: true
+- takeScreenshot: answered
+- assertVisible:
+    id: 'createOrganisation.name'
+    focused: true

@@ -1,0 +1,25 @@
+# sc-23267, on the iPad in portrait: Start organisation from a cold app, five times; every start-cold-portrait-* shot shows the card, not only the keys. Landscape is sc23267-start-cold-landscape.yaml.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd
+- runFlow:
+    file: sc23267-start-cold-once.yaml
+    env:
+      RUN: 'portrait-1'
+- runFlow:
+    file: sc23267-start-cold-once.yaml
+    env:
+      RUN: 'portrait-2'
+- runFlow:
+    file: sc23267-start-cold-once.yaml
+    env:
+      RUN: 'portrait-3'
+- runFlow:
+    file: sc23267-start-cold-once.yaml
+    env:
+      RUN: 'portrait-4'
+- runFlow:
+    file: sc23267-start-cold-once.yaml
+    env:
+      RUN: 'portrait-5'

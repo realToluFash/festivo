@@ -1,0 +1,29 @@
+# The onboarding strip's marks in each state: 1 now on Check your email, 1 done after the code, 2 now on A few details. sc-18140.
+# EMAIL must be fresh.
+#
+#   node .qa/bin/qa-env.mjs maestro onboarding-step-marks NAME=… EMAIL=… PASSWORD=…
+appId: host.exp.Exponent
+---
+- runFlow: register-check-email.yaml
+- waitForAnimationToEnd
+- takeScreenshot: marks-verifying
+- runScript: scripts/latest-code.js
+- tapOn:
+    id: 'verifyEmail.code'
+- eraseText: 20
+- inputText: ${output.code}
+- tapOn:
+    id: 'verifyEmail.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'verifyEmail.continue'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: marks-verified
+- tapOn:
+    id: 'verifyEmail.continue'
+- extendedWaitUntil:
+    visible: 'A few details'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: marks-details

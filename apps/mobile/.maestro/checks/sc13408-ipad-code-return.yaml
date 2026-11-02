@@ -1,0 +1,43 @@
+# iPad, Check your email: a wrong code sent by the return key with the API held, then refused; focus stays in Code from the email, so digits typed with no tap go in. sc-13408.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- scrollUntilVisible:
+    element:
+      id: 'password.set'
+    timeout: 60000
+    centerElement: true
+- tapOn:
+    id: 'password.set'
+- extendedWaitUntil:
+    visible:
+      id: 'password.setCode'
+    timeout: 15000
+- tapOn:
+    id: 'password.setCode'
+- inputText: '000000'
+- waitForAnimationToEnd
+- takeScreenshot: typed
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- pressKey: Enter
+- waitForAnimationToEnd
+- takeScreenshot: at-return
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    visible: '{{t:passwordCard.setCodeWrong}}'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: refused
+- eraseText: 2
+- inputText: '12'
+- waitForAnimationToEnd
+- takeScreenshot: typed-after
+- assertVisible:
+    id: 'password.setCode'
+    text: '000012'
