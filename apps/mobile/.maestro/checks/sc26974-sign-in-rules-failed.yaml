@@ -10,4 +10,5 @@ appId: host.exp.Exponent
     visible:
       id: 'signInRules.retry'
     timeout: 60000
+- assertVisible: '{{t:signInRules.retry}}'
 - takeScreenshot: failed

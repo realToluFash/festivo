@@ -10,4 +10,5 @@ appId: host.exp.Exponent
     visible:
       id: 'events.retry'
     timeout: 60000
+- assertVisible: '{{t:eventsScreen.retry}}'
 - takeScreenshot: failed
