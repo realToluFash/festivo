@@ -150,7 +150,7 @@ function SheetFrame({
     height,
   );
   const drags = phone && scrimLabel != null;
-  const drag = useSheetDrag({ shift, fade, reduced, held, onClose });
+  const drag = useSheetDrag({ shift, fade, reduced, held, keysCover, onClose });
   const { shown, gone } = useWindowTurn(useModalOpen(present));
   const unnamed = useUnnamedWindow(Platform.OS === 'android' && headingTakesFocus && shown);
   if (!shown && (onScreen || laidOut)) {
@@ -325,6 +325,7 @@ type SheetDragNow = {
   fade: Animated.Value;
   reduced: boolean;
   held: boolean;
+  keysCover: number | null;
   onClose: () => void;
 };
 
@@ -344,11 +345,14 @@ function sheetDrag(first: SheetDragNow) {
     });
   };
   const { panHandlers } = PanResponder.create({
-    onMoveShouldSetPanResponderCapture: (_, { y0, dx, dy }) =>
-      sheetDragStarts(y0 - frame.top, dx, dy),
+    onMoveShouldSetPanResponderCapture: (_, { moveY, dx, dy }) =>
+      sheetDragStarts({ frameTop: frame.top, moveY, dx, dy }),
     onPanResponderMove: (_, { dy }) => now.shift.setValue(Math.max(0, dy)),
     onPanResponderRelease: (_, { dy, vy }) => {
-      if (sheetDragCloses({ dy, vy, height: frame.height, held: now.held })) now.onClose();
+      if (
+        sheetDragCloses({ dy, vy, height: frame.height, keysCover: now.keysCover, held: now.held })
+      )
+        now.onClose();
       else back();
     },
     onPanResponderTerminate: back,
@@ -370,7 +374,7 @@ function sheetDrag(first: SheetDragNow) {
 /** A phone sheet that closes on a tap outside follows a drag down from its top strip, and closes past half or on a flick (sc-27948). */
 function useSheetDrag(now: SheetDragNow) {
   const [drag] = useState(() => sheetDrag(now));
-  useEffect(() => drag.follow(now));
+  useLayoutEffect(() => drag.follow(now));
 
   return drag;
 }

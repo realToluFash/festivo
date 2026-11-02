@@ -116,21 +116,31 @@ describe('one sheet window at a time', () => {
 
 describe('dragging a sheet down', () => {
   it('starts only in the strip at its top, and only down or up', () => {
-    expect(sheetDragStarts(10, 0, 20)).toBe(true);
-    expect(sheetDragStarts(44, 2, -20)).toBe(true);
-    expect(sheetDragStarts(45, 0, 20)).toBe(false);
-    expect(sheetDragStarts(10, 30, 20)).toBe(false);
-    expect(sheetDragStarts(10, 0, 4)).toBe(false);
+    const frameTop = 500;
+    expect(sheetDragStarts({ frameTop, moveY: 530, dx: 0, dy: 20 })).toBe(true);
+    expect(sheetDragStarts({ frameTop, moveY: 524, dx: 2, dy: -20 })).toBe(true);
+    expect(sheetDragStarts({ frameTop, moveY: 565, dx: 0, dy: 20 })).toBe(false);
+    expect(sheetDragStarts({ frameTop, moveY: 490, dx: 0, dy: 20 })).toBe(false);
+    expect(sheetDragStarts({ frameTop, moveY: 530, dx: 30, dy: 20 })).toBe(false);
+    expect(sheetDragStarts({ frameTop, moveY: 514, dx: 0, dy: 4 })).toBe(false);
   });
 
   it('closes at half the height or on a 1,000 pt/s flick, and springs back short of both', () => {
-    const sheet = { height: 400, held: false };
+    const sheet = { height: 400, keysCover: null, held: false };
     expect(sheetDragCloses({ ...sheet, dy: 200, vy: 0 })).toBe(true);
     expect(sheetDragCloses({ ...sheet, dy: 100, vy: 1 })).toBe(true);
     expect(sheetDragCloses({ ...sheet, dy: 100, vy: 0.1 })).toBe(false);
   });
 
   it('never closes a held sheet', () => {
-    expect(sheetDragCloses({ dy: 400, vy: 3, height: 400, held: true })).toBe(false);
+    expect(sheetDragCloses({ dy: 400, vy: 3, height: 400, keysCover: null, held: true })).toBe(
+      false,
+    );
+  });
+
+  it('takes half of what the keys leave showing, not of the card under them', () => {
+    const sheet = { height: 550, keysCover: 300, vy: 0, held: false };
+    expect(sheetDragCloses({ ...sheet, dy: 125 })).toBe(true);
+    expect(sheetDragCloses({ ...sheet, dy: 124 })).toBe(false);
   });
 });
