@@ -26,9 +26,15 @@ number. Optionally a second factor, after which that becomes the thing they migh
 
 ## Layouts, and why
 
-**All four.** Authentication is the exception to the layout table in the skill: it is the
-one thing a phone browser does besides billing and settings. These are the same design at
-four sizes rather than four different designs.
+**All four**: the desktop web and the app's three. Settings and your account are the
+signed-in web, which has no layout for a phone's or a tablet's browser (epic 22091,
+"Decided, 2 Nov (pm, on ux's #28764)"). Down to 320 CSS px a page is the desktop page
+reflowed (WCAG 2.2 §1.4.10), and a 320 frame on a board is that check. sc-13348's
+Settings > General, built for a phone's browser, stays until the owner says otherwise.
+Signing in, creating an account and getting back in sit outside the signed-in frame.
+Whether they keep a phone browser layout is asked of pm on sc-3933; until it is answered,
+nothing new is drawn for a phone's browser. These are the same design at four sizes
+rather than four different designs.
 
 ## What these screens must honour
 
