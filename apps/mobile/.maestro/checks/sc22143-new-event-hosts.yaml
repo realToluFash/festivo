@@ -1,0 +1,40 @@
+# sc-22143: New event shows Hosted by after Type with one empty Host 1; adding a second row and pressing Create event with both empty marks every empty row; removing Host 2 leaves one row.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.host.1'
+    timeout: 30000
+- takeScreenshot: default
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.hosts.add'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'eventForm.hosts.add'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'eventForm.send'
+- hideKeyboard
+- scrollUntilVisible:
+    element: '{{t:eventHosts.blank}}'
+    direction: UP
+    centerElement: true
+    timeout: 15000
+- takeScreenshot: refused
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.host.2.remove'
+    direction: UP
+    centerElement: true
+- tapOn:
+    id: 'eventForm.host.2.remove'
+- takeScreenshot: one-row

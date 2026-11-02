@@ -1,0 +1,26 @@
+# sc-25897 Android: API stopped, sent with the keyboard's return key (a tap on its ✓) from Organisation name. The not-created notice comes wholly into view, the field keeps focus and the keys stay up.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createOrganisation.name'
+- inputText: 'Notice In View'
+- waitForAnimationToEnd
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    point: '92%,88%'
+- extendedWaitUntil:
+    visible: '.*{{t:createOrganisation.failed}}.*'
+    timeout: 45000
+- extendedWaitUntil:
+    visible:
+      id: 'sc25897.never'
+    timeout: 3000
+    optional: true
+- takeScreenshot: answered
+- assertVisible:
+    id: 'createOrganisation.name'
+    focused: true

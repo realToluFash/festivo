@@ -1,0 +1,50 @@
+# sc-565 under sc-23277: Create your account keeps what was typed when the iPad turns, both ways.
+#
+#   node .qa/bin/qa-env.mjs maestro sc23277-register-turn --ipad NAME=… EMAIL=…
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSignIn'
+    timeout: 60000
+- runFlow:
+    when:
+      visible:
+        id: 'home.openSignIn'
+    commands:
+      - tapOn:
+          id: 'home.openSignIn'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.register'
+    timeout: 30000
+- tapOn:
+    id: 'signIn.register'
+- extendedWaitUntil:
+    visible:
+      id: 'register.name'
+    timeout: 60000
+- tapOn:
+    id: 'register.name'
+- eraseText: 120
+- inputText: ${NAME}
+- tapOn:
+    id: 'register.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- takeScreenshot: turn-portrait-typed
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: ${NAME}
+- takeScreenshot: turn-landscape-kept
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: ${NAME}
+- takeScreenshot: turn-portrait-kept

@@ -1,0 +1,36 @@
+# sc-26608 on a tablet in landscape: Events scrolled to ${EVENT} with how soon it ends, then its Overview's four card headings, then back to portrait. Needs ${METRO_URL}, ${EVENT}. The Android tablet emulator stays in portrait on setOrientation, so this rotates on iPad only.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'frame.events'
+    timeout: 30000
+- tapOn:
+    id: 'frame.events'
+- scrollUntilVisible:
+    element:
+      id: 'events.now.${EVENT}'
+    direction: DOWN
+    timeout: 20000
+    centerElement: true
+- takeScreenshot: events-row-landscape
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.page.onTrack'
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: overview-landscape-1
+- scrollUntilVisible:
+    element:
+      id: 'events.page.team'
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: overview-landscape-2
+- setOrientation: PORTRAIT

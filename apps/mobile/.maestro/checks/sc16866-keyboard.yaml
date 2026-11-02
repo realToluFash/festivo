@@ -1,0 +1,45 @@
+# Settings > Organisation, the failed preview with the keyboard up: the name field and the delete button still reachable. sc-16866.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible: '{{t:settings.organisation}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'ownership.delete'
+    timeout: 60000
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    id: 'ownership.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'ownership.delete.retry'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: failed-top
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- scrollUntilVisible:
+    element:
+      id: 'ownership.delete.name'
+    timeout: 20000
+- tapOn:
+    id: 'ownership.delete.name'
+- inputText: 'Not the name'
+- waitForAnimationToEnd
+- takeScreenshot: keyboard-field
+- scrollUntilVisible:
+    element:
+      id: 'ownership.delete.send'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: keyboard-send
+- assertVisible:
+    id: 'ownership.delete.send'
+- assertVisible: 'Not the name'

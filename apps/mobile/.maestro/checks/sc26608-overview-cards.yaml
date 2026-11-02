@@ -1,0 +1,18 @@
+# sc-26608: the Overview of ${EVENT}, its On track, Replies, Needs you and Team card headings, in the batch's language. Needs ${METRO_URL}, ${EVENT}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: overview-top
+- scrollUntilVisible:
+    element:
+      id: 'events.page.team'
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: overview-team
+- scroll
+- takeScreenshot: overview-bottom

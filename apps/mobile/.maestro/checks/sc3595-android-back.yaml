@@ -1,0 +1,44 @@
+# sc-3595: on Android, in ${ORG}, ${EVENT_ID}'s Edit details with a change typed; the back button asks Leave without saving?, Keep editing keeps the form, and Leave without saving returns to the event's page.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page.edit'
+    timeout: 30000
+- tapOn:
+    id: 'events.page.edit'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 20000
+- tapOn:
+    id: 'eventForm.name'
+- inputText: ' back'
+- hideKeyboard
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.leave.keep'
+    timeout: 10000
+- takeScreenshot: leave-prompt
+- tapOn:
+    id: 'eventForm.leave.keep'
+- waitForAnimationToEnd
+- takeScreenshot: kept
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.leave.go'
+    timeout: 10000
+- tapOn:
+    id: 'eventForm.leave.go'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- takeScreenshot: left

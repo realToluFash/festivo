@@ -1,0 +1,474 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+# See also https://symfony.com/doc/current/service_container/import.html
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+parameters:
+    app.refresh_token_ttl: '%env(int:REFRESH_TOKEN_TTL)%'
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+        bind:
+            string $appEnv: '%kernel.environment%'
+            string $mailFrom: '%env(MAIL_FROM)%'
+            string $mercureSubscriberKey: '%env(MERCURE_SUBSCRIBER_KEY)%'
+
+    # makes classes in src/ available to be used as services
+    # this creates a service per class whose id is the fully-qualified class name
+    App\:
+        resource: '../src/'
+
+    # add more service definitions when explicit configuration is needed
+    # please note that last definitions always *replace* previous ones
+
+    App\Storage\ObjectStore:
+        # Public so tests can fetch it. A `when@test` override cannot do this:
+        # re-declaring the service there replaces this definition rather than
+        # merging with it, and the arguments below are silently lost.
+        public: true
+        arguments:
+            $privateBucket: '%env(STORAGE_BUCKET_PRIVATE)%'
+            $publicBucket: '%env(STORAGE_BUCKET_PUBLIC)%'
+            $publicEndpoint: '%env(STORAGE_PUBLIC_ENDPOINT)%'
+
+    # Autowires completely, so it needs no arguments — but the compiler removes
+    # it as unused until a scope injects it, and a test cannot fetch what is
+    # not there.
+    App\Audit\Auditor:
+        public: true
+
+    # Same reason, and the same trap: this must be declared HERE and not under
+    # when@test, because a definition there replaces the autowired one and
+    # silently loses all six arguments.
+    App\Domain\User\UserRegistrar:
+        public: true
+
+    App\Domain\User\Password\PasswordResolver:
+        public: true
+
+    # sc-57's details screen is its first caller; until then only tests do.
+    App\Domain\Organisation\OrganisationFounder:
+        public: true
+
+    App\Integrations\Nominatim\NominatimProvider:
+        arguments:
+            $endpoint: '%env(ADDRESS_ENDPOINT)%'
+            $userAgent: '%env(ADDRESS_USER_AGENT)%'
+
+    # One adapter behind the interface. Switching provider is this line plus a
+    # class, and nothing above it learns which one is in use.
+    App\Address\Interfaces\AddressProviderInterface: '@App\Integrations\Nominatim\NominatimProvider'
+
+    App\Address\AddressLookup:
+        arguments:
+            $cache: '@cache.address'
+
+    # One adapter behind the port. Have I Been Pwned is the only corpus worth
+    # querying and swapping it is this line plus a class.
+    App\Domain\User\Interfaces\BreachedPasswordCheckerInterface: '@App\Integrations\Hibp\HibpBreachedPasswordChecker'
+
+    # One adapter behind the port; in development it reaches the DNS mock, where a record can be published.
+    App\Integrations\Dns\DnsOverHttpsTxtLookup:
+        arguments:
+            $endpoint: '%env(DNS_TXT_ENDPOINT)%'
+    App\Domain\Organisation\Interfaces\TxtRecordLookupInterface: '@App\Integrations\Dns\DnsOverHttpsTxtLookup'
+
+    # One adapter behind the port; in development it reaches the SMS mock.
+    App\Integrations\Twilio\TwilioTextMessageSender:
+        arguments:
+            $apiBase: '%env(SMS_API_BASE)%'
+            $accountSid: '%env(SMS_ACCOUNT_SID)%'
+            $authToken: '%env(SMS_AUTH_TOKEN)%'
+            $from: '%env(SMS_FROM)%'
+    App\Domain\User\Interfaces\TextMessageSenderInterface: '@App\Integrations\Twilio\TwilioTextMessageSender'
+
+    # Push's two providers (sc-3980), each given the notification worker's per-call limit.
+    App\Integrations\WebPush\VapidWebPush:
+        arguments:
+            $subject: '%env(VAPID_SUBJECT)%'
+            $publicKey: '%env(VAPID_PUBLIC_KEY)%'
+            $privateKey: '%env(VAPID_PRIVATE_KEY)%'
+            $timeout: !php/const App\Domain\Messaging\Command\WorkNotificationsCommand::PROVIDER_CALL_LIMIT
+    App\Integrations\Expo\ExpoPushService:
+        arguments:
+            $apiBase: '%env(EXPO_PUSH_API_BASE)%'
+            $accessToken: '%env(EXPO_ACCESS_TOKEN)%'
+            $timeout: !php/const App\Domain\Messaging\Command\WorkNotificationsCommand::PROVIDER_CALL_LIMIT
+
+    # Phone codes by WhatsApp first (sc-750). The order is configuration: switch WhatsApp off, or list the
+    # countries that stay SMS-only, without a release.
+    App\Integrations\Meta\WhatsAppCloudSender:
+        arguments:
+            $apiBase: '%env(WHATSAPP_API_BASE)%'
+            $phoneNumberId: '%env(WHATSAPP_PHONE_NUMBER_ID)%'
+            $accessToken: '%env(WHATSAPP_ACCESS_TOKEN)%'
+            $template: '%env(WHATSAPP_CODE_TEMPLATE)%'
+    App\Domain\User\Interfaces\WhatsAppSenderInterface: '@App\Integrations\Meta\WhatsAppCloudSender'
+    App\Domain\User\Verification\PhoneCodeChannels:
+        arguments:
+            $whatsAppEnabled: '%env(bool:WHATSAPP_ENABLED)%'
+            $smsOnlyCountries: '%env(PHONE_CODES_SMS_ONLY_COUNTRIES)%'
+    App\Domain\Organisation\Members\TeamSeats:
+        arguments:
+            $teamSeatLimit: '%env(TEAM_SEAT_LIMIT)%'
+    App\Domain\User\Controller\WhatsAppWebhookController:
+        arguments:
+            $verifyToken: '%env(WHATSAPP_WEBHOOK_VERIFY_TOKEN)%'
+            $appSecret: '%env(WHATSAPP_APP_SECRET)%'
+
+    # Google today, Apple with sc-59. Issuers and client ids are lists: Google signs as two issuers,
+    # and every client (web, iOS, Android) has its own id as the token's audience.
+    App\Integrations\OpenIdConnect\HttpSigningKeys:
+        arguments:
+            $googleJwksUris: '%env(OAUTH_GOOGLE_JWKS_URI)%'
+            $appleJwksUris: '%env(OAUTH_APPLE_JWKS_URIS)%'
+    App\Integrations\OpenIdConnect\OpenIdTokenVerifier:
+        arguments:
+            $googleIssuers: '%env(OAUTH_GOOGLE_ISSUERS)%'
+            $googleClientIds: '%env(OAUTH_GOOGLE_CLIENT_IDS)%'
+            $appleIssuers: '%env(OAUTH_APPLE_ISSUERS)%'
+            $appleClientIds: '%env(OAUTH_APPLE_CLIENT_IDS)%'
+    App\Integrations\OpenIdConnect\HttpCodeRedeemer:
+        arguments:
+            $googleRedemptionEndpoint: '%env(OAUTH_GOOGLE_TOKEN_URI)%'
+            $googleWebClientId: '%env(OAUTH_GOOGLE_WEB_CLIENT_ID)%'
+            $googleWebClientSecret: '%env(OAUTH_GOOGLE_WEB_CLIENT_SECRET)%'
+            $appleRedemptionEndpoint: '%env(OAUTH_APPLE_TOKEN_URI)%'
+            $appleWebClientId: '%env(OAUTH_APPLE_WEB_CLIENT_ID)%'
+            $appleWebClientSecret: '%env(OAUTH_APPLE_WEB_CLIENT_SECRET)%'
+    App\Domain\User\Interfaces\CodeRedeemerInterface: '@App\Integrations\OpenIdConnect\HttpCodeRedeemer'
+    App\Integrations\OpenIdConnect\SigningKeysInterface: '@App\Integrations\OpenIdConnect\HttpSigningKeys'
+    App\Domain\User\Controller\AppleReturnController:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+            $appleAppLink: '%env(OAUTH_APPLE_APP_LINK)%'
+    App\Domain\User\Provider\AppleAppReturn:
+        arguments:
+            $appleReturnUri: '%env(OAUTH_APPLE_RETURN_URI)%'
+    App\Domain\User\Registration\RegistrationMail:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\User\Recovery\RecoveryMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Organisation\Invitations\InvitationMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Organisation\Members\JoinRequestMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Organisation\Controller\RequestLinkController:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\User\Password\PasswordChangeMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\User\Device\NewDeviceMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\User\SignInMethods\SignInMethodMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Organisation\Members\MemberAccessMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Organisation\DomainJoining\DomainSuspensionMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Organisation\OwnerClaims\OwnerClaimMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Organisation\SignInRules\SignInRulesMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\User\TwoFactor\Recovery\NotMeLink:
+        arguments:
+            $secret: '%kernel.secret%'
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Event\CalendarFeed\FeedLinkIssuer:
+        arguments:
+            $secret: '%kernel.secret%'
+    App\Domain\Event\CalendarFeed\CalendarFeedWriter:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\User\TwoFactor\Recovery\TwoFactorRecoveryMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\User\Controller\TwoFactorRecoveryController:
+        arguments:
+            $supportAddress: '%env(SUPPORT_EMAIL)%'
+    App\Domain\User\TwoFactor\Recovery\RecoveryView:
+        arguments:
+            $supportAddress: '%env(SUPPORT_EMAIL)%'
+    App\Domain\User\TwoFactor\SecretBox:
+        arguments:
+            $twoFactorKey: '%env(TWO_FACTOR_KEY)%'
+    App\Domain\User\Interfaces\IdTokenVerifierInterface: '@App\Integrations\OpenIdConnect\OpenIdTokenVerifier'
+
+    # The assistant's adapter is chosen by ASSISTANT_PROVIDER rather than by a
+    # line here, because a service id cannot be an environment variable and
+    # pointing this at the local stand-in should not be a code change.
+    App\AI\Interfaces\AssistantInterface:
+        factory: ['@App\AI\Factory\AssistantFactory', 'create']
+
+    App\Http\Access\Interfaces\MembershipDirectoryInterface: '@App\Domain\Organisation\MembershipDirectory'
+    App\Http\Access\Interfaces\OnboardingGateInterface: '@App\Domain\User\Onboarding\OnboardingGate'
+
+    App\Http\Access\Interfaces\EventDirectoryInterface: '@App\Domain\Event\EventDirectory'
+
+    App\Domain\Event\Interfaces\ActiveEventsLimitInterface: '@App\Domain\Event\UnlimitedActiveEvents'
+
+    App\Domain\Messaging\Interfaces\NotificationPreferencesInterface: '@App\Domain\Messaging\StoredNotificationPreferences'
+
+when@test:
+    services:
+        # No notification type has merged yet (sc-104 is the machine); the suite schedules these.
+        App\Tests\Double\Messaging\RecordingEmailSender:
+            public: true
+            autoconfigure: true
+        App\Domain\Messaging\Channel\EmailSender: '@App\Tests\Double\Messaging\RecordingEmailSender'
+        App\Tests\Double\Messaging\RecordingPushSender:
+            public: true
+            autoconfigure: true
+        App\Domain\Messaging\Channel\PushSender: '@App\Tests\Double\Messaging\RecordingPushSender'
+        App\Tests\Double\Messaging\RecordingHub:
+            public: true
+        Symfony\Component\Mercure\HubInterface: '@App\Tests\Double\Messaging\RecordingHub'
+        App\Tests\Double\Messaging\Meanwhile:
+            public: true
+        test.notification.notice:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments: ['test.notice']
+        test.notification.urgent:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments: ['test.urgent', !php/enum App\Enum\NotificationPriority::Urgent]
+        test.notification.info:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments: ['test.info', !php/enum App\Enum\NotificationPriority::Info]
+        test.notification.interrupted:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                { $name: 'test.interrupted', $meanwhile: '@App\Tests\Double\Messaging\Meanwhile' }
+        test.notification.collapsing:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments: { $name: 'test.collapsing', $collapseKey: 'test.collapsing' }
+        test.notification.timely:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments: { $name: 'test.timely', $tooLateAfter: 'PT1H' }
+        test.notification.deletion:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                {
+                    $name: 'test.deletion',
+                    $eventRule: !php/enum App\Enum\NotificationEventRule::DeletionNotice,
+                }
+        test.notification.host_message:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                {
+                    $name: 'test.host_message',
+                    $eventRule: !php/enum App\Enum\NotificationEventRule::HostMessage,
+                }
+        test.notification.bell:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                {
+                    $name: 'test.bell',
+                    $channels:
+                        [
+                            !php/enum App\Enum\NotificationChannel::InApp,
+                            !php/enum App\Enum\NotificationChannel::Email,
+                        ],
+                    $category: !php/enum App\Enum\NotificationCategory::EventChanges,
+                }
+        test.notification.push.guest_replies:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                $name: 'test.push.guest_replies'
+                $channels:
+                    - !php/enum App\Enum\NotificationChannel::InApp
+                    - !php/enum App\Enum\NotificationChannel::Push
+                $category: !php/enum App\Enum\NotificationCategory::GuestReplies
+        test.notification.push.messages:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                $name: 'test.push.messages'
+                $channels:
+                    - !php/enum App\Enum\NotificationChannel::InApp
+                    - !php/enum App\Enum\NotificationChannel::Push
+                $category: !php/enum App\Enum\NotificationCategory::Messages
+        test.notification.push.event_day:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                $name: 'test.push.event_day'
+                $channels:
+                    - !php/enum App\Enum\NotificationChannel::InApp
+                    - !php/enum App\Enum\NotificationChannel::Push
+                $category: !php/enum App\Enum\NotificationCategory::EventDay
+        test.notification.push.event_changes:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                $name: 'test.push.event_changes'
+                $channels:
+                    - !php/enum App\Enum\NotificationChannel::InApp
+                    - !php/enum App\Enum\NotificationChannel::Push
+                $category: !php/enum App\Enum\NotificationCategory::EventChanges
+        test.notification.push.money:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                $name: 'test.push.money'
+                $channels:
+                    - !php/enum App\Enum\NotificationChannel::InApp
+                    - !php/enum App\Enum\NotificationChannel::Push
+                $category: !php/enum App\Enum\NotificationCategory::Money
+        test.notification.push.email_money:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                $name: 'test.push.email_money'
+                $channels:
+                    - !php/enum App\Enum\NotificationChannel::Email
+                    - !php/enum App\Enum\NotificationChannel::Push
+                $category: !php/enum App\Enum\NotificationCategory::Money
+        test.notification.push.account_security:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                $name: 'test.push.account_security'
+                $channels:
+                    - !php/enum App\Enum\NotificationChannel::InApp
+                    - !php/enum App\Enum\NotificationChannel::Push
+                $category: !php/enum App\Enum\NotificationCategory::AccountSecurity
+        test.notification.push.collapsing:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                $name: 'test.push.collapsing'
+                $channels:
+                    - !php/enum App\Enum\NotificationChannel::InApp
+                    - !php/enum App\Enum\NotificationChannel::Push
+                $category: !php/enum App\Enum\NotificationCategory::GuestReplies
+                $collapseKey: 'test.push.collapsing'
+        test.notification.push.timely:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                $name: 'test.push.timely'
+                $channels:
+                    - !php/enum App\Enum\NotificationChannel::InApp
+                    - !php/enum App\Enum\NotificationChannel::Push
+                $category: !php/enum App\Enum\NotificationCategory::Money
+                $tooLateAfter: 'PT2H'
+        test.notification.guest:
+            class: App\Tests\Double\Messaging\ScriptedNotificationType
+            autoconfigure: true
+            arguments:
+                {
+                    $name: 'test.guest',
+                    $audienceKind: !php/enum App\Enum\NotificationAudienceKind::Guest,
+                }
+
+        # Routes that exist only in the suite, to prove the access layer before
+        # any real organisation or event route uses it.
+        App\Tests\Fixtures\Access\:
+            resource: '../tests/Fixtures/Access/'
+            autowire: true
+            autoconfigure: true
+
+        # Routes PHP itself dies on, for the crash answer (sc-16890).
+        App\Tests\Fixtures\Crash\:
+            resource: '../tests/Fixtures/Crash/'
+            autoconfigure: true
+
+        # The suite can never reach a real provider, whatever ASSISTANT_PROVIDER
+        # happens to say on this machine. Every assisted path — the gate, the
+        # validation, the proxy, the record — runs here, and none of it is
+        # billable or dependent on somebody having an account.
+        App\AI\Interfaces\AssistantInterface: '@App\AI\ScriptedAssistant'
+
+        # Nothing records an amount against an event yet (sc-100 will); a test records one here.
+        App\Tests\Double\ScriptedEventAmounts:
+            public: true
+            autoconfigure: true
+
+        # Only the event's own dates are on the timeline yet; a test adds other areas' milestones here.
+        App\Tests\Double\ScriptedMilestones:
+            public: true
+            autoconfigure: true
+
+        # A test sets the plan's limit here, and sees it consulted, until billing has one (sc-581).
+        App\Tests\Double\ScriptedActiveEventsLimit:
+            public: true
+        App\Domain\Event\Interfaces\ActiveEventsLimitInterface: '@App\Tests\Double\ScriptedActiveEventsLimit'
+
+        App\Tests\Double\ScriptedAddressProvider:
+            public: true
+        App\Address\Interfaces\AddressProviderInterface: '@App\Tests\Double\ScriptedAddressProvider'
+
+        # No test reaches Have I Been Pwned. The stand-in's list is what makes
+        # "this password is in a breach" assertable at all: the real corpus is
+        # somebody else's data and could answer differently tomorrow.
+        App\Domain\User\Interfaces\BreachedPasswordCheckerInterface: '@App\Domain\User\Password\ScriptedBreachedPasswordChecker'
+
+        # No test asks real DNS: a test publishes the record it means to be found.
+        App\Domain\Organisation\Interfaces\TxtRecordLookupInterface: '@App\Domain\Organisation\OwnerClaims\ScriptedTxtRecordLookup'
+
+        # No test reaches a provider; the suite signs its own tokens and can rotate the key.
+        App\Tests\Fixtures\OpenIdConnect\TestSigningKeys:
+            public: true
+        App\Integrations\OpenIdConnect\SigningKeysInterface: '@App\Tests\Fixtures\OpenIdConnect\TestSigningKeys'
+        App\Tests\Fixtures\OpenIdConnect\TestCodeRedeemer:
+            public: true
+        App\Domain\User\Interfaces\CodeRedeemerInterface: '@App\Tests\Fixtures\OpenIdConnect\TestCodeRedeemer'
+
+        # No test sends a text; what would have been sent is kept for the test to read.
+        App\Domain\User\Verification\RecordingTextMessageSender:
+            public: true
+        App\Domain\User\Interfaces\TextMessageSenderInterface: '@App\Domain\User\Verification\RecordingTextMessageSender'
+        App\Domain\User\Verification\RecordingWhatsAppSender:
+            public: true
+        App\Domain\User\Interfaces\WhatsAppSenderInterface: '@App\Domain\User\Verification\RecordingWhatsAppSender'
+        # No limit in the suite, whatever the stack's environment says: the seat tests set their own.
+        App\Domain\Organisation\Members\TeamSeats:
+            public: true
+            autowire: true
+            arguments:
+                $teamSeatLimit: ''
+
+        # Pinned off, as the container's environment wins over .env.test: codes are texted in the
+        # suite as before sc-750, and the WhatsApp tests replace this with WhatsApp first.
+        App\Domain\User\Verification\PhoneCodeChannels:
+            public: true
+            arguments:
+                $whatsAppEnabled: false
+                $smsOnlyCountries: 'US'
+
+        # Re-declared in full, not merged: a `when@test` definition REPLACES the
+        # autowired one, so every argument has to be named or it is lost. Pinned
+        # rather than read from the environment so the gate is open in the suite
+        # even on a machine configured for the real provider with no key.
+        App\AI\Availability:
+            arguments:
+                $provider: !php/const App\AI\Availability::STAND_IN
+                $apiKey: ''
+                $enabled: true

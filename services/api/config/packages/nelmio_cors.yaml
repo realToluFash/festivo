@@ -1,0 +1,42 @@
+# Who may call this API from a browser, and what they may read back.
+#
+# `origin_regex` is off and each origin is an exact string. With credentials
+# allowed, a regex is the one mistake worth putting out of reach: a dropped
+# anchor turns `^https://soirely\.com$` into a pattern that also matches
+# `https://soirely.com.example.net`, and the result is somebody else's page
+# making signed-in calls with our refresh cookie attached.
+#
+# Two named slots rather than one list because the configuration tree will not
+# take an environment variable for the whole array — a csv placeholder arrives
+# as a string and nelmio fails at container build. Named slots also mean a
+# third allowed origin is a reviewed change rather than an environment edit.
+# An unset slot is the empty string, which never equals an Origin header.
+nelmio_cors:
+    defaults:
+        origin_regex: false
+        allow_origin:
+            - '%env(CORS_WEB_ORIGIN)%'
+            - '%env(CORS_EXPO_WEB_ORIGIN)%'
+        # The refresh token travels as a cookie for browser clients, and a
+        # cross-origin request does not send one without this.
+        allow_credentials: true
+        allow_methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
+        allow_headers:
+            [
+                'Accept',
+                'Accept-Language',
+                'Authorization',
+                'Content-Type',
+                'If-Match',
+                'X-Device-Id',
+                'X-Timezone',
+            ]
+        # A header a browser cannot read is a header the client does not have.
+        # Retry-After is how a refused sign-in says when to try again, and Link
+        # is how a list says where its next page is. ETag is the version an
+        # edit sends back as If-Match. Date is the server's time, by which a
+        # client corrects a device clock that is wrong (sc-3585).
+        expose_headers: ['Date', 'ETag', 'Link', 'Retry-After']
+        max_age: 3600
+    paths:
+        '^/api': ~

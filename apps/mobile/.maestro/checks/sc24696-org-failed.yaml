@@ -1,0 +1,73 @@
+# sc-24696: with the API stopped, Settings > Organisation keeps the Company domain joining and Requests to join cards, each with its heading, one line and Try again, and no On/Off word, switch or field. With the API back, each Try again reloads its own card alone. Needs ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow: ../return-home.yaml
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.name'
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: 'requestLink.retry'
+    timeout: 60000
+    centerElement: true
+- assertVisible: '{{t:requestLink.title}}'
+- assertVisible: '{{t:requestLink.unreadable}}'
+- assertNotVisible:
+    id: 'requestLink.switch'
+- takeScreenshot: request-failed
+- scrollUntilVisible:
+    element:
+      id: 'companyDomains.retry'
+    direction: UP
+    centerElement: true
+- assertVisible: '{{t:companyDomains.title}}'
+- assertVisible: '{{t:companyDomains.unreadable}}'
+- assertNotVisible:
+    id: 'companyDomains.domain'
+- takeScreenshot: domains-failed
+- scrollUntilVisible:
+    element:
+      id: 'requestLink.retry'
+    centerElement: true
+- tapOn:
+    id: 'requestLink.retry'
+- extendedWaitUntil:
+    visible:
+      id: 'requestLink.retry'
+    timeout: 30000
+- takeScreenshot: request-failed-again
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- tapOn:
+    id: 'requestLink.retry'
+- extendedWaitUntil:
+    visible:
+      id: 'requestLink.switch'
+    timeout: 30000
+- assertNotVisible:
+    id: 'requestLink.retry'
+- takeScreenshot: request-recovered
+- scrollUntilVisible:
+    element:
+      id: 'companyDomains.retry'
+    direction: UP
+    centerElement: true
+- takeScreenshot: domains-still-failed
+- tapOn:
+    id: 'companyDomains.retry'
+- extendedWaitUntil:
+    visible:
+      id: 'companyDomains.domain'
+    timeout: 30000
+- assertNotVisible:
+    id: 'companyDomains.retry'
+- takeScreenshot: domains-recovered

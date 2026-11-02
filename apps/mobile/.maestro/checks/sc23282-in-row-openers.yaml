@@ -1,0 +1,22 @@
+# sc-23282: Security's in-row openers (Turn off two-factor…, another device's Sign out…, Sign out everywhere else…) at rest, for measuring their height. Needs two-factor on and a second session.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- extendedWaitUntil:
+    visible: '{{t:security.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'twoFactor.turnOff'
+    timeout: 20000
+- takeScreenshot: turn-off
+- scrollUntilVisible:
+    element:
+      id: 'devices.row.*.signOut'
+    timeout: 20000
+- takeScreenshot: device-sign-out
+- scrollUntilVisible:
+    element:
+      id: 'devices.everywhere'
+    timeout: 20000
+- takeScreenshot: everywhere
