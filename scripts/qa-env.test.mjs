@@ -18,6 +18,7 @@ import { describe, expect, it } from 'vitest';
 import {
   allowCleartext,
   apiControl,
+  withoutReverse,
   apiMoves,
   apiStateOf,
   batchCheck,
@@ -1401,6 +1402,14 @@ function dockerDouble(container, { failing = [] } = {}) {
       ran.push(args.join(' '));
       return !failing.includes(args[0]);
     },
+    unreached: async (moves) => {
+      ran.push('unreached');
+      try {
+        return await moves();
+      } finally {
+        ran.push('reached');
+      }
+    },
   });
   return { control, ran };
 }
@@ -1416,7 +1425,14 @@ describe('the API a batch holds', () => {
   it('tracks the state across queued moves', async () => {
     const { control, ran } = dockerDouble('running');
     await Promise.all([control.move('paused'), control.move('stopped'), control.move('up')]);
-    expect(ran).toEqual(['pause api', 'unpause api', 'stop api', 'up -d --wait --no-recreate api']);
+    expect(ran).toEqual([
+      'pause api',
+      'unreached',
+      'unpause api',
+      'stop api',
+      'reached',
+      'up -d --wait --no-recreate api',
+    ]);
     expect(control.state()).toBe('up');
   });
 
@@ -1431,6 +1447,27 @@ describe('the API a batch holds', () => {
       expect(ran).toEqual(moves);
       expect(control.state()).toBe('up');
     }
+  });
+
+  it('keeps the device from the API while a move passes through up', async () => {
+    const { control, ran } = dockerDouble('exited');
+    await control.move('paused');
+    expect(ran).toEqual(['unreached', 'up -d --wait --no-recreate api', 'pause api', 'reached']);
+    expect(control.state()).toBe('paused');
+  });
+
+  it('lets the device reach the API on a move of one step', async () => {
+    const { control, ran } = dockerDouble('running');
+    await control.move('stopped');
+    await control.move('up');
+    await control.move('paused');
+    expect(ran).toEqual(['stop api', 'up -d --wait --no-recreate api', 'pause api']);
+  });
+
+  it('gives the device the API back when a move through up fails', async () => {
+    const { control, ran } = dockerDouble('exited', { failing: ['pause'] });
+    await expect(control.move('paused')).rejects.toThrow('docker compose pause api failed');
+    expect(ran).toEqual(['unreached', 'up -d --wait --no-recreate api', 'pause api', 'reached']);
   });
 
   it('reads Docker again after a move that failed, and the next move still runs', async () => {
@@ -2367,3 +2404,23 @@ function mp4Header(size, type) {
   header.write(type, 4);
   return header;
 }
+
+describe('the API taken from the device', () => {
+  it('removes only its own reverse for the moves, and puts it back after', async () => {
+    const ran = [];
+    const adb = (args) => ran.push(args.join(' '));
+    await withoutReverse(18080, adb, async () => ran.push('moves'));
+    expect(ran).toEqual(['reverse --remove tcp:18080', 'moves', 'reverse tcp:18080 tcp:18080']);
+  });
+
+  it('puts the reverse back when the moves fail', async () => {
+    const ran = [];
+    const adb = (args) => ran.push(args.join(' '));
+    await expect(
+      withoutReverse(18080, adb, async () => {
+        throw new Error('pause failed');
+      }),
+    ).rejects.toThrow('pause failed');
+    expect(ran).toEqual(['reverse --remove tcp:18080', 'reverse tcp:18080 tcp:18080']);
+  });
+});

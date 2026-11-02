@@ -2401,19 +2401,25 @@ export const apiStateOf = (containerState) =>
 // A check holds Event View's reads by pausing the API once the list has loaded. Each move waits
 // for the one before it. The state is read from Docker on the first move and after a failed one,
 // since a killed batch or a half-done move leaves the container in a state nobody recorded.
-export function apiControl({ run, read }) {
+// A move between paused and stopped passes through up, and anything the app asks then is
+// answered, so those moves run inside `unreached`, which keeps the device from the API.
+export function apiControl({ run, read, unreached = (moves) => moves() }) {
   let state;
   let moving = Promise.resolve();
   const move = (to) => {
     const next = moving.then(async () => {
       state ??= apiStateOf(await read());
-      for (const args of apiMoves(state, to)) {
-        if (!(await run(args))) {
-          state = undefined;
-          throw new Error(`docker compose ${args.join(' ')} failed`);
+      const moves = apiMoves(state, to);
+      const through = moves.length > 1 ? unreached : (only) => only();
+      await through(async () => {
+        for (const args of moves) {
+          if (!(await run(args))) {
+            state = undefined;
+            throw new Error(`docker compose ${args.join(' ')} failed`);
+          }
+          state = args[0] === 'pause' ? 'paused' : args[0] === 'stop' ? 'stopped' : 'up';
         }
-        state = args[0] === 'pause' ? 'paused' : args[0] === 'stop' ? 'stopped' : 'up';
-      }
+      });
     });
     moving = next.catch(() => {});
     return next;
@@ -2421,12 +2427,27 @@ export function apiControl({ run, read }) {
   return { move, state: () => state };
 }
 
-const composeApi = (root) =>
+// On Android the app reaches the API through adb reverse, so taking that one port away refuses
+// the app at once without the network change that airplane mode would announce.
+export async function withoutReverse(port, adb, moves) {
+  adb(['reverse', '--remove', `tcp:${port}`]);
+  try {
+    return await moves();
+  } finally {
+    adb(['reverse', `tcp:${port}`, `tcp:${port}`]);
+  }
+}
+
+const composeApi = (root, onAndroid) =>
   apiControl({
     run: (args) => runAsync('docker', ['compose', ...args], { cwd: root }),
     read: () =>
       capture('docker', ['compose', 'ps', '-a', 'api', '--format', '{{.State}}'], { cwd: root }) ??
       '',
+    ...(onAndroid && {
+      unreached: (moves) =>
+        withoutReverse(CONFIG.ports.API_PORT, (args) => adbOut(androidTools(), args), moves),
+    }),
   });
 
 const within = (ms, promise) =>
@@ -2594,7 +2615,14 @@ async function batch(args) {
     onAndroid,
   });
 
-  const apiState = composeApi(root);
+  const apiState = composeApi(root, onAndroid);
+  // A batch killed inside withoutReverse left the API's port unreversed.
+  if (onAndroid)
+    adbOut(androidTools(), [
+      'reverse',
+      `tcp:${CONFIG.ports.API_PORT}`,
+      `tcp:${CONFIG.ports.API_PORT}`,
+    ]);
   await apiState.move('up');
   const named = languages[0] !== 'any';
   const signedIn = named ? apiSession(email, password, secret) : null;

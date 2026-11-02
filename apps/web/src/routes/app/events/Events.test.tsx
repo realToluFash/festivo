@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { EVENT_TYPES, forgetEventsTab, serverClock } from '@soirely/domain';
+import { EVENT_TYPES, connection, forgetEventsTab, serverClock } from '@soirely/domain';
 
 import { api } from '../../../api.ts';
 import { __setSessionState, type Session, switchOrganisation } from '../../../session.ts';
@@ -4648,7 +4648,7 @@ describe('Every pick is held under Uploading… until the server has read it (sc
       });
     }
 
-    return { waiting, signed, answer, answerTaken };
+    return { waiting, read, signed, answer, answerTaken };
   }
 
   function jpeg(name: string): File {
@@ -4810,6 +4810,53 @@ describe('Every pick is held under Uploading… until the server has read it (sc
     );
   });
 
+  /** Picks `chosen` as soon as Uploading… is committed, before React runs that render's effects, so the pick lands ahead of the first upload starting. */
+  function pickOnceUploading(
+    dialog: HTMLElement,
+    chosen: File,
+  ): () => 'waiting' | 'early' | 'late' {
+    let picked: 'waiting' | 'early' | 'late' = 'waiting';
+    let started = false;
+    const sign = api.signEventCoverUpload.bind(api);
+    vi.spyOn(api, 'signEventCoverUpload').mockImplementation((...args) => {
+      started = true;
+      return sign(...args);
+    });
+    const watching = new MutationObserver(() => {
+      if (picked !== 'waiting' || within(dialog).queryByText('Uploading…') == null) return;
+      picked = started ? 'late' : 'early';
+      watching.disconnect();
+      pickInDialog(chosen);
+    });
+    watching.observe(dialog, { childList: true, subtree: true, characterData: true });
+
+    return () => picked;
+  }
+
+  it('a second pick that lands before the first upload has started never shows the first', async () => {
+    signedIn();
+    const { signed, answer, answerTaken } = serving(PHOTO);
+    const size = sizingLater('second.jpg', 2400);
+    const dialog = await changing();
+    const pickedSecond = pickOnceUploading(dialog, jpeg('second.jpg'));
+
+    pickInDialog(jpeg('first.jpg'));
+    await waitFor(() => expect(pickedSecond()).not.toBe('waiting'));
+    expect(pickedSecond()).toBe('early');
+    await answerTaken('first.jpg');
+    expectHeld(dialog);
+
+    size();
+    await waitFor(() => expect(signed).toContain('second.jpg'));
+    expectHeld(dialog);
+    await answer('second.jpg');
+
+    await waitFor(() =>
+      expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe('blob:second.jpg'),
+    );
+    expect(within(dialog).queryByText('Uploading…')).toBeNull();
+  });
+
   it('a second pick refused before it uploads shows the first, read while the second was sized', async () => {
     signedIn();
     const { waiting, answerTaken } = serving(PHOTO);
@@ -4829,6 +4876,359 @@ describe('Every pick is held under Uploading… until the server has read it (sc
     );
     expect(within(dialog).queryByText('Uploading…')).toBeNull();
     expect(waiting.has('small.jpg')).toBe(false);
+  });
+
+  it('a parked first pick shown after the second is refused is what a later refusal gives back', async () => {
+    signedIn();
+    const { answer, answerTaken } = serving(PHOTO);
+    const size = sizingLater('small.jpg', 10);
+    const dialog = await changing();
+
+    pickInDialog(jpeg('first.jpg'));
+    await waitFor(() => expect(within(dialog).getByText('Uploading…')).toBeDefined());
+    pickInDialog(jpeg('small.jpg'));
+    await answerTaken('first.jpg');
+    size();
+    await waitFor(() =>
+      expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe('blob:first.jpg'),
+    );
+
+    fireEvent.change(within(dialog).getByLabelText('Photo position'), { target: { value: '70' } });
+    pickInDialog(jpeg('damaged.jpg'));
+    await answer('damaged.jpg');
+
+    expect(await within(dialog).findByText(DAMAGED)).toBeDefined();
+    expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe('blob:first.jpg');
+    expect((within(dialog).getByLabelText('Photo position') as HTMLInputElement).value).toBe('70');
+  });
+
+  it('a pick the server refuses after an earlier refusal gives back the frame as the host left it', async () => {
+    signedIn();
+    const { answer } = serving(PHOTO);
+    sizingEach({});
+    const dialog = await changing();
+
+    pickInDialog(jpeg('damaged.jpg'));
+    await waitFor(() => expect(within(dialog).getByText('Uploading…')).toBeDefined());
+    await answer('damaged.jpg');
+    expect(await within(dialog).findByText(DAMAGED)).toBeDefined();
+    await waitFor(() => expect(within(dialog).queryByText('Uploading…')).toBeNull());
+
+    fireEvent.change(within(dialog).getByLabelText('Photo position'), { target: { value: '70' } });
+    pickInDialog(jpeg('damaged-again.jpg'));
+    await answer('damaged-again.jpg');
+
+    await waitFor(() => expect(within(dialog).queryByText('Uploading…')).toBeNull());
+    expect(await within(dialog).findByText(DAMAGED)).toBeDefined();
+    expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(PHOTO.sizes[0]!.url);
+    expect((within(dialog).getByLabelText('Photo position') as HTMLInputElement).value).toBe('70');
+  });
+
+  const TOO_SMALL =
+    'That photo is smaller than 1200 × 675 pixels, so it would look blurred. Choose a larger one.';
+
+  /** The browser sizes each named file only when `size(name)` says so, at the width given; any other file is sized at once. */
+  function sizingEach(widths: Record<string, number>): (name: string) => void {
+    const sizers = new Map<string, () => void>();
+    vi.stubGlobal(
+      'Image',
+      class {
+        naturalWidth = 2400;
+        naturalHeight = 1600;
+        onload: (() => void) | null = null;
+        set src(url: string) {
+          const name = url.replace('blob:', '');
+          if (name in widths) {
+            this.naturalWidth = widths[name]!;
+            sizers.set(name, () => this.onload?.());
+          } else queueMicrotask(() => this.onload?.());
+        }
+      },
+    );
+
+    return (name) => {
+      act(() => sizers.get(name)!());
+    };
+  }
+
+  /** Lets a sized pick's check settle; a late pick lands inside these turns without the fix, which the red run shows. */
+  async function sized(): Promise<void> {
+    await act(async () => {
+      for (let turn = 0; turn < 5; turn++) await Promise.resolve();
+    });
+  }
+
+  it('a second pick made while the first is still being sized holds the frame, and the first never uploads', async () => {
+    signedIn();
+    const { signed, answer } = serving(PHOTO);
+    const size = sizingEach({ 'first.jpg': 2400, 'second.jpg': 2400 });
+    const dialog = await changing();
+
+    pickInDialog(jpeg('first.jpg'));
+    pickInDialog(jpeg('second.jpg'));
+    size('first.jpg');
+    await sized();
+    expectHeld(dialog);
+
+    size('second.jpg');
+    await waitFor(() => expect(signed).toContain('second.jpg'));
+    expectHeld(dialog);
+    await answer('second.jpg');
+
+    await waitFor(() =>
+      expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe('blob:second.jpg'),
+    );
+    expect(within(dialog).queryByText('Uploading…')).toBeNull();
+    expect(signed).not.toContain('first.jpg');
+  });
+
+  it('a first pick sized after the second never replaces the second', async () => {
+    signedIn();
+    const { signed, answer } = serving(PHOTO);
+    const size = sizingEach({ 'first.jpg': 2400, 'second.jpg': 2400 });
+    const dialog = await changing();
+
+    pickInDialog(jpeg('first.jpg'));
+    pickInDialog(jpeg('second.jpg'));
+    size('second.jpg');
+    await waitFor(() => expect(signed).toContain('second.jpg'));
+    size('first.jpg');
+    await sized();
+    expectHeld(dialog);
+    await answer('second.jpg');
+
+    await waitFor(() =>
+      expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe('blob:second.jpg'),
+    );
+    expect(signed).not.toContain('first.jpg');
+  });
+
+  it('a slow second pick never replaces a third sized before it, while the first uploads', async () => {
+    signedIn();
+    const { signed, answer } = serving(PHOTO);
+    const size = sizingEach({ 'second.jpg': 2400, 'third.jpg': 2400 });
+    const dialog = await changing();
+
+    pickInDialog(jpeg('first.jpg'));
+    await waitFor(() => expect(signed).toContain('first.jpg'));
+    pickInDialog(jpeg('second.jpg'));
+    pickInDialog(jpeg('third.jpg'));
+    size('third.jpg');
+    await waitFor(() => expect(signed).toContain('third.jpg'));
+    size('second.jpg');
+    await sized();
+    expectHeld(dialog);
+    await answer('third.jpg');
+
+    await waitFor(() =>
+      expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe('blob:third.jpg'),
+    );
+    expect(signed).not.toContain('second.jpg');
+  });
+
+  it('a first pick the server refuses while the second is sized stays held, then shows the second', async () => {
+    signedIn();
+    const { signed, answer, answerTaken } = serving(PHOTO);
+    const size = sizingEach({ 'second.jpg': 2400 });
+    const dialog = await changing();
+
+    pickInDialog(jpeg('damaged.jpg'));
+    await waitFor(() => expect(within(dialog).getByText('Uploading…')).toBeDefined());
+    pickInDialog(jpeg('second.jpg'));
+    await answerTaken('damaged.jpg');
+    expectHeld(dialog);
+    expect(within(dialog).queryByText(DAMAGED)).toBeNull();
+
+    size('second.jpg');
+    await waitFor(() => expect(signed).toContain('second.jpg'));
+    expectHeld(dialog);
+    await answer('second.jpg');
+
+    await waitFor(() =>
+      expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe('blob:second.jpg'),
+    );
+    expect(within(dialog).queryByText(DAMAGED)).toBeNull();
+  });
+
+  it('a first pick the server refuses, then a second refused before it uploads, gives back what the dialog held', async () => {
+    signedIn();
+    const { signed, answerTaken } = serving(PHOTO);
+    const size = sizingEach({ 'small.jpg': 10 });
+    const dialog = await changing();
+
+    pickInDialog(jpeg('damaged.jpg'));
+    await waitFor(() => expect(within(dialog).getByText('Uploading…')).toBeDefined());
+    pickInDialog(jpeg('small.jpg'));
+    await answerTaken('damaged.jpg');
+    expectHeld(dialog);
+
+    size('small.jpg');
+
+    expect(await within(dialog).findByText(TOO_SMALL)).toBeDefined();
+    expect(within(dialog).queryByText('Uploading…')).toBeNull();
+    expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(PHOTO.sizes[0]!.url);
+    expect(signed).not.toContain('small.jpg');
+  });
+
+  it.each(['first.jpg', 'damaged.jpg'])(
+    'a %s answer landing before the second pick commits never strands the second behind a refused third',
+    async (first) => {
+      // The offline band hears the first's answer and can re-render at SyncLane, which commits the second pick with it.
+      vi.spyOn(connection, 'observe').mockImplementation(() => {});
+      signedIn();
+      const { waiting, read, signed, answer } = serving(PHOTO);
+      const sizers = new Map<string, () => void>();
+      vi.stubGlobal(
+        'Image',
+        class {
+          naturalWidth = 2400;
+          naturalHeight = 1600;
+          onload: (() => void) | null = null;
+          set src(url: string) {
+            const name = url.replace('blob:', '');
+            if (name === 'small.jpg') this.naturalWidth = 10;
+            if (name === first) queueMicrotask(() => this.onload?.());
+            else sizers.set(name, () => this.onload?.());
+          }
+        },
+      );
+      const made: string[] = [];
+      URL.createObjectURL = (chosen: Blob) => {
+        made.push((chosen as File).name);
+        return `blob:${(chosen as File).name}`;
+      };
+      const dialog = await changing();
+
+      pickInDialog(jpeg(first));
+      await waitFor(() => expect(waiting.has(first)).toBe(true));
+      pickInDialog(jpeg('second.jpg'));
+      await waitFor(() => expect(sizers.has('second.jpg')).toBe(true));
+      let committedFirst = true;
+      await act(async () => {
+        sizers.get('second.jpg')!();
+        // waitFor would lift act while it polls and let React's Scheduler commit the second pick; sizing settles in microtasks.
+        for (
+          let turn = 0;
+          turn < 50 && made.filter((name) => name === 'second.jpg').length < 2;
+          turn++
+        )
+          await Promise.resolve();
+        expect(made.filter((name) => name === 'second.jpg')).toHaveLength(2);
+        waiting.get(first)!();
+        await read.get(first)!.catch(() => undefined);
+        for (let turn = 0; turn < 5; turn++) await Promise.resolve();
+        committedFirst = signed.includes('second.jpg');
+      });
+      expect(committedFirst).toBe(false);
+
+      await waitFor(() => expect(signed).toContain('second.jpg'));
+      pickInDialog(jpeg('small.jpg'));
+      await waitFor(() => expect(sizers.has('small.jpg')).toBe(true));
+      act(() => sizers.get('small.jpg')!());
+      expect(await within(dialog).findByText(TOO_SMALL)).toBeDefined();
+      await answer('second.jpg');
+
+      await waitFor(() =>
+        expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(
+          'blob:second.jpg',
+        ),
+      );
+      expect(within(dialog).queryByText('Uploading…')).toBeNull();
+    },
+  );
+
+  it.each([
+    ['first.jpg', 'is read after it, shows the first'],
+    ['damaged.jpg', 'is refused after it, gives back the saved photo with its own refusal'],
+  ])(
+    'a second pick refused at sizing while a %s uploads leaves the first awaited: a first that %s',
+    async (first) => {
+      signedIn();
+      const { signed, answer } = serving(PHOTO);
+      const size = sizingEach({ 'small.jpg': 10 });
+      const dialog = await changing();
+
+      pickInDialog(jpeg(first));
+      await waitFor(() => expect(signed).toContain(first));
+      pickInDialog(jpeg('small.jpg'));
+      size('small.jpg');
+      expect(await within(dialog).findByText(TOO_SMALL)).toBeDefined();
+      expectHeld(dialog);
+
+      await answer(first);
+
+      if (first === 'first.jpg') {
+        await waitFor(() =>
+          expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(
+            'blob:first.jpg',
+          ),
+        );
+      } else {
+        expect(await within(dialog).findByText(DAMAGED)).toBeDefined();
+        expect(within(dialog).queryByText(TOO_SMALL)).toBeNull();
+        expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(
+          PHOTO.sizes[0]!.url,
+        );
+      }
+      expect(within(dialog).queryByText('Uploading…')).toBeNull();
+      expect(signed).not.toContain('small.jpg');
+    },
+  );
+
+  it('a second pick refused before it uploads, while the first is still being sized, gives back what the dialog held, and the next pick is one pick', async () => {
+    signedIn();
+    const { signed, answer } = serving(PHOTO);
+    const size = sizingEach({ 'first.jpg': 2400, 'small.jpg': 10 });
+    const dialog = await changing();
+
+    pickInDialog(jpeg('first.jpg'));
+    pickInDialog(jpeg('small.jpg'));
+    size('small.jpg');
+
+    expect(await within(dialog).findByText(TOO_SMALL)).toBeDefined();
+    expect(within(dialog).queryByText('Uploading…')).toBeNull();
+    expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(PHOTO.sizes[0]!.url);
+    const slider = within(dialog).getByLabelText('Photo position') as HTMLInputElement;
+    expect(slider.value).toBe('30');
+    size('first.jpg');
+    await sized();
+    expect(signed).toEqual([]);
+
+    fireEvent.change(slider, { target: { value: '70' } });
+    const describing = within(dialog).getByLabelText(/Describe the image/) as HTMLTextAreaElement;
+    fireEvent.change(describing, { target: { value: 'The arch at noon' } });
+    pickInDialog(jpeg('damaged.jpg'));
+    await waitFor(() => expect(within(dialog).getByText('Uploading…')).toBeDefined());
+    await answer('damaged.jpg');
+
+    expect(await within(dialog).findByText(DAMAGED)).toBeDefined();
+    expect(within(dialog).queryByText('Uploading…')).toBeNull();
+    expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(PHOTO.sizes[0]!.url);
+    expect(slider.value).toBe('70');
+    expect(describing.value).toBe('The arch at noon');
+  });
+
+  it('a second pick refused while the first is sized, with nothing saved, keeps focus on the picker', async () => {
+    signedIn();
+    const { answer } = serving(null);
+    const size = sizingEach({ 'first.jpg': 2400, 'small.jpg': 10 });
+    at('/app/events/ev_1/edit');
+    await screen.findByRole('heading', { level: 1, name: 'Edit details' });
+    fireEvent.change(document.getElementById('cover-file')!, {
+      target: { files: [jpeg('damaged.jpg')] },
+    });
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    await answer('damaged.jpg');
+    await waitFor(() => expect(dialog.querySelector('.cover-choose')).not.toBeNull());
+
+    pickInDialog(jpeg('first.jpg'));
+    pickInDialog(jpeg('small.jpg'));
+    size('small.jpg');
+
+    expect(await within(dialog).findByText(TOO_SMALL)).toBeDefined();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(dialog.querySelector('.cover-choose button')),
+    );
   });
 });
 
