@@ -65,7 +65,9 @@ workers as they are and removes the ticks.
   and in a process session of its own on the Mac, so a worker's end does not take the
   account's other sessions with it. A worker's session is launched with a PreToolUse hook
   (`artifact_guard.py`, through `--settings`) that refuses any Artifact call other than
-  `read` or `list`, publish included, before it runs; only ux's drawing goes without it. `claude attach <id>`
+  `read` or `list`, publish included, before it runs; only ux's drawing goes without it. Every worker
+  is also denied `mcp__claude-artifacts`: some accounts (fasugba@owsy.com's) get that server
+  in place of the built-in Artifact tools, which come back once it is denied. `claude attach <id>`
   shows a session's work. A session takes its environment from the daemon, not from the command that
   started it, so the worker's variables (`SOIRELY_WORKER`, `SQ_RUN_DIR`, `GH_CONFIG_DIR`) go
   in the session's `--settings`, and sq reads its tokens from its env file itself. A session that starts without the Artifact tools (it happened once,
