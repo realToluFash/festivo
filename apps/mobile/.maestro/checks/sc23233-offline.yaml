@@ -1,0 +1,45 @@
+# Mark all read not saved, then the feed not loading, with the API stopped from outside during the pauses (sc-23233).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: frame.bell
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil:
+    visible:
+      id: notifications.markAllRead
+    timeout: 15000
+- runFlow:
+    when:
+      visible:
+        id: notifications.pushAsk.notNow
+    commands:
+      - tapOn:
+          id: notifications.pushAsk.notNow
+- takeScreenshot: offline-before
+# The API is stopped from the shell during this pause.
+- extendedWaitUntil:
+    visible:
+      id: never.there
+    timeout: 30000
+    optional: true
+- tapOn:
+    id: notifications.markAllRead
+- extendedWaitUntil:
+    visible:
+      id: never.there
+    timeout: 6000
+    optional: true
+- takeScreenshot: offline-readall-not-saved
+- tapOn:
+    id: frame.back
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil:
+    visible:
+      id: never.there
+    timeout: 20000
+    optional: true
+- takeScreenshot: offline-feed-failed
