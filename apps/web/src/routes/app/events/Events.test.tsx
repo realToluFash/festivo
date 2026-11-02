@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { EVENT_TYPES, forgetEventsTab, serverClock } from '@soirely/domain';
 
+import { api } from '../../../api.ts';
 import { __setSessionState, type Session, switchOrganisation } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { WIDE_WIDTH } from '../../../phoneWidth.ts';
@@ -4587,6 +4588,15 @@ describe('Every pick is held under Uploading… until the server has read it (sc
   /** Each preview waits for `answer(name)`; the server refuses a file named damaged. */
   function serving(cover: unknown) {
     const waiting = new Map<string, () => void>();
+    const read = new Map<string, Promise<string>>();
+    const signed: string[] = [];
+
+    const preview = api.previewEventCoverUpload.bind(api);
+    vi.spyOn(api, 'previewEventCoverUpload').mockImplementation((organisationId, uploadKey) => {
+      const reading = preview(organisationId, uploadKey);
+      read.set(uploadKey.split('/').pop()!, reading);
+      return reading;
+    });
 
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
@@ -4594,6 +4604,7 @@ describe('Every pick is held under Uploading… until the server has read it (sc
 
       if (line === 'POST /api/orgs/org_1/event-cover-uploads') {
         const { filename } = body as { filename: string };
+        signed.push(filename);
         return json(
           {
             upload: {
@@ -4628,7 +4639,16 @@ describe('Every pick is held under Uploading… until the server has read it (sc
       waiting.get(name)!();
     }
 
-    return { waiting, answer };
+    /** Answers inside act and returns once the dialog's own await on the preview has run, and React has rendered whatever it did. */
+    async function answerTaken(name: string): Promise<void> {
+      await waitFor(() => expect(waiting.has(name)).toBe(true));
+      await act(async () => {
+        waiting.get(name)!();
+        await read.get(name)!.catch(() => undefined);
+      });
+    }
+
+    return { waiting, signed, answer, answerTaken };
   }
 
   function jpeg(name: string): File {
@@ -4728,7 +4748,7 @@ describe('Every pick is held under Uploading… until the server has read it (sc
 
   it('a second pick while the first uploads keeps the default until the second has been read', async () => {
     signedIn();
-    const { waiting, answer } = serving(PHOTO);
+    const { waiting, answer, answerTaken } = serving(PHOTO);
     const dialog = await changing();
 
     pickInDialog(jpeg('first.jpg'));
@@ -4736,8 +4756,7 @@ describe('Every pick is held under Uploading… until the server has read it (sc
     pickInDialog(jpeg('second.jpg'));
     await waitFor(() => expect(waiting.has('second.jpg')).toBe(true));
 
-    await answer('first.jpg');
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await answerTaken('first.jpg');
     expectHeld(dialog);
 
     await answer('second.jpg');
@@ -4771,19 +4790,18 @@ describe('Every pick is held under Uploading… until the server has read it (sc
 
   it('the first pick answering while the browser sizes the second never shows', async () => {
     signedIn();
-    const { answer } = serving(PHOTO);
+    const { signed, answer, answerTaken } = serving(PHOTO);
     const size = sizingLater('second.jpg', 2400);
     const dialog = await changing();
 
     pickInDialog(jpeg('first.jpg'));
     await waitFor(() => expect(within(dialog).getByText('Uploading…')).toBeDefined());
     pickInDialog(jpeg('second.jpg'));
-    await answer('first.jpg');
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await answerTaken('first.jpg');
     expectHeld(dialog);
 
     size();
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await waitFor(() => expect(signed).toContain('second.jpg'));
     expectHeld(dialog);
     await answer('second.jpg');
 
@@ -4794,15 +4812,14 @@ describe('Every pick is held under Uploading… until the server has read it (sc
 
   it('a second pick refused before it uploads shows the first, read while the second was sized', async () => {
     signedIn();
-    const { waiting, answer } = serving(PHOTO);
+    const { waiting, answerTaken } = serving(PHOTO);
     const size = sizingLater('small.jpg', 10);
     const dialog = await changing();
 
     pickInDialog(jpeg('first.jpg'));
     await waitFor(() => expect(within(dialog).getByText('Uploading…')).toBeDefined());
     pickInDialog(jpeg('small.jpg'));
-    await answer('first.jpg');
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await answerTaken('first.jpg');
     expectHeld(dialog);
 
     size();
